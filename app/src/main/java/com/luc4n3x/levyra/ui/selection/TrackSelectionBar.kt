@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
+import com.luc4n3x.levyra.ui.levyraTabContentBottomPadding
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 import com.luc4n3x.levyra.ui.theme.LevyraIsPrism
 import androidx.compose.foundation.layout.Arrangement
@@ -38,6 +39,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -62,6 +66,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.ui.components.LevyraExpressiveIconButton
@@ -216,9 +221,9 @@ private fun ExpressiveTrackSelectionBar(
         ) {
             Column(
                 modifier = Modifier
-                    .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 10.dp)
+                    .padding(start = 8.dp, end = 8.dp, top = 6.dp, bottom = 8.dp)
                     .then(if (animated) Modifier.animateContentSize() else Modifier),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -227,7 +232,7 @@ private fun ExpressiveTrackSelectionBar(
                     LevyraExpressiveIconButton(
                         onClick = state::exit,
                         modifier = Modifier
-                            .size(44.dp)
+                            .size(40.dp)
                             .semantics { contentDescription = strings.close },
                         colors = IconButtonDefaults.filledTonalIconButtonColors()
                     ) {
@@ -279,7 +284,7 @@ private fun ExpressiveTrackSelectionBar(
                                 containerColor = scheme.primary,
                                 contentColor = scheme.onPrimary
                             ),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                         ) {
                             Icon(Icons.Rounded.SelectAll, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
@@ -323,12 +328,12 @@ private fun ExpressiveSelectionAction(
     Column(
         modifier = Modifier.width(ExpressiveSelectionActionWidth),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         LevyraExpressiveIconButton(
             onClick = onClick,
             modifier = Modifier
-                .size(width = 56.dp, height = 44.dp)
+                .size(width = 52.dp, height = 36.dp)
                 .semantics { contentDescription = label },
             colors = if (emphasized) {
                 IconButtonDefaults.filledIconButtonColors()
@@ -343,7 +348,7 @@ private fun ExpressiveSelectionAction(
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
-            maxLines = 2,
+            maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.fillMaxWidth()
         )
@@ -379,3 +384,13 @@ private fun SelectionBarEntrance(
 
 private const val SelectionEnterMillis = 320
 private const val SelectionExitMillis = 180
+
+@Composable
+internal fun trackSelectionBarTabClearance(miniPlayerVisible: Boolean): Dp {
+    val navigationInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    return (levyraTabContentBottomPadding(miniPlayerVisible) - navigationInset - SelectionBarTabOverlap)
+        .coerceAtLeast(12.dp)
+}
+
+internal val TrackSelectionBarListClearance = 140.dp
+private val SelectionBarTabOverlap = 24.dp
