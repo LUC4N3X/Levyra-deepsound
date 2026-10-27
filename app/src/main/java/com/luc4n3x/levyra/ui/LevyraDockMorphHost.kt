@@ -49,6 +49,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.domain.DockScrollEffect
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
@@ -134,6 +135,50 @@ internal class DockSearchRoute(
         if (skin != LevyraSkin.Default || selected == LevyraTab.Search) return false
         if (navigation.style.separatesSearch) return false
         return navigation.style == NavStyle.Original || LevyraTab.Search in navigation.activeTuning().visibleOrder()
+    }
+}
+
+@Composable
+private fun animateDockEffectCorner(selected: Boolean, edge: Boolean, animated: Boolean, label: String): State<Dp> =
+    animateDpAsState(
+        targetValue = when {
+            selected -> DockEffectSelectedCorner
+            edge -> DockEffectOuterCorner
+            else -> DockEffectInnerCorner
+        },
+        animationSpec = if (animated) spring(dampingRatio = Spring.DampingRatioMediumBouncy) else snap(),
+        label = label
+    )
+
+@Composable
+private fun DockEffectMark(selected: Boolean, landing: () -> Float) {
+    val scheme = MaterialTheme.colorScheme
+    Box(
+        modifier = Modifier
+            .size(DockEffectMarkSize)
+            .graphicsLayer {
+                rotationZ = -30f * landing()
+                shape = levyraCookieLandingShape(landing())
+                clip = true
+            }
+            .background(if (selected) scheme.primary else scheme.outlineVariant.copy(alpha = 0.55f)),
+        contentAlignment = Alignment.Center
+    ) {
+        if (selected) {
+            Icon(
+                imageVector = Icons.Rounded.Check,
+                contentDescription = null,
+                tint = scheme.onPrimary,
+                modifier = Modifier
+                    .size(18.dp)
+                    .graphicsLayer {
+                        val bloom = landing()
+                        rotationZ = 30f * bloom
+                        scaleX = bloom.coerceIn(0f, 1.2f)
+                        scaleY = bloom.coerceIn(0f, 1.2f)
+                    }
+            )
+        }
     }
 }
 
@@ -283,16 +328,8 @@ private fun DockScrollEffectOption(
         },
         label = "dock-effect-landing"
     )
-    val top by animateDpAsState(
-        targetValue = if (selected) DockEffectSelectedCorner else if (first) DockEffectOuterCorner else DockEffectInnerCorner,
-        animationSpec = if (animated) spring(dampingRatio = Spring.DampingRatioMediumBouncy) else snap(),
-        label = "dock-effect-top"
-    )
-    val bottom by animateDpAsState(
-        targetValue = if (selected) DockEffectSelectedCorner else if (last) DockEffectOuterCorner else DockEffectInnerCorner,
-        animationSpec = if (animated) spring(dampingRatio = Spring.DampingRatioMediumBouncy) else snap(),
-        label = "dock-effect-bottom"
-    )
+    val top by animateDockEffectCorner(selected, first, animated, "dock-effect-top")
+    val bottom by animateDockEffectCorner(selected, last, animated, "dock-effect-bottom")
     val container by animateColorAsState(
         targetValue = if (selected) scheme.secondaryContainer else scheme.surfaceContainerHighest,
         label = "dock-effect-container"
@@ -309,29 +346,7 @@ private fun DockScrollEffectOption(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(DockEffectMarkSize)
-                .graphicsLayer { rotationZ = -30f * landing }
-                .clip(levyraCookieLandingShape(landing))
-                .background(if (selected) scheme.primary else scheme.outlineVariant.copy(alpha = 0.55f)),
-            contentAlignment = Alignment.Center
-        ) {
-            if (selected) {
-                Icon(
-                    imageVector = Icons.Rounded.Check,
-                    contentDescription = null,
-                    tint = scheme.onPrimary,
-                    modifier = Modifier
-                        .size(18.dp)
-                        .graphicsLayer {
-                            rotationZ = 30f * landing
-                            scaleX = landing.coerceIn(0f, 1.2f)
-                            scaleY = landing.coerceIn(0f, 1.2f)
-                        }
-                )
-            }
-        }
+        DockEffectMark(selected = selected, landing = { landing })
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 text = label,

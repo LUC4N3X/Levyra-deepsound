@@ -102,6 +102,7 @@ import com.luc4n3x.levyra.domain.NavMotion
 import com.luc4n3x.levyra.domain.NavStyle
 import com.luc4n3x.levyra.domain.NavSurfaceTone
 import com.luc4n3x.levyra.domain.NavTuning
+import com.luc4n3x.levyra.ui.components.DockMorph
 import com.luc4n3x.levyra.ui.components.DockMorphFrame
 import com.luc4n3x.levyra.ui.components.DockMorphRow
 import com.luc4n3x.levyra.ui.components.DockMorphSlots
@@ -670,6 +671,24 @@ private fun navMorphRow(floating: Boolean, tuning: NavTuning, geometry: NavDockG
         )
     }
 
+private fun Modifier.navMorphCapsule(
+    floating: Boolean,
+    morph: DockMorph?,
+    frame: DockMorphFrame,
+    compaction: () -> Float,
+    geometry: NavDockGeometry,
+    surface: Modifier,
+    slots: DockMorphSlots,
+    row: DockMorphRow
+): Modifier {
+    val framed = navFloatingInset(floating).fillMaxWidth()
+    val sized = if (floating) framed.dockMorphFrame(morph, frame, geometry.compactHeight) else framed
+    return sized
+        .navDockSizing(floating, compaction, geometry)
+        .then(surface)
+        .dockMorphReveal(morph, slots, row, frame.takeIf { floating })
+}
+
 private fun navMorphSlots(count: Int, index: Int, tuning: NavTuning, expansion: NavExpansion?): DockMorphSlots =
     DockMorphSlots(
         count = count,
@@ -768,18 +787,16 @@ internal fun StyledBottomTabs(
                 navDockSurface(style, colors, tuning.background, tuning.opacity, glass, shape, depth, link, outer)
             }
             StyledTabCapsule(
-                modifier = Modifier
-                    .navFloatingInset(floating)
-                    .fillMaxWidth()
-                    .then(if (floating) Modifier.dockMorphFrame(morph, morphFrame, geometry.compactHeight) else Modifier)
-                    .navDockSizing(floating, compaction, geometry)
-                    .then(surface)
-                    .dockMorphReveal(
-                        morph = morph,
-                        slots = navMorphSlots(entries.size, restingIndex, tuning, expansion),
-                        row = navMorphRow(floating, tuning, geometry, 0.dp, LiquidCapsuleOrbGap),
-                        frame = morphFrame.takeIf { floating }
-                    ),
+                modifier = Modifier.navMorphCapsule(
+                    floating = floating,
+                    morph = morph,
+                    frame = morphFrame,
+                    compaction = compaction,
+                    geometry = geometry,
+                    surface = surface,
+                    slots = navMorphSlots(entries.size, restingIndex, tuning, expansion),
+                    row = navMorphRow(floating, tuning, geometry, 0.dp, LiquidCapsuleOrbGap)
+                ),
                 entries = entries,
                 selected = selected,
                 indicatorIndex = selectedIndex,
