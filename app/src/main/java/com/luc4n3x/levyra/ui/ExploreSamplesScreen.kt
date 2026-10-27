@@ -342,7 +342,7 @@ private fun ExploreSamplePage(
         }
 
         if (SpotifyClipCanvasRegistry.canvasUrl(track).isNotBlank()) {
-            if (isCurrent) SpotifyCanvasLoop(track, Modifier.fillMaxSize(), syncToAudio = true)
+            SpotifyCanvasLoop(track, Modifier.fillMaxSize(), syncToAudio = true)
         } else if (showVideo) {
             ExploreSampleVideoSurface(
                 isPlaying = isPlaying,

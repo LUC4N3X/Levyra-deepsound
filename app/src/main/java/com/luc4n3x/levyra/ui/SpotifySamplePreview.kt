@@ -103,7 +103,7 @@ private fun SpotifySamplePreviewVideo(track: Track, canvas: String = "", playWhe
         val factory = if (canvas.isNotBlank()) http else LevyraYoutubeDataSource.Factory(http)
         val builder = if (canvas.isNotBlank()) ExoPlayer.Builder(context, canvasRenderersFactory(context, canvas)) else ExoPlayer.Builder(context)
         builder.setMediaSourceFactory(DefaultMediaSourceFactory(factory))
-            .setLoadControl(DefaultLoadControl.Builder().setBufferDurationsMs(1_000, 5_000, 500, 500).setTargetBufferBytes(6 * 1024 * 1024).build()).build().apply {
+            .setLoadControl(DefaultLoadControl.Builder().setBufferDurationsMs(1_000, 5_000, 250, 500).setTargetBufferBytes(6 * 1024 * 1024).build()).build().apply {
                 volume = 0f
                 repeatMode = Player.REPEAT_MODE_ONE
                 trackSelectionParameters = trackSelectionParameters.buildUpon().setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, true).build()
