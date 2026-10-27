@@ -170,6 +170,19 @@ class HighQualityPlaybackCoordinator(
         return applyStream(track, null, result, provenance())
     }
 
+    suspend fun resolveLossyDownload(
+        track: Track,
+        audioQuality: String,
+        provenance: () -> PlaybackStreamProvenance
+    ): Track? {
+        val query = queryFor(track.copy(playbackManifest = null), isVideoMode = false, audioQuality = audioQuality) ?: return null
+        if (query.durationMs <= 0L) return null
+        val result = resolver.resolveLossy(identityKey(track), query)
+        if (result !is HighQualityResolution.Selected || result.stream.tier.lossless) return null
+        if (result.stream.codec != MP4_AAC_CODEC || result.stream.mimeType != MP4_AUDIO_MIME_TYPE) return null
+        return applyStream(track, null, result, provenance())
+    }
+
     private fun hasPreferredAlternative(track: Track?): Boolean {
         val manifest = track?.playbackManifest ?: return false
         if (manifest.alternativeSource == null) return false
@@ -288,6 +301,8 @@ class HighQualityPlaybackCoordinator(
         const val PREFER_320_WAIT_MS = 8_500L
         const val SOURCE_LABEL = "Levyra HQ"
         private const val DATA_SAVER_AUDIO_QUALITY = "Low"
+        private const val MP4_AAC_CODEC = "mp4a"
+        private const val MP4_AUDIO_MIME_TYPE = "audio/mp4"
         private const val OFFLINE_SOURCE = "Offline"
     }
 }

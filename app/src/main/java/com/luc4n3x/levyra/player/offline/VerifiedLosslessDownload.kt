@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.player.offline
 
+import com.luc4n3x.levyra.data.hqaudio.jiosaavn.JIOSAAVN_PROVIDER_ID
 import com.luc4n3x.levyra.domain.Track
 import java.util.Locale
 
@@ -9,6 +10,15 @@ internal fun Track.hasVerifiedLosslessSource(): Boolean {
     return manifest.streams.any {
         it.selected && it.url == streamUrl && it.url == manifest.selectedAudioUrl &&
             it.codec == "flac" && it.mimeType == "audio/flac" && it.container == "flac"
+    }
+}
+
+internal fun Track.hasVerifiedHighBitrateSource(): Boolean {
+    val manifest = playbackManifest ?: return false
+    if (manifest.alternativeSource?.providerId != JIOSAAVN_PROVIDER_ID) return false
+    return manifest.streams.any {
+        it.selected && it.url == streamUrl && it.url == manifest.selectedAudioUrl &&
+            it.codec == "mp4a" && it.mimeType == "audio/mp4" && it.container == "mp4"
     }
 }
 
@@ -24,6 +34,6 @@ internal fun Track.hasFreshVerifiedLosslessSource(nowMs: Long = System.currentTi
     }
 
 internal fun isAllowedOfflineExportSource(track: Track): Boolean =
-    track.hasVerifiedLosslessSource() || isAllowedOfflineReelSource(
+    track.hasVerifiedLosslessSource() || track.hasVerifiedHighBitrateSource() || isAllowedOfflineReelSource(
         track.source, track.playbackManifest?.provider.orEmpty(), track.streamUrl
     )

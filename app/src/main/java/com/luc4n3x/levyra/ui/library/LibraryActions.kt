@@ -17,6 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.background
 import androidx.compose.ui.draw.clip
+import com.luc4n3x.levyra.domain.DOWNLOAD_QUALITY_UNAVAILABLE
 import com.luc4n3x.levyra.domain.OfflineDownloadStage
 import com.luc4n3x.levyra.domain.offlineDownloadStageOf
 import com.luc4n3x.levyra.domain.LibrarySort
@@ -346,7 +347,9 @@ internal fun LibraryDownloadTaskRow(
                 )
             }
             Text(
-                if (failed && task.error.isNotBlank()) {
+                if (failed && task.error == DOWNLOAD_QUALITY_UNAVAILABLE) {
+                    strings.downloadQuality.qualityLost
+                } else if (failed && task.error.isNotBlank()) {
                     task.error
                 } else if (stage.showsProgress) {
                     "${strings.localizeDownloadState(task.state)} · ${task.progress.coerceIn(0, 100)}%"
