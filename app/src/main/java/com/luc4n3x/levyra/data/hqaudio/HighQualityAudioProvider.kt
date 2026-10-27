@@ -123,6 +123,8 @@ interface HighQualityAudioProvider {
 
     suspend fun resolveStream(candidate: AlternativeTrackCandidate): ProviderStreamOutcome
 
+    fun reportLookupTimeout() = Unit
+
     fun health(): List<ProviderBackendHealth> = emptyList()
 }
 

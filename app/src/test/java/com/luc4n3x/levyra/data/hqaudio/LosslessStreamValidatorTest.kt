@@ -58,6 +58,14 @@ class LosslessStreamValidatorTest {
     }
 
     @Test
+    fun rejectsExplicitNonAudioMimeEvenWhenTheBodyStartsWithFlac() {
+        val response = ProviderHttpResponse(206,
+            mapOf("Content-Type" to "text/html", "Content-Range" to "bytes 0-8191/33248426"), hiResHeader)
+        val result = ProviderStreamValidator.validateLossless(response, 294) as StreamValidation.Invalid
+        assertEquals(StreamRejection.NOT_AUDIO, result.rejection)
+    }
+
+    @Test
     fun rejectsAacServedWhereFlacWasPromised() {
         val response = ProviderHttpResponse(
             206,

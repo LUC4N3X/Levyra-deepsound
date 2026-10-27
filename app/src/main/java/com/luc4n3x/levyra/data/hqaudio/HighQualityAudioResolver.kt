@@ -9,6 +9,7 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withTimeoutOrNull
@@ -184,18 +185,28 @@ class HighQualityAudioResolver(
         query: AlternativeTrackQuery,
         active: List<HighQualityProviderLane>
     ): HighQualityResolution = coroutineScope {
-        val attempts = active.map { lane -> async { resolveLane(lane, identityKey, query) } }
-        val fallbacks = ArrayList<HighQualityResolution.Fallback>(attempts.size)
-        for (attempt in attempts) {
-            when (val resolution = attempt.await()) {
-                is HighQualityResolution.Selected -> {
-                    attempts.forEach { it.cancel() }
-                    return@coroutineScope resolution
+        val results = Channel<Pair<Boolean, HighQualityResolution>>(active.size)
+        val attempts = active.map { lane -> async { results.send(lane.provider.lossless to resolveLane(lane, identityKey, query)) } }
+        val fallbacks = ArrayList<HighQualityResolution.Fallback>(active.size)
+        var lossy: HighQualityResolution.Selected? = null
+        var remainingLossless = active.count { it.provider.lossless }
+        try {
+            repeat(active.size) {
+                val (lossless, resolution) = results.receive()
+                if (lossless) remainingLossless--
+                when (resolution) {
+                    is HighQualityResolution.Selected -> {
+                        if (resolution.stream.tier.lossless || remainingLossless == 0) return@coroutineScope resolution
+                        lossy = resolution
+                    }
+                    is HighQualityResolution.Fallback -> fallbacks += resolution
                 }
-                is HighQualityResolution.Fallback -> fallbacks += resolution
+                if (remainingLossless == 0) lossy?.let { return@coroutineScope it }
             }
+            lossy ?: fallbacks.firstOrNull { it.reason !in DEFINITIVE_MISSES } ?: fallbacks.first()
+        } finally {
+            attempts.forEach { it.cancel() }
         }
-        fallbacks.firstOrNull { it.reason !in DEFINITIVE_MISSES } ?: fallbacks.first()
     }
 
     private suspend fun resolveLane(
@@ -205,7 +216,11 @@ class HighQualityAudioResolver(
     ): HighQualityResolution {
         if (!lane.provider.lossless) return lane.resolve(identityKey, query)
         val resolution = withTimeoutOrNull(losslessLaneBudgetMs) { lane.resolve(identityKey, query) }
-            ?: HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "${lane.provider.id} lane budget")
+            ?: run {
+                currentCoroutineContext().ensureActive()
+                lane.provider.reportLookupTimeout()
+                HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "${lane.provider.id} lane budget")
+            }
         if (resolution is HighQualityResolution.Fallback) {
             HighQualityAudioDiagnostics.fallback(resolution.reason, "${lane.provider.id}: ${resolution.detail}", query.title)
         }
@@ -222,7 +237,13 @@ class HighQualityAudioResolver(
                 streams.entries.minByOrNull { it.value.stream.expiresAtMs }?.let { streams.remove(it.key, it.value) }
             }
         }
-        streams[identityKey] = selection
+        streams[identityKey] = if (mode.lossless && !selection.stream.tier.lossless) {
+            selection.copy(stream = selection.stream.copy(
+                expiresAtMs = minOf(selection.stream.expiresAtMs, clock() + STREAM_REFRESH_MARGIN_MS + LOSSLESS_FALLBACK_RETRY_MS)
+            ))
+        } else {
+            selection
+        }
     }
 
     private fun quarantine(entries: ConcurrentHashMap<String, Long>, key: String, untilMs: Long) {
@@ -250,6 +271,7 @@ class HighQualityAudioResolver(
         const val LOOKUP_BUDGET_MS = 8_000L
         const val LOSSLESS_LANE_BUDGET_MS = 4_000L
         const val STREAM_REFRESH_MARGIN_MS = 90_000L
+        const val LOSSLESS_FALLBACK_RETRY_MS = 90_000L
         const val FAILURE_QUARANTINE_MS = 30L * 60L * 1_000L
         const val UNMATCHED_MEMORY_MS = 30L * 60L * 1_000L
         private val DEFINITIVE_MISSES = setOf(HighQualityFallbackReason.NO_MATCH, HighQualityFallbackReason.AMBIGUOUS)

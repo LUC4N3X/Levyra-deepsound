@@ -79,6 +79,11 @@ internal class LosslessProviderSupport(
         }
     }
 
+    fun reportLookupTimeout() {
+        val permit = circuitBreaker.acquire()
+        if (permit != ProviderCircuitBreaker.Permit.REJECTED) circuitBreaker.onFailure(permit, "LOOKUP_TIMEOUT")
+    }
+
     fun health() = circuitBreaker.snapshot(providerId)
 
     private suspend fun fetch(url: String, headers: Map<String, String>, maxBytes: Int): Fetch {

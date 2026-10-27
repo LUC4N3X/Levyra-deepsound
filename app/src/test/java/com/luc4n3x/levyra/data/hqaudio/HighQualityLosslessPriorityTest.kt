@@ -79,6 +79,17 @@ class HighQualityLosslessPriorityTest {
     }
 
     @Test
+    fun readySecondLosslessSourceDoesNotWaitForAStalledFirstSource() = runBlocking {
+        val monochrome = losslessProvider("monochrome") { awaitCancellation() }
+        val arcod = losslessProvider("arcod") { ProviderStreamOutcome.Resolved(flacStream(it)) }
+        val resolver = resolver(HighQualityAudioMode.PREFER_LOSSLESS, monochrome, arcod, jioSaavn())
+
+        val result = withTimeout(1_000L) { resolver.await(resolver.begin("race", query()), 2_000L) }
+
+        assertEquals("arcod", (result as HighQualityResolution.Selected).stream.providerId)
+    }
+
+    @Test
     fun secondFlacProviderIsUsedWhenTheFirstIsRateLimited() {
         val monochrome = losslessProvider("monochrome") { ProviderStreamOutcome.Failed(ProviderFailure.RATE_LIMITED) }
         val arcod = losslessProvider("arcod") { ProviderStreamOutcome.Resolved(flacStream(it)) }
@@ -174,6 +185,76 @@ class HighQualityLosslessPriorityTest {
 
         assertEquals(HighQualityFallbackReason.PROVIDER_UNAVAILABLE, (first as HighQualityResolution.Fallback).reason)
         assertTrue(resolver.upgradePending("key"))
+    }
+
+    @Test
+    fun temporaryFallbackDoesNotHideRecoveredLosslessForTheWholeStreamLifetime() = runBlocking {
+        var now = 1_000_000L
+        var recovered = false
+        val monochrome = losslessProvider("monochrome") {
+            if (recovered) ProviderStreamOutcome.Resolved(flacStream(it).copy(expiresAtMs = Long.MAX_VALUE))
+            else ProviderStreamOutcome.Failed(ProviderFailure.RATE_LIMITED)
+        }
+        val jio = jioSaavn().apply {
+            streamOutcome = { ProviderStreamOutcome.Resolved(resolvedStream(it, expiresAtMs = Long.MAX_VALUE)) }
+        }
+        val resolver = HighQualityAudioResolver(
+            providers = listOf(monochrome, jio),
+            mappingStore = HighQualityMappingStore(InMemoryMappingStorage()),
+            scope = scope,
+            clock = { now }
+        ).apply { mode = HighQualityAudioMode.PREFER_LOSSLESS }
+        val first = resolver.await(resolver.begin("key", query()), 3_000L) as HighQualityResolution.Selected
+        assertEquals("jiosaavn", first.stream.providerId)
+        assertEquals("jiosaavn", resolver.cachedSelection("key")!!.stream.providerId)
+
+        recovered = true
+        now += 90_001L
+
+        assertNull(resolver.cachedSelection("key"))
+        val retry = resolver.await(resolver.begin("key", query()), 3_000L) as HighQualityResolution.Selected
+        assertEquals("monochrome", retry.stream.providerId)
+    }
+
+    @Test
+    fun losslessLaneDeadlineOpensMonochromeCircuitBeforeTheNextTrack() = runBlocking {
+        var requests = 0
+        val monochrome = com.luc4n3x.levyra.data.hqaudio.lossless.MonochromeAudioProvider(
+            exchange = ProviderHttpExchange {
+                requests++
+                awaitCancellation()
+            }
+        )
+        val resolver = resolver(
+            HighQualityAudioMode.PREFER_LOSSLESS, monochrome, jioSaavn(), losslessLaneBudgetMs = 100L
+        )
+        val first = resolver.await(resolver.begin("first", query()), 3_000L) as HighQualityResolution.Selected
+        assertEquals("jiosaavn", first.stream.providerId)
+        assertEquals("OPEN", monochrome.health().single().state)
+        assertEquals("LOOKUP_TIMEOUT", monochrome.health().single().lastFailure)
+
+        val next = resolver.await(resolver.begin("next", query()), 3_000L) as HighQualityResolution.Selected
+        assertEquals("jiosaavn", next.stream.providerId)
+        assertEquals(1, requests)
+    }
+
+    @Test
+    fun cancellingAnObsoleteLookupDoesNotOpenMonochromeCircuit() = runBlocking {
+        val started = CompletableDeferred<Unit>()
+        val monochrome = com.luc4n3x.levyra.data.hqaudio.lossless.MonochromeAudioProvider(
+            exchange = ProviderHttpExchange {
+                started.complete(Unit)
+                awaitCancellation()
+            }
+        )
+        val resolver = resolver(HighQualityAudioMode.PREFER_LOSSLESS, monochrome, jioSaavn())
+        val pending = resolver.begin("key", query())
+        withTimeout(3_000L) { started.await() }
+
+        resolver.mode = HighQualityAudioMode.PREFER_320
+        pending.join()
+
+        assertEquals("CLOSED", monochrome.health().single().state)
     }
 
     @Test

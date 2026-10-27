@@ -158,6 +158,18 @@ class HighQualityPlaybackCoordinator(
 
     fun providerHealth(): List<ProviderBackendHealth> = resolver.providerHealth()
 
+    suspend fun resolveLosslessDownload(
+        track: Track,
+        audioQuality: String,
+        provenance: () -> PlaybackStreamProvenance
+    ): Track? {
+        val query = queryFor(track.copy(playbackManifest = null), isVideoMode = false, audioQuality = audioQuality) ?: return null
+        if (!resolver.mode.lossless || query.durationMs <= 0L) return null
+        val result = resolver.await(resolver.begin(identityKey(track), query), DOWNLOAD_LOOKUP_BUDGET_MS)
+        if (result !is HighQualityResolution.Selected || !result.stream.tier.lossless || !resolver.mode.lossless) return null
+        return applyStream(track, null, result, provenance())
+    }
+
     private fun hasPreferredAlternative(track: Track?): Boolean {
         val manifest = track?.playbackManifest ?: return false
         if (manifest.alternativeSource == null) return false
@@ -197,6 +209,8 @@ class HighQualityPlaybackCoordinator(
             codec = stream.codec,
             bitrate = stream.displayKbps * 1_000,
             averageBitrate = stream.deliveredKbps * 1_000,
+            sampleRate = stream.sampleRateHz,
+            bitDepth = stream.bitDepth,
             qualityLabel = stream.qualityLabel,
             expiresAtMs = stream.expiresAtMs,
             selected = true
@@ -267,6 +281,8 @@ class HighQualityPlaybackCoordinator(
     }
 
     companion object {
+        const val DOWNLOAD_LOOKUP_BUDGET_MS = 35_000L
+        const val DOWNLOAD_LANE_BUDGET_MS = 30_000L
         const val AUTOMATIC_WAIT_MS = 2_500L
         const val AUTOMATIC_GRACE_MS = 1_200L
         const val PREFER_320_WAIT_MS = 8_500L

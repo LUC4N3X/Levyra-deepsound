@@ -46,11 +46,12 @@ fun interface ProviderHttpExchange {
 
 internal object ProviderDestinationPolicy {
     private val allowedDomains = setOf("jiosaavn.com", "saavncdn.com", "tracks.monochrome.st")
+    private val exactHosts = setOf("arcod.xyz", "api.arcod.xyz")
 
     fun allows(url: HttpUrl): Boolean {
-        if (!url.isHttps) return false
+        if (!url.isHttps || url.port != 443 || url.username.isNotEmpty() || url.password.isNotEmpty()) return false
         val host = url.host.lowercase(Locale.ROOT).trimEnd('.')
-        return allowedDomains.any { domain -> host == domain || host.endsWith(".$domain") }
+        return host in exactHosts || allowedDomains.any { domain -> host == domain || host.endsWith(".$domain") }
     }
 
     fun requireAllowed(url: String): HttpUrl {
@@ -116,12 +117,29 @@ internal object HighQualityProviderHttpClient {
     private const val CALL_TIMEOUT_MS = 6_000L
 
     private val lock = Any()
+    private var downloadClient: OkHttpClient? = null
+    private var downloadBase: OkHttpClient? = null
 
     @Volatile
     private var client: OkHttpClient? = null
 
     @Volatile
     private var generation = Long.MIN_VALUE
+
+    fun downloadClient(): OkHttpClient {
+        val base = client()
+        return synchronized(lock) {
+            if (downloadBase !== base) {
+                downloadClient = base.newBuilder()
+                    .connectTimeout(6_000L, TimeUnit.MILLISECONDS)
+                    .readTimeout(15_000L, TimeUnit.MILLISECONDS)
+                    .callTimeout(20_000L, TimeUnit.MILLISECONDS)
+                    .build()
+                downloadBase = base
+            }
+            downloadClient!!
+        }
+    }
 
     fun client(): OkHttpClient {
         val currentGeneration = LevyraNetworkConfiguration.generation

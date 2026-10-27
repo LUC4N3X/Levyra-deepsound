@@ -90,6 +90,10 @@ internal object ProviderStreamValidator {
         }
         val body = response.body
         if (body.isEmpty()) return StreamValidation.Invalid(StreamRejection.EMPTY_BODY, response.code)
+        val type = response.header("Content-Type").orEmpty().substringBefore(';').trim().lowercase(Locale.ROOT)
+        if (type.isNotEmpty() && type !in setOf("audio/flac", "audio/x-flac", "application/octet-stream", "binary/octet-stream")) {
+            return StreamValidation.Invalid(StreamRejection.NOT_AUDIO, response.code)
+        }
         val info = FlacStreamInfo.parse(body)
             ?: return StreamValidation.Invalid(StreamRejection.UNSUPPORTED_CONTAINER, response.code)
         val totalBytes = totalLength(response)

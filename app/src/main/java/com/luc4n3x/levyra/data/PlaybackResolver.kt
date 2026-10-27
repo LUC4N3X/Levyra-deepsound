@@ -24,6 +24,7 @@ import com.luc4n3x.levyra.data.hqaudio.OkHttpProviderExchange
 import com.luc4n3x.levyra.data.hqaudio.ProviderHttpExchange
 import com.luc4n3x.levyra.data.hqaudio.SharedPreferencesMappingStorage
 import com.luc4n3x.levyra.data.hqaudio.jiosaavn.JioSaavnAudioProvider
+import com.luc4n3x.levyra.data.hqaudio.lossless.ArcodAudioProvider
 import com.luc4n3x.levyra.data.hqaudio.lossless.MonochromeAudioProvider
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.LevyraAudioQuality
@@ -400,9 +401,21 @@ class PlaybackResolver private constructor(private val context: Context) {
         )
     ).apply { mode = userPreferences.highQualityAudioMode() }
 
+    private val highQualityDownloadDelegate = lazy {
+        HighQualityPlaybackCoordinator(HighQualityAudioResolver(
+            providers = highQualityProviders(OkHttpProviderExchange(HighQualityProviderHttpClient::downloadClient)).filter { it.lossless },
+            mappingStore = HighQualityMappingStore(SharedPreferencesMappingStorage(context)),
+            scope = resolveScope,
+            lookupBudgetMs = HighQualityPlaybackCoordinator.DOWNLOAD_LOOKUP_BUDGET_MS,
+            losslessLaneBudgetMs = HighQualityPlaybackCoordinator.DOWNLOAD_LANE_BUDGET_MS
+        )).apply { mode = highQualityPlayback.mode }
+    }
+    private val highQualityDownloads by highQualityDownloadDelegate
+
     private fun highQualityProviders(exchange: ProviderHttpExchange): List<HighQualityAudioProvider> = buildList {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             add(MonochromeAudioProvider(exchange))
+            add(ArcodAudioProvider(exchange))
         }
         add(JioSaavnAudioProvider(exchange))
     }
@@ -490,8 +503,11 @@ class PlaybackResolver private constructor(private val context: Context) {
         )
     }
 
+    fun prefersLosslessAudio(): Boolean = highQualityPlayback.mode.lossless
+
     fun setHighQualityAudioMode(mode: HighQualityAudioMode) {
         highQualityPlayback.mode = mode
+        if (highQualityDownloadDelegate.isInitialized()) highQualityDownloads.mode = mode
     }
 
     private fun refreshPlaybackPolicyInBackground(force: Boolean, reason: String) {
@@ -673,6 +689,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             val now = System.currentTimeMillis()
             quarantinePlaybackUrl(track.streamUrl, now + ALTERNATIVE_STREAM_QUARANTINE_MS, now)
             highQualityPlayback.reportFailure(track, reason)
+            if (highQualityDownloadDelegate.isInitialized()) highQualityDownloads.reportFailure(track, reason)
             return
         }
         if (!hasValidatedInternet() && isNetworkFailureReason(reason)) {
@@ -1144,7 +1161,13 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (track.isPersonalCollectionTrack()) return personalCollections.resolveForDownload(track)
         val targetTrack = resolveCatalogIdentityWithinBudget(track)
         val quality = normalizeAudioQuality(audioQualityOverride ?: selectedAudioQuality)
-        val resolved = resolveWithLanguageRevisionRetry(targetTrack) { requestTrack, preferredLanguage ->
+        val resolved = resolveWithLanguageRevisionRetry(targetTrack,
+            acceptAcrossLanguageChange = { it.playbackManifest?.alternativeSource != null }
+        ) { requestTrack, preferredLanguage ->
+            val lossless = if (highQualityPlayback.mode.lossless && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                highQualityDownloads.resolveLosslessDownload(requestTrack, quality, ::basePlaybackProvenance)
+            } else null
+            if (lossless != null) return@resolveWithLanguageRevisionRetry lossless
             val reel = if (preferredLanguage.isBlank()) {
                 runCatchingPreservingCancellation {
                     resolveVideoWithAndroidReel(requestTrack.copy(streamUrl = "", videoStreamUrl = ""))

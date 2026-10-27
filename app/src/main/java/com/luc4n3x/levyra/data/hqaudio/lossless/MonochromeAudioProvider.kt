@@ -16,7 +16,7 @@ import org.json.JSONObject
 internal class MonochromeAudioProvider(
     exchange: ProviderHttpExchange,
     private val clock: () -> Long = System::currentTimeMillis,
-    circuitBreaker: ProviderCircuitBreaker = ProviderCircuitBreaker(CIRCUIT, clock)
+    circuitBreaker: ProviderCircuitBreaker = ProviderCircuitBreaker(CIRCUIT, clock, failureThreshold = 1)
 ) : HighQualityAudioProvider {
     override val id: String = MONOCHROME_PROVIDER_ID
     override val displayName: String = "Monochrome"
@@ -51,6 +51,8 @@ internal class MonochromeAudioProvider(
             route = ROUTE
         )
     }
+
+    override fun reportLookupTimeout() = support.reportLookupTimeout()
 
     override fun health(): List<ProviderBackendHealth> = listOf(support.health())
 

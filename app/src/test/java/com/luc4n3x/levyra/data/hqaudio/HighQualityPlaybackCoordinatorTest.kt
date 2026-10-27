@@ -63,6 +63,31 @@ class HighQualityPlaybackCoordinatorTest {
     }
 
     @Test
+    fun downloadResolutionReturnsOnlyVerifiedLosslessAndHonorsTheSelectedMode() = runBlocking {
+        val flac = exactProvider().apply {
+            streamOutcome = { ProviderStreamOutcome.Resolved(resolvedStream(it).copy(
+                tier = AudioQualityTier.LOSSLESS, mimeType = "audio/flac", codec = "flac", container = "flac",
+                bitDepth = 16, sampleRateHz = 44_100
+            )) }
+        }
+        val coordinator = coordinator(flac, HighQualityAudioMode.PREFER_LOSSLESS)
+        val result = coordinator.resolveLosslessDownload(playbackTrack(), "Auto", provenance)!!
+        assertEquals("audio/flac", result.playbackManifest!!.streams.single { it.selected }.mimeType)
+        assertEquals(44_100, result.playbackManifest!!.streams.single { it.selected }.sampleRate)
+
+        assertNotNull(coordinator.resolveLosslessDownload(result.copy(streamUrl = ""), "Auto", provenance))
+        coordinator.mode = HighQualityAudioMode.PREFER_320
+        assertNull(coordinator.resolveLosslessDownload(playbackTrack(), "Auto", provenance))
+    }
+
+    @Test
+    fun downloadResolutionRejectsLossyFallbackAndDataSaver() = runBlocking {
+        val coordinator = coordinator(exactProvider(), HighQualityAudioMode.PREFER_LOSSLESS)
+        assertNull(coordinator.resolveLosslessDownload(playbackTrack(), "Auto", provenance))
+        assertNull(coordinator.resolveLosslessDownload(playbackTrack(), "Low", provenance))
+    }
+
+    @Test
     fun verifiedJioSaavnStreamStartsWithoutWaitingForYoutube() {
         var youtubeRequested = false
         val result = coordinator(exactProvider()).play {
