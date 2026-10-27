@@ -233,13 +233,7 @@ internal class OfflineExportPipeline(
             settings.resolverAudioQuality
         )
         if (resolved.streamUrl.isBlank()) throw IOException("Stream audio non disponibile")
-        if (
-            !isAllowedOfflineReelSource(
-                source = resolved.source,
-                manifestProvider = resolved.playbackManifest?.provider.orEmpty(),
-                streamUrl = resolved.streamUrl
-            )
-        ) {
+        if (!isAllowedOfflineExportSource(resolved)) {
             throw IOException("Download non disponibile: nessuna sorgente Android Reel compatibile")
         }
         return resolved

@@ -133,7 +133,7 @@ private fun MutableList<SettingsSearchEntry>.audioEntries(
     val parametric = strings.parametricEqCopy()
     entry("audio.engine", strings.audioEngine, strings.audioEngineSubtitle, "audio sound output", categories.audio)
     entry("audio.quality", strings.audioQuality, strings.audioSectionQuality, "${strings.audioQualityAuto} ${strings.audioQualityHigh} ${strings.audioQualityLow} quality bitrate streaming", categories.audio)
-    entry("audio.alternative_hq", strings.alternativeAudioTitle, strings.alternativeAudioSubtitle, "${strings.alternativeAudioPrefer320} 320 kbps jiosaavn hq hifi bitrate", categories.audio)
+    entry("audio.alternative_hq", strings.alternativeAudioTitle, strings.alternativeAudioSubtitle, "${strings.alternativeAudioPrefer320} ${strings.alternativeAudioPreferLossless} 320 kbps flac lossless hi-res jiosaavn hq hifi bitrate", categories.audio)
     entry("audio.equalizer", strings.equalizer, strings.equalizerSubtitle, "${parametric.graphicEq} ${parametric.parametricEq} eq equaliser preset bands", categories.audio)
     entry("audio.autoeq", strings.autoEqCatalog, strings.autoEqCatalogHint, "${strings.autoEqImport} autoeq eq headphones", categories.audio)
     entry("audio.preamp", strings.preamp, strings.audioSectionEqualizer, "preamp gain eq", categories.audio)

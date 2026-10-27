@@ -109,6 +109,20 @@ internal class ProviderCircuitBreaker(
         }
     }
 
+    fun onRateLimited(retryAfterMs: Long = baseOpenMs) {
+        val durationMs = synchronized(lock) {
+            lastFailureAtMs = clock()
+            lastFailure = "HTTP_429"
+            val untilMs = clock() + retryAfterMs.coerceAtLeast(baseOpenMs)
+            openUntilMs = maxOf(openUntilMs, untilMs)
+            state = State.OPEN
+            consecutiveFailures = 0
+            probeInFlight = false
+            openUntilMs - clock()
+        }
+        HighQualityAudioDiagnostics.circuit(providerId, State.OPEN.name, "openMs=$durationMs cause=HTTP_429")
+    }
+
     fun release(permit: Permit) {
         synchronized(lock) {
             if (permit == Permit.PROBE && state == State.HALF_OPEN) probeInFlight = false
