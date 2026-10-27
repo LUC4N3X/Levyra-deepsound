@@ -4134,7 +4134,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val duration = effectiveDuration(current)
         if (duration > 0L && player.positionMs < (duration - 1_500L).coerceAtLeast(0L)) return
         listenSessionCompleted = true
-        recordSmartCompletion(current)
+        if (samplesPlaybackSession == null) recordSmartCompletion(current)
         val nextTrack = queueEngine.next()
         when {
             nextTrack != null -> startResolve(nextTrack, autoRetryWhenOffline = true)
