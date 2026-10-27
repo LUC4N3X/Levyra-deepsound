@@ -27,6 +27,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Share
@@ -90,6 +91,7 @@ import com.luc4n3x.levyra.ui.media.immersiveMediaGutter
 import com.luc4n3x.levyra.ui.media.ImmersiveTopBarButtonFill
 import com.luc4n3x.levyra.ui.media.ImmersiveTopBarButtonSize
 import com.luc4n3x.levyra.ui.i18n.speedDialCopy
+import com.luc4n3x.levyra.ui.i18n.likeAllCopy
 import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
 import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
@@ -118,7 +120,8 @@ internal fun PlaylistHitOverlay(
     onDownloadTrack: (Track) -> Unit,
     onQueueTrack: (Track) -> Unit,
     onTogglePlayback: () -> Unit,
-    onOpenPlayer: () -> Unit
+    onOpenPlayer: () -> Unit,
+    onLikeAll: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     val density = LocalDensity.current
@@ -186,7 +189,7 @@ internal fun PlaylistHitOverlay(
             onDownloadTrack = onDownloadTrack,
             onQueueTrack = onQueueTrack
         )
-        PlaylistHitTopBar(preview, colors, collapsedState, topBarHeight, animationsEnabled, onClose)
+        PlaylistHitTopBar(preview, colors, collapsedState, topBarHeight, animationsEnabled, onClose, onLikeAll)
         currentTrack?.let { track ->
             PlaylistHitNowPlayingDock(
                 preview = preview,
@@ -336,7 +339,8 @@ private fun PlaylistHitTopBar(
     collapsedState: State<Boolean>,
     height: Dp,
     animationsEnabled: Boolean,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    onLikeAll: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
@@ -366,6 +370,16 @@ private fun PlaylistHitTopBar(
                     onDismissRequest = { menuExpanded = false },
                     modifier = Modifier.background(colors.fieldTop)
                 ) {
+                    if (preview.tracks.isNotEmpty()) {
+                        DropdownMenuItem(
+                            text = { Text(strings.likeAllCopy().action) },
+                            leadingIcon = { Icon(Icons.Rounded.Favorite, contentDescription = null) },
+                            onClick = {
+                                menuExpanded = false
+                                onLikeAll()
+                            }
+                        )
+                    }
                     DropdownMenuItem(
                         text = { Text(strings.share) },
                         leadingIcon = { Icon(Icons.Rounded.Share, contentDescription = null) },

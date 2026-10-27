@@ -3318,7 +3318,8 @@ fun LevyraApp(
                         onDownloadTrack = viewModel::exportTrack,
                         onQueueTrack = viewModel::addToQueue,
                         onTogglePlayback = viewModel::togglePlay,
-                        onOpenPlayer = viewModel::openPlayerScreen
+                        onOpenPlayer = viewModel::openPlayerScreen,
+                        onLikeAll = { viewModel.likeAllTracks(preview.tracks) }
                     )
                 }
             }
