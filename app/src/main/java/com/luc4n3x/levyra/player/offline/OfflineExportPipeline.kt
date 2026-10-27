@@ -13,6 +13,8 @@ import com.luc4n3x.levyra.data.collections.PersonalCollectionHttp
 import com.luc4n3x.levyra.data.collections.isPersonalCollectionTrack
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.DownloadOwnership
+import com.luc4n3x.levyra.domain.DownloadQualityChoice
+import com.luc4n3x.levyra.domain.DownloadQualityUnavailableException
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.player.LevyraMediaCache
 import com.luc4n3x.levyra.player.LevyraPlaybackCacheKey
@@ -173,10 +175,12 @@ internal class OfflineExportPipeline(
     private val taskKey: String,
     private val settings: LevyraDownloadSettings,
     private val downloadQualityKey: String,
-    private val ownership: DownloadOwnership = DownloadOwnership.MANUAL
+    private val ownership: DownloadOwnership = DownloadOwnership.MANUAL,
+    private val qualityChoice: DownloadQualityChoice? = null
 ) {
     private val appContext = context.applicationContext
     private val resolver = PlaybackResolver.getInstance(appContext)
+    private val resolverAudioQuality = downloadResolverAudioQuality(qualityChoice?.source, settings)
     private val prefetcher = OfflineStreamPrefetcher(appContext)
 
     suspend fun export(track: Track): OfflineExportResult {
@@ -206,7 +210,7 @@ internal class OfflineExportPipeline(
                     isVideoMode = false,
                     reason = error.message.orEmpty().ifBlank { "continuous offline prefetch failed" },
                     isOfflineExport = true,
-                    audioQuality = settings.resolverAudioQuality
+                    audioQuality = resolverAudioQuality
                 )
                 resolved = resolve(track)
                 if (supportsContinuousPrefetch(resolved.streamUrl)) {
@@ -222,7 +226,8 @@ internal class OfflineExportPipeline(
             taskKey = taskKey,
             settings = settings,
             downloadQualityKey = downloadQualityKey,
-            ownership = ownership
+            ownership = ownership,
+            qualityChoice = qualityChoice
         ).export(resolved)
     }
 
@@ -230,9 +235,11 @@ internal class OfflineExportPipeline(
         progress(4)
         val resolved = resolver.resolveForOffline(
             track.copy(streamUrl = ""),
-            settings.resolverAudioQuality
+            resolverAudioQuality,
+            qualityChoice?.source
         )
         if (resolved.streamUrl.isBlank()) throw IOException("Stream audio non disponibile")
+        if (qualityChoice != null && !qualityChoice.isSatisfiedBy(resolved)) throw DownloadQualityUnavailableException()
         if (!isAllowedOfflineExportSource(resolved)) {
             throw IOException("Download non disponibile: nessuna sorgente Android Reel compatibile")
         }

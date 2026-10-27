@@ -30,6 +30,9 @@ import com.luc4n3x.levyra.domain.LevyraDownloadFolderMode
 import com.luc4n3x.levyra.domain.LevyraDownloadPreset
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.DownloadOwnership
+import com.luc4n3x.levyra.domain.DownloadQualityChoice
+import com.luc4n3x.levyra.domain.DownloadQualitySource
+import com.luc4n3x.levyra.domain.DownloadQualityUnavailableException
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.player.LevyraMediaCache
 import com.luc4n3x.levyra.player.LevyraPlaybackCacheKey
@@ -506,7 +509,8 @@ class OfflineAudioExporter(
     private val taskKey: String = "",
     private val settings: LevyraDownloadSettings = LevyraDownloadSettings(),
     private val downloadQualityKey: String = settings.storedQualityKey(),
-    private val ownership: DownloadOwnership = DownloadOwnership.MANUAL
+    private val ownership: DownloadOwnership = DownloadOwnership.MANUAL,
+    private val qualityChoice: DownloadQualityChoice? = null
 ) {
     private val rateLimiter = DownloadRateLimiter(settings.effectiveRateKbps)
     private val appleMetadataEnricher = AppleMetadataEnricher(context)
@@ -519,16 +523,21 @@ class OfflineAudioExporter(
         val forceQualityResolution = settings.resolverAudioQuality != null
         val reuseLossless = resolver.prefersLosslessAudio() &&
             !settings.resolverAudioQuality.equals("Low", ignoreCase = true) && track.hasFreshVerifiedLosslessSource()
-        var playable = if (reuseLossless || (
-            track.streamUrl.isNotBlank() &&
-            !forceQualityResolution &&
-            !resolver.prefersLosslessAudio() &&
-            isMp4AudioExportUrl(track.streamUrl)
-        )) {
+        val reuseResolved = if (qualityChoice != null) {
+            reusesChosenQuality(track, qualityChoice)
+        } else {
+            reuseLossless || (
+                track.streamUrl.isNotBlank() &&
+                    !forceQualityResolution &&
+                    !resolver.prefersLosslessAudio() &&
+                    isMp4AudioExportUrl(track.streamUrl)
+                )
+        }
+        var playable = if (reuseResolved) {
             track
         } else {
             reportProgress(4)
-            resolver.resolveForOffline(track.copy(streamUrl = ""), settings.resolverAudioQuality)
+            resolveOfflineSource(track)
         }
         if (playable.streamUrl.isBlank()) throw IOException("Stream audio non disponibile")
         reportProgress(10)
@@ -566,12 +575,12 @@ class OfflineAudioExporter(
                         isVideoMode = false,
                         reason = firstError.message.orEmpty().ifBlank { "offline export source rejected" },
                         isOfflineExport = true,
-                        audioQuality = settings.resolverAudioQuality
+                        audioQuality = downloadResolverAudioQuality(qualityChoice?.source, settings)
                     )
                     releaseOfflineCacheSeed(playable)
                 }
                 reportProgress(7)
-                playable = resolver.resolveForOffline(track.copy(streamUrl = ""), settings.resolverAudioQuality)
+                playable = resolveOfflineSource(track)
                 metadataTrack = mergeOfflineMetadataTrack(metadataSeed, playable)
                 reportProgress(10)
                 downloadAudio(playable, workspace)
@@ -775,6 +784,21 @@ class OfflineAudioExporter(
         throw IOException(PERSONAL_COLLECTION_NOT_AUDIO)
     }
 
+    private fun reusesChosenQuality(track: Track, choice: DownloadQualityChoice): Boolean =
+        track.streamUrl.isNotBlank() && choice.isSatisfiedBy(track) &&
+            (choice.source != DownloadQualitySource.Lossless || track.hasFreshVerifiedLosslessSource())
+
+    private suspend fun resolveOfflineSource(track: Track): Track {
+        val choice = qualityChoice ?: return resolver.resolveForOffline(track.copy(streamUrl = ""), settings.resolverAudioQuality)
+        val resolved = resolver.resolveForOffline(
+            track.copy(streamUrl = ""),
+            downloadResolverAudioQuality(choice.source, settings),
+            choice.source
+        )
+        if (!choice.isSatisfiedBy(resolved)) throw DownloadQualityUnavailableException()
+        return resolved
+    }
+
     private suspend fun downloadAudio(track: Track, workspace: File): DownloadedAudio {
         var lastError: IOException? = null
         val rangeAttempts = listOf(false, true, false)
@@ -812,8 +836,9 @@ class OfflineAudioExporter(
         val partial = resumablePartialFile(workspace, container)
         val identityFile = resumeIdentitySidecar(partial)
         val currentIdentity = offlineStreamIdentity(sourceUrl, PlaybackSourceIdentity.sourceVideoId(track))
-        if (lossless) discardPartial(partial, identityFile)
-        val storedBytes = partial.takeIf { !lossless && settings.resumable && it.exists() }?.length()?.coerceAtLeast(0L) ?: 0L
+        val restartsFromZero = lossless || track.hasVerifiedHighBitrateSource()
+        if (restartsFromZero) discardPartial(partial, identityFile)
+        val storedBytes = partial.takeIf { !restartsFromZero && settings.resumable && it.exists() }?.length()?.coerceAtLeast(0L) ?: 0L
         val existingBytes = if (storedBytes > 0L) {
             val resumeBytes = resumableBytesForStreamIdentity(storedBytes, readResumeIdentity(identityFile), currentIdentity)
             if (resumeBytes == 0L) discardPartial(partial, identityFile)
