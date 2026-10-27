@@ -202,8 +202,10 @@ class OfflineDownloadPlaybackIsolationTest {
         val exporter = Files.readString(sourceFile("player/offline/OfflineAudioExporter.kt"))
         val pipeline = Files.readString(sourceFile("player/offline/OfflineExportPipeline.kt"))
 
-        assertEquals(1, occurrences(exporter, "audioQuality = settings.resolverAudioQuality"))
-        assertEquals(1, occurrences(pipeline, "audioQuality = settings.resolverAudioQuality"))
+        assertEquals(1, occurrences(exporter, "audioQuality = downloadResolverAudioQuality(qualityChoice?.source, settings)"))
+        assertEquals(0, occurrences(exporter, "audioQuality = settings.resolverAudioQuality"))
+        assertEquals(1, occurrences(pipeline, "private val resolverAudioQuality = downloadResolverAudioQuality(qualityChoice?.source, settings)"))
+        assertEquals(1, occurrences(pipeline, "audioQuality = resolverAudioQuality"))
     }
 
     @Test

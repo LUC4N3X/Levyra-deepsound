@@ -39,6 +39,7 @@ import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.data.local.OfflineDownloadTaskEntity
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.DownloadOwnership
+import com.luc4n3x.levyra.domain.downloadQualityChoice
 import com.luc4n3x.levyra.domain.downloadRepairIdentity
 import com.luc4n3x.levyra.domain.withDownloadRepairIdentity
 import com.luc4n3x.levyra.domain.canSmartOfflineEnqueue
@@ -107,7 +108,8 @@ class OfflineExportWorker(
         val preferences = LevyraPreferences(applicationContext)
         val strings = LevyraStrings.forCode(preferences.languageCode())
         val settings = preferences.downloadSettings()
-        val downloadQualityKey = settings.storedQualityKey(preferences.audioQuality())
+        val qualityChoice = downloadQualityChoice(payload)
+        val downloadQualityKey = qualityChoice?.profileKey ?: settings.storedQualityKey(preferences.audioQuality())
         val workId = id.toString()
         val repairId = inputData.getLong(KEY_REPAIR_DOWNLOAD_ID, 0L)
         val downloads = LevyraDatabase.get(applicationContext).downloadedTracksDao()
@@ -192,7 +194,8 @@ class OfflineExportWorker(
                 taskKey = taskKey,
                 settings = settings,
                 downloadQualityKey = downloadQualityKey,
-                ownership = ownership
+                ownership = ownership,
+                qualityChoice = qualityChoice
             )
             val result = OfflineDownloadConcurrencyGate.withLimit(settings.maxConcurrentDownloads) {
                 pipeline.export(track)

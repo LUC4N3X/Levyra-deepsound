@@ -5,6 +5,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import com.luc4n3x.levyra.domain.DOWNLOAD_QUALITY_UNAVAILABLE
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LyricsProviderId
 import java.text.NumberFormat
@@ -190,6 +191,7 @@ class LevyraStrings private constructor(
     val playerDeckFlow: String get() = value("playerDeckFlow")
     val playerDeckFlowHint: String get() = value("playerDeckFlowHint")
     val removeDownloadPrompt: String get() = LevyraDownloadRemovalStrings.prompt(code)
+    internal val downloadQuality: DownloadQualityCopy get() = LevyraDownloadQualityStrings.forCode(code)
     val playerDeckDefaultBadge: String get() = value("playerDeckDefaultBadge")
     val playerDeckLandscapeNote: String get() = value("playerDeckLandscapeNote")
     val playlistStudio: String get() = value("playlistStudio")
@@ -1785,6 +1787,7 @@ class LevyraStrings private constructor(
     fun localizeUserError(rawMessage: String?, youtubePlayback: Boolean = false): String {
         val raw = rawMessage?.trim().orEmpty()
         return when {
+            raw == DOWNLOAD_QUALITY_UNAVAILABLE -> downloadQuality.qualityLost
             youtubePlayback && (raw.contains("Timed out waiting", ignoreCase = true) ||
                 raw.contains("sto aspettando lo stream", ignoreCase = true)) -> if (code == "it") {
                     "YouTube è lento: riprova tra qualche secondo"

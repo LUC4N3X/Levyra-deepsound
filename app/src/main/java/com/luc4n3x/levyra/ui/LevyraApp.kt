@@ -603,6 +603,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import coil3.Image as CoilImage
 import coil3.compose.AsyncImage
+import com.luc4n3x.levyra.ui.download.DownloadQualityPickerHost
 import coil3.toBitmap
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
@@ -2255,6 +2256,7 @@ fun LevyraApp(
         LocalNavArtworkSeed provides navArtworkSeed
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
+            DownloadQualityPickerHost(viewModel)
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxSize()

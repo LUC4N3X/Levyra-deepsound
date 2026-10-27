@@ -355,6 +355,9 @@ import com.luc4n3x.levyra.player.queue.prepareQueuePlaylistExport
 import com.luc4n3x.levyra.player.queue.queueTracksAfterAddLast
 import com.luc4n3x.levyra.player.queue.queueAfterPlayNextIntent
 import com.luc4n3x.levyra.player.offline.OfflineAudioExporter
+import com.luc4n3x.levyra.player.offline.DownloadQualityProbe
+import com.luc4n3x.levyra.domain.DownloadQualityChoice
+import com.luc4n3x.levyra.domain.withDownloadQualityChoice
 import com.luc4n3x.levyra.player.offline.work.OfflineExportWorker
 import com.luc4n3x.levyra.player.isTransientNetworkFailure
 import kotlinx.coroutines.CancellationException
@@ -450,6 +453,7 @@ private const val DISCOVERY_MATCH_MIN_SCORE = 160
 private const val REMOTE_PLAYLIST_TRACK_LIMIT = 150
 private const val REMOTE_PLAYLIST_PREVIEW_TRACK_LIMIT = 300
 private val ACTIVE_DOWNLOAD_STATES = setOf("QUEUED", "RUNNING", "PAUSED", "RETRYING")
+private const val DOWNLOAD_QUALITY_PROBE_TTL_MS = 5L * 60L * 1_000L
 
 private const val LOCAL_SEARCH_CACHE_CANDIDATE_LIMIT = 600
 private const val SEARCH_LATENCY_LOG_TAG = "LevyraSearch"
@@ -1023,6 +1027,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val queueEngine = PersistentQueueEngine.get(application.applicationContext)
     private val localLibrary = LocalLibraryRepository.get(application.applicationContext)
     private val offlineExporter = OfflineAudioExporter(application.applicationContext, resolver)
+    private val downloadQualityProbe = DownloadQualityProbe(resolver)
+    private val _downloadQualityPicker = MutableStateFlow<DownloadQualityPickerState?>(null)
+    val downloadQualityPicker: StateFlow<DownloadQualityPickerState?> = _downloadQualityPicker.asStateFlow()
+    private var downloadQualityProbeJob: Job? = null
+    private var lastDownloadQualityProbe: CachedDownloadQualityProbe? = null
     private val favoritesStore = FavoritesStore(application.applicationContext)
     private val favoriteMutationMutex = Mutex()
     private val smartOfflineSettingsMutationMutex = Mutex()
@@ -4976,12 +4985,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val normalized = LevyraAudioQuality.normalize(value)
         preferences.setAudioQuality(normalized)
         resolver.setAudioQuality(normalized)
+        lastDownloadQualityProbe = null
         _state.update { it.copy(audioQuality = normalized) }
     }
 
     fun setHighQualityAudioMode(mode: HighQualityAudioMode) {
         preferences.setHighQualityAudioMode(mode)
         resolver.setHighQualityAudioMode(mode)
+        lastDownloadQualityProbe = null
         _state.update { it.copy(highQualityAudioMode = mode) }
     }
 
@@ -5938,6 +5949,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun setDownloadSettings(value: LevyraDownloadSettings) {
         val normalized = value.normalized()
         preferences.setDownloadSettings(normalized)
+        lastDownloadQualityProbe = null
         _state.update { it.copy(downloadSettings = normalized) }
     }
 
@@ -7649,7 +7661,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             downloadKey = downloadKeyFor(track)
         )
         if (!eligible) return
-        exportTrack(track)
+        startTrackDownload(track, null)
     }
 
     fun setAutomationSettings(value: LevyraAutomationSettings) {
@@ -8678,7 +8690,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             _state.update { it.copy(offlineExportMessage = "$label in coda: ${pending.size} brani") }
             pending.forEachIndexed { index, track ->
                 if (index > 0) delay(220L)
-                exportTrack(track)
+                startTrackDownload(track, null)
             }
         }
     }
@@ -8719,6 +8731,80 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun exportTrack(track: Track) {
         if (tryPromoteSmartDownload(track)) return
+        if (track.isPersonalCollectionTrack()) {
+            startTrackDownload(track, null)
+            return
+        }
+        val downloadKey = downloadKeyFor(track)
+        val currentState = _state.value
+        val strings = LevyraStrings.forCode(currentState.languageCode)
+        if (downloadKey in currentState.downloadingTrackIds || downloadKey in activeDownloadKeys) {
+            _state.update { it.copy(offlineExportMessage = "${strings.downloadInProgress}: ${track.title}") }
+            return
+        }
+        if (currentState.downloadSettings.shouldSkipExistingDownload(track.id, currentState.downloadedTrackIds)) {
+            _state.update { it.copy(offlineExportMessage = "${strings.alreadyOffline}: ${track.title}") }
+            return
+        }
+        openDownloadQualityPicker(track, downloadKey)
+    }
+
+    private fun openDownloadQualityPicker(track: Track, downloadKey: String) {
+        val open = _downloadQualityPicker.value
+        if (open != null && downloadKeyFor(open.track) == downloadKey) return
+        downloadQualityProbeJob?.cancel()
+        val cached = lastDownloadQualityProbe?.takeIf {
+            it.downloadKey == downloadKey &&
+                it.snapshot.options.isNotEmpty() &&
+                System.currentTimeMillis() - it.probedAtMs < DOWNLOAD_QUALITY_PROBE_TTL_MS
+        }
+        val picker = DownloadQualityPickerState(track)
+        _downloadQualityPicker.value = cached?.let { picker.withSnapshot(it.snapshot) } ?: picker
+        if (cached == null) probeDownloadQualities(track, downloadKey)
+    }
+
+    private fun probeDownloadQualities(track: Track, downloadKey: String) {
+        downloadQualityProbeJob?.cancel()
+        downloadQualityProbeJob = viewModelScope.launch {
+            downloadQualityProbe.probe(track, _state.value.downloadSettings).collect { snapshot ->
+                _downloadQualityPicker.update { picker ->
+                    picker?.takeIf { downloadKeyFor(it.track) == downloadKey }?.withSnapshot(snapshot) ?: picker
+                }
+                if (snapshot.pending == 0 && snapshot.failed == 0) {
+                    lastDownloadQualityProbe = CachedDownloadQualityProbe(downloadKey, snapshot, System.currentTimeMillis())
+                }
+            }
+        }
+    }
+
+    fun selectDownloadQuality(choice: DownloadQualityChoice) {
+        _downloadQualityPicker.update { it?.select(choice) }
+    }
+
+    fun retryDownloadQualityProbe() {
+        val picker = _downloadQualityPicker.value ?: return
+        val downloadKey = downloadKeyFor(picker.track)
+        lastDownloadQualityProbe = null
+        _downloadQualityPicker.value = DownloadQualityPickerState(picker.track)
+        probeDownloadQualities(picker.track, downloadKey)
+    }
+
+    fun dismissDownloadQualityPicker() {
+        downloadQualityProbeJob?.cancel()
+        downloadQualityProbeJob = null
+        _downloadQualityPicker.value = null
+    }
+
+    fun confirmDownloadQuality() {
+        val picker = _downloadQualityPicker.value ?: return
+        val choice = picker.selected ?: return
+        dismissDownloadQualityPicker()
+        lastDownloadQualityProbe = null
+        startTrackDownload(picker.track, choice)
+    }
+
+    private fun startTrackDownload(track: Track, qualityChoice: DownloadQualityChoice?) {
+        if (tryPromoteSmartDownload(track)) return
         val downloadKey = downloadKeyFor(track)
         if (downloadKey in _state.value.downloadingTrackIds || !activeDownloadKeys.add(downloadKey)) {
             _state.update { it.copy(offlineExportMessage = "Download già in corso: ${track.title}") }
@@ -8745,7 +8831,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             val result = runCatching {
                 val appContext = getApplication<Application>().applicationContext
-                val payload = TrackPayloadCodec.encode(track)
+                val payload = withDownloadQualityChoice(TrackPayloadCodec.encode(track), qualityChoice)
                 val workId = withContext(Dispatchers.IO) {
                     OfflineExportWorker.enqueue(appContext, downloadKey, payload)
                 }

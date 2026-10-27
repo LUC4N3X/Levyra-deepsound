@@ -26,6 +26,8 @@ import com.luc4n3x.levyra.data.hqaudio.SharedPreferencesMappingStorage
 import com.luc4n3x.levyra.data.hqaudio.jiosaavn.JioSaavnAudioProvider
 import com.luc4n3x.levyra.data.hqaudio.lossless.ArcodAudioProvider
 import com.luc4n3x.levyra.data.hqaudio.lossless.MonochromeAudioProvider
+import com.luc4n3x.levyra.domain.DownloadQualitySource
+import com.luc4n3x.levyra.domain.DownloadQualityUnavailableException
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.LevyraAudioQuality
 import com.luc4n3x.levyra.domain.PlaybackDeliveryMethod
@@ -1157,14 +1159,41 @@ class PlaybackResolver private constructor(private val context: Context) {
         reuseProvidedStream = true
     )
 
-    suspend fun resolveForOffline(track: Track, audioQualityOverride: String? = null): Track {
+    fun downloadQualitySources(): List<DownloadQualitySource> = buildList {
+        if (supportsLosslessDownloads()) add(DownloadQualitySource.Lossless)
+        if (highQualityPlayback.mode.enabled) add(DownloadQualitySource.HighBitrate)
+        add(DownloadQualitySource.Standard)
+    }
+
+    private fun supportsLosslessDownloads(): Boolean =
+        highQualityPlayback.mode.lossless && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1
+
+    private suspend fun resolveAlternativeDownloadSource(track: Track, qualitySource: DownloadQualitySource?): Track? =
+        when (qualitySource) {
+            DownloadQualitySource.Lossless -> (
+                if (supportsLosslessDownloads()) {
+                    highQualityDownloads.resolveLosslessDownload(track, LevyraAudioQuality.HIGH, ::basePlaybackProvenance)
+                } else null
+            ) ?: throw DownloadQualityUnavailableException()
+            DownloadQualitySource.HighBitrate -> highQualityPlayback
+                .resolveLossyDownload(track, LevyraAudioQuality.HIGH, ::basePlaybackProvenance)
+                ?: throw DownloadQualityUnavailableException()
+            DownloadQualitySource.Standard, null -> null
+        }
+
+    suspend fun resolveForOffline(
+        track: Track,
+        audioQualityOverride: String? = null,
+        qualitySource: DownloadQualitySource? = null
+    ): Track {
         if (track.isPersonalCollectionTrack()) return personalCollections.resolveForDownload(track)
         val targetTrack = resolveCatalogIdentityWithinBudget(track)
         val quality = normalizeAudioQuality(audioQualityOverride ?: selectedAudioQuality)
         val resolved = resolveWithLanguageRevisionRetry(targetTrack,
             acceptAcrossLanguageChange = { it.playbackManifest?.alternativeSource != null }
         ) { requestTrack, preferredLanguage ->
-            val lossless = if (highQualityPlayback.mode.lossless && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            resolveAlternativeDownloadSource(requestTrack, qualitySource)?.let { return@resolveWithLanguageRevisionRetry it }
+            val lossless = if (qualitySource == null && supportsLosslessDownloads()) {
                 highQualityDownloads.resolveLosslessDownload(requestTrack, quality, ::basePlaybackProvenance)
             } else null
             if (lossless != null) return@resolveWithLanguageRevisionRetry lossless
@@ -1188,7 +1217,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                     preferMp4Audio = true,
                     requestKind = "offline",
                     audioQuality = quality,
-                    reuseProvidedStream = audioQualityOverride == null
+                    reuseProvidedStream = audioQualityOverride == null && qualitySource == null
                 )
             }
         }
