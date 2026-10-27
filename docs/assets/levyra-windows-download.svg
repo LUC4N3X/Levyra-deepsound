@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="184" height="57.5" viewBox="0 0 160 50" role="img" aria-label="DOWNLOAD FOR Windows">
 <title>DOWNLOAD FOR Windows</title>
-<rect width="160" height="50" rx="14" fill="#22242A"/>
+<rect width="160" height="50" rx="14" fill="#F2C5B2"/>
 <g transform="translate(11.5 10.5) scale(0.56)" fill="#0078D4"><rect x="0" y="0" width="24" height="24" rx="2.5"/><rect x="28" y="0" width="24" height="24" rx="2.5"/><rect x="0" y="28" width="24" height="24" rx="2.5"/><rect x="28" y="28" width="24" height="24" rx="2.5"/></g>
-<text x="50" y="19" fill="#AEB0BA" font-family="Arial,'Segoe UI',sans-serif" font-size="7.3" font-weight="600" letter-spacing=".65">DOWNLOAD FOR</text>
-<text x="50" y="36" fill="#F6F5F8" font-family="Arial,'Segoe UI',sans-serif" font-size="15.2" font-weight="700">Windows</text>
+<text x="50" y="19" fill="#493741" font-family="Arial,'Segoe UI',sans-serif" font-size="7.3" font-weight="600" letter-spacing=".65">DOWNLOAD FOR</text>
+<text x="50" y="36" fill="#241923" font-family="Arial,'Segoe UI',sans-serif" font-size="15.2" font-weight="700">Windows</text>
 </svg>
