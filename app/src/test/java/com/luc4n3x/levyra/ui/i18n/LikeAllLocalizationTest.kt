@@ -16,6 +16,8 @@ class LikeAllLocalizationTest {
             }
             assertTrue(strings.code, copy.liked(7).contains("7"))
             assertFalse(strings.code, copy.liked(7).contains("{count}"))
+            assertTrue(strings.code, copy.liked(1).contains("1"))
+            assertFalse(strings.code, copy.liked(1).contains("{count}"))
         }
     }
 
@@ -25,5 +27,7 @@ class LikeAllLocalizationTest {
 
         assertEquals("Metti Mi piace a tutti", copy.action)
         assertEquals("Mi piace aggiunto a 3 brani", copy.liked(3))
+        assertEquals("Mi piace aggiunto a 1 brano", copy.liked(1))
+        assertEquals("Liked 1 track", LevyraStrings.forCode("en").likeAllCopy().liked(1))
     }
 }

@@ -7767,9 +7767,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 _state.update { it.copy(offlineExportMessage = copy.failed) }
                 return@launch
             }
-            val message = if (addition.added.isEmpty()) copy.alreadyLiked else copy.liked(addition.added.size)
-            _state.update { it.copy(offlineExportMessage = message) }
-            if (addition.added.isEmpty()) return@launch
+            if (addition.added.isEmpty()) {
+                _state.update { it.copy(offlineExportMessage = copy.alreadyLiked) }
+                return@launch
+            }
             refreshForgottenFavorites()
             LevyraArtworkCache.preloadPriority(
                 getApplication<Application>().applicationContext,
@@ -7780,6 +7781,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 recordSmartFavorite(track, true)
                 autoDownloadFavorite(track, true)
             }
+            _state.update { it.copy(offlineExportMessage = copy.liked(addition.added.size)) }
         }
     }
 
