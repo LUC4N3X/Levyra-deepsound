@@ -261,6 +261,10 @@ Contributions and bug reports are welcome. Technical documentation and architect
 <br>
 
 <p>
+  A big thanks to <a href="https://tracks.monochrome.st">Monochrome</a> and <a href="https://arcod.xyz">Arcod</a> for the FLAC streams Levyra can use.
+</p>
+
+<p>
   <b>Featured in tech media & open-source spotlights</b>
 </p>
 
