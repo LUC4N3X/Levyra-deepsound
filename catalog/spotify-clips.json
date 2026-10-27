@@ -1018,16 +1018,6 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/f842f4032e4b7aa6d88e8b877d4216f8ddb8381f"
   },
   {
-   "id": "levyra-7e8226d7a02f6f0a7d93",
-   "genre": "dance-party",
-   "title": "Set Me Free",
-   "artist": "Nic Fanciulli, Robert Courtois",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273c1718d34b5a65b301ea4b1b3",
-   "canvasUrl": "https://canvaz.scdn.co/upload/artist/7btR5VXutQv39SDEzcfXEk/video/52d674056ff1432da4703e2a74c87962.cnvs.mp4",
-   "spotifyTrackId": "4FOTUoZP8r4mYZ8H7aUVsu",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/80c0bd68e652b85b6dfeac9c51da3c6e712116d7"
-  },
-  {
    "id": "levyra-d0c6a3df6261d6950c9d",
    "genre": "dance-party",
    "title": "Pump It Up",
@@ -1038,6 +1028,26 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/fbba6422f5d54ca1c3fab33ae59bbd4e842acddb"
   },
   {
+   "id": "levyra-046114c2c1e1bb7281bc",
+   "genre": "dance-party",
+   "title": "Give It To Me - Full Vocal Mix",
+   "artist": "Matt Sassari",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2736a1e9d7201b74142e2d47b69",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/741fb252d45c4856b3d63edfe826c7db.cnvs.mp4",
+   "spotifyTrackId": "5ZduaRci3iNUiDfJbBfAaf",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/50081928cfabde0d63a4d78f893542711259652d"
+  },
+  {
+   "id": "levyra-7e8226d7a02f6f0a7d93",
+   "genre": "dance-party",
+   "title": "Set Me Free",
+   "artist": "Nic Fanciulli, Robert Courtois",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273c1718d34b5a65b301ea4b1b3",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/7btR5VXutQv39SDEzcfXEk/video/52d674056ff1432da4703e2a74c87962.cnvs.mp4",
+   "spotifyTrackId": "4FOTUoZP8r4mYZ8H7aUVsu",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/80c0bd68e652b85b6dfeac9c51da3c6e712116d7"
+  },
+  {
    "id": "levyra-eb856260d385e91e9a37",
    "genre": "dance-party",
    "title": "Satisfaction",
@@ -1046,6 +1056,16 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/1Cs0zKBU1kc0i8ypK3B9ai/video/0c3cb750800245418c5b95358b7d4275.cnvs.mp4",
    "spotifyTrackId": "0lwyzp7GppQxv0Eu6wRkUo",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/c9ba41fd56c50e4af303216b3a76bb1372ef1e00"
+  },
+  {
+   "id": "levyra-ec81c9a2aa0e07366fc4",
+   "genre": "dance-party",
+   "title": "Good Girl",
+   "artist": "Cloonee, Prospa, Tristan Henry",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273a3c886ee9b32417992f8839a",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/7MdlXmq2HViAJWo9cf30sR/video/04f523b582da47fa9f399b1f1f3462e1.cnvs.mp4",
+   "spotifyTrackId": "263Ecah3YA4hVZHxR2Ex9p",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/099eb86040fe00c6e7f14328f5cec483542728a5"
   },
   {
    "id": "levyra-032fa13818ecee393548",
@@ -1066,26 +1086,6 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/617e7b002d6f4df8a703a096dfcc7efb.cnvs.mp4",
    "spotifyTrackId": "4cG7HUWYHBV6R6tHn1gxrl",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/0a9ed687dddcd95c83e37099958bdc6d54430e4d"
-  },
-  {
-   "id": "levyra-046114c2c1e1bb7281bc",
-   "genre": "dance-party",
-   "title": "Give It To Me - Full Vocal Mix",
-   "artist": "Matt Sassari",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2736a1e9d7201b74142e2d47b69",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/741fb252d45c4856b3d63edfe826c7db.cnvs.mp4",
-   "spotifyTrackId": "5ZduaRci3iNUiDfJbBfAaf",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/50081928cfabde0d63a4d78f893542711259652d"
-  },
-  {
-   "id": "levyra-ec81c9a2aa0e07366fc4",
-   "genre": "dance-party",
-   "title": "Good Girl",
-   "artist": "Cloonee, Prospa, Tristan Henry",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273a3c886ee9b32417992f8839a",
-   "canvasUrl": "https://canvaz.scdn.co/upload/artist/7MdlXmq2HViAJWo9cf30sR/video/04f523b582da47fa9f399b1f1f3462e1.cnvs.mp4",
-   "spotifyTrackId": "263Ecah3YA4hVZHxR2Ex9p",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/099eb86040fe00c6e7f14328f5cec483542728a5"
   },
   {
    "id": "levyra-8739c72808e270fed5b2",
@@ -1118,16 +1118,6 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/ec2aa978d0aa75eb24054af59554e0e63d44537e"
   },
   {
-   "id": "levyra-e38ca6ceb21d47433340",
-   "genre": "dance-party",
-   "title": "Smack Yo'",
-   "artist": "Beltran",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2736dcfcf7e021ccc5791eb2a29",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/2Y9QpVq23PTBtMZwyCwosk/video/00cb73609d1848168b7d713713104917.cnvs.mp4",
-   "spotifyTrackId": "2UdCQIDwFvGhslUYZH5tRR",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/9029ddfed3e4a7c48767ab7c08f0e60631461cbb"
-  },
-  {
    "id": "levyra-26c5b7268c0b366bd4b0",
    "genre": "dance-party",
    "title": "Positive",
@@ -1136,6 +1126,16 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/327472d482ae422d9ddfcebb426cfd2a.cnvs.mp4",
    "spotifyTrackId": "0cZN3g7rtfNE6vsmX0k8OF",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/265e15be487a4b6bbabacc8c565afdbee404e045"
+  },
+  {
+   "id": "levyra-e38ca6ceb21d47433340",
+   "genre": "dance-party",
+   "title": "Smack Yo'",
+   "artist": "Beltran",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2736dcfcf7e021ccc5791eb2a29",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/2Y9QpVq23PTBtMZwyCwosk/video/00cb73609d1848168b7d713713104917.cnvs.mp4",
+   "spotifyTrackId": "2UdCQIDwFvGhslUYZH5tRR",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/9029ddfed3e4a7c48767ab7c08f0e60631461cbb"
   },
   {
    "id": "levyra-9d56e3e0f3dc837e4cdb",
