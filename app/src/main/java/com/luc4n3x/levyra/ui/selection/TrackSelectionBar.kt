@@ -7,8 +7,9 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.MutableTransitionState
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -26,6 +27,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
@@ -92,78 +94,78 @@ internal fun TrackSelectionBar(
     }
     val strings = LocalLevyraStrings.current
 
-    Surface(
-        color = LevyraGlass,
-        border = BorderStroke(1.dp, LevyraGlassBorder),
-        shape = MaterialTheme.shapes.large,
-        shadowElevation = 14.dp,
-        modifier = modifier
-            .fillMaxWidth()
-            .navigationBarsPadding()
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                SelectionAction(
-                    label = strings.close,
-                    icon = { Icon(Icons.Rounded.Close, contentDescription = null) },
-                    onClick = state::exit
-                )
-                Text(
-                    text = strings.formatTrackCount(state.count),
-                    color = LevyraText,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f).padding(horizontal = 4.dp)
-                )
-                SelectionAction(
-                    label = strings.selectAll,
-                    icon = { Icon(Icons.Rounded.SelectAll, contentDescription = null) },
-                    onClick = { state.toggleSelectAll(allVisibleIds) }
-                )
-            }
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                actions.onPlayNext?.let {
+    SelectionBarEntrance(modifier) {
+        Surface(
+            color = LevyraGlass,
+            border = BorderStroke(1.dp, LevyraGlassBorder),
+            shape = MaterialTheme.shapes.large,
+            shadowElevation = 14.dp,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     SelectionAction(
-                        label = strings.playNext,
-                        icon = { Icon(Icons.AutoMirrored.Rounded.PlaylistPlay, contentDescription = null) },
-                        onClick = it
+                        label = strings.close,
+                        icon = { Icon(Icons.Rounded.Close, contentDescription = null) },
+                        onClick = state::exit
+                    )
+                    Text(
+                        text = strings.formatTrackCount(state.count),
+                        color = LevyraText,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f).padding(horizontal = 4.dp)
+                    )
+                    SelectionAction(
+                        label = strings.selectAll,
+                        icon = { Icon(Icons.Rounded.SelectAll, contentDescription = null) },
+                        onClick = { state.toggleSelectAll(allVisibleIds) }
                     )
                 }
-                actions.onAddToQueue?.let {
-                    SelectionAction(
-                        label = strings.addToQueue,
-                        icon = { Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = null) },
-                        onClick = it
-                    )
-                }
-                actions.onAddToPlaylist?.let {
-                    SelectionAction(
-                        label = strings.addToPlaylist,
-                        icon = { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = null) },
-                        onClick = it
-                    )
-                }
-                actions.onFavorite?.let {
-                    SelectionAction(
-                        label = strings.favorite,
-                        icon = { Icon(Icons.Rounded.Favorite, contentDescription = null) },
-                        onClick = it
-                    )
-                }
-                actions.onDownload?.let {
-                    SelectionAction(
-                        label = strings.download,
-                        icon = { Icon(Icons.Rounded.Download, contentDescription = null) },
-                        onClick = it
-                    )
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    actions.onPlayNext?.let {
+                        SelectionAction(
+                            label = strings.playNext,
+                            icon = { Icon(Icons.AutoMirrored.Rounded.PlaylistPlay, contentDescription = null) },
+                            onClick = it
+                        )
+                    }
+                    actions.onAddToQueue?.let {
+                        SelectionAction(
+                            label = strings.addToQueue,
+                            icon = { Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = null) },
+                            onClick = it
+                        )
+                    }
+                    actions.onAddToPlaylist?.let {
+                        SelectionAction(
+                            label = strings.addToPlaylist,
+                            icon = { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = null) },
+                            onClick = it
+                        )
+                    }
+                    actions.onFavorite?.let {
+                        SelectionAction(
+                            label = strings.favorite,
+                            icon = { Icon(Icons.Rounded.Favorite, contentDescription = null) },
+                            onClick = it
+                        )
+                    }
+                    actions.onDownload?.let {
+                        SelectionAction(
+                            label = strings.download,
+                            icon = { Icon(Icons.Rounded.Download, contentDescription = null) },
+                            onClick = it
+                        )
+                    }
                 }
             }
         }
@@ -202,17 +204,8 @@ private fun ExpressiveTrackSelectionBar(
         allVisibleIds.mapNotNullTo(LinkedHashSet()) { id -> id.trim().takeIf(String::isNotBlank) }
     }
     val allSelected = selectableIds.isNotEmpty() && state.selectedIds.containsAll(selectableIds)
-    val entrance = remember { MutableTransitionState(!animated).apply { targetState = true } }
 
-    AnimatedVisibility(
-        visibleState = entrance,
-        enter = slideInVertically(
-            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow)
-        ) { height -> height / 2 } + fadeIn(),
-        modifier = modifier
-            .fillMaxWidth()
-            .navigationBarsPadding()
-    ) {
+    SelectionBarEntrance(modifier) {
         Surface(
             color = scheme.surfaceContainerHigh,
             contentColor = scheme.onSurface,
@@ -267,12 +260,14 @@ private fun ExpressiveTrackSelectionBar(
                     AnimatedVisibility(
                         visible = !allSelected,
                         enter = if (animated) {
-                            fadeIn() + scaleIn(initialScale = 0.8f) + expandHorizontally()
+                            fadeIn(tween(SelectionEnterMillis)) + scaleIn(tween(SelectionEnterMillis), initialScale = 0.92f) +
+                                expandHorizontally(tween(SelectionEnterMillis, easing = FastOutSlowInEasing))
                         } else {
                             EnterTransition.None
                         },
                         exit = if (animated) {
-                            fadeOut() + scaleOut(targetScale = 0.8f) + shrinkHorizontally()
+                            fadeOut(tween(SelectionExitMillis)) + scaleOut(tween(SelectionExitMillis), targetScale = 0.92f) +
+                                shrinkHorizontally(tween(SelectionExitMillis, easing = FastOutSlowInEasing))
                         } else {
                             ExitTransition.None
                         }
@@ -357,3 +352,30 @@ private fun ExpressiveSelectionAction(
 
 private val ExpressiveSelectionCorner = 32.dp
 private val ExpressiveSelectionActionWidth = 64.dp
+
+@Composable
+private fun SelectionBarEntrance(
+    modifier: Modifier,
+    content: @Composable () -> Unit
+) {
+    val animated = LocalAnimationsEnabled.current
+    val entrance = remember { MutableTransitionState(!animated).apply { targetState = true } }
+    AnimatedVisibility(
+        visibleState = entrance,
+        enter = fadeIn(tween(SelectionEnterMillis, easing = LinearOutSlowInEasing)) +
+            slideInVertically(tween(SelectionEnterMillis, easing = FastOutSlowInEasing)) { height -> height / 4 } +
+            scaleIn(
+                animationSpec = tween(SelectionEnterMillis, easing = FastOutSlowInEasing),
+                initialScale = 0.96f,
+                transformOrigin = TransformOrigin(0.5f, 1f)
+            ),
+        modifier = modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+    ) {
+        content()
+    }
+}
+
+private const val SelectionEnterMillis = 320
+private const val SelectionExitMillis = 180
