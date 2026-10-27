@@ -57,6 +57,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.DragHandle
+import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Pause
@@ -137,6 +138,7 @@ import com.luc4n3x.levyra.ui.components.levyraDockSurface
 import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.i18n.playlistProCopy
 import com.luc4n3x.levyra.ui.i18n.speedDialCopy
+import com.luc4n3x.levyra.ui.i18n.likeAllCopy
 import com.luc4n3x.levyra.ui.i18n.smartOfflineCopy
 import com.luc4n3x.levyra.ui.i18n.formatLibraryBytes
 import com.luc4n3x.levyra.ui.i18n.formatLibraryDuration
@@ -818,7 +820,8 @@ internal fun PlaylistDetailTopActions(
     onEditTags: () -> Unit,
     onToggleHidden: () -> Unit,
     isPinnedToHome: Boolean,
-    onTogglePinToHome: () -> Unit
+    onTogglePinToHome: () -> Unit,
+    onLikeAll: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     val speedDialCopy = remember(strings) { strings.speedDialCopy() }
@@ -886,6 +889,13 @@ internal fun PlaylistDetailTopActions(
                 leadingIcon = { Icon(Icons.Rounded.PushPin, null) },
                 onClick = { menuExpanded = false; onTogglePinToHome() }
             )
+            if (playlist.tracks.isNotEmpty()) {
+                DropdownMenuItem(
+                    text = { Text(strings.likeAllCopy().action) },
+                    leadingIcon = { Icon(Icons.Rounded.Favorite, null) },
+                    onClick = { menuExpanded = false; onLikeAll() }
+                )
+            }
             DropdownMenuItem(
                 text = { Text(strings.playlistName) },
                 leadingIcon = { Icon(Icons.Rounded.Edit, null) },

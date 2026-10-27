@@ -141,6 +141,7 @@ import com.luc4n3x.levyra.data.playlistimport.toImportIdentity
 import com.luc4n3x.levyra.ui.i18n.playlistImportSuccessMessage
 import com.luc4n3x.levyra.ui.i18n.bulkLinkCaptureCopy
 import com.luc4n3x.levyra.ui.i18n.playlistProCopy
+import com.luc4n3x.levyra.ui.i18n.likeAllCopy
 import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.ArtistExclusions
 import com.luc4n3x.levyra.domain.ExcludedArtist
@@ -1234,6 +1235,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var albumJob: Job? = null
     private var playlistHitJob: Job? = null
     private var albumFavoriteJob: Job? = null
+    private var likeAllJob: Job? = null
     private var artistMotionJob: Job? = null
     private var artistMotionRequest: ArtistMotionRequest? = null
     private var artistMotionPublished = false
@@ -7736,6 +7738,47 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 val isFavorite = areAllFavoriteTracks(updated, listOf(track))
                 recordSmartFavorite(track, isFavorite)
                 autoDownloadFavorite(track, isFavorite)
+            }
+        }
+    }
+
+    fun likeAllTracks(tracks: List<Track>) {
+        val candidates = tracks.filterNot { track -> track.isLiveRadio() }
+        if (candidates.isEmpty() || likeAllJob?.isActive == true) return
+        likeAllJob = viewModelScope.launch {
+            val copy = LevyraStrings.forCode(_state.value.languageCode).likeAllCopy()
+            val addition = try {
+                favoriteMutationMutex.withLock {
+                    favoritesStore.addMissingFavorites(candidates).also { result ->
+                        val timestamps = favoritesStore.loadTimestampsSuspending()
+                        _state.update { state ->
+                            state.copy(
+                                favorites = result.favorites,
+                                favoriteIds = result.favorites.map { favorite -> favorite.id }.toSet(),
+                                favoriteTimestamps = timestamps
+                            )
+                        }
+                    }
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Timber.w(error, "Like all tracks failed")
+                _state.update { it.copy(offlineExportMessage = copy.failed) }
+                return@launch
+            }
+            val message = if (addition.added.isEmpty()) copy.alreadyLiked else copy.liked(addition.added.size)
+            _state.update { it.copy(offlineExportMessage = message) }
+            if (addition.added.isEmpty()) return@launch
+            refreshForgottenFavorites()
+            LevyraArtworkCache.preloadPriority(
+                getApplication<Application>().applicationContext,
+                addition.favorites,
+                6
+            )
+            addition.added.forEach { track ->
+                recordSmartFavorite(track, true)
+                autoDownloadFavorite(track, true)
             }
         }
     }

@@ -1808,7 +1808,8 @@ internal fun LevyraPlaylistDetailScreen(
                     onEditTags = { tagEditorOpen = true },
                     onToggleHidden = { viewModel.setPlaylistHidden(playlist.id, !playlist.hidden) },
                     isPinnedToHome = SpeedDial.playlistKey(playlist.id)?.let { key -> state.speedDialPins.any { it.key == key } } == true,
-                    onTogglePinToHome = { viewModel.toggleSpeedDialPlaylist(playlist) }
+                    onTogglePinToHome = { viewModel.toggleSpeedDialPlaylist(playlist) },
+                    onLikeAll = { viewModel.likeAllTracks(playlist.tracks) }
                 )
             }
         )
