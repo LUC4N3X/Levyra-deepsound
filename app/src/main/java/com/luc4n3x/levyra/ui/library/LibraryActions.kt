@@ -58,6 +58,7 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.DragHandle
 import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Pause
@@ -438,6 +439,7 @@ internal fun LibrarySelectionBar(
     primaryLabel: String? = null,
     canPlayTracks: Boolean = canOperateTracks,
     canQueueTracks: Boolean = canOperateTracks,
+    onFavorite: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
@@ -483,6 +485,9 @@ internal fun LibrarySelectionBar(
                 )
                 LibrarySelectionAction(Icons.AutoMirrored.Rounded.QueueMusic, strings.queue, canQueueTracks, onQueue, LevyraText, Modifier.widthIn(min = 72.dp))
                 LibrarySelectionAction(Icons.AutoMirrored.Rounded.PlaylistAdd, strings.addToPlaylist, canOperateTracks, onAddToPlaylist, LevyraText, Modifier.widthIn(min = 72.dp))
+                if (onFavorite != null) {
+                    LibrarySelectionAction(Icons.Rounded.Favorite, strings.favorite, canOperateTracks, onFavorite, LevyraText, Modifier.widthIn(min = 72.dp))
+                }
                 LibrarySelectionAction(Icons.Rounded.Download, strings.offline, canOperateTracks, onDownload, LevyraText, Modifier.widthIn(min = 72.dp))
                 LibrarySelectionAction(Icons.Rounded.Delete, resolvedDeleteLabel, canDelete, onDelete, LevyraPink, Modifier.widthIn(min = 72.dp))
             }
@@ -821,7 +826,8 @@ internal fun PlaylistDetailTopActions(
     onToggleHidden: () -> Unit,
     isPinnedToHome: Boolean,
     onTogglePinToHome: () -> Unit,
-    onLikeAll: () -> Unit
+    onLikeAll: () -> Unit,
+    onSelectAll: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     val speedDialCopy = remember(strings) { strings.speedDialCopy() }
@@ -894,6 +900,11 @@ internal fun PlaylistDetailTopActions(
                     text = { Text(strings.likeAllCopy().action) },
                     leadingIcon = { Icon(Icons.Rounded.Favorite, null) },
                     onClick = { menuExpanded = false; onLikeAll() }
+                )
+                DropdownMenuItem(
+                    text = { Text(strings.selectAll) },
+                    leadingIcon = { Icon(Icons.Rounded.SelectAll, null) },
+                    onClick = { menuExpanded = false; onSelectAll() }
                 )
             }
             DropdownMenuItem(

@@ -30,6 +30,7 @@ import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -37,7 +38,9 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -63,6 +66,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.data.ArtworkPalette
 import com.luc4n3x.levyra.data.ArtworkPaletteCache
+import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.PlaylistHitPreview
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.displayTrackCount
@@ -76,6 +80,7 @@ import com.luc4n3x.levyra.ui.components.PlayerGlassIconButton
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.library.AddTracksToPlaylistDialog
 import com.luc4n3x.levyra.ui.library.LibraryEmpty
 import com.luc4n3x.levyra.ui.library.LibraryNowPlayingDock
 import com.luc4n3x.levyra.ui.library.LibraryTrackRow
@@ -92,6 +97,11 @@ import com.luc4n3x.levyra.ui.media.ImmersiveTopBarButtonFill
 import com.luc4n3x.levyra.ui.media.ImmersiveTopBarButtonSize
 import com.luc4n3x.levyra.ui.i18n.speedDialCopy
 import com.luc4n3x.levyra.ui.i18n.likeAllCopy
+import com.luc4n3x.levyra.ui.selection.TrackSelectionActions
+import com.luc4n3x.levyra.ui.selection.TrackSelectionBar
+import com.luc4n3x.levyra.ui.selection.TrackSelectionState
+import com.luc4n3x.levyra.ui.selection.resolveSelected
+import com.luc4n3x.levyra.ui.selection.trackSelectionKey
 import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
 import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
@@ -121,12 +131,27 @@ internal fun PlaylistHitOverlay(
     onQueueTrack: (Track) -> Unit,
     onTogglePlayback: () -> Unit,
     onOpenPlayer: () -> Unit,
-    onLikeAll: () -> Unit
+    onLikeAll: () -> Unit,
+    playlists: List<Playlist>,
+    onLikeTracks: (List<Track>) -> Unit,
+    onPlayTracksNext: (List<Track>) -> Unit,
+    onAddTracksToQueue: (List<Track>) -> Unit,
+    onAddTracksToPlaylist: (String, List<Track>) -> Unit,
+    onCreatePlaylistWithTracks: (String, List<Track>) -> Unit,
+    onDownloadTracks: (List<Track>) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     val density = LocalDensity.current
     val listState = rememberSaveable(preview.hit.playlistId, saver = LazyListState.Saver) { LazyListState() }
     val tracks = preview.tracks
+    val selection = remember(preview.hit.playlistId) { TrackSelectionState() }
+    val selectableIds = remember(tracks) { tracks.map(::trackSelectionKey) }
+    val selectedTracks = remember(tracks, selection.selectedIds) {
+        selection.resolveSelected(tracks, ::trackSelectionKey)
+    }
+    var batchAddTargets by remember(preview.hit.playlistId) { mutableStateOf<List<Track>>(emptyList()) }
+    LaunchedEffect(selectableIds) { selection.retainAvailable(selectableIds) }
+    BackHandler(enabled = selection.isActive) { selection.exit() }
     val artworkUrl = preview.hit.thumbnailUrl
     val paletteKey = remember(preview.hit.playlistId, preview.hit.browseId, artworkUrl) {
         playlistPaletteKey(preview)
@@ -187,10 +212,52 @@ internal fun PlaylistHitOverlay(
             onPlayTrack = onPlayTrack,
             onFavorite = onFavorite,
             onDownloadTrack = onDownloadTrack,
-            onQueueTrack = onQueueTrack
+            onQueueTrack = onQueueTrack,
+            selection = selection
         )
-        PlaylistHitTopBar(preview, colors, collapsedState, topBarHeight, animationsEnabled, onClose, onLikeAll)
-        currentTrack?.let { track ->
+        PlaylistHitTopBar(
+            preview, colors, collapsedState, topBarHeight, animationsEnabled, onClose, onLikeAll,
+            onSelectAll = { selection.selectAll(selectableIds) }
+        )
+        if (selection.isActive) {
+            TrackSelectionBar(
+                state = selection,
+                allVisibleIds = selectableIds,
+                actions = TrackSelectionActions(
+                    onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                        {
+                            onPlayTracksNext(selectedTracks)
+                            selection.exit()
+                        }
+                    },
+                    onAddToQueue = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                        {
+                            onAddTracksToQueue(selectedTracks)
+                            selection.exit()
+                        }
+                    },
+                    onAddToPlaylist = selectedTracks
+                        .filter { it.id.isNotBlank() }
+                        .takeIf { it.isNotEmpty() }
+                        ?.let { playlistTracks -> { batchAddTargets = playlistTracks } },
+                    onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                        {
+                            onLikeTracks(selectedTracks)
+                            selection.exit()
+                        }
+                    },
+                    onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                        {
+                            onDownloadTracks(selectedTracks)
+                            selection.exit()
+                        }
+                    }
+                ),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
+            )
+        } else currentTrack?.let { track ->
             PlaylistHitNowPlayingDock(
                 preview = preview,
                 track = track,
@@ -201,6 +268,24 @@ internal fun PlaylistHitOverlay(
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
+    }
+
+    if (batchAddTargets.isNotEmpty()) {
+        AddTracksToPlaylistDialog(
+            tracks = batchAddTargets,
+            playlists = playlists,
+            onDismiss = { batchAddTargets = emptyList() },
+            onAdd = { playlistId ->
+                onAddTracksToPlaylist(playlistId, batchAddTargets)
+                batchAddTargets = emptyList()
+                selection.exit()
+            },
+            onCreate = { name ->
+                onCreatePlaylistWithTracks(name, batchAddTargets)
+                batchAddTargets = emptyList()
+                selection.exit()
+            }
+        )
     }
 }
 
@@ -236,7 +321,8 @@ private fun PlaylistHitList(
     onPlayTrack: (Track) -> Unit,
     onFavorite: (Track) -> Unit,
     onDownloadTrack: (Track) -> Unit,
-    onQueueTrack: (Track) -> Unit
+    onQueueTrack: (Track) -> Unit,
+    selection: TrackSelectionState
 ) {
     val strings = LocalLevyraStrings.current
     val tracks = preview.tracks
@@ -244,7 +330,9 @@ private fun PlaylistHitList(
     LazyColumn(
         state = state,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = levyraTabContentBottomPadding(currentTrack != null))
+        contentPadding = PaddingValues(
+            bottom = if (selection.isActive) 120.dp else levyraTabContentBottomPadding(currentTrack != null)
+        )
     ) {
         item(key = "playlist-hit-hero", contentType = "playlist-hit-hero") {
             ImmersiveMediaHero(
@@ -311,17 +399,20 @@ private fun PlaylistHitList(
                 contentType = { _, _ -> "playlist-hit-track" }
             ) { _, track ->
                 val isCurrent = track.id == currentTrack?.id
+                val selectionKey = trackSelectionKey(track)
                 LibraryTrackRow(
                     track = track,
-                    selected = false,
-                    selectionActive = false,
+                    selected = selection.isSelected(selectionKey),
+                    selectionActive = selection.isActive,
                     isCurrent = isCurrent,
                     isPlaying = isCurrent && isPlaying,
                     isFavorite = track.id in favoriteIds,
                     isDownloaded = track.id in downloadedTrackIds,
                     downloadProgress = downloadProgressByTrackId[track.id],
-                    onClick = { onPlayTrack(track) },
-                    onLongClick = null,
+                    onClick = {
+                        if (selection.isActive) selection.toggle(selectionKey) else onPlayTrack(track)
+                    },
+                    onLongClick = { selection.start(selectionKey) },
                     onFavorite = { onFavorite(track) },
                     onDownload = { onDownloadTrack(track) },
                     onQueue = { onQueueTrack(track) },
@@ -340,7 +431,8 @@ private fun PlaylistHitTopBar(
     height: Dp,
     animationsEnabled: Boolean,
     onClose: () -> Unit,
-    onLikeAll: () -> Unit
+    onLikeAll: () -> Unit,
+    onSelectAll: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
@@ -377,6 +469,14 @@ private fun PlaylistHitTopBar(
                             onClick = {
                                 menuExpanded = false
                                 onLikeAll()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(strings.selectAll) },
+                            leadingIcon = { Icon(Icons.Rounded.SelectAll, contentDescription = null) },
+                            onClick = {
+                                menuExpanded = false
+                                onSelectAll()
                             }
                         )
                     }
