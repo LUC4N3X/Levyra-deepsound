@@ -88,9 +88,9 @@ When high-quality audio is enabled, Levyra can use JioSaavn as another source fo
 
 Before switching sources, Levyra checks that it found the right recording and that the stream matches the quality it claims to have. It can try the available 320, 160 and 96 kbps versions. If a stream is advertised as 320 kbps but measures below that range, Levyra does not show it as 320 kbps.
 
-With FLAC selected on Android, Levyra tries TIDAL first. Monochrome and Arcod are fallback sources. Levyra checks the recording match and reads the audio headers to verify the format, bit depth and sample rate. If no verified lossless match is available, the existing audio fallbacks remain available. FLAC is still experimental, and availability depends on the track, region and provider.
+With FLAC selected on Android, Levyra looks for a lossless version of the same recording. It checks the recording match and reads the audio headers to verify the format, bit depth and sample rate. If no verified lossless match is available, the existing audio fallbacks remain available. FLAC is still experimental, and availability depends on the track, region and access permissions.
 
-TIDAL account access and subscriptions remain subject to TIDAL's terms. Levyra does not create or sell TIDAL accounts, and a token shared online does not grant permission to use the account behind it. See [FLAC sources and account access](docs/legal/LEGAL.md#flac-sources-and-third-party-account-access).
+Account access and subscriptions remain subject to the relevant service's terms. Levyra does not create or sell third-party accounts, and a token shared online does not grant permission to use the account behind it. See [FLAC sources and account access](docs/legal/LEGAL.md#flac-sources-and-third-party-account-access).
 
 The JioSaavn match uses more than the song title. Levyra also checks performers and artist roles, album and release details, duration, explicit status, language, featured artists and version markers. When needed, it compares a search result with JioSaavn's track details so it can tell an original recording from a compilation, reissue or alternate version.
 
