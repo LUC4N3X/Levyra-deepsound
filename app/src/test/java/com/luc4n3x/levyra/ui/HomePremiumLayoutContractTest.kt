@@ -15,6 +15,22 @@ class HomePremiumLayoutContractTest {
         ).firstOrNull(Files::exists) ?: error("LevyraApp.kt not found")
         Files.readString(path)
     }
+    private val homeStylesSource: String by lazy {
+        val path = sequenceOf(
+            Path.of("app/src/main/java/com/luc4n3x/levyra/ui/HomeStudioStyles.kt"),
+            Path.of("src/main/java/com/luc4n3x/levyra/ui/HomeStudioStyles.kt")
+        ).firstOrNull(Files::exists) ?: error("HomeStudioStyles.kt not found")
+        Files.readString(path)
+    }
+
+    @Test
+    fun `gallery hero keeps play button motion static across layouts`() {
+        val hero = functionBlock(homeStylesSource, "private fun MxBleedHero(")
+
+        assertTrue(source.contains("playButtonAnimationsEnabled = false"))
+        assertTrue(hero.contains("animated = hero.playButtonAnimationsEnabled"))
+        assertFalse(hero.contains("animated = hero.animationsEnabled"))
+    }
 
     @Test
     fun `personal orbit is a paged three by three artwork grid`() {
@@ -144,6 +160,10 @@ class HomePremiumLayoutContractTest {
     }
 
     private fun functionBlock(signature: String): String {
+        return functionBlock(source, signature)
+    }
+
+    private fun functionBlock(source: String, signature: String): String {
         val start = source.indexOf(signature)
         require(start >= 0) { "$signature not found" }
         val bodyStart = source.indexOf('{', start)
