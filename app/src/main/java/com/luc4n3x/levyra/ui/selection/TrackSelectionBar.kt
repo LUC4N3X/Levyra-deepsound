@@ -228,7 +228,8 @@ private fun SelectionDock(
     }
     val availableActions = actions.dockActions()
     BoxWithConstraints(Modifier.fillMaxWidth()) {
-        val readableWidth = maxWidth.value / LocalDensity.current.fontScale
+        val dockWidth = maxWidth
+        val readableWidth = dockWidth.value / LocalDensity.current.fontScale
         Surface(
             shape = style.shape,
             color = style.surface,
@@ -245,7 +246,7 @@ private fun SelectionDock(
                     .padding(8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                SelectionDockHeader(state, selectableIds, count, style, readableWidth, maxWidth)
+                SelectionDockHeader(state, selectableIds, count, style, readableWidth, dockWidth)
                 SelectionDockActions(availableActions, state.isActive, style, readableWidth)
             }
         }
