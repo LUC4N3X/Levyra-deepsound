@@ -166,7 +166,7 @@ class HighQualityPlaybackCoordinator(
         audioQuality: String,
         provenance: () -> PlaybackStreamProvenance
     ): Track? {
-        val query = queryFor(track.copy(playbackManifest = null), isVideoMode = false, audioQuality = audioQuality) ?: return null
+        val query = queryFor(downloadQueryTrack(track), isVideoMode = false, audioQuality = audioQuality) ?: return null
         if (!resolver.mode.lossless || query.durationMs <= 0L) return null
         val result = resolver.await(resolver.begin(identityKey(track), query), DOWNLOAD_LOOKUP_BUDGET_MS)
         if (result !is HighQualityResolution.Selected || !result.stream.tier.lossless || !resolver.mode.lossless) return null
@@ -178,7 +178,7 @@ class HighQualityPlaybackCoordinator(
         audioQuality: String,
         provenance: () -> PlaybackStreamProvenance
     ): Track? {
-        val query = queryFor(track.copy(playbackManifest = null), isVideoMode = false, audioQuality = audioQuality) ?: return null
+        val query = queryFor(downloadQueryTrack(track), isVideoMode = false, audioQuality = audioQuality) ?: return null
         if (query.durationMs <= 0L) return null
         val result = resolver.resolveLossy(identityKey(track), query)
         if (result !is HighQualityResolution.Selected || result.stream.tier.lossless) return null
@@ -186,11 +186,18 @@ class HighQualityPlaybackCoordinator(
         return applyStream(track, null, result, provenance())
     }
 
+    private fun downloadQueryTrack(track: Track): Track = track.copy(
+        streamUrl = if (track.playbackManifest?.alternativeSource?.providerId == "tidal") "" else track.streamUrl,
+        playbackManifest = null
+    )
+
     private fun hasPreferredAlternative(track: Track?): Boolean {
         val manifest = track?.playbackManifest ?: return false
         if (manifest.alternativeSource == null) return false
         return !resolver.mode.lossless || manifest.streams.any {
-            it.selected && it.url == manifest.selectedAudioUrl && it.mimeType == ProviderStreamValidator.FLAC_MIME_TYPE
+            it.selected && it.url == manifest.selectedAudioUrl &&
+                (it.mimeType == ProviderStreamValidator.FLAC_MIME_TYPE ||
+                    (it.codec == "flac" && it.deliveryMethod == PlaybackDeliveryMethod.DASH))
         }
     }
 
@@ -219,7 +226,7 @@ class HighQualityPlaybackCoordinator(
         val descriptor = PlaybackStreamDescriptor(
             url = stream.url,
             kind = PlaybackStreamKind.AUDIO,
-            deliveryMethod = PlaybackDeliveryMethod.PROGRESSIVE,
+            deliveryMethod = stream.deliveryMethod,
             container = stream.container,
             mimeType = stream.mimeType,
             codec = stream.codec,
