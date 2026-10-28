@@ -142,9 +142,13 @@ private const val NavTextContrast = 4.5f
 internal val LocalNavDockExtraClearance = compositionLocalOf { 0.dp }
 
 @Composable
-internal fun navDockExtraClearance(style: NavStyle, tuning: NavTuning): Dp {
-    if (style == NavStyle.Original) return 0.dp
+internal fun rememberNavDockExtraClearance(style: NavStyle, tuning: NavTuning): Dp {
     val height = navDockHeight(tuning.heightDp.dp, navLabelRoom(tuning.labels) + navIndicatorRoom(tuning))
+    return navDockExtraClearance(style, tuning, height)
+}
+
+internal fun navDockExtraClearance(style: NavStyle, tuning: NavTuning, height: Dp = tuning.heightDp.dp): Dp {
+    if (style == NavStyle.Original) return 0.dp
     val footprint = height + if (style.floating) StyledNavFloatingBottom else 0.dp
     return (footprint - StyledNavOriginalFootprint).coerceAtLeast(0.dp)
 }

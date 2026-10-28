@@ -2,12 +2,22 @@ package com.luc4n3x.levyra.ui
 
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.domain.NavLabelMode
+import com.luc4n3x.levyra.domain.NavStyle
+import com.luc4n3x.levyra.domain.NavTuning
 import com.luc4n3x.levyra.ui.theme.levyraLineHeightSp
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class NavigationLabelLayoutTest {
+    @Test
+    fun `content clearance uses the rendered dock height after text scaling`() {
+        val tuning = NavTuning(heightDp = 64)
+        val geometry = navDockGeometry(true, true, tuning.heightDp.dp, 50.dp)
+        assertEquals(20.dp, navDockExtraClearance(NavStyle.FloatingDock, tuning, geometry.height))
+        assertEquals(0.dp, navDockExtraClearance(NavStyle.Original, tuning, geometry.height))
+    }
+
     @Test
     fun `label room contains typography and the icon gap at every text scale`() {
         for (scale in listOf(1f, 1.3f, 1.5f, 2f, 3f)) {
