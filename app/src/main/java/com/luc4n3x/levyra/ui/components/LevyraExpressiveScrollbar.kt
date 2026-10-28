@@ -211,7 +211,30 @@ private fun ScrollbarHost(
     )
     val glyph = rememberScrollbarGlyph(source, label, drag.dragging)
     if (reveal <= 0f && !worthShowing) return
+    ScrollbarLayout(
+        drag = drag,
+        reveal = { reveal },
+        interactive = shown && worthShowing,
+        thumbWidth = thumbWidth,
+        glyph = glyph,
+        progress = { if (drag.dragging) drag.progress else listProgress },
+        onGrab = { haptics.perform(LevyraHapticAction.SeekSnap) },
+        modifier = modifier
+    )
+}
 
+@Composable
+private fun ScrollbarLayout(
+    drag: ScrollbarDragState,
+    reveal: () -> Float,
+    interactive: Boolean,
+    thumbWidth: Dp,
+    glyph: ScrollbarGlyph,
+    progress: () -> Float,
+    onGrab: () -> Unit,
+    modifier: Modifier
+) {
+    val animated = LocalAnimationsEnabled.current
     BoxWithConstraints(
         modifier = modifier
             .fillMaxHeight()
@@ -222,23 +245,22 @@ private fun ScrollbarHost(
         val thumbHeightPx = with(density) { ScrollbarThumbHeight.toPx() }
         val travelPx = (with(density) { maxHeight.toPx() } - thumbHeightPx).coerceAtLeast(1f)
         val slidePx = with(density) { ScrollbarSlide.toPx() }
-        val displayed = { if (drag.dragging) drag.progress else listProgress }
         val progressAt = { y: Float -> ((y - thumbHeightPx / 2f) / travelPx).coerceIn(0f, 1f) }
-
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .fillMaxHeight()
                 .width(ScrollbarHitWidth)
                 .graphicsLayer {
-                    alpha = reveal
-                    translationX = (1f - reveal) * slidePx
+                    val value = reveal()
+                    alpha = value
+                    translationX = (1f - value) * slidePx
                 }
                 .scrollbarDrag(
-                    enabled = shown && worthShowing,
-                    key = source,
+                    enabled = interactive,
+                    key = drag,
                     onStart = { y ->
-                        haptics.perform(LevyraHapticAction.SeekSnap)
+                        onGrab()
                         drag.start(progressAt(y))
                     },
                     onMove = { y -> drag.jumpTo(progressAt(y)) },
@@ -246,13 +268,13 @@ private fun ScrollbarHost(
                 )
         ) {
             ScrollbarTrack()
-            ScrollbarThumb(width = thumbWidth, offsetY = { (displayed() * travelPx).roundToInt() })
+            ScrollbarThumb(width = thumbWidth, offsetY = { (progress() * travelPx).roundToInt() })
         }
         ScrollbarLabel(
             glyph = glyph,
             slidePx = slidePx,
             animated = animated,
-            offsetY = { displayed() * travelPx + thumbHeightPx / 2f },
+            offsetY = { progress() * travelPx + thumbHeightPx / 2f },
             modifier = Modifier.align(Alignment.TopStart)
         )
     }
