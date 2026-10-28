@@ -149,6 +149,7 @@ import com.luc4n3x.levyra.domain.RecommendationFeedback
 import com.luc4n3x.levyra.domain.RecommendationFeedbackKind
 import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.ForgottenFavorites
+import com.luc4n3x.levyra.domain.FreshDiscovery
 import com.luc4n3x.levyra.domain.LevyraAmbientSettings
 import com.luc4n3x.levyra.domain.excludedArtistKeyOf
 import com.luc4n3x.levyra.domain.isExcludableArtist
@@ -191,6 +192,7 @@ import com.luc4n3x.levyra.domain.ListenPlayPolicy
 import com.luc4n3x.levyra.domain.ListeningSignalProfile
 import com.luc4n3x.levyra.domain.ListeningSignalRanker
 import com.luc4n3x.levyra.domain.RadioMixer
+import com.luc4n3x.levyra.domain.SmartOrbitCandidate
 import com.luc4n3x.levyra.domain.SmartOrbitEngine
 import com.luc4n3x.levyra.domain.SmartOrbitPool
 import com.luc4n3x.levyra.domain.ListeningDna
@@ -415,6 +417,7 @@ private const val ARTIST_PROFILE_UNAVAILABLE_ERROR = "artist_profile_unavailable
 private const val ARTIST_INITIAL_BIOGRAPHY_WAIT_MS = 250L
 private const val RADIO_TAIL_MAX_APPEND_ROUNDS = 3
 private const val RADIO_MIX_LIMIT = 15
+private const val FRESH_DISCOVERY_LOG_TAG = "FreshDiscovery"
 private const val RADIO_START_TRACKS = 20
 private const val RADIO_START_FETCH = 30
 private const val EXPLORE_SHORTS_FEED_LIMIT = 60
@@ -1398,6 +1401,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val smartOrbitRefreshMutex = Mutex()
     private var smartOrbitApplied = false
     private val relatedCandidateCache = LinkedHashMap<String, List<Track>>(RELATED_CANDIDATE_CACHE_SEEDS * 2, 0.75f, true)
+    @Volatile private var freshDiscoveryFavorites: Pair<List<Track>, FavoriteMembership>? = null
     private var listenSessionSignificant = false
     private var listenSessionTrack: Track? = null
     private var listenSessionStartedAt = 0L
@@ -7666,11 +7670,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setAutomationSettings(value: LevyraAutomationSettings) {
         val normalized = value.normalized()
-        if (normalized == _state.value.automationSettings) return
+        val previous = _state.value.automationSettings
+        if (normalized == previous) return
         _state.update { it.copy(automationSettings = normalized) }
         viewModelScope.launch(Dispatchers.IO) {
             applyAutomationSettings(normalized, persist = true)
         }
+        if (normalized.freshDiscovery != previous.freshDiscovery) refreshSmartOrbit()
     }
 
     private suspend fun applyAutomationSettings(
@@ -12962,12 +12968,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         insertAfterCurrent: Boolean = false
     ) {
         val targetUpcoming = radioTailTargetUpcoming(_state.value.audioSettings.advancedQueuePrefetchTracks)
-        val tailFetchLimit = radioTailFetchLimit(targetUpcoming, queueEngine.upcoming(targetUpcoming).size)
+        val currentUpcoming = queueEngine.upcoming(targetUpcoming).size
+        val tailFetchLimit = radioTailFetchLimit(targetUpcoming, currentUpcoming)
         val fetchLimit = if (insertAfterCurrent) maxOf(tailFetchLimit, RADIO_START_FETCH) else tailFetchLimit
         val fetchedRadioTracks = fetchRadioTracks(request, fetchLimit)
         rememberRelatedCandidates(request.seed, fetchedRadioTracks)
+        val candidateRadioTracks = freshDiscoveryCandidates(
+            candidates = fetchedRadioTracks,
+            minimumFresh = if (insertAfterCurrent) targetUpcoming else (targetUpcoming - currentUpcoming).coerceAtLeast(1),
+            unavailableIds = { radioQueuedIds(request.seed) }
+        )
         val current = currentRadioSnapshot(request) ?: return
-        val mixedRadioTracks = mixRadioTracks(request, current, fetchedRadioTracks, insertAfterCurrent)
+        val mixedRadioTracks = mixRadioTracks(request, current, candidateRadioTracks, insertAfterCurrent)
         appendMixedRadioTracks(mixedRadioTracks, targetUpcoming, insertAfterCurrent)
         updateRadioSession(request, fetchedRadioTracks, mixedRadioTracks)
         continueAfterRadioAppend(mixedRadioTracks, playWhenReady)
@@ -13069,6 +13081,49 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    private suspend fun freshDiscoveryCandidates(
+        candidates: List<Track>,
+        minimumFresh: Int,
+        unavailableIds: () -> Set<String> = ::emptySet
+    ): List<Track> {
+        val settings = _state.value.automationSettings.freshDiscovery
+        if (!settings.enabled || candidates.isEmpty()) return candidates
+        val startedAt = SystemClock.elapsedRealtime()
+        val excludedIds = unavailableIds()
+        val available = if (excludedIds.isEmpty()) candidates else candidates.filterNot { it.id in excludedIds }
+        val lastPlayed = listeningPulseStore.lastPlayedByKey(FreshDiscovery.lookupKeys(available))
+        val favorites = if (settings.allowFavorites) freshDiscoveryFavoriteMembership() else null
+        val selected = FreshDiscovery.select(
+            candidates = available,
+            lastPlayedByKey = lastPlayed,
+            settings = settings,
+            isFavorite = { track -> favorites?.contains(track) == true },
+            minimumFresh = minimumFresh
+        )
+        Timber.tag(FRESH_DISCOVERY_LOG_TAG).d(
+            "kept %d/%d heardKeys=%d in %dms",
+            selected.size,
+            candidates.size,
+            lastPlayed.size,
+            SystemClock.elapsedRealtime() - startedAt
+        )
+        return selected
+    }
+
+    private fun radioQueuedIds(seed: Track): Set<String> {
+        val tracks = queueEngine.state.value.tracks
+        val ids = HashSet<String>(tracks.size + 1)
+        tracks.mapNotNullTo(ids) { it.id.takeIf(String::isNotBlank) }
+        seed.id.takeIf(String::isNotBlank)?.let(ids::add)
+        return ids
+    }
+
+    private fun freshDiscoveryFavoriteMembership(): FavoriteMembership {
+        val favorites = _state.value.favorites
+        freshDiscoveryFavorites?.takeIf { it.first === favorites }?.let { return it.second }
+        return FavoriteMembership.of(favorites).also { freshDiscoveryFavorites = favorites to it }
+    }
+
     private fun rankingSignalProfile(): com.luc4n3x.levyra.domain.ListeningSignalProfile? {
         val feedback = _state.value.recommendationFeedback
         val signals = listeningSignals
@@ -13125,7 +13180,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         smartOrbitRefreshJob?.cancel()
         smartOrbitRefreshJob = viewModelScope.launch(Dispatchers.Default) {
             smartOrbitRefreshMutex.withLock {
-                val discoveries = computeSmartOrbitDiscoveries()
+                val freshBlocked = smartOrbitFreshDiscoveryBlock()
+                val discoveries = computeSmartOrbitDiscoveries(freshBlocked)
                 val retireRestored = !smartOrbitApplied && !smartOrbitPool.isEmpty
                 smartOrbitApplied = true
                 if (discoveries == smartOrbitDiscoveries && !retireRestored) return@withLock
@@ -13137,7 +13193,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun computeSmartOrbitDiscoveries(): List<Track> {
+    private suspend fun smartOrbitFreshDiscoveryBlock(): ((Track) -> Boolean)? {
+        val pool = smartOrbitPool
+        if (!_state.value.automationSettings.freshDiscovery.enabled || pool.isEmpty) return null
+        val tracks = pool.candidates.map(SmartOrbitCandidate::track)
+        val kept = freshDiscoveryCandidates(tracks, minimumFresh = 0)
+        if (kept.size == tracks.size) return null
+        val keptKeys = kept.mapTo(HashSet(kept.size * 2), SmartOrbitEngine::trackKey)
+        val excludedKeys = tracks.asSequence().map(SmartOrbitEngine::trackKey).filterNot(keptKeys::contains).toHashSet()
+        return { track -> SmartOrbitEngine.trackKey(track) in excludedKeys }
+    }
+
+    private fun computeSmartOrbitDiscoveries(freshBlocked: ((Track) -> Boolean)?): List<Track> {
         val pool = smartOrbitPool
         if (pool.isEmpty) return emptyList()
         val snapshot = _state.value
@@ -13154,7 +13221,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             isBlocked = { track ->
                 snapshot.artistExclusions.excludesTrack(track) ||
                     isRejectedAutomatic(track, rejected) ||
-                    isHeardRecording(track, heardArtistsByTitle)
+                    isHeardRecording(track, heardArtistsByTitle) ||
+                    freshBlocked?.invoke(track) == true
             }
         )
     }

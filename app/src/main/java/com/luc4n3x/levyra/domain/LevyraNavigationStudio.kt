@@ -20,6 +20,8 @@ enum class NavStyle(val storageId: String) {
 
     val separatesSearch: Boolean get() = this == SplitDock || this == LiquidCapsule
 
+    val supportsDockMorph: Boolean get() = this == Original || this == LiquidCapsule
+
     companion object {
         fun from(value: String?): NavStyle = entries.firstOrNull { it.storageId == value } ?: Original
 

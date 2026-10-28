@@ -670,8 +670,6 @@ private fun HomeStudioSectionRow(
                 text = title,
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                 color = if (visible) LevyraText else LevyraMuted,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
             )
             if (id.supportsLayouts && !LevyraSkinManagesLayout) {
                 Box {
@@ -682,8 +680,6 @@ private fun HomeStudioSectionRow(
                         Text(
                             text = "${copy.layout}: ${layoutLabel(layout, copy)}",
                             style = MaterialTheme.typography.labelMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
                         )
                     }
                     DropdownMenu(expanded = layoutMenu, onDismissRequest = { layoutMenu = false }) {
