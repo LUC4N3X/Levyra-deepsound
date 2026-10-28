@@ -3,6 +3,11 @@ name: Quick APK
 on:
   workflow_dispatch:
     inputs:
+      tidal_auth_probe:
+        description: "Test the TIDAL Secret only; do not build an APK"
+        required: false
+        default: false
+        type: boolean
       build_type:
         description: "APK build type"
         required: true
@@ -32,12 +37,84 @@ permissions:
   contents: read
 
 concurrency:
-  group: quick-apk-${{ github.ref }}
+  group: quick-apk-${{ github.ref }}-${{ inputs.tidal_auth_probe && 'tidal-auth' || 'build' }}
   cancel-in-progress: true
 
 jobs:
+  tidal-auth-probe:
+    name: Test TIDAL authentication only
+    if: ${{ inputs.tidal_auth_probe && github.actor == github.repository_owner }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - name: Exchange refresh credential without publishing credentials
+        shell: python
+        env:
+          LEVYRA_TIDAL_REFRESH_TOKEN: ${{ secrets.LEVYRA_TIDAL_REFRESH_TOKEN }}
+          LEVYRA_TIDAL_CLIENT_ID: ${{ vars.LEVYRA_TIDAL_CLIENT_ID }}
+        run: |
+          import json
+          import os
+          import sys
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+
+          def finish(message, success=False):
+              print(message)
+              with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+                  summary.write("## TIDAL authentication probe\n\n" + message + "\n\n")
+                  summary.write("This checks authentication only. FLAC access and app playback remain unverified.\n")
+              sys.exit(0 if success else 1)
+
+          credential = os.environ.get("LEVYRA_TIDAL_REFRESH_TOKEN", "")
+          if not credential:
+              finish("BLOCKED: set the LEVYRA_TIDAL_REFRESH_TOKEN repository Secret first.")
+          if any(character.isspace() for character in credential):
+              finish("BLOCKED: the credential contains whitespace; save the original value without spaces or line breaks.")
+
+          class RejectRedirects(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, headers, newurl):
+                  return None
+
+          fields = {"grant_type": "refresh_token", "refresh_token": credential}
+          client_id = os.environ.get("LEVYRA_TIDAL_CLIENT_ID", "").strip()
+          if client_id:
+              fields["client_id"] = client_id
+          request = urllib.request.Request(
+              "https://auth.tidal.com/v1/oauth2/token",
+              data=urllib.parse.urlencode(fields).encode("utf-8"),
+              headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"},
+              method="POST",
+          )
+          opener = urllib.request.build_opener(RejectRedirects())
+          try:
+              with opener.open(request, timeout=20) as response:
+                  payload = response.read(65_537)
+          except urllib.error.HTTPError as error:
+              finish("FAIL: TIDAL returned HTTP " + str(error.code) + ". Check credential validity and the issuing client ID.")
+          except (urllib.error.URLError, OSError):
+              finish("BLOCKED: the TIDAL authentication endpoint could not be reached.")
+
+          if len(payload) > 65_536:
+              finish("FAIL: TIDAL returned an oversized authentication response.")
+          try:
+              result = json.loads(payload)
+          except (ValueError, UnicodeError):
+              finish("FAIL: TIDAL returned an invalid authentication response.")
+          if not isinstance(result, dict):
+              finish("FAIL: TIDAL returned an unexpected authentication response.")
+          access_credential = result.get("access_token")
+          if not isinstance(access_credential, str) or not access_credential.strip():
+              finish("FAIL: the response does not contain an access credential.")
+          if result.get("refresh_token") and result["refresh_token"] != credential:
+              finish("BLOCKED: TIDAL rotated the refresh credential. The replacement was discarded; generate and save a fresh credential before another test.")
+          finish("PASS: TIDAL accepted the refresh credential and returned an access credential. Credentials were discarded.", success=True)
+
   quick-apk:
     name: Build quick APK
+    if: ${{ !inputs.tidal_auth_probe }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
