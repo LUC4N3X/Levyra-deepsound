@@ -74,6 +74,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -140,9 +141,15 @@ private const val NavTextContrast = 4.5f
 
 internal val LocalNavDockExtraClearance = compositionLocalOf { 0.dp }
 
-internal fun navDockExtraClearance(style: NavStyle, tuning: NavTuning): Dp {
+@Composable
+internal fun rememberNavDockExtraClearance(style: NavStyle, tuning: NavTuning): Dp {
+    val height = navDockHeight(tuning.heightDp.dp, navLabelRoom(tuning.labels) + navIndicatorRoom(tuning))
+    return navDockExtraClearance(style, tuning, height)
+}
+
+internal fun navDockExtraClearance(style: NavStyle, tuning: NavTuning, height: Dp = tuning.heightDp.dp): Dp {
     if (style == NavStyle.Original) return 0.dp
-    val footprint = tuning.heightDp.dp + if (style.floating) StyledNavFloatingBottom else 0.dp
+    val footprint = height + if (style.floating) StyledNavFloatingBottom else 0.dp
     return (footprint - StyledNavOriginalFootprint).coerceAtLeast(0.dp)
 }
 
@@ -559,11 +566,28 @@ private fun Modifier.navCapsule(
     .navBackground(background, colors, opacity, glass)
     .border(LevyraPlayerDesign.Hairline, colors.rim, shape)
 
-private fun navLabelRoom(mode: NavLabelMode): Dp = when (mode) {
-    NavLabelMode.Always, NavLabelMode.ActiveOnly -> 16.dp
-    NavLabelMode.Compact -> 12.dp
+internal fun navLabelRoom(mode: NavLabelMode, lineHeight: Dp): Dp = when (mode) {
+    NavLabelMode.Always, NavLabelMode.ActiveOnly -> lineHeight + 2.dp
+    NavLabelMode.Compact -> lineHeight
     NavLabelMode.Never, NavLabelMode.Expanding -> 0.dp
 }
+
+@Composable
+private fun navLabelRoom(mode: NavLabelMode): Dp {
+    val fontSize = if (mode == NavLabelMode.Compact) 10.sp else 11.sp
+    val lineHeight = with(LocalDensity.current) { LevyraTypeRhythm.lineHeight(fontSize).toDp() }
+    return navLabelRoom(mode, lineHeight)
+}
+
+private fun navDockHeight(requested: Dp, labelRoom: Dp): Dp =
+    maxOf(requested, StyledNavIconBox + labelRoom + 8.dp)
+
+private fun navIndicatorRoom(tuning: NavTuning): Dp =
+    if (tuning.indicator == NavIndicator.Dot && tuning.labels != NavLabelMode.Expanding) {
+        5.dp + 2.5.dp * (tuning.indicatorScale / 100f)
+    } else {
+        0.dp
+    }
 
 private fun navIconTop(height: Dp, labelRoom: Dp): Dp =
     ((height - StyledNavIconBox - labelRoom) / 2).coerceAtLeast(4.dp)
@@ -580,7 +604,7 @@ private fun Modifier.navFloatingInset(floating: Boolean): Modifier = if (floatin
     this
 }
 
-private class NavDockGeometry(
+internal class NavDockGeometry(
     val height: Dp,
     val compactHeight: Dp,
     val labelRoom: Dp,
@@ -588,7 +612,9 @@ private class NavDockGeometry(
     val lift: Dp
 )
 
-private fun navDockGeometry(floating: Boolean, collapsible: Boolean, height: Dp, labels: NavLabelMode): NavDockGeometry {
+internal fun navDockGeometry(floating: Boolean, collapsible: Boolean, requestedHeight: Dp, labelRoom: Dp, indicatorRoom: Dp = 0.dp): NavDockGeometry {
+    val contentRoom = labelRoom + indicatorRoom
+    val height = navDockHeight(requestedHeight, contentRoom)
     val compactHeight = if (!collapsible) {
         height
     } else if (floating) {
@@ -596,8 +622,7 @@ private fun navDockGeometry(floating: Boolean, collapsible: Boolean, height: Dp,
     } else {
         (height - StyledNavTrayShrink).coerceIn(StyledNavMinTouch, StyledNavCompactFootprint)
     }.coerceAtMost(height)
-    val labelRoom = navLabelRoom(labels)
-    val iconTop = navIconTop(height, labelRoom)
+    val iconTop = navIconTop(height, contentRoom)
     val lift = if (floating) (iconTop - navIconTop(compactHeight, 0.dp)).coerceAtLeast(0.dp) else 0.dp
     return NavDockGeometry(height, compactHeight, labelRoom, iconTop, lift)
 }
@@ -750,8 +775,10 @@ internal fun StyledBottomTabs(
     )
     val floating = style.floating
     val collapsible = style != NavStyle.YtMusic
-    val geometry = remember(floating, collapsible, tuning.heightDp, tuning.labels) {
-        navDockGeometry(floating, collapsible, tuning.heightDp.dp, tuning.labels)
+    val labelRoom = navLabelRoom(tuning.labels)
+    val indicatorRoom = navIndicatorRoom(tuning)
+    val geometry = remember(floating, collapsible, tuning.heightDp, labelRoom, indicatorRoom) {
+        navDockGeometry(floating, collapsible, tuning.heightDp.dp, labelRoom, indicatorRoom)
     }
     val depth = tuning.intensity / 100f
     val outer = minOf(tuning.cornerDp.dp, geometry.height / 2)
@@ -1474,7 +1501,6 @@ private fun StyledTabLabel(
         overflow = TextOverflow.Ellipsis,
         textAlign = TextAlign.Center,
         modifier = Modifier
-            .height(if (compact) 12.dp else 14.dp)
             .graphicsLayer {
                 val fold = foldLabel?.invoke()?.coerceIn(0f, 1f) ?: 0f
                 alpha = labelAlpha * (1f - fold)
