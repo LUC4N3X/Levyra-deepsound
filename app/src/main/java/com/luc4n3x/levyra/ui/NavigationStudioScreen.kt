@@ -215,16 +215,12 @@ internal fun NavigationStudioOverlay(
                         text = copy[NavStudioText.Title],
                         style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black),
                         color = LevyraText,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.semantics { heading() }
                     )
                     Text(
                         text = copy[NavStudioText.Subtitle],
                         style = MaterialTheme.typography.bodyMedium,
                         color = LevyraMuted,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }

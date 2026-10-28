@@ -805,6 +805,7 @@ import com.luc4n3x.levyra.ui.i18n.personalizedSearchPromptText
 import com.luc4n3x.levyra.ui.i18n.queueSectionCopy
 import com.luc4n3x.levyra.feature.radio.isLiveRadio
 import com.luc4n3x.levyra.ui.i18n.advancedPrefetchCopy
+import com.luc4n3x.levyra.ui.i18n.freshDiscoveryCopy
 import com.luc4n3x.levyra.ui.i18n.advancedPrefetchMobileDataCopy
 import com.luc4n3x.levyra.ui.i18n.automationCopy
 import com.luc4n3x.levyra.ui.i18n.smartOfflineCopy
@@ -2606,7 +2607,9 @@ fun LevyraApp(
                     val compactionProvider: () -> Float = { dockCompaction.value }
                     val miniPlayerVisible = state.currentTrack != null && !state.isSamplesOpen
                     val dockMorph = rememberDockMorph(
-                        active = state.interfaceSettings.dockMorphActive() && !dockSideBySide && !state.showSettings,
+                        active = state.interfaceSettings.dockMorphActive() &&
+                            skinNavigationSettings(navigationStudio.settings).style.supportsDockMorph &&
+                            !dockSideBySide && !state.showSettings,
                         miniVisible = miniPlayerVisible,
                         compaction = dockCompaction
                     )
@@ -21286,6 +21289,12 @@ private fun SettingsOverlay(
                                     onCheckedChange = { onAmbientSettings(ambientSettings.copy(showCanvas = it)) }
                                 )
                             }
+                            standaloneItem {
+                                FreshDiscoverySettingsCard(
+                                    settings = automationSettings.freshDiscovery,
+                                    onSettings = { value -> onAutomationSettings(automationSettings.copy(freshDiscovery = value)) }
+                                )
+                            }
                             standaloneItem { SettingsSectionLabel(strings.excludedArtists) }
                             if (excludedArtists.isEmpty()) {
                                 item {
@@ -22196,7 +22205,7 @@ private fun SettingsCategoryCard(meta: SettingsCategoryMeta, index: Int, count: 
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun SettingsTile(
+internal fun SettingsTile(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
     checked: Boolean? = null,
@@ -22241,7 +22250,7 @@ private fun SettingsTile(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun SettingsTileIcon(icon: ImageVector, accent: Color, shape: Shape = MaterialShapes.Cookie4Sided.toShape()) {
+internal fun SettingsTileIcon(icon: ImageVector, accent: Color, shape: Shape = MaterialShapes.Cookie4Sided.toShape()) {
     Box(
         modifier = Modifier
             .size(if (LevyraIsAppleMusic) 30.dp else 44.dp)
@@ -22254,12 +22263,12 @@ private fun SettingsTileIcon(icon: ImageVector, accent: Color, shape: Shape = Ma
 }
 
 @Composable
-private fun SettingsTileText(
+internal fun SettingsTileText(
     title: String,
     subtitle: String,
     modifier: Modifier = Modifier,
-    maxTitleLines: Int = 2,
-    maxSubtitleLines: Int = 3
+    maxTitleLines: Int = Int.MAX_VALUE,
+    maxSubtitleLines: Int = Int.MAX_VALUE
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Text(
@@ -22309,8 +22318,6 @@ private fun SettingsDetailHeader(title: String, summary: String, icon: ImageVect
                 fontSize = 28.sp,
                 lineHeight = 32.sp,
                 fontWeight = FontWeight.Black,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.semantics { heading() }
             )
             if (summary.isNotBlank()) {
@@ -22318,9 +22325,8 @@ private fun SettingsDetailHeader(title: String, summary: String, icon: ImageVect
                     summary,
                     color = LevyraMuted,
                     fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    lineHeight = 18.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
         }
@@ -22336,7 +22342,7 @@ private fun SettingsDetailHeader(title: String, summary: String, icon: ImageVect
     }
 }
 
-private val LocalSettingsAccent = compositionLocalOf<Color?> { null }
+internal val LocalSettingsAccent = compositionLocalOf<Color?> { null }
 
 private val SettingsGroupGap = 2.dp
 
@@ -22935,23 +22941,7 @@ internal fun SettingsToggle(icon: ImageVector, title: String, subtitle: String, 
         ) {
             SettingsTileIcon(icon = icon, accent = LocalSettingsAccent.current ?: LevyraCyan)
             SettingsTileText(title = title, subtitle = subtitle, modifier = Modifier.weight(1f))
-            if (LevyraIsNocturne || LevyraIsTorque || LevyraIsIvory || LevyraIsSpotify || LevyraIsAppleMusic || LevyraIsYouTubeMusic) SkinSwitch(checked) else Switch(
-                checked = checked,
-                onCheckedChange = null,
-                thumbContent = if (checked) {
-                    { Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
-                } else {
-                    null
-                },
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = if (LevyraIsPrism) Color.White else LevyraBlack,
-                    checkedIconColor = LevyraCyan,
-                    checkedTrackColor = LevyraCyan,
-                    uncheckedThumbColor = LevyraMuted,
-                    uncheckedTrackColor = LevyraAdaptiveTrack,
-                    uncheckedBorderColor = LevyraMuted.copy(alpha = 0.6f)
-                )
-            )
+            SettingsSwitchIndicator(checked)
         }
     }
 }

@@ -20,6 +20,8 @@ import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioPreset
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
+import com.luc4n3x.levyra.domain.FreshDiscoverySettings
+import com.luc4n3x.levyra.domain.FreshDiscoveryWindow
 import com.luc4n3x.levyra.domain.LevyraAutomationSettings
 import com.luc4n3x.levyra.domain.LevyraBedtimeSchedule
 import com.luc4n3x.levyra.domain.LevyraBackupFrequency
@@ -1269,6 +1271,9 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         mutable[KEY_BEDTIME_START_MINUTE] = value.bedtime.startMinuteOfDay
         mutable[KEY_BEDTIME_DURATION_MINUTES] = value.bedtime.durationMinutes
         mutable[KEY_BEDTIME_DAYS] = value.bedtime.days.map { it.name }.toSet()
+        mutable[KEY_FRESH_DISCOVERY_ENABLED] = value.freshDiscovery.enabled
+        mutable[KEY_FRESH_DISCOVERY_WINDOW] = value.freshDiscovery.window.id
+        mutable[KEY_FRESH_DISCOVERY_ALLOW_FAVORITES] = value.freshDiscovery.allowFavorites
     }
 
     private fun automationSettingsFrom(preferences: Preferences): LevyraAutomationSettings {
@@ -1292,6 +1297,11 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
                 durationMinutes = preferences[KEY_BEDTIME_DURATION_MINUTES]
                     ?: LevyraBedtimeSchedule.DEFAULT_DURATION_MINUTES,
                 days = days
+            ),
+            freshDiscovery = FreshDiscoverySettings(
+                enabled = preferences[KEY_FRESH_DISCOVERY_ENABLED] ?: false,
+                window = FreshDiscoveryWindow.from(preferences[KEY_FRESH_DISCOVERY_WINDOW]),
+                allowFavorites = preferences[KEY_FRESH_DISCOVERY_ALLOW_FAVORITES] ?: true
             )
         ).normalized()
     }
@@ -1326,6 +1336,9 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_BEDTIME_START_MINUTE = intPreferencesKey("bedtime_start_minute")
         val KEY_BEDTIME_DURATION_MINUTES = intPreferencesKey("bedtime_duration_minutes")
         val KEY_BEDTIME_DAYS = stringSetPreferencesKey("bedtime_days")
+        val KEY_FRESH_DISCOVERY_ENABLED = booleanPreferencesKey("fresh_discovery_enabled")
+        val KEY_FRESH_DISCOVERY_WINDOW = stringPreferencesKey("fresh_discovery_window")
+        val KEY_FRESH_DISCOVERY_ALLOW_FAVORITES = booleanPreferencesKey("fresh_discovery_allow_favorites")
         val KEY_AUDIO_QUALITY = stringPreferencesKey("audio_quality")
         val KEY_HIGH_QUALITY_ALTERNATIVE_AUDIO = stringPreferencesKey("high_quality_alternative_audio")
         val KEY_USER_NAME = stringPreferencesKey("user_name")
