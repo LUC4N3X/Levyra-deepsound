@@ -7,6 +7,7 @@ import androidx.compose.animation.core.snap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.offset
@@ -44,6 +45,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
@@ -281,113 +283,150 @@ private fun ScrollbarHost(
                     alpha = reveal
                     translationX = (1f - reveal) * slidePx
                 }
-                .then(
-                    if (shown && worthShowing) {
-                        Modifier.pointerInput(source) {
-                            detectVerticalDragGestures(
-                                onDragStart = { offset ->
-                                    dragging = true
-                                    haptics.perform(LevyraHapticAction.SeekSnap)
-                                    jumpTo(progressAt(offset.y))
-                                },
-                                onDragEnd = {
-                                    dragging = false
-                                    pendingIndex = -1
-                                },
-                                onDragCancel = {
-                                    dragging = false
-                                    pendingIndex = -1
-                                },
-                                onVerticalDrag = { change, _ ->
-                                    change.consume()
-                                    jumpTo(progressAt(change.position.y))
-                                }
-                            )
-                        }
-                    } else {
-                        Modifier
+                .scrollbarDrag(
+                    enabled = shown && worthShowing,
+                    key = source,
+                    onStart = { y ->
+                        dragging = true
+                        haptics.perform(LevyraHapticAction.SeekSnap)
+                        jumpTo(progressAt(y))
+                    },
+                    onMove = { y -> jumpTo(progressAt(y)) },
+                    onEnd = {
+                        dragging = false
+                        pendingIndex = -1
                     }
                 )
         ) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = -(ScrollbarEndInset + (ScrollbarRestWidth - ScrollbarTrackWidth) / 2))
-                    .width(ScrollbarTrackWidth)
-                    .fillMaxHeight()
-                    .clip(RoundedCornerShape(50))
-                    .background(colors.onSurface.copy(alpha = ScrollbarTrackAlpha))
-            )
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset { IntOffset(-ScrollbarEndInset.roundToPx(), (displayed() * travelPx).roundToInt()) }
-                    .size(width = thumbWidth, height = ScrollbarThumbHeight)
-                    .clip(
-                        RoundedCornerShape(
-                            topStartPercent = 50,
-                            bottomStartPercent = 50,
-                            topEndPercent = 30,
-                            bottomEndPercent = 30
-                        )
-                    )
-                    .background(colors.primary),
-                contentAlignment = Alignment.Center
-            ) {
-                if (thumbWidth > ScrollbarRestWidth * 2) {
-                    Icon(
-                        imageVector = Icons.Rounded.UnfoldMore,
-                        contentDescription = null,
-                        tint = colors.onPrimary,
-                        modifier = Modifier
-                            .size(18.dp)
-                            .graphicsLayer {
-                                val grow = ((thumbWidth - ScrollbarRestWidth) / (ScrollbarGrabWidth - ScrollbarRestWidth))
-                                    .coerceIn(0f, 1f)
-                                alpha = grow
-                                scaleX = grow
-                                scaleY = grow
-                            }
-                    )
-                }
-            }
+            ScrollbarTrack()
+            ScrollbarThumb(width = thumbWidth, offsetY = { (displayed() * travelPx).roundToInt() })
         }
 
         if (labelReveal > 0f && shownLabel.isNotEmpty()) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .offset {
-                        val y = displayed() * travelPx + thumbHeightPx / 2f - ScrollbarLabelSize.toPx() / 2f
-                        IntOffset(0, y.roundToInt())
-                    }
-                    .size(ScrollbarLabelSize)
-                    .graphicsLayer {
-                        alpha = labelReveal
-                        val scale = 0.6f + 0.4f * labelReveal
-                        scaleX = scale
-                        scaleY = scale
-                        translationX = (1f - labelReveal) * slidePx
-                        transformOrigin = TransformOrigin(1f, 0.5f)
-                    }
-                    .shadow(6.dp, MaterialShapes.Cookie9Sided.toShape())
-                    .background(colors.primaryContainer, MaterialShapes.Cookie9Sided.toShape()),
-                contentAlignment = Alignment.Center
-            ) {
-                AnimatedContent(
-                    targetState = shownLabel,
-                    transitionSpec = { LevyraMotion.trackChange(animated, 0) },
-                    label = "scrollbar-glyph"
-                ) { glyph ->
-                    Text(
-                        text = glyph,
-                        color = colors.onPrimaryContainer,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Black,
-                        maxLines = 1
-                    )
-                }
-            }
+            ScrollbarLabel(
+                text = shownLabel,
+                reveal = { labelReveal },
+                slidePx = slidePx,
+                animated = animated,
+                offsetY = { displayed() * travelPx + thumbHeightPx / 2f },
+                modifier = Modifier.align(Alignment.TopStart)
+            )
         }
+    }
+}
+
+@Composable
+private fun BoxScope.ScrollbarTrack() {
+    Box(
+        modifier = Modifier
+            .align(Alignment.TopEnd)
+            .offset(x = -(ScrollbarEndInset + (ScrollbarRestWidth - ScrollbarTrackWidth) / 2))
+            .width(ScrollbarTrackWidth)
+            .fillMaxHeight()
+            .clip(RoundedCornerShape(50))
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = ScrollbarTrackAlpha))
+    )
+}
+
+@Composable
+private fun BoxScope.ScrollbarThumb(width: Dp, offsetY: () -> Int) {
+    val colors = MaterialTheme.colorScheme
+    Box(
+        modifier = Modifier
+            .align(Alignment.TopEnd)
+            .offset { IntOffset(-ScrollbarEndInset.roundToPx(), offsetY()) }
+            .size(width = width, height = ScrollbarThumbHeight)
+            .clip(
+                RoundedCornerShape(
+                    topStartPercent = 50,
+                    bottomStartPercent = 50,
+                    topEndPercent = 30,
+                    bottomEndPercent = 30
+                )
+            )
+            .background(colors.primary),
+        contentAlignment = Alignment.Center
+    ) {
+        if (width > ScrollbarRestWidth * 2) {
+            val grow = ((width - ScrollbarRestWidth) / (ScrollbarGrabWidth - ScrollbarRestWidth)).coerceIn(0f, 1f)
+            Icon(
+                imageVector = Icons.Rounded.UnfoldMore,
+                contentDescription = null,
+                tint = colors.onPrimary,
+                modifier = Modifier
+                    .size(18.dp)
+                    .graphicsLayer {
+                        alpha = grow
+                        scaleX = grow
+                        scaleY = grow
+                    }
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun ScrollbarLabel(
+    text: String,
+    reveal: () -> Float,
+    slidePx: Float,
+    animated: Boolean,
+    offsetY: () -> Float,
+    modifier: Modifier = Modifier
+) {
+    val colors = MaterialTheme.colorScheme
+    val shape = MaterialShapes.Cookie9Sided.toShape()
+    Box(
+        modifier = modifier
+            .offset { IntOffset(0, (offsetY() - ScrollbarLabelSize.toPx() / 2f).roundToInt()) }
+            .size(ScrollbarLabelSize)
+            .graphicsLayer {
+                val value = reveal()
+                alpha = value
+                val scale = 0.6f + 0.4f * value
+                scaleX = scale
+                scaleY = scale
+                translationX = (1f - value) * slidePx
+                transformOrigin = TransformOrigin(1f, 0.5f)
+            }
+            .shadow(6.dp, shape)
+            .background(colors.primaryContainer, shape),
+        contentAlignment = Alignment.Center
+    ) {
+        AnimatedContent(
+            targetState = text,
+            transitionSpec = { LevyraMotion.trackChange(animated, 0) },
+            label = "scrollbar-glyph"
+        ) { glyph ->
+            Text(
+                text = glyph,
+                color = colors.onPrimaryContainer,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Black,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+private fun Modifier.scrollbarDrag(
+    enabled: Boolean,
+    key: Any,
+    onStart: (Float) -> Unit,
+    onMove: (Float) -> Unit,
+    onEnd: () -> Unit
+): Modifier {
+    if (!enabled) return this
+    return pointerInput(key) {
+        detectVerticalDragGestures(
+            onDragStart = { offset -> onStart(offset.y) },
+            onDragEnd = onEnd,
+            onDragCancel = onEnd,
+            onVerticalDrag = { change, _ ->
+                change.consume()
+                onMove(change.position.y)
+            }
+        )
     }
 }

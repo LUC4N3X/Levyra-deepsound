@@ -630,7 +630,8 @@ private fun FlowSideButton(
     val haptics = LocalLevyraHaptics.current
     val interaction = remember { MutableInteractionSource() }
     val press = flowPressProgress(interaction, animated)
-    val nudgeSign = if ((LocalLayoutDirection.current == LayoutDirection.Rtl) == mirrored) 1f else -1f
+    val rightToLeft = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val nudgeSign = if (rightToLeft == mirrored) 1f else -1f
     Box(
         modifier = Modifier
             .size(size)
