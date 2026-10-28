@@ -1,6 +1,7 @@
 /*
  * For research, testing, interoperability and lawful use only.
- * This project does not create or sell third-party accounts or subscriptions.
+ * Levyra does not operate a music-hosting or subscription service, issue
+ * third-party accounts or subscriptions, or grant licences to music content.
  * Publicly shared credentials do not grant permission to access an account,
  * redistribute credentials or use protected content. Valid authorization and
  * compliance with applicable law and service terms are required.
