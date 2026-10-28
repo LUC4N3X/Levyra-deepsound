@@ -56,36 +56,53 @@ internal class TidalAudioProvider(
     override suspend fun resolveStream(candidate: AlternativeTrackCandidate): ProviderStreamOutcome {
         if (!TidalPayload.isTrackId(candidate.providerTrackId)) return ProviderStreamOutcome.Unavailable(listOf(StreamRejection.NO_MEDIA))
         return attempt<ProviderStreamOutcome> {
-            val hiRes = candidate.mediaToken == "HI_RES_LOSSLESS"
-            val parameters = mapOf("playbackmode" to "STREAM", "assetpresentation" to "FULL", "prefetch" to "false", "audioquality" to if (hiRes) "HI_RES_LOSSLESS" else "LOSSLESS")
-            val json = try {
-                api.get("tracks/${candidate.providerTrackId}/playbackinfopostpaywall/v4", parameters, hiRes)
-            } catch (failure: TidalFailure) {
-                if (!hiRes || failure.failure !in setOf(ProviderFailure.FORBIDDEN, ProviderFailure.NOT_FOUND)) throw failure
-                api.get("tracks/${candidate.providerTrackId}/playbackinfopostpaywall/v4", parameters + ("audioquality" to "LOSSLESS"))
-            }
-            if (json.optString("manifestMimeType") != "application/dash+xml") throw TidalFailure(ProviderFailure.MALFORMED_RESPONSE)
-            val encoded = json.getString("manifest")
-            if (encoded.length > 131_072) throw TidalFailure(ProviderFailure.MALFORMED_RESPONSE)
-            val manifest = Base64.decode(encoded, Base64.DEFAULT)
+            val manifest = playbackManifest(candidate)
             val description = TidalPayload.manifest(manifest)
-            val response = api.probe(description.initialization, 65_536)
-            if (response.code !in setOf(200, 206)) throw TidalFailure(ProviderFailure.HTTP_ERROR)
-            val type = response.header("Content-Type").orEmpty().substringBefore(';').lowercase()
-            if (type !in setOf("audio/mp4", "video/mp4", "application/mp4", "application/octet-stream", "binary/octet-stream")) throw TidalFailure(ProviderFailure.MALFORMED_RESPONSE)
-            val info = TidalPayload.streamInfo(response.body)
+            val info = probeStreamInfo(description)
             if (!info.durationMatches(candidate.durationSeconds) || info.sampleRateHz != description.sampleRateHz) {
                 return@attempt ProviderStreamOutcome.Unavailable(listOf(StreamRejection.DURATION_MISMATCH))
             }
-            val file = withContext(Dispatchers.IO) { TidalManifestFiles.write(manifestDirectory, manifest, clock()) }
-            val tier = if (info.bitsPerSample > 16 || info.sampleRateHz > 48_000) AudioQualityTier.LOSSLESS_HI_RES else AudioQualityTier.LOSSLESS
-            ProviderStreamOutcome.Resolved(ResolvedHighQualityStream(
-                providerId = id, providerTrackId = candidate.providerTrackId, url = Uri.fromFile(file).toString(),
-                tier = tier, mimeType = "application/dash+xml", container = "mp4", codec = "flac",
-                contentLength = 0L, estimatedKbps = description.bitrate / 1_000, expiresAtMs = clock() + STREAM_TTL_MS,
-                bitDepth = info.bitsPerSample, sampleRateHz = info.sampleRateHz, deliveryMethod = PlaybackDeliveryMethod.DASH
-            ))
+            ProviderStreamOutcome.Resolved(resolvedStream(candidate, manifest, description, info))
         }.getOrElse { ProviderStreamOutcome.Failed(failure(it)) }
+    }
+
+    private suspend fun playbackManifest(candidate: AlternativeTrackCandidate): ByteArray {
+        val hiRes = candidate.mediaToken == "HI_RES_LOSSLESS"
+        val parameters = mapOf("playbackmode" to "STREAM", "assetpresentation" to "FULL", "prefetch" to "false", "audioquality" to if (hiRes) "HI_RES_LOSSLESS" else "LOSSLESS")
+        val json = try {
+            api.get("tracks/${candidate.providerTrackId}/playbackinfopostpaywall/v4", parameters, hiRes)
+        } catch (failure: TidalFailure) {
+            if (!hiRes || failure.failure !in setOf(ProviderFailure.FORBIDDEN, ProviderFailure.NOT_FOUND)) throw failure
+            api.get("tracks/${candidate.providerTrackId}/playbackinfopostpaywall/v4", parameters + ("audioquality" to "LOSSLESS"))
+        }
+        if (json.optString("manifestMimeType") != "application/dash+xml") throw TidalFailure(ProviderFailure.MALFORMED_RESPONSE)
+        val encoded = json.getString("manifest")
+        if (encoded.length > 131_072) throw TidalFailure(ProviderFailure.MALFORMED_RESPONSE)
+        return Base64.decode(encoded, Base64.DEFAULT)
+    }
+
+    private suspend fun probeStreamInfo(description: TidalPayload.Manifest): FlacStreamInfo {
+        val response = api.probe(description.initialization, 65_536)
+        if (response.code !in setOf(200, 206)) throw TidalFailure(ProviderFailure.HTTP_ERROR)
+        val type = response.header("Content-Type").orEmpty().substringBefore(';').lowercase()
+        if (type !in setOf("audio/mp4", "video/mp4", "application/mp4", "application/octet-stream", "binary/octet-stream")) throw TidalFailure(ProviderFailure.MALFORMED_RESPONSE)
+        return TidalPayload.streamInfo(response.body)
+    }
+
+    private suspend fun resolvedStream(
+        candidate: AlternativeTrackCandidate,
+        manifest: ByteArray,
+        description: TidalPayload.Manifest,
+        info: FlacStreamInfo
+    ): ResolvedHighQualityStream {
+        val file = withContext(Dispatchers.IO) { TidalManifestFiles.write(manifestDirectory, manifest, clock()) }
+        val tier = if (info.bitsPerSample > 16 || info.sampleRateHz > 48_000) AudioQualityTier.LOSSLESS_HI_RES else AudioQualityTier.LOSSLESS
+        return ResolvedHighQualityStream(
+            providerId = id, providerTrackId = candidate.providerTrackId, url = Uri.fromFile(file).toString(),
+            tier = tier, mimeType = "application/dash+xml", container = "mp4", codec = "flac",
+            contentLength = 0L, estimatedKbps = description.bitrate / 1_000, expiresAtMs = clock() + STREAM_TTL_MS,
+            bitDepth = info.bitsPerSample, sampleRateHz = info.sampleRateHz, deliveryMethod = PlaybackDeliveryMethod.DASH
+        )
     }
 
     private suspend fun <T> attempt(block: suspend () -> T): Result<T> = runCatchingPreservingCancellation {
