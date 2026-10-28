@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -77,6 +78,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
@@ -198,6 +200,18 @@ private fun selectionDockStyle(): SelectionDockStyle {
 
 private data class SelectionDockAction(val label: String, val icon: ImageVector, val invoke: () -> Unit)
 
+@Composable
+private fun TrackSelectionActions.dockActions(): List<SelectionDockAction> {
+    val strings = LocalLevyraStrings.current
+    return buildList {
+        onPlayNext?.let { add(SelectionDockAction(strings.playNext, Icons.AutoMirrored.Rounded.PlaylistPlay, it)) }
+        onAddToQueue?.let { add(SelectionDockAction(strings.addToQueue, Icons.AutoMirrored.Rounded.QueueMusic, it)) }
+        onAddToPlaylist?.let { add(SelectionDockAction(strings.addToPlaylist, Icons.AutoMirrored.Rounded.PlaylistAdd, it)) }
+        onFavorite?.let { add(SelectionDockAction(strings.favorite, Icons.Rounded.Favorite, it)) }
+        onDownload?.let { add(SelectionDockAction(strings.download, Icons.Rounded.Download, it)) }
+    }
+}
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SelectionDock(
@@ -206,38 +220,22 @@ private fun SelectionDock(
     actions: TrackSelectionActions,
     count: Int
 ) {
-    val strings = LocalLevyraStrings.current
     val style = selectionDockStyle()
     val animated = LocalAnimationsEnabled.current
     val motion = MaterialTheme.motionScheme
-    val haptics = LocalLevyraHaptics.current
     val selectableIds = remember(allVisibleIds) {
         allVisibleIds.mapNotNullTo(linkedSetOf()) { it.trim().takeIf(String::isNotBlank) }
     }
-    val allSelected = selectableIds.isNotEmpty() && state.selectedIds.containsAll(selectableIds)
-    val availableActions = buildList {
-        actions.onPlayNext?.let { add(SelectionDockAction(strings.playNext, Icons.AutoMirrored.Rounded.PlaylistPlay, it)) }
-        actions.onAddToQueue?.let { add(SelectionDockAction(strings.addToQueue, Icons.AutoMirrored.Rounded.QueueMusic, it)) }
-        actions.onAddToPlaylist?.let { add(SelectionDockAction(strings.addToPlaylist, Icons.AutoMirrored.Rounded.PlaylistAdd, it)) }
-        actions.onFavorite?.let { add(SelectionDockAction(strings.favorite, Icons.Rounded.Favorite, it)) }
-        actions.onDownload?.let { add(SelectionDockAction(strings.download, Icons.Rounded.Download, it)) }
-    }
+    val availableActions = actions.dockActions()
     BoxWithConstraints(Modifier.fillMaxWidth()) {
-        val maxDockHeight = maxHeight
         val readableWidth = maxWidth.value / LocalDensity.current.fontScale
-        val inlineCount = when {
-            readableWidth >= 600f -> availableActions.size
-            readableWidth >= 280f -> minOf(2, availableActions.size)
-            readableWidth >= 220f -> minOf(1, availableActions.size)
-            else -> 0
-        }
         Surface(
             shape = style.shape,
             color = style.surface,
             contentColor = style.content,
             border = style.border,
             shadowElevation = 3.dp,
-            modifier = Modifier.fillMaxWidth().heightIn(max = maxDockHeight)
+            modifier = Modifier.fillMaxWidth().heightIn(max = maxHeight)
                 .semantics { isTraversalGroup = true }
         ) {
             Column(
@@ -247,108 +245,166 @@ private fun SelectionDock(
                     .padding(8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(
-                        onClick = state::exit,
-                        enabled = state.isActive,
-                        modifier = Modifier.size(48.dp)
-                    ) { Icon(Icons.Rounded.Close, contentDescription = strings.close) }
-                    AnimatedContent(
-                        targetState = count,
-                        transitionSpec = {
-                            (if (animated) fadeIn(motion.fastEffectsSpec()) togetherWith fadeOut(motion.fastEffectsSpec())
-                            else EnterTransition.None togetherWith ExitTransition.None).using(null)
-                        },
-                        label = "selection-count",
-                        modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
-                            .clearAndSetSemantics {
-                                contentDescription = strings.formatTrackCount(count)
-                                liveRegion = LiveRegionMode.Polite
-                            }
-                    ) {
-                        Text(strings.formatTrackCount(it), style = style.countStyle, fontWeight = FontWeight.Bold)
-                    }
-                    val selectAll: () -> Unit = {
+                SelectionDockHeader(state, selectableIds, count, style, readableWidth, maxWidth)
+                SelectionDockActions(availableActions, state.isActive, style, readableWidth)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SelectionDockHeader(
+    state: TrackSelectionState,
+    selectableIds: Set<String>,
+    count: Int,
+    style: SelectionDockStyle,
+    readableWidth: Float,
+    maxWidth: Dp
+) {
+    val strings = LocalLevyraStrings.current
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = state::exit, enabled = state.isActive, modifier = Modifier.size(48.dp)) {
+            Icon(Icons.Rounded.Close, contentDescription = strings.close)
+        }
+        SelectionDockCount(count, style)
+        SelectionDockSelectAll(state, selectableIds, style, readableWidth, maxWidth)
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun RowScope.SelectionDockCount(count: Int, style: SelectionDockStyle) {
+    val strings = LocalLevyraStrings.current
+    val animated = LocalAnimationsEnabled.current
+    val motion = MaterialTheme.motionScheme
+    AnimatedContent(
+        targetState = count,
+        transitionSpec = {
+            (if (animated) fadeIn(motion.fastEffectsSpec()) togetherWith fadeOut(motion.fastEffectsSpec())
+            else EnterTransition.None togetherWith ExitTransition.None).using(null)
+        },
+        label = "selection-count",
+        modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+            .clearAndSetSemantics {
+                contentDescription = strings.formatTrackCount(count)
+                liveRegion = LiveRegionMode.Polite
+            }
+    ) {
+        Text(strings.formatTrackCount(it), style = style.countStyle, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun SelectionDockSelectAll(
+    state: TrackSelectionState,
+    selectableIds: Set<String>,
+    style: SelectionDockStyle,
+    readableWidth: Float,
+    maxWidth: Dp
+) {
+    val strings = LocalLevyraStrings.current
+    val haptics = LocalLevyraHaptics.current
+    val allSelected = selectableIds.isNotEmpty() && state.selectedIds.containsAll(selectableIds)
+    val selectAll: () -> Unit = {
+        haptics.perform(LevyraHapticAction.Confirm)
+        if (allSelected) state.exit() else state.selectAll(selectableIds)
+    }
+    if (readableWidth >= 280f) {
+        TextButton(
+            onClick = selectAll,
+            enabled = state.isActive && selectableIds.isNotEmpty(),
+            colors = ButtonDefaults.textButtonColors(contentColor = style.accent),
+            modifier = Modifier.widthIn(max = maxWidth / 2).heightIn(min = 48.dp).semantics { selected = allSelected }
+        ) {
+            Icon(if (allSelected) Icons.Rounded.Check else Icons.Rounded.SelectAll, null, Modifier.size(20.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(strings.selectAll, style = MaterialTheme.typography.labelMedium)
+        }
+    } else {
+        IconButton(
+            onClick = selectAll,
+            enabled = state.isActive && selectableIds.isNotEmpty(),
+            colors = IconButtonDefaults.iconButtonColors(contentColor = style.accent),
+            modifier = Modifier.size(48.dp).semantics { selected = allSelected }
+        ) {
+            Icon(if (allSelected) Icons.Rounded.Check else Icons.Rounded.SelectAll, strings.selectAll)
+        }
+    }
+}
+
+@Composable
+private fun SelectionDockActions(
+    availableActions: List<SelectionDockAction>,
+    enabled: Boolean,
+    style: SelectionDockStyle,
+    readableWidth: Float
+) {
+    val haptics = LocalLevyraHaptics.current
+    val inlineCount = when {
+        readableWidth >= 600f -> availableActions.size
+        readableWidth >= 280f -> minOf(2, availableActions.size)
+        readableWidth >= 220f -> minOf(1, availableActions.size)
+        else -> 0
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        availableActions.take(inlineCount).forEachIndexed { index, action ->
+            FilledTonalButton(
+                onClick = {
+                    haptics.perform(LevyraHapticAction.Confirm)
+                    action.invoke()
+                },
+                enabled = enabled,
+                shape = style.actionShape,
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = if (index == 0) style.actionSurface else Color.Transparent,
+                    contentColor = if (index == 0) style.onActionSurface else style.content
+                ),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+            ) {
+                Icon(action.icon, null, Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(action.label, style = MaterialTheme.typography.labelMedium)
+            }
+        }
+        if (inlineCount < availableActions.size) {
+            SelectionDockOverflow(availableActions.drop(inlineCount), enabled, style)
+        }
+    }
+}
+
+@Composable
+private fun SelectionDockOverflow(actions: List<SelectionDockAction>, enabled: Boolean, style: SelectionDockStyle) {
+    val strings = LocalLevyraStrings.current
+    val haptics = LocalLevyraHaptics.current
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        IconButton(
+            onClick = { expanded = true },
+            enabled = enabled,
+            modifier = Modifier.size(48.dp)
+        ) { Icon(Icons.Rounded.MoreHoriz, strings.more) }
+        DropdownMenu(
+            expanded = expanded && enabled,
+            onDismissRequest = { expanded = false },
+            containerColor = style.surface,
+            shape = style.shape
+        ) {
+            actions.forEach { action ->
+                DropdownMenuItem(
+                    text = { Text(action.label, color = style.content) },
+                    leadingIcon = { Icon(action.icon, null, tint = style.content) },
+                    onClick = {
+                        expanded = false
                         haptics.perform(LevyraHapticAction.Confirm)
-                        if (allSelected) state.exit() else state.selectAll(selectableIds)
-                    }
-                    if (readableWidth >= 280f) {
-                        TextButton(
-                            onClick = selectAll,
-                            enabled = state.isActive && selectableIds.isNotEmpty(),
-                            colors = ButtonDefaults.textButtonColors(contentColor = style.accent),
-                            modifier = Modifier.widthIn(max = maxWidth / 2).heightIn(min = 48.dp).semantics { selected = allSelected }
-                        ) {
-                            Icon(if (allSelected) Icons.Rounded.Check else Icons.Rounded.SelectAll, null, Modifier.size(20.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text(strings.selectAll, style = MaterialTheme.typography.labelMedium)
-                        }
-                    } else {
-                        IconButton(
-                            onClick = selectAll,
-                            enabled = state.isActive && selectableIds.isNotEmpty(),
-                            colors = IconButtonDefaults.iconButtonColors(contentColor = style.accent),
-                            modifier = Modifier.size(48.dp).semantics { selected = allSelected }
-                        ) {
-                            Icon(if (allSelected) Icons.Rounded.Check else Icons.Rounded.SelectAll, strings.selectAll)
-                        }
-                    }
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    availableActions.take(inlineCount).forEachIndexed { index, action ->
-                        FilledTonalButton(
-                            onClick = {
-                                haptics.perform(LevyraHapticAction.Confirm)
-                                action.invoke()
-                            },
-                            enabled = state.isActive,
-                            shape = style.actionShape,
-                            colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = if (index == 0) style.actionSurface else Color.Transparent,
-                                contentColor = if (index == 0) style.onActionSurface else style.content
-                            ),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                            modifier = Modifier.weight(1f).heightIn(min = 48.dp)
-                        ) {
-                            Icon(action.icon, null, Modifier.size(20.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text(action.label, style = MaterialTheme.typography.labelMedium)
-                        }
-                    }
-                    if (inlineCount < availableActions.size) {
-                        var expanded by remember { mutableStateOf(false) }
-                        Box {
-                            IconButton(
-                                onClick = { expanded = true },
-                                enabled = state.isActive,
-                                modifier = Modifier.size(48.dp)
-                            ) { Icon(Icons.Rounded.MoreHoriz, strings.more) }
-                            DropdownMenu(
-                                expanded = expanded && state.isActive,
-                                onDismissRequest = { expanded = false },
-                                containerColor = style.surface,
-                                shape = style.shape
-                            ) {
-                                availableActions.drop(inlineCount).forEach { action ->
-                                    DropdownMenuItem(
-                                        text = { Text(action.label, color = style.content) },
-                                        leadingIcon = { Icon(action.icon, null, tint = style.content) },
-                                        onClick = {
-                                            expanded = false
-                                            haptics.perform(LevyraHapticAction.Confirm)
-                                            action.invoke()
-                                        },
-                                        modifier = Modifier.heightIn(min = 48.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
+                        action.invoke()
+                    },
+                    modifier = Modifier.heightIn(min = 48.dp)
+                )
             }
         }
     }
