@@ -60,7 +60,7 @@ Play streamed music and your own files in the same app, save tracks for offline 
 ---
 
 > [!IMPORTANT]
-> **Legal & responsible use · No piracy.** Levyra is independent open-source client software and does not host or distribute third-party music. It is built for lawful use and is not intended or promoted for copyright infringement, piracy, or unauthorized copying. Use Levyra only with media you are allowed to access or save, and follow the terms of any third-party service you use.
+> **Legal & responsible use · No piracy.** Levyra is independent open-source client software. It does not operate a music-hosting service or claim ownership of third-party catalogs. It is built for lawful use and is not intended or promoted for copyright infringement, piracy, or unauthorized copying. Use Levyra only with media you are allowed to access or save, and follow the terms of any third-party service you use.
 >
 > For details about third-party services, lawful use, downloads, and user responsibilities, please review the complete [Legal Notice](docs/legal/LEGAL.md). It applies to Levyra alongside this README.
 >
@@ -88,7 +88,9 @@ When high-quality audio is enabled, Levyra can use JioSaavn as another source fo
 
 Before switching sources, Levyra checks that it found the right recording and that the stream matches the quality it claims to have. It can try the available 320, 160 and 96 kbps versions. If a stream is advertised as 320 kbps but measures below that range, Levyra does not show it as 320 kbps.
 
-Levyra can also play FLAC. That part is still experimental, so I can't promise yet how stable it will be in everyday use.
+With FLAC selected, Levyra tries TIDAL first. Monochrome and Arcod are fallback sources. Levyra checks the recording match and reads the audio headers to verify the format, bit depth and sample rate. If no verified lossless match is available, the existing audio fallbacks remain available. FLAC is still experimental, and availability depends on the track, region and provider.
+
+TIDAL account access and subscriptions remain subject to TIDAL's terms. Levyra does not create or sell TIDAL accounts, and a token shared online does not grant permission to use the account behind it. See [FLAC sources and account access](docs/legal/LEGAL.md#flac-sources-and-third-party-account-access).
 
 The JioSaavn match uses more than the song title. Levyra also checks performers and artist roles, album and release details, duration, explicit status, language, featured artists and version markers. When needed, it compares a search result with JioSaavn's track details so it can tell an original recording from a compilation, reissue or alternate version.
 
@@ -219,7 +221,7 @@ Levyra builds on ideas and work from several open-source projects:
 - [zemer-cipher](https://github.com/ZemerTeam/zemer-cipher): open-source work used for YouTube cipher deobfuscation and PoToken generation.
 - [LRCLIB](https://lrclib.net/): provides the synchronized lyrics database and API.
 
-I'd also like to thank [Monochrome](https://tracks.monochrome.st) and [Arcod](https://arcod.xyz) for the FLAC streams Levyra can use.
+For FLAC playback, Levyra tries [TIDAL](https://tidal.com/) first. Thanks also to [Monochrome](https://tracks.monochrome.st) and [Arcod](https://arcod.xyz), which remain available as fallback sources. These references do not imply a partnership or endorsement.
 
 Previous Levyra app logo designed by [@gauravbhindwar](https://github.com/gauravbhindwar) in [#525](https://github.com/LUC4N3X/Levyra-deepsound/issues/525). The current logo and visual identity are by [@LUC4N3X](https://github.com/LUC4N3X).
 
@@ -295,7 +297,7 @@ Contributions and bug reports are welcome. Technical documentation and architect
 
 <code>NO PIRACY</code> &nbsp;·&nbsp; <code>NO CONTENT HOSTING</code> &nbsp;·&nbsp; <code>THIRD-PARTY RIGHTS RESPECTED</code>
 
-<sub>Levyra is an independent open-source music player built for lawful use, research, and interoperability. It does not own, host, or distribute third-party music catalogs.</sub>
+<sub>Levyra is an independent open-source music player built for lawful use, research, and interoperability. It does not operate a music-hosting service or claim ownership of third-party catalogs.</sub>
 
 </div>
 
@@ -304,6 +306,12 @@ Contributions and bug reports are welcome. Technical documentation and architect
 Levyra is client-side software that runs on your device. It does not own or host music catalogs, artwork, lyrics, or video files. When you stream or search, Levyra connects to the external services needed for that feature. Those services can change, rate-limit, or restrict access at any time.
 
 If there is a problem with media hosted by another service, contact that service or the relevant rights holder. If the issue is with something distributed as part of Levyra itself, use the GitHub issue tracker.
+
+#### - FLAC sources and account access
+
+TIDAL is the preferred FLAC source. Monochrome and Arcod are fallbacks. Levyra is not affiliated with these services and does not create or sell TIDAL accounts or subscriptions. Any accounts associated with third-party session credentials remain external to the project; Levyra does not claim ownership of them or grant rights to use them.
+
+Account details or tokens shared on the web remain subject to the account holder's rights, the service's terms and applicable law. Their public availability, or inclusion in a software build, does not establish permission to use or redistribute them. This notice does not grant that permission or remove any legal obligations of project maintainers or users.
 
 #### - Lawful use and user responsibility
 
