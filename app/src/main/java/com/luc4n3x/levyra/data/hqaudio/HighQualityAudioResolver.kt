@@ -239,6 +239,18 @@ class HighQualityAudioResolver(
         query: AlternativeTrackQuery,
         active: List<HighQualityProviderLane>
     ): HighQualityResolution = coroutineScope {
+        val preferred = active.firstOrNull { it.provider.id == "tidal" && it.provider.lossless }
+        if (preferred != null) {
+            val others = active.filter { it !== preferred }
+            val fallback = if (others.isNotEmpty()) async { resolveByPriority(identityKey, query, others) } else null
+            try {
+                val tidal = resolveLane(preferred, identityKey, query)
+                return@coroutineScope if (tidal is HighQualityResolution.Selected && tidal.stream.tier.lossless) tidal
+                    else fallback?.await() ?: tidal
+            } finally {
+                fallback?.cancel()
+            }
+        }
         val results = Channel<Pair<Boolean, HighQualityResolution>>(active.size)
         val attempts = active.map { lane -> async { results.send(lane.provider.lossless to resolveLane(lane, identityKey, query)) } }
         val fallbacks = ArrayList<HighQualityResolution.Fallback>(active.size)

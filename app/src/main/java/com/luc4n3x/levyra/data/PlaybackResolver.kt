@@ -16,6 +16,7 @@ import com.luc4n3x.levyra.data.network.YoutubeRegionProfile
 import com.luc4n3x.levyra.data.network.YoutubeStreamClientIdentity
 import com.luc4n3x.levyra.data.network.YoutubeStreamClientIdentityRegistry
 import com.luc4n3x.levyra.data.hqaudio.HighQualityAudioProvider
+import com.luc4n3x.levyra.data.hqaudio.tidal.TidalAudioProvider
 import com.luc4n3x.levyra.data.hqaudio.HighQualityAudioResolver
 import com.luc4n3x.levyra.data.hqaudio.HighQualityMappingStore
 import com.luc4n3x.levyra.data.hqaudio.HighQualityBackgroundLookup
@@ -406,7 +407,9 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private val highQualityDownloadDelegate = lazy {
         HighQualityPlaybackCoordinator(HighQualityAudioResolver(
-            providers = highQualityProviders(OkHttpProviderExchange(HighQualityProviderHttpClient::downloadClient)).filter { it.lossless },
+            providers = highQualityProviders(OkHttpProviderExchange(HighQualityProviderHttpClient::downloadClient)).filter {
+                it.lossless && it.id != TidalAudioProvider.PROVIDER_ID
+            },
             mappingStore = HighQualityMappingStore(SharedPreferencesMappingStorage(context)),
             scope = resolveScope,
             lookupBudgetMs = HighQualityPlaybackCoordinator.DOWNLOAD_LOOKUP_BUDGET_MS,
@@ -417,6 +420,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private fun highQualityProviders(exchange: ProviderHttpExchange): List<HighQualityAudioProvider> = buildList {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            add(TidalAudioProvider(java.io.File(context.cacheDir, "tidal-manifests")))
             add(MonochromeAudioProvider(exchange))
             add(ArcodAudioProvider(exchange))
         }

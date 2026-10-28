@@ -79,6 +79,30 @@ class HighQualityLosslessPriorityTest {
     }
 
     @Test
+    fun tidalWinsEvenWhenMonochromeIsReadyFirst() {
+        val tidal = losslessProvider("tidal") { delay(120L); ProviderStreamOutcome.Resolved(flacStream(it)) }
+        val monochrome = losslessProvider("monochrome") { ProviderStreamOutcome.Resolved(flacStream(it)) }
+        val result = resolver(HighQualityAudioMode.PREFER_LOSSLESS, tidal, monochrome, jioSaavn()).resolveNow()
+        assertEquals("tidal", (result as HighQualityResolution.Selected).stream.providerId)
+    }
+
+    @Test
+    fun failedTidalKeepsMonochromeFallback() {
+        val tidal = losslessProvider("tidal") { ProviderStreamOutcome.Failed(ProviderFailure.FORBIDDEN) }
+        val monochrome = losslessProvider("monochrome") { ProviderStreamOutcome.Resolved(flacStream(it)) }
+        val result = resolver(HighQualityAudioMode.PREFER_LOSSLESS, tidal, monochrome, jioSaavn()).resolveNow()
+        assertEquals("monochrome", (result as HighQualityResolution.Selected).stream.providerId)
+    }
+
+    @Test
+    fun stalledTidalIsBoundedAndFallsBack() {
+        val tidal = losslessProvider("tidal") { awaitCancellation() }
+        val monochrome = losslessProvider("monochrome") { ProviderStreamOutcome.Resolved(flacStream(it)) }
+        val result = resolver(HighQualityAudioMode.PREFER_LOSSLESS, tidal, monochrome, losslessLaneBudgetMs = 150L).resolveNow()
+        assertEquals("monochrome", (result as HighQualityResolution.Selected).stream.providerId)
+    }
+
+    @Test
     fun readySecondLosslessSourceDoesNotWaitForAStalledFirstSource() = runBlocking {
         val monochrome = losslessProvider("monochrome") { awaitCancellation() }
         val arcod = losslessProvider("arcod") { ProviderStreamOutcome.Resolved(flacStream(it)) }

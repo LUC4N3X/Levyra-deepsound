@@ -88,6 +88,24 @@ class HighQualityPlaybackCoordinatorTest {
     }
 
     @Test
+    fun tidalManifestDoesNotMakeLosslessDownloadLookLikeALocalTrack() = runBlocking {
+        val flac = exactProvider().apply {
+            streamOutcome = { ProviderStreamOutcome.Resolved(resolvedStream(it).copy(
+                tier = AudioQualityTier.LOSSLESS, mimeType = "audio/flac", codec = "flac", container = "flac"
+            )) }
+        }
+        val coordinator = coordinator(flac, HighQualityAudioMode.PREFER_LOSSLESS)
+        val resolved = coordinator.resolveLosslessDownload(playbackTrack(), "Auto", provenance)!!
+        val tidal = resolved.copy(
+            streamUrl = "file:///cache/tidal-manifests/test.mpd",
+            playbackManifest = resolved.playbackManifest!!.copy(
+                alternativeSource = resolved.playbackManifest!!.alternativeSource!!.copy(providerId = "tidal")
+            )
+        )
+        assertNotNull(coordinator.resolveLosslessDownload(tidal, "Auto", provenance))
+    }
+
+    @Test
     fun verifiedJioSaavnStreamStartsWithoutWaitingForYoutube() {
         var youtubeRequested = false
         val result = coordinator(exactProvider()).play {
