@@ -40,7 +40,8 @@ data class LevyraAutomationSettings(
     val skipUnrecoverableErrors: Boolean = false,
     val sleepFadeOutEnabled: Boolean = false,
     val sleepFadeOutSeconds: Int = DEFAULT_FADE_SECONDS,
-    val bedtime: LevyraBedtimeSchedule = LevyraBedtimeSchedule()
+    val bedtime: LevyraBedtimeSchedule = LevyraBedtimeSchedule(),
+    val freshDiscovery: FreshDiscoverySettings = FreshDiscoverySettings()
 ) {
     fun normalized(): LevyraAutomationSettings = copy(
         sleepFadeOutSeconds = sleepFadeOutSeconds.coerceIn(MIN_FADE_SECONDS, MAX_FADE_SECONDS),

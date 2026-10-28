@@ -1367,8 +1367,6 @@ private fun AudioPanelHeader(
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     lineHeight = 16.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -1682,8 +1680,6 @@ private fun AudioEqualizerSwitchRow(
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
                 lineHeight = 18.sp,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
             )
         }
         AudioExpressiveSwitch(checked = checked, onCheckedChange = null)
@@ -1702,8 +1698,6 @@ private fun AudioCardHeader(title: String, trailing: String) {
             color = LevyraText,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
         )
         if (trailing.isNotBlank()) {
             Text(
@@ -1774,8 +1768,6 @@ private fun AudioToggleRow(
                         fontSize = 13.sp,
                         lineHeight = 18.sp,
                         fontWeight = FontWeight.Medium,
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }

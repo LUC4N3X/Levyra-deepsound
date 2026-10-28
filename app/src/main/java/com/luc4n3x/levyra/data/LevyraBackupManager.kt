@@ -42,6 +42,8 @@ import com.luc4n3x.levyra.domain.ReplayGainMode
 import com.luc4n3x.levyra.domain.PlaybackBufferMode
 import com.luc4n3x.levyra.domain.PlaybackBufferSettings
 import com.luc4n3x.levyra.domain.LevyraBackupFrequency
+import com.luc4n3x.levyra.domain.FreshDiscoverySettings
+import com.luc4n3x.levyra.domain.FreshDiscoveryWindow
 import com.luc4n3x.levyra.domain.LevyraAutomationSettings
 import com.luc4n3x.levyra.domain.LevyraBackupSettings
 import com.luc4n3x.levyra.domain.LevyraBedtimeSchedule
@@ -1137,6 +1139,9 @@ class LevyraBackupManager(private val context: Context) {
             .put("bedtimeStartMinuteOfDay", normalized.bedtime.startMinuteOfDay)
             .put("bedtimeDurationMinutes", normalized.bedtime.durationMinutes)
             .put("bedtimeDays", JSONArray().apply { normalized.bedtime.days.forEach { put(it.name) } })
+            .put("freshDiscoveryEnabled", normalized.freshDiscovery.enabled)
+            .put("freshDiscoveryWindow", normalized.freshDiscovery.window.id)
+            .put("freshDiscoveryAllowFavorites", normalized.freshDiscovery.allowFavorites)
     }
 
     private fun parseAutomationSettings(json: JSONObject?): LevyraAutomationSettings {
@@ -1164,6 +1169,11 @@ class LevyraBackupManager(private val context: Context) {
                 startMinuteOfDay = json.optInt("bedtimeStartMinuteOfDay", defaults.bedtime.startMinuteOfDay),
                 durationMinutes = json.optInt("bedtimeDurationMinutes", defaults.bedtime.durationMinutes),
                 days = days
+            ),
+            freshDiscovery = FreshDiscoverySettings(
+                enabled = json.optBoolean("freshDiscoveryEnabled", defaults.freshDiscovery.enabled),
+                window = FreshDiscoveryWindow.from(json.optString("freshDiscoveryWindow", defaults.freshDiscovery.window.id)),
+                allowFavorites = json.optBoolean("freshDiscoveryAllowFavorites", defaults.freshDiscovery.allowFavorites)
             )
         ).normalized()
     }
