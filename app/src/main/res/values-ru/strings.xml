@@ -24,7 +24,6 @@
     <string name="car_connecting_player">Подключение к плееру</string>
     <string name="car_now_playing">Сейчас играет</string>
     <string name="car_queue">Очередь</string>
-
     <!-- Android Auto browse tree -->
     <string name="car_root_subtitle">Музыка, оптимизированная для Android Auto</string>
     <string name="car_home_subtitle">Быстрые миксы, офлайн и чарты</string>
@@ -55,13 +54,12 @@
     <string name="car_album_unavailable">Альбом недоступен</string>
     <string name="car_artist_unavailable">Исполнитель недоступен</string>
     <string name="car_item_unavailable">Элемент недоступен</string>
-
     <!-- Android Auto dynamic strings -->
     <plurals name="car_tracks_count">
         <item quantity="one">%1$d трек</item>
         <item quantity="few">%1$d трека</item>
         <item quantity="many">%1$d треков</item>
-        <item quantity="other">%1$d трека</item>
+        <item quantity="other">%1$d треков</item>
     </plurals>
     <string name="car_artist_folder_subtitle">Треки, избранное и предложения</string>
     <string name="notification_favorite_add">Добавить в избранное</string>
@@ -85,4 +83,19 @@
     <string name="widget_studio_immersive_desc">Обложка, очередь, тексты и другое</string>
     <string name="widget_studio_vinyl_desc">Плеер с обложкой в стиле винила</string>
     <string name="widget_studio_quick_desc">Flow, избранное, загрузки и другое</string>
+    <string name="widget_studio_quick_name" translatable="false"></string>
+    <string name="widget_studio_immersive_name" translatable="false"></string>
+    <string name="widget_studio_expressive_name" translatable="false"></string>
+    <string name="widget_studio_slim_name" translatable="false"></string>
+    <string name="widget_studio_hero_name" translatable="false"></string>
+    <string name="recognition_notification_channel" translatable="false"></string>
+    <string name="ambient_dream_label" translatable="false"></string>
+    <string name="car_root_title" translatable="false"></string>
+    <string name="car_flow_title" translatable="false"></string>
+    <string name="widget_studio_vinyl_name" translatable="false"></string>
+    <string name="car_home_flow_title" translatable="false"></string>
+    <string name="widget_idle_title" translatable="false"></string>
+    <string name="widget_studio_mini_name" translatable="false"></string>
+    <string name="tile_ambient" translatable="false"></string>
+    <string name="app_name" translatable="false"></string>
 </resources>
