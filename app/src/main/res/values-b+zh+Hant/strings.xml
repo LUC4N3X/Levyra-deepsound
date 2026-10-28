@@ -24,7 +24,6 @@
     <string name="car_connecting_player">正在連線至播放器</string>
     <string name="car_now_playing">現正播放</string>
     <string name="car_queue">播放佇列</string>
-
     <!-- Android Auto browse tree -->
     <string name="car_root_subtitle">針對 Android Auto 優化的音樂</string>
     <string name="car_home_subtitle">快速混音、離線與排行榜</string>
@@ -55,7 +54,6 @@
     <string name="car_album_unavailable">專輯不可用</string>
     <string name="car_artist_unavailable">歌手不可用</string>
     <string name="car_item_unavailable">項目不可用</string>
-
     <!-- Android Auto dynamic strings -->
     <plurals name="car_tracks_count">
         <item quantity="other">%1$d 首歌曲</item>
@@ -82,4 +80,19 @@
     <string name="widget_studio_immersive_desc">封面、佇列、歌詞等</string>
     <string name="widget_studio_vinyl_desc">黑膠風格封面播放器</string>
     <string name="widget_studio_quick_desc">Flow、最愛、下載等</string>
+    <string name="widget_studio_quick_name" translatable="false"></string>
+    <string name="widget_studio_immersive_name" translatable="false"></string>
+    <string name="widget_studio_expressive_name" translatable="false"></string>
+    <string name="widget_studio_slim_name" translatable="false"></string>
+    <string name="widget_studio_hero_name" translatable="false"></string>
+    <string name="recognition_notification_channel" translatable="false"></string>
+    <string name="ambient_dream_label" translatable="false"></string>
+    <string name="car_root_title" translatable="false"></string>
+    <string name="car_flow_title" translatable="false"></string>
+    <string name="widget_studio_vinyl_name" translatable="false"></string>
+    <string name="car_home_flow_title" translatable="false"></string>
+    <string name="widget_idle_title" translatable="false"></string>
+    <string name="widget_studio_mini_name" translatable="false"></string>
+    <string name="tile_ambient" translatable="false"></string>
+    <string name="app_name" translatable="false"></string>
 </resources>
