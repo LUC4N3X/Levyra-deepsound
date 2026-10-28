@@ -849,7 +849,7 @@ README_CARD_SPECS = [
         "24_signature_looks",
         "Signature Looks",
         "From retro hi-fi warmth to modern tactile glass",
-        "Screenshot_20261024_201753_Levyra.jpg",
+        "Screenshot_20261028_212406_Levyra.jpg",
         (250, 245, 255),
         (243, 232, 255),
         (168, 85, 247),
