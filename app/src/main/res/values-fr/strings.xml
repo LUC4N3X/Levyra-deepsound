@@ -59,6 +59,7 @@
     <!-- Android Auto dynamic strings -->
     <plurals name="car_tracks_count">
         <item quantity="one">%1$d morceau</item>
+        <item quantity="many">%1$d morceaux</item>
         <item quantity="other">%1$d morceaux</item>
     </plurals>
     <string name="car_artist_folder_subtitle">Morceaux, favoris et suggestions</string>
