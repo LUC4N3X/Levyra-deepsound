@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.ui.components
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
@@ -28,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -52,12 +54,14 @@ import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
 import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
 import com.luc4n3x.levyra.ui.theme.LevyraMotion
+import com.luc4n3x.levyra.ui.theme.LevyraSpring
 import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
+import kotlin.math.ceil
+import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlin.math.ceil
-import kotlin.math.roundToInt
+import kotlinx.coroutines.flow.filter
 
 private val ScrollbarHitWidth = 32.dp
 private val ScrollbarEndInset = 4.dp
@@ -186,42 +190,79 @@ private fun ScrollbarHost(
     modifier: Modifier,
     label: ((Any) -> String?)?
 ) {
-    val animated = LocalAnimationsEnabled.current
     val haptics = LocalLevyraHaptics.current
     val drag = remember(source) { ScrollbarDragState(source) }
-    val worthShowing by remember(source) {
-        derivedStateOf { levyraScrollbarWorthShowing(source.totalItems, source.visibleItems) }
-    }
-    val listProgress by remember(source) { derivedStateOf { source.progress() } }
-    val shown = rememberScrollbarShown(worthShowing && (source.scrolling || drag.dragging))
-    LaunchedEffect(source) {
-        snapshotFlow { drag.pendingIndex }
-            .distinctUntilChanged()
-            .collectLatest { index -> if (index >= 0) source.scrollToIndex(index) }
-    }
-    val reveal by animateFloatAsState(
-        targetValue = if (shown && worthShowing) 1f else 0f,
-        animationSpec = if (animated) LevyraMotion.settle.spec() else snap(),
-        label = "scrollbar-reveal"
-    )
-    val thumbWidth by animateDpAsState(
-        targetValue = if (drag.dragging) ScrollbarGrabWidth else ScrollbarRestWidth,
-        animationSpec = if (animated) LevyraMotion.expressive.spec() else snap(),
-        label = "scrollbar-width"
-    )
+    val visibility = rememberScrollbarVisibility(source, drag)
+    ScrollbarScrollSync(source, drag)
+    val reveal by animateScrollbarFloat(visibility.interactive, LevyraMotion.settle, "scrollbar-reveal")
+    val thumbWidth by animateScrollbarWidth(drag.dragging)
     val glyph = rememberScrollbarGlyph(source, label, drag.dragging)
-    if (reveal <= 0f && !worthShowing) return
+    if (!visibility.composed(reveal)) return
     ScrollbarLayout(
         drag = drag,
         reveal = { reveal },
-        interactive = shown && worthShowing,
+        interactive = visibility.interactive,
         thumbWidth = thumbWidth,
         glyph = glyph,
-        progress = { if (drag.dragging) drag.progress else listProgress },
+        progress = { drag.displayed(visibility.listProgress) },
         onGrab = { haptics.perform(LevyraHapticAction.SeekSnap) },
         modifier = modifier
     )
 }
+
+@Stable
+private class ScrollbarVisibility(
+    worthShowing: State<Boolean>,
+    shown: Boolean,
+    listProgress: State<Float>
+) {
+    private val worth by worthShowing
+    val interactive: Boolean = shown && worth
+    val listProgress: Float by listProgress
+
+    fun composed(reveal: Float): Boolean = reveal > 0f || worth
+}
+
+@Composable
+private fun rememberScrollbarVisibility(source: ScrollbarSource, drag: ScrollbarDragState): ScrollbarVisibility {
+    val worthShowing = remember(source) {
+        derivedStateOf { levyraScrollbarWorthShowing(source.totalItems, source.visibleItems) }
+    }
+    val listProgress = remember(source) { derivedStateOf { source.progress() } }
+    val active = worthShowing.value && (source.scrolling || drag.dragging)
+    val shown = rememberScrollbarShown(active)
+    return ScrollbarVisibility(worthShowing, shown, listProgress)
+}
+
+@Composable
+private fun ScrollbarScrollSync(source: ScrollbarSource, drag: ScrollbarDragState) {
+    LaunchedEffect(source, drag) {
+        snapshotFlow { drag.pendingIndex }
+            .distinctUntilChanged()
+            .filter { index -> index >= 0 }
+            .collectLatest { index -> source.scrollToIndex(index) }
+    }
+}
+
+@Composable
+private fun animateScrollbarFloat(visible: Boolean, spring: LevyraSpring, label: String): State<Float> =
+    animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = scrollbarSpec(spring),
+        label = label
+    )
+
+@Composable
+private fun animateScrollbarWidth(dragging: Boolean): State<Dp> =
+    animateDpAsState(
+        targetValue = if (dragging) ScrollbarGrabWidth else ScrollbarRestWidth,
+        animationSpec = scrollbarSpec(LevyraMotion.expressive),
+        label = "scrollbar-width"
+    )
+
+@Composable
+private fun <T> scrollbarSpec(spring: LevyraSpring): AnimationSpec<T> =
+    if (LocalAnimationsEnabled.current) spring.spec() else snap()
 
 @Composable
 private fun ScrollbarLayout(
@@ -309,6 +350,8 @@ private class ScrollbarDragState(private val source: ScrollbarSource) {
         dragging = false
         pendingIndex = -1
     }
+
+    fun displayed(listProgress: Float): Float = if (dragging) progress else listProgress
 }
 
 @Composable
@@ -408,11 +451,7 @@ private fun ScrollbarLabel(
     offsetY: () -> Float,
     modifier: Modifier = Modifier
 ) {
-    val revealState = animateFloatAsState(
-        targetValue = if (glyph.visible) 1f else 0f,
-        animationSpec = if (animated) LevyraMotion.expressive.spec() else snap(),
-        label = "scrollbar-label"
-    )
+    val revealState = animateScrollbarFloat(glyph.visible, LevyraMotion.expressive, "scrollbar-label")
     if (revealState.value <= 0f || glyph.text.isEmpty()) return
     val reveal = { revealState.value }
     val text = glyph.text
