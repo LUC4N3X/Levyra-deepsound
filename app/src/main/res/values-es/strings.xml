@@ -24,7 +24,6 @@
     <string name="car_connecting_player">Conectando con el reproductor</string>
     <string name="car_now_playing">En reproducción</string>
     <string name="car_queue">Cola</string>
-
     <!-- Android Auto browse tree -->
     <string name="car_root_subtitle">Música optimizada para Android Auto</string>
     <string name="car_home_subtitle">Mixes rápidos, sin conexión y listas</string>
@@ -55,7 +54,6 @@
     <string name="car_album_unavailable">Álbum no disponible</string>
     <string name="car_artist_unavailable">Artista no disponible</string>
     <string name="car_item_unavailable">Elemento no disponible</string>
-
     <!-- Android Auto dynamic strings -->
     <plurals name="car_tracks_count">
         <item quantity="one">%1$d canción</item>
@@ -83,4 +81,19 @@
     <string name="widget_studio_immersive_desc">Portada, cola, letras y más</string>
     <string name="widget_studio_vinyl_desc">Reproductor con portada estilo vinilo</string>
     <string name="widget_studio_quick_desc">Flow, favoritos, descargas y más</string>
+    <string name="widget_studio_quick_name" translatable="false"></string>
+    <string name="widget_studio_immersive_name" translatable="false"></string>
+    <string name="widget_studio_expressive_name" translatable="false"></string>
+    <string name="widget_studio_slim_name" translatable="false"></string>
+    <string name="widget_studio_hero_name" translatable="false"></string>
+    <string name="recognition_notification_channel" translatable="false"></string>
+    <string name="ambient_dream_label" translatable="false"></string>
+    <string name="car_root_title" translatable="false"></string>
+    <string name="car_flow_title" translatable="false"></string>
+    <string name="widget_studio_vinyl_name" translatable="false"></string>
+    <string name="car_home_flow_title" translatable="false"></string>
+    <string name="widget_idle_title" translatable="false"></string>
+    <string name="widget_studio_mini_name" translatable="false"></string>
+    <string name="tile_ambient" translatable="false"></string>
+    <string name="app_name" translatable="false"></string>
 </resources>
