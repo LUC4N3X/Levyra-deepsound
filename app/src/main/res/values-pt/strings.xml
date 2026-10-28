@@ -24,7 +24,6 @@
     <string name="car_connecting_player">A ligar ao leitor</string>
     <string name="car_now_playing">A reproduzir</string>
     <string name="car_queue">Fila</string>
-
     <!-- Android Auto browse tree -->
     <string name="car_root_subtitle">Música otimizada para Android Auto</string>
     <string name="car_home_subtitle">Mixes rápidos, offline e paradas</string>
@@ -55,7 +54,6 @@
     <string name="car_album_unavailable">Álbum indisponível</string>
     <string name="car_artist_unavailable">Artista indisponível</string>
     <string name="car_item_unavailable">Item indisponível</string>
-
     <!-- Android Auto dynamic strings -->
     <plurals name="car_tracks_count">
         <item quantity="one">%1$d música</item>
@@ -83,4 +81,19 @@
     <string name="widget_studio_immersive_desc">Capa, fila, letras e mais</string>
     <string name="widget_studio_vinyl_desc">Player com capa estilo vinil</string>
     <string name="widget_studio_quick_desc">Flow, favoritos, downloads e mais</string>
+    <string name="widget_studio_quick_name" translatable="false"></string>
+    <string name="widget_studio_immersive_name" translatable="false"></string>
+    <string name="widget_studio_expressive_name" translatable="false"></string>
+    <string name="widget_studio_slim_name" translatable="false"></string>
+    <string name="widget_studio_hero_name" translatable="false"></string>
+    <string name="recognition_notification_channel" translatable="false"></string>
+    <string name="ambient_dream_label" translatable="false"></string>
+    <string name="car_root_title" translatable="false"></string>
+    <string name="car_flow_title" translatable="false"></string>
+    <string name="widget_studio_vinyl_name" translatable="false"></string>
+    <string name="car_home_flow_title" translatable="false"></string>
+    <string name="widget_idle_title" translatable="false"></string>
+    <string name="widget_studio_mini_name" translatable="false"></string>
+    <string name="tile_ambient" translatable="false"></string>
+    <string name="app_name" translatable="false"></string>
 </resources>
