@@ -351,6 +351,8 @@ Those capabilities do not grant permission to access a service, region, catalog 
 
 Levyra is released under the **[GNU GPL v3.0](LICENSE)** and is provided "as is", without warranty of any kind, to the fullest extent permitted by applicable law.
 
+To the fullest extent permitted by applicable law, Levyra's authors, maintainers and contributors disclaim liability for losses arising from use, misuse or inability to use the software, including third-party account restrictions and service interruptions. This does not exclude liability that cannot lawfully be excluded. See [Warranty and liability](docs/legal/LEGAL.md#9-warranty-and-liability).
+
 The GNU GPL v3.0 covers Levyra's source code. It does not grant rights to third-party content, trademarks, or service endpoints. Third-party services can change or disappear, so Levyra cannot guarantee that every stream, metadata source, artwork provider, lyrics source, or API will keep working.
 
 <div align="center">
