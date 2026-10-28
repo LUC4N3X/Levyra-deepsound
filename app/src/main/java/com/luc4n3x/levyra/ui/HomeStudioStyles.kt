@@ -3348,7 +3348,7 @@ private fun MxBleedHero(
     val secondarySeed = if (hero.track.accentEnd != 0) Color(hero.track.accentEnd) else scheme.tertiary
     val playShape = rememberLevyraPlayMorphShape(
         playing = playing,
-        animated = hero.animationsEnabled,
+        animated = hero.playButtonAnimationsEnabled,
         spinWhilePlaying = !hero.isResolving
     )
     val spin = rememberSpotlightMotion(hero.animationsEnabled && playing, 0f, 360f, 46_000, reverse = false)
@@ -3787,6 +3787,7 @@ internal class StudioHero(
     val isPlaying: Boolean,
     val isResolving: Boolean,
     val animationsEnabled: Boolean,
+    val playButtonAnimationsEnabled: Boolean = false,
     val onOpen: () -> Unit
 )
 
