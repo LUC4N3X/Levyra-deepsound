@@ -88,7 +88,7 @@ import com.luc4n3x.levyra.feature.settings.SettingsSearchIndex
 import com.luc4n3x.levyra.feature.settings.SettingsSearchResult
 import com.luc4n3x.levyra.feature.cast.CastRouteButton
 import com.luc4n3x.levyra.ui.components.PremiumSeekbar
-import com.luc4n3x.levyra.ui.selection.TrackSelectionActions
+import com.luc4n3x.levyra.ui.selection.trackSelectionActions
 import com.luc4n3x.levyra.ui.selection.TrackSelectionBar
 import com.luc4n3x.levyra.ui.selection.listBottomPadding
 import com.luc4n3x.levyra.ui.selection.LocalTrackSelectionChromeHeight
@@ -4880,35 +4880,14 @@ private fun AlbumOverlay(
         TrackSelectionBar(
             state = selection,
             allVisibleIds = selectableIds,
-            actions = TrackSelectionActions(
-                onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        onPlayTracksNext(selectedTracks)
-                        selection.exit()
-                    }
-                },
-                onAddToQueue = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        onAddTracksToQueue(selectedTracks)
-                        selection.exit()
-                    }
-                },
-                onAddToPlaylist = selectedTracks
-                    .filter { it.id.isNotBlank() }
-                    .takeIf { it.isNotEmpty() }
-                    ?.let { playlistTracks -> { batchAddTargets = playlistTracks } },
-                onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        onToggleFavorites(selectedTracks)
-                        selection.exit()
-                    }
-                },
-                onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        onExportTracks(selectedTracks)
-                        selection.exit()
-                    }
-                }
+            actions = trackSelectionActions(
+                state = selection,
+                selectedTracks = selectedTracks,
+                onPlayNext = onPlayTracksNext,
+                onAddToQueue = onAddTracksToQueue,
+                onAddToPlaylist = { batchAddTargets = it },
+                onFavorite = onToggleFavorites,
+                onDownload = onExportTracks
             ),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -5666,35 +5645,14 @@ private fun ArtistOverlay(
         TrackSelectionBar(
             state = selection,
             allVisibleIds = selectableIds,
-            actions = TrackSelectionActions(
-                onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        onPlayTracksNext(selectedTracks)
-                        selection.exit()
-                    }
-                },
-                onAddToQueue = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        onAddTracksToQueue(selectedTracks)
-                        selection.exit()
-                    }
-                },
-                onAddToPlaylist = selectedTracks
-                    .filter { it.id.isNotBlank() }
-                    .takeIf { it.isNotEmpty() }
-                    ?.let { playlistTracks -> { batchAddTargets = playlistTracks } },
-                onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        onToggleFavorites(selectedTracks)
-                        selection.exit()
-                    }
-                },
-                onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        onExportTracks(selectedTracks)
-                        selection.exit()
-                    }
-                }
+            actions = trackSelectionActions(
+                state = selection,
+                selectedTracks = selectedTracks,
+                onPlayNext = onPlayTracksNext,
+                onAddToQueue = onAddTracksToQueue,
+                onAddToPlaylist = { batchAddTargets = it },
+                onFavorite = onToggleFavorites,
+                onDownload = onExportTracks
             ),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -16320,35 +16278,14 @@ private fun SearchScreen(
                 state = selection,
                 aboveRootDock = true,
                 allVisibleIds = selectableIds,
-                actions = TrackSelectionActions(
-                    onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                        {
-                            viewModel.playTracksNext(selectedTracks)
-                            selection.exit()
-                        }
-                    },
-                    onAddToQueue = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                        {
-                            viewModel.addTracksToQueue(selectedTracks)
-                            selection.exit()
-                        }
-                    },
-                    onAddToPlaylist = selectedTracks
-                        .filter { it.id.isNotBlank() }
-                        .takeIf { it.isNotEmpty() }
-                        ?.let { playlistTracks -> { batchAddTargets = playlistTracks } },
-                    onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                        {
-                            viewModel.toggleFavorites(selectedTracks)
-                            selection.exit()
-                        }
-                    },
-                    onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                        {
-                            viewModel.exportTracks(selectedTracks, strings.offline)
-                            selection.exit()
-                        }
-                    }
+                actions = trackSelectionActions(
+                    state = selection,
+                    selectedTracks = selectedTracks,
+                    onPlayNext = viewModel::playTracksNext,
+                    onAddToQueue = viewModel::addTracksToQueue,
+                    onAddToPlaylist = { batchAddTargets = it },
+                    onFavorite = viewModel::toggleFavorites,
+                    onDownload = { tracks -> viewModel.exportTracks(tracks, strings.offline) }
                 ),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
