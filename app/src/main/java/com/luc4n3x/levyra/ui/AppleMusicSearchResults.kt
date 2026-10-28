@@ -3,6 +3,13 @@ package com.luc4n3x.levyra.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import com.luc4n3x.levyra.ui.components.levyraPressable
+import com.luc4n3x.levyra.ui.components.LevyraPressScale
+import com.luc4n3x.levyra.ui.selection.trackSelectionKey
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
@@ -257,16 +264,28 @@ private fun AppleSearchResultRow(
     val copy = remember(strings.code) { appleSearchCopy(strings.code) }
     val model = appleResultRowModel(result, copy, songs, videos, actions)
     val track = model.track
+    val selectionActive = track != null && actions.selection?.isActive == true
+    val selected = track != null && actions.selection?.isSelected(trackSelectionKey(track)) == true
     Column(Modifier.fillMaxWidth().appleGutterBleed()) {
         Row(
-            Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = model.onClick)
+            Modifier.fillMaxWidth()
+                .background(if (selected) AppleMusicDesign.placeholder else Color.Transparent)
+                .then(if (selectionActive) Modifier.semantics { this.selected = selected } else Modifier)
+                .levyraPressable(
+                    role = Role.Button,
+                    pressedScale = LevyraPressScale.Row,
+                    onClick = model.onClick,
+                    onLongClick = track?.let { song -> { actions.selection?.start(trackSelectionKey(song)) ?: actions.trackActions(song) } }
+                )
                 .padding(start = AppleResultInset, top = 10.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             AppleResultArtworkBox(model)
             Spacer(Modifier.width(AppleResultTextGap))
             AppleResultTexts(model.title, model.subtitle, track != null && track.id == currentTrackId, Modifier.weight(1f))
-            if (track != null) Box(
+            if (selectionActive) Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                Icon(if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked, null, tint = AppleMusicDesign.accent)
+            } else if (track != null) Box(
                 Modifier.size(width = 44.dp, height = AppleResultArtwork).clickable(role = Role.Button) { actions.trackActions(track) },
                 contentAlignment = Alignment.Center
             ) {

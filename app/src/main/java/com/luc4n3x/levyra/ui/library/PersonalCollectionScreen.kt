@@ -88,8 +88,7 @@ import com.luc4n3x.levyra.ui.i18n.LevyraPersonalCollectionStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.selection.TrackSelectionActions
 import com.luc4n3x.levyra.ui.selection.TrackSelectionBar
-import com.luc4n3x.levyra.ui.selection.TrackSelectionBarListClearance
-import com.luc4n3x.levyra.ui.selection.trackSelectionBarTabClearance
+import com.luc4n3x.levyra.ui.selection.listBottomPadding
 import com.luc4n3x.levyra.ui.selection.TrackSelectionState
 import com.luc4n3x.levyra.ui.selection.rememberTrackSelectionState
 import com.luc4n3x.levyra.ui.selection.resolveSelected
@@ -154,8 +153,7 @@ internal fun PersonalCollectionScreen(
                     start = 16.dp,
                     end = 16.dp,
                     top = 8.dp,
-                    bottom = levyraTabContentBottomPadding(state.currentTrack != null) +
-                        if (selection.isActive) TrackSelectionBarListClearance else 0.dp
+                    bottom = selection.listBottomPadding(levyraTabContentBottomPadding(state.currentTrack != null))
                 ),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -220,7 +218,6 @@ internal fun PersonalCollectionScreen(
                 selection = selection,
                 selectableIds = selectableIds,
                 selectedTracks = selectedTracks,
-                hasCurrentTrack = state.currentTrack != null,
                 onPlayNext = viewModel::playTracksNext,
                 onAddToQueue = viewModel::addTracksToQueue,
                 onAddToPlaylist = { playlistTargets = it },
@@ -530,7 +527,6 @@ private fun BoxScope.PersonalCollectionSelectionBar(
     selection: TrackSelectionState,
     selectableIds: List<String>,
     selectedTracks: List<Track>,
-    hasCurrentTrack: Boolean,
     onPlayNext: (List<Track>) -> Unit,
     onAddToQueue: (List<Track>) -> Unit,
     onAddToPlaylist: (List<Track>) -> Unit,
@@ -543,6 +539,7 @@ private fun BoxScope.PersonalCollectionSelectionBar(
     }
     val hasSelection = selectedTracks.isNotEmpty()
     TrackSelectionBar(
+        aboveRootDock = true,
         state = selection,
         allVisibleIds = selectableIds,
         actions = TrackSelectionActions(
@@ -554,7 +551,7 @@ private fun BoxScope.PersonalCollectionSelectionBar(
         ),
         modifier = Modifier
             .align(Alignment.BottomCenter)
-            .padding(start = 12.dp, end = 12.dp, bottom = trackSelectionBarTabClearance(hasCurrentTrack))
+            .padding(horizontal = 12.dp)
     )
 }
 

@@ -15,6 +15,10 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.RadioButtonUnchecked
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -242,13 +246,17 @@ internal fun YouTubeMusicSongRow(
     compact: Boolean = false,
     leading: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
-    background: Color = Color.Transparent
+    background: Color = Color.Transparent,
+    onLongClick: () -> Unit = onMore,
+    selectionActive: Boolean = false,
+    selected: Boolean = false
 ) {
     val artwork = if (compact) YouTubeMusicDesign.compactArtwork else YouTubeMusicDesign.listArtwork
     Row(
         modifier.fillMaxWidth().height(if (compact) YouTubeMusicDesign.compactRow else YouTubeMusicDesign.listRow)
-            .background(background)
-            .levyraPressable(onClick = onClick, onLongClick = onMore, role = Role.Button, pressedScale = LevyraPressScale.Row)
+            .background(if (selected) YouTubeMusicDesign.surfaceHigh else background)
+            .then(if (selectionActive) Modifier.semantics { this.selected = selected } else Modifier)
+            .levyraPressable(onClick = onClick, onLongClick = onLongClick, role = Role.Button, pressedScale = LevyraPressScale.Row)
             .padding(start = YouTubeMusicDesign.gutter),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -274,7 +282,11 @@ internal fun YouTubeMusicSongRow(
                 )
             }
         }
-        if (trailing != null) {
+        if (selectionActive) {
+            Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                Icon(if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked, null, tint = YouTubeMusicDesign.text)
+            }
+        } else if (trailing != null) {
             trailing()
         } else {
             YouTubeMusicIconAction(Icons.Rounded.MoreVert, explicitLabel, onMore, iconSize = 24.dp)

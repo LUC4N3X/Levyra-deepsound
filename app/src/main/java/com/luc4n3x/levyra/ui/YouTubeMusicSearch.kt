@@ -56,6 +56,8 @@ import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.PlaylistHit
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SearchResults
+import com.luc4n3x.levyra.ui.selection.TrackSelectionState
+import com.luc4n3x.levyra.ui.selection.trackSelectionKey
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
@@ -133,7 +135,8 @@ internal class YouTubeMusicSearchActions(
     val mix: () -> Unit,
     val openPlaylist: (PlaylistHit) -> Unit,
     val openAlbum: (AlbumHit) -> Unit,
-    val trackActions: (Track) -> Unit
+    val trackActions: (Track) -> Unit,
+    val selection: TrackSelectionState? = null
 )
 
 internal fun LazyListScope.youTubeMusicSearchResults(
@@ -214,6 +217,9 @@ private fun YouTubeMusicSearchTopCard(
                 explicitLabel = copy.explicit,
                 onClick = { actions.playSong(tracks, track) },
                 onMore = { actions.trackActions(track) },
+                onLongClick = { actions.selection?.start(trackSelectionKey(track)) ?: actions.trackActions(track) },
+                selectionActive = actions.selection?.isActive == true,
+                selected = actions.selection?.isSelected(trackSelectionKey(track)) == true,
                 background = YouTubeMusicDesign.surfaceRaised
             )
         }
@@ -257,6 +263,9 @@ private fun YouTubeMusicSearchEntryRow(
             current = entry.track.id == currentTrackId,
             explicitLabel = copy.explicit,
             onClick = { actions.playSong(songs, entry.track) },
+            onLongClick = { actions.selection?.start(trackSelectionKey(entry.track)) ?: actions.trackActions(entry.track) },
+            selectionActive = actions.selection?.isActive == true,
+            selected = actions.selection?.isSelected(trackSelectionKey(entry.track)) == true,
             onMore = { actions.trackActions(entry.track) }
         )
         is YouTubeMusicSearchEntry.Video -> YouTubeMusicSongRow(
@@ -265,6 +274,9 @@ private fun YouTubeMusicSearchEntryRow(
             current = entry.track.id == currentTrackId,
             explicitLabel = copy.explicit,
             onClick = { actions.playSong(videos, entry.track) },
+            onLongClick = { actions.selection?.start(trackSelectionKey(entry.track)) ?: actions.trackActions(entry.track) },
+            selectionActive = actions.selection?.isActive == true,
+            selected = actions.selection?.isSelected(trackSelectionKey(entry.track)) == true,
             onMore = { actions.trackActions(entry.track) },
             leading = {
                 YouTubeMusicSearchArtwork(
