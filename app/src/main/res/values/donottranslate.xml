@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">Levyra</string>
+    <string name="widget_idle_title" translatable="false">LEVYRA</string>
+    <string name="car_root_title" translatable="false">Levyra</string>
+    <string name="car_flow_title" translatable="false">Flow</string>
+    <string name="car_home_flow_title" translatable="false">Flow Levyra</string>
+    <string name="tile_ambient" translatable="false">Ambient</string>
+    <string name="ambient_dream_label" translatable="false">Levyra Ambient</string>
+    <string name="recognition_notification_channel" translatable="false">Music recognition</string>
+    <string name="widget_studio_mini_name" translatable="false">Levyra Mini</string>
+    <string name="widget_studio_slim_name" translatable="false">Levyra Slim</string>
+    <string name="widget_studio_expressive_name" translatable="false">Levyra Expressive</string>
+    <string name="widget_studio_hero_name" translatable="false">Levyra Artwork Hero</string>
+    <string name="widget_studio_immersive_name" translatable="false">Levyra Immersive</string>
+    <string name="widget_studio_vinyl_name" translatable="false">Levyra Vinyl</string>
+    <string name="widget_studio_quick_name" translatable="false">Levyra Quick Actions</string>
+</resources>
