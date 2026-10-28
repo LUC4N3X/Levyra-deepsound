@@ -10839,6 +10839,7 @@ private class StudioHomeContext(
                 isPlaying = state.isPlaying,
                 isResolving = state.isResolving,
                 animationsEnabled = homeAnimationsEnabled,
+                playButtonAnimationsEnabled = false,
                 onOpen = {
                     stableSpotlightId = heroTrack.id
                     when {
