@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.player
 
+import com.luc4n3x.levyra.data.hqaudio.tidal.TidalAudioProvider
+
 import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -3424,12 +3426,14 @@ class PlaybackService : MediaLibraryService() {
         track.source.equals("Offline", ignoreCase = true) || isLocalPlaybackUri(track.streamUrl)
 
     private fun isLocalPlaybackUri(value: String): Boolean {
+        if (TidalAudioProvider.isManifestUri(value)) return false
         val clean = value.trim()
         return clean.startsWith("content://", ignoreCase = true) ||
             clean.startsWith("file://", ignoreCase = true)
     }
 
     private fun isLocalMediaItem(mediaItem: MediaItem?): Boolean {
+        if (TidalAudioProvider.isManifestUri(mediaItem?.localConfiguration?.uri?.toString().orEmpty())) return false
         val scheme = mediaItem?.localConfiguration?.uri?.scheme.orEmpty()
         if (scheme.equals("content", ignoreCase = true) || scheme.equals("file", ignoreCase = true)) return true
         return mediaItem?.mediaMetadata?.extras

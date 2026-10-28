@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.data.hqaudio
 
 import java.util.Locale
+import com.luc4n3x.levyra.domain.PlaybackDeliveryMethod
 
 enum class AudioQualityTier(val kbps: Int, val lossless: Boolean = false) {
     LOSSLESS_HI_RES(2_304, lossless = true),
@@ -63,7 +64,8 @@ data class ResolvedHighQualityStream(
     val estimatedKbps: Int,
     val expiresAtMs: Long,
     val bitDepth: Int = 0,
-    val sampleRateHz: Int = 0
+    val sampleRateHz: Int = 0,
+    val deliveryMethod: PlaybackDeliveryMethod = PlaybackDeliveryMethod.PROGRESSIVE
 ) {
     val host: String
         get() = url.substringAfter("://", "").substringBefore('/').substringBefore('?')
