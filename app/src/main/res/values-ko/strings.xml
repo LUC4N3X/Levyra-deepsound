@@ -24,7 +24,6 @@
     <string name="car_connecting_player">플레이어에 연결 중</string>
     <string name="car_now_playing">재생 중</string>
     <string name="car_queue">재생 대기열</string>
-
     <!-- Android Auto browse tree -->
     <string name="car_root_subtitle">Android Auto에 최적화된 음악</string>
     <string name="car_home_subtitle">빠른 믹스, 오프라인, 차트</string>
@@ -55,7 +54,6 @@
     <string name="car_album_unavailable">앨범을 사용할 수 없음</string>
     <string name="car_artist_unavailable">아티스트를 사용할 수 없음</string>
     <string name="car_item_unavailable">항목을 사용할 수 없음</string>
-
     <!-- Android Auto dynamic strings -->
     <plurals name="car_tracks_count">
         <item quantity="other">%1$d곡</item>
@@ -82,4 +80,19 @@
     <string name="widget_studio_immersive_desc">커버, 대기열, 가사 등</string>
     <string name="widget_studio_vinyl_desc">바이닐 스타일 커버 플레이어</string>
     <string name="widget_studio_quick_desc">Flow, 즐겨찾기, 다운로드 등</string>
+    <string name="widget_studio_quick_name" translatable="false"></string>
+    <string name="widget_studio_immersive_name" translatable="false"></string>
+    <string name="widget_studio_expressive_name" translatable="false"></string>
+    <string name="widget_studio_slim_name" translatable="false"></string>
+    <string name="widget_studio_hero_name" translatable="false"></string>
+    <string name="recognition_notification_channel" translatable="false"></string>
+    <string name="ambient_dream_label" translatable="false"></string>
+    <string name="car_root_title" translatable="false"></string>
+    <string name="car_flow_title" translatable="false"></string>
+    <string name="widget_studio_vinyl_name" translatable="false"></string>
+    <string name="car_home_flow_title" translatable="false"></string>
+    <string name="widget_idle_title" translatable="false"></string>
+    <string name="widget_studio_mini_name" translatable="false"></string>
+    <string name="tile_ambient" translatable="false"></string>
+    <string name="app_name" translatable="false"></string>
 </resources>
