@@ -42,9 +42,12 @@ class PlaybackNavigationIndependenceContractTest {
     }
 
     @Test
-    fun `artist page shows the shared detail now playing dock while playback is active`() {
+    fun `artist page shows the shared detail now playing dock outside track selection`() {
         val overlay = composableBody(app, "private fun ArtistOverlay(")
-        val dock = overlay.substringAfter("state.currentTrack?.let { current ->", missingDelimiterValue = "")
+        val dock = overlay.substringAfter(
+            "state.currentTrack?.takeUnless { selection.isActive }?.let { current ->",
+            missingDelimiterValue = ""
+        )
 
         assertTrue(dock.trimStart().startsWith("AlbumNowPlayingDock("))
         assertTrue(dock.contains("onOpenPlayer = onOpenPlayer"))
