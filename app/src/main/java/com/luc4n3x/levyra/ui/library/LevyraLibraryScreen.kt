@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.ui.library
 
 import com.luc4n3x.levyra.ui.levyraTabContentBottomPadding
+import com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 import com.luc4n3x.levyra.ui.theme.Nocturne78Design
 
@@ -91,6 +92,7 @@ import com.luc4n3x.levyra.domain.SpeedDial
 import com.luc4n3x.levyra.domain.offlineDownloadStageOf
 import com.luc4n3x.levyra.ui.LevyraHorizontalSafeInsets
 import com.luc4n3x.levyra.ui.components.LevyraConnectedPosition
+import com.luc4n3x.levyra.ui.components.LevyraExpressiveScrollbar
 import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.DownloadOwnership
 import com.luc4n3x.levyra.ui.components.levyraGroupedListShape
@@ -160,6 +162,7 @@ private const val PLAYLIST_DRAG_EDGE_FACTOR = 1.35f
 private const val PLAYLIST_DRAG_SCROLL_FACTOR = 0.38f
 private const val DEVICE_LIBRARY_PARENT_LEADING_ITEMS = 4
 private val LibraryCategoriesGutter = 16.dp
+private val LibraryScrollbarTopInset = 72.dp
 private val LibraryBrowseCategories = LibraryCategory.entries.filter { it != LibraryCategory.Overview }
 
 private fun Modifier.libraryCategoriesBleed(gutter: Dp): Modifier = layout { measurable, constraints ->
@@ -1233,6 +1236,23 @@ internal fun LevyraLibraryScreen(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .padding(end = 3.dp)
+            )
+        }
+
+        if (LevyraIsDefaultSkin && category in LibraryScrollbarCategories) {
+            val scrollbarLabels = remember(category, sort, visibleTracks, visibleAlbums, visibleArtists, visiblePlaylists, visibleOffline) {
+                libraryScrollbarLabels(category, sort, visibleTracks, visibleAlbums, visibleArtists, visiblePlaylists, visibleOffline)
+            }
+            LevyraExpressiveScrollbar(
+                state = listState,
+                label = { key -> scrollbarLabels[key] },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(
+                        top = LibraryScrollbarTopInset,
+                        bottom = if (selectionActive) 230.dp else levyraTabContentBottomPadding(state.currentTrack != null)
+                    )
             )
         }
 
