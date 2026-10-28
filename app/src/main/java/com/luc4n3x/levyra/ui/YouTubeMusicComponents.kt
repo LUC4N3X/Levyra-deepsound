@@ -15,6 +15,10 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.RadioButtonUnchecked
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -33,7 +37,6 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -242,43 +245,77 @@ internal fun YouTubeMusicSongRow(
     compact: Boolean = false,
     leading: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
-    background: Color = Color.Transparent
+    background: Color = Color.Transparent,
+    onLongClick: () -> Unit = onMore,
+    selectionActive: Boolean = false,
+    selected: Boolean = false
 ) {
     val artwork = if (compact) YouTubeMusicDesign.compactArtwork else YouTubeMusicDesign.listArtwork
     Row(
         modifier.fillMaxWidth().height(if (compact) YouTubeMusicDesign.compactRow else YouTubeMusicDesign.listRow)
-            .background(background)
-            .levyraPressable(onClick = onClick, onLongClick = onMore, role = Role.Button, pressedScale = LevyraPressScale.Row)
+            .background(if (selected) YouTubeMusicDesign.surfaceHigh else background)
+            .then(if (selectionActive) Modifier.semantics { this.selected = selected } else Modifier)
+            .levyraPressable(onClick = onClick, onLongClick = onLongClick, role = Role.Button, pressedScale = LevyraPressScale.Row)
             .padding(start = YouTubeMusicDesign.gutter),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        if (leading != null) {
-            leading()
-        } else {
-            Box(Modifier.size(artwork).clip(YouTubeMusicDesign.thumbShape).background(YouTubeMusicDesign.placeholder)) {
-                CoverImage(track, Modifier.fillMaxSize())
-                if (current) YouTubeMusicNowPlayingBars(Modifier.align(Alignment.Center))
-            }
-        }
+        YouTubeMusicSongArtwork(track, artwork, current, leading)
         Spacer(Modifier.width(YouTubeMusicDesign.gutter))
-        Column(Modifier.weight(1f)) {
+        YouTubeMusicSongTexts(track, subtitle, explicitLabel, Modifier.weight(1f))
+        YouTubeMusicSongTrailing(selectionActive, selected, explicitLabel, onMore, trailing)
+    }
+}
+
+@Composable
+private fun YouTubeMusicSongArtwork(
+    track: Track,
+    artwork: Dp,
+    current: Boolean,
+    leading: (@Composable () -> Unit)?
+) {
+    if (leading != null) {
+        leading()
+    } else {
+        Box(Modifier.size(artwork).clip(YouTubeMusicDesign.thumbShape).background(YouTubeMusicDesign.placeholder)) {
+            CoverImage(track, Modifier.fillMaxSize())
+            if (current) YouTubeMusicNowPlayingBars(Modifier.align(Alignment.Center))
+        }
+    }
+}
+
+@Composable
+private fun YouTubeMusicSongTexts(track: Track, subtitle: String, explicitLabel: String, modifier: Modifier) {
+    Column(modifier) {
+        Text(
+            track.title, color = YouTubeMusicDesign.text, style = MaterialTheme.typography.titleMedium,
+            maxLines = 1, overflow = TextOverflow.Ellipsis
+        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (track.explicit) YouTubeMusicExplicitBadge(explicitLabel, Modifier.padding(end = 6.dp))
             Text(
-                track.title, color = YouTubeMusicDesign.text, style = MaterialTheme.typography.titleMedium,
+                subtitle, color = YouTubeMusicDesign.textSecondary, style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1, overflow = TextOverflow.Ellipsis
             )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (track.explicit) YouTubeMusicExplicitBadge(explicitLabel, Modifier.padding(end = 6.dp))
-                Text(
-                    subtitle, color = YouTubeMusicDesign.textSecondary, style = MaterialTheme.typography.bodyLarge,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis
-                )
-            }
         }
-        if (trailing != null) {
-            trailing()
-        } else {
-            YouTubeMusicIconAction(Icons.Rounded.MoreVert, explicitLabel, onMore, iconSize = 24.dp)
+    }
+}
+
+@Composable
+private fun YouTubeMusicSongTrailing(
+    selectionActive: Boolean,
+    selected: Boolean,
+    explicitLabel: String,
+    onMore: () -> Unit,
+    trailing: (@Composable () -> Unit)?
+) {
+    if (selectionActive) {
+        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+            Icon(if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked, null, tint = YouTubeMusicDesign.text)
         }
+    } else if (trailing != null) {
+        trailing()
+    } else {
+        YouTubeMusicIconAction(Icons.Rounded.MoreVert, explicitLabel, onMore, iconSize = 24.dp)
     }
 }
 

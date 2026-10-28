@@ -88,10 +88,10 @@ import com.luc4n3x.levyra.feature.settings.SettingsSearchIndex
 import com.luc4n3x.levyra.feature.settings.SettingsSearchResult
 import com.luc4n3x.levyra.feature.cast.CastRouteButton
 import com.luc4n3x.levyra.ui.components.PremiumSeekbar
-import com.luc4n3x.levyra.ui.selection.TrackSelectionActions
+import com.luc4n3x.levyra.ui.selection.trackSelectionActions
 import com.luc4n3x.levyra.ui.selection.TrackSelectionBar
-import com.luc4n3x.levyra.ui.selection.TrackSelectionBarListClearance
-import com.luc4n3x.levyra.ui.selection.trackSelectionBarTabClearance
+import com.luc4n3x.levyra.ui.selection.listBottomPadding
+import com.luc4n3x.levyra.ui.selection.LocalTrackSelectionChromeHeight
 import com.luc4n3x.levyra.ui.selection.TrackSelectionState
 import com.luc4n3x.levyra.ui.selection.resolveSelected
 import com.luc4n3x.levyra.ui.selection.rememberTrackSelectionState
@@ -2249,12 +2249,14 @@ fun LevyraApp(
             navigationStudio.settings.activeTuning().colorSource == NavColorSource.Artwork
     )
     val livePlaybackPosition = remember(viewModel) { viewModel::livePlaybackPositionMs }
+    val selectionChromeHeight = remember { mutableIntStateOf(0) }
     CompositionLocalProvider(
         LocalMusicExperiences provides MusicExperienceNavigation(
             rewind = { musicExperience = "rewind" }, health = { musicExperience = "health" }
         ),
         LocalAnimationsEnabled provides state.animationsEnabled,
         LocalLivePlaybackPosition provides livePlaybackPosition,
+        LocalTrackSelectionChromeHeight provides selectionChromeHeight,
         LocalLevyraVisualCapabilities provides visualCapabilities,
         LocalLevyraStrings provides currentStrings,
         LocalLevyraHaptics provides rememberLevyraHaptics(state.interfaceSettings.hapticFeedback),
@@ -2587,6 +2589,7 @@ fun LevyraApp(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .zIndex(if (settingsDockVisible) 1f else 0f)
+                        .onSizeChanged { selectionChromeHeight.value = it.height }
                         .fillMaxWidth()
                         .windowInsetsPadding(LevyraHorizontalSafeInsets)
                         .graphicsLayer { alpha = playerChromeAlpha(expansionProvider()) },
@@ -4675,7 +4678,7 @@ private fun AlbumOverlay(
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = albumBottomInset)
+                    contentPadding = PaddingValues(bottom = selection.listBottomPadding(albumBottomInset))
                 ) {
                     item(key = "album-hero", contentType = "album-hero") {
                         ImmersiveMediaHero(
@@ -4858,7 +4861,7 @@ private fun AlbumOverlay(
         if (state.albumLoading && album != null && tracks.isNotEmpty()) {
             LinearMiniLoading(modifier = Modifier.align(Alignment.TopCenter).padding(top = topBarHeight))
         }
-        state.currentTrack?.let { current ->
+        state.currentTrack?.takeUnless { selection.isActive }?.let { current ->
             AlbumNowPlayingDock(
                 track = current,
                 isPlaying = state.isPlaying,
@@ -4877,43 +4880,18 @@ private fun AlbumOverlay(
         TrackSelectionBar(
             state = selection,
             allVisibleIds = selectableIds,
-            actions = TrackSelectionActions(
-                onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        onPlayTracksNext(selectedTracks)
-                        selection.exit()
-                    }
-                },
-                onAddToQueue = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        onAddTracksToQueue(selectedTracks)
-                        selection.exit()
-                    }
-                },
-                onAddToPlaylist = selectedTracks
-                    .filter { it.id.isNotBlank() }
-                    .takeIf { it.isNotEmpty() }
-                    ?.let { playlistTracks -> { batchAddTargets = playlistTracks } },
-                onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        onToggleFavorites(selectedTracks)
-                        selection.exit()
-                    }
-                },
-                onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        onExportTracks(selectedTracks)
-                        selection.exit()
-                    }
-                }
+            actions = trackSelectionActions(
+                state = selection,
+                selectedTracks = selectedTracks,
+                onPlayNext = onPlayTracksNext,
+                onAddToQueue = onAddTracksToQueue,
+                onAddToPlaylist = { batchAddTargets = it },
+                onFavorite = onToggleFavorites,
+                onDownload = onExportTracks
             ),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(
-                    start = 12.dp,
-                    end = 12.dp,
-                    bottom = if (state.currentTrack != null) 92.dp else 12.dp
-                )
+                .padding(horizontal = 12.dp)
         )
 
         addTarget?.let { track ->
@@ -5457,7 +5435,7 @@ private fun ArtistOverlay(
         LazyColumn(
             state = artistListState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = if (appleClosingOwnsBottom) 0.dp else artistBottomPadding),
+            contentPadding = PaddingValues(bottom = selection.listBottomPadding(if (appleClosingOwnsBottom) 0.dp else artistBottomPadding)),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             when {
@@ -5648,7 +5626,7 @@ private fun ArtistOverlay(
             }
         }
 
-        state.currentTrack?.let { current ->
+        state.currentTrack?.takeUnless { selection.isActive }?.let { current ->
             AlbumNowPlayingDock(
                 track = current,
                 isPlaying = state.isPlaying,
@@ -5667,43 +5645,18 @@ private fun ArtistOverlay(
         TrackSelectionBar(
             state = selection,
             allVisibleIds = selectableIds,
-            actions = TrackSelectionActions(
-                onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        onPlayTracksNext(selectedTracks)
-                        selection.exit()
-                    }
-                },
-                onAddToQueue = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        onAddTracksToQueue(selectedTracks)
-                        selection.exit()
-                    }
-                },
-                onAddToPlaylist = selectedTracks
-                    .filter { it.id.isNotBlank() }
-                    .takeIf { it.isNotEmpty() }
-                    ?.let { playlistTracks -> { batchAddTargets = playlistTracks } },
-                onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        onToggleFavorites(selectedTracks)
-                        selection.exit()
-                    }
-                },
-                onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                    {
-                        onExportTracks(selectedTracks)
-                        selection.exit()
-                    }
-                }
+            actions = trackSelectionActions(
+                state = selection,
+                selectedTracks = selectedTracks,
+                onPlayNext = onPlayTracksNext,
+                onAddToQueue = onAddTracksToQueue,
+                onAddToPlaylist = { batchAddTargets = it },
+                onFavorite = onToggleFavorites,
+                onDownload = onExportTracks
             ),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(
-                    start = 12.dp,
-                    end = 12.dp,
-                    bottom = if (state.currentTrack != null) 88.dp else 12.dp
-                )
+                .padding(horizontal = 12.dp)
         )
 
         if (batchAddTargets.isNotEmpty()) {
@@ -15777,10 +15730,15 @@ private fun SearchScreen(
         BackHandler(enabled = selection.isActive) { selection.exit() }
 
         val searchActions = YouTubeMusicSearchActions(
+            selection = selection,
             playSong = { context, track ->
-                focusManager.clearFocus()
-                keyboardController?.hide()
-                viewModel.playFrom(deduplicateSearchSongs(listOf(track) + context), track)
+                if (selection.isActive) {
+                    selection.toggle(trackSelectionKey(track))
+                } else {
+                    focusManager.clearFocus()
+                    keyboardController?.hide()
+                    viewModel.playFrom(deduplicateSearchSongs(listOf(track) + context), track)
+                }
             },
             openArtist = { hit ->
                 focusManager.clearFocus()
@@ -15815,8 +15773,7 @@ private fun SearchScreen(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
-                bottom = levyraTabContentBottomPadding(state.currentTrack != null) +
-                    if (selection.isActive) TrackSelectionBarListClearance else 0.dp
+                bottom = selection.listBottomPadding(levyraTabContentBottomPadding(state.currentTrack != null))
             ),
             verticalArrangement = Arrangement.spacedBy(if (appleLanding) AppleSearchGridGap else if (appleCatalog != null && !data.isEmpty) 0.dp else 3.dp)
         ) {
@@ -16319,44 +16276,20 @@ private fun SearchScreen(
 
             TrackSelectionBar(
                 state = selection,
+                aboveRootDock = true,
                 allVisibleIds = selectableIds,
-                actions = TrackSelectionActions(
-                    onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                        {
-                            viewModel.playTracksNext(selectedTracks)
-                            selection.exit()
-                        }
-                    },
-                    onAddToQueue = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                        {
-                            viewModel.addTracksToQueue(selectedTracks)
-                            selection.exit()
-                        }
-                    },
-                    onAddToPlaylist = selectedTracks
-                        .filter { it.id.isNotBlank() }
-                        .takeIf { it.isNotEmpty() }
-                        ?.let { playlistTracks -> { batchAddTargets = playlistTracks } },
-                    onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                        {
-                            viewModel.toggleFavorites(selectedTracks)
-                            selection.exit()
-                        }
-                    },
-                    onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                        {
-                            viewModel.exportTracks(selectedTracks, strings.offline)
-                            selection.exit()
-                        }
-                    }
+                actions = trackSelectionActions(
+                    state = selection,
+                    selectedTracks = selectedTracks,
+                    onPlayNext = viewModel::playTracksNext,
+                    onAddToQueue = viewModel::addTracksToQueue,
+                    onAddToPlaylist = { batchAddTargets = it },
+                    onFavorite = viewModel::toggleFavorites,
+                    onDownload = { tracks -> viewModel.exportTracks(tracks, strings.offline) }
                 ),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(
-                        start = 12.dp,
-                        end = 12.dp,
-                        bottom = trackSelectionBarTabClearance(state.currentTrack != null)
-                    )
+                    .padding(horizontal = 12.dp)
             )
         }
     }

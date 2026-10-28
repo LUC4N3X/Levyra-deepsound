@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.ui.selection
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -11,6 +12,9 @@ import java.util.Locale
 
 @Stable
 internal class TrackSelectionState {
+    var dockHeightPx by mutableIntStateOf(0)
+        internal set
+
     var selectedIds: Set<String> by mutableStateOf(emptySet())
         private set
 

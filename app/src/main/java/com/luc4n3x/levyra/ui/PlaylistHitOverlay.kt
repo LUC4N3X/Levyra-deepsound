@@ -98,6 +98,7 @@ import com.luc4n3x.levyra.ui.media.ImmersiveTopBarButtonSize
 import com.luc4n3x.levyra.ui.i18n.speedDialCopy
 import com.luc4n3x.levyra.ui.i18n.likeAllCopy
 import com.luc4n3x.levyra.ui.selection.TrackSelectionActions
+import com.luc4n3x.levyra.ui.selection.listBottomPadding
 import com.luc4n3x.levyra.ui.selection.TrackSelectionBar
 import com.luc4n3x.levyra.ui.selection.TrackSelectionState
 import com.luc4n3x.levyra.ui.selection.resolveSelected
@@ -221,45 +222,44 @@ internal fun PlaylistHitOverlay(
             onLikeAll = onLikeAll,
             onSelectAll = { selection.selectAll(selectableIds) }
         )
-        if (selection.isActive) {
-            TrackSelectionBar(
-                state = selection,
-                allVisibleIds = selectableIds,
-                actions = TrackSelectionActions(
-                    onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                        {
-                            onPlayTracksNext(selectedTracks)
-                            selection.exit()
-                        }
-                    },
-                    onAddToQueue = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                        {
-                            onAddTracksToQueue(selectedTracks)
-                            selection.exit()
-                        }
-                    },
-                    onAddToPlaylist = selectedTracks
-                        .filter { it.id.isNotBlank() }
-                        .takeIf { it.isNotEmpty() }
-                        ?.let { playlistTracks -> { batchAddTargets = playlistTracks } },
-                    onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                        {
-                            onLikeTracks(selectedTracks)
-                            selection.exit()
-                        }
-                    },
-                    onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
-                        {
-                            onDownloadTracks(selectedTracks)
-                            selection.exit()
-                        }
+        TrackSelectionBar(
+            state = selection,
+            allVisibleIds = selectableIds,
+            actions = TrackSelectionActions(
+                onPlayNext = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        onPlayTracksNext(selectedTracks)
+                        selection.exit()
                     }
-                ),
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
-            )
-        } else currentTrack?.let { track ->
+                },
+                onAddToQueue = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        onAddTracksToQueue(selectedTracks)
+                        selection.exit()
+                    }
+                },
+                onAddToPlaylist = selectedTracks
+                    .filter { it.id.isNotBlank() }
+                    .takeIf { it.isNotEmpty() }
+                    ?.let { playlistTracks -> { batchAddTargets = playlistTracks } },
+                onFavorite = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        onLikeTracks(selectedTracks)
+                        selection.exit()
+                    }
+                },
+                onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        onDownloadTracks(selectedTracks)
+                        selection.exit()
+                    }
+                }
+            ),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(horizontal = 12.dp)
+        )
+        currentTrack?.takeUnless { selection.isActive }?.let { track ->
             PlaylistHitNowPlayingDock(
                 preview = preview,
                 track = track,
@@ -333,7 +333,7 @@ private fun PlaylistHitList(
         state = state,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
-            bottom = if (selection.isActive) 230.dp else levyraTabContentBottomPadding(currentTrack != null)
+            bottom = selection.listBottomPadding(levyraTabContentBottomPadding(currentTrack != null))
         )
     ) {
         item(key = "playlist-hit-hero", contentType = "playlist-hit-hero") {
