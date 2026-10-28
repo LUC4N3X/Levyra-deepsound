@@ -2596,7 +2596,12 @@ fun LevyraApp(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(0.dp)
                 ) {
-                    if (!state.showSettings && !LevyraIsSpotify) BottomTabsScrim()
+                    if (
+                        !state.showSettings && !LevyraIsSpotify &&
+                        !skinNavigationSettings(navigationStudio.settings).style.floating
+                    ) {
+                        BottomTabsScrim()
+                    }
                     val dockCompaction = dockState.animatedCompaction(state.animationsEnabled)
                     val compactionProvider: () -> Float = { dockCompaction.value }
                     val miniPlayerVisible = state.currentTrack != null && !state.isSamplesOpen
