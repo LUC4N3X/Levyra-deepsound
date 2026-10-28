@@ -24,7 +24,6 @@
     <string name="car_connecting_player">プレーヤーに接続中</string>
     <string name="car_now_playing">再生中</string>
     <string name="car_queue">再生キュー</string>
-
     <!-- Android Auto browse tree -->
     <string name="car_root_subtitle">Android Auto向けに最適化された音楽</string>
     <string name="car_home_subtitle">クイックミックス、オフライン、チャート</string>
@@ -55,7 +54,6 @@
     <string name="car_album_unavailable">アルバムを利用できません</string>
     <string name="car_artist_unavailable">アーティストを利用できません</string>
     <string name="car_item_unavailable">アイテムを利用できません</string>
-
     <!-- Android Auto dynamic strings -->
     <plurals name="car_tracks_count">
         <item quantity="other">%1$d曲</item>
@@ -82,4 +80,19 @@
     <string name="widget_studio_immersive_desc">アートワーク、キュー、歌詞など</string>
     <string name="widget_studio_vinyl_desc">レコード風アートワークプレーヤー</string>
     <string name="widget_studio_quick_desc">Flow、お気に入り、ダウンロードなど</string>
+    <string name="widget_studio_quick_name" translatable="false"></string>
+    <string name="widget_studio_immersive_name" translatable="false"></string>
+    <string name="widget_studio_expressive_name" translatable="false"></string>
+    <string name="widget_studio_slim_name" translatable="false"></string>
+    <string name="widget_studio_hero_name" translatable="false"></string>
+    <string name="recognition_notification_channel" translatable="false"></string>
+    <string name="ambient_dream_label" translatable="false"></string>
+    <string name="car_root_title" translatable="false"></string>
+    <string name="car_flow_title" translatable="false"></string>
+    <string name="widget_studio_vinyl_name" translatable="false"></string>
+    <string name="car_home_flow_title" translatable="false"></string>
+    <string name="widget_idle_title" translatable="false"></string>
+    <string name="widget_studio_mini_name" translatable="false"></string>
+    <string name="tile_ambient" translatable="false"></string>
+    <string name="app_name" translatable="false"></string>
 </resources>
