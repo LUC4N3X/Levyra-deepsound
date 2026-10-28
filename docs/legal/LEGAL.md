@@ -39,6 +39,8 @@ Account details, access tokens and refresh tokens shared on websites, messaging 
 
 Only use account access and media you are entitled to use under applicable law and the service's terms, including [TIDAL's terms](https://tidal.com/terms). This notice does not replace those terms, grant a content licence, or remove obligations or liability that the law places on project maintainers, distributors or users. Rights-holder concerns can be raised through the process in [section 11](#11-rights-holder-concerns); do not post account credentials in a public issue.
 
+The lawful-use conditions in [section 4](#4-lawful-use-and-user-responsibility) and the warranty disclaimers and liability limitations in [section 9](#9-warranty-and-liability) and the project licence also apply to this integration, subject to applicable law and mandatory rights. They do not authorize piracy, unauthorized access or unlawful circumvention, and do not replace any required permission.
+
 ## 4. Lawful use and user responsibility
 
 Users are responsible for deciding whether their particular use of Levyra and third-party material is lawful and authorized.
