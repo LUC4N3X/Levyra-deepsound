@@ -80,6 +80,6 @@
         <item quantity="one">%1$d трек</item>
         <item quantity="few">%1$d треки</item>
         <item quantity="many">%1$d треків</item>
-        <item quantity="other">%1$d трека</item>
+        <item quantity="other">%1$d треків</item>
     </plurals>
 </resources>
