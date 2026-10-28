@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -32,28 +33,32 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -70,14 +75,18 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.luc4n3x.levyra.domain.DockScrollEffect
 import com.luc4n3x.levyra.domain.LevyraMiniPlayerStudioSettings
 import com.luc4n3x.levyra.domain.MiniArtworkShape
 import com.luc4n3x.levyra.domain.MiniBackground
@@ -86,7 +95,6 @@ import com.luc4n3x.levyra.domain.MiniColorMode
 import com.luc4n3x.levyra.domain.MiniControlSet
 import com.luc4n3x.levyra.domain.MiniMotion
 import com.luc4n3x.levyra.domain.MiniPlayerSpec
-import com.luc4n3x.levyra.domain.DockScrollEffect
 import com.luc4n3x.levyra.domain.MiniPlayerStyle
 import com.luc4n3x.levyra.domain.MiniPlayerTuning
 import com.luc4n3x.levyra.domain.MiniProgressStyle
@@ -336,41 +344,53 @@ private fun MiniStudioHeader(
     onBack: () -> Unit,
     onRestore: () -> Unit
 ) {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 8.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(start = 8.dp, end = 16.dp, top = 8.dp, bottom = 12.dp)
     ) {
-        LevyraBackButton(onClick = onBack, contentDescription = backLabel)
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = 4.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
+            LevyraBackButton(onClick = onBack, contentDescription = backLabel)
+            FilledTonalButton(
+                onClick = onRestore,
+                enabled = restoreEnabled,
+                shapes = ButtonDefaults.shapes(),
+                contentPadding = PaddingValues(start = 14.dp, end = 18.dp),
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .padding(start = 12.dp)
+                    .heightIn(min = 48.dp)
+            ) {
+                Icon(Icons.Rounded.RestartAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = copy[MiniStudioText.RestoreDefault],
+                    style = MaterialTheme.typography.labelLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        Column(modifier = Modifier.padding(start = 12.dp, top = 12.dp)) {
             Text(
                 text = copy[MiniStudioText.Title],
-                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black),
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = (-0.6).sp
+                ),
                 color = LevyraText,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                maxLines = 2,
                 modifier = Modifier.semantics { heading() }
             )
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = copy[MiniStudioText.Subtitle],
                 style = MaterialTheme.typography.bodyMedium,
-                color = LevyraMuted,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        TextButton(onClick = onRestore, enabled = restoreEnabled) {
-            Icon(Icons.Rounded.RestartAlt, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = copy[MiniStudioText.RestoreDefault],
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                color = LevyraMuted
             )
         }
     }
@@ -1071,18 +1091,55 @@ internal fun <T> MiniStudioChoice(
     label: (T) -> String,
     onSelect: (T) -> Unit
 ) {
-    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min)
+            .selectableGroup(),
+        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
+    ) {
         options.forEachIndexed { index, option ->
-            SegmentedButton(
-                selected = option == selected,
-                onClick = { onSelect(option) },
-                shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size)
+            val checked = option == selected
+            ToggleButton(
+                checked = checked,
+                onCheckedChange = { if (!checked) onSelect(option) },
+                shapes = when (index) {
+                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                    options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                },
+                colors = ToggleButtonDefaults.colors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    contentColor = LevyraText
+                ),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .heightIn(min = MiniStudioChoiceMinHeight)
+                    .semantics { role = Role.RadioButton }
             ) {
-                Text(label(option), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    text = label(option),
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontWeight = if (checked) FontWeight.Bold else FontWeight.Medium,
+                        lineHeight = 16.sp
+                    ),
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    autoSize = TextAutoSize.StepBased(
+                        minFontSize = MiniStudioChoiceMinText,
+                        maxFontSize = MiniStudioChoiceMaxText
+                    )
+                )
             }
         }
     }
 }
+
+private val MiniStudioChoiceMinHeight = 52.dp
+private val MiniStudioChoiceMinText = 11.sp
+private val MiniStudioChoiceMaxText = 14.sp
 
 @Composable
 private fun MiniStudioMotionChoice(selected: MiniMotion, onSelect: (MiniMotion) -> Unit) {

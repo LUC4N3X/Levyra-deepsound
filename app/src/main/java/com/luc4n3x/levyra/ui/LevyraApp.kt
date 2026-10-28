@@ -9676,7 +9676,8 @@ private fun HomeScreen(
                             isResolving = state.isResolving,
                             animationsEnabled = state.animationsEnabled,
                             onSearch = viewModel::openSearch,
-                            onSettings = viewModel::openSettings
+                            onSettings = viewModel::openSettings,
+                            modifier = Modifier.homeHeaderParallax(homeListState)
                         )
                     }
                 }
@@ -10256,6 +10257,13 @@ private fun HomeScreen(
             listState = homeListState,
             height = statusBarTop,
             canvas = homeCanvasColor(LevyraIsLight)
+        )
+        HomeCollapsedTopBar(
+            listState = homeListState,
+            statusBarTop = statusBarTop,
+            userName = state.userName,
+            canvas = homeCanvasColor(LevyraIsLight),
+            onSearch = viewModel::openSearch
         )
     }
 
@@ -23217,7 +23225,8 @@ private fun GreetingBar(
     isResolving: Boolean,
     animationsEnabled: Boolean,
     onSearch: () -> Unit,
-    onSettings: () -> Unit
+    onSettings: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
     val greetingHour by rememberCurrentGreetingHour()
@@ -23231,7 +23240,7 @@ private fun GreetingBar(
     }
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .heightIn(min = LevyraHomeDesign.SettingsControlHeight)
             .padding(horizontal = 2.dp, vertical = 4.dp),
@@ -23436,7 +23445,7 @@ internal fun rememberCurrentGreetingHour() = produceState(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun HomeHeaderIconButton(
+internal fun HomeHeaderIconButton(
     icon: ImageVector,
     contentDescription: String,
     polygon: RoundedPolygon,

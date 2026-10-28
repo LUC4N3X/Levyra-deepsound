@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.ui.player
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
@@ -35,6 +36,7 @@ import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -54,6 +57,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -96,6 +100,12 @@ private const val FlowFloorDepth = 0.86f
 private const val FlowFloorStart = 0.46f
 private const val FlowArtistAlpha = 0.74f
 private const val FlowFixedActionCount = 2
+private const val FlowAmbientPlaying = 0.24f
+private const val FlowAmbientPaused = 0.12f
+private const val FlowAmbientCenter = 0.3f
+private const val FlowAmbientReach = 0.95f
+private const val FlowTrackShiftScale = 0.045f
+private val FlowSideNudge = 5.dp
 
 internal const val FlowLeafMajor = 0.34f
 internal const val FlowLeafMinor = 0.09f
@@ -191,6 +201,19 @@ internal fun PlayerFlowDeck(
     Column(
         modifier = modifier
             .drawBehind {
+                val ambient = lerp(FlowAmbientPaused, FlowAmbientPlaying, playProgress.value) *
+                    if (surfaces.amoled) FlowLightAmoledFactor else 1f
+                val ambientRadius = size.width * FlowAmbientReach
+                val ambientCenter = Offset(size.width / 2f, size.height * FlowAmbientCenter)
+                drawRect(
+                    Brush.radialGradient(
+                        0f to glow.copy(alpha = ambient),
+                        0.6f to glow.copy(alpha = ambient * 0.3f),
+                        1f to Color.Transparent,
+                        center = ambientCenter,
+                        radius = ambientRadius
+                    )
+                )
                 drawRect(
                     Brush.verticalGradient(
                         FlowFloorStart to Color.Transparent,
@@ -278,6 +301,16 @@ private fun FlowStage(
     modifier: Modifier = Modifier
 ) {
     var pressed by remember { mutableStateOf(false) }
+    val trackShift = remember { Animatable(0f) }
+    var shownTrackId by remember { mutableStateOf(track.id) }
+    LaunchedEffect(track.id) {
+        if (track.id == shownTrackId) return@LaunchedEffect
+        shownTrackId = track.id
+        if (!animated) return@LaunchedEffect
+        trackShift.snapTo(1f)
+        trackShift.animateTo(0f, LevyraMotion.spatial.spec())
+    }
+
     val pressScale = animateFloatAsState(
         targetValue = if (pressed && animated) FlowCoverPressScale else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
@@ -318,8 +351,10 @@ private fun FlowStage(
                 .size(side)
                 .graphicsLayer {
                     val progress = playProgress.value
-                    scaleX = pressScale.value
-                    scaleY = pressScale.value
+                    val shift = trackShift.value
+                    val scale = pressScale.value * (1f - FlowTrackShiftScale * shift)
+                    scaleX = scale
+                    scaleY = scale
                     shape = flowCoverShape(progress)
                     clip = true
                     shadowElevation = FlowCoverShadow.toPx() * lerp(0.45f, 1f, progress)
@@ -409,8 +444,8 @@ private fun FlowHeadline(
                     color = surfaces.content,
                     fontSize = titleSize,
                     lineHeight = titleSize * 1.1f,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = (-0.6).sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = (-0.8).sp,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.semantics { heading() }
@@ -595,11 +630,14 @@ private fun FlowSideButton(
     val haptics = LocalLevyraHaptics.current
     val interaction = remember { MutableInteractionSource() }
     val press = flowPressProgress(interaction, animated)
+    val rightToLeft = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val nudgeSign = if (rightToLeft == mirrored) 1f else -1f
     Box(
         modifier = Modifier
             .size(size)
             .graphicsLayer {
                 val pressed = press.value
+                translationX = pressed * nudgeSign * FlowSideNudge.toPx()
                 shape = FlowLeafShape(
                     major = lerp(FlowSideMajor, FlowPressedCorner, pressed),
                     minor = lerp(FlowSideMinor, FlowPressedCorner, pressed),
