@@ -50,6 +50,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonColors
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
@@ -80,6 +81,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.luc4n3x.levyra.ui.components.LevyraExpressiveIconButton
 import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.AppleMusicDesign
@@ -264,7 +266,7 @@ private fun SelectionDockHeader(
 ) {
     val strings = LocalLevyraStrings.current
     Row(verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = state::exit, enabled = state.isActive, modifier = Modifier.size(48.dp)) {
+        SelectionDockIconButton(onClick = state::exit, enabled = state.isActive, modifier = Modifier.size(48.dp)) {
             Icon(Icons.Rounded.Close, contentDescription = strings.close)
         }
         SelectionDockCount(count, style)
@@ -322,7 +324,7 @@ private fun SelectionDockSelectAll(
             Text(strings.selectAll, style = MaterialTheme.typography.labelMedium)
         }
     } else {
-        IconButton(
+        SelectionDockIconButton(
             onClick = selectAll,
             enabled = state.isActive && selectableIds.isNotEmpty(),
             colors = IconButtonDefaults.iconButtonColors(contentColor = style.accent),
@@ -384,7 +386,7 @@ private fun SelectionDockOverflow(actions: List<SelectionDockAction>, enabled: B
     val haptics = LocalLevyraHaptics.current
     var expanded by remember { mutableStateOf(false) }
     Box {
-        IconButton(
+        SelectionDockIconButton(
             onClick = { expanded = true },
             enabled = enabled,
             modifier = Modifier.size(48.dp)
@@ -408,5 +410,20 @@ private fun SelectionDockOverflow(actions: List<SelectionDockAction>, enabled: B
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun SelectionDockIconButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    colors: IconButtonColors = IconButtonDefaults.iconButtonColors(),
+    content: @Composable () -> Unit
+) {
+    if (!LevyraIsPrism && !LevyraIsNocturne && LocalAnimationsEnabled.current) {
+        LevyraExpressiveIconButton(onClick, modifier, enabled, colors, content)
+    } else {
+        IconButton(onClick = onClick, modifier = modifier, enabled = enabled, colors = colors, content = content)
     }
 }
