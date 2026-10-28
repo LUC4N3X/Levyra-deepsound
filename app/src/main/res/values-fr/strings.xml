@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name" translatable="false">Levyra</string>
     <string name="widget_description">Mini lecteur, favoris rapides, flux quotidien, mode hors-ligne et paroles</string>
-    <string name="widget_idle_title" translatable="false">LEVYRA</string>
     <string name="widget_idle_subtitle">Appuyer pour écouter</string>
     <string name="widget_toggle">Lecture/Pause</string>
     <string name="widget_next">Suivant</string>
@@ -28,7 +26,6 @@
     <string name="car_queue">File d\'attente</string>
 
     <!-- Android Auto browse tree -->
-    <string name="car_root_title" translatable="false">Levyra</string>
     <string name="car_root_subtitle">Musique optimisée pour Android Auto</string>
     <string name="car_home_subtitle">Mix rapides, hors-ligne et classements</string>
     <string name="car_queue_title">File d\'attente</string>
@@ -39,7 +36,6 @@
     <string name="car_albums_subtitle">Albums locaux et suggestions</string>
     <string name="car_artists_title">Artistes</string>
     <string name="car_artists_subtitle">Artistes les plus écoutés et suivis</string>
-    <string name="car_flow_title" translatable="false">Flow</string>
     <string name="car_flow_subtitle">Radio personnelle Levyra</string>
     <string name="car_favorites_subtitle">Morceaux enregistrés</string>
     <string name="car_downloads_subtitle">Musique disponible hors-ligne</string>
@@ -54,7 +50,6 @@
     <string name="car_home_offline_subtitle">Téléchargements écoutables sans réseau</string>
     <string name="car_home_top_local_title">Top local</string>
     <string name="car_home_top_local_subtitle">Classement musical mis à jour pour la langue choisie</string>
-    <string name="car_home_flow_title" translatable="false">Flow Levyra</string>
     <string name="car_home_flow_subtitle">Mix personnel continu</string>
     <string name="car_playlist_unavailable">Playlist indisponible</string>
     <string name="car_album_unavailable">Album indisponible</string>
@@ -76,20 +71,10 @@
     <string name="notification_repeat_one">Répéter le morceau</string>
     <string name="tile_recognize_music">Identifier la musique</string>
     <string name="tile_playback">Lecture</string>
-    <string name="tile_ambient" translatable="false">Ambient</string>
-    <string name="ambient_dream_label" translatable="false">Levyra Ambient</string>
-    <string name="recognition_notification_channel" translatable="false">Music recognition</string>
     <string name="shortcut_search">Rechercher</string>
     <string name="shortcut_library">Bibliothèque</string>
     <string name="shortcut_recognition">Identifier la musique</string>
     <string name="shortcut_resume">Reprendre la lecture</string>
-    <string name="widget_studio_mini_name" translatable="false">Levyra Mini</string>
-    <string name="widget_studio_slim_name" translatable="false">Levyra Slim</string>
-    <string name="widget_studio_expressive_name" translatable="false">Levyra Expressive</string>
-    <string name="widget_studio_hero_name" translatable="false">Levyra Artwork Hero</string>
-    <string name="widget_studio_immersive_name" translatable="false">Levyra Immersive</string>
-    <string name="widget_studio_vinyl_name" translatable="false">Levyra Vinyl</string>
-    <string name="widget_studio_quick_name" translatable="false">Levyra Quick Actions</string>
     <string name="widget_original_label">Original (par défaut)</string>
     <string name="widget_studio_mini_desc">Lecteur compact avec pochette</string>
     <string name="widget_studio_slim_desc">Commandes épurées sur une ligne</string>
