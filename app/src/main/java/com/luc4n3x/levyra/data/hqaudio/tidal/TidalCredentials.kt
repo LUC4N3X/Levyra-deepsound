@@ -1,3 +1,16 @@
+/*
+ * For research, testing, interoperability and lawful use only.
+ * Levyra does not operate a music-hosting or subscription service, issue
+ * third-party accounts or subscriptions, or grant licences to music content.
+ * Publicly shared credentials do not grant permission to access an account,
+ * redistribute credentials or use protected content. Valid authorization and
+ * compliance with applicable law and service terms are required.
+ * No piracy, unauthorized access or unlawful circumvention is authorized.
+ * Warranty and liability limitations are governed by the project license and
+ * docs/legal/LEGAL.md, subject to applicable law and mandatory rights.
+ * This notice does not replace permissions or waive legal obligations.
+ */
+
 package com.luc4n3x.levyra.data.hqaudio.tidal
 
 internal object TidalCredentials {
