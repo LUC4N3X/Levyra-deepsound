@@ -2262,7 +2262,7 @@ fun LevyraApp(
         LocalLevyraHaptics provides rememberLevyraHaptics(state.interfaceSettings.hapticFeedback),
         LocalLayoutDirection provides layoutDirection,
         LocalNocturneNavigationHeight provides remember { mutableStateOf(64.dp) },
-        LocalNavDockExtraClearance provides if (LevyraSkinManagesLayout) 0.dp else navDockExtraClearance(navigationStudio.settings.style, navigationStudio.settings.activeTuning()),
+        LocalNavDockExtraClearance provides if (LevyraSkinManagesLayout) 0.dp else rememberNavDockExtraClearance(navigationStudio.settings.style, navigationStudio.settings.activeTuning()),
         LocalNavArtworkSeed provides navArtworkSeed
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
