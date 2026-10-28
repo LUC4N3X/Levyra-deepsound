@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="widget_description">Mini lecteur, favoris rapides, flux quotidien, mode hors-ligne et paroles</string>
-    <string name="widget_idle_subtitle">Appuyer pour écouter</string>
+    <string name="widget_description">Mini-lecteur, favoris rapides, flow du jour, hors connexion et paroles</string>
+    <string name="widget_idle_subtitle">Touchez pour écouter</string>
     <string name="widget_toggle">Lecture/Pause</string>
     <string name="widget_next">Suivant</string>
     <string name="widget_previous">Précédent</string>
     <string name="widget_favorites">Favoris</string>
-    <string name="widget_flow">Flux quotidien</string>
-    <string name="widget_offline">Mix hors-ligne</string>
+    <string name="widget_flow">Flow du jour</string>
+    <string name="widget_offline">Mix hors connexion</string>
     <string name="widget_lyrics">Paroles</string>
     <string name="radar_channel_name">Radar des sorties</string>
     <string name="radar_channel_description">Nouvelles sorties des artistes que vous suivez</string>
@@ -19,35 +19,34 @@
     <string name="car_playlists">Playlists</string>
     <string name="car_no_content">Aucun contenu</string>
     <string name="car_content_unavailable">Contenu indisponible</string>
-    <string name="car_search_tracks">Rechercher des morceaux</string>
+    <string name="car_search_tracks">Rechercher des titres</string>
     <string name="car_no_results">Aucun résultat</string>
     <string name="car_connecting_player">Connexion au lecteur</string>
-    <string name="car_now_playing">En lecture</string>
-    <string name="car_queue">File d\'attente</string>
-
+    <string name="car_now_playing">Lecture en cours</string>
+    <string name="car_queue">File d’attente</string>
     <!-- Android Auto browse tree -->
     <string name="car_root_subtitle">Musique optimisée pour Android Auto</string>
-    <string name="car_home_subtitle">Mix rapides, hors-ligne et classements</string>
-    <string name="car_queue_title">File d\'attente</string>
-    <string name="car_queue_subtitle">File d\'attente persistante partagée avec Levyra</string>
-    <string name="car_recommended_title">Recommandé</string>
+    <string name="car_home_subtitle">Mix rapides, hors connexion et classements</string>
+    <string name="car_queue_title">File d’attente</string>
+    <string name="car_queue_subtitle">File d’attente persistante partagée avec Levyra</string>
+    <string name="car_recommended_title">Recommandés</string>
     <string name="car_recommended_subtitle">Profil musical, favoris et écoutes récentes</string>
     <string name="car_albums_title">Albums</string>
-    <string name="car_albums_subtitle">Albums locaux et suggestions</string>
+    <string name="car_albums_subtitle">Albums locaux et suggérés</string>
     <string name="car_artists_title">Artistes</string>
     <string name="car_artists_subtitle">Artistes les plus écoutés et suivis</string>
     <string name="car_flow_subtitle">Radio personnelle Levyra</string>
-    <string name="car_favorites_subtitle">Morceaux enregistrés</string>
-    <string name="car_downloads_subtitle">Musique disponible hors-ligne</string>
+    <string name="car_favorites_subtitle">Titres enregistrés</string>
+    <string name="car_downloads_subtitle">Musique disponible hors connexion</string>
     <string name="car_playlists_subtitle">Collections créées dans l\'application</string>
     <string name="car_recents_title">Écoutes récentes</string>
-    <string name="car_recents_subtitle">Morceaux récemment découverts</string>
+    <string name="car_recents_subtitle">Titres trouvés récemment</string>
     <string name="car_home_recommended_title">Pour vous</string>
-    <string name="car_home_recommended_subtitle">Recommandations basées sur votre profil musical</string>
-    <string name="car_home_driver_title">Pour la route</string>
-    <string name="car_home_driver_subtitle">Favoris, récents et morceaux dynamiques</string>
-    <string name="car_home_offline_title">Prêt hors-ligne</string>
-    <string name="car_home_offline_subtitle">Téléchargements écoutables sans réseau</string>
+    <string name="car_home_recommended_subtitle">Recommandations du profil musical</string>
+    <string name="car_home_driver_title">Pour la conduite</string>
+    <string name="car_home_driver_subtitle">Favoris, récents et titres à haute énergie</string>
+    <string name="car_home_offline_title">Prêt hors connexion</string>
+    <string name="car_home_offline_subtitle">Téléchargements jouables sans réseau</string>
     <string name="car_home_top_local_title">Top local</string>
     <string name="car_home_top_local_subtitle">Classement musical mis à jour pour la langue choisie</string>
     <string name="car_home_flow_subtitle">Mix personnel continu</string>
@@ -55,33 +54,47 @@
     <string name="car_album_unavailable">Album indisponible</string>
     <string name="car_artist_unavailable">Artiste indisponible</string>
     <string name="car_item_unavailable">Élément indisponible</string>
-
     <!-- Android Auto dynamic strings -->
     <plurals name="car_tracks_count">
         <item quantity="one">%1$d morceau</item>
         <item quantity="many">%1$d morceaux</item>
         <item quantity="other">%1$d morceaux</item>
     </plurals>
-    <string name="car_artist_folder_subtitle">Morceaux, favoris et suggestions</string>
+    <string name="car_artist_folder_subtitle">Titres, favoris et suggestions</string>
     <string name="notification_favorite_add">Ajouter aux favoris</string>
     <string name="notification_favorite_remove">Retirer des favoris</string>
     <string name="notification_shuffle_enable">Activer la lecture aléatoire</string>
     <string name="notification_shuffle_disable">Désactiver la lecture aléatoire</string>
     <string name="notification_repeat_off">Répétition désactivée</string>
-    <string name="notification_repeat_all">Répéter tout</string>
-    <string name="notification_repeat_one">Répéter le morceau</string>
-    <string name="tile_recognize_music">Identifier la musique</string>
+    <string name="notification_repeat_all">Tout répéter</string>
+    <string name="notification_repeat_one">Répéter le titre</string>
+    <string name="tile_recognize_music">Reconnaître la musique</string>
     <string name="tile_playback">Lecture</string>
     <string name="shortcut_search">Rechercher</string>
     <string name="shortcut_library">Bibliothèque</string>
-    <string name="shortcut_recognition">Identifier la musique</string>
+    <string name="shortcut_recognition">Reconnaître la musique</string>
     <string name="shortcut_resume">Reprendre la lecture</string>
     <string name="widget_original_label">Original (par défaut)</string>
     <string name="widget_studio_mini_desc">Lecteur compact avec pochette</string>
-    <string name="widget_studio_slim_desc">Commandes épurées sur une ligne</string>
-    <string name="widget_studio_expressive_desc">Lecteur complet avec barre de progression</string>
+    <string name="widget_studio_slim_desc">Commandes fines sur une ligne</string>
+    <string name="widget_studio_expressive_desc">Lecteur complet avec progression</string>
     <string name="widget_studio_hero_desc">Grande pochette, lecteur premium</string>
-    <string name="widget_studio_immersive_desc">Pochette, file d\'attente, paroles et plus encore</string>
-    <string name="widget_studio_vinyl_desc">Lecteur avec pochette style vinyle</string>
-    <string name="widget_studio_quick_desc">Flow, favoris, téléchargements et plus encore</string>
+    <string name="widget_studio_immersive_desc">Pochette, file d\'attente, paroles et plus</string>
+    <string name="widget_studio_vinyl_desc">Lecteur avec pochette façon vinyle</string>
+    <string name="widget_studio_quick_desc">Flow, favoris, téléchargements et plus</string>
+    <string name="widget_studio_quick_name" translatable="false"></string>
+    <string name="widget_studio_immersive_name" translatable="false"></string>
+    <string name="widget_studio_expressive_name" translatable="false"></string>
+    <string name="widget_studio_slim_name" translatable="false"></string>
+    <string name="widget_studio_hero_name" translatable="false"></string>
+    <string name="recognition_notification_channel" translatable="false"></string>
+    <string name="ambient_dream_label" translatable="false"></string>
+    <string name="car_root_title" translatable="false"></string>
+    <string name="car_flow_title" translatable="false"></string>
+    <string name="widget_studio_vinyl_name" translatable="false"></string>
+    <string name="car_home_flow_title" translatable="false"></string>
+    <string name="widget_idle_title" translatable="false"></string>
+    <string name="widget_studio_mini_name" translatable="false"></string>
+    <string name="tile_ambient" translatable="false"></string>
+    <string name="app_name" translatable="false"></string>
 </resources>
