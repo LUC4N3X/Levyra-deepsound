@@ -29,7 +29,9 @@ The fact that Levyra can interact with a service does not mean that every possib
 
 ### FLAC sources and third-party account access
 
-When FLAC is selected, Levyra tries TIDAL first, with Monochrome and Arcod available as fallbacks. Availability depends on the recording, region, account entitlement and service restrictions. A successful connection or a lossless label is not evidence of permission to access a service or use its content.
+When FLAC is selected on Android, Levyra tries TIDAL first, with Monochrome and Arcod available as fallbacks. Availability depends on the recording, region, account entitlement and service restrictions. A successful connection or a lossless label is not evidence of permission to access a service or use its content.
+
+The integration is included for software research, testing, interoperability and lawful playback. It is not intended to promote piracy, unauthorized account access or unlawful copying. These purposes do not themselves grant permission to use an account or copyrighted content. Embedded tokens can provide real account access and must be handled as credentials.
 
 Levyra does not create or sell TIDAL accounts or subscriptions. Accounts associated with third-party session credentials remain external to the project. Levyra does not claim ownership of those accounts and cannot grant access rights on behalf of their holders or TIDAL.
 
