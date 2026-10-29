@@ -15578,6 +15578,10 @@ private fun SearchScreen(
     backEnabled: Boolean = false,
     onTrackActions: (Track) -> Unit = {}
 ) {
+    if (LevyraIsQobuz) {
+        QobuzSearchEntry(viewModel, state, onTrackActions)
+        return
+    }
     val strings = LocalLevyraStrings.current
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current

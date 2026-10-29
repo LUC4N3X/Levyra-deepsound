@@ -78,6 +78,7 @@ internal fun QobuzArtistScreen(state: LevyraUiState, viewModel: LevyraViewModel,
     val listState = rememberSaveable(state.artistListStateKey, saver = LazyListState.Saver) { LazyListState() }
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val header = remember(profile?.accentStart) { qobuzPlayerField(Color(profile?.accentStart ?: 0xFF4A2A6A.toInt())) }
+    var showAllSongs by rememberSaveable(profile?.browseId) { mutableStateOf(false) }
     val collapsed by remember(listState) { derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 420 } }
     Box(Modifier.fillMaxSize().background(QobuzDesign.surfacePrimary)) {
         LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = levyraTabContentBottomPadding(state.currentTrack != null) + 24.dp)) {
@@ -93,7 +94,7 @@ internal fun QobuzArtistScreen(state: LevyraUiState, viewModel: LevyraViewModel,
                 }
                 else -> {
                     item(key = "q-artist-header") { QobuzArtistHeader(profile, state, viewModel, copy, header, statusTop) }
-                    qobuzArtistSections(profile, state, viewModel, copy, onTrackActions)
+                    qobuzArtistSections(profile, state, viewModel, copy, showAllSongs, { showAllSongs = !showAllSongs }, onTrackActions)
                 }
             }
         }
@@ -114,6 +115,8 @@ internal fun QobuzArtistScreen(state: LevyraUiState, viewModel: LevyraViewModel,
     }
 }
 
+private const val ArtistPreviewSongs = 5
+
 @Composable
 private fun QobuzWhiteIcon(icon: ImageVector, label: String, onClick: () -> Unit) {
     Box(Modifier.size(48.dp).clip(CircleShape).clickable(role = Role.Button, onClickLabel = label, onClick = onClick), contentAlignment = Alignment.Center) {
@@ -132,7 +135,10 @@ private fun QobuzArtistHeader(profile: ArtistProfile, state: LevyraUiState, view
         Modifier.fillMaxWidth().background(background).padding(top = statusTop + QobuzDesign.topBarHeight - 24.dp, bottom = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        QobuzArtworkBox(profile.thumbnailUrl, Modifier.size(200.dp), CircleShape)
+        val portrait = remember(profile.thumbnailUrl, profile.bannerUrl) {
+            com.luc4n3x.levyra.data.fullResolutionArtworkUrl(profile.thumbnailUrl.ifBlank { profile.bannerUrl })
+        }
+        QobuzArtworkBox(portrait, Modifier.size(200.dp), CircleShape)
         Spacer(Modifier.height(24.dp))
         Text(profile.name, style = MaterialTheme.typography.headlineMedium.copy(fontSize = 28.sp, lineHeight = 32.sp, fontWeight = FontWeight.Bold),
             color = Color.White, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 24.dp).semantics { heading() })
@@ -175,16 +181,22 @@ private fun androidx.compose.foundation.lazy.LazyListScope.qobuzArtistSections(
     state: LevyraUiState,
     viewModel: LevyraViewModel,
     copy: QobuzSkinCopy,
+    showAllSongs: Boolean,
+    onToggleSongs: () -> Unit,
     onTrackActions: (Track) -> Unit
 ) {
     val currentId = state.currentTrack?.id
     if (profile.topSongs.isNotEmpty()) {
         item(key = "q-artist-popular-title") {
             Column(Modifier.padding(top = 32.dp, bottom = 8.dp)) {
-                QobuzSectionHeader(LocalLevyraStrings.current.popularTracks, null, copy.seeAll, null)
+                QobuzSectionHeader(
+                    LocalLevyraStrings.current.popularTracks, null,
+                    if (showAllSongs) LocalLevyraStrings.current.showLess else copy.seeAll,
+                    if (profile.topSongs.size > ArtistPreviewSongs) onToggleSongs else null
+                )
             }
         }
-        items(profile.topSongs.take(5), key = { "q-top-${it.id}" }) { track ->
+        items(if (showAllSongs) profile.topSongs else profile.topSongs.take(ArtistPreviewSongs), key = { "q-top-${it.id}" }) { track ->
             QobuzTrackRow(track, track.id == currentId, copy, { viewModel.playFrom(profile.topSongs, track) }, { onTrackActions(track) })
         }
     }

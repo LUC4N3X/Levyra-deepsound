@@ -314,6 +314,7 @@ class SearchViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::sea
     fun startMusicRecognition() = root.startMusicRecognition()
     fun cancelMusicRecognition() = root.cancelMusicRecognition()
     fun setSearchFilter(filter: SearchFilter) = root.setSearchFilter(filter)
+    fun toggleFollowArtist(artist: ArtistHit) = root.toggleFollowArtist(artist)
     fun loadMoreSearchSection(filter: SearchFilter) = root.loadMoreSearchSection(filter)
     fun openPlaylistHit(playlist: PlaylistHit) = root.openPlaylistHit(playlist)
     fun playPlaylistHit(playlist: PlaylistHit) = root.playPlaylistHit(playlist)

@@ -50,7 +50,11 @@ internal data class QobuzSkinCopy(
     val openOnQobuz: String,
     val levyraExplore: String,
     val credits: String,
-    val readMore: String
+    val readMore: String,
+    val searchHint: String,
+    val topResults: String,
+    val trackType: String,
+    val clearRecent: String
 )
 
 internal object LevyraQobuzSkinStrings {
@@ -104,7 +108,11 @@ internal object LevyraQobuzSkinStrings {
         openOnQobuz = "Read on qobuz.com",
         levyraExplore = "Levyra explore",
         credits = "Credits",
-        readMore = "Read more"
+        readMore = "Read more",
+        searchHint = "Albums, artists, tracks…",
+        topResults = "Top results",
+        trackType = "Track",
+        clearRecent = "Clear recent searches"
     )
 
     private val copies = mapOf(
@@ -153,7 +161,11 @@ internal object LevyraQobuzSkinStrings {
             openOnQobuz = "Leggi su qobuz.com",
             levyraExplore = "Esplora Levyra",
             credits = "Crediti",
-            readMore = "Leggi il seguito"
+            readMore = "Leggi il seguito",
+            searchHint = "Album, artisti, brani…",
+            topResults = "Migliori risultati",
+            trackType = "Titolo",
+            clearRecent = "Cancella ricerche recenti"
         ),
         "es" to en.copy(
             skinBody = "Tema no oficial. Superficies editoriales claras y oscuras, acentos dorados, chips de Descubrir, minirreproductor flotante y reproductor teñido por la portada. Las selecciones editoriales proceden de páginas públicas de qobuz.com; la reproducción siempre usa los proveedores de Levyra. Sin afiliación ni respaldo de Qobuz.",
@@ -200,7 +212,11 @@ internal object LevyraQobuzSkinStrings {
             openOnQobuz = "Leer en qobuz.com",
             levyraExplore = "Explorar Levyra",
             credits = "Créditos",
-            readMore = "Leer más"
+            readMore = "Leer más",
+            searchHint = "Álbumes, artistas, temas…",
+            topResults = "Mejores resultados",
+            trackType = "Tema",
+            clearRecent = "Borrar búsquedas recientes"
         ),
         "fr" to en.copy(
             skinBody = "Thème non officiel. Surfaces éditoriales claires et sombres, accents dorés, puces Découvrir, mini-lecteur flottant et lecteur teinté par la pochette. Les sélections éditoriales viennent des pages publiques de qobuz.com ; la lecture passe toujours par les fournisseurs de Levyra. Non affilié à Qobuz ni approuvé par Qobuz.",
@@ -246,7 +262,11 @@ internal object LevyraQobuzSkinStrings {
             openOnQobuz = "Lire sur qobuz.com",
             levyraExplore = "Explorer Levyra",
             credits = "Crédits",
-            readMore = "Lire la suite"
+            readMore = "Lire la suite",
+            searchHint = "Albums, artistes, titres…",
+            topResults = "Meilleurs résultats",
+            trackType = "Titre",
+            clearRecent = "Effacer les recherches récentes"
         ),
         "de" to en.copy(
             skinBody = "Inoffizielles Theme. Helle und dunkle redaktionelle Flächen, goldene Akzente, Entdecken-Chips, ein schwebender Mini-Player und ein vom Cover gefärbter Player. Redaktionelle Auswahlen stammen von öffentlichen Seiten auf qobuz.com; die Wiedergabe nutzt immer die Anbieter von Levyra. Nicht mit Qobuz verbunden oder von Qobuz unterstützt.",
@@ -293,7 +313,11 @@ internal object LevyraQobuzSkinStrings {
             openOnQobuz = "Auf qobuz.com lesen",
             levyraExplore = "Levyra entdecken",
             credits = "Mitwirkende",
-            readMore = "Weiterlesen"
+            readMore = "Weiterlesen",
+            searchHint = "Alben, Künstler, Titel…",
+            topResults = "Top-Ergebnisse",
+            trackType = "Titel",
+            clearRecent = "Letzte Suchen löschen"
         ),
         "pt" to en.copy(
             skinBody = "Tema não oficial. Superfícies editoriais claras e escuras, detalhes dourados, chips de Descobrir, minileitor flutuante e leitor colorido pela capa. As seleções editoriais vêm de páginas públicas de qobuz.com; a reprodução usa sempre os fornecedores do Levyra. Sem afiliação ou aprovação da Qobuz.",
@@ -340,7 +364,11 @@ internal object LevyraQobuzSkinStrings {
             openOnQobuz = "Ler em qobuz.com",
             levyraExplore = "Explorar Levyra",
             credits = "Créditos",
-            readMore = "Ler mais"
+            readMore = "Ler mais",
+            searchHint = "Álbuns, artistas, faixas…",
+            topResults = "Melhores resultados",
+            trackType = "Faixa",
+            clearRecent = "Limpar pesquisas recentes"
         )
     )
 
