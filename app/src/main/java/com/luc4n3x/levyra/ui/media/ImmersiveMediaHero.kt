@@ -704,6 +704,7 @@ private fun SkinMediaHero(
     modifier: Modifier
 ): Boolean {
     when {
+        com.luc4n3x.levyra.ui.theme.LevyraIsQobuz -> QobuzMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, topBarHeight, onSubtitleClick, actions, artwork, modifier)
         LevyraIsTorque -> TorqueMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, onSubtitleClick, actions, artwork, modifier)
         com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic -> YouTubeMusicMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, topBarHeight, onSubtitleClick, actions, artwork, modifier)
         com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic -> AppleMusicMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, topBarHeight, onSubtitleClick, actions, artwork, modifier)
