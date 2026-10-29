@@ -188,6 +188,12 @@ class HomeViewModel internal constructor(
     fun openAlbum(album: AlbumHit) = root.openAlbum(album)
     fun openReleaseRadarEntry(entry: ReleaseRadarEntry) = root.openReleaseRadarEntry(entry)
     fun toggleFollowArtist(artist: ArtistHit) = root.toggleFollowArtist(artist)
+    fun openExploreCategory(category: ExploreCategory) {
+        root.selectExploreCategory(category)
+        root.selectTab(LevyraTab.Explore)
+    }
+    fun ensureExplore(strings: com.luc4n3x.levyra.ui.i18n.LevyraStrings) = root.ensureExplore(strings)
+    fun openExploreTab() = root.selectTab(LevyraTab.Explore)
     fun startSongRadioFrom(track: Track) = root.startSongRadioFrom(track)
     suspend fun artistRadioTracks(track: Track) = root.artistRadioTracks(track)
     fun openListeningRecap() = root.openListeningRecap()
@@ -308,6 +314,7 @@ class SearchViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::sea
     fun startMusicRecognition() = root.startMusicRecognition()
     fun cancelMusicRecognition() = root.cancelMusicRecognition()
     fun setSearchFilter(filter: SearchFilter) = root.setSearchFilter(filter)
+    fun toggleFollowArtist(artist: ArtistHit) = root.toggleFollowArtist(artist)
     fun loadMoreSearchSection(filter: SearchFilter) = root.loadMoreSearchSection(filter)
     fun openPlaylistHit(playlist: PlaylistHit) = root.openPlaylistHit(playlist)
     fun playPlaylistHit(playlist: PlaylistHit) = root.playPlaylistHit(playlist)
@@ -477,6 +484,8 @@ class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::li
         root.setPlaylistCover(playlistId, source, crop)
     fun resetPlaylistCover(playlistId: String) = root.resetPlaylistCover(playlistId)
     fun setPlaylistHidden(playlistId: String, hidden: Boolean) = root.setPlaylistHidden(playlistId, hidden)
+    fun toggleFollowArtistReference(name: String, browseId: String, thumbnailUrl: String) =
+        root.toggleFollowArtist(ArtistHit(name = name, subscribers = "", thumbnailUrl = thumbnailUrl, accentStart = 0, accentEnd = 0, browseId = browseId))
     fun setLibrarySort(sort: LibrarySort, direction: LibrarySortDirection) {
         val current = root.state.value.interfaceSettings
         if (current.librarySort == sort && current.librarySortDirection == direction) return

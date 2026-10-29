@@ -42,6 +42,12 @@ internal val AppleMusicFont: FontFamily = FontFamily(
     }
 )
 
+internal val QobuzFont: FontFamily = FontFamily(
+    listOf(FontWeight.Normal, FontWeight.Medium, FontWeight.SemiBold, FontWeight.Bold).map { weight ->
+        Font(googleFont = GoogleFont("Albert Sans"), fontProvider = googleFontsProvider, weight = weight)
+    }
+)
+
 private val defaultTypography = Typography()
 
 private val LevyraLineHeightStyle = LineHeightStyle(

@@ -232,6 +232,9 @@ private fun rememberSkinMiniPlayerPalette(track: Track, animated: Boolean): Mini
     if (LevyraIsYouTubeMusic) {
         return MiniPlayerPalette(Color.White, Color.White, YouTubeMusicDesign.miniPlayer, YouTubeMusicDesign.text, YouTubeMusicDesign.textSecondary, true)
     }
+    if (LevyraIsQobuz) {
+        return MiniPlayerPalette(QobuzDesign.textAccent, QobuzDesign.textAccent, QobuzDesign.miniPlayer, QobuzDesign.textPrimary, QobuzDesign.textSecondary, !LevyraActivePalette.isLight)
+    }
     if (LevyraIsIvory) {
         return MiniPlayerPalette(IvoryDesign.rose, IvoryDesign.ink, LevyraActivePalette.ink, scheme.onSurface, scheme.onSurfaceVariant, !LevyraActivePalette.isLight)
     }
@@ -340,11 +343,14 @@ private class StyledMiniLayout(style: MiniPlayerStyle, tuning: MiniPlayerTuning)
         else -> StyledMiniGutter
     }
     val topGap = if (style == MiniPlayerStyle.YtMusic) 0.dp else StyledMiniTrayTop
-    val bottomGap = when (style) {
+    val bottomGap = when {
+        LevyraIsQobuz -> 0.dp
+        else -> when (style) {
         MiniPlayerStyle.Floating, MiniPlayerStyle.LiquidGlass -> StyledMiniFloatingBottom
         MiniPlayerStyle.LiquidCapsule -> LiquidCapsuleMiniBottom
         MiniPlayerStyle.YtMusic, MiniPlayerStyle.Connected -> 0.dp
         else -> StyledMiniTrayBottom
+        }
     }
 }
 
@@ -598,7 +604,7 @@ private fun morphedSeam(morph: DockMorph?, seam: () -> Dp): () -> Dp =
     if (morph == null) seam else { { seam() * (1f - morph.fraction) } }
 
 private fun miniDockCompaction(style: MiniPlayerStyle, compaction: () -> Float): () -> Float =
-    if (style == MiniPlayerStyle.YtMusic || LevyraIsAppleMusic) StyledMiniFixedDock else compaction
+    if (style == MiniPlayerStyle.YtMusic || LevyraIsAppleMusic || LevyraIsQobuz) StyledMiniFixedDock else compaction
 
 private fun miniContentBottom(tuning: MiniPlayerTuning): Dp =
     if (tuning.progress == MiniProgressStyle.Wavy) 4.dp else 0.dp
@@ -1005,6 +1011,10 @@ private fun MiniStyledArtwork(
         Box(modifier.background(YouTubeMusicDesign.placeholder)) { CoverImage(track, Modifier.fillMaxSize()) }
         return
     }
+    if (LevyraIsQobuz) {
+        Box(modifier.clip(QobuzDesign.artworkShape).background(QobuzDesign.placeholder)) { CoverImage(track, Modifier.fillMaxSize()) }
+        return
+    }
     if (LevyraIsPrism) {
         SkinSpinningArtwork(track, playing, animated, modifier)
         return
@@ -1094,7 +1104,7 @@ private fun MiniStyledMetadata(
             Text(
                 text = track.title,
                 color = palette.content,
-                style = if (LevyraIsSpotify) MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp, lineHeight = 17.sp) else if (LevyraIsYouTubeMusic) MaterialTheme.typography.titleMedium else if (LevyraIsAppleMusic) MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium, lineHeight = 16.sp) else miniTitleStyle(tuning.typography, compact),
+                style = if (LevyraIsSpotify) MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp, lineHeight = 17.sp) else if (LevyraIsQobuz) MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Medium) else if (LevyraIsYouTubeMusic) MaterialTheme.typography.titleMedium else if (LevyraIsAppleMusic) MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium, lineHeight = 16.sp) else miniTitleStyle(tuning.typography, compact),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.levyraMarquee(enabled = animated, repeatDelayMillis = 3_200)
@@ -1103,7 +1113,7 @@ private fun MiniStyledMetadata(
         Text(
             text = if (editorial) subtitle.uppercase() else subtitle,
             color = palette.contentMuted,
-            style = if (LevyraIsSpotify) MaterialTheme.typography.bodySmall else if (LevyraIsYouTubeMusic) MaterialTheme.typography.bodyLarge else if (LevyraIsAppleMusic) MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Normal) else miniArtistStyle(tuning.typography, compact),
+            style = if (LevyraIsSpotify) MaterialTheme.typography.bodySmall else if (LevyraIsQobuz) MaterialTheme.typography.bodyMedium.copy(lineHeight = 18.sp) else if (LevyraIsYouTubeMusic) MaterialTheme.typography.bodyLarge else if (LevyraIsAppleMusic) MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Normal) else miniArtistStyle(tuning.typography, compact),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = if (compact) Modifier else Modifier.dockFoldHeight(compaction)
@@ -1225,6 +1235,10 @@ private fun MiniStyledControls(
     val strings = LocalLevyraStrings.current
     if (LevyraIsSpotify && !liveRadio) {
         SpotifyMiniControls(isPlaying, isResolving, isFavorite, playbackActions.favorite, onToggle)
+        return
+    }
+    if (LevyraIsQobuz && !liveRadio) {
+        QobuzMiniControls(isPlaying, isResolving, isFavorite, playbackActions.favorite, onToggle)
         return
     }
     val skipSize = 38.dp * (tuning.controlScale / 100f)

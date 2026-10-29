@@ -220,6 +220,12 @@ docs/assets/apple-music-style/player.png
 docs/assets/apple-music-style/search.png
 docs/assets/apple-music-style/settings.png
 docs/assets/apple-music-style/skin-selector.png
+docs/assets/qobuz-style/home-sections.png
+docs/assets/qobuz-style/home.png
+docs/assets/qobuz-style/library.png
+docs/assets/qobuz-style/magazine.png
+docs/assets/qobuz-style/player.png
+docs/assets/qobuz-style/search.png
 docs/assets/youtube-music-style/album.png
 docs/assets/youtube-music-style/artist.png
 docs/assets/youtube-music-style/explore.png

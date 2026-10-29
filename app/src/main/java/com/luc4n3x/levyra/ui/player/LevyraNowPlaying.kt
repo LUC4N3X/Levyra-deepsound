@@ -437,6 +437,7 @@ private fun LevyraNowPlayingContent(
         val appleMusicCanvas = AppleMusicCanvas(state.motionArtwork, motionEnabled && !lyricsFlip.lyricsSettled, state.interfaceSettings.canvasQuality, livingArtwork)
         val appleMusicImmersive = appleMusicPlayer && appleMusicCanvasImmersive(appleMusicCanvas, maxWidth, maxHeight, state.isVideoMode)
         val showTopArtistCluster = playerArtistHits.size > 1 &&
+            !LevyraIsQobuz &&
             !appleMusicImmersive &&
             !liveRadio &&
             !state.isVideoMode &&
@@ -701,7 +702,9 @@ private fun LevyraNowPlayingContent(
                     onClick = { LevyraPipBridge.enter() }
                 )
             }
-            if (track != null) {
+            if (track != null && LevyraIsQobuz) {
+                QobuzPlayerMoreButton(strings.more) { showActions = true }
+            } else if (track != null) {
                 PlayerGlassIconButton(
                     icon = Icons.Rounded.MoreHoriz,
                     contentDescription = strings.more,
@@ -1191,6 +1194,10 @@ private fun LevyraNowPlayingContent(
             },
             dock = dockBlock,
             dockActions = dockActionsFor,
+            headerTrailing = headerTrailing,
+            modeSwitch = {
+                if (track != null && (track.videoUrl.isNotBlank() || track.counterpartVideoId.isNotBlank())) modeSwitchContent?.invoke()
+            },
             creditsEyebrow = creditWriters?.takeIf { it.second.isNotEmpty() && !LevyraIsSpotify }?.let { (id, writers) ->
                 PlayerCreditsEyebrow(
                     trackId = id,
@@ -1203,7 +1210,7 @@ private fun LevyraNowPlayingContent(
             lyricsPreview = track?.takeIf { LevyraIsSpotify && state.lyrics.isNotEmpty() }?.let { current ->
                 PlayerLyricsPreview(current.id, state.lyrics, state.lyricsSynced, state.positionMs, viewModel::openLyrics)
             },
-            artistPanel = track?.takeIf { LevyraIsSpotify && !it.isLiveRadio() }?.let { current ->
+            artistPanel = track?.takeIf { (LevyraIsSpotify || LevyraIsQobuz) && !it.isLiveRadio() }?.let { current ->
                 PlayerArtistPanel(
                     trackId = current.id,
                     trackTitle = current.title,

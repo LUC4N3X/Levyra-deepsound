@@ -183,7 +183,8 @@ enum class LevyraSkin {
     Ivory,
     SpotifyStyle,
     AppleMusicStyle,
-    YouTubeMusicStyle;
+    YouTubeMusicStyle,
+    QobuzStyle;
 
     companion object {
         fun from(value: String): LevyraSkin = entries.firstOrNull { it.name == value } ?: Default
@@ -193,7 +194,7 @@ enum class LevyraSkin {
 val LevyraSkin.supportsDockMorph: Boolean
     get() = when (this) {
         LevyraSkin.Default, LevyraSkin.Nocturne78, LevyraSkin.Prism, LevyraSkin.Torque, LevyraSkin.Ivory -> true
-        LevyraSkin.SpotifyStyle, LevyraSkin.AppleMusicStyle, LevyraSkin.YouTubeMusicStyle -> false
+        LevyraSkin.SpotifyStyle, LevyraSkin.AppleMusicStyle, LevyraSkin.YouTubeMusicStyle, LevyraSkin.QobuzStyle -> false
     }
 
 enum class DockScrollEffect(val storageId: String) {
