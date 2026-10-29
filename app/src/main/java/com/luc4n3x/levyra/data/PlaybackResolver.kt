@@ -17,6 +17,7 @@ import com.luc4n3x.levyra.data.network.YoutubeStreamClientIdentity
 import com.luc4n3x.levyra.data.network.YoutubeStreamClientIdentityRegistry
 import com.luc4n3x.levyra.data.hqaudio.HighQualityAudioProvider
 import com.luc4n3x.levyra.data.hqaudio.tidal.TidalAudioProvider
+import com.luc4n3x.levyra.data.hqaudio.qobuz.QobuzAudioProvider
 import com.luc4n3x.levyra.data.hqaudio.HighQualityAudioResolver
 import com.luc4n3x.levyra.data.hqaudio.HighQualityMappingStore
 import com.luc4n3x.levyra.data.hqaudio.HighQualityBackgroundLookup
@@ -403,12 +404,15 @@ class PlaybackResolver private constructor(private val context: Context) {
             mappingStore = HighQualityMappingStore(SharedPreferencesMappingStorage(context)),
             scope = resolveScope
         )
-    ).apply { mode = userPreferences.highQualityAudioMode() }
+    ).apply {
+        mode = userPreferences.highQualityAudioMode()
+        qobuzEnabled = userPreferences.qobuzEnabled()
+    }
 
     private val highQualityDownloadDelegate = lazy {
         HighQualityPlaybackCoordinator(HighQualityAudioResolver(
             providers = highQualityProviders(OkHttpProviderExchange(HighQualityProviderHttpClient::downloadClient)).filter {
-                it.lossless && it.id != TidalAudioProvider.PROVIDER_ID
+                it.lossless && it.id != TidalAudioProvider.PROVIDER_ID && it.id != QobuzAudioProvider.PROVIDER_ID
             },
             mappingStore = HighQualityMappingStore(SharedPreferencesMappingStorage(context)),
             scope = resolveScope,
@@ -420,6 +424,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private fun highQualityProviders(exchange: ProviderHttpExchange): List<HighQualityAudioProvider> = buildList {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            add(QobuzAudioProvider())
             add(TidalAudioProvider(java.io.File(context.cacheDir, "tidal-manifests")))
             add(MonochromeAudioProvider(exchange))
             add(ArcodAudioProvider(exchange))
@@ -501,6 +506,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
 
     private fun canReuseProvidedPlayback(track: Track): Boolean {
+        if (!highQualityPlayback.qobuzEnabled && track.playbackManifest?.alternativeSource?.providerId == QobuzAudioProvider.PROVIDER_ID) return false
         val (preferredLanguage, revision) = preferredAudioLanguageSnapshot()
         return AudioLanguageIntelligence.canReuseProvidedPlayback(
             manifest = track.playbackManifest,
@@ -511,6 +517,10 @@ class PlaybackResolver private constructor(private val context: Context) {
     }
 
     fun prefersLosslessAudio(): Boolean = highQualityPlayback.mode.lossless
+
+    fun setQobuzEnabled(enabled: Boolean) {
+        highQualityPlayback.qobuzEnabled = enabled
+    }
 
     fun setHighQualityAudioMode(mode: HighQualityAudioMode) {
         highQualityPlayback.mode = mode
@@ -647,6 +657,10 @@ class PlaybackResolver private constructor(private val context: Context) {
         val key = cacheKey(track, isVideoMode, audioQuality)
         val hit = streamCache[key] ?: run {
             RuntimeHooks.cache(RuntimeSignal.CACHE_MISS)
+            return null
+        }
+        if (!highQualityPlayback.qobuzEnabled && hit.track.playbackManifest?.alternativeSource?.providerId == QobuzAudioProvider.PROVIDER_ID) {
+            remove(key)
             return null
         }
         if (!isFresh(hit.expiresAt) ||

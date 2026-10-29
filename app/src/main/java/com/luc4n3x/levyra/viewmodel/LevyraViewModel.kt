@@ -1097,6 +1097,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     )
     private val preferences = LevyraPreferences(application.applicationContext)
+    private val _qobuzEnabled = MutableStateFlow(preferences.qobuzEnabled())
+    val qobuzEnabled: StateFlow<Boolean> = _qobuzEnabled.asStateFlow()
     private val profilePhotoStore = ProfilePhotoStore(application.applicationContext)
     private val audioSettingsPersistence = AudioSettingsPersistenceCoordinator(preferences::setAudioSettings)
     private val homeSnapshotCache = LevyraHomeSnapshotCache(application.applicationContext)
@@ -5000,6 +5002,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { it.copy(highQualityAudioMode = mode) }
     }
 
+    fun setQobuzEnabled(enabled: Boolean) {
+        preferences.setQobuzEnabled(enabled)
+        resolver.setQobuzEnabled(enabled)
+        _qobuzEnabled.value = enabled
+    }
+
     fun openSleepTimer() {
         _state.update { it.copy(showSleepTimer = true) }
     }
@@ -6284,6 +6292,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         player.setPlayback(snapshot.audioSettings.playbackSpeed, snapshot.audioSettings.pitch)
         resolver.setAudioQuality(snapshot.audioQuality)
         resolver.setHighQualityAudioMode(snapshot.highQualityAudioMode)
+        resolver.setQobuzEnabled(snapshot.qobuzEnabled)
+        _qobuzEnabled.value = snapshot.qobuzEnabled
         withContext(Dispatchers.IO) {
             queueEngine.restore(
                 fallbackTracks = emptyList(),
