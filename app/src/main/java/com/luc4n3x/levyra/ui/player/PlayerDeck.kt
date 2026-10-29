@@ -179,7 +179,8 @@ internal class PlayerDeckSlots(
     val creditsEyebrow: PlayerCreditsEyebrow? = null,
     val lyricsPreview: PlayerLyricsPreview? = null,
     val artistPanel: PlayerArtistPanel? = null,
-    val headerTrailing: @Composable () -> Unit = {}
+    val headerTrailing: @Composable () -> Unit = {},
+    val modeSwitch: @Composable () -> Unit = {}
 )
 
 internal class PlayerArtistPanel(

@@ -1195,6 +1195,9 @@ private fun LevyraNowPlayingContent(
             dock = dockBlock,
             dockActions = dockActionsFor,
             headerTrailing = headerTrailing,
+            modeSwitch = {
+                if (track != null && (track.videoUrl.isNotBlank() || track.counterpartVideoId.isNotBlank())) modeSwitchContent?.invoke()
+            },
             creditsEyebrow = creditWriters?.takeIf { it.second.isNotEmpty() && !LevyraIsSpotify }?.let { (id, writers) ->
                 PlayerCreditsEyebrow(
                     trackId = id,

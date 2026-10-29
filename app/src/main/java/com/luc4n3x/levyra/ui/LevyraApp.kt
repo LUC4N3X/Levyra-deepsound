@@ -17540,6 +17540,7 @@ private fun PlayerModeSwitch(
     onVideo: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    if (LevyraIsQobuz) return com.luc4n3x.levyra.ui.player.QobuzModeSwitch(isVideoMode, strings.song, strings.video, onSong, onVideo)
     val animationsEnabled = LocalAnimationsEnabled.current
     val springSpec = if (animationsEnabled) LevyraPlayerDesign.expressiveSpring<Dp>() else snap()
     val indicatorOffset by animateDpAsState(

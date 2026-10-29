@@ -98,6 +98,7 @@ internal fun QobuzPlayerScene(
         Box(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 8.dp), contentAlignment = Alignment.Center) {
             Box(Modifier.width(40.dp).height(5.dp).clip(RoundedCornerShape(50)).background(QobuzDesign.playerContentTertiary))
         }
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { slots.modeSwitch() }
         BoxWithConstraints(
             Modifier.fillMaxWidth().weight(1f).padding(horizontal = 16.dp, vertical = 12.dp),
             contentAlignment = Alignment.Center
@@ -270,5 +271,28 @@ internal fun QobuzSeekbar(positionMs: Long, durationMs: Long, onSeek: (Float) ->
 internal fun QobuzPlayerMoreButton(label: String, onClick: () -> Unit) {
     Box(Modifier.size(48.dp).clip(CircleShape).clickable(role = Role.Button, onClickLabel = label, onClick = onClick), contentAlignment = Alignment.Center) {
         Icon(Icons.Filled.MoreVert, label, tint = QobuzDesign.playerContent, modifier = Modifier.size(24.dp))
+    }
+}
+
+@Composable
+internal fun QobuzModeSwitch(videoMode: Boolean, songLabel: String, videoLabel: String, onSong: () -> Unit, onVideo: () -> Unit) {
+    Row(
+        Modifier.padding(vertical = 4.dp).clip(RoundedCornerShape(50)).background(QobuzDesign.playerFill).padding(4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        QobuzModeOption(songLabel, !videoMode, onSong)
+        QobuzModeOption(videoLabel, videoMode, onVideo)
+    }
+}
+
+@Composable
+private fun QobuzModeOption(label: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier.heightIn(min = 36.dp).clip(RoundedCornerShape(50)).background(if (selected) Color.White else Color.Transparent)
+            .toggleable(value = selected, role = Role.Tab, onValueChange = { if (!selected) onClick() }).padding(horizontal = 18.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(label, style = MaterialTheme.typography.labelLarge.copy(fontSize = 15.sp, fontWeight = FontWeight.Medium),
+            color = if (selected) Color.Black else QobuzDesign.playerContent)
     }
 }

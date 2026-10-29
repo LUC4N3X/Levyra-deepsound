@@ -26,6 +26,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.DragHandle
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -61,9 +65,10 @@ internal fun QobuzQueueScreen(
     state: LevyraUiState,
     onPlay: (Track) -> Unit,
     onToggleRadio: () -> Unit,
+    onMove: (Int, Int) -> Unit,
+    onTrackActions: (Track) -> Unit,
     onClose: () -> Unit
 ) {
-    val onTrackActions: (Track) -> Unit = {}
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { LevyraQobuzSkinStrings.forCode(strings.code) }
     val current = state.currentTrack
@@ -102,8 +107,8 @@ internal fun QobuzQueueScreen(
             }
             if (previous.isNotEmpty()) {
                 item(key = "previous-title") { QobuzQueueTitle(copy.previous) }
-                itemsIndexed(previous, key = { index, track -> "p-$index-${track.id}" }) { _, track ->
-                    QobuzQueueRow(track, dimmed = true, copy.explicit, { onPlay(track) }, { onTrackActions(track) })
+                itemsIndexed(previous, key = { index, track -> "p-$index-${track.id}" }) { index, track ->
+                    QobuzQueueRow(track, dimmed = true, copy.explicit, { onPlay(track) }, { onTrackActions(track) }, index, state.queue.size, onMove)
                 }
             }
             if (current != null) {
@@ -117,8 +122,8 @@ internal fun QobuzQueueScreen(
                     QobuzQueueSwitch(state.radioEnabled, copy.autoplay, onToggleRadio)
                 }
             }
-            itemsIndexed(upcoming, key = { index, track -> "u-$index-${track.id}" }) { _, track ->
-                QobuzQueueRow(track, dimmed = false, copy.explicit, { onPlay(track) }, { onTrackActions(track) })
+            itemsIndexed(upcoming, key = { index, track -> "u-$index-${track.id}" }) { index, track ->
+                QobuzQueueRow(track, dimmed = false, copy.explicit, { onPlay(track) }, { onTrackActions(track) }, currentIndex + 1 + index, state.queue.size, onMove)
             }
         }
     }
@@ -131,9 +136,15 @@ private fun QobuzQueueTitle(text: String) {
 }
 
 @Composable
-private fun QobuzQueueRow(track: Track, dimmed: Boolean, explicitLabel: String, onClick: () -> Unit, onLongClick: () -> Unit) {
+private fun QobuzQueueRow(
+    track: Track, dimmed: Boolean, explicitLabel: String, onClick: () -> Unit, onLongClick: () -> Unit,
+    queueIndex: Int = -1, queueSize: Int = 0, onMove: ((Int, Int) -> Unit)? = null
+) {
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val step = with(density) { 80.dp.toPx() }
+    var drag by remember(track.id, queueIndex) { mutableStateOf(0f) }
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 80.dp).alpha(if (dimmed) 0.55f else 1f).combinedClickable(onClick = onClick, onLongClick = onLongClick),
+        Modifier.fillMaxWidth().heightIn(min = 80.dp).graphicsLayer { translationY = drag }.alpha(if (dimmed) 0.55f else 1f).combinedClickable(onClick = onClick, onLongClick = onLongClick),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(Modifier.size(60.dp).clip(RoundedCornerShape(4.dp)).background(QobuzDesign.playerFill)) { CoverImage(track, Modifier.fillMaxSize()) }
@@ -151,6 +162,22 @@ private fun QobuzQueueRow(track: Track, dimmed: Boolean, explicitLabel: String, 
                 Text(track.artist, style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp), color = QobuzDesign.playerContentSecondary,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
+        }
+        if (onMove != null && queueIndex >= 0) {
+            Box(
+                Modifier.size(48.dp).pointerInput(queueIndex, queueSize) {
+                    detectDragGestures(onDragEnd = { drag = 0f }, onDragCancel = { drag = 0f }) { change, amount ->
+                        change.consume()
+                        drag += amount.y
+                        val target = (queueIndex + (drag / step).toInt()).coerceIn(0, queueSize - 1)
+                        if (target != queueIndex) {
+                            onMove(queueIndex, target)
+                            drag = 0f
+                        }
+                    }
+                },
+                contentAlignment = Alignment.Center
+            ) { Icon(Icons.Rounded.DragHandle, LocalLevyraStrings.current.dragToReorder, tint = Color.White, modifier = Modifier.size(26.dp)) }
         }
     }
 }
