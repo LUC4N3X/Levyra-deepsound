@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -234,13 +235,13 @@ private fun welcomeBlock(data: AppleMusicHomeData, actions: QobuzHomeActions, co
         Column {
             QobuzSectionHeader(copy.getStarted, null, copy.seeAll, null)
             Spacer(Modifier.height(QobuzDesign.headerToContent + 4.dp))
-            QobuzWelcomeCard(hero, copy, data.personalTracks, Modifier.padding(horizontal = QobuzDesign.contentPadding))
+            QobuzWelcomeCard(hero, copy, data.personalTracks, data.artists, Modifier.padding(horizontal = QobuzDesign.contentPadding))
         }
     }
 }
 
 @Composable
-private fun QobuzWelcomeCard(hero: StudioHero, copy: QobuzSkinCopy, tracks: List<Track>, modifier: Modifier) {
+private fun QobuzWelcomeCard(hero: StudioHero, copy: QobuzSkinCopy, tracks: List<Track>, artists: List<ArtistHit>, modifier: Modifier) {
     val shape = androidx.compose.foundation.shape.RoundedCornerShape(QobuzDesign.welcomeCorner)
     Row(
         modifier.fillMaxWidth().clip(shape).background(QobuzDesign.surfaceSecondary).border(1.dp, QobuzDesign.border, shape)
@@ -254,7 +255,7 @@ private fun QobuzWelcomeCard(hero: StudioHero, copy: QobuzSkinCopy, tracks: List
             Text(copy.welcomeBody, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Normal), color = QobuzDesign.textSecondary,
                 maxLines = 3, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.height(18.dp))
-            QobuzAvatarStack(hero, tracks)
+            QobuzAvatarStack(hero, tracks, artists)
         }
         Box(Modifier.size(QobuzDesign.welcomeArtwork).clip(androidx.compose.foundation.shape.RoundedCornerShape(6.dp))) {
             QobuzWelcomeArt(Modifier.fillMaxSize())
@@ -267,35 +268,49 @@ private fun QobuzWelcomeCard(hero: StudioHero, copy: QobuzSkinCopy, tracks: List
 
 @Composable
 private fun QobuzWelcomeArt(modifier: Modifier) {
+    val animated = LocalAnimationsEnabled.current
+    val phase = if (animated) {
+        val transition = androidx.compose.animation.core.rememberInfiniteTransition(label = "qobuz-welcome-art")
+        transition.animateFloat(
+            initialValue = 0f, targetValue = (2 * Math.PI).toFloat(), animationSpec =
+            androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween<Float>(14_000, easing = androidx.compose.animation.core.LinearEasing)),
+            label = "qobuz-welcome-phase"
+        )
+    } else null
     androidx.compose.foundation.Canvas(modifier) {
+        val t = phase?.value ?: 0f
+        fun at(x: Float, y: Float, dx: Float, dy: Float, shift: Float) = androidx.compose.ui.geometry.Offset(
+            size.width * (x + dx * kotlin.math.cos(t + shift)), size.height * (y + dy * kotlin.math.sin(t + shift))
+        )
         drawRect(Color(0xFF15102A))
-        drawRect(Brush.radialGradient(listOf(Color(0xFFFF3FD0), Color(0x00FF3FD0)), center = androidx.compose.ui.geometry.Offset(size.width * 0.95f, size.height * 0.62f), radius = size.width * 0.75f))
-        drawRect(Brush.radialGradient(listOf(Color(0xFFB9F3FF), Color(0x009B6BFF)), center = androidx.compose.ui.geometry.Offset(size.width * 0.32f, size.height * 0.45f), radius = size.width * 0.55f))
-        drawRect(Brush.radialGradient(listOf(Color(0xFFFFE680), Color(0x00FFE680)), center = androidx.compose.ui.geometry.Offset(size.width * 0.62f, 0f), radius = size.width * 0.55f))
+        drawRect(Brush.radialGradient(listOf(Color(0xFFFF3FD0), Color(0x00FF3FD0)), center = at(0.92f, 0.62f, 0.10f, 0.12f, 0f), radius = size.width * 0.75f))
+        drawRect(Brush.radialGradient(listOf(Color(0xFFB9F3FF), Color(0x009B6BFF)), center = at(0.32f, 0.45f, 0.14f, 0.10f, 2.1f), radius = size.width * 0.55f))
+        drawRect(Brush.radialGradient(listOf(Color(0xFFFFE680), Color(0x00FFE680)), center = at(0.62f, 0.05f, 0.12f, 0.08f, 4.2f), radius = size.width * 0.55f))
         drawRect(Brush.verticalGradient(0.6f to Color.Transparent, 1f to Color(0x99150A2A)))
     }
 }
 
 @Composable
-private fun QobuzAvatarStack(hero: StudioHero, tracks: List<Track>) {
-    val urls = remember(hero.artistArtworkUrl, hero.companionArtworkUrls) {
-        (listOf(hero.artistArtworkUrl) + hero.companionArtworkUrls).filter { it.isNotBlank() }.distinct()
+private fun QobuzAvatarStack(hero: StudioHero, tracks: List<Track>, artists: List<ArtistHit>) {
+    val urls = remember(hero.artistArtworkUrl, hero.companionArtworkUrls, artists) {
+        (listOf(hero.artistArtworkUrl) + hero.companionArtworkUrls + artists.map { it.thumbnailUrl }).filter { it.isNotBlank() }.distinct()
     }
     val visible = urls.take(5)
-    val extra = (urls.size - visible.size).coerceAtLeast(0)
+    val names = remember(tracks, artists) { (tracks.map { it.artist.lowercase() } + artists.map { it.name.lowercase() }).distinct().size }
+    val extra = (maxOf(urls.size, names) - visible.size).coerceAtLeast(0)
     Row {
         visible.forEachIndexed { index, url ->
             QobuzArtworkBox(
                 url,
-                Modifier.offset(x = (-10 * index).dp).size(QobuzDesign.welcomeAvatar).border(2.dp, QobuzDesign.surfaceSecondary, CircleShape),
+                Modifier.offset(x = (-14 * index).dp).size(44.dp).border(2.dp, QobuzDesign.surfaceSecondary, CircleShape),
                 CircleShape
             )
         }
         if (extra > 0) {
             Box(
-                Modifier.offset(x = (-10 * visible.size).dp).size(QobuzDesign.welcomeAvatar).clip(CircleShape).background(QobuzDesign.surfaceQuaternary),
+                Modifier.offset(x = (-14 * visible.size).dp).size(44.dp).clip(CircleShape).background(QobuzDesign.surfaceQuaternary),
                 contentAlignment = Alignment.Center
-            ) { Text("+$extra", style = MaterialTheme.typography.labelLarge, color = QobuzDesign.textPrimary, maxLines = 1) }
+            ) { Text("+$extra", style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp, fontWeight = FontWeight.Medium), color = QobuzDesign.textPrimary, maxLines = 1) }
         }
     }
 }

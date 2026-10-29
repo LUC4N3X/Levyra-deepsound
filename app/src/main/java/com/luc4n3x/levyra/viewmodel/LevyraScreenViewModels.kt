@@ -484,6 +484,8 @@ class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::li
         root.setPlaylistCover(playlistId, source, crop)
     fun resetPlaylistCover(playlistId: String) = root.resetPlaylistCover(playlistId)
     fun setPlaylistHidden(playlistId: String, hidden: Boolean) = root.setPlaylistHidden(playlistId, hidden)
+    fun toggleFollowArtistReference(name: String, browseId: String, thumbnailUrl: String) =
+        root.toggleFollowArtist(ArtistHit(name = name, subscribers = "", thumbnailUrl = thumbnailUrl, accentStart = 0, accentEnd = 0, browseId = browseId))
     fun setLibrarySort(sort: LibrarySort, direction: LibrarySortDirection) {
         val current = root.state.value.interfaceSettings
         if (current.librarySort == sort && current.librarySortDirection == direction) return

@@ -110,7 +110,7 @@ internal fun QobuzSearchEntry(viewModel: SearchViewModel, state: LevyraUiState, 
             viewModel.searchNow(query)
         }) { viewModel.setQuery("") }
         if (query.isBlank()) {
-            QobuzRecentSearches(state.recentSearches, copy, state.currentTrack?.id, viewModel, onTrackActions)
+            QobuzRecentSearches(state.recentSearches, copy, state.currentTrack?.id, levyraTabContentBottomPadding(state.currentTrack != null) + 16.dp, viewModel, onTrackActions)
             return@Column
         }
         LazyRow(
@@ -224,7 +224,7 @@ private fun QobuzSearchField(query: String, copy: QobuzSkinCopy, onQuery: (Strin
 }
 
 @Composable
-private fun QobuzRecentSearches(recent: List<Track>, copy: QobuzSkinCopy, currentId: String?, viewModel: SearchViewModel, onTrackActions: (Track) -> Unit) {
+private fun QobuzRecentSearches(recent: List<Track>, copy: QobuzSkinCopy, currentId: String?, bottomPadding: androidx.compose.ui.unit.Dp, viewModel: SearchViewModel, onTrackActions: (Track) -> Unit) {
     val strings = LocalLevyraStrings.current
     if (recent.isEmpty()) {
         Text(strings.emptySearchPrompt, style = QobuzText.baseline, modifier = Modifier.padding(QobuzDesign.gutter))
@@ -235,7 +235,7 @@ private fun QobuzRecentSearches(recent: List<Track>, copy: QobuzSkinCopy, curren
             modifier = Modifier.weight(1f).semantics { heading() })
         QobuzSearchIcon(Icons.Outlined.Delete, copy.clearRecent) { recent.forEach(viewModel::removeRecentSearch) }
     }
-    LazyColumn(contentPadding = PaddingValues(start = QobuzDesign.gutter, end = 4.dp, bottom = 120.dp)) {
+    LazyColumn(contentPadding = PaddingValues(start = QobuzDesign.gutter, end = 4.dp, bottom = bottomPadding)) {
         items(recent, key = { "recent-${it.id}" }) { track ->
             QobuzSearchResultRow(
                 track.title, listOf(copy.trackType, track.artist), track.explicit, copy, square = true, track = track, current = track.id == currentId,

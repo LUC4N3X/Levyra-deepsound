@@ -54,7 +54,10 @@ internal data class QobuzSkinCopy(
     val searchHint: String,
     val topResults: String,
     val trackType: String,
-    val clearRecent: String
+    val clearRecent: String,
+    val levyraTools: String,
+    val itemsCount: String,
+    val recentlyAdded: String
 )
 
 internal object LevyraQobuzSkinStrings {
@@ -112,7 +115,10 @@ internal object LevyraQobuzSkinStrings {
         searchHint = "Albums, artists, tracks…",
         topResults = "Top results",
         trackType = "Track",
-        clearRecent = "Clear recent searches"
+        clearRecent = "Clear recent searches",
+        levyraTools = "Levyra tools",
+        itemsCount = "%d items",
+        recentlyAdded = "Recently added"
     )
 
     private val copies = mapOf(
@@ -165,7 +171,10 @@ internal object LevyraQobuzSkinStrings {
             searchHint = "Album, artisti, brani…",
             topResults = "Migliori risultati",
             trackType = "Titolo",
-            clearRecent = "Cancella ricerche recenti"
+            clearRecent = "Cancella ricerche recenti",
+            levyraTools = "Strumenti Levyra",
+            itemsCount = "%d articoli",
+            recentlyAdded = "Aggiunti di recente"
         ),
         "es" to en.copy(
             skinBody = "Tema no oficial. Superficies editoriales claras y oscuras, acentos dorados, chips de Descubrir, minirreproductor flotante y reproductor teñido por la portada. Las selecciones editoriales proceden de páginas públicas de qobuz.com; la reproducción siempre usa los proveedores de Levyra. Sin afiliación ni respaldo de Qobuz.",
@@ -216,7 +225,10 @@ internal object LevyraQobuzSkinStrings {
             searchHint = "Álbumes, artistas, temas…",
             topResults = "Mejores resultados",
             trackType = "Tema",
-            clearRecent = "Borrar búsquedas recientes"
+            clearRecent = "Borrar búsquedas recientes",
+            levyraTools = "Herramientas de Levyra",
+            itemsCount = "%d elementos",
+            recentlyAdded = "Añadidos recientemente"
         ),
         "fr" to en.copy(
             skinBody = "Thème non officiel. Surfaces éditoriales claires et sombres, accents dorés, puces Découvrir, mini-lecteur flottant et lecteur teinté par la pochette. Les sélections éditoriales viennent des pages publiques de qobuz.com ; la lecture passe toujours par les fournisseurs de Levyra. Non affilié à Qobuz ni approuvé par Qobuz.",
@@ -266,7 +278,10 @@ internal object LevyraQobuzSkinStrings {
             searchHint = "Albums, artistes, titres…",
             topResults = "Meilleurs résultats",
             trackType = "Titre",
-            clearRecent = "Effacer les recherches récentes"
+            clearRecent = "Effacer les recherches récentes",
+            levyraTools = "Outils Levyra",
+            itemsCount = "%d éléments",
+            recentlyAdded = "Ajoutés récemment"
         ),
         "de" to en.copy(
             skinBody = "Inoffizielles Theme. Helle und dunkle redaktionelle Flächen, goldene Akzente, Entdecken-Chips, ein schwebender Mini-Player und ein vom Cover gefärbter Player. Redaktionelle Auswahlen stammen von öffentlichen Seiten auf qobuz.com; die Wiedergabe nutzt immer die Anbieter von Levyra. Nicht mit Qobuz verbunden oder von Qobuz unterstützt.",
@@ -317,7 +332,10 @@ internal object LevyraQobuzSkinStrings {
             searchHint = "Alben, Künstler, Titel…",
             topResults = "Top-Ergebnisse",
             trackType = "Titel",
-            clearRecent = "Letzte Suchen löschen"
+            clearRecent = "Letzte Suchen löschen",
+            levyraTools = "Levyra-Werkzeuge",
+            itemsCount = "%d Elemente",
+            recentlyAdded = "Kürzlich hinzugefügt"
         ),
         "pt" to en.copy(
             skinBody = "Tema não oficial. Superfícies editoriais claras e escuras, detalhes dourados, chips de Descobrir, minileitor flutuante e leitor colorido pela capa. As seleções editoriais vêm de páginas públicas de qobuz.com; a reprodução usa sempre os fornecedores do Levyra. Sem afiliação ou aprovação da Qobuz.",
@@ -368,7 +386,10 @@ internal object LevyraQobuzSkinStrings {
             searchHint = "Álbuns, artistas, faixas…",
             topResults = "Melhores resultados",
             trackType = "Faixa",
-            clearRecent = "Limpar pesquisas recentes"
+            clearRecent = "Limpar pesquisas recentes",
+            levyraTools = "Ferramentas do Levyra",
+            itemsCount = "%d itens",
+            recentlyAdded = "Adicionados recentemente"
         )
     )
 
