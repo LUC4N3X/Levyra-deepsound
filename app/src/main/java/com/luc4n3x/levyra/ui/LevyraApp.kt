@@ -22103,6 +22103,7 @@ private class SettingsStudioEntry(
 
 @Composable
 private fun SettingsHubGroupLabel(text: String) {
+    if (LevyraIsQobuz) return QobuzSettingsGroupLabel(text)
     val locale = LocalConfiguration.current.locales[0]
     Text(
         SkinChrome.label(text, locale),
@@ -22181,6 +22182,7 @@ private fun SettingsStudioShelf(title: String, subtitle: String, entries: List<S
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SettingsCategoryCard(meta: SettingsCategoryMeta, index: Int, count: Int, onClick: () -> Unit) {
+    if (LevyraIsQobuz) return QobuzSettingsRow(meta.title, meta.icon, index == count - 1, onClick)
     SettingsTile(
         onClick = onClick,
         groupIndex = index,
@@ -27947,6 +27949,7 @@ private fun skinManagesStudio(id: String): Boolean =
 
 @Composable
 private fun SettingsHubHeader(onClose: () -> Unit) {
+    if (LevyraIsQobuz) return QobuzSettingsHeader(onClose)
     val strings = LocalLevyraStrings.current
     if (SkinChrome.active) PrismPageHeader(strings.settings, strings.settingsSubtitle) {
         IconButton(onClick = onClose, modifier = Modifier.size(48.dp)) { Icon(Icons.Rounded.Close, strings.close, tint = LevyraText) }
