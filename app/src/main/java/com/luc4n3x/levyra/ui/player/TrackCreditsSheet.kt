@@ -1,5 +1,10 @@
 package com.luc4n3x.levyra.ui.player
 
+import androidx.compose.material3.SheetState
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.rounded.HowToReg
+import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -123,6 +128,10 @@ internal fun TrackCreditsSheet(
         load = TrackCreditsLoad.Ready(currentLoadCredits(track, retryCount > 0))
     }
 
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsQobuz) {
+        QobuzTrackCreditsSheet(track, artists, load, copy, sheetState, onOpenArtist, onDismiss, onToggleFollow, isFollowed) { retryCount++ }
+        return
+    }
     if (com.luc4n3x.levyra.ui.theme.LevyraIsSpotify) {
         SpotifyTrackCreditsSheet(track, artists, load, copy, sheetState, onOpenArtist, onDismiss, onToggleFollow, isFollowed) { retryCount++ }
         return
@@ -661,6 +670,126 @@ private fun SpotifyCreditsPersonRow(
             }
         } else if (onOpen != null) {
             Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = subdued, modifier = Modifier.padding(start = 8.dp).size(28.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun QobuzTrackCreditsSheet(
+    track: Track,
+    artists: List<ArtistHit>,
+    load: TrackCreditsLoad,
+    copy: TrackCreditsCopy,
+    sheetState: SheetState,
+    onOpenArtist: (Int) -> Unit,
+    onDismiss: () -> Unit,
+    onToggleFollow: ((Int) -> Unit)?,
+    isFollowed: (Int) -> Boolean,
+    onRetry: () -> Unit
+) {
+    val field by com.luc4n3x.levyra.ui.rememberSpotifyCoverTone(track, ::qobuzPlayerField)
+    val qobuz = com.luc4n3x.levyra.ui.i18n.LevyraQobuzSkinStrings.forCode(LocalLevyraStrings.current.code)
+    val strings = LocalLevyraStrings.current
+    val card = Color.White.copy(alpha = 0.12f)
+    val muted = Color.White.copy(alpha = 0.72f)
+    var expanded by remember(track.id) { mutableStateOf(false) }
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = field, contentColor = Color.White) {
+        Column(
+            Modifier.fillMaxWidth().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(start = 20.dp, end = 20.dp, bottom = 32.dp)
+        ) {
+            Text(copy.title, style = MaterialTheme.typography.headlineMedium.copy(fontSize = 30.sp, fontWeight = FontWeight.Bold), color = Color.White)
+            Spacer(Modifier.height(16.dp))
+            when (load) {
+                TrackCreditsLoad.Loading -> Text(copy.loading, color = muted)
+                is TrackCreditsLoad.Ready -> {
+                    val people = load.credits.sections.flatMap { it.people }.groupBy { it.name.trim().lowercase() }
+                        .map { (_, entries) -> entries.first().copy(roles = entries.flatMap { it.roles }.distinct()) }
+                    val release = load.credits.release
+                    if (people.isEmpty() && release.isEmpty) {
+                        Text(copy.emptyBody, color = muted)
+                        Text(
+                            copy.retry, fontWeight = FontWeight.Bold, color = Color.White,
+                            modifier = Modifier.padding(top = 12.dp).clip(RoundedCornerShape(6.dp)).background(card)
+                                .clickable(onClick = onRetry).padding(horizontal = 16.dp, vertical = 10.dp)
+                        )
+                    } else {
+                        (if (expanded) people else people.take(4)).forEach { person ->
+                            Row(
+                                Modifier.fillMaxWidth().heightIn(min = 68.dp)
+                                    .then(person.linkedArtistIndex?.let { index -> Modifier.clickable { onOpenArtist(index) } } ?: Modifier),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(Modifier.size(48.dp).clip(CircleShape).background(card), contentAlignment = Alignment.Center) {
+                                    Text(
+                                        person.name.split(' ').filter { it.isNotBlank() }.take(2).joinToString("") { it.first().uppercase() },
+                                        color = Color.White.copy(alpha = 0.85f), fontSize = 18.sp, fontWeight = FontWeight.Medium
+                                    )
+                                }
+                                Spacer(Modifier.width(16.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(person.name, fontSize = 17.sp, fontWeight = FontWeight.Medium, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    if (person.roles.isNotEmpty()) {
+                                        Text(person.roles.joinToString(", "), fontSize = 15.sp, color = muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    }
+                                }
+                            }
+                            Box(Modifier.fillMaxWidth().padding(start = 64.dp).height(1.dp).background(card))
+                        }
+                        if (people.size > 4) {
+                            Text(
+                                if (expanded) strings.showLess else strings.showMore, fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color.White,
+                                modifier = Modifier.padding(top = 12.dp).clip(RoundedCornerShape(6.dp)).background(card)
+                                    .clickable { expanded = !expanded }.padding(horizontal = 16.dp, vertical = 10.dp)
+                            )
+                        }
+                        release.phonographicCopyright.ifBlank { release.copyright }.takeIf { it.isNotBlank() }?.let {
+                            Text(it, fontSize = 15.sp, color = muted, modifier = Modifier.padding(top = 16.dp))
+                        }
+                        if (!release.isEmpty) {
+                            Text(copy.release, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(top = 32.dp, bottom = 12.dp))
+                            Column(
+                                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(card).padding(20.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(Modifier.size(84.dp).clip(RoundedCornerShape(6.dp))) { com.luc4n3x.levyra.ui.CoverImage(track, Modifier.fillMaxSize()) }
+                                    Spacer(Modifier.width(16.dp))
+                                    Text(release.album.ifBlank { track.album }, fontSize = 19.sp, fontWeight = FontWeight.Medium, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                }
+                                Spacer(Modifier.height(4.dp))
+                                listOf(copy.releaseDate to release.releaseDate, copy.label to release.label, copy.isrc to release.isrc, copy.upc to release.upc)
+                                    .filter { it.second.isNotBlank() }
+                                    .forEach { (label, value) ->
+                                        Row {
+                                            Text(label, fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color.White, modifier = Modifier.weight(1f))
+                                            Text(value, fontSize = 16.sp, color = Color.White.copy(alpha = 0.85f), modifier = Modifier.weight(1f))
+                                        }
+                                    }
+                            }
+                        }
+                        artists.firstOrNull()?.let { artist ->
+                            Text(qobuz.artist, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(top = 32.dp, bottom = 12.dp))
+                            Row(
+                                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(card).clickable { onOpenArtist(0) }.padding(20.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                com.luc4n3x.levyra.ui.QobuzArtworkBox(artist.thumbnailUrl, Modifier.size(84.dp), CircleShape)
+                                Spacer(Modifier.width(16.dp))
+                                Text(artist.name, fontSize = 19.sp, fontWeight = FontWeight.Medium, color = Color.White, modifier = Modifier.weight(1f), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                if (onToggleFollow != null) {
+                                    Box(Modifier.size(48.dp).clip(CircleShape).clickable { onToggleFollow(0) }, contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            if (isFollowed(0)) androidx.compose.material.icons.Icons.Rounded.HowToReg else androidx.compose.material.icons.Icons.Rounded.PersonAdd,
+                                            qobuz.follow, tint = Color.White
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
