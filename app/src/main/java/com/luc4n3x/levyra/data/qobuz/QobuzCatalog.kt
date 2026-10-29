@@ -125,7 +125,7 @@ internal object QobuzCatalogParser {
     private val trackName = Regex("track__item--name\" title=\"([^\"]*)\"")
     private val trackArtist = Regex("track__item--artist\" title=\"([^\"]*)\"")
     private val trackAlbum = Regex("track__item--album\" title=\"([^\"]*)\"")
-    private val trackAlbumId = Regex("track__item--album[^>]*>\s*<a class=\"link\" href=\"/[a-z]{2}-[a-z]{2}/album/[^/\"]+/([A-Za-z0-9]+)\"")
+    private val trackAlbumId = Regex("track__item--album[^>]*>\\s*<a class=\"link\" href=\"/[a-z]{2}-[a-z]{2}/album/[^/\"]+/([A-Za-z0-9]+)\"")
     private val trackDuration = Regex("track__item--duration\">\\s*(\\d{2}):(\\d{2}):(\\d{2})")
     private val metaTitle = Regex("class=\"album-meta__title\"\\s+title=\"([^\"]*)\"")
     private val metaCurator = Regex("class=\"album-meta__artist\"\\s+title=\"([^\"]*)\"")
