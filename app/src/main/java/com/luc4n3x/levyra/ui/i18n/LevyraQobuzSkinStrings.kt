@@ -49,7 +49,8 @@ internal data class QobuzSkinCopy(
     val magazineUnavailable: String,
     val openOnQobuz: String,
     val levyraExplore: String,
-    val credits: String
+    val credits: String,
+    val readMore: String
 )
 
 internal object LevyraQobuzSkinStrings {
@@ -102,7 +103,8 @@ internal object LevyraQobuzSkinStrings {
         magazineUnavailable = "Magazine stories are unavailable right now.",
         openOnQobuz = "Read on qobuz.com",
         levyraExplore = "Levyra explore",
-        credits = "Credits"
+        credits = "Credits",
+        readMore = "Read more"
     )
 
     private val copies = mapOf(
@@ -150,7 +152,8 @@ internal object LevyraQobuzSkinStrings {
             magazineUnavailable = "Le storie del magazine non sono disponibili al momento.",
             openOnQobuz = "Leggi su qobuz.com",
             levyraExplore = "Esplora Levyra",
-            credits = "Crediti"
+            credits = "Crediti",
+            readMore = "Leggi il seguito"
         ),
         "es" to en.copy(
             skinBody = "Tema no oficial. Superficies editoriales claras y oscuras, acentos dorados, chips de Descubrir, minirreproductor flotante y reproductor teñido por la portada. Las selecciones editoriales proceden de páginas públicas de qobuz.com; la reproducción siempre usa los proveedores de Levyra. Sin afiliación ni respaldo de Qobuz.",
@@ -196,7 +199,8 @@ internal object LevyraQobuzSkinStrings {
             magazineUnavailable = "Las historias del magazine no están disponibles ahora.",
             openOnQobuz = "Leer en qobuz.com",
             levyraExplore = "Explorar Levyra",
-            credits = "Créditos"
+            credits = "Créditos",
+            readMore = "Leer más"
         ),
         "fr" to en.copy(
             skinBody = "Thème non officiel. Surfaces éditoriales claires et sombres, accents dorés, puces Découvrir, mini-lecteur flottant et lecteur teinté par la pochette. Les sélections éditoriales viennent des pages publiques de qobuz.com ; la lecture passe toujours par les fournisseurs de Levyra. Non affilié à Qobuz ni approuvé par Qobuz.",
@@ -241,7 +245,8 @@ internal object LevyraQobuzSkinStrings {
             magazineUnavailable = "Les articles du magazine sont indisponibles pour le moment.",
             openOnQobuz = "Lire sur qobuz.com",
             levyraExplore = "Explorer Levyra",
-            credits = "Crédits"
+            credits = "Crédits",
+            readMore = "Lire la suite"
         ),
         "de" to en.copy(
             skinBody = "Inoffizielles Theme. Helle und dunkle redaktionelle Flächen, goldene Akzente, Entdecken-Chips, ein schwebender Mini-Player und ein vom Cover gefärbter Player. Redaktionelle Auswahlen stammen von öffentlichen Seiten auf qobuz.com; die Wiedergabe nutzt immer die Anbieter von Levyra. Nicht mit Qobuz verbunden oder von Qobuz unterstützt.",
@@ -287,7 +292,8 @@ internal object LevyraQobuzSkinStrings {
             magazineUnavailable = "Die Magazin-Artikel sind gerade nicht verfügbar.",
             openOnQobuz = "Auf qobuz.com lesen",
             levyraExplore = "Levyra entdecken",
-            credits = "Mitwirkende"
+            credits = "Mitwirkende",
+            readMore = "Weiterlesen"
         ),
         "pt" to en.copy(
             skinBody = "Tema não oficial. Superfícies editoriais claras e escuras, detalhes dourados, chips de Descobrir, minileitor flutuante e leitor colorido pela capa. As seleções editoriais vêm de páginas públicas de qobuz.com; a reprodução usa sempre os fornecedores do Levyra. Sem afiliação ou aprovação da Qobuz.",
@@ -333,7 +339,8 @@ internal object LevyraQobuzSkinStrings {
             magazineUnavailable = "As matérias do magazine estão indisponíveis agora.",
             openOnQobuz = "Ler em qobuz.com",
             levyraExplore = "Explorar Levyra",
-            credits = "Créditos"
+            credits = "Créditos",
+            readMore = "Ler mais"
         )
     )
 

@@ -604,7 +604,7 @@ private fun morphedSeam(morph: DockMorph?, seam: () -> Dp): () -> Dp =
     if (morph == null) seam else { { seam() * (1f - morph.fraction) } }
 
 private fun miniDockCompaction(style: MiniPlayerStyle, compaction: () -> Float): () -> Float =
-    if (style == MiniPlayerStyle.YtMusic || LevyraIsAppleMusic) StyledMiniFixedDock else compaction
+    if (style == MiniPlayerStyle.YtMusic || LevyraIsAppleMusic || LevyraIsQobuz) StyledMiniFixedDock else compaction
 
 private fun miniContentBottom(tuning: MiniPlayerTuning): Dp =
     if (tuning.progress == MiniProgressStyle.Wavy) 4.dp else 0.dp

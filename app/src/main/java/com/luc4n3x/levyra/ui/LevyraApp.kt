@@ -3297,7 +3297,7 @@ fun LevyraApp(
 
             AnimatedVisibility(visible = state.showArtist, enter = detailEnter, exit = pageExit) {
                 val appleStorefront = remember(state.selectedChartId) { ChartsCatalog.region(state.selectedChartId).country }
-                if (LevyraIsYouTubeMusic) YouTubeMusicArtistScreen(state, viewModel) { trackActionTarget = it } else ArtistOverlay(
+                if (LevyraIsQobuz) QobuzArtistScreen(state, viewModel) { trackActionTarget = it } else if (LevyraIsYouTubeMusic) YouTubeMusicArtistScreen(state, viewModel) { trackActionTarget = it } else ArtistOverlay(
                     state = state,
                     onPlay = viewModel::playArtistSong,
                     onPlayFrom = { tracks, track -> viewModel.playFrom(tracks, track) },
