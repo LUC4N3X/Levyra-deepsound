@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
@@ -56,6 +57,7 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.CoverImage
 import com.luc4n3x.levyra.ui.i18n.LevyraQobuzSkinStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.QobuzSkinCopy
 import com.luc4n3x.levyra.ui.rememberSpotifyCoverTone
 import com.luc4n3x.levyra.ui.theme.QobuzDesign
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
@@ -85,20 +87,7 @@ internal fun QobuzQueueScreen(
             Modifier.fillMaxWidth().clickable(role = Role.Button, onClickLabel = strings.close, onClick = onClose).padding(top = 12.dp, bottom = 12.dp),
             contentAlignment = Alignment.Center
         ) { Box(Modifier.width(40.dp).height(5.dp).clip(RoundedCornerShape(50)).background(QobuzDesign.playerContentTertiary)) }
-        Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(if (history) copy.history else copy.queueTitle, style = MaterialTheme.typography.headlineLarge.copy(fontSize = 34.sp, fontWeight = FontWeight.Bold),
-                color = Color.White, modifier = Modifier.weight(1f).semantics { heading() })
-            Row(
-                Modifier.clip(RoundedCornerShape(6.dp)).background(if (history) Color.White else QobuzDesign.playerFill)
-                    .clickable(role = Role.Switch) { history = !history }.padding(horizontal = 14.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val tint = if (history) Color.Black else Color.White
-                Icon(Icons.Rounded.History, null, tint = tint, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(10.dp))
-                Text(copy.history, style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp), color = tint)
-            }
-        }
+        QobuzQueueHeader(if (history) copy.history else copy.queueTitle, copy.history, history) { history = !history }
         LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 120.dp)) {
             if (history) {
                 itemsIndexed(state.recentListens, key = { index, track -> "h-$index-${track.id}" }) { _, track ->
@@ -106,26 +95,59 @@ internal fun QobuzQueueScreen(
                 }
                 return@LazyColumn
             }
-            if (previous.isNotEmpty()) {
-                item(key = "previous-title") { QobuzQueueTitle(copy.previous) }
-                itemsIndexed(previous, key = { index, track -> "p-$index-${track.id}" }) { index, track ->
-                    QobuzQueueRow(track, dimmed = true, copy.explicit, { onPlay(track) }, { onTrackActions(track) }, index, state.queue.size, onMove)
-                }
-            }
-            if (current != null) {
-                item(key = "current-title") { QobuzQueueTitle(copy.current) }
-                item(key = "current") { QobuzQueueRow(current, dimmed = false, copy.explicit, {}, { onTrackActions(current) }) }
-            }
-            item(key = "autoplay") {
-                Row(Modifier.fillMaxWidth().padding(top = 40.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(copy.autoplay, style = MaterialTheme.typography.headlineSmall.copy(fontSize = 28.sp, fontWeight = FontWeight.Bold), color = Color.White,
-                        modifier = Modifier.weight(1f).semantics { heading() })
-                    QobuzQueueSwitch(state.radioEnabled, copy.autoplay, onToggleRadio)
-                }
-            }
-            itemsIndexed(upcoming, key = { index, track -> "u-$index-${track.id}" }) { index, track ->
-                QobuzQueueRow(track, dimmed = false, copy.explicit, { onPlay(track) }, { onTrackActions(track) }, currentIndex + 1 + index, state.queue.size, onMove)
-            }
+            qobuzQueueSections(state, copy, current, previous, upcoming, currentIndex, onPlay, onToggleRadio, onMove, onTrackActions)
+        }
+    }
+}
+
+private fun LazyListScope.qobuzQueueSections(
+    state: LevyraUiState,
+    copy: QobuzSkinCopy,
+    current: Track?,
+    previous: List<Track>,
+    upcoming: List<Track>,
+    currentIndex: Int,
+    onPlay: (Track) -> Unit,
+    onToggleRadio: () -> Unit,
+    onMove: (Int, Int) -> Unit,
+    onTrackActions: (Track) -> Unit
+) {
+    if (previous.isNotEmpty()) {
+        item(key = "previous-title") { QobuzQueueTitle(copy.previous) }
+        itemsIndexed(previous, key = { index, track -> "p-$index-${track.id}" }) { index, track ->
+            QobuzQueueRow(track, dimmed = true, copy.explicit, { onPlay(track) }, { onTrackActions(track) }, index, state.queue.size, onMove)
+        }
+    }
+    if (current != null) {
+        item(key = "current-title") { QobuzQueueTitle(copy.current) }
+        item(key = "current") { QobuzQueueRow(current, dimmed = false, copy.explicit, {}, { onTrackActions(current) }) }
+    }
+    item(key = "autoplay") {
+        Row(Modifier.fillMaxWidth().padding(top = 40.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(copy.autoplay, style = MaterialTheme.typography.headlineSmall.copy(fontSize = 28.sp, fontWeight = FontWeight.Bold), color = Color.White,
+                modifier = Modifier.weight(1f).semantics { heading() })
+            QobuzQueueSwitch(state.radioEnabled, copy.autoplay, onToggleRadio)
+        }
+    }
+    itemsIndexed(upcoming, key = { index, track -> "u-$index-${track.id}" }) { index, track ->
+        QobuzQueueRow(track, dimmed = false, copy.explicit, { onPlay(track) }, { onTrackActions(track) }, currentIndex + 1 + index, state.queue.size, onMove)
+    }
+}
+
+@Composable
+private fun QobuzQueueHeader(title: String, historyLabel: String, history: Boolean, onToggleHistory: () -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(title, style = MaterialTheme.typography.headlineLarge.copy(fontSize = 34.sp, fontWeight = FontWeight.Bold),
+            color = Color.White, modifier = Modifier.weight(1f).semantics { heading() })
+        Row(
+            Modifier.clip(RoundedCornerShape(6.dp)).background(if (history) Color.White else QobuzDesign.playerFill)
+                .clickable(role = Role.Switch, onClick = onToggleHistory).padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val tint = if (history) Color.Black else Color.White
+            Icon(Icons.Rounded.History, null, tint = tint, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(10.dp))
+            Text(historyLabel, style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp), color = tint)
         }
     }
 }

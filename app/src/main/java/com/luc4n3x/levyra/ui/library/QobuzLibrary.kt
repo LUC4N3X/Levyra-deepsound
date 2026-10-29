@@ -74,7 +74,9 @@ import com.luc4n3x.levyra.ui.QobuzChip
 import com.luc4n3x.levyra.ui.QobuzExplicitBadge
 import com.luc4n3x.levyra.ui.QobuzText
 import com.luc4n3x.levyra.ui.i18n.LevyraQobuzSkinStrings
+import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.QobuzSkinCopy
 import com.luc4n3x.levyra.ui.levyraTabContentBottomPadding
 import com.luc4n3x.levyra.ui.theme.QobuzDesign
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
@@ -127,108 +129,188 @@ internal fun QobuzLibraryScreen(
     var creating by remember { mutableStateOf(false) }
     val sort = state.interfaceSettings.librarySort
     val rows = remember(catalog, state.playlists, filter, sort, query, strings.code) {
-        val artistLabel = copy.artist
-        val all = buildList {
-            if (filter == null || filter == QobuzLibraryFilter.Artists) catalog.artists.forEach { add(QobuzLibraryRow.Artist(it, artistLabel)) }
-            if (filter == null || filter == QobuzLibraryFilter.Playlists) state.playlists.filterNot { it.hidden }.forEach {
-                add(QobuzLibraryRow.Playlist(it, listOf(strings.playlistsPlain, it.tracks.size.takeIf { size -> size > 0 }?.toString().orEmpty()).filter(String::isNotBlank).joinToString(" • ")))
-            }
-            if (filter == null || filter == QobuzLibraryFilter.Albums) catalog.albums.forEach { add(QobuzLibraryRow.Album(it, listOf(strings.albumPlain, it.artist).filter(String::isNotBlank).joinToString(" • "))) }
-            if (filter == QobuzLibraryFilter.Songs) catalog.tracks.forEach {
-                add(QobuzLibraryRow.Song(it, listOf(copy.trackType, it.artist).joinToString(" • "), catalog.trackRecency[it.id] ?: 0L))
-            }
-        }
-        val needle = query.trim().lowercase()
-        val visible = if (needle.isBlank()) all else all.filter { it.title.lowercase().contains(needle) || it.subtitle.lowercase().contains(needle) }
-        when (sort) {
-            LibrarySort.Recent -> visible.sortedByDescending { it.stamp }
-            LibrarySort.Title, LibrarySort.Album, LibrarySort.Duration -> visible.sortedBy { it.title.lowercase() }
-            LibrarySort.Artist -> visible.sortedBy { it.subtitle.lowercase() }
-        }
+        buildQobuzLibraryRows(catalog, state.playlists, filter, sort, query, strings, copy)
     }
     Column(Modifier.fillMaxSize().background(QobuzDesign.surfacePrimary).statusBarsPadding()) {
-        Row(Modifier.fillMaxWidth().height(QobuzDesign.topBarHeight).padding(start = QobuzDesign.gutter, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(strings.libraryTitle, style = QobuzText.pageTitle, modifier = Modifier.weight(1f).semantics { heading() })
-            QobuzLibraryIcon(Icons.Rounded.Add, strings.newPlaylist) { creating = true }
-            QobuzLibraryIcon(if (searching) Icons.Rounded.Close else Icons.Rounded.Search, strings.search) {
+        QobuzLibraryHeader(
+            strings = strings,
+            searching = searching,
+            onCreate = { creating = true },
+            onToggleSearch = {
                 searching = !searching
                 if (!searching) query = ""
             }
-        }
-        if (searching) {
-            Box(
-                Modifier.padding(horizontal = QobuzDesign.gutter, vertical = 6.dp).fillMaxWidth().height(48.dp)
-                    .clip(RoundedCornerShape(50)).background(QobuzDesign.surfaceSecondary).padding(horizontal = 18.dp),
-                contentAlignment = Alignment.CenterStart
-            ) {
-                if (query.isEmpty()) Text(strings.search, style = MaterialTheme.typography.bodyLarge, color = QobuzDesign.textSecondary)
-                BasicTextField(query, { query = it }, singleLine = true, cursorBrush = SolidColor(QobuzDesign.textAccent),
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = QobuzDesign.textPrimary), modifier = Modifier.fillMaxWidth())
-            }
-        }
-        LazyRow(contentPadding = PaddingValues(horizontal = QobuzDesign.gutter, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(QobuzDesign.chipGap)) {
-            items(QobuzLibraryFilter.entries, key = { it.name }) { option ->
-                val label = when (option) {
-                    QobuzLibraryFilter.Playlists -> strings.playlistsPlain
-                    QobuzLibraryFilter.Artists -> strings.artists
-                    QobuzLibraryFilter.Albums -> strings.albumsPlain
-                    QobuzLibraryFilter.Songs -> strings.songsPlain
-                }
-                QobuzChip(label, filter == option, { filterName = if (filter == option) null else option.name })
-            }
-            item(key = "downloads") { QobuzLibraryChip(Icons.Outlined.DownloadForOffline, strings.downloads, onOpenDownloads) }
-            item(key = "tools") { QobuzLibraryChip(Icons.Rounded.Tune, copy.levyraTools, onOpenTools) }
-        }
-        Box(Modifier.fillMaxWidth().height(1.dp).background(QobuzDesign.separator))
-        Row(Modifier.fillMaxWidth().padding(horizontal = QobuzDesign.gutter, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Row(Modifier.clip(RoundedCornerShape(50)).background(QobuzDesign.surfaceSecondary)) {
-                QobuzLayoutToggle(Icons.AutoMirrored.Rounded.ViewList, !grid) { grid = false }
-                QobuzLayoutToggle(Icons.Rounded.GridView, grid) { grid = true }
-            }
-            Box(Modifier.padding(horizontal = 16.dp).width(1.dp).height(28.dp).background(QobuzDesign.separatorStrong))
-            Box {
-                Row(Modifier.heightIn(min = 48.dp).clickable(role = Role.Button) { sortOpen = true }, verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (sort == LibrarySort.Recent) copy.recentlyAdded else sort.libraryLabel(strings), style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Medium), color = QobuzDesign.textPrimary)
-                    Icon(Icons.Rounded.ArrowDropDown, null, tint = QobuzDesign.textPrimary)
-                }
-                DropdownMenu(sortOpen, { sortOpen = false }) {
-                    LibrarySort.entries.forEach { option ->
-                        DropdownMenuItem(text = { Text(if (option == LibrarySort.Recent) copy.recentlyAdded else option.libraryLabel(strings)) }, onClick = {
-                            sortOpen = false
-                            viewModel.setLibrarySort(option, option.defaultDirection)
-                        })
-                    }
-                }
-            }
-        }
-        val bottom = levyraTabContentBottomPadding(state.currentTrack != null) + 16.dp
-        LazyVerticalGrid(
-            columns = if (grid) GridCells.Adaptive(QobuzDesign.gridCard) else GridCells.Fixed(1),
-            contentPadding = PaddingValues(start = QobuzDesign.gutter, end = if (grid) QobuzDesign.gutter else 4.dp, bottom = bottom),
-            horizontalArrangement = Arrangement.spacedBy(QobuzDesign.itemGap),
-            verticalArrangement = Arrangement.spacedBy(if (grid) 20.dp else 0.dp),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            items(rows, key = { it.key }) { row ->
-                val open = { openRow(row, viewModel, catalog, rows) }
-                if (grid) QobuzLibraryCard(row, open) else QobuzLibraryListRow(row, state, copy.explicit, open, { viewModel.toggleFollowArtistRow(row) })
-            }
-            item(key = "count", span = { GridItemSpan(maxLineSpan) }) {
-                Text(copy.itemsCount.format(rows.size), style = MaterialTheme.typography.bodyLarge, color = QobuzDesign.textSecondary, textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp))
-            }
-        }
-    }
-    if (creating) {
-        var name by remember { mutableStateOf("") }
-        AlertDialog(
-            onDismissRequest = { creating = false },
-            title = { Text(strings.newPlaylist) },
-            text = { OutlinedTextField(name, { name = it }, singleLine = true, label = { Text(strings.playlistName) }) },
-            confirmButton = { TextButton(onClick = { if (name.isNotBlank()) viewModel.createPlaylist(name.trim()); creating = false }, enabled = name.isNotBlank()) { Text(strings.create) } },
-            dismissButton = { TextButton(onClick = { creating = false }) { Text(strings.cancel) } }
         )
+        if (searching) QobuzLibrarySearchField(strings, query) { query = it }
+        QobuzLibraryFilterRow(strings, copy, filter, { filterName = it }, onOpenDownloads, onOpenTools)
+        Box(Modifier.fillMaxWidth().height(1.dp).background(QobuzDesign.separator))
+        QobuzLibraryControls(
+            strings = strings,
+            copy = copy,
+            grid = grid,
+            sort = sort,
+            sortOpen = sortOpen,
+            onGrid = { grid = it },
+            onSortOpen = { sortOpen = it },
+            onSort = { viewModel.setLibrarySort(it, it.defaultDirection) }
+        )
+        QobuzLibraryContent(viewModel, state, catalog, copy, rows, grid)
     }
+    if (creating) QobuzCreatePlaylistDialog(strings, { creating = false }, viewModel::createPlaylist)
+}
+
+private fun buildQobuzLibraryRows(
+    catalog: LibraryCatalog,
+    playlists: List<com.luc4n3x.levyra.domain.Playlist>,
+    filter: QobuzLibraryFilter?,
+    sort: LibrarySort,
+    query: String,
+    strings: LevyraStrings,
+    copy: QobuzSkinCopy
+): List<QobuzLibraryRow> {
+    val artistLabel = copy.artist
+    val all = buildList {
+        if (filter == null || filter == QobuzLibraryFilter.Artists) catalog.artists.forEach { add(QobuzLibraryRow.Artist(it, artistLabel)) }
+        if (filter == null || filter == QobuzLibraryFilter.Playlists) playlists.filterNot { it.hidden }.forEach {
+            add(QobuzLibraryRow.Playlist(it, listOf(strings.playlistsPlain, it.tracks.size.takeIf { size -> size > 0 }?.toString().orEmpty()).filter(String::isNotBlank).joinToString(" • ")))
+        }
+        if (filter == null || filter == QobuzLibraryFilter.Albums) catalog.albums.forEach { add(QobuzLibraryRow.Album(it, listOf(strings.albumPlain, it.artist).filter(String::isNotBlank).joinToString(" • "))) }
+        if (filter == QobuzLibraryFilter.Songs) catalog.tracks.forEach {
+            add(QobuzLibraryRow.Song(it, listOf(copy.trackType, it.artist).joinToString(" • "), catalog.trackRecency[it.id] ?: 0L))
+        }
+    }
+    val needle = query.trim().lowercase()
+    val visible = if (needle.isBlank()) all else all.filter { it.title.lowercase().contains(needle) || it.subtitle.lowercase().contains(needle) }
+    return when (sort) {
+        LibrarySort.Recent -> visible.sortedByDescending { it.stamp }
+        LibrarySort.Title, LibrarySort.Album, LibrarySort.Duration -> visible.sortedBy { it.title.lowercase() }
+        LibrarySort.Artist -> visible.sortedBy { it.subtitle.lowercase() }
+    }
+}
+
+@Composable
+private fun QobuzLibraryHeader(strings: LevyraStrings, searching: Boolean, onCreate: () -> Unit, onToggleSearch: () -> Unit) {
+    Row(Modifier.fillMaxWidth().height(QobuzDesign.topBarHeight).padding(start = QobuzDesign.gutter, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(strings.libraryTitle, style = QobuzText.pageTitle, modifier = Modifier.weight(1f).semantics { heading() })
+        QobuzLibraryIcon(Icons.Rounded.Add, strings.newPlaylist, onCreate)
+        QobuzLibraryIcon(if (searching) Icons.Rounded.Close else Icons.Rounded.Search, strings.search, onToggleSearch)
+    }
+}
+
+@Composable
+private fun QobuzLibrarySearchField(strings: LevyraStrings, query: String, onQuery: (String) -> Unit) {
+    Box(
+        Modifier.padding(horizontal = QobuzDesign.gutter, vertical = 6.dp).fillMaxWidth().height(48.dp)
+            .clip(RoundedCornerShape(50)).background(QobuzDesign.surfaceSecondary).padding(horizontal = 18.dp),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        if (query.isEmpty()) Text(strings.search, style = MaterialTheme.typography.bodyLarge, color = QobuzDesign.textSecondary)
+        BasicTextField(query, onQuery, singleLine = true, cursorBrush = SolidColor(QobuzDesign.textAccent),
+            textStyle = MaterialTheme.typography.bodyLarge.copy(color = QobuzDesign.textPrimary), modifier = Modifier.fillMaxWidth())
+    }
+}
+
+@Composable
+private fun QobuzLibraryFilterRow(
+    strings: LevyraStrings,
+    copy: QobuzSkinCopy,
+    filter: QobuzLibraryFilter?,
+    onFilterName: (String?) -> Unit,
+    onOpenDownloads: () -> Unit,
+    onOpenTools: () -> Unit
+) {
+    LazyRow(contentPadding = PaddingValues(horizontal = QobuzDesign.gutter, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(QobuzDesign.chipGap)) {
+        items(QobuzLibraryFilter.entries, key = { it.name }) { option ->
+            val label = when (option) {
+                QobuzLibraryFilter.Playlists -> strings.playlistsPlain
+                QobuzLibraryFilter.Artists -> strings.artists
+                QobuzLibraryFilter.Albums -> strings.albumsPlain
+                QobuzLibraryFilter.Songs -> strings.songsPlain
+            }
+            QobuzChip(label, filter == option, { onFilterName(if (filter == option) null else option.name) })
+        }
+        item(key = "downloads") { QobuzLibraryChip(Icons.Outlined.DownloadForOffline, strings.downloads, onOpenDownloads) }
+        item(key = "tools") { QobuzLibraryChip(Icons.Rounded.Tune, copy.levyraTools, onOpenTools) }
+    }
+}
+
+@Composable
+private fun QobuzLibraryControls(
+    strings: LevyraStrings,
+    copy: QobuzSkinCopy,
+    grid: Boolean,
+    sort: LibrarySort,
+    sortOpen: Boolean,
+    onGrid: (Boolean) -> Unit,
+    onSortOpen: (Boolean) -> Unit,
+    onSort: (LibrarySort) -> Unit
+) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = QobuzDesign.gutter, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.clip(RoundedCornerShape(50)).background(QobuzDesign.surfaceSecondary)) {
+            QobuzLayoutToggle(Icons.AutoMirrored.Rounded.ViewList, !grid) { onGrid(false) }
+            QobuzLayoutToggle(Icons.Rounded.GridView, grid) { onGrid(true) }
+        }
+        Box(Modifier.padding(horizontal = 16.dp).width(1.dp).height(28.dp).background(QobuzDesign.separatorStrong))
+        Box {
+            Row(Modifier.heightIn(min = 48.dp).clickable(role = Role.Button) { onSortOpen(true) }, verticalAlignment = Alignment.CenterVertically) {
+                Text(if (sort == LibrarySort.Recent) copy.recentlyAdded else sort.libraryLabel(strings), style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Medium), color = QobuzDesign.textPrimary)
+                Icon(Icons.Rounded.ArrowDropDown, null, tint = QobuzDesign.textPrimary)
+            }
+            DropdownMenu(sortOpen, { onSortOpen(false) }) {
+                LibrarySort.entries.forEach { option ->
+                    DropdownMenuItem(text = { Text(if (option == LibrarySort.Recent) copy.recentlyAdded else option.libraryLabel(strings)) }, onClick = {
+                        onSortOpen(false)
+                        onSort(option)
+                    })
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun QobuzLibraryContent(
+    viewModel: LibraryViewModel,
+    state: LevyraUiState,
+    catalog: LibraryCatalog,
+    copy: QobuzSkinCopy,
+    rows: List<QobuzLibraryRow>,
+    grid: Boolean
+) {
+    val bottom = levyraTabContentBottomPadding(state.currentTrack != null) + 16.dp
+    LazyVerticalGrid(
+        columns = if (grid) GridCells.Adaptive(QobuzDesign.gridCard) else GridCells.Fixed(1),
+        contentPadding = PaddingValues(start = QobuzDesign.gutter, end = if (grid) QobuzDesign.gutter else 4.dp, bottom = bottom),
+        horizontalArrangement = Arrangement.spacedBy(QobuzDesign.itemGap),
+        verticalArrangement = Arrangement.spacedBy(if (grid) 20.dp else 0.dp),
+        modifier = Modifier.fillMaxSize()
+    ) {
+        items(rows, key = { it.key }) { row ->
+            val open = { openRow(row, viewModel, catalog, rows) }
+            if (grid) QobuzLibraryCard(row, open) else QobuzLibraryListRow(row, state, copy.explicit, open, { viewModel.toggleFollowArtistRow(row) })
+        }
+        item(key = "count", span = { GridItemSpan(maxLineSpan) }) {
+            Text(copy.itemsCount.format(rows.size), style = MaterialTheme.typography.bodyLarge, color = QobuzDesign.textSecondary, textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp))
+        }
+    }
+}
+
+@Composable
+private fun QobuzCreatePlaylistDialog(strings: LevyraStrings, onDismiss: () -> Unit, onCreate: (String) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(strings.newPlaylist) },
+        text = { OutlinedTextField(name, { name = it }, singleLine = true, label = { Text(strings.playlistName) }) },
+        confirmButton = { TextButton(onClick = {
+                if (name.isNotBlank()) {
+                    onCreate(name.trim())
+                }
+                onDismiss()
+            }, enabled = name.isNotBlank()) { Text(strings.create) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(strings.cancel) } }
+    )
 }
 
 private fun LibraryViewModel.toggleFollowArtistRow(row: QobuzLibraryRow) {
