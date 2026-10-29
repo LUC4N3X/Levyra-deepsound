@@ -59,9 +59,12 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -239,7 +242,11 @@ internal fun QobuzSeekbar(positionMs: Long, durationMs: Long, onSeek: (Float) ->
     val seekLabel = LocalLevyraStrings.current.gestureActionSeek
     Column(modifier.fillMaxWidth()) {
         androidx.compose.foundation.Canvas(
-            Modifier.fillMaxWidth().height(28.dp).semantics { contentDescription = seekLabel }
+            Modifier.fillMaxWidth().height(28.dp).semantics {
+                contentDescription = seekLabel
+                progressBarRangeInfo = ProgressBarRangeInfo(fraction, 0f..1f)
+                if (durationMs > 0L) setProgress { target -> onSeek(target.coerceIn(0f, 1f)); true }
+            }
                 .pointerInput(durationMs) {
                     if (durationMs <= 0L) return@pointerInput
                     detectHorizontalDragGestures(

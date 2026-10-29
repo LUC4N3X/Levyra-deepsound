@@ -76,7 +76,8 @@ internal fun QobuzQueueScreen(
     val field = if (toneTrack != null) rememberSpotifyCoverTone(toneTrack, ::qobuzPlayerField).value else Color(0xFF3D3D3D)
     var history by rememberSaveable { mutableStateOf(false) }
     BackHandler(enabled = history) { history = false }
-    val currentIndex = state.queue.indexOfFirst { it.id == current?.id }
+    val currentIndex = state.queueCurrentIndex.takeIf { it in state.queue.indices && state.queue[it].id == current?.id }
+        ?: state.queue.indexOfFirst { it.id == current?.id }
     val previous = if (currentIndex > 0) state.queue.take(currentIndex) else emptyList()
     val upcoming = if (currentIndex >= 0) state.queue.drop(currentIndex + 1) else state.queue
     Column(Modifier.fillMaxSize().background(field).statusBarsPadding().navigationBarsPadding()) {

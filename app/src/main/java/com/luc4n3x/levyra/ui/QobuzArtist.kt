@@ -250,7 +250,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.qobuzReleaseShelf(
             QobuzSectionHeader(title(), null, copy.seeAll, null)
             Spacer(Modifier.height(QobuzDesign.headerToContent))
             LazyRow(contentPadding = QobuzRowPadding, horizontalArrangement = Arrangement.spacedBy(QobuzDesign.itemGap)) {
-                items(releases, key = { "q-$key-${it.browseId.ifBlank { it.title }}" }) { release ->
+                items(releases.distinctBy { it.browseId.ifBlank { it.title } }, key = { "q-$key-${it.browseId.ifBlank { it.title }}" }) { release ->
                     Column(Modifier.width(192.dp).clickable(role = Role.Button) { viewModel.openArtistRelease(release, profile.name) }) {
                         QobuzArtworkBox(release.thumbnailUrl, Modifier.fillMaxWidth().aspectRatio(1f))
                         Spacer(Modifier.height(8.dp))

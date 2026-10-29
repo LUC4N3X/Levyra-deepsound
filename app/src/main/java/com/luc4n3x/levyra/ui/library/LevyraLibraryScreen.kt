@@ -314,7 +314,7 @@ internal fun LevyraLibraryScreen(
         QobuzLibraryScreen(viewModel, state, catalog, onOpenDownloads) { qobuzTools = true }
         return
     }
-    BackHandler(enabled = com.luc4n3x.levyra.ui.theme.LevyraIsQobuz && qobuzTools) { qobuzTools = false }
+    BackHandler(enabled = backEnabled && com.luc4n3x.levyra.ui.theme.LevyraIsQobuz && qobuzTools) { qobuzTools = false }
     var categoryName by rememberSaveable { mutableStateOf(LibraryCategory.Overview.name) }
     val category = LibraryCategory.entries.firstOrNull { it.name == categoryName } ?: LibraryCategory.Overview
     var layoutName by rememberSaveable { mutableStateOf(LibraryLayout.List.name) }
