@@ -15,8 +15,8 @@ class QobuzAudioProviderTest {
         val bytes = ByteArray(42)
         "fLaC".toByteArray().copyInto(bytes)
         bytes[4] = 0x80.toByte(); bytes[7] = 34
-        val packed = (rate.toLong() shl 44) or (1L shl 41) or ((bits - 1).toLong() shl 36) or (rate.toLong() * seconds)
-        for (i in 0..7) bytes[18 + i] = (packed ushr (56 - 8 * i)).toByte()
+        val packed = (rate.toLong() shl 44) or (1L shl 41) or ((bits - 1).toLong() shl 36) or rate.toLong() * seconds
+        for (i in 0..7) bytes[18 + i] = (packed ushr 56 - 8 * i).toByte()
         return bytes
     }
     private fun response(code: Int, body: String = "{}") = ProviderHttpResponse(code, emptyMap(), body.toByteArray())
