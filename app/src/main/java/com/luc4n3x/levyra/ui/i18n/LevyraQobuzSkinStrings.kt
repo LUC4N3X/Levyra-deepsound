@@ -126,7 +126,9 @@ internal object LevyraQobuzSkinStrings {
         recentlyAdded = "Recently added",
         previous = "Previous",
         current = "Now playing",
-        autoplay = "Autoplay"
+        autoplay = "Autoplay",
+        queueTitle = "Queue",
+        history = "History"
     )
 
     private val copies = mapOf(
