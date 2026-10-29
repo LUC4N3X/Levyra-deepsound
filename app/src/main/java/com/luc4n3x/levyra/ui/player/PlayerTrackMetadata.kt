@@ -96,11 +96,11 @@ internal fun PlayerTrackMetadata(
             Column {
                 Text(
                     text = shown.title,
-                    color = surfaces.content,
+                    color = if (LevyraIsQobuz) QobuzDesign.playerContent else surfaces.content,
                     fontSize = titleSize,
                     lineHeight = LevyraTypeRhythm.lineHeight(titleSize),
                     fontWeight = metadataTitleWeight(appleMusic, prism),
-                    letterSpacing = if (LevyraIsSpotify) (-0.4).sp else if (LevyraIsYouTubeMusic) (-0.2).sp else if (appleMusic) (-0.3).sp else (-0.8).sp,
+                    letterSpacing = if (LevyraIsQobuz) 0.sp else if (LevyraIsSpotify) (-0.4).sp else if (LevyraIsYouTubeMusic) (-0.2).sp else if (appleMusic) (-0.3).sp else (-0.8).sp,
                     maxLines = if (animationsEnabled) 1 else 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.levyraMarquee(
@@ -110,12 +110,12 @@ internal fun PlayerTrackMetadata(
                 )
                 PlayerArtistText(
                     track = shown,
-                    color = surfaces.contentMuted,
+                    color = if (LevyraIsQobuz) QobuzDesign.playerContentSecondary else surfaces.contentMuted,
                     style = TextStyle(
                         fontFamily = MaterialTheme.typography.titleMedium.fontFamily,
                         fontSize = artistSize,
                         lineHeight = LevyraTypeRhythm.lineHeight(artistSize),
-                        fontWeight = if (LevyraIsSpotify || appleMusic || LevyraIsYouTubeMusic) FontWeight.Normal else FontWeight.Medium,
+                        fontWeight = if (LevyraIsSpotify || appleMusic || LevyraIsYouTubeMusic || LevyraIsQobuz) FontWeight.Normal else FontWeight.Medium,
                         letterSpacing = (-0.1).sp
                     ),
                     onClickLabel = openArtistLabel,
@@ -137,6 +137,7 @@ internal fun PlayerTrackMetadata(
 }
 
 private fun metadataTitleSize(compact: Boolean, appleMusic: Boolean, prism: Boolean): TextUnit = when {
+    LevyraIsQobuz -> 18.sp
     LevyraIsYouTubeMusic -> 24.sp
     LevyraIsSpotify -> 22.sp
     appleMusic -> 20.sp
@@ -147,6 +148,7 @@ private fun metadataTitleSize(compact: Boolean, appleMusic: Boolean, prism: Bool
 }
 
 private fun metadataArtistSize(compact: Boolean, appleMusic: Boolean): TextUnit = when {
+    LevyraIsQobuz -> 16.sp
     LevyraIsYouTubeMusic -> 16.sp
     LevyraIsSpotify -> 16.sp
     appleMusic -> 20.sp
@@ -155,6 +157,7 @@ private fun metadataArtistSize(compact: Boolean, appleMusic: Boolean): TextUnit 
 }
 
 private fun metadataTitleWeight(appleMusic: Boolean, prism: Boolean): FontWeight = when {
+    LevyraIsQobuz -> FontWeight.Bold
     LevyraIsYouTubeMusic -> FontWeight.Bold
     LevyraIsSpotify -> FontWeight.Bold
     appleMusic -> FontWeight.Medium
@@ -180,6 +183,7 @@ internal fun PlayerFavoriteButton(
     when {
         LevyraIsSpotify -> SpotifyPlayerFavoriteButton(isFavorite, label, pop.value, handleToggle)
         LevyraIsYouTubeMusic -> YouTubeMusicPlayerFavoriteButton(isFavorite, label, pop.value, handleToggle)
+        LevyraIsQobuz -> QobuzPlayerFavoriteButton(isFavorite, label, handleToggle)
         PlayerAppleMusicStyle -> AppleMusicPlayerFavoriteButton(isFavorite, label, pop.value, handleToggle)
         else -> DefaultPlayerFavoriteButton(isFavorite, surfaces, label, animated, pop.value, handleToggle)
     }

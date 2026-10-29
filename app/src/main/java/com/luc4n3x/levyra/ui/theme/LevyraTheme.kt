@@ -464,6 +464,7 @@ object LevyraThemeController {
             LevyraSkin.SpotifyStyle -> spotifyPalette()
             LevyraSkin.AppleMusicStyle -> appleMusicPalette(systemDark)
             LevyraSkin.YouTubeMusicStyle -> youTubeMusicPalette()
+            LevyraSkin.QobuzStyle -> qobuzPalette(systemDark)
         }
         val tinted = when {
             skin != LevyraSkin.Default -> base
@@ -670,7 +671,7 @@ fun LevyraTheme(
         colorScheme = colorScheme,
         motionScheme = motionScheme,
         shapes = shapes,
-        typography = if (nocturne) Nocturne78Typography else if (LevyraIsSpotify) SpotifyTypography else if (LevyraIsAppleMusic) AppleMusicTypography else if (LevyraIsYouTubeMusic) YouTubeMusicTypography else if (ivory) IvoryTypography else if (prism) PrismTypography else levyraTypographyFor(fontPreset ?: activeFontPresetState.value),
+        typography = if (nocturne) Nocturne78Typography else if (LevyraIsSpotify) SpotifyTypography else if (LevyraIsAppleMusic) AppleMusicTypography else if (LevyraIsYouTubeMusic) YouTubeMusicTypography else if (LevyraIsQobuz) QobuzTypography else if (ivory) IvoryTypography else if (prism) PrismTypography else levyraTypographyFor(fontPreset ?: activeFontPresetState.value),
         content = content
     )
 }

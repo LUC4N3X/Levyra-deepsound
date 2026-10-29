@@ -74,6 +74,7 @@ internal fun levyraColorScheme(palette: LevyraPalette): ColorScheme {
         surfaceContainerHighest = SpotifyDesign.sheet
     )
     if (palette.id == AppleMusicPaletteId) return appleMusicColorScheme(palette)
+    if (palette.id == QobuzPaletteId) return qobuzColorScheme(palette)
     if (palette.id == YouTubeMusicPaletteId) return youTubeMusicColorScheme(palette)
     if (palette.id == IvoryPaletteId) return levyraColorScheme(palette.copy(id = "")).copy(
         primary = palette.cyan, onPrimary = palette.black,
