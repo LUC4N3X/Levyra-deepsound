@@ -7414,6 +7414,8 @@ private fun LyricsOverlay(
                 onOptions = { showLyricsOptions = true },
                 onClose = onClose
             )
+        } else if (LevyraIsQobuz && track != null) {
+            QobuzLyricsScreen(state, track, visibleLyrics, lyricsPositionProvider, lyricsAnimationsEnabled, ::onLyricLineClick, onTogglePlay, onClose)
         } else if (LevyraIsSpotify && studioSettings.spotifyLyricsApplies() && track != null) {
             SpotifyLyricsOverlayScreen(
                 state, track, visibleLyrics, lyricsPositionProvider, selectionMode, selectedRange, lyricsAnimationsEnabled,

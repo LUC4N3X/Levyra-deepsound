@@ -281,7 +281,7 @@ private fun QobuzWelcomeCard(hero: StudioHero, copy: QobuzSkinCopy, tracks: List
             QobuzAvatarStack(hero, tracks, artists)
         }
         Box(Modifier.size(QobuzDesign.welcomeArtwork).clip(androidx.compose.foundation.shape.RoundedCornerShape(6.dp))) {
-            QobuzWelcomeArt(Modifier.fillMaxSize())
+            QobuzMixArt(0, Modifier.fillMaxSize())
             Text("Levyra", style = MaterialTheme.typography.labelLarge.copy(fontSize = 14.sp, fontWeight = FontWeight.SemiBold), color = Color.White,
                 modifier = Modifier.align(Alignment.BottomStart).padding(10.dp))
             QobuzPlayCircle(copy.play, 44.dp, hero.onOpen, Modifier.align(Alignment.BottomEnd).padding(8.dp))

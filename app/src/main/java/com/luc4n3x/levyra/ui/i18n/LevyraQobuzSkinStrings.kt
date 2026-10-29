@@ -69,7 +69,11 @@ internal data class QobuzSkinCopy(
     val picksMixBody: String,
     val releaseCredits: String,
     val discoverArtist: String,
-    val discoverLabel: String
+    val discoverLabel: String,
+    val trackNumber: String,
+    val duration: String,
+    val quality: String,
+    val releaseType: String
 )
 
 internal object LevyraQobuzSkinStrings {
@@ -142,7 +146,11 @@ internal object LevyraQobuzSkinStrings {
         picksMixBody = "Quick picks updated with every listen.",
         releaseCredits = "See release credits",
         discoverArtist = "Discover the artist",
-        discoverLabel = "Discover the label"
+        discoverLabel = "Discover the label",
+        trackNumber = "Track",
+        duration = "Duration",
+        quality = "Quality",
+        releaseType = "Type"
     )
 
     private val copies = mapOf(
@@ -211,7 +219,11 @@ internal object LevyraQobuzSkinStrings {
             picksMixBody = "Scelte rapide aggiornate a ogni ascolto.",
             releaseCredits = "Vedi i crediti della pubblicazione",
             discoverArtist = "Scopri l'artista",
-            discoverLabel = "Scopri l'etichetta"
+            discoverLabel = "Scopri l'etichetta",
+            trackNumber = "Traccia",
+            duration = "Durata",
+            quality = "Qualità",
+            releaseType = "Tipo"
         ),
         "es" to en.copy(
             skinBody = "Tema no oficial. Superficies editoriales claras y oscuras, acentos dorados, chips de Descubrir, minirreproductor flotante y reproductor teñido por la portada. Las selecciones editoriales proceden de páginas públicas de qobuz.com; la reproducción siempre usa los proveedores de Levyra. Sin afiliación ni respaldo de Qobuz.",
@@ -277,7 +289,11 @@ internal object LevyraQobuzSkinStrings {
             picksMixBody = "Selecciones rápidas que se actualizan con cada escucha.",
             releaseCredits = "Ver créditos del lanzamiento",
             discoverArtist = "Descubre al artista",
-            discoverLabel = "Descubre el sello"
+            discoverLabel = "Descubre el sello",
+            trackNumber = "Pista",
+            duration = "Duración",
+            quality = "Calidad",
+            releaseType = "Tipo"
         ),
         "fr" to en.copy(
             skinBody = "Thème non officiel. Surfaces éditoriales claires et sombres, accents dorés, puces Découvrir, mini-lecteur flottant et lecteur teinté par la pochette. Les sélections éditoriales viennent des pages publiques de qobuz.com ; la lecture passe toujours par les fournisseurs de Levyra. Non affilié à Qobuz ni approuvé par Qobuz.",
@@ -342,7 +358,11 @@ internal object LevyraQobuzSkinStrings {
             picksMixBody = "Sélections rapides mises à jour à chaque écoute.",
             releaseCredits = "Voir les crédits de la publication",
             discoverArtist = "Découvrir l'artiste",
-            discoverLabel = "Découvrir le label"
+            discoverLabel = "Découvrir le label",
+            trackNumber = "Piste",
+            duration = "Durée",
+            quality = "Qualité",
+            releaseType = "Type"
         ),
         "de" to en.copy(
             skinBody = "Inoffizielles Theme. Helle und dunkle redaktionelle Flächen, goldene Akzente, Entdecken-Chips, ein schwebender Mini-Player und ein vom Cover gefärbter Player. Redaktionelle Auswahlen stammen von öffentlichen Seiten auf qobuz.com; die Wiedergabe nutzt immer die Anbieter von Levyra. Nicht mit Qobuz verbunden oder von Qobuz unterstützt.",
@@ -408,7 +428,11 @@ internal object LevyraQobuzSkinStrings {
             picksMixBody = "Schnellauswahl, die sich mit jedem Hören aktualisiert.",
             releaseCredits = "Veröffentlichungs-Credits ansehen",
             discoverArtist = "Künstler entdecken",
-            discoverLabel = "Label entdecken"
+            discoverLabel = "Label entdecken",
+            trackNumber = "Titel",
+            duration = "Dauer",
+            quality = "Qualität",
+            releaseType = "Typ"
         ),
         "pt" to en.copy(
             skinBody = "Tema não oficial. Superfícies editoriais claras e escuras, detalhes dourados, chips de Descobrir, minileitor flutuante e leitor colorido pela capa. As seleções editoriais vêm de páginas públicas de qobuz.com; a reprodução usa sempre os fornecedores do Levyra. Sem afiliação ou aprovação da Qobuz.",
@@ -474,7 +498,11 @@ internal object LevyraQobuzSkinStrings {
             picksMixBody = "Escolhas rápidas atualizadas a cada audição.",
             releaseCredits = "Ver créditos do lançamento",
             discoverArtist = "Descubra o artista",
-            discoverLabel = "Descubra a editora"
+            discoverLabel = "Descubra a editora",
+            trackNumber = "Faixa",
+            duration = "Duração",
+            quality = "Qualidade",
+            releaseType = "Tipo"
         )
     )
 

@@ -695,6 +695,10 @@ private fun QobuzTrackCreditsSheet(
     val muted = Color.White.copy(alpha = 0.72f)
     var expanded by remember(track.id) { mutableStateOf(false) }
     var grouped by remember(track.id) { mutableStateOf(false) }
+    val runtime by rememberPlayerAudioSpec()
+    val quality = remember(runtime) {
+        listOfNotNull(runtime.codec.takeIf { it.isNotBlank() }?.uppercase(), runtime.sampleRateHz?.takeIf { it > 0 }?.let(::formatTechnicalSampleRate)).joinToString(" / ")
+    }
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = field, contentColor = Color.White) {
         Column(
             Modifier.fillMaxWidth().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(start = 20.dp, end = 20.dp, bottom = 32.dp)
@@ -763,7 +767,7 @@ private fun QobuzTrackCreditsSheet(
                         release.phonographicCopyright.ifBlank { release.copyright }.takeIf { it.isNotBlank() }?.let {
                             Text(it, fontSize = 15.sp, color = muted, modifier = Modifier.padding(top = 16.dp))
                         }
-                        if (!release.isEmpty) {
+                        run {
                             Text(copy.release, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(top = 32.dp, bottom = 12.dp))
                             Column(
                                 Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(card).padding(20.dp),
@@ -775,7 +779,14 @@ private fun QobuzTrackCreditsSheet(
                                     Text(release.album.ifBlank { track.album }, fontSize = 19.sp, fontWeight = FontWeight.Medium, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
                                 }
                                 Spacer(Modifier.height(4.dp))
-                                listOf(copy.releaseDate to release.releaseDate, copy.label to release.label, copy.isrc to release.isrc, copy.upc to release.upc)
+                                listOf(
+                                    copy.releaseDate to release.releaseDate.ifBlank { track.releaseDate.ifBlank { track.year } },
+                                    qobuz.releaseType to track.albumType.replaceFirstChar { it.uppercase() },
+                                    qobuz.trackNumber to (track.trackNumber.takeIf { it > 0 }?.toString().orEmpty()),
+                                    qobuz.duration to (track.durationMs.takeIf { it > 0 }?.let { com.luc4n3x.levyra.ui.components.formatSeekbarMillis(it) }.orEmpty()),
+                                    qobuz.quality to quality,
+                                    copy.label to release.label, copy.isrc to release.isrc.ifBlank { track.isrc }, copy.upc to release.upc
+                                )
                                     .filter { it.second.isNotBlank() }
                                     .forEach { (label, value) ->
                                         Row {

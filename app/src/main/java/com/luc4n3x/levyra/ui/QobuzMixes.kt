@@ -39,7 +39,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -75,19 +78,32 @@ internal fun QobuzMixArt(variant: Int, modifier: Modifier) {
     val phase = if (animated) {
         rememberInfiniteTransition(label = "qobuz-mix-art").animateFloat(
             initialValue = 0f, targetValue = (2 * Math.PI).toFloat(),
-            animationSpec = infiniteRepeatable(tween<Float>(16_000, easing = LinearEasing)), label = "qobuz-mix-phase"
+            animationSpec = infiniteRepeatable(tween<Float>(12_000, easing = LinearEasing)), label = "qobuz-mix-phase"
         )
     } else null
-    Canvas(modifier) {
-        val t = phase?.value ?: 0f
-        fun at(x: Float, y: Float, shift: Float) = Offset(
-            size.width * (x + 0.1f * kotlin.math.cos(t + shift)), size.height * (y + 0.08f * kotlin.math.sin(t + shift))
-        )
-        drawRect(colors[0])
-        drawRect(Brush.radialGradient(listOf(colors[1], Color.Transparent), center = at(0.9f, 0.6f, 0f), radius = size.width * 0.8f))
-        drawRect(Brush.radialGradient(listOf(colors[2], Color.Transparent), center = at(0.3f, 0.4f, 2.1f), radius = size.width * 0.55f))
-        drawRect(Brush.radialGradient(listOf(colors[3], Color.Transparent), center = at(0.62f, 0.02f, 4.2f), radius = size.width * 0.55f))
-        drawRect(Brush.verticalGradient(0.55f to Color.Transparent, 1f to colors[0].copy(alpha = 0.85f)))
+    Box(modifier.background(colors[0])) {
+        Canvas(Modifier.fillMaxSize().blur(28.dp)) {
+            val t = phase?.value ?: 0f
+            val w = size.width
+            val h = size.height
+            rotate(degrees = -18f + 10f * kotlin.math.sin(t), pivot = Offset(w * 0.55f, h * 0.5f)) {
+                translate(left = w * 0.06f * kotlin.math.cos(t), top = h * 0.05f * kotlin.math.sin(t * 2)) {
+                    drawRoundRect(
+                        Brush.horizontalGradient(listOf(colors[2], Color.White, colors[1], colors[1]), startX = w * 0.15f, endX = w * 1.3f),
+                        topLeft = Offset(w * 0.15f, h * 0.30f), size = androidx.compose.ui.geometry.Size(w * 1.3f, h * 0.42f),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(h * 0.21f)
+                    )
+                    val wedge = androidx.compose.ui.graphics.Path().apply {
+                        moveTo(w * 0.45f, -h * 0.1f)
+                        lineTo(w * 1.1f, -h * 0.1f)
+                        lineTo(w * 0.55f, h * 0.42f)
+                        close()
+                    }
+                    drawPath(wedge, Brush.verticalGradient(listOf(colors[3], colors[3].copy(alpha = 0f)), startY = -h * 0.1f, endY = h * 0.45f))
+                }
+            }
+        }
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.55f to Color.Transparent, 1f to colors[0].copy(alpha = 0.9f))))
     }
 }
 
