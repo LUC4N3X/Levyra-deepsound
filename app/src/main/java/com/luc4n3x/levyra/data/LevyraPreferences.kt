@@ -114,6 +114,7 @@ data class LevyraPreferencesSnapshot(
     val automationSettings: LevyraAutomationSettings = LevyraAutomationSettings(),
     val jamDisplayName: String = "",
     val highQualityAudioMode: HighQualityAudioMode = HighQualityAudioMode.DEFAULT,
+    val qobuzEnabled: Boolean = true,
     val lyricsLatencyProfiles: LyricsLatencyProfiles = LyricsLatencyProfiles(),
     val videoQualityTarget: VideoQualityTarget = VideoQualityTarget.AUTO,
     val lyricsProviderOrdering: LyricsProviderOrdering = LyricsProviderOrdering(),
@@ -168,6 +169,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_SKIP_SILENCE] = snapshot.skipSilence
             mutable[KEY_AUDIO_QUALITY] = normalizeAudioQuality(snapshot.audioQuality)
             mutable[KEY_HIGH_QUALITY_ALTERNATIVE_AUDIO] = snapshot.highQualityAudioMode.storageValue
+            mutable[KEY_QOBUZ_ENABLED] = snapshot.qobuzEnabled
             mutable[KEY_AUDIO_NORMALIZATION] = snapshot.audioNormalization
             mutable[KEY_LYRICS_TRANSLATION] = snapshot.lyricsTranslationEnabled
             mutable[KEY_LYRICS_LATENCY_PROFILES] = snapshot.lyricsLatencyProfiles.encode()
@@ -624,6 +626,12 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         write { it[KEY_HIGH_QUALITY_ALTERNATIVE_AUDIO] = mode.storageValue }
     }
 
+    fun qobuzEnabled(): Boolean = read { it[KEY_QOBUZ_ENABLED] ?: true }
+
+    fun setQobuzEnabled(enabled: Boolean) {
+        write { it[KEY_QOBUZ_ENABLED] = enabled }
+    }
+
     fun chartRegionId(): String = read { it[KEY_CHART_REGION_ID].orEmpty() }
 
     fun setChartRegionId(regionId: String) {
@@ -838,6 +846,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             automationSettings = automationSettingsFrom(preferences),
             jamDisplayName = preferences[KEY_JAM_DISPLAY_NAME].orEmpty(),
             highQualityAudioMode = HighQualityAudioMode.fromStorage(preferences[KEY_HIGH_QUALITY_ALTERNATIVE_AUDIO]),
+            qobuzEnabled = preferences[KEY_QOBUZ_ENABLED] ?: true,
             lyricsLatencyProfiles = LyricsLatencyProfiles.decode(preferences[KEY_LYRICS_LATENCY_PROFILES].orEmpty()),
             videoQualityTarget = VideoQualityTarget.fromStorage(preferences[KEY_VIDEO_QUALITY]),
             lyricsProviderOrdering = LyricsProviderOrdering.decode(preferences[KEY_LYRICS_PROVIDER_ORDERING]),
@@ -1341,6 +1350,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_FRESH_DISCOVERY_ALLOW_FAVORITES = booleanPreferencesKey("fresh_discovery_allow_favorites")
         val KEY_AUDIO_QUALITY = stringPreferencesKey("audio_quality")
         val KEY_HIGH_QUALITY_ALTERNATIVE_AUDIO = stringPreferencesKey("high_quality_alternative_audio")
+        val KEY_QOBUZ_ENABLED = booleanPreferencesKey("qobuz_enabled")
         val KEY_USER_NAME = stringPreferencesKey("user_name")
         val KEY_LANGUAGE_CODE = stringPreferencesKey("language_code")
         val KEY_RECENT_SEARCHES = stringPreferencesKey("recent_searches")

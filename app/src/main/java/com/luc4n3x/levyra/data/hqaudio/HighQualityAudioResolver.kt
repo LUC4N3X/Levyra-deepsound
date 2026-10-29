@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.data.hqaudio
 
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
+import com.luc4n3x.levyra.data.hqaudio.qobuz.QobuzAudioProvider
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -15,6 +16,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.selects.select
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
 
@@ -84,6 +86,21 @@ class HighQualityAudioResolver(
     private val queuedBackground = ConcurrentHashMap.newKeySet<String>()
     private val backgroundGate = Semaphore(MAX_BACKGROUND_LOOKUPS)
     private val backgroundStarts = ArrayDeque<Long>()
+
+    @Volatile
+    var qobuzEnabled: Boolean = true
+        set(value) {
+            synchronized(inFlightLock) {
+                if (field == value) return
+                field = value
+                inFlight.values.forEach { it.cancel() }
+                inFlight.clear()
+                backgroundLookups.clear()
+                queuedBackground.clear()
+                streams.entries.removeIf { it.value.stream.providerId == QobuzAudioProvider.PROVIDER_ID }
+                if (value) unmatchedIdentities.clear()
+            }
+        }
 
     @Volatile
     var mode: HighQualityAudioMode = HighQualityAudioMode.OFF
@@ -219,7 +236,8 @@ class HighQualityAudioResolver(
     }
 
     private suspend fun lookup(identityKey: String, query: AlternativeTrackQuery): HighQualityResolution {
-        val active = lanes.filter { mode.lossless || !it.provider.lossless }
+        val active = lanes.filter { (mode.lossless || !it.provider.lossless) &&
+            (qobuzEnabled || it.provider.id != QobuzAudioProvider.PROVIDER_ID) }
         if (active.isEmpty()) return HighQualityResolution.Fallback(HighQualityFallbackReason.DISABLED)
         val resolution = withTimeoutOrNull(lookupBudgetMs) { resolveByPriority(identityKey, query, active) }
             ?: HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "lookup budget")
@@ -239,9 +257,52 @@ class HighQualityAudioResolver(
         query: AlternativeTrackQuery,
         active: List<HighQualityProviderLane>
     ): HighQualityResolution {
+        val qobuz = active.firstOrNull { it.provider.id == QobuzAudioProvider.PROVIDER_ID && it.provider.lossless }
+        if (qobuz != null) return resolveWithQobuz(identityKey, query, qobuz, active.filter { it !== qobuz })
         val preferred = active.firstOrNull { it.provider.id == "tidal" && it.provider.lossless }
         return if (preferred != null) resolvePreferred(identityKey, query, preferred, active.filter { it !== preferred })
             else resolveRacingProviders(identityKey, query, active)
+    }
+
+    private suspend fun resolveWithQobuz(
+        identityKey: String,
+        query: AlternativeTrackQuery,
+        qobuz: HighQualityProviderLane,
+        original: List<HighQualityProviderLane>
+    ): HighQualityResolution = coroutineScope {
+        val optional = async {
+            val result = withTimeoutOrNull(QobuzAudioProvider.LOOKUP_BUDGET_MS) { qobuz.resolve(identityKey, query) }
+                ?: run {
+                    qobuz.provider.reportLookupTimeout()
+                    HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "qobuz lane budget")
+                }
+            if (result is HighQualityResolution.Fallback) {
+                HighQualityAudioDiagnostics.fallback(result.reason, "qobuz: ${result.detail}", query.title)
+            }
+            result
+        }
+        if (original.isEmpty()) return@coroutineScope optional.await()
+        val fallback = async { resolveByPriority(identityKey, query, original) }
+        fun HighQualityResolution.verifiedQobuz() = this is HighQualityResolution.Selected && stream.tier.lossless
+        fun combine(optionalResult: HighQualityResolution, existing: HighQualityResolution): HighQualityResolution = when {
+            optionalResult.verifiedQobuz() -> optionalResult
+            existing is HighQualityResolution.Fallback && existing.reason in DEFINITIVE_MISSES &&
+                optionalResult is HighQualityResolution.Fallback && optionalResult.reason !in DEFINITIVE_MISSES -> optionalResult
+            else -> existing
+        }
+        try {
+            select {
+                optional.onAwait { if (it.verifiedQobuz()) it else combine(it, fallback.await()) }
+                fallback.onAwait { existing ->
+                    if (optional.isCompleted || existing !is HighQualityResolution.Selected) {
+                        combine(optional.await(), existing)
+                    } else existing
+                }
+            }
+        } finally {
+            optional.cancel()
+            fallback.cancel()
+        }
     }
 
     private suspend fun resolvePreferred(

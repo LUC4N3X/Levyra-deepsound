@@ -710,6 +710,7 @@ class LevyraStrings private constructor(
     val alternativeAudioAutomatic: String get() = value("alternativeAudioAutomatic")
     val alternativeAudioPrefer320: String get() = value("alternativeAudioPrefer320")
     val alternativeAudioPreferLossless: String get() = value("alternativeAudioPreferLossless")
+    val qobuzAudioSubtitle: String get() = value("qobuzAudioSubtitle")
     val settingsSearchPlaceholder: String get() = value("settingsSearchPlaceholder")
     val settingsSearchEmpty: String get() = value("settingsSearchEmpty")
     val pulseSectionBand: String get() = value("pulseSectionBand")

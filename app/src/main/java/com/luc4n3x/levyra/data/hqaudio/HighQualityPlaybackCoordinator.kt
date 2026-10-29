@@ -21,6 +21,10 @@ class HighQualityPlaybackCoordinator(
     private val resolver: HighQualityAudioResolver,
     private val clock: () -> Long = System::currentTimeMillis
 ) {
+    var qobuzEnabled: Boolean
+        get() = resolver.qobuzEnabled
+        set(value) { resolver.qobuzEnabled = value }
+
     var mode: HighQualityAudioMode
         get() = resolver.mode
         set(value) {
@@ -194,6 +198,7 @@ class HighQualityPlaybackCoordinator(
     private fun hasPreferredAlternative(track: Track?): Boolean {
         val manifest = track?.playbackManifest ?: return false
         if (manifest.alternativeSource == null) return false
+        if (manifest.alternativeSource.providerId == "qobuz" && !resolver.qobuzEnabled) return false
         return !resolver.mode.lossless || manifest.streams.any {
             it.selected && it.url == manifest.selectedAudioUrl &&
                 (it.mimeType == ProviderStreamValidator.FLAC_MIME_TYPE ||
