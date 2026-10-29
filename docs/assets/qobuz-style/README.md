@@ -75,6 +75,10 @@ Playlist category names and colours only exist behind Qobuz's private API, so th
 
 My Soundtrack takes the WelcomeQ slot, "Your mixes" holds My Soundtrack, Your orbit and Quick picks, "Similar to" shows Levyra's album recommendations, and Levyra Top 50 replaces most-streamed albums. Explore becomes the Magazine tab while keeping access to Levyra moods, genres, new releases and samples. Advanced library tools stay reachable from the Library chips.
 
+## Screenshots
+
+Emulator captures (Pixel 8 profile, light mode, Italian UI): `home.png`, `home-sections.png`, `magazine.png`, `library.png`, `search.png`, `player.png`.
+
 ## Validation
 
 - `QobuzCatalogParserTest` covers editorial filtering, cover derivation, ignoring stream URLs, store locale and host checks.
