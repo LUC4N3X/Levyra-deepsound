@@ -25557,6 +25557,7 @@ internal fun CircleIconButton(
     }
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 private fun ExploreScreen(
     viewModel: ExploreViewModel,

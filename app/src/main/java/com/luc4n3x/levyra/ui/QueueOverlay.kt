@@ -959,6 +959,7 @@ private val queueSelectionSaver = listSaver<Set<String>, String>(
     restore = { it.toSet() }
 )
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun QueueOverlay(
