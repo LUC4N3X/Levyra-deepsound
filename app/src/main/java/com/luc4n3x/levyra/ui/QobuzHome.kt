@@ -87,7 +87,8 @@ internal class QobuzHomeActions(
     val openCategory: (ExploreCategory) -> Unit,
     val toggleFollow: (ArtistHit) -> Unit,
     val openPlaylist: (com.luc4n3x.levyra.domain.PlaylistHit) -> Unit,
-    val languageCode: String
+    val languageCode: String,
+    val addToQueue: (Track) -> Unit = {}
 )
 
 internal class QobuzHomeExtras(
@@ -101,6 +102,7 @@ private sealed interface QobuzSeeAll {
     data class Playlists(val title: String) : QobuzSeeAll
     data class Tracks(val title: String, val tracks: List<Track>) : QobuzSeeAll
     data class Category(val category: ExploreCategory) : QobuzSeeAll
+    data class Mix(val mix: QobuzMix) : QobuzSeeAll
 }
 
 private typealias QobuzBlock = Pair<String, @Composable () -> Unit>
@@ -151,11 +153,16 @@ internal fun QobuzHomeContent(
             state = homePullState, isRefreshing = homeRefreshing,
             modifier = Modifier.align(Alignment.TopCenter).padding(top = statusTop + 16.dp)
         )
+        (seeAll as? QobuzSeeAll.Mix)?.let { target ->
+            BackHandler { seeAll = null }
+            QobuzMixScreen(target.mix, copy, data.currentId, homeBottomInset, actions.home.playFrom, actions.home.playAll,
+                { tracks -> tracks.forEach(actions.addToQueue) }, actions.home.onTrackActions) { seeAll = null }
+        }
         (seeAll as? QobuzSeeAll.Category)?.let { target ->
             BackHandler { seeAll = null }
             QobuzCategoryScreen(target.category, actions, statusTop, homeBottomInset) { seeAll = null }
         }
-        seeAll?.takeUnless { it is QobuzSeeAll.Category }?.let { target ->
+        seeAll?.takeUnless { it is QobuzSeeAll.Category || it is QobuzSeeAll.Mix }?.let { target ->
             BackHandler { seeAll = null }
             QobuzSeeAllScreen(target, feed, copy, data, actions, statusTop, homeBottomInset, discover::openPlaylist) { seeAll = null }
         }
@@ -198,6 +205,22 @@ private fun LazyListScope.qobuzHomeSections(
     val playlists = playlistsBlock(copy, feed, onOpenPlaylist, onSeeAll)
     val categories = categoriesBlock(copy, extras.categories, actions.openCategory)
     val artists = artistsBlock(data, actions, extras, copy)
+    val mixList = buildList {
+        data.soundtrack?.let { hero -> add(QobuzMix("soundtrack", copy.welcomeTitle, copy.welcomeBody, (listOf(hero.track) + data.personalTracks).distinctBy { it.id }, 0)) }
+        data.personalTracks.takeIf { data.showPersonal && it.isNotEmpty() }?.let { add(QobuzMix("orbit", orbitTitle, copy.orbitBaseline, it, 1)) }
+        data.quickPicks?.tracks?.takeIf { it.isNotEmpty() }?.let { add(QobuzMix("picks", data.quickPicks.title.ifBlank { quickPicksTitle }, copy.picksMixBody, it, 2)) }
+    }
+    val mixes: QobuzBlock? = if (mixList.isEmpty()) null else "mixes" to @Composable { QobuzMixRow(mixList, copy) { onSeeAll(QobuzSeeAll.Mix(it)) } }
+    val seed = data.personalTracks.firstOrNull() ?: data.soundtrack?.track
+    val similar: QobuzBlock? = if (seed == null || !data.showAlbums || data.albums.isEmpty()) null else "similar" to @Composable {
+        Column {
+            QobuzSimilarHeader(seed, copy)
+            Spacer(Modifier.height(QobuzDesign.headerToContent + 4.dp))
+            QobuzGridRow(data.albums.take(16).chunked(1), QobuzDesign.gridCard) { album ->
+                QobuzAlbumCard(QobuzAlbum("", album.title, album.artist, album.thumbnailUrl), copy, QobuzDesign.gridCard, { actions.home.openAlbum(album) })
+            }
+        }
+    }
     val orbit = trackRowBlock("orbit", orbitTitle, copy.orbitBaseline, data.personalTracks.takeIf { data.showPersonal }.orEmpty(), data, actions, copy, onSeeAll)
     val picks = rankedBlock("quick-picks", data.quickPicks?.title?.ifBlank { quickPicksTitle } ?: quickPicksTitle, null, data.quickPicks?.tracks.orEmpty(), false, data, actions, copy, onSeeAll)
     val ideal = albumShelfBlock(QobuzShelfKind.IdealDiscography, copy.idealDiscography, copy.idealDiscographyBaseline, feed, rows = 2, width = QobuzDesign.gridCard, awards = false, actions, copy, onSeeAll)
@@ -206,9 +229,9 @@ private fun LazyListScope.qobuzHomeSections(
     val press = albumShelfBlock(QobuzShelfKind.PressAwards, copy.pressAwards, copy.pressAwardsBaseline, feed, rows = 1, width = QobuzDesign.wideCard, awards = true, actions, copy, onSeeAll)
     val albumsForYou = levyraAlbumsBlock(data, actions, copy)
     val blocks = when (feed.tab) {
-        QobuzDiscoverTab.Home -> listOf(welcome, newReleases, playlists, categories, artists, orbit, picks, ideal, qobuzissime, top50, press)
+        QobuzDiscoverTab.Home -> listOf(welcome, newReleases, playlists, categories, artists, mixes, similar, ideal, qobuzissime, top50, press)
         QobuzDiscoverTab.EditorPicks -> listOf(newReleases, playlists, categories, ideal, qobuzissime, press)
-        QobuzDiscoverTab.ForYou -> listOf(welcome, artists, orbit, picks, albumsForYou, top50)
+        QobuzDiscoverTab.ForYou -> listOf(mixes, artists, similar, orbit, picks, top50)
     }.filterNotNull()
     blocks.forEachIndexed { index, (key, content) ->
         item(key = "qobuz-$key", contentType = key) {
@@ -370,7 +393,7 @@ private fun playlistsBlock(
 }
 
 private fun categoriesBlock(copy: QobuzSkinCopy, categories: List<ExploreCategory>, onOpen: (ExploreCategory) -> Unit): QobuzBlock? {
-    val visible = categories.distinctBy { it.title.lowercase() }.take(16)
+    val visible = categories.distinctBy { it.title.lowercase() }
     if (visible.isEmpty()) return null
     return "categories" to @Composable {
         Column {
@@ -577,6 +600,7 @@ private fun QobuzSeeAllScreen(
         is QobuzSeeAll.Playlists -> target.title
         is QobuzSeeAll.Tracks -> target.title
         is QobuzSeeAll.Category -> target.category.title
+        is QobuzSeeAll.Mix -> target.mix.title
     }
     Column(Modifier.fillMaxSize().background(QobuzDesign.surfacePrimary).clickable(enabled = false) {}) {
         QobuzBackBar(title, statusTop, onBack)
@@ -691,7 +715,8 @@ internal fun QobuzHomeEntry(
             openCategory = viewModel::openExploreCategory,
             toggleFollow = viewModel::toggleFollowArtist,
             openPlaylist = viewModel::openPlaylistHit,
-            languageCode = state.languageCode
+            languageCode = state.languageCode,
+            addToQueue = viewModel::addToQueue
         ),
         extras = QobuzHomeExtras(state.exploreCategories, state.followedArtistKeys, state.selectedChartId),
         homeListState = homeListState,
@@ -703,7 +728,7 @@ internal fun QobuzHomeEntry(
 }
 
 private fun QobuzHomeActions.withCategory(open: (ExploreCategory) -> Unit) =
-    QobuzHomeActions(home, openExplore, open, toggleFollow, openPlaylist, languageCode)
+    QobuzHomeActions(home, openExplore, open, toggleFollow, openPlaylist, languageCode, addToQueue)
 
 @Composable
 private fun QobuzCategoryScreen(category: ExploreCategory, actions: QobuzHomeActions, statusTop: Dp, bottomInset: Dp, onBack: () -> Unit) {

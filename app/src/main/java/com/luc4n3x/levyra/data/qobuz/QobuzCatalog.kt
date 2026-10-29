@@ -93,6 +93,12 @@ object QobuzStore {
 
     fun albumUrl(id: String): String = "https://$HOST/album/$id"
 
+    fun coverForAlbum(id: String, size: Int): String {
+        val clean = id.filter(Char::isLetterOrDigit).lowercase(Locale.ROOT)
+        if (clean.length < 4) return ""
+        return "https://static.qobuz.com/images/covers/${clean.takeLast(2)}/${clean.dropLast(2).takeLast(2)}/${clean}_$size.jpg"
+    }
+
     fun cover(url: String, size: Int): String {
         if (!url.startsWith("https://static.qobuz.com/images/covers/")) return url
         return url.replace(Regex("_(\\d+|max|org)\\.jpg$"), "_$size.jpg")
@@ -119,6 +125,7 @@ internal object QobuzCatalogParser {
     private val trackName = Regex("track__item--name\" title=\"([^\"]*)\"")
     private val trackArtist = Regex("track__item--artist\" title=\"([^\"]*)\"")
     private val trackAlbum = Regex("track__item--album\" title=\"([^\"]*)\"")
+    private val trackAlbumId = Regex("track__item--album[^>]*>\s*<a class=\"link\" href=\"/[a-z]{2}-[a-z]{2}/album/[^/\"]+/([A-Za-z0-9]+)\"")
     private val trackDuration = Regex("track__item--duration\">\\s*(\\d{2}):(\\d{2}):(\\d{2})")
     private val metaTitle = Regex("class=\"album-meta__title\"\\s+title=\"([^\"]*)\"")
     private val metaCurator = Regex("class=\"album-meta__artist\"\\s+title=\"([^\"]*)\"")
@@ -192,7 +199,8 @@ internal object QobuzCatalogParser {
                 title = title,
                 artist = trackArtist.find(row)?.groupValues?.get(1)?.let(::text).orEmpty(),
                 album = trackAlbum.find(row)?.groupValues?.get(1)?.let(::text).orEmpty(),
-                durationMs = duration
+                durationMs = duration,
+                coverUrl = trackAlbumId.find(row)?.groupValues?.get(1)?.let { QobuzStore.coverForAlbum(it, 600) }.orEmpty()
             )
         }.distinctBy { it.id }.take(MAX_TRACKS).toList()
         if (tracks.isEmpty()) return null
@@ -225,7 +233,7 @@ internal object QobuzCatalogParser {
 }
 
 object QobuzCatalogTracks {
-    fun track(title: String, artist: String, album: String = "", durationMs: Long = 0L): Track? {
+    fun track(title: String, artist: String, album: String = "", durationMs: Long = 0L, coverUrl: String = ""): Track? {
         val cleanTitle = title.trim()
         if (cleanTitle.isBlank()) return null
         val cleanArtist = artist.trim()
@@ -239,8 +247,8 @@ object QobuzCatalogTracks {
             durationMs = durationMs.coerceAtLeast(0L),
             streamUrl = "",
             videoUrl = "",
-            thumbnailUrl = "",
-            largeThumbnailUrl = "",
+            thumbnailUrl = coverUrl,
+            largeThumbnailUrl = coverUrl,
             source = SOURCE,
             moodTags = setOf("chart"),
             energy = 70,
