@@ -313,7 +313,9 @@ internal fun playerSheetColor(
     surfaces: PlayerSurfaceTokens,
     appleMusic: Boolean = com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic
 ): Color =
-    if (appleMusic) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsQobuz) {
+        com.luc4n3x.levyra.ui.theme.QobuzDesign.surfacePrimary
+    } else if (appleMusic) {
         Color(0xFF2C2C2E)
     } else if (com.luc4n3x.levyra.ui.theme.LevyraIsPrism) {
         com.luc4n3x.levyra.ui.theme.LevyraPanel
@@ -378,6 +380,10 @@ private fun PlayerSheetScrollBody(
     discoverContent: (@Composable () -> Unit)?,
     onAction: (PlayerSheetAction) -> Unit
 ) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsQobuz) {
+        QobuzPlayerActions(track, artworkUrl, actions, discoverContent, onAction)
+        return
+    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
