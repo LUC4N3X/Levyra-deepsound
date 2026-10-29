@@ -259,8 +259,53 @@ private val additionalLosslessLabels = mapOf(
     "ms" to "Utamakan FLAC tanpa kehilangan kualiti"
 )
 
+private val qobuzSubtitles = mapOf(
+    "en" to "Optional FLAC source. Availability and quality are verified for each track.",
+    "it" to "Sorgente FLAC opzionale. Disponibilità e qualità verificate per ogni brano.",
+    "es" to "Fuente FLAC opcional. Disponibilidad y calidad verificadas para cada canción.",
+    "fr" to "Source FLAC facultative. Disponibilité et qualité vérifiées pour chaque titre.",
+    "de" to "Optionale FLAC-Quelle. Verfügbarkeit und Qualität werden für jeden Titel geprüft.",
+    "pt" to "Fonte FLAC opcional. Disponibilidade e qualidade verificadas para cada faixa.",
+    "nl" to "Optionele FLAC-bron. Beschikbaarheid en kwaliteit worden per nummer gecontroleerd.",
+    "pl" to "Opcjonalne źródło FLAC. Dostępność i jakość są sprawdzane dla każdego utworu.",
+    "ro" to "Sursă FLAC opțională. Disponibilitatea și calitatea sunt verificate pentru fiecare piesă.",
+    "el" to "Προαιρετική πηγή FLAC. Η διαθεσιμότητα και η ποιότητα ελέγχονται για κάθε κομμάτι.",
+    "sv" to "Valfri FLAC-källa. Tillgänglighet och kvalitet verifieras för varje låt.",
+    "da" to "Valgfri FLAC-kilde. Tilgængelighed og kvalitet kontrolleres for hvert nummer.",
+    "cs" to "Volitelný zdroj FLAC. Dostupnost a kvalita se ověřují u každé skladby.",
+    "uk" to "Додаткове джерело FLAC. Доступність і якість перевіряються для кожного треку.",
+    "ru" to "Дополнительный источник FLAC. Доступность и качество проверяются для каждого трека.",
+    "tr" to "İsteğe bağlı FLAC kaynağı. Her parça için kullanılabilirlik ve kalite doğrulanır.",
+    "ar" to "مصدر FLAC اختياري. يتم التحقق من التوفر والجودة لكل مقطع.",
+    "zh" to "可选 FLAC 音源。逐曲验证可用性与音质。",
+    "ja" to "任意の FLAC 音源。曲ごとに利用可否と音質を検証します。",
+    "ko" to "선택적 FLAC 음원. 각 곡의 사용 가능 여부와 음질을 확인합니다.",
+    "hi" to "वैकल्पिक FLAC स्रोत। हर ट्रैक की उपलब्धता और गुणवत्ता सत्यापित की जाती है।",
+    "id" to "Sumber FLAC opsional. Ketersediaan dan kualitas diverifikasi untuk setiap lagu.",
+    "vi" to "Nguồn FLAC tùy chọn. Xác minh khả dụng và chất lượng cho từng bài hát.",
+    "th" to "แหล่ง FLAC เสริม ตรวจสอบความพร้อมและคุณภาพของแต่ละเพลง",
+    "fil" to "Opsyonal na FLAC source. Sinusuri ang availability at kalidad ng bawat track.",
+    "he" to "מקור FLAC אופציונלי. הזמינות והאיכות נבדקות לכל שיר.",
+    "fi" to "Valinnainen FLAC-lähde. Saatavuus ja laatu tarkistetaan jokaiselle kappaleelle.",
+    "et" to "Valikuline FLAC-allikas. Saadavust ja kvaliteeti kontrollitakse iga loo puhul.",
+    "sk" to "Voliteľný zdroj FLAC. Dostupnosť a kvalita sa overujú pri každej skladbe.",
+    "hr" to "Neobavezni FLAC izvor. Dostupnost i kvaliteta provjeravaju se za svaku pjesmu.",
+    "sr" to "Опциони FLAC извор. Доступност и квалитет се проверавају за сваку песму.",
+    "sq" to "Burim FLAC opsional. Disponueshmëria dhe cilësia verifikohen për çdo këngë.",
+    "bg" to "Допълнителен FLAC източник. Наличността и качеството се проверяват за всяка песен.",
+    "hu" to "Opcionális FLAC-forrás. Az elérhetőséget és a minőséget minden számnál ellenőrizzük.",
+    "nb" to "Valgfri FLAC-kilde. Tilgjengelighet og kvalitet kontrolleres for hvert spor.",
+    "ca" to "Font FLAC opcional. Disponibilitat i qualitat verificades per a cada cançó.",
+    "kk" to "Қосымша FLAC көзі. Әр тректің қолжетімділігі мен сапасы тексеріледі.",
+    "fa" to "منبع اختیاری FLAC. دسترسی و کیفیت برای هر قطعه بررسی می‌شود.",
+    "zh-Hant" to "可選 FLAC 音源。逐曲驗證可用性與音質。",
+    "bn" to "ঐচ্ছিক FLAC উৎস। প্রতিটি ট্র্যাকের উপলব্ধতা ও মান যাচাই করা হয়।",
+    "ms" to "Sumber FLAC pilihan. Ketersediaan dan kualiti disahkan untuk setiap lagu."
+)
+
 internal fun alternativeAudioLocalizationEntries(code: String): Map<String, String> {
-    val bundle = localizedBundleOrEnglish(alternativeAudioBundles, code)
+    val bundle = localizedBundleOrEnglish(alternativeAudioBundles, code) +
+        ("qobuzAudioSubtitle" to (qobuzSubtitles[code] ?: qobuzSubtitles.getValue("en")))
     val lossless = additionalLosslessLabels[code] ?: return bundle
     return bundle + ("alternativeAudioPreferLossless" to lossless)
 }
@@ -274,5 +319,6 @@ internal val alternativeAudioKeys: Set<String> = setOf(
     "alternativeAudioOff",
     "alternativeAudioAutomatic",
     "alternativeAudioPrefer320",
-    "alternativeAudioPreferLossless"
+    "alternativeAudioPreferLossless",
+    "qobuzAudioSubtitle"
 )

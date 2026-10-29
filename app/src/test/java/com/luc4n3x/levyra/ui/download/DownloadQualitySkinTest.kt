@@ -17,7 +17,7 @@ class DownloadQualitySkinTest {
     }
 
     @Test
-    fun everySkinOwnsADedicatedPickerPresentation() {
+    fun everySkinHasAnExpectedPickerPresentation() {
         val expected = mapOf(
             LevyraSkin.Default to DownloadQualitySkin.Expressive,
             LevyraSkin.Nocturne78 to DownloadQualitySkin.Nocturne,
@@ -26,7 +26,8 @@ class DownloadQualitySkinTest {
             LevyraSkin.Ivory to DownloadQualitySkin.Ivory,
             LevyraSkin.SpotifyStyle to DownloadQualitySkin.Spotify,
             LevyraSkin.AppleMusicStyle to DownloadQualitySkin.Apple,
-            LevyraSkin.YouTubeMusicStyle to DownloadQualitySkin.YouTube
+            LevyraSkin.YouTubeMusicStyle to DownloadQualitySkin.YouTube,
+            LevyraSkin.QobuzStyle to DownloadQualitySkin.Prism
         )
         assertEquals(LevyraSkin.entries.toSet(), expected.keys)
         expected.forEach { (skin, presentation) ->

@@ -1027,6 +1027,7 @@ class LevyraBackupManager(private val context: Context) {
             .put("skipSilence", snapshot.skipSilence)
             .put("audioQuality", snapshot.audioQuality)
             .put("highQualityAudioMode", snapshot.highQualityAudioMode.storageValue)
+            .put("qobuzEnabled", snapshot.qobuzEnabled)
             .put("audioNormalization", snapshot.audioNormalization)
             .put("lyricsTranslationEnabled", snapshot.lyricsTranslationEnabled)
             .put("lyricsLatencyProfiles", JSONObject(snapshot.lyricsLatencyProfiles.encode()))
@@ -1075,6 +1076,7 @@ class LevyraBackupManager(private val context: Context) {
             highQualityAudioMode = HighQualityAudioMode.fromStorage(
                 json.optString("highQualityAudioMode", HighQualityAudioMode.DEFAULT.storageValue)
             ),
+            qobuzEnabled = json.optBoolean("qobuzEnabled", true),
             dismissedUpdateVersion = preferences.dismissedUpdateVersion(),
             lastTrack = json.optJSONObject("lastTrack")?.let(TrackJson::fromJson),
             lastPositionMs = json.optLong("lastPositionMs").coerceAtLeast(0L),
