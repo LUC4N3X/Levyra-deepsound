@@ -38,6 +38,10 @@ internal fun PrismPlayerScene(
     metadata: @Composable () -> Unit, transport: @Composable () -> Unit, modifier: Modifier = Modifier,
     playing: Boolean = true
 ) {
+    if (LevyraIsQobuz) {
+        QobuzPlayerScene(track, slots, artworkCap, metadata, transport, modifier)
+        return
+    }
     if (LevyraIsYouTubeMusic) {
         YouTubeMusicPlayerScene(track, slots, artworkCap, playing, metadata, transport, modifier)
         return
@@ -98,6 +102,10 @@ internal fun PrismTransport(
         TorqueTransport(playing, resolving, shuffle, repeat, labels, onShuffle, onPrevious, onToggle, onNext, onRepeat, modifier)
         return
     }
+    if (LevyraIsQobuz) {
+        QobuzTransport(playing, resolving, shuffle, repeat, labels, onShuffle, onPrevious, onToggle, onNext, onRepeat, modifier)
+        return
+    }
     if (LevyraIsYouTubeMusic) {
         YouTubeMusicTransport(playing, resolving, shuffle, repeat, labels, onShuffle, onPrevious, onToggle, onNext, onRepeat, modifier)
         return
@@ -147,6 +155,10 @@ private fun PrismModeButton(icon: ImageVector, label: String, active: Boolean, o
 internal fun PrismSeekbar(positionMs: Long, bufferedMs: Long, durationMs: Long, onSeek: (Float) -> Unit, modifier: Modifier = Modifier) {
     if (LevyraIsTorque) {
         TorqueStrip(positionMs, durationMs, onSeek, modifier)
+        return
+    }
+    if (LevyraIsQobuz) {
+        QobuzSeekbar(positionMs, durationMs, onSeek, modifier)
         return
     }
     if (LevyraIsYouTubeMusic) {

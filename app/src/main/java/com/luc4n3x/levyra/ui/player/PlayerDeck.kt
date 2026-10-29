@@ -178,7 +178,8 @@ internal class PlayerDeckSlots(
     val dockActions: @Composable (Track) -> List<PlayerDockAction>,
     val creditsEyebrow: PlayerCreditsEyebrow? = null,
     val lyricsPreview: PlayerLyricsPreview? = null,
-    val artistPanel: PlayerArtistPanel? = null
+    val artistPanel: PlayerArtistPanel? = null,
+    val headerTrailing: @Composable () -> Unit = {}
 )
 
 internal class PlayerArtistPanel(

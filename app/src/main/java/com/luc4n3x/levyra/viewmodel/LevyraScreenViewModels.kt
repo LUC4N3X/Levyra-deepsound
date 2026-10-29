@@ -188,6 +188,12 @@ class HomeViewModel internal constructor(
     fun openAlbum(album: AlbumHit) = root.openAlbum(album)
     fun openReleaseRadarEntry(entry: ReleaseRadarEntry) = root.openReleaseRadarEntry(entry)
     fun toggleFollowArtist(artist: ArtistHit) = root.toggleFollowArtist(artist)
+    fun openExploreCategory(category: ExploreCategory) {
+        root.selectExploreCategory(category)
+        root.selectTab(LevyraTab.Explore)
+    }
+    fun ensureExplore(strings: com.luc4n3x.levyra.ui.i18n.LevyraStrings) = root.ensureExplore(strings)
+    fun openExploreTab() = root.selectTab(LevyraTab.Explore)
     fun startSongRadioFrom(track: Track) = root.startSongRadioFrom(track)
     suspend fun artistRadioTracks(track: Track) = root.artistRadioTracks(track)
     fun openListeningRecap() = root.openListeningRecap()

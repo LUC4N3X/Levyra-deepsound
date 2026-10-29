@@ -22,6 +22,7 @@ internal fun prismGlassColor(): Color {
     if (LevyraIsSpotify) return SpotifyDesign.elevated
     if (LevyraIsAppleMusic) return AppleMusicDesign.chrome
     if (LevyraIsYouTubeMusic) return YouTubeMusicDesign.surface
+    if (LevyraIsQobuz) return QobuzDesign.miniPlayer
     return MaterialTheme.colorScheme.surfaceContainer.copy(alpha = if (opaque) 1f else 0.96f)
 }
 
@@ -38,7 +39,7 @@ internal fun PrismAtmosphere(modifier: Modifier = Modifier) {
 @Composable
 internal fun PrismPlayerAtmosphere(modifier: Modifier = Modifier) {
     val palette = LevyraActivePalette
-    if (LevyraIsTorque || LevyraIsIvory || LevyraIsSpotify || LevyraIsAppleMusic || LevyraIsYouTubeMusic) {
+    if (LevyraIsTorque || LevyraIsIvory || LevyraIsSpotify || LevyraIsAppleMusic || LevyraIsYouTubeMusic || LevyraIsQobuz) {
         Box(modifier.fillMaxSize().background(if (LevyraIsAppleMusic || LevyraIsYouTubeMusic) Color.Black else palette.black))
         return
     }

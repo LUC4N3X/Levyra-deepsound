@@ -2073,6 +2073,7 @@ fun LevyraApp(
         LevyraSkin.Ivory -> IvoryThemeEffect(state.interfaceSettings)
         LevyraSkin.AppleMusicStyle -> AppleMusicThemeEffect()
         LevyraSkin.YouTubeMusicStyle -> YouTubeMusicThemeEffect()
+        LevyraSkin.QobuzStyle -> QobuzThemeEffect()
         else -> Unit
     }
     val pureBlack = state.interfaceSettings.pureBlack
@@ -2086,7 +2087,7 @@ fun LevyraApp(
         pureBlack,
         customThemes
     ) {
-        if (state.interfaceSettings.skin == LevyraSkin.Prism || state.interfaceSettings.skin == LevyraSkin.Torque || state.interfaceSettings.skin == LevyraSkin.Ivory || state.interfaceSettings.skin == LevyraSkin.AppleMusicStyle || state.interfaceSettings.skin == LevyraSkin.YouTubeMusicStyle) return@LaunchedEffect
+        if (state.interfaceSettings.skin == LevyraSkin.Prism || state.interfaceSettings.skin == LevyraSkin.Torque || state.interfaceSettings.skin == LevyraSkin.Ivory || state.interfaceSettings.skin == LevyraSkin.AppleMusicStyle || state.interfaceSettings.skin == LevyraSkin.YouTubeMusicStyle || state.interfaceSettings.skin == LevyraSkin.QobuzStyle) return@LaunchedEffect
         LevyraThemeController.apply(
             state.themePreset,
             accentTrack?.accentStart,
@@ -2103,7 +2104,7 @@ fun LevyraApp(
         val nocturne = state.interfaceSettings.skin == LevyraSkin.Nocturne78
         val base = when (state.interfaceSettings.skin) {
             LevyraSkin.Nocturne78 -> Nocturne78Palette
-            LevyraSkin.Prism, LevyraSkin.Torque, LevyraSkin.Ivory, LevyraSkin.AppleMusicStyle, LevyraSkin.YouTubeMusicStyle -> LevyraActivePalette
+            LevyraSkin.Prism, LevyraSkin.Torque, LevyraSkin.Ivory, LevyraSkin.AppleMusicStyle, LevyraSkin.YouTubeMusicStyle, LevyraSkin.QobuzStyle -> LevyraActivePalette
             LevyraSkin.SpotifyStyle -> spotifyPalette()
             LevyraSkin.Default -> LevyraThemes.byId(state.themePreset)
         }
@@ -10455,7 +10456,7 @@ private fun StudioHomeScreen(
         stableSpotlightIdState = stableSpotlightIdState,
         addTargetState = addTargetState
     )
-    if (LevyraIsAppleMusic || LevyraIsYouTubeMusic) {
+    if (LevyraIsAppleMusic || LevyraIsYouTubeMusic || LevyraIsQobuz) {
         val skinHomeData = with(homeContext) {
                 AppleMusicHomeData(
                     selectedChartId = state.selectedChartId,
@@ -10488,7 +10489,9 @@ private fun StudioHomeScreen(
                 pickCountry = { homeContext.chartMarketSheetOpen = true },
                 onTrackActions = homeContext.onTrackActions
             )
-        if (LevyraIsYouTubeMusic) {
+        if (LevyraIsQobuz) {
+            QobuzHomeEntry(skinHomeData, skinHomeActions, homeContext.viewModel, state, homeListState, homeBottomInset, homeRefreshing, homePullState, onPullRefresh)
+        } else if (LevyraIsYouTubeMusic) {
             YouTubeMusicHomeContent(
                 data = skinHomeData,
                 actions = YouTubeMusicHomeActions(
@@ -26483,7 +26486,13 @@ private fun ExploreScreen(
             .fillMaxSize()
             .background(Color.Transparent)
     ) {
-        if (LevyraIsYouTubeMusic) {
+        if (LevyraIsQobuz) {
+            QobuzMagazineEntry(state, viewModel, freshTracks, listState, exploreBottomInset, onShortcut, { addToPlaylistTarget = it }) { category ->
+                samplesStartIndex = null
+                exploreMoodReturn = null
+                exploreDestination = exploreCategoryDestination(category)
+            }
+        } else if (LevyraIsYouTubeMusic) {
             YouTubeMusicExploreScreen(
                 viewModel, listState, state.currentTrack?.id, exploreBottomInset, availableAnchors, onShortcut, onOpenJam, onLiveRadioOpenChange,
                 onOpenMood = { title, params ->
