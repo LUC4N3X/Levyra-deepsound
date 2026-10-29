@@ -694,6 +694,7 @@ private fun QobuzTrackCreditsSheet(
     val card = Color.White.copy(alpha = 0.12f)
     val muted = Color.White.copy(alpha = 0.72f)
     var expanded by remember(track.id) { mutableStateOf(false) }
+    var grouped by remember(track.id) { mutableStateOf(false) }
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = field, contentColor = Color.White) {
         Column(
             Modifier.fillMaxWidth().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(start = 20.dp, end = 20.dp, bottom = 32.dp)
@@ -714,7 +715,14 @@ private fun QobuzTrackCreditsSheet(
                                 .clickable(onClick = onRetry).padding(horizontal = 16.dp, vertical = 10.dp)
                         )
                     } else {
-                        (if (expanded) people else people.take(4)).forEach { person ->
+                        if (grouped) load.credits.sections.filter { it.people.isNotEmpty() }.forEach { section ->
+                            Text(section.title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(top = 20.dp, bottom = 4.dp))
+                            section.people.forEach { person ->
+                                Text(person.name, fontSize = 17.sp, fontWeight = FontWeight.Medium, color = Color.White, modifier = Modifier.padding(top = 8.dp))
+                                if (person.roles.isNotEmpty()) Text(person.roles.joinToString(", "), fontSize = 15.sp, color = muted)
+                            }
+                        }
+                        if (!grouped) (if (expanded) people else people.take(4)).forEach { person ->
                             Row(
                                 Modifier.fillMaxWidth().heightIn(min = 68.dp)
                                     .then(person.linkedArtistIndex?.let { index -> Modifier.clickable { onOpenArtist(index) } } ?: Modifier),
@@ -736,12 +744,21 @@ private fun QobuzTrackCreditsSheet(
                             }
                             Box(Modifier.fillMaxWidth().padding(start = 64.dp).height(1.dp).background(card))
                         }
-                        if (people.size > 4) {
-                            Text(
-                                if (expanded) strings.showLess else strings.showMore, fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color.White,
-                                modifier = Modifier.padding(top = 12.dp).clip(RoundedCornerShape(6.dp)).background(card)
-                                    .clickable { expanded = !expanded }.padding(horizontal = 16.dp, vertical = 10.dp)
-                            )
+                        Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            if (people.size > 4 && !grouped) {
+                                Text(
+                                    if (expanded) strings.showLess else strings.showMore, fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color.White,
+                                    modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(card)
+                                        .clickable { expanded = !expanded }.padding(horizontal = 16.dp, vertical = 10.dp)
+                                )
+                            }
+                            if (load.credits.sections.any { it.people.isNotEmpty() }) {
+                                Text(
+                                    if (grouped) strings.showLess else qobuz.releaseCredits, fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color.White,
+                                    modifier = Modifier.weight(1f, fill = false).clip(RoundedCornerShape(6.dp)).background(card)
+                                        .clickable { grouped = !grouped }.padding(horizontal = 16.dp, vertical = 10.dp)
+                                )
+                            }
                         }
                         release.phonographicCopyright.ifBlank { release.copyright }.takeIf { it.isNotBlank() }?.let {
                             Text(it, fontSize = 15.sp, color = muted, modifier = Modifier.padding(top = 16.dp))
@@ -769,7 +786,7 @@ private fun QobuzTrackCreditsSheet(
                             }
                         }
                         artists.firstOrNull()?.let { artist ->
-                            Text(qobuz.artist, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(top = 32.dp, bottom = 12.dp))
+                            Text(qobuz.discoverArtist, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(top = 32.dp, bottom = 12.dp))
                             Row(
                                 Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(card).clickable { onOpenArtist(0) }.padding(20.dp),
                                 verticalAlignment = Alignment.CenterVertically
@@ -785,6 +802,16 @@ private fun QobuzTrackCreditsSheet(
                                         )
                                     }
                                 }
+                            }
+                        }
+                        release.label.takeIf { it.isNotBlank() }?.let { label ->
+                            Text(qobuz.discoverLabel, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(top = 32.dp, bottom = 12.dp))
+                            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(card).padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Box(Modifier.size(84.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.9f)), contentAlignment = Alignment.Center) {
+                                    Text(label.trim().take(1).uppercase(), color = Color.Black, fontSize = 30.sp, fontWeight = FontWeight.Bold)
+                                }
+                                Spacer(Modifier.width(16.dp))
+                                Text(label, fontSize = 19.sp, fontWeight = FontWeight.Medium, color = Color.White, modifier = Modifier.weight(1f), maxLines = 2, overflow = TextOverflow.Ellipsis)
                             }
                         }
                     }

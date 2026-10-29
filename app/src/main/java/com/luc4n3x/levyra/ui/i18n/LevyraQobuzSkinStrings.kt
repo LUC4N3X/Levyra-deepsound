@@ -66,7 +66,10 @@ internal data class QobuzSkinCopy(
     val mixes: String,
     val mixesBaseline: String,
     val similarTo: String,
-    val picksMixBody: String
+    val picksMixBody: String,
+    val releaseCredits: String,
+    val discoverArtist: String,
+    val discoverLabel: String
 )
 
 internal object LevyraQobuzSkinStrings {
@@ -136,7 +139,10 @@ internal object LevyraQobuzSkinStrings {
         mixes = "Your mixes",
         mixesBaseline = "Made to measure for you.",
         similarTo = "Similar to",
-        picksMixBody = "Quick picks updated with every listen."
+        picksMixBody = "Quick picks updated with every listen.",
+        releaseCredits = "See release credits",
+        discoverArtist = "Discover the artist",
+        discoverLabel = "Discover the label"
     )
 
     private val copies = mapOf(
@@ -202,7 +208,10 @@ internal object LevyraQobuzSkinStrings {
             mixes = "I tuoi mix",
             mixesBaseline = "Su misura per te.",
             similarTo = "Simile a",
-            picksMixBody = "Scelte rapide aggiornate a ogni ascolto."
+            picksMixBody = "Scelte rapide aggiornate a ogni ascolto.",
+            releaseCredits = "Vedi i crediti della pubblicazione",
+            discoverArtist = "Scopri l'artista",
+            discoverLabel = "Scopri l'etichetta"
         ),
         "es" to en.copy(
             skinBody = "Tema no oficial. Superficies editoriales claras y oscuras, acentos dorados, chips de Descubrir, minirreproductor flotante y reproductor teñido por la portada. Las selecciones editoriales proceden de páginas públicas de qobuz.com; la reproducción siempre usa los proveedores de Levyra. Sin afiliación ni respaldo de Qobuz.",
@@ -265,7 +274,10 @@ internal object LevyraQobuzSkinStrings {
             mixes = "Tus mixes",
             mixesBaseline = "Hechos a tu medida.",
             similarTo = "Similar a",
-            picksMixBody = "Selecciones rápidas que se actualizan con cada escucha."
+            picksMixBody = "Selecciones rápidas que se actualizan con cada escucha.",
+            releaseCredits = "Ver créditos del lanzamiento",
+            discoverArtist = "Descubre al artista",
+            discoverLabel = "Descubre el sello"
         ),
         "fr" to en.copy(
             skinBody = "Thème non officiel. Surfaces éditoriales claires et sombres, accents dorés, puces Découvrir, mini-lecteur flottant et lecteur teinté par la pochette. Les sélections éditoriales viennent des pages publiques de qobuz.com ; la lecture passe toujours par les fournisseurs de Levyra. Non affilié à Qobuz ni approuvé par Qobuz.",
@@ -327,7 +339,10 @@ internal object LevyraQobuzSkinStrings {
             mixes = "Vos mix",
             mixesBaseline = "Taillés pour vous.",
             similarTo = "Similaire à",
-            picksMixBody = "Sélections rapides mises à jour à chaque écoute."
+            picksMixBody = "Sélections rapides mises à jour à chaque écoute.",
+            releaseCredits = "Voir les crédits de la publication",
+            discoverArtist = "Découvrir l'artiste",
+            discoverLabel = "Découvrir le label"
         ),
         "de" to en.copy(
             skinBody = "Inoffizielles Theme. Helle und dunkle redaktionelle Flächen, goldene Akzente, Entdecken-Chips, ein schwebender Mini-Player und ein vom Cover gefärbter Player. Redaktionelle Auswahlen stammen von öffentlichen Seiten auf qobuz.com; die Wiedergabe nutzt immer die Anbieter von Levyra. Nicht mit Qobuz verbunden oder von Qobuz unterstützt.",
@@ -390,7 +405,10 @@ internal object LevyraQobuzSkinStrings {
             mixes = "Deine Mixe",
             mixesBaseline = "Für dich gemacht.",
             similarTo = "Ähnlich wie",
-            picksMixBody = "Schnellauswahl, die sich mit jedem Hören aktualisiert."
+            picksMixBody = "Schnellauswahl, die sich mit jedem Hören aktualisiert.",
+            releaseCredits = "Veröffentlichungs-Credits ansehen",
+            discoverArtist = "Künstler entdecken",
+            discoverLabel = "Label entdecken"
         ),
         "pt" to en.copy(
             skinBody = "Tema não oficial. Superfícies editoriais claras e escuras, detalhes dourados, chips de Descobrir, minileitor flutuante e leitor colorido pela capa. As seleções editoriais vêm de páginas públicas de qobuz.com; a reprodução usa sempre os fornecedores do Levyra. Sem afiliação ou aprovação da Qobuz.",
@@ -453,7 +471,10 @@ internal object LevyraQobuzSkinStrings {
             mixes = "Os seus mixes",
             mixesBaseline = "Feitos à sua medida.",
             similarTo = "Parecido com",
-            picksMixBody = "Escolhas rápidas atualizadas a cada audição."
+            picksMixBody = "Escolhas rápidas atualizadas a cada audição.",
+            releaseCredits = "Ver créditos do lançamento",
+            discoverArtist = "Descubra o artista",
+            discoverLabel = "Descubra a editora"
         )
     )
 
