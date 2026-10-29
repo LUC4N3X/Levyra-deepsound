@@ -57,7 +57,12 @@ internal data class QobuzSkinCopy(
     val clearRecent: String,
     val levyraTools: String,
     val itemsCount: String,
-    val recentlyAdded: String
+    val recentlyAdded: String,
+    val previous: String,
+    val current: String,
+    val autoplay: String,
+    val queueTitle: String,
+    val history: String
 )
 
 internal object LevyraQobuzSkinStrings {
@@ -118,7 +123,10 @@ internal object LevyraQobuzSkinStrings {
         clearRecent = "Clear recent searches",
         levyraTools = "Levyra tools",
         itemsCount = "%d items",
-        recentlyAdded = "Recently added"
+        recentlyAdded = "Recently added",
+        previous = "Previous",
+        current = "Now playing",
+        autoplay = "Autoplay"
     )
 
     private val copies = mapOf(
@@ -174,7 +182,12 @@ internal object LevyraQobuzSkinStrings {
             clearRecent = "Cancella ricerche recenti",
             levyraTools = "Strumenti Levyra",
             itemsCount = "%d articoli",
-            recentlyAdded = "Aggiunti di recente"
+            recentlyAdded = "Aggiunti di recente",
+            previous = "Precedente",
+            current = "Attuale",
+            autoplay = "Riproduzione automatica",
+            queueTitle = "Coda",
+            history = "Cronologia"
         ),
         "es" to en.copy(
             skinBody = "Tema no oficial. Superficies editoriales claras y oscuras, acentos dorados, chips de Descubrir, minirreproductor flotante y reproductor teñido por la portada. Las selecciones editoriales proceden de páginas públicas de qobuz.com; la reproducción siempre usa los proveedores de Levyra. Sin afiliación ni respaldo de Qobuz.",
@@ -228,7 +241,12 @@ internal object LevyraQobuzSkinStrings {
             clearRecent = "Borrar búsquedas recientes",
             levyraTools = "Herramientas de Levyra",
             itemsCount = "%d elementos",
-            recentlyAdded = "Añadidos recientemente"
+            recentlyAdded = "Añadidos recientemente",
+            previous = "Anterior",
+            current = "Actual",
+            autoplay = "Reproducción automática",
+            queueTitle = "Cola",
+            history = "Historial"
         ),
         "fr" to en.copy(
             skinBody = "Thème non officiel. Surfaces éditoriales claires et sombres, accents dorés, puces Découvrir, mini-lecteur flottant et lecteur teinté par la pochette. Les sélections éditoriales viennent des pages publiques de qobuz.com ; la lecture passe toujours par les fournisseurs de Levyra. Non affilié à Qobuz ni approuvé par Qobuz.",
@@ -281,7 +299,12 @@ internal object LevyraQobuzSkinStrings {
             clearRecent = "Effacer les recherches récentes",
             levyraTools = "Outils Levyra",
             itemsCount = "%d éléments",
-            recentlyAdded = "Ajoutés récemment"
+            recentlyAdded = "Ajoutés récemment",
+            previous = "Précédent",
+            current = "En cours",
+            autoplay = "Lecture automatique",
+            queueTitle = "File d'attente",
+            history = "Historique"
         ),
         "de" to en.copy(
             skinBody = "Inoffizielles Theme. Helle und dunkle redaktionelle Flächen, goldene Akzente, Entdecken-Chips, ein schwebender Mini-Player und ein vom Cover gefärbter Player. Redaktionelle Auswahlen stammen von öffentlichen Seiten auf qobuz.com; die Wiedergabe nutzt immer die Anbieter von Levyra. Nicht mit Qobuz verbunden oder von Qobuz unterstützt.",
@@ -335,7 +358,12 @@ internal object LevyraQobuzSkinStrings {
             clearRecent = "Letzte Suchen löschen",
             levyraTools = "Levyra-Werkzeuge",
             itemsCount = "%d Elemente",
-            recentlyAdded = "Kürzlich hinzugefügt"
+            recentlyAdded = "Kürzlich hinzugefügt",
+            previous = "Vorheriger",
+            current = "Aktuell",
+            autoplay = "Autoplay",
+            queueTitle = "Warteschlange",
+            history = "Verlauf"
         ),
         "pt" to en.copy(
             skinBody = "Tema não oficial. Superfícies editoriais claras e escuras, detalhes dourados, chips de Descobrir, minileitor flutuante e leitor colorido pela capa. As seleções editoriais vêm de páginas públicas de qobuz.com; a reprodução usa sempre os fornecedores do Levyra. Sem afiliação ou aprovação da Qobuz.",
@@ -389,7 +417,12 @@ internal object LevyraQobuzSkinStrings {
             clearRecent = "Limpar pesquisas recentes",
             levyraTools = "Ferramentas do Levyra",
             itemsCount = "%d itens",
-            recentlyAdded = "Adicionados recentemente"
+            recentlyAdded = "Adicionados recentemente",
+            previous = "Anterior",
+            current = "Atual",
+            autoplay = "Reprodução automática",
+            queueTitle = "Fila",
+            history = "Histórico"
         )
     )
 
