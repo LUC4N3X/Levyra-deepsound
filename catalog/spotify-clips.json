@@ -654,8 +654,7 @@
    "artist": "Feid, Divino, Baby Ranks",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27355ab7b349735d19c43d7aea0",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/2LRoIwlKmHjgvigdNGBHNo/video/5bd95bbb72114956b2d734809f8dc548.cnvs.mp4",
-   "spotifyTrackId": "6r2FMcPFa2sthCwAd0328y",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/e37aea54645ad5b2c35df39865c23e9ecdbd6a4a"
+   "spotifyTrackId": "6r2FMcPFa2sthCwAd0328y"
   },
   {
    "id": "levyra-cbd2102fda24fc44509a",
@@ -948,14 +947,14 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/791d1ff94d9b84e471e144f53fca4a23244fede9"
   },
   {
-   "id": "levyra-f7576d5b255e0312ee0d",
+   "id": "levyra-483d685fc62b1d271bd8",
    "genre": "dance-party",
-   "title": "Baianá",
-   "artist": "Bakermat",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273fc7ce3acfa2e8c2479bcf621",
-   "canvasUrl": "https://canvaz.scdn.co/upload/artist/3MyFDtqB80WZvbtCZRsekM/video/55130caeeb6b499b94d8851c0f67a73c.cnvs.mp4",
-   "spotifyTrackId": "780be5fB7823aHG06mwTat",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/c177d7d3bf35f5a906d0c8916fb5dddda6b5f8a0"
+   "title": "Free Your Mind",
+   "artist": "Prospa, Cloonee, Sybil",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27338974737cba5770d9dba1cd6",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/e07f69c4bd75473ca14eed883a200495.cnvs.mp4",
+   "spotifyTrackId": "6TWbY1dq8eYtFiMiGdBlOa",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/2d5304a8589bc85716b2ebe0a3ba177d2434d3bb"
   },
   {
    "id": "levyra-83d9c7b3b7fd0dade82a",
@@ -968,14 +967,14 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/2d8b05fad932d5512a4c88cd4b84e47eb1218fbe"
   },
   {
-   "id": "levyra-483d685fc62b1d271bd8",
+   "id": "levyra-f7576d5b255e0312ee0d",
    "genre": "dance-party",
-   "title": "Free Your Mind",
-   "artist": "Prospa, Cloonee, Sybil",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27338974737cba5770d9dba1cd6",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/e07f69c4bd75473ca14eed883a200495.cnvs.mp4",
-   "spotifyTrackId": "6TWbY1dq8eYtFiMiGdBlOa",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/2d5304a8589bc85716b2ebe0a3ba177d2434d3bb"
+   "title": "Baianá",
+   "artist": "Bakermat",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273fc7ce3acfa2e8c2479bcf621",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/3MyFDtqB80WZvbtCZRsekM/video/55130caeeb6b499b94d8851c0f67a73c.cnvs.mp4",
+   "spotifyTrackId": "780be5fB7823aHG06mwTat",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/c177d7d3bf35f5a906d0c8916fb5dddda6b5f8a0"
   },
   {
    "id": "levyra-dc57d4ccf5149d1a9167",
@@ -1275,7 +1274,7 @@
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2732433a5660541d232d56bc380",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/4p5WgeiPSPpqPDs7T6OkWf/video/f69b226d50a74d3e9df58e5fadec5a9b.cnvs.mp4",
    "spotifyTrackId": "1lJy3U8YfZFW7nIYGe7jLR",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/b8236ed5bfc763539ab1e4d113e0cd4463c989b6"
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/ffb51f2fe176ed9392deab57d12514b1a6899a71"
   },
   {
    "id": "levyra-5f64cc9bc00c492cec0e",
@@ -1984,7 +1983,8 @@
    "artist": "Faouzia",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273144d2b69317e926031436c78",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/5NhgsV7qPWHZqYEMKzbYvo/video/d51a1bcae8e849d1bfd848d3d275031e.cnvs.mp4",
-   "spotifyTrackId": "6QKpHmO41jkd9pTp0FfmHs"
+   "spotifyTrackId": "6QKpHmO41jkd9pTp0FfmHs",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/7600d81f153683eb1265f92aa5567cc313658481"
   },
   {
    "id": "levyra-534e99479c7275c52e1b",
@@ -1993,7 +1993,8 @@
    "artist": "Noah Kahan",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27342045f14bfed607393b91735",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/d351f850d0c144b7a491a31c551609f8.cnvs.mp4",
-   "spotifyTrackId": "4W6yulge3h7FSy0zGFrNKs"
+   "spotifyTrackId": "4W6yulge3h7FSy0zGFrNKs",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/3f175c1a53a23119bfe50c9ca04e68d27d3131a5"
   },
   {
    "id": "levyra-321d78c45b97977ca8e9",
@@ -2002,7 +2003,8 @@
    "artist": "Victony",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273a05fb0f5a67090d2d08e7e98",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/0e8e065f79d04f46a445911902d5d36c.cnvs.mp4",
-   "spotifyTrackId": "5PU6gIDtiehjkK1iKWU4KR"
+   "spotifyTrackId": "5PU6gIDtiehjkK1iKWU4KR",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/9b07716e7013bc6e07e8d6ee2d0d8961f36e9c4b"
   },
   {
    "id": "levyra-31e3bbbedb6d365c17cc",
@@ -2011,7 +2013,8 @@
    "artist": "Asake",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273d9cd09fb89c473c2e6ce70b1",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/3dbi4qigPmtZEViiYdltO1/video/a7a5f75e3a2d4aa28190d6f96c87c56f.cnvs.mp4",
-   "spotifyTrackId": "7hiRlw64LXcHpGAVJ6eUzv"
+   "spotifyTrackId": "7hiRlw64LXcHpGAVJ6eUzv",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/311b288866adfc55dc5c910dfcaaa330908aa497"
   },
   {
    "id": "levyra-1b12f9ca06e5321eaeb7",
@@ -2020,7 +2023,8 @@
    "artist": "Davido, Mayorkun, FOLA",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2730e2b0b3bdb38eeddcf7481fe",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/06fec24585424119947494b572d474f2.cnvs.mp4",
-   "spotifyTrackId": "37BTNKEaW6aUvsKH3O2UUt"
+   "spotifyTrackId": "37BTNKEaW6aUvsKH3O2UUt",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/bbfa85419ce7b79d90a7295ff920974dbaad0b66"
   },
   {
    "id": "levyra-116b3c2eb54453aa5bea",
@@ -2029,7 +2033,8 @@
    "artist": "Young Jonn",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2730126a8a8cd13653efd71c0dd",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/4JM1zsVj1pt38Q8mhv5teI/video/9e23e0628e2446eb91afca61d8069bdf.cnvs.mp4",
-   "spotifyTrackId": "7aCW8Q337ACIFUmziqKGQd"
+   "spotifyTrackId": "7aCW8Q337ACIFUmziqKGQd",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/72d88d1390a36461d99569f57dc442e9e1a000d3"
   },
   {
    "id": "levyra-ca92f1c14682517b9479",
@@ -2038,7 +2043,8 @@
    "artist": "Blaqbonez, Asake",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273b07b7cd48080a222a8429816",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/df91ddc96e06403492b4fa58c870e308.cnvs.mp4",
-   "spotifyTrackId": "6JVQBlA628faJmvQbeyBHT"
+   "spotifyTrackId": "6JVQBlA628faJmvQbeyBHT",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/4b7922b88b0a605e3cf30f986fecf1186747c5f8"
   },
   {
    "id": "levyra-b10557945be05fc0da3c",
@@ -2047,7 +2053,8 @@
    "artist": "Victony",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273b1356b443072b4f8615af24d",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/f4e6c404880b4fc5a49a4c297f9913c9.cnvs.mp4",
-   "spotifyTrackId": "3AcgT1ZcF0e9YknCUD269u"
+   "spotifyTrackId": "3AcgT1ZcF0e9YknCUD269u",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/e783ca11a260e924d9077092e74089cf9e4f0c19"
   },
   {
    "id": "levyra-94e79bd14bf03a3cdd90",
@@ -2056,7 +2063,8 @@
    "artist": "BNXN, Sarz",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2734a088f73affacb2ff9e2ca18",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/3zaDigUwjHvjOkSn0NDf9x/video/54cf2b39b4fa4aa3b2af7ec6ed145669.cnvs.mp4",
-   "spotifyTrackId": "5WTj1jVzufTuSzFMyjy60M"
+   "spotifyTrackId": "5WTj1jVzufTuSzFMyjy60M",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/7df8763ef00a399644e1b78d0d0e97edf81d65ec"
   },
   {
    "id": "levyra-6d987a3bdf329d7b8400",
@@ -2065,7 +2073,8 @@
    "artist": "BNXN, Asake",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2739a7fa1aa096871716cda8bdc",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/3zaDigUwjHvjOkSn0NDf9x/video/619c302ad6e64372ad4d95e200657f34.cnvs.mp4",
-   "spotifyTrackId": "5Ca1fyuX04EKHCc8Cnb791"
+   "spotifyTrackId": "5Ca1fyuX04EKHCc8Cnb791",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/b6ba1121bb8cee39216039cae66efe0e24ceac0b"
   },
   {
    "id": "levyra-5245b579f8927db44735",
@@ -2074,7 +2083,8 @@
    "artist": "Darkoo, Asake",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273a97549613fb7f87cb4d6af66",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/4QSTyDpxsKmv3UfavVUImR/video/74059b5f1bc7438b82dd7f4a894a65e6.cnvs.mp4",
-   "spotifyTrackId": "2DgmLCX1ojv7lE6xk2PD0H"
+   "spotifyTrackId": "2DgmLCX1ojv7lE6xk2PD0H",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/527531f68dc2d876ba06b26579874f3997f95809"
   },
   {
    "id": "levyra-1fdcc266ee7cf64ba906",
@@ -2083,7 +2093,8 @@
    "artist": "OMAH LAY",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273a53811f3799c0c60744ad4fe",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/5yOvAmpIR7hVxiS6Ls5DPO/video/d8226af8bf1a4b059029613f021d087a.cnvs.mp4",
-   "spotifyTrackId": "2XftaGClqnkE2hNEhQnR9W"
+   "spotifyTrackId": "2XftaGClqnkE2hNEhQnR9W",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/b2ce9b98c0946b677b5e33f0600d00e21a09a425"
   },
   {
    "id": "levyra-0d8eadf2b25071c2462b",
@@ -2092,7 +2103,8 @@
    "artist": "Rema",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273a9ce410b4847747f5dbb1373",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/46pWGuE3dSwY3bMMXGBvVS/video/9cdb1c8bc4674d2489f289bca3f98929.cnvs.mp4",
-   "spotifyTrackId": "2aLQ89nVUJgLjn3tlmjaxN"
+   "spotifyTrackId": "2aLQ89nVUJgLjn3tlmjaxN",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/3a8982fae4e7882f22369bf069402c16d2264439"
   },
   {
    "id": "levyra-23257c0645ed759893ad",
@@ -2101,7 +2113,8 @@
    "artist": "Asake",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273d9cd09fb89c473c2e6ce70b1",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/3dbi4qigPmtZEViiYdltO1/video/b48d2387db1547e1a967913929ea3cf8.cnvs.mp4",
-   "spotifyTrackId": "5u4rozuOBse9MgrAzGspQy"
+   "spotifyTrackId": "5u4rozuOBse9MgrAzGspQy",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/7a976cbff8095069a54320253413ce2927bcca48"
   },
   {
    "id": "levyra-507a3761a17ee0b3d1de",
@@ -2110,7 +2123,8 @@
    "artist": "TxC, Davido, Shoday, Scotts Maphuma, Zlatan, Al Xapo",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273f91f29f049af023cc69b3d9f",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/25j9xL1MTyuycuB2xy2Q9g/video/53303288650844519eb955f7b99e0cb7.cnvs.mp4",
-   "spotifyTrackId": "1p0zeYPLjmIGtw1DzmshZO"
+   "spotifyTrackId": "1p0zeYPLjmIGtw1DzmshZO",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/80bae62baae7d5fa8fd8e09c2b59f37127edbbcd"
   },
   {
    "id": "levyra-28d2f04a3b3f66768581",
@@ -2119,7 +2133,8 @@
    "artist": "DopeNation",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2734d6bd65debb0a33826a55519",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/25vbw2Uw68Ny6ae7tekmky/video/7abd4712a5ef472ca73be22c90032359.cnvs.mp4",
-   "spotifyTrackId": "1p5F0slR5AF49EDX5o125x"
+   "spotifyTrackId": "1p5F0slR5AF49EDX5o125x",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/04b939108cc25e5c3564f1812ccc36d450a204d1"
   },
   {
    "id": "levyra-299a519956fe668faba1",
@@ -2128,7 +2143,8 @@
    "artist": "Fireboy DML, Lojay",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273de1e2aeaab0a31b53c94d1d7",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/3dbi4qigPmtZEViiYdltO1/video/d457f427bc2546b8a345796dba9884dd.cnvs.mp4",
-   "spotifyTrackId": "4ztxrSwzvR854L7ycpuWEM"
+   "spotifyTrackId": "4ztxrSwzvR854L7ycpuWEM",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/d197f76f3f7541a65b1b336d78a3a7326969221d"
   },
   {
    "id": "levyra-bcf02eb2ca610a4f5e4d",
@@ -2137,7 +2153,8 @@
    "artist": "Shoday",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273c0c4148ab0a4e6c8cc48fb8c",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/23R4AtMwVv0pbJYB1joioW/video/9b82b0d0ebc841349197e9b2bfad9f77.cnvs.mp4",
-   "spotifyTrackId": "7CaTezgzShsRBV7dnxZVWa"
+   "spotifyTrackId": "7CaTezgzShsRBV7dnxZVWa",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/61275ed76a469533e155841ffc06646a1ef594e0"
   },
   {
    "id": "levyra-4389c8a9defee8035cf2",
@@ -2146,7 +2163,8 @@
    "artist": "BNXN",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273d6f1b76c4f44530db4cd12d5",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/3zaDigUwjHvjOkSn0NDf9x/video/d31c0c60131f4634bcc9888f0b47974e.cnvs.mp4",
-   "spotifyTrackId": "5ljTDsyyDKI2xbJOqwOdVU"
+   "spotifyTrackId": "5ljTDsyyDKI2xbJOqwOdVU",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/7f56b003ad69a2a89ae65877cd2432063869ac7e"
   },
   {
    "id": "levyra-4eb1c7465e328729ec99",
@@ -2155,7 +2173,8 @@
    "artist": "Ayra Starr",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273a34c5712641f0b1439bdbf02",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/b43407c3abac4abea72573e924fd8ad6.cnvs.mp4",
-   "spotifyTrackId": "5c2ns82nxF2pg59M5DkuSM"
+   "spotifyTrackId": "5c2ns82nxF2pg59M5DkuSM",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/64dec5ce94deb81b66531ac54f87a2cef124d3bc"
   },
   {
    "id": "levyra-40340d8ce9a2b8eaad0a",
@@ -2164,7 +2183,8 @@
    "artist": "Blaqbonez",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273a1005e521c9ff470017d67fc",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/4a1fc394aa6743179af4e07f52fa62a9.cnvs.mp4",
-   "spotifyTrackId": "7LzipcGtpXs2oSu9D86Uf0"
+   "spotifyTrackId": "7LzipcGtpXs2oSu9D86Uf0",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/89dbb219e6997bda382074a3d74730ef62cd25c6"
   },
   {
    "id": "levyra-4237c5e2e2cd435322c0",
@@ -2173,7 +2193,8 @@
    "artist": "IVE",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273e9ba6f2900e344f17c05a9aa",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/6RHTUrRF63xao58xh9FXYJ/video/641bf3309f6a42fe9a96c78fafbb4aff.cnvs.mp4",
-   "spotifyTrackId": "79kqYxIkS29va2I9AeL9ak"
+   "spotifyTrackId": "79kqYxIkS29va2I9AeL9ak",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/799953328c717276ac971b57ec2aa1d006da3eae"
   },
   {
    "id": "levyra-b69060431a8d9df64d24",
@@ -2182,7 +2203,8 @@
    "artist": "ATEEZ",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273761f1b46b99f5b8407b4fb20",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/68KmkJeZGfwe1OUaivBa2L/video/52b98918744a42c7aeb7883ef338267a.cnvs.mp4",
-   "spotifyTrackId": "5JaMKAodzzLdFM2ARRTXb9"
+   "spotifyTrackId": "5JaMKAodzzLdFM2ARRTXb9",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/a3bbebe8366b4311176b142601af99defd7a72ba"
   },
   {
    "id": "levyra-872f13beec00c946a241",
@@ -2191,7 +2213,8 @@
    "artist": "NMIXX",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273f6d5b4cb596df033b99759ea",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/28ot3wh4oNmoFOdVajibBl/video/ac7465d9ba64477a96f69795c0f5fcf0.cnvs.mp4",
-   "spotifyTrackId": "6cnhP7JmTV1CHJJEonNC4b"
+   "spotifyTrackId": "6cnhP7JmTV1CHJJEonNC4b",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/fbdd3f6a4caeb1e02c9f3ba8a0c10e29d3287f8c"
   },
   {
    "id": "levyra-0db1b8e37321d7ba9198",
@@ -2200,7 +2223,8 @@
    "artist": "A2O LITE, A2O",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27325b69ed0c9ed813822eb3a3a",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/0Vkn28k7P4K95Ce3knN0hQ/video/87d402dc914e43409b181bb5cc606c38.cnvs.mp4",
-   "spotifyTrackId": "5PvLNQRNRj61y3CU4SFIY4"
+   "spotifyTrackId": "5PvLNQRNRj61y3CU4SFIY4",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/e6927d738f8e620590672727be3bb91de12a6dcf"
   },
   {
    "id": "levyra-3ddcb66c892f08bab1a5",
@@ -2209,7 +2233,8 @@
    "artist": "BABYMONSTER",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27329c909f6216434515f2ab438",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/1SIocsqdEefUTE6XKGUiVS/video/ceba5a5e0e724bc4a6fcd7568d37e794.cnvs.mp4",
-   "spotifyTrackId": "7It5Iy4mnJWMhESt7qfipt"
+   "spotifyTrackId": "7It5Iy4mnJWMhESt7qfipt",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/9d39c289b719b5573278a63934e1b8961ea91012"
   },
   {
    "id": "levyra-55448d6d02f3d66b5ae1",
@@ -2218,7 +2243,8 @@
    "artist": "Crush, IU",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2739d506285395d9bc3850f904c",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/6aLdhHUqgdKE86xbtNmY8g/video/2a844a3d86ba4b8aa4735c526b5ebfb3.cnvs.mp4",
-   "spotifyTrackId": "3lTdjfpGVeYLeHfrczXw1a"
+   "spotifyTrackId": "3lTdjfpGVeYLeHfrczXw1a",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/f7bbca6bcabf82e1a465529fd3ad9ff696b0ada5"
   },
   {
    "id": "levyra-1e23882e6e380b95ba6d",
@@ -2227,7 +2253,8 @@
    "artist": "ALLDAY PROJECT",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273e7a806163460fa1d4d12a033",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/4gEMn0YPOdotLOygnk0Ng2/video/d0187053c6214d45a9523ad2a3f4d91f.cnvs.mp4",
-   "spotifyTrackId": "1hXVB56zx5oM7KUJsFRTxy"
+   "spotifyTrackId": "1hXVB56zx5oM7KUJsFRTxy",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/39be46480b7dcfa1cc54ac54b05de5da6ef0ea36"
   },
   {
    "id": "levyra-c3f4613c3410d52b2a97",
@@ -2236,7 +2263,8 @@
    "artist": "MEOVV",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27399461420f5e75af93d59f88c",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/08hHTBHlv0WRXWlyrsb6Kv/video/c0738860b5d943bf83979f6e74c7e9aa.cnvs.mp4",
-   "spotifyTrackId": "3P2MygdWs8lorZnwV3KrsJ"
+   "spotifyTrackId": "3P2MygdWs8lorZnwV3KrsJ",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/12a60f9554bc707b80d74421e7bc5b073878fbbb"
   },
   {
    "id": "levyra-058c99289ed5ccb12c59",
@@ -2245,7 +2273,8 @@
    "artist": "LISA",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27373ae1df692b540f56d14617e",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/e606da7656394abeb100a98d0d5848a2.cnvs.mp4",
-   "spotifyTrackId": "1VWiDyYTrqQhhmnWANWkFa"
+   "spotifyTrackId": "1VWiDyYTrqQhhmnWANWkFa",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/3f5b29adf9f673b9f985c1976c26f5820649d711"
   },
   {
    "id": "levyra-09dd4f0b9f161df7d551",
@@ -2254,7 +2283,8 @@
    "artist": "ATEEZ",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2737e77585ffef632e51313b3e0",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/68KmkJeZGfwe1OUaivBa2L/video/678a38104e8445ed954ee75c9bd06c4d.cnvs.mp4",
-   "spotifyTrackId": "55UDXtbNJBAdTdUdbRu8T3"
+   "spotifyTrackId": "55UDXtbNJBAdTdUdbRu8T3",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/f63a7c3a097e6a26567e782a32b91e48dacee70d"
   },
   {
    "id": "levyra-ae2c853ecba2c73da5d0",
@@ -2263,7 +2293,8 @@
    "artist": "PLAVE",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27306f2ef9832e7e9fb0152b99d",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/0k2zyzGq6HX383VlMBOvRG/video/31ced63defd344b69da79d1514dac75f.cnvs.mp4",
-   "spotifyTrackId": "1uH8RqO7kx4je1VS91Oe02"
+   "spotifyTrackId": "1uH8RqO7kx4je1VS91Oe02",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/24ff83deadfd04f478a2adf043711174fbfe74a8"
   },
   {
    "id": "levyra-79965745da54f62e0e53",
@@ -2272,7 +2303,8 @@
    "artist": "JENNIE",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273236bc23de8631dcf60b68d2a",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/627b8de99ce140519f32d2748f4d7702.cnvs.mp4",
-   "spotifyTrackId": "75QkBCdRc5DGgcyPiVSg4b"
+   "spotifyTrackId": "75QkBCdRc5DGgcyPiVSg4b",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/699f24dbd5b0b43fd02ebfc65d441926aaf696bf"
   },
   {
    "id": "levyra-0b6c69e1270a4146e9e7",
@@ -2281,7 +2313,8 @@
    "artist": "LE SSERAFIM",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273290ff94ac8607ccd9eb3eb5c",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/4SpbR6yFEvexJuaBpgAU5p/video/d57c8e58451c4664a561787d41152d58.cnvs.mp4",
-   "spotifyTrackId": "5MOIAV008posdOGmxiJBsi"
+   "spotifyTrackId": "5MOIAV008posdOGmxiJBsi",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/87da6c3979f7288d977f961158e582cc7746ece2"
   },
   {
    "id": "levyra-91563e1e2784d2584b49",
@@ -2290,7 +2323,8 @@
    "artist": "NCT WISH",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27365cd6ccb20f03e763ae785d8",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/398gG8ZrUDMm0cA4Eg6rms/video/282512a828c54cacba694ed5c595a8d9.cnvs.mp4",
-   "spotifyTrackId": "3kcGkOmFXtaFjVdz7ge1WL"
+   "spotifyTrackId": "3kcGkOmFXtaFjVdz7ge1WL",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/2036daddd1180dc3d3f66366b2c3ab930aa247ee"
   },
   {
    "id": "levyra-7e18910557b1f0a50224",
@@ -2299,7 +2333,8 @@
    "artist": "TUIDE",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2739ee310150eb907c28c40397a",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/2uxeKIw5ancTu92x28Ctkf/video/97959d8b55784860a5f670f91d2b4780.cnvs.mp4",
-   "spotifyTrackId": "7Jpb9OejYYIwsBIVQwceRy"
+   "spotifyTrackId": "7Jpb9OejYYIwsBIVQwceRy",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/0a2206d65919b4f7f0c7582bf8ff1d0cbea9502b"
   },
   {
    "id": "levyra-4ae9250e3d8cf2f9ef9d",
@@ -2308,7 +2343,8 @@
    "artist": "aespa",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27353ca3f7b64b26001a22ea1c3",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/2ihNpZNPbbQ6eQ6usuTcMm/video/e1031bd044024cb7a4234727646827a1.cnvs.mp4",
-   "spotifyTrackId": "2oR7jPvWPC08Su4KYmKR3O"
+   "spotifyTrackId": "2oR7jPvWPC08Su4KYmKR3O",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/d013279655c524737c4b150432c44338833cb6bb"
   },
   {
    "id": "levyra-d246a005b113a53ba2ac",
@@ -2317,7 +2353,8 @@
    "artist": "Stray Kids",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27337f636fa384b48481241cbd3",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/2dIgFjalVxs4ThymZ67YCE/video/5dd5a6fbd6f84099967e8058e02cd33d.cnvs.mp4",
-   "spotifyTrackId": "7AN7dJCtHqbL7f76QGyraa"
+   "spotifyTrackId": "7AN7dJCtHqbL7f76QGyraa",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/9a95b71509c310e5ec24d1896ecb59fc12033820"
   },
   {
    "id": "levyra-4ecb6e0ac82a6602a7ae",
@@ -2326,7 +2363,8 @@
    "artist": "Hearts2Hearts",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273ac42ed0a00a83f97ca96c9fa",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/398gG8ZrUDMm0cA4Eg6rms/video/a143934e8a4b400e87654c564ebb919d.cnvs.mp4",
-   "spotifyTrackId": "2BLHTFy1rAtYwmm0uEFAuj"
+   "spotifyTrackId": "2BLHTFy1rAtYwmm0uEFAuj",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/31f24170f10b03d2008acbeaa83ad2e823ff917e"
   },
   {
    "id": "levyra-02df9486bb8d0c72f34f",
@@ -2335,7 +2373,8 @@
    "artist": "BOYNEXTDOOR",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2735cf8adfa610ca8898675a749",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/4hnHLgMSOiqERWBL4jINP1/video/03bce7cc95ae4d7088cabc658546ff4d.cnvs.mp4",
-   "spotifyTrackId": "3U7iIHygNSOcjcL98KwHQg"
+   "spotifyTrackId": "3U7iIHygNSOcjcL98KwHQg",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/b23135d3c48a6c1770154d1a5317eff629935884"
   },
   {
    "id": "levyra-cae6615af020a9dbe8ba",
@@ -2344,7 +2383,8 @@
    "artist": "MEOVV",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2732d594ab39fc01f2200613aaf",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/08hHTBHlv0WRXWlyrsb6Kv/video/74736f72cdba49b9b627acd632e4dce4.cnvs.mp4",
-   "spotifyTrackId": "0oFpuvfX2uwcuIGTMJr2kt"
+   "spotifyTrackId": "0oFpuvfX2uwcuIGTMJr2kt",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/6bb15a94ebdd3f4adeb56b4a87d512f6949c775f"
   },
   {
    "id": "levyra-84685a212e009041cc16",
@@ -2353,7 +2393,8 @@
    "artist": "HWASA",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273f7ec5c454a78dfb0086c0c97",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/7bmYpVgQub656uNTu6qGNQ/video/c6b976614d444a0b926c87c420f7c6df.cnvs.mp4",
-   "spotifyTrackId": "3cLXrotzCjYCkN73PewALM"
+   "spotifyTrackId": "3cLXrotzCjYCkN73PewALM",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/4bb289e4ae84baaac442e1faad287e8de84a5bf8"
   },
   {
    "id": "levyra-13d5da4a04c02a0cdc5c",
@@ -2362,7 +2403,8 @@
    "artist": "La Fève, Theodora",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2736d6c2b14a9cefb1222e35ea5",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/2sBKOwN0fSjx39VtL2WpjJ/video/40509fd06de94c189ca183ad913a295e.cnvs.mp4",
-   "spotifyTrackId": "4sN7Kg50VWeDEmRhBONe9i"
+   "spotifyTrackId": "4sN7Kg50VWeDEmRhBONe9i",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/3dc6187498e7c96e8d112d6a4606d5a424492b4b"
   },
   {
    "id": "levyra-99712a0a0f9829c87e54",
@@ -2371,7 +2413,8 @@
    "artist": "SCH",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273b4775ea75d785f0599e3839e",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/2kXKa3aAFngGz2P4GjG5w2/video/addd5a6e7748404693d8b94fce103f7a.cnvs.mp4",
-   "spotifyTrackId": "1jRBZIoOhzuFUZOHzsCaHk"
+   "spotifyTrackId": "1jRBZIoOhzuFUZOHzsCaHk",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/43a8209c62c38ace55e00043c37065d7f99e4de5"
   },
   {
    "id": "levyra-6e346cc9ed6a8cb6c82b",
@@ -2380,7 +2423,8 @@
    "artist": "Bouss",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273ef7dc150047686fa3b8ccc14",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/5396e6c7efae4897bb365083d8f215d4.cnvs.mp4",
-   "spotifyTrackId": "1YNI0AW3x1KOyaNPatmn1G"
+   "spotifyTrackId": "1YNI0AW3x1KOyaNPatmn1G",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/9e3be59d913e705139e7be1db4aca9ee1c3e25ed"
   },
   {
    "id": "levyra-62bb8d6ee9d39100fda3",
@@ -2389,7 +2433,8 @@
    "artist": "Mous-K",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273b3e30c37dde3af94fdbe1631",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/0PpU8PcCrKiciHAMoUxASX/video/b0e8f1e38b954eccb71e4a00d1b1ceaa.cnvs.mp4",
-   "spotifyTrackId": "3CSTfP8xOx2sDbkkPJRAuE"
+   "spotifyTrackId": "3CSTfP8xOx2sDbkkPJRAuE",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/5dcdc9aec82828f8792b1acaa040ea4afa5cac03"
   },
   {
    "id": "levyra-4198353ccca7107aaef3",
@@ -2398,7 +2443,18 @@
    "artist": "Heuss L'enfoiré, PLK",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273076fa6471a24772bfe3ab1fc",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/845df9f24e2a41c3bf47b0dce39aba97.cnvs.mp4",
-   "spotifyTrackId": "1Awm1OB4Sd2eOBfKpp2UhQ"
+   "spotifyTrackId": "1Awm1OB4Sd2eOBfKpp2UhQ",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/6b7be25c98345b17c628f84628a55737972f2799"
+  },
+  {
+   "id": "levyra-c8918c1fee9f09f239a0",
+   "genre": "fr-rap",
+   "title": "12 NOVEMBRE (ACCOR ARENA)",
+   "artist": "Sofiane",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273ea92824fbca6479095b0c27a",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/afe25d8674b04777b17fd31e59bb9349.cnvs.mp4",
+   "spotifyTrackId": "0oh6dd3X311H4A2ctoy8in",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/12929f67ac688be889e3758d2ccdff365414431c"
   },
   {
    "id": "levyra-fbf52bfe266f346fe6c6",
@@ -2407,7 +2463,8 @@
    "artist": "Booba",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273c901b6e4c10003b558e5009c",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/24c0e5435a134766ac19adb9c06102a0.cnvs.mp4",
-   "spotifyTrackId": "02QtmORyVRyo2uB34OjZYN"
+   "spotifyTrackId": "02QtmORyVRyo2uB34OjZYN",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/90e329cc48911c96184f6566c325deb817cfb556"
   },
   {
    "id": "levyra-3d7464090c808b6df00e",
@@ -2416,7 +2473,8 @@
    "artist": "YG Pablo",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273ddc03ee1e2f6b8bce62435bb",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/3UHc2YZGHYS6TEYMJeDf1D/video/60287198c20d43d19c8dba03e0dd39cf.cnvs.mp4",
-   "spotifyTrackId": "1jUIqkLDDUSfRBK85V1ndy"
+   "spotifyTrackId": "1jUIqkLDDUSfRBK85V1ndy",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/e1d713441178c9184932004d311caf46d78e0bd2"
   },
   {
    "id": "levyra-36c650246d0715345704",
@@ -2425,7 +2483,8 @@
    "artist": "L2B",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273aa46059439128b54f23408aa",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/4hYxvgmTzS29XAXlo5adgM/video/250ff32634d14ecc95ac07e1d49eaa4a.cnvs.mp4",
-   "spotifyTrackId": "30XuVaQikcrhVfiNRvbqfr"
+   "spotifyTrackId": "30XuVaQikcrhVfiNRvbqfr",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/ea5214f8fd2deb9b61592852a5e83a2573c9d42c"
   },
   {
    "id": "levyra-467cad9a92b4a4820ad3",
@@ -2434,7 +2493,8 @@
    "artist": "DA Uzi",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27305ebff9db28a85838d00f5c6",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/7869ac9687db4f889fb91ffa8afcc9bb.cnvs.mp4",
-   "spotifyTrackId": "0umgpTRTr3EH0ZyFI2ejwC"
+   "spotifyTrackId": "0umgpTRTr3EH0ZyFI2ejwC",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/9e9662bc68e8999f5762031f1935b5ac3319c725"
   },
   {
    "id": "levyra-a29e2f93e95e1e185565",
@@ -2443,7 +2503,8 @@
    "artist": "Typhee",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273626e4e851963209e10bd06e3",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/2FNbkJyVSLs6NM7ATd7BIH/video/c8b30a908c14479d890504fc5e1077ed.cnvs.mp4",
-   "spotifyTrackId": "3dxmjv6O7oRDrcfjG6bgFm"
+   "spotifyTrackId": "3dxmjv6O7oRDrcfjG6bgFm",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/df7d80959789e6358a820d8e85d57adce28e9bac"
   },
   {
    "id": "levyra-999d8d4bcf9ed3343ff2",
@@ -2452,7 +2513,8 @@
    "artist": "WIXO & LA2S",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2738bc288f6d2ff0251a0280995",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/0VWHKHfSFwUhP0cuvVUfRN/video/6f8ddf5a60fb46f2b14d871e12c0d3fb.cnvs.mp4",
-   "spotifyTrackId": "6YQBENAxiTBph3mdVXXBdj"
+   "spotifyTrackId": "6YQBENAxiTBph3mdVXXBdj",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/1700ff05cff14a925377aeadcb03717fa0359b7b"
   },
   {
    "id": "levyra-0d03bfb3c1bcc8eb5120",
@@ -2461,7 +2523,8 @@
    "artist": "Shindy, Jazeek",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2735113ca124e65840902d9eead",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/3aa47bcc710e48148701bd520dee99de.cnvs.mp4",
-   "spotifyTrackId": "2fdkzZ5vnazOsBp5V9ovyB"
+   "spotifyTrackId": "2fdkzZ5vnazOsBp5V9ovyB",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/2d6c25cbf3e339c8fbba83b64eeb0731e25f09af"
   },
   {
    "id": "levyra-6342153b47e23cf613da",
@@ -2470,7 +2533,8 @@
    "artist": "Summer Cem, Lune",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273057ef025e91eaaa7c2a14f01",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/3drqpTL4sQOckmAfF9i1wg/video/8c8611d56d6f4eaf8d63a9e600d8d684.cnvs.mp4",
-   "spotifyTrackId": "67J5GFBW8fmOFcXVbCv8Yb"
+   "spotifyTrackId": "67J5GFBW8fmOFcXVbCv8Yb",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/84c650d72beb6a2b2774e4c5bf28c220f3abb132"
   },
   {
    "id": "levyra-50071ea5474034e90df3",
@@ -2479,7 +2543,8 @@
    "artist": "Mucco",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2738fc1cd611760aa423ff33c09",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/0AfMiUTAbsDPQSCXmBva4y/video/f95bc0af51524846b4c55e0de7df178d.cnvs.mp4",
-   "spotifyTrackId": "603ezyLhWRgXSfXjPiFw8q"
+   "spotifyTrackId": "603ezyLhWRgXSfXjPiFw8q",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/5f469cd1454a31ebf746075c40e8e438f446daa4"
   },
   {
    "id": "levyra-eccca8996784d9c94b80",
@@ -2488,7 +2553,8 @@
    "artist": "KIARABABA, Juju",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2738375a66a52f5aa12cf433d94",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/2gRcuby898lRpJlaFVNTos/video/8bc41d6de7bc4ff18c7d7807be26683e.cnvs.mp4",
-   "spotifyTrackId": "7h4pG45bP5g8KjTh6J6WbW"
+   "spotifyTrackId": "7h4pG45bP5g8KjTh6J6WbW",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/5c4071365c04590711a717380373bc6f4bc8039d"
   },
   {
    "id": "levyra-a0783c297e5231dde7d6",
@@ -2497,7 +2563,8 @@
    "artist": "Kool Savas",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273c239050fefc4b7dc0007c48e",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/1SUu1Bi7ev9HbOzyVC77qD/video/c127309fc224464089b279f533c99772.cnvs.mp4",
-   "spotifyTrackId": "0VktRMVsRFmowtKfJevRkq"
+   "spotifyTrackId": "0VktRMVsRFmowtKfJevRkq",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/b1ed41348e86741c8a454b4eddbbc8820b813cce"
   },
   {
    "id": "levyra-cae49ee7a8b36a169997",
@@ -2506,7 +2573,8 @@
    "artist": "Jamule",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273c17fbc91b8391a0421bd04ab",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/4sVieJlKgpZ2k9ESNS5IdN/video/aae8147ac07a44b3b87cb174d86996a8.cnvs.mp4",
-   "spotifyTrackId": "1PIyqhLtEy4W3BNRv96K5F"
+   "spotifyTrackId": "1PIyqhLtEy4W3BNRv96K5F",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/056a7ba40d96759c6a4f16c489b0ca98876c7d8f"
   },
   {
    "id": "levyra-6170d8fb2888c3dbc4dc",
@@ -2515,7 +2583,8 @@
    "artist": "Trettmann, Lolito",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273a238513f088a041d5312d9bf",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/6QzzeKV0VcnT2vJMYDPuL4/video/0b46918c48754fdfb46e75e9a277eec0.cnvs.mp4",
-   "spotifyTrackId": "6MYE0gOvIj9PjJHdsCgRBw"
+   "spotifyTrackId": "6MYE0gOvIj9PjJHdsCgRBw",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/4a5cf48041c45ff6188683f2ab8db2ca762794a4"
   },
   {
    "id": "levyra-26ee8c23af7e8b19e811",
@@ -2524,7 +2593,8 @@
    "artist": "Bobbyezz",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2730b5b7e24c5f9f0730fd97feb",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/5hV6TRKQwmvIWKTlsob1z8/video/440950e4a05d4038a7cf5904575c33bd.cnvs.mp4",
-   "spotifyTrackId": "67EpqS9Ic2gi0VORUwibGP"
+   "spotifyTrackId": "67EpqS9Ic2gi0VORUwibGP",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/13acd1e980dc447d303cd61f42f0b6b87087bca1"
   },
   {
    "id": "levyra-c0dbc3544d027c12a2e3",
@@ -2533,7 +2603,8 @@
    "artist": "PaulK",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273842f392b41eeec65d2ebe4e4",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/721tVsXwxU1C96H1BQM5P6/video/0ceef4d90325434494e72444cb00e458.cnvs.mp4",
-   "spotifyTrackId": "7vfIEpyPXvbffjhjuLIfUH"
+   "spotifyTrackId": "7vfIEpyPXvbffjhjuLIfUH",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/050170dc151b3a0795a4990c1196f2237a11b43c"
   },
   {
    "id": "levyra-fac6d63427021914a720",
@@ -2542,7 +2613,8 @@
    "artist": "OG LU",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273d23b79a69a9e57a297471e00",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/8c869c0814c041d4bde7b5ceb3957ec2.cnvs.mp4",
-   "spotifyTrackId": "05F8RR8CxPo5aNgkDHJKeB"
+   "spotifyTrackId": "05F8RR8CxPo5aNgkDHJKeB",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/93b4bbb3d18eeffa3cd2eb65aa42bbb0bbd25dde"
   },
   {
    "id": "levyra-8ac164636105a8508450",
@@ -2551,7 +2623,8 @@
    "artist": "Marlo",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27358e193edd554fc56b1783c8e",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/e43455ee9f8a4d22a08e522537611a8d.cnvs.mp4",
-   "spotifyTrackId": "4IZRSzLAuiICRDCRkMcbZC"
+   "spotifyTrackId": "4IZRSzLAuiICRDCRkMcbZC",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/5172bdcee14de097bfdd27066c22c91872803e37"
   },
   {
    "id": "levyra-7f62d04bf3825f321797",
@@ -2560,7 +2633,8 @@
    "artist": "Rosc",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273bcf1287dcfedb093f37a1cd9",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/4vEIMa1vuh2eKBryiepN8c/video/8999de5a10884d8997fa0b1851d73046.cnvs.mp4",
-   "spotifyTrackId": "1MsjOp0evs3hTepM0xFFIh"
+   "spotifyTrackId": "1MsjOp0evs3hTepM0xFFIh",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/78b20caa010cc8ed29ffdf319b2620f50ec29aad"
   }
  ]
 }
