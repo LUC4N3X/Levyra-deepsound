@@ -179,8 +179,6 @@ internal fun AudioSettingsPanel(
     onSelect: (String) -> Unit,
     highQualityAudioMode: HighQualityAudioMode,
     onHighQualityAudioMode: (HighQualityAudioMode) -> Unit,
-    qobuzEnabled: Boolean = true,
-    onQobuzEnabled: (Boolean) -> Unit = {},
     onEqualizerEnabled: (Boolean) -> Unit,
     onPreset: (String) -> Unit,
     onBandLevel: (Int, Int) -> Unit,
@@ -301,19 +299,6 @@ internal fun AudioSettingsPanel(
                         ),
                         onSelect = onHighQualityAudioMode
                     )
-                }
-                item {
-                    AudioCard {
-                        AudioEqualizerSwitchRow(
-                            label = "Qobuz",
-                            subtitle = currentTrack?.playbackManifest
-                                ?.takeIf { it.alternativeSource?.providerId == "qobuz" }
-                                ?.streams?.firstOrNull { it.selected }?.qualityLabel
-                                ?.takeIf { it.isNotBlank() } ?: strings.qobuzAudioSubtitle,
-                            checked = qobuzEnabled,
-                            onCheckedChange = onQobuzEnabled
-                        )
-                    }
                 }
                 item { AudioSectionLabel(strings.audioSectionEqualizer) }
                 item {
