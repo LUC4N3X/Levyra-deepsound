@@ -42,6 +42,12 @@ internal val AppleMusicFont: FontFamily = FontFamily(
     }
 )
 
+internal val AtelierFont: FontFamily = FontFamily(
+    listOf(FontWeight.Light, FontWeight.Normal, FontWeight.Medium, FontWeight.SemiBold).map { weight ->
+        Font(googleFont = GoogleFont("Sora"), fontProvider = googleFontsProvider, weight = weight)
+    }
+)
+
 internal val QobuzFont: FontFamily = FontFamily(
     listOf(FontWeight.Normal, FontWeight.Medium, FontWeight.SemiBold, FontWeight.Bold).map { weight ->
         Font(googleFont = GoogleFont("Albert Sans"), fontProvider = googleFontsProvider, weight = weight)

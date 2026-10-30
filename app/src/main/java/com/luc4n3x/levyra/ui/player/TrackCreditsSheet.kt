@@ -129,6 +129,12 @@ internal fun TrackCreditsSheet(
         load = TrackCreditsLoad.Ready(currentLoadCredits(track, retryCount > 0))
     }
 
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) {
+        val ready = (load as? TrackCreditsLoad.Ready)?.credits
+        val rows = remember(ready, copy, languageCode) { ready?.let { releaseRows(it, copy, languageCode) }.orEmpty() }
+        AtelierTrackCreditsSheet(track, artists, ready, rows, copy, sheetState, onOpenArtist, onDismiss, onToggleFollow, isFollowed) { retryCount++ }
+        return
+    }
     if (com.luc4n3x.levyra.ui.theme.LevyraIsQobuz) {
         QobuzTrackCreditsSheet(track, artists, load, copy, sheetState, onOpenArtist, onDismiss, onToggleFollow, isFollowed) { retryCount++ }
         return

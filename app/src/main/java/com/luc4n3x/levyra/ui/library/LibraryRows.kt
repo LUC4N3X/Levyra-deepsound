@@ -107,6 +107,7 @@ internal fun LibraryTrackRow(
     onChangeMatch: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) return com.luc4n3x.levyra.ui.media.AtelierLibraryTrackRow(track, selected, selectionActive, isCurrent, isPlaying, isFavorite, isDownloaded, downloadProgress, metadata, onClick, onLongClick, onFavorite, onDownload, onQueue, onAddToPlaylist, onEditTags, onKeepOffline, onDeleteDownload, onRemoveFromPlaylist, onChangeMatch, modifier)
     val strings = LocalLevyraStrings.current
     var menuExpanded by remember { mutableStateOf(false) }
     Row(

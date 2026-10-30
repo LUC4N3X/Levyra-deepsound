@@ -2074,6 +2074,7 @@ fun LevyraApp(
         LevyraSkin.AppleMusicStyle -> AppleMusicThemeEffect()
         LevyraSkin.YouTubeMusicStyle -> YouTubeMusicThemeEffect()
         LevyraSkin.QobuzStyle -> QobuzThemeEffect()
+        LevyraSkin.Atelier -> AtelierThemeEffect(state.currentTrack)
         else -> Unit
     }
     val pureBlack = state.interfaceSettings.pureBlack
@@ -2087,7 +2088,7 @@ fun LevyraApp(
         pureBlack,
         customThemes
     ) {
-        if (state.interfaceSettings.skin == LevyraSkin.Prism || state.interfaceSettings.skin == LevyraSkin.Torque || state.interfaceSettings.skin == LevyraSkin.Ivory || state.interfaceSettings.skin == LevyraSkin.AppleMusicStyle || state.interfaceSettings.skin == LevyraSkin.YouTubeMusicStyle || state.interfaceSettings.skin == LevyraSkin.QobuzStyle) return@LaunchedEffect
+        if (state.interfaceSettings.skin == LevyraSkin.Prism || state.interfaceSettings.skin == LevyraSkin.Torque || state.interfaceSettings.skin == LevyraSkin.Ivory || state.interfaceSettings.skin == LevyraSkin.AppleMusicStyle || state.interfaceSettings.skin == LevyraSkin.YouTubeMusicStyle || state.interfaceSettings.skin == LevyraSkin.QobuzStyle || state.interfaceSettings.skin == LevyraSkin.Atelier) return@LaunchedEffect
         LevyraThemeController.apply(
             state.themePreset,
             accentTrack?.accentStart,
@@ -2104,7 +2105,7 @@ fun LevyraApp(
         val nocturne = state.interfaceSettings.skin == LevyraSkin.Nocturne78
         val base = when (state.interfaceSettings.skin) {
             LevyraSkin.Nocturne78 -> Nocturne78Palette
-            LevyraSkin.Prism, LevyraSkin.Torque, LevyraSkin.Ivory, LevyraSkin.AppleMusicStyle, LevyraSkin.YouTubeMusicStyle, LevyraSkin.QobuzStyle -> LevyraActivePalette
+            LevyraSkin.Prism, LevyraSkin.Torque, LevyraSkin.Ivory, LevyraSkin.AppleMusicStyle, LevyraSkin.YouTubeMusicStyle, LevyraSkin.QobuzStyle, LevyraSkin.Atelier -> LevyraActivePalette
             LevyraSkin.SpotifyStyle -> spotifyPalette()
             LevyraSkin.Default -> LevyraThemes.byId(state.themePreset)
         }
@@ -2318,9 +2319,9 @@ fun LevyraApp(
                     playerExpansion.animateTo(
                         target,
                         if (target > playerExpansion.value) {
-                            LevyraPlayerDesign.expandSpring()
+                            playerStageSpec(playerExpansion.value, opening = true)
                         } else {
-                            LevyraPlayerDesign.collapseSpring()
+                            playerStageSpec(playerExpansion.value, opening = false)
                         }
                     )
                 } else {
@@ -2331,7 +2332,12 @@ fun LevyraApp(
             val chromeVisible by remember { derivedStateOf { playerExpansion.value < 1f } }
             val playerVisible by remember { derivedStateOf { playerExpansion.value > 0f } }
             HideSystemBars(state.interfaceSettings.immersive.hiddenBars(fullPlayerVisible = !chromeVisible && !rootOverlayOpen))
-            val morphAllowed = state.animationsEnabled && !state.isVideoMode
+            val morphAllowed = state.animationsEnabled && !state.isVideoMode && !LevyraIsAtelier
+            DisposableEffect(morphAnchors) {
+                com.luc4n3x.levyra.ui.atelier.AtelierStage.expansion = { playerExpansion.value }
+                com.luc4n3x.levyra.ui.atelier.AtelierStage.miniRect = { morphAnchors.miniBounds }
+                onDispose { com.luc4n3x.levyra.ui.atelier.AtelierStage.reset() }
+            }
             val artworkMorphActive by remember(morphAllowed) {
                 derivedStateOf {
                     morphAllowed &&
@@ -2366,10 +2372,10 @@ fun LevyraApp(
                 expansionScope.launch {
                     if (target >= 1f) {
                         if (state.selectedTab != LevyraTab.Player) viewModel.selectTab(LevyraTab.Player)
-                        playerExpansion.animateTo(1f, LevyraPlayerDesign.expandSpring())
+                        playerExpansion.animateTo(1f, playerStageSpec(playerExpansion.value, opening = true))
                     } else {
                         viewModel.revealPlayerReturnDetail()
-                        playerExpansion.animateTo(0f, LevyraPlayerDesign.collapseSpring())
+                        playerExpansion.animateTo(0f, playerStageSpec(playerExpansion.value, opening = false))
                         if (state.selectedTab == LevyraTab.Player) viewModel.selectTab(backgroundTab)
                     }
                 }
@@ -2379,7 +2385,7 @@ fun LevyraApp(
                 viewModel.revealPlayerReturnDetail()
                 expansionScope.launch {
                     if (state.animationsEnabled) {
-                        playerExpansion.animateTo(0f, LevyraPlayerDesign.collapseSpring())
+                        playerExpansion.animateTo(0f, playerStageSpec(playerExpansion.value, opening = false))
                     } else {
                         playerExpansion.snapTo(0f)
                     }
@@ -2416,12 +2422,12 @@ fun LevyraApp(
                         )
                     }
                     viewModel.revealPlayerReturnDetail()
-                    playerExpansion.animateTo(0f, LevyraPlayerDesign.collapseSpring())
+                    playerExpansion.animateTo(0f, playerStageSpec(playerExpansion.value, opening = false))
                     if (state.selectedTab == LevyraTab.Player) viewModel.selectTab(backgroundTab)
                 } catch (cancelled: CancellationException) {
                     playerExpansion.animateTo(
                         startExpansion,
-                        LevyraPlayerDesign.expandSpring()
+                        playerStageSpec(playerExpansion.value, opening = true)
                     )
                     throw cancelled
                 }
@@ -2583,7 +2589,8 @@ fun LevyraApp(
                                 libraryViewModel, screenState, onOpenDownloads = { showDownloadsFolder = true },
                                 youtubeMusicAccount = youtubeMusicState.active,
                                 onOpenYoutubeMusic = { showYoutubeMusic = true },
-                                backEnabled = !rootOverlayOpen && state.selectedTab == LevyraTab.Library
+                                backEnabled = !rootOverlayOpen && state.selectedTab == LevyraTab.Library,
+                                atelierShelf = { onOpenCollection -> com.luc4n3x.levyra.ui.atelier.AtelierShelfEntry(viewModel, state, onOpenCollection) }
                             )
                         }
                         LevyraTab.Player -> Unit
@@ -2628,6 +2635,7 @@ fun LevyraApp(
                         compaction = dockCompaction,
                         animated = state.animationsEnabled
                     ), dockMorph)
+                    androidx.compose.runtime.SideEffect { com.luc4n3x.levyra.ui.atelier.AtelierStage.miniAttached = miniPlayerVisible }
                     val miniPlayerSlot: @Composable () -> Unit = {
                         AnimatedVisibility(
                             visible = miniPlayerVisible,
@@ -2796,6 +2804,10 @@ fun LevyraApp(
                         .fillMaxSize()
                         .graphicsLayer {
                             val expansion = expansionProvider()
+                            if (LevyraIsAtelier && !state.isVideoMode) {
+                                alpha = if (expansion > 0f) 1f else 0f
+                                return@graphicsLayer
+                            }
                             alpha = playerSurfaceAlpha(expansion)
                             val origin = morphAnchors.miniCardBounds
                             val container = playerContainerBounds(expansion, origin, size.width, size.height)
@@ -3308,7 +3320,7 @@ fun LevyraApp(
 
             AnimatedVisibility(visible = state.showArtist, enter = detailEnter, exit = pageExit) {
                 val appleStorefront = remember(state.selectedChartId) { ChartsCatalog.region(state.selectedChartId).country }
-                if (LevyraIsQobuz) QobuzArtistScreen(state, viewModel) { trackActionTarget = it } else if (LevyraIsYouTubeMusic) YouTubeMusicArtistScreen(state, viewModel) { trackActionTarget = it } else ArtistOverlay(
+                if (LevyraIsAtelier) AtelierArtistScreen(state, viewModel) { trackActionTarget = it } else if (LevyraIsQobuz) QobuzArtistScreen(state, viewModel) { trackActionTarget = it } else if (LevyraIsYouTubeMusic) YouTubeMusicArtistScreen(state, viewModel) { trackActionTarget = it } else ArtistOverlay(
                     state = state,
                     onPlay = viewModel::playArtistSong,
                     onPlayFrom = { tracks, track -> viewModel.playFrom(tracks, track) },
@@ -5077,6 +5089,7 @@ private fun AlbumTrackRow(
     actions: AlbumTrackRowActions,
     modifier: Modifier = Modifier
 ) {
+    if (LevyraIsAtelier) return com.luc4n3x.levyra.ui.media.AtelierAlbumTrackRow(index, track, albumTrackSubtitle(track.artist.takeIf { albumTrackShowsArtist(it, albumArtist, false) }.orEmpty(), albumTrackDownloadStatus(presentation, LocalLevyraStrings.current)), presentation.isCurrent, presentation.isPlaying, presentation.selected, presentation.isDownloaded, presentation.downloadProgress.takeIf { presentation.isDownloading && !presentation.isDownloaded }, actions.onPlay, actions.onLongClick, modifier) { AlbumTrackTrailing(track, stage, presentation, actions) }
     if (SkinAlbumTrackRow(
             index, index == count - 1, track,
             track.artist.takeIf { albumTrackShowsArtist(track.artist, albumArtist, true) }.orEmpty(),
@@ -7427,6 +7440,8 @@ private fun LyricsOverlay(
                 onOptions = { showLyricsOptions = true },
                 onClose = onClose
             )
+        } else if (LevyraIsAtelier && track != null) {
+            AtelierLyricsScreen(state, track, visibleLyrics, lyricsPositionProvider, lyricsAnimationsEnabled, ::onLyricLineClick, onTogglePlay, { showLyricsOptions = true }, onClose)
         } else if (LevyraIsQobuz && track != null) {
             QobuzLyricsScreen(state, track, visibleLyrics, lyricsPositionProvider, lyricsAnimationsEnabled, ::onLyricLineClick, onTogglePlay, onClose)
         } else if (LevyraIsSpotify && studioSettings.spotifyLyricsApplies() && track != null) {
@@ -9675,7 +9690,7 @@ private fun StudioHomeScreen(
         stableSpotlightIdState = stableSpotlightIdState,
         addTargetState = addTargetState
     )
-    if (LevyraIsAppleMusic || LevyraIsYouTubeMusic || LevyraIsQobuz) {
+    if (LevyraIsAppleMusic || LevyraIsYouTubeMusic || LevyraIsQobuz || LevyraIsAtelier) {
         val skinHomeData = with(homeContext) {
                 AppleMusicHomeData(
                     selectedChartId = state.selectedChartId,
@@ -9708,7 +9723,9 @@ private fun StudioHomeScreen(
                 pickCountry = { homeContext.chartMarketSheetOpen = true },
                 onTrackActions = homeContext.onTrackActions
             )
-        if (LevyraIsQobuz) {
+        if (LevyraIsAtelier) {
+            AtelierHomeEntry(skinHomeData, skinHomeActions, homeContext.viewModel, state, homeListState, homeBottomInset, homeRefreshing, homePullState, onPullRefresh)
+        } else if (LevyraIsQobuz) {
             QobuzHomeEntry(skinHomeData, skinHomeActions, homeContext.viewModel, state, homeListState, homeBottomInset, homeRefreshing, homePullState, onPullRefresh)
         } else if (LevyraIsYouTubeMusic) {
             YouTubeMusicHomeContent(
@@ -14797,6 +14814,10 @@ private fun SearchScreen(
     backEnabled: Boolean = false,
     onTrackActions: (Track) -> Unit = {}
 ) {
+    if (LevyraIsAtelier) {
+        AtelierSearchEntry(viewModel, state, onTrackActions)
+        return
+    }
     if (LevyraIsQobuz) {
         QobuzSearchEntry(viewModel, state, onTrackActions)
         return
@@ -21324,6 +21345,7 @@ private class SettingsStudioEntry(
 @Composable
 private fun SettingsHubGroupLabel(text: String) {
     if (LevyraIsQobuz) return QobuzSettingsGroupLabel(text)
+    if (LevyraIsAtelier) return AtelierSettingsGroupLabel(text)
     val locale = LocalConfiguration.current.locales[0]
     Text(
         SkinChrome.label(text, locale),
@@ -21403,6 +21425,7 @@ private fun SettingsStudioShelf(title: String, subtitle: String, entries: List<S
 @Composable
 private fun SettingsCategoryCard(meta: SettingsCategoryMeta, index: Int, count: Int, onClick: () -> Unit) {
     if (LevyraIsQobuz) return QobuzSettingsRow(meta.title, meta.icon, index == count - 1, onClick)
+    if (LevyraIsAtelier) return AtelierSettingsRow(meta.title, meta.summary, meta.icon, index == count - 1, onClick)
     SettingsTile(
         onClick = onClick,
         groupIndex = index,
@@ -25713,7 +25736,13 @@ private fun ExploreScreen(
             .fillMaxSize()
             .background(Color.Transparent)
     ) {
-        if (LevyraIsQobuz) {
+        if (LevyraIsAtelier) {
+            AtelierExploreEntry(state, viewModel, freshTracks, listState, exploreBottomInset, onShortcut, { addToPlaylistTarget = it }) { category ->
+                samplesStartIndex = null
+                exploreMoodReturn = null
+                exploreDestination = exploreCategoryDestination(category)
+            }
+        } else if (LevyraIsQobuz) {
             QobuzMagazineEntry(state, viewModel, freshTracks, listState, exploreBottomInset, onShortcut, { addToPlaylistTarget = it }) { category ->
                 samplesStartIndex = null
                 exploreMoodReturn = null
@@ -27171,6 +27200,7 @@ private fun skinManagesStudio(id: String): Boolean =
 @Composable
 private fun SettingsHubHeader(onClose: () -> Unit) {
     if (LevyraIsQobuz) return QobuzSettingsHeader(onClose)
+    if (LevyraIsAtelier) return AtelierSettingsHeader(onClose)
     val strings = LocalLevyraStrings.current
     if (SkinChrome.active) PrismPageHeader(strings.settings, strings.settingsSubtitle) {
         IconButton(onClick = onClose, modifier = Modifier.size(48.dp)) { Icon(Icons.Rounded.Close, strings.close, tint = LevyraText) }

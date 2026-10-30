@@ -36,8 +36,12 @@ import com.luc4n3x.levyra.ui.theme.*
 internal fun PrismPlayerScene(
     track: Track, slots: PlayerDeckSlots, artworkCap: Dp,
     metadata: @Composable () -> Unit, transport: @Composable () -> Unit, modifier: Modifier = Modifier,
-    playing: Boolean = true
+    playing: Boolean = true, progress: Float = 0f, hasCanvas: Boolean = false
 ) {
+    if (LevyraIsAtelier) {
+        AtelierPlayerScene(track, slots, playing, progress, hasCanvas, metadata, transport, modifier)
+        return
+    }
     if (LevyraIsQobuz) {
         QobuzPlayerScene(track, slots, artworkCap, metadata, transport, modifier)
         return
@@ -98,6 +102,10 @@ internal fun PrismTransport(
     labels: PlayerControlLabels, onShuffle: () -> Unit, onPrevious: () -> Unit,
     onToggle: () -> Unit, onNext: () -> Unit, onRepeat: () -> Unit, modifier: Modifier = Modifier
 ) {
+    if (LevyraIsAtelier) {
+        AtelierTransport(playing, resolving, shuffle, repeat, labels, onShuffle, onPrevious, onToggle, onNext, onRepeat, modifier)
+        return
+    }
     if (LevyraIsTorque) {
         TorqueTransport(playing, resolving, shuffle, repeat, labels, onShuffle, onPrevious, onToggle, onNext, onRepeat, modifier)
         return
@@ -152,7 +160,11 @@ private fun PrismModeButton(icon: ImageVector, label: String, active: Boolean, o
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun PrismSeekbar(positionMs: Long, bufferedMs: Long, durationMs: Long, onSeek: (Float) -> Unit, modifier: Modifier = Modifier) {
+internal fun PrismSeekbar(positionMs: Long, bufferedMs: Long, durationMs: Long, onSeek: (Float) -> Unit, modifier: Modifier = Modifier, playing: Boolean = true) {
+    if (LevyraIsAtelier) {
+        AtelierSeekbar(positionMs, durationMs, onSeek, modifier, playing)
+        return
+    }
     if (LevyraIsTorque) {
         TorqueStrip(positionMs, durationMs, onSeek, modifier)
         return

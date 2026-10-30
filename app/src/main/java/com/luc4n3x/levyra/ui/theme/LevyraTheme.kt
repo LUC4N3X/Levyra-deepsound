@@ -465,6 +465,7 @@ object LevyraThemeController {
             LevyraSkin.AppleMusicStyle -> appleMusicPalette(systemDark)
             LevyraSkin.YouTubeMusicStyle -> youTubeMusicPalette()
             LevyraSkin.QobuzStyle -> qobuzPalette(systemDark)
+            LevyraSkin.Atelier -> atelierPalette()
         }
         val tinted = when {
             skin != LevyraSkin.Default -> base
@@ -652,7 +653,8 @@ fun LevyraTheme(
     content: @Composable () -> Unit
 ) {
     val palette = activePaletteState.value
-    val colorScheme = remember(palette) { levyraColorScheme(palette) }
+    val atelierAccentKey = if (palette.id == AtelierPaletteId) AtelierDesign.accent else Color.Unspecified
+    val colorScheme = remember(palette, atelierAccentKey) { levyraColorScheme(palette) }
     val cornerScale = activeCornerScaleState.value
     val nocturne = LevyraIsNocturne
     val prism = LevyraIsPrism
@@ -671,7 +673,7 @@ fun LevyraTheme(
         colorScheme = colorScheme,
         motionScheme = motionScheme,
         shapes = shapes,
-        typography = if (nocturne) Nocturne78Typography else if (LevyraIsSpotify) SpotifyTypography else if (LevyraIsAppleMusic) AppleMusicTypography else if (LevyraIsYouTubeMusic) YouTubeMusicTypography else if (LevyraIsQobuz) QobuzTypography else if (ivory) IvoryTypography else if (prism) PrismTypography else levyraTypographyFor(fontPreset ?: activeFontPresetState.value),
+        typography = if (nocturne) Nocturne78Typography else if (LevyraIsSpotify) SpotifyTypography else if (LevyraIsAppleMusic) AppleMusicTypography else if (LevyraIsYouTubeMusic) YouTubeMusicTypography else if (LevyraIsQobuz) QobuzTypography else if (LevyraIsAtelier) AtelierTypography else if (ivory) IvoryTypography else if (prism) PrismTypography else levyraTypographyFor(fontPreset ?: activeFontPresetState.value),
         content = content
     )
 }

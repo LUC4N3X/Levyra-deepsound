@@ -85,6 +85,7 @@ internal fun PlayerTrackMetadata(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) Spacer(modifier = Modifier.width(LevyraPlayerDesign.MinimumTouchTarget + LevyraPlayerDesign.SpaceMd))
         AnimatedContent(
             targetState = track,
             modifier = Modifier.weight(1f),
@@ -93,7 +94,10 @@ internal fun PlayerTrackMetadata(
             label = "player-metadata"
         ) { shown ->
             val isCurrent = shown.id == track.id
-            Column {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) Alignment.CenterHorizontally else Alignment.Start
+            ) {
                 Text(
                     text = shown.title,
                     color = if (LevyraIsQobuz) QobuzDesign.playerContent else surfaces.content,
@@ -138,6 +142,7 @@ internal fun PlayerTrackMetadata(
 
 private fun metadataTitleSize(compact: Boolean, appleMusic: Boolean, prism: Boolean): TextUnit = when {
     LevyraIsQobuz -> 18.sp
+    com.luc4n3x.levyra.ui.theme.LevyraIsAtelier -> 20.sp
     LevyraIsYouTubeMusic -> 24.sp
     LevyraIsSpotify -> 22.sp
     appleMusic -> 20.sp
@@ -149,6 +154,7 @@ private fun metadataTitleSize(compact: Boolean, appleMusic: Boolean, prism: Bool
 
 private fun metadataArtistSize(compact: Boolean, appleMusic: Boolean): TextUnit = when {
     LevyraIsQobuz -> 16.sp
+    com.luc4n3x.levyra.ui.theme.LevyraIsAtelier -> 13.sp
     LevyraIsYouTubeMusic -> 16.sp
     LevyraIsSpotify -> 16.sp
     appleMusic -> 20.sp
@@ -158,6 +164,7 @@ private fun metadataArtistSize(compact: Boolean, appleMusic: Boolean): TextUnit 
 
 private fun metadataTitleWeight(appleMusic: Boolean, prism: Boolean): FontWeight = when {
     LevyraIsQobuz -> FontWeight.Bold
+    com.luc4n3x.levyra.ui.theme.LevyraIsAtelier -> FontWeight.Medium
     LevyraIsYouTubeMusic -> FontWeight.Bold
     LevyraIsSpotify -> FontWeight.Bold
     appleMusic -> FontWeight.Medium
