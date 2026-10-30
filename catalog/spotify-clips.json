@@ -292,10 +292,10 @@
    "genre": "latino",
    "title": "Body - Remix",
    "artist": "Eladio Carrion, Rauw Alejandro, De La Rose",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2734da3f40bd063367bb96bb26b",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27335c5eb9d5a41e0088b7e500d",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/0a882d49436443a9badc8cc73ab04d22.cnvs.mp4",
    "spotifyTrackId": "0jELnO3Z7O05HMMCUF9GBK",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/9ff0f905b8ff4e5a31494978feb0a7f34a488d31"
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/26d0bffe0c5e98c3772cb9833347a56d98695951"
   },
   {
    "id": "levyra-99cb823f91580ce9277f",
@@ -453,7 +453,7 @@
    "title": "BAILAR O MORIR",
    "artist": "BOM, Miranda!, Lali",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273658aa1a7c4554f2693155074",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/6d5643fbc293475e94a0f0dddda38830.cnvs.mp4",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/5px62tDd6w9qqJ90EJigAa/video/0ee076abe7744d688b1c31be67daba01.cnvs.mp4",
    "spotifyTrackId": "1B5WEv8pZo1KpMOyruKK6Y",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/b13d5b3fdc650e397cb8719d0287d5d10de07bd9"
   },
@@ -918,16 +918,6 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/c235ae094c8f54c91f24e1f68c13ed83e0992bab"
   },
   {
-   "id": "levyra-9828b5bdff66418cf9a6",
-   "genre": "dance-party",
-   "title": "Talk To You (ft. 54 Ultra)",
-   "artist": "ANOTR, 54 Ultra",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273b42ed7f52290f1583760a7e2",
-   "canvasUrl": "https://canvaz.scdn.co/upload/artist/4p5WgeiPSPpqPDs7T6OkWf/video/e4610477aa0e4044b1c3668dabdec012.cnvs.mp4",
-   "spotifyTrackId": "0kl6Ozan3fuUdCl6TlB15v",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/b55c8fa4e31192a3e35ad53d3e889733f9cd9da1"
-  },
-  {
    "id": "levyra-932f3bbf987a271def9f",
    "genre": "dance-party",
    "title": "Loco Loco",
@@ -936,6 +926,16 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/4Ge9GwmWnOQsohwPTrXyHc/video/a2ac6b3aa5654ed68fce51419dd230fa.cnvs.mp4",
    "spotifyTrackId": "1mZnxNzp17JrPyzDzkoiiC",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/9c5fc4fab1e2518e2c8048abc9c094bbcff0971b"
+  },
+  {
+   "id": "levyra-9828b5bdff66418cf9a6",
+   "genre": "dance-party",
+   "title": "Talk To You (ft. 54 Ultra)",
+   "artist": "ANOTR, 54 Ultra",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273b42ed7f52290f1583760a7e2",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/4p5WgeiPSPpqPDs7T6OkWf/video/e4610477aa0e4044b1c3668dabdec012.cnvs.mp4",
+   "spotifyTrackId": "0kl6Ozan3fuUdCl6TlB15v",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/b55c8fa4e31192a3e35ad53d3e889733f9cd9da1"
   },
   {
    "id": "levyra-8fd31c8881546d288f6a",
@@ -1038,26 +1038,6 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/fbba6422f5d54ca1c3fab33ae59bbd4e842acddb"
   },
   {
-   "id": "levyra-ec81c9a2aa0e07366fc4",
-   "genre": "dance-party",
-   "title": "Good Girl",
-   "artist": "Cloonee, Prospa, Tristan Henry",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273a3c886ee9b32417992f8839a",
-   "canvasUrl": "https://canvaz.scdn.co/upload/artist/7MdlXmq2HViAJWo9cf30sR/video/04f523b582da47fa9f399b1f1f3462e1.cnvs.mp4",
-   "spotifyTrackId": "263Ecah3YA4hVZHxR2Ex9p",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/099eb86040fe00c6e7f14328f5cec483542728a5"
-  },
-  {
-   "id": "levyra-046114c2c1e1bb7281bc",
-   "genre": "dance-party",
-   "title": "Give It To Me - Full Vocal Mix",
-   "artist": "Matt Sassari",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2736a1e9d7201b74142e2d47b69",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/741fb252d45c4856b3d63edfe826c7db.cnvs.mp4",
-   "spotifyTrackId": "5ZduaRci3iNUiDfJbBfAaf",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/50081928cfabde0d63a4d78f893542711259652d"
-  },
-  {
    "id": "levyra-abcefdcdd14811510835",
    "genre": "dance-party",
    "title": "Friday (feat. Mufasa & Hypeman) - Dopamine Re-Edit",
@@ -1068,14 +1048,14 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/0a9ed687dddcd95c83e37099958bdc6d54430e4d"
   },
   {
-   "id": "levyra-eb856260d385e91e9a37",
+   "id": "levyra-ec81c9a2aa0e07366fc4",
    "genre": "dance-party",
-   "title": "Satisfaction",
-   "artist": "David Guetta, Benny Benassi",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273774f38d20ea492970bbd7ad9",
-   "canvasUrl": "https://canvaz.scdn.co/upload/artist/1Cs0zKBU1kc0i8ypK3B9ai/video/0c3cb750800245418c5b95358b7d4275.cnvs.mp4",
-   "spotifyTrackId": "0lwyzp7GppQxv0Eu6wRkUo",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/c9ba41fd56c50e4af303216b3a76bb1372ef1e00"
+   "title": "Good Girl",
+   "artist": "Cloonee, Prospa, Tristan Henry",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273a3c886ee9b32417992f8839a",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/7MdlXmq2HViAJWo9cf30sR/video/04f523b582da47fa9f399b1f1f3462e1.cnvs.mp4",
+   "spotifyTrackId": "263Ecah3YA4hVZHxR2Ex9p",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/099eb86040fe00c6e7f14328f5cec483542728a5"
   },
   {
    "id": "levyra-032fa13818ecee393548",
@@ -1088,6 +1068,16 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/adae361145c433bcc47279b57374767940b96957"
   },
   {
+   "id": "levyra-eb856260d385e91e9a37",
+   "genre": "dance-party",
+   "title": "Satisfaction",
+   "artist": "David Guetta, Benny Benassi",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273774f38d20ea492970bbd7ad9",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/1Cs0zKBU1kc0i8ypK3B9ai/video/0c3cb750800245418c5b95358b7d4275.cnvs.mp4",
+   "spotifyTrackId": "0lwyzp7GppQxv0Eu6wRkUo",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/c9ba41fd56c50e4af303216b3a76bb1372ef1e00"
+  },
+  {
    "id": "levyra-7889f970e52cfa44e03a",
    "genre": "dance-party",
    "title": "WHERE IS MY HUSBAND! - Remix",
@@ -1096,6 +1086,16 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/c70e8f241f3d441d98d13de41ee0ccdd.cnvs.mp4",
    "spotifyTrackId": "0vYSTV1Lye2Z2zktF6P39C",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/e10dac73398cf6dcf6d3f90925bb35fe7330190b"
+  },
+  {
+   "id": "levyra-046114c2c1e1bb7281bc",
+   "genre": "dance-party",
+   "title": "Give It To Me - Full Vocal Mix",
+   "artist": "Matt Sassari",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2736a1e9d7201b74142e2d47b69",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/741fb252d45c4856b3d63edfe826c7db.cnvs.mp4",
+   "spotifyTrackId": "5ZduaRci3iNUiDfJbBfAaf",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/50081928cfabde0d63a4d78f893542711259652d"
   },
   {
    "id": "levyra-8739c72808e270fed5b2",
@@ -1118,16 +1118,6 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/9029ddfed3e4a7c48767ab7c08f0e60631461cbb"
   },
   {
-   "id": "levyra-9a72aa8d0bf7874d8d34",
-   "genre": "dance-party",
-   "title": "HIGHJACK (right back)",
-   "artist": "Alok, Łaszewo, A$AP Rocky",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273056ceb58d08145d9435d357e",
-   "canvasUrl": "https://canvaz.scdn.co/upload/artist/0NGAZxHanS9e0iNHpR8f2W/video/b3b635eacbb94393b15a16821a62342d.cnvs.mp4",
-   "spotifyTrackId": "1Eqdkt6DfGNWElHpeujHGJ",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/ec2aa978d0aa75eb24054af59554e0e63d44537e"
-  },
-  {
    "id": "levyra-2f21990911f610c6f250",
    "genre": "dance-party",
    "title": "Addicted",
@@ -1146,6 +1136,16 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/327472d482ae422d9ddfcebb426cfd2a.cnvs.mp4",
    "spotifyTrackId": "0cZN3g7rtfNE6vsmX0k8OF",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/265e15be487a4b6bbabacc8c565afdbee404e045"
+  },
+  {
+   "id": "levyra-e32935668cb20681852b",
+   "genre": "dance-party",
+   "title": "Prada",
+   "artist": "cassö, RAYE, D-Block Europe",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273e4b7dccdfd54375ded9ccc5c",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/bcb5bcd55e5549759ae03392df3a8b12.cnvs.mp4",
+   "spotifyTrackId": "59NraMJsLaMCVtwXTSia8i",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/07ca5d41f53802807fd40d2778e66f633a2f3b8b"
   },
   {
    "id": "levyra-0d219238795bf93e0ba3",
@@ -1568,14 +1568,14 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/58f29909978e2e110e990788a1247232f0c1151a"
   },
   {
-   "id": "levyra-ccebc3c606a86bc967d6",
+   "id": "levyra-8b8835c6895de731c21b",
    "genre": "edm",
-   "title": "crystallized (feat. Inéz) - Subtronics Remix",
-   "artist": "John Summit, Subtronics, Inéz",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27369b2ee70a8319389df3b595e",
-   "canvasUrl": "https://canvaz.scdn.co/upload/artist/7kNqXtgeIwFtelmRjWv205/video/d36f753d8bf243e3beb670af4074bbef.cnvs.mp4",
-   "spotifyTrackId": "0nRYjxQQCzMVyjgpTtKjLt",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/a0d352546af3b8d7a4daec5fba655c8e9231c430"
+   "title": "Sh*t's On F*re",
+   "artist": "Virtual Riot",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273f782f857dea21319097c5720",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/0JQjqa5cooeB27reBZbl5m/video/71a911a2b8b34668831c7ac37d20d5b9.cnvs.mp4",
+   "spotifyTrackId": "53VFQ23T8h7f4ECrih68nP",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/4419adf7de02464bd8f5b15c9aa9bfad864fd01a"
   },
   {
    "id": "levyra-36500f4c3e644960d645",
@@ -1752,7 +1752,7 @@
    "genre": "pop",
    "title": "Housewife",
    "artist": "Tate McRae",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2737c6236a76fbcee4f1b8ace08",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273f6f1afd1aebea6906dd2a253",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/14d95d39ea8b423299dabef4ce28ed55.cnvs.mp4",
    "spotifyTrackId": "2sFepQNyl1WjpROruP8bJ0",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/724b097d9dc53e0541de27d199adfe3f610944ba"
@@ -1803,7 +1803,7 @@
    "title": "hate that i made you love me",
    "artist": "Ariana Grande",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273b622d42c30697e1e1414343c",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/2b79c1e7a2204ccc9d614477d510c800.cnvs.mp4",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/d452cf603ae3428696c975d6394f2e78.cnvs.mp4",
    "spotifyTrackId": "20jbSiX29FDX4oQxBXyUEi",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/9fb8e09c9facc2d9443b6e57ae36d47bf83c01b8"
   },
@@ -2444,8 +2444,7 @@
    "artist": "Heuss L'enfoiré, PLK",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273076fa6471a24772bfe3ab1fc",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/845df9f24e2a41c3bf47b0dce39aba97.cnvs.mp4",
-   "spotifyTrackId": "1Awm1OB4Sd2eOBfKpp2UhQ",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/6b7be25c98345b17c628f84628a55737972f2799"
+   "spotifyTrackId": "1Awm1OB4Sd2eOBfKpp2UhQ"
   },
   {
    "id": "levyra-c8918c1fee9f09f239a0",
@@ -2504,8 +2503,7 @@
    "artist": "Typhee",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273626e4e851963209e10bd06e3",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/2FNbkJyVSLs6NM7ATd7BIH/video/c8b30a908c14479d890504fc5e1077ed.cnvs.mp4",
-   "spotifyTrackId": "3dxmjv6O7oRDrcfjG6bgFm",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/df7d80959789e6358a820d8e85d57adce28e9bac"
+   "spotifyTrackId": "3dxmjv6O7oRDrcfjG6bgFm"
   },
   {
    "id": "levyra-999d8d4bcf9ed3343ff2",
