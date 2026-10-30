@@ -839,7 +839,7 @@ private fun AtelierFeatureRow(
                 val current = feature.lead.id == currentId
                 Box(
                     Modifier.size(sleeve).graphicsLayer {
-                        val offset = ((pager.currentPage - page) + pager.currentPageOffsetFraction).coerceIn(-1f, 1f)
+                        val offset = (pager.currentPage - page + pager.currentPageOffsetFraction).coerceIn(-1f, 1f)
                         val near = 1f - kotlin.math.abs(offset)
                         val scale = 0.82f + 0.18f * near
                         scaleX = scale

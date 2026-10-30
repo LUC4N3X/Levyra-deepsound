@@ -203,7 +203,8 @@ private fun AtelierShelfStage(items: List<AtelierShelfItem>, viewModel: LevyraVi
         val sizePx = with(density) { if (rich) 380.dp.roundToPx() else 280.dp.roundToPx() }.coerceAtMost(720)
         val low = (selectedIndex - CoverWindow).coerceAtLeast(0)
         val high = (selectedIndex + CoverWindow).coerceAtMost(items.lastIndex)
-        val wanted = (low..high).map { items[it].coverUrl }.toSet()
+        val wanted = HashSet<String>()
+        for (index in low..high) wanted += items[index].coverUrl
         covers.keys.filter { it !in wanted }.forEach { covers.remove(it) }
         (0..CoverWindow).flatMap { listOf(selectedIndex + it, selectedIndex - it) }.distinct()
             .filter { it in low..high }.forEach { index ->
@@ -409,11 +410,11 @@ private fun AtelierShelfDial(
                 trackWidth = size.width.toFloat()
                 detectHorizontalDragGestures { change, _ ->
                     change.consume()
-                    onSeek(((change.position.x / size.width) * lastIndex).roundToInt().coerceIn(0, items.lastIndex))
+                    onSeek((change.position.x / size.width * lastIndex).roundToInt().coerceIn(0, items.lastIndex))
                 }
             }
             .pointerInput(items) {
-                detectTapGestures { tap -> onSeek(((tap.x / size.width) * lastIndex).roundToInt().coerceIn(0, items.lastIndex)) }
+                detectTapGestures { tap -> onSeek((tap.x / size.width * lastIndex).roundToInt().coerceIn(0, items.lastIndex)) }
             }
             .semantics {
                 contentDescription = label

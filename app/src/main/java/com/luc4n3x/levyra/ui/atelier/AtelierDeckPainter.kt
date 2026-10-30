@@ -51,7 +51,7 @@ private fun drawWalnut(canvas: Canvas, paint: Paint, random: Random, w: Float, d
             grain.lineTo(x, y + sin(x / w * 11f + phase) * amplitude)
         }
         paint.strokeWidth = 0.6f + random.nextFloat() * 1.4f
-        paint.color = if (random.nextFloat() < 0.72f) (((20 + random.nextInt(50)) shl 24) or 0x120804) else (((10 + random.nextInt(18)) shl 24) or 0xC98E55)
+        paint.color = if (random.nextFloat() < 0.72f) 20 + random.nextInt(50) shl 24 or 0x120804 else 10 + random.nextInt(18) shl 24 or 0xC98E55
         canvas.drawPath(grain, paint)
     }
     paint.style = Paint.Style.FILL
@@ -73,7 +73,7 @@ private fun drawPlate(canvas: Canvas, paint: Paint, random: Random, w: Float, de
     paint.strokeWidth = 1f
     var y = plate.top
     while (y < plate.bottom) {
-        paint.color = if (random.nextBoolean()) (((6 + random.nextInt(14)) shl 24) or 0xFFFFFF) else (((8 + random.nextInt(18)) shl 24))
+        paint.color = if (random.nextBoolean()) 6 + random.nextInt(14) shl 24 or 0xFFFFFF else 8 + random.nextInt(18) shl 24
         canvas.drawLine(plate.left, y, plate.right, y, paint)
         y += 1.6f
     }
@@ -105,7 +105,7 @@ private fun drawPlatter(canvas: Canvas, paint: Paint, w: Float) {
     var tick = 0
     while (tick < 180) {
         val a = tick * 2.0 * Math.PI / 180.0
-        val inner = r * (if (tick % 5 == 0) 0.962f else 0.975f)
+        val inner = if (tick % 5 == 0) r * 0.962f else r * 0.975f
         canvas.drawLine(cx + cos(a).toFloat() * inner, cy + sin(a).toFloat() * inner, cx + cos(a).toFloat() * r * 0.992f, cy + sin(a).toFloat() * r * 0.992f, paint)
         tick++
     }

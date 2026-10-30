@@ -167,7 +167,7 @@ private fun fillSleeveFinal(out: FloatArray, centerX: Float, centerY: Float, sid
     for (corner in 0 until 4) {
         val u = if (corner == 0 || corner == 3) -half else half
         val v = if (corner < 2) -half else half
-        val keystone = 1f + (v / side) * 0.035f
+        val keystone = 1f + v / side * 0.035f
         out[corner * 2] = centerX + (u * keystone * c - v * s)
         out[corner * 2 + 1] = centerY + (u * keystone * s + v * c)
     }
