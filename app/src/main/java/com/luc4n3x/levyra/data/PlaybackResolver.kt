@@ -424,8 +424,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private fun highQualityProviders(exchange: ProviderHttpExchange): List<HighQualityAudioProvider> = buildList {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            add(QobuzAudioProvider())
-            add(TidalAudioProvider(java.io.File(context.cacheDir, "tidal-manifests")))
+            // Only community lossless sources are registered; shared account credentials are disabled.
             add(MonochromeAudioProvider(exchange))
             add(ArcodAudioProvider(exchange))
         }
@@ -505,8 +504,12 @@ class PlaybackResolver private constructor(private val context: Context) {
             selectedPreferredAudioLanguage to audioLanguageRevision.get()
         }
 
+    private fun isDisabledPremiumSource(track: Track): Boolean =
+        track.playbackManifest?.alternativeSource?.providerId in
+            setOf(QobuzAudioProvider.PROVIDER_ID, TidalAudioProvider.PROVIDER_ID)
+
     private fun canReuseProvidedPlayback(track: Track): Boolean {
-        if (!highQualityPlayback.qobuzEnabled && track.playbackManifest?.alternativeSource?.providerId == QobuzAudioProvider.PROVIDER_ID) return false
+        if (isDisabledPremiumSource(track)) return false
         val (preferredLanguage, revision) = preferredAudioLanguageSnapshot()
         return AudioLanguageIntelligence.canReuseProvidedPlayback(
             manifest = track.playbackManifest,
@@ -659,7 +662,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             RuntimeHooks.cache(RuntimeSignal.CACHE_MISS)
             return null
         }
-        if (!highQualityPlayback.qobuzEnabled && hit.track.playbackManifest?.alternativeSource?.providerId == QobuzAudioProvider.PROVIDER_ID) {
+        if (isDisabledPremiumSource(hit.track)) {
             remove(key)
             return null
         }

@@ -88,7 +88,7 @@ When high-quality audio is enabled, Levyra can use JioSaavn as another source fo
 
 Before switching sources, Levyra checks that it found the right recording and that the stream matches the quality it claims to have. It can try the available 320, 160 and 96 kbps versions. If a stream is advertised as 320 kbps but measures below that range, Levyra does not show it as 320 kbps.
 
-With FLAC selected on Android, Levyra looks for a lossless version of the same recording. It checks the recording match and reads the audio headers to verify the format, bit depth and sample rate. If no verified lossless match is available, the existing audio fallbacks remain available. FLAC is still experimental, and availability depends on the track, region and access permissions.
+With FLAC selected on Android, Levyra looks for a lossless version of the same recording through Monochrome and Arcod. It checks the recording match and reads the audio headers to verify the format, bit depth and sample rate. If no verified lossless match is available, the existing audio fallbacks remain available. FLAC is still experimental, and availability depends on the track, region and access permissions.
 
 Account access and subscriptions remain subject to the relevant service's terms. Levyra does not create or sell third-party accounts, and a token shared online does not grant permission to use the account behind it. See [FLAC sources and account access](docs/legal/LEGAL.md#flac-sources-and-third-party-account-access).
 
@@ -221,7 +221,7 @@ Levyra builds on ideas and work from several open-source projects:
 - [zemer-cipher](https://github.com/ZemerTeam/zemer-cipher): open-source work used for YouTube cipher deobfuscation and PoToken generation.
 - [LRCLIB](https://lrclib.net/): provides the synchronized lyrics database and API.
 
-For FLAC playback on Android, Levyra tries [TIDAL](https://tidal.com/) first. Thanks also to [Monochrome](https://tracks.monochrome.st) and [Arcod](https://arcod.xyz), which remain available as fallback sources. These references do not imply a partnership or endorsement.
+For FLAC playback on Android, Levyra uses [Monochrome](https://tracks.monochrome.st) and [Arcod](https://arcod.xyz). Direct TIDAL and Qobuz streaming through shared account credentials has been disabled. These references do not imply a partnership or endorsement.
 
 Previous Levyra app logo designed by [@gauravbhindwar](https://github.com/gauravbhindwar) in [#525](https://github.com/LUC4N3X/Levyra-deepsound/issues/525). The current logo and visual identity are by [@LUC4N3X](https://github.com/LUC4N3X).
 
@@ -309,9 +309,9 @@ If there is a problem with media hosted by another service, contact that service
 
 #### - FLAC sources and account access
 
-On Android, TIDAL is the preferred FLAC source. Monochrome and Arcod are fallbacks. Levyra is not affiliated with these services and does not create or sell TIDAL accounts or subscriptions. Any accounts associated with third-party session credentials remain external to the project; Levyra does not claim ownership of them or grant rights to use them.
+On Android, Monochrome and Arcod are the available FLAC sources. Levyra no longer distributes shared TIDAL or Qobuz credentials or registers those account-based sources for playback. Levyra is not affiliated with third-party music services.
 
-The integration is included for software research, testing, interoperability and lawful playback. It is not intended to promote piracy or unauthorized access. Use of credentials and content still requires the appropriate permissions.
+External provider integrations are intended for lawful playback and interoperability, not piracy or unauthorized access. Use of credentials and content still requires the appropriate permissions.
 
 Account details or tokens shared on the web remain subject to the account holder's rights, the service's terms and applicable law. Their public availability, or inclusion in a software build, does not establish permission to use or redistribute them. This notice does not grant that permission or remove any legal obligations of project maintainers or users.
 

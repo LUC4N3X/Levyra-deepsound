@@ -79,7 +79,7 @@ internal class TidalApi(
         if (configuration?.sameAs(next.tidal) == true) return
         sessions.clear()
         configuration = next.tidal
-        refreshToken = next.tidal.refreshTokens.first()
+        refreshToken = next.tidal.refreshTokens.firstOrNull()
     }
 
     private suspend fun authenticate(

@@ -1,7 +1,6 @@
 package com.luc4n3x.levyra.data.hqaudio
 
 import com.luc4n3x.levyra.data.hqaudio.qobuz.QobuzCredentials
-import com.luc4n3x.levyra.data.hqaudio.tidal.TidalCredentials
 import org.json.JSONObject
 
 internal class TidalCredentialSet(
@@ -25,9 +24,9 @@ internal class AudioCredentials(
         const val MAX_DOCUMENT_BYTES = 65_536
         const val MAX_ACCOUNTS = 10
 
-        fun embedded() = AudioCredentials(0, QobuzCredentials.accounts, TidalCredentialSet(
-            listOf(TidalCredentials.refreshToken, TidalCredentials.fallbackRefreshToken).distinct(),
-            TidalCredentials.tvClientId, TidalCredentials.tvClientSecret, TidalCredentials.mobileClientId
+        // No shared third-party account credentials are shipped with Levyra.
+        fun embedded() = AudioCredentials(0, emptyList(), TidalCredentialSet(
+            emptyList(), "", "", ""
         ))
 
         fun parse(document: String): AudioCredentials? = runCatching {

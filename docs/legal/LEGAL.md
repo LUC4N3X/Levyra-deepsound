@@ -29,11 +29,11 @@ The fact that Levyra can interact with a service does not mean that every possib
 
 ### FLAC sources and third-party account access
 
-When FLAC is selected on Android, Levyra tries TIDAL first, with Monochrome and Arcod available as fallbacks. Availability depends on the recording, region, account entitlement and service restrictions. A successful connection or a lossless label is not evidence of permission to access a service or use its content.
+When FLAC is selected on Android, Levyra uses Monochrome and Arcod as lossless sources; account-based TIDAL and Qobuz streaming is disabled in current builds. Availability depends on the recording, region, account entitlement and service restrictions. A successful connection or a lossless label is not evidence of permission to access a service or use its content.
 
-The integration is included for software research, testing, interoperability and lawful playback. It is not intended to promote piracy, unauthorized account access or unlawful copying. These purposes do not themselves grant permission to use an account or copyrighted content. Embedded tokens can provide real account access and must be handled as credentials.
+The remaining integrations are included for software research, testing, interoperability and lawful playback. They are not intended to promote piracy, unauthorized account access or unlawful copying. Earlier versions included embedded third-party credentials; such credentials must be treated as secrets, and older releases should not be used to access those accounts.
 
-Levyra does not operate a music-hosting or subscription service, issue third-party accounts or subscriptions, or grant licences to music content. Levyra does not create or sell TIDAL accounts or subscriptions. Accounts associated with third-party session credentials remain external to the project. Levyra does not claim ownership of those accounts and cannot grant access rights on behalf of their holders or TIDAL.
+Levyra does not operate a music-hosting or subscription service, issue third-party accounts or subscriptions, or grant licences to music content. It does not create or sell TIDAL or Qobuz accounts or subscriptions, or grant access rights on behalf of their holders.
 
 Account details, access tokens and refresh tokens shared on websites, messaging services or other public channels remain subject to the account holder's rights, the provider's terms and applicable law. Finding them online does not establish permission to use, copy or redistribute them. Credentials included in source code or a software build are distributed with that code or build; this notice does not change that fact or establish that their distribution is authorized.
 
