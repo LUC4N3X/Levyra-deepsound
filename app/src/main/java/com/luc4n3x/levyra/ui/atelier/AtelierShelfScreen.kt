@@ -213,7 +213,8 @@ private fun AtelierShelfStage(items: List<AtelierShelfItem>, viewModel: LevyraVi
 
     val settle: (Float) -> Unit = { target ->
         scope.launch {
-            position.animateTo(target.coerceIn(0f, items.lastIndex.toFloat()), spring(dampingRatio = 0.86f, stiffness = Spring.StiffnessLow))
+            val clamped = target.coerceIn(0f, items.lastIndex.toFloat())
+            if (animated) position.animateTo(clamped, spring(dampingRatio = 0.86f, stiffness = Spring.StiffnessLow)) else position.snapTo(clamped)
         }
     }
     LaunchedEffect(state.selectedTab) {

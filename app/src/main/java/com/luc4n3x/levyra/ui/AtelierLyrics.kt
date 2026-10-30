@@ -6,6 +6,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -77,7 +79,11 @@ internal fun AtelierLyricsScreen(
     onLineClick: (Int, LyricLine) -> Unit,
     onTogglePlay: () -> Unit,
     onOptions: () -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    selectionMode: Boolean = false,
+    selectedRange: IntRange? = null,
+    onLineLongClick: (Int, LyricLine) -> Unit = { _, _ -> },
+    onShare: (() -> Unit)? = null
 ) {
     var active by remember(lines, state.lyricsSynced) { mutableIntStateOf(-1) }
     LaunchedEffect(lines, state.lyricsSynced) {
@@ -110,10 +116,10 @@ internal fun AtelierLyricsScreen(
         if (animations) listState.animateScrollToItem(active, -anchor) else listState.scrollToItem(active, -anchor)
     }
     Column(Modifier.fillMaxSize().background(AtelierDesign.room).statusBarsPadding().navigationBarsPadding()) {
-        AtelierLyricsTopBar(onOptions, onClose)
+        AtelierLyricsTopBar(selectionMode, onShare, onOptions, onClose)
         HorizontalDivider(thickness = 1.dp, color = AtelierDesign.hairline)
         Box(Modifier.weight(1f).fillMaxWidth()) {
-            AtelierLyricsBody(state, lines, listState, active, animations, onLineClick)
+            AtelierLyricsBody(state, lines, listState, active, animations, selectionMode, selectedRange, onLineClick, onLineLongClick)
         }
         HorizontalDivider(thickness = 1.dp, color = AtelierDesign.hairline)
         AtelierLyricsTransport(state.isPlaying, track, onTogglePlay, onClose)
@@ -121,7 +127,7 @@ internal fun AtelierLyricsScreen(
 }
 
 @Composable
-private fun AtelierLyricsTopBar(onOptions: () -> Unit, onClose: () -> Unit) {
+private fun AtelierLyricsTopBar(selectionMode: Boolean, onShare: (() -> Unit)?, onOptions: () -> Unit, onClose: () -> Unit) {
     val strings = LocalLevyraStrings.current
     Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         AtelierIconTarget(Icons.Rounded.KeyboardArrowDown, strings.close, AtelierDesign.text, onClose)
@@ -130,6 +136,9 @@ private fun AtelierLyricsTopBar(onOptions: () -> Unit, onClose: () -> Unit) {
             maxLines = 1, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f).padding(horizontal = 8.dp).semantics { heading() }
         )
+        if (onShare != null) {
+            AtelierIconTarget(Icons.Rounded.Share, strings.shareLyrics, if (selectionMode) AtelierDesign.accent else AtelierDesign.text, onShare)
+        }
         AtelierIconTarget(Icons.Rounded.Tune, strings.options, AtelierDesign.text, onOptions)
     }
 }
@@ -141,7 +150,10 @@ private fun BoxScope.AtelierLyricsBody(
     listState: LazyListState,
     active: Int,
     animations: Boolean,
-    onLineClick: (Int, LyricLine) -> Unit
+    selectionMode: Boolean,
+    selectedRange: IntRange?,
+    onLineClick: (Int, LyricLine) -> Unit,
+    onLineLongClick: (Int, LyricLine) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     when {
@@ -151,7 +163,10 @@ private fun BoxScope.AtelierLyricsBody(
             contentPadding = PaddingValues(start = AtelierDesign.gutter, end = AtelierDesign.gutter, top = 28.dp, bottom = 240.dp)
         ) {
             itemsIndexed(lines, key = { index, line -> "${line.startMs}-$index" }) { index, line ->
-                AtelierLyricLineRow(line, index == active, state.lyricsSynced, animations) { onLineClick(index, line) }
+                AtelierLyricLineRow(
+                    line, index == active, state.lyricsSynced || selectionMode, selectedRange?.contains(index) == true, animations,
+                    { onLineLongClick(index, line) }
+                ) { onLineClick(index, line) }
             }
         }
         state.lyricsLoading -> Text(
@@ -166,8 +181,11 @@ private fun BoxScope.AtelierLyricsBody(
 }
 
 @Composable
-private fun AtelierLyricLineRow(line: LyricLine, current: Boolean, synced: Boolean, animations: Boolean, onClick: () -> Unit) {
-    val target = if (current || !synced) AtelierDesign.text else AtelierDesign.textFaint
+private fun AtelierLyricLineRow(
+    line: LyricLine, current: Boolean, synced: Boolean, selected: Boolean, animations: Boolean,
+    onLongClick: () -> Unit, onClick: () -> Unit
+) {
+    val target = if (current || selected || !synced) AtelierDesign.text else AtelierDesign.textFaint
     val color by animateColorAsState(
         target,
         if (animations) tween(AtelierLyricsColorMs) else snap(),
@@ -178,7 +196,8 @@ private fun AtelierLyricLineRow(line: LyricLine, current: Boolean, synced: Boole
         style = MaterialTheme.typography.headlineMedium,
         color = color,
         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(vertical = 3.dp)
-            .clickable(enabled = synced, onClick = onClick)
+            .combinedClickable(onLongClick = onLongClick, onClick = { if (synced) onClick() })
+            .then(if (selected) Modifier.background(AtelierDesign.accent.copy(alpha = 0.18f)) else Modifier)
             .drawBehind {
                 if (current) {
                     val markerWidth = AtelierLyricsMarkerWidth.toPx()

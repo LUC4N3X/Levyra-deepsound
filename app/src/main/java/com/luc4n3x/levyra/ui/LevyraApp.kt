@@ -7441,7 +7441,11 @@ private fun LyricsOverlay(
                 onClose = onClose
             )
         } else if (LevyraIsAtelier && track != null) {
-            AtelierLyricsScreen(state, track, visibleLyrics, lyricsPositionProvider, lyricsAnimationsEnabled, ::onLyricLineClick, onTogglePlay, { showLyricsOptions = true }, onClose)
+            AtelierLyricsScreen(
+                state, track, visibleLyrics, lyricsPositionProvider, lyricsAnimationsEnabled, ::onLyricLineClick, onTogglePlay,
+                { showLyricsOptions = true }, onClose, selectionMode, selectedRange, ::onLyricLineLongClick,
+                if (canShareLyrics) ::toggleShareMode else null
+            )
         } else if (LevyraIsQobuz && track != null) {
             QobuzLyricsScreen(state, track, visibleLyrics, lyricsPositionProvider, lyricsAnimationsEnabled, ::onLyricLineClick, onTogglePlay, onClose)
         } else if (LevyraIsSpotify && studioSettings.spotifyLyricsApplies() && track != null) {

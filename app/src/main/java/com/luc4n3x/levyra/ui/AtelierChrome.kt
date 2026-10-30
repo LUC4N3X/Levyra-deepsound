@@ -134,8 +134,9 @@ private fun AtelierTabKey(entry: LevyraTabEntry, active: Boolean, modifier: Modi
             .selectable(active, interaction, indication = null, role = Role.Tab, onClick = onClick),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center
     ) {
-        Icon(atelierTabIcon(entry.tab, entry), entry.label, tint = tint, modifier = Modifier.size(22.dp))
-        if (lit > 0.5f) {
+        val showLabel = lit > 0.5f
+        Icon(atelierTabIcon(entry.tab, entry), if (showLabel) null else entry.label, tint = tint, modifier = Modifier.size(22.dp))
+        if (showLabel) {
             Spacer(Modifier.width(8.dp))
             Text(entry.label, color = tint, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }

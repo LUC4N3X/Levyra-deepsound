@@ -67,7 +67,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.geometry.CornerRadius
@@ -667,8 +666,17 @@ internal fun AtelierSeekbar(positionMs: Long, durationMs: Long, onSeek: (Float) 
     val fraction = dragging ?: if (durationMs > 0L) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
     val seekLabel = LocalLevyraStrings.current.gestureActionSeek
     val animated = com.luc4n3x.levyra.ui.LocalAnimationsEnabled.current
-    val wave = androidx.compose.animation.core.rememberInfiniteTransition(label = "atelier-wave")
-    val phaseState = wave.animateFloat(0f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(1600, easing = androidx.compose.animation.core.LinearEasing)), label = "atelier-wave-phase")
+    val phaseState = remember { Animatable(0f) }
+    LaunchedEffect(animated, playing) {
+        if (!animated || !playing) {
+            phaseState.snapTo(0f)
+            return@LaunchedEffect
+        }
+        while (true) {
+            phaseState.snapTo(0f)
+            phaseState.animateTo(1f, tween(1600, easing = androidx.compose.animation.core.LinearEasing))
+        }
+    }
     Column(modifier.fillMaxWidth()) {
         Canvas(
             Modifier.fillMaxWidth().height(34.dp).drawWithContent { drawContent() }.semantics {
@@ -689,7 +697,7 @@ internal fun AtelierSeekbar(positionMs: Long, durationMs: Long, onSeek: (Float) 
                     detectTapGestures { onSeek((it.x / size.width).coerceIn(0f, 1f)) }
                 }
         ) {
-            val phase = if (animated && playing) phaseState.value else 0f
+            val phase = phaseState.value
             val middle = size.height / 2f
             val head = size.width * fraction
             val amplitude = (if (dragging != null) 2.dp else 3.5.dp).toPx()

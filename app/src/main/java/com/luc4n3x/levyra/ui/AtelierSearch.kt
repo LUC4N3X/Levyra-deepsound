@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -180,9 +181,17 @@ internal fun AtelierSearchEntry(viewModel: SearchViewModel, state: LevyraUiState
         keyboard?.hide()
     }
     LaunchedEffect(blank, strings.code) { if (blank) viewModel.ensureExplore(strings) }
+    val recognitionBusy = state.recognitionState is com.luc4n3x.levyra.feature.recognition.RecognitionState.Listening ||
+        state.recognitionState is com.luc4n3x.levyra.feature.recognition.RecognitionState.Identifying
+    val toggleRecognition = rememberSearchVoiceActions(
+        recognitionBusy, viewModel::startMusicRecognition, viewModel::cancelMusicRecognition, viewModel::setQuery, viewModel::searchNow
+    ).component2()
     Column(Modifier.fillMaxSize().background(AtelierDesign.room).statusBarsPadding()) {
         AtelierSearchField(
             query = query,
+            recognitionAvailable = state.recognitionAvailable,
+            recognitionBusy = recognitionBusy,
+            onRecognize = toggleRecognition,
             busy = !blank && (state.isSearching || state.searchPending),
             focused = focused,
             strings = strings,
@@ -206,6 +215,9 @@ internal fun AtelierSearchEntry(viewModel: SearchViewModel, state: LevyraUiState
 @Composable
 private fun AtelierSearchField(
     query: String,
+    recognitionAvailable: Boolean,
+    recognitionBusy: Boolean,
+    onRecognize: () -> Unit,
     busy: Boolean,
     focused: Boolean,
     strings: LevyraStrings,
@@ -268,7 +280,11 @@ private fun AtelierSearchField(
                     )
                 }
                 Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                    if (query.isNotEmpty()) AtelierSearchIconTarget(Icons.Rounded.Close, strings.clear, onClear)
+                    if (query.isNotEmpty()) {
+                        AtelierSearchIconTarget(Icons.Rounded.Close, strings.clear, onClear)
+                    } else if (recognitionAvailable) {
+                        AtelierSearchIconTarget(Icons.Rounded.GraphicEq, strings.recognizeMusic, if (recognitionBusy) AtelierDesign.accent else AtelierDesign.textSecondary, onRecognize)
+                    }
                 }
             }
             if (busy) {
@@ -1165,11 +1181,15 @@ private fun AtelierSearchMoreTarget(label: String, items: () -> List<AtelierSear
 }
 
 @Composable
-private fun AtelierSearchIconTarget(icon: ImageVector, label: String, onClick: () -> Unit) {
+private fun AtelierSearchIconTarget(icon: ImageVector, label: String, onClick: () -> Unit) =
+    AtelierSearchIconTarget(icon, label, AtelierDesign.textSecondary, onClick)
+
+@Composable
+private fun AtelierSearchIconTarget(icon: ImageVector, label: String, tint: Color, onClick: () -> Unit) {
     Box(
         Modifier.size(48.dp).clip(CircleShape).clickable(role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, label, tint = AtelierDesign.textSecondary, modifier = Modifier.size(22.dp))
+        Icon(icon, label, tint = tint, modifier = Modifier.size(22.dp))
     }
 }

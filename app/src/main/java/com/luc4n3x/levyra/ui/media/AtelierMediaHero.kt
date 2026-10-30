@@ -173,13 +173,13 @@ internal fun AtelierMediaHero(
                 val glow = Brush.radialGradient(
                     0f to halo.copy(alpha = 0.62f), 0.32f to halo.copy(alpha = 0.30f),
                     0.62f to halo.copy(alpha = 0.09f), 1f to Color.Transparent,
-                    center = size.center, radius = sleevePx * 1.15f
+                    center = center, radius = sleevePx * 1.15f
                 )
                 val core = Brush.radialGradient(
                     0f to AtelierDesign.accentBright.copy(alpha = 0.10f), 1f to Color.Transparent,
-                    center = size.center, radius = sleevePx * 0.62f
+                    center = center, radius = sleevePx * 0.62f
                 )
-                val floorCenter = Offset(size.center.x, size.center.y + sleevePx * 0.58f)
+                val floorCenter = Offset(center.x, center.y + sleevePx * 0.58f)
                 val floorRadius = sleevePx * 0.6f
                 val floor = Brush.radialGradient(
                     0f to Color.Black.copy(alpha = 0.6f), 1f to Color.Transparent,

@@ -785,8 +785,9 @@ private fun LazyListScope.atelierExploreCategories(
     categorySections.forEach { section ->
         val structured = section.presentation == ExploreCategoryPresentation.Structured
         val title = section.providerTitle.ifBlank { if (structured) strings.genres else strings.exploreMoods }
-        val lines = section.categories.take(AtelierGenreLinesMax)
-        val overflow = section.categories.size > lines.size
+        val categories = section.categories.filter { it.params.isNotBlank() }.distinctBy { it.params }
+        val lines = categories.take(AtelierGenreLinesMax)
+        val overflow = categories.size > lines.size
         item(key = "${section.key}-label", contentType = "atelier-label") {
             AtelierSectionLabel(title) {
                 if (!structured || overflow) {
