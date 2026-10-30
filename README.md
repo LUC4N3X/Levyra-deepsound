@@ -90,7 +90,7 @@ Before switching sources, Levyra checks that it found the right recording and th
 
 With FLAC selected on Android, Levyra looks for a lossless version of the same recording through Monochrome and Arcod. It checks the recording match and reads the audio headers to verify the format, bit depth and sample rate. If no verified lossless match is available, the existing audio fallbacks remain available. FLAC is still experimental, and availability depends on the track, region and access permissions.
 
-Account access and subscriptions remain subject to the relevant service's terms. Levyra does not create or sell third-party accounts, and a token shared online does not grant permission to use the account behind it. See [FLAC sources and account access](docs/legal/LEGAL.md#flac-sources-and-third-party-account-access).
+External streaming sources and content remain subject to each provider's terms and access rules. See [Third-party services and rights](docs/legal/LEGAL.md#3-third-party-services-and-rights).
 
 The JioSaavn match uses more than the song title. Levyra also checks performers and artist roles, album and release details, duration, explicit status, language, featured artists and version markers. When needed, it compares a search result with JioSaavn's track details so it can tell an original recording from a compilation, reissue or alternate version.
 
@@ -221,7 +221,7 @@ Levyra builds on ideas and work from several open-source projects:
 - [zemer-cipher](https://github.com/ZemerTeam/zemer-cipher): open-source work used for YouTube cipher deobfuscation and PoToken generation.
 - [LRCLIB](https://lrclib.net/): provides the synchronized lyrics database and API.
 
-For FLAC playback on Android, Levyra uses [Monochrome](https://tracks.monochrome.st) and [Arcod](https://arcod.xyz). Direct TIDAL and Qobuz streaming through shared account credentials has been disabled. These references do not imply a partnership or endorsement.
+For FLAC playback on Android, Levyra uses [Monochrome](https://tracks.monochrome.st) and [Arcod](https://arcod.xyz). These references do not imply a partnership or endorsement.
 
 Previous Levyra app logo designed by [@gauravbhindwar](https://github.com/gauravbhindwar) in [#525](https://github.com/LUC4N3X/Levyra-deepsound/issues/525). The current logo and visual identity are by [@LUC4N3X](https://github.com/LUC4N3X).
 
@@ -307,9 +307,9 @@ Levyra is client-side software that runs on your device. It does not own or host
 
 If there is a problem with media hosted by another service, contact that service or the relevant rights holder. If the issue is with something distributed as part of Levyra itself, use the GitHub issue tracker.
 
-#### - FLAC sources and account access
+#### - FLAC sources and lawful access
 
-On Android, Monochrome and Arcod are the available FLAC sources. Levyra no longer distributes shared TIDAL or Qobuz credentials or registers those account-based sources for playback. Levyra is not affiliated with third-party music services.
+On Android, Monochrome and Arcod are the available FLAC sources. Availability depends on each external provider. Levyra does not distribute account credentials or grant access rights to third-party catalogs.
 
 External provider integrations are intended for lawful playback and interoperability, not piracy or unauthorized access. Use of credentials and content still requires the appropriate permissions.
 

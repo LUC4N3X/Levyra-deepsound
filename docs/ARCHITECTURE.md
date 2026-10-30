@@ -485,14 +485,11 @@ The parsed Watch Context is cached so queue, lyrics, and Related requests do not
  
 ## 9. Related content and quality filtering
 
-### Remote lossless-provider credentials
+### Lossless provider configuration
 
-Android's `AudioCredentialsRuntime` supplies Qobuz and TIDAL with a shared,
-versioned snapshot from `catalog/audio-credentials.json` on `main`. Background
-refreshes do not block cached credentials; authentication failures can request
-a rate-limited refresh. The store validates the complete document before atomic
-publication and saves it in non-backed-up private storage. Embedded credentials
-remain the first-install fallback. See [the update procedure](REMOTE_AUDIO_CREDENTIALS.md).
+Android registers Monochrome and Arcod as experimental FLAC sources. No third-party
+account credentials are bundled or fetched from a remote catalog; previous
+account-based provider sessions are no longer used by the playback resolver.
  
 The Related parser supports mixed shelves containing:
  
