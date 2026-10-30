@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.RectF
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -21,6 +22,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -50,6 +52,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.MutableFloatState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -71,6 +74,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
@@ -88,6 +92,7 @@ import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
@@ -119,6 +124,7 @@ import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
 import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
 import com.luc4n3x.levyra.ui.components.PlayerControlLabels
 import com.luc4n3x.levyra.ui.components.formatSeekbarMillis
+import com.luc4n3x.levyra.ui.i18n.AtelierCopy
 import com.luc4n3x.levyra.ui.i18n.LevyraAtelierStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.preferredPlayerArtworkUrl
@@ -201,15 +207,7 @@ internal fun AtelierPlayerScene(
 
     val assets by produceState<AtelierDeckAssets?>(null, deckWidthPx, rich) {
         if (deckWidthPx <= 0) return@produceState
-        val bakeWidth = if (rich) deckWidthPx else (deckWidthPx * 0.72f).toInt()
-        value = withContext(Dispatchers.Default) {
-            AtelierDeckAssets(
-                atelierBakeDeck(bakeWidth).let { it.copy(Bitmap.Config.HARDWARE, false) ?: it },
-                atelierBakeArm(bakeWidth),
-                atelierBakeDisc(if (rich) 900 else 560).let { it.copy(Bitmap.Config.HARDWARE, false) ?: it },
-                atelierBakeDiscLight(if (rich) 480 else 320)
-            )
-        }
+        value = withContext(Dispatchers.Default) { bakeAtelierDeckAssets(deckWidthPx, rich) }
     }
     val coverUrl = remember(track.id) { preferredPlayerArtworkUrl(track) }
     var coverNow by remember { mutableStateOf<Bitmap?>(null) }
@@ -235,179 +233,29 @@ internal fun AtelierPlayerScene(
     val arm = remember { Animatable(AtelierDeckGeometry.RestAngle) }
     val grooveTarget = AtelierDeckGeometry.armAngleForRadius(AtelierDeckGeometry.grooveRadius(progress))
     LaunchedEffect(playing, animated) {
-        val target = if (playing && animated) SpinDegreesPerSecond else 0f
-        spinSpeed.animateTo(target, tween(if (playing) 620 else 1500, easing = FastOutSlowInEasing))
+        animateAtelierSpinSpeed(spinSpeed, playing, animated)
     }
     LaunchedEffect(playing, (grooveTarget * 8f).roundToInt(), animated) {
-        val target = if (playing) grooveTarget else AtelierDeckGeometry.RestAngle
-        if (animated) arm.animateTo(target, spring(dampingRatio = 0.94f, stiffness = 46f)) else arm.snapTo(target)
+        moveAtelierArm(arm, playing, grooveTarget, animated)
     }
     val clockProvider = AtelierStage.expansion
     val spinning = (playing || spinSpeed.value > 0.5f) && animated && lifecycle.isAtLeast(Lifecycle.State.STARTED)
     LaunchedEffect(spinning) {
         if (!spinning) return@LaunchedEffect
-        var last = 0L
-        while (true) {
-            withFrameNanos { now ->
-                if (last != 0L && clockProvider() > 0.2f) {
-                    spinDegrees.floatValue = (spinDegrees.floatValue + spinSpeed.value * (now - last) / 1_000_000_000f) % 360f
-                }
-                last = now
-            }
-        }
+        runAtelierSpin(spinDegrees, spinSpeed, clockProvider)
     }
+    val toneProvider = { tone }
+    val labelOldProvider = { labelOld }
+    val labelNowProvider = { labelNow }
+    val coverOldProvider = { coverOld }
+    val coverNowProvider = { coverNow }
 
     Box(modifier.fillMaxSize().onSizeChanged { sizePx = it.width to it.height }) {
         Canvas(Modifier.fillMaxSize()) {
-            val clock = AtelierStage.expansion().coerceIn(0f, 1f)
-            val w = size.width
-            val h = size.height
-            val loaded = assets
-            val deckW = if (wide) min(w * 0.56f, h * 1.18f) else w
-            val deckH = deckW * (AtelierDeckGeometry.Aspect + AtelierDeckPlinth)
-            val finalTop = if (wide) (h - deckH) * 0.5f else h * 0.205f
-            val finalLeft = 0f
-            val rise = AtelierStageClock.deckRise(clock)
-            val insetFraction = atelierLerp(0.15f, 0.012f, rise)
-            val travel = atelierLerp(h * 0.58f, 0f, rise)
-            val r = renderer
-            val statusGuess = 24.dp.toPx()
-            val sleeveSide = if (wide) deckW * 0.30f else w * 0.44f
-            val sleeveCenterX = sleeveSide * 0.42f
-            val sleeveCenterY = (if (wide) statusGuess + sleeveSide * 0.46f else finalTop - sleeveSide * 0.09f).coerceAtLeast(sleeveSide * 0.40f)
-            drawIntoCanvas { composeCanvas ->
-                val canvas = composeCanvas.nativeCanvas
-                val roomAlpha = AtelierStageClock.scrim(clock)
-                if (roomAlpha > 0.003f) {
-                    r.fillPaint.color = AtelierDesign.room.toArgb()
-                    r.fillPaint.alpha = (roomAlpha * 255f).toInt()
-                    canvas.drawRect(0f, 0f, w, h, r.fillPaint)
-                    r.glowPaint.color = 0xFFFFD7A8.toInt()
-                    r.glowPaint.alpha = (roomAlpha * 32f).toInt()
-                    r.rect.set(-w * 0.4f, -h * 0.25f, w * 1.1f, h * 0.45f)
-                    canvas.drawBitmap(r.glow, null, r.rect, r.glowPaint)
-                    r.glowPaint.color = tone.toArgb()
-                    r.glowPaint.alpha = (roomAlpha * 66f).toInt()
-                    r.rect.set(-w * 0.2f, h * 0.45f, w * 1.2f, h * 1.25f)
-                    canvas.drawBitmap(r.glow, null, r.rect, r.glowPaint)
-                }
-                if (loaded == null) return@drawIntoCanvas
-
-                val deckAlpha = (AtelierStageClock.deckAlpha(clock) * 255f).toInt()
-                fillRectQuad(r.deckUnit, 0f, 0f, 1000f, 0f)
-                r.deckUnit[4] = 1000f; r.deckUnit[5] = 1000f * deckH / deckW
-                r.deckUnit[6] = 0f; r.deckUnit[7] = 1000f * deckH / deckW
-                val topInset = deckW * insetFraction
-                fillRectQuad(r.deckQuad, finalLeft + topInset, finalTop + travel, finalLeft + deckW - topInset, finalTop + travel + deckH * atelierLerp(0.82f, 1f, rise))
-                r.deckQuad[4] = finalLeft + deckW + deckW * insetFraction * 0.25f
-                r.deckQuad[6] = finalLeft - deckW * insetFraction * 0.25f
-                val deckMatrixReady = r.matrix.setPolyToPoly(r.deckUnit, 0, r.deckQuad, 0, 4)
-
-                val flight = AtelierStageClock.recordFlight(clock)
-                val landed = flight >= 0.999f
-                val armAngle = atelierLerp(AtelierDeckGeometry.RestAngle, arm.value, AtelierStageClock.armEngage(clock))
-
-                fun drawArm() {
-                    val checkpoint = canvas.save()
-                    canvas.concat(r.matrix)
-                    val scale = 1000f / loaded.deck.width
-                    canvas.scale(scale, scale)
-                    val pivotX = loaded.deck.width * AtelierDeckGeometry.PivotX
-                    val pivotY = loaded.deck.width * AtelierDeckGeometry.PivotY
-                    val sprite = loaded.arm
-                    r.fillPaint.color = 0xFF000000.toInt()
-                    r.fillPaint.alpha = (deckAlpha * 0.46f).toInt()
-                    canvas.save()
-                    canvas.rotate(armAngle, pivotX + loaded.deck.width * 0.012f, pivotY + loaded.deck.width * 0.02f)
-                    canvas.drawBitmap(sprite.shadow, pivotX + loaded.deck.width * 0.012f - sprite.pivotX, pivotY + loaded.deck.width * 0.02f - sprite.pivotY, r.fillPaint)
-                    canvas.restore()
-                    r.bitmapPaint.alpha = deckAlpha
-                    canvas.rotate(armAngle, pivotX, pivotY)
-                    canvas.drawBitmap(sprite.bitmap, pivotX - sprite.pivotX, pivotY - sprite.pivotY, r.bitmapPaint)
-                    canvas.restoreToCount(checkpoint)
-                }
-
-                if (deckAlpha > 0 && deckMatrixReady) {
-                    val checkpoint = canvas.save()
-                    canvas.concat(r.matrix)
-                    r.bitmapPaint.alpha = deckAlpha
-                    val scale = 1000f / loaded.deck.width
-                    canvas.scale(scale, scale)
-                    canvas.drawBitmap(loaded.deck, 0f, 0f, r.bitmapPaint)
-                    canvas.restoreToCount(checkpoint)
-                    if (!landed) drawArm()
-                }
-
-                val sleeveMove = AtelierStageClock.sleeve(clock)
-                fillSleeveFinal(r.sleeveFinal, sleeveCenterX, sleeveCenterY, sleeveSide)
-                val fromShelf = AtelierStage.shelfQuadValid
-                val mini = AtelierStage.miniRect()
-                when {
-                    fromShelf -> AtelierStage.shelfQuad.copyInto(r.sleeveOrigin)
-                    mini != null -> fillRectQuad(r.sleeveOrigin, mini.left, mini.top, mini.right, mini.bottom)
-                    else -> fillRectQuad(r.sleeveOrigin, w * 0.05f, h * 0.84f, w * 0.05f + 56.dp.toPx(), h * 0.84f + 56.dp.toPx())
-                }
-                for (i in 0 until 8) r.sleeveQuad[i] = atelierLerp(r.sleeveOrigin[i], r.sleeveFinal[i], sleeveMove)
-
-                val recordAlpha = AtelierStageClock.recordAlpha(clock)
-                if (recordAlpha > 0.003f) {
-                    val sleeveCx = (r.sleeveFinal[0] + r.sleeveFinal[4]) * 0.5f
-                    val sleeveCy = (r.sleeveFinal[1] + r.sleeveFinal[5]) * 0.5f
-                    val peek = atelierSmooth(0.28f, 0.48f, clock)
-                    val startX = sleeveCx + sleeveSide * 0.42f * peek
-                    val startY = sleeveCy + sleeveSide * 0.02f * peek
-                    val startRadius = sleeveSide * 0.478f
-                    r.point[0] = 1000f * AtelierDeckGeometry.PlatterX
-                    r.point[1] = 1000f * AtelierDeckGeometry.PlatterY
-                    r.matrix.mapPoints(r.point)
-                    val finalRadius = deckW * AtelierDeckGeometry.RecordRadius
-                    val arc = sin(flight * PI.toFloat())
-                    val x = atelierLerp(startX, r.point[0], flight) + arc * deckW * 0.09f
-                    val y = atelierLerp(startY, r.point[1], flight) - arc * deckW * 0.015f
-                    val radius = atelierLerp(startRadius, finalRadius, flight) * (1f + arc * 0.05f)
-                    val lift = arc * finalRadius * 0.20f + (1f - flight) * finalRadius * 0.05f
-                    val alphaByte = (recordAlpha * 255f).toInt()
-                    r.glowPaint.color = 0xFF000000.toInt()
-                    r.glowPaint.alpha = (alphaByte * atelierLerp(0.6f, 0.9f, flight)).toInt()
-                    r.rect.set(x - radius * 1.34f + lift * 0.35f, y - radius * 1.34f + lift, x + radius * 1.34f + lift * 0.35f, y + radius * 1.34f + lift)
-                    canvas.drawBitmap(r.glow, null, r.rect, r.glowPaint)
-                    val squash = atelierLerp(0.96f, 1f, flight)
-                    val checkpoint = canvas.save()
-                    canvas.translate(x, y)
-                    canvas.scale(1f, squash)
-                    r.rect.set(-radius, -radius, radius, radius)
-                    r.bitmapPaint.alpha = alphaByte
-                    canvas.save()
-                    canvas.rotate(spinDegrees.floatValue)
-                    canvas.drawBitmap(loaded.disc, null, r.rect, r.bitmapPaint)
-                    val labelRadius = radius * (AtelierDeckGeometry.LabelRadius / AtelierDeckGeometry.RecordRadius)
-                    r.rect.set(-labelRadius, -labelRadius, labelRadius, labelRadius)
-                    val mix = swap.value
-                    labelOld?.let {
-                        r.bitmapPaint.alpha = (alphaByte * (1f - mix)).toInt()
-                        canvas.drawBitmap(it, null, r.rect, r.bitmapPaint)
-                    }
-                    labelNow?.let {
-                        r.bitmapPaint.alpha = (alphaByte * mix).toInt()
-                        canvas.drawBitmap(it, null, r.rect, r.bitmapPaint)
-                    }
-                    canvas.restore()
-                    r.rect.set(-radius, -radius, radius, radius)
-                    r.bitmapPaint.alpha = (alphaByte * atelierLerp(0.45f, 1f, flight)).toInt()
-                    canvas.rotate(-24f)
-                    canvas.drawBitmap(loaded.light, null, r.rect, r.bitmapPaint)
-                    canvas.restoreToCount(checkpoint)
-                }
-                if (landed && deckAlpha > 0 && deckMatrixReady) drawArm()
-
-                val roll = atelierSmooth(0.1f, 0.5f, clock)
-                val shadow = 0.5f * (1f - AtelierStageClock.scrim(clock) * 0.2f)
-                val mix = swap.value
-                coverOld?.takeIf { mix < 1f }?.let {
-                    r.painter.draw(canvas, r.sleeveQuad, it, null, 0f, r.shadowMask, shadow, roll * 0.2f, 0f, 1f - mix, rich)
-                }
-                r.painter.draw(canvas, r.sleeveQuad, coverNow ?: AtelierStage.shelfCover, null, 0f, r.shadowMask, shadow, roll * 0.2f, 0f, if (coverOld != null) mix else 1f, rich)
-            }
+            drawAtelierStage(
+                renderer, assets, wide, rich, toneProvider, arm, spinDegrees, swap,
+                labelOldProvider, labelNowProvider, coverOldProvider, coverNowProvider
+            )
         }
 
         val controls: Modifier = Modifier.graphicsLayer {
@@ -417,47 +265,284 @@ internal fun AtelierPlayerScene(
         }
         val visibleControls by remember { androidx.compose.runtime.derivedStateOf { AtelierStage.expansion() > 0.6f } }
 
-        Box(Modifier.fillMaxWidth().statusBarsPadding().then(controls)) {
-            if (visibleControls) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.weight(1f)) { slots.header() }
-                }
+        AtelierSceneTopChrome(slots, copy, visibleControls, sizePx, density, controls)
+        AtelierSceneSleeveSlot(track, slots, hasCanvas, visibleControls, wide, deckWidthPx, sizePx, density)
+        AtelierScenePanel(track, slots, visibleControls, wide, deckWidthPx, sizePx, density, controls, metadata, transport)
+    }
+}
+
+private fun bakeAtelierDeckAssets(deckWidthPx: Int, rich: Boolean): AtelierDeckAssets {
+    val bakeWidth = if (rich) deckWidthPx else (deckWidthPx * 0.72f).toInt()
+    return AtelierDeckAssets(
+        atelierBakeDeck(bakeWidth).let { it.copy(Bitmap.Config.HARDWARE, false) ?: it },
+        atelierBakeArm(bakeWidth),
+        atelierBakeDisc(if (rich) 900 else 560).let { it.copy(Bitmap.Config.HARDWARE, false) ?: it },
+        atelierBakeDiscLight(if (rich) 480 else 320)
+    )
+}
+
+private suspend fun animateAtelierSpinSpeed(spinSpeed: Animatable<Float, AnimationVector1D>, playing: Boolean, animated: Boolean) {
+    val target = if (playing && animated) SpinDegreesPerSecond else 0f
+    spinSpeed.animateTo(target, tween(if (playing) 620 else 1500, easing = FastOutSlowInEasing))
+}
+
+private suspend fun moveAtelierArm(arm: Animatable<Float, AnimationVector1D>, playing: Boolean, grooveTarget: Float, animated: Boolean) {
+    val target = if (playing) grooveTarget else AtelierDeckGeometry.RestAngle
+    if (animated) arm.animateTo(target, spring(dampingRatio = 0.94f, stiffness = 46f)) else arm.snapTo(target)
+}
+
+private suspend fun runAtelierSpin(spinDegrees: MutableFloatState, spinSpeed: Animatable<Float, AnimationVector1D>, clockProvider: () -> Float) {
+    var last = 0L
+    while (true) {
+        withFrameNanos { now ->
+            if (last != 0L && clockProvider() > 0.2f) {
+                spinDegrees.floatValue = (spinDegrees.floatValue + spinSpeed.value * (now - last) / 1_000_000_000f) % 360f
             }
+            last = now
         }
+    }
+}
+
+private fun DrawScope.drawAtelierStage(
+    r: AtelierStageRenderer, loaded: AtelierDeckAssets?, wide: Boolean, rich: Boolean, tone: () -> Color,
+    arm: Animatable<Float, AnimationVector1D>, spinDegrees: MutableFloatState, swap: Animatable<Float, AnimationVector1D>,
+    labelOld: () -> Bitmap?, labelNow: () -> Bitmap?, coverOld: () -> Bitmap?, coverNow: () -> Bitmap?
+) {
+    val clock = AtelierStage.expansion().coerceIn(0f, 1f)
+    val w = size.width
+    val h = size.height
+    val deckW = if (wide) min(w * 0.56f, h * 1.18f) else w
+    val deckH = deckW * (AtelierDeckGeometry.Aspect + AtelierDeckPlinth)
+    val finalTop = if (wide) (h - deckH) * 0.5f else h * 0.205f
+    val finalLeft = 0f
+    val rise = AtelierStageClock.deckRise(clock)
+    val insetFraction = atelierLerp(0.15f, 0.012f, rise)
+    val travel = atelierLerp(h * 0.58f, 0f, rise)
+    val statusGuess = 24.dp.toPx()
+    val sleeveSide = if (wide) deckW * 0.30f else w * 0.44f
+    val sleeveCenterX = sleeveSide * 0.42f
+    val sleeveCenterY = (if (wide) statusGuess + sleeveSide * 0.46f else finalTop - sleeveSide * 0.09f).coerceAtLeast(sleeveSide * 0.40f)
+    drawIntoCanvas { composeCanvas ->
+        val canvas = composeCanvas.nativeCanvas
+        drawAtelierRoom(canvas, r, clock, w, h, tone)
+        if (loaded == null) return@drawIntoCanvas
+
+        val deckAlpha = (AtelierStageClock.deckAlpha(clock) * 255f).toInt()
+        fillRectQuad(r.deckUnit, 0f, 0f, 1000f, 0f)
+        r.deckUnit[4] = 1000f; r.deckUnit[5] = 1000f * deckH / deckW
+        r.deckUnit[6] = 0f; r.deckUnit[7] = 1000f * deckH / deckW
+        val topInset = deckW * insetFraction
+        fillRectQuad(r.deckQuad, finalLeft + topInset, finalTop + travel, finalLeft + deckW - topInset, finalTop + travel + deckH * atelierLerp(0.82f, 1f, rise))
+        r.deckQuad[4] = finalLeft + deckW + deckW * insetFraction * 0.25f
+        r.deckQuad[6] = finalLeft - deckW * insetFraction * 0.25f
+        val deckMatrixReady = r.matrix.setPolyToPoly(r.deckUnit, 0, r.deckQuad, 0, 4)
+
+        val flight = AtelierStageClock.recordFlight(clock)
+        val landed = flight >= 0.999f
+        val armAngle = atelierLerp(AtelierDeckGeometry.RestAngle, arm.value, AtelierStageClock.armEngage(clock))
+
+        drawAtelierDeck(canvas, r, loaded, deckAlpha, deckMatrixReady, landed, armAngle)
+        fillAtelierSleeveQuad(r, clock, w, h, sleeveCenterX, sleeveCenterY, sleeveSide)
+        drawAtelierRecord(canvas, r, loaded, clock, flight, deckW, sleeveSide, spinDegrees, swap, labelOld, labelNow)
+        if (landed && deckAlpha > 0 && deckMatrixReady) drawAtelierArm(canvas, r, loaded, deckAlpha, armAngle)
+        drawAtelierSleeve(canvas, r, clock, swap, coverOld, coverNow, rich)
+    }
+}
+
+private fun drawAtelierRoom(canvas: android.graphics.Canvas, r: AtelierStageRenderer, clock: Float, w: Float, h: Float, tone: () -> Color) {
+    val roomAlpha = AtelierStageClock.scrim(clock)
+    if (roomAlpha > 0.003f) {
+        r.fillPaint.color = AtelierDesign.room.toArgb()
+        r.fillPaint.alpha = (roomAlpha * 255f).toInt()
+        canvas.drawRect(0f, 0f, w, h, r.fillPaint)
+        r.glowPaint.color = 0xFFFFD7A8.toInt()
+        r.glowPaint.alpha = (roomAlpha * 32f).toInt()
+        r.rect.set(-w * 0.4f, -h * 0.25f, w * 1.1f, h * 0.45f)
+        canvas.drawBitmap(r.glow, null, r.rect, r.glowPaint)
+        r.glowPaint.color = tone().toArgb()
+        r.glowPaint.alpha = (roomAlpha * 66f).toInt()
+        r.rect.set(-w * 0.2f, h * 0.45f, w * 1.2f, h * 1.25f)
+        canvas.drawBitmap(r.glow, null, r.rect, r.glowPaint)
+    }
+}
+
+private fun drawAtelierArm(canvas: android.graphics.Canvas, r: AtelierStageRenderer, loaded: AtelierDeckAssets, deckAlpha: Int, armAngle: Float) {
+    val checkpoint = canvas.save()
+    canvas.concat(r.matrix)
+    val scale = 1000f / loaded.deck.width
+    canvas.scale(scale, scale)
+    val pivotX = loaded.deck.width * AtelierDeckGeometry.PivotX
+    val pivotY = loaded.deck.width * AtelierDeckGeometry.PivotY
+    val sprite = loaded.arm
+    r.fillPaint.color = 0xFF000000.toInt()
+    r.fillPaint.alpha = (deckAlpha * 0.46f).toInt()
+    canvas.save()
+    canvas.rotate(armAngle, pivotX + loaded.deck.width * 0.012f, pivotY + loaded.deck.width * 0.02f)
+    canvas.drawBitmap(sprite.shadow, pivotX + loaded.deck.width * 0.012f - sprite.pivotX, pivotY + loaded.deck.width * 0.02f - sprite.pivotY, r.fillPaint)
+    canvas.restore()
+    r.bitmapPaint.alpha = deckAlpha
+    canvas.rotate(armAngle, pivotX, pivotY)
+    canvas.drawBitmap(sprite.bitmap, pivotX - sprite.pivotX, pivotY - sprite.pivotY, r.bitmapPaint)
+    canvas.restoreToCount(checkpoint)
+}
+
+private fun drawAtelierDeck(
+    canvas: android.graphics.Canvas, r: AtelierStageRenderer, loaded: AtelierDeckAssets,
+    deckAlpha: Int, deckMatrixReady: Boolean, landed: Boolean, armAngle: Float
+) {
+    if (deckAlpha > 0 && deckMatrixReady) {
+        val checkpoint = canvas.save()
+        canvas.concat(r.matrix)
+        r.bitmapPaint.alpha = deckAlpha
+        val scale = 1000f / loaded.deck.width
+        canvas.scale(scale, scale)
+        canvas.drawBitmap(loaded.deck, 0f, 0f, r.bitmapPaint)
+        canvas.restoreToCount(checkpoint)
+        if (!landed) drawAtelierArm(canvas, r, loaded, deckAlpha, armAngle)
+    }
+}
+
+private fun DrawScope.fillAtelierSleeveQuad(
+    r: AtelierStageRenderer, clock: Float, w: Float, h: Float, sleeveCenterX: Float, sleeveCenterY: Float, sleeveSide: Float
+) {
+    val sleeveMove = AtelierStageClock.sleeve(clock)
+    fillSleeveFinal(r.sleeveFinal, sleeveCenterX, sleeveCenterY, sleeveSide)
+    val fromShelf = AtelierStage.shelfQuadValid
+    val mini = AtelierStage.miniRect()
+    when {
+        fromShelf -> AtelierStage.shelfQuad.copyInto(r.sleeveOrigin)
+        mini != null -> fillRectQuad(r.sleeveOrigin, mini.left, mini.top, mini.right, mini.bottom)
+        else -> fillRectQuad(r.sleeveOrigin, w * 0.05f, h * 0.84f, w * 0.05f + 56.dp.toPx(), h * 0.84f + 56.dp.toPx())
+    }
+    for (i in 0 until 8) r.sleeveQuad[i] = atelierLerp(r.sleeveOrigin[i], r.sleeveFinal[i], sleeveMove)
+}
+
+private fun drawAtelierRecord(
+    canvas: android.graphics.Canvas, r: AtelierStageRenderer, loaded: AtelierDeckAssets, clock: Float, flight: Float, deckW: Float, sleeveSide: Float,
+    spinDegrees: MutableFloatState, swap: Animatable<Float, AnimationVector1D>, labelOld: () -> Bitmap?, labelNow: () -> Bitmap?
+) {
+    val recordAlpha = AtelierStageClock.recordAlpha(clock)
+    if (recordAlpha > 0.003f) {
+        val sleeveCx = (r.sleeveFinal[0] + r.sleeveFinal[4]) * 0.5f
+        val sleeveCy = (r.sleeveFinal[1] + r.sleeveFinal[5]) * 0.5f
+        val peek = atelierSmooth(0.28f, 0.48f, clock)
+        val startX = sleeveCx + sleeveSide * 0.42f * peek
+        val startY = sleeveCy + sleeveSide * 0.02f * peek
+        val startRadius = sleeveSide * 0.478f
+        r.point[0] = 1000f * AtelierDeckGeometry.PlatterX
+        r.point[1] = 1000f * AtelierDeckGeometry.PlatterY
+        r.matrix.mapPoints(r.point)
+        val finalRadius = deckW * AtelierDeckGeometry.RecordRadius
+        val arc = sin(flight * PI.toFloat())
+        val x = atelierLerp(startX, r.point[0], flight) + arc * deckW * 0.09f
+        val y = atelierLerp(startY, r.point[1], flight) - arc * deckW * 0.015f
+        val radius = atelierLerp(startRadius, finalRadius, flight) * (1f + arc * 0.05f)
+        val lift = arc * finalRadius * 0.20f + (1f - flight) * finalRadius * 0.05f
+        val alphaByte = (recordAlpha * 255f).toInt()
+        r.glowPaint.color = 0xFF000000.toInt()
+        r.glowPaint.alpha = (alphaByte * atelierLerp(0.6f, 0.9f, flight)).toInt()
+        r.rect.set(x - radius * 1.34f + lift * 0.35f, y - radius * 1.34f + lift, x + radius * 1.34f + lift * 0.35f, y + radius * 1.34f + lift)
+        canvas.drawBitmap(r.glow, null, r.rect, r.glowPaint)
+        val squash = atelierLerp(0.96f, 1f, flight)
+        val checkpoint = canvas.save()
+        canvas.translate(x, y)
+        canvas.scale(1f, squash)
+        r.rect.set(-radius, -radius, radius, radius)
+        r.bitmapPaint.alpha = alphaByte
+        canvas.save()
+        canvas.rotate(spinDegrees.floatValue)
+        canvas.drawBitmap(loaded.disc, null, r.rect, r.bitmapPaint)
+        val labelRadius = radius * (AtelierDeckGeometry.LabelRadius / AtelierDeckGeometry.RecordRadius)
+        r.rect.set(-labelRadius, -labelRadius, labelRadius, labelRadius)
+        val mix = swap.value
+        labelOld()?.let {
+            r.bitmapPaint.alpha = (alphaByte * (1f - mix)).toInt()
+            canvas.drawBitmap(it, null, r.rect, r.bitmapPaint)
+        }
+        labelNow()?.let {
+            r.bitmapPaint.alpha = (alphaByte * mix).toInt()
+            canvas.drawBitmap(it, null, r.rect, r.bitmapPaint)
+        }
+        canvas.restore()
+        r.rect.set(-radius, -radius, radius, radius)
+        r.bitmapPaint.alpha = (alphaByte * atelierLerp(0.45f, 1f, flight)).toInt()
+        canvas.rotate(-24f)
+        canvas.drawBitmap(loaded.light, null, r.rect, r.bitmapPaint)
+        canvas.restoreToCount(checkpoint)
+    }
+}
+
+private fun drawAtelierSleeve(
+    canvas: android.graphics.Canvas, r: AtelierStageRenderer, clock: Float, swap: Animatable<Float, AnimationVector1D>,
+    coverOld: () -> Bitmap?, coverNow: () -> Bitmap?, rich: Boolean
+) {
+    val roll = atelierSmooth(0.1f, 0.5f, clock)
+    val shadow = 0.5f * (1f - AtelierStageClock.scrim(clock) * 0.2f)
+    val mix = swap.value
+    coverOld()?.takeIf { mix < 1f }?.let {
+        r.painter.draw(canvas, r.sleeveQuad, it, null, 0f, r.shadowMask, shadow, roll * 0.2f, 0f, 1f - mix, rich)
+    }
+    r.painter.draw(canvas, r.sleeveQuad, coverNow() ?: AtelierStage.shelfCover, null, 0f, r.shadowMask, shadow, roll * 0.2f, 0f, if (coverOld() != null) mix else 1f, rich)
+}
+
+@Composable
+private fun BoxScope.AtelierSceneTopChrome(
+    slots: PlayerDeckSlots, copy: AtelierCopy, visibleControls: Boolean, sizePx: Pair<Int, Int>, density: Density, controls: Modifier
+) {
+    Box(Modifier.fillMaxWidth().statusBarsPadding().then(controls)) {
         if (visibleControls) {
-            Text(
-                copy.sideA, color = AtelierDesign.textFaint, style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier.align(Alignment.TopEnd).offset(y = with(density) { (sizePx.second * 0.205f).toDp() } - 24.dp).padding(end = 22.dp).then(controls)
-            )
-        }
-        if (hasCanvas && visibleControls) {
-            val side = with(density) { (if (wide) deckWidthPx * 0.30f else sizePx.first * 0.44f).toDp() }
-            val centerX = side * 0.42f
-            val top = with(density) { sizePx.second.toFloat().times(0.205f).toDp() } - side * 0.09f - side * 0.5f
-            Box(
-                Modifier.offset(x = centerX - side * 0.5f, y = top.coerceAtLeast(0.dp)).size(side)
-                    .graphicsLayer { rotationZ = SleeveTravelRoll; alpha = AtelierStageClock.controls(AtelierStage.expansion().coerceIn(0f, 1f)) }
-            ) {
-                slots.stage(track, Modifier.fillMaxSize(), AtelierDesign.sleeveCorner)
+            Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f)) { slots.header() }
             }
         }
-        if (visibleControls) {
-            val deckBottom = with(density) { (sizePx.second * 0.205f + deckWidthPx * (AtelierDeckGeometry.Aspect + AtelierDeckPlinth)).toDp() }
-            val panel: Modifier = if (wide) {
-                Modifier.align(Alignment.CenterEnd).fillMaxWidth(0.42f).fillMaxSize().padding(end = 20.dp)
-            } else {
-                Modifier.fillMaxSize().padding(top = deckBottom, start = 22.dp, end = 22.dp)
-            }
-            Column(
-                panel.navigationBarsPadding().then(controls),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.SpaceEvenly
-            ) {
-                metadata()
-                slots.progress(PlayerProgressStyle.Classic)
-                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) { transport() }
-                slots.dock(track)
-            }
+    }
+    if (visibleControls) {
+        Text(
+            copy.sideA, color = AtelierDesign.textFaint, style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.align(Alignment.TopEnd).offset(y = with(density) { (sizePx.second * 0.205f).toDp() } - 24.dp).padding(end = 22.dp).then(controls)
+        )
+    }
+}
+
+@Composable
+private fun AtelierSceneSleeveSlot(
+    track: Track, slots: PlayerDeckSlots, hasCanvas: Boolean, visibleControls: Boolean, wide: Boolean,
+    deckWidthPx: Int, sizePx: Pair<Int, Int>, density: Density
+) {
+    if (hasCanvas && visibleControls) {
+        val side = with(density) { (if (wide) deckWidthPx * 0.30f else sizePx.first * 0.44f).toDp() }
+        val centerX = side * 0.42f
+        val top = with(density) { sizePx.second.toFloat().times(0.205f).toDp() } - side * 0.09f - side * 0.5f
+        Box(
+            Modifier.offset(x = centerX - side * 0.5f, y = top.coerceAtLeast(0.dp)).size(side)
+                .graphicsLayer { rotationZ = SleeveTravelRoll; alpha = AtelierStageClock.controls(AtelierStage.expansion().coerceIn(0f, 1f)) }
+        ) {
+            slots.stage(track, Modifier.fillMaxSize(), AtelierDesign.sleeveCorner)
+        }
+    }
+}
+
+@Composable
+private fun BoxScope.AtelierScenePanel(
+    track: Track, slots: PlayerDeckSlots, visibleControls: Boolean, wide: Boolean, deckWidthPx: Int, sizePx: Pair<Int, Int>,
+    density: Density, controls: Modifier, metadata: @Composable () -> Unit, transport: @Composable () -> Unit
+) {
+    if (visibleControls) {
+        val deckBottom = with(density) { (sizePx.second * 0.205f + deckWidthPx * (AtelierDeckGeometry.Aspect + AtelierDeckPlinth)).toDp() }
+        val panel: Modifier = if (wide) {
+            Modifier.align(Alignment.CenterEnd).fillMaxWidth(0.42f).fillMaxSize().padding(end = 20.dp)
+        } else {
+            Modifier.fillMaxSize().padding(top = deckBottom, start = 22.dp, end = 22.dp)
+        }
+        Column(
+            panel.navigationBarsPadding().then(controls),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceEvenly
+        ) {
+            metadata()
+            slots.progress(PlayerProgressStyle.Classic)
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) { transport() }
+            slots.dock(track)
         }
     }
 }

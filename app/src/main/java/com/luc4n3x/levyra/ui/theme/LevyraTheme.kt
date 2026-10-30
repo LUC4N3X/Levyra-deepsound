@@ -7,6 +7,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.Shapes
+import androidx.compose.material3.Typography
 import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
@@ -673,7 +674,15 @@ fun LevyraTheme(
         colorScheme = colorScheme,
         motionScheme = motionScheme,
         shapes = shapes,
-        typography = if (nocturne) Nocturne78Typography else if (LevyraIsSpotify) SpotifyTypography else if (LevyraIsAppleMusic) AppleMusicTypography else if (LevyraIsYouTubeMusic) YouTubeMusicTypography else if (LevyraIsQobuz) QobuzTypography else if (LevyraIsAtelier) AtelierTypography else if (ivory) IvoryTypography else if (prism) PrismTypography else levyraTypographyFor(fontPreset ?: activeFontPresetState.value),
+        typography = levyraThemeTypography(nocturne, ivory, prism, fontPreset),
         content = content
     )
 }
+
+private fun levyraThemeTypography(
+    nocturne: Boolean,
+    ivory: Boolean,
+    prism: Boolean,
+    fontPreset: LevyraFontPreset?
+): Typography =
+    if (nocturne) Nocturne78Typography else if (LevyraIsSpotify) SpotifyTypography else if (LevyraIsAppleMusic) AppleMusicTypography else if (LevyraIsYouTubeMusic) YouTubeMusicTypography else if (LevyraIsQobuz) QobuzTypography else if (LevyraIsAtelier) AtelierTypography else if (ivory) IvoryTypography else if (prism) PrismTypography else levyraTypographyFor(fontPreset ?: activeFontPresetState.value)

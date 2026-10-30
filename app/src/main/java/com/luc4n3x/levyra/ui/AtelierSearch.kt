@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -91,6 +92,7 @@ import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ExploreCatalog
 import com.luc4n3x.levyra.domain.PlaylistHit
+import com.luc4n3x.levyra.domain.SearchArtistDiscography
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.Track
@@ -428,13 +430,35 @@ private fun AtelierSearchResults(
     val discography = data.discography.takeIf { filter == SearchFilter.All }
     val hasRows = content.countFor(filter) > 0 || discography != null
     val listState = rememberSaveable(filter.name, query, saver = LazyListState.Saver) { LazyListState() }
-    val nearEnd by remember(listState) {
-        derivedStateOf {
-            val info = listState.layoutInfo
-            info.totalItemsCount > 0 && (info.visibleItemsInfo.lastOrNull()?.index ?: 0) >= info.totalItemsCount - 4
-        }
-    }
     val loadedCount = content.countFor(filter)
+    AtelierSearchFetchEffects(viewModel, state, listState, filter, query, loadedCount)
+    val topResult = content.songs.firstOrNull()
+    val previewSongs = remember(content) { content.songs.drop(1).take(AtelierSearchSongPreview) }
+    val followed: (ArtistHit) -> Boolean = { hit -> atelierSearchIsFollowed(hit, state) }
+    LazyColumn(
+        state = listState,
+        modifier = Modifier.fillMaxSize().imePadding(),
+        contentPadding = PaddingValues(bottom = levyraTabContentBottomPadding(state.currentTrack != null) + 16.dp)
+    ) {
+        atelierSearchSuggestions(focused, suggestions, query, viewModel, leaveField)
+        atelierSearchBody(
+            hasRows, state, strings, copy, filter, query, content, discography, topResult, previewSongs, currentId,
+            viewModel, leaveField, onTrackActions, followed
+        )
+        atelierSearchSectionLoading(filter, state)
+    }
+}
+
+@Composable
+private fun AtelierSearchFetchEffects(
+    viewModel: SearchViewModel,
+    state: LevyraUiState,
+    listState: LazyListState,
+    filter: SearchFilter,
+    query: String,
+    loadedCount: Int
+) {
+    val nearEnd by remember(listState) { derivedStateOf { atelierSearchNearEnd(listState) } }
     LaunchedEffect(nearEnd, filter, query, loadedCount) {
         if (nearEnd && filter != SearchFilter.All && loadedCount > 0) viewModel.loadMoreSearchSection(filter)
     }
@@ -446,180 +470,235 @@ private fun AtelierSearchResults(
             viewModel.setSearchFilter(filter)
         }
     }
-    val topResult = content.songs.firstOrNull()
-    val previewSongs = remember(content) { content.songs.drop(1).take(AtelierSearchSongPreview) }
-    val followed: (ArtistHit) -> Boolean = { hit ->
-        (hit.browseId.isNotBlank() && hit.browseId in state.followedArtistKeys) || hit.name.trim().lowercase() in state.followedArtistKeys
+}
+
+private fun atelierSearchNearEnd(listState: LazyListState): Boolean {
+    val info = listState.layoutInfo
+    return info.totalItemsCount > 0 && (info.visibleItemsInfo.lastOrNull()?.index ?: 0) >= info.totalItemsCount - 4
+}
+
+private fun atelierSearchIsFollowed(hit: ArtistHit, state: LevyraUiState): Boolean =
+    (hit.browseId.isNotBlank() && hit.browseId in state.followedArtistKeys) || hit.name.trim().lowercase() in state.followedArtistKeys
+
+private fun LazyListScope.atelierSearchSuggestions(
+    focused: Boolean,
+    suggestions: List<String>,
+    query: String,
+    viewModel: SearchViewModel,
+    leaveField: () -> Unit
+) {
+    if (focused && suggestions.isNotEmpty()) {
+        items(suggestions, key = { "suggestion-$it" }, contentType = { "suggestion" }) { suggestion ->
+            AtelierSearchSuggestionRow(query, suggestion) {
+                leaveField()
+                viewModel.setQuery(suggestion)
+                viewModel.searchNow(suggestion)
+            }
+        }
     }
-    LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxSize().imePadding(),
-        contentPadding = PaddingValues(bottom = levyraTabContentBottomPadding(state.currentTrack != null) + 16.dp)
-    ) {
-        if (focused && suggestions.isNotEmpty()) {
-            items(suggestions, key = { "suggestion-$it" }, contentType = { "suggestion" }) { suggestion ->
-                AtelierSearchSuggestionRow(query, suggestion) {
-                    leaveField()
-                    viewModel.setQuery(suggestion)
-                    viewModel.searchNow(suggestion)
+}
+
+private fun LazyListScope.atelierSearchBody(
+    hasRows: Boolean,
+    state: LevyraUiState,
+    strings: LevyraStrings,
+    copy: AtelierCopy,
+    filter: SearchFilter,
+    query: String,
+    content: AtelierSearchContent,
+    discography: SearchArtistDiscography?,
+    topResult: Track?,
+    previewSongs: List<Track>,
+    currentId: String?,
+    viewModel: SearchViewModel,
+    leaveField: () -> Unit,
+    onTrackActions: (Track) -> Unit,
+    followed: (ArtistHit) -> Boolean
+) {
+    if (!hasRows) {
+        item(key = "search-status", contentType = "status") {
+            AtelierSearchStatus(state, strings, filter) { viewModel.searchNow(query) }
+        }
+    } else {
+        when (filter) {
+            SearchFilter.All -> atelierSearchAllSections(
+                content, discography, topResult, previewSongs, currentId, strings, copy, viewModel, leaveField, onTrackActions, followed
+            )
+            SearchFilter.Songs -> items(content.songs, key = { "song-${it.id}" }, contentType = { "track" }) { track ->
+                AtelierSearchSongItem(track, content.songs, track.id == currentId, copy, viewModel, leaveField, onTrackActions)
+            }
+            SearchFilter.Videos -> items(content.videos, key = { "video-${it.id}" }, contentType = { "video" }) { track ->
+                AtelierSearchVideoItem(track, content.videos, track.id == currentId, strings, copy, viewModel, leaveField, onTrackActions)
+            }
+            SearchFilter.Artists -> atelierSearchArtistRows(content, strings, copy, viewModel, leaveField, followed)
+            SearchFilter.Albums -> items(content.albums, key = { "album-${atelierSearchAlbumKey(it)}" }, contentType = { "item-row" }) { album ->
+                AtelierSearchItemRow(
+                    title = album.title,
+                    meta = atelierSearchMeta(album.artist, album.year),
+                    explicit = album.explicit,
+                    explicitLabel = copy.explicit,
+                    artwork = { LibraryArtwork(album.thumbnailUrl, album.title, Modifier.size(AtelierDesign.rowArtwork), AtelierDesign.sleeveShape, false) },
+                    onClick = { leaveField(); viewModel.openAlbum(album) }
+                ) {
+                    AtelierSearchMoreTarget(strings.more) { atelierSearchAlbumMenu(album, strings, viewModel) }
+                }
+            }
+            SearchFilter.Playlists -> items(content.playlists, key = { "playlist-${atelierSearchPlaylistKey(it)}" }, contentType = { "item-row" }) { playlist ->
+                AtelierSearchItemRow(
+                    title = playlist.title,
+                    meta = atelierSearchMeta(playlist.author, playlist.trackCountLabel),
+                    explicit = false,
+                    explicitLabel = copy.explicit,
+                    artwork = { LibraryArtwork(playlist.thumbnailUrl, playlist.title, Modifier.size(AtelierDesign.rowArtwork), AtelierDesign.sleeveShape, false) },
+                    onClick = { leaveField(); viewModel.openPlaylistHit(playlist) }
+                ) {
+                    AtelierSearchMoreTarget(strings.more) { atelierSearchPlaylistMenu(playlist, strings, viewModel) }
                 }
             }
         }
-        if (!hasRows) {
-            item(key = "search-status", contentType = "status") {
-                AtelierSearchStatus(state, strings, filter) { viewModel.searchNow(query) }
+    }
+}
+
+private fun LazyListScope.atelierSearchAllSections(
+    content: AtelierSearchContent,
+    discography: SearchArtistDiscography?,
+    topResult: Track?,
+    previewSongs: List<Track>,
+    currentId: String?,
+    strings: LevyraStrings,
+    copy: AtelierCopy,
+    viewModel: SearchViewModel,
+    leaveField: () -> Unit,
+    onTrackActions: (Track) -> Unit,
+    followed: (ArtistHit) -> Boolean
+) {
+    if (topResult != null) {
+        item(key = "top-result", contentType = "top-result") {
+            AtelierSearchTopResult(
+                track = topResult,
+                current = topResult.id == currentId,
+                strings = strings,
+                explicitLabel = copy.explicit,
+                onPlay = {
+                    leaveField()
+                    viewModel.playFrom(content.songs, topResult)
+                },
+                onMore = { onTrackActions(topResult) }
+            )
+        }
+    }
+    if (previewSongs.isNotEmpty()) {
+        item(key = "songs-header", contentType = "header") {
+            AtelierSearchSectionHeader(strings.songsPlain, strings.more.takeIf { content.songs.size > AtelierSearchSongPreview + 1 }) { viewModel.setSearchFilter(SearchFilter.Songs) }
+        }
+        items(previewSongs, key = { "song-${it.id}" }, contentType = { "track" }) { track ->
+            AtelierSearchSongItem(track, content.songs, track.id == currentId, copy, viewModel, leaveField, onTrackActions)
+        }
+    }
+    if (content.artists.isNotEmpty()) {
+        item(key = "artists-header", contentType = "header") {
+            AtelierSearchSectionHeader(strings.artists, strings.more) { viewModel.setSearchFilter(SearchFilter.Artists) }
+        }
+        item(key = "artists-row", contentType = "carousel") {
+            LazyRow(contentPadding = PaddingValues(horizontal = AtelierDesign.gutter), horizontalArrangement = Arrangement.spacedBy(AtelierDesign.itemGap)) {
+                items(content.artists, key = { "artist-${atelierSearchArtistKey(it)}" }, contentType = { "artist" }) { artist ->
+                    AtelierSearchArtistCard(artist, followed(artist), strings, { leaveField(); viewModel.openArtistFromHit(artist) }) { viewModel.toggleFollowArtist(artist) }
+                }
             }
-        } else {
-            when (filter) {
-                SearchFilter.All -> {
-                    if (topResult != null) {
-                        item(key = "top-result", contentType = "top-result") {
-                            AtelierSearchTopResult(
-                                track = topResult,
-                                current = topResult.id == currentId,
-                                strings = strings,
-                                explicitLabel = copy.explicit,
-                                onPlay = {
-                                    leaveField()
-                                    viewModel.playFrom(content.songs, topResult)
-                                },
-                                onMore = { onTrackActions(topResult) }
-                            )
-                        }
-                    }
-                    if (previewSongs.isNotEmpty()) {
-                        item(key = "songs-header", contentType = "header") {
-                            AtelierSearchSectionHeader(strings.songsPlain, strings.more.takeIf { content.songs.size > AtelierSearchSongPreview + 1 }) { viewModel.setSearchFilter(SearchFilter.Songs) }
-                        }
-                        items(previewSongs, key = { "song-${it.id}" }, contentType = { "track" }) { track ->
-                            AtelierSearchSongItem(track, content.songs, track.id == currentId, copy, viewModel, leaveField, onTrackActions)
-                        }
-                    }
-                    if (content.artists.isNotEmpty()) {
-                        item(key = "artists-header", contentType = "header") {
-                            AtelierSearchSectionHeader(strings.artists, strings.more) { viewModel.setSearchFilter(SearchFilter.Artists) }
-                        }
-                        item(key = "artists-row", contentType = "carousel") {
-                            LazyRow(contentPadding = PaddingValues(horizontal = AtelierDesign.gutter), horizontalArrangement = Arrangement.spacedBy(AtelierDesign.itemGap)) {
-                                items(content.artists, key = { "artist-${atelierSearchArtistKey(it)}" }, contentType = { "artist" }) { artist ->
-                                    AtelierSearchArtistCard(artist, followed(artist), strings, { leaveField(); viewModel.openArtistFromHit(artist) }) { viewModel.toggleFollowArtist(artist) }
-                                }
-                            }
-                        }
-                    }
-                    if (discography != null) {
-                        item(key = "discography", contentType = "discography") {
-                            Box(Modifier.padding(start = AtelierDesign.gutter, end = AtelierDesign.gutter, top = AtelierDesign.sectionGap)) {
-                                SearchDiscographySection(
-                                    discography = discography,
-                                    onOpenRelease = { leaveField(); viewModel.openAlbum(it) },
-                                    onOpenPlaylist = { leaveField(); viewModel.openPlaylistHit(it) },
-                                    onOpenArtist = { leaveField(); viewModel.openArtistFromHit(it) }
-                                )
-                            }
-                        }
-                    } else if (content.albums.isNotEmpty()) {
-                        item(key = "albums-header", contentType = "header") {
-                            AtelierSearchSectionHeader(strings.albumsPlain, strings.more) { viewModel.setSearchFilter(SearchFilter.Albums) }
-                        }
-                        item(key = "albums-row", contentType = "carousel") {
-                            LazyRow(contentPadding = PaddingValues(horizontal = AtelierDesign.gutter), horizontalArrangement = Arrangement.spacedBy(AtelierDesign.itemGap)) {
-                                items(content.albums, key = { "album-${atelierSearchAlbumKey(it)}" }, contentType = { "sleeve" }) { album ->
-                                    AtelierSearchSleeve(
-                                        title = album.title,
-                                        subtitle = album.artist,
-                                        imageUrl = album.thumbnailUrl,
-                                        explicit = album.explicit,
-                                        explicitLabel = copy.explicit,
-                                        onClick = { leaveField(); viewModel.openAlbum(album) },
-                                        menu = { atelierSearchAlbumMenu(album, strings, viewModel) }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    if (content.playlists.isNotEmpty()) {
-                        item(key = "playlists-header", contentType = "header") {
-                            AtelierSearchSectionHeader(strings.playlistsPlain, strings.more) { viewModel.setSearchFilter(SearchFilter.Playlists) }
-                        }
-                        item(key = "playlists-row", contentType = "carousel") {
-                            LazyRow(contentPadding = PaddingValues(horizontal = AtelierDesign.gutter), horizontalArrangement = Arrangement.spacedBy(AtelierDesign.itemGap)) {
-                                items(content.playlists, key = { "playlist-${atelierSearchPlaylistKey(it)}" }, contentType = { "sleeve" }) { playlist ->
-                                    AtelierSearchSleeve(
-                                        title = playlist.title,
-                                        subtitle = playlist.author,
-                                        imageUrl = playlist.thumbnailUrl,
-                                        explicit = false,
-                                        explicitLabel = copy.explicit,
-                                        onClick = { leaveField(); viewModel.openPlaylistHit(playlist) },
-                                        menu = { atelierSearchPlaylistMenu(playlist, strings, viewModel) }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    if (content.videos.isNotEmpty()) {
-                        item(key = "videos-header", contentType = "header") {
-                            AtelierSearchSectionHeader(strings.video, strings.more.takeIf { content.videos.size > AtelierSearchVideoPreview }) { viewModel.setSearchFilter(SearchFilter.Videos) }
-                        }
-                        items(content.videos.take(AtelierSearchVideoPreview), key = { "video-${it.id}" }, contentType = { "video" }) { track ->
-                            AtelierSearchVideoItem(track, content.videos, track.id == currentId, strings, copy, viewModel, leaveField, onTrackActions)
-                        }
-                    }
-                }
-                SearchFilter.Songs -> items(content.songs, key = { "song-${it.id}" }, contentType = { "track" }) { track ->
-                    AtelierSearchSongItem(track, content.songs, track.id == currentId, copy, viewModel, leaveField, onTrackActions)
-                }
-                SearchFilter.Videos -> items(content.videos, key = { "video-${it.id}" }, contentType = { "video" }) { track ->
-                    AtelierSearchVideoItem(track, content.videos, track.id == currentId, strings, copy, viewModel, leaveField, onTrackActions)
-                }
-                SearchFilter.Artists -> items(content.artists, key = { "artist-${atelierSearchArtistKey(it)}" }, contentType = { "artist-row" }) { artist ->
-                    val isFollowed = followed(artist)
-                    AtelierSearchItemRow(
-                        title = artist.name,
-                        meta = artist.subscribers,
-                        explicit = false,
-                        explicitLabel = copy.explicit,
-                        artwork = { LibraryArtwork(artist.thumbnailUrl, artist.name, Modifier.size(AtelierDesign.rowArtwork), CircleShape, false) },
-                        onClick = { leaveField(); viewModel.openArtistFromHit(artist) }
-                    ) {
-                        AtelierSearchIconTarget(
-                            if (isFollowed) Icons.Rounded.HowToReg else Icons.Rounded.PersonAddAlt,
-                            if (isFollowed) strings.followingArtist else strings.followArtist
-                        ) { viewModel.toggleFollowArtist(artist) }
-                    }
-                }
-                SearchFilter.Albums -> items(content.albums, key = { "album-${atelierSearchAlbumKey(it)}" }, contentType = { "item-row" }) { album ->
-                    AtelierSearchItemRow(
+        }
+    }
+    if (discography != null) {
+        item(key = "discography", contentType = "discography") {
+            Box(Modifier.padding(start = AtelierDesign.gutter, end = AtelierDesign.gutter, top = AtelierDesign.sectionGap)) {
+                SearchDiscographySection(
+                    discography = discography,
+                    onOpenRelease = { leaveField(); viewModel.openAlbum(it) },
+                    onOpenPlaylist = { leaveField(); viewModel.openPlaylistHit(it) },
+                    onOpenArtist = { leaveField(); viewModel.openArtistFromHit(it) }
+                )
+            }
+        }
+    } else if (content.albums.isNotEmpty()) {
+        item(key = "albums-header", contentType = "header") {
+            AtelierSearchSectionHeader(strings.albumsPlain, strings.more) { viewModel.setSearchFilter(SearchFilter.Albums) }
+        }
+        item(key = "albums-row", contentType = "carousel") {
+            LazyRow(contentPadding = PaddingValues(horizontal = AtelierDesign.gutter), horizontalArrangement = Arrangement.spacedBy(AtelierDesign.itemGap)) {
+                items(content.albums, key = { "album-${atelierSearchAlbumKey(it)}" }, contentType = { "sleeve" }) { album ->
+                    AtelierSearchSleeve(
                         title = album.title,
-                        meta = atelierSearchMeta(album.artist, album.year),
+                        subtitle = album.artist,
+                        imageUrl = album.thumbnailUrl,
                         explicit = album.explicit,
                         explicitLabel = copy.explicit,
-                        artwork = { LibraryArtwork(album.thumbnailUrl, album.title, Modifier.size(AtelierDesign.rowArtwork), AtelierDesign.sleeveShape, false) },
-                        onClick = { leaveField(); viewModel.openAlbum(album) }
-                    ) {
-                        AtelierSearchMoreTarget(strings.more) { atelierSearchAlbumMenu(album, strings, viewModel) }
-                    }
-                }
-                SearchFilter.Playlists -> items(content.playlists, key = { "playlist-${atelierSearchPlaylistKey(it)}" }, contentType = { "item-row" }) { playlist ->
-                    AtelierSearchItemRow(
-                        title = playlist.title,
-                        meta = atelierSearchMeta(playlist.author, playlist.trackCountLabel),
-                        explicit = false,
-                        explicitLabel = copy.explicit,
-                        artwork = { LibraryArtwork(playlist.thumbnailUrl, playlist.title, Modifier.size(AtelierDesign.rowArtwork), AtelierDesign.sleeveShape, false) },
-                        onClick = { leaveField(); viewModel.openPlaylistHit(playlist) }
-                    ) {
-                        AtelierSearchMoreTarget(strings.more) { atelierSearchPlaylistMenu(playlist, strings, viewModel) }
-                    }
+                        onClick = { leaveField(); viewModel.openAlbum(album) },
+                        menu = { atelierSearchAlbumMenu(album, strings, viewModel) }
+                    )
                 }
             }
         }
-        if (filter != SearchFilter.All && filter in state.searchSectionLoading) {
-            item(key = "section-loading", contentType = "status") {
-                Box(Modifier.fillMaxWidth().padding(vertical = 20.dp), contentAlignment = Alignment.Center) {
-                    LevyraLoadingIndicator(color = AtelierDesign.accent)
+    }
+    if (content.playlists.isNotEmpty()) {
+        item(key = "playlists-header", contentType = "header") {
+            AtelierSearchSectionHeader(strings.playlistsPlain, strings.more) { viewModel.setSearchFilter(SearchFilter.Playlists) }
+        }
+        item(key = "playlists-row", contentType = "carousel") {
+            LazyRow(contentPadding = PaddingValues(horizontal = AtelierDesign.gutter), horizontalArrangement = Arrangement.spacedBy(AtelierDesign.itemGap)) {
+                items(content.playlists, key = { "playlist-${atelierSearchPlaylistKey(it)}" }, contentType = { "sleeve" }) { playlist ->
+                    AtelierSearchSleeve(
+                        title = playlist.title,
+                        subtitle = playlist.author,
+                        imageUrl = playlist.thumbnailUrl,
+                        explicit = false,
+                        explicitLabel = copy.explicit,
+                        onClick = { leaveField(); viewModel.openPlaylistHit(playlist) },
+                        menu = { atelierSearchPlaylistMenu(playlist, strings, viewModel) }
+                    )
                 }
+            }
+        }
+    }
+    if (content.videos.isNotEmpty()) {
+        item(key = "videos-header", contentType = "header") {
+            AtelierSearchSectionHeader(strings.video, strings.more.takeIf { content.videos.size > AtelierSearchVideoPreview }) { viewModel.setSearchFilter(SearchFilter.Videos) }
+        }
+        items(content.videos.take(AtelierSearchVideoPreview), key = { "video-${it.id}" }, contentType = { "video" }) { track ->
+            AtelierSearchVideoItem(track, content.videos, track.id == currentId, strings, copy, viewModel, leaveField, onTrackActions)
+        }
+    }
+}
+
+private fun LazyListScope.atelierSearchArtistRows(
+    content: AtelierSearchContent,
+    strings: LevyraStrings,
+    copy: AtelierCopy,
+    viewModel: SearchViewModel,
+    leaveField: () -> Unit,
+    followed: (ArtistHit) -> Boolean
+) {
+    items(content.artists, key = { "artist-${atelierSearchArtistKey(it)}" }, contentType = { "artist-row" }) { artist ->
+        val isFollowed = followed(artist)
+        AtelierSearchItemRow(
+            title = artist.name,
+            meta = artist.subscribers,
+            explicit = false,
+            explicitLabel = copy.explicit,
+            artwork = { LibraryArtwork(artist.thumbnailUrl, artist.name, Modifier.size(AtelierDesign.rowArtwork), CircleShape, false) },
+            onClick = { leaveField(); viewModel.openArtistFromHit(artist) }
+        ) {
+            AtelierSearchIconTarget(
+                if (isFollowed) Icons.Rounded.HowToReg else Icons.Rounded.PersonAddAlt,
+                if (isFollowed) strings.followingArtist else strings.followArtist
+            ) { viewModel.toggleFollowArtist(artist) }
+        }
+    }
+}
+
+private fun LazyListScope.atelierSearchSectionLoading(filter: SearchFilter, state: LevyraUiState) {
+    if (filter != SearchFilter.All && filter in state.searchSectionLoading) {
+        item(key = "section-loading", contentType = "status") {
+            Box(Modifier.fillMaxWidth().padding(vertical = 20.dp), contentAlignment = Alignment.Center) {
+                LevyraLoadingIndicator(color = AtelierDesign.accent)
             }
         }
     }

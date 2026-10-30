@@ -1,10 +1,12 @@
 package com.luc4n3x.levyra.ui.atelier
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Paint
 import android.graphics.RectF
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
@@ -51,6 +53,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -58,10 +61,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.platform.LocalContext
@@ -80,6 +85,7 @@ import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -92,6 +98,7 @@ import com.luc4n3x.levyra.ui.library.toLibraryTrack
 import com.luc4n3x.levyra.ui.theme.AtelierDesign
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -200,25 +207,7 @@ private fun AtelierShelfStage(items: List<AtelierShelfItem>, viewModel: LevyraVi
         }
     }
     LaunchedEffect(items, selectedIndex) {
-        val sizePx = with(density) { if (rich) 380.dp.roundToPx() else 280.dp.roundToPx() }.coerceAtMost(720)
-        val low = (selectedIndex - CoverWindow).coerceAtLeast(0)
-        val high = (selectedIndex + CoverWindow).coerceAtMost(items.lastIndex)
-        val wanted = HashSet<String>()
-        for (index in low..high) wanted += items[index].coverUrl
-        for (stale in covers.keys.filter { it !in wanted }) covers.remove(stale)
-        val order = LinkedHashSet<Int>()
-        for (step in 0..CoverWindow) {
-            order += selectedIndex + step
-            order += selectedIndex - step
-        }
-        for (index in order) {
-            if (index !in low..high) continue
-            val url = items[index].coverUrl
-            launch {
-                if (url !in covers) atelierLoadCover(context, url, sizePx, hardware = true)?.let { covers[url] = it }
-                if (url !in ambients) atelierLoadAmbient(context, url)?.let { ambients[url] = it }
-            }
-        }
+        loadAtelierShelfCovers(context, density, rich, items, selectedIndex, covers, ambients)
     }
     DisposableEffect(Unit) { onDispose { AtelierStage.shelfQuadValid = false } }
 
@@ -230,19 +219,10 @@ private fun AtelierShelfStage(items: List<AtelierShelfItem>, viewModel: LevyraVi
     LaunchedEffect(state.selectedTab) {
         if (state.selectedTab == LevyraTab.Library) AtelierStage.shelfHandoff = false
     }
-    val open: (AtelierShelfItem) -> Unit = { item ->
-        if (item.tracks.isNotEmpty()) AtelierStage.shelfHandoff = true
-        when {
-            item.contains(state.currentTrack) -> viewModel.selectTab(LevyraTab.Player)
-            item.tracks.isNotEmpty() -> {
-                viewModel.playFrom(item.tracks, item.tracks.first())
-                viewModel.selectTab(LevyraTab.Player)
-            }
-            else -> viewModel.openAlbum(item.albumDetail())
-        }
-    }
+    val open: (AtelierShelfItem) -> Unit = { item -> openAtelierShelfItem(item, state, viewModel) }
     val safeIndex = selectedIndex.coerceIn(0, items.lastIndex)
     val current = items[safeIndex]
+    val discProvider = { disc }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(AtelierDesign.room)) {
         val widthPx = with(density) { maxWidth.toPx() }
@@ -266,13 +246,7 @@ private fun AtelierShelfStage(items: List<AtelierShelfItem>, viewModel: LevyraVi
                     }
                 }
                 .pointerInput(items) {
-                    detectTapGestures { tap: Offset ->
-                        when {
-                            atelierQuadContains(renderer.frontQuad, tap.x, tap.y) -> open(currentForTap)
-                            tap.y < size.height * 0.62f && tap.x > renderer.frontQuad[2] -> settle((position.value.roundToInt() + 1).toFloat())
-                            tap.y < size.height * 0.62f && tap.x < renderer.frontQuad[0] -> settle((position.value.roundToInt() - 1).toFloat())
-                        }
-                    }
+                    detectAtelierShelfTaps(renderer, position, settle) { open(currentForTap) }
                 }
                 .semantics(mergeDescendants = false) {
                     contentDescription = "${current.title}, ${current.subtitle}"
@@ -284,65 +258,7 @@ private fun AtelierShelfStage(items: List<AtelierShelfItem>, viewModel: LevyraVi
                     )
                 }
         ) {
-            val w = size.width
-            val h = size.height
-            val pos = position.value
-            val entered = enter.value
-            val base = floor(pos).toInt().coerceIn(0, items.lastIndex)
-            val nextIndex = (base + 1).coerceAtMost(items.lastIndex)
-            val mix = pos - base
-            val a = ambients[items[base].coverUrl]
-            val b = ambients[items[nextIndex].coverUrl]
-            val fallback = 0xFF2A2556.toInt()
-            val primary = blend(a?.first ?: fallback, b?.first ?: fallback, mix)
-            val secondary = blend(a?.second ?: fallback, b?.second ?: fallback, mix)
-            drawIntoCanvas { composeCanvas ->
-                val canvas = composeCanvas.nativeCanvas
-                val r = renderer
-                val glowIn = atelierSmooth(0f, 0.32f, entered)
-                r.glowPaint.color = primary
-                r.glowPaint.alpha = (150f * glowIn).toInt()
-                r.rect.set(-w * 0.75f, -h * 0.16f, w * 1.1f, h * 0.62f)
-                canvas.drawBitmap(r.glow, null, r.rect, r.glowPaint)
-                r.glowPaint.color = secondary
-                r.glowPaint.alpha = (130f * glowIn).toInt()
-                r.rect.set(-w * 0.05f, h * 0.36f, w * 1.75f, h * 1.12f)
-                canvas.drawBitmap(r.glow, null, r.rect, r.glowPaint)
-                r.camera.frame(w, h, ShelfSceneAnchor)
-
-                val stageClock = AtelierStage.expansion().coerceIn(0f, 1f)
-                val handedOff = stageClock > 0.001f && (AtelierStage.shelfHandoff || current.contains(state.currentTrack))
-                val reach = 6
-                val low = (base - reach).coerceAtLeast(0)
-                val high = (base + reach).coerceAtMost(items.lastIndex)
-                var outward = reach + 1
-                while (outward >= 0) {
-                    for (side in 0..1) {
-                        val index = if (side == 0) base + 1 + outward else base - outward
-                        if (index !in low..high) continue
-                        val depth = index - pos
-                        AtelierSlot.fill(depth, entered, r.slot)
-                        val alpha = r.slot[AtelierSlot.ALPHA]
-                        if (alpha <= 0.004f) continue
-                        r.camera.project(r.slot, r.quad)
-                        val focus = 1f - atelierSmooth(0f, 1f, abs(depth).coerceAtMost(1f))
-                        if (focus > 0.5f) {
-                            r.quad.copyInto(r.frontQuad)
-                            r.quad.copyInto(AtelierStage.shelfQuad)
-                            AtelierStage.shelfCover = covers[items[index].coverUrl]
-                            AtelierStage.shelfQuadValid = focus > 0.92f && entered >= 1f && (AtelierStage.shelfHandoff || items[index].contains(state.currentTrack))
-                        }
-                        if (handedOff && focus > 0.5f) continue
-                        val discOut = focus * atelierSmooth(0.74f, 1f, entered)
-                        r.painter.draw(
-                            canvas, r.quad, covers[items[index].coverUrl], disc, discOut,
-                            r.shadowMask, 0.62f, depth * 0.34f - 0.1f,
-                            atelierSmooth(0f, 6f, abs(depth)) * 0.62f + (1f - focus) * 0.08f, alpha, rich
-                        )
-                    }
-                    outward--
-                }
-            }
+            drawAtelierShelf(renderer, items, state, current, position.value, enter.value, ambients, covers, discProvider, rich)
         }
 
         Column(Modifier.fillMaxWidth().statusBarsPadding().padding(top = 8.dp, start = 24.dp, end = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -384,10 +300,7 @@ private fun AtelierShelfStage(items: List<AtelierShelfItem>, viewModel: LevyraVi
                 }
                 Box(
                     Modifier.size(48.dp).clip(CircleShape).background(Color(0x14FFFFFF)).border(1.dp, AtelierDesign.hairline, CircleShape)
-                        .levyraPressable(onClick = {
-                            val playlistId = current.playlistId
-                            if (playlistId != null) viewModel.openPlaylist(playlistId) else viewModel.openAlbum(current.albumDetail())
-                        }, role = Role.Button).semantics { contentDescription = copy.openDetails },
+                        .levyraPressable(onClick = { openAtelierShelfDetails(current, viewModel) }, role = Role.Button).semantics { contentDescription = copy.openDetails },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.AutoMirrored.Rounded.QueueMusic, null, tint = AtelierDesign.textSecondary, modifier = Modifier.size(20.dp))
@@ -395,6 +308,142 @@ private fun AtelierShelfStage(items: List<AtelierShelfItem>, viewModel: LevyraVi
             }
         }
     }
+}
+
+private fun CoroutineScope.loadAtelierShelfCovers(
+    context: Context, density: Density, rich: Boolean, items: List<AtelierShelfItem>, selectedIndex: Int,
+    covers: SnapshotStateMap<String, Bitmap>, ambients: SnapshotStateMap<String, Pair<Int, Int>>
+) {
+    val sizePx = with(density) { if (rich) 380.dp.roundToPx() else 280.dp.roundToPx() }.coerceAtMost(720)
+    val low = (selectedIndex - CoverWindow).coerceAtLeast(0)
+    val high = (selectedIndex + CoverWindow).coerceAtMost(items.lastIndex)
+    val wanted = HashSet<String>()
+    for (index in low..high) wanted += items[index].coverUrl
+    for (stale in covers.keys.filter { it !in wanted }) covers.remove(stale)
+    val order = LinkedHashSet<Int>()
+    for (step in 0..CoverWindow) {
+        order += selectedIndex + step
+        order += selectedIndex - step
+    }
+    for (index in order) {
+        if (index !in low..high) continue
+        val url = items[index].coverUrl
+        launchAtelierShelfCoverLoad(context, url, sizePx, covers, ambients)
+    }
+}
+
+private fun CoroutineScope.launchAtelierShelfCoverLoad(
+    context: Context, url: String, sizePx: Int,
+    covers: SnapshotStateMap<String, Bitmap>, ambients: SnapshotStateMap<String, Pair<Int, Int>>
+) {
+    launch {
+        if (url !in covers) atelierLoadCover(context, url, sizePx, hardware = true)?.let { covers[url] = it }
+        if (url !in ambients) atelierLoadAmbient(context, url)?.let { ambients[url] = it }
+    }
+}
+
+private fun openAtelierShelfItem(item: AtelierShelfItem, state: LevyraUiState, viewModel: LevyraViewModel) {
+    if (item.tracks.isNotEmpty()) AtelierStage.shelfHandoff = true
+    when {
+        item.contains(state.currentTrack) -> viewModel.selectTab(LevyraTab.Player)
+        item.tracks.isNotEmpty() -> {
+            viewModel.playFrom(item.tracks, item.tracks.first())
+            viewModel.selectTab(LevyraTab.Player)
+        }
+        else -> viewModel.openAlbum(item.albumDetail())
+    }
+}
+
+private fun openAtelierShelfDetails(current: AtelierShelfItem, viewModel: LevyraViewModel) {
+    val playlistId = current.playlistId
+    if (playlistId != null) viewModel.openPlaylist(playlistId) else viewModel.openAlbum(current.albumDetail())
+}
+
+private suspend fun PointerInputScope.detectAtelierShelfTaps(
+    renderer: AtelierShelfRenderer, position: Animatable<Float, AnimationVector1D>, settle: (Float) -> Unit, onOpenFront: () -> Unit
+) {
+    detectTapGestures { tap: Offset ->
+        when {
+            atelierQuadContains(renderer.frontQuad, tap.x, tap.y) -> onOpenFront()
+            tap.y < size.height * 0.62f && tap.x > renderer.frontQuad[2] -> settle((position.value.roundToInt() + 1).toFloat())
+            tap.y < size.height * 0.62f && tap.x < renderer.frontQuad[0] -> settle((position.value.roundToInt() - 1).toFloat())
+        }
+    }
+}
+
+private fun DrawScope.drawAtelierShelf(
+    r: AtelierShelfRenderer, items: List<AtelierShelfItem>, state: LevyraUiState, current: AtelierShelfItem, pos: Float, entered: Float,
+    ambients: SnapshotStateMap<String, Pair<Int, Int>>, covers: SnapshotStateMap<String, Bitmap>, disc: () -> Bitmap?, rich: Boolean
+) {
+    val w = size.width
+    val h = size.height
+    val base = floor(pos).toInt().coerceIn(0, items.lastIndex)
+    val nextIndex = (base + 1).coerceAtMost(items.lastIndex)
+    val mix = pos - base
+    val a = ambients[items[base].coverUrl]
+    val b = ambients[items[nextIndex].coverUrl]
+    val fallback = 0xFF2A2556.toInt()
+    val primary = blend(a?.first ?: fallback, b?.first ?: fallback, mix)
+    val secondary = blend(a?.second ?: fallback, b?.second ?: fallback, mix)
+    drawIntoCanvas { composeCanvas ->
+        val canvas = composeCanvas.nativeCanvas
+        val glowIn = atelierSmooth(0f, 0.32f, entered)
+        r.glowPaint.color = primary
+        r.glowPaint.alpha = (150f * glowIn).toInt()
+        r.rect.set(-w * 0.75f, -h * 0.16f, w * 1.1f, h * 0.62f)
+        canvas.drawBitmap(r.glow, null, r.rect, r.glowPaint)
+        r.glowPaint.color = secondary
+        r.glowPaint.alpha = (130f * glowIn).toInt()
+        r.rect.set(-w * 0.05f, h * 0.36f, w * 1.75f, h * 1.12f)
+        canvas.drawBitmap(r.glow, null, r.rect, r.glowPaint)
+        r.camera.frame(w, h, ShelfSceneAnchor)
+
+        val stageClock = AtelierStage.expansion().coerceIn(0f, 1f)
+        val handedOff = stageClock > 0.001f && (AtelierStage.shelfHandoff || current.contains(state.currentTrack))
+        drawAtelierShelfSleeves(canvas, r, items, state, base, pos, entered, handedOff, covers, disc, rich)
+    }
+}
+
+private fun drawAtelierShelfSleeves(
+    canvas: android.graphics.Canvas, r: AtelierShelfRenderer, items: List<AtelierShelfItem>, state: LevyraUiState,
+    base: Int, pos: Float, entered: Float, handedOff: Boolean,
+    covers: SnapshotStateMap<String, Bitmap>, disc: () -> Bitmap?, rich: Boolean
+) {
+    val reach = 6
+    val low = (base - reach).coerceAtLeast(0)
+    val high = (base + reach).coerceAtMost(items.lastIndex)
+    var outward = reach + 1
+    while (outward >= 0) {
+        for (side in 0..1) {
+            val index = if (side == 0) base + 1 + outward else base - outward
+            if (index !in low..high) continue
+            val depth = index - pos
+            AtelierSlot.fill(depth, entered, r.slot)
+            val alpha = r.slot[AtelierSlot.ALPHA]
+            if (alpha <= 0.004f) continue
+            r.camera.project(r.slot, r.quad)
+            val focus = 1f - atelierSmooth(0f, 1f, abs(depth).coerceAtMost(1f))
+            if (focus > 0.5f) publishAtelierShelfFront(r, items, index, state, focus, entered, covers)
+            if (handedOff && focus > 0.5f) continue
+            val discOut = focus * atelierSmooth(0.74f, 1f, entered)
+            r.painter.draw(
+                canvas, r.quad, covers[items[index].coverUrl], disc(), discOut,
+                r.shadowMask, 0.62f, depth * 0.34f - 0.1f,
+                atelierSmooth(0f, 6f, abs(depth)) * 0.62f + (1f - focus) * 0.08f, alpha, rich
+            )
+        }
+        outward--
+    }
+}
+
+private fun publishAtelierShelfFront(
+    r: AtelierShelfRenderer, items: List<AtelierShelfItem>, index: Int, state: LevyraUiState,
+    focus: Float, entered: Float, covers: SnapshotStateMap<String, Bitmap>
+) {
+    r.quad.copyInto(r.frontQuad)
+    r.quad.copyInto(AtelierStage.shelfQuad)
+    AtelierStage.shelfCover = covers[items[index].coverUrl]
+    AtelierStage.shelfQuadValid = focus > 0.92f && entered >= 1f && (AtelierStage.shelfHandoff || items[index].contains(state.currentTrack))
 }
 
 private val DialHeight = 56.dp

@@ -106,6 +106,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -316,52 +317,28 @@ internal fun AtelierLibraryScreen(
             onDeleteDownload = { deletingDownload = it }
         )
     }
-    val openEntry: (AtelierLibraryEntry) -> Unit = { entry ->
-        when (entry) {
-            is AtelierLibraryEntry.PlaylistEntry -> viewModel.openPlaylist(entry.playlist.id)
-            is AtelierLibraryEntry.AlbumEntry -> viewModel.openAlbum(entry.album.toAlbumHit())
-            is AtelierLibraryEntry.ArtistEntry -> viewModel.openArtistReference(entry.artist.name, entry.artist.browseId, entry.artist.artworkUrl)
-            is AtelierLibraryEntry.SongEntry -> viewModel.playFrom(snapshot?.songs.orEmpty().ifEmpty { listOf(entry.track) }, entry.track)
-            is AtelierLibraryEntry.OfflineEntry -> viewModel.playDownloaded(entry.item.download)
-        }
-    }
+    val openEntry: (AtelierLibraryEntry) -> Unit = { entry -> openAtelierLibraryEntry(viewModel, entry, snapshot) }
     Box(
         Modifier.fillMaxSize().background(AtelierDesign.room).statusBarsPadding().clipToBounds().nestedScroll(headerConnection)
     ) {
-        LazyVerticalGrid(
-            state = gridState,
-            columns = if (grid) GridCells.Adaptive(AtelierLibrarySleeveMin) else GridCells.Fixed(1),
-            contentPadding = PaddingValues(
-                start = if (grid) AtelierDesign.gutter else 0.dp,
-                end = if (grid) AtelierDesign.gutter else 0.dp,
-                top = headerHeight + if (grid) 16.dp else 4.dp,
-                bottom = bottomPadding
-            ),
-            horizontalArrangement = Arrangement.spacedBy(AtelierDesign.itemGap),
-            verticalArrangement = Arrangement.spacedBy(if (grid) 20.dp else 0.dp),
-            modifier = Modifier.fillMaxSize().then(if (searching) Modifier.imePadding() else Modifier)
-        ) {
-            val current = snapshot
-            if (current != null) {
-                items(
-                    current.entries,
-                    key = { it.key },
-                    contentType = { entry -> if (grid) "sleeve" else if (entry.artworkTrack != null) "track-row" else "item-row" }
-                ) { entry ->
-                    val active = entry.artworkTrack?.id?.let { it == currentId } == true
-                    if (grid) {
-                        AtelierLibrarySleeve(entry, active, copy, { openEntry(entry) }) { menuFor(entry) }
-                    } else {
-                        AtelierLibraryRow(entry, active, copy, { openEntry(entry) }) { menuFor(entry) }
-                    }
-                }
-                if (current.tab == tab && current.entries.isEmpty()) {
-                    item(key = "empty", span = { GridItemSpan(maxLineSpan) }, contentType = "empty") {
-                        AtelierLibraryEmpty(tab, strings, query, hiddenOnly, activeTagIds.isNotEmpty()) { creating = true }
-                    }
-                }
-            }
-        }
+        AtelierLibraryGrid(
+            gridState = gridState,
+            grid = grid,
+            searching = searching,
+            headerHeight = headerHeight,
+            bottomPadding = bottomPadding,
+            snapshot = { snapshot },
+            tab = tab,
+            currentId = currentId,
+            copy = copy,
+            strings = strings,
+            query = query,
+            hiddenOnly = hiddenOnly,
+            filtered = activeTagIds.isNotEmpty(),
+            openEntry = openEntry,
+            menuFor = menuFor,
+            onCreate = { creating = true }
+        )
         Column(
             Modifier.fillMaxWidth()
                 .graphicsLayer { translationY = headerOffsetPx }
@@ -399,7 +376,7 @@ internal fun AtelierLibraryScreen(
             if (searching) {
                 AtelierLibrarySearchField(strings, query) { query = it }
             }
-            if (tab == AtelierLibraryTab.Playlists && (state.playlistTags.isNotEmpty() || hiddenCount > 0)) {
+            if (atelierShowsPlaylistFilters(tab, state, hiddenCount)) {
                 AtelierLibraryPlaylistFilters(
                     state = state,
                     strings = strings,
@@ -407,7 +384,7 @@ internal fun AtelierLibraryScreen(
                     hiddenOnly = hiddenOnly,
                     hiddenCount = hiddenCount,
                     onClearTags = { selectedTagIds = emptySet() },
-                    onToggleTag = { id -> selectedTagIds = if (id in selectedTagIds) selectedTagIds - id else selectedTagIds + id },
+                    onToggleTag = { id -> selectedTagIds = atelierToggledTagIds(selectedTagIds, id) },
                     onToggleHidden = { showHidden = !showHidden }
                 )
             }
@@ -428,31 +405,138 @@ internal fun AtelierLibraryScreen(
             Box(Modifier.fillMaxWidth().height(1.dp).background(AtelierDesign.hairline))
         }
     }
-    if (creating) {
-        AtelierLibraryCreateDialog(strings, { creating = false }) { name -> viewModel.createPlaylist(name) }
+    AtelierLibraryDialogs(
+        viewModel = viewModel,
+        strings = strings,
+        playlists = playlists,
+        creating = creating,
+        addTracks = { addTracks },
+        deletingPlaylist = deletingPlaylist,
+        deletingDownload = deletingDownload,
+        deleteOffline = deleteOffline,
+        onDismissCreate = { creating = false },
+        onClearAddTracks = { addTracks = emptyList() },
+        onDismissDeletePlaylist = { deletingPlaylist = null },
+        onDismissDeleteDownload = { deletingDownload = null }
+    )
+}
+
+private fun openAtelierLibraryEntry(viewModel: LibraryViewModel, entry: AtelierLibraryEntry, snapshot: AtelierLibrarySnapshot?) {
+    when (entry) {
+        is AtelierLibraryEntry.PlaylistEntry -> viewModel.openPlaylist(entry.playlist.id)
+        is AtelierLibraryEntry.AlbumEntry -> viewModel.openAlbum(entry.album.toAlbumHit())
+        is AtelierLibraryEntry.ArtistEntry -> viewModel.openArtistReference(entry.artist.name, entry.artist.browseId, entry.artist.artworkUrl)
+        is AtelierLibraryEntry.SongEntry -> viewModel.playFrom(snapshot?.songs.orEmpty().ifEmpty { listOf(entry.track) }, entry.track)
+        is AtelierLibraryEntry.OfflineEntry -> viewModel.playDownloaded(entry.item.download)
     }
-    if (addTracks.isNotEmpty()) {
+}
+
+private fun atelierShowsPlaylistFilters(tab: AtelierLibraryTab, state: LevyraUiState, hiddenCount: Int): Boolean =
+    tab == AtelierLibraryTab.Playlists && (state.playlistTags.isNotEmpty() || hiddenCount > 0)
+
+private fun atelierToggledTagIds(selectedTagIds: Set<String>, id: String): Set<String> =
+    if (id in selectedTagIds) selectedTagIds - id else selectedTagIds + id
+
+private fun atelierLibraryGridPadding(grid: Boolean, headerHeight: Dp, bottomPadding: Dp): PaddingValues = PaddingValues(
+    start = if (grid) AtelierDesign.gutter else 0.dp,
+    end = if (grid) AtelierDesign.gutter else 0.dp,
+    top = headerHeight + if (grid) 16.dp else 4.dp,
+    bottom = bottomPadding
+)
+
+private fun atelierLibraryContentType(grid: Boolean, entry: AtelierLibraryEntry): String =
+    if (grid) "sleeve" else if (entry.artworkTrack != null) "track-row" else "item-row"
+
+@Composable
+private fun AtelierLibraryGrid(
+    gridState: LazyGridState,
+    grid: Boolean,
+    searching: Boolean,
+    headerHeight: Dp,
+    bottomPadding: Dp,
+    snapshot: () -> AtelierLibrarySnapshot?,
+    tab: AtelierLibraryTab,
+    currentId: String?,
+    copy: AtelierCopy,
+    strings: LevyraStrings,
+    query: String,
+    hiddenOnly: Boolean,
+    filtered: Boolean,
+    openEntry: (AtelierLibraryEntry) -> Unit,
+    menuFor: (AtelierLibraryEntry) -> List<AtelierLibraryMenuItem>,
+    onCreate: () -> Unit
+) {
+    LazyVerticalGrid(
+        state = gridState,
+        columns = if (grid) GridCells.Adaptive(AtelierLibrarySleeveMin) else GridCells.Fixed(1),
+        contentPadding = atelierLibraryGridPadding(grid, headerHeight, bottomPadding),
+        horizontalArrangement = Arrangement.spacedBy(AtelierDesign.itemGap),
+        verticalArrangement = Arrangement.spacedBy(if (grid) 20.dp else 0.dp),
+        modifier = Modifier.fillMaxSize().then(if (searching) Modifier.imePadding() else Modifier)
+    ) {
+        val current = snapshot()
+        if (current != null) {
+            items(
+                current.entries,
+                key = { it.key },
+                contentType = { entry -> atelierLibraryContentType(grid, entry) }
+            ) { entry ->
+                val active = entry.artworkTrack?.id?.let { it == currentId } == true
+                if (grid) {
+                    AtelierLibrarySleeve(entry, active, copy, { openEntry(entry) }) { menuFor(entry) }
+                } else {
+                    AtelierLibraryRow(entry, active, copy, { openEntry(entry) }) { menuFor(entry) }
+                }
+            }
+            if (current.tab == tab && current.entries.isEmpty()) {
+                item(key = "empty", span = { GridItemSpan(maxLineSpan) }, contentType = "empty") {
+                    AtelierLibraryEmpty(tab, strings, query, hiddenOnly, filtered, onCreate)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AtelierLibraryDialogs(
+    viewModel: LibraryViewModel,
+    strings: LevyraStrings,
+    playlists: List<Playlist>,
+    creating: Boolean,
+    addTracks: () -> List<Track>,
+    deletingPlaylist: Playlist?,
+    deletingDownload: DownloadedTrack?,
+    deleteOffline: (List<DownloadedTrack>) -> Unit,
+    onDismissCreate: () -> Unit,
+    onClearAddTracks: () -> Unit,
+    onDismissDeletePlaylist: () -> Unit,
+    onDismissDeleteDownload: () -> Unit
+) {
+    if (creating) {
+        AtelierLibraryCreateDialog(strings, onDismissCreate) { name -> viewModel.createPlaylist(name) }
+    }
+    if (addTracks().isNotEmpty()) {
         AddTracksToPlaylistDialog(
-            tracks = addTracks,
+            tracks = addTracks(),
             playlists = playlists,
-            onDismiss = { addTracks = emptyList() },
+            onDismiss = onClearAddTracks,
             onAdd = { playlistId ->
-                viewModel.addTracksToPlaylist(playlistId, addTracks)
-                addTracks = emptyList()
+                viewModel.addTracksToPlaylist(playlistId, addTracks())
+                onClearAddTracks()
             },
             onCreate = { name ->
-                viewModel.createPlaylistWithTracks(name, addTracks)
-                addTracks = emptyList()
+                viewModel.createPlaylistWithTracks(name, addTracks())
+                onClearAddTracks()
             }
         )
     }
     deletingPlaylist?.let { playlist ->
-        AtelierLibraryDeleteDialog(strings, strings.delete, playlist.name, { deletingPlaylist = null }) {
+        AtelierLibraryDeleteDialog(strings, strings.delete, playlist.name, onDismissDeletePlaylist) {
             viewModel.deletePlaylist(playlist.id)
         }
     }
     deletingDownload?.let { download ->
-        AtelierLibraryDeleteDialog(strings, strings.deleteDownload, download.title, { deletingDownload = null }) {
+        AtelierLibraryDeleteDialog(strings, strings.deleteDownload, download.title, onDismissDeleteDownload) {
             deleteOffline(listOf(download))
         }
     }

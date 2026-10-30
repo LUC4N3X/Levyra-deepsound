@@ -278,14 +278,7 @@ private fun AtelierQueueRow(
             .graphicsLayer { translationY = drag }
             .semantics {
                 if (reorderable) {
-                    val moves = buildList {
-                        if (queueIndex > 0) {
-                            add(CustomAccessibilityAction(copy.queueMoveUp) { onMove?.invoke(queueIndex, queueIndex - 1); true })
-                        }
-                        if (queueIndex < queueSize - 1) {
-                            add(CustomAccessibilityAction(copy.queueMoveDown) { onMove?.invoke(queueIndex, queueIndex + 1); true })
-                        }
-                    }
+                    val moves = atelierQueueMoveActions(queueIndex, queueSize, copy, onMove)
                     customActions = moves
                 }
             }
@@ -337,11 +330,7 @@ private fun AtelierQueueRow(
                             drag += amount
                             val threshold = rowHeight.toFloat()
                             val index = latestIndex
-                            val target = when {
-                                drag > threshold && index < latestSize - 1 -> index + 1
-                                drag < -threshold && index > 0 -> index - 1
-                                else -> index
-                            }
+                            val target = atelierQueueDragTarget(drag, threshold, index) { latestSize }
                             if (target != index) {
                                 latestMove?.invoke(index, target)
                                 drag = 0f
@@ -356,4 +345,24 @@ private fun AtelierQueueRow(
             }
         }
     }
+}
+
+private fun atelierQueueMoveActions(
+    queueIndex: Int,
+    queueSize: Int,
+    copy: AtelierCopy,
+    onMove: ((Int, Int) -> Unit)?
+): List<CustomAccessibilityAction> = buildList {
+    if (queueIndex > 0) {
+        add(CustomAccessibilityAction(copy.queueMoveUp) { onMove?.invoke(queueIndex, queueIndex - 1); true })
+    }
+    if (queueIndex < queueSize - 1) {
+        add(CustomAccessibilityAction(copy.queueMoveDown) { onMove?.invoke(queueIndex, queueIndex + 1); true })
+    }
+}
+
+private inline fun atelierQueueDragTarget(drag: Float, threshold: Float, index: Int, size: () -> Int): Int = when {
+    drag > threshold && index < size() - 1 -> index + 1
+    drag < -threshold && index > 0 -> index - 1
+    else -> index
 }

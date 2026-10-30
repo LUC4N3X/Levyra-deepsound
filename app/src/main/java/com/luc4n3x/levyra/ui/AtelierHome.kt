@@ -10,6 +10,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.ui.geometry.center
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
@@ -121,6 +122,7 @@ import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.AtelierCopy
 import com.luc4n3x.levyra.ui.i18n.LevyraAtelierStrings
+import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.AtelierDesign
 import com.luc4n3x.levyra.viewmodel.HomeViewModel
@@ -659,82 +661,114 @@ private fun AtelierHomeHero(
         )
         Column(Modifier.fillMaxWidth().padding(top = statusTop)) {
             AtelierHomeMasthead(listenerName, onOpenSettings)
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = AtelierDesign.gutter),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = atelierUppercase(if (isCurrent) strings.currentlyPlaying else strings.continueListening),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = AtelierDesign.accentBright,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = copy.sideA,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = AtelierDesign.textSecondary,
-                    maxLines = 1,
-                    modifier = Modifier.padding(start = 12.dp).clearAndSetSemantics {}
-                )
-            }
-            BoxWithConstraints(Modifier.fillMaxWidth().padding(top = 22.dp)) {
-                val sleeve = (maxWidth * 0.78f).coerceAtMost(400.dp)
-                val travel = with(LocalDensity.current) { (sleeve * 0.2f).toPx() }
-                Box(Modifier.fillMaxWidth().height(sleeve).padding(start = AtelierDesign.gutter)) {
-                    AtelierVinyl(
-                        track,
-                        Modifier.align(Alignment.CenterStart).offset(x = sleeve * 0.03f).size(sleeve * 0.94f)
-                            .graphicsLayer {
-                                translationX = slide.value * travel * direction
-                                rotationZ = slide.value * 64f * direction
-                            }
-                    )
-                    AtelierPerspectiveSleeve(
-                        track = track,
-                        side = sleeve,
-                        turn = -9f * direction,
-                        elevation = 40.dp,
-                        highRes = true,
-                        modifier = Modifier.align(Alignment.CenterStart).levyraPressable(
-                            onClick = onOpen,
-                            role = Role.Button,
-                            onClickLabel = if (hasAlbum) strings.openAlbum else strings.play,
-                            pressedScale = LevyraPressScale.Surface
-                        )
-                    )
-                }
-            }
-            Column(Modifier.fillMaxWidth().padding(horizontal = AtelierDesign.gutter).padding(top = 26.dp)) {
-                Text(
-                    text = track.album.ifBlank { track.title },
-                    style = MaterialTheme.typography.displayMedium,
-                    color = AtelierDesign.text,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = track.artist,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Normal),
-                    color = AtelierDesign.textSecondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 2.dp)
-                )
-                Row(Modifier.padding(top = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-                    AtelierHardwareKey(
-                        label = if (active) strings.pause else strings.play,
-                        lit = active,
-                        busy = isCurrent && isResolving,
-                        onClick = onPlay,
-                        modifier = Modifier.width(92.dp).height(58.dp)
-                    ) { AtelierPlayGlyph(active, 28.dp) }
-                    if (hasAlbum) {
-                        Spacer(Modifier.width(8.dp))
-                        AtelierTextAction(strings.openAlbum, onOpen)
+            AtelierHomeHeroLabel(isCurrent, copy)
+            AtelierHomeHeroSleeve(track, slide, direction, hasAlbum, onOpen)
+            AtelierHomeHeroDetails(track, active, isCurrent, isResolving, hasAlbum, onOpen, onPlay)
+        }
+    }
+}
+
+@Composable
+private fun AtelierHomeHeroLabel(isCurrent: Boolean, copy: AtelierCopy) {
+    val strings = LocalLevyraStrings.current
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = AtelierDesign.gutter),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = atelierUppercase(if (isCurrent) strings.currentlyPlaying else strings.continueListening),
+            style = MaterialTheme.typography.labelMedium,
+            color = AtelierDesign.accentBright,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = copy.sideA,
+            style = MaterialTheme.typography.labelSmall,
+            color = AtelierDesign.textSecondary,
+            maxLines = 1,
+            modifier = Modifier.padding(start = 12.dp).clearAndSetSemantics {}
+        )
+    }
+}
+
+@Composable
+private fun AtelierHomeHeroSleeve(
+    track: Track,
+    slide: Animatable<Float, AnimationVector1D>,
+    direction: Float,
+    hasAlbum: Boolean,
+    onOpen: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    BoxWithConstraints(Modifier.fillMaxWidth().padding(top = 22.dp)) {
+        val sleeve = (maxWidth * 0.78f).coerceAtMost(400.dp)
+        val travel = with(LocalDensity.current) { (sleeve * 0.2f).toPx() }
+        Box(Modifier.fillMaxWidth().height(sleeve).padding(start = AtelierDesign.gutter)) {
+            AtelierVinyl(
+                track,
+                Modifier.align(Alignment.CenterStart).offset(x = sleeve * 0.03f).size(sleeve * 0.94f)
+                    .graphicsLayer {
+                        translationX = slide.value * travel * direction
+                        rotationZ = slide.value * 64f * direction
                     }
-                }
+            )
+            AtelierPerspectiveSleeve(
+                track = track,
+                side = sleeve,
+                turn = -9f * direction,
+                elevation = 40.dp,
+                highRes = true,
+                modifier = Modifier.align(Alignment.CenterStart).levyraPressable(
+                    onClick = onOpen,
+                    role = Role.Button,
+                    onClickLabel = if (hasAlbum) strings.openAlbum else strings.play,
+                    pressedScale = LevyraPressScale.Surface
+                )
+            )
+        }
+    }
+}
+
+@Composable
+private fun AtelierHomeHeroDetails(
+    track: Track,
+    active: Boolean,
+    isCurrent: Boolean,
+    isResolving: Boolean,
+    hasAlbum: Boolean,
+    onOpen: () -> Unit,
+    onPlay: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    Column(Modifier.fillMaxWidth().padding(horizontal = AtelierDesign.gutter).padding(top = 26.dp)) {
+        Text(
+            text = track.album.ifBlank { track.title },
+            style = MaterialTheme.typography.displayMedium,
+            color = AtelierDesign.text,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            text = track.artist,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Normal),
+            color = AtelierDesign.textSecondary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 2.dp)
+        )
+        Row(Modifier.padding(top = 20.dp), verticalAlignment = Alignment.CenterVertically) {
+            AtelierHardwareKey(
+                label = if (active) strings.pause else strings.play,
+                lit = active,
+                busy = isCurrent && isResolving,
+                onClick = onPlay,
+                modifier = Modifier.width(92.dp).height(58.dp)
+            ) { AtelierPlayGlyph(active, 28.dp) }
+            if (hasAlbum) {
+                Spacer(Modifier.width(8.dp))
+                AtelierTextAction(strings.openAlbum, onOpen)
             }
         }
     }
@@ -1315,34 +1349,17 @@ private fun AtelierHomeContent(
     val currentId = data.currentId
     val recordings = remember(state.recentListens) { LevyraPersonalOrbit.distinctRecordings(state.recentListens) }
     val recents = remember(recordings) { recordings.distinctBy(Track::id).take(20) }
-    val recentAlbums = remember(recordings) {
-        val albums = recordings.asSequence()
-            .filter { it.album.isNotBlank() }
-            .distinctBy { "${it.album.trim().lowercase(Locale.ROOT)}|${atelierArtistKey(it)}" }
-            .take(AtelierWallMax)
-            .toList()
-        if (albums.size < AtelierWallColumns) emptyList() else albums.take(albums.size / AtelierWallColumns * AtelierWallColumns)
-    }
-    val heroTrack = state.currentTrack ?: recents.firstOrNull() ?: data.soundtrack?.track
+    val recentAlbums = remember(recordings) { atelierRecentAlbums(recordings) }
+    val heroTrack = atelierHomeHeroTrack(state, recents, data)
     val heroId = heroTrack?.id
     val shelfRecents = remember(recents, heroId) { recents.filterNot { it.id == heroId } }
-    val orbit = remember(data.personalTracks, data.showPersonal) {
-        if (data.showPersonal) data.personalTracks.distinctBy(Track::id).take(20) else emptyList()
-    }
+    val orbit = remember(data.personalTracks, data.showPersonal) { atelierHomeOrbit(data) }
     val picks = remember(data.quickPicks) { data.quickPicks?.tracks.orEmpty().distinctBy(Track::id) }
-    val picksTitle = data.quickPicks?.title?.ifBlank { null } ?: strings.quickPicks
-    val albums = remember(data.albums, data.showAlbums) {
-        if (data.showAlbums) data.albums.distinctBy(::atelierAlbumKey) else emptyList()
-    }
+    val picksTitle = atelierHomePicksTitle(data, strings)
+    val albums = remember(data.albums, data.showAlbums) { atelierHomeAlbums(data) }
     val newTracks = remember(releaseTracks) { releaseTracks.distinctBy(Track::id).take(20) }
     val newAlbums = remember(releaseAlbums) { releaseAlbums.distinctBy(::atelierAlbumKey).take(20) }
-    val artists = remember(data.artists, data.showArtists) {
-        if (data.showArtists) {
-            data.artists.filter { it.name.isNotBlank() }.distinctBy { it.browseId.ifBlank { it.name } }
-        } else {
-            emptyList()
-        }
-    }
+    val artists = remember(data.artists, data.showArtists) { atelierHomeArtists(data) }
     val charts = remember(data.charts) { data.charts.distinctBy(Track::id).take(50) }
     val collections = remember(data.collections) { data.collections.distinctBy { it.id } }
     val forgotten = remember(data.forgottenFavorites) { data.forgottenFavorites.distinctBy(Track::id).take(20) }
@@ -1359,40 +1376,17 @@ private fun AtelierHomeContent(
             copy = copy
         )
     }
-    val nothingToShow = heroTrack == null && data.soundtrack == null && orbit.isEmpty() && picks.isEmpty() &&
-        albums.isEmpty() && newTracks.isEmpty() && newAlbums.isEmpty() && artists.isEmpty() && charts.isEmpty() &&
-        collections.isEmpty() && forgotten.isEmpty()
+    val nothingToShow = atelierHomeNothingToShow(
+        heroTrack, data, orbit, picks, albums, newTracks, newAlbums, artists, charts, collections, forgotten
+    )
     val stillLoading = state.isLoadingHome || state.isLoadingCharts || state.homeAlbumsLoading || state.homeArtistsLoading
     var picksExpanded by rememberSaveable { mutableStateOf(false) }
     var chartsExpanded by rememberSaveable { mutableStateOf(false) }
     val trackOptions = strings.songOptions
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val heroPlay: () -> Unit = {
-        when {
-            heroTrack == null -> Unit
-            heroTrack.id == state.currentTrack?.id -> {
-                if (!state.isResolving) viewModel.togglePlay()
-            }
-            recents.any { it.id == heroTrack.id } -> actions.playFrom(recents, heroTrack)
-            else -> data.soundtrack?.onOpen?.invoke()
-        }
-    }
-    val playFeature: (AtelierFeature) -> Unit = { feature ->
-        val external = feature.external
-        when {
-            external != null -> external()
-            feature.lead.id == state.currentTrack?.id -> {
-                if (!state.isResolving) viewModel.togglePlay()
-            }
-            else -> actions.playFrom(feature.tracks, feature.lead)
-        }
-    }
-    val playRecent: (Track) -> Unit = { track ->
-        when {
-            track.id != state.currentTrack?.id -> actions.playFrom(recents, track)
-            !state.isResolving -> viewModel.togglePlay()
-        }
-    }
+    val heroPlay: () -> Unit = { atelierHomeHeroPlay(heroTrack, state, recents, data, viewModel, actions) }
+    val playFeature: (AtelierFeature) -> Unit = { feature -> atelierHomePlayFeature(feature, state, viewModel, actions) }
+    val playRecent: (Track) -> Unit = { track -> atelierHomePlayRecent(track, recents, state, viewModel, actions) }
     val trackLine: @Composable (List<Track>, Track, Int?) -> Unit = { list, track, rank ->
         AtelierTrackLine(
             track = track,
@@ -1416,222 +1410,441 @@ private fun AtelierHomeContent(
                 .pullToRefresh(isRefreshing = homeRefreshing, state = homePullState, onRefresh = onPullRefresh),
             contentPadding = PaddingValues(bottom = homeBottomInset + AtelierDesign.sectionGap)
         ) {
-            if (heroTrack != null) {
-                item(key = "atelier-hero", contentType = "atelier-hero") {
-                    AtelierHomeHero(
-                        track = heroTrack,
-                        isCurrent = heroTrack.id == state.currentTrack?.id,
-                        isPlaying = state.isPlaying,
-                        isResolving = state.isResolving,
-                        statusTop = statusTop,
-                        listenerName = data.listener.name,
-                        onOpenSettings = actions.openSettings,
-                        onOpen = {
-                            if (heroTrack.album.isNotBlank()) actions.openAlbum(trackAlbumHit(heroTrack)) else heroPlay()
-                        },
-                        onPlay = heroPlay
-                    )
-                }
-            } else {
-                item(key = "atelier-masthead", contentType = "atelier-masthead") {
-                    Box(Modifier.padding(top = statusTop)) {
-                        AtelierHomeMasthead(data.listener.name, actions.openSettings)
-                    }
-                }
+            atelierHomeLead(heroTrack, state, statusTop, data, actions, heroPlay)
+            atelierHomeFallback(nothingToShow, stillLoading, state, copy, viewModel)
+            atelierHomeFeatureRow(features, featureWidth, currentId, state, playFeature)
+            atelierHomePicks(picks, picksTitle, pairWidth, currentId, trackOptions, picksExpanded, actions) {
+                picksExpanded = !picksExpanded
             }
-            if (nothingToShow) {
-                if (stillLoading) {
-                    item(key = "atelier-skeleton-first", contentType = "atelier-skeleton") { AtelierShelfSkeleton() }
-                    item(key = "atelier-skeleton-second", contentType = "atelier-skeleton") { AtelierShelfSkeleton() }
-                } else {
-                    item(key = "atelier-empty", contentType = "atelier-empty") {
-                        AtelierHomeEmpty(state.homeError ?: copy.homeEmptyBody, viewModel::retryHomeContent)
-                    }
-                }
+            atelierHomeOrbitAndWall(orbit, wallRows, currentId, trackOptions, strings, copy, actions)
+            atelierHomeTeaserAndRecents(fanSleeves, shelfRecents, currentId, trackOptions, state, strings, viewModel, actions, playRecent)
+            atelierHomeAlbumGrid(albumRows, columns, strings, actions)
+            atelierHomeReleases(newTracks, newAlbums, releaseTitle, currentId, trackOptions, actions)
+            atelierHomeTrendingArtists(artists, strings, actions)
+            atelierHomeCharts(charts, chartsExpanded, data, strings, actions, trackLine) {
+                chartsExpanded = !chartsExpanded
             }
-            if (features.isNotEmpty()) {
-                item(key = "atelier-features", contentType = "atelier-features") {
-                    AtelierFeatureRow(features, featureWidth, currentId, state.isPlaying, state.isResolving, playFeature)
-                }
-            }
-            if (picks.isNotEmpty()) {
-                item(key = "atelier-picks-label", contentType = "atelier-label") { AtelierSectionLabel(picksTitle) }
-                item(key = "atelier-picks-pair", contentType = "atelier-pick-pair") {
-                    Row(
-                        Modifier.fillMaxWidth().padding(horizontal = AtelierDesign.gutter).padding(top = 4.dp, bottom = 18.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        picks.take(AtelierPickPairCount).forEachIndexed { index, track ->
-                            AtelierPickSleeve(
-                                track = track,
-                                width = pairWidth,
-                                isCurrent = track.id == currentId,
-                                actionsLabel = trackOptions,
-                                modifier = if (index == 0) Modifier else Modifier.padding(top = 40.dp),
-                                onPlay = { actions.playFrom(picks, track) },
-                                onActions = { actions.onTrackActions(track) }
-                            )
-                        }
-                    }
-                }
-                val compact = picks.drop(AtelierPickPairCount)
-                items(
-                    items = if (picksExpanded) compact else compact.take(AtelierCollapsedPicks - AtelierPickPairCount),
-                    key = { track -> "atelier-picks-${track.id}" },
-                    contentType = { "atelier-compact-row" }
-                ) { track ->
-                    AtelierCompactRow(
-                        track = track,
-                        isCurrent = track.id == currentId,
-                        actionsLabel = trackOptions,
-                        onPlay = { actions.playFrom(picks, track) },
-                        onActions = { actions.onTrackActions(track) }
-                    )
-                }
-                atelierExpandToggle("atelier-picks", picks.size, AtelierCollapsedPicks, picksExpanded) {
-                    picksExpanded = !picksExpanded
-                }
-            }
-            if (orbit.isNotEmpty()) {
-                item(key = "atelier-orbit", contentType = "atelier-standing-shelf") {
-                    Column {
-                        AtelierSectionLabel(strings.personalOrbitTitle)
-                        AtelierStandingShelf(orbit, currentId, trackOptions, { actions.playFrom(orbit, it) }, actions.onTrackActions)
-                    }
-                }
-            }
-            if (wallRows.isNotEmpty()) {
-                item(key = "atelier-wall-label", contentType = "atelier-magazine-heading") {
-                    AtelierMagazineHeading(copy.recentAlbums, centered = true)
-                }
-                items(wallRows, key = { row -> "atelier-wall-${row.first().id}" }, contentType = { "atelier-wall-row" }) { row ->
-                    AtelierWallRow(row) { track ->
-                        actions.openAlbum(trackAlbumHit(track))
-                    }
-                }
-            }
-            item(key = "atelier-shelf-teaser", contentType = "atelier-shelf-teaser") {
-                AtelierShelfTeaser(fanSleeves) { viewModel.selectTab(LevyraTab.Library) }
-            }
-            if (shelfRecents.isNotEmpty()) {
-                item(key = "atelier-recents", contentType = "atelier-continue") {
-                    Column {
-                        AtelierSectionLabel(strings.continueListening)
-                        LazyRow(contentPadding = AtelierRowPadding, horizontalArrangement = Arrangement.spacedBy(AtelierDesign.itemGap)) {
-                            items(shelfRecents, key = { it.id }, contentType = { "atelier-continue-tile" }) { track ->
-                                AtelierContinueAlbumTile(
-                                    track = track,
-                                    isCurrent = track.id == currentId,
-                                    isPlaying = state.isPlaying,
-                                    actionsLabel = trackOptions,
-                                    onOpen = {
-                                        if (track.album.isNotBlank()) actions.openAlbum(trackAlbumHit(track)) else playRecent(track)
-                                    },
-                                    onPlay = { playRecent(track) },
-                                    onActions = { actions.onTrackActions(track) }
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-            if (albumRows.isNotEmpty()) {
-                item(key = "atelier-albums-label", contentType = "atelier-label") { AtelierSectionLabel(strings.albumsForYou) }
-                items(albumRows, key = { row -> "atelier-album-${atelierAlbumKey(row.first())}" }, contentType = { "atelier-album-row" }) { row ->
-                    Row(
-                        Modifier.fillMaxWidth().padding(horizontal = AtelierDesign.gutter).padding(bottom = 20.dp),
-                        horizontalArrangement = Arrangement.spacedBy(AtelierDesign.itemGap)
-                    ) {
-                        row.forEach { album ->
-                            AtelierAlbumTile(album, Modifier.weight(1f)) { actions.openAlbum(album) }
-                        }
-                        repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
-                    }
-                }
-            }
-            if (newTracks.isNotEmpty()) {
-                item(key = "atelier-new-releases", contentType = "atelier-strip") {
-                    Column {
-                        AtelierSectionLabel(releaseTitle)
-                        AtelierTrackStrip(newTracks, AtelierDesign.albumCard, currentId, trackOptions, { actions.playFrom(newTracks, it) }, actions.onTrackActions)
-                    }
-                }
-            } else if (newAlbums.isNotEmpty()) {
-                item(key = "atelier-new-albums", contentType = "atelier-album-strip") {
-                    Column {
-                        AtelierSectionLabel(releaseTitle)
-                        LazyRow(contentPadding = AtelierRowPadding, horizontalArrangement = Arrangement.spacedBy(AtelierDesign.itemGap)) {
-                            items(newAlbums, key = { atelierAlbumKey(it) }, contentType = { "atelier-album-tile" }) { album ->
-                                AtelierAlbumTile(album, Modifier.width(AtelierDesign.albumCard)) { actions.openAlbum(album) }
-                            }
-                        }
-                    }
-                }
-            }
-            if (artists.isNotEmpty()) {
-                item(key = "atelier-artists", contentType = "atelier-artists") {
-                    Column {
-                        AtelierSectionLabel(strings.trendingArtists)
-                        LazyRow(
-                            contentPadding = AtelierRowPadding,
-                            horizontalArrangement = Arrangement.spacedBy(AtelierDesign.itemGap),
-                            verticalAlignment = Alignment.Top
-                        ) {
-                            itemsIndexed(artists, key = { _, artist -> artist.browseId.ifBlank { artist.name } }, contentType = { _, _ -> "atelier-artist" }) { index, artist ->
-                                AtelierArtistTile(artist, AtelierArtistSizes[index % AtelierArtistSizes.size]) { actions.openArtist(artist) }
-                            }
-                        }
-                    }
-                }
-            }
-            if (charts.isNotEmpty()) {
-                item(key = "atelier-charts-label", contentType = "atelier-label") {
-                    AtelierSectionLabel(data.chartsTitle.ifBlank { strings.top50Charts }) {
-                        if (data.countryLabel.isNotBlank()) {
-                            AtelierTextAction(data.countryLabel, actions.pickCountry, onClickLabel = strings.chartMarketChange)
-                        }
-                        AtelierIconAction(Icons.Rounded.PlayArrow, strings.playAll, { actions.playAll(charts) }, AtelierDesign.accent)
-                    }
-                }
-                atelierTrackRows(
-                    key = "atelier-charts",
-                    tracks = charts,
-                    visible = if (chartsExpanded) charts.size else AtelierCollapsedCharts,
-                    ranked = true
-                ) { track, rank -> trackLine(charts, track, rank) }
-                atelierExpandToggle("atelier-charts", charts.size, AtelierCollapsedCharts, chartsExpanded) {
-                    chartsExpanded = !chartsExpanded
-                }
-            }
-            if (collections.isNotEmpty()) {
-                item(key = "atelier-collections", contentType = "atelier-collections") {
-                    Column {
-                        AtelierSectionLabel(strings.collectionsTitle)
-                        LazyRow(contentPadding = AtelierRowPadding, horizontalArrangement = Arrangement.spacedBy(AtelierDesign.itemGap)) {
-                            items(collections, key = { it.id }, contentType = { "atelier-collection" }) { collection ->
-                                AtelierCollectionTile(
-                                    collection = collection,
-                                    onOpen = { actions.openCollection(collection.id) },
-                                    onPlay = { actions.playAll(collection.tracks) }
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-            if (forgotten.isNotEmpty()) {
-                item(key = "atelier-forgotten", contentType = "atelier-strip") {
-                    Column {
-                        AtelierSectionLabel(strings.forgottenFavorites)
-                        AtelierTrackStrip(forgotten, AtelierSmallSleeve, currentId, trackOptions, { actions.playFrom(forgotten, it) }, actions.onTrackActions)
-                    }
-                }
-            }
+            atelierHomeCollections(collections, strings, actions)
+            atelierHomeForgotten(forgotten, currentId, trackOptions, strings, actions)
         }
         PullToRefreshDefaults.LoadingIndicator(
             state = homePullState,
             isRefreshing = homeRefreshing,
             modifier = Modifier.align(Alignment.TopCenter).padding(top = statusTop + 16.dp)
         )
+    }
+}
+
+private fun atelierRecentAlbums(recordings: List<Track>): List<Track> {
+    val albums = recordings.asSequence()
+        .filter { it.album.isNotBlank() }
+        .distinctBy { "${it.album.trim().lowercase(Locale.ROOT)}|${atelierArtistKey(it)}" }
+        .take(AtelierWallMax)
+        .toList()
+    return if (albums.size < AtelierWallColumns) emptyList() else albums.take(albums.size / AtelierWallColumns * AtelierWallColumns)
+}
+
+private fun atelierHomeHeroTrack(state: LevyraUiState, recents: List<Track>, data: AppleMusicHomeData): Track? =
+    state.currentTrack ?: recents.firstOrNull() ?: data.soundtrack?.track
+
+private fun atelierHomeOrbit(data: AppleMusicHomeData): List<Track> =
+    if (data.showPersonal) data.personalTracks.distinctBy(Track::id).take(20) else emptyList()
+
+private fun atelierHomePicksTitle(data: AppleMusicHomeData, strings: LevyraStrings): String =
+    data.quickPicks?.title?.ifBlank { null } ?: strings.quickPicks
+
+private fun atelierHomeAlbums(data: AppleMusicHomeData): List<AlbumHit> =
+    if (data.showAlbums) data.albums.distinctBy(::atelierAlbumKey) else emptyList()
+
+private fun atelierHomeArtists(data: AppleMusicHomeData): List<ArtistHit> =
+    if (data.showArtists) {
+        data.artists.filter { it.name.isNotBlank() }.distinctBy { it.browseId.ifBlank { it.name } }
+    } else {
+        emptyList()
+    }
+
+private fun atelierHomeNothingToShow(
+    heroTrack: Track?,
+    data: AppleMusicHomeData,
+    orbit: List<Track>,
+    picks: List<Track>,
+    albums: List<AlbumHit>,
+    newTracks: List<Track>,
+    newAlbums: List<AlbumHit>,
+    artists: List<ArtistHit>,
+    charts: List<Track>,
+    collections: List<AppleMusicHomeCollection>,
+    forgotten: List<Track>
+): Boolean = heroTrack == null && data.soundtrack == null && orbit.isEmpty() && picks.isEmpty() &&
+    albums.isEmpty() && newTracks.isEmpty() && newAlbums.isEmpty() && artists.isEmpty() && charts.isEmpty() &&
+    collections.isEmpty() && forgotten.isEmpty()
+
+private fun atelierHomeHeroPlay(
+    heroTrack: Track?,
+    state: LevyraUiState,
+    recents: List<Track>,
+    data: AppleMusicHomeData,
+    viewModel: HomeViewModel,
+    actions: AppleMusicHomeActions
+) {
+    when {
+        heroTrack == null -> Unit
+        heroTrack.id == state.currentTrack?.id -> {
+            if (!state.isResolving) viewModel.togglePlay()
+        }
+        recents.any { it.id == heroTrack.id } -> actions.playFrom(recents, heroTrack)
+        else -> data.soundtrack?.onOpen?.invoke()
+    }
+}
+
+private fun atelierHomePlayFeature(
+    feature: AtelierFeature,
+    state: LevyraUiState,
+    viewModel: HomeViewModel,
+    actions: AppleMusicHomeActions
+) {
+    val external = feature.external
+    when {
+        external != null -> external()
+        feature.lead.id == state.currentTrack?.id -> {
+            if (!state.isResolving) viewModel.togglePlay()
+        }
+        else -> actions.playFrom(feature.tracks, feature.lead)
+    }
+}
+
+private fun atelierHomePlayRecent(
+    track: Track,
+    recents: List<Track>,
+    state: LevyraUiState,
+    viewModel: HomeViewModel,
+    actions: AppleMusicHomeActions
+) {
+    when {
+        track.id != state.currentTrack?.id -> actions.playFrom(recents, track)
+        !state.isResolving -> viewModel.togglePlay()
+    }
+}
+
+private fun LazyListScope.atelierHomeLead(
+    heroTrack: Track?,
+    state: LevyraUiState,
+    statusTop: Dp,
+    data: AppleMusicHomeData,
+    actions: AppleMusicHomeActions,
+    heroPlay: () -> Unit
+) {
+    if (heroTrack != null) {
+        item(key = "atelier-hero", contentType = "atelier-hero") {
+            AtelierHomeHero(
+                track = heroTrack,
+                isCurrent = heroTrack.id == state.currentTrack?.id,
+                isPlaying = state.isPlaying,
+                isResolving = state.isResolving,
+                statusTop = statusTop,
+                listenerName = data.listener.name,
+                onOpenSettings = actions.openSettings,
+                onOpen = {
+                    if (heroTrack.album.isNotBlank()) actions.openAlbum(trackAlbumHit(heroTrack)) else heroPlay()
+                },
+                onPlay = heroPlay
+            )
+        }
+    } else {
+        item(key = "atelier-masthead", contentType = "atelier-masthead") {
+            Box(Modifier.padding(top = statusTop)) {
+                AtelierHomeMasthead(data.listener.name, actions.openSettings)
+            }
+        }
+    }
+}
+
+private fun LazyListScope.atelierHomeFallback(
+    nothingToShow: Boolean,
+    stillLoading: Boolean,
+    state: LevyraUiState,
+    copy: AtelierCopy,
+    viewModel: HomeViewModel
+) {
+    if (nothingToShow) {
+        if (stillLoading) {
+            item(key = "atelier-skeleton-first", contentType = "atelier-skeleton") { AtelierShelfSkeleton() }
+            item(key = "atelier-skeleton-second", contentType = "atelier-skeleton") { AtelierShelfSkeleton() }
+        } else {
+            item(key = "atelier-empty", contentType = "atelier-empty") {
+                AtelierHomeEmpty(state.homeError ?: copy.homeEmptyBody, viewModel::retryHomeContent)
+            }
+        }
+    }
+}
+
+private fun LazyListScope.atelierHomeFeatureRow(
+    features: List<AtelierFeature>,
+    featureWidth: Dp,
+    currentId: String?,
+    state: LevyraUiState,
+    playFeature: (AtelierFeature) -> Unit
+) {
+    if (features.isNotEmpty()) {
+        item(key = "atelier-features", contentType = "atelier-features") {
+            AtelierFeatureRow(features, featureWidth, currentId, state.isPlaying, state.isResolving, playFeature)
+        }
+    }
+}
+
+private fun LazyListScope.atelierHomePicks(
+    picks: List<Track>,
+    picksTitle: String,
+    pairWidth: Dp,
+    currentId: String?,
+    trackOptions: String,
+    picksExpanded: Boolean,
+    actions: AppleMusicHomeActions,
+    onTogglePicks: () -> Unit
+) {
+    if (picks.isNotEmpty()) {
+        item(key = "atelier-picks-label", contentType = "atelier-label") { AtelierSectionLabel(picksTitle) }
+        item(key = "atelier-picks-pair", contentType = "atelier-pick-pair") {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = AtelierDesign.gutter).padding(top = 4.dp, bottom = 18.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                picks.take(AtelierPickPairCount).forEachIndexed { index, track ->
+                    AtelierPickSleeve(
+                        track = track,
+                        width = pairWidth,
+                        isCurrent = track.id == currentId,
+                        actionsLabel = trackOptions,
+                        modifier = if (index == 0) Modifier else Modifier.padding(top = 40.dp),
+                        onPlay = { actions.playFrom(picks, track) },
+                        onActions = { actions.onTrackActions(track) }
+                    )
+                }
+            }
+        }
+        val compact = picks.drop(AtelierPickPairCount)
+        items(
+            items = if (picksExpanded) compact else compact.take(AtelierCollapsedPicks - AtelierPickPairCount),
+            key = { track -> "atelier-picks-${track.id}" },
+            contentType = { "atelier-compact-row" }
+        ) { track ->
+            AtelierCompactRow(
+                track = track,
+                isCurrent = track.id == currentId,
+                actionsLabel = trackOptions,
+                onPlay = { actions.playFrom(picks, track) },
+                onActions = { actions.onTrackActions(track) }
+            )
+        }
+        atelierExpandToggle("atelier-picks", picks.size, AtelierCollapsedPicks, picksExpanded, onTogglePicks)
+    }
+}
+
+private fun LazyListScope.atelierHomeOrbitAndWall(
+    orbit: List<Track>,
+    wallRows: List<List<Track>>,
+    currentId: String?,
+    trackOptions: String,
+    strings: LevyraStrings,
+    copy: AtelierCopy,
+    actions: AppleMusicHomeActions
+) {
+    if (orbit.isNotEmpty()) {
+        item(key = "atelier-orbit", contentType = "atelier-standing-shelf") {
+            Column {
+                AtelierSectionLabel(strings.personalOrbitTitle)
+                AtelierStandingShelf(orbit, currentId, trackOptions, { actions.playFrom(orbit, it) }, actions.onTrackActions)
+            }
+        }
+    }
+    if (wallRows.isNotEmpty()) {
+        item(key = "atelier-wall-label", contentType = "atelier-magazine-heading") {
+            AtelierMagazineHeading(copy.recentAlbums, centered = true)
+        }
+        items(wallRows, key = { row -> "atelier-wall-${row.first().id}" }, contentType = { "atelier-wall-row" }) { row ->
+            AtelierWallRow(row) { track ->
+                actions.openAlbum(trackAlbumHit(track))
+            }
+        }
+    }
+}
+
+private fun LazyListScope.atelierHomeTeaserAndRecents(
+    fanSleeves: List<Track>,
+    shelfRecents: List<Track>,
+    currentId: String?,
+    trackOptions: String,
+    state: LevyraUiState,
+    strings: LevyraStrings,
+    viewModel: HomeViewModel,
+    actions: AppleMusicHomeActions,
+    playRecent: (Track) -> Unit
+) {
+    item(key = "atelier-shelf-teaser", contentType = "atelier-shelf-teaser") {
+        AtelierShelfTeaser(fanSleeves) { viewModel.selectTab(LevyraTab.Library) }
+    }
+    if (shelfRecents.isNotEmpty()) {
+        item(key = "atelier-recents", contentType = "atelier-continue") {
+            Column {
+                AtelierSectionLabel(strings.continueListening)
+                LazyRow(contentPadding = AtelierRowPadding, horizontalArrangement = Arrangement.spacedBy(AtelierDesign.itemGap)) {
+                    items(shelfRecents, key = { it.id }, contentType = { "atelier-continue-tile" }) { track ->
+                        AtelierContinueAlbumTile(
+                            track = track,
+                            isCurrent = track.id == currentId,
+                            isPlaying = state.isPlaying,
+                            actionsLabel = trackOptions,
+                            onOpen = {
+                                if (track.album.isNotBlank()) actions.openAlbum(trackAlbumHit(track)) else playRecent(track)
+                            },
+                            onPlay = { playRecent(track) },
+                            onActions = { actions.onTrackActions(track) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun LazyListScope.atelierHomeAlbumGrid(
+    albumRows: List<List<AlbumHit>>,
+    columns: Int,
+    strings: LevyraStrings,
+    actions: AppleMusicHomeActions
+) {
+    if (albumRows.isNotEmpty()) {
+        item(key = "atelier-albums-label", contentType = "atelier-label") { AtelierSectionLabel(strings.albumsForYou) }
+        items(albumRows, key = { row -> "atelier-album-${atelierAlbumKey(row.first())}" }, contentType = { "atelier-album-row" }) { row ->
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = AtelierDesign.gutter).padding(bottom = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(AtelierDesign.itemGap)
+            ) {
+                row.forEach { album ->
+                    AtelierAlbumTile(album, Modifier.weight(1f)) { actions.openAlbum(album) }
+                }
+                repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
+private fun LazyListScope.atelierHomeReleases(
+    newTracks: List<Track>,
+    newAlbums: List<AlbumHit>,
+    releaseTitle: String,
+    currentId: String?,
+    trackOptions: String,
+    actions: AppleMusicHomeActions
+) {
+    if (newTracks.isNotEmpty()) {
+        item(key = "atelier-new-releases", contentType = "atelier-strip") {
+            Column {
+                AtelierSectionLabel(releaseTitle)
+                AtelierTrackStrip(newTracks, AtelierDesign.albumCard, currentId, trackOptions, { actions.playFrom(newTracks, it) }, actions.onTrackActions)
+            }
+        }
+    } else if (newAlbums.isNotEmpty()) {
+        item(key = "atelier-new-albums", contentType = "atelier-album-strip") {
+            Column {
+                AtelierSectionLabel(releaseTitle)
+                LazyRow(contentPadding = AtelierRowPadding, horizontalArrangement = Arrangement.spacedBy(AtelierDesign.itemGap)) {
+                    items(newAlbums, key = { atelierAlbumKey(it) }, contentType = { "atelier-album-tile" }) { album ->
+                        AtelierAlbumTile(album, Modifier.width(AtelierDesign.albumCard)) { actions.openAlbum(album) }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun LazyListScope.atelierHomeTrendingArtists(
+    artists: List<ArtistHit>,
+    strings: LevyraStrings,
+    actions: AppleMusicHomeActions
+) {
+    if (artists.isNotEmpty()) {
+        item(key = "atelier-artists", contentType = "atelier-artists") {
+            Column {
+                AtelierSectionLabel(strings.trendingArtists)
+                LazyRow(
+                    contentPadding = AtelierRowPadding,
+                    horizontalArrangement = Arrangement.spacedBy(AtelierDesign.itemGap),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    itemsIndexed(artists, key = { _, artist -> artist.browseId.ifBlank { artist.name } }, contentType = { _, _ -> "atelier-artist" }) { index, artist ->
+                        AtelierArtistTile(artist, AtelierArtistSizes[index % AtelierArtistSizes.size]) { actions.openArtist(artist) }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun LazyListScope.atelierHomeCharts(
+    charts: List<Track>,
+    chartsExpanded: Boolean,
+    data: AppleMusicHomeData,
+    strings: LevyraStrings,
+    actions: AppleMusicHomeActions,
+    trackLine: @Composable (List<Track>, Track, Int?) -> Unit,
+    onToggleCharts: () -> Unit
+) {
+    if (charts.isNotEmpty()) {
+        item(key = "atelier-charts-label", contentType = "atelier-label") {
+            AtelierSectionLabel(data.chartsTitle.ifBlank { strings.top50Charts }) {
+                if (data.countryLabel.isNotBlank()) {
+                    AtelierTextAction(data.countryLabel, actions.pickCountry, onClickLabel = strings.chartMarketChange)
+                }
+                AtelierIconAction(Icons.Rounded.PlayArrow, strings.playAll, { actions.playAll(charts) }, AtelierDesign.accent)
+            }
+        }
+        atelierTrackRows(
+            key = "atelier-charts",
+            tracks = charts,
+            visible = if (chartsExpanded) charts.size else AtelierCollapsedCharts,
+            ranked = true
+        ) { track, rank -> trackLine(charts, track, rank) }
+        atelierExpandToggle("atelier-charts", charts.size, AtelierCollapsedCharts, chartsExpanded, onToggleCharts)
+    }
+}
+
+private fun LazyListScope.atelierHomeCollections(
+    collections: List<AppleMusicHomeCollection>,
+    strings: LevyraStrings,
+    actions: AppleMusicHomeActions
+) {
+    if (collections.isNotEmpty()) {
+        item(key = "atelier-collections", contentType = "atelier-collections") {
+            Column {
+                AtelierSectionLabel(strings.collectionsTitle)
+                LazyRow(contentPadding = AtelierRowPadding, horizontalArrangement = Arrangement.spacedBy(AtelierDesign.itemGap)) {
+                    items(collections, key = { it.id }, contentType = { "atelier-collection" }) { collection ->
+                        AtelierCollectionTile(
+                            collection = collection,
+                            onOpen = { actions.openCollection(collection.id) },
+                            onPlay = { actions.playAll(collection.tracks) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun LazyListScope.atelierHomeForgotten(
+    forgotten: List<Track>,
+    currentId: String?,
+    trackOptions: String,
+    strings: LevyraStrings,
+    actions: AppleMusicHomeActions
+) {
+    if (forgotten.isNotEmpty()) {
+        item(key = "atelier-forgotten", contentType = "atelier-strip") {
+            Column {
+                AtelierSectionLabel(strings.forgottenFavorites)
+                AtelierTrackStrip(forgotten, AtelierSmallSleeve, currentId, trackOptions, { actions.playFrom(forgotten, it) }, actions.onTrackActions)
+            }
+        }
     }
 }

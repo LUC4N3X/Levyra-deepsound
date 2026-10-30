@@ -49,6 +49,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -1114,7 +1115,7 @@ private fun MiniStyledMetadata(
             Text(
                 text = track.title,
                 color = palette.content,
-                style = if (LevyraIsAtelier) MaterialTheme.typography.titleSmall else if (LevyraIsSpotify) MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp, lineHeight = 17.sp) else if (LevyraIsQobuz) MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Medium) else if (LevyraIsYouTubeMusic) MaterialTheme.typography.titleMedium else if (LevyraIsAppleMusic) MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium, lineHeight = 16.sp) else miniTitleStyle(tuning.typography, compact),
+                style = miniStyledTitleTextStyle(tuning.typography, compact),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.levyraMarquee(enabled = animated, repeatDelayMillis = 3_200)
@@ -1123,13 +1124,23 @@ private fun MiniStyledMetadata(
         Text(
             text = if (editorial) subtitle.uppercase() else subtitle,
             color = palette.contentMuted,
-            style = if (LevyraIsAtelier) MaterialTheme.typography.bodySmall else if (LevyraIsSpotify) MaterialTheme.typography.bodySmall else if (LevyraIsQobuz) MaterialTheme.typography.bodyMedium.copy(lineHeight = 18.sp) else if (LevyraIsYouTubeMusic) MaterialTheme.typography.bodyLarge else if (LevyraIsAppleMusic) MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Normal) else miniArtistStyle(tuning.typography, compact),
+            style = miniStyledSubtitleTextStyle(tuning.typography, compact),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = if (compact) Modifier else Modifier.dockFoldHeight(compaction)
         )
     }
 }
+
+@Composable
+@ReadOnlyComposable
+private fun miniStyledTitleTextStyle(typography: MiniTypography, compact: Boolean): TextStyle =
+    if (LevyraIsAtelier) MaterialTheme.typography.titleSmall else if (LevyraIsSpotify) MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp, lineHeight = 17.sp) else if (LevyraIsQobuz) MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Medium) else if (LevyraIsYouTubeMusic) MaterialTheme.typography.titleMedium else if (LevyraIsAppleMusic) MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium, lineHeight = 16.sp) else miniTitleStyle(typography, compact)
+
+@Composable
+@ReadOnlyComposable
+private fun miniStyledSubtitleTextStyle(typography: MiniTypography, compact: Boolean): TextStyle =
+    if (LevyraIsAtelier) MaterialTheme.typography.bodySmall else if (LevyraIsSpotify) MaterialTheme.typography.bodySmall else if (LevyraIsQobuz) MaterialTheme.typography.bodyMedium.copy(lineHeight = 18.sp) else if (LevyraIsYouTubeMusic) MaterialTheme.typography.bodyLarge else if (LevyraIsAppleMusic) MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Normal) else miniArtistStyle(typography, compact)
 
 @Composable
 private fun MiniEqualizerBars(playing: Boolean, animated: Boolean, color: Color, modifier: Modifier) {

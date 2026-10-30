@@ -73,6 +73,7 @@ import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.formatSeekbarMillis
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LevyraAtelierStrings
+import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.AtelierDesign
 import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
@@ -264,35 +265,12 @@ internal fun AtelierLibraryTrackRow(
             .padding(start = LevyraCardDesign.RowHorizontalPadding, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            Modifier.size(AtelierDesign.rowArtwork).clip(AtelierDesign.sleeveShape).background(AtelierDesign.panel)
-                .border(1.dp, AtelierDesign.hairline, AtelierDesign.sleeveShape),
-            contentAlignment = Alignment.Center
-        ) {
-            CoverImage(track, Modifier.fillMaxSize().clearAndSetSemantics {})
-            if (isCurrent) {
-                Box(Modifier.fillMaxSize().background(AtelierCurrentScrim), contentAlignment = Alignment.Center) {
-                    AtelierRecordGlyph(isPlaying, Modifier.size(24.dp).clearAndSetSemantics {})
-                }
-            }
-        }
+        AtelierLibraryTrackArtwork(track, isCurrent, isPlaying)
         Spacer(Modifier.width(14.dp))
-        Column(Modifier.weight(1f).padding(end = 8.dp)) {
-            Text(
-                track.title, color = if (isCurrent) AtelierDesign.accentBright else AtelierDesign.text,
-                style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis
-            )
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (isFavorite) Icon(Icons.Rounded.Favorite, strings.favoritesPlain, tint = AtelierDesign.accent, modifier = Modifier.size(12.dp))
-                if (isDownloaded) Icon(Icons.Rounded.DownloadDone, strings.downloaded, tint = AtelierDesign.accent, modifier = Modifier.size(14.dp))
-                if (subtitle.isNotBlank()) {
-                    Text(
-                        subtitle, color = AtelierDesign.textSecondary, style = MaterialTheme.typography.bodySmall,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-        }
+        AtelierLibraryTrackText(
+            track, subtitle, isCurrent, isFavorite, isDownloaded, strings,
+            Modifier.weight(1f).padding(end = 8.dp)
+        )
         if (track.durationMs > 0L) {
             Text(
                 formatSeekbarMillis(track.durationMs), color = AtelierDesign.textFaint, maxLines = 1,
@@ -310,6 +288,50 @@ internal fun AtelierLibraryTrackRow(
                 isFavorite, isDownloaded, downloadProgress, onClick, onFavorite, onDownload, onQueue, onAddToPlaylist,
                 onEditTags, onKeepOffline, onDeleteDownload, onRemoveFromPlaylist, onChangeMatch
             )
+        }
+    }
+}
+
+@Composable
+private fun AtelierLibraryTrackArtwork(track: Track, isCurrent: Boolean, isPlaying: Boolean) {
+    Box(
+        Modifier.size(AtelierDesign.rowArtwork).clip(AtelierDesign.sleeveShape).background(AtelierDesign.panel)
+            .border(1.dp, AtelierDesign.hairline, AtelierDesign.sleeveShape),
+        contentAlignment = Alignment.Center
+    ) {
+        CoverImage(track, Modifier.fillMaxSize().clearAndSetSemantics {})
+        if (isCurrent) {
+            Box(Modifier.fillMaxSize().background(AtelierCurrentScrim), contentAlignment = Alignment.Center) {
+                AtelierRecordGlyph(isPlaying, Modifier.size(24.dp).clearAndSetSemantics {})
+            }
+        }
+    }
+}
+
+@Composable
+private fun AtelierLibraryTrackText(
+    track: Track,
+    subtitle: String,
+    isCurrent: Boolean,
+    isFavorite: Boolean,
+    isDownloaded: Boolean,
+    strings: LevyraStrings,
+    modifier: Modifier
+) {
+    Column(modifier) {
+        Text(
+            track.title, color = if (isCurrent) AtelierDesign.accentBright else AtelierDesign.text,
+            style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis
+        )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (isFavorite) Icon(Icons.Rounded.Favorite, strings.favoritesPlain, tint = AtelierDesign.accent, modifier = Modifier.size(12.dp))
+            if (isDownloaded) Icon(Icons.Rounded.DownloadDone, strings.downloaded, tint = AtelierDesign.accent, modifier = Modifier.size(14.dp))
+            if (subtitle.isNotBlank()) {
+                Text(
+                    subtitle, color = AtelierDesign.textSecondary, style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }
