@@ -284,7 +284,8 @@ internal fun LevyraLibraryScreen(
     onOpenDownloads: () -> Unit,
     youtubeMusicAccount: com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicAccount? = null,
     onOpenYoutubeMusic: () -> Unit = {},
-    backEnabled: Boolean = true
+    backEnabled: Boolean = true,
+    atelierShelf: @Composable (onOpenCollection: () -> Unit) -> Unit = {}
 ) {
     val strings = LocalLevyraStrings.current
     val colors = MaterialTheme.colorScheme
@@ -310,11 +311,21 @@ internal fun LevyraLibraryScreen(
     }
 
     var qobuzTools by rememberSaveable { mutableStateOf(false) }
+    var atelierOnShelf by rememberSaveable { mutableStateOf(true) }
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier && !qobuzTools) {
+        BackHandler(enabled = backEnabled && !atelierOnShelf) { atelierOnShelf = true }
+        if (atelierOnShelf) {
+            atelierShelf { atelierOnShelf = false }
+        } else {
+            AtelierLibraryScreen(viewModel, state, catalog, onOpenDownloads, { qobuzTools = true }, { atelierOnShelf = true }, backEnabled)
+        }
+        return
+    }
     if (com.luc4n3x.levyra.ui.theme.LevyraIsQobuz && !qobuzTools) {
         QobuzLibraryScreen(viewModel, state, catalog, onOpenDownloads) { qobuzTools = true }
         return
     }
-    BackHandler(enabled = backEnabled && com.luc4n3x.levyra.ui.theme.LevyraIsQobuz && qobuzTools) { qobuzTools = false }
+    BackHandler(enabled = backEnabled && (com.luc4n3x.levyra.ui.theme.LevyraIsQobuz || com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) && qobuzTools) { qobuzTools = false }
     var categoryName by rememberSaveable { mutableStateOf(LibraryCategory.Overview.name) }
     val category = LibraryCategory.entries.firstOrNull { it.name == categoryName } ?: LibraryCategory.Overview
     var layoutName by rememberSaveable { mutableStateOf(LibraryLayout.List.name) }

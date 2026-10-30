@@ -27,7 +27,8 @@ class DownloadQualitySkinTest {
             LevyraSkin.SpotifyStyle to DownloadQualitySkin.Spotify,
             LevyraSkin.AppleMusicStyle to DownloadQualitySkin.Apple,
             LevyraSkin.YouTubeMusicStyle to DownloadQualitySkin.YouTube,
-            LevyraSkin.QobuzStyle to DownloadQualitySkin.Prism
+            LevyraSkin.QobuzStyle to DownloadQualitySkin.Prism,
+            LevyraSkin.Atelier to DownloadQualitySkin.Prism
         )
         assertEquals(LevyraSkin.entries.toSet(), expected.keys)
         expected.forEach { (skin, presentation) ->

@@ -426,6 +426,7 @@ internal fun ImmersiveMediaActionRow(
     modifier: Modifier = Modifier,
     secondary: @Composable RowScope.() -> Unit = {}
 ) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) return AtelierMediaActionRow(primary, shuffleLabel, downloadLabel, shuffleEnabled, downloadEnabled, onShuffle, onDownload, modifier, secondary)
     if (com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) {
         YouTubeMusicMediaActionRow(primary, shuffleLabel, downloadLabel, shuffleEnabled, downloadEnabled, onShuffle, onDownload, modifier, secondary)
         return
@@ -589,6 +590,7 @@ internal fun ImmersiveMediaQuietAction(
     activeTint: Color = colors.accent,
     toggleable: Boolean = false
 ) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) return AtelierQuietAction(icon, label, enabled, onClick, active, toggleable)
     Box(
         modifier = Modifier
             .size(LevyraPlayerDesign.MinimumTouchTarget)
@@ -704,6 +706,7 @@ private fun SkinMediaHero(
     modifier: Modifier
 ): Boolean {
     when {
+        com.luc4n3x.levyra.ui.theme.LevyraIsAtelier -> AtelierMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, topBarHeight, onSubtitleClick, actions, artwork, modifier)
         com.luc4n3x.levyra.ui.theme.LevyraIsQobuz -> QobuzMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, topBarHeight, onSubtitleClick, actions, artwork, modifier)
         LevyraIsTorque -> TorqueMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, onSubtitleClick, actions, artwork, modifier)
         com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic -> YouTubeMusicMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, topBarHeight, onSubtitleClick, actions, artwork, modifier)

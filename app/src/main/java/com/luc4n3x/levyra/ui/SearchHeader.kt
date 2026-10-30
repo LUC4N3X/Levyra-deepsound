@@ -164,10 +164,10 @@ internal fun SearchHeader(
         onQuery, onClear, onBack, launchVoiceSearch, toggleRecognition)
 }
 
-private data class SearchVoiceActions(val voice: () -> Unit, val recognize: () -> Unit)
+internal data class SearchVoiceActions(val voice: () -> Unit, val recognize: () -> Unit)
 
 @Composable
-private fun rememberSearchVoiceActions(
+internal fun rememberSearchVoiceActions(
     recognitionBusy: Boolean, onRecognize: () -> Unit, onCancelRecognition: () -> Unit,
     onQuery: (String) -> Unit, onSearch: (String) -> Unit
 ): SearchVoiceActions {

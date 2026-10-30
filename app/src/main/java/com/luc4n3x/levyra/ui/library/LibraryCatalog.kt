@@ -581,7 +581,7 @@ private fun splitLibraryArtists(value: String): List<String> {
         .ifEmpty { listOf(value.trim()).filter(String::isNotBlank) }
 }
 
-private fun DownloadedTrack.toLibraryTrack(): Track = Track(
+internal fun DownloadedTrack.toLibraryTrack(): Track = Track(
     id = trackId.ifBlank { "offline-$id" },
     title = title,
     artist = artist,

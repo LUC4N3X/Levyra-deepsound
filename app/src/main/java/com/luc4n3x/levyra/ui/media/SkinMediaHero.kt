@@ -48,6 +48,7 @@ internal fun skinMediaColors(cover: Color = Color.Unspecified): ImmersiveMediaCo
     val p = LevyraActivePalette
     if (LevyraIsAppleMusic) return appleMusicMediaColors()
     if (com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) return youTubeMusicMediaColors()
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) return atelierMediaColors(cover)
     if (com.luc4n3x.levyra.ui.theme.LevyraIsQobuz) return qobuzMediaColors(cover)
     if (LevyraIsSpotify) {
         val field = if (cover.isSpecified) SpotifyDesign.heroSurface(cover) else SpotifyDesign.highlight

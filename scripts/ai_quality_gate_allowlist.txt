@@ -282,3 +282,6 @@ docs/assets/rewind-health/skin-Torque-health.png
 docs/assets/rewind-health/skin-Torque-rewind.png
 docs/assets/rewind-health/skin-YouTubeMusicStyle-health.png
 docs/assets/rewind-health/skin-YouTubeMusicStyle-rewind.png
+docs/assets/levyra-atelier/home.png
+docs/assets/levyra-atelier/player.png
+docs/assets/levyra-atelier/shelf.png

@@ -147,6 +147,7 @@ class HomeViewModel internal constructor(
     private val youtubeMusicHome: StateFlow<YoutubeMusicHomeSource>
 ) : LevyraScreenViewModel(root, ::homeProjection) {
     fun openExploreZone(zone: ExploreZone) = root.openExploreZone(zone)
+    fun selectTab(tab: com.luc4n3x.levyra.domain.LevyraTab) = root.selectTab(tab)
 
     private val freezeHomeContent = MutableStateFlow(false)
     private val explicitMoodSelection = MutableStateFlow<Mood?>(null)

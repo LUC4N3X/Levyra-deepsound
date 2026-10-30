@@ -23,7 +23,7 @@ import com.materialkolor.hct.Hct
 internal const val PrismPaletteId = "levyra_prism"
 internal const val TorquePaletteId = "levyra_torque"
 val LevyraIsTorque: Boolean get() = LevyraActivePalette.id == TorquePaletteId
-val LevyraIsPrism: Boolean get() = LevyraActivePalette.id == PrismPaletteId || LevyraIsTorque || LevyraIsIvory || LevyraIsSpotify || LevyraIsAppleMusic || LevyraIsYouTubeMusic || LevyraIsQobuz
+val LevyraIsPrism: Boolean get() = LevyraActivePalette.id == PrismPaletteId || LevyraIsTorque || LevyraIsIvory || LevyraIsSpotify || LevyraIsAppleMusic || LevyraIsYouTubeMusic || LevyraIsQobuz || LevyraIsAtelier
 internal val LevyraSkinManagesLayout: Boolean get() = LevyraIsNocturne || LevyraIsPrism
 internal val LevyraIsDefaultSkin: Boolean get() = !LevyraSkinManagesLayout
 internal val LevyraSkinLabel: String get() = LevyraActivePalette.label
@@ -33,19 +33,19 @@ internal var activeTorqueSettings by mutableStateOf(TorqueSettings())
     private set
 
 internal object PrismDesign {
-    val artworkCorner: Dp get() = if (LevyraIsTorque) 0.dp else if (LevyraIsQobuz) QobuzDesign.playerArtworkCorner else if (LevyraIsYouTubeMusic) YouTubeMusicDesign.playerArtworkCorner else if (LevyraIsAppleMusic) AppleMusicDesign.cornerL else if (LevyraIsSpotify) SpotifyDesign.cornerSmall else if (LevyraIsIvory) IvoryDesign.coverCorner else 18.dp
-    val tileCorner: Dp get() = if (LevyraIsTorque) 2.dp else if (LevyraIsQobuz) QobuzDesign.cardCorner else if (LevyraIsYouTubeMusic) YouTubeMusicDesign.cardCorner else if (LevyraIsAppleMusic) AppleMusicDesign.cornerL else if (LevyraIsSpotify) SpotifyDesign.cornerSmall else if (LevyraIsIvory) IvoryDesign.tileCorner else 12.dp
-    val surfaceCorner: Dp get() = if (LevyraIsTorque) 2.dp else if (LevyraIsQobuz) QobuzDesign.welcomeCorner else if (LevyraIsYouTubeMusic) YouTubeMusicDesign.tileCorner else if (LevyraIsAppleMusic) AppleMusicDesign.cornerXl else if (LevyraIsSpotify) SpotifyDesign.cornerLarge else if (LevyraIsIvory) IvoryDesign.surfaceCorner else 20.dp
-    val controlCorner: Dp get() = if (LevyraIsTorque) 2.dp else if (LevyraIsQobuz) QobuzDesign.cardCorner else if (LevyraIsYouTubeMusic) YouTubeMusicDesign.chipCorner else if (LevyraIsAppleMusic) AppleMusicDesign.cornerL else if (LevyraIsSpotify) SpotifyDesign.corner else if (LevyraIsIvory) IvoryDesign.controlCorner else 14.dp
+    val artworkCorner: Dp get() = if (LevyraIsTorque) 0.dp else if (LevyraIsAtelier) AtelierDesign.sleeveCorner else if (LevyraIsQobuz) QobuzDesign.playerArtworkCorner else if (LevyraIsYouTubeMusic) YouTubeMusicDesign.playerArtworkCorner else if (LevyraIsAppleMusic) AppleMusicDesign.cornerL else if (LevyraIsSpotify) SpotifyDesign.cornerSmall else if (LevyraIsIvory) IvoryDesign.coverCorner else 18.dp
+    val tileCorner: Dp get() = if (LevyraIsTorque) 2.dp else if (LevyraIsAtelier) AtelierDesign.cardCorner else if (LevyraIsQobuz) QobuzDesign.cardCorner else if (LevyraIsYouTubeMusic) YouTubeMusicDesign.cardCorner else if (LevyraIsAppleMusic) AppleMusicDesign.cornerL else if (LevyraIsSpotify) SpotifyDesign.cornerSmall else if (LevyraIsIvory) IvoryDesign.tileCorner else 12.dp
+    val surfaceCorner: Dp get() = if (LevyraIsTorque) 2.dp else if (LevyraIsAtelier) AtelierDesign.panelCorner else if (LevyraIsQobuz) QobuzDesign.welcomeCorner else if (LevyraIsYouTubeMusic) YouTubeMusicDesign.tileCorner else if (LevyraIsAppleMusic) AppleMusicDesign.cornerXl else if (LevyraIsSpotify) SpotifyDesign.cornerLarge else if (LevyraIsIvory) IvoryDesign.surfaceCorner else 20.dp
+    val controlCorner: Dp get() = if (LevyraIsTorque) 2.dp else if (LevyraIsAtelier) AtelierDesign.capsuleCorner else if (LevyraIsQobuz) QobuzDesign.cardCorner else if (LevyraIsYouTubeMusic) YouTubeMusicDesign.chipCorner else if (LevyraIsAppleMusic) AppleMusicDesign.cornerL else if (LevyraIsSpotify) SpotifyDesign.corner else if (LevyraIsIvory) IvoryDesign.controlCorner else 14.dp
     val gutter = 24.dp
     val rowHeight = 64.dp
     val iconTile = 44.dp
     val hairline = 1.dp
-    val seekbarHeight: Dp get() = if (LevyraIsTorque) 3.dp else if (LevyraIsIvory || LevyraIsSpotify || LevyraIsAppleMusic) 4.dp else if (LevyraIsYouTubeMusic) 2.dp else if (LevyraIsQobuz) QobuzDesign.playerSeek else 6.dp
+    val seekbarHeight: Dp get() = if (LevyraIsTorque) 3.dp else if (LevyraIsAtelier) AtelierDesign.playerSeek else if (LevyraIsIvory || LevyraIsSpotify || LevyraIsAppleMusic) 4.dp else if (LevyraIsYouTubeMusic) 2.dp else if (LevyraIsQobuz) QobuzDesign.playerSeek else 6.dp
 
     fun cut(corner: Dp): Shape =
         if (LevyraIsTorque) CutCornerShape(bottomEnd = 12.dp)
-        else if (LevyraIsIvory || LevyraIsSpotify || LevyraIsAppleMusic || LevyraIsYouTubeMusic || LevyraIsQobuz) RoundedCornerShape(corner)
+        else if (LevyraIsIvory || LevyraIsSpotify || LevyraIsAppleMusic || LevyraIsYouTubeMusic || LevyraIsQobuz || LevyraIsAtelier) RoundedCornerShape(corner)
         else RoundedCornerShape(topStart = corner, topEnd = corner, bottomEnd = corner / 3, bottomStart = corner)
 }
 
@@ -56,14 +56,14 @@ internal object PrismAccent {
     private val lightEnd = Color(0xFF9F2594)
 
     fun gradient(light: Boolean = LevyraActivePalette.isLight): Brush = when {
-        LevyraIsTorque || LevyraIsSpotify || LevyraIsAppleMusic || LevyraIsYouTubeMusic || LevyraIsQobuz -> SolidColor(LevyraActivePalette.blue)
+        LevyraIsTorque || LevyraIsSpotify || LevyraIsAppleMusic || LevyraIsYouTubeMusic || LevyraIsQobuz || LevyraIsAtelier -> SolidColor(LevyraActivePalette.blue)
         LevyraIsIvory -> SolidColor(IvoryDesign.ink)
         light -> Brush.horizontalGradient(listOf(lightStart, lightEnd))
         else -> Brush.horizontalGradient(listOf(nightStart, nightEnd))
     }
 
     fun wash(light: Boolean): Color = when {
-        LevyraIsTorque || LevyraIsIvory || LevyraIsSpotify || LevyraIsAppleMusic || LevyraIsYouTubeMusic || LevyraIsQobuz -> Color.Transparent
+        LevyraIsTorque || LevyraIsIvory || LevyraIsSpotify || LevyraIsAppleMusic || LevyraIsYouTubeMusic || LevyraIsQobuz || LevyraIsAtelier -> Color.Transparent
         light -> lightStart.copy(alpha = 0.07f)
         else -> nightStart.copy(alpha = 0.16f)
     }
@@ -84,7 +84,7 @@ private val TorqueShapes = Shapes(
     extraLarge = RoundedCornerShape(4.dp)
 )
 
-internal val PrismShapes: Shapes get() = if (LevyraIsTorque) TorqueShapes else if (LevyraIsSpotify) SpotifyShapes else if (LevyraIsAppleMusic) AppleMusicShapes else if (LevyraIsYouTubeMusic) YouTubeMusicShapes else if (LevyraIsQobuz) QobuzShapes else if (LevyraIsIvory) IvoryShapes else PrismRoundShapes
+internal val PrismShapes: Shapes get() = if (LevyraIsTorque) TorqueShapes else if (LevyraIsSpotify) SpotifyShapes else if (LevyraIsAppleMusic) AppleMusicShapes else if (LevyraIsYouTubeMusic) YouTubeMusicShapes else if (LevyraIsQobuz) QobuzShapes else if (LevyraIsAtelier) AtelierShapes else if (LevyraIsIvory) IvoryShapes else PrismRoundShapes
 
 internal val PrismTypography = levyraTypographyFor(LevyraFontPreset.Outfit).let { base ->
     base.copy(
@@ -177,6 +177,7 @@ internal fun prismMiniSettings(saved: LevyraMiniPlayerStudioSettings): LevyraMin
     if (LevyraIsAppleMusic) return appleMusicMiniSettings(saved)
     if (LevyraIsYouTubeMusic) return youTubeMusicMiniSettings(saved)
     if (LevyraIsQobuz) return qobuzMiniSettings(saved)
+    if (LevyraIsAtelier) return atelierMiniSettings(saved)
     val torque = LevyraIsTorque
     val tuning = LevyraMiniPlayerStudioSettings.spec(MiniPlayerStyle.Floating).defaults.copy(
         cornerDp = if (torque) 2 else if (LevyraIsIvory) 26 else 20, heightDp = 64, artworkDp = 46, shadow = 0, glow = 0,
@@ -222,6 +223,18 @@ private fun qobuzMiniSettings(saved: LevyraMiniPlayerStudioSettings): LevyraMini
     return saved.copy(style = MiniPlayerStyle.Floating, tunings = saved.tunings + (MiniPlayerStyle.Floating to tuning))
 }
 
+private fun atelierMiniSettings(saved: LevyraMiniPlayerStudioSettings): LevyraMiniPlayerStudioSettings {
+    val tuning = LevyraMiniPlayerStudioSettings.spec(MiniPlayerStyle.Floating).defaults.copy(
+        cornerDp = 18, heightDp = AtelierDesign.miniHeight.value.toInt(), shadow = 0, glow = 0,
+        insetDp = AtelierDesign.miniMargin.value.toInt(), artworkDp = AtelierDesign.miniArtwork.value.toInt(),
+        artworkShape = MiniArtworkShape.Rounded, progress = MiniProgressStyle.Line,
+        buttons = MiniButtonStyle.Plain, colorMode = MiniColorMode.Theme,
+        background = MiniBackground.Solid, motion = MiniMotion.Normal,
+        controls = saved.activeTuning().controls, showClose = false
+    )
+    return saved.copy(style = MiniPlayerStyle.Floating, tunings = saved.tunings + (MiniPlayerStyle.Floating to tuning))
+}
+
 private fun youTubeMusicMiniSettings(saved: LevyraMiniPlayerStudioSettings): LevyraMiniPlayerStudioSettings {
     val tuning = LevyraMiniPlayerStudioSettings.spec(MiniPlayerStyle.YtMusic).defaults.copy(
         cornerDp = 0, heightDp = YouTubeMusicDesign.miniHeight.value.toInt(), insetDp = 0,
@@ -238,6 +251,7 @@ internal fun skinMiniPlayerCorner(tuning: MiniPlayerTuning): Dp =
     when {
         LevyraIsYouTubeMusic -> 0.dp
         LevyraIsQobuz -> QobuzDesign.miniCorner
+        LevyraIsAtelier -> 18.dp
         LevyraIsTorque -> 2.dp
         LevyraIsIvory -> 26.dp
         LevyraIsSpotify -> SpotifyDesign.cornerLarge
