@@ -19,7 +19,6 @@ internal object QobuzCredentials {
     val accounts: List<Account> = listOf(
         Account("OFaPe-anQIhYgeeB5JqeWM3GQNwoATn654XxL5EFIBsvI9Lo_eZfkNPpNeg-eCXnr1aziYesv5AK4IuFlUFIig", "312369995", "e79f8b9be485692b0e5f9dd895826368", "15597984"),
         Account("WH65eWrQsVzJD-5-BynUHlygxr-k2cbsQhpTEwrLv-NCQGYHT8efrNECX_HY_dBtXOqaK592YwE5RQMuAlyQOw", "312369995", "e79f8b9be485692b0e5f9dd895826368", "15599269"),
-        Account("BRi6z1Cr33TQrE7i2kz836FojI4DJulWFt9O1_FeNUUydSlWN3_p31BT9-lDKbVbXQ3xAdvQiyFBJwz7S11AoQ", "312369995", "e79f8b9be485692b0e5f9dd895826368", "15599345"),
-        Account("GE_TIHpfcXQKJ8nPXDrS4X1n70RcHx661vK1eKLvfPn7qexs9zsrF36CHLlfLd_Nq037d6HKEz1mGGF7OxTDrA", "312369995", "e79f8b9be485692b0e5f9dd895826368", "15108682")
+        Account("BRi6z1Cr33TQrE7i2kz836FojI4DJulWFt9O1_FeNUUydSlWN3_p31BT9-lDKbVbXQ3xAdvQiyFBJwz7S11AoQ", "312369995", "e79f8b9be485692b0e5f9dd895826368", "15599345")
     )
 }
