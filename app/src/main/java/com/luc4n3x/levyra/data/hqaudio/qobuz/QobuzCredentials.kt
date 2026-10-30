@@ -17,6 +17,8 @@ internal object QobuzCredentials {
     class Account(val userAuthToken: String, val appId: String, val appSecret: String, val userId: String)
 
     val accounts: List<Account> = listOf(
-        Account("OFaPe-anQIhYgeeB5JqeWM3GQNwoATn654XxL5EFIBsvI9Lo_eZfkNPpNeg-eCXnr1aziYesv5AK4IuFlUFIig", "312369995", "e79f8b9be485692b0e5f9dd895826368", "15597984")
+        Account("OFaPe-anQIhYgeeB5JqeWM3GQNwoATn654XxL5EFIBsvI9Lo_eZfkNPpNeg-eCXnr1aziYesv5AK4IuFlUFIig", "312369995", "e79f8b9be485692b0e5f9dd895826368", "15597984"),
+        Account("VcAl4X-zZbr8ocIEswjDFxShKBn10GZDGFWI__dLLK0m16CKhvzuoWe8TaH0mcrs7HpIw05lyrBNvSVO7IVQ3Q", "312369995", "e79f8b9be485692b0e5f9dd895826368", "15574877"),
+        Account("Rnv4-0oMpyJfvLZbE3zuloSYSqCHQzqb6miNuZ9owDinLmHVM9Gc8Z66kLIU0C_Sd9x1-55-HGcPb2zyf1UuRA", "312369995", "e79f8b9be485692b0e5f9dd895826368", "15575008")
     )
 }
