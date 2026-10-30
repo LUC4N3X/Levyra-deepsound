@@ -985,6 +985,7 @@ internal fun QueueOverlay(
     onDownloadSelected: (List<Track>) -> Unit,
     onClose: () -> Unit
 ) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) return com.luc4n3x.levyra.ui.player.AtelierQueueScreen(state, onPlay, onToggleRadio, onMove, { onTrackActions(QueueRemovalTarget(it, state.activeQueueSpaceId, it.id != state.currentTrack?.id)) }, onClose)
     if (LevyraIsQobuz) return com.luc4n3x.levyra.ui.player.QobuzQueueScreen(state, onPlay, onToggleRadio, onMove, { onTrackActions(QueueRemovalTarget(it, state.activeQueueSpaceId, it.id != state.currentTrack?.id)) }, onClose)
     val strings = LocalLevyraStrings.current
     val haptics = LocalLevyraHaptics.current

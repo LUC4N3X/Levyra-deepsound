@@ -7,6 +7,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.Shapes
+import androidx.compose.material3.Typography
 import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
@@ -465,6 +466,7 @@ object LevyraThemeController {
             LevyraSkin.AppleMusicStyle -> appleMusicPalette(systemDark)
             LevyraSkin.YouTubeMusicStyle -> youTubeMusicPalette()
             LevyraSkin.QobuzStyle -> qobuzPalette(systemDark)
+            LevyraSkin.Atelier -> atelierPalette()
         }
         val tinted = when {
             skin != LevyraSkin.Default -> base
@@ -652,7 +654,8 @@ fun LevyraTheme(
     content: @Composable () -> Unit
 ) {
     val palette = activePaletteState.value
-    val colorScheme = remember(palette) { levyraColorScheme(palette) }
+    val atelierAccentKey = if (palette.id == AtelierPaletteId) AtelierDesign.accent else Color.Unspecified
+    val colorScheme = remember(palette, atelierAccentKey) { levyraColorScheme(palette) }
     val cornerScale = activeCornerScaleState.value
     val nocturne = LevyraIsNocturne
     val prism = LevyraIsPrism
@@ -671,7 +674,15 @@ fun LevyraTheme(
         colorScheme = colorScheme,
         motionScheme = motionScheme,
         shapes = shapes,
-        typography = if (nocturne) Nocturne78Typography else if (LevyraIsSpotify) SpotifyTypography else if (LevyraIsAppleMusic) AppleMusicTypography else if (LevyraIsYouTubeMusic) YouTubeMusicTypography else if (LevyraIsQobuz) QobuzTypography else if (ivory) IvoryTypography else if (prism) PrismTypography else levyraTypographyFor(fontPreset ?: activeFontPresetState.value),
+        typography = levyraThemeTypography(nocturne, ivory, prism, fontPreset),
         content = content
     )
 }
+
+private fun levyraThemeTypography(
+    nocturne: Boolean,
+    ivory: Boolean,
+    prism: Boolean,
+    fontPreset: LevyraFontPreset?
+): Typography =
+    if (nocturne) Nocturne78Typography else if (LevyraIsSpotify) SpotifyTypography else if (LevyraIsAppleMusic) AppleMusicTypography else if (LevyraIsYouTubeMusic) YouTubeMusicTypography else if (LevyraIsQobuz) QobuzTypography else if (LevyraIsAtelier) AtelierTypography else if (ivory) IvoryTypography else if (prism) PrismTypography else levyraTypographyFor(fontPreset ?: activeFontPresetState.value)

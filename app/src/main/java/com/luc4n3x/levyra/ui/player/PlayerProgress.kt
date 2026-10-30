@@ -54,7 +54,7 @@ internal fun PlayerProgress(
     style: PlayerProgressStyle = PlayerProgressStyle.Classic
 ) {
     if (PlayerPrismStyle) {
-        PrismSeekbar(positionMs, bufferedPositionMs, durationMs, onSeek, modifier)
+        PrismSeekbar(positionMs, bufferedPositionMs, durationMs, onSeek, modifier, isPlaying)
         return
     }
     val context = LocalContext.current.applicationContext

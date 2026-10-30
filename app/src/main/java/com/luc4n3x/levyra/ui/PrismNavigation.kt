@@ -76,6 +76,7 @@ private fun SkinBottomTabs(
         LevyraIsAppleMusic -> AppleMusicBottomTabs(entries, selected, applySystemInset, modifier, onSelect)
         LevyraIsYouTubeMusic -> YouTubeMusicBottomTabs(entries, selected, applySystemInset, modifier, onSelect)
         LevyraIsQobuz -> QobuzBottomTabs(entries, selected, applySystemInset, modifier, onSelect)
+        LevyraIsAtelier -> AtelierBottomTabs(entries, selected, applySystemInset, modifier, onSelect)
         LevyraIsIvory -> IvoryBottomTabs(entries, selected, applySystemInset, modifier, onSelect)
         else -> return false
     }

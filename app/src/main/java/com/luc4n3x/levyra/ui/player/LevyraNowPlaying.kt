@@ -429,15 +429,18 @@ private fun LevyraNowPlayingContent(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier && track != null && !state.isVideoMode && !liveRadio) Color.Transparent else Color.Black)
     ) {
         val layoutMode = resolveLevyraLayoutMode(maxWidth.value, maxHeight.value)
         val compactLandscape = isLevyraCompactLandscape(maxWidth.value, maxHeight.value)
         val playerPane = resolveNowPlayingPane(maxWidth.value, maxHeight.value, state.isVideoMode)
+        val atelierScene = com.luc4n3x.levyra.ui.theme.LevyraIsAtelier && track != null && !state.isVideoMode && !liveRadio && playerPane != LevyraPlayerPane.SideBySide
+        if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier && !atelierScene) Box(Modifier.matchParentSize().background(Color.Black))
         val appleMusicCanvas = AppleMusicCanvas(state.motionArtwork, motionEnabled && !lyricsFlip.lyricsSettled, state.interfaceSettings.canvasQuality, livingArtwork)
         val appleMusicImmersive = appleMusicPlayer && appleMusicCanvasImmersive(appleMusicCanvas, maxWidth, maxHeight, state.isVideoMode)
         val showTopArtistCluster = playerArtistHits.size > 1 &&
             !LevyraIsQobuz &&
+            !com.luc4n3x.levyra.ui.theme.LevyraIsAtelier &&
             !appleMusicImmersive &&
             !liveRadio &&
             !state.isVideoMode &&
@@ -546,7 +549,7 @@ private fun LevyraNowPlayingContent(
             DefaultBackdropFocus
         }
 
-        PlayerVisualHost(
+        if (!atelierScene) PlayerVisualHost(
             backgroundMode = backgroundMode,
             artworkUrl = artworkUrl,
             ambience = backdropAmbience,
@@ -1244,7 +1247,7 @@ private fun LevyraNowPlayingContent(
                     video = state.isVideoMode
                 )
             } else {
-                PrismPlayerScene(track, deckSlots, artworkCap, metadata = { metadataBlock(track) }, transport = transportBlock, modifier = deckModifier, playing = state.isPlaying)
+                PrismPlayerScene(track, deckSlots, artworkCap, metadata = { metadataBlock(track) }, transport = transportBlock, modifier = deckModifier, playing = state.isPlaying, progress = if (state.durationMs > 0L) (state.positionMs.toFloat() / state.durationMs).coerceIn(0f, 1f) else 0f, hasCanvas = state.motionArtwork != null && motionEnabled)
             }
         } else if (deckLayout == PlayerDeckLayout.Aura && track != null) {
             PlayerAuraDeck(
@@ -1690,7 +1693,7 @@ private fun LevyraNowPlayingContent(
 
         val captionWriters = creditWriters?.takeIf { it.first == track?.id }?.second.orEmpty()
         AnimatedVisibility(
-            visible = captionWriters.isNotEmpty() && !liveRadio && !appleMusicImmersive && !LevyraIsSpotify &&
+            visible = captionWriters.isNotEmpty() && !liveRadio && !appleMusicImmersive && !LevyraIsSpotify && !com.luc4n3x.levyra.ui.theme.LevyraIsAtelier &&
                 !state.isVideoMode && playerPane != LevyraPlayerPane.SideBySide &&
                 deckLayout != PlayerDeckLayout.Aura && deckLayout != PlayerDeckLayout.Pulse,
             enter = fadeIn(tween(if (animated) CreditsCaptionRevealMs else 0)),
