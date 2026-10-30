@@ -3,6 +3,8 @@ package com.luc4n3x.levyra.data.hqaudio
 import com.luc4n3x.levyra.domain.AlternativeMatchVerdict
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import java.util.concurrent.CopyOnWriteArrayList
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -462,12 +464,18 @@ class HighQualityAudioResolverTest {
 
     @Test
     fun playingAQueuedBackgroundTrackStartsItsLookupImmediately() {
+        val blockerStarted = CompletableDeferred<Unit>()
         val provider = FakeHighQualityProvider(searchOutcome = { title ->
-            if (title.contains("Slow")) delay(5_000L)
+            if (title.contains("Slow")) {
+                blockerStarted.complete(Unit)
+                delay(5_000L)
+            }
             ProviderSearchOutcome.Found(listOf(candidate()))
         }, lookupOutcome = { ProviderLookupOutcome.Found(candidate()) })
         val resolver = resolver(provider, mode = HighQualityAudioMode.PREFER_LOSSLESS)
         val blocker = resolver.begin("$identity-slow", query(title = "Slow"), background = true)
+        // Make sure the slow lookup owns the single background permit before queuing the next one.
+        runBlocking { withTimeout(5_000L) { blockerStarted.await() } }
         val queued = resolver.begin(identity, query(), background = true)
 
         val played = runBlocking { resolver.await(resolver.begin(identity, query()), 2_000L) }
