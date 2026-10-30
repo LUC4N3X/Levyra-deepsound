@@ -2443,6 +2443,13 @@ fun LevyraApp(
                 accent = yourSoundAccent
             )
             val homeSaveableState = rememberSaveableStateHolder()
+            val dockMiniMergeable = state.interfaceSettings.dockMorphActive() &&
+                skinNavigationSettings(navigationStudio.settings).style.supportsDockMorph &&
+                !dockSideBySide && !state.showSettings
+            val dockMiniMerged = remember(dockState, dockMiniMergeable) {
+                { dockMiniMergeable && dockState.compact }
+            }
+            CompositionLocalProvider(LocalDockMiniMerged provides dockMiniMerged) {
             AnimatedContent(
                 targetState = backgroundTab,
                 modifier = Modifier
@@ -2582,6 +2589,7 @@ fun LevyraApp(
                         LevyraTab.Player -> Unit
                     }
                 }
+            }
             }
             }
 
@@ -3985,6 +3993,8 @@ private fun tabBarBottomContentInset(miniPlayerVisible: Boolean, animationsEnabl
     val collapsed = navigationHeight + navigationBarInset + LevyraBottomContentGap + LocalNavDockExtraClearance.current
     val miniPlayerExtra = if (LevyraIsPrism) {
         84.dp
+    } else if (LocalDockMiniMerged.current()) {
+        0.dp
     } else if (levyraWindowIsCompactLandscape()) {
         (LevyraMiniPlayerHeight - LevyraTabBarHeight).coerceAtLeast(0.dp)
     } else {
