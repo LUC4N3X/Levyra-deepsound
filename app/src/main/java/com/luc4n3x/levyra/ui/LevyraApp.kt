@@ -3183,7 +3183,6 @@ fun LevyraApp(
 
             AnimatedVisibility(visible = state.showAudioQualityPanel, enter = miniEnter, exit = miniExit) {
                 val autoEqCatalog by viewModel.autoEqCatalog.collectAsStateWithLifecycle()
-                val qobuzEnabled by viewModel.qobuzEnabled.collectAsStateWithLifecycle()
                 AudioSettingsPanel(
                     selected = state.audioQuality,
                     currentTrack = state.currentTrack,
@@ -3191,8 +3190,6 @@ fun LevyraApp(
                     onSelect = viewModel::setAudioQuality,
                     highQualityAudioMode = state.highQualityAudioMode,
                     onHighQualityAudioMode = viewModel::setHighQualityAudioMode,
-                    qobuzEnabled = qobuzEnabled,
-                    onQobuzEnabled = viewModel::setQobuzEnabled,
                     onEqualizerEnabled = viewModel::setEqualizerEnabled,
                     onPreset = viewModel::setEqualizerPreset,
                     onBandLevel = viewModel::setEqualizerBand,
