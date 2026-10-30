@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-30T05:55:02Z",
+  "generatedAt": "2026-10-30T13:02:01Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -83,7 +83,7 @@
             "confidence": 100,
             "artistBrowseId": "UCcVStX6y07F8-euPi0A7hLA"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0250baf7830444097378d8fd90"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cea127eb16a13da2bca75532"
         },
         {
           "position": 4,
@@ -180,7 +180,7 @@
             "confidence": 100,
             "artistBrowseId": "UCcVStX6y07F8-euPi0A7hLA"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0250baf7830444097378d8fd90"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cea127eb16a13da2bca75532"
         },
         {
           "position": 8,
@@ -281,7 +281,7 @@
         },
         {
           "position": 12,
-          "id": "levyra-5983832589049c97c7ae",
+          "id": "levyra-8b698fecd29161adc383",
           "title": "Pookie (feat. Capo Plaza) - Remix",
           "artists": [
             {
@@ -292,12 +292,12 @@
             }
           ],
           "album": {
-            "name": "NAKAMURA (Deluxe Edition)",
-            "releaseDate": "2019-10-25"
+            "name": "Pookie (feat. Capo Plaza) [Remix]",
+            "releaseDate": "2019-08-30"
           },
           "durationMs": 188400,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0286f3107d299c2d50bb8b4500"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02495a1a598ac46bc350f64b8f"
         },
         {
           "position": 13,
@@ -811,7 +811,7 @@
             "confidence": 100,
             "artistBrowseId": "UCcVStX6y07F8-euPi0A7hLA"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0250baf7830444097378d8fd90"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cea127eb16a13da2bca75532"
         },
         {
           "position": 34,
@@ -1018,12 +1018,6 @@
           },
           "durationMs": 184803,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "H80uslbif2U",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCqOg2w32wuqICG5s2esrz5w"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0261d90e6750f76fe0ad95befe"
         },
         {
@@ -1558,7 +1552,7 @@
         },
         {
           "position": 15,
-          "id": "levyra-ef444afbdd8812785bd5",
+          "id": "levyra-35844a86b63c91c223c1",
           "title": "Man I Need",
           "artists": [
             {
@@ -1566,8 +1560,8 @@
             }
           ],
           "album": {
-            "name": "Man I Need",
-            "releaseDate": "2025-08-15"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -1577,7 +1571,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 16,
@@ -1640,7 +1634,7 @@
         },
         {
           "position": 19,
-          "id": "levyra-9824cf7c6204b58ac7c7",
+          "id": "levyra-eade1c4be5015d681297",
           "title": "Iris",
           "artists": [
             {
@@ -1648,7 +1642,7 @@
             }
           ],
           "album": {
-            "name": "Dizzy up the Girl",
+            "name": "Stay with You",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
@@ -1659,7 +1653,7 @@
             "confidence": 100,
             "artistBrowseId": "UCjOkbXu7vYeeQrA7R3-OfXQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
         },
         {
           "position": 20,
@@ -1817,6 +1811,12 @@
           },
           "durationMs": 480186,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "wbt_E7LNDaA",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC52ZqHVQz5OoGhvbWiRal6g"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e022e92f776279eaf45d14a33fd"
         },
         {
@@ -2373,12 +2373,6 @@
           },
           "durationMs": 227880,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "sbLqX7cUKoM",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCU6cE7pdJPc6DU2jSrKEsdQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02adfb5909ec66db5fbb4d06c8"
         }
       ]
@@ -2853,7 +2847,7 @@
         },
         {
           "position": 21,
-          "id": "levyra-eade1c4be5015d681297",
+          "id": "levyra-9824cf7c6204b58ac7c7",
           "title": "Iris",
           "artists": [
             {
@@ -2861,7 +2855,7 @@
             }
           ],
           "album": {
-            "name": "Stay with You",
+            "name": "Dizzy up the Girl",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
@@ -2872,7 +2866,7 @@
             "confidence": 100,
             "artistBrowseId": "UCjOkbXu7vYeeQrA7R3-OfXQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
         },
         {
           "position": 22,
@@ -3584,7 +3578,7 @@
             "confidence": 100,
             "artistBrowseId": "UCVcoqmzOo3QmzMdf8InN_Tw"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020607556aaf98d0c4a86813c4"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f61398710b1dbddbaaf3eaca"
         },
         {
           "position": 2,
@@ -4804,6 +4798,12 @@
           },
           "durationMs": 194400,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "EXLgoszjB4g",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCyJt1KQJbG1ESx5ElTiTFuw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e026d15a9a3c81d338dbcfdbf9b"
         }
       ]
@@ -5054,6 +5054,12 @@
           },
           "durationMs": 183720,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "zqFgv5ISRtY",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UChFWqB_AO6oTBS8I4GshqHg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020f5adf9acb90b76b59df7ba5"
         },
         {
@@ -6321,6 +6327,14 @@
           },
           "durationMs": 227333,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "64wxAbbWNag",
+            "audioConfidence": 100,
+            "videoId": "Ahha3Cqe_fk",
+            "videoConfidence": 96,
+            "confidence": 100,
+            "artistBrowseId": "UC_7s69e1mDS3lgcTMJEPjCg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021d955011a3ed477dc77865ad"
         },
         {
@@ -6650,6 +6664,12 @@
           },
           "durationMs": 202881,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "a5hSOvXeSG4",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCSqZrVetkn79zVKJZRi3AyQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02672f0378308f28cc4a9e5e6b"
         },
         {
@@ -6965,6 +6985,12 @@
           },
           "durationMs": 187520,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Q7cQU86CDB0",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCxgN32UVVztKAQd2HkXzBtw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025f1f51d14e8bea89484ecd1b"
         },
         {
@@ -9211,12 +9237,6 @@
           },
           "durationMs": 288671,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "dAuGZo5b850",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC5TYeA9Hw3L5VlZYtMt3pqg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0238ccaf860a6c35e2e3f8a0a7"
         },
         {
@@ -9332,12 +9352,6 @@
           },
           "durationMs": 186501,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "gFOohmviK0s",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCB6w3YIXxmlpbGg8YDVpPgA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02928315d46a885bf66904c214"
         },
         {
@@ -9450,6 +9464,12 @@
           },
           "durationMs": 159130,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "CN2A65uVQUc",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCiRh0wQAZr63K5PWPffehsQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02db99a6d08977d4fe4cafa14d"
         },
         {
@@ -14662,6 +14682,12 @@
           },
           "durationMs": 334053,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "4wTZ-Bx4aj4",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC0TV38yNPp2b8r1AilfwEOQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c4a9b2f7b917402f799b1ecd"
         },
         {
@@ -15296,11 +15322,19 @@
           },
           "durationMs": 285853,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "lQ7u6mIFWTQ",
+            "audioConfidence": 100,
+            "videoId": "CcNo07Xp8aQ",
+            "videoConfidence": 98,
+            "confidence": 100,
+            "artistBrowseId": "UCtUP6i_G7Zf_e1ndgiRfi1g"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e024689597708c1b0b3dcb9ecaf"
         },
         {
           "position": 34,
-          "id": "levyra-ef444afbdd8812785bd5",
+          "id": "levyra-35844a86b63c91c223c1",
           "title": "Man I Need",
           "artists": [
             {
@@ -15308,8 +15342,8 @@
             }
           ],
           "album": {
-            "name": "Man I Need",
-            "releaseDate": "2025-08-15"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -15319,7 +15353,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 35,
@@ -15362,12 +15396,6 @@
           },
           "durationMs": 138947,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "8Wqa_EHl3-o",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCgdudhVrecjBxDEuk7-ZzmA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023c2941cc5b200a0b17f9c6de"
         },
         {
@@ -15385,6 +15413,14 @@
           },
           "durationMs": 189898,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "sGgMHiRiklo",
+            "audioConfidence": 100,
+            "videoId": "uvY8fdgezLQ",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCB-GmTOjewVU2F_7S4ZFmEA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
         },
         {
@@ -16359,7 +16395,7 @@
         },
         {
           "position": 33,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -16367,8 +16403,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -16378,7 +16414,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 34,
@@ -17319,7 +17355,7 @@
             "videoId": "caLTOaZ_6-g",
             "videoConfidence": 99,
             "confidence": 100,
-            "artistBrowseId": "UCeF_o-C77nf6Rz0NUWOEQYA"
+            "artistBrowseId": "UC9izaYyOq9s_tJ6ipRvBVKA"
           },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02dc4c50d5c720894f5a5acb70"
         },
@@ -17635,7 +17671,7 @@
         },
         {
           "position": 40,
-          "id": "levyra-8c89ffdb1212622f2dcf",
+          "id": "levyra-a9b8576a2fa18a7f2377",
           "title": "Na ostří nože",
           "artists": [
             {
@@ -17643,12 +17679,12 @@
             }
           ],
           "album": {
-            "name": "Singles & Specials",
-            "releaseDate": "2020-12-04"
+            "name": "Best Of",
+            "releaseDate": "2016-11-18"
           },
-          "durationMs": 223000,
+          "durationMs": 223426,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021760d72f6fb7ef19cb96bab0"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cbb0024450f19e6c8ef3daa4"
         },
         {
           "position": 41,
@@ -17736,6 +17772,14 @@
           },
           "durationMs": 227333,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "64wxAbbWNag",
+            "audioConfidence": 100,
+            "videoId": "Ahha3Cqe_fk",
+            "videoConfidence": 96,
+            "confidence": 100,
+            "artistBrowseId": "UC_7s69e1mDS3lgcTMJEPjCg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021d955011a3ed477dc77865ad"
         },
         {
@@ -17906,7 +17950,7 @@
           "durationMs": 108000,
           "explicit": true,
           "youtubeMusic": {
-            "audioVideoId": "XZhS8rSdcoI",
+            "audioVideoId": "1ILKxhV5V4c",
             "audioConfidence": 100,
             "confidence": 100,
             "artistBrowseId": "UCvJLQlVdWiIU0qYmowdKh6g"
@@ -17999,12 +18043,6 @@
           },
           "durationMs": 195789,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "N0nEDgmqHoU",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCEu1MLny5crjlbBtuoVlK6Q"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0238898009d002b12da70ea103"
         },
         {
@@ -18100,7 +18138,7 @@
           "durationMs": 89665,
           "explicit": true,
           "youtubeMusic": {
-            "audioVideoId": "-pqK0O6Ihi0",
+            "audioVideoId": "J47V0IYfGS8",
             "audioConfidence": 100,
             "confidence": 100,
             "artistBrowseId": "UCWhD3B8qCbNsHwuoRX-arjA"
@@ -18200,7 +18238,7 @@
           "durationMs": 114636,
           "explicit": true,
           "youtubeMusic": {
-            "audioVideoId": "ERqpegrWMaY",
+            "audioVideoId": "wagDKRtRYis",
             "audioConfidence": 100,
             "confidence": 100,
             "artistBrowseId": "UCyvf9f4aXkEXoIKbIWi6DEg"
@@ -18284,6 +18322,12 @@
           },
           "durationMs": 126967,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "wiZqtsCuodI",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCbj2MycOiMP2yffFYW0t8lA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f49aca7a14ea9f19f664a7ca"
         },
         {
@@ -18679,6 +18723,14 @@
           },
           "durationMs": 209047,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "QphdKLS24BA",
+            "audioConfidence": 100,
+            "videoId": "LCB1x5NGI74",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCQPj-oR_n6ia-qQwpboj3vw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c07727662f0fee45ca3ca930"
         },
         {
@@ -19003,6 +19055,12 @@
           },
           "durationMs": 205566,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "QYNNj_gjULQ",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCQ-asW57N-k-vcUKg0vPmog"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e024c69c512b0e3d0ed3f7480a7"
         },
         {
@@ -20262,6 +20320,12 @@
           },
           "durationMs": 250320,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "XDrNd5qkza4",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCm2InzSdDYk1zurgB73wBEw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e784e3cd98c9b356f70240dd"
         },
         {
@@ -20344,6 +20408,14 @@
           },
           "durationMs": 227333,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "64wxAbbWNag",
+            "audioConfidence": 100,
+            "videoId": "Ahha3Cqe_fk",
+            "videoConfidence": 96,
+            "confidence": 100,
+            "artistBrowseId": "UC_7s69e1mDS3lgcTMJEPjCg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021d955011a3ed477dc77865ad"
         },
         {
@@ -21967,14 +22039,6 @@
           },
           "durationMs": 277045,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "PbkLjbDt6o8",
-            "audioConfidence": 100,
-            "videoId": "L-tQ2lx27t8",
-            "videoConfidence": 98,
-            "confidence": 100,
-            "artistBrowseId": "UCT418-ChE6rgGuQlqzFsKZA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021416bdebb2ccb997a0bf5c47"
         },
         {
@@ -22094,12 +22158,6 @@
           },
           "durationMs": 181911,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "qsqvJpOgrWw",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCNVIo0UJXTdEnsRkCB9Q03w"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02df9518845a9897da168eb9df"
         }
       ]
@@ -22148,12 +22206,6 @@
           },
           "durationMs": 181911,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "qsqvJpOgrWw",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCNVIo0UJXTdEnsRkCB9Q03w"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02df9518845a9897da168eb9df"
         },
         {
@@ -22194,6 +22246,12 @@
           },
           "durationMs": 181560,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "1uDzUPzS2w8",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCM9SwoeOLtalqxyuZXIGe2Q"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02831c0d124fc7c7a3ad0618ab"
         },
         {
@@ -23623,12 +23681,6 @@
           },
           "durationMs": 279826,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "5U5Ru0nTiUM",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCVGomUS__PL0c4jDXa0QwXA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d59858d0e08eab63874d1b83"
         },
         {
@@ -23764,12 +23816,6 @@
           },
           "durationMs": 374205,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "yDKzg1KHkeA",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCDxKh1gFWeYsqePvgVzmPoQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e7fe7d656750737e8d369f95"
         },
         {
@@ -24313,12 +24359,6 @@
           },
           "durationMs": 218769,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "0zmIgxfZz0M",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCfp03WF5o4epbVJpSIr4Rag"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0213dcb5da9470852eb67f1783"
         },
         {
@@ -24957,6 +24997,12 @@
           },
           "durationMs": 252093,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "tZNSzH2g06Q",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCOg-0UfMp81bEJn_tGJw8Vw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0205d8a1a7ebb27bdd2fbdc685"
         },
         {
@@ -25047,6 +25093,14 @@
           },
           "durationMs": 227333,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "64wxAbbWNag",
+            "audioConfidence": 100,
+            "videoId": "Ahha3Cqe_fk",
+            "videoConfidence": 96,
+            "confidence": 100,
+            "artistBrowseId": "UC_7s69e1mDS3lgcTMJEPjCg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021d955011a3ed477dc77865ad"
         },
         {
@@ -25178,6 +25232,12 @@
           },
           "durationMs": 261048,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "fUdfDKyrbjk",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCqb45S9bLH7TKWdfRswVh_g"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0232ab17f5515e51490841f648"
         },
         {
@@ -25472,6 +25532,12 @@
           },
           "durationMs": 300512,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "YKK5_OQiEa4",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCn0hl0XZ3bFREX2SCBZK3Pw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0269222d0908ecf5d22cc9d960"
         },
         {
@@ -25955,14 +26021,6 @@
           },
           "durationMs": 315311,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "rzVP8ix-H9Y",
-            "audioConfidence": 100,
-            "videoId": "fTXd-DpN3AI",
-            "videoConfidence": 98,
-            "confidence": 100,
-            "artistBrowseId": "UC27GA5_WXOpo39rdGI0kpEQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025a0419100f999929e19c6ca7"
         },
         {
@@ -26771,11 +26829,11 @@
           ],
           "album": {
             "name": "Tình Mình Lạ Kì",
-            "releaseDate": "2026-01-21"
+            "releaseDate": "2021-07-11"
           },
           "durationMs": 300750,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c5336e2fba1a96d84161ce99"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02921051f4f50a3d20946afb16"
         },
         {
           "position": 49,
@@ -27408,12 +27466,6 @@
           },
           "durationMs": 256946,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "3M0Xl4Tl968",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC66PSZKb6I_m6r1W-KK3F6Q"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02b324274fba21a713c650259f"
         },
         {
@@ -27454,6 +27506,12 @@
           },
           "durationMs": 291000,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "X5C3BNcYq10",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCheP-dAdGvf0aPud2RoY1sg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028cef18173b59380b5129b23c"
         },
         {
@@ -27494,12 +27552,6 @@
           },
           "durationMs": 250232,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "9owV4em4Q64",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCkIq_N5Jwma0f9zvHgz3mGg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02b665b01883c990a870e2a99c"
         },
         {
@@ -27860,12 +27912,6 @@
           },
           "durationMs": 267000,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "LaeFRvmJ-DM",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCY0hOLkcYl09pJodFg1fx8w"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02373f9a429a9567752b199cf7"
         },
         {
@@ -27886,8 +27932,8 @@
           "youtubeMusic": {
             "audioVideoId": "6-aW6-4jrus",
             "audioConfidence": 100,
-            "videoId": "Rj2iemP05B8",
-            "videoConfidence": 99,
+            "videoId": "HTVjp1zGieE",
+            "videoConfidence": 97,
             "confidence": 100,
             "artistBrowseId": "UCgfon7MlYjVKFT1xv5tyU8g"
           },
@@ -29024,6 +29070,12 @@
           },
           "durationMs": 480186,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "wbt_E7LNDaA",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC52ZqHVQz5OoGhvbWiRal6g"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e022e92f776279eaf45d14a33fd"
         },
         {
@@ -29064,6 +29116,14 @@
           },
           "durationMs": 227333,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "64wxAbbWNag",
+            "audioConfidence": 100,
+            "videoId": "Ahha3Cqe_fk",
+            "videoConfidence": 96,
+            "confidence": 100,
+            "artistBrowseId": "UC_7s69e1mDS3lgcTMJEPjCg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021d955011a3ed477dc77865ad"
         }
       ]
@@ -29214,12 +29274,6 @@
           },
           "durationMs": 214545,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "qcDK5Y2sUCA",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCfoT511okwEjffmXx1KeVoQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028fb09d825227f9738b6a1eef"
         },
         {
@@ -29785,6 +29839,12 @@
           },
           "durationMs": 188591,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "jJ8fPgsiwvg",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCNsMksDl9za5N9R7hyYa97g"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02759a0f224bec949bf7218a2d"
         },
         {
@@ -30226,6 +30286,14 @@
           },
           "durationMs": 227333,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "64wxAbbWNag",
+            "audioConfidence": 100,
+            "videoId": "Ahha3Cqe_fk",
+            "videoConfidence": 96,
+            "confidence": 100,
+            "artistBrowseId": "UC_7s69e1mDS3lgcTMJEPjCg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021d955011a3ed477dc77865ad"
         },
         {
@@ -30638,7 +30706,7 @@
         },
         {
           "position": 28,
-          "id": "levyra-ef444afbdd8812785bd5",
+          "id": "levyra-35844a86b63c91c223c1",
           "title": "Man I Need",
           "artists": [
             {
@@ -30646,8 +30714,8 @@
             }
           ],
           "album": {
-            "name": "Man I Need",
-            "releaseDate": "2025-08-15"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -30657,7 +30725,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 29,
@@ -30955,6 +31023,12 @@
           },
           "durationMs": 480186,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "wbt_E7LNDaA",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC52ZqHVQz5OoGhvbWiRal6g"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e022e92f776279eaf45d14a33fd"
         },
         {
@@ -32085,7 +32159,7 @@
         },
         {
           "position": 38,
-          "id": "levyra-d32efaa6b6fc2ab74f92",
+          "id": "levyra-9732deedafb1e85ddf12",
           "title": "El Teléfono",
           "artists": [
             {
@@ -32096,12 +32170,12 @@
             }
           ],
           "album": {
-            "name": "Machete Music Chronicles: Vol. I",
-            "releaseDate": "2025-03-03"
+            "name": "The Bad Boy",
+            "releaseDate": "2006-01-01"
           },
-          "durationMs": 239293,
+          "durationMs": 235626,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c6f871435b37ea62d7032f29"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d48062765f4871ca6a2917e1"
         },
         {
           "position": 39,
@@ -33143,6 +33217,14 @@
           },
           "durationMs": 189898,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "sGgMHiRiklo",
+            "audioConfidence": 100,
+            "videoId": "uvY8fdgezLQ",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCB-GmTOjewVU2F_7S4ZFmEA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
         },
         {
@@ -33787,6 +33869,14 @@
           },
           "durationMs": 227333,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "64wxAbbWNag",
+            "audioConfidence": 100,
+            "videoId": "Ahha3Cqe_fk",
+            "videoConfidence": 96,
+            "confidence": 100,
+            "artistBrowseId": "UC_7s69e1mDS3lgcTMJEPjCg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021d955011a3ed477dc77865ad"
         },
         {
@@ -33875,6 +33965,12 @@
           },
           "durationMs": 202881,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "a5hSOvXeSG4",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCSqZrVetkn79zVKJZRi3AyQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02672f0378308f28cc4a9e5e6b"
         },
         {
@@ -36830,6 +36926,12 @@
           },
           "durationMs": 480186,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "wbt_E7LNDaA",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC52ZqHVQz5OoGhvbWiRal6g"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e022e92f776279eaf45d14a33fd"
         },
         {
@@ -37120,12 +37222,6 @@
           },
           "durationMs": 146086,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "h8yCqJbjtE0",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCGTKMCLP6zCiTumnyJzpyAQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0238d387c8592057da3e42f758"
         },
         {
@@ -37146,12 +37242,6 @@
           },
           "durationMs": 244642,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "A8bLXAwq-hA",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCc3e8O2V5_7OA300ursDyFQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025c72961c9ad2bfe912fb56c3"
         },
         {
@@ -37172,12 +37262,6 @@
           },
           "durationMs": 244000,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "nrqmP7Ui954",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC3vpYFFzqIzsXbMgneDTSeQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02023709ab1d184c478fd0c182"
         },
         {
@@ -37201,12 +37285,6 @@
           },
           "durationMs": 212783,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "mVP-ptJ84M0",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC3vpYFFzqIzsXbMgneDTSeQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ef1268a0337de25edb1f9b05"
         },
         {
@@ -44254,12 +44332,6 @@
           },
           "durationMs": 212783,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "mVP-ptJ84M0",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC3vpYFFzqIzsXbMgneDTSeQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ef1268a0337de25edb1f9b05"
         },
         {
@@ -44761,12 +44833,6 @@
           },
           "durationMs": 181911,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "qsqvJpOgrWw",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCNVIo0UJXTdEnsRkCB9Q03w"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02df9518845a9897da168eb9df"
         },
         {
@@ -44832,7 +44898,7 @@
       "title": "New releases",
       "description": "Brand new music from Gracie Abrams, Dominic Fike, Skye Newman, MK and more!",
       "artworkUrl": "https://i.scdn.co/image/ab67706f000000021aa5739e4c1c0f2507fac66c",
-      "totalSourceItems": 101,
+      "totalSourceItems": 100,
       "tracks": [
         {
           "position": 1,
@@ -45079,7 +45145,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02b3529e261f6d419cb90bf8b0"
         },
         {
-          "position": 16,
+          "position": 15,
           "id": "levyra-d3d4c37fa12ce0752da9",
           "title": "Loverboy",
           "artists": [
@@ -45096,7 +45162,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0227dc1260a1b6682306473476"
         },
         {
-          "position": 17,
+          "position": 16,
           "id": "levyra-0085deed15c39a159db0",
           "title": "ABSURD",
           "artists": [
@@ -45116,7 +45182,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02087ad6cf1674b5c9fd3df702"
         },
         {
-          "position": 18,
+          "position": 17,
           "id": "levyra-c810a371ca2f41219285",
           "title": "In The Night",
           "artists": [
@@ -45133,7 +45199,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0289a98c82433ac8d4a232fce3"
         },
         {
-          "position": 19,
+          "position": 18,
           "id": "levyra-a0ab6078f828c1645d70",
           "title": "Lightyears",
           "artists": [
@@ -45150,7 +45216,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025a2a90ae2e48c3ed63f7c9ea"
         },
         {
-          "position": 20,
+          "position": 19,
           "id": "levyra-aae41f35451ac315f450",
           "title": "Bora",
           "artists": [
@@ -45165,6 +45231,23 @@
           "durationMs": 165762,
           "explicit": false,
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028f89b2f9496d42c3e916be71"
+        },
+        {
+          "position": 20,
+          "id": "levyra-135adcfca9be8f919791",
+          "title": "ADDICTED",
+          "artists": [
+            {
+              "name": "JISOO"
+            }
+          ],
+          "album": {
+            "name": "ADDICTED",
+            "releaseDate": "2026-10-29"
+          },
+          "durationMs": 179062,
+          "explicit": false,
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02729eea5a028d73d2596e793e"
         }
       ]
     },
@@ -45871,7 +45954,7 @@
           },
           "durationMs": 141083,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023d73a6d2f21ae21e7daea316"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025f8f631ae1f5bd6108743d8f"
         },
         {
           "position": 19,
@@ -46288,7 +46371,7 @@
       "title": "New releases",
       "description": "Neue Musik von AYLIVA, Ikkimel, ZAH1DE, Nico Santos, Gracie Abrams, Gunna & vielen mehr!",
       "artworkUrl": "https://i.scdn.co/image/ab67706f00000002bf77a9a7d4932b8673bf9b16",
-      "totalSourceItems": 84,
+      "totalSourceItems": 85,
       "tracks": [
         {
           "position": 1,
@@ -46433,7 +46516,7 @@
           },
           "durationMs": 138461,
           "explicit": true,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e022b523070ef52f2dc1fdbaa21"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023215247d447106dc5b1d08c2"
         },
         {
           "position": 11,
@@ -46466,7 +46549,7 @@
           ],
           "album": {
             "name": "What If I Told You",
-            "releaseDate": "2026-10-29"
+            "releaseDate": "2026-10-30"
           },
           "durationMs": 174407,
           "explicit": false,
@@ -46942,12 +47025,6 @@
           },
           "durationMs": 181911,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "qsqvJpOgrWw",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCNVIo0UJXTdEnsRkCB9Q03w"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02df9518845a9897da168eb9df"
         },
         {
@@ -47326,12 +47403,6 @@
           },
           "durationMs": 181911,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "qsqvJpOgrWw",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCNVIo0UJXTdEnsRkCB9Q03w"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02df9518845a9897da168eb9df"
         },
         {
@@ -47433,7 +47504,7 @@
           ],
           "album": {
             "name": "What If I Told You",
-            "releaseDate": "2026-10-29"
+            "releaseDate": "2026-10-30"
           },
           "durationMs": 174407,
           "explicit": false,
@@ -47922,7 +47993,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c9811cdcb0df269932a4bed2"
         },
         {
-          "position": 8,
+          "position": 7,
           "id": "levyra-6d184367af122801baeb",
           "title": "Parachute",
           "artists": [
@@ -47942,7 +48013,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ba2a89d55a48948135e4703a"
         },
         {
-          "position": 9,
+          "position": 8,
           "id": "levyra-4d6a413965f8a28b7cee",
           "title": "Powiedz To",
           "artists": [
@@ -47967,7 +48038,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02518f1017eb4c3a72f70c1c51"
         },
         {
-          "position": 10,
+          "position": 9,
           "id": "levyra-b9308aeeea373b61d3e7",
           "title": "NO LUV",
           "artists": [
@@ -47984,7 +48055,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e757a14b7d217da21f4055c3"
         },
         {
-          "position": 11,
+          "position": 10,
           "id": "levyra-4060f2c4e154c20f93d0",
           "title": "Młody Białas (Freestyle)",
           "artists": [
@@ -48001,7 +48072,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023d85d0a1fe88340fb2fb7742"
         },
         {
-          "position": 12,
+          "position": 11,
           "id": "levyra-0e8e280db12ca0a63518",
           "title": "CASTING CALL",
           "artists": [
@@ -48018,7 +48089,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027a5456ace4c059df03b973ee"
         },
         {
-          "position": 13,
+          "position": 12,
           "id": "levyra-c7c2e9684a2665217c5a",
           "title": "Całą noc",
           "artists": [
@@ -48035,7 +48106,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0220a4352c025bbb0582b70f94"
         },
         {
-          "position": 14,
+          "position": 13,
           "id": "levyra-9b825ea481d0a7874de8",
           "title": "Walcz o swoje",
           "artists": [
@@ -48055,7 +48126,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025bda2eb014681552dc056653"
         },
         {
-          "position": 15,
+          "position": 14,
           "id": "levyra-eafa41698a9c4eebf714",
           "title": "Thin Ice",
           "artists": [
@@ -48072,7 +48143,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020176f54edd31be2080f6b32e"
         },
         {
-          "position": 16,
+          "position": 15,
           "id": "levyra-3967fc96f43d08fe5b35",
           "title": "Slow Release",
           "artists": [
@@ -48095,7 +48166,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02727b06eb2256d1fece2a1826"
         },
         {
-          "position": 17,
+          "position": 16,
           "id": "levyra-de9d27998ca4b0592ed0",
           "title": "HEY",
           "artists": [
@@ -48112,7 +48183,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cf8518292d780351b4e8b0e9"
         },
         {
-          "position": 18,
+          "position": 17,
           "id": "levyra-e1cc2a97adca91749fce",
           "title": "U Bram",
           "artists": [
@@ -48135,7 +48206,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f6bfe589a8300ad13c1b8551"
         },
         {
-          "position": 19,
+          "position": 18,
           "id": "levyra-ee32326bb0036f9f3b35",
           "title": "Favor - From The Hunger Games: Sunrise on the Reaping - The Album",
           "artists": [
@@ -48155,7 +48226,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02df191fd6328b868178fc36eb"
         },
         {
-          "position": 20,
+          "position": 19,
           "id": "levyra-0b3aac3be02efb4cdd84",
           "title": "Blackout",
           "artists": [
@@ -48176,6 +48247,26 @@
           "durationMs": 184574,
           "explicit": true,
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020b013e331bdfec9dc7bc1eab"
+        },
+        {
+          "position": 20,
+          "id": "levyra-a0ae3e9f1366e2365577",
+          "title": "BIS",
+          "artists": [
+            {
+              "name": "Zippy Ogar"
+            },
+            {
+              "name": "Gedz"
+            }
+          ],
+          "album": {
+            "name": "BIS",
+            "releaseDate": "2026-10-30"
+          },
+          "durationMs": 146068,
+          "explicit": false,
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d2fa4a1ea061fcb01c72f002"
         }
       ]
     },
@@ -48499,12 +48590,6 @@
           },
           "durationMs": 181911,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "qsqvJpOgrWw",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCNVIo0UJXTdEnsRkCB9Q03w"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02df9518845a9897da168eb9df"
         },
         {
@@ -48715,12 +48800,6 @@
           },
           "durationMs": 181911,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "qsqvJpOgrWw",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCNVIo0UJXTdEnsRkCB9Q03w"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02df9518845a9897da168eb9df"
         },
         {
@@ -48943,7 +49022,7 @@
       "title": "New releases",
       "description": "Äntligen fredag och ny musik från FELICIA, Håkan Hellström och waterbaby med flera. Happy New Music Friday!",
       "artworkUrl": "https://i.scdn.co/image/ab67706f00000002dd761d6d12f5b07c996ef4b9",
-      "totalSourceItems": 99,
+      "totalSourceItems": 101,
       "tracks": [
         {
           "position": 1,
@@ -48994,7 +49073,7 @@
           },
           "durationMs": 249812,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028882c5d759c9bd8ac81c851f"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02858a27820c3e129925ae2d9f"
         },
         {
           "position": 4,
@@ -49136,7 +49215,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02df191fd6328b868178fc36eb"
         },
         {
-          "position": 13,
+          "position": 12,
           "id": "levyra-1d60e30d6bdfd54534b0",
           "title": "Survival",
           "artists": [
@@ -49153,7 +49232,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c0c65a800140089d688899e3"
         },
         {
-          "position": 14,
+          "position": 13,
           "id": "levyra-9e0cf8e1e7e958e4125e",
           "title": "If Nobody Knows, Does It Count?",
           "artists": [
@@ -49170,7 +49249,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e44b1a95d08d5d334d265271"
         },
         {
-          "position": 15,
+          "position": 14,
           "id": "levyra-9e8139e203aa3386f4d1",
           "title": "Solen",
           "artists": [
@@ -49190,7 +49269,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0288b96077771ba9d06cd1f39b"
         },
         {
-          "position": 16,
+          "position": 15,
           "id": "levyra-76562997c8b43383dac7",
           "title": "NOBODY'S HERO",
           "artists": [
@@ -49207,7 +49286,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0257cc7c16f86b175b9a841d5f"
         },
         {
-          "position": 17,
+          "position": 16,
           "id": "levyra-aae78ab59d1a946dd066",
           "title": "Nästa dag",
           "artists": [
@@ -49224,7 +49303,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027b241787757792c4da977993"
         },
         {
-          "position": 18,
+          "position": 17,
           "id": "levyra-c0ec70897592c4b8fdd5",
           "title": "Vill Ha Dig (Feat. Hanna Ferm)",
           "artists": [
@@ -49247,38 +49326,58 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e86567b6fca8f3d436b464b2"
         },
         {
-          "position": 19,
-          "id": "levyra-eb5f05be0912c284bbf5",
-          "title": "Curtains",
+          "position": 18,
+          "id": "levyra-f0b1de9e27dc3be05145",
+          "title": "saxofonkåt",
           "artists": [
             {
-              "name": "LOVA"
+              "name": "Timbuktu"
             }
           ],
           "album": {
-            "name": "Alvilde",
+            "name": "saxofonkåt",
             "releaseDate": "2026-10-30"
           },
-          "durationMs": 180300,
+          "durationMs": 226086,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e022dd06b12dad9f9b4bca69b67"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d1fb7c93b208b5af377b780c"
+        },
+        {
+          "position": 19,
+          "id": "levyra-2e69c30e611f89acdaf8",
+          "title": "Dia de los Muertos",
+          "artists": [
+            {
+              "name": "STOR"
+            },
+            {
+              "name": "Linda Pira"
+            }
+          ],
+          "album": {
+            "name": "Dia de los Muertos",
+            "releaseDate": "2026-10-30"
+          },
+          "durationMs": 148360,
+          "explicit": false,
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025dcf111c49e0919a543b73b8"
         },
         {
           "position": 20,
-          "id": "levyra-42017ff4089e287b5193",
-          "title": "What I'll Become",
+          "id": "levyra-da8a74ace6ab42ab7a66",
+          "title": "BAD IDEA",
           "artists": [
             {
-              "name": "NATHALIA"
+              "name": "DARA"
             }
           ],
           "album": {
-            "name": "Powder / What I’ll Become",
-            "releaseDate": "2026-10-28"
+            "name": "BAD IDEA",
+            "releaseDate": "2026-10-30"
           },
-          "durationMs": 127000,
+          "durationMs": 181545,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027760d75c092bfc5a7bd31616"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0212102a9dd420e7b0bdd1fb39"
         }
       ]
     },
@@ -49289,7 +49388,7 @@
       "title": "New releases",
       "description": "Ny fredag og ny musik fra bl.a. Burhan G, Berg og Malte Ebert 🎉",
       "artworkUrl": "https://i.scdn.co/image/ab67706f0000000296d79f441774601b0818b010",
-      "totalSourceItems": 103,
+      "totalSourceItems": 108,
       "tracks": [
         {
           "position": 1,
@@ -49468,7 +49567,24 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ed3003f85058a23fad9ebf86"
         },
         {
-          "position": 12,
+          "position": 11,
+          "id": "levyra-0e8e280db12ca0a63518",
+          "title": "CASTING CALL",
+          "artists": [
+            {
+              "name": "Dominic Fike"
+            }
+          ],
+          "album": {
+            "name": "HOW TO QUIT SMOKING",
+            "releaseDate": "2026-10-30"
+          },
+          "durationMs": 116887,
+          "explicit": false,
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027a5456ace4c059df03b973ee"
+        },
+        {
+          "position": 13,
           "id": "levyra-015f242c4d85c29effe4",
           "title": "Lie For Me",
           "artists": [
@@ -49485,7 +49601,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025cf124c4c4bc93c6b8b9b2a9"
         },
         {
-          "position": 13,
+          "position": 14,
           "id": "levyra-5ca15354811dcfef2fa7",
           "title": "Bruce Lee",
           "artists": [
@@ -49502,7 +49618,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028c88451d57f66786c609778b"
         },
         {
-          "position": 14,
+          "position": 15,
           "id": "levyra-adf37f1c5ae49fb068d4",
           "title": "JENS VEJMAND (feat. Soleima & Saveus)",
           "artists": [
@@ -49525,7 +49641,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023f16527c913e5907c5e170e7"
         },
         {
-          "position": 15,
+          "position": 16,
           "id": "levyra-5e48c3d0df41f3972317",
           "title": "Valideres",
           "artists": [
@@ -49542,7 +49658,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028ea503bdc366e0f59fde53cb"
         },
         {
-          "position": 16,
+          "position": 17,
           "id": "levyra-080253c0f6063aa2ef82",
           "title": "SØVNLØS",
           "artists": [
@@ -49559,7 +49675,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d213b353730fcd29c77eaa17"
         },
         {
-          "position": 17,
+          "position": 18,
           "id": "levyra-5520071d3d92f2fa0076",
           "title": "Josie Club",
           "artists": [
@@ -49576,7 +49692,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02fea9afbf707afdcc34fd7546"
         },
         {
-          "position": 18,
+          "position": 19,
           "id": "levyra-f69b347fd32c139ea276",
           "title": "Tog Dit Hjerte",
           "artists": [
@@ -49593,7 +49709,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e026c487a5ab1cdaa2448e278c2"
         },
         {
-          "position": 19,
+          "position": 20,
           "id": "levyra-e16d7393bb5e9b804382",
           "title": "5 dage om ugen",
           "artists": [
@@ -49608,23 +49724,6 @@
           "durationMs": 180000,
           "explicit": true,
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d41fb636ea0c19ee53455a02"
-        },
-        {
-          "position": 20,
-          "id": "levyra-1f4e14531a9ae5450208",
-          "title": "hjertet det slår sig",
-          "artists": [
-            {
-              "name": "samuel"
-            }
-          ],
-          "album": {
-            "name": "hjertet det slår sig",
-            "releaseDate": "2026-10-30"
-          },
-          "durationMs": 154008,
-          "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a57f62ddb191f729d17b48e7"
         }
       ]
     },
@@ -49948,12 +50047,6 @@
           },
           "durationMs": 181911,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "qsqvJpOgrWw",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCNVIo0UJXTdEnsRkCB9Q03w"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02df9518845a9897da168eb9df"
         },
         {
@@ -50332,12 +50425,6 @@
           },
           "durationMs": 181911,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "qsqvJpOgrWw",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCNVIo0UJXTdEnsRkCB9Q03w"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02df9518845a9897da168eb9df"
         },
         {
@@ -50437,7 +50524,7 @@
           },
           "durationMs": 174184,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029800183dd6d4366ed08880c9"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eeccbbaa17380160d3808684"
         },
         {
           "position": 4,
@@ -51051,12 +51138,6 @@
           },
           "durationMs": 181911,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "qsqvJpOgrWw",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCNVIo0UJXTdEnsRkCB9Q03w"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02df9518845a9897da168eb9df"
         },
         {
@@ -51435,12 +51516,6 @@
           },
           "durationMs": 181911,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "qsqvJpOgrWw",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCNVIo0UJXTdEnsRkCB9Q03w"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02df9518845a9897da168eb9df"
         },
         {
@@ -51505,8 +51580,8 @@
       "market": "JP",
       "title": "New releases",
       "description": "洋楽を中心に今週の新曲をチェック。Dominic Fike, Sam Smith, HANA, ちゃんみな and more!",
-      "artworkUrl": "https://i.scdn.co/image/ab67706f0000000214c9dc8fc5ebebc14055dcdf",
-      "totalSourceItems": 55,
+      "artworkUrl": "https://i.scdn.co/image/ab67706f00000002220a9672c41567b4536b452d",
+      "totalSourceItems": 61,
       "tracks": [
         {
           "position": 1,
@@ -51544,6 +51619,23 @@
         },
         {
           "position": 3,
+          "id": "levyra-2ef6c8b727a1f0e62c9e",
+          "title": "Here You Come, There You Go",
+          "artists": [
+            {
+              "name": "Gracie Abrams"
+            }
+          ],
+          "album": {
+            "name": "Here You Come, There You Go",
+            "releaseDate": "2026-10-29"
+          },
+          "durationMs": 169647,
+          "explicit": false,
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029937fa4eb69a49681d073c97"
+        },
+        {
+          "position": 4,
           "id": "levyra-1195b8189b9dcabb59d9",
           "title": "Slidin",
           "artists": [
@@ -51560,7 +51652,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a9a7fdd774fd4f2943a9a70b"
         },
         {
-          "position": 4,
+          "position": 5,
           "id": "levyra-3d973ee82192aabc5644",
           "title": "History",
           "artists": [
@@ -51577,7 +51669,24 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029ddcb785ecc042b998d9afd9"
         },
         {
-          "position": 5,
+          "position": 6,
+          "id": "levyra-135adcfca9be8f919791",
+          "title": "ADDICTED",
+          "artists": [
+            {
+              "name": "JISOO"
+            }
+          ],
+          "album": {
+            "name": "ADDICTED",
+            "releaseDate": "2026-10-29"
+          },
+          "durationMs": 179062,
+          "explicit": false,
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02729eea5a028d73d2596e793e"
+        },
+        {
+          "position": 7,
           "id": "levyra-e9960038c1bbc08ec85d",
           "title": "CRUMBS",
           "artists": [
@@ -51594,7 +51703,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0241ecb27528efa3aa1a43d404"
         },
         {
-          "position": 6,
+          "position": 8,
           "id": "levyra-b3e5aa6e449ec130a1e4",
           "title": "My Guy (with Jacob Lusk)",
           "artists": [
@@ -51614,7 +51723,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0244cbc906312ff2ce257a9a6c"
         },
         {
-          "position": 7,
+          "position": 9,
           "id": "levyra-4defbe8da0e47a47aa04",
           "title": "He Likes Boys",
           "artists": [
@@ -51631,7 +51740,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e024aee10dcdd4161bffa8c2ab6"
         },
         {
-          "position": 8,
+          "position": 10,
           "id": "levyra-eafa41698a9c4eebf714",
           "title": "Thin Ice",
           "artists": [
@@ -51648,7 +51757,27 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020176f54edd31be2080f6b32e"
         },
         {
-          "position": 9,
+          "position": 11,
+          "id": "levyra-3f7807665a43bd79af1c",
+          "title": "COSITA",
+          "artists": [
+            {
+              "name": "Daddy Yankee"
+            },
+            {
+              "name": "Cardi B"
+            }
+          ],
+          "album": {
+            "name": "LA POSTAL",
+            "releaseDate": "2026-10-30"
+          },
+          "durationMs": 189473,
+          "explicit": false,
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02798a10777753ec7bcf571e04"
+        },
+        {
+          "position": 12,
           "id": "levyra-ee32326bb0036f9f3b35",
           "title": "Favor - From The Hunger Games: Sunrise on the Reaping - The Album",
           "artists": [
@@ -51668,7 +51797,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02df191fd6328b868178fc36eb"
         },
         {
-          "position": 10,
+          "position": 13,
           "id": "levyra-316d8fbd9b245233b6f8",
           "title": "SOFTER",
           "artists": [
@@ -51685,7 +51814,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02491cc7691dae5acb4c0eb4cd"
         },
         {
-          "position": 11,
+          "position": 14,
           "id": "levyra-02aa8762c6fb3ece4489",
           "title": "l0st the pl0t",
           "artists": [
@@ -51702,7 +51831,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d2fcb46f5dd44df99617d82f"
         },
         {
-          "position": 12,
+          "position": 15,
           "id": "levyra-2b1a4c1b8dc6cb991fe2",
           "title": "Rock & Roll Pretty",
           "artists": [
@@ -51719,7 +51848,24 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02fd674395b3892dcdb83c842e"
         },
         {
-          "position": 13,
+          "position": 16,
+          "id": "levyra-1438e0eb7412c82df965",
+          "title": "Fly Away",
+          "artists": [
+            {
+              "name": "BOYNEXTDOOR"
+            }
+          ],
+          "album": {
+            "name": "Pokémon | Wonder Voyage (Original Soundtrack, Korea)",
+            "releaseDate": "2026-10-30"
+          },
+          "durationMs": 204520,
+          "explicit": false,
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028e4c348c1d31a4947a49f085"
+        },
+        {
+          "position": 17,
           "id": "levyra-91007a769900ff5dfbdd",
           "title": "GENTO (with Kento Nakajima)",
           "artists": [
@@ -51739,7 +51885,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023b94dc6c55d68af69c47b84b"
         },
         {
-          "position": 14,
+          "position": 18,
           "id": "levyra-ba214ba616fe5f813d7b",
           "title": "Run Away From the Mob",
           "artists": [
@@ -51756,7 +51902,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e024d957fefd8e7b61b9fcfc374"
         },
         {
-          "position": 15,
+          "position": 19,
           "id": "levyra-81d707ec4570b7c61bdf",
           "title": "If I Don't Go",
           "artists": [
@@ -51773,7 +51919,7 @@
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02245e1ed1baff5362f0f7e2ed"
         },
         {
-          "position": 16,
+          "position": 20,
           "id": "levyra-e542f80b60629b6e9838",
           "title": "Y.O.T.H.",
           "artists": [
@@ -51788,74 +51934,6 @@
           "durationMs": 300000,
           "explicit": false,
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02b63247306c4cf95bebb8227e"
-        },
-        {
-          "position": 17,
-          "id": "levyra-55e58b834394c141a44d",
-          "title": "Time of Ur Life",
-          "artists": [
-            {
-              "name": "Prince"
-            }
-          ],
-          "album": {
-            "name": "Time of Ur Life",
-            "releaseDate": "2026-10-29"
-          },
-          "durationMs": 283756,
-          "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0216e4f3773478ba15bb2d47a3"
-        },
-        {
-          "position": 18,
-          "id": "levyra-b3ced9769b03266005e2",
-          "title": "Bang Bang",
-          "artists": [
-            {
-              "name": "Mollie Elizabeth"
-            }
-          ],
-          "album": {
-            "name": "People Pleaser",
-            "releaseDate": "2026-10-30"
-          },
-          "durationMs": 150070,
-          "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028bb4961ac5b512bcc36e8102"
-        },
-        {
-          "position": 19,
-          "id": "levyra-277da88ab69924d1d943",
-          "title": "GROW ON TREES",
-          "artists": [
-            {
-              "name": "Peder Elias"
-            }
-          ],
-          "album": {
-            "name": "GROW ON TREES",
-            "releaseDate": "2026-10-30"
-          },
-          "durationMs": 152160,
-          "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e026f33af2252f7b0515a9208b0"
-        },
-        {
-          "position": 20,
-          "id": "levyra-aae41f35451ac315f450",
-          "title": "Bora",
-          "artists": [
-            {
-              "name": "Leigh-Anne"
-            }
-          ],
-          "album": {
-            "name": "My Ego Told Me To...Do A Fan Edition",
-            "releaseDate": "2026-10-30"
-          },
-          "durationMs": 165762,
-          "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028f89b2f9496d42c3e916be71"
         }
       ]
     },
@@ -51951,12 +52029,6 @@
           },
           "durationMs": 181911,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "qsqvJpOgrWw",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCNVIo0UJXTdEnsRkCB9Q03w"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02df9518845a9897da168eb9df"
         },
         {
@@ -52160,6 +52232,23 @@
           "durationMs": 173000,
           "explicit": false,
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0269d2a7a8280649b3aa86b075"
+        },
+        {
+          "position": 17,
+          "id": "levyra-1438e0eb7412c82df965",
+          "title": "Fly Away",
+          "artists": [
+            {
+              "name": "BOYNEXTDOOR"
+            }
+          ],
+          "album": {
+            "name": "Pokémon | Wonder Voyage (Original Soundtrack, Korea)",
+            "releaseDate": "2026-10-30"
+          },
+          "durationMs": 204520,
+          "explicit": false,
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028e4c348c1d31a4947a49f085"
         },
         {
           "position": 18,
@@ -52586,8 +52675,8 @@
       "market": "ID",
       "title": "New releases",
       "description": "Rilisan baru pekan ini dari Dominic Fike, JISOO, Gracie Abrams, GANGGA, dia, Weird Genius dan masih banyak lagi dari dalam dan mancanegara.",
-      "artworkUrl": "https://i.scdn.co/image/ab67706f000000027ba94c5c8a752f5e9f4df33d",
-      "totalSourceItems": 102,
+      "artworkUrl": "https://i.scdn.co/image/ab67706f000000022e863e3dc6acff8b434cd449",
+      "totalSourceItems": 103,
       "tracks": [
         {
           "position": 1,
@@ -52783,12 +52872,6 @@
           },
           "durationMs": 181911,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "qsqvJpOgrWw",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCNVIo0UJXTdEnsRkCB9Q03w"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02df9518845a9897da168eb9df"
         },
         {
@@ -52971,7 +53054,7 @@
       "title": "New releases",
       "description": "Nhạc mới trong tuần từ Tăng Duy Tân, Tiên Tiên, Shiki, Quân A.P và còn nhiều nữa!",
       "artworkUrl": "https://i.scdn.co/image/ab67706f00000002ddefe8e4f796c43ee747bff6",
-      "totalSourceItems": 76,
+      "totalSourceItems": 77,
       "tracks": [
         {
           "position": 1,
@@ -53093,12 +53176,6 @@
           },
           "durationMs": 181911,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "qsqvJpOgrWw",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCNVIo0UJXTdEnsRkCB9Q03w"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02df9518845a9897da168eb9df"
         },
         {
@@ -53352,7 +53429,7 @@
       "title": "New releases",
       "description": "ฟังเพลงใหม่จาก Jeff Satur, SERIOUS BACON, PURPEECH, Mirrr, Saran, Sexski, SEA., MEYOU และอีกมากมาย",
       "artworkUrl": "https://i.scdn.co/image/ab67706f000000022a7bcc02e99914ecf6d67c28",
-      "totalSourceItems": 111,
+      "totalSourceItems": 112,
       "tracks": [
         {
           "position": 1,
@@ -53511,12 +53588,6 @@
           },
           "durationMs": 181911,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "qsqvJpOgrWw",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCNVIo0UJXTdEnsRkCB9Q03w"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02df9518845a9897da168eb9df"
         },
         {
@@ -53729,8 +53800,8 @@
       "market": "PH",
       "title": "New releases",
       "description": "New music from JISOO, Dominic Fike, kiddotin, dwta, Alisson Shore x Jrldm x Guddhist Gunatita and Kiyo, and more!",
-      "artworkUrl": "https://i.scdn.co/image/ab67706f000000021524fc40af5ca70a545c6caf",
-      "totalSourceItems": 110,
+      "artworkUrl": "https://i.scdn.co/image/ab67706f000000027256838c780514b386ecc1b3",
+      "totalSourceItems": 111,
       "tracks": [
         {
           "position": 1,
@@ -53963,12 +54034,6 @@
           },
           "durationMs": 181911,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "qsqvJpOgrWw",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCNVIo0UJXTdEnsRkCB9Q03w"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02df9518845a9897da168eb9df"
         },
         {
@@ -54424,12 +54489,6 @@
           },
           "durationMs": 181911,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "qsqvJpOgrWw",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCNVIo0UJXTdEnsRkCB9Q03w"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02df9518845a9897da168eb9df"
         },
         {
@@ -57271,7 +57330,7 @@
       "market": "GLOBAL",
       "title": "Romance",
       "description": "Because we all deserve great pop love songs in one playlist.",
-      "artworkUrl": "https://i.scdn.co/image/ab67706f00000002794e94c9a696c85a6f53d9bf",
+      "artworkUrl": "https://i.scdn.co/image/ab67706f0000000272837b4f232c92405873b2d1",
       "youtubeParams": "ggMPOg1uX1JCQnB2QXVYVEIz",
       "sectionIndex": 0,
       "sectionTitle": "Moods & moments",
@@ -57577,7 +57636,7 @@
       "kind": "mood",
       "market": "GLOBAL",
       "title": "Sad",
-      "description": "sombr , The Neighbourhood , The Walters and more",
+      "description": "Billie Eilish , The Marías , Coldplay and more",
       "youtubeParams": "ggMPOg1uX3NISTh4UmtWcFgz",
       "sectionIndex": 0,
       "sectionTitle": "Moods & moments",
@@ -59731,7 +59790,7 @@
       "kind": "genre",
       "market": "GLOBAL",
       "title": "Brazilian",
-      "description": "Mc IG , DJ Zigão , Oldilla and more",
+      "description": "DJ Zigão , MC Ryan SP , MC Du Black and more",
       "youtubeParams": "ggMPOg1uX3Vmb2NXbUdLcHNU",
       "sectionIndex": 1,
       "sectionTitle": "Genres",
@@ -63586,7 +63645,7 @@
       "kind": "genre",
       "market": "GLOBAL",
       "title": "Metal",
-      "description": "Chevelle , Drowning Pool , Breaking Benjamin and more",
+      "description": "Ozzy Osbourne , Deftones , AC/DC and more",
       "youtubeParams": "ggMPOg1uXzdlSXhKZ0hMV1Z4",
       "sectionIndex": 1,
       "sectionTitle": "Genres",
@@ -64196,7 +64255,7 @@
       "kind": "genre",
       "market": "GLOBAL",
       "title": "Pop",
-      "description": "Shakira , The Weeknd , Eminem and more",
+      "description": "Dua Lipa , Rihanna , Billie Eilish and more",
       "youtubeParams": "ggMPOg1uX1BmNzc2V2p0YXJ5",
       "sectionIndex": 1,
       "sectionTitle": "Genres",
@@ -64778,7 +64837,7 @@
       "kind": "genre",
       "market": "GLOBAL",
       "title": "Rock",
-      "description": "The Outfield , The Verve , Evanescence and more",
+      "description": "Radiohead , Scorpions , Kings of Leon and more",
       "youtubeParams": "ggMPOg1uXzJKTm5jUEZ5Uzlu",
       "sectionIndex": 1,
       "sectionTitle": "Genres",
