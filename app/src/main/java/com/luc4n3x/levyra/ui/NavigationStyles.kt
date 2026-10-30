@@ -141,6 +141,8 @@ private const val NavTextContrast = 4.5f
 
 internal val LocalNavDockExtraClearance = compositionLocalOf { 0.dp }
 
+internal val LocalDockMiniMerged = compositionLocalOf<() -> Boolean> { { false } }
+
 @Composable
 internal fun rememberNavDockExtraClearance(style: NavStyle, tuning: NavTuning): Dp {
     val height = navDockHeight(tuning.heightDp.dp, navLabelRoom(tuning.labels) + navIndicatorRoom(tuning))
