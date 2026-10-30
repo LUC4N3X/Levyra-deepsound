@@ -57,60 +57,76 @@ internal class TidalApi(
         Request.Builder().url(url).header("Range", "bytes=0-${limit - 1}").build(), limit
     )
 
+    private class TokenAttempt(val response: ProviderHttpResponse, val refreshToken: String)
+
     private suspend fun session(hiRes: Boolean): Session = mutex.withLock {
         var credentials = credentialSource.current()
-        fun configure(next: AudioCredentials) {
-            if (configuration?.sameAs(next.tidal) != true) {
-                sessions.clear()
-                configuration = next.tidal
-                refreshToken = next.tidal.refreshTokens.first()
-            }
-        }
         configure(credentials)
         sessions[hiRes]?.takeIf { clock() + 60_000L < it.expires }?.let { return@withLock it }
         val tried = mutableSetOf<List<String>>()
-        var acceptedToken: String? = null
-        var tokenResponse: ProviderHttpResponse? = null
-        suspend fun authenticate(): Boolean {
-            val config = credentials.tidal
-            val tokens = (listOfNotNull(refreshToken) + config.refreshTokens).distinct()
-            for (token in tokens) {
-                if (!tried.add(listOf(token, config.clientId(hiRes), if (hiRes) "" else config.tvClientSecret))) continue
-                val form = FormBody.Builder().add("client_id", config.clientId(hiRes))
-                    .add("refresh_token", token).add("grant_type", "refresh_token")
-                    .apply { if (!hiRes) add("client_secret", config.tvClientSecret) }.build()
-                val response = exchange.execute(Request.Builder().url(TOKEN_URL).post(form).build(), TOKEN_LIMIT)
-                tokenResponse = response
-                if (!isAuthRejection(response)) {
-                    acceptedToken = token
-                    return true
-                }
-            }
-            return false
-        }
-        if (!authenticate()) {
+        var attempt = authenticate(credentials.tidal, hiRes, tried)
+        if (attempt == null || isAuthRejection(attempt.response)) {
             credentials = credentialSource.refreshAfterRejection(credentials)
             configure(credentials)
-            authenticate()
+            attempt = authenticate(credentials.tidal, hiRes, tried) ?: attempt
         }
-        val response = tokenResponse ?: throw TidalFailure(ProviderFailure.FORBIDDEN)
-        if (isAuthRejection(response)) throw TidalFailure(ProviderFailure.FORBIDDEN)
-        val json = parse(response)
+        val accepted = attempt ?: throw TidalFailure(ProviderFailure.FORBIDDEN)
+        if (isAuthRejection(accepted.response)) throw TidalFailure(ProviderFailure.FORBIDDEN)
+        createSession(accepted, credentials, hiRes).also { sessions[hiRes] = it }
+    }
+
+    private fun configure(next: AudioCredentials) {
+        if (configuration?.sameAs(next.tidal) == true) return
+        sessions.clear()
+        configuration = next.tidal
+        refreshToken = next.tidal.refreshTokens.first()
+    }
+
+    private suspend fun authenticate(
+        config: TidalCredentialSet,
+        hiRes: Boolean,
+        tried: MutableSet<List<String>>
+    ): TokenAttempt? {
+        val tokens = (listOfNotNull(refreshToken) + config.refreshTokens).distinct()
+        var last: TokenAttempt? = null
+        for (token in tokens) {
+            if (!tried.add(listOf(token, config.clientId(hiRes), if (hiRes) "" else config.tvClientSecret))) continue
+            val response = refreshSessionToken(config, token, hiRes)
+            last = TokenAttempt(response, token)
+            if (!isAuthRejection(response)) return last
+        }
+        return last
+    }
+
+    private suspend fun refreshSessionToken(config: TidalCredentialSet, token: String, hiRes: Boolean): ProviderHttpResponse {
+        val form = FormBody.Builder().add("client_id", config.clientId(hiRes))
+            .add("refresh_token", token).add("grant_type", "refresh_token")
+            .apply { if (!hiRes) add("client_secret", config.tvClientSecret) }.build()
+        return exchange.execute(Request.Builder().url(TOKEN_URL).post(form).build(), TOKEN_LIMIT)
+    }
+
+    private suspend fun createSession(attempt: TokenAttempt, credentials: AudioCredentials, hiRes: Boolean): Session {
+        val json = parse(attempt.response)
         val access = json.getString("access_token").takeIf { it.isNotBlank() } ?: throw TidalFailure(ProviderFailure.MALFORMED_RESPONSE)
         if (!json.getString("token_type").equals("bearer", true)) throw TidalFailure(ProviderFailure.MALFORMED_RESPONSE)
         val lifetime = json.getLong("expires_in")
         if (lifetime !in 1L..86_400L) throw TidalFailure(ProviderFailure.MALFORMED_RESPONSE)
+        val country = resolveCountry(json, access, credentials.tidal, hiRes)
+        val nextRefresh = json.optString("refresh_token").takeIf { it.isNotBlank() } ?: attempt.refreshToken
+        if (attempt.refreshToken != refreshToken) sessions.clear()
+        refreshToken = nextRefresh
+        return Session(access, country, clock() + lifetime * 1_000L, credentials)
+    }
+
+    private suspend fun resolveCountry(json: JSONObject, access: String, config: TidalCredentialSet, hiRes: Boolean): String {
         var country = json.optJSONObject("user")?.optString("countryCode").orEmpty()
         if (country.length != 2) {
             val response = exchange.execute(Request.Builder().url("$BASE/sessions")
-                .header("Authorization", "Bearer $access").header("X-Tidal-Token", credentials.tidal.clientId(hiRes)).build(), TOKEN_LIMIT)
+                .header("Authorization", "Bearer $access").header("X-Tidal-Token", config.clientId(hiRes)).build(), TOKEN_LIMIT)
             country = parse(response).getString("countryCode")
         }
         if (country.length != 2 || !country.all { it in 'A'..'Z' }) throw TidalFailure(ProviderFailure.MALFORMED_RESPONSE)
-        val nextRefresh = json.optString("refresh_token").takeIf { it.isNotBlank() } ?: requireNotNull(acceptedToken)
-        if (acceptedToken != refreshToken) sessions.clear()
-        refreshToken = nextRefresh
-        Session(access, country, clock() + lifetime * 1_000L, credentials).also { sessions[hiRes] = it }
+        return country
     }
 
     private fun request(path: String, parameters: Map<String, String>, session: Session, hiRes: Boolean): Request {

@@ -35,11 +35,8 @@ internal class AudioCredentialsStore(
     private suspend fun refresh(rejected: AudioCredentials?): AudioCredentials = withContext(Dispatchers.IO) {
         refreshMutex.withLock {
             current()
-            if (rejected != null && rejected !== snapshot) return@withLock snapshot
             val now = clock()
-            val last = if (rejected == null) lastRefresh else lastAuthRefresh
-            val interval = if (rejected == null) refreshInterval else AUTH_REFRESH_INTERVAL_MS
-            if (last != null && now >= last && now - last < interval) return@withLock snapshot
+            if (!mayRefresh(rejected, now)) return@withLock snapshot
             val previousRefresh = lastRefresh
             val previousAuthRefresh = lastAuthRefresh
             val previousInterval = refreshInterval
@@ -47,15 +44,7 @@ internal class AudioCredentialsStore(
             refreshInterval = AUTH_REFRESH_INTERVAL_MS
             if (rejected != null) lastAuthRefresh = now
             try {
-                val document = fetch()
-                val next = AudioCredentials.parse(document)
-                if (next != null && next.revision >= snapshot.revision) refreshInterval = REFRESH_INTERVAL_MS
-                if (next != null && next.revision > snapshot.revision) {
-                    try { cache?.write(document) } catch (cancelled: CancellationException) {
-                        throw cancelled
-                    } catch (_: Exception) { }
-                    snapshot = next
-                }
+                fetchAndPublish()
             } catch (cancelled: CancellationException) {
                 lastRefresh = previousRefresh
                 lastAuthRefresh = previousAuthRefresh
@@ -64,6 +53,29 @@ internal class AudioCredentialsStore(
             } catch (_: Exception) { }
             snapshot
         }
+    }
+
+    private fun mayRefresh(rejected: AudioCredentials?, now: Long): Boolean {
+        if (rejected != null && rejected !== snapshot) return false
+        val last = if (rejected == null) lastRefresh else lastAuthRefresh
+        val interval = if (rejected == null) refreshInterval else AUTH_REFRESH_INTERVAL_MS
+        return last == null || now < last || now - last >= interval
+    }
+
+    private suspend fun fetchAndPublish() {
+        val document = fetch()
+        val next = AudioCredentials.parse(document) ?: return
+        if (next.revision < snapshot.revision) return
+        refreshInterval = REFRESH_INTERVAL_MS
+        if (next.revision == snapshot.revision) return
+        persist(document)
+        snapshot = next
+    }
+
+    private fun persist(document: String) {
+        try { cache?.write(document) } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) { }
     }
 
     private fun load() {
