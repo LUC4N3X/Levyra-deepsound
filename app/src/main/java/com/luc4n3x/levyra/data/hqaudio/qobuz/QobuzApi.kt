@@ -2,6 +2,9 @@ package com.luc4n3x.levyra.data.hqaudio.qobuz
 
 import com.luc4n3x.levyra.data.hqaudio.ProviderFailure
 import com.luc4n3x.levyra.data.hqaudio.ProviderHttpResponse
+import com.luc4n3x.levyra.data.hqaudio.AudioCredentials
+import com.luc4n3x.levyra.data.hqaudio.AudioCredentialsSource
+import com.luc4n3x.levyra.data.hqaudio.AudioCredentialsRuntime
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.data.network.LevyraNetworkConfiguration
 import com.luc4n3x.levyra.data.security.SafeImageUrlPolicy
@@ -27,22 +30,37 @@ import org.json.JSONObject
 internal class QobuzApi(
     private val exchange: QobuzExchange = QobuzNetwork,
     private val clock: () -> Long = System::currentTimeMillis,
-    private val credentials: List<QobuzCredentials.Account> = QobuzCredentials.accounts
+    private val credentials: List<QobuzCredentials.Account>? = null,
+    private val credentialSource: AudioCredentialsSource = AudioCredentialsRuntime
 ) {
-    @Volatile private var accountIndex = 0
+    @Volatile private var preferredToken: String? = null
 
     suspend fun get(path: String, parameters: Map<String, String> = emptyMap()): JSONObject =
         withContext(Dispatchers.IO) {
             require(path in setOf("track/search", "track/get", "track/getFileUrl", "user/get"))
-            var index = accountIndex
-            var response = request(path, parameters, credentials[index])
-            if (response.code in setOf(401, 403) && credentials.size > 1) {
-                index = (index + 1) % credentials.size
-                response = request(path, parameters, credentials[index])
-                if (response.isSuccessful) accountIndex = index
+            val initial = credentials?.let { AudioCredentials(0, it, AudioCredentials.embedded().tidal) }
+                ?: credentialSource.current()
+            val tried = mutableSetOf<List<String>>()
+            var response: ProviderHttpResponse? = null
+            suspend fun attempt(accounts: List<QobuzCredentials.Account>): Boolean {
+                val preferred = preferredToken
+                for (account in accounts.sortedBy { it.userAuthToken != preferred }) {
+                    if (!tried.add(listOf(account.userAuthToken, account.appId, account.appSecret))) continue
+                    val result = request(path, parameters, account)
+                    response = result
+                    if (result.code !in setOf(401, 403)) {
+                        if (result.isSuccessful) preferredToken = account.userAuthToken
+                        return true
+                    }
+                }
+                return false
             }
-            requireSuccess(response)
-            JSONObject(response.bodyText)
+            if (!attempt(initial.qobuz) && credentials == null) {
+                attempt(credentialSource.refreshAfterRejection(initial).qobuz)
+            }
+            val result = response ?: throw QobuzFailure(ProviderFailure.FORBIDDEN)
+            requireSuccess(result)
+            JSONObject(result.bodyText)
         }
 
     suspend fun probe(url: HttpUrl): ProviderHttpResponse = exchange.execute(
