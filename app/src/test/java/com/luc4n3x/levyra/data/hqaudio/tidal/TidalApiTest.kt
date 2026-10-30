@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.data.hqaudio.tidal
 
+import com.luc4n3x.levyra.data.hqaudio.FixedAudioCredentialsSource
 import com.luc4n3x.levyra.data.hqaudio.ProviderFailure
 import com.luc4n3x.levyra.data.hqaudio.ProviderHttpResponse
 import java.util.concurrent.CopyOnWriteArrayList
@@ -29,7 +30,7 @@ class TidalApiTest {
         val api = TidalApi(TidalExchange { request, _ ->
             requests += request
             if (request.method == "POST") authenticated() else response(200, "{\"id\":1}")
-        }, { now })
+        }, { now }, FixedAudioCredentialsSource())
         api.get("tracks/1")
         api.get("tracks/1")
         assertEquals(1, requests.count { it.method == "POST" })
@@ -48,7 +49,7 @@ class TidalApiTest {
                 posts++
                 if (posts == 1) response(400, "{\"error\":\"invalid_grant\"}") else authenticated()
             } else response(200, "{\"id\":1}")
-        })
+        }, credentialSource = FixedAudioCredentialsSource())
         assertEquals(1, api.get("tracks/1").getInt("id"))
         val forms = requests.filter { it.method == "POST" }.map { it.body as FormBody }
         assertEquals(2, forms.size)
@@ -59,7 +60,7 @@ class TidalApiTest {
     @Test
     fun serverFailureDoesNotSwitchCredentials() = runBlocking {
         var calls = 0
-        val api = TidalApi(TidalExchange { _, _ -> calls++; response(503, "{}") })
+        val api = TidalApi(TidalExchange { _, _ -> calls++; response(503, "{}") }, credentialSource = FixedAudioCredentialsSource())
         val failure = runCatching { api.get("tracks/1") }.exceptionOrNull()
         assertTrue(failure is TidalFailure && failure.failure == ProviderFailure.HTTP_ERROR)
         assertEquals(1, calls)
@@ -71,7 +72,7 @@ class TidalApiTest {
         var gets = 0
         val api = TidalApi(TidalExchange { request, _ ->
             if (request.method == "POST") { posts++; authenticated() } else { gets++; response(401, "{}") }
-        })
+        }, credentialSource = FixedAudioCredentialsSource())
         val failure = runCatching { api.get("tracks/1") }.exceptionOrNull()
         assertTrue(failure is TidalFailure && failure.failure == ProviderFailure.FORBIDDEN)
         assertEquals(2, posts)

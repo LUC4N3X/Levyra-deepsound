@@ -15,6 +15,7 @@ import com.luc4n3x.levyra.data.SmartOfflineScheduler
 import com.luc4n3x.levyra.data.YoutubeLocalDecoder
 import com.luc4n3x.levyra.data.preloadLevyraPreferences
 import com.luc4n3x.levyra.data.network.LevyraNetworkController
+import com.luc4n3x.levyra.data.hqaudio.AudioCredentialsRuntime
 import com.luc4n3x.levyra.feature.cast.CastRuntimeInitializer
 import com.luc4n3x.levyra.player.PlaybackNetworkStack
 import com.luc4n3x.levyra.player.waveseek.WaveSeekRuntime
@@ -39,6 +40,7 @@ class LevyraApplication : Application() {
         LevyraArtworkStartupMetrics.beginSession()
         runCatching { LevyraNetworkController.applyStoredConfiguration(this) }
             .onFailure { Timber.w(it, "Network configuration bootstrap failed") }
+        AudioCredentialsRuntime.initialize(this)
         LevyraArtworkCache.configure(this)
         startupScope.launch(Dispatchers.IO) {
             SpotifyYouTubeMatchCache.init(this@LevyraApplication)
