@@ -205,15 +205,20 @@ private fun AtelierShelfStage(items: List<AtelierShelfItem>, viewModel: LevyraVi
         val high = (selectedIndex + CoverWindow).coerceAtMost(items.lastIndex)
         val wanted = HashSet<String>()
         for (index in low..high) wanted += items[index].coverUrl
-        covers.keys.filter { it !in wanted }.forEach { covers.remove(it) }
-        (0..CoverWindow).flatMap { listOf(selectedIndex + it, selectedIndex - it) }.distinct()
-            .filter { it in low..high }.forEach { index ->
-                val url = items[index].coverUrl
-                launch {
-                    if (url !in covers) atelierLoadCover(context, url, sizePx, hardware = true)?.let { covers[url] = it }
-                    if (url !in ambients) atelierLoadAmbient(context, url)?.let { ambients[url] = it }
-                }
+        for (stale in covers.keys.filter { it !in wanted }) covers.remove(stale)
+        val order = LinkedHashSet<Int>()
+        for (step in 0..CoverWindow) {
+            order += selectedIndex + step
+            order += selectedIndex - step
+        }
+        for (index in order) {
+            if (index !in low..high) continue
+            val url = items[index].coverUrl
+            launch {
+                if (url !in covers) atelierLoadCover(context, url, sizePx, hardware = true)?.let { covers[url] = it }
+                if (url !in ambients) atelierLoadAmbient(context, url)?.let { ambients[url] = it }
             }
+        }
     }
     DisposableEffect(Unit) { onDispose { AtelierStage.shelfQuadValid = false } }
 
