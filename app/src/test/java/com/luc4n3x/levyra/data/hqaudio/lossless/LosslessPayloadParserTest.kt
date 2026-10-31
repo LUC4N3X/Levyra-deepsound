@@ -51,4 +51,38 @@ class LosslessPayloadParserTest {
         assertTrue(MonochromePayloadParser.isTrackId("189121220435181568"))
         assertFalse(MonochromePayloadParser.isTrackId("1/../admin"))
     }
+
+    @Test
+    fun monochromeKeepsArtistObjectsAndMillisecondDurationsFromTheProviderContract() {
+        val body = """{"tracks":[
+            {"id":"1","title":"Song","duration":200600,"artistNames":[null,""],
+             "artists":[{"name":"Artist"},{"displayName":"Guest"}],"release":{"title":"Album"},"explicit":null},
+            {"id":"2","title":"Song","duration":1200000,"artistNames":["Artist"],
+             "artists":[{"name":"Other Artist"}],"albumTitle":"Preferred Album","release":{"title":"Ignored"},"explicit":false}
+        ]}"""
+
+        val candidates = MonochromePayloadParser.searchPage(body)!!
+
+        assertEquals(2, candidates.size)
+        assertEquals(listOf(201, 1200), candidates.map { it.durationSeconds })
+        assertEquals(listOf("Artist"), candidates[0].primaryArtists)
+        assertEquals(listOf("Guest"), candidates[0].featuredArtists)
+        assertEquals("Album", candidates[0].album)
+        assertNull(candidates[0].explicit)
+        assertEquals(listOf("Artist"), candidates[1].primaryArtists)
+        assertEquals("Preferred Album", candidates[1].album)
+        assertEquals(false, candidates[1].explicit)
+    }
+
+    @Test
+    fun monochromeRejectsUnusableDurationsAndMissingArtists() {
+        val body = """{"tracks":[
+            {"id":"1","title":"Song","duration":0,"artistNames":["Artist"]},
+            {"id":"2","title":"Song","duration":-1,"artistNames":["Artist"]},
+            {"id":"3","title":"Song","duration":200,"artistNames":[null],"artists":[{"name":null}]},
+            {"id":"4","title":"Song","duration":86401000,"artistNames":["Artist"]}
+        ]}"""
+
+        assertTrue(MonochromePayloadParser.searchPage(body)!!.isEmpty())
+    }
 }

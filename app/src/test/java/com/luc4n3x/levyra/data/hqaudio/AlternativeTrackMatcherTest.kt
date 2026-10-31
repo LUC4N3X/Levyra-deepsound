@@ -25,6 +25,26 @@ class AlternativeTrackMatcherTest {
     }
 
     @Test
+    fun missingExplicitMetadataDoesNotMakeEquivalentRecordingsAmbiguous() {
+        val selection = matcher.select(query(explicit = false), listOf(
+            candidate(id = "known-clean", explicit = false),
+            candidate(id = "unknown-explicit", explicit = null)
+        ))
+        assertTrue(selection is AlternativeMatchSelection.Accepted)
+    }
+
+    @Test
+    fun confirmedExplicitStatusWinsOverUnknownStatusWithHigherBitrate() {
+        listOf(false, true).forEach { explicit ->
+            val selection = matcher.select(query(explicit = explicit), listOf(
+                candidate(id = "confirmed", explicit = explicit).copy(offers320 = false),
+                candidate(id = "unknown", explicit = null).copy(offers320 = true)
+            )) as AlternativeMatchSelection.Accepted
+            assertEquals("confirmed", selection.evaluation.candidate.providerTrackId)
+        }
+    }
+
+    @Test
     fun titleCaseDifferenceIsHarmless() {
         assertEquals(AlternativeMatchVerdict.EXACT, verdict(query(), candidate(title = "BLINDING LIGHTS")).verdict)
     }

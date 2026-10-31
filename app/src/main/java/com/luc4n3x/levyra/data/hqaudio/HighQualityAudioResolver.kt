@@ -314,7 +314,12 @@ class HighQualityAudioResolver(
         try {
             val tidal = resolveLane(preferred, identityKey, query)
             if (tidal is HighQualityResolution.Selected && tidal.stream.tier.lossless) tidal
-                else fallback?.await() ?: tidal
+            else {
+                val existing = fallback?.await() ?: tidal
+                if (existing is HighQualityResolution.Fallback && existing.reason in DEFINITIVE_MISSES &&
+                    tidal is HighQualityResolution.Fallback && tidal.reason !in DEFINITIVE_MISSES) tidal
+                else existing
+            }
         } finally {
             fallback?.cancel()
         }

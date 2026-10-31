@@ -207,7 +207,8 @@ class AlternativeTrackMatcher {
             )
         val top = accepted.firstOrNull()
             ?: return AlternativeMatchSelection.Rejected(dominantRejection(evaluations), evaluations)
-        val explicitKnown = (query.explicit ?: AlternativeTrackText.title(query.title).explicitHint) != null
+        val expectedExplicit = query.explicit ?: AlternativeTrackText.title(query.title).explicitHint
+        val explicitKnown = expectedExplicit != null
         val nearTop = accepted.filter { it.verdict == top.verdict && top.confidence - it.confidence < AMBIGUITY_MARGIN }
         val ambiguous = nearTop.withIndex().any { (index, left) ->
             nearTop.drop(index + 1).any { right -> !sameRecording(left, right, explicitKnown) }
@@ -216,7 +217,11 @@ class AlternativeTrackMatcher {
         val chosen = accepted
             .filter { it.verdict == top.verdict && sameRecording(it, top, explicitKnown) }
             .maxWith(
-                compareBy<AlternativeMatchEvaluation> { it.candidate.explicit != true }
+                compareBy<AlternativeMatchEvaluation> {
+                    expectedExplicit != null &&
+                        (it.candidate.explicit ?: AlternativeTrackText.title(it.candidate.title).explicitHint) == expectedExplicit
+                }
+                    .thenBy { it.candidate.explicit != true }
                     .thenBy { it.candidate.offers320 == true }
                     .thenBy { it.confidence }
                     .thenByDescending { it.candidate.releaseYear.takeIf { year -> year > 0 } ?: Int.MAX_VALUE }
@@ -243,7 +248,7 @@ class AlternativeTrackMatcher {
             sameFeaturedCredits(featuredSet(a, aTitle), featuredSet(b, bTitle)) &&
             samePrimaryCredits(a, b) &&
             abs(a.durationSeconds - b.durationSeconds) <= SAME_RECORDING_DURATION_SECONDS &&
-            (!explicitKnown || a.explicit == b.explicit) &&
+            (!explicitKnown || a.explicit == null || b.explicit == null || a.explicit == b.explicit) &&
             (a.language.isBlank() || b.language.isBlank() || a.language == b.language)
     }
 
