@@ -399,6 +399,75 @@ private fun homeBlockMeaning(block: HomeBlock, copy: HomeCompositionCopy): Strin
     HomeBlock.SkinFeed -> copy.skinFeedBody
 }
 
+private fun homeEditorActions(
+    block: HomeBlock,
+    index: Int,
+    lastIndex: Int,
+    editor: HomeSectionEditor,
+    earlierLabel: String,
+    laterLabel: String,
+    removeLabel: String
+): List<CustomAccessibilityAction> = buildList {
+    if (index > 0) add(CustomAccessibilityAction(earlierLabel) { editor.moveBy(block, -1) })
+    if (index < lastIndex) add(CustomAccessibilityAction(laterLabel) { editor.moveBy(block, 1) })
+    if (editor.canRemove) add(CustomAccessibilityAction(removeLabel) { editor.remove(block) })
+}
+
+@Composable
+private fun HomeEditorDragHandle(block: HomeBlock, editor: HomeSectionEditor, dragHint: String, animated: () -> Boolean) {
+    Box(
+        modifier = Modifier
+            .pointerInput(block) {
+                detectDragGesturesAfterLongPress(
+                    onDragStart = { editor.startDrag(block) },
+                    onDragEnd = { editor.endDrag(animated()) },
+                    onDragCancel = { editor.endDrag(animated()) },
+                    onDrag = { change, amount ->
+                        change.consume()
+                        editor.dragBy(amount.y)
+                    }
+                )
+            }
+            .size(48.dp)
+            .semantics { contentDescription = dragHint },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(Icons.Rounded.DragIndicator, contentDescription = null, tint = LevyraMuted)
+    }
+}
+
+@Composable
+private fun HomeEditorCardText(
+    title: String,
+    meaning: String,
+    justAddedLabel: String,
+    highlighted: Boolean,
+    animated: Boolean,
+    tokens: HomeStudioSkinTokens,
+    modifier: Modifier
+) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall.merge(tokens.display).copy(fontWeight = FontWeight.SemiBold),
+            color = LevyraText
+        )
+        Text(text = meaning, style = MaterialTheme.typography.bodySmall, color = LevyraMuted)
+        AnimatedVisibility(
+            visible = highlighted,
+            enter = if (animated) fadeIn(tween(160)) + expandVertically(tween(200)) else EnterTransition.None,
+            exit = if (animated) fadeOut(tween(120)) + shrinkVertically(tween(160)) else ExitTransition.None
+        ) {
+            Text(
+                text = justAddedLabel,
+                style = MaterialTheme.typography.labelMedium,
+                color = tokens.accent,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+            )
+        }
+    }
+}
+
 @Composable
 private fun LazyItemScope.HomeEditorCard(
     block: HomeBlock,
@@ -450,65 +519,23 @@ private fun LazyItemScope.HomeEditorCard(
                 .background(if (isDragging) tokens.cardLifted else tokens.card)
                 .then(if (highlighted) Modifier.border(2.dp, tokens.accent, shape) else Modifier)
                 .semantics(mergeDescendants = true) {
-                    customActions = buildList {
-                        if (index > 0) add(CustomAccessibilityAction(moves.moveEarlier) { editor.moveBy(block, -1) })
-                        if (index < lastIndex) add(CustomAccessibilityAction(moves.moveLater) { editor.moveBy(block, 1) })
-                        if (editor.canRemove) add(CustomAccessibilityAction(copy.remove) { editor.remove(block) })
-                    }
+                    customActions = homeEditorActions(block, index, lastIndex, editor, moves.moveEarlier, moves.moveLater, copy.remove)
                 }
                 .heightIn(min = 72.dp)
                 .padding(start = 2.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .pointerInput(block) {
-                        detectDragGesturesAfterLongPress(
-                            onDragStart = { editor.startDrag(block) },
-                            onDragEnd = { editor.endDrag(latestAnimated) },
-                            onDragCancel = { editor.endDrag(latestAnimated) },
-                            onDrag = { change, amount ->
-                                change.consume()
-                                editor.dragBy(amount.y)
-                            }
-                        )
-                    }
-                    .size(48.dp)
-                    .semantics { contentDescription = copy.dragHint },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Rounded.DragIndicator, contentDescription = null, tint = LevyraMuted)
-            }
+            HomeEditorDragHandle(block, editor, copy.dragHint) { latestAnimated }
             HomeSectionThumbnail(block, tokens, tones, Modifier.size(52.dp))
-            Column(
-                Modifier
-                    .weight(1f)
-                    .padding(horizontal = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                Text(
-                    text = tokens.title(title, locale),
-                    style = MaterialTheme.typography.titleSmall.merge(tokens.display).copy(fontWeight = FontWeight.SemiBold),
-                    color = LevyraText
-                )
-                Text(
-                    text = homeBlockMeaning(block, copy),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = LevyraMuted
-                )
-                AnimatedVisibility(
-                    visible = highlighted,
-                    enter = if (animated) fadeIn(tween(160)) + expandVertically(tween(200)) else EnterTransition.None,
-                    exit = if (animated) fadeOut(tween(120)) + shrinkVertically(tween(160)) else ExitTransition.None
-                ) {
-                    Text(
-                        text = copy.justAdded,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = tokens.accent,
-                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
-                    )
-                }
-            }
+            HomeEditorCardText(
+                title = tokens.title(title, locale),
+                meaning = homeBlockMeaning(block, copy),
+                justAddedLabel = copy.justAdded,
+                highlighted = highlighted,
+                animated = animated,
+                tokens = tokens,
+                modifier = Modifier.weight(1f).padding(horizontal = 12.dp)
+            )
             IconButton(onClick = { editor.remove(block) }, enabled = editor.canRemove) {
                 Icon(
                     Icons.Rounded.Close,

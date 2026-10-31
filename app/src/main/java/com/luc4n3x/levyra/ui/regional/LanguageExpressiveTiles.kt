@@ -58,6 +58,8 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.LevyraLanguageOption
@@ -125,47 +127,73 @@ internal fun ExpressiveLanguageTile(
         animationSpec = spring(Spring.DampingRatioLowBouncy, Spring.StiffnessLow),
         label = "language-tile-turn"
     )
-    val wide = languageTileIsWide(position)
+    val metrics = if (languageTileIsWide(position)) WideTileMetrics else RegularTileMetrics
     val shape = RoundedCornerShape(corner)
     Box(
-        Modifier.fillMaxWidth().heightIn(min = if (wide) 124.dp else 148.dp)
+        Modifier.fillMaxWidth().heightIn(min = metrics.minHeight)
             .graphicsLayer { scaleX = scale; scaleY = scale }
             .clip(shape)
             .background(background)
             .selectable(selected = selected, interactionSource = interaction, indication = ripple(), role = Role.RadioButton, onClick = onClick)
     ) {
-        val badgeSize = if (wide) 128.dp else 96.dp
         Box(
-            Modifier.align(Alignment.TopEnd).offset(x = if (wide) 20.dp else 12.dp, y = if (wide) (-14).dp else (-12).dp).size(badgeSize)
+            Modifier.align(Alignment.TopEnd).offset(x = metrics.badgeOffsetX, y = metrics.badgeOffsetY).size(metrics.badgeSize)
                 .graphicsLayer { rotationZ = turn }
                 .background(content.copy(alpha = 0.16f), expressiveBadgeShape(position, selected))
                 .clearAndSetSemantics { },
             contentAlignment = Alignment.Center
         ) {
-            Text(language.flag, fontSize = if (wide) 46.sp else 34.sp, modifier = Modifier.graphicsLayer { rotationZ = -turn })
+            Text(language.flag, fontSize = metrics.flagSize, modifier = Modifier.graphicsLayer { rotationZ = -turn })
         }
-        AnimatedVisibility(
-            visible = selected, modifier = Modifier.align(Alignment.TopStart).padding(12.dp),
-            enter = fadeIn() + scaleIn(spring(Spring.DampingRatioMediumBouncy)), exit = fadeOut() + scaleOut()
-        ) {
-            Box(Modifier.size(30.dp).background(scheme.onPrimary, CircleShape), contentAlignment = Alignment.Center) {
-                Icon(Icons.Rounded.Check, null, tint = scheme.primary, modifier = Modifier.size(20.dp))
-            }
+        ExpressiveTileCheck(selected, Modifier.align(Alignment.TopStart).padding(12.dp))
+        ExpressiveTileTexts(language, content, metrics, Modifier.align(Alignment.BottomStart))
+    }
+}
+
+private class ExpressiveTileMetrics(
+    val minHeight: Dp,
+    val badgeSize: Dp,
+    val badgeOffsetX: Dp,
+    val badgeOffsetY: Dp,
+    val flagSize: TextUnit,
+    val textWidthFraction: Float,
+    val textTopPadding: Dp,
+    val greetingSize: TextUnit,
+    val greetingLineHeight: TextUnit
+)
+
+private val WideTileMetrics = ExpressiveTileMetrics(124.dp, 128.dp, 20.dp, (-14).dp, 46.sp, 0.68f, 40.dp, 28.sp, 32.sp)
+
+private val RegularTileMetrics = ExpressiveTileMetrics(148.dp, 96.dp, 12.dp, (-12).dp, 34.sp, 1f, 72.dp, 22.sp, 26.sp)
+
+@Composable
+private fun ExpressiveTileCheck(selected: Boolean, modifier: Modifier) {
+    val scheme = MaterialTheme.colorScheme
+    AnimatedVisibility(
+        visible = selected, modifier = modifier,
+        enter = fadeIn() + scaleIn(spring(Spring.DampingRatioMediumBouncy)), exit = fadeOut() + scaleOut()
+    ) {
+        Box(Modifier.size(30.dp).background(scheme.onPrimary, CircleShape), contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.Check, null, tint = scheme.primary, modifier = Modifier.size(20.dp))
         }
-        Column(
-            Modifier.align(Alignment.BottomStart).fillMaxWidth(if (wide) 0.68f else 1f)
-                .padding(start = 16.dp, end = 12.dp, top = if (wide) 40.dp else 72.dp, bottom = 14.dp)
-        ) {
-            Text(
-                LevyraLanguagePickerStrings.greeting(language.code), color = content,
-                fontSize = if (wide) 28.sp else 22.sp, lineHeight = if (wide) 32.sp else 26.sp, fontWeight = FontWeight.Black,
-                maxLines = 1, overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                language.nativeName, color = content.copy(alpha = 0.82f), fontSize = 14.sp, lineHeight = 18.sp,
-                fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis
-            )
-        }
+    }
+}
+
+@Composable
+private fun ExpressiveTileTexts(language: LevyraLanguageOption, content: Color, metrics: ExpressiveTileMetrics, modifier: Modifier) {
+    Column(
+        modifier.fillMaxWidth(metrics.textWidthFraction)
+            .padding(start = 16.dp, end = 12.dp, top = metrics.textTopPadding, bottom = 14.dp)
+    ) {
+        Text(
+            LevyraLanguagePickerStrings.greeting(language.code), color = content,
+            fontSize = metrics.greetingSize, lineHeight = metrics.greetingLineHeight, fontWeight = FontWeight.Black,
+            maxLines = 1, overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            language.nativeName, color = content.copy(alpha = 0.82f), fontSize = 14.sp, lineHeight = 18.sp,
+            fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
@@ -208,7 +236,7 @@ internal fun ExpressiveLanguageHero(
         ) {
             AnimatedContent(
                 targetState = selected?.flag,
-                transitionSpec = { (fadeIn() + scaleIn(spring(Spring.DampingRatioMediumBouncy), 0.5f)) togetherWith (fadeOut() + scaleOut(targetScale = 1.3f)) },
+                transitionSpec = { fadeIn() + scaleIn(spring(Spring.DampingRatioMediumBouncy), 0.5f) togetherWith fadeOut() + scaleOut(targetScale = 1.3f) },
                 label = "language-hero-flag"
             ) { flag ->
                 if (flag != null) Text(flag, fontSize = 62.sp)
@@ -225,7 +253,7 @@ internal fun ExpressiveLanguageHero(
             )
             AnimatedContent(
                 targetState = selected?.code,
-                transitionSpec = { (slideInVertically { it / 2 } + fadeIn()) togetherWith (slideOutVertically { -it / 2 } + fadeOut()) },
+                transitionSpec = { slideInVertically { it / 2 } + fadeIn() togetherWith slideOutVertically { -it / 2 } + fadeOut() },
                 label = "language-hero-greeting"
             ) { code ->
                 Text(

@@ -46,6 +46,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
@@ -148,39 +149,54 @@ internal class HomeStudioSkinTokens(
     companion object {
         @Composable
         fun current(): HomeStudioSkinTokens {
-            val scheme = MaterialTheme.colorScheme
             val idiom = currentIdiom()
-            val expressive = idiom == HomePreviewIdiom.Expressive
-            val outer = if (expressive) 28.dp else SkinChrome.outerCorner
-            val accent = when (idiom) {
-                HomePreviewIdiom.Expressive -> scheme.primary
-                HomePreviewIdiom.Torque, HomePreviewIdiom.Ivory -> LevyraActivePalette.blue
-                else -> LevyraCyan
-            }
+            return if (idiom == HomePreviewIdiom.Expressive) expressiveTokens(MaterialTheme.colorScheme) else skinTokens(idiom)
+        }
+
+        private fun contentOn(accent: Color): Color = if (accent.luminance() > 0.5f) Color.Black else Color.White
+
+        private fun expressiveTokens(scheme: ColorScheme): HomeStudioSkinTokens = HomeStudioSkinTokens(
+            idiom = HomePreviewIdiom.Expressive,
+            expressive = true,
+            cardShape = RoundedCornerShape(28.dp),
+            thumbShape = RoundedCornerShape(16.dp),
+            controlShape = CircleShape,
+            chipShape = CircleShape,
+            previewRadius = previewRadiusFor(HomePreviewIdiom.Expressive),
+            display = displayStyleFor(HomePreviewIdiom.Expressive),
+            accent = scheme.primary,
+            onAccent = contentOn(scheme.primary),
+            card = scheme.surfaceContainerHigh,
+            cardLifted = scheme.secondaryContainer,
+            line = scheme.outlineVariant,
+            titlesUppercase = false,
+            phoneRestCorner = 16.dp,
+            phoneSelectedCorner = 30.dp,
+            phoneChamfered = false
+        )
+
+        private fun skinTokens(idiom: HomePreviewIdiom): HomeStudioSkinTokens {
+            val outer = SkinChrome.outerCorner
+            val torque = idiom == HomePreviewIdiom.Torque
+            val accent = if (torque || idiom == HomePreviewIdiom.Ivory) LevyraActivePalette.blue else LevyraCyan
             return HomeStudioSkinTokens(
                 idiom = idiom,
-                expressive = expressive,
+                expressive = false,
                 cardShape = RoundedCornerShape(outer),
-                thumbShape = RoundedCornerShape(
-                    when {
-                        expressive -> 16.dp
-                        LevyraIsAppleMusic -> AppleMusicDesign.cornerM
-                        else -> SkinChrome.innerCorner
-                    }
-                ),
-                controlShape = if (expressive) CircleShape else SkinChrome.fieldShape,
-                chipShape = if (expressive) CircleShape else SkinChrome.chipShape,
+                thumbShape = RoundedCornerShape(if (idiom == HomePreviewIdiom.AppleMusic) AppleMusicDesign.cornerM else SkinChrome.innerCorner),
+                controlShape = SkinChrome.fieldShape,
+                chipShape = SkinChrome.chipShape,
                 previewRadius = previewRadiusFor(idiom),
                 display = displayStyleFor(idiom),
                 accent = accent,
-                onAccent = if (accent.luminance() > 0.5f) Color.Black else Color.White,
-                card = if (expressive) scheme.surfaceContainerHigh else LevyraPanel,
-                cardLifted = if (expressive) scheme.secondaryContainer else LevyraPanelSoft,
-                line = if (expressive) scheme.outlineVariant else LevyraActivePalette.outline,
-                titlesUppercase = idiom == HomePreviewIdiom.Torque,
-                phoneRestCorner = if (expressive) 16.dp else if (LevyraIsTorque) 0.dp else (outer * 0.7f).coerceAtMost(16.dp),
-                phoneSelectedCorner = if (expressive) 30.dp else if (LevyraIsTorque) 14.dp else (outer + 4.dp).coerceAtMost(28.dp),
-                phoneChamfered = LevyraIsTorque
+                onAccent = contentOn(accent),
+                card = LevyraPanel,
+                cardLifted = LevyraPanelSoft,
+                line = LevyraActivePalette.outline,
+                titlesUppercase = torque,
+                phoneRestCorner = if (torque) 0.dp else (outer * 0.7f).coerceAtMost(16.dp),
+                phoneSelectedCorner = if (torque) 14.dp else (outer + 4.dp).coerceAtMost(28.dp),
+                phoneChamfered = torque
             )
         }
 
@@ -376,20 +392,7 @@ private fun StagePhone(
                 .semantics { contentDescription = description },
             contentAlignment = Alignment.Center
         ) {
-            if (tokens.expressive) {
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1f)
-                        .graphicsLayer {
-                            val halo = 0.8f + 0.34f * settled
-                            scaleX = halo
-                            scaleY = halo
-                            alpha = settled
-                        }
-                        .background(tokens.accent.copy(alpha = 0.24f), LevyraMorphShape(StageHaloMorph, settled))
-                )
-            }
+            if (tokens.expressive) StageHalo(tokens, settled)
             Box(
                 Modifier
                     .matchParentSize()
@@ -406,46 +409,69 @@ private fun StagePhone(
             ) {
                 preview { settled }
             }
-            Box(
-                Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(4.dp)
-                    .size(28.dp)
-                    .graphicsLayer {
-                        scaleX = lift
-                        scaleY = lift
-                        alpha = settled
-                    }
-                    .background(
-                        tokens.accent,
-                        if (tokens.expressive) LevyraMorphShape(StageBadgeMorph, settled) else tokens.chipShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Rounded.Check, contentDescription = null, tint = tokens.onAccent, modifier = Modifier.size(16.dp))
-            }
+            StageCheckBadge(tokens, lift, settled, Modifier.align(Alignment.TopEnd))
         }
-        Text(
-            text = name,
-            style = MaterialTheme.typography.labelMedium.merge(tokens.display).copy(
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                hyphens = Hyphens.Auto
-            ),
-            color = if (selected) LevyraText else LevyraMuted,
-            textAlign = TextAlign.Center
-        )
-        Text(
-            text = inUseLabel,
-            style = MaterialTheme.typography.labelSmall,
-            color = tokens.onAccent,
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-                .graphicsLayer { alpha = if (selected) 1f else 0f }
-                .then(if (selected) Modifier else Modifier.clearAndSetSemantics { })
-                .background(tokens.accent, tokens.chipShape)
-                .padding(horizontal = 8.dp, vertical = 2.dp)
-        )
+        StageLabels(name, inUseLabel, selected, tokens)
     }
+}
+
+@Composable
+private fun StageHalo(tokens: HomeStudioSkinTokens, settled: Float) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .aspectRatio(1f)
+            .graphicsLayer {
+                val halo = 0.8f + 0.34f * settled
+                scaleX = halo
+                scaleY = halo
+                alpha = settled
+            }
+            .background(tokens.accent.copy(alpha = 0.24f), LevyraMorphShape(StageHaloMorph, settled))
+    )
+}
+
+@Composable
+private fun StageCheckBadge(tokens: HomeStudioSkinTokens, lift: Float, settled: Float, modifier: Modifier) {
+    val shape = if (tokens.expressive) LevyraMorphShape(StageBadgeMorph, settled) else tokens.chipShape
+    Box(
+        modifier
+            .padding(4.dp)
+            .size(28.dp)
+            .graphicsLayer {
+                scaleX = lift
+                scaleY = lift
+                alpha = settled
+            }
+            .background(tokens.accent, shape),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(Icons.Rounded.Check, contentDescription = null, tint = tokens.onAccent, modifier = Modifier.size(16.dp))
+    }
+}
+
+@Composable
+private fun StageLabels(name: String, inUseLabel: String, selected: Boolean, tokens: HomeStudioSkinTokens) {
+    Text(
+        text = name,
+        style = MaterialTheme.typography.labelMedium.merge(tokens.display).copy(
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            hyphens = Hyphens.Auto
+        ),
+        color = if (selected) LevyraText else LevyraMuted,
+        textAlign = TextAlign.Center
+    )
+    Text(
+        text = inUseLabel,
+        style = MaterialTheme.typography.labelSmall,
+        color = tokens.onAccent,
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+            .graphicsLayer { alpha = if (selected) 1f else 0f }
+            .then(if (selected) Modifier else Modifier.clearAndSetSemantics { })
+            .background(tokens.accent, tokens.chipShape)
+            .padding(horizontal = 8.dp, vertical = 2.dp)
+    )
 }
 
 @Composable
@@ -460,7 +486,7 @@ private fun HomeStageSummary(
         targetState = mode,
         transitionSpec = {
             if (animated) {
-                (fadeIn(tween(220)) + slideInVertically(tween(220)) { it / 8 }) togetherWith fadeOut(tween(110))
+                fadeIn(tween(220)) + slideInVertically(tween(220)) { it / 8 } togetherWith fadeOut(tween(110))
             } else {
                 EnterTransition.None togetherWith ExitTransition.None
             }

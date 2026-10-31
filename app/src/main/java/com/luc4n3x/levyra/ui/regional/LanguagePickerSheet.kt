@@ -168,34 +168,54 @@ internal fun LanguagePickerSheet(
             fullWidth("picker-search") {
                 LanguageSearchField(tokens, query, copy, onChange = { query = it })
             }
-            if (automatic != null && !searching) {
-                fullWidth("picker-automatic") {
-                    LanguageTile(
-                        tokens = tokens,
-                        index = 0,
-                        name = automatic.label,
-                        supporting = automatic.body,
-                        selected = selectedCode == null,
-                        rows = true,
-                        onClick = { choose("") }
-                    ) { Icon(Icons.Rounded.GraphicEq, null, tint = if (selectedCode == null) tokens.onAccent else tokens.accent, modifier = Modifier.size(22.dp)) }
-                }
-            }
-            if (!searching) {
+            if (automatic != null && !searching) automaticLanguageItem(automatic, tokens, selectedCode == null) { choose("") }
+            if (searching) {
+                searchResultItems(filtered, copy, tokens, selectedCode, columns == 1, choose)
+            } else {
                 val shownSuggestions = suggested.takeIf { it.size > 1 }.orEmpty()
                 languageSection("picker-suggested", tokens.title(copy.suggested, locale), shownSuggestions, tokens, selectedCode, columns == 1, choose)
                 languageSection("picker-all", tokens.title(copy.allLanguages, locale), languages.filterNot { it in shownSuggestions }, tokens, selectedCode, columns == 1, choose)
-            } else if (filtered.isEmpty()) {
-                fullWidth("picker-empty") {
-                    Text(
-                        copy.noResults, color = LevyraMuted, fontSize = 15.sp,
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp, horizontal = 8.dp)
-                    )
-                }
-            } else {
-                languageSection("picker-results", null, filtered, tokens, selectedCode, columns == 1, choose)
             }
         }
+    }
+}
+
+private fun LazyGridScope.automaticLanguageItem(
+    automatic: LanguagePickerAutomatic,
+    tokens: HomeStudioSkinTokens,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    fullWidth("picker-automatic") {
+        LanguageTile(
+            tokens = tokens,
+            index = 0,
+            name = automatic.label,
+            supporting = automatic.body,
+            selected = selected,
+            rows = true,
+            onClick = onClick
+        ) { Icon(Icons.Rounded.GraphicEq, null, tint = if (selected) tokens.onAccent else tokens.accent, modifier = Modifier.size(22.dp)) }
+    }
+}
+
+private fun LazyGridScope.searchResultItems(
+    results: List<LevyraLanguageOption>,
+    copy: LanguagePickerCopy,
+    tokens: HomeStudioSkinTokens,
+    selectedCode: String?,
+    rows: Boolean,
+    choose: (String) -> Unit
+) {
+    if (results.isEmpty()) {
+        fullWidth("picker-empty") {
+            Text(
+                copy.noResults, color = LevyraMuted, fontSize = 15.sp,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp, horizontal = 8.dp)
+            )
+        }
+    } else {
+        languageSection("picker-results", null, results, tokens, selectedCode, rows, choose)
     }
 }
 
@@ -282,7 +302,7 @@ private fun LanguagePickerHero(
                 targetState = selected?.code,
                 transitionSpec = {
                     if (animations) {
-                        (fadeIn() + scaleIn(spring(Spring.DampingRatioMediumBouncy), initialScale = 0.6f)) togetherWith (fadeOut() + scaleOut(targetScale = 1.2f))
+                        fadeIn() + scaleIn(spring(Spring.DampingRatioMediumBouncy), initialScale = 0.6f) togetherWith fadeOut() + scaleOut(targetScale = 1.2f)
                     } else {
                         fadeIn(androidx.compose.animation.core.snap()) togetherWith fadeOut(androidx.compose.animation.core.snap())
                     }
@@ -342,6 +362,42 @@ private fun LanguageSearchField(tokens: HomeStudioSkinTokens, query: String, cop
 }
 
 @Composable
+private fun LanguageTileBadge(
+    tokens: HomeStudioSkinTokens,
+    index: Int,
+    selected: Boolean,
+    rows: Boolean,
+    turn: () -> Float,
+    leading: @Composable () -> Unit
+) {
+    val fill = if (selected) tokens.onAccent.copy(alpha = 0.18f) else tokens.cardLifted
+    Box(
+        Modifier.size(if (rows) 42.dp else 46.dp)
+            .graphicsLayer { rotationZ = turn() }
+            .background(fill, languageBadgeShape(tokens, index, selected))
+            .clearAndSetSemantics { },
+        contentAlignment = Alignment.Center
+    ) { Box(Modifier.graphicsLayer { rotationZ = -turn() }) { leading() } }
+}
+
+@Composable
+private fun LanguageTileCheck(tokens: HomeStudioSkinTokens, selected: Boolean) {
+    AnimatedVisibility(selected, enter = fadeIn() + scaleIn(), exit = fadeOut() + scaleOut()) {
+        Icon(Icons.Rounded.Check, null, tint = tokens.onAccent, modifier = Modifier.size(22.dp))
+    }
+}
+
+@Composable
+private fun LanguageTileTexts(tokens: HomeStudioSkinTokens, name: String, supporting: String?, selected: Boolean, modifier: Modifier) {
+    val nameColor = if (selected) tokens.onAccent else LevyraText
+    val supportColor = if (selected) tokens.onAccent.copy(alpha = 0.78f) else LevyraMuted
+    Column(modifier) {
+        Text(name, color = nameColor, fontSize = 16.sp, lineHeight = 21.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        if (supporting != null) Text(supporting, color = supportColor, fontSize = 12.5.sp, lineHeight = 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
 private fun LanguageTile(
     tokens: HomeStudioSkinTokens,
     index: Int,
@@ -366,34 +422,16 @@ private fun LanguageTile(
         spring(Spring.DampingRatioLowBouncy, Spring.StiffnessLow),
         label = "language-tile-turn"
     )
-    val nameColor = if (selected) tokens.onAccent else LevyraText
-    val supportColor = if (selected) tokens.onAccent.copy(alpha = 0.78f) else LevyraMuted
+    val outlined = !selected && !rows
     val tileModifier = Modifier.fillMaxWidth().heightIn(min = if (rows) 60.dp else 112.dp)
         .clip(tokens.cardShape)
         .background(background)
-        .then(if (rows && !selected) Modifier else if (!selected) Modifier.border(1.dp, tokens.line, tokens.cardShape) else Modifier)
+        .then(if (outlined) Modifier.border(1.dp, tokens.line, tokens.cardShape) else Modifier)
         .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
         .padding(horizontal = 12.dp, vertical = 10.dp)
-    val badge: @Composable () -> Unit = {
-        Box(
-            Modifier.size(if (rows) 42.dp else 46.dp)
-                .graphicsLayer { rotationZ = badgeTurn }
-                .background(if (selected) tokens.onAccent.copy(alpha = 0.18f) else tokens.cardLifted, languageBadgeShape(tokens, index, selected))
-                .clearAndSetSemantics { },
-            contentAlignment = Alignment.Center
-        ) { Box(Modifier.graphicsLayer { rotationZ = -badgeTurn }) { leading() } }
-    }
-    val check: @Composable () -> Unit = {
-        AnimatedVisibility(selected, enter = fadeIn() + scaleIn(), exit = fadeOut() + scaleOut()) {
-            Icon(Icons.Rounded.Check, null, tint = tokens.onAccent, modifier = Modifier.size(22.dp))
-        }
-    }
-    val texts: @Composable (Modifier) -> Unit = { modifier ->
-        Column(modifier) {
-            Text(name, color = nameColor, fontSize = 16.sp, lineHeight = 21.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            if (supporting != null) Text(supporting, color = supportColor, fontSize = 12.5.sp, lineHeight = 17.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        }
-    }
+    val badge: @Composable () -> Unit = { LanguageTileBadge(tokens, index, selected, rows, { badgeTurn }, leading) }
+    val check: @Composable () -> Unit = { LanguageTileCheck(tokens, selected) }
+    val texts: @Composable (Modifier) -> Unit = { modifier -> LanguageTileTexts(tokens, name, supporting, selected, modifier) }
     if (rows) {
         Row(tileModifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             badge()

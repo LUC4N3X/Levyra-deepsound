@@ -81,7 +81,7 @@ internal class QobuzComposedKit(
                     title = title,
                     baseline = null,
                     seeAllLabel = copy.seeAll,
-                    onSeeAll = if (hasMore) ({ onSeeAllTracks(title, unique) }) else null,
+                    onSeeAll = { onSeeAllTracks(title, unique) }.takeIf { hasMore },
                     modifier = Modifier.weight(1f)
                 )
                 QobuzIconAction(Icons.Rounded.PlayArrow, LocalLevyraStrings.current.playAll, onPlayAll)
@@ -171,37 +171,45 @@ internal class QobuzComposedKit(
             card.wide -> QobuzDesign.wideCard
             else -> QobuzDesign.gridCard
         }
-        val shape = if (card.circular) CircleShape else QobuzDesign.cardShape
-        val artwork = Modifier.fillMaxWidth().aspectRatio(if (card.wide) 16f / 9f else 1f)
         Column(
             Modifier.width(width).combinedClickable(role = Role.Button, onLongClick = card.onLongClick, onClick = card.onClick),
             horizontalAlignment = if (card.circular) Alignment.CenterHorizontally else Alignment.Start
         ) {
-            val track = card.track
-            if (track != null) {
-                Box(artwork.clip(shape).background(QobuzDesign.placeholder)) {
-                    CoverImage(track, Modifier.fillMaxSize(), highRes = true)
-                }
-            } else {
-                QobuzArtworkBox(card.artworkUrl, artwork, shape)
-            }
+            QobuzComposedCardArtwork(card)
             Spacer(Modifier.height(8.dp))
             Text(
                 card.title, style = QobuzText.cardTitle, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 textAlign = if (card.circular) TextAlign.Center else TextAlign.Start
             )
-            if (card.subtitle.isNotBlank() || card.explicit) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (card.explicit) {
-                        QobuzExplicitBadge(copy.explicit)
-                        Spacer(Modifier.width(6.dp))
-                    }
-                    Text(
-                        card.subtitle, style = if (reason) QobuzText.category else QobuzText.cardSubtitle,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis
-                    )
-                }
+            if (card.subtitle.isNotBlank() || card.explicit) QobuzComposedCardSubtitle(card, reason)
+        }
+    }
+
+    @Composable
+    private fun QobuzComposedCardArtwork(card: ComposedCard) {
+        val shape = if (card.circular) CircleShape else QobuzDesign.cardShape
+        val artwork = Modifier.fillMaxWidth().aspectRatio(if (card.wide) 16f / 9f else 1f)
+        val track = card.track
+        if (track != null) {
+            Box(artwork.clip(shape).background(QobuzDesign.placeholder)) {
+                CoverImage(track, Modifier.fillMaxSize(), highRes = true)
             }
+        } else {
+            QobuzArtworkBox(card.artworkUrl, artwork, shape)
+        }
+    }
+
+    @Composable
+    private fun QobuzComposedCardSubtitle(card: ComposedCard, reason: Boolean) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (card.explicit) {
+                QobuzExplicitBadge(copy.explicit)
+                Spacer(Modifier.width(6.dp))
+            }
+            Text(
+                card.subtitle, style = if (reason) QobuzText.category else QobuzText.cardSubtitle,
+                maxLines = 1, overflow = TextOverflow.Ellipsis
+            )
         }
     }
 

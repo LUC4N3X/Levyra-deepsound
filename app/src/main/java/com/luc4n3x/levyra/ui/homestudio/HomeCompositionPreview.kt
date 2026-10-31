@@ -591,8 +591,8 @@ private fun DrawScope.prismHome(tones: HomePreviewTones) {
     pill(Color.White.copy(alpha = 0.9f), pad + inner * 0.08f, h * 0.285f, inner * 0.44f, h * 0.013f)
     val half = (inner - pad * 0.6f) / 2f
     repeat(4) { index ->
-        val x = pad + (index % 2) * (half + pad * 0.6f)
-        val y = h * 0.39f + (index / 2) * h * 0.08f
+        val x = pad + index % 2 * (half + pad * 0.6f)
+        val y = h * 0.39f + index / 2 * h * 0.08f
         tile(tones.panel, x, y, half, h * 0.068f, radius)
         tile(tones.soft, x, y, h * 0.068f, h * 0.068f, radius)
     }
@@ -653,8 +653,8 @@ private fun DrawScope.ivoryHome(tones: HomePreviewTones) {
     pill(tones.text.copy(alpha = 0.86f), pad + inner * 0.1f, h * 0.2f, inner * 0.44f, h * 0.014f)
     val half = (inner - pad * 0.6f) / 2f
     repeat(4) { index ->
-        val x = pad + (index % 2) * (half + pad * 0.6f)
-        val y = h * 0.44f + (index / 2) * h * 0.2f
+        val x = pad + index % 2 * (half + pad * 0.6f)
+        val y = h * 0.44f + index / 2 * h * 0.2f
         tile(if (index == 1) tones.soft else tones.panel, x, y, half, h * 0.18f, radius)
         pill(tones.text.copy(alpha = 0.72f), x + half * 0.14f, y + h * 0.13f, half * 0.6f, h * 0.01f)
     }
