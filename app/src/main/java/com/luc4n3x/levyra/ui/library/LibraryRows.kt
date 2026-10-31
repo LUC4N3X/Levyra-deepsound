@@ -123,6 +123,7 @@ internal fun LibraryTrackRow(
         Box(contentAlignment = Alignment.Center) {
             LibraryArtwork(
                 url = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
+                fallbackUrl = com.luc4n3x.levyra.domain.LevyraPersonalOrbit.youtubeFallbackArtwork(track).orEmpty(),
                 title = track.title,
                 modifier = Modifier.size(LevyraCardDesign.RowThumb),
                 shape = LibraryArtworkShape,
@@ -704,9 +705,12 @@ internal fun LibraryArtwork(
     title: String,
     modifier: Modifier,
     shape: androidx.compose.ui.graphics.Shape,
-    selected: Boolean
+    selected: Boolean,
+    fallbackUrl: String = ""
 ) {
-    var failed by remember(url) { mutableStateOf(false) }
+    var failed by remember(url, fallbackUrl) { mutableStateOf(false) }
+    var usingFallback by remember(url, fallbackUrl) { mutableStateOf(url.isBlank()) }
+    val model = if (usingFallback) fallbackUrl else url
     val colors = MaterialTheme.colorScheme
     Box(
         modifier = modifier
@@ -715,12 +719,14 @@ internal fun LibraryArtwork(
             .then(if (selected) Modifier.border(2.dp, LevyraCyan, shape) else Modifier),
         contentAlignment = Alignment.Center
     ) {
-        if (url.isNotBlank() && !failed) {
+        if (model.isNotBlank() && !failed) {
             AsyncImage(
-                model = url,
+                model = model,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                onError = { failed = true },
+                onError = {
+                    if (!usingFallback && fallbackUrl.isNotBlank() && fallbackUrl != url) usingFallback = true else failed = true
+                },
                 modifier = Modifier.fillMaxSize()
             )
         } else {

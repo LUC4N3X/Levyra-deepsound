@@ -1218,6 +1218,16 @@ class PlaybackResolver private constructor(private val context: Context) {
                 highQualityDownloads.resolveLosslessDownload(requestTrack, quality, ::basePlaybackProvenance)
             } else null
             if (lossless != null) return@resolveWithLanguageRevisionRetry lossless
+            val highBitrate = if (qualitySource == null && quality != LevyraAudioQuality.LOW && highQualityPlayback.mode.enabled) {
+                runCatchingPreservingCancellation {
+                    highQualityPlayback.resolveLossyDownload(requestTrack, LevyraAudioQuality.HIGH, ::basePlaybackProvenance)
+                }.onFailure { error ->
+                    Timber.d(error, "Offline high bitrate source unavailable")
+                }.getOrNull()
+            } else {
+                null
+            }
+            if (highBitrate != null) return@resolveWithLanguageRevisionRetry highBitrate
             val reel = if (preferredLanguage.isBlank()) {
                 runCatchingPreservingCancellation {
                     resolveVideoWithAndroidReel(requestTrack.copy(streamUrl = "", videoStreamUrl = ""))

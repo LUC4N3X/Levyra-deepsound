@@ -235,6 +235,52 @@ class AlternativeTrackMatcherTest {
     }
 
     @Test
+    fun remasterSingleMatchesAnUnmarkedCompilationTitleWithTheSameDuration() {
+        val query = query(title = "Hotel California", artist = "Eagles", album = "Legacy", durationMs = 391_000L)
+        val single = verdict(
+            query,
+            candidate(title = "Hotel California (2013 Remaster)", primary = listOf("Eagles"), album = "Hotel California (2013 Remaster)", duration = 391)
+        )
+        val noAlbum = verdict(
+            query,
+            candidate(title = "Hotel California (2013 Remaster)", primary = listOf("Eagles"), album = "", duration = 391)
+        )
+
+        assertEquals(AlternativeMatchVerdict.HIGH, single.verdict)
+        assertEquals(AlternativeMatchVerdict.HIGH, noAlbum.verdict)
+    }
+
+    @Test
+    fun remasterToleranceRequiresSameDurationArtistAndOnlyTheRemasterMarker() {
+        val query = query(title = "Hotel California", artist = "Eagles", album = "Legacy", durationMs = 391_000L)
+        assertRejected(
+            MatchRejection.VERSION_MISMATCH,
+            query,
+            candidate(title = "Hotel California (2013 Remaster)", primary = listOf("Eagles"), album = "Hotel California (2013 Remaster)", duration = 395)
+        )
+        assertRejected(
+            MatchRejection.VERSION_MISMATCH,
+            query,
+            candidate(title = "Hotel California (2013 Remaster)", primary = listOf("Eagles"), album = "Their Greatest Hits", duration = 391)
+        )
+        assertRejected(
+            MatchRejection.VERSION_MISMATCH,
+            query,
+            candidate(title = "Hotel California (Live at the Forum)", primary = listOf("Eagles"), album = "Hotel California (Live at the Forum)", duration = 391)
+        )
+        assertRejected(
+            MatchRejection.VERSION_MISMATCH,
+            query,
+            candidate(title = "Hotel California - Remastered Live", primary = listOf("Eagles"), album = "Hotel California", duration = 391)
+        )
+        assertRejected(
+            MatchRejection.VERSION_MISMATCH,
+            query(title = "Hotel California - Live", artist = "Eagles", album = "Legacy", durationMs = 391_000L),
+            candidate(title = "Hotel California (2013 Remaster)", primary = listOf("Eagles"), album = "Hotel California (2013 Remaster)", duration = 391)
+        )
+    }
+
+    @Test
     fun singleReleaseOfTheSameRecordingIsHighConfidence() {
         val evaluation = verdict(query(), candidate(album = "Blinding Lights"))
         assertEquals(AlternativeMatchVerdict.HIGH, evaluation.verdict)
