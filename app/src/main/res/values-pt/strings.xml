@@ -24,7 +24,6 @@
     <string name="car_connecting_player">A ligar ao leitor</string>
     <string name="car_now_playing">A reproduzir</string>
     <string name="car_queue">Fila</string>
-
     <!-- Android Auto browse tree -->
     <string name="car_root_subtitle">Música otimizada para Android Auto</string>
     <string name="car_home_subtitle">Mixes rápidos, offline e paradas</string>
@@ -55,7 +54,6 @@
     <string name="car_album_unavailable">Álbum indisponível</string>
     <string name="car_artist_unavailable">Artista indisponível</string>
     <string name="car_item_unavailable">Item indisponível</string>
-
     <!-- Android Auto dynamic strings -->
     <plurals name="car_tracks_count">
         <item quantity="one">%1$d música</item>

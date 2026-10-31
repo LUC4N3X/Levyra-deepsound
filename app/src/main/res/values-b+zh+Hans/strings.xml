@@ -24,7 +24,6 @@
     <string name="car_connecting_player">正在连接播放器</string>
     <string name="car_now_playing">正在播放</string>
     <string name="car_queue">播放队列</string>
-
     <!-- Android Auto browse tree -->
     <string name="car_root_subtitle">为 Android Auto 优化的音乐</string>
     <string name="car_home_subtitle">快速混合、离线和排行榜</string>
@@ -55,7 +54,6 @@
     <string name="car_album_unavailable">专辑不可用</string>
     <string name="car_artist_unavailable">歌手不可用</string>
     <string name="car_item_unavailable">项目不可用</string>
-
     <!-- Android Auto dynamic strings -->
     <plurals name="car_tracks_count">
         <item quantity="other">%1$d 首歌曲</item>
