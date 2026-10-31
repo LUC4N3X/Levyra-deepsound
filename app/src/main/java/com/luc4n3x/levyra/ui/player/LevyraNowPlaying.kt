@@ -79,6 +79,7 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Loop
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.AccessTime
@@ -159,7 +160,9 @@ import com.luc4n3x.levyra.ui.harmonizePlayerAccents
 import com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.sectionLoopCopy
 import com.luc4n3x.levyra.ui.i18n.systemPlayerCopy
+import com.luc4n3x.levyra.player.SectionLoopState
 import com.luc4n3x.levyra.ui.i18n.technicalAudioInfoCopy
 import com.luc4n3x.levyra.ui.i18n.trackCreditsCopy
 import com.luc4n3x.levyra.ui.i18n.shareMomentCopy
@@ -1755,9 +1758,11 @@ private fun LevyraNowPlayingContent(
         }
 
         if (showActions && track != null) {
+            val sectionLoop by viewModel.sectionLoop.collectAsStateWithLifecycle()
             val sheetActions = playerSheetActions(
                 track = track,
                 state = state,
+                sectionLoop = sectionLoop,
                 strings = strings,
                 hasMixChapters = mixChapters != null,
                 onMixChapters = {
@@ -1778,6 +1783,7 @@ private fun LevyraNowPlayingContent(
                 onShareMoment = { seconds -> shareTrackMoment(playerContext, track, seconds, strings) },
                 onSleepTimer = viewModel::openSleepTimer,
                 onSpeed = viewModel::cycleSpeed,
+                onSectionLoop = viewModel::advanceSectionLoop,
                 onNormalization = viewModel::toggleAudioNormalization,
                 onAudioOutput = {
                     showActions = false
@@ -2187,6 +2193,7 @@ private fun Track.isLocalMotionArtworkTrack(): Boolean {
 private fun playerSheetActions(
     track: Track,
     state: LevyraUiState,
+    sectionLoop: SectionLoopState,
     strings: LevyraStrings,
     onAddToPlaylist: () -> Unit,
     onStartRadio: () -> Unit,
@@ -2194,6 +2201,7 @@ private fun playerSheetActions(
     onShareMoment: (Long) -> Unit,
     onSleepTimer: () -> Unit,
     onSpeed: () -> Unit,
+    onSectionLoop: () -> Unit,
     onNormalization: () -> Unit,
     onAudioOutput: () -> Unit,
     onAudioSettings: () -> Unit,
@@ -2323,6 +2331,15 @@ private fun playerSheetActions(
             active = state.playbackSpeed != 1f,
             keepsSheetOpen = true,
             onClick = onSpeed
+        ),
+        PlayerSheetAction(
+            key = "section-loop",
+            icon = Icons.Rounded.Loop,
+            label = strings.sectionLoopCopy().action,
+            value = sectionLoopValue(sectionLoop, strings.sectionLoopCopy().setEnd),
+            active = sectionLoop !is SectionLoopState.Off,
+            keepsSheetOpen = true,
+            onClick = onSectionLoop
         ),
         PlayerSheetAction(
             key = "normalization",

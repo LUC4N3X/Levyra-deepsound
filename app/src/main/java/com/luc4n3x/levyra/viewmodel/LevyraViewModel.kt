@@ -1,5 +1,12 @@
 package com.luc4n3x.levyra.viewmodel
 
+import com.luc4n3x.levyra.player.SECTION_LOOP_POLL_MS
+import com.luc4n3x.levyra.player.SectionLoopState
+import com.luc4n3x.levyra.player.advance
+import com.luc4n3x.levyra.player.belongsTo
+import com.luc4n3x.levyra.player.sectionLoopPollDelayMs
+import com.luc4n3x.levyra.player.sectionLoopRestartTarget
+import com.luc4n3x.levyra.player.sectionLoopSeekTarget
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -1026,6 +1033,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val autoEqCatalogController by autoEqCatalogDelegate
     val autoEqCatalog: StateFlow<AutoEqCatalogUiState> get() = autoEqCatalogController.state
     private val mixChaptersRepository = MixChaptersRepository()
+    private val _sectionLoop = MutableStateFlow<SectionLoopState>(SectionLoopState.Off)
+    val sectionLoop: StateFlow<SectionLoopState> = _sectionLoop.asStateFlow()
     private val _mixChapters = MutableStateFlow<MixChapterList?>(null)
     val mixChapters: StateFlow<MixChapterList?> = _mixChapters.asStateFlow()
     private val _showMixChapters = MutableStateFlow(false)
@@ -1293,6 +1302,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var lyricsRequestGeneration = 0L
     private var lyricsVersionsGeneration = 0L
     private var sponsorJob: Job? = null
+    private var sectionLoopJob: Job? = null
     private var listPrefetchJob: Job? = null
     private var updateJob: Job? = null
     private var artistJob: Job? = null
@@ -4203,6 +4213,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             )
             return
         }
+        if (restartSectionLoopOnCompletion(current, snapshot.jam)) return
         val duration = effectiveDuration(current)
         if (duration > 0L && player.positionMs < (duration - 1_500L).coerceAtLeast(0L)) return
         listenSessionCompleted = true
@@ -4664,6 +4675,59 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (jamController.rejectGuestLocalMutation()) return
         queueEngine.setShuffle(!queueEngine.state.value.shuffleEnabled)
         refreshQueuePrefetch()
+    }
+
+    fun advanceSectionLoop() {
+        if (jamController.rejectGuestLocalMutation()) return
+        val track = _state.value.currentTrack ?: return
+        if (track.isLiveRadio()) return
+        val positionMs = player.positionForTrack(track) ?: return
+        val next = _sectionLoop.value.advance(track.id, positionMs)
+        publishSectionLoop(next)
+        sectionLoopJob?.cancel()
+        sectionLoopJob = if (next is SectionLoopState.Off) null else viewModelScope.launch {
+            while (isActive) {
+                val current = _state.value
+                val loop = _sectionLoop.value
+                if (loop is SectionLoopState.Off) break
+                if (!sectionLoopStillValid(loop, current)) {
+                    publishSectionLoop(SectionLoopState.Off)
+                    break
+                }
+                if (!current.isPlaying) {
+                    _state.first { it.isPlaying || !sectionLoopStillValid(loop, it) }
+                    continue
+                }
+                val playing = current.currentTrack
+                val position = playing?.let(player::positionForTrack)
+                if (playing == null || position == null || current.isResolving) {
+                    delay(SECTION_LOOP_POLL_MS)
+                    continue
+                }
+                sectionLoopSeekTarget(loop, playing.id, position)?.let(::seekSectionLoop)
+                delay(sectionLoopPollDelayMs(loop, position, current.playbackSpeed))
+            }
+        }
+    }
+
+    private fun sectionLoopStillValid(loop: SectionLoopState, state: LevyraUiState): Boolean =
+        loop.belongsTo(state.currentTrack?.id) && state.jam.role != JamRole.Guest
+
+    private fun publishSectionLoop(loop: SectionLoopState) {
+        _sectionLoop.value = loop
+        PlaybackService.isSectionLoopActive = loop is SectionLoopState.Active
+    }
+
+    private fun seekSectionLoop(targetMs: Long) {
+        if (routeJamAction(JamAction.Seek(targetMs))) return
+        seekToPositionMs(targetMs)
+    }
+
+    private fun restartSectionLoopOnCompletion(current: Track, jam: JamUiState): Boolean {
+        if (jam.role == JamRole.Guest) return false
+        val targetMs = sectionLoopRestartTarget(_sectionLoop.value, current.id) ?: return false
+        seekSectionLoop(targetMs)
+        return true
     }
 
     fun cycleSpeed() {
@@ -14556,6 +14620,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             VideoFrameDropMonitor.Shared.onSustainedFrameDrops = null
         }
         LevyraWidgetBridge.clear()
+        PlaybackService.isSectionLoopActive = false
         if (recognitionCollectorJob != null) {
             recognitionCollectorJob?.cancel()
             recognitionController.cancel()
