@@ -83,27 +83,28 @@ const escapeXml = value => String(value)
   .replaceAll('"', '&quot;')
   .replaceAll("'", '&apos;')
 
-const makeScallopPath = (cx, cy, rOuter, rInner, lobes = 10) => {
-  const d = []
+const makeArcScallopPath = (cx, cy, rValley, rPeak, lobes = 10) => {
   const step = (2 * Math.PI) / lobes
+  const halfStep = step / 2
+  const dMid = rValley * Math.cos(halfStep)
+  const C = 2 * rValley * Math.sin(halfStep)
+  const S = rPeak - dMid
+  const R = S / 2.0 + (C ** 2) / (8.0 * S)
+  const d = []
+  const x0 = cx + rValley * Math.sin(-halfStep)
+  const y0 = cy - rValley * Math.cos(-halfStep)
+  d.push(`M ${x0.toFixed(2)} ${y0.toFixed(2)}`)
   for (let i = 0; i < lobes; i++) {
-    const aStart = i * step - step / 2
-    const aMid = i * step
-    const aEnd = i * step + step / 2
-    const xStart = cx + rInner * Math.sin(aStart)
-    const yStart = cy - rInner * Math.cos(aStart)
-    const xMid = cx + rOuter * Math.sin(aMid)
-    const yMid = cy - rOuter * Math.cos(aMid)
-    const xEnd = cx + rInner * Math.sin(aEnd)
-    const yEnd = cy - rInner * Math.cos(aEnd)
-    if (i === 0) d.push(`M ${xStart.toFixed(2)} ${yStart.toFixed(2)}`)
-    d.push(`Q ${xMid.toFixed(2)} ${yMid.toFixed(2)} ${xEnd.toFixed(2)} ${yEnd.toFixed(2)}`)
+    const aEnd = (i + 0.5) * step
+    const xEnd = cx + rValley * Math.sin(aEnd)
+    const yEnd = cy - rValley * Math.cos(aEnd)
+    d.push(`A ${R.toFixed(2)} ${R.toFixed(2)} 0 0 1 ${xEnd.toFixed(2)} ${yEnd.toFixed(2)}`)
   }
   d.push('Z')
   return d.join(' ')
 }
 
-const PILL_SCALLOP = makeScallopPath(16, 16, 11.5, 9.2, 10)
+const PILL_SCALLOP = makeArcScallopPath(16, 16, 9.2, 12.2, 10)
 
 const icons = {
   latest: '<path d="M-4 -8 h6 l5 5 -9 9 -6 -6 v-4 Z M1 -5 a1.5 1.5 0 1 0 0 3 A1.5 1.5 0 0 0 1 -5 Z" fill="currentColor"/>',
@@ -121,7 +122,7 @@ const makePill = ({ label, value, icon, accentColor, mobile = false }) => {
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 130 32" role="img" aria-label="${escapeXml(title)}">
   <title>${escapeXml(title)}</title>
-  <rect x=".75" y=".75" width="128.5" height="30.5" rx="${rx}" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5"/>
+  <rect x=".75" y=".75" width="128.5" height="30.5" rx="${rx}" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
   <path d="${PILL_SCALLOP}" fill="${accentColor}"/>
   <g transform="translate(16 16)" style="color:#FFFFFF;">
     ${icon}
