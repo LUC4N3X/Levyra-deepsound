@@ -515,6 +515,7 @@ class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::pla
     fun closePlayer() = root.closePlayer()
     fun createPlaylist(name: String, firstTrack: Track? = null) = root.createPlaylist(name, firstTrack)
     fun cycleSpeed() = root.cycleSpeed()
+    fun advanceSectionLoop() = root.advanceSectionLoop()
     fun playSimilarSong(track: Track) = root.playSimilarSong(track)
     fun startSongRadio() = root.startSongRadio()
     fun openSleepTimer() = root.openSleepTimer()

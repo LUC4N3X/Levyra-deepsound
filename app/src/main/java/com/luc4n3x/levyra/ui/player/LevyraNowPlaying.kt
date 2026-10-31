@@ -79,6 +79,7 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Loop
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.HighQuality
@@ -158,7 +159,9 @@ import com.luc4n3x.levyra.ui.harmonizePlayerAccents
 import com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.sectionLoopCopy
 import com.luc4n3x.levyra.ui.i18n.systemPlayerCopy
+import com.luc4n3x.levyra.player.SectionLoopState
 import com.luc4n3x.levyra.ui.i18n.technicalAudioInfoCopy
 import com.luc4n3x.levyra.ui.i18n.trackCreditsCopy
 import com.luc4n3x.levyra.ui.isLevyraCompactLandscape
@@ -1775,6 +1778,7 @@ private fun LevyraNowPlayingContent(
                 onShare = { shareTrack(playerContext, track, strings) },
                 onSleepTimer = viewModel::openSleepTimer,
                 onSpeed = viewModel::cycleSpeed,
+                onSectionLoop = viewModel::advanceSectionLoop,
                 onNormalization = viewModel::toggleAudioNormalization,
                 onAudioOutput = {
                     showActions = false
@@ -2190,6 +2194,7 @@ private fun playerSheetActions(
     onShare: () -> Unit,
     onSleepTimer: () -> Unit,
     onSpeed: () -> Unit,
+    onSectionLoop: () -> Unit,
     onNormalization: () -> Unit,
     onAudioOutput: () -> Unit,
     onAudioSettings: () -> Unit,
@@ -2304,6 +2309,15 @@ private fun playerSheetActions(
             active = state.playbackSpeed != 1f,
             keepsSheetOpen = true,
             onClick = onSpeed
+        ),
+        PlayerSheetAction(
+            key = "section-loop",
+            icon = Icons.Rounded.Loop,
+            label = strings.sectionLoopCopy().action,
+            value = sectionLoopValue(state.sectionLoop, strings.sectionLoopCopy().setEnd),
+            active = state.sectionLoop !is SectionLoopState.Off,
+            keepsSheetOpen = true,
+            onClick = onSectionLoop
         ),
         PlayerSheetAction(
             key = "normalization",

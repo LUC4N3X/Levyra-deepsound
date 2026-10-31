@@ -1,5 +1,10 @@
 package com.luc4n3x.levyra.viewmodel
 
+import com.luc4n3x.levyra.player.SECTION_LOOP_POLL_MS
+import com.luc4n3x.levyra.player.SectionLoopState
+import com.luc4n3x.levyra.player.advance
+import com.luc4n3x.levyra.player.belongsTo
+import com.luc4n3x.levyra.player.sectionLoopSeekTarget
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -1292,6 +1297,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var lyricsRequestGeneration = 0L
     private var lyricsVersionsGeneration = 0L
     private var sponsorJob: Job? = null
+    private var sectionLoopJob: Job? = null
     private var listPrefetchJob: Job? = null
     private var updateJob: Job? = null
     private var artistJob: Job? = null
@@ -4661,6 +4667,31 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (jamController.rejectGuestLocalMutation()) return
         queueEngine.setShuffle(!queueEngine.state.value.shuffleEnabled)
         refreshQueuePrefetch()
+    }
+
+    fun advanceSectionLoop() {
+        val snapshot = _state.value
+        val track = snapshot.currentTrack ?: return
+        if (track.isLiveRadio()) return
+        val next = snapshot.sectionLoop.advance(track.id, player.positionMs)
+        _state.update { it.copy(sectionLoop = next) }
+        sectionLoopJob?.cancel()
+        sectionLoopJob = if (next is SectionLoopState.Off) null else viewModelScope.launch {
+            while (isActive) {
+                val current = _state.value
+                val loop = current.sectionLoop
+                if (!loop.belongsTo(current.currentTrack?.id)) {
+                    _state.update { it.copy(sectionLoop = SectionLoopState.Off) }
+                    break
+                }
+                if (loop is SectionLoopState.Off) break
+                if (current.isPlaying) {
+                    sectionLoopSeekTarget(loop, current.currentTrack?.id, player.positionMs)
+                        ?.let(::seekToPositionMs)
+                }
+                delay(SECTION_LOOP_POLL_MS)
+            }
+        }
     }
 
     fun cycleSpeed() {

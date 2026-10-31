@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.viewmodel
 
+import com.luc4n3x.levyra.player.SectionLoopState
 import com.luc4n3x.levyra.data.local.DEFAULT_QUEUE_SPACE_ID
 import com.luc4n3x.levyra.data.locallibrary.LocalLibraryCatalog
 import com.luc4n3x.levyra.player.queue.QueueSpaceSummary
@@ -246,6 +247,7 @@ data class LevyraUiState(
     val audioSettings: LevyraAudioSettings = LevyraAudioSettings(),
     val sleepTimerMinutes: Int = 0,
     val sleepTimerEndOfTrack: Boolean = false,
+    val sectionLoop: SectionLoopState = SectionLoopState.Off,
     val sleepTimerDeadlineElapsedRealtimeMs: Long = 0L,
     val sleepTimerTotalMs: Long = 0L,
     val sleepTimerFadeMs: Long = 0L,
