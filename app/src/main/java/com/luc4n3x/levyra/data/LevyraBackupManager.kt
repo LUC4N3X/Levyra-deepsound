@@ -12,6 +12,7 @@ import androidx.room.withTransaction
 import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.local.DEFAULT_QUEUE_SPACE_ID
 import com.luc4n3x.levyra.data.local.DownloadEntity
+import com.luc4n3x.levyra.player.offline.isOfflineAudioStoreUri
 import com.luc4n3x.levyra.data.local.LEVYRA_DATABASE_VERSION
 import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.data.local.ListenEventEntity
@@ -303,7 +304,8 @@ class LevyraBackupManager(private val context: Context) {
                 vaultSnapshot(entries)
             }
             val rollback = currentSnapshot()
-            val downloads = reconcileDownloadedTracks(target.downloads, scanLevyraDownloads(), ::downloadUriReadable)
+            val retainedOfflineAudio = database.downloadedTracksDao().all().filter { isOfflineAudioStoreUri(it.uri) }
+            val downloads = reconcileDownloadedTracks(target.downloads, scanLevyraDownloads() + retainedOfflineAudio, ::downloadUriReadable)
             try {
                 applySnapshot(target, downloads)
             } catch (restoreError: Throwable) {
@@ -1020,6 +1022,7 @@ class LevyraBackupManager(private val context: Context) {
             .put("tastes", JSONArray(snapshot.tastes.toList()))
             .put("userName", snapshot.userName)
             .put("languageCode", snapshot.languageCode)
+            .put("musicRegionId", snapshot.musicRegionId)
             .put("animationsEnabled", snapshot.animationsEnabled)
             .put("motionArtworkEnabled", snapshot.motionArtworkEnabled)
             .put("dynamicColor", snapshot.dynamicColor)
@@ -1067,6 +1070,7 @@ class LevyraBackupManager(private val context: Context) {
             tastes = json.optJSONArray("tastes").toStringSet(),
             userName = json.optString("userName"),
             languageCode = json.optString("languageCode"),
+            musicRegionId = backupMusicRegionId(json),
             animationsEnabled = json.optBoolean("animationsEnabled", true),
             motionArtworkEnabled = json.optBoolean("motionArtworkEnabled", true),
             dynamicColor = json.optBoolean("dynamicColor", true),
@@ -1623,7 +1627,9 @@ internal fun reconcileDownloadedTracks(
         discovered.forEach { available ->
             val exactIndex = unmatched.indexOfFirst { it.uri == available.uri }
             val metadataIndex = if (exactIndex >= 0) exactIndex else unmatched.indexOfFirst {
-                it.fileName.restoreKey() == available.fileName.restoreKey() &&
+                !isOfflineAudioStoreUri(available.uri) &&
+                    !isOfflineAudioStoreUri(it.uri) &&
+                    it.fileName.restoreKey() == available.fileName.restoreKey() &&
                     it.title.restoreKey() == available.title.restoreKey() &&
                     it.artist.restoreKey() == available.artist.restoreKey() &&
                     it.album.restoreKey() == available.album.restoreKey()
@@ -1739,6 +1745,13 @@ internal fun backupAudioSettingsToJson(value: LevyraAudioSettings): JSONObject =
 internal fun backupAudioQualityFromJson(settings: JSONObject): String =
     LevyraAudioQuality.normalize(settings.optString("audioQuality"))
 
+internal fun backupMusicRegionId(json: JSONObject): String =
+    if (json.has("musicRegionId")) {
+        com.luc4n3x.levyra.domain.LevyraMusicRegion.normalize(json.optString("musicRegionId"))
+    } else {
+        com.luc4n3x.levyra.domain.LevyraMusicRegion.selectedId
+    }
+
 internal fun backupAudioSettingsFromJson(json: JSONObject?): LevyraAudioSettings {
     if (json == null) return LevyraAudioSettings()
     val levelsArray = json.optJSONArray("bandLevels") ?: JSONArray()
@@ -1841,6 +1854,7 @@ internal fun backupInterfaceSettingsToJson(value: LevyraInterfaceSettings): JSON
     .put("glassRefraction", value.glassRefraction)
     .put("motionArtworkWifiOnly", value.motionArtworkWifiOnly)
     .put("enhanceVideoMetadata", value.enhanceVideoMetadata)
+    .put("keepScreenOnWhilePlaying", value.keepScreenOnWhilePlaying)
     .put("pureBlack", value.pureBlack)
     .put("skin", value.skin.name)
     .put("prismAppearance", value.prism.appearance.name)
@@ -1907,6 +1921,7 @@ internal fun backupInterfaceSettingsFromJson(
         glassRefraction = json.optBoolean("glassRefraction", true),
         motionArtworkWifiOnly = json.optBoolean("motionArtworkWifiOnly", false),
         enhanceVideoMetadata = json.optBoolean("enhanceVideoMetadata", false),
+        keepScreenOnWhilePlaying = json.optBoolean("keepScreenOnWhilePlaying", false),
         pureBlack = json.optBoolean("pureBlack", false),
         skin = com.luc4n3x.levyra.domain.LevyraSkin.from(json.optString("skin")),
         prism = com.luc4n3x.levyra.domain.PrismSettings.from(

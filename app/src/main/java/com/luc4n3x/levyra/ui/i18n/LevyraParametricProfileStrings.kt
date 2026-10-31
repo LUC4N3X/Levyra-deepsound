@@ -426,4 +426,38 @@ private val parametricProfileCopies = mapOf(
 internal fun parametricProfileLocalizationCodes(): Set<String> = parametricProfileCopies.keys
 
 fun LevyraStrings.parametricProfileCopy(): ParametricProfileCopy =
-    parametricProfileCopies[code] ?: parametricProfileCopies.getValue("en")
+    localizedValueOrEnglish(parametricProfileCopies, code).forBrazil(code) { brazilian() }
+
+private fun ParametricProfileCopy.brazilian(): ParametricProfileCopy = copy(
+    profiles = LevyraBrazilianPortuguese.adapt(profiles),
+    yourProfiles = LevyraBrazilianPortuguese.adapt(yourProfiles),
+    autoEq = LevyraBrazilianPortuguese.adapt(autoEq),
+    builtIn = LevyraBrazilianPortuguese.adapt(builtIn),
+    newProfile = LevyraBrazilianPortuguese.adapt(newProfile),
+    edit = LevyraBrazilianPortuguese.adapt(edit),
+    rename = LevyraBrazilianPortuguese.adapt(rename),
+    duplicate = LevyraBrazilianPortuguese.adapt(duplicate),
+    delete = LevyraBrazilianPortuguese.adapt(delete),
+    deleteTitle = LevyraBrazilianPortuguese.adapt(deleteTitle),
+    deleteMessage = LevyraBrazilianPortuguese.adapt(deleteMessage),
+    active = LevyraBrazilianPortuguese.adapt(active),
+    flat = LevyraBrazilianPortuguese.adapt(flat),
+    profileName = LevyraBrazilianPortuguese.adapt(profileName),
+    nameRequired = LevyraBrazilianPortuguese.adapt(nameRequired),
+    nameTaken = LevyraBrazilianPortuguese.adapt(nameTaken),
+    save = LevyraBrazilianPortuguese.adapt(save),
+    discardTitle = LevyraBrazilianPortuguese.adapt(discardTitle),
+    discardMessage = LevyraBrazilianPortuguese.adapt(discardMessage),
+    discard = LevyraBrazilianPortuguese.adapt(discard),
+    keepEditing = LevyraBrazilianPortuguese.adapt(keepEditing),
+    band = LevyraBrazilianPortuguese.adapt(band),
+    range = LevyraBrazilianPortuguese.adapt(range),
+    invalidNumber = LevyraBrazilianPortuguese.adapt(invalidNumber),
+    copyName = LevyraBrazilianPortuguese.adapt(copyName),
+    copyNameNumbered = LevyraBrazilianPortuguese.adapt(copyNameNumbered),
+    previewing = LevyraBrazilianPortuguese.adapt(previewing),
+    emptyCustom = LevyraBrazilianPortuguese.adapt(emptyCustom),
+    profileOptions = LevyraBrazilianPortuguese.adapt(profileOptions),
+    limitReached = LevyraBrazilianPortuguese.adapt(limitReached),
+    responseCurve = LevyraBrazilianPortuguese.adapt(responseCurve)
+)

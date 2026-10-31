@@ -1,10 +1,12 @@
 package com.luc4n3x.levyra.ui.downloadhealth
 
 import android.app.Application
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.luc4n3x.levyra.data.DownloadHealthRepository
 import com.luc4n3x.levyra.data.DownloadHealthResult
+import com.luc4n3x.levyra.data.isSameLegacyDownloadTree
 import com.luc4n3x.levyra.data.local.OfflineDownloadTaskSummaryRow
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -21,7 +23,8 @@ data class DownloadHealthState(
     val total: Int = 0,
     val finished: Boolean = false,
     val failed: Boolean = false,
-    val repairing: Boolean = false
+    val repairing: Boolean = false,
+    val folderAccessMismatch: Boolean = false
 )
 
 class DownloadHealthViewModel(application: Application) : AndroidViewModel(application) {
@@ -71,6 +74,25 @@ class DownloadHealthViewModel(application: Application) : AndroidViewModel(appli
             }
         }
     }
+
+    fun restoreFolderAccess(pickedTreeUri: Uri, expectedTreeUri: String) {
+        if (!isSameLegacyDownloadTree(pickedTreeUri.toString(), expectedTreeUri)) {
+            mutableState.update { it.copy(folderAccessMismatch = true) }
+            return
+        }
+        viewModelScope.launch {
+            val granted = try {
+                repository.restoreLegacyFolderAccess(pickedTreeUri, expectedTreeUri)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                false
+            }
+            if (granted) scan() else mutableState.update { it.copy(failed = true) }
+        }
+    }
+
+    fun consumeFolderAccessMismatch() = mutableState.update { it.copy(folderAccessMismatch = false) }
 
     fun cancel(taskKey: String) = taskAction { repository.cancel(taskKey) }
     fun retry(taskKey: String) = taskAction { repository.retry(taskKey) }

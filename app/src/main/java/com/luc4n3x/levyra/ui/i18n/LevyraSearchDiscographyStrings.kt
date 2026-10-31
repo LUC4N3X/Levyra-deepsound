@@ -9,7 +9,7 @@ internal data class SearchDiscographyCopy(
 )
 
 internal fun searchDiscographyCopy(code: String): SearchDiscographyCopy =
-    SEARCH_DISCOGRAPHY_COPY[code] ?: SEARCH_DISCOGRAPHY_COPY.getValue("en")
+    localizedValueOrEnglish(SEARCH_DISCOGRAPHY_COPY, code)
 
 internal fun searchDiscographyLocalizationCodes(): Set<String> = SEARCH_DISCOGRAPHY_COPY.keys
 

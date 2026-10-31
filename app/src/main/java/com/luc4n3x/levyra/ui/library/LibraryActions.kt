@@ -349,6 +349,8 @@ internal fun LibraryDownloadTaskRow(
             Text(
                 if (failed && task.error == DOWNLOAD_QUALITY_UNAVAILABLE) {
                     strings.downloadQuality.qualityLost
+                } else if (failed && task.error == com.luc4n3x.levyra.player.offline.OFFLINE_STORAGE_FULL) {
+                    strings.offlineStorageFull
                 } else if (failed && task.error.isNotBlank()) {
                     task.error
                 } else if (stage.showsProgress) {

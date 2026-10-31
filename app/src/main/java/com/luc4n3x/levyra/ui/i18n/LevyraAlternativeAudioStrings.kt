@@ -305,7 +305,7 @@ private val qobuzSubtitles = mapOf(
 
 internal fun alternativeAudioLocalizationEntries(code: String): Map<String, String> {
     val bundle = localizedBundleOrEnglish(alternativeAudioBundles, code) +
-        ("qobuzAudioSubtitle" to (qobuzSubtitles[code] ?: qobuzSubtitles.getValue("en")))
+        ("qobuzAudioSubtitle" to (localizedValueOrEnglish(qobuzSubtitles, code)))
     val lossless = additionalLosslessLabels[code] ?: return bundle
     return bundle + ("alternativeAudioPreferLossless" to lossless)
 }

@@ -50,7 +50,7 @@ internal data class TechnicalAudioInfoCopy(
     val no: String = "No"
 )
 
-internal fun LevyraStrings.technicalAudioInfoCopy(): TechnicalAudioInfoCopy = when (code) {
+internal fun LevyraStrings.technicalAudioInfoCopy(): TechnicalAudioInfoCopy = when (translationKey(code)) {
     "it" -> TechnicalAudioInfoCopy(
         "Info audio tecniche", "Formato reale, sorgente e percorso del segnale in tempo reale",
         "IN RIPRODUZIONE", "SORGENTE", "USCITA & DSP",
@@ -141,4 +141,54 @@ internal fun LevyraStrings.technicalAudioInfoCopy(): TechnicalAudioInfoCopy = wh
         "Confidence", "Not reported", "None", "Requested", "Fallback",
         "Normalization", "Equalizer", "Limiter", "Virtualizer", "Preamp"
     )
-}
+}.forBrazil(code) { brazilian() }
+
+private fun TechnicalAudioInfoCopy.brazilian(): TechnicalAudioInfoCopy = copy(
+    title = LevyraBrazilianPortuguese.adapt(title),
+    subtitle = LevyraBrazilianPortuguese.adapt(subtitle),
+    runtime = LevyraBrazilianPortuguese.adapt(runtime),
+    source = LevyraBrazilianPortuguese.adapt(source),
+    outputAndDsp = LevyraBrazilianPortuguese.adapt(outputAndDsp),
+    codec = LevyraBrazilianPortuguese.adapt(codec),
+    bitrate = LevyraBrazilianPortuguese.adapt(bitrate),
+    sampleRate = LevyraBrazilianPortuguese.adapt(sampleRate),
+    channels = LevyraBrazilianPortuguese.adapt(channels),
+    mime = LevyraBrazilianPortuguese.adapt(mime),
+    container = LevyraBrazilianPortuguese.adapt(container),
+    provider = LevyraBrazilianPortuguese.adapt(provider),
+    delivery = LevyraBrazilianPortuguese.adapt(delivery),
+    quality = LevyraBrazilianPortuguese.adapt(quality),
+    bitDepth = LevyraBrazilianPortuguese.adapt(bitDepth),
+    streamId = LevyraBrazilianPortuguese.adapt(streamId),
+    loudness = LevyraBrazilianPortuguese.adapt(loudness),
+    output = LevyraBrazilianPortuguese.adapt(output),
+    route = LevyraBrazilianPortuguese.adapt(route),
+    volume = LevyraBrazilianPortuguese.adapt(volume),
+    engine = LevyraBrazilianPortuguese.adapt(engine),
+    path = LevyraBrazilianPortuguese.adapt(path),
+    processing = LevyraBrazilianPortuguese.adapt(processing),
+    audioSession = LevyraBrazilianPortuguese.adapt(audioSession),
+    verifiedSource = LevyraBrazilianPortuguese.adapt(verifiedSource),
+    confidence = LevyraBrazilianPortuguese.adapt(confidence),
+    unavailable = LevyraBrazilianPortuguese.adapt(unavailable),
+    none = LevyraBrazilianPortuguese.adapt(none),
+    requested = LevyraBrazilianPortuguese.adapt(requested),
+    fallback = LevyraBrazilianPortuguese.adapt(fallback),
+    normalization = LevyraBrazilianPortuguese.adapt(normalization),
+    equalizer = LevyraBrazilianPortuguese.adapt(equalizer),
+    limiter = LevyraBrazilianPortuguese.adapt(limiter),
+    virtualizer = LevyraBrazilianPortuguese.adapt(virtualizer),
+    preamp = LevyraBrazilianPortuguese.adapt(preamp),
+    codecId = LevyraBrazilianPortuguese.adapt(codecId),
+    remotePlayback = LevyraBrazilianPortuguese.adapt(remotePlayback),
+    receiverManaged = LevyraBrazilianPortuguese.adapt(receiverManaged),
+    lossless = LevyraBrazilianPortuguese.adapt(lossless),
+    enhancedAudio = LevyraBrazilianPortuguese.adapt(enhancedAudio),
+    status = LevyraBrazilianPortuguese.adapt(status),
+    active = LevyraBrazilianPortuguese.adapt(active),
+    bypassed = LevyraBrazilianPortuguese.adapt(bypassed),
+    off = LevyraBrazilianPortuguese.adapt(off),
+    bypassReason = LevyraBrazilianPortuguese.adapt(bypassReason),
+    yes = LevyraBrazilianPortuguese.adapt(yes),
+    no = LevyraBrazilianPortuguese.adapt(no)
+)

@@ -45,4 +45,4 @@ private val homeVideoShelfTitles: Map<String, String> = mapOf(
 )
 
 internal val LevyraStrings.homeVideoShelfTitle: String
-    get() = homeVideoShelfTitles[code] ?: homeVideoShelfTitles.getValue("en")
+    get() = localizedValueOrEnglish(homeVideoShelfTitles, code)

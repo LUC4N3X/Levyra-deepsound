@@ -7,6 +7,7 @@ import com.luc4n3x.levyra.data.FollowedArtistsStore
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.data.LevyraArtworkStartupMetrics
 import com.luc4n3x.levyra.data.LevyraPreferences
+import com.luc4n3x.levyra.domain.LevyraMusicRegion
 import com.luc4n3x.levyra.data.NewPipeRuntime
 import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatchCache
@@ -16,6 +17,7 @@ import com.luc4n3x.levyra.data.YoutubeLocalDecoder
 import com.luc4n3x.levyra.data.preloadLevyraPreferences
 import com.luc4n3x.levyra.data.network.LevyraNetworkController
 import com.luc4n3x.levyra.feature.cast.CastRuntimeInitializer
+import com.luc4n3x.levyra.player.offline.OfflineAudioMaintenance
 import com.luc4n3x.levyra.player.PlaybackNetworkStack
 import com.luc4n3x.levyra.player.waveseek.WaveSeekRuntime
 import com.luc4n3x.levyra.runtime.RuntimeHooks
@@ -36,6 +38,7 @@ class LevyraApplication : Application() {
         RuntimeHooks.start(this)
         if (BuildConfig.DEBUG) Timber.plant(Timber.DebugTree())
         preloadLevyraPreferences(this)
+        LevyraMusicRegion.apply(LevyraPreferences(this).musicRegionId())
         LevyraArtworkStartupMetrics.beginSession()
         runCatching { LevyraNetworkController.applyStoredConfiguration(this) }
             .onFailure { Timber.w(it, "Network configuration bootstrap failed") }
@@ -82,6 +85,13 @@ class LevyraApplication : Application() {
                     LevyraPreferences(this@LevyraApplication).smartOfflineSettings()
                 )
             }.onFailure { Timber.w(it, "Smart Offline scheduling failed") }
+            try {
+                OfflineAudioMaintenance.run(this@LevyraApplication)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Timber.w(error, "Offline audio maintenance failed")
+            }
         }
     }
 

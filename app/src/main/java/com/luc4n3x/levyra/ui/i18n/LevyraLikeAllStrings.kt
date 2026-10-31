@@ -10,7 +10,7 @@ data class LikeAllCopy(
     fun liked(count: Int): String = if (count == 1) likedOne else likedFormat.replace("{count}", count.toString())
 }
 
-fun LevyraStrings.likeAllCopy(): LikeAllCopy = when (code) {
+fun LevyraStrings.likeAllCopy(): LikeAllCopy = when (translationKey(code)) {
     "it" -> LikeAllCopy(
         "Metti Mi piace a tutti",
         "Tutti i brani hanno già Mi piace",

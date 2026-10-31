@@ -117,5 +117,5 @@ internal val freshCurrentsEntries = buildMap {
 }
 
 internal fun freshCurrentsLocalizationEntries(code: String): Map<String, String> {
-    return freshCurrentsEntries[code] ?: freshCurrentsEntries.getValue("en")
+    return localizedValueOrEnglish(freshCurrentsEntries, code)
 }

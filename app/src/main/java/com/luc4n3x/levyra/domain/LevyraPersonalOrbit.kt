@@ -563,12 +563,13 @@ object LevyraPersonalOrbit {
 
     private fun languageMarkers(languageCode: String): List<String> {
         val normalized = LevyraLanguageCatalog.normalize(languageCode)
-        val localeMarkers = when (normalized) {
+        val localeMarkers = when (LevyraContentLocales.contentLanguage(normalized)) {
             "it" -> listOf("italia", "italian", "italiano", "italiana")
             "es" -> listOf("españa", "espanol", "español", "latino", "reggaeton")
             "fr" -> listOf("france", "français", "francaise", "française")
             "de" -> listOf("deutsch", "deutschland", "deutschrap")
-            "pt" -> listOf("portugal", "brasil", "brasileiro", "brasileira", "funk", "sertanejo")
+            "pt" -> listOf("portugal", "português", "portuguesa", "fado")
+            "pt-BR" -> listOf("brasil", "brasileiro", "brasileira", "funk", "sertanejo", "mpb")
             "nl" -> listOf("nederland", "nederlands")
             "pl" -> listOf("polsk", "polska")
             "ro" -> listOf("românia", "romania", "românesc")

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="sharedpref" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="file" path="offline_audio/" />
+        <exclude domain="file" path="offline_audio_staging/" />
+    </device-transfer>
+</data-extraction-rules>

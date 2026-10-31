@@ -220,16 +220,16 @@ internal object LevyraLiveRadioCatalog {
     }
 
     fun forCode(code: String): LevyraLiveRadioStrings =
-        localizedValueOrEnglish(values, LevyraLanguageCatalog.normalize(code))
+        localizedValueOrEnglish(values, code).forBrazil(code) { brazilian() }
 
     fun streamUnavailable(code: String): String =
-        localizedValueOrEnglish(unavailableValues, LevyraLanguageCatalog.normalize(code))
+        localizedValueOrEnglish(unavailableValues, code)
 
     fun reconnecting(code: String): String =
-        localizedValueOrEnglish(reconnectingValues, LevyraLanguageCatalog.normalize(code))
+        localizedValueOrEnglish(reconnectingValues, code)
 
     fun advertisement(code: String): String =
-        localizedValueOrEnglish(advertisementValues, LevyraLanguageCatalog.normalize(code))
+        localizedValueOrEnglish(advertisementValues, code)
 
     private fun radio(
         subtitle: String,
@@ -263,3 +263,21 @@ internal object LevyraLiveRadioCatalog {
         categoryLabels
     ).also { require(it.categoryLabels.size == RadioCategory.entries.size) }
 }
+
+private fun LevyraLiveRadioStrings.brazilian(): LevyraLiveRadioStrings = copy(
+    title = LevyraBrazilianPortuguese.adapt(title),
+    subtitle = LevyraBrazilianPortuguese.adapt(subtitle),
+    exploreSubtitle = LevyraBrazilianPortuguese.adapt(exploreSubtitle),
+    popularIn = LevyraBrazilianPortuguese.adapt(popularIn),
+    worldwide = LevyraBrazilianPortuguese.adapt(worldwide),
+    categories = LevyraBrazilianPortuguese.adapt(categories),
+    countries = LevyraBrazilianPortuguese.adapt(countries),
+    languages = LevyraBrazilianPortuguese.adapt(languages),
+    searchHint = LevyraBrazilianPortuguese.adapt(searchHint),
+    noStations = LevyraBrazilianPortuguese.adapt(noStations),
+    cachedNotice = LevyraBrazilianPortuguese.adapt(cachedNotice),
+    internetRequired = LevyraBrazilianPortuguese.adapt(internetRequired),
+    loadMore = LevyraBrazilianPortuguese.adapt(loadMore),
+    live = LevyraBrazilianPortuguese.adapt(live),
+    categoryLabels = categoryLabels.map(LevyraBrazilianPortuguese::adapt)
+)

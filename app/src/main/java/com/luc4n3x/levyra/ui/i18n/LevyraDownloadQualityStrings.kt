@@ -71,5 +71,24 @@ internal object LevyraDownloadQualityStrings {
     }
 
     fun forCode(code: String): DownloadQualityCopy =
-        copies[LevyraLanguageCatalog.normalize(code)] ?: copies.getValue("en")
+        localizedValueOrEnglish(copies, code).forBrazil(code) { brazilian() }
 }
+
+private fun DownloadQualityCopy.brazilian(): DownloadQualityCopy = copy(
+    title = LevyraBrazilianPortuguese.adapt(title),
+    checking = LevyraBrazilianPortuguese.adapt(checking),
+    checkingMore = LevyraBrazilianPortuguese.adapt(checkingMore),
+    hiResLossless = LevyraBrazilianPortuguese.adapt(hiResLossless),
+    lossless = LevyraBrazilianPortuguese.adapt(lossless),
+    high = LevyraBrazilianPortuguese.adapt(high),
+    standard = LevyraBrazilianPortuguese.adapt(standard),
+    compact = LevyraBrazilianPortuguese.adapt(compact),
+    compressed = LevyraBrazilianPortuguese.adapt(compressed),
+    best = LevyraBrazilianPortuguese.adapt(best),
+    unavailableTitle = LevyraBrazilianPortuguese.adapt(unavailableTitle),
+    unavailableBody = LevyraBrazilianPortuguese.adapt(unavailableBody),
+    errorTitle = LevyraBrazilianPortuguese.adapt(errorTitle),
+    errorBody = LevyraBrazilianPortuguese.adapt(errorBody),
+    retry = LevyraBrazilianPortuguese.adapt(retry),
+    qualityLost = LevyraBrazilianPortuguese.adapt(qualityLost)
+)

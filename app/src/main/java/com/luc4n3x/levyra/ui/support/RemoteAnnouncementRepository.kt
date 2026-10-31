@@ -35,7 +35,7 @@ internal const val MAX_REMOTE_ANNOUNCEMENT_PAYLOAD_BYTES = 2 * 1_024 * 1_024
 private const val MAX_COMPLETED_IDS = 200
 private const val MAX_RECORDED_LAUNCHES = 10_000
 private const val APP_LAUNCH_SESSION_GAP_MS = 30L * 60L * 1_000L
-private val supportedLanguageCodes = LevyraLanguageCatalog.languages.mapTo(mutableSetOf()) { it.code }
+private val supportedLanguageCodes = LevyraLanguageCatalog.selectableLanguages.mapTo(mutableSetOf()) { it.code }
 
 internal object RemoteAnnouncementPromptPolicy {
     const val MINIMUM_APP_LAUNCHES = 3
@@ -161,6 +161,7 @@ internal object RemoteAnnouncementRules {
     ): RemoteAnnouncementPresentation? {
         val normalizedLanguage = LevyraLanguageCatalog.normalize(languageCode)
         val copy = announcement.translations[normalizedLanguage]
+            ?: announcement.translations[LevyraLanguageCatalog.translationCode(normalizedLanguage)]
             ?: announcement.translations["en"]
             ?: return null
         return RemoteAnnouncementPresentation(

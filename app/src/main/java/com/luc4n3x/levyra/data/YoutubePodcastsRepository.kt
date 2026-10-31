@@ -30,7 +30,8 @@ internal class YoutubePodcastsRepository(private val context: Context) {
     private val cache = podcastShelvesCache
 
     suspend fun shelves(languageCode: String): List<PodcastShelf> = withContext(Dispatchers.IO) {
-        cache[languageCode]?.let { return@withContext it }
+        val cacheKey = YoutubeRegionProfile.cacheScope(languageCode)
+        cache[cacheKey]?.let { return@withContext it }
         val locale = YoutubeRegionProfile.effectiveLocale(languageCode)
         val payload = JSONObject()
             .put("context", JSONObject().put("client", JSONObject()
@@ -54,7 +55,7 @@ internal class YoutubePodcastsRepository(private val context: Context) {
                 JSONObject(body)
             }
         }
-        parsePodcastShelves(root).also { if (it.isNotEmpty()) cache[languageCode] = it }
+        parsePodcastShelves(root).also { if (it.isNotEmpty()) cache[cacheKey] = it }
     }
 }
 

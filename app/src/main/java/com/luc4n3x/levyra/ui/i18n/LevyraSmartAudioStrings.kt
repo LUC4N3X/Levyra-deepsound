@@ -67,7 +67,7 @@ private val parsedSmartAudioCopies = HashMap<String, SmartAudioCopy>()
 
 internal fun smartAudioCopy(code: String): SmartAudioCopy = synchronized(parsedSmartAudioCopies) {
     parsedSmartAudioCopies.getOrPut(code) {
-        val raw = smartAudioBundles[code] ?: smartAudioBundles.getValue("en")
+        val raw = localizedValueOrEnglish(smartAudioBundles, code)
         SmartAudioCopy(raw.split('|'))
     }
 }

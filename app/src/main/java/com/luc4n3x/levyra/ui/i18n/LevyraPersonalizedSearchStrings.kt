@@ -11,7 +11,7 @@ internal data class PersonalizedSearchCopy(
 )
 
 internal fun personalizedSearchCopy(code: String): PersonalizedSearchCopy =
-    PERSONALIZED_SEARCH_COPY.getValue(code)
+    PERSONALIZED_SEARCH_COPY.getValue(translationKey(code)).forBrazil(code) { brazilian() }
 
 internal fun personalizedSearchPromptText(code: String, prompt: PersonalizedSearchPrompt?): String? {
     prompt ?: return null
@@ -91,3 +91,10 @@ private val PERSONALIZED_SEARCH_COPY = mapOf(
 )
 
 internal fun personalizedSearchLocalizationCodes(): Set<String> = PERSONALIZED_SEARCH_COPY.keys
+
+private fun PersonalizedSearchCopy.brazilian(): PersonalizedSearchCopy = copy(
+    artistsForYou = LevyraBrazilianPortuguese.adapt(artistsForYou),
+    searchArtist = LevyraBrazilianPortuguese.adapt(searchArtist),
+    findMoreLike = LevyraBrazilianPortuguese.adapt(findMoreLike),
+    backToAlbum = LevyraBrazilianPortuguese.adapt(backToAlbum)
+)

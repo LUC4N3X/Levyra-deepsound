@@ -12,7 +12,7 @@ internal data class YoutubeMusicHomeCopy(
 )
 
 internal fun youtubeMusicHomeCopy(code: String): YoutubeMusicHomeCopy =
-    YOUTUBE_MUSIC_HOME_COPY[code] ?: YOUTUBE_MUSIC_HOME_COPY.getValue("en")
+    localizedValueOrEnglish(YOUTUBE_MUSIC_HOME_COPY, code).forBrazil(code) { brazilian() }
 
 internal fun youtubeMusicHomeLocalizationCodes(): Set<String> = YOUTUBE_MUSIC_HOME_COPY.keys
 
@@ -69,4 +69,15 @@ private val YOUTUBE_MUSIC_HOME_COPY = mapOf(
     "th" to homeCopy("เพลงของคุณ", "จากบัญชี YouTube Music ของคุณ", "สร้างโดยคุณ", "รีเฟรช", "โหลดเพลงของคุณไม่ได้", "ลองอีกครั้ง", "เซสชัน YouTube Music ของคุณหมดอายุแล้ว", "ลงชื่อเข้าใช้อีกครั้ง"),
     "fil" to homeCopy("Ang musika mo", "Mula sa YouTube Music account mo", "Ginawa mo", "I-refresh", "Hindi ma-load ang musika mo.", "Subukang muli", "Nag-expire na ang session mo sa YouTube Music.", "Mag-sign in muli"),
     "he" to homeCopy("המוזיקה שלך", "מחשבון YouTube Music שלך", "נוצר על ידך", "רענון", "לא ניתן לטעון את המוזיקה שלך.", "ניסיון חוזר", "פג תוקף ההתחברות שלך ל-YouTube Music.", "התחברות מחדש")
+)
+
+private fun YoutubeMusicHomeCopy.brazilian(): YoutubeMusicHomeCopy = copy(
+    title = LevyraBrazilianPortuguese.adapt(title),
+    source = LevyraBrazilianPortuguese.adapt(source),
+    createdByYou = LevyraBrazilianPortuguese.adapt(createdByYou),
+    refresh = LevyraBrazilianPortuguese.adapt(refresh),
+    loadFailed = LevyraBrazilianPortuguese.adapt(loadFailed),
+    retry = LevyraBrazilianPortuguese.adapt(retry),
+    sessionExpired = LevyraBrazilianPortuguese.adapt(sessionExpired),
+    reconnect = LevyraBrazilianPortuguese.adapt(reconnect)
 )

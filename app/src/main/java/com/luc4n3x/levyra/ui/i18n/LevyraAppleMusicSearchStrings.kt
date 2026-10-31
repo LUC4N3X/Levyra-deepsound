@@ -1,6 +1,5 @@
 package com.luc4n3x.levyra.ui.i18n
 
-import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 
 internal class AppleSearchCopy(
     val hint: String,
@@ -57,5 +56,5 @@ internal object LevyraAppleMusicSearchStrings {
         "he" to AppleSearchCopy("אמנים, שירים, אלבומים ועוד", "ב-Levyra", "התוצאות המובילות", "שיר", "אמן", "אלבום", "פלייליסט", "קליפ")
     )
 
-    fun forCode(code: String): AppleSearchCopy = copies[LevyraLanguageCatalog.normalize(code)] ?: copies.getValue("en")
+    fun forCode(code: String): AppleSearchCopy = localizedValueOrEnglish(copies, code)
 }

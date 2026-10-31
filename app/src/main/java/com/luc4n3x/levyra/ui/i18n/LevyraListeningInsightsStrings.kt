@@ -786,6 +786,6 @@ private val listeningInsightsBundles: Map<String, Map<String, String>> = mapOf(
 internal val listeningInsightsKeys: Set<String> = listeningInsightsBundles.getValue("en").keys
 
 internal fun listeningInsightsLocalizationEntries(code: String): Map<String, String> =
-    listeningInsightsBundles[code] ?: listeningInsightsBundles.getValue("en")
+    localizedValueOrEnglish(listeningInsightsBundles, code)
 
 internal fun listeningInsightsLocalizationCodes(): Set<String> = supportedLocalizationCodes()

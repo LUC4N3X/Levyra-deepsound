@@ -65,6 +65,18 @@ private val bulkLinkCaptureCopies = mapOf(
 )
 
 internal fun bulkLinkCaptureCopy(code: String): BulkLinkCaptureCopy =
-    localizedValueOrEnglish(bulkLinkCaptureCopies, code)
+    localizedValueOrEnglish(bulkLinkCaptureCopies, code).forBrazil(code) { brazilian() }
 
 internal fun bulkLinkCaptureLocalizationCodes(): Set<String> = bulkLinkCaptureCopies.keys
+
+private fun BulkLinkCaptureCopy.brazilian(): BulkLinkCaptureCopy = copy(
+    title = LevyraBrazilianPortuguese.adapt(title),
+    detected = LevyraBrazilianPortuguese.adapt(detected),
+    found = LevyraBrazilianPortuguese.adapt(found),
+    duplicates = LevyraBrazilianPortuguese.adapt(duplicates),
+    unrecognized = LevyraBrazilianPortuguese.adapt(unrecognized),
+    resolving = LevyraBrazilianPortuguese.adapt(resolving),
+    noTracks = LevyraBrazilianPortuguese.adapt(noTracks),
+    savePlaylist = LevyraBrazilianPortuguese.adapt(savePlaylist),
+    playlistName = LevyraBrazilianPortuguese.adapt(playlistName)
+)

@@ -1,6 +1,5 @@
 package com.luc4n3x.levyra.ui.i18n
 
-import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 
 internal data class AppleArtistInfoCopy(
     val about: String,
@@ -12,7 +11,7 @@ internal data class AppleArtistInfoCopy(
 )
 
 internal fun appleArtistInfoCopy(code: String): AppleArtistInfoCopy =
-    APPLE_ARTIST_INFO_COPY[LevyraLanguageCatalog.normalize(code)] ?: APPLE_ARTIST_INFO_COPY.getValue("en")
+    localizedValueOrEnglish(APPLE_ARTIST_INFO_COPY, code)
 
 internal fun appleArtistInfoLocalizationCodes(): Set<String> = APPLE_ARTIST_INFO_COPY.keys
 

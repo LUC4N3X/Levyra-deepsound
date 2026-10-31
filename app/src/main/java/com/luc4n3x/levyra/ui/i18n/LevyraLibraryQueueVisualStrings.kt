@@ -5,7 +5,7 @@ internal data class QueueSectionCopy(
     val upNext: String
 )
 
-internal fun LevyraStrings.queueSectionCopy(): QueueSectionCopy = when (code) {
+internal fun LevyraStrings.queueSectionCopy(): QueueSectionCopy = when (translationKey(code)) {
     "it" -> QueueSectionCopy("Riprodotti", "Prossimi")
     "es" -> QueueSectionCopy("Reproducidos", "A continuación")
     "fr" -> QueueSectionCopy("Déjà lus", "À suivre")
@@ -47,9 +47,9 @@ internal fun LevyraStrings.queueSectionCopy(): QueueSectionCopy = when (code) {
     "fil" -> QueueSectionCopy("Napatugtog", "Susunod")
     "he" -> QueueSectionCopy("נוגנו", "הבאים")
     else -> QueueSectionCopy("Played", "Up next")
-}
+}.forBrazil(code) { brazilian() }
 
-internal fun LevyraStrings.localLibraryRecentFilterLabel(): String = when (code) {
+internal fun LevyraStrings.localLibraryRecentFilterLabel(): String = when (translationKey(code)) {
     "it" -> "RECENTI"
     "es" -> "RECIENTES"
     "fr" -> "RÉCENTS"
@@ -91,3 +91,8 @@ internal fun LevyraStrings.localLibraryRecentFilterLabel(): String = when (code)
     "he" -> "אחרונים"
     else -> "RECENT"
 }
+
+private fun QueueSectionCopy.brazilian(): QueueSectionCopy = copy(
+    played = LevyraBrazilianPortuguese.adapt(played),
+    upNext = LevyraBrazilianPortuguese.adapt(upNext)
+)

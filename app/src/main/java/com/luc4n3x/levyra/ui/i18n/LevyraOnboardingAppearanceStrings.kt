@@ -1,6 +1,5 @@
 package com.luc4n3x.levyra.ui.i18n
 
-import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 
 internal data class OnboardingAppearanceCopy(
     val title: String,
@@ -58,5 +57,15 @@ internal object LevyraOnboardingAppearanceStrings {
     )
 
     fun forCode(code: String): OnboardingAppearanceCopy =
-        copies[LevyraLanguageCatalog.normalize(code)] ?: copies.getValue("en")
+        localizedValueOrEnglish(copies, code).forBrazil(code) { brazilian() }
 }
+
+private fun OnboardingAppearanceCopy.brazilian(): OnboardingAppearanceCopy = copy(
+    title = LevyraBrazilianPortuguese.adapt(title),
+    body = LevyraBrazilianPortuguese.adapt(body),
+    dark = LevyraBrazilianPortuguese.adapt(dark),
+    darkBody = LevyraBrazilianPortuguese.adapt(darkBody),
+    light = LevyraBrazilianPortuguese.adapt(light),
+    lightBody = LevyraBrazilianPortuguese.adapt(lightBody),
+    footnote = LevyraBrazilianPortuguese.adapt(footnote)
+)

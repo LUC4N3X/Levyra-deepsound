@@ -4,14 +4,37 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
+import java.net.URLDecoder
+
+internal fun legacyDownloadTreeUri(rawDocumentUri: String): String? {
+    val value = rawDocumentUri.trim()
+    if (!value.startsWith("content://", ignoreCase = true)) return null
+    val path = value.substring("content://".length).substringBefore('?').substringBefore('#')
+    val authority = path.substringBefore('/')
+    val segments = path.substringAfter('/', "").split('/')
+    val valid = authority.isNotBlank() &&
+        segments.size >= 4 &&
+        segments[0] == "tree" &&
+        segments[1].isNotBlank() &&
+        segments[2] == "document" &&
+        segments[3].isNotBlank()
+    return if (valid) "content://$authority/tree/${segments[1]}" else null
+}
+
+internal fun isSameLegacyDownloadTree(pickedTreeUri: String, expectedTreeUri: String): Boolean {
+    fun normalized(value: String): String? = runCatching {
+        URLDecoder.decode(value.trim().trimEnd('/').replace("+", "%2B"), Charsets.UTF_8.name())
+    }.getOrNull()
+    val picked = normalized(pickedTreeUri) ?: return false
+    return picked.isNotBlank() && picked == normalized(expectedTreeUri)
+}
 
 internal object DownloadFolderAccess {
-    fun persist(context: Context, uri: Uri): Boolean {
-        val resolver = context.contentResolver
-        val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+    fun restoreLegacyReadAccess(context: Context, pickedTreeUri: Uri, expectedTreeUri: String): Boolean {
+        if (!isSameLegacyDownloadTree(pickedTreeUri.toString(), expectedTreeUri)) return false
         return runCatching {
-            resolver.takePersistableUriPermission(uri, flags)
-            canWrite(context, uri.toString())
+            context.contentResolver.takePersistableUriPermission(pickedTreeUri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            true
         }.getOrDefault(false)
     }
 

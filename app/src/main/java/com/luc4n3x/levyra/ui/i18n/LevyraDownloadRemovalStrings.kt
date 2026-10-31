@@ -51,5 +51,5 @@ internal object LevyraDownloadRemovalStrings {
         check(prompts.keys == LevyraLanguageCatalog.languages.map { it.code }.toSet())
     }
 
-    fun prompt(code: String): String = prompts[LevyraLanguageCatalog.normalize(code)] ?: prompts.getValue("en")
+    fun prompt(code: String): String = localizedValueOrEnglish(prompts, code)
 }

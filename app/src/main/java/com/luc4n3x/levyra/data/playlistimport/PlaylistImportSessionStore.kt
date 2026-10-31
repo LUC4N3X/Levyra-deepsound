@@ -351,7 +351,7 @@ internal object PlaylistImportSessionCodec {
         .put("artist", track.artist)
         .put("album", track.album)
         .put("durationMs", track.durationMs)
-        .put("streamUrl", if (track.streamUrl.startsWith("content://")) track.streamUrl else "")
+        .put("streamUrl", if (track.streamUrl.startsWith("content://") || track.streamUrl.startsWith("file://")) track.streamUrl else "")
         .put("videoUrl", track.videoUrl)
         .put("thumbnailUrl", track.thumbnailUrl)
         .put("largeThumbnailUrl", track.largeThumbnailUrl)

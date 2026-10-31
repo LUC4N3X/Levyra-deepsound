@@ -1,6 +1,5 @@
 package com.luc4n3x.levyra.ui.i18n
 
-import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 
 internal data class SkinCopy(val title: String, val defaultBody: String, val nocturneBody: String)
 
@@ -49,10 +48,12 @@ internal object LevyraSkinStrings {
         "he" to SkinCopy("עיצוב", "הממשק המקורי של Levyra עם ההגדרות האישיות שלך.", "שחור AMOLED, גרפיט וענבר.")
     )
 
-    fun forCode(code: String): SkinCopy = copies[LevyraLanguageCatalog.normalize(code)] ?: copies.getValue("en")
+    fun forCode(code: String): SkinCopy = localizedValueOrEnglish(copies, code).forBrazil(code) { brazilian() }
 
     fun managedForCode(code: String, skin: String = "Nocturne 78"): String =
-        (managed[LevyraLanguageCatalog.normalize(code)] ?: managed.getValue("en")).replace("Nocturne 78", skin)
+        localizedValueOrEnglish(managed, code)
+            .forBrazil(code) { LevyraBrazilianPortuguese.adapt(this) }
+            .replace("Nocturne 78", skin)
 
     private val managed = mapOf(
         "en" to "Nocturne 78 manages the appearance. Switch to Levyra Default to change it. Your previous choices are saved.",
@@ -98,3 +99,9 @@ internal object LevyraSkinStrings {
         "he" to "המראה מנוהל על ידי Nocturne 78. לשינוי, עבור אל Levyra Default. הבחירות הקודמות שלך נשמרות."
     )
 }
+
+private fun SkinCopy.brazilian(): SkinCopy = copy(
+    title = LevyraBrazilianPortuguese.adapt(title),
+    defaultBody = LevyraBrazilianPortuguese.adapt(defaultBody),
+    nocturneBody = LevyraBrazilianPortuguese.adapt(nocturneBody)
+)

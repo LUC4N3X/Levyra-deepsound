@@ -27,7 +27,7 @@ data class LevyraAutomationCopy(
     val skipUnrecoverableSubtitle: String
 )
 
-fun LevyraStrings.automationCopy(): LevyraAutomationCopy = when (code) {
+fun LevyraStrings.automationCopy(): LevyraAutomationCopy = when (translationKey(code)) {
     "it" -> LevyraAutomationCopy("Importa da Spotify", "Crea una playlist da un CSV esportato da Spotify", "Scegli CSV", "Nome playlist", "Importazione…", "Trovati", "Non trovati", "Importazione non riuscita", "Dissolvenza", "Abbassa il volume prima dello stop", "Programma notturno", "Avvia lo sleep timer automaticamente", "Ora di inizio", "Durata", "Ripeti", "Automazioni", "Riprendi la riproduzione al riconnettersi del Bluetooth", "Solo dopo una pausa causata dalla perdita del dispositivo audio", "Metti in pausa quando il volume è a zero", "Mette in pausa quando il volume multimediale arriva a zero", "Scarica automaticamente i brani preferiti", "Mette in coda un download quando aggiungi un preferito", "Salta il brano dopo un errore irreversibile", "Solo dopo il fallimento dei normali tentativi di recupero")
     "es" -> LevyraAutomationCopy("Importar desde Spotify", "Crea una playlist desde un CSV exportado de Spotify", "Elegir CSV", "Nombre de la playlist", "Importando…", "Encontrados", "No encontrados", "Error al importar", "Fundido", "Baja el volumen antes de detener la reproducción", "Programación nocturna", "Inicia el temporizador automáticamente", "Hora de inicio", "Duración", "Repetir", "Automatizaciones", "Reanudar la reproducción al reconectar Bluetooth", "Solo tras una pausa causada por perder el dispositivo de audio", "Pausar cuando el volumen esté silenciado", "Pausa la reproducción cuando el volumen llega a cero", "Descargar automáticamente las canciones favoritas", "Pone una descarga en cola al marcar un favorito", "Saltar la pista tras un error irrecuperable", "Solo después de fallar los intentos normales de recuperación")
     "fr" -> LevyraAutomationCopy("Importer depuis Spotify", "Créez une playlist à partir d’un CSV exporté de Spotify", "Choisir un CSV", "Nom de la playlist", "Importation…", "Trouvés", "Non trouvés", "Échec de l’importation", "Fondu", "Baisse le volume avant l’arrêt de la lecture", "Programmation nocturne", "Démarre la minuterie automatiquement", "Heure de début", "Durée", "Répéter", "Automatisations", "Reprendre la lecture à la reconnexion Bluetooth", "Uniquement après une pause due à la perte du périphérique audio", "Mettre en pause quand le volume est coupé", "Met la lecture en pause quand le volume atteint zéro", "Télécharger automatiquement les titres aimés", "Met un téléchargement en file quand vous aimez un titre", "Passer le titre après une erreur irrécupérable", "Uniquement après l’échec des tentatives de récupération")
@@ -56,4 +56,31 @@ fun LevyraStrings.automationCopy(): LevyraAutomationCopy = when (code) {
     "fi" -> LevyraAutomationCopy("Tuo Spotifysta", "Luo soittolista Spotifysta viedystä CSV-tiedostosta", "Valitse CSV", "Soittolistan nimi", "Tuodaan…", "Löytyi", "Ei löytynyt", "Tuonti epäonnistui", "Häivytys", "Laskee äänenvoimakkuutta vähitellen ennen toiston pysäyttämistä", "Uniaikataulu", "Aktivoi uniajastimen automaattisesti", "Alkamisaika", "Kesto", "Toista", "Automaatiot", "Jatka toistoa yhdistettäessä Bluetoothiin", "Vain äänilaitteen katoamisen aiheuttaman tauon jälkeen", "Keskeytä mykistettäessä", "Keskeyttää toiston, kun median äänenvoimakkuus laskee nollaan", "Lataa suosikit automaattisesti", "Lisää latauksen jonoon, kun tykkäät kappaleesta", "Ohita kappale korjaamattoman virheen jälkeen", "Vain sen jälkeen, kun tavalliset palautusyritykset ovat epäonnistuneet")
     "et" -> LevyraAutomationCopy("Impordi Spotifyst", "Loo esitusloend Spotifyst eksporditud CSV-failist", "Vali CSV", "Esitusloendi nimi", "Importimine…", "Leitud", "Ei leitud", "Importimine ebaõnnestus", "Hääbumine", "Vähendab helitugevust sujuvalt enne esituse peatamist", "Uneaeg", "Käivitab unetaimeri automaatselt", "Algusaeg", "Kestus", "Kordus", "Automaatika", "Jätka esitust Bluetoothi taasühendamisel", "Ainult pärast heliseadme kadumisest tingitud pausi", "Peata vaigistamisel", "Peatab esituse, kui meedia helitugevus jõuab nulli", "Laadi lemmikud automaatselt alla", "Lisab allalaadimise järjekorda, kui lisad loo lemmikuks", "Jäta lugu pärast parandamatut viga vahele", "Ainult pärast tavapäraste taastamiskatsete ebaõnnestumist")
     else -> LevyraAutomationCopy("Import from Spotify", "Create a playlist from an exported Spotify CSV", "Choose CSV", "Playlist name", "Importing…", "Matched", "Not matched", "Import failed", "Fade out", "Lower the volume before playback stops", "Bedtime schedule", "Start the sleep timer automatically", "Start time", "Duration", "Repeat", "Automation", "Resume playback on Bluetooth reconnect", "Only after a pause caused by losing the audio device", "Pause when volume is muted", "Pause playback when the media volume reaches zero", "Download liked songs automatically", "Queue a download when you like a song", "Skip track after unrecoverable playback error", "Only after the normal recovery attempts have failed")
-}
+}.forBrazil(code) { brazilian() }
+
+private fun LevyraAutomationCopy.brazilian(): LevyraAutomationCopy = copy(
+    spotifyCsvTitle = LevyraBrazilianPortuguese.adapt(spotifyCsvTitle),
+    spotifyCsvSubtitle = LevyraBrazilianPortuguese.adapt(spotifyCsvSubtitle),
+    chooseCsv = LevyraBrazilianPortuguese.adapt(chooseCsv),
+    playlistNameLabel = LevyraBrazilianPortuguese.adapt(playlistNameLabel),
+    importing = LevyraBrazilianPortuguese.adapt(importing),
+    matched = LevyraBrazilianPortuguese.adapt(matched),
+    unmatched = LevyraBrazilianPortuguese.adapt(unmatched),
+    importFailed = LevyraBrazilianPortuguese.adapt(importFailed),
+    fadeOut = LevyraBrazilianPortuguese.adapt(fadeOut),
+    fadeOutSubtitle = LevyraBrazilianPortuguese.adapt(fadeOutSubtitle),
+    bedtime = LevyraBrazilianPortuguese.adapt(bedtime),
+    bedtimeSubtitle = LevyraBrazilianPortuguese.adapt(bedtimeSubtitle),
+    startTime = LevyraBrazilianPortuguese.adapt(startTime),
+    duration = LevyraBrazilianPortuguese.adapt(duration),
+    repeat = LevyraBrazilianPortuguese.adapt(repeat),
+    automation = LevyraBrazilianPortuguese.adapt(automation),
+    bluetoothResume = LevyraBrazilianPortuguese.adapt(bluetoothResume),
+    bluetoothResumeSubtitle = LevyraBrazilianPortuguese.adapt(bluetoothResumeSubtitle),
+    pauseOnMute = LevyraBrazilianPortuguese.adapt(pauseOnMute),
+    pauseOnMuteSubtitle = LevyraBrazilianPortuguese.adapt(pauseOnMuteSubtitle),
+    autoDownloadFavorites = LevyraBrazilianPortuguese.adapt(autoDownloadFavorites),
+    autoDownloadFavoritesSubtitle = LevyraBrazilianPortuguese.adapt(autoDownloadFavoritesSubtitle),
+    skipUnrecoverable = LevyraBrazilianPortuguese.adapt(skipUnrecoverable),
+    skipUnrecoverableSubtitle = LevyraBrazilianPortuguese.adapt(skipUnrecoverableSubtitle)
+)

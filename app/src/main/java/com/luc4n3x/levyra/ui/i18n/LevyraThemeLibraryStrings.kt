@@ -10,6 +10,10 @@ enum class ThemeLibraryText {
 }
 
 class ThemeLibraryCopy internal constructor(private val texts: Map<ThemeLibraryText, String>) {
+    internal val brazilian: ThemeLibraryCopy by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        ThemeLibraryCopy(texts.mapValues { (_, text) -> LevyraBrazilianPortuguese.adapt(text) })
+    }
+
     operator fun get(key: ThemeLibraryText): String = texts[key] ?: englishThemeLibrary.getValue(key)
 }
 
@@ -359,4 +363,4 @@ internal fun themeLibraryCompleteLocalizationCodes(): Set<String> =
     themeLibraryCopies.filterValues { it.size == ThemeLibraryText.entries.size }.keys
 
 internal val LevyraStrings.themeLibraryCopy: ThemeLibraryCopy
-    get() = themeLibraryCopyObjects[code] ?: themeLibraryCopyObjects.getValue("en")
+    get() = localizedValueOrEnglish(themeLibraryCopyObjects, code).forBrazil(code) { brazilian }

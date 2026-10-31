@@ -84,6 +84,24 @@ private val playbackBufferCopies = mapOf(
 )
 
 internal fun playbackBufferCopy(code: String): PlaybackBufferCopy =
-    localizedValueOrEnglish(playbackBufferCopies, code)
+    localizedValueOrEnglish(playbackBufferCopies, code).forBrazil(code) { brazilian() }
 
 internal fun playbackBufferLocalizationCodes(): Set<String> = playbackBufferCopies.keys
+
+private fun PlaybackBufferCopy.brazilian(): PlaybackBufferCopy = copy(
+    title = LevyraBrazilianPortuguese.adapt(title),
+    description = LevyraBrazilianPortuguese.adapt(description),
+    automatic = LevyraBrazilianPortuguese.adapt(automatic),
+    custom = LevyraBrazilianPortuguese.adapt(custom),
+    automaticDetail = LevyraBrazilianPortuguese.adapt(automaticDetail),
+    customDetail = LevyraBrazilianPortuguese.adapt(customDetail),
+    minimum = LevyraBrazilianPortuguese.adapt(minimum),
+    maximum = LevyraBrazilianPortuguese.adapt(maximum),
+    start = LevyraBrazilianPortuguese.adapt(start),
+    afterInterruption = LevyraBrazilianPortuguese.adapt(afterInterruption),
+    presets = LevyraBrazilianPortuguese.adapt(presets),
+    reduced = LevyraBrazilianPortuguese.adapt(reduced),
+    balanced = LevyraBrazilianPortuguese.adapt(balanced),
+    high = LevyraBrazilianPortuguese.adapt(high),
+    restoreAutomatic = LevyraBrazilianPortuguese.adapt(restoreAutomatic)
+)

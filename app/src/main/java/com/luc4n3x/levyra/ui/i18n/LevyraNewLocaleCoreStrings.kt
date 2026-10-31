@@ -66,7 +66,7 @@ private fun setupCopy(welcomeBadge: String, namePlaceholder: String, next: Strin
     "next" to next
 )
 
-private fun newLocaleSetupOverrides(code: String): Map<String, String> = when (code) {
+private fun newLocaleSetupOverrides(code: String): Map<String, String> = when (translationKey(code)) {
     "zh-Hant" -> setupCopy("歡迎", "你的名字…", "下一步")
     "hu" -> setupCopy("Üdvözlünk", "A neved…", "Tovább")
     "bg" -> setupCopy("Добре дошли", "Твоето име…", "Напред")
@@ -86,7 +86,7 @@ private fun newLocaleSetupOverrides(code: String): Map<String, String> = when (c
 internal fun newLocaleCoreOverrides(code: String): Map<String, String> =
     newLocaleCoreCopy(code) + newLocaleSetupOverrides(code)
 
-private fun newLocaleCoreCopy(code: String): Map<String, String> = when (code) {
+private fun newLocaleCoreCopy(code: String): Map<String, String> = when (translationKey(code)) {
     "zh-Hant" -> coreCopy("開始吧。", "你的語言？", "你叫什麼名字？", "選擇 3 個或更多你喜歡的音樂類型。", "略過並繼續", "開始聆聽", "設定", "自訂 LEVYRA", "語言", "變更應用程式語言", "首頁", "搜尋", "音樂庫", "播放器", "播放佇列", "歌詞", "播放清單", "離線下載", "收藏", "快速精選", "播放", "搜尋歌曲、藝人等…", "返回", "選擇語言", "重新啟動 LEVYRA？", "語言已儲存。立即重新啟動應用程式，讓所有畫面完整套用新語言。", "立即重新啟動", "稍後")
     "hu" -> coreCopy("Kezdjük.", "Milyen nyelvet használsz?", "Hogy hívnak?", "Válassz legalább 3 kedvenc műfajt.", "Kihagyás és folytatás", "Hallgatás indítása", "Beállítások", "A LEVYRA személyre szabása", "Nyelv", "Az alkalmazás nyelvének módosítása", "Kezdőlap", "Keresés", "Könyvtár", "Lejátszó", "Lejátszási sor", "Dalszöveg", "Lejátszási listák", "Offline letöltések", "Kedvencek", "Gyors választások", "Lejátszás", "Keresés dalok, előadók között…", "Vissza", "Válassz nyelvet", "Újraindítod a LEVYRA-t?", "A nyelvet mentettük. Indítsd újra az alkalmazást, hogy minden képernyő az új nyelven töltődjön be.", "Újraindítás most", "Később")
     "bg" -> coreCopy("Да започваме.", "Кой е твоят език?", "Как се казваш?", "Избери поне 3 любими жанра.", "Пропусни и продължи", "Започни да слушаш", "Настройки", "Персонализирай LEVYRA", "Език", "Промени езика на приложението", "Начало", "Търсене", "Библиотека", "Плейър", "Опашка", "Текстове", "Плейлисти", "Офлайн изтегляния", "Любими", "Бързи избори", "Пусни", "Търси песни, изпълнители и още…", "Назад", "Избери език", "Рестартиране на LEVYRA?", "Езикът е запазен. Рестартирай приложението, за да се заредят всички екрани на новия език.", "Рестартирай сега", "По-късно")

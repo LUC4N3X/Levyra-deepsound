@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.data
 
 import android.content.Context
+import com.luc4n3x.levyra.domain.LevyraContentLocales
+import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -479,13 +481,17 @@ internal fun canonicalYoutubeChannelUrl(value: String): String? {
 }
 
 private fun localizedShortQueries(languageCode: String): List<String> {
-    return when (languageCode.lowercase(Locale.ROOT).substringBefore('-')) {
+    val contentLanguage = LevyraContentLocales.contentLanguage(languageCode)
+    if (contentLanguage == LevyraLanguageCatalog.BRAZILIAN_PORTUGUESE) {
+        return listOf("shorts música brasileira", "músicas do momento #shorts", "novos sucessos #shorts", "música viral #shorts")
+    }
+    return when (contentLanguage.lowercase(Locale.ROOT).substringBefore('-')) {
         "en" -> listOf("music shorts USA", "new songs USA #shorts", "viral English music #shorts", "popular music USA #shorts")
         "it" -> listOf("shorts musica italiana", "canzoni del momento #shorts", "nuove hit italiane #shorts", "musica virale #shorts")
         "es" -> listOf("shorts música española", "canciones del momento #shorts", "éxitos latinos #shorts", "música viral #shorts")
         "fr" -> listOf("shorts musique française", "chansons du moment #shorts", "nouveaux tubes #shorts", "musique virale #shorts")
         "de" -> listOf("shorts deutsche musik", "aktuelle deutsche songs #shorts", "neue hits #shorts", "virale musik #shorts")
-        "pt" -> listOf("shorts música brasileira", "músicas do momento #shorts", "novos sucessos #shorts", "música viral #shorts")
+        "pt" -> listOf("shorts música portuguesa", "músicas do momento #shorts", "novos êxitos #shorts", "música viral #shorts")
         "nl" -> listOf("shorts Nederlandse muziek", "Nederlandse hits #shorts", "nieuwe muziek Nederland #shorts", "virale muziek #shorts")
         "pl" -> listOf("shorts polska muzyka", "polskie hity #shorts", "nowa polska muzyka #shorts", "viral muzyka #shorts")
         "ro" -> listOf("shorts muzică românească", "hituri românești #shorts", "muzică nouă România #shorts", "muzică virală #shorts")

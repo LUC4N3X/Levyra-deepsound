@@ -390,6 +390,6 @@ private val organizationBundles: Map<String, Map<String, String>> = mapOf(
 )
 
 internal fun organizationLocalizationEntries(code: String): Map<String, String> =
-    organizationBundles[code] ?: organizationBundles.getValue("en")
+    localizedValueOrEnglish(organizationBundles, code)
 
 internal fun organizationLocalizationCodes(): Set<String> = supportedLocalizationCodes()

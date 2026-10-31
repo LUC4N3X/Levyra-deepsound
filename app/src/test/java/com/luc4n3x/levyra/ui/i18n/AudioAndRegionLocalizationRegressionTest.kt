@@ -54,8 +54,9 @@ class AudioAndRegionLocalizationRegressionTest {
         assertTrue(start >= 0 && end > start)
         val block = content.substring(start, end)
 
-        assertTrue(block.contains("val selectedChartRegion = ChartsCatalog.regions"))
-        assertTrue(block.contains("firstOrNull { it.id == _state.value.selectedChartId }"))
+        assertTrue(block.contains("val selectedChartRegion = ChartsCatalog.regionAfterLanguageChange("))
+        assertTrue(block.contains("storedRegionId = preferences.chartRegionId()"))
+        assertTrue(block.contains("currentRegionId = _state.value.selectedChartId"))
         assertTrue(block.contains("selectedChartId = selectedChartRegion.id"))
         assertFalse(block.contains("selectedChartId = defaultChartRegion.id"))
     }

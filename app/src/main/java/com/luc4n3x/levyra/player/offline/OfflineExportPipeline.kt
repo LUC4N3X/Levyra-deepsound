@@ -204,6 +204,7 @@ internal class OfflineExportPipeline(
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
+                if (isOfflineStorageExhausted(error)) throw error
                 Timber.w(error, "Continuous offline prefetch failed; refreshing source")
                 resolver.reportPlaybackFailure(
                     track = resolved,

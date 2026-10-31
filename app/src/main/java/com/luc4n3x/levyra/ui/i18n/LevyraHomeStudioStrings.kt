@@ -682,4 +682,4 @@ private val homeStudioCopies: Map<String, HomeStudioCopy> = mapOf(
 internal fun homeStudioLocalizationCodes(): Set<String> = homeStudioCopies.keys
 
 internal val LevyraStrings.homeStudioCopy: HomeStudioCopy
-    get() = homeStudioCopies[code] ?: homeStudioCopies.getValue("en")
+    get() = localizedValueOrEnglish(homeStudioCopies, code)

@@ -87,7 +87,7 @@ private val playerDeckShortLabelsByCode: Map<String, PlayerDeckShortLabels> = ma
 )
 
 internal fun playerDeckShortLabels(code: String): PlayerDeckShortLabels =
-    playerDeckShortLabelsByCode[code] ?: playerDeckShortLabelsByCode.getValue("en")
+    localizedValueOrEnglish(playerDeckShortLabelsByCode, code)
 
 private val playerDeckBundles: Map<String, Map<String, String>> = mapOf(
     "en" to playerDeck("Player Deck", "Choose your player style.", "Bloom", "Late Night", "Glowing artwork, quiet controls.", "Floating Canvas.", "Artwork only.", "Material 3 Expressive.", "Live audio pulse.", "Video, radio and landscape use Levyra."),
@@ -317,13 +317,13 @@ private val playerDeckDefaultBadges: Map<String, String> = mapOf(
 internal fun playerDeckLocalizationEntries(code: String): Map<String, String> =
     localizedBundleOrEnglish(playerDeckBundles, code) + mapOf(
         "playerDeckHalo" to "Liner Notes",
-        "playerDeckHaloHint" to (playerDeckHaloHints[code] ?: playerDeckHaloHints.getValue("en")),
+        "playerDeckHaloHint" to (localizedValueOrEnglish(playerDeckHaloHints, code)),
         "playerDeckFolio" to "Folio",
-        "playerDeckFolioHint" to (playerDeckFolioHints[code] ?: playerDeckFolioHints.getValue("en")),
+        "playerDeckFolioHint" to (localizedValueOrEnglish(playerDeckFolioHints, code)),
         "playerDeckFlow" to "Levyra Flow",
-        "playerDeckCardHint" to (playerDeckSleeveHints[code] ?: playerDeckSleeveHints.getValue("en")),
-        "playerDeckFlowHint" to (playerDeckFlowHints[code] ?: playerDeckFlowHints.getValue("en")),
-        "playerDeckDefaultBadge" to (playerDeckDefaultBadges[code] ?: playerDeckDefaultBadges.getValue("en"))
+        "playerDeckCardHint" to (localizedValueOrEnglish(playerDeckSleeveHints, code)),
+        "playerDeckFlowHint" to (localizedValueOrEnglish(playerDeckFlowHints, code)),
+        "playerDeckDefaultBadge" to (localizedValueOrEnglish(playerDeckDefaultBadges, code))
     )
 
 internal fun playerDeckLocalizationCodes(): Set<String> = playerDeckBundles.keys

@@ -22,7 +22,8 @@ class LevyraStringsTest {
         assertEquals(catalogCodes, insightLocalizationCodes())
         assertEquals(catalogCodes, integrationLocalizationCodes())
         assertEquals(catalogCodes, resonanceLocalizationCodes())
-        assertEquals(catalogCodes, downloadLocationLocalizationCodes())
+        assertEquals(catalogCodes, keepScreenOnLocalizationCodes())
+        assertEquals(catalogCodes, offlineStorageLocalizationCodes())
         assertEquals(catalogCodes, similarSongsLocalizationCodes())
         assertEquals(catalogCodes, playerVisualLocalizationCodes())
         assertEquals(catalogCodes, queueSelectionLocalizationCodes())
@@ -175,7 +176,7 @@ class LevyraStringsTest {
     @Test
     fun regionAndScriptVariantsResolveToSupportedBundles() {
         assertEquals("nl", LevyraStrings.forCode("nl-NL").code)
-        assertEquals("pt", LevyraStrings.forCode("pt_BR").code)
+        assertEquals("pt-BR", LevyraStrings.forCode("pt_BR").code)
         assertEquals("uk", LevyraStrings.forCode("uk-UA").code)
         assertEquals("ja", LevyraStrings.forCode("ja-JP").code)
         assertEquals("ko", LevyraStrings.forCode("ko_KR").code)
@@ -339,7 +340,11 @@ class LevyraStringsTest {
         localizedDirs.forEach { directory ->
             val file = directory.resolve("strings.xml")
             val names = stringPattern.findAll(Files.readString(file)).map { it.groupValues[1] }.toSet()
-            assertEquals("Invalid resource keys in ${directory.fileName}", expectedKeys, names)
+            if (directory.fileName.toString() == "values-pt-rBR") {
+                assertTrue("Unknown resource keys in values-pt-rBR", expectedKeys.containsAll(names))
+            } else {
+                assertEquals("Invalid resource keys in ${directory.fileName}", expectedKeys, names)
+            }
         }
 
         fun qualifierToTag(name: String): String {
@@ -354,7 +359,7 @@ class LevyraStringsTest {
         val resourceCodes = localizedDirs
             .map { LevyraLanguageCatalog.normalize(qualifierToTag(it.fileName.toString())) }
             .toSet()
-        val catalogCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        val catalogCodes = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
         assertEquals(catalogCodes - "en", resourceCodes)
 
         val localeConfig = resourceRoot.resolve("xml").resolve("locales_config.xml")
@@ -457,7 +462,7 @@ class LevyraStringsTest {
         ).forEach { leaked ->
             assertFalse("Hardcoded runtime localization leak: $leaked", content.contains(leaked))
         }
-        assertTrue(LevyraStrings.forCode("en").formatOfflineExportSaved("Music/Levyra", "track.m4a", true).startsWith("Saved in Music/Levyra"))
+        assertTrue(LevyraStrings.forCode("en").formatOfflineExportSaved("track.m4a", true).startsWith("Saved for offline listening"))
         assertEquals("Loading playlist", LevyraStrings.forCode("en").loadingSharedPlaylist)
         assertEquals("No results found for Levyra", LevyraStrings.forCode("en").formatNoSearchResults("Levyra"))
     }

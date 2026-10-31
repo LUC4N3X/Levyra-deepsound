@@ -86,7 +86,8 @@ private val ExploreMoodLocalWaveArtistPools = mapOf(
     "es" to listOf("Rosalía", "Quevedo", "Aitana", "Rels B"),
     "fr" to listOf("Aya Nakamura", "GIMS", "Tiakola", "Angèle"),
     "de" to listOf("Apache 207", "Nina Chuba", "AYLIVA", "Luciano"),
-    "pt" to listOf("Anitta", "Pedro Sampaio", "Luísa Sonza", "WIU"),
+    "pt" to listOf("Dillaz", "Bárbara Bandeira", "Slow J", "Wet Bed Gang"),
+    "pt-br" to listOf("Anitta", "Pedro Sampaio", "Luísa Sonza", "WIU"),
     "ro" to listOf("INNA", "The Motans", "Irina Rimes", "Delia"),
     "tr" to listOf("Ezhel", "Mabel Matiz", "Simge", "UZI"),
     "ru" to listOf("JONY", "Zivert", "MACAN", "Miyagi & Andy Panda"),
@@ -115,7 +116,8 @@ internal fun exploreMoodPortraitCandidates(
     languageCode: String,
     rotationBucket: Long
 ): List<String> {
-    val language = languageCode.trim().lowercase().substringBefore('-').substringBefore('_')
+    val contentLanguage = com.luc4n3x.levyra.domain.LevyraContentLocales.contentLanguage(languageCode).lowercase()
+    val language = contentLanguage.takeIf { it in ExploreMoodLocalWaveArtistPools } ?: contentLanguage.substringBefore('-')
     val primary = when {
         zoneId == "local-wave" -> ExploreMoodLocalWaveArtistPools[language]
             ?: ExploreMoodGlobalArtistPools[zoneId]

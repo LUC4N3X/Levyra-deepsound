@@ -340,4 +340,13 @@ internal val dockMorphCopies: Map<String, LevyraDockMorphCopy> = mapOf(
     )
 )
 
-fun LevyraStrings.dockMorph(): LevyraDockMorphCopy = localizedValueOrEnglish(dockMorphCopies, code)
+fun LevyraStrings.dockMorph(): LevyraDockMorphCopy = localizedValueOrEnglish(dockMorphCopies, code).forBrazil(code) { brazilian() }
+
+private fun LevyraDockMorphCopy.brazilian(): LevyraDockMorphCopy = copy(
+    title = LevyraBrazilianPortuguese.adapt(title),
+    subtitle = LevyraBrazilianPortuguese.adapt(subtitle),
+    tide = LevyraBrazilianPortuguese.adapt(tide),
+    merge = LevyraBrazilianPortuguese.adapt(merge),
+    mergeSubtitle = LevyraBrazilianPortuguese.adapt(mergeSubtitle),
+    off = LevyraBrazilianPortuguese.adapt(off)
+)

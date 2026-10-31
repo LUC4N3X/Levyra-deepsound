@@ -38,7 +38,7 @@ private val homeSoundtrackBundles: Map<String, Map<String, String>> = mapOf(
         "Ein Radio, das mit jedem Hören wächst.", ", ", " und "
     ),
     "pt" to homeSoundtrack(
-        "RÁDIO", "Minha trilha sonora", "Começa com {artists}",
+        "RÁDIO", "A minha banda sonora", "Começa com {artists}",
         "Uma rádio que cresce a cada música.", ", ", " e "
     ),
     "nl" to homeSoundtrack(

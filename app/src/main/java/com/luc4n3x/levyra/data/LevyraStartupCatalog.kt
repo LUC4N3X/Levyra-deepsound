@@ -41,10 +41,10 @@ object LevyraStartupCatalog {
 
     fun repairHomeSections(sections: List<HomeSection>, languageCode: String): List<HomeSection> {
         if (sections.isEmpty()) return sections
-        val legacyEnergyTitles = LevyraLanguageCatalog.languages
+        val legacyEnergyTitles = LevyraLanguageCatalog.selectableLanguages
             .map { language -> LevyraContentLocales.forLanguage(language.code).energySectionTitle.trim() }
             .filter { it.isNotEmpty() }
-        val legacyQuickTitles = LevyraLanguageCatalog.languages
+        val legacyQuickTitles = LevyraLanguageCatalog.selectableLanguages
             .map { language -> LevyraContentLocales.forLanguage(language.code).quickSectionTitle.trim() }
             .filter { it.isNotEmpty() }
         fun matchesTitle(section: HomeSection, titles: List<String>): Boolean {
@@ -130,7 +130,7 @@ object LevyraStartupCatalog {
     )
 
     private fun localTracks(languageCode: String): List<Track> {
-        return when (LevyraLanguageCatalog.normalize(languageCode)) {
+        return when (LevyraContentLocales.contentLanguage(languageCode)) {
             "it" -> listOf(
                 track("LA FINE DEL MONDO", "Sgribaz feat. Disme", "Emotional Kid", "AFkftETigws", setOf("rap", "local", "hit"), 86, 70, 90),
                 track("Tuta Gold", "Mahmood", "TUTA GOLD", "Pz168-XMNIk", setOf("pop", "local", "hit"), 82, 76, 88),
@@ -164,6 +164,14 @@ object LevyraStartupCatalog {
                 track("Ohne mein Team", "Bonez MC & RAF Camora", "YouTube Music", "", setOf("rap", "local", "energy"), 86, 70, 87)
             )
             "pt" -> listOf(
+                track("Amar Pelos Dois", "Salvador Sobral", "YouTube Music", "", setOf("pop", "local", "hit"), 40, 92, 90),
+                track("Devia Ir", "Wet Bed Gang", "YouTube Music", "", setOf("rap", "local", "hit"), 80, 74, 86),
+                track("Dialeto", "Diogo Piçarra", "YouTube Music", "", setOf("pop", "local", "chill"), 66, 78, 84),
+                track("Ó Gente da Minha Terra", "Mariza", "YouTube Music", "", setOf("classic", "local", "vocal"), 44, 90, 88),
+                track("Tou Bem", "ProfJam", "YouTube Music", "", setOf("rap", "local", "energy"), 82, 72, 85),
+                track("Parva Que Sou", "Deolinda", "YouTube Music", "", setOf("classic", "local", "vocal"), 58, 84, 82)
+            )
+            "pt-BR" -> listOf(
                 track("Envolver", "Anitta", "YouTube Music", "", setOf("pop", "local", "hit"), 84, 72, 92),
                 track("Ai Se Eu Te Pego", "Michel Teló", "YouTube Music", "", setOf("party", "local", "hit"), 90, 70, 94),
                 track("Acorda Pedrinho", "Jovem Dionisio", "YouTube Music", "", setOf("pop", "local", "chill"), 74, 76, 88),

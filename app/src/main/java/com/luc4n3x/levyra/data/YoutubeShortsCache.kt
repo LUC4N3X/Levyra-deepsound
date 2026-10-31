@@ -1,7 +1,7 @@
 package com.luc4n3x.levyra.data
 
 import android.content.Context
-import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
+import com.luc4n3x.levyra.domain.LevyraMusicRegion
 import com.luc4n3x.levyra.domain.Track
 import org.json.JSONArray
 import org.json.JSONObject
@@ -82,7 +82,7 @@ internal class YoutubeShortsCache(context: Context) {
     }
 
     private fun cacheKey(languageCode: String): String =
-        "shorts_${LevyraLanguageCatalog.normalize(languageCode)}"
+        "shorts_${LevyraMusicRegion.cacheScope(languageCode)}"
 
     private fun profileFingerprint(profileSignature: String): String {
         val normalized = profileSignature.trim().lowercase(Locale.ROOT)

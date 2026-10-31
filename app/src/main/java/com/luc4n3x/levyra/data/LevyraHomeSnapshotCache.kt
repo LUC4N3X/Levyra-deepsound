@@ -5,6 +5,7 @@ import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.isArtistShelfNameEligible
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
+import com.luc4n3x.levyra.domain.LevyraMusicRegion
 import com.luc4n3x.levyra.domain.ResonanceCommentSnippet
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.resonanceCommentsForTracks
@@ -75,9 +76,11 @@ class LevyraHomeSnapshotCache(context: Context) {
         homeArtists: List<ArtistHit>,
         resonanceTracks: List<Track>,
         resonanceUpdatedAt: Long,
-        resonanceComments: Map<String, ResonanceCommentSnippet> = emptyMap()
+        resonanceComments: Map<String, ResonanceCommentSnippet> = emptyMap(),
+        musicRegionId: String = LevyraMusicRegion.selectedId
     ) {
         val normalized = LevyraLanguageCatalog.normalize(languageCode)
+        val scope = LevyraMusicRegion.cacheScope(normalized, musicRegionId)
         val normalizedChartRegionId = chartRegionId.trim().lowercase()
         if (homeSections.isEmpty() && charts.isEmpty() && personalOrbit.isEmpty() && homeArtists.isEmpty() && resonanceTracks.isEmpty()) return
         runCatching {
@@ -96,18 +99,20 @@ class LevyraHomeSnapshotCache(context: Context) {
                     "resonanceComments",
                     resonanceCommentsToJson(resonanceTracks.take(RESONANCE_TRACK_LIMIT), resonanceComments)
                 )
-            val target = fileFor(normalized)
+            val target = scopedFile(scope)
             val tmp = File(target.parentFile, "${target.name}.tmp")
             tmp.writeText(json.toString())
             if (!tmp.renameTo(target)) {
                 tmp.copyTo(target, overwrite = true)
                 tmp.delete()
             }
-            cleanup(normalized)
+            cleanup(scope)
         }.onFailure { Timber.w(it, "Home snapshot save failed") }
     }
 
-    private fun fileFor(languageCode: String): File = File(root, "home_${LevyraLanguageCatalog.normalize(languageCode)}.json")
+    private fun fileFor(languageCode: String): File = scopedFile(LevyraMusicRegion.cacheScope(languageCode))
+
+    private fun scopedFile(scope: String): File = File(root, "home_$scope.json")
 
     private fun cleanup(activeLanguage: String) {
         root.listFiles()?.forEach { file ->

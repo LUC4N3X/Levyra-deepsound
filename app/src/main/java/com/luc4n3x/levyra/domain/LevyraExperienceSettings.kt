@@ -241,6 +241,7 @@ data class LevyraInterfaceSettings(
     val glassRefraction: Boolean = true,
     val motionArtworkWifiOnly: Boolean = false,
     val enhanceVideoMetadata: Boolean = false,
+    val keepScreenOnWhilePlaying: Boolean = false,
     val pureBlack: Boolean = false,
     val hapticFeedback: Boolean = true,
     val immersive: LevyraImmersiveSettings = LevyraImmersiveSettings(),

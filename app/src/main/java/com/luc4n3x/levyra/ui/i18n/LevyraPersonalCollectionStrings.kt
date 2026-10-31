@@ -1162,9 +1162,9 @@ internal object LevyraPersonalCollectionCatalog {
     }
 
     fun forCode(code: String): LevyraPersonalCollectionStrings {
-        val normalized = LevyraLanguageCatalog.normalize(code)
+        val normalized = LevyraLanguageCatalog.translationCode(code)
         val resolved = if (values.containsKey(normalized)) normalized else "en"
-        return LevyraPersonalCollectionStrings(resolved, values.getValue(resolved))
+        return LevyraPersonalCollectionStrings(resolved, values.getValue(resolved).forBrazil(code) { map(LevyraBrazilianPortuguese::adapt) })
     }
 
     internal fun codes(): Set<String> = values.keys

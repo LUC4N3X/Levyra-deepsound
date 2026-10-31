@@ -12,7 +12,7 @@ internal data class CrossfadeLabCopy(
     val sameReleasePolicy: String
 )
 
-internal fun crossfadeLabCopy(code: String): CrossfadeLabCopy = when (code) {
+internal fun crossfadeLabCopy(code: String): CrossfadeLabCopy = when (translationKey(code)) {
     "it" -> CrossfadeLabCopy(
         title = "Curve Lab",
         outgoing = "In uscita",
@@ -79,4 +79,16 @@ internal fun crossfadeLabCopy(code: String): CrossfadeLabCopy = when (code) {
         gaplessRequired = "Enable gapless playback to use crossfade",
         sameReleasePolicy = "Consecutive tracks from the same album remain gapless"
     )
-}
+}.forBrazil(code) { brazilian() }
+
+private fun CrossfadeLabCopy.brazilian(): CrossfadeLabCopy = copy(
+    title = LevyraBrazilianPortuguese.adapt(title),
+    outgoing = LevyraBrazilianPortuguese.adapt(outgoing),
+    incoming = LevyraBrazilianPortuguese.adapt(incoming),
+    equalPower = LevyraBrazilianPortuguese.adapt(equalPower),
+    off = LevyraBrazilianPortuguese.adapt(off),
+    fixedDuration = LevyraBrazilianPortuguese.adapt(fixedDuration),
+    adaptiveDuration = LevyraBrazilianPortuguese.adapt(adaptiveDuration),
+    gaplessRequired = LevyraBrazilianPortuguese.adapt(gaplessRequired),
+    sameReleasePolicy = LevyraBrazilianPortuguese.adapt(sameReleasePolicy)
+)

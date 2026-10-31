@@ -197,8 +197,8 @@ private const val ReactiveAuraName = "Reactive Aura"
 private const val ReactiveAuraFlowName = "Flow"
 
 internal fun playerVisualLocalizationEntries(code: String): Map<String, String> {
-    val extra = playerBackgroundExtraLabels[code] ?: playerBackgroundExtraLabels.getValue("en")
-    val aura = reactiveAuraLabels[code] ?: reactiveAuraLabels.getValue("en")
+    val extra = localizedValueOrEnglish(playerBackgroundExtraLabels, code)
+    val aura = localizedValueOrEnglish(reactiveAuraLabels, code)
     return localizedBundleOrEnglish(playerVisualBundles, code) + liveChatLocalizationEntries(code) +
         diagnosticsLocalizationEntries(code) + playerColorLocalizationEntries(code) + mapOf(
             "playerBackgroundAurora" to extra.first,

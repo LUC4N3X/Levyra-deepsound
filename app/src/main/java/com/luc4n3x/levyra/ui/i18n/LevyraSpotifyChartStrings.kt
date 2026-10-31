@@ -1,6 +1,5 @@
 package com.luc4n3x.levyra.ui.i18n
 
-import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 
 internal data class SpotifyChartCopy(
     val findInPlaylist: String,
@@ -149,10 +148,10 @@ internal object LevyraSpotifyChartStrings {
     )
 
     fun radioWithMany(code: String, artists: String): String =
-        (radioCopies[LevyraLanguageCatalog.normalize(code)] ?: radioCopies.getValue("en")).first.format(artists)
+        (localizedValueOrEnglish(radioCopies, code)).first.format(artists)
 
     fun radioMadeForYou(code: String): String =
-        (radioCopies[LevyraLanguageCatalog.normalize(code)] ?: radioCopies.getValue("en")).second
+        (localizedValueOrEnglish(radioCopies, code)).second
 
     private val radioTitles = mapOf(
         "en" to "%s Radio",
@@ -199,7 +198,7 @@ internal object LevyraSpotifyChartStrings {
     )
 
     fun radioTitle(code: String, artist: String): String =
-        (radioTitles[LevyraLanguageCatalog.normalize(code)] ?: radioTitles.getValue("en")).format(artist)
+        (localizedValueOrEnglish(radioTitles, code)).format(artist)
 
     private val pickerCopies = mapOf(
         "en" to ("Choose more artists you like." to "More artists you might like"),
@@ -245,11 +244,11 @@ internal object LevyraSpotifyChartStrings {
         "he" to ("בחרו עוד אמנים שאתם אוהבים." to "אמנים נוספים שאולי תאהבו")
     )
 
-    fun pickerTitle(code: String): String = (pickerCopies[LevyraLanguageCatalog.normalize(code)] ?: pickerCopies.getValue("en")).first
+    fun pickerTitle(code: String): String = (localizedValueOrEnglish(pickerCopies, code)).first
 
-    fun pickerMore(code: String): String = (pickerCopies[LevyraLanguageCatalog.normalize(code)] ?: pickerCopies.getValue("en")).second
+    fun pickerMore(code: String): String = (localizedValueOrEnglish(pickerCopies, code)).second
 
-    fun globalName(code: String): String = globalNames[LevyraLanguageCatalog.normalize(code)] ?: globalNames.getValue("en")
+    fun globalName(code: String): String = localizedValueOrEnglish(globalNames, code)
 
-    fun forCode(code: String): SpotifyChartCopy = copies[LevyraLanguageCatalog.normalize(code)] ?: copies.getValue("en")
+    fun forCode(code: String): SpotifyChartCopy = localizedValueOrEnglish(copies, code)
 }

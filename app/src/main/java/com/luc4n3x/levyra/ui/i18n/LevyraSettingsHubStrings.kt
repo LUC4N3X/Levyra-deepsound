@@ -3,6 +3,10 @@ package com.luc4n3x.levyra.ui.i18n
 enum class SettingsHubText { Studios, StudiosHint, Appearance, Listening, Library, Accounts, System }
 
 class SettingsHubCopy internal constructor(private val texts: Map<SettingsHubText, String>) {
+    internal val brazilian: SettingsHubCopy by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        SettingsHubCopy(texts.mapValues { (_, text) -> LevyraBrazilianPortuguese.adapt(text) })
+    }
+
     operator fun get(key: SettingsHubText): String = texts[key] ?: englishSettingsHub.getValue(key)
 
     internal val complete: Boolean
@@ -68,4 +72,4 @@ internal fun settingsHubIncompleteLocalizationCodes(): Set<String> =
     settingsHubCopies.filterValues { !it.complete }.keys
 
 internal val LevyraStrings.settingsHubCopy: SettingsHubCopy
-    get() = settingsHubCopies[code] ?: settingsHubCopies.getValue("en")
+    get() = localizedValueOrEnglish(settingsHubCopies, code).forBrazil(code) { brazilian }

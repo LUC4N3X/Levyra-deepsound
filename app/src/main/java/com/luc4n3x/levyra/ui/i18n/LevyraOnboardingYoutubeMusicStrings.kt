@@ -810,5 +810,25 @@ internal object LevyraOnboardingYoutubeMusicStrings {
     }
 
     fun forCode(code: String): OnboardingYoutubeMusicCopy =
-        copies[LevyraLanguageCatalog.normalize(code)] ?: copies.getValue("en")
+        localizedValueOrEnglish(copies, code).forBrazil(code) { brazilian() }
 }
+
+private fun OnboardingYoutubeMusicCopy.brazilian(): OnboardingYoutubeMusicCopy = copy(
+    title = LevyraBrazilianPortuguese.adapt(title),
+    body = LevyraBrazilianPortuguese.adapt(body),
+    optionalTitle = LevyraBrazilianPortuguese.adapt(optionalTitle),
+    optionalBody = LevyraBrazilianPortuguese.adapt(optionalBody),
+    secureTitle = LevyraBrazilianPortuguese.adapt(secureTitle),
+    secureBody = LevyraBrazilianPortuguese.adapt(secureBody),
+    connect = LevyraBrazilianPortuguese.adapt(connect),
+    skip = LevyraBrazilianPortuguese.adapt(skip),
+    connectedTitle = LevyraBrazilianPortuguese.adapt(connectedTitle),
+    connectedBody = LevyraBrazilianPortuguese.adapt(connectedBody),
+    login = LevyraBrazilianPortuguese.adapt(login),
+    checking = LevyraBrazilianPortuguese.adapt(checking),
+    retry = LevyraBrazilianPortuguese.adapt(retry),
+    networkError = LevyraBrazilianPortuguese.adapt(networkError),
+    signInError = LevyraBrazilianPortuguese.adapt(signInError),
+    genericError = LevyraBrazilianPortuguese.adapt(genericError),
+    announceTitle = LevyraBrazilianPortuguese.adapt(announceTitle)
+)

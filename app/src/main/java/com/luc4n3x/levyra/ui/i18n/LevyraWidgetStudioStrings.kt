@@ -14,6 +14,10 @@ enum class WidgetStudioText {
 }
 
 class WidgetStudioCopy internal constructor(private val texts: Map<WidgetStudioText, String>) {
+    internal val brazilian: WidgetStudioCopy by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        WidgetStudioCopy(texts.mapValues { (_, text) -> LevyraBrazilianPortuguese.adapt(text) })
+    }
+
     operator fun get(key: WidgetStudioText): String = texts[key] ?: englishWidgetStudio.getValue(key)
 
     internal val complete: Boolean
@@ -2693,4 +2697,4 @@ internal fun widgetStudioIncompleteLocalizationCodes(): Set<String> =
 internal fun widgetStudioLocalizationCodes(): Set<String> = widgetStudioCopies.keys
 
 internal val LevyraStrings.widgetStudioCopy: WidgetStudioCopy
-    get() = widgetStudioCopies[code] ?: widgetStudioCopies.getValue("en")
+    get() = localizedValueOrEnglish(widgetStudioCopies, code).forBrazil(code) { brazilian }

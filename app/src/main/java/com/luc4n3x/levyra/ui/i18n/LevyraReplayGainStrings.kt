@@ -17,7 +17,7 @@ internal data class ReplayGainCopy(
     }
 }
 
-internal fun LevyraStrings.replayGainCopy(): ReplayGainCopy = when (code) {
+internal fun LevyraStrings.replayGainCopy(): ReplayGainCopy = when (translationKey(code)) {
     "it" -> ReplayGainCopy("Traccia", "Album", "Smart", "Protezione clipping", "Usa i picchi ReplayGain")
     "es" -> ReplayGainCopy("Pista", "Álbum", "Inteligente", "Protección contra clipping", "Usa los picos ReplayGain")
     "fr" -> ReplayGainCopy("Piste", "Album", "Intelligent", "Protection contre l’écrêtage", "Utilise les pics ReplayGain")
@@ -59,4 +59,12 @@ internal fun LevyraStrings.replayGainCopy(): ReplayGainCopy = when (code) {
     "fil" -> ReplayGainCopy("Track", "Album", "Smart", "Proteksyon sa clipping", "Gumagamit ng ReplayGain peak values")
     "he" -> ReplayGainCopy("רצועה", "אלבום", "חכם", "הגנת clipping", "משתמש בערכי השיא של ReplayGain")
     else -> ReplayGainCopy("Track", "Album", "Smart", "Clipping protection", "Uses ReplayGain peak values")
-}
+}.forBrazil(code) { brazilian() }
+
+private fun ReplayGainCopy.brazilian(): ReplayGainCopy = copy(
+    track = LevyraBrazilianPortuguese.adapt(track),
+    album = LevyraBrazilianPortuguese.adapt(album),
+    smart = LevyraBrazilianPortuguese.adapt(smart),
+    clippingProtection = LevyraBrazilianPortuguese.adapt(clippingProtection),
+    peakAware = LevyraBrazilianPortuguese.adapt(peakAware)
+)

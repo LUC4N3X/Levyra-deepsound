@@ -212,8 +212,14 @@ internal object RadioLanguagePreferences {
         check(values.keys == LevyraLanguageCatalog.languages.map { it.code }.toSet())
     }
 
-    fun forLevyraLanguage(code: String): RadioLanguagePreference =
-        values.getValue(LevyraLanguageCatalog.normalize(code))
+    fun forLevyraLanguage(code: String): RadioLanguagePreference {
+        val preference = values.getValue(LevyraLanguageCatalog.translationCode(code))
+        return if (LevyraLanguageCatalog.normalize(code) == LevyraLanguageCatalog.BRAZILIAN_PORTUGUESE) {
+            preference.copy(preferredCountries = listOf("BR", "PT", "AO"))
+        } else {
+            preference
+        }
+    }
 
     private fun preference(code: String, language: String, vararg countries: String) =
         RadioLanguagePreference(code, listOf(language), countries.toList())

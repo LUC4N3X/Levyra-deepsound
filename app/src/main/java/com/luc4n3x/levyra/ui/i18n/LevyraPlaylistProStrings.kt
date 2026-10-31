@@ -18,7 +18,7 @@ data class PlaylistProCopy(
     val noSearchResults: String
 )
 
-fun LevyraStrings.playlistProCopy(): PlaylistProCopy = when (code) {
+fun LevyraStrings.playlistProCopy(): PlaylistProCopy = when (translationKey(code)) {
     "it" -> PlaylistProCopy(
         "Cambia copertina",
         "Ripristina copertina automatica",
@@ -189,4 +189,22 @@ fun LevyraStrings.playlistProCopy(): PlaylistProCopy = when (code) {
         "Couldn’t update the cover",
         "No tracks match your search"
     )
-}
+}.forBrazil(code) { brazilian() }
+
+private fun PlaylistProCopy.brazilian(): PlaylistProCopy = copy(
+    changeCover = LevyraBrazilianPortuguese.adapt(changeCover),
+    resetAutomaticCover = LevyraBrazilianPortuguese.adapt(resetAutomaticCover),
+    adjustCover = LevyraBrazilianPortuguese.adapt(adjustCover),
+    coverPreview = LevyraBrazilianPortuguese.adapt(coverPreview),
+    cropHint = LevyraBrazilianPortuguese.adapt(cropHint),
+    confirmCover = LevyraBrazilianPortuguese.adapt(confirmCover),
+    zoomOut = LevyraBrazilianPortuguese.adapt(zoomOut),
+    zoomIn = LevyraBrazilianPortuguese.adapt(zoomIn),
+    resetCrop = LevyraBrazilianPortuguese.adapt(resetCrop),
+    moveCoverLeft = LevyraBrazilianPortuguese.adapt(moveCoverLeft),
+    moveCoverRight = LevyraBrazilianPortuguese.adapt(moveCoverRight),
+    moveCoverUp = LevyraBrazilianPortuguese.adapt(moveCoverUp),
+    moveCoverDown = LevyraBrazilianPortuguese.adapt(moveCoverDown),
+    coverUpdateFailed = LevyraBrazilianPortuguese.adapt(coverUpdateFailed),
+    noSearchResults = LevyraBrazilianPortuguese.adapt(noSearchResults)
+)

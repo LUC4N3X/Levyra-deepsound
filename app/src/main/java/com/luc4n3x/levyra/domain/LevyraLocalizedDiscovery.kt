@@ -11,16 +11,16 @@ object LevyraLocalizedDiscovery {
             addAll(locale.homeQueries)
             addAll(locale.tasteQueries.values)
             addAll(locale.moodQueries.values)
-            addAll(contextualQueries(clean, locale.languageCode))
+            addAll(contextualQueries(clean, locale.contentLanguageCode))
         }
         val localMatches = localPool.filter { it.lowercase().contains(clean) || clean.contains(it.lowercase()) }
-        return (remote + localMatches + contextualQueries(clean, locale.languageCode)).distinctClean().take(8)
+        return (remote + localMatches + contextualQueries(clean, locale.contentLanguageCode)).distinctClean().take(8)
     }
 
     fun homeBoostQueries(languageCode: String, tasteIds: Set<String>): List<String> {
         val locale = LevyraContentLocales.forLanguage(languageCode)
         val tasteQueries = tasteIds.mapNotNull { id -> locale.tasteQueries[id] }
-        return (tasteQueries + locale.homeQueries + contextualQueries("", locale.languageCode)).distinctClean().take(10)
+        return (tasteQueries + locale.homeQueries + contextualQueries("", locale.contentLanguageCode)).distinctClean().take(10)
     }
 
     private fun contextualQueries(query: String, languageCode: String): List<String> {
@@ -29,7 +29,8 @@ object LevyraLocalizedDiscovery {
             "es" -> listOf("reggaeton nuevo 2026", "hits España 2026", "música para gimnasio", "playlist conducir de noche", "pop español nuevo")
             "fr" -> listOf("rap français nouveau 2026", "hits France 2026", "musique sport", "playlist conduite nuit", "pop française nouvelle")
             "de" -> listOf("deutschrap neu 2026", "hits Deutschland 2026", "gym deutschrap", "nacht fahren playlist", "deutsche pop neu")
-            "pt" -> listOf("funk brasileiro novo 2026", "hits Brasil 2026", "música academia", "dirigir à noite playlist", "pop brasileiro novo")
+            "pt" -> listOf("rap português novo 2026", "hits Portugal 2026", "música ginásio", "conduzir à noite playlist", "pop português novo")
+            "pt-BR" -> listOf("funk brasileiro novo 2026", "hits Brasil 2026", "música academia", "dirigir à noite playlist", "pop brasileiro novo")
             "nl" -> listOf("nederlandse hits 2026", "nederlandse rap nieuw", "gym muziek", "night drive playlist", "nederlandse pop nieuw")
             "pl" -> listOf("polskie hity 2026", "polski rap nowy", "muzyka na siłownię", "night drive playlist", "polski pop nowy")
             "ro" -> listOf("hituri România 2026", "rap românesc nou", "muzică sală", "night drive playlist", "pop românesc nou")
