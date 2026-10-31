@@ -95,6 +95,15 @@ class HighQualityLosslessPriorityTest {
     }
 
     @Test
+    fun temporaryPreferredProviderFailureIsNotNegativeCachedWhenOtherProvidersHaveNoMatch() {
+        val preferred = losslessProvider("tidal") { ProviderStreamOutcome.Failed(ProviderFailure.HTTP_ERROR) }
+        val resolver = resolver(HighQualityAudioMode.PREFER_LOSSLESS, preferred, FakeHighQualityProvider())
+        val result = resolver.resolveNow()
+        assertEquals(HighQualityFallbackReason.PROVIDER_UNAVAILABLE, (result as HighQualityResolution.Fallback).reason)
+        assertTrue(resolver.upgradePending("key"))
+    }
+
+    @Test
     fun stalledTidalIsBoundedAndFallsBack() {
         val tidal = losslessProvider("tidal") { awaitCancellation() }
         val monochrome = losslessProvider("monochrome") { ProviderStreamOutcome.Resolved(flacStream(it)) }
@@ -241,7 +250,7 @@ class HighQualityLosslessPriorityTest {
     }
 
     @Test
-    fun losslessLaneDeadlineOpensMonochromeCircuitBeforeTheNextTrack() = runBlocking {
+    fun repeatedLaneTimeoutsOpenMonochromeCircuitButOneTimeoutDoesNot() = runBlocking {
         var requests = 0
         val monochrome = com.luc4n3x.levyra.data.hqaudio.lossless.MonochromeAudioProvider(
             exchange = ProviderHttpExchange {
@@ -254,12 +263,20 @@ class HighQualityLosslessPriorityTest {
         )
         val first = resolver.await(resolver.begin("first", query()), 3_000L) as HighQualityResolution.Selected
         assertEquals("jiosaavn", first.stream.providerId)
-        assertEquals("OPEN", monochrome.health().single().state)
+        assertEquals("CLOSED", monochrome.health().single().state)
         assertEquals("LOOKUP_TIMEOUT", monochrome.health().single().lastFailure)
+
+        for (key in listOf("second", "third")) {
+            resolver.await(resolver.begin(key, query()), 3_000L)
+        }
+        assertEquals("OPEN", monochrome.health().single().state)
 
         val next = resolver.await(resolver.begin("next", query()), 3_000L) as HighQualityResolution.Selected
         assertEquals("jiosaavn", next.stream.providerId)
-        assertEquals(1, requests)
+        assertTrue(requests in 1..3)
+        val requestsAtOpen = requests
+        resolver.await(resolver.begin("still-open", query()), 3_000L)
+        assertEquals(requestsAtOpen, requests)
     }
 
     @Test

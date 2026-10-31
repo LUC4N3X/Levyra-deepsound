@@ -11,12 +11,13 @@ import com.luc4n3x.levyra.data.hqaudio.ProviderSearchOutcome
 import com.luc4n3x.levyra.data.hqaudio.ProviderStreamOutcome
 import com.luc4n3x.levyra.data.hqaudio.StreamRejection
 import java.net.URLEncoder
+import kotlin.math.roundToInt
 import org.json.JSONObject
 
 internal class MonochromeAudioProvider(
     exchange: ProviderHttpExchange,
     private val clock: () -> Long = System::currentTimeMillis,
-    circuitBreaker: ProviderCircuitBreaker = ProviderCircuitBreaker(CIRCUIT, clock, failureThreshold = 1)
+    circuitBreaker: ProviderCircuitBreaker = ProviderCircuitBreaker(CIRCUIT, clock)
 ) : HighQualityAudioProvider {
     override val id: String = MONOCHROME_PROVIDER_ID
     override val displayName: String = "Monochrome"
@@ -82,19 +83,34 @@ internal object MonochromePayloadParser {
         val title = json.optStringOrBlank("title").takeIf { it.isNotEmpty() } ?: return null
         val artistsJson = json.optJSONArray("artistNames")
         val artists = (0 until (artistsJson?.length() ?: 0))
-            .mapNotNull { artistsJson?.optString(it)?.trim()?.takeIf(String::isNotEmpty) }
+            .mapNotNull { index ->
+                if (artistsJson?.isNull(index) == true) null
+                else artistsJson?.optString(index)?.trim()?.takeIf(String::isNotEmpty)
+            }
+            .ifEmpty {
+                val credits = json.optJSONArray("artists")
+                (0 until (credits?.length() ?: 0)).mapNotNull { index ->
+                    credits?.optJSONObject(index)?.let { credit ->
+                        credit.optStringOrBlank("name").ifBlank { credit.optStringOrBlank("displayName") }
+                            .takeIf(String::isNotEmpty)
+                    }
+                }
+            }
         if (artists.isEmpty()) return null
-        val durationMs = json.optLong("duration", 0L)
-        if (durationMs <= 0L) return null
+        val duration = json.optDouble("duration", 0.0)
+        if (!duration.isFinite() || duration <= 0.0) return null
+        val durationSeconds = (duration / 1000.0).roundToInt()
+        if (durationSeconds !in 1..86_400) return null
         return AlternativeTrackCandidate(
             providerId = MonochromeAudioProvider.MONOCHROME_PROVIDER_ID,
             providerTrackId = id,
             title = title,
             primaryArtists = artists.take(1),
             featuredArtists = artists.drop(1),
-            album = json.optStringOrBlank("albumTitle").ifBlank { json.optStringOrBlank("releaseTitle") },
-            durationSeconds = ((durationMs + 500L) / 1_000L).toInt(),
-            explicit = if (json.has("explicit")) json.optBoolean("explicit") else null,
+            album = json.optStringOrBlank("albumTitle").ifBlank { json.optStringOrBlank("releaseTitle") }
+                .ifBlank { json.optJSONObject("release")?.optStringOrBlank("title").orEmpty() },
+            durationSeconds = durationSeconds,
+            explicit = if (!json.isNull("explicit")) json.optBoolean("explicit") else null,
             isrc = json.optStringOrBlank("isrc").uppercase()
         )
     }

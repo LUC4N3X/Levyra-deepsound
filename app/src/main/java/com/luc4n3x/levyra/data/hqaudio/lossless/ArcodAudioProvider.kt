@@ -23,7 +23,7 @@ internal class ArcodAudioProvider(
     override val lossless = true
     override val supportsLookup = false
     private val support = LosslessProviderSupport(id, exchange,
-        ProviderCircuitBreaker("arcod-qobuz", clock, failureThreshold = 1), clock)
+        ProviderCircuitBreaker("arcod-qobuz", clock), clock)
 
     override suspend fun search(query: String, page: Int): ProviderSearchOutcome {
         if (page > 1) return ProviderSearchOutcome.Found(emptyList())
