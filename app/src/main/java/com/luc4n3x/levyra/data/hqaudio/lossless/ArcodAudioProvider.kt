@@ -119,8 +119,8 @@ internal object ArcodPayloadParser {
                     a.providerTrackId != b.providerTrackId && baseTitle.core == peerTitle.core &&
                         a.primaryArtists.flatMap(AlternativeTrackText::artistNames).toSet() ==
                         b.primaryArtists.flatMap(AlternativeTrackText::artistNames).toSet() &&
-                        (a.featuredArtists.flatMap(AlternativeTrackText::artistNames).toSet() + baseTitle.featuredArtists) ==
-                        (b.featuredArtists.flatMap(AlternativeTrackText::artistNames).toSet() + peerTitle.featuredArtists) &&
+                        a.featuredArtists.flatMap(AlternativeTrackText::artistNames).toSet() + baseTitle.featuredArtists ==
+                        b.featuredArtists.flatMap(AlternativeTrackText::artistNames).toSet() + peerTitle.featuredArtists &&
                         (aExplicit == null || bExplicit == null || aExplicit == bExplicit) &&
                         abs(a.durationSeconds - b.durationSeconds) <= 1
                 }
