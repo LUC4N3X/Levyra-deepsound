@@ -2,8 +2,6 @@ package com.luc4n3x.levyra.ui
 
 import com.luc4n3x.levyra.ui.theme.*
 import com.luc4n3x.levyra.domain.LevyraSkin
-import com.luc4n3x.levyra.ui.theme.Nocturne78Palette
-import com.luc4n3x.levyra.ui.theme.SkinManagedNotice
 
 import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import androidx.compose.animation.core.Spring
@@ -31,6 +29,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -90,16 +89,31 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
+import com.luc4n3x.levyra.domain.HomeCompositionMode
 import com.luc4n3x.levyra.domain.HomeDensity
 import com.luc4n3x.levyra.domain.HomeMotion
 import com.luc4n3x.levyra.domain.HomeSectionId
 import com.luc4n3x.levyra.domain.HomeSectionLayout
 import com.luc4n3x.levyra.domain.HomeStyle
 import com.luc4n3x.levyra.domain.HomeStyleLayout
+import com.luc4n3x.levyra.domain.LevyraHomeCompositionSettings
 import com.luc4n3x.levyra.domain.LevyraHomeStudioSettings
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.ui.components.levyraPressable
+import com.luc4n3x.levyra.ui.homestudio.HomeBackToOriginalAction
+import com.luc4n3x.levyra.ui.homestudio.HomeCompositionStudio
+import com.luc4n3x.levyra.ui.homestudio.HomeEditorItemGap
+import com.luc4n3x.levyra.ui.homestudio.HomeRestoreAction
+import com.luc4n3x.levyra.ui.homestudio.HomeRestoreDialog
+import com.luc4n3x.levyra.ui.homestudio.HomeSectionEditorEffects
+import com.luc4n3x.levyra.ui.homestudio.HomeStudioSkinTokens
+import com.luc4n3x.levyra.ui.homestudio.homeBlockEnabled
+import com.luc4n3x.levyra.ui.homestudio.homeEditorDefaultBlocks
+import com.luc4n3x.levyra.ui.homestudio.homePreviewTones
+import com.luc4n3x.levyra.ui.homestudio.homeSectionEditorItems
+import com.luc4n3x.levyra.ui.homestudio.rememberHomeSectionEditor
 import com.luc4n3x.levyra.ui.i18n.HomeStudioCopy
+import com.luc4n3x.levyra.ui.i18n.LevyraHomeCompositionStrings
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.homeStudioCopy
@@ -187,6 +201,8 @@ private fun layoutLabel(layout: HomeSectionLayout, copy: HomeStudioCopy): String
 @Composable
 internal fun HomeStudioOverlay(
     settings: LevyraHomeStudioSettings,
+    composition: LevyraHomeCompositionSettings,
+    onComposition: (LevyraHomeCompositionSettings) -> Unit,
     interfaceSettings: LevyraInterfaceSettings,
     onUpdate: (LevyraHomeStudioSettings) -> Unit,
     onInterfaceSettings: (LevyraInterfaceSettings) -> Unit,
@@ -201,6 +217,17 @@ internal fun HomeStudioOverlay(
     val layout = settings.activeLayout()
     var previewStyle by remember { mutableStateOf<HomeStyle?>(null) }
     var confirmResetAll by remember { mutableStateOf(false) }
+    val skin = interfaceSettings.skin
+    val compositionMode = composition.modeFor(skin)
+    val showsStyleEditor = skin == LevyraSkin.Default && compositionMode == HomeCompositionMode.Original
+    val compositionCopy = remember(strings.code) { LevyraHomeCompositionStrings.forCode(strings.code) }
+    val studioTokens = HomeStudioSkinTokens.current()
+    val studioTones = homePreviewTones(studioTokens)
+    val listState = rememberLazyListState()
+    val editor = rememberHomeSectionEditor(skin, composition, settings, interfaceSettings, onComposition, onInterfaceSettings)
+    val defaultBlocks = remember(skin, settings) { homeEditorDefaultBlocks(skin, settings) }
+    var pendingRestore by remember { mutableStateOf<HomeRestoreAction?>(null) }
+    HomeSectionEditorEffects(editor, listState, firstBlockIndex = HomeEditorFirstBlockIndex)
 
     var dragging by remember { mutableStateOf<HomeSectionId?>(null) }
     var dragOffset by remember { mutableFloatStateOf(0f) }
@@ -229,112 +256,185 @@ internal fun HomeStudioOverlay(
             .background(LevyraInk)
     ) {
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding(),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 120.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(HomeEditorItemGap)
         ) {
             homeStudioTopItem(copy, strings.back, onClose)
-            homeStudioAppearanceItems(style, copy, interfaceSettings, onInterfaceSettings) { previewStyle = it }
-            item(key = "studio-sections-label", contentType = "studio-label") {
-                Column {
-                    HomeStudioLabel("${copy.sections} · ${homeStudioAppearanceName(style)}")
-                    Text(text = copy.sectionsHint, style = MaterialTheme.typography.bodySmall, color = LevyraMuted)
-                    Text(text = copy.featuredHint, style = MaterialTheme.typography.bodySmall, color = LevyraMuted)
-                }
-            }
-            val shownOrder = workingOrder.filterNot { LevyraSkinManagesLayout && it == HomeSectionId.Discovery }
-            items(shownOrder, key = { "section-${it.storageId}" }, contentType = { "studio-section-row" }) { id ->
-                val isDragging = dragging == id
-                val visible = !layout.isHidden(id) && homeSectionGloballyEnabled(id, interfaceSettings)
-                val index = shownOrder.indexOf(id)
-                HomeStudioSectionRow(
-                    title = homeSectionTitle(id, strings),
-                    id = id,
-                    visible = visible,
-                    featured = id in layout.featured,
-                    layout = layout.layoutFor(id),
-                    copy = copy,
-                    dragging = isDragging,
-                    modifier = Modifier
-                        .zIndex(if (isDragging) 1f else 0f)
-                        .graphicsLayer {
-                            translationY = if (isDragging) dragOffset else 0f
-                            val lifted = if (isDragging) 1.02f else 1f
-                            scaleX = lifted
-                            scaleY = lifted
+            item(key = "composition-studio", contentType = "composition-studio") {
+                HomeCompositionStudio(
+                    skin = skin,
+                    mode = compositionMode,
+                    style = style,
+                    customBlocks = editor.working,
+                    highlighted = editor.justAdded,
+                    tokens = studioTokens,
+                    tones = studioTones,
+                    copy = compositionCopy,
+                    onSelect = { next ->
+                        if (next != compositionMode) {
+                            haptics.perform(LevyraHapticAction.Confirm)
+                            onComposition(composition.withMode(skin, next))
                         }
-                        .then(
-                            if (isDragging) {
-                                Modifier
-                            } else {
-                                Modifier.animateItem(
-                                    placementSpec = spring(
-                                        dampingRatio = Spring.DampingRatioLowBouncy,
-                                        stiffness = Spring.StiffnessMediumLow
-                                    )
-                                )
-                            }
-                        )
-                        .onSizeChanged { rowHeights[id] = it.height }
-                        .semantics {
-                            customActions = listOfNotNull(
-                                CustomAccessibilityAction(strings.speedDialCopy().moveEarlier) { moveBy(id, -1) }
-                                    .takeIf { index > 0 },
-                                CustomAccessibilityAction(strings.speedDialCopy().moveLater) { moveBy(id, 1) }
-                                    .takeIf { index < shownOrder.lastIndex }
-                            )
-                        },
-                    dragHandleModifier = Modifier.pointerInput(id) {
-                        detectDragGesturesAfterLongPress(
-                            onDragStart = {
-                                dragging = id
-                                dragOffset = 0f
-                                haptics.perform(LevyraHapticAction.Confirm)
-                            },
-                            onDragEnd = {
-                                dragging = null
-                                dragOffset = 0f
-                                commitOrder(workingOrder)
-                            },
-                            onDragCancel = {
-                                dragging = null
-                                dragOffset = 0f
-                                commitOrder(workingOrder)
-                            },
-                            onDrag = { change, amount ->
-                                change.consume()
-                                dragOffset += amount.y
-                                val heights = if (LevyraSkinManagesLayout) rowHeights + (HomeSectionId.Discovery to 0) else rowHeights
-                                reorderStep(workingOrder, id, dragOffset, heights)?.let { (order, offset) ->
-                                    workingOrder = order
-                                    dragOffset = offset
-                                    haptics.perform(LevyraHapticAction.Reorder)
-                                }
-                            }
-                        )
-                    },
-                    onVisible = { show ->
-                        val current = latestSettings
-                        update(current.updateLayout(current.style) { it.withVisibility(id, show) })
-                        if (show && !homeSectionGloballyEnabled(id, interfaceSettings)) {
-                            onInterfaceSettings(interfaceSettings.withHomeSectionEnabled(id))
-                        }
-                    },
-                    onFeatured = { on ->
-                        val current = latestSettings
-                        update(current.updateLayout(current.style) { it.withFeatured(id, on) })
-                    },
-                    onLayout = { chosen ->
-                        val current = latestSettings
-                        update(current.updateLayout(current.style) { it.withLayout(id, chosen) })
                     }
                 )
             }
-            homeStudioAdvancedItems(settings, style, layout, copy, update)
-            homeStudioResetItem(copy, onResetStyle = { update(settings.resetStyle(style)) }, onResetAll = { confirmResetAll = true })
+            if (compositionMode == HomeCompositionMode.Custom) {
+                homeSectionEditorItems(
+                    editor = editor,
+                    skin = skin,
+                    strings = strings,
+                    copy = compositionCopy,
+                    tokens = studioTokens,
+                    tones = studioTones,
+                    canResetOrder = editor.working != defaultBlocks.filter { homeBlockEnabled(it, interfaceSettings) },
+                    onResetOrder = { pendingRestore = HomeRestoreAction.ResetOrder }
+                )
+            }
+            if (showsStyleEditor) {
+                homeStudioAppearanceItems(style, copy) { previewStyle = it }
+                item(key = "studio-sections-label", contentType = "studio-label") {
+                    Column {
+                        HomeStudioLabel("${copy.sections} · ${homeStyleName(style)}")
+                        Text(text = copy.sectionsHint, style = MaterialTheme.typography.bodySmall, color = LevyraMuted)
+                        Text(text = copy.featuredHint, style = MaterialTheme.typography.bodySmall, color = LevyraMuted)
+                    }
+                }
+                val shownOrder = workingOrder.filterNot { LevyraSkinManagesLayout && it == HomeSectionId.Discovery }
+                items(shownOrder, key = { "section-${it.storageId}" }, contentType = { "studio-section-row" }) { id ->
+                    val isDragging = dragging == id
+                    val visible = !layout.isHidden(id) && homeSectionGloballyEnabled(id, interfaceSettings)
+                    val index = shownOrder.indexOf(id)
+                    HomeStudioSectionRow(
+                        title = homeSectionTitle(id, strings),
+                        id = id,
+                        visible = visible,
+                        featured = id in layout.featured,
+                        layout = layout.layoutFor(id),
+                        copy = copy,
+                        dragging = isDragging,
+                        modifier = Modifier
+                            .zIndex(if (isDragging) 1f else 0f)
+                            .graphicsLayer {
+                                translationY = if (isDragging) dragOffset else 0f
+                                val lifted = if (isDragging) 1.02f else 1f
+                                scaleX = lifted
+                                scaleY = lifted
+                            }
+                            .then(
+                                if (isDragging) {
+                                    Modifier
+                                } else {
+                                    Modifier.animateItem(
+                                        placementSpec = spring(
+                                            dampingRatio = Spring.DampingRatioLowBouncy,
+                                            stiffness = Spring.StiffnessMediumLow
+                                        )
+                                    )
+                                }
+                            )
+                            .onSizeChanged { rowHeights[id] = it.height }
+                            .semantics {
+                                customActions = listOfNotNull(
+                                    CustomAccessibilityAction(strings.speedDialCopy().moveEarlier) { moveBy(id, -1) }
+                                        .takeIf { index > 0 },
+                                    CustomAccessibilityAction(strings.speedDialCopy().moveLater) { moveBy(id, 1) }
+                                        .takeIf { index < shownOrder.lastIndex }
+                                )
+                            },
+                        dragHandleModifier = Modifier.pointerInput(id) {
+                            detectDragGesturesAfterLongPress(
+                                onDragStart = {
+                                    dragging = id
+                                    dragOffset = 0f
+                                    haptics.perform(LevyraHapticAction.Confirm)
+                                },
+                                onDragEnd = {
+                                    dragging = null
+                                    dragOffset = 0f
+                                    commitOrder(workingOrder)
+                                },
+                                onDragCancel = {
+                                    dragging = null
+                                    dragOffset = 0f
+                                    commitOrder(workingOrder)
+                                },
+                                onDrag = { change, amount ->
+                                    change.consume()
+                                    dragOffset += amount.y
+                                    val heights = if (LevyraSkinManagesLayout) rowHeights + (HomeSectionId.Discovery to 0) else rowHeights
+                                    reorderStep(workingOrder, id, dragOffset, heights)?.let { (order, offset) ->
+                                        workingOrder = order
+                                        dragOffset = offset
+                                        haptics.perform(LevyraHapticAction.Reorder)
+                                    }
+                                }
+                            )
+                        },
+                        onVisible = { show ->
+                            val current = latestSettings
+                            update(current.updateLayout(current.style) { it.withVisibility(id, show) })
+                            if (show && !homeSectionGloballyEnabled(id, interfaceSettings)) {
+                                onInterfaceSettings(interfaceSettings.withHomeSectionEnabled(id))
+                            }
+                        },
+                        onFeatured = { on ->
+                            val current = latestSettings
+                            update(current.updateLayout(current.style) { it.withFeatured(id, on) })
+                        },
+                        onLayout = { chosen ->
+                            val current = latestSettings
+                            update(current.updateLayout(current.style) { it.withLayout(id, chosen) })
+                        }
+                    )
+                }
+                homeStudioAdvancedItems(settings, style, layout, copy, update)
+                homeStudioResetItem(copy, onResetStyle = { update(settings.resetStyle(style)) }, onResetAll = { confirmResetAll = true })
+            }
         }
+        HomeBackToOriginalAction(
+            visible = compositionMode != HomeCompositionMode.Original,
+            tokens = studioTokens,
+            copy = compositionCopy,
+            onClick = {
+                val stored = composition.forSkin(skin).customBlocks
+                if (stored != null && stored != defaultBlocks) {
+                    pendingRestore = HomeRestoreAction.BackToOriginal
+                } else {
+                    haptics.perform(LevyraHapticAction.Confirm)
+                    onComposition(composition.reset(skin))
+                }
+            },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(16.dp)
+        )
+    }
+
+    pendingRestore?.let { action ->
+        HomeRestoreDialog(
+            action = action,
+            skinName = skin.title(),
+            tokens = studioTokens,
+            copy = compositionCopy,
+            cancelLabel = strings.cancel,
+            onConfirm = {
+                haptics.perform(LevyraHapticAction.Confirm)
+                editor.justAdded = null
+                onComposition(
+                    when (action) {
+                        HomeRestoreAction.BackToOriginal -> composition.reset(skin)
+                        HomeRestoreAction.ResetOrder -> composition.withCustomBlocks(skin, defaultBlocks)
+                    }
+                )
+                pendingRestore = null
+            },
+            onDismiss = { pendingRestore = null }
+        )
     }
 
     previewStyle?.let { target ->
@@ -364,6 +464,8 @@ internal fun HomeStudioOverlay(
         )
     }
 }
+
+private const val HomeEditorFirstBlockIndex = 3
 
 private fun LazyListScope.homeStudioTopItem(copy: HomeStudioCopy, backLabel: String, onClose: () -> Unit) {
     item(key = "studio-top", contentType = "studio-top") {
@@ -488,12 +590,12 @@ private fun LazyListScope.homeStudioAdvancedItems(
     }
 }
 
-internal fun reorderStep(
-    order: List<HomeSectionId>,
-    id: HomeSectionId,
+internal fun <T : Any> reorderStep(
+    order: List<T>,
+    id: T,
     offset: Float,
-    heights: Map<HomeSectionId, Int>
-): Pair<List<HomeSectionId>, Float>? {
+    heights: Map<T, Int>
+): Pair<List<T>, Float>? {
     val position = order.indexOf(id)
     if (position < 0) return null
     val nextHeight = order.getOrNull(position + 1)?.let(heights::get)?.toFloat()
@@ -891,47 +993,34 @@ private fun DrawScope.drawExpressiveHero(x: Float, y: Float, width: Float, heigh
     drawRoundRect(Color.White.copy(alpha = 0.7f), Offset(x + width * 0.55f, y + height * 0.2f), Size(width * 0.36f, height * 0.12f), CornerRadius(height * 0.06f))
 }
 
-private fun homeStudioAppearanceName(style: HomeStyle): String =
-    if (LevyraSkinManagesLayout) LevyraSkinLabel else homeStyleName(style)
-
 private fun LazyListScope.homeStudioAppearanceItems(
     style: HomeStyle,
     copy: HomeStudioCopy,
-    interfaceSettings: LevyraInterfaceSettings,
-    onInterfaceSettings: (LevyraInterfaceSettings) -> Unit,
     onStyle: (HomeStyle) -> Unit
 ) {
-    if (LevyraSkinManagesLayout) {
-        item(key = "studio-skin-managed") {
-            Text(LevyraSkinLabel, color = LevyraText, style = MaterialTheme.typography.titleMedium)
-            SkinManagedNotice { onInterfaceSettings(interfaceSettings.copy(skin = LevyraSkin.Default)) }
-        }
-    } else {
-        item(key = "studio-style-label", contentType = "studio-label") {
-            HomeStudioLabel(copy.styleSection)
-        }
-        item(key = "studio-styles", contentType = "studio-styles") {
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(horizontal = 0.dp)
-            ) {
-                items(HomeStyle.entries, key = { it.storageId }) { option ->
-                    HomeStyleCard(
-                        style = option,
-                        selected = option == style,
-                        inUseLabel = copy.inUse,
-                        onClick = { onStyle(option) }
-                    )
-                }
+    item(key = "studio-style-label", contentType = "studio-label") {
+        HomeStudioLabel(copy.styleSection)
+    }
+    item(key = "studio-styles", contentType = "studio-styles") {
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(horizontal = 0.dp)
+        ) {
+            items(HomeStyle.entries, key = { it.storageId }) { option ->
+                HomeStyleCard(
+                    style = option,
+                    selected = option == style,
+                    inUseLabel = copy.inUse,
+                    onClick = { onStyle(option) }
+                )
             }
         }
-        item(key = "studio-style-description", contentType = "studio-text") {
-            Text(
-                text = "${homeStyleName(style)} · ${homeStyleDescription(style, copy)}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = LevyraMuted
-            )
-        }
     }
-
+    item(key = "studio-style-description", contentType = "studio-text") {
+        Text(
+            text = "${homeStyleName(style)} · ${homeStyleDescription(style, copy)}",
+            style = MaterialTheme.typography.bodyMedium,
+            color = LevyraMuted
+        )
+    }
 }

@@ -79,8 +79,10 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Loop
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material.icons.rounded.HighQuality
 import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material.icons.rounded.Tune
@@ -158,9 +160,12 @@ import com.luc4n3x.levyra.ui.harmonizePlayerAccents
 import com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.sectionLoopCopy
 import com.luc4n3x.levyra.ui.i18n.systemPlayerCopy
+import com.luc4n3x.levyra.player.SectionLoopState
 import com.luc4n3x.levyra.ui.i18n.technicalAudioInfoCopy
 import com.luc4n3x.levyra.ui.i18n.trackCreditsCopy
+import com.luc4n3x.levyra.ui.i18n.shareMomentCopy
 import com.luc4n3x.levyra.ui.isLevyraCompactLandscape
 import com.luc4n3x.levyra.ui.levyraCompactLandscapeVideoPaneWeight
 import com.luc4n3x.levyra.ui.levyraContentMaxWidthDp
@@ -1753,9 +1758,11 @@ private fun LevyraNowPlayingContent(
         }
 
         if (showActions && track != null) {
+            val sectionLoop by viewModel.sectionLoop.collectAsStateWithLifecycle()
             val sheetActions = playerSheetActions(
                 track = track,
                 state = state,
+                sectionLoop = sectionLoop,
                 strings = strings,
                 hasMixChapters = mixChapters != null,
                 onMixChapters = {
@@ -1773,8 +1780,10 @@ private fun LevyraNowPlayingContent(
                     hapticFeedback.perform(LevyraHapticAction.Confirm)
                 },
                 onShare = { shareTrack(playerContext, track, strings) },
+                onShareMoment = { seconds -> shareTrackMoment(playerContext, track, seconds, strings) },
                 onSleepTimer = viewModel::openSleepTimer,
                 onSpeed = viewModel::cycleSpeed,
+                onSectionLoop = viewModel::advanceSectionLoop,
                 onNormalization = viewModel::toggleAudioNormalization,
                 onAudioOutput = {
                     showActions = false
@@ -2184,12 +2193,15 @@ private fun Track.isLocalMotionArtworkTrack(): Boolean {
 private fun playerSheetActions(
     track: Track,
     state: LevyraUiState,
+    sectionLoop: SectionLoopState,
     strings: LevyraStrings,
     onAddToPlaylist: () -> Unit,
     onStartRadio: () -> Unit,
     onShare: () -> Unit,
+    onShareMoment: (Long) -> Unit,
     onSleepTimer: () -> Unit,
     onSpeed: () -> Unit,
+    onSectionLoop: () -> Unit,
     onNormalization: () -> Unit,
     onAudioOutput: () -> Unit,
     onAudioSettings: () -> Unit,
@@ -2295,6 +2307,21 @@ private fun playerSheetActions(
             label = strings.share,
             onClick = onShare
         ),
+        shareMomentSeconds(state.positionMs, state.durationMs)
+            ?.takeIf {
+                !state.isResolving &&
+                    !track.isLiveRadio() &&
+                    PlaybackSourceIdentity.sourceVideoId(track).isNotBlank()
+            }
+            ?.let { seconds ->
+                PlayerSheetAction(
+                    key = "share-moment",
+                    icon = Icons.Rounded.AccessTime,
+                    label = strings.shareMomentCopy().action,
+                    value = formatShareMomentTimestamp(seconds),
+                    onClick = { onShareMoment(seconds) }
+                )
+            },
         sleepAction,
         PlayerSheetAction(
             key = "speed",
@@ -2304,6 +2331,15 @@ private fun playerSheetActions(
             active = state.playbackSpeed != 1f,
             keepsSheetOpen = true,
             onClick = onSpeed
+        ),
+        PlayerSheetAction(
+            key = "section-loop",
+            icon = Icons.Rounded.Loop,
+            label = strings.sectionLoopCopy().action,
+            value = sectionLoopValue(sectionLoop, strings.sectionLoopCopy().setEnd),
+            active = sectionLoop !is SectionLoopState.Off,
+            keepsSheetOpen = true,
+            onClick = onSectionLoop
         ),
         PlayerSheetAction(
             key = "normalization",
@@ -2367,6 +2403,20 @@ private fun shareTrack(context: Context, track: Track, strings: LevyraStrings) {
         type = "text/plain"
         putExtra(Intent.EXTRA_SUBJECT, "${track.title} — ${track.artist}")
         putExtra(Intent.EXTRA_TEXT, text)
+    }
+    context.startActivity(Intent.createChooser(intent, strings.shareSong))
+}
+
+private fun shareTrackMoment(context: Context, track: Track, seconds: Long, strings: LevyraStrings) {
+    val videoId = PlaybackSourceIdentity.sourceVideoId(track)
+    if (videoId.isBlank()) return
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_SUBJECT, shareMomentSubject(track.title, track.artist))
+        putExtra(
+            Intent.EXTRA_TEXT,
+            shareMomentText(track.title, track.artist, videoId, seconds, strings.shareMomentCopy().fromTemplate)
+        )
     }
     context.startActivity(Intent.createChooser(intent, strings.shareSong))
 }

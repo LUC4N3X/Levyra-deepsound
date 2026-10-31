@@ -12,6 +12,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshState
 import androidx.compose.material3.pulltorefresh.pullToRefresh
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -20,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import com.luc4n3x.levyra.domain.ArtistHit
+import com.luc4n3x.levyra.domain.HomeBlock
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -44,6 +46,8 @@ internal class YouTubeMusicHomeActions(
 
 private typealias YouTubeMusicHomeBlock = Pair<String, @Composable () -> Unit>
 
+private const val YTM_CHIPS_KEY = "ytm-home-chips"
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 internal fun YouTubeMusicHomeContent(
@@ -53,29 +57,27 @@ internal fun YouTubeMusicHomeContent(
     homeBottomInset: Dp,
     homeRefreshing: Boolean,
     homePullState: PullToRefreshState,
-    onPullRefresh: () -> Unit
+    onPullRefresh: () -> Unit,
+    composition: ComposedHomeRequest? = null
 ) {
     val homeRadio = LocalHomeRadio.current
     val strings = LocalLevyraStrings.current
+    val showsFeed = composition?.showsSkinFeed != false
     val copy = remember(strings.code) { LevyraYouTubeMusicSkinStrings.forCode(strings.code) }
     val homeViewModel = viewModel<YouTubeMusicHomeViewModel>()
     val feed by homeViewModel.state.collectAsStateWithLifecycle()
     val previews by homeViewModel.previews.collectAsStateWithLifecycle()
     val allShelves = remember(feed.shelves, feed.discovery) { feed.allShelves }
-    LaunchedEffect(strings.code) { homeViewModel.load(strings.code) }
+    LaunchedEffect(strings.code, showsFeed) { if (showsFeed) homeViewModel.load(strings.code) }
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val levyraBlocks = youTubeMusicLevyraBlocks(data, actions.home, copy, strings)
-    val seed = remember(feed.shelves) {
-        feed.shelves.firstNotNullOfOrNull { it.tracks.firstOrNull() }?.accentStart?.let(::Color)
+    val levyraBlocks = if (composition == null) youTubeMusicLevyraBlocks(data, actions.home, copy, strings) else emptyList()
+    val seed = remember(feed.shelves, showsFeed, data.personalTracks, data.charts) { youTubeMusicBackdropSeed(feed.shelves, showsFeed, data) }
+    val composedFeedEndKey = remember(allShelves, composition == null) {
+        if (composition == null) null else youTubeMusicLeadingOrder(allShelves).lastOrNull()?.let { "ytm-${it.key}" }
     }
-    val nearEnd by remember(homeListState) {
-        derivedStateOf {
-            val info = homeListState.layoutInfo
-            val last = info.visibleItemsInfo.lastOrNull()?.index ?: 0
-            info.totalItemsCount > 0 && last >= info.totalItemsCount - 3
-        }
-    }
-    LaunchedEffect(nearEnd, feed.canLoadMore) { if (nearEnd && feed.canLoadMore) homeViewModel.loadMore() }
+    val nearEnd by rememberYouTubeMusicNearEnd(homeListState, composedFeedEndKey)
+    LaunchedEffect(nearEnd, feed.canLoadMore, showsFeed) { if (showsFeed && nearEnd && feed.canLoadMore) homeViewModel.loadMore() }
+    val composedKit = remember(copy, data.countryLabel, actions.home) { YouTubeMusicComposedKit(copy, data.countryLabel, actions.home.pickCountry) }
     Box(Modifier.fillMaxSize().background(YouTubeMusicDesign.background)) {
         YouTubeMusicHomeBackdrop(
             seed, height = statusBarTop + 420.dp,
@@ -88,26 +90,79 @@ internal fun YouTubeMusicHomeContent(
             state = homeListState,
             modifier = Modifier.fillMaxSize().pullToRefresh(isRefreshing = homeRefreshing, state = homePullState, onRefresh = {
                 onPullRefresh()
-                homeViewModel.load(strings.code, force = true)
+                if (showsFeed) homeViewModel.load(strings.code, force = true)
             }),
             contentPadding = PaddingValues(top = statusBarTop, bottom = homeBottomInset + 16.dp),
             verticalArrangement = Arrangement.spacedBy(YouTubeMusicDesign.sectionGap)
         ) {
-            youTubeMusicHomeHeaders(
-                copy, actions, feed.chips, feed.selectedChip, homeListState, statusBarTop,
-                homeViewModel::selectChip
-            )
-            youTubeMusicHomeContentItems(
-                data, actions, copy, strings.personalOrbitTitle, feed.failed, feed.shelves.isNotEmpty(),
-                allShelves, levyraBlocks, previews, homeViewModel::requestPreview, homeRadio
-            ) { homeViewModel.load(strings.code, force = true) }
+            if (composition == null) {
+                youTubeMusicHomeHeaders(
+                    copy, actions, feed.chips, feed.selectedChip, homeListState, statusBarTop,
+                    homeViewModel::selectChip
+                )
+                youTubeMusicHomeContentItems(
+                    data, actions, copy, strings.personalOrbitTitle, feed.failed, feed.shelves.isNotEmpty(),
+                    allShelves, levyraBlocks, previews, homeViewModel::requestPreview, homeRadio
+                ) { homeViewModel.load(strings.code, force = true) }
+            } else {
+                youTubeMusicHomeHeaders(copy, actions, emptyList(), "", homeListState, statusBarTop, homeViewModel::selectChip)
+                composedHomeSections(composition, composedKit) {
+                    youTubeMusicComposedFeedChips(
+                        feed.chips, feed.selectedChip, homeListState, statusBarTop,
+                        sticky = composition.blocks.lastOrNull() == HomeBlock.SkinFeed,
+                        onSelectChip = homeViewModel::selectChip
+                    )
+                    youTubeMusicComposedFeedStatus(feed.shelves.isEmpty(), feed.failed, feed.loading, copy, composedKit) {
+                        homeViewModel.load(strings.code, force = true)
+                    }
+                    youTubeMusicHomeSections(allShelves, emptyList()) { shelf ->
+                        YouTubeMusicFeedShelf(shelf, data.currentId, copy, actions, previews, homeViewModel::requestPreview)
+                    }
+                }
+            }
         }
-        YouTubeMusicStatusBarScrim(homeListState, statusBarTop, feed.chips.isNotEmpty())
+        YouTubeMusicStatusBarScrim(homeListState, statusBarTop, composition == null && feed.chips.isNotEmpty())
         PullToRefreshDefaults.LoadingIndicator(
             state = homePullState,
             isRefreshing = homeRefreshing,
             modifier = Modifier.align(Alignment.TopCenter).padding(top = statusBarTop + 16.dp)
         )
+    }
+}
+
+private fun youTubeMusicBackdropSeed(shelves: List<YoutubeMusicHomeShelf>, showsFeed: Boolean, data: AppleMusicHomeData): Color? {
+    val lead = if (showsFeed) {
+        shelves.firstNotNullOfOrNull { it.tracks.firstOrNull() }
+    } else {
+        data.personalTracks.firstOrNull() ?: data.charts.firstOrNull()
+    }
+    return lead?.accentStart?.let(::Color)
+}
+
+@Composable
+private fun rememberYouTubeMusicNearEnd(homeListState: LazyListState, feedEndKey: String?): State<Boolean> =
+    remember(homeListState, feedEndKey) {
+        derivedStateOf {
+            val info = homeListState.layoutInfo
+            val last = info.visibleItemsInfo.lastOrNull()?.index ?: 0
+            (info.totalItemsCount > 0 && last >= info.totalItemsCount - 3) ||
+                (feedEndKey != null && info.visibleItemsInfo.any { it.key == feedEndKey })
+        }
+    }
+
+private fun LazyListScope.youTubeMusicComposedFeedStatus(
+    empty: Boolean,
+    failed: Boolean,
+    loading: Boolean,
+    copy: YouTubeMusicSkinCopy,
+    kit: YouTubeMusicComposedKit,
+    onRetry: () -> Unit
+) {
+    if (empty && failed) {
+        item(key = "ytm-home-failed", contentType = "ytm-notice") { YouTubeMusicNotice(copy.homeUnavailable, copy.retry, onRetry) }
+    }
+    if (empty && loading) {
+        item(key = "ytm-home-loading", contentType = "composed-loading") { kit.LoadingShelf("") }
     }
 }
 
@@ -129,8 +184,36 @@ private fun LazyListScope.youTubeMusicHomeHeaders(
         )
     }
     if (chips.isNotEmpty()) {
-        stickyHeader(key = "ytm-home-chips", contentType = "ytm-chips") {
-            YouTubeMusicChipsStickyHeader(chips, selectedChip, homeListState, statusBarTop, onSelectChip)
+        stickyHeader(key = YTM_CHIPS_KEY, contentType = "ytm-chips") {
+            val pinned by remember(homeListState) { derivedStateOf { homeListState.firstVisibleItemIndex >= 1 } }
+            YouTubeMusicChipsStickyHeader(chips, selectedChip, pinned, statusBarTop, onSelectChip)
+        }
+    }
+}
+
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+private fun LazyListScope.youTubeMusicComposedFeedChips(
+    chips: List<com.luc4n3x.levyra.domain.YoutubeMusicHomeChip>,
+    selectedChip: String,
+    homeListState: LazyListState,
+    statusBarTop: Dp,
+    sticky: Boolean,
+    onSelectChip: (String) -> Unit
+) {
+    if (chips.isEmpty()) return
+    if (sticky) {
+        stickyHeader(key = YTM_CHIPS_KEY, contentType = "ytm-chips") {
+            val pinned by remember(homeListState) {
+                derivedStateOf {
+                    homeListState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == YTM_CHIPS_KEY }
+                        ?.let { homeListState.firstVisibleItemIndex >= it.index } == true
+                }
+            }
+            YouTubeMusicChipsStickyHeader(chips, selectedChip, pinned, statusBarTop, onSelectChip)
+        }
+    } else {
+        item(key = YTM_CHIPS_KEY, contentType = "ytm-chips") {
+            YouTubeMusicChipsStickyHeader(chips, selectedChip, false, statusBarTop, onSelectChip)
         }
     }
 }
@@ -139,12 +222,11 @@ private fun LazyListScope.youTubeMusicHomeHeaders(
 private fun YouTubeMusicChipsStickyHeader(
     chips: List<com.luc4n3x.levyra.domain.YoutubeMusicHomeChip>,
     selectedChip: String,
-    homeListState: LazyListState,
+    pinned: Boolean,
     statusBarTop: Dp,
     onSelectChip: (String) -> Unit
 ) {
     val labels = remember(chips) { chips.map { it.title } }
-    val pinned by remember(homeListState) { derivedStateOf { homeListState.firstVisibleItemIndex >= 1 } }
     Box(
         Modifier.fillMaxWidth()
             .background(if (pinned) YouTubeMusicDesign.background else Color.Transparent)
