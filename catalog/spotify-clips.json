@@ -928,6 +928,16 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/9c5fc4fab1e2518e2c8048abc9c094bbcff0971b"
   },
   {
+   "id": "levyra-0b6f09fcdd620413336d",
+   "genre": "dance-party",
+   "title": "SILK SCARF - Chris Lake Remix",
+   "artist": "Tiga, Fcukers, Chris Lake",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273a9c74f60479835e277703b32",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/5l9wiTZVfqQTfMDOt0HtwC/video/397708e9998243a1b7ef5670e61076b6.cnvs.mp4",
+   "spotifyTrackId": "7zaEgzOLvTbc33n5iyiK2K",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/8b12b49750e651ed175c21c4921458555331ba3a"
+  },
+  {
    "id": "levyra-9828b5bdff66418cf9a6",
    "genre": "dance-party",
    "title": "Talk To You (ft. 54 Ultra)",
@@ -948,16 +958,6 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/791d1ff94d9b84e471e144f53fca4a23244fede9"
   },
   {
-   "id": "levyra-483d685fc62b1d271bd8",
-   "genre": "dance-party",
-   "title": "Free Your Mind",
-   "artist": "Prospa, Cloonee, Sybil",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27338974737cba5770d9dba1cd6",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/e07f69c4bd75473ca14eed883a200495.cnvs.mp4",
-   "spotifyTrackId": "6TWbY1dq8eYtFiMiGdBlOa",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/2d5304a8589bc85716b2ebe0a3ba177d2434d3bb"
-  },
-  {
    "id": "levyra-83d9c7b3b7fd0dade82a",
    "genre": "dance-party",
    "title": "Dirty Cash (Money Talks)",
@@ -966,6 +966,16 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/4E0HD2PMY8kQJIjlShrLUS/video/ad26cdc830dc48988034f8ac3e72417a.cnvs.mp4",
    "spotifyTrackId": "2VyvDGdcVY04cNYou9MFVX",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/2d8b05fad932d5512a4c88cd4b84e47eb1218fbe"
+  },
+  {
+   "id": "levyra-483d685fc62b1d271bd8",
+   "genre": "dance-party",
+   "title": "Free Your Mind",
+   "artist": "Prospa, Cloonee, Sybil",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27338974737cba5770d9dba1cd6",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/e07f69c4bd75473ca14eed883a200495.cnvs.mp4",
+   "spotifyTrackId": "6TWbY1dq8eYtFiMiGdBlOa",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/2d5304a8589bc85716b2ebe0a3ba177d2434d3bb"
   },
   {
    "id": "levyra-f7576d5b255e0312ee0d",
@@ -998,16 +1008,6 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/3c21e0bea740ed198a79f0abf2b3b113b68f3f29"
   },
   {
-   "id": "levyra-050fb9c7c4c5fa70256b",
-   "genre": "dance-party",
-   "title": "Move",
-   "artist": "Adam Port, Stryv, Keinemusik, Orso, Malachiii",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2734c5b11b3f4b0d1b80112dc04",
-   "canvasUrl": "https://canvaz.scdn.co/upload/artist/6XjgqvaVLUib6lCerbZrYD/video/c953346aa4074af5a1f1d9f04b6e1e81.cnvs.mp4",
-   "spotifyTrackId": "6NIJqFHB5cHAn064JCP7Li",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/d660ca3667a0ce29afcebb40317316f0d70510f0"
-  },
-  {
    "id": "levyra-ca9147ce125a3913203d",
    "genre": "dance-party",
    "title": "BANG BANG",
@@ -1016,6 +1016,16 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/4E0HD2PMY8kQJIjlShrLUS/video/0f0585fa7bb14335bb31b61c24885d2f.cnvs.mp4",
    "spotifyTrackId": "4TZaceVVtIEtHOx8w8KkJV",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/f842f4032e4b7aa6d88e8b877d4216f8ddb8381f"
+  },
+  {
+   "id": "levyra-050fb9c7c4c5fa70256b",
+   "genre": "dance-party",
+   "title": "Move",
+   "artist": "Adam Port, Stryv, Keinemusik, Orso, Malachiii",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2734c5b11b3f4b0d1b80112dc04",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/6XjgqvaVLUib6lCerbZrYD/video/c953346aa4074af5a1f1d9f04b6e1e81.cnvs.mp4",
+   "spotifyTrackId": "6NIJqFHB5cHAn064JCP7Li",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/d660ca3667a0ce29afcebb40317316f0d70510f0"
   },
   {
    "id": "levyra-7e8226d7a02f6f0a7d93",
@@ -1146,16 +1156,6 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/1Cs0zKBU1kc0i8ypK3B9ai/video/c5218566ce9b44568782b5098005ce67.cnvs.mp4",
    "spotifyTrackId": "3BKD1PwArikchz2Zrlp1qi",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/61ca04212592c397c7a20cfadb886fa0c94d7584"
-  },
-  {
-   "id": "levyra-e32935668cb20681852b",
-   "genre": "dance-party",
-   "title": "Prada",
-   "artist": "cassö, RAYE, D-Block Europe",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273e4b7dccdfd54375ded9ccc5c",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/bcb5bcd55e5549759ae03392df3a8b12.cnvs.mp4",
-   "spotifyTrackId": "59NraMJsLaMCVtwXTSia8i",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/07ca5d41f53802807fd40d2778e66f633a2f3b8b"
   },
   {
    "id": "levyra-0d219238795bf93e0ba3",
@@ -1772,7 +1772,7 @@
    "genre": "pop",
    "title": "Housewife",
    "artist": "Tate McRae",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273f6f1afd1aebea6906dd2a253",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273f2d3185e46b03c243f60ce53",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/14d95d39ea8b423299dabef4ce28ed55.cnvs.mp4",
    "spotifyTrackId": "2sFepQNyl1WjpROruP8bJ0",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/724b097d9dc53e0541de27d199adfe3f610944ba"
