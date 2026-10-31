@@ -1036,6 +1036,8 @@ class LevyraBackupManager(private val context: Context) {
             .put("lyricsLatencyProfiles", JSONObject(snapshot.lyricsLatencyProfiles.encode()))
             .put("lyricsStudioSettings", JSONObject(snapshot.lyricsStudioSettings.encode()))
             .put("homeStudioSettings", JSONObject(snapshot.homeStudioSettings.encode()))
+            .put("homeCompositionSettings", JSONObject(snapshot.homeCompositionSettings.encode()))
+            .put("audioLanguageChoice", snapshot.preferredAudioLanguage)
             .put("miniPlayerStudioSettings", JSONObject(snapshot.miniPlayerStudioSettings.encode()))
             .put("navigationStudioSettings", JSONObject(snapshot.navigationStudioSettings.encode()))
             .put("customThemes", JSONObject(LevyraCustomThemes.encode(snapshot.customThemes)))
@@ -1096,6 +1098,15 @@ class LevyraBackupManager(private val context: Context) {
                 ?.toString()
                 ?.let(LevyraLyricsStudioSettings::decode)
                 ?: preferences.lyricsStudioSettings(),
+            homeCompositionSettings = json.optJSONObject("homeCompositionSettings")
+                ?.toString()
+                ?.let(com.luc4n3x.levyra.domain.LevyraHomeCompositionSettings::decode)
+                ?: preferences.homeCompositionSettings(),
+            preferredAudioLanguage = if (json.has("audioLanguageChoice")) {
+                com.luc4n3x.levyra.data.AudioLanguageIntelligence.normalizeLanguage(json.optString("audioLanguageChoice"))
+            } else {
+                preferences.preferredAudioLanguage()
+            },
             homeStudioSettings = json.optJSONObject("homeStudioSettings")
                 ?.toString()
                 ?.let(LevyraHomeStudioSettings::decode)

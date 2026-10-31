@@ -1961,6 +1961,8 @@ fun LevyraApp(
 
     val state by viewModel.state.collectAsStateWithLifecycle()
     val musicRegionId by viewModel.musicRegionId.collectAsStateWithLifecycle()
+    val homeComposition by viewModel.homeComposition.collectAsStateWithLifecycle()
+    val preferredAudioLanguage by viewModel.preferredAudioLanguage.collectAsStateWithLifecycle()
     val miniPlayerStudio by viewModel.miniPlayerStudio.collectAsStateWithLifecycle()
     val customThemes by viewModel.customThemes.collectAsStateWithLifecycle()
     val navigationStudio by viewModel.navigationStudio.collectAsStateWithLifecycle()
@@ -2547,6 +2549,9 @@ fun LevyraApp(
                                         backEnabled = !rootOverlayOpen && state.selectedTab == LevyraTab.Home,
                                         style = state.homeStudioSettings.style,
                                         animationsEnabled = state.animationsEnabled,
+                                        skinComposesDiscovery = homeComposition
+                                            .resolvedBlocks(state.interfaceSettings.skin, state.homeStudioSettings)
+                                            ?.contains(com.luc4n3x.levyra.domain.HomeBlock.Section(HomeSectionId.Discovery)) == true,
                                         bottomInset = tabBarBottomContentInset(
                                             miniPlayerVisible = state.currentTrack != null,
                                             animationsEnabled = state.animationsEnabled
@@ -2560,6 +2565,7 @@ fun LevyraApp(
                                             accountAvatarUrl = youtubeMusicState.active?.avatarUrl.orEmpty(),
                                             youtubeMusicHome = youtubeMusicHome,
                                             homeStudio = state.homeStudioSettings,
+                                            homeComposition = homeComposition,
                                             onPullRefresh = {
                                                 homeViewModel.refreshHome { youtubeMusicViewModel.refreshHomeAndAwait(state.languageCode) }
                                             },
@@ -3055,6 +3061,8 @@ fun LevyraApp(
                     onSkipSilence = viewModel::setSkipSilence,
                     onMusicRegion = viewModel::setMusicRegion,
                     musicRegionId = musicRegionId,
+                    preferredAudioLanguage = preferredAudioLanguage,
+                    onPreferredAudioLanguage = viewModel::setPreferredAudioLanguage,
                     onLanguage = { code ->
                         val normalized = LevyraLanguageCatalog.normalize(code)
                         if (normalized != state.languageCode) {
@@ -3615,6 +3623,8 @@ fun LevyraApp(
             AnimatedVisibility(visible = state.showHomeStudio, enter = overlayEnter, exit = overlayExit) {
                 HomeStudioOverlay(
                     settings = state.homeStudioSettings,
+                    composition = homeComposition,
+                    onComposition = viewModel::setHomeCompositionSettings,
                     interfaceSettings = state.interfaceSettings,
                     onUpdate = viewModel::setHomeStudioSettings,
                     onInterfaceSettings = viewModel::setInterfaceSettings,
@@ -9653,6 +9663,7 @@ private fun StudioHomeScreen(
     accountAvatarUrl: String,
     youtubeMusicHome: com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeShelfUi?,
     homeStudio: LevyraHomeStudioSettings,
+    composedBlocks: List<com.luc4n3x.levyra.domain.HomeBlock>?,
     onPullRefresh: () -> Unit,
     onTrackActions: (Track) -> Unit
 ) {
@@ -9806,10 +9817,16 @@ private fun StudioHomeScreen(
                 pickCountry = { homeContext.chartMarketSheetOpen = true },
                 onTrackActions = homeContext.onTrackActions
             )
+        val composedRadio = LocalHomeRadio.current
+        val composedDiscovery = LocalHomeDiscovery.current
+        val composedZones = remember(strings) { ExploreCatalog.getZones(strings) }
+        val composedRequest = composedBlocks?.let { blocks ->
+            ComposedHomeRequest(blocks, composedHomeContent(homeContext, skinHomeData, skinHomeActions, composedRadio, composedDiscovery, composedZones))
+        }
         if (LevyraIsAtelier) {
-            AtelierHomeEntry(skinHomeData, skinHomeActions, homeContext.viewModel, state, homeListState, homeBottomInset, homeRefreshing, homePullState, onPullRefresh)
+            AtelierHomeEntry(skinHomeData, skinHomeActions, homeContext.viewModel, state, homeListState, homeBottomInset, homeRefreshing, homePullState, onPullRefresh, composedRequest)
         } else if (LevyraIsQobuz) {
-            QobuzHomeEntry(skinHomeData, skinHomeActions, homeContext.viewModel, state, homeListState, homeBottomInset, homeRefreshing, homePullState, onPullRefresh)
+            QobuzHomeEntry(skinHomeData, skinHomeActions, homeContext.viewModel, state, homeListState, homeBottomInset, homeRefreshing, homePullState, onPullRefresh, composedRequest)
         } else if (LevyraIsYouTubeMusic) {
             YouTubeMusicHomeContent(
                 data = skinHomeData,
@@ -9822,7 +9839,8 @@ private fun StudioHomeScreen(
                 homeBottomInset = homeBottomInset,
                 homeRefreshing = homeRefreshing,
                 homePullState = homePullState,
-                onPullRefresh = onPullRefresh
+                onPullRefresh = onPullRefresh,
+                composition = composedRequest
             )
         } else {
             AppleMusicHomeContent(
@@ -9832,7 +9850,8 @@ private fun StudioHomeScreen(
                 homeBottomInset = homeBottomInset,
                 homeRefreshing = homeRefreshing,
                 homePullState = homePullState,
-                onPullRefresh = onPullRefresh
+                onPullRefresh = onPullRefresh,
+                composition = composedRequest
             )
         }
         StudioHomeOverlays(homeContext, homeBottomInset)
@@ -9854,6 +9873,59 @@ private fun StudioHomeScreen(
     )
 
     StudioHomeOverlays(homeContext, homeBottomInset)
+}
+
+private fun composedStudioSettings(
+    skin: com.luc4n3x.levyra.domain.LevyraSkin,
+    blocks: List<com.luc4n3x.levyra.domain.HomeBlock>?,
+    mode: com.luc4n3x.levyra.domain.HomeCompositionMode,
+    studio: LevyraHomeStudioSettings
+): LevyraHomeStudioSettings {
+    if (blocks == null || com.luc4n3x.levyra.domain.LevyraHomeCatalog.hasOwnFeed(skin)) return studio
+    if (skin == com.luc4n3x.levyra.domain.LevyraSkin.Default && mode == com.luc4n3x.levyra.domain.HomeCompositionMode.Levyra) return LevyraHomeStudioSettings()
+    val shown = blocks.filterIsInstance<com.luc4n3x.levyra.domain.HomeBlock.Section>().map { it.id }
+    val rest = HomeSectionId.entries.filterNot { it in shown }
+    return studio.updateLayout(studio.style) { layout ->
+        layout.copy(order = shown + rest, hidden = rest.toSet(), featured = emptyList())
+    }
+}
+
+private fun composedHomeContent(
+    c: StudioHomeContext,
+    data: AppleMusicHomeData,
+    actions: AppleMusicHomeActions,
+    radio: HomeRadioState,
+    discovery: DiscoveryHomeHandle?,
+    genreZones: List<ExploreZone>
+): ComposedHomeContent = with(c) {
+    ComposedHomeContent(
+        data = data,
+        actions = actions,
+        deferredReady = showDeferredHomeSections,
+        genreZones = genreZones,
+        onOpenZone = viewModel::openExploreZone,
+        speedDialPins = speedDialPins,
+        onOpenPin = viewModel::openSpeedDialPin,
+        newReleases = if (state.interfaceSettings.showNewReleases) newReleases?.tracks.orEmpty() else emptyList(),
+        newReleasesTitle = strings.newReleases,
+        videos = homeVideoTracks,
+        onPlayVideo = { list, track -> viewModel.playVideoFrom(list, track) },
+        releaseRadar = if (state.interfaceSettings.showNewReleases) state.releaseRadar else emptyList(),
+        onOpenRelease = viewModel::openReleaseRadarEntry,
+        similarArtists = if (state.interfaceSettings.showTrendingArtists) state.similarArtists else emptyList(),
+        moreSections = otherSections.map { it.value },
+        resonanceTracks = if (state.interfaceSettings.showResonance) resonanceTracks else emptyList(),
+        resonanceComments = state.homeResonanceComments,
+        onOpenComments = viewModel::openYoutubeCommentsFor,
+        discovery = discovery,
+        radio = radio,
+        albumsLoading = showHomeAlbumShimmer,
+        artistsLoading = state.homeArtistsLoading,
+        chartsLoading = state.isLoadingCharts && state.interfaceSettings.showCharts,
+        offlineMessage = if (offlineHomeVisible) strings.offlineHomeMessage else null,
+        offlineRetryLabel = strings.offlineHomeRetry,
+        onOfflineRetry = viewModel::retryHomeContent
+    )
 }
 
 @Composable
@@ -11483,14 +11555,23 @@ private fun HomeStudioHost(
     accountAvatarUrl: String,
     youtubeMusicHome: com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeShelfUi?,
     homeStudio: LevyraHomeStudioSettings,
+    homeComposition: com.luc4n3x.levyra.domain.LevyraHomeCompositionSettings,
     onPullRefresh: () -> Unit,
     onTrackActions: (Track) -> Unit
 ) {
     val radioStations by viewModel.favoriteRadioStations.collectAsStateWithLifecycle(initialValue = emptyList())
+    val skin = renderSnapshot.state.interfaceSettings.skin
+    val composition = homeComposition
+    val composedBlocks = remember(composition, skin, homeStudio) { composition.resolvedBlocks(skin, homeStudio) }
+    val radioVisible = composedBlocks?.contains(com.luc4n3x.levyra.domain.HomeBlock.Section(HomeSectionId.FavoriteRadio))
+        ?: !homeStudio.activeLayout().isHidden(HomeSectionId.FavoriteRadio)
     val homeRadio = HomeRadioState(radioStations, renderSnapshot.state.liveRadioStation?.uuid, renderSnapshot.state.isPlaying,
-        !homeStudio.activeLayout().isHidden(HomeSectionId.FavoriteRadio), viewModel::playLiveRadio)
+        radioVisible, viewModel::playLiveRadio)
     CompositionLocalProvider(LocalHomeRadio provides homeRadio) {
-        if (homeStudio.usesClassicOriginalHome() && !LevyraSkinManagesLayout) {
+        val effectiveStudio = remember(composedBlocks, composition, skin, homeStudio) {
+            composedStudioSettings(skin, composedBlocks, composition.modeFor(skin), homeStudio)
+        }
+        if (effectiveStudio.usesClassicOriginalHome() && !LevyraSkinManagesLayout) {
             HomeScreen(
                 viewModel = viewModel,
                 renderSnapshot = renderSnapshot,
@@ -11509,7 +11590,8 @@ private fun HomeStudioHost(
                 deferredSectionsRevealed = deferredSectionsRevealed,
                 accountAvatarUrl = accountAvatarUrl,
                 youtubeMusicHome = youtubeMusicHome,
-                homeStudio = homeStudio,
+                homeStudio = effectiveStudio,
+                composedBlocks = composedBlocks,
                 onPullRefresh = onPullRefresh,
                 onTrackActions = onTrackActions
             )
@@ -19519,98 +19601,6 @@ private fun trimSpeed(speed: Float): String {
     return if (speed % 1f == 0f) speed.toInt().toString() else speed.toString().trimEnd('0').trimEnd('.')
 }
 
-@Composable
-private fun LanguageSelector(selectedCode: String, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        LevyraLanguageCatalog.selectableLanguages.forEach { language ->
-            val selected = language.code == LevyraLanguageCatalog.normalize(selectedCode)
-            val scale by animateFloatAsState(
-                targetValue = if (selected) 1.02f else 1f,
-                animationSpec = spring(dampingRatio = 0.6f, stiffness = 300f),
-                label = "scale"
-            )
-            val rowColor by animateColorAsState(
-                targetValue = if (selected) LevyraCyan else LevyraAdaptiveCardDeep,
-                animationSpec = tween(200),
-                label = "language-row"
-            )
-
-            Surface(
-                color = rowColor,
-                shape = RoundedCornerShape(22.dp),
-                border = BorderStroke(
-                    width = 1.dp,
-                    color = if (selected) LevyraCyan else LevyraAdaptiveHairline
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .scale(scale)
-                    .pressable(onClick = { onSelect(language.code) })
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Surface(
-                        color = if (selected) Color.White.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.05f),
-                        shape = CircleShape,
-                        modifier = Modifier.size(42.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(
-                                text = language.flag,
-                                fontSize = 18.sp
-                            )
-                        }
-                    }
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(
-                            text = language.nativeName,
-                            color = if (selected) LevyraBlack else LevyraText,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        if (!language.englishName.equals(language.nativeName, ignoreCase = true)) {
-                            Text(
-                                text = language.englishName,
-                                color = if (selected) LevyraBlack.copy(alpha = 0.6f) else LevyraMuted,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-
-                    AnimatedVisibility(
-                        visible = selected,
-                        enter = scaleIn(spring(dampingRatio = 0.5f, stiffness = 400f)) + fadeIn(),
-                        exit = scaleOut() + fadeOut()
-                    ) {
-                        Surface(
-                            color = LevyraBlack,
-                            shape = CircleShape,
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Rounded.Check, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(16.dp))
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SettingsOverlay(
@@ -19685,6 +19675,8 @@ private fun SettingsOverlay(
     onSkipSilence: (Boolean) -> Unit,
     onMusicRegion: (String) -> Unit,
     musicRegionId: String,
+    preferredAudioLanguage: String,
+    onPreferredAudioLanguage: (String) -> Unit,
     onLanguage: (String) -> Unit,
     onCheckUpdates: () -> Unit,
     onDownloadUpdate: () -> Unit,
@@ -19715,7 +19707,6 @@ private fun SettingsOverlay(
 ) {
     val strings = LocalLevyraStrings.current
     val automationCopy = strings.automationCopy()
-    var languageExpanded by remember { mutableStateOf(false) }
     var activeCategory by rememberSaveable { mutableStateOf<String?>(null) }
     var settingsQuery by rememberSaveable { mutableStateOf("") }
     val batteryContext = LocalContext.current
@@ -21168,24 +21159,20 @@ private fun SettingsOverlay(
                                     )
                                 }
                             }
-                            item {
-                                SettingsButton(
-                                    icon = Icons.Rounded.Settings,
-                                    title = strings.language,
-                                    subtitle = "${strings.languageSubtitle}: ${LevyraLanguageCatalog.displayName(currentLanguageCode)}",
-                                    onClick = { languageExpanded = !languageExpanded }
-                                )
-                            }
-                            item {
+                            standaloneItem {
                                 val musicRegionCopy = com.luc4n3x.levyra.ui.i18n.musicRegionCopy(strings.code)
                                 var musicRegionSheetOpen by rememberSaveable { mutableStateOf(false) }
-                                SettingsButton(
-                                    icon = Icons.Rounded.Public,
-                                    title = musicRegionCopy.title,
-                                    subtitle = ChartsCatalog.supportedRegion(musicRegionId)
+                                com.luc4n3x.levyra.ui.regional.RegionalPreferencesCard(
+                                    languageCode = strings.code,
+                                    appLanguageValue = LevyraLanguageCatalog.displayName(currentLanguageCode),
+                                    contentCountryValue = ChartsCatalog.supportedRegion(musicRegionId)
                                         ?.let { region -> "${region.emoji} ${ChartMarketDirectory.displayName(region, currentLanguageCode)}" }
                                         ?: musicRegionCopy.automatic,
-                                    onClick = { musicRegionSheetOpen = true }
+                                    preferredAudioLanguage = preferredAudioLanguage,
+                                    selectedAppLanguage = currentLanguageCode,
+                                    onAppLanguage = onLanguage,
+                                    onContentCountryClick = { musicRegionSheetOpen = true },
+                                    onPreferredAudioLanguage = onPreferredAudioLanguage
                                 )
                                 if (musicRegionSheetOpen) {
                                     ChartMarketSheet(
@@ -21194,13 +21181,10 @@ private fun SettingsOverlay(
                                         languageCode = currentLanguageCode,
                                         onSelect = onMusicRegion,
                                         onDismiss = { musicRegionSheetOpen = false },
-                                        title = musicRegionCopy.title,
+                                        title = com.luc4n3x.levyra.ui.i18n.LevyraRegionalStrings.forCode(strings.code).contentCountryTitle,
                                         automaticLabel = musicRegionCopy.automatic
                                     )
                                 }
-                            }
-                            if (languageExpanded) {
-                                standaloneItem { LanguageSelector(selectedCode = currentLanguageCode, onSelect = onLanguage, modifier = Modifier.padding(top = 6.dp, bottom = 4.dp)) }
                             }
                         }
                         "app" -> {

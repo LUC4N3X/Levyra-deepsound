@@ -7,7 +7,7 @@ internal data class ShareMomentCopy(
     val fromTemplate: String
 )
 
-internal fun LevyraStrings.shareMomentCopy(): ShareMomentCopy = when (code) {
+internal fun LevyraStrings.shareMomentCopy(): ShareMomentCopy = when (translationKey(code)) {
     "it" -> ShareMomentCopy("Condividi da qui", "da {time}")
     "es" -> ShareMomentCopy("Compartir desde aquí", "desde {time}")
     "fr" -> ShareMomentCopy("Partager à partir d'ici", "à partir de {time}")
@@ -49,4 +49,4 @@ internal fun LevyraStrings.shareMomentCopy(): ShareMomentCopy = when (code) {
     "fil" -> ShareMomentCopy("Ibahagi mula rito", "mula {time}")
     "he" -> ShareMomentCopy("שיתוף מכאן", "החל מ-{time}")
     else -> ShareMomentCopy("Share from here", "from {time}")
-}
+}.let { copy -> if (isBrazilianPortuguese(code)) LevyraBrazilianPortuguese.adaptValue(copy) else copy }

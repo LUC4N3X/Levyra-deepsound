@@ -35,12 +35,15 @@ class PlaybackResolverGenerationContractTest {
     }
 
     @Test
-    fun `runtime audio language stays original default regardless of stored preferences`() {
+    fun `audio language comes from the explicit choice and changing it invalidates in flight resolves`() {
         val resolver = readResolverSource()
+        val setter = resolver
+            .substringAfter("fun setPreferredAudioLanguage")
+            .substringBefore("fun invalidateVideoQualitySelection")
 
-        assertTrue(resolver.contains("private val selectedPreferredAudioLanguage = \"\""))
-        assertFalse(resolver.contains("preferredAudioLanguage()"))
-        assertFalse(resolver.contains("fun setPreferredAudioLanguage"))
+        assertTrue(resolver.contains("normalizeLanguage(userPreferences.preferredAudioLanguage())"))
+        assertTrue(setter.contains("audioLanguageRevision.incrementAndGet()"))
+        assertTrue(setter.contains("resolverGeneration.incrementAndGet()"))
     }
 
     @Test

@@ -30,7 +30,9 @@ import com.luc4n3x.levyra.data.apple.AppleMusicHomeShelves
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ChartsCatalog
+import com.luc4n3x.levyra.domain.HomeBlock
 import com.luc4n3x.levyra.domain.HomeSection
+import com.luc4n3x.levyra.domain.HomeSectionId
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LevyraAppleMusicStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
@@ -81,39 +83,57 @@ internal fun AppleMusicHomeContent(
     homeBottomInset: Dp,
     homeRefreshing: Boolean,
     homePullState: PullToRefreshState,
-    onPullRefresh: () -> Unit
+    onPullRefresh: () -> Unit,
+    composition: ComposedHomeRequest? = null
 ) {
     val homeRadio = LocalHomeRadio.current
     val strings = LocalLevyraStrings.current
+    val showsFeed = composition?.showsSkinFeed != false
     val editorialViewModel = viewModel<AppleMusicEditorialViewModel>()
     val editorial by editorialViewModel.state.collectAsStateWithLifecycle()
     val storefront = remember(data.selectedChartId) { ChartsCatalog.region(data.selectedChartId).country }
-    LaunchedEffect(storefront, strings.code) { editorialViewModel.load(storefront, strings.code) }
+    LaunchedEffect(storefront, strings.code, showsFeed) { if (showsFeed) editorialViewModel.load(storefront, strings.code) }
     val copy = remember(strings.code) { LevyraAppleMusicStrings.forCode(strings.code) }
-    val shelves = remember(editorial.newMusic) { AppleMusicHomeShelves.select(editorial.newMusic) }
+    val shelves = remember(editorial.newMusic, showsFeed) { if (showsFeed) AppleMusicHomeShelves.select(editorial.newMusic) else emptyList() }
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val openItem = remember(actions, editorialViewModel) { appleMusicItemOpener(actions, editorialViewModel::openCollection) }
     var levyraChartOpen by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
     var seeAllShelfId by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf<String?>(null) }
-    val plan = AppleMusicHomePlan.of(shelves, appleMusicLevyraBlocks(data, actions, copy, strings) { levyraChartOpen = true })
+    val levyraBlocks = if (composition == null) appleMusicLevyraBlocks(data, actions, copy, strings) { levyraChartOpen = true } else emptyList()
+    val plan = AppleMusicHomePlan.of(shelves, levyraBlocks)
     val reload = { editorialViewModel.load(storefront, strings.code, force = true) }
+    val composedKit = remember(copy.explicit) { AppleMusicComposedKit(copy.explicit) { levyraChartOpen = true } }
+    val countryLabel = data.countryLabel.takeIf {
+        composition == null || showsFeed || HomeBlock.Section(HomeSectionId.Charts) in composition.blocks
+    }.orEmpty()
+    val feedShelf: @Composable (AppleHomeShelf) -> Unit = { homeShelf ->
+        AppleMusicEditorialShelf(homeShelf, data.currentId, copy.explicit, openItem, actions.onTrackActions) { seeAllShelfId = homeShelf.shelf.id }
+    }
     Box(Modifier.fillMaxSize().background(AppleMusicDesign.background)) {
         LazyColumn(
             state = homeListState,
             modifier = Modifier.fillMaxSize().pullToRefresh(isRefreshing = homeRefreshing, state = homePullState, onRefresh = {
                 onPullRefresh()
-                reload()
+                if (showsFeed) reload()
             }),
             contentPadding = PaddingValues(top = statusBarTop + 8.dp, bottom = homeBottomInset),
             verticalArrangement = Arrangement.spacedBy(AppleMusicDesign.sectionGap)
         ) {
             item(key = "apple-home-title", contentType = "apple-home-title") {
-                AppleMusicHomeTitle(strings.home, copy.more, data.countryLabel, actions)
+                AppleMusicHomeTitle(strings.home, copy.more, countryLabel, actions)
             }
-            appleMusicHomeNotices(editorial, shelves.isEmpty(), copy, reload)
-            favoriteRadioSection(homeRadio)
-            appleMusicHomeSections(plan) { homeShelf ->
-                AppleMusicEditorialShelf(homeShelf, data.currentId, copy.explicit, openItem, actions.onTrackActions) { seeAllShelfId = homeShelf.shelf.id }
+            if (composition == null) {
+                appleMusicHomeNotices(editorial, shelves.isEmpty(), copy, reload)
+                favoriteRadioSection(homeRadio)
+                appleMusicHomeSections(plan, feedShelf)
+            } else {
+                composedHomeSections(composition, composedKit) {
+                    appleMusicHomeNotices(editorial, shelves.isEmpty(), copy, reload)
+                    if (shelves.isEmpty() && editorial.loading) {
+                        item(key = "apple-home-loading", contentType = "composed-loading") { composedKit.LoadingShelf("") }
+                    }
+                    appleMusicHomeSections(plan, feedShelf)
+                }
             }
         }
         AppleMusicHomeTopChrome(statusBarTop, homeRefreshing, homePullState)
@@ -126,7 +146,7 @@ internal fun AppleMusicHomeContent(
         plan.shelf(seeAllShelfId)?.let { homeShelf ->
             AppleMusicShelfScreen(homeShelf, data.currentId, copy.explicit, homeBottomInset, openItem, actions.onTrackActions) { seeAllShelfId = null }
         }
-        editorial.collection?.let { collection ->
+        editorial.collection?.takeIf { showsFeed }?.let { collection ->
             AppleMusicEditorialCollectionOverlay(collection, data.currentId, homeBottomInset, actions, editorialViewModel)
         }
     }
@@ -355,22 +375,26 @@ private fun cardsBlock(key: String, title: String, cards: List<AppleMusicCardMod
 
 private fun soundtrackBlock(hero: StudioHero?): AppleHomeBlock? {
     hero ?: return null
-    return "levyra-soundtrack" to @Composable {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            AppleMusicSectionHeader(hero.label)
-            Box(Modifier.padding(horizontal = AppleMusicDesign.gutter)) {
-                AppleMusicHeroCard(
-                    AppleMusicHeroModel(
-                        key = "soundtrack-${hero.track.id}", heading = "", title = hero.track.artist, subtitle = hero.track.title,
-                        description = hero.lead, imageUrl = hero.artistArtworkUrl,
-                        coverUrl = hero.track.largeThumbnailUrl.ifBlank { hero.track.thumbnailUrl },
-                        backgroundColor = Color(hero.track.accentStart), onClick = hero.onOpen
-                    )
+    return "levyra-soundtrack" to @Composable { AppleMusicSoundtrackSection(hero) }
+}
+
+@Composable
+internal fun AppleMusicSoundtrackSection(hero: StudioHero) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        AppleMusicSectionHeader(hero.label)
+        Box(Modifier.padding(horizontal = AppleMusicDesign.gutter)) {
+            AppleMusicHeroCard(
+                AppleMusicHeroModel(
+                    key = "soundtrack-${hero.track.id}", heading = "", title = hero.track.artist, subtitle = hero.track.title,
+                    description = hero.lead, imageUrl = hero.artistArtworkUrl,
+                    coverUrl = hero.track.largeThumbnailUrl.ifBlank { hero.track.thumbnailUrl },
+                    backgroundColor = Color(hero.track.accentStart), onClick = hero.onOpen
                 )
-            }
+            )
         }
     }
 }
+
 @Composable
 internal fun AppleMusicEditorialShelf(
     homeShelf: AppleHomeShelf,

@@ -80,7 +80,7 @@ import com.luc4n3x.levyra.ui.i18n.LevyraPrismStrings
 import com.luc4n3x.levyra.ui.i18n.LevyraSkinStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 
-private fun LevyraSkin.title(): String = when (this) {
+internal fun LevyraSkin.title(): String = when (this) {
     LevyraSkin.Default -> "Levyra Default"
     LevyraSkin.Nocturne78 -> Nocturne78Palette.label
     LevyraSkin.Prism -> "Prism"
@@ -387,7 +387,7 @@ private fun DrawScope.ivoryPreview(palette: LevyraPalette, w: Float, h: Float) {
     drawPath(bump, palette.blue)
 }
 
-private fun DrawScope.spotifyPreview(palette: LevyraPalette, w: Float, h: Float) {
+internal fun DrawScope.spotifyPreview(palette: LevyraPalette, w: Float, h: Float) {
     val pad = w * 0.08f
     val gap = w * 0.04f
     drawRect(Brush.verticalGradient(listOf(Color(0xFF3A2A58), palette.black), endY = h * 0.42f), Offset.Zero, Size(w, h * 0.42f))
@@ -419,7 +419,7 @@ private fun DrawScope.spotifyPreview(palette: LevyraPalette, w: Float, h: Float)
     }
 }
 
-private fun DrawScope.youTubeMusicPreview(palette: LevyraPalette, w: Float, h: Float) {
+internal fun DrawScope.youTubeMusicPreview(palette: LevyraPalette, w: Float, h: Float) {
     val pad = w * 0.06f
     drawRect(Brush.verticalGradient(listOf(Color(0xFF3A2A4A), palette.black), endY = h * 0.32f), size = Size(w, h * 0.32f))
     drawCircle(YouTubeMusicDesign.red, 4.dp.toPx(), Offset(pad + 4.dp.toPx(), h * 0.07f))
@@ -445,7 +445,7 @@ private fun DrawScope.youTubeMusicPreview(palette: LevyraPalette, w: Float, h: F
     }
 }
 
-private fun DrawScope.atelierPreview(palette: LevyraPalette, w: Float, h: Float) {
+internal fun DrawScope.atelierPreview(palette: LevyraPalette, w: Float, h: Float) {
     val side = w * 0.46f
     val stack = listOf(0.62f, 0.54f, 0.46f)
     stack.forEachIndexed { index, x ->
@@ -461,7 +461,7 @@ private fun DrawScope.atelierPreview(palette: LevyraPalette, w: Float, h: Float)
     drawLine(Color(0xFFCFC9BD), Offset(w * 0.82f, h * 0.60f), Offset(w * 0.56f, h * 0.78f), 2.dp.toPx())
 }
 
-private fun DrawScope.qobuzPreview(palette: LevyraPalette, w: Float, h: Float) {
+internal fun DrawScope.qobuzPreview(palette: LevyraPalette, w: Float, h: Float) {
     val pad = w * 0.06f
     val gap = w * 0.035f
     previewLine(palette.text, pad, h * 0.075f, w * 0.3f, 5.dp.toPx())
@@ -494,7 +494,7 @@ private fun DrawScope.qobuzPreview(palette: LevyraPalette, w: Float, h: Float) {
     }
 }
 
-private fun DrawScope.appleMusicPreview(palette: LevyraPalette, w: Float, h: Float) {
+internal fun DrawScope.appleMusicPreview(palette: LevyraPalette, w: Float, h: Float) {
     val pad = w * 0.07f
     val gap = w * 0.04f
     previewLine(palette.text, pad, h * 0.075f, w * 0.34f, 5.dp.toPx())

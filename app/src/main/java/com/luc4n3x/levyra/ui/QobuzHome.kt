@@ -71,6 +71,8 @@ import com.luc4n3x.levyra.data.qobuz.QobuzShelfKind
 import com.luc4n3x.levyra.data.qobuz.QobuzStore
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ExploreCategory
+import com.luc4n3x.levyra.domain.HomeBlock
+import com.luc4n3x.levyra.domain.HomeSectionId
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LevyraQobuzSkinStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
@@ -117,7 +119,8 @@ internal fun QobuzHomeContent(
     homeBottomInset: Dp,
     homeRefreshing: Boolean,
     homePullState: PullToRefreshState,
-    onPullRefresh: () -> Unit
+    onPullRefresh: () -> Unit,
+    composition: ComposedHomeRequest? = null
 ) {
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { LevyraQobuzSkinStrings.forCode(strings.code) }
@@ -125,15 +128,22 @@ internal fun QobuzHomeContent(
     val feed by discover.state.collectAsStateWithLifecycle()
     val playlist by discover.playlist.collectAsStateWithLifecycle()
     val locale = remember(strings.code, extras.chartCountry) { QobuzStore.locale(strings.code, extras.chartCountry) }
-    LaunchedEffect(locale) { discover.load(locale) }
+    val feedActive = composition?.showsSkinFeed != false
+    LaunchedEffect(locale, feedActive) { if (feedActive) discover.load(locale) }
     var seeAll by remember { mutableStateOf<QobuzSeeAll?>(null) }
+    val coveredSections = remember(composition?.blocks) {
+        composition?.blocks.orEmpty().filterIsInstance<HomeBlock.Section>().mapTo(HashSet()) { it.id }
+    }
+    val kit = remember(copy, data, actions.home) {
+        QobuzComposedKit(copy, data, actions.home) { title, tracks -> seeAll = QobuzSeeAll.Tracks(title, tracks) }
+    }
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     Box(Modifier.fillMaxSize().background(QobuzDesign.surfacePrimary)) {
         LazyColumn(
             state = homeListState,
             modifier = Modifier.fillMaxSize().padding(top = statusTop).pullToRefresh(isRefreshing = homeRefreshing, state = homePullState, onRefresh = {
                 onPullRefresh()
-                discover.load(locale, force = true)
+                if (feedActive) discover.load(locale, force = true)
             }),
             contentPadding = PaddingValues(bottom = homeBottomInset + 24.dp)
         ) {
@@ -143,11 +153,27 @@ internal fun QobuzHomeContent(
                     QobuzIconAction(Icons.Rounded.Settings, copy.settings, actions.home.openSettings)
                 }
             }
-            stickyHeader(key = "qobuz-tabs", contentType = "qobuz-tabs") {
-                QobuzDiscoverTabs(copy, feed.tab, homeListState.firstVisibleItemIndex > 0, discover::selectTab)
+            val feedItems: LazyListScope.() -> Unit = {
+                stickyHeader(key = "qobuz-tabs", contentType = "qobuz-tabs") {
+                    QobuzDiscoverTabs(copy, feed.tab, homeListState.firstVisibleItemIndex > 0, discover::selectTab)
+                }
+                qobuzHomeSections(data, actions.withCategory { seeAll = QobuzSeeAll.Category(it) }, extras, copy, feed, strings.personalOrbitTitle, strings.quickPicks,
+                    onOpenPlaylist = discover::openPlaylist, onSeeAll = { seeAll = it }, onRetry = { discover.load(locale, force = true) },
+                    coveredSections = coveredSections, composed = composition != null)
             }
-            qobuzHomeSections(data, actions.withCategory { seeAll = QobuzSeeAll.Category(it) }, extras, copy, feed, strings.personalOrbitTitle, strings.quickPicks,
-                onOpenPlaylist = discover::openPlaylist, onSeeAll = { seeAll = it }, onRetry = { discover.load(locale, force = true) })
+            if (composition == null) {
+                feedItems()
+            } else {
+                composedHomeSections(composition, kit) {
+                    feedItems()
+                    if (composition.blocks.lastOrNull() != HomeBlock.SkinFeed) {
+                        stickyHeader(key = "qobuz-tabs-release", contentType = "qobuz-tabs-release") { Spacer(Modifier.height(1.dp)) }
+                    }
+                }
+                item(key = "qobuz-composed-footer", contentType = "qobuz-composed-footer") {
+                    Spacer(Modifier.height(QobuzDesign.sectionGap))
+                }
+            }
         }
         PullToRefreshDefaults.LoadingIndicator(
             state = homePullState, isRefreshing = homeRefreshing,
@@ -198,19 +224,25 @@ private fun LazyListScope.qobuzHomeSections(
     quickPicksTitle: String,
     onOpenPlaylist: (QobuzPlaylist) -> Unit,
     onSeeAll: (QobuzSeeAll) -> Unit,
-    onRetry: () -> Unit
+    onRetry: () -> Unit,
+    coveredSections: Set<HomeSectionId>,
+    composed: Boolean
 ) {
     val welcome = welcomeBlock(data, actions, copy)
     val newReleases = newReleasesBlock(data, actions, copy, feed, onSeeAll)
     val playlists = playlistsBlock(copy, feed, onOpenPlaylist, onSeeAll)
     val categories = categoriesBlock(copy, extras.categories, actions.openCategory)
     val artists = artistsBlock(data, actions, extras, copy)
-    val mixList = buildList {
-        data.soundtrack?.let { hero -> add(QobuzMix("soundtrack", copy.welcomeTitle, copy.welcomeBody, (listOf(hero.track) + data.personalTracks).distinctBy { it.id }, 0)) }
-        data.personalTracks.takeIf { data.showPersonal && it.isNotEmpty() }?.let { add(QobuzMix("orbit", orbitTitle, copy.orbitBaseline, it, 1)) }
-        data.quickPicks?.tracks?.takeIf { it.isNotEmpty() }?.let { add(QobuzMix("picks", data.quickPicks.title.ifBlank { quickPicksTitle }, copy.picksMixBody, it, 2)) }
+    val mixSources = buildList<Pair<HomeSectionId, QobuzMix>> {
+        data.soundtrack?.let { hero -> add(HomeSectionId.Spotlight to QobuzMix("soundtrack", copy.welcomeTitle, copy.welcomeBody, (listOf(hero.track) + data.personalTracks).distinctBy { it.id }, 0)) }
+        data.personalTracks.takeIf { data.showPersonal && it.isNotEmpty() }?.let { add(HomeSectionId.PersonalOrbit to QobuzMix("orbit", orbitTitle, copy.orbitBaseline, it, 1)) }
+        data.quickPicks?.tracks?.takeIf { it.isNotEmpty() }?.let { add(HomeSectionId.QuickPicks to QobuzMix("picks", data.quickPicks.title.ifBlank { quickPicksTitle }, copy.picksMixBody, it, 2)) }
     }
-    val mixes: QobuzBlock? = if (mixList.isEmpty()) null else "mixes" to @Composable { QobuzMixRow(mixList, copy) { onSeeAll(QobuzSeeAll.Mix(it)) } }
+    val mixBlock: (List<QobuzMix>) -> QobuzBlock? = { mixList ->
+        if (mixList.isEmpty()) null else "mixes" to @Composable { QobuzMixRow(mixList, copy) { onSeeAll(QobuzSeeAll.Mix(it)) } }
+    }
+    val mixes = mixBlock(mixSources.map { it.second })
+    val homeMixes = mixBlock(mixSources.filterNot { it.first in coveredSections }.map { it.second })
     val seed = data.personalTracks.firstOrNull() ?: data.soundtrack?.track
     val similar: QobuzBlock? = if (seed == null || !data.showAlbums || data.albums.isEmpty()) null else "similar" to @Composable {
         Column {
@@ -228,8 +260,22 @@ private fun LazyListScope.qobuzHomeSections(
     val top50 = rankedBlock("top50", data.chartsTitle, copy.top50Baseline, data.charts, true, data, actions, copy, onSeeAll)
     val press = albumShelfBlock(QobuzShelfKind.PressAwards, copy.pressAwards, copy.pressAwardsBaseline, feed, rows = 1, width = QobuzDesign.wideCard, awards = true, actions, copy, onSeeAll)
     val albumsForYou = levyraAlbumsBlock(data, actions, copy)
+    val albumsCovered = HomeSectionId.AlbumsForYou in coveredSections
+    val releasesAreLevyraAlbums = feed.shelf(QobuzShelfKind.NewReleases)?.albums.isNullOrEmpty() && !feed.loading
     val blocks = when (feed.tab) {
-        QobuzDiscoverTab.Home -> listOf(welcome, newReleases, playlists, categories, artists, mixes, similar, ideal, qobuzissime, top50, press)
+        QobuzDiscoverTab.Home -> listOf(
+            welcome.takeUnless { HomeSectionId.Spotlight in coveredSections },
+            newReleases.takeUnless { albumsCovered && releasesAreLevyraAlbums },
+            playlists,
+            categories,
+            artists.takeUnless { HomeSectionId.TrendingArtists in coveredSections },
+            homeMixes,
+            similar.takeUnless { albumsCovered },
+            ideal,
+            qobuzissime,
+            top50.takeUnless { HomeSectionId.Charts in coveredSections },
+            press
+        )
         QobuzDiscoverTab.EditorPicks -> listOf(newReleases, playlists, categories, ideal, qobuzissime, press)
         QobuzDiscoverTab.ForYou -> listOf(mixes, artists, similar, orbit, picks, top50)
     }.filterNotNull()
@@ -238,15 +284,18 @@ private fun LazyListScope.qobuzHomeSections(
             Box(Modifier.padding(top = if (index == 0) 24.dp else QobuzDesign.sectionGap)) { content() }
         }
     }
-    item(key = "qobuz-footer", contentType = "qobuz-footer") {
-        Column(Modifier.fillMaxWidth().padding(horizontal = QobuzDesign.gutter, vertical = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (feed.failed && feed.shelves.isEmpty()) {
-                Text(copy.editorialUnavailable, style = QobuzText.baseline)
-                Text(
-                    copy.retry, style = MaterialTheme.typography.labelLarge, color = QobuzDesign.textPrimary,
-                    modifier = Modifier.clip(QobuzDesign.buttonShape).background(QobuzDesign.surfaceSecondary)
-                        .clickable(role = Role.Button, onClick = onRetry).padding(horizontal = 16.dp, vertical = 10.dp)
-                )
+    val editorialFailed = feed.failed && feed.shelves.isEmpty()
+    if (!composed || editorialFailed) {
+        item(key = "qobuz-footer", contentType = "qobuz-footer") {
+            Column(Modifier.fillMaxWidth().padding(horizontal = QobuzDesign.gutter, vertical = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (editorialFailed) {
+                    Text(copy.editorialUnavailable, style = QobuzText.baseline)
+                    Text(
+                        copy.retry, style = MaterialTheme.typography.labelLarge, color = QobuzDesign.textPrimary,
+                        modifier = Modifier.clip(QobuzDesign.buttonShape).background(QobuzDesign.surfaceSecondary)
+                            .clickable(role = Role.Button, onClick = onRetry).padding(horizontal = 16.dp, vertical = 10.dp)
+                    )
+                }
             }
         }
     }
@@ -314,7 +363,7 @@ private fun QobuzWelcomeArt(modifier: Modifier) {
 }
 
 @Composable
-private fun QobuzAvatarStack(hero: StudioHero, tracks: List<Track>, artists: List<ArtistHit>) {
+internal fun QobuzAvatarStack(hero: StudioHero, tracks: List<Track>, artists: List<ArtistHit>) {
     val urls = remember(hero.artistArtworkUrl, hero.companionArtworkUrls, artists) {
         (listOf(hero.artistArtworkUrl) + hero.companionArtworkUrls + artists.map { it.thumbnailUrl }).filter { it.isNotBlank() }.distinct()
     }
@@ -549,7 +598,7 @@ private fun <T> QobuzGridRow(
 }
 
 @Composable
-private fun QobuzShelfSkeleton(title: String, baseline: String, rows: Int) {
+internal fun QobuzShelfSkeleton(title: String, baseline: String, rows: Int) {
     Column {
         QobuzSectionHeader(title, baseline, "", null)
         Spacer(Modifier.height(QobuzDesign.headerToContent))
@@ -702,10 +751,11 @@ internal fun QobuzHomeEntry(
     homeBottomInset: Dp,
     homeRefreshing: Boolean,
     homePullState: PullToRefreshState,
-    onPullRefresh: () -> Unit
+    onPullRefresh: () -> Unit,
+    composition: ComposedHomeRequest? = null
 ) {
     val strings = LocalLevyraStrings.current
-    val needsExplore = state.exploreCategories.isEmpty()
+    val needsExplore = state.exploreCategories.isEmpty() && composition?.showsSkinFeed != false
     LaunchedEffect(needsExplore, strings.code) { if (needsExplore) viewModel.ensureExplore(strings) }
     QobuzHomeContent(
         data = data,
@@ -723,7 +773,8 @@ internal fun QobuzHomeEntry(
         homeBottomInset = homeBottomInset,
         homeRefreshing = homeRefreshing,
         homePullState = homePullState,
-        onPullRefresh = onPullRefresh
+        onPullRefresh = onPullRefresh,
+        composition = composition
     )
 }
 

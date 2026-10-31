@@ -114,6 +114,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
+import com.luc4n3x.levyra.domain.HomeBlock
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.Track
@@ -135,14 +136,14 @@ internal val AtelierRowPadding = PaddingValues(horizontal = AtelierDesign.gutter
 
 private val AtelierGridCellMin = 156.dp
 private val AtelierLeadSleeve = 196.dp
-private val AtelierSmallSleeve = 104.dp
+internal val AtelierSmallSleeve = 104.dp
 private val AtelierContinueTile = 148.dp
 private val AtelierKeyShape = RoundedCornerShape(11.dp)
-private val AtelierArtistSizes = listOf(120.dp, 84.dp, 104.dp, 72.dp, 112.dp, 92.dp)
-private val AtelierArtistMax = 120.dp
-private const val AtelierCollapsedPicks = 5
-private const val AtelierPickPairCount = 2
-private const val AtelierCollapsedCharts = 10
+internal val AtelierArtistSizes = listOf(120.dp, 84.dp, 104.dp, 72.dp, 112.dp, 92.dp)
+internal val AtelierArtistMax = 120.dp
+internal const val AtelierCollapsedPicks = 5
+internal const val AtelierPickPairCount = 2
+internal const val AtelierCollapsedCharts = 10
 private const val AtelierWallColumns = 5
 private const val AtelierWallMax = 15
 private const val AtelierFeatureMax = 5
@@ -185,7 +186,7 @@ private fun atelierDuration(ms: Long): String {
     return if (hours > 0L) "$hours:${minutes.toString().padStart(2, '0')}:$seconds" else "$minutes:$seconds"
 }
 
-private fun atelierCoverUrl(track: Track): String = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }
+internal fun atelierCoverUrl(track: Track): String = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }
 
 @Composable
 internal fun atelierUppercase(text: String): String {
@@ -331,7 +332,7 @@ internal fun AtelierHardwareKey(
 }
 
 @Composable
-private fun AtelierPlayGlyph(playing: Boolean, size: Dp = 26.dp) {
+internal fun AtelierPlayGlyph(playing: Boolean, size: Dp = 26.dp) {
     Icon(
         if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
         null,
@@ -360,7 +361,7 @@ internal fun AtelierArtwork(url: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun AtelierPerspectiveSleeve(
+internal fun AtelierPerspectiveSleeve(
     track: Track,
     side: Dp,
     turn: Float,
@@ -399,7 +400,7 @@ private fun AtelierPerspectiveSleeve(
 }
 
 @Composable
-private fun AtelierVinyl(track: Track?, modifier: Modifier) {
+internal fun AtelierVinyl(track: Track?, modifier: Modifier) {
     Box(
         modifier.drawWithCache {
             val radius = size.minDimension / 2f
@@ -436,7 +437,7 @@ private fun AtelierVinyl(track: Track?, modifier: Modifier) {
 }
 
 @Composable
-private fun AtelierTileText(title: String, subtitle: String, highlighted: Boolean) {
+internal fun AtelierTileText(title: String, subtitle: String, highlighted: Boolean) {
     Spacer(Modifier.height(8.dp))
     Text(
         text = title,
@@ -617,12 +618,36 @@ private fun AtelierHomeMasthead(name: String, onOpenSettings: () -> Unit) {
 }
 
 @Composable
+private fun AtelierComposedPageTitle(statusTop: Dp, onOpenSettings: () -> Unit) {
+    val strings = LocalLevyraStrings.current
+    Row(
+        Modifier.fillMaxWidth().padding(top = statusTop + 8.dp).padding(start = AtelierDesign.gutter, end = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Box(Modifier.width(28.dp).height(2.dp).background(AtelierDesign.accent))
+            Spacer(Modifier.height(14.dp))
+            Text(
+                text = strings.home,
+                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Light),
+                color = AtelierDesign.text,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.semantics { heading() }
+            )
+        }
+        AtelierIconAction(Icons.Rounded.Settings, strings.settings, onOpenSettings, AtelierDesign.text)
+    }
+}
+
+@Composable
 private fun AtelierHomeHero(
     track: Track,
     isCurrent: Boolean,
     isPlaying: Boolean,
     isResolving: Boolean,
     statusTop: Dp,
+    showMasthead: Boolean,
     listenerName: String,
     onOpenSettings: () -> Unit,
     onOpen: () -> Unit,
@@ -660,7 +685,7 @@ private fun AtelierHomeHero(
             }
         )
         Column(Modifier.fillMaxWidth().padding(top = statusTop)) {
-            AtelierHomeMasthead(listenerName, onOpenSettings)
+            if (showMasthead) AtelierHomeMasthead(listenerName, onOpenSettings)
             AtelierHomeHeroLabel(isCurrent, copy)
             AtelierHomeHeroSleeve(track, slide, direction, hasAlbum, onOpen)
             AtelierHomeHeroDetails(track, active, isCurrent, isResolving, hasAlbum, onOpen, onPlay)
@@ -948,7 +973,7 @@ private fun AtelierFeatureRow(
 }
 
 @Composable
-private fun AtelierPickSleeve(track: Track, width: Dp, isCurrent: Boolean, actionsLabel: String, modifier: Modifier, onPlay: () -> Unit, onActions: () -> Unit) {
+internal fun AtelierPickSleeve(track: Track, width: Dp, isCurrent: Boolean, actionsLabel: String, modifier: Modifier, onPlay: () -> Unit, onActions: () -> Unit) {
     Column(
         modifier.width(width).levyraPressable(
             onClick = onPlay,
@@ -988,7 +1013,7 @@ private fun AtelierPickSleeve(track: Track, width: Dp, isCurrent: Boolean, actio
 }
 
 @Composable
-private fun AtelierCompactRow(track: Track, isCurrent: Boolean, actionsLabel: String, onPlay: () -> Unit, onActions: () -> Unit) {
+internal fun AtelierCompactRow(track: Track, isCurrent: Boolean, actionsLabel: String, onPlay: () -> Unit, onActions: () -> Unit) {
     val playing = LocalLevyraStrings.current.playing
     val duration = remember(track.durationMs) { atelierDuration(track.durationMs) }
     Row(
@@ -1174,7 +1199,7 @@ private fun AtelierContinueAlbumTile(
 }
 
 @Composable
-private fun AtelierStandingShelf(
+internal fun AtelierStandingShelf(
     tracks: List<Track>,
     currentId: String?,
     actionsLabel: String,
@@ -1208,7 +1233,7 @@ private fun AtelierStandingShelf(
 }
 
 @Composable
-private fun AtelierTrackStrip(
+internal fun AtelierTrackStrip(
     tracks: List<Track>,
     width: Dp,
     currentId: String?,
@@ -1304,13 +1329,14 @@ internal fun AtelierHomeEntry(
     homeBottomInset: Dp,
     homeRefreshing: Boolean,
     homePullState: PullToRefreshState,
-    onPullRefresh: () -> Unit
+    onPullRefresh: () -> Unit,
+    composition: ComposedHomeRequest? = null
 ) {
     val strings = LocalLevyraStrings.current
     val render by viewModel.renderState.collectAsStateWithLifecycle()
     val releaseSection = render.derived.newReleases
     val showReleases = state.interfaceSettings.showNewReleases
-    val needsReleases = showReleases && releaseSection == null && state.exploreNewReleases.isEmpty()
+    val needsReleases = composition == null && showReleases && releaseSection == null && state.exploreNewReleases.isEmpty()
     LaunchedEffect(needsReleases, strings.code) { if (needsReleases) viewModel.ensureExplore(strings) }
     AtelierHomeContent(
         data = data,
@@ -1324,7 +1350,8 @@ internal fun AtelierHomeEntry(
         homeBottomInset = homeBottomInset,
         homeRefreshing = homeRefreshing,
         homePullState = homePullState,
-        onPullRefresh = onPullRefresh
+        onPullRefresh = onPullRefresh,
+        composition = composition
     )
 }
 
@@ -1342,7 +1369,8 @@ private fun AtelierHomeContent(
     homeBottomInset: Dp,
     homeRefreshing: Boolean,
     homePullState: PullToRefreshState,
-    onPullRefresh: () -> Unit
+    onPullRefresh: () -> Unit,
+    composition: ComposedHomeRequest? = null
 ) {
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { LevyraAtelierStrings.forCode(strings.code) }
@@ -1404,12 +1432,29 @@ private fun AtelierHomeContent(
         val wallRows = remember(recentAlbums) { recentAlbums.chunked(AtelierWallColumns) }
         val featureWidth = (maxWidth * 0.82f).coerceAtMost(420.dp)
         val pairWidth = (maxWidth * 0.40f).coerceAtMost(240.dp)
+        val composedKit = remember(data, actions, pairWidth) { AtelierComposedKit(data, actions, pairWidth) }
         LazyColumn(
             state = homeListState,
             modifier = Modifier.fillMaxSize()
                 .pullToRefresh(isRefreshing = homeRefreshing, state = homePullState, onRefresh = onPullRefresh),
             contentPadding = PaddingValues(bottom = homeBottomInset + AtelierDesign.sectionGap)
         ) {
+            if (composition != null) {
+                val feedLeadsPage = composition.blocks.firstOrNull() == HomeBlock.SkinFeed && composition.content.offlineMessage == null
+                if (!feedLeadsPage) {
+                    item(key = "atelier-page-title", contentType = "atelier-page-title") {
+                        AtelierComposedPageTitle(statusTop, actions.openSettings)
+                    }
+                }
+                composedHomeSections(composition, composedKit) {
+                    atelierHomeLead(heroTrack, state, if (feedLeadsPage) statusTop else 0.dp, data, actions, heroPlay, showMasthead = feedLeadsPage)
+                    atelierHomeFeatureRow(features, featureWidth, currentId, state, playFeature)
+                    atelierHomeOrbitAndWall(orbit, wallRows, currentId, trackOptions, strings, copy, actions)
+                    atelierHomeTeaserAndRecents(fanSleeves, shelfRecents, currentId, trackOptions, state, strings, viewModel, actions, playRecent)
+                }
+                atelierHomeFallback(nothingToShow && atelierComposedSectionsEmpty(composition.content), stillLoading, state, copy, viewModel)
+                return@LazyColumn
+            }
             atelierHomeLead(heroTrack, state, statusTop, data, actions, heroPlay)
             atelierHomeFallback(nothingToShow, stillLoading, state, copy, viewModel)
             atelierHomeFeatureRow(features, featureWidth, currentId, state, playFeature)
@@ -1434,6 +1479,11 @@ private fun AtelierHomeContent(
         )
     }
 }
+
+private fun atelierComposedSectionsEmpty(content: ComposedHomeContent): Boolean =
+    content.newReleases.isEmpty() && content.videos.isEmpty() && content.moreSections.isEmpty() &&
+        content.speedDialPins.isEmpty() && content.releaseRadar.isEmpty() && content.similarArtists.isEmpty() &&
+        content.resonanceTracks.isEmpty() && content.discovery == null && !content.radio.visible
 
 private fun atelierRecentAlbums(recordings: List<Track>): List<Track> {
     val albums = recordings.asSequence()
@@ -1532,7 +1582,8 @@ private fun LazyListScope.atelierHomeLead(
     statusTop: Dp,
     data: AppleMusicHomeData,
     actions: AppleMusicHomeActions,
-    heroPlay: () -> Unit
+    heroPlay: () -> Unit,
+    showMasthead: Boolean = true
 ) {
     if (heroTrack != null) {
         item(key = "atelier-hero", contentType = "atelier-hero") {
@@ -1542,6 +1593,7 @@ private fun LazyListScope.atelierHomeLead(
                 isPlaying = state.isPlaying,
                 isResolving = state.isResolving,
                 statusTop = statusTop,
+                showMasthead = showMasthead,
                 listenerName = data.listener.name,
                 onOpenSettings = actions.openSettings,
                 onOpen = {
@@ -1550,7 +1602,7 @@ private fun LazyListScope.atelierHomeLead(
                 onPlay = heroPlay
             )
         }
-    } else {
+    } else if (showMasthead) {
         item(key = "atelier-masthead", contentType = "atelier-masthead") {
             Box(Modifier.padding(top = statusTop)) {
                 AtelierHomeMasthead(data.listener.name, actions.openSettings)

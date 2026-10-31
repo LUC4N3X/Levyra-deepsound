@@ -3064,6 +3064,27 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { it.copy(showHomeStudio = false) }
     }
 
+    private val _homeComposition = MutableStateFlow(preferences.homeCompositionSettings())
+    val homeComposition: StateFlow<com.luc4n3x.levyra.domain.LevyraHomeCompositionSettings> = _homeComposition.asStateFlow()
+
+    private val _preferredAudioLanguage = MutableStateFlow(preferences.preferredAudioLanguage())
+    val preferredAudioLanguage: StateFlow<String> = _preferredAudioLanguage.asStateFlow()
+
+    fun setHomeCompositionSettings(settings: com.luc4n3x.levyra.domain.LevyraHomeCompositionSettings) {
+        val normalized = settings.normalized()
+        if (normalized == _homeComposition.value) return
+        _homeComposition.value = normalized
+        preferences.setHomeCompositionSettings(normalized)
+    }
+
+    fun setPreferredAudioLanguage(language: String) {
+        val normalized = com.luc4n3x.levyra.data.AudioLanguageIntelligence.normalizeLanguage(language)
+        if (normalized == _preferredAudioLanguage.value) return
+        _preferredAudioLanguage.value = normalized
+        preferences.setPreferredAudioLanguage(normalized)
+        resolver.setPreferredAudioLanguage(normalized)
+    }
+
     fun setHomeStudioSettings(settings: LevyraHomeStudioSettings) {
         val normalized = settings.normalized()
         if (normalized == _state.value.homeStudioSettings) return
@@ -6508,6 +6529,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             snapshot.interfaceSettings.librarySort to snapshot.interfaceSettings.librarySortDirection
         LevyraTypographyController.apply(snapshot.interfaceSettings.fontPreset)
         LevyraMusicRegion.apply(snapshot.musicRegionId)
+        resolver.setPreferredAudioLanguage(snapshot.preferredAudioLanguage)
+        _preferredAudioLanguage.value = snapshot.preferredAudioLanguage
+        _homeComposition.value = snapshot.homeCompositionSettings
         if (_musicRegionId.value != snapshot.musicRegionId) {
             _musicRegionId.value = snapshot.musicRegionId
             freshCurrentsJob?.cancel()
