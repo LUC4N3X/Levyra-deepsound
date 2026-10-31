@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.data.hqaudio
 
 import com.luc4n3x.levyra.domain.AlternativeMatchVerdict
+import com.luc4n3x.levyra.data.hqaudio.lossless.LosslessRecordingFallback
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -95,13 +96,26 @@ internal class HighQualityProviderLane(
                 }
                 HighQualityResolution.Fallback(reason, finalSelection.reason.name)
             }
-            is AlternativeMatchSelection.Accepted -> {
-                HighQualityAudioDiagnostics.matchAccepted(query, finalSelection.evaluation)
-                when (val hydration = hydrate(query, finalSelection.evaluation)) {
-                    is Hydration.Ready -> resolveStream(identityKey, hydration.evaluation, queryFingerprint)
-                    is Hydration.Refused -> hydration.fallback
+            is AlternativeMatchSelection.Accepted -> if (provider.lossless) {
+                LosslessRecordingFallback.resolve(query, finalSelection) {
+                    resolveSelected(identityKey, query, it, queryFingerprint)
                 }
+            } else {
+                resolveSelected(identityKey, query, finalSelection.evaluation, queryFingerprint)
             }
+        }
+    }
+
+    private suspend fun resolveSelected(
+        identityKey: String,
+        query: AlternativeTrackQuery,
+        evaluation: AlternativeMatchEvaluation,
+        queryFingerprint: String
+    ): HighQualityResolution {
+        HighQualityAudioDiagnostics.matchAccepted(query, evaluation)
+        return when (val hydration = hydrate(query, evaluation)) {
+            is Hydration.Ready -> resolveStream(identityKey, hydration.evaluation, queryFingerprint)
+            is Hydration.Refused -> hydration.fallback
         }
     }
 

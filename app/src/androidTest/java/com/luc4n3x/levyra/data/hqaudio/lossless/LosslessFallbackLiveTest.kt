@@ -38,7 +38,36 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class LosslessFallbackLiveTest {
     @Test
-    fun availableLosslessProviderPlaysAfterOtherProvidersFail(): Unit = runBlocking {
+    fun availableLosslessProviderPlaysAfterOtherProvidersFail() = verifyPlayback(
+        AlternativeTrackQuery("One More Time", "Daft Punk", "Discovery", 320_000L, false)
+    )
+
+    @Test
+    fun billieJeanPlaysVerifiedFlac() = verifyPlayback(
+        AlternativeTrackQuery("Billie Jean", "Michael Jackson", "Thriller", 294_000L, false)
+    )
+
+    @Test
+    fun blindingLightsPlaysVerifiedFlac() = verifyPlayback(
+        AlternativeTrackQuery("Blinding Lights", "The Weeknd", "After Hours", 200_000L, false)
+    )
+
+    @Test
+    fun getLuckyPlaysVerifiedFlac() = verifyPlayback(
+        AlternativeTrackQuery("Get Lucky", "Daft Punk", "Random Access Memories", 369_000L, false)
+    )
+
+    @Test
+    fun russianKinoTrackPlaysVerifiedFlac() = verifyPlayback(
+        AlternativeTrackQuery("Группа крови", "КИНО", "Последний герой", 235_000L, false)
+    )
+
+    @Test
+    fun russianMolchatDomaTrackPlaysVerifiedFlac() = verifyPlayback(
+        AlternativeTrackQuery("Звезды", "Молчат дома", "Звезды", 230_000L, false)
+    )
+
+    private fun verifyPlayback(query: AlternativeTrackQuery): Unit = runBlocking {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         val storage = object : HighQualityMappingStorage {
@@ -61,16 +90,13 @@ class LosslessFallbackLiveTest {
         try {
             val started = SystemClock.elapsedRealtime()
             val selected = withTimeout(10_000L) {
-                resolver.begin("live-one-more-time", AlternativeTrackQuery(
-                    title = "One More Time", artist = "Daft Punk", album = "Discovery",
-                    durationMs = 320_000L, explicit = false
-                )).await()
+                resolver.begin("live-${query.artist}-${query.title}", query).await()
             }
             assertTrue("Lossless selection required: $selected", selected is HighQualityResolution.Selected)
             val stream = (selected as HighQualityResolution.Selected).stream
             assertTrue(stream.tier.lossless)
             assertEquals(MimeTypes.AUDIO_FLAC, stream.mimeType)
-            Log.i("LosslessFallbackLiveTest", "selected=${stream.providerId} resolveMs=${SystemClock.elapsedRealtime() - started}")
+            Log.i("LosslessFallbackLiveTest", "title=${query.title} selected=${stream.providerId} resolveMs=${SystemClock.elapsedRealtime() - started}")
             instrumentation.runOnMainSync {
                 val dataSource = DefaultHttpDataSource.Factory().setConnectTimeoutMs(6_000).setReadTimeoutMs(15_000)
                 ownedPlayer = ExoPlayer.Builder(instrumentation.targetContext).build().apply {
@@ -102,7 +128,7 @@ class LosslessFallbackLiveTest {
             assertEquals("Playback error", null, error.get())
             assertTrue("Playback must advance, position=$position playing=$playing", playing && position >= 2_000L)
             assertEquals(MimeTypes.AUDIO_FLAC, mime)
-            Log.i("LosslessFallbackLiveTest", "playing=true positionMs=$position mime=$mime provider=${stream.providerId}")
+            Log.i("LosslessFallbackLiveTest", "title=${query.title} playing=true positionMs=$position mime=$mime provider=${stream.providerId}")
         } finally {
             instrumentation.runOnMainSync { ownedPlayer?.release() }
             scope.cancel()

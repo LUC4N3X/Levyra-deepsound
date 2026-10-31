@@ -62,9 +62,11 @@ Play streamed music and your own files in the same app, save tracks for offline 
 > [!IMPORTANT]
 > **Legal & responsible use · No piracy.** Levyra is independent open-source client software. It does not operate a music-hosting service or claim ownership of third-party catalogs. It is built for lawful use and is not intended or promoted for copyright infringement, piracy, or unauthorized copying. Use Levyra only with media you are allowed to access or save, and follow the terms of any third-party service you use.
 >
+> External audio integrations do not supply third-party accounts or credentials or authorize access to them. Availability through an external source is not permission to stream, download, or redistribute music. Users must obtain the necessary permissions and respect artists' rights.
+>
 > For details about third-party services, lawful use, downloads, and user responsibilities, please review the complete [Legal Notice](docs/legal/LEGAL.md). It applies to Levyra alongside this README.
 >
-> Levyra does not grant rights to third-party content and is not affiliated with or endorsed by YouTube, Google, JioSaavn, or other referenced services.
+> Levyra does not grant rights to third-party content and is not affiliated with or endorsed by any third-party service.
 
 ## ✦ Why Levyra
 
@@ -88,7 +90,7 @@ When high-quality audio is enabled, Levyra can use JioSaavn as another source fo
 
 Before switching sources, Levyra checks that it found the right recording and that the stream matches the quality it claims to have. It can try the available 320, 160 and 96 kbps versions. If a stream is advertised as 320 kbps but measures below that range, Levyra does not show it as 320 kbps.
 
-With FLAC selected on Android, Levyra looks for a lossless version of the same recording through Monochrome and Arcod. It checks the recording match and reads the audio headers to verify the format, bit depth and sample rate. If no verified lossless match is available, the existing audio fallbacks remain available. FLAC is still experimental, and availability depends on the track, region and access permissions.
+With FLAC selected on Android, Levyra looks for a lossless version of the same recording through independent third-party sources. It checks the recording match and reads the audio headers to verify the format, bit depth and sample rate. If no verified lossless match is available, the existing audio fallbacks remain available. FLAC is still experimental, and availability depends on the track, region and access permissions.
 
 External streaming sources and content remain subject to each provider's terms and access rules. See [Third-party services and rights](docs/legal/LEGAL.md#3-third-party-services-and-rights).
 
@@ -221,7 +223,7 @@ Levyra builds on ideas and work from several open-source projects:
 - [zemer-cipher](https://github.com/ZemerTeam/zemer-cipher): open-source work used for YouTube cipher deobfuscation and PoToken generation.
 - [LRCLIB](https://lrclib.net/): provides the synchronized lyrics database and API.
 
-For FLAC playback on Android, Levyra uses [Monochrome](https://tracks.monochrome.st) and [Arcod](https://arcod.xyz). These references do not imply a partnership or endorsement.
+FLAC playback on Android depends on independent third-party sources. Their inclusion does not imply a partnership or endorsement.
 
 Previous Levyra app logo designed by [@gauravbhindwar](https://github.com/gauravbhindwar) in [#525](https://github.com/LUC4N3X/Levyra-deepsound/issues/525). The current logo and visual identity are by [@LUC4N3X](https://github.com/LUC4N3X).
 
@@ -309,11 +311,11 @@ If there is a problem with media hosted by another service, contact that service
 
 #### - FLAC sources and lawful access
 
-On Android, Monochrome and Arcod are the available FLAC sources. Availability depends on each external provider. Levyra does not distribute account credentials or grant access rights to third-party catalogs.
+Levyra's FLAC integration relies on responses and audio streams supplied by independent third-party sites. Their operation, access arrangements, and catalog availability are outside Levyra's control. Levyra does not host, obtain, provide, or share third-party accounts, account credentials, or login sessions for these integrations, and does not authorize access to anyone else's account or catalog.
 
-External provider integrations are intended for lawful playback and interoperability, not piracy or unauthorized access. Use of credentials and content still requires the appropriate permissions.
+These integrations are provided for developer study, research, interoperability, and lawful playback. The project and its developers do not approve or endorse illegal streaming, unauthorized downloads, piracy, or illegitimate account access. Users must ensure that they have the necessary rights and permissions and that their use complies with applicable law and each provider's terms.
 
-Account details or tokens shared on the web remain subject to the account holder's rights, the service's terms and applicable law. Their public availability, or inclusion in a software build, does not establish permission to use or redistribute them. This notice does not grant that permission or remove any legal obligations of project maintainers or users.
+Availability through an external site does not establish permission to access an account, stream a recording, or download or redistribute music. This notice does not grant those permissions or remove any legal obligations of project maintainers or users.
 
 #### - Lawful use and user responsibility
 
@@ -332,6 +334,8 @@ Enabling a compatibility option does not grant access rights, unlock paid featur
 Local playback and features that do not depend on the affected service continue to work independently.
 
 #### - Support artists and creators
+
+Respect for artists and their music is fundamental to Levyra. Please support the people who create the music you listen to and use only content you are entitled to access.
 
 Levyra does not unlock paid subscriptions or grant access rights offered by third-party providers. If you want an official subscription experience, subscribe directly through the provider, including [YouTube Premium](https://www.youtube.com/premium), [YouTube Music Premium](https://www.youtube.com/musicpremium), or [Spotify Premium](https://www.spotify.com/premium/).
 
