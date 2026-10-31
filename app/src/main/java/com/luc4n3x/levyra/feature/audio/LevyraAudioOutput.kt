@@ -12,6 +12,7 @@ import android.provider.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import com.luc4n3x.levyra.domain.SmartAudioDeviceCategory
 import java.security.MessageDigest
 import java.util.Locale
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -86,6 +87,33 @@ internal fun stableLevyraAudioRouteKey(type: Int, address: String?): String? {
         .take(12)
         .joinToString("") { byte -> "%02x".format(Locale.ROOT, byte.toInt() and 0xff) }
     return "audio-$type-$digest"
+}
+
+internal fun smartAudioDeviceKey(route: LevyraAudioOutputRoute): String {
+    val stableAddressKey = route.stableKey?.takeIf { route.bluetooth }
+    if (stableAddressKey != null) return stableAddressKey
+    if (route.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER) return "speaker"
+    val name = route.displayName.trim().lowercase(Locale.ROOT)
+    val digest = MessageDigest.getInstance("SHA-256")
+        .digest("${route.type}:$name".toByteArray(Charsets.UTF_8))
+        .take(8)
+        .joinToString("") { byte -> "%02x".format(Locale.ROOT, byte.toInt() and 0xff) }
+    return "output-${route.type}-$digest"
+}
+
+internal fun smartAudioDefaultCategory(route: LevyraAudioOutputRoute): SmartAudioDeviceCategory = when {
+    route.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER -> SmartAudioDeviceCategory.SPEAKER
+    route.type == AudioDeviceInfo.TYPE_BUS -> SmartAudioDeviceCategory.CAR
+    route.type == AudioDeviceInfo.TYPE_USB_DEVICE ||
+        route.type == AudioDeviceInfo.TYPE_USB_HEADSET ||
+        route.type == AudioDeviceInfo.TYPE_USB_ACCESSORY -> SmartAudioDeviceCategory.USB
+    route.type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
+        route.type == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
+        route.type == AudioDeviceInfo.TYPE_LINE_ANALOG -> SmartAudioDeviceCategory.WIRED
+    Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && route.type == AudioDeviceInfo.TYPE_BLE_SPEAKER ->
+        SmartAudioDeviceCategory.BLUETOOTH_SPEAKER
+    route.bluetooth -> SmartAudioDeviceCategory.BLUETOOTH_HEADPHONES
+    else -> SmartAudioDeviceCategory.OTHER
 }
 
 @Composable

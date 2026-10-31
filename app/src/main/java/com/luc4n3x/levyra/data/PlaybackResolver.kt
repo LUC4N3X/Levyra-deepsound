@@ -16,8 +16,7 @@ import com.luc4n3x.levyra.data.network.YoutubeRegionProfile
 import com.luc4n3x.levyra.data.network.YoutubeStreamClientIdentity
 import com.luc4n3x.levyra.data.network.YoutubeStreamClientIdentityRegistry
 import com.luc4n3x.levyra.data.hqaudio.HighQualityAudioProvider
-import com.luc4n3x.levyra.data.hqaudio.tidal.TidalAudioProvider
-import com.luc4n3x.levyra.data.hqaudio.qobuz.QobuzAudioProvider
+import com.luc4n3x.levyra.data.hqaudio.RetiredAudioProviders
 import com.luc4n3x.levyra.data.hqaudio.HighQualityAudioResolver
 import com.luc4n3x.levyra.data.hqaudio.HighQualityMappingStore
 import com.luc4n3x.levyra.data.hqaudio.HighQualityBackgroundLookup
@@ -412,7 +411,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val highQualityDownloadDelegate = lazy {
         HighQualityPlaybackCoordinator(HighQualityAudioResolver(
             providers = highQualityProviders(OkHttpProviderExchange(HighQualityProviderHttpClient::downloadClient)).filter {
-                it.lossless && it.id != TidalAudioProvider.PROVIDER_ID && it.id != QobuzAudioProvider.PROVIDER_ID
+                it.lossless && it.id != RetiredAudioProviders.TIDAL_ID && it.id != RetiredAudioProviders.QOBUZ_ID
             },
             mappingStore = HighQualityMappingStore(SharedPreferencesMappingStorage(context)),
             scope = resolveScope,
@@ -506,7 +505,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private fun isDisabledPremiumSource(track: Track): Boolean =
         track.playbackManifest?.alternativeSource?.providerId in
-            setOf(QobuzAudioProvider.PROVIDER_ID, TidalAudioProvider.PROVIDER_ID)
+            setOf(RetiredAudioProviders.QOBUZ_ID, RetiredAudioProviders.TIDAL_ID)
 
     private fun canReuseProvidedPlayback(track: Track): Boolean {
         if (isDisabledPremiumSource(track)) return false

@@ -1,6 +1,6 @@
 package com.luc4n3x.levyra.player
 
-import com.luc4n3x.levyra.data.hqaudio.tidal.TidalAudioProvider
+import com.luc4n3x.levyra.data.hqaudio.RetiredAudioProviders
 
 import android.annotation.SuppressLint
 import android.app.PendingIntent
@@ -88,6 +88,7 @@ import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.LevyraAutomationSettings
 import com.luc4n3x.levyra.domain.PlaybackBufferMode
 import com.luc4n3x.levyra.domain.ReplayGainMetadata
+import com.luc4n3x.levyra.domain.SmartAudioResolver
 import com.luc4n3x.levyra.domain.ReplayGainMode
 import com.luc4n3x.levyra.domain.selectReplayGain
 import com.luc4n3x.levyra.domain.LyricLine
@@ -112,6 +113,8 @@ import com.luc4n3x.levyra.feature.cast.RemotePlaybackState
 import com.luc4n3x.levyra.feature.cast.CastHandoffConverter
 import com.luc4n3x.levyra.feature.cast.LocalPlaybackSnapshot
 import com.luc4n3x.levyra.feature.audio.LevyraAudioOutputRepository
+import com.luc4n3x.levyra.feature.audio.LevyraAudioOutputRoute
+import com.luc4n3x.levyra.feature.audio.smartAudioDeviceKey
 import com.luc4n3x.levyra.feature.audio.LevyraAudioRouteSelectionState
 import com.luc4n3x.levyra.feature.audio.findLevyraAudioOutputDevice
 import com.luc4n3x.levyra.feature.audio.queryLevyraAudioOutputState
@@ -179,6 +182,9 @@ class PlaybackService : MediaLibraryService() {
     private var transitionPlayer: ExoPlayer? = null
     private var transitionNormalization: NormalizationAudioProcessor? = null
     private var currentAudioSettings = LevyraAudioSettings()
+    private var requestedAudioSettings = LevyraAudioSettings()
+    private var appliedSmartAudioDeviceKey: String? = null
+    private var smartAudioRouteJob: Job? = null
     private var activeCustomBufferProfile: PlaybackBufferProfile? = null
 
     @Volatile
@@ -190,6 +196,7 @@ class PlaybackService : MediaLibraryService() {
     private val equalizerProcessor = LevyraEqualizerAudioProcessor()
     private val parametricEqualizerProcessor = LevyraParametricEqualizerAudioProcessor()
     private val spatialAudioProcessor = StereoSpatialAudioProcessor()
+    private val nightListeningProcessor = NightListeningAudioProcessor()
     private val limiterProcessor = TruePeakLimiterAudioProcessor()
     private val visualizerProcessor = VisualizerAudioProcessor()
     private val pcm16OutputProcessor = Pcm16OutputAudioProcessor()
@@ -331,6 +338,15 @@ class PlaybackService : MediaLibraryService() {
 
         private val _enhancedAudioMetricsFlow = MutableStateFlow(EnhancedAudioMetrics())
         val enhancedAudioMetricsFlow: StateFlow<EnhancedAudioMetrics> = _enhancedAudioMetricsFlow.asStateFlow()
+
+        internal val nightListeningTelemetry: NightListeningTelemetry
+            get() = activeService?.nightListeningProcessor?.let { processor ->
+                NightListeningTelemetry(
+                    processing = processor.processing,
+                    gainReductionDb = processor.currentGainReductionDb,
+                    inputLevelDb = processor.currentInputLevelDb
+                )
+            } ?: NightListeningTelemetry()
 
         internal val audioOffloadState: AudioOffloadState
             get() = activeService?.audioOffloadController?.state ?: AudioOffloadState()
@@ -521,8 +537,14 @@ class PlaybackService : MediaLibraryService() {
         settings: LevyraAudioSettings,
         audioNormalization: Boolean
     ) {
-        val normalized = settings.normalized()
+        requestedAudioSettings = settings.normalized()
+        val normalized = SmartAudioResolver.resolve(requestedAudioSettings, currentSmartAudioDeviceKey())
         val parametricEnabled = normalized.parametricEqualizerEnabled && normalized.activeParametricProfile != null
+        nightListeningProcessor.setConfiguration(
+            normalized.nightListeningEnabled,
+            normalized.nightListeningPreset,
+            normalized.nightListeningTrimDb
+        )
         enhancedAudioProcessor.userEnabled = normalized.enhancedAudioEnabled
         normalizationProcessor.enabled = audioNormalization || normalized.replayGainActive
         equalizerProcessor.enabled = normalized.equalizerEnabled && !parametricEnabled
@@ -555,6 +577,32 @@ class PlaybackService : MediaLibraryService() {
         }
         updateAaudioOutputRequest(normalized.aaudioOutputEnabled)
         refreshAudioOffloadPolicy()
+    }
+
+    private fun currentSmartAudioDeviceKey(): String? {
+        if (!::audioManager.isInitialized || !::mediaRouter.isInitialized) return null
+        return queryLevyraAudioOutputState(
+            audioManager,
+            mediaRouter,
+            directAudioRouteSelectionAvailable(),
+            preferredAudioRouteKey,
+            audioRouteSelectionState
+        ).active?.let(::smartAudioDeviceKey)
+    }
+
+    private fun reapplySmartAudioProfileIfRouteChanged(route: LevyraAudioOutputRoute?) {
+        val key = route?.let(::smartAudioDeviceKey)
+        if (key == appliedSmartAudioDeviceKey) return
+        smartAudioRouteJob?.cancel()
+        smartAudioRouteJob = serviceScope.launch {
+            delay(SMART_AUDIO_ROUTE_SETTLE_MS)
+            appliedSmartAudioDeviceKey = key
+            if (requestedAudioSettings.smartAudioProfilesEnabled) {
+                synchronized(premiumAudioSettingsLock) {
+                    applyPremiumAudioSettingsInternal(requestedAudioSettings, currentAudioNormalization)
+                }
+            }
+        }
     }
 
     private fun refreshAudioOffloadPolicy() {
@@ -911,6 +959,7 @@ class PlaybackService : MediaLibraryService() {
                             equalizerProcessor,
                             parametricEqualizerProcessor,
                             spatialAudioProcessor,
+                            nightListeningProcessor,
                             limiterProcessor,
                             visualizerProcessor,
                             pcm16OutputProcessor
@@ -2324,6 +2373,13 @@ class PlaybackService : MediaLibraryService() {
                 0
             }
         }
+        val nightListening = NightListeningAudioProcessor().apply {
+            setConfiguration(
+                currentAudioSettings.nightListeningEnabled,
+                currentAudioSettings.nightListeningPreset,
+                currentAudioSettings.nightListeningTrimDb
+            )
+        }
         val limiter = TruePeakLimiterAudioProcessor().apply {
             enabled = truePeakLimiterRequired(currentAudioSettings, parametricActive, currentAudioNormalization)
         }
@@ -2357,6 +2413,7 @@ class PlaybackService : MediaLibraryService() {
                         equalizer,
                         parametricEqualizer,
                         spatial,
+                        nightListening,
                         limiter,
                         Pcm16OutputAudioProcessor()
                     )
@@ -2823,6 +2880,7 @@ class PlaybackService : MediaLibraryService() {
             )
         }
         LevyraAudioOutputRepository.publish(snapshot)
+        reapplySmartAudioProfileIfRouteChanged(snapshot.active)
     }
 
     private suspend fun selectAudioOutput(routeKey: String?) {
@@ -3426,14 +3484,14 @@ class PlaybackService : MediaLibraryService() {
         track.source.equals("Offline", ignoreCase = true) || isLocalPlaybackUri(track.streamUrl)
 
     private fun isLocalPlaybackUri(value: String): Boolean {
-        if (TidalAudioProvider.isManifestUri(value)) return false
+        if (RetiredAudioProviders.isTidalManifestUri(value)) return false
         val clean = value.trim()
         return clean.startsWith("content://", ignoreCase = true) ||
             clean.startsWith("file://", ignoreCase = true)
     }
 
     private fun isLocalMediaItem(mediaItem: MediaItem?): Boolean {
-        if (TidalAudioProvider.isManifestUri(mediaItem?.localConfiguration?.uri?.toString().orEmpty())) return false
+        if (RetiredAudioProviders.isTidalManifestUri(mediaItem?.localConfiguration?.uri?.toString().orEmpty())) return false
         val scheme = mediaItem?.localConfiguration?.uri?.scheme.orEmpty()
         if (scheme.equals("content", ignoreCase = true) || scheme.equals("file", ignoreCase = true)) return true
         return mediaItem?.mediaMetadata?.extras
@@ -3602,11 +3660,19 @@ internal fun transientNetworkRetryDelayMs(error: Throwable, errorCount: Int): Lo
     return (1_000L shl (errorCount - 1).coerceIn(0, 3)).coerceAtMost(5_000L)
 }
 
+private const val SMART_AUDIO_ROUTE_SETTLE_MS = 350L
+
+internal data class NightListeningTelemetry(
+    val processing: Boolean = false,
+    val gainReductionDb: Float = 0f,
+    val inputLevelDb: Float = -90f
+)
+
 internal fun truePeakLimiterRequired(
     settings: LevyraAudioSettings,
     parametricActive: Boolean,
     audioNormalization: Boolean
-): Boolean = settings.limiterEnabled &&
+): Boolean = settings.nightListeningEnabled || settings.limiterEnabled &&
     (settings.equalizerEnabled || parametricActive || settings.virtualizer > 0 ||
         settings.replayGainActive || audioNormalization)
 

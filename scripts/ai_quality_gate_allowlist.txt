@@ -285,3 +285,9 @@ docs/assets/rewind-health/skin-YouTubeMusicStyle-rewind.png
 docs/assets/levyra-atelier/home.png
 docs/assets/levyra-atelier/player.png
 docs/assets/levyra-atelier/shelf.png
+docs/assets/smart-audio/lyrics-search.png
+docs/assets/smart-audio/mix-chapters.png
+docs/assets/smart-audio/mix-chapters-landscape.png
+docs/assets/smart-audio/night-listening.png
+docs/assets/smart-audio/player-chapter-strip.png
+docs/assets/smart-audio/smart-audio-profiles.png

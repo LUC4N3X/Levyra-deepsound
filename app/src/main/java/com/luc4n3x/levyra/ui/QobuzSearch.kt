@@ -110,6 +110,7 @@ internal fun QobuzSearchEntry(viewModel: SearchViewModel, state: LevyraUiState, 
             viewModel.searchNow(query)
         }) { viewModel.setQuery("") }
         if (query.isBlank()) {
+            com.luc4n3x.levyra.ui.smartaudio.LyricsSearchEntry(onOpen = viewModel::openLyricsPhraseSearch, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
             QobuzRecentSearches(state.recentSearches, copy, state.currentTrack?.id, levyraTabContentBottomPadding(state.currentTrack != null) + 16.dp, viewModel, onTrackActions)
             return@Column
         }

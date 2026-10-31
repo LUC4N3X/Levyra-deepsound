@@ -1724,6 +1724,11 @@ internal fun backupAudioSettingsToJson(value: LevyraAudioSettings): JSONObject =
     })
     .put("enhancedAudioEnabled", value.enhancedAudioEnabled)
     .put("audioOffloadPreference", value.audioOffloadPreference.storageValue)
+    .put("nightListeningEnabled", value.nightListeningEnabled)
+    .put("nightListeningPreset", value.nightListeningPreset.storageValue)
+    .put("nightListeningTrimDb", value.nightListeningTrimDb.toDouble())
+    .put("smartAudioProfilesEnabled", value.smartAudioProfilesEnabled)
+    .put("smartAudioProfiles", JSONArray().apply { value.smartAudioProfiles.forEach { put(smartAudioProfileToJson(it)) } })
     .put("playbackBuffer", JSONObject()
         .put("mode", value.playbackBuffer.mode.storageValue)
         .put("minSeconds", value.playbackBuffer.minBufferSeconds.toDouble())
@@ -1799,6 +1804,11 @@ internal fun backupAudioSettingsFromJson(json: JSONObject?): LevyraAudioSettings
         customParametricProfiles = customParametricProfiles,
         enhancedAudioEnabled = json.optBoolean("enhancedAudioEnabled", true),
         audioOffloadPreference = AudioOffloadPreference.fromStorage(json.optString("audioOffloadPreference")),
+        nightListeningEnabled = json.optBoolean("nightListeningEnabled", false),
+        nightListeningPreset = com.luc4n3x.levyra.domain.NightListeningPreset.fromStorage(json.optString("nightListeningPreset")),
+        nightListeningTrimDb = json.optDouble("nightListeningTrimDb", 0.0).toFloat(),
+        smartAudioProfilesEnabled = json.optBoolean("smartAudioProfilesEnabled", false),
+        smartAudioProfiles = smartAudioProfilesFromJson(json.optJSONArray("smartAudioProfiles")?.toString().orEmpty()),
         playbackBuffer = playbackBuffer
     ).normalized()
 }

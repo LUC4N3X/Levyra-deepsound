@@ -42,6 +42,7 @@ internal data class AudioOffloadInputs(
                 aaudioOutputActive = normalized.aaudioOutputEnabled && aaudioOutputSupported,
                 crossfadeActive = normalized.gaplessEnabled && normalized.crossfadeSeconds > 0,
                 dspActive = normalized.equalizerEnabled || parametricActive || enhancedAudioRequiresPcmProcessing ||
+                    normalized.nightListeningEnabled ||
                     truePeakLimiterRequired(normalized, parametricActive, audioNormalization),
                 normalizationActive = audioNormalization || normalized.replayGainActive,
                 speed = speed,

@@ -1,7 +1,6 @@
 package com.luc4n3x.levyra.data.hqaudio
 
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
-import com.luc4n3x.levyra.data.hqaudio.qobuz.QobuzAudioProvider
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -97,7 +96,7 @@ class HighQualityAudioResolver(
                 inFlight.clear()
                 backgroundLookups.clear()
                 queuedBackground.clear()
-                streams.entries.removeIf { it.value.stream.providerId == QobuzAudioProvider.PROVIDER_ID }
+                streams.entries.removeIf { it.value.stream.providerId == RetiredAudioProviders.QOBUZ_ID }
                 if (value) unmatchedIdentities.clear()
             }
         }
@@ -237,7 +236,7 @@ class HighQualityAudioResolver(
 
     private suspend fun lookup(identityKey: String, query: AlternativeTrackQuery): HighQualityResolution {
         val active = lanes.filter { (mode.lossless || !it.provider.lossless) &&
-            (qobuzEnabled || it.provider.id != QobuzAudioProvider.PROVIDER_ID) }
+            (qobuzEnabled || it.provider.id != RetiredAudioProviders.QOBUZ_ID) }
         if (active.isEmpty()) return HighQualityResolution.Fallback(HighQualityFallbackReason.DISABLED)
         val resolution = withTimeoutOrNull(lookupBudgetMs) { resolveByPriority(identityKey, query, active) }
             ?: HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "lookup budget")
@@ -257,7 +256,7 @@ class HighQualityAudioResolver(
         query: AlternativeTrackQuery,
         active: List<HighQualityProviderLane>
     ): HighQualityResolution {
-        val qobuz = active.firstOrNull { it.provider.id == QobuzAudioProvider.PROVIDER_ID && it.provider.lossless }
+        val qobuz = active.firstOrNull { it.provider.id == RetiredAudioProviders.QOBUZ_ID && it.provider.lossless }
         if (qobuz != null) return resolveWithQobuz(identityKey, query, qobuz, active.filter { it !== qobuz })
         val preferred = active.firstOrNull { it.provider.id == "tidal" && it.provider.lossless }
         return if (preferred != null) resolvePreferred(identityKey, query, preferred, active.filter { it !== preferred })
@@ -271,7 +270,7 @@ class HighQualityAudioResolver(
         original: List<HighQualityProviderLane>
     ): HighQualityResolution = coroutineScope {
         val optional = async {
-            val result = withTimeoutOrNull(QobuzAudioProvider.LOOKUP_BUDGET_MS) { qobuz.resolve(identityKey, query) }
+            val result = withTimeoutOrNull(RetiredAudioProviders.QOBUZ_LOOKUP_BUDGET_MS) { qobuz.resolve(identityKey, query) }
                 ?: run {
                     qobuz.provider.reportLookupTimeout()
                     HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "qobuz lane budget")
