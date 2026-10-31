@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="390" viewBox="0 0 1100 390" role="img" aria-label="Levyra localization coverage: 100% across 41 languages">
-  <title>Levyra localization coverage: 100% across 41 languages</title>
-  <desc>English: 100%, Italiano: 100%, Español: 100%, Français: 100%, Deutsch: 100%, Português: 100%, Nederlands: 100%, Polski: 100%, Română: 100%, Ελληνικά: 100%, Svenska: 100%, Dansk: 100%, Čeština: 100%, Slovenčina: 100%, Hrvatski: 100%, Српски: 100%, Shqip: 100%, Български: 100%, Magyar: 100%, Suomi: 100%, Eesti: 100%, Norsk bokmål: 100%, Català: 100%, Українська: 100%, Русский: 100%, Қазақша: 100%, Türkçe: 100%, العربية: 100%, فارسی: 100%, 简体中文: 100%, 繁體中文: 100%, 日本語: 100%, 한국어: 100%, हिन्दी: 100%, বাংলা: 100%, Bahasa Indonesia: 100%, Bahasa Melayu: 100%, Tiếng Việt: 100%, ไทย: 100%, Filipino: 100%, עברית: 100%</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="390" viewBox="0 0 1100 390" role="img" aria-label="Levyra localization coverage: 100% across 42 languages">
+  <title>Levyra localization coverage: 100% across 42 languages</title>
+  <desc>English: 100%, Italiano: 100%, Español: 100%, Français: 100%, Deutsch: 100%, pt-PT: 100%, pt-BR: 100%, Nederlands: 100%, Polski: 100%, Română: 100%, Ελληνικά: 100%, Svenska: 100%, Dansk: 100%, Čeština: 100%, Slovenčina: 100%, Hrvatski: 100%, Српски: 100%, Shqip: 100%, Български: 100%, Magyar: 100%, Suomi: 100%, Eesti: 100%, Norsk bokmål: 100%, Català: 100%, Українська: 100%, Русский: 100%, Қазақша: 100%, Türkçe: 100%, العربية: 100%, فارسی: 100%, 简体中文: 100%, 繁體中文: 100%, 日本語: 100%, 한국어: 100%, हिन्दी: 100%, বাংলা: 100%, Bahasa Indonesia: 100%, Bahasa Melayu: 100%, Tiếng Việt: 100%, ไทย: 100%, Filipino: 100%, עברית: 100%</desc>
   <style>
     text { font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; }
     .eyebrow { fill: #F09ACB; font-size: 13px; font-weight: 780; letter-spacing: 1.7px; }
@@ -16,17 +16,17 @@
   <rect width="1100" height="390" rx="34" fill="#0D1117"/>
   <path d="M68 22H252Q338 22 338 108V284Q338 368 254 368H72Q22 368 22 318V72Q22 22 68 22Z" fill="#2B1D2A"/>
   <text x="58" y="72" class="eyebrow">LOCAL EVERYWHERE</text>
-  <text x="51" y="183" class="hero">41</text>
+  <text x="51" y="183" class="hero">42</text>
   <text x="58" y="218" class="hero-label">languages</text>
   <text x="58" y="252" class="meta">Five writing systems</text>
-  <text x="58" y="272" class="meta">1,175+ app strings</text>
+  <text x="58" y="272" class="meta">1,186+ app strings</text>
   <circle cx="280" cy="315" r="49" fill="#493347"/>
   <text x="280" y="311" text-anchor="middle" class="status">100%</text>
   <text x="280" y="329" text-anchor="middle" class="footer">COMPLETE</text>
   <rect x="360" y="46" width="712" height="100" rx="42" fill="#E7B5D3"/>
   <text x="388" y="86" class="tile-label">LATIN</text>
-  <text x="1044" y="89" text-anchor="end" class="tile-count">25</text>
-  <text x="388" y="114" class="tile-examples">English · Italiano · Español · Français · Deutsch · Português</text>
+  <text x="1044" y="89" text-anchor="end" class="tile-count">26</text>
+  <text x="388" y="114" class="tile-examples">English · Italiano · Español · Français · Deutsch · pt-PT</text>
   <rect x="360" y="162" width="414" height="88" rx="34" fill="#B9DDCF"/>
   <text x="388" y="202" class="tile-label">CYRILLIC + GREEK</text>
   <text x="746" y="205" text-anchor="end" class="tile-count">6</text>
