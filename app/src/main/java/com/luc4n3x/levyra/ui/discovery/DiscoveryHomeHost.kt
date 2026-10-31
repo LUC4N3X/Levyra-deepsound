@@ -20,10 +20,11 @@ internal fun DiscoveryHomeHost(
     backEnabled: Boolean,
     style: HomeStyle,
     animationsEnabled: Boolean,
+    skinComposesDiscovery: Boolean,
     bottomInset: Dp,
     content: @Composable () -> Unit
 ) {
-    if (LevyraSkinManagesLayout) {
+    if (LevyraSkinManagesLayout && !skinComposesDiscovery) {
         content()
         return
     }

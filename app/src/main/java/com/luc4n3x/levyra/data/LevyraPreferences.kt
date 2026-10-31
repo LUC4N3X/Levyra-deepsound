@@ -124,6 +124,8 @@ data class LevyraPreferencesSnapshot(
     val lyricsProviderOrdering: LyricsProviderOrdering = LyricsProviderOrdering(),
     val lyricsStudioSettings: LevyraLyricsStudioSettings = LevyraLyricsStudioSettings(),
     val homeStudioSettings: LevyraHomeStudioSettings = LevyraHomeStudioSettings(),
+    val homeCompositionSettings: com.luc4n3x.levyra.domain.LevyraHomeCompositionSettings = com.luc4n3x.levyra.domain.LevyraHomeCompositionSettings(),
+    val preferredAudioLanguage: String = "",
     val miniPlayerStudioSettings: LevyraMiniPlayerStudioSettings = LevyraMiniPlayerStudioSettings(),
     val customThemes: List<LevyraCustomTheme> = emptyList(),
     val navigationStudioSettings: LevyraNavigationStudioSettings = LevyraNavigationStudioSettings()
@@ -183,6 +185,8 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_LYRICS_PROVIDER_ORDERING] = snapshot.lyricsProviderOrdering.encode()
             mutable[KEY_LYRICS_STUDIO_SETTINGS] = snapshot.lyricsStudioSettings.encode()
             mutable[KEY_HOME_STUDIO_SETTINGS] = snapshot.homeStudioSettings.encode()
+            mutable[KEY_HOME_COMPOSITION_SETTINGS] = snapshot.homeCompositionSettings.encode()
+            mutable[KEY_PREFERRED_AUDIO_LANGUAGE] = com.luc4n3x.levyra.data.AudioLanguageIntelligence.normalizeLanguage(snapshot.preferredAudioLanguage)
             mutable[KEY_MINI_PLAYER_STUDIO_SETTINGS] = snapshot.miniPlayerStudioSettings.encode()
             mutable[KEY_NAVIGATION_STUDIO_SETTINGS] = snapshot.navigationStudioSettings.encode()
             mutable[KEY_CUSTOM_THEMES] = LevyraCustomThemes.encode(snapshot.customThemes)
@@ -881,6 +885,8 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             lyricsProviderOrdering = LyricsProviderOrdering.decode(preferences[KEY_LYRICS_PROVIDER_ORDERING]),
             lyricsStudioSettings = LevyraLyricsStudioSettings.decode(preferences[KEY_LYRICS_STUDIO_SETTINGS]),
             homeStudioSettings = LevyraHomeStudioSettings.decode(preferences[KEY_HOME_STUDIO_SETTINGS]),
+            homeCompositionSettings = com.luc4n3x.levyra.domain.LevyraHomeCompositionSettings.decode(preferences[KEY_HOME_COMPOSITION_SETTINGS]),
+            preferredAudioLanguage = com.luc4n3x.levyra.data.AudioLanguageIntelligence.normalizeLanguage(preferences[KEY_PREFERRED_AUDIO_LANGUAGE]),
             miniPlayerStudioSettings = LevyraMiniPlayerStudioSettings.decode(preferences[KEY_MINI_PLAYER_STUDIO_SETTINGS]),
             customThemes = LevyraCustomThemes.decode(preferences[KEY_CUSTOM_THEMES]),
             navigationStudioSettings = LevyraNavigationStudioSettings.decode(preferences[KEY_NAVIGATION_STUDIO_SETTINGS])
@@ -1241,6 +1247,20 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         .map { preferences -> LevyraHomeStudioSettings.decode(preferences[KEY_HOME_STUDIO_SETTINGS]) }
         .distinctUntilChanged()
 
+    fun homeCompositionSettings(): com.luc4n3x.levyra.domain.LevyraHomeCompositionSettings =
+        read { com.luc4n3x.levyra.domain.LevyraHomeCompositionSettings.decode(it[KEY_HOME_COMPOSITION_SETTINGS]) }
+
+    fun setHomeCompositionSettings(value: com.luc4n3x.levyra.domain.LevyraHomeCompositionSettings) {
+        write { it[KEY_HOME_COMPOSITION_SETTINGS] = value.normalized().encode() }
+    }
+
+    fun preferredAudioLanguage(): String =
+        read { com.luc4n3x.levyra.data.AudioLanguageIntelligence.normalizeLanguage(it[KEY_PREFERRED_AUDIO_LANGUAGE]) }
+
+    fun setPreferredAudioLanguage(value: String) {
+        write { it[KEY_PREFERRED_AUDIO_LANGUAGE] = com.luc4n3x.levyra.data.AudioLanguageIntelligence.normalizeLanguage(value) }
+    }
+
     fun homeStudioSettings(): LevyraHomeStudioSettings =
         read { LevyraHomeStudioSettings.decode(it[KEY_HOME_STUDIO_SETTINGS]) }
 
@@ -1406,6 +1426,8 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_LYRICS_PROVIDER_ORDERING = stringPreferencesKey("lyrics_provider_ordering")
         val KEY_LYRICS_STUDIO_SETTINGS = stringPreferencesKey("lyrics_studio_settings")
         val KEY_HOME_STUDIO_SETTINGS = stringPreferencesKey("home_studio_settings")
+        val KEY_HOME_COMPOSITION_SETTINGS = stringPreferencesKey("home_composition_settings")
+        val KEY_PREFERRED_AUDIO_LANGUAGE = stringPreferencesKey("audio_language_choice_v2")
         val KEY_MINI_PLAYER_STUDIO_SETTINGS = stringPreferencesKey("mini_player_studio_settings")
         val KEY_NAVIGATION_STUDIO_SETTINGS = stringPreferencesKey("navigation_studio_settings")
         val KEY_CUSTOM_THEMES = stringPreferencesKey("custom_themes")

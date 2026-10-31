@@ -207,7 +207,9 @@ private fun MutableList<SettingsSearchEntry>.systemEntries(
     entry("system.profile_photo", strings.profilePhoto, strings.profilePhotoAddSubtitle, "avatar photo profile", categories.system)
     entry("system.language", strings.language, strings.languageSubtitle, "language locale", categories.system)
     val musicRegion = musicRegionCopy(strings.code)
-    entry("system.music_region", musicRegion.title, musicRegion.automatic, "music region country market charts", categories.system)
+    val regional = com.luc4n3x.levyra.ui.i18n.LevyraRegionalStrings.forCode(strings.code)
+    entry("system.music_region", regional.contentCountryTitle, musicRegion.automatic, "${musicRegion.title} music region country market charts", categories.system)
+    entry("system.audio_language", regional.audioLanguageTitle, regional.audioLanguageBody, "audio language dub track voice", categories.system)
     if (updatesAvailable) {
         entry("app.updates", strings.updates, strings.checkNewVersions, "version update", categories.app)
     }
