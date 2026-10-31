@@ -44,6 +44,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -106,27 +107,15 @@ internal fun ExpressiveLanguageTile(
     onClick: () -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
-    val animations = LocalAnimationsEnabled.current
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val (restBackground, restContent) = tonalPair(position)
     val background by animateColorAsState(if (selected) scheme.primary else restBackground, label = "language-tile-color")
     val content = if (selected) scheme.onPrimary else restContent
-    val corner by animateDpAsState(
-        targetValue = if (pressed && animations) 44.dp else if (selected) 40.dp else 28.dp,
-        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow),
-        label = "language-tile-corner"
-    )
-    val scale by animateFloatAsState(
-        targetValue = if (pressed && animations) 0.95f else 1f,
-        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium),
-        label = "language-tile-scale"
-    )
-    val turn by animateFloatAsState(
-        targetValue = if (animations && (selected || pressed)) 72f else 0f,
-        animationSpec = spring(Spring.DampingRatioLowBouncy, Spring.StiffnessLow),
-        label = "language-tile-turn"
-    )
+    val motion = rememberExpressiveTileMotion(pressed, selected)
+    val corner by motion.corner
+    val scale by motion.scale
+    val turn by motion.turn
     val metrics = if (languageTileIsWide(position)) WideTileMetrics else RegularTileMetrics
     val shape = RoundedCornerShape(corner)
     Box(
@@ -148,6 +137,23 @@ internal fun ExpressiveLanguageTile(
         ExpressiveTileCheck(selected, Modifier.align(Alignment.TopStart).padding(12.dp))
         ExpressiveTileTexts(language, content, metrics, Modifier.align(Alignment.BottomStart))
     }
+}
+
+private class ExpressiveTileMotion(val corner: State<Dp>, val scale: State<Float>, val turn: State<Float>)
+
+@Composable
+private fun rememberExpressiveTileMotion(pressed: Boolean, selected: Boolean): ExpressiveTileMotion {
+    val animations = LocalAnimationsEnabled.current
+    val pressing = pressed && animations
+    val cornerTarget = when {
+        pressing -> 44.dp
+        selected -> 40.dp
+        else -> 28.dp
+    }
+    val corner = animateDpAsState(cornerTarget, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow), label = "language-tile-corner")
+    val scale = animateFloatAsState(if (pressing) 0.95f else 1f, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium), label = "language-tile-scale")
+    val turn = animateFloatAsState(if (animations && (selected || pressed)) 72f else 0f, spring(Spring.DampingRatioLowBouncy, Spring.StiffnessLow), label = "language-tile-turn")
+    return ExpressiveTileMotion(corner, scale, turn)
 }
 
 private class ExpressiveTileMetrics(
