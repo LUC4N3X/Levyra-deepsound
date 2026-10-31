@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-30T22:25:18Z",
+  "generatedAt": "2026-10-31T05:50:31Z",
   "items": [
     {
       "song": "NON SEI PIÙ TU (feat. Lazza)",
@@ -1321,7 +1321,7 @@
     {
       "song": "Aproveita Que Eu Tô Brigado - Ao Vivo",
       "artist": "NATTAN, Zé Vaqueiro",
-      "album": "Aproveita Que Eu Tô Brigado (Ao Vivo)",
+      "album": "Paredão do Nattan (Ao Vivo Em Fortaleza)",
       "url": "https://canvaz.scdn.co/upload/artist/1SXhEXzOTF7YeuQX59m7pT/video/02758c7d2a494528b94f726b7cc4fb7d.cnvs.mp4",
       "scope": "track"
     },
@@ -6562,6 +6562,13 @@
       "scope": "track"
     },
     {
+      "song": "Aşk Uğramadı Bize",
+      "artist": "Serdar Ortaç, Pınar Darcan",
+      "album": "Aşk Uğramadı Bize",
+      "url": "https://canvaz.scdn.co/upload/licensor/39bZ07EI9Jd9alGi9VBj02/video/f76e4005fc524ec1a8f82d42a525c3a4.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "ALO",
       "artist": "Wegh",
       "album": "ALO",
@@ -6667,6 +6674,13 @@
       "scope": "track"
     },
     {
+      "song": "aftertears",
+      "artist": "mindfreakk!",
+      "album": "aftertears",
+      "url": "https://canvaz.scdn.co/upload/artist/72eq3oLf1MBNNAZNv0Ua0a/video/5a92084dbd5748398a7932510e1d82c4.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Better The Devil",
       "artist": "Flower Face",
       "album": "Better The Devil",
@@ -6706,6 +6720,13 @@
       "artist": "GANGGA",
       "album": "5 Hours Apart, 2017",
       "url": "https://canvaz.scdn.co/upload/artist/4nd1IvFkUoQinjvYdUmOBI/video/74f2186b4aa64bf48db3bd97db9e8e80.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "lo gue end",
+      "artist": "dia",
+      "album": "lo gue end",
+      "url": "https://canvaz.scdn.co/upload/artist/6WgjNWwGACXaBy7NZripBu/video/414fc8d58ebd405c95580d1175206ecd.cnvs.mp4",
       "scope": "track"
     },
     {
