@@ -1756,9 +1756,11 @@ private fun LevyraNowPlayingContent(
         }
 
         if (showActions && track != null) {
+            val sectionLoop by viewModel.sectionLoop.collectAsStateWithLifecycle()
             val sheetActions = playerSheetActions(
                 track = track,
                 state = state,
+                sectionLoop = sectionLoop,
                 strings = strings,
                 hasMixChapters = mixChapters != null,
                 onMixChapters = {
@@ -2188,6 +2190,7 @@ private fun Track.isLocalMotionArtworkTrack(): Boolean {
 private fun playerSheetActions(
     track: Track,
     state: LevyraUiState,
+    sectionLoop: SectionLoopState,
     strings: LevyraStrings,
     onAddToPlaylist: () -> Unit,
     onStartRadio: () -> Unit,
@@ -2314,8 +2317,8 @@ private fun playerSheetActions(
             key = "section-loop",
             icon = Icons.Rounded.Loop,
             label = strings.sectionLoopCopy().action,
-            value = sectionLoopValue(state.sectionLoop, strings.sectionLoopCopy().setEnd),
-            active = state.sectionLoop !is SectionLoopState.Off,
+            value = sectionLoopValue(sectionLoop, strings.sectionLoopCopy().setEnd),
+            active = sectionLoop !is SectionLoopState.Off,
             keepsSheetOpen = true,
             onClick = onSectionLoop
         ),

@@ -507,6 +507,7 @@ class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::li
 
 class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::playerProjection) {
     val mixChapters get() = root.mixChapters
+    val sectionLoop get() = root.sectionLoop
     fun openMixChapters() = root.openMixChapters()
     fun setNightListeningEnabled(value: Boolean) = root.setNightListeningEnabled(value)
     fun toggleFollowArtist(artist: com.luc4n3x.levyra.domain.ArtistHit) = root.toggleFollowArtist(artist)

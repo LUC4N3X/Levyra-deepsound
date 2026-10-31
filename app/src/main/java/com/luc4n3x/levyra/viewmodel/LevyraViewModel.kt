@@ -1030,6 +1030,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val autoEqCatalogController by autoEqCatalogDelegate
     val autoEqCatalog: StateFlow<AutoEqCatalogUiState> get() = autoEqCatalogController.state
     private val mixChaptersRepository = MixChaptersRepository()
+    private val _sectionLoop = MutableStateFlow<SectionLoopState>(SectionLoopState.Off)
+    val sectionLoop: StateFlow<SectionLoopState> = _sectionLoop.asStateFlow()
     private val _mixChapters = MutableStateFlow<MixChapterList?>(null)
     val mixChapters: StateFlow<MixChapterList?> = _mixChapters.asStateFlow()
     private val _showMixChapters = MutableStateFlow(false)
@@ -4670,18 +4672,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun advanceSectionLoop() {
-        val snapshot = _state.value
-        val track = snapshot.currentTrack ?: return
+        val track = _state.value.currentTrack ?: return
         if (track.isLiveRadio()) return
-        val next = snapshot.sectionLoop.advance(track.id, player.positionMs)
-        _state.update { it.copy(sectionLoop = next) }
+        val next = _sectionLoop.value.advance(track.id, player.positionMs)
+        _sectionLoop.value = next
         sectionLoopJob?.cancel()
         sectionLoopJob = if (next is SectionLoopState.Off) null else viewModelScope.launch {
             while (isActive) {
                 val current = _state.value
-                val loop = current.sectionLoop
+                val loop = _sectionLoop.value
                 if (!loop.belongsTo(current.currentTrack?.id)) {
-                    _state.update { it.copy(sectionLoop = SectionLoopState.Off) }
+                    _sectionLoop.value = SectionLoopState.Off
                     break
                 }
                 if (loop is SectionLoopState.Off) break
