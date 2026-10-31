@@ -30,6 +30,15 @@ internal fun isSameLegacyDownloadTree(pickedTreeUri: String, expectedTreeUri: St
 }
 
 internal object DownloadFolderAccess {
+    fun persist(context: Context, uri: Uri): Boolean {
+        val resolver = context.contentResolver
+        val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        return runCatching {
+            resolver.takePersistableUriPermission(uri, flags)
+            canWrite(context, uri.toString())
+        }.getOrDefault(false)
+    }
+
     fun restoreLegacyReadAccess(context: Context, pickedTreeUri: Uri, expectedTreeUri: String): Boolean {
         if (!isSameLegacyDownloadTree(pickedTreeUri.toString(), expectedTreeUri)) return false
         return runCatching {

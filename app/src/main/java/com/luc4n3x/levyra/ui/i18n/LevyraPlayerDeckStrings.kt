@@ -317,13 +317,13 @@ private val playerDeckDefaultBadges: Map<String, String> = mapOf(
 internal fun playerDeckLocalizationEntries(code: String): Map<String, String> =
     localizedBundleOrEnglish(playerDeckBundles, code) + mapOf(
         "playerDeckHalo" to "Liner Notes",
-        "playerDeckHaloHint" to (localizedValueOrEnglish(playerDeckHaloHints, code)),
+        "playerDeckHaloHint" to localizedValueOrEnglish(playerDeckHaloHints, code),
         "playerDeckFolio" to "Folio",
-        "playerDeckFolioHint" to (localizedValueOrEnglish(playerDeckFolioHints, code)),
+        "playerDeckFolioHint" to localizedValueOrEnglish(playerDeckFolioHints, code),
         "playerDeckFlow" to "Levyra Flow",
-        "playerDeckCardHint" to (localizedValueOrEnglish(playerDeckSleeveHints, code)),
-        "playerDeckFlowHint" to (localizedValueOrEnglish(playerDeckFlowHints, code)),
-        "playerDeckDefaultBadge" to (localizedValueOrEnglish(playerDeckDefaultBadges, code))
+        "playerDeckCardHint" to localizedValueOrEnglish(playerDeckSleeveHints, code),
+        "playerDeckFlowHint" to localizedValueOrEnglish(playerDeckFlowHints, code),
+        "playerDeckDefaultBadge" to localizedValueOrEnglish(playerDeckDefaultBadges, code)
     )
 
 internal fun playerDeckLocalizationCodes(): Set<String> = playerDeckBundles.keys

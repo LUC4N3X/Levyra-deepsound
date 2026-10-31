@@ -296,12 +296,24 @@ enum class LevyraDownloadFolderMode {
     }
 }
 
+enum class LevyraDownloadDestination {
+    Private,
+    Public;
+
+    companion object {
+        fun from(value: String, destinationTreeUri: String): LevyraDownloadDestination =
+            entries.firstOrNull { it.name.equals(value, ignoreCase = true) }
+                ?: if (destinationTreeUri.isNotBlank()) Public else Private
+    }
+}
+
 data class LevyraDownloadSettings(
     val wifiOnly: Boolean = false,
     val chargingOnly: Boolean = false,
     val resumable: Boolean = true,
     val maxConcurrentDownloads: Int = 2,
     val preset: LevyraDownloadPreset = LevyraDownloadPreset.Automatic,
+    val destination: LevyraDownloadDestination = LevyraDownloadDestination.Private,
     val folderMode: LevyraDownloadFolderMode = LevyraDownloadFolderMode.ArtistAlbum,
     val destinationTreeUri: String = "",
     val maxRateKbps: Int = 0,

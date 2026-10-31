@@ -20,9 +20,7 @@ internal fun LevyraKeepScreenOnEffect(uiState: StateFlow<LevyraUiState>) {
     val keepScreenOnFlow = remember(uiState) {
         uiState.map(LevyraUiState::shouldKeepScreenOn).distinctUntilChanged()
     }
-    val keepScreenOn by keepScreenOnFlow.collectAsStateWithLifecycle(
-        initialValue = uiState.value.shouldKeepScreenOn()
-    )
+    val keepScreenOn by keepScreenOnFlow.collectAsStateWithLifecycle(initialValue = false)
     val window = LocalActivity.current?.window
     DisposableEffect(window, keepScreenOn) {
         if (window == null || !keepScreenOn) {

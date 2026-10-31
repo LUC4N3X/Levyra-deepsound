@@ -242,9 +242,7 @@ def collect_violations(
     exporter = read(exporter_path)
     for forbidden, reason in (
         ("MediaStore.Downloads", "offline audio must not silently fall back to Downloads"),
-        ("Environment.DIRECTORY_DOWNLOADS", "offline audio must stay in private app storage"),
-        ("Environment.DIRECTORY_MUSIC", "offline audio must stay in private app storage"),
-        ("MediaStore.Audio.Media.EXTERNAL_CONTENT_URI", "offline audio must not be published to MediaStore"),
+        ("Environment.DIRECTORY_DOWNLOADS", "offline audio must stay under Music/Levyra"),
         ("saveScopedDownloadFile", "the Downloads fallback must not return"),
         ("downloadsDestinationLabel", "the Downloads destination must not return"),
     ):
@@ -253,7 +251,7 @@ def collect_violations(
         ("isMp4AudioExportUrl(track.streamUrl)", "provided streams must be checked as MP4/M4A"),
         ("if (!downloaded.container.supportsEmbeddedMetadata)", "non-M4A downloads must fail"),
         ("LevyraM4aTagWriter.write", "M4A metadata must be embedded"),
-        ("OfflineAudioStore(context.filesDir)", "offline audio must be committed to private app storage"),
+        ("MediaStore.Audio.Media.EXTERNAL_CONTENT_URI", "audio must be registered in MediaStore.Audio"),
     ):
         require(exporter_path, exporter, required, reason)
 

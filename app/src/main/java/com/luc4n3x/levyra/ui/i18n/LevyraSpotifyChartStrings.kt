@@ -148,10 +148,10 @@ internal object LevyraSpotifyChartStrings {
     )
 
     fun radioWithMany(code: String, artists: String): String =
-        (localizedValueOrEnglish(radioCopies, code)).first.format(artists)
+        localizedValueOrEnglish(radioCopies, code).first.format(artists)
 
     fun radioMadeForYou(code: String): String =
-        (localizedValueOrEnglish(radioCopies, code)).second
+        localizedValueOrEnglish(radioCopies, code).second
 
     private val radioTitles = mapOf(
         "en" to "%s Radio",
@@ -198,7 +198,7 @@ internal object LevyraSpotifyChartStrings {
     )
 
     fun radioTitle(code: String, artist: String): String =
-        (localizedValueOrEnglish(radioTitles, code)).format(artist)
+        localizedValueOrEnglish(radioTitles, code).format(artist)
 
     private val pickerCopies = mapOf(
         "en" to ("Choose more artists you like." to "More artists you might like"),
@@ -244,9 +244,9 @@ internal object LevyraSpotifyChartStrings {
         "he" to ("בחרו עוד אמנים שאתם אוהבים." to "אמנים נוספים שאולי תאהבו")
     )
 
-    fun pickerTitle(code: String): String = (localizedValueOrEnglish(pickerCopies, code)).first
+    fun pickerTitle(code: String): String = localizedValueOrEnglish(pickerCopies, code).first
 
-    fun pickerMore(code: String): String = (localizedValueOrEnglish(pickerCopies, code)).second
+    fun pickerMore(code: String): String = localizedValueOrEnglish(pickerCopies, code).second
 
     fun globalName(code: String): String = localizedValueOrEnglish(globalNames, code)
 

@@ -24,6 +24,8 @@ class LevyraStringsTest {
         assertEquals(catalogCodes, resonanceLocalizationCodes())
         assertEquals(catalogCodes, keepScreenOnLocalizationCodes())
         assertEquals(catalogCodes, offlineStorageLocalizationCodes())
+        assertEquals(catalogCodes, downloadLocationLocalizationCodes())
+        assertEquals(catalogCodes, downloadDestinationLocalizationCodes())
         assertEquals(catalogCodes, similarSongsLocalizationCodes())
         assertEquals(catalogCodes, playerVisualLocalizationCodes())
         assertEquals(catalogCodes, queueSelectionLocalizationCodes())
@@ -463,6 +465,8 @@ class LevyraStringsTest {
             assertFalse("Hardcoded runtime localization leak: $leaked", content.contains(leaked))
         }
         assertTrue(LevyraStrings.forCode("en").formatOfflineExportSaved("track.m4a", true).startsWith("Saved for offline listening"))
+        assertTrue(LevyraStrings.forCode("en").formatOfflineExportSaved("track.m4a", true, "Music/Levyra").startsWith("Saved in Music/Levyra: "))
+        assertTrue(LevyraStrings.forCode("it").formatOfflineExportSaved("track.m4a", false, "Music/Levyra").startsWith("Salvato in Music/Levyra: "))
         assertEquals("Loading playlist", LevyraStrings.forCode("en").loadingSharedPlaylist)
         assertEquals("No results found for Levyra", LevyraStrings.forCode("en").formatNoSearchResults("Levyra"))
     }

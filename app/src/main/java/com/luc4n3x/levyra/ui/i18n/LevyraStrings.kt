@@ -1254,6 +1254,17 @@ class LevyraStrings private constructor(
     val downloadPresetAutomatic: String get() = value("downloadPresetAutomatic")
     val downloadPresetHighQuality: String get() = value("downloadPresetHighQuality")
     val downloadPresetDataSaver: String get() = value("downloadPresetDataSaver")
+    val downloadLocation: String get() = value("downloadLocation")
+    val downloadLocationSubtitle: String get() = value("downloadLocationSubtitle")
+    val downloadLocationDefault: String get() = value("downloadLocationDefault")
+    val downloadLocationReset: String get() = value("downloadLocationReset")
+    val downloadLocationResetSubtitle: String get() = value("downloadLocationResetSubtitle")
+    val downloadLocationUnavailable: String get() = value("downloadLocationUnavailable")
+    val downloadLocationPermissionFailed: String get() = value("downloadLocationPermissionFailed")
+    val downloadFolderOrganization: String get() = value("downloadFolderOrganization")
+    val downloadFolderOrganizationSubtitle: String get() = value("downloadFolderOrganizationSubtitle")
+    val downloadFolderArtist: String get() = value("downloadFolderArtist")
+    val downloadFolderArtistAlbum: String get() = value("downloadFolderArtistAlbum")
     val keepScreenOn: String get() = value("keepScreenOn")
     val keepScreenOnSubtitle: String get() = value("keepScreenOnSubtitle")
     val downloadSpeedLimit: String get() = value("downloadSpeedLimit")
@@ -1341,6 +1352,11 @@ class LevyraStrings private constructor(
     val newAlbum: String get() = value("newAlbum")
     val downloadsFolder: String get() = value("downloadsFolder")
     val offlineDownloadsPlain: String get() = value("offlineDownloadsPlain")
+    val downloadDestination: String get() = value("downloadDestination")
+    val downloadDestinationSubtitle: String get() = value("downloadDestinationSubtitle")
+    val downloadDestinationPrivate: String get() = value("downloadDestinationPrivate")
+    val downloadDestinationPublic: String get() = value("downloadDestinationPublic")
+    val downloadSavedIn: String get() = value("downloadSavedIn")
     val offlineSavedForListening: String get() = value("offlineSavedForListening")
     val offlineStorageFull: String get() = value("offlineStorageFull")
     val offlineRestoreFolderAccess: String get() = value("offlineRestoreFolderAccess")
@@ -1763,9 +1779,15 @@ class LevyraStrings private constructor(
 
     fun formatOfflineExportSaved(
         fileName: String,
-        embeddedMetadata: Boolean
+        embeddedMetadata: Boolean,
+        destination: String = ""
     ): String {
-        val saved = if (fileName.isBlank()) offlineSavedForListening else "$offlineSavedForListening: ${directionalValue(fileName)}"
+        val prefix = if (destination.isBlank()) {
+            offlineSavedForListening
+        } else {
+            downloadSavedIn.replace("{destination}", directionalValue(destination))
+        }
+        val saved = if (fileName.isBlank()) prefix else "$prefix: ${directionalValue(fileName)}"
         return if (embeddedMetadata) "$saved ($coverAndTags)" else saved
     }
 
@@ -2009,7 +2031,7 @@ class LevyraStrings private constructor(
     fun formatPauseDownload(title: String): String = "$pauseDownload ${directionalValue(title)}"
 
     companion object {
-        private val requiredKeys = setOf("welcomeBadge", "welcomeTitle", "languageQuestion", "nameQuestion", "namePlaceholder", "tasteQuestion", "skipAndContinue", "startListening", "settings", "settingsSubtitle", "design", "playback", "preferences", "app", "animations", "animationsSubtitle", "dynamicColor", "dynamicColorSubtitle", "sponsorBlock", "sponsorBlockSubtitle", "skipSilence", "skipSilenceSubtitle", "redoQuestionnaire", "redoQuestionnaireSubtitle", "language", "languageSubtitle", "home", "search", "library", "player", "queue", "lyrics", "related", "song", "video", "nowPlaying", "emptyPlayer", "phoneSpeaker", "connected", "volume", "audioQuality", "done", "queueEmpty", "lyricsUnavailable", "synced", "libraryTitle", "librarySubtitle", "playlists", "newItem", "downloads", "favorites", "recent", "quickPicks", "play", "newReleases", "albumsForYou", "top50Unavailable", "artists", "albumsAndSingles", "songs", "searchPlaceholder", "back", "clear", "voice", "createPlaylistHint", "selectLanguagePrompt", "explore", "exploreTitle", "exploreSubtitle", "exploreMoods", "exploreSamples", "exploreSamplesSubtitle", "exploreSamplesError", "exploreSamplesRetry", "exploreFresh", "exploreNewVideos", "exploreEmpty", "localWaveName", "localWaveEmoji", "localWaveQuery", "exploreNewReleases", "exploreRapDrill", "exploreElectronic", "explorePopGlobal", "exploreRnbSoul", "exploreRockAlt", "exploreLatino", "exploreLofiChill", "exploreJpopAnime", "followArtist", "followingArtist", "releaseRadar", "similarArtists", "similarToFollowed", "theme", "themeSubtitle", "personalOrbitTitle", "personalOrbitSubtitle", "voicesTitle", "voicesSubtitle", "totalComments", "engagement", "audioEngine", "audioEngineSubtitle", "equalizer", "equalizerSubtitle", "preset", "bassBoost", "virtualizer", "crossfade", "djSoft", "replayGain", "tempo", "pitch", "gapless", "restartRequiredTitle", "restartRequiredBody", "restartNow", "later", "audioQualityAuto", "audioQualityHigh", "audioQualityLow", "pulseSectionBand", "pulseTitle", "pulseSubtitle", "followedArtistsTitle", "followedArtistsSubtitle", "listeningHistoryEmptyTitle", "listeningHistoryEmptyDetail", "pulseMinutes", "pulseMinuteShort", "pulsePlays", "pulseStreak", "pulseCompletion", "pulseTopArtists", "pulseWeek", "pulsePeakHour", "pulseEmpty", "listeningHistory", "listeningHistorySubtitle", "listeningPrompt", "voiceSearchUnsupported", "musicFiltersComingSoon", "recentSearches", "actions", "removeFromFavorites", "addToFavorites", "playNext", "addToQueue", "addToPlaylist", "alreadyOffline", "download", "openArtist", "openAlbum", "deleteDownload", "share", "shareSong", "removeFromRecentSearches", "songOptions", "goToPlayer", "saveOffline", "favorite", "downloaded", "remove", "youMightAlsoLike", "topResult", "currentlyPlaying", "artistLabel", "playNow", "biography", "newUpdate", "updateDescription", "whatsNew", "update", "updateRetry", "updateDownloading", "updatePreparing", "updateInstalling", "updateReadyToInstall", "updateFailed", "updateAllowInstalls", "updateLinkUnavailable", "cannotOpenDownload", "externalLinkUnavailable", "cannotOpenExternalLink", "continuousRadio", "continuousRadioSubtitle", "artistsLabelPlural", "albumMood", "openLyricsAnalysis", "closeLyrics", "lyricsDuet", "lyricsCinema", "lyricsPage", "lyricsRomanization", "lyricsCompact", "changeLyrics", "automaticLyrics", "selectVerses", "copyVerses", "shareVerses", "lyricsVersions", "lyricsSections", "lyricsSectionIntro", "lyricsSectionVerse", "lyricsSectionPreChorus", "lyricsSectionChorus", "lyricsSectionBridge", "lyricsSectionInstrumental", "lyricsSectionOutro", "automaticTranslation", "automaticTranslationSubtitle", "atmosphere", "themes", "chorusDetected", "goToChorus", "close", "complete", "delete", "newPlaylist", "playlistName", "create", "cancel", "newPlaylistName", "createNewPlaylist", "createAndAdd", "downloadPlaylist", "playAll", "playingFrom", "closePlayer", "options", "showLyrics", "shuffle", "previous", "next", "repeat", "persistentQueue", "continueListening", "favoritesPlain", "offline", "more", "mix", "mixForYou", "genres", "smartMusicProfile", "flow", "pictureInPicture", "discoveryFlow", "shareDiagnostics", "albumUnavailable", "albumTracksUnavailable", "albumTracksLoadFailed", "showLess", "showMore", "playing", "artistProfileUnavailable", "popularTracks", "showAll", "versionLabel", "generalImprovements", "historyLabel", "undoRemoval", "lyricsAnalysis", "linesLabel", "wordsLabel", "localAnalysis", "open", "newRelease", "newReleaseSubtitle", "saved", "save", "noOfflineDownloads", "createFirstPlaylist", "createFirstPlaylistSubtitle", "downloadTrackHint", "savedTracks", "favoritesEmpty", "playlistEmpty", "showPersonalListening", "showRecentReleases", "showRecommendedAlbums", "showDiscoveredArtists", "showChartsCountry", "partialDownloadResume", "lyricsAnalysisSection", "lyricsAnalysisCompact", "lyricsAnalysisCompactSubtitle", "createDataBackup", "createDataBackupSubtitle", "updateAvailable", "updates", "checkingLatestVersion", "latestVersionReady", "latestInstalled", "checkNewVersions", "releasePageReady", "installedVersion", "openPlayer", "searchSongsArtists", "songsPlain", "shareVia", "emptySearchPrompt", "cancelDownload", "readAll", "singlesAndEps", "tapHeartToAdd", "all", "automaticResume", "simultaneousDownloads", "simultaneousDownloadsSubtitle", "backupRestoreSection", "restoreBackup", "restoreBackupSubtitle", "playbackResilienceSection", "exportSafeDiagnostics", "generateResolverTrace", "safeDiagnosticsSubtitle", "check", "checking", "dragToReorder", "homeInterfaceSection", "compactHome", "compactHomeSubtitle", "yourOrbitSetting", "voicesSetting", "voicesSettingSubtitle", "newReleasesSetting", "albumsForYouSetting", "trendingArtists", "top50Charts", "mobilePlayerSection", "advancedGestures", "advancedGesturesSubtitle", "pureBlack", "pureBlackSubtitle", "hapticFeedback", "hapticFeedbackSubtitle", "doubleTapSeek", "doubleTapSeekSubtitle", "longPress", "longPressSubtitle", "downloadEngineSection", "wifiOnly", "wifiOnlySubtitle", "chargingOnly", "chargingOnlySubtitle", "resumeDownload", "pauseDownload", "signedApkReady", "downloadsInProgress", "downloadInProgress", "newAlbums", "newSingles", "newAlbum", "downloadsFolder", "offlineDownloadsPlain", "personalPlaylists", "searchingYouTubeMusic", "searchingLyrics", "pause", "newSingle", "albumsPlain", "albumPlain", "singlePlain", "playlistsPlain", "profileActive", "profileLearning", "newBadge", "brightness", "timer", "normalizationShort", "coverAndTags", "madeWithBy", "activeIndicator", "batteryUnrestricted", "batteryUnrestrictedSubtitle", "batteryUnrestrictedActive", "levyraSelection", "releasedToday", "justReleased", "chartTrending", "selectedForYou", "availableToday", "releasedThisWeek", "popularInCharts", "collectionsTitle", "collectionsSubtitle", "collectionFresh", "collectionLocal", "collectionWorkout", "collectionChill", "collectionFocus", "collectionParty", "collectionRap", "collectionPop", "collectionDiscovery", "collectionUpdatedToday", "collectionEditorial", "collectionCharts", "collectionRepeat", "collectionThrowback", "collectionGems", "downloadQualityPreset", "downloadQualityPresetSubtitle", "downloadPresetAutomatic", "downloadPresetHighQuality", "downloadPresetDataSaver", "downloadSpeedLimit", "downloadSpeedLimitSubtitle", "downloadSpeedUnlimited", "downloadEmbedMetadata", "downloadEmbedMetadataSubtitle", "downloadEmbedArtwork", "downloadEmbedArtworkSubtitle", "downloadVerifyFile", "downloadVerifyFileSubtitle", "downloadSkipDuplicates", "downloadSkipDuplicatesSubtitle", "trailTitle", "trailPlays", "trailUnique", "trailLastPlayed", "statPlays", "statArtists", "statTracks", "introHeadline", "introBody", "introFeatureSound", "introFeatureLyrics", "introFeatureOffline", "introStart", "expandPlayer", "collapsePlayer", "lyricsFocus")
+        private val requiredKeys = setOf("welcomeBadge", "welcomeTitle", "languageQuestion", "nameQuestion", "namePlaceholder", "tasteQuestion", "skipAndContinue", "startListening", "settings", "settingsSubtitle", "design", "playback", "preferences", "app", "animations", "animationsSubtitle", "dynamicColor", "dynamicColorSubtitle", "sponsorBlock", "sponsorBlockSubtitle", "skipSilence", "skipSilenceSubtitle", "redoQuestionnaire", "redoQuestionnaireSubtitle", "language", "languageSubtitle", "home", "search", "library", "player", "queue", "lyrics", "related", "song", "video", "nowPlaying", "emptyPlayer", "phoneSpeaker", "connected", "volume", "audioQuality", "done", "queueEmpty", "lyricsUnavailable", "synced", "libraryTitle", "librarySubtitle", "playlists", "newItem", "downloads", "favorites", "recent", "quickPicks", "play", "newReleases", "albumsForYou", "top50Unavailable", "artists", "albumsAndSingles", "songs", "searchPlaceholder", "back", "clear", "voice", "createPlaylistHint", "selectLanguagePrompt", "explore", "exploreTitle", "exploreSubtitle", "exploreMoods", "exploreSamples", "exploreSamplesSubtitle", "exploreSamplesError", "exploreSamplesRetry", "exploreFresh", "exploreNewVideos", "exploreEmpty", "localWaveName", "localWaveEmoji", "localWaveQuery", "exploreNewReleases", "exploreRapDrill", "exploreElectronic", "explorePopGlobal", "exploreRnbSoul", "exploreRockAlt", "exploreLatino", "exploreLofiChill", "exploreJpopAnime", "followArtist", "followingArtist", "releaseRadar", "similarArtists", "similarToFollowed", "theme", "themeSubtitle", "personalOrbitTitle", "personalOrbitSubtitle", "voicesTitle", "voicesSubtitle", "totalComments", "engagement", "audioEngine", "audioEngineSubtitle", "equalizer", "equalizerSubtitle", "preset", "bassBoost", "virtualizer", "crossfade", "djSoft", "replayGain", "tempo", "pitch", "gapless", "restartRequiredTitle", "restartRequiredBody", "restartNow", "later", "audioQualityAuto", "audioQualityHigh", "audioQualityLow", "pulseSectionBand", "pulseTitle", "pulseSubtitle", "followedArtistsTitle", "followedArtistsSubtitle", "listeningHistoryEmptyTitle", "listeningHistoryEmptyDetail", "pulseMinutes", "pulseMinuteShort", "pulsePlays", "pulseStreak", "pulseCompletion", "pulseTopArtists", "pulseWeek", "pulsePeakHour", "pulseEmpty", "listeningHistory", "listeningHistorySubtitle", "listeningPrompt", "voiceSearchUnsupported", "musicFiltersComingSoon", "recentSearches", "actions", "removeFromFavorites", "addToFavorites", "playNext", "addToQueue", "addToPlaylist", "alreadyOffline", "download", "openArtist", "openAlbum", "deleteDownload", "share", "shareSong", "removeFromRecentSearches", "songOptions", "goToPlayer", "saveOffline", "favorite", "downloaded", "remove", "youMightAlsoLike", "topResult", "currentlyPlaying", "artistLabel", "playNow", "biography", "newUpdate", "updateDescription", "whatsNew", "update", "updateRetry", "updateDownloading", "updatePreparing", "updateInstalling", "updateReadyToInstall", "updateFailed", "updateAllowInstalls", "updateLinkUnavailable", "cannotOpenDownload", "externalLinkUnavailable", "cannotOpenExternalLink", "continuousRadio", "continuousRadioSubtitle", "artistsLabelPlural", "albumMood", "openLyricsAnalysis", "closeLyrics", "lyricsDuet", "lyricsCinema", "lyricsPage", "lyricsRomanization", "lyricsCompact", "changeLyrics", "automaticLyrics", "selectVerses", "copyVerses", "shareVerses", "lyricsVersions", "lyricsSections", "lyricsSectionIntro", "lyricsSectionVerse", "lyricsSectionPreChorus", "lyricsSectionChorus", "lyricsSectionBridge", "lyricsSectionInstrumental", "lyricsSectionOutro", "automaticTranslation", "automaticTranslationSubtitle", "atmosphere", "themes", "chorusDetected", "goToChorus", "close", "complete", "delete", "newPlaylist", "playlistName", "create", "cancel", "newPlaylistName", "createNewPlaylist", "createAndAdd", "downloadPlaylist", "playAll", "playingFrom", "closePlayer", "options", "showLyrics", "shuffle", "previous", "next", "repeat", "persistentQueue", "continueListening", "favoritesPlain", "offline", "more", "mix", "mixForYou", "genres", "smartMusicProfile", "flow", "pictureInPicture", "discoveryFlow", "shareDiagnostics", "albumUnavailable", "albumTracksUnavailable", "albumTracksLoadFailed", "showLess", "showMore", "playing", "artistProfileUnavailable", "popularTracks", "showAll", "versionLabel", "generalImprovements", "historyLabel", "undoRemoval", "lyricsAnalysis", "linesLabel", "wordsLabel", "localAnalysis", "open", "newRelease", "newReleaseSubtitle", "saved", "save", "noOfflineDownloads", "createFirstPlaylist", "createFirstPlaylistSubtitle", "downloadTrackHint", "savedTracks", "favoritesEmpty", "playlistEmpty", "showPersonalListening", "showRecentReleases", "showRecommendedAlbums", "showDiscoveredArtists", "showChartsCountry", "partialDownloadResume", "lyricsAnalysisSection", "lyricsAnalysisCompact", "lyricsAnalysisCompactSubtitle", "createDataBackup", "createDataBackupSubtitle", "updateAvailable", "updates", "checkingLatestVersion", "latestVersionReady", "latestInstalled", "checkNewVersions", "releasePageReady", "installedVersion", "openPlayer", "searchSongsArtists", "songsPlain", "shareVia", "emptySearchPrompt", "cancelDownload", "readAll", "singlesAndEps", "tapHeartToAdd", "all", "automaticResume", "simultaneousDownloads", "simultaneousDownloadsSubtitle", "backupRestoreSection", "restoreBackup", "restoreBackupSubtitle", "playbackResilienceSection", "exportSafeDiagnostics", "generateResolverTrace", "safeDiagnosticsSubtitle", "check", "checking", "dragToReorder", "homeInterfaceSection", "compactHome", "compactHomeSubtitle", "yourOrbitSetting", "voicesSetting", "voicesSettingSubtitle", "newReleasesSetting", "albumsForYouSetting", "trendingArtists", "top50Charts", "mobilePlayerSection", "advancedGestures", "advancedGesturesSubtitle", "pureBlack", "pureBlackSubtitle", "hapticFeedback", "hapticFeedbackSubtitle", "doubleTapSeek", "doubleTapSeekSubtitle", "longPress", "longPressSubtitle", "downloadEngineSection", "wifiOnly", "wifiOnlySubtitle", "chargingOnly", "chargingOnlySubtitle", "resumeDownload", "pauseDownload", "signedApkReady", "downloadsInProgress", "downloadInProgress", "newAlbums", "newSingles", "newAlbum", "downloadsFolder", "offlineDownloadsPlain", "personalPlaylists", "searchingYouTubeMusic", "searchingLyrics", "pause", "newSingle", "albumsPlain", "albumPlain", "singlePlain", "playlistsPlain", "profileActive", "profileLearning", "newBadge", "brightness", "timer", "normalizationShort", "coverAndTags", "madeWithBy", "activeIndicator", "batteryUnrestricted", "batteryUnrestrictedSubtitle", "batteryUnrestrictedActive", "levyraSelection", "releasedToday", "justReleased", "chartTrending", "selectedForYou", "availableToday", "releasedThisWeek", "popularInCharts", "collectionsTitle", "collectionsSubtitle", "collectionFresh", "collectionLocal", "collectionWorkout", "collectionChill", "collectionFocus", "collectionParty", "collectionRap", "collectionPop", "collectionDiscovery", "collectionUpdatedToday", "collectionEditorial", "collectionCharts", "collectionRepeat", "collectionThrowback", "collectionGems", "downloadQualityPreset", "downloadQualityPresetSubtitle", "downloadPresetAutomatic", "downloadPresetHighQuality", "downloadPresetDataSaver", "downloadFolderOrganization", "downloadFolderOrganizationSubtitle", "downloadFolderArtist", "downloadFolderArtistAlbum", "downloadSpeedLimit", "downloadSpeedLimitSubtitle", "downloadSpeedUnlimited", "downloadEmbedMetadata", "downloadEmbedMetadataSubtitle", "downloadEmbedArtwork", "downloadEmbedArtworkSubtitle", "downloadVerifyFile", "downloadVerifyFileSubtitle", "downloadSkipDuplicates", "downloadSkipDuplicatesSubtitle", "trailTitle", "trailPlays", "trailUnique", "trailLastPlayed", "statPlays", "statArtists", "statTracks", "introHeadline", "introBody", "introFeatureSound", "introFeatureLyrics", "introFeatureOffline", "introStart", "expandPlayer", "collapsePlayer", "lyricsFocus")
         private val motionArtworkKeys = setOf("motionArtwork", "motionArtworkSubtitle")
         private val exploreSectionKeys = setOf("exploreMoodSection", "exploreAfrobeats")
         private val freshCurrentsKeys = setOf("freshScopeWorld", "freshMomentTitle")
@@ -2271,9 +2293,9 @@ class LevyraStrings private constructor(
         }
 
         private fun bundle(code: String, entries: Map<String, String>): LevyraStrings {
-            val localizedEntries = entries + profileLocalizationEntries(code) + freshCurrentsLocalizationEntries(code) + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + lyricsShareLocalizationEntries(code) + listeningReceiptLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + audioOutputLocalizationEntries(code) + alternativeAudioLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + jamModerationLocalizationEntries(code) + ambientModeLocalizationEntries(code) + themeStudioLocalizationEntries(code) + lyricsStudioLocalizationEntries(code) + networkLocalizationEntries(code) + resonanceLocalizationEntries(code) + organizationLocalizationEntries(code) + offlineStorageLocalizationEntries(code) + keepScreenOnLocalizationEntries(code) + similarSongsLocalizationEntries(code) + playerVisualLocalizationEntries(code) + playerDeckLocalizationEntries(code) + playerGestureLocalizationEntries(code) + playlistStudioLocalizationEntries(code) + queueSelectionLocalizationEntries(code) + librarySortLocalizationEntries(code) + offlineHomeLocalizationEntries(code) + recapLocalizationEntries(code) + listeningInsightsLocalizationEntries(code) + queueSpaceLocalizationEntries(code) + localLibraryLocalizationEntries(code) + localTagLocalizationEntries(code) + playbackTileLocalizationEntries(code) + visualPerformanceLocalizationEntries(code) + liquidGlassLocalizationEntries(code) + immersiveModeLocalizationEntries(code) + musicVideoPreferenceLocalizationEntries(code) + videoQualityLocalizationEntries(code) + lyricsProviderPriorityLocalizationEntries(code) + mixLabLocalizationEntries(code) + chartMarketLocalizationEntries(code) + homeSoundtrackLocalizationEntries(code) + settingsSearchLocalizationEntries(code) + appUpdateLocalizationEntries(code)
+            val localizedEntries = entries + profileLocalizationEntries(code) + freshCurrentsLocalizationEntries(code) + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + lyricsShareLocalizationEntries(code) + listeningReceiptLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + audioOutputLocalizationEntries(code) + alternativeAudioLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + jamModerationLocalizationEntries(code) + ambientModeLocalizationEntries(code) + themeStudioLocalizationEntries(code) + lyricsStudioLocalizationEntries(code) + networkLocalizationEntries(code) + resonanceLocalizationEntries(code) + organizationLocalizationEntries(code) + downloadLocationLocalizationEntries(code) + downloadDestinationLocalizationEntries(code) + offlineStorageLocalizationEntries(code) + keepScreenOnLocalizationEntries(code) + similarSongsLocalizationEntries(code) + playerVisualLocalizationEntries(code) + playerDeckLocalizationEntries(code) + playerGestureLocalizationEntries(code) + playlistStudioLocalizationEntries(code) + queueSelectionLocalizationEntries(code) + librarySortLocalizationEntries(code) + offlineHomeLocalizationEntries(code) + recapLocalizationEntries(code) + listeningInsightsLocalizationEntries(code) + queueSpaceLocalizationEntries(code) + localLibraryLocalizationEntries(code) + localTagLocalizationEntries(code) + playbackTileLocalizationEntries(code) + visualPerformanceLocalizationEntries(code) + liquidGlassLocalizationEntries(code) + immersiveModeLocalizationEntries(code) + musicVideoPreferenceLocalizationEntries(code) + videoQualityLocalizationEntries(code) + lyricsProviderPriorityLocalizationEntries(code) + mixLabLocalizationEntries(code) + chartMarketLocalizationEntries(code) + homeSoundtrackLocalizationEntries(code) + settingsSearchLocalizationEntries(code) + appUpdateLocalizationEntries(code)
             val resolvedEntries = localizedEntries + smartOfflineLocalizationEntries(code, localizedEntries)
-            val allRequiredKeys = requiredKeys + "removeFromPlaylist" + profileKeys + motionArtworkKeys + exploreSectionKeys + freshCurrentsKeys + canvasKeys + audioKeys + audioOutputKeys + alternativeAudioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + jamModerationKeys + ambientModeKeys + themeStudioKeys + lyricsStudioKeys + networkKeys + resonanceKeys + organizationKeys + offlineStorageKeys + keepScreenOnKeys + similarSongsKeys + playerVisualKeys + playerDeckKeys + playerGestureKeys + playlistStudioKeys + queueSelectionKeys + librarySortKeys + offlineHomeKeys + recapKeys + listeningInsightsKeys + queueSpaceKeys + localLibraryKeys + localTagKeys + lyricsOffsetKeys + lyricsTranslationStatusKeys + playbackTileKeys + visualPerformanceKeys + liquidGlassKeys + immersiveModeKeys + musicVideoPreferenceKeys + videoQualityKeys + lyricsProviderPriorityKeys + mixLabKeys + chartMarketKeys + homeSoundtrackKeys + lyricsShareKeys + listeningReceiptKeys + settingsSearchKeys + smartOfflineLocalizationKeys + appUpdateKeys
+            val allRequiredKeys = requiredKeys + "removeFromPlaylist" + profileKeys + motionArtworkKeys + exploreSectionKeys + freshCurrentsKeys + canvasKeys + audioKeys + audioOutputKeys + alternativeAudioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + jamModerationKeys + ambientModeKeys + themeStudioKeys + lyricsStudioKeys + networkKeys + resonanceKeys + organizationKeys + downloadLocationKeys + downloadDestinationKeys + offlineStorageKeys + keepScreenOnKeys + similarSongsKeys + playerVisualKeys + playerDeckKeys + playerGestureKeys + playlistStudioKeys + queueSelectionKeys + librarySortKeys + offlineHomeKeys + recapKeys + listeningInsightsKeys + queueSpaceKeys + localLibraryKeys + localTagKeys + lyricsOffsetKeys + lyricsTranslationStatusKeys + playbackTileKeys + visualPerformanceKeys + liquidGlassKeys + immersiveModeKeys + musicVideoPreferenceKeys + videoQualityKeys + lyricsProviderPriorityKeys + mixLabKeys + chartMarketKeys + homeSoundtrackKeys + lyricsShareKeys + listeningReceiptKeys + settingsSearchKeys + smartOfflineLocalizationKeys + appUpdateKeys
             require(resolvedEntries.keys == allRequiredKeys) {
                 "Invalid localization bundle $code: missing=${allRequiredKeys - resolvedEntries.keys}, extra=${resolvedEntries.keys - allRequiredKeys}"
             }
@@ -2671,6 +2693,10 @@ class LevyraStrings private constructor(
             "downloadPresetAutomatic" to "Automatic",
             "downloadPresetHighQuality" to "High quality",
             "downloadPresetDataSaver" to "Data saver",
+            "downloadFolderOrganization" to "Folder organization",
+            "downloadFolderOrganizationSubtitle" to "Save by artist and album without duplicating files",
+            "downloadFolderArtist" to "Artist",
+            "downloadFolderArtistAlbum" to "Artist / Album",
             "downloadSpeedLimit" to "Speed limit",
             "downloadSpeedLimitSubtitle" to "Limit network usage while downloading",
             "downloadSpeedUnlimited" to "Unlimited",
@@ -3066,6 +3092,10 @@ class LevyraStrings private constructor(
             "downloadPresetAutomatic" to "Automatico",
             "downloadPresetHighQuality" to "Alta qualità",
             "downloadPresetDataSaver" to "Risparmio dati",
+            "downloadFolderOrganization" to "Organizzazione cartelle",
+            "downloadFolderOrganizationSubtitle" to "Salva per artista e album senza duplicare i file",
+            "downloadFolderArtist" to "Artista",
+            "downloadFolderArtistAlbum" to "Artista / Album",
             "downloadSpeedLimit" to "Limite velocità",
             "downloadSpeedLimitSubtitle" to "Riduce l'uso della rete durante i download",
             "downloadSpeedUnlimited" to "Illimitato",
@@ -3461,6 +3491,10 @@ class LevyraStrings private constructor(
             "downloadPresetAutomatic" to "Automático",
             "downloadPresetHighQuality" to "Alta calidad",
             "downloadPresetDataSaver" to "Ahorro de datos",
+            "downloadFolderOrganization" to "Organización de carpetas",
+            "downloadFolderOrganizationSubtitle" to "Guarda por artista y álbum sin duplicar archivos",
+            "downloadFolderArtist" to "Artista",
+            "downloadFolderArtistAlbum" to "Artista / Álbum",
             "downloadSpeedLimit" to "Límite de velocidad",
             "downloadSpeedLimitSubtitle" to "Limita el uso de red durante las descargas",
             "downloadSpeedUnlimited" to "Sin límite",
@@ -3856,6 +3890,10 @@ class LevyraStrings private constructor(
             "downloadPresetAutomatic" to "Automatique",
             "downloadPresetHighQuality" to "Haute qualité",
             "downloadPresetDataSaver" to "Économiseur de données",
+            "downloadFolderOrganization" to "Organisation des dossiers",
+            "downloadFolderOrganizationSubtitle" to "Enregistre par artiste et album sans dupliquer les fichiers",
+            "downloadFolderArtist" to "Artiste",
+            "downloadFolderArtistAlbum" to "Artiste / Album",
             "downloadSpeedLimit" to "Limite de vitesse",
             "downloadSpeedLimitSubtitle" to "Limite l'usage du réseau pendant les téléchargements",
             "downloadSpeedUnlimited" to "Illimité",
@@ -4251,6 +4289,10 @@ class LevyraStrings private constructor(
             "downloadPresetAutomatic" to "Automatisch",
             "downloadPresetHighQuality" to "Hohe Qualität",
             "downloadPresetDataSaver" to "Datensparmodus",
+            "downloadFolderOrganization" to "Ordnerstruktur",
+            "downloadFolderOrganizationSubtitle" to "Nach Interpret und Album speichern, ohne Dateien zu duplizieren",
+            "downloadFolderArtist" to "Interpret",
+            "downloadFolderArtistAlbum" to "Interpret / Album",
             "downloadSpeedLimit" to "Geschwindigkeitslimit",
             "downloadSpeedLimitSubtitle" to "Begrenzt die Netzwerknutzung beim Herunterladen",
             "downloadSpeedUnlimited" to "Unbegrenzt",
@@ -4646,6 +4688,10 @@ class LevyraStrings private constructor(
             "downloadPresetAutomatic" to "Automático",
             "downloadPresetHighQuality" to "Alta qualidade",
             "downloadPresetDataSaver" to "Poupança de dados",
+            "downloadFolderOrganization" to "Organização de pastas",
+            "downloadFolderOrganizationSubtitle" to "Guarda por artista e álbum sem duplicar ficheiros",
+            "downloadFolderArtist" to "Artista",
+            "downloadFolderArtistAlbum" to "Artista / Álbum",
             "downloadSpeedLimit" to "Limite de velocidade",
             "downloadSpeedLimitSubtitle" to "Limita o uso da rede durante as transferências",
             "downloadSpeedUnlimited" to "Ilimitado",
@@ -5041,6 +5087,10 @@ class LevyraStrings private constructor(
             "downloadPresetAutomatic" to "Automatisch",
             "downloadPresetHighQuality" to "Hoge kwaliteit",
             "downloadPresetDataSaver" to "Databesparing",
+            "downloadFolderOrganization" to "Mapindeling",
+            "downloadFolderOrganizationSubtitle" to "Opslaan per artiest en album zonder bestanden te dupliceren",
+            "downloadFolderArtist" to "Artiest",
+            "downloadFolderArtistAlbum" to "Artiest / Album",
             "downloadSpeedLimit" to "Snelheidslimiet",
             "downloadSpeedLimitSubtitle" to "Beperkt netwerkgebruik tijdens downloaden",
             "downloadSpeedUnlimited" to "Onbeperkt",
@@ -5436,6 +5486,10 @@ class LevyraStrings private constructor(
             "downloadPresetAutomatic" to "Automatycznie",
             "downloadPresetHighQuality" to "Wysoka jakość",
             "downloadPresetDataSaver" to "Oszczędzanie danych",
+            "downloadFolderOrganization" to "Organizacja folderów",
+            "downloadFolderOrganizationSubtitle" to "Zapisuje według artysty i albumu bez duplikowania plików",
+            "downloadFolderArtist" to "Artysta",
+            "downloadFolderArtistAlbum" to "Artysta / Album",
             "downloadSpeedLimit" to "Limit prędkości",
             "downloadSpeedLimitSubtitle" to "Ogranicza użycie sieci podczas pobierania",
             "downloadSpeedUnlimited" to "Bez limitu",
@@ -5831,6 +5885,10 @@ class LevyraStrings private constructor(
             "downloadPresetAutomatic" to "Automat",
             "downloadPresetHighQuality" to "Calitate înaltă",
             "downloadPresetDataSaver" to "Economie de date",
+            "downloadFolderOrganization" to "Organizarea folderelor",
+            "downloadFolderOrganizationSubtitle" to "Salvează după artist și album fără a duplica fișierele",
+            "downloadFolderArtist" to "Artist",
+            "downloadFolderArtistAlbum" to "Artist / Album",
             "downloadSpeedLimit" to "Limită de viteză",
             "downloadSpeedLimitSubtitle" to "Limitează utilizarea rețelei în timpul descărcărilor",
             "downloadSpeedUnlimited" to "Nelimitat",
@@ -6226,6 +6284,10 @@ class LevyraStrings private constructor(
             "downloadPresetAutomatic" to "Αυτόματα",
             "downloadPresetHighQuality" to "Υψηλή ποιότητα",
             "downloadPresetDataSaver" to "Εξοικονόμηση δεδομένων",
+            "downloadFolderOrganization" to "Οργάνωση φακέλων",
+            "downloadFolderOrganizationSubtitle" to "Αποθηκεύει ανά καλλιτέχνη και άλμπουμ χωρίς διπλότυπα αρχεία",
+            "downloadFolderArtist" to "Καλλιτέχνης",
+            "downloadFolderArtistAlbum" to "Καλλιτέχνης / Άλμπουμ",
             "downloadSpeedLimit" to "Όριο ταχύτητας",
             "downloadSpeedLimitSubtitle" to "Περιορίζει τη χρήση δικτύου κατά τη λήψη",
             "downloadSpeedUnlimited" to "Απεριόριστο",
@@ -6621,6 +6683,10 @@ class LevyraStrings private constructor(
             "downloadPresetAutomatic" to "Automatiskt",
             "downloadPresetHighQuality" to "Hög kvalitet",
             "downloadPresetDataSaver" to "Databesparing",
+            "downloadFolderOrganization" to "Mappstruktur",
+            "downloadFolderOrganizationSubtitle" to "Sparar efter artist och album utan att duplicera filer",
+            "downloadFolderArtist" to "Artist",
+            "downloadFolderArtistAlbum" to "Artist / Album",
             "downloadSpeedLimit" to "Hastighetsgräns",
             "downloadSpeedLimitSubtitle" to "Begränsar nätverksanvändning vid nedladdning",
             "downloadSpeedUnlimited" to "Obegränsat",
@@ -7016,6 +7082,10 @@ class LevyraStrings private constructor(
             "downloadPresetAutomatic" to "Automatisk",
             "downloadPresetHighQuality" to "Høj kvalitet",
             "downloadPresetDataSaver" to "Databesparelse",
+            "downloadFolderOrganization" to "Mappestruktur",
+            "downloadFolderOrganizationSubtitle" to "Gemmer efter kunstner og album uden at duplikere filer",
+            "downloadFolderArtist" to "Kunstner",
+            "downloadFolderArtistAlbum" to "Kunstner / Album",
             "downloadSpeedLimit" to "Hastighedsgrænse",
             "downloadSpeedLimitSubtitle" to "Begrænser netværksforbrug under download",
             "downloadSpeedUnlimited" to "Ubegrænset",
@@ -7411,6 +7481,10 @@ class LevyraStrings private constructor(
             "downloadPresetAutomatic" to "Automaticky",
             "downloadPresetHighQuality" to "Vysoká kvalita",
             "downloadPresetDataSaver" to "Úspora dat",
+            "downloadFolderOrganization" to "Organizace složek",
+            "downloadFolderOrganizationSubtitle" to "Ukládá podle interpreta a alba bez duplikace souborů",
+            "downloadFolderArtist" to "Interpret",
+            "downloadFolderArtistAlbum" to "Interpret / Album",
             "downloadSpeedLimit" to "Limit rychlosti",
             "downloadSpeedLimitSubtitle" to "Omezuje využití sítě při stahování",
             "downloadSpeedUnlimited" to "Neomezené",
@@ -7806,6 +7880,10 @@ class LevyraStrings private constructor(
             "downloadPresetAutomatic" to "Автоматично",
             "downloadPresetHighQuality" to "Висока якість",
             "downloadPresetDataSaver" to "Економія трафіку",
+            "downloadFolderOrganization" to "Організація тек",
+            "downloadFolderOrganizationSubtitle" to "Зберігає за виконавцем і альбомом без дублювання файлів",
+            "downloadFolderArtist" to "Виконавець",
+            "downloadFolderArtistAlbum" to "Виконавець / Альбом",
             "downloadSpeedLimit" to "Обмеження швидкості",
             "downloadSpeedLimitSubtitle" to "Обмежує використання мережі під час завантаження",
             "downloadSpeedUnlimited" to "Без обмежень",
@@ -8201,6 +8279,10 @@ class LevyraStrings private constructor(
             "downloadPresetAutomatic" to "Автоматически",
             "downloadPresetHighQuality" to "Высокое качество",
             "downloadPresetDataSaver" to "Экономия трафика",
+            "downloadFolderOrganization" to "Организация папок",
+            "downloadFolderOrganizationSubtitle" to "Сохраняет по исполнителю и альбому без дублирования файлов",
+            "downloadFolderArtist" to "Исполнитель",
+            "downloadFolderArtistAlbum" to "Исполнитель / Альбом",
             "downloadSpeedLimit" to "Ограничение скорости",
             "downloadSpeedLimitSubtitle" to "Ограничивает использование сети во время загрузки",
             "downloadSpeedUnlimited" to "Без ограничений",
@@ -8596,6 +8678,10 @@ class LevyraStrings private constructor(
             "downloadPresetAutomatic" to "Otomatik",
             "downloadPresetHighQuality" to "Yüksek kalite",
             "downloadPresetDataSaver" to "Veri tasarrufu",
+            "downloadFolderOrganization" to "Klasör düzeni",
+            "downloadFolderOrganizationSubtitle" to "Dosyaları çoğaltmadan sanatçı ve albüme göre kaydeder",
+            "downloadFolderArtist" to "Sanatçı",
+            "downloadFolderArtistAlbum" to "Sanatçı / Albüm",
             "downloadSpeedLimit" to "Hız sınırı",
             "downloadSpeedLimitSubtitle" to "İndirme sırasında ağ kullanımını sınırlar",
             "downloadSpeedUnlimited" to "Sınırsız",
@@ -8991,6 +9077,10 @@ class LevyraStrings private constructor(
             "downloadPresetAutomatic" to "تلقائي",
             "downloadPresetHighQuality" to "جودة عالية",
             "downloadPresetDataSaver" to "توفير البيانات",
+            "downloadFolderOrganization" to "تنظيم المجلدات",
+            "downloadFolderOrganizationSubtitle" to "يحفظ حسب الفنان والألبوم دون تكرار الملفات",
+            "downloadFolderArtist" to "الفنان",
+            "downloadFolderArtistAlbum" to "الفنان / الألبوم",
             "downloadSpeedLimit" to "حد السرعة",
             "downloadSpeedLimitSubtitle" to "يحد من استخدام الشبكة أثناء التنزيل",
             "downloadSpeedUnlimited" to "غير محدود",
@@ -9386,6 +9476,10 @@ class LevyraStrings private constructor(
             "downloadPresetAutomatic" to "自动",
             "downloadPresetHighQuality" to "高质量",
             "downloadPresetDataSaver" to "省流量",
+            "downloadFolderOrganization" to "文件夹组织",
+            "downloadFolderOrganizationSubtitle" to "按艺术家和专辑保存，不重复文件",
+            "downloadFolderArtist" to "艺术家",
+            "downloadFolderArtistAlbum" to "艺术家 / 专辑",
             "downloadSpeedLimit" to "速度限制",
             "downloadSpeedLimitSubtitle" to "下载时限制网络使用",
             "downloadSpeedUnlimited" to "不限制",

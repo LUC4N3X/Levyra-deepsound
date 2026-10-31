@@ -251,37 +251,56 @@ class OfflineAudioStoreTest {
     }
 
     @Test
-    fun theFinalPipelineNeverPublishesOutsidePrivateStorage() {
+    fun thePrivateDestinationNeverPublishesOutsidePrivateStorage() {
         val exporter = read("java/com/luc4n3x/levyra/player/offline/OfflineAudioExporter.kt")
         val store = read("java/com/luc4n3x/levyra/player/offline/OfflineAudioStore.kt")
 
-        listOf(exporter, store).forEach { source ->
-            listOf(
-                "MediaStore",
-                "DocumentsContract",
-                "DownloadFolderAccess",
-                "Environment.",
-                "destinationTreeUri",
-                "folderMode",
-                "ContentValues",
-                "DIRECTORY_MUSIC"
-            ).forEach { forbidden -> assertFalse(forbidden, source.contains(forbidden)) }
-        }
+        listOf(
+            "MediaStore",
+            "DocumentsContract",
+            "DownloadFolderAccess",
+            "Environment.",
+            "ContentValues",
+            "DIRECTORY_MUSIC"
+        ).forEach { forbidden -> assertFalse(forbidden, store.contains(forbidden)) }
         assertTrue(exporter.contains("val workspace = audioStore.stagingWorkspace()"))
+        assertTrue(
+            exporter.contains(
+                "LevyraDownloadDestination.Private -> SavedAudioDestination(commitToOfflineStore(staged, original, resolved, container), \"\")"
+            )
+        )
+        assertTrue(exporter.contains("LevyraDownloadDestination.Public -> saveToMusicCollection(staged, resolved, container)"))
         assertTrue(exporter.contains("audioStore.commit(staged, stableId, container.extension)"))
     }
 
     @Test
-    fun theFolderPickerAndPublicDestinationAreGoneFromTheUi() {
+    fun bothDestinationsStaySelectableInSettings() {
         val app = read("java/com/luc4n3x/levyra/ui/LevyraApp.kt")
-        val overlay = read("java/com/luc4n3x/levyra/ui/DownloadsFolderOverlay.kt")
-        val viewModel = read("java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt")
 
-        assertFalse(app.contains("downloadLocationLauncher"))
-        assertFalse(app.contains("onSelectDownloadLocation"))
-        assertFalse(app.contains("downloadFolderOrganization"))
-        assertFalse(overlay.contains("Music/Levyra"))
-        assertFalse(viewModel.contains("Music/Levyra"))
+        assertTrue(app.contains("LevyraDownloadDestination.Private.name to strings.downloadDestinationPrivate"))
+        assertTrue(app.contains("LevyraDownloadDestination.Public.name to strings.downloadDestinationPublic"))
+        assertTrue(app.contains("if (downloadSettings.destination == LevyraDownloadDestination.Public) {"))
+        assertTrue(app.contains("onSelectDownloadLocation"))
+    }
+
+    @Test
+    fun aStoredCustomFolderKeepsThePublicDestinationAfterUpdating() {
+        assertEquals(
+            com.luc4n3x.levyra.domain.LevyraDownloadDestination.Private,
+            com.luc4n3x.levyra.domain.LevyraDownloadDestination.from("", "")
+        )
+        assertEquals(
+            com.luc4n3x.levyra.domain.LevyraDownloadDestination.Public,
+            com.luc4n3x.levyra.domain.LevyraDownloadDestination.from("", "content://tree/music")
+        )
+        assertEquals(
+            com.luc4n3x.levyra.domain.LevyraDownloadDestination.Private,
+            com.luc4n3x.levyra.domain.LevyraDownloadDestination.from("Private", "content://tree/music")
+        )
+        assertEquals(
+            com.luc4n3x.levyra.domain.LevyraDownloadDestination.Public,
+            com.luc4n3x.levyra.domain.LevyraDownloadDestination.from("Public", "")
+        )
     }
 
     @Test

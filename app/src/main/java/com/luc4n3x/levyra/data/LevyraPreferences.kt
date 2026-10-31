@@ -30,6 +30,7 @@ import com.luc4n3x.levyra.domain.LevyraBackupSettings
 import com.luc4n3x.levyra.domain.LevyraCanvasQuality
 import com.luc4n3x.levyra.domain.LevyraVisualPerformance
 import com.luc4n3x.levyra.domain.LevyraCanvasSource
+import com.luc4n3x.levyra.domain.LevyraDownloadDestination
 import com.luc4n3x.levyra.domain.LevyraDownloadFolderMode
 import com.luc4n3x.levyra.domain.LevyraDownloadPreset
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
@@ -293,6 +294,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_DOWNLOAD_CONCURRENCY] = normalizedDownloads.maxConcurrentDownloads
             mutable[KEY_DOWNLOAD_PRESET] = normalizedDownloads.preset.name
             mutable[KEY_DOWNLOAD_FOLDER_MODE] = normalizedDownloads.folderMode.name
+            mutable[KEY_DOWNLOAD_DESTINATION] = normalizedDownloads.destination.name
             mutable[KEY_DOWNLOAD_DESTINATION_TREE_URI] = normalizedDownloads.destinationTreeUri
             mutable[KEY_DOWNLOAD_MAX_RATE] = normalizedDownloads.maxRateKbps
             mutable[KEY_DOWNLOAD_EMBED_METADATA] = normalizedDownloads.embedMetadata
@@ -511,6 +513,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             it[KEY_DOWNLOAD_CONCURRENCY] = normalized.maxConcurrentDownloads
             it[KEY_DOWNLOAD_PRESET] = normalized.preset.name
             it[KEY_DOWNLOAD_FOLDER_MODE] = normalized.folderMode.name
+            it[KEY_DOWNLOAD_DESTINATION] = normalized.destination.name
             it[KEY_DOWNLOAD_DESTINATION_TREE_URI] = normalized.destinationTreeUri
             it[KEY_DOWNLOAD_MAX_RATE] = normalized.maxRateKbps
             it[KEY_DOWNLOAD_EMBED_METADATA] = normalized.embedMetadata
@@ -991,6 +994,10 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         maxConcurrentDownloads = preferences[KEY_DOWNLOAD_CONCURRENCY] ?: 2,
         preset = LevyraDownloadPreset.from(preferences[KEY_DOWNLOAD_PRESET].orEmpty()),
         folderMode = LevyraDownloadFolderMode.from(preferences[KEY_DOWNLOAD_FOLDER_MODE].orEmpty()),
+        destination = LevyraDownloadDestination.from(
+            preferences[KEY_DOWNLOAD_DESTINATION].orEmpty(),
+            preferences[KEY_DOWNLOAD_DESTINATION_TREE_URI].orEmpty()
+        ),
         destinationTreeUri = preferences[KEY_DOWNLOAD_DESTINATION_TREE_URI].orEmpty(),
         maxRateKbps = preferences[KEY_DOWNLOAD_MAX_RATE] ?: 0,
         embedMetadata = preferences[KEY_DOWNLOAD_EMBED_METADATA] ?: true,
@@ -1510,6 +1517,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_DOWNLOAD_CONCURRENCY = intPreferencesKey("download_concurrency")
         val KEY_DOWNLOAD_PRESET = stringPreferencesKey("download_preset")
         val KEY_DOWNLOAD_FOLDER_MODE = stringPreferencesKey("download_folder_mode")
+        val KEY_DOWNLOAD_DESTINATION = stringPreferencesKey("download_destination")
         val KEY_DOWNLOAD_DESTINATION_TREE_URI = stringPreferencesKey("download_destination_tree_uri")
         val KEY_DOWNLOAD_MAX_RATE = intPreferencesKey("download_max_rate_kbps")
         val KEY_DOWNLOAD_EMBED_METADATA = booleanPreferencesKey("download_embed_metadata")

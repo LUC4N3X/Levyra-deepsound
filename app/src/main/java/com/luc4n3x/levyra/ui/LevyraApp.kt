@@ -629,6 +629,7 @@ import coil3.request.allowHardware
 import coil3.request.bitmapConfig
 import coil3.request.crossfade
 import com.luc4n3x.levyra.data.ArtworkPalette
+import com.luc4n3x.levyra.data.DownloadFolderAccess
 import com.luc4n3x.levyra.data.ArtworkPaletteCache
 import com.luc4n3x.levyra.data.ArtworkRequestSource
 import com.luc4n3x.levyra.data.areAllFavoriteTracks
@@ -679,6 +680,8 @@ import com.luc4n3x.levyra.domain.LevyraVisualPerformance
 import com.luc4n3x.levyra.domain.LevyraCanvasSource
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
+import com.luc4n3x.levyra.domain.LevyraDownloadDestination
+import com.luc4n3x.levyra.domain.LevyraDownloadFolderMode
 import com.luc4n3x.levyra.domain.LevyraDownloadPreset
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.LevyraSmartOfflineSettings
@@ -1983,6 +1986,7 @@ fun LevyraApp(
         return
     }
     val toastContext = LocalContext.current
+    val downloadLocationScope = rememberCoroutineScope()
     LaunchedEffect(viewModel) {
         viewModel.integrationAuthorizationUrls.collect { url ->
             openExternalUrl(toastContext, url, currentStrings)
@@ -2031,6 +2035,26 @@ fun LevyraApp(
     }
     val backupLocationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         uri?.let(viewModel::setBackupLocation)
+    }
+    val downloadLocationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) {
+            downloadLocationScope.launch {
+                val persisted = withContext(Dispatchers.IO) {
+                    DownloadFolderAccess.persist(toastContext, uri)
+                }
+                if (persisted) {
+                    viewModel.setDownloadSettings(
+                        viewModel.state.value.downloadSettings.copy(destinationTreeUri = uri.toString())
+                    )
+                } else {
+                    Toast.makeText(
+                        toastContext,
+                        currentStrings.downloadLocationPermissionFailed,
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
     }
     val accent = if (state.dynamicColor) state.currentTrack ?: state.tracks.firstOrNull() else null
     val overlayEnter = LevyraMotion.overlayEnter(state.animationsEnabled)
@@ -3016,6 +3040,12 @@ fun LevyraApp(
                     onRefreshSmartOffline = viewModel::refreshSmartOffline,
                     onAdvancedQueuePrefetch = viewModel::setAdvancedQueuePrefetchTracks,
                     onAdvancedQueuePrefetchOnMobileData = viewModel::setAdvancedQueuePrefetchOnMobileData,
+                    onSelectDownloadLocation = { downloadLocationLauncher.launch(null) },
+                    onClearDownloadLocation = {
+                        viewModel.setDownloadSettings(
+                            viewModel.state.value.downloadSettings.copy(destinationTreeUri = "")
+                        )
+                    },
                     onBackupSettings = viewModel::setBackupSettings,
                     onAutomationSettings = viewModel::setAutomationSettings,
                     onAnimations = viewModel::setAnimationsEnabled,
@@ -19644,6 +19674,8 @@ private fun SettingsOverlay(
     onRefreshSmartOffline: () -> Unit,
     onAdvancedQueuePrefetch: (Int) -> Unit,
     onAdvancedQueuePrefetchOnMobileData: (Boolean) -> Unit,
+    onSelectDownloadLocation: () -> Unit,
+    onClearDownloadLocation: () -> Unit,
     onBackupSettings: (LevyraBackupSettings) -> Unit,
     onAutomationSettings: (LevyraAutomationSettings) -> Unit,
     onAnimations: (Boolean) -> Unit,
@@ -19692,6 +19724,16 @@ private fun SettingsOverlay(
     val batteryUnrestricted = remember(batteryCheckToken) {
         batteryContext.getSystemService(PowerManager::class.java)
         ?.isIgnoringBatteryOptimizations(batteryContext.packageName) == true
+    }
+    var selectedDownloadFolderName by remember(downloadSettings.destinationTreeUri) { mutableStateOf<String?>(null) }
+    LaunchedEffect(downloadSettings.destinationTreeUri, batteryCheckToken) {
+        selectedDownloadFolderName = if (downloadSettings.destinationTreeUri.isBlank()) {
+            null
+        } else {
+            withContext(Dispatchers.IO) {
+                DownloadFolderAccess.displayName(batteryContext, downloadSettings.destinationTreeUri)
+            }
+        }
     }
     DisposableEffect(batteryLifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -20749,6 +20791,57 @@ private fun SettingsOverlay(
                                     selected = downloadSettings.preset.name,
                                     onSelect = { value -> onDownloadSettings(downloadSettings.copy(preset = LevyraDownloadPreset.valueOf(value))) }
                                 )
+                            }
+                            item {
+                                SettingsChoiceRow(
+                                    icon = Icons.Rounded.Source,
+                                    title = strings.downloadDestination,
+                                    subtitle = strings.downloadDestinationSubtitle,
+                                    options = listOf(
+                                        LevyraDownloadDestination.Private.name to strings.downloadDestinationPrivate,
+                                        LevyraDownloadDestination.Public.name to strings.downloadDestinationPublic
+                                    ),
+                                    selected = downloadSettings.destination.name,
+                                    onSelect = { value -> onDownloadSettings(downloadSettings.copy(destination = LevyraDownloadDestination.valueOf(value))) }
+                                )
+                            }
+                            if (downloadSettings.destination == LevyraDownloadDestination.Public) {
+                                item {
+                                    SettingsButton(
+                                        icon = Icons.Rounded.Source,
+                                        title = strings.downloadLocation,
+                                        subtitle = when {
+                                            downloadSettings.destinationTreeUri.isBlank() -> strings.downloadLocationDefault
+                                            !selectedDownloadFolderName.isNullOrBlank() -> selectedDownloadFolderName.orEmpty()
+                                            else -> strings.downloadLocationUnavailable
+                                        },
+                                        onClick = onSelectDownloadLocation
+                                    )
+                                }
+                                if (downloadSettings.destinationTreeUri.isNotBlank()) {
+                                    item {
+                                        SettingsButton(
+                                            icon = Icons.Rounded.History,
+                                            title = strings.downloadLocationReset,
+                                            subtitle = strings.downloadLocationResetSubtitle,
+                                            onClick = onClearDownloadLocation
+                                        )
+                                    }
+                                }
+                                item {
+                                    SettingsChoiceRow(
+                                        icon = Icons.Rounded.Album,
+                                        title = strings.downloadFolderOrganization,
+                                        subtitle = strings.downloadFolderOrganizationSubtitle,
+                                        options = listOf(
+                                            LevyraDownloadFolderMode.Flat.name to "Levyra",
+                                            LevyraDownloadFolderMode.Artist.name to strings.downloadFolderArtist,
+                                            LevyraDownloadFolderMode.ArtistAlbum.name to strings.downloadFolderArtistAlbum
+                                        ),
+                                        selected = downloadSettings.folderMode.name,
+                                        onSelect = { value -> onDownloadSettings(downloadSettings.copy(folderMode = LevyraDownloadFolderMode.valueOf(value))) }
+                                    )
+                                }
                             }
                             item {
                                 SettingsChoiceRow(

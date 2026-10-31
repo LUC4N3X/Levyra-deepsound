@@ -256,7 +256,7 @@ internal class LevyraSessionBitmapLoader(
                     .build()
                 when (val result = imageLoader.execute(request)) {
                     is SuccessResult -> result.image.toBitmap()
-                    is ErrorResult -> throw (result.throwable as? Exception ?: IllegalStateException(result.throwable))
+                    is ErrorResult -> throw result.throwable as? Exception ?: IllegalStateException(result.throwable)
                 }
             }
         }

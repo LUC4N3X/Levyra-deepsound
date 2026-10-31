@@ -34,17 +34,6 @@ class FdroidReviewContractTest(unittest.TestCase):
         )
         self.assertTrue(any("must not silently fall back" in item for item in violations))
 
-    def test_public_media_store_publishing_is_rejected(self) -> None:
-        relative = (
-            "app/src/main/java/com/luc4n3x/levyra/player/offline/"
-            "OfflineAudioExporter.kt"
-        )
-        violations = self.violations_after(
-            relative,
-            self.source(relative) + "\n// MediaStore.Audio.Media.EXTERNAL_CONTENT_URI\n",
-        )
-        self.assertTrue(any("must not be published to MediaStore" in item for item in violations))
-
     def test_remote_announcements_cannot_be_enabled_for_fdroid(self) -> None:
         relative = "app/build.gradle.kts"
         mutated = self.source(relative).replace(

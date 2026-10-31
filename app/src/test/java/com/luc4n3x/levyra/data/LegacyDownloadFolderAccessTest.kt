@@ -45,8 +45,6 @@ class LegacyDownloadFolderAccessTest {
         assertTrue(restore.contains("takePersistableUriPermission(pickedTreeUri, Intent.FLAG_GRANT_READ_URI_PERMISSION)"))
         assertFalse(restore.contains("FLAG_GRANT_WRITE_URI_PERMISSION"))
         assertTrue(restore.indexOf("isSameLegacyDownloadTree") < restore.indexOf("takePersistableUriPermission"))
-        assertFalse(exporter.contains("DownloadFolderAccess"))
-        assertFalse(exporter.contains("destinationTreeUri"))
     }
 
     @Test

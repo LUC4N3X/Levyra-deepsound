@@ -10,6 +10,8 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.SystemClock
+import android.provider.DocumentsContract
+import android.provider.MediaStore
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.work.BackoffPolicy
@@ -50,6 +52,7 @@ import com.luc4n3x.levyra.player.liveupdate.DownloadLiveUpdateSlot
 import com.luc4n3x.levyra.player.liveupdate.LiveUpdatePolicy
 import com.luc4n3x.levyra.player.offline.OfflineAudioExporter
 import com.luc4n3x.levyra.player.offline.OfflineExportPipeline
+import com.luc4n3x.levyra.player.offline.isOfflineAudioStoreUri
 import com.luc4n3x.levyra.player.offline.isOfflineStorageExhausted
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import java.io.IOException
@@ -134,7 +137,8 @@ class OfflineExportWorker(
                         KEY_FILE_NAME to existing.fileName,
                         KEY_EMBEDDED_METADATA to existing.embeddedMetadata,
                         KEY_MIME_TYPE to existing.mimeType,
-                        KEY_URI to existing.uri
+                        KEY_URI to existing.uri,
+                        KEY_DESTINATION_LABEL to existingDownloadDestinationLabel(existing.uri)
                     )
                 )
             }
@@ -210,7 +214,8 @@ class OfflineExportWorker(
                     KEY_FILE_NAME to result.fileName,
                     KEY_EMBEDDED_METADATA to result.fileMetadataEmbedded,
                     KEY_MIME_TYPE to result.mimeType,
-                    KEY_URI to result.uri.toString()
+                    KEY_URI to result.uri.toString(),
+                    KEY_DESTINATION_LABEL to result.destinationLabel
                 )
             )
         } catch (error: CancellationException) {
@@ -275,6 +280,24 @@ class OfflineExportWorker(
     }
 
     private fun errorData(message: String): Data = workDataOf(KEY_ERROR to message)
+
+    private fun existingDownloadDestinationLabel(rawUri: String): String {
+        if (isOfflineAudioStoreUri(rawUri)) return ""
+        val uri = runCatching { android.net.Uri.parse(rawUri) }.getOrNull() ?: return "Music/Levyra"
+        if (uri.authority == MediaStore.AUTHORITY) return "Music/Levyra"
+        val documentId = runCatching {
+            if (DocumentsContract.isDocumentUri(applicationContext, uri)) {
+                DocumentsContract.getDocumentId(uri)
+            } else {
+                ""
+            }
+        }.getOrDefault("")
+        val relativePath = documentId
+            .substringAfter(':', "")
+            .substringBeforeLast('/', "")
+            .trim('/')
+        return relativePath.ifBlank { "Music/Levyra" }
+    }
 
     private fun isStoredDownloadReadable(rawUri: String): Boolean {
         if (rawUri.isBlank()) return false
@@ -379,6 +402,7 @@ class OfflineExportWorker(
         const val KEY_EMBEDDED_METADATA = "embedded_metadata"
         const val KEY_MIME_TYPE = "mime_type"
         const val KEY_URI = "uri"
+        const val KEY_DESTINATION_LABEL = "destination_label"
         const val KEY_ERROR = "error"
         const val KEY_PROGRESS = "progress"
         const val KEY_OWNERSHIP = "ownership"

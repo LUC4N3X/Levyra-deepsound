@@ -9139,6 +9139,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val completedTrack = activeDownloadTracks.remove(trackId)
         activeDownloadTitles.remove(trackId)
         val fileName = workInfo.outputData.getString(OfflineExportWorker.KEY_FILE_NAME).orEmpty()
+        val destinationLabel = workInfo.outputData.getString(OfflineExportWorker.KEY_DESTINATION_LABEL).orEmpty()
         val embedded = workInfo.outputData.getBoolean(OfflineExportWorker.KEY_EMBEDDED_METADATA, false)
         val strings = LevyraStrings.forCode(_state.value.languageCode)
         completedTrack?.let { recordSmartDownload(it) }
@@ -9147,7 +9148,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 isOfflineExporting = it.downloadingTrackIds.size > 1,
                 offlineExportMessage = strings.formatOfflineExportSaved(
                     fileName = fileName,
-                    embeddedMetadata = embedded
+                    embeddedMetadata = embedded,
+                    destination = destinationLabel
                 ),
                 embeddedMetadataWriterReady = offlineExporter.embeddedMetadataWriterReady,
                 downloadingTrackIds = it.downloadingTrackIds - trackId,
