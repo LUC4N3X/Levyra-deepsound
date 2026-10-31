@@ -24,7 +24,6 @@
     <string name="car_connecting_player">플레이어에 연결 중</string>
     <string name="car_now_playing">재생 중</string>
     <string name="car_queue">재생 대기열</string>
-
     <!-- Android Auto browse tree -->
     <string name="car_root_subtitle">Android Auto에 최적화된 음악</string>
     <string name="car_home_subtitle">빠른 믹스, 오프라인, 차트</string>
@@ -55,7 +54,6 @@
     <string name="car_album_unavailable">앨범을 사용할 수 없음</string>
     <string name="car_artist_unavailable">아티스트를 사용할 수 없음</string>
     <string name="car_item_unavailable">항목을 사용할 수 없음</string>
-
     <!-- Android Auto dynamic strings -->
     <plurals name="car_tracks_count">
         <item quantity="other">%1$d곡</item>
