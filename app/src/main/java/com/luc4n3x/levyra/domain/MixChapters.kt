@@ -83,7 +83,7 @@ object MixChapterParser {
         var high = chapters.lastIndex
         var answer = 0
         while (low <= high) {
-            val middle = (low + high) ushr 1
+            val middle = low + high ushr 1
             if (chapters[middle].startMs <= positionMs) {
                 answer = middle
                 low = middle + 1

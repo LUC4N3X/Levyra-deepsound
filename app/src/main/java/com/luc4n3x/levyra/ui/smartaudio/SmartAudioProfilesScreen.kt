@@ -308,7 +308,6 @@ private fun SmartAudioDeviceCard(
     modifier: Modifier = Modifier
 ) {
     val scheme = MaterialTheme.colorScheme
-    val strings = LocalLevyraStrings.current
     val cornerSpec = if (animated) spring<androidx.compose.ui.unit.Dp>(Spring.DampingRatioLowBouncy, Spring.StiffnessLow) else snap()
     val corner by animateDpAsState(if (device.active) 38.dp else 22.dp, cornerSpec, label = "smart-device-corner")
     val container by animateColorAsState(
@@ -317,6 +316,20 @@ private fun SmartAudioDeviceCard(
     )
     val content = if (device.active) scheme.onPrimaryContainer else scheme.onSurface
     val muted = if (device.active) scheme.onPrimaryContainer.copy(alpha = 0.76f) else scheme.onSurfaceVariant
+    Surface(color = container, shape = RoundedCornerShape(corner), modifier = modifier.fillMaxWidth().clickable(onClick = onClick)) {
+        Column(Modifier.padding(if (device.active) 20.dp else 16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                SmartDeviceAvatar(device, content, muted, animated)
+                SmartDeviceTitle(device, copy, content, muted, Modifier.weight(1f).padding(start = 12.dp))
+            }
+            Spacer(Modifier.height(10.dp))
+            SmartDeviceProfile(device, copy, automation, content, animated)
+        }
+    }
+}
+
+@Composable
+private fun SmartDeviceAvatar(device: SmartAudioDeviceUi, content: Color, muted: Color, animated: Boolean) {
     val pulse = remember(device.key) { Animatable(0f) }
     LaunchedEffect(device.active, animated) {
         if (device.active && animated) {
@@ -324,61 +337,77 @@ private fun SmartAudioDeviceCard(
             pulse.animateTo(1f, tween(900))
         }
     }
-    Surface(color = container, shape = RoundedCornerShape(corner), modifier = modifier.fillMaxWidth().clickable(onClick = onClick)) {
-        Column(Modifier.padding(if (device.active) 20.dp else 16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.size(if (device.active) 58.dp else 46.dp)) {
-                    if (device.active) {
-                        val ring = content
-                        Canvas(Modifier.fillMaxSize()) {
-                            val progress = pulse.value
-                            if (progress in 0.001f..0.999f) {
-                                drawCircle(ring.copy(alpha = (1f - progress) * 0.5f), size.minDimension / 2f * (0.72f + progress * 0.28f), style = Stroke(2.dp.toPx()))
-                            }
-                        }
-                    }
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.size(if (device.active) 46.dp else 40.dp).clip(CircleShape).background(content.copy(alpha = if (device.active) 0.14f else 0.08f))
-                    ) {
-                        Icon(smartAudioCategoryIcon(device.category), null, tint = if (device.connected) content else muted)
-                    }
+    val outerSize = if (device.active) 58.dp else 46.dp
+    val innerSize = if (device.active) 46.dp else 40.dp
+    val innerAlpha = if (device.active) 0.14f else 0.08f
+    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(outerSize)) {
+        if (device.active) {
+            Canvas(Modifier.fillMaxSize()) {
+                val progress = pulse.value
+                if (progress in 0.001f..0.999f) {
+                    drawCircle(content.copy(alpha = (1f - progress) * 0.5f), size.minDimension / 2f * (0.72f + progress * 0.28f), style = Stroke(2.dp.toPx()))
                 }
-                Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                    Text(
-                        device.name.ifBlank { copy[categoryLabelKey(device.category)] },
-                        style = if (device.active) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = content,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    val status = when {
-                        device.active -> copy[SmartAudioText.SmartPlayingHere]
-                        device.connected -> copy[SmartAudioText.SmartConnected]
-                        else -> copy[SmartAudioText.SmartRemembered]
-                    }
-                    Text(status, style = MaterialTheme.typography.bodySmall, color = muted)
-                }
-            }
-            Spacer(Modifier.height(10.dp))
-            val profile = device.profile
-            AnimatedContent(
-                targetState = profile?.let { profileSummary(it, copy, strings) } ?: copy[SmartAudioText.SmartNoProfile],
-                transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(120)) },
-                label = "smart-profile-summary"
-            ) { summary ->
-                Text(
-                    if (automation) summary else "$summary · ${copy[SmartAudioText.SmartOff]}",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = content
-                )
-            }
-            if (profile != null && profile.eqMode != SmartAudioEqMode.KEEP_GLOBAL && profile.eqMode != SmartAudioEqMode.OFF) {
-                Spacer(Modifier.height(10.dp))
-                EqPreviewCurve(profileCurve(profile), content, animated, Modifier.fillMaxWidth().height(if (device.active) 54.dp else 34.dp))
             }
         }
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.size(innerSize).clip(CircleShape).background(content.copy(alpha = innerAlpha))
+        ) {
+            Icon(smartAudioCategoryIcon(device.category), null, tint = if (device.connected) content else muted)
+        }
+    }
+}
+
+@Composable
+private fun SmartDeviceTitle(
+    device: SmartAudioDeviceUi,
+    copy: SmartAudioCopy,
+    content: Color,
+    muted: Color,
+    modifier: Modifier
+) {
+    val status = when {
+        device.active -> copy[SmartAudioText.SmartPlayingHere]
+        device.connected -> copy[SmartAudioText.SmartConnected]
+        else -> copy[SmartAudioText.SmartRemembered]
+    }
+    Column(modifier) {
+        Text(
+            device.name.ifBlank { copy[categoryLabelKey(device.category)] },
+            style = if (device.active) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = content,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(status, style = MaterialTheme.typography.bodySmall, color = muted)
+    }
+}
+
+@Composable
+private fun SmartDeviceProfile(
+    device: SmartAudioDeviceUi,
+    copy: SmartAudioCopy,
+    automation: Boolean,
+    content: Color,
+    animated: Boolean
+) {
+    val strings = LocalLevyraStrings.current
+    val profile = device.profile
+    AnimatedContent(
+        targetState = profile?.let { profileSummary(it, copy, strings) } ?: copy[SmartAudioText.SmartNoProfile],
+        transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(120)) },
+        label = "smart-profile-summary"
+    ) { summary ->
+        Text(
+            if (automation) summary else "$summary · ${copy[SmartAudioText.SmartOff]}",
+            style = MaterialTheme.typography.labelLarge,
+            color = content
+        )
+    }
+    if (profile != null && profile.eqMode != SmartAudioEqMode.KEEP_GLOBAL && profile.eqMode != SmartAudioEqMode.OFF) {
+        Spacer(Modifier.height(10.dp))
+        EqPreviewCurve(profileCurve(profile), content, animated, Modifier.fillMaxWidth().height(if (device.active) 54.dp else 34.dp))
     }
 }
 

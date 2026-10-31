@@ -82,7 +82,7 @@ private const val MAX_DRAWN_SEGMENTS = 120
 internal fun formatMixChapterTime(ms: Long): String {
     val total = (ms / 1000L).coerceAtLeast(0L)
     val hours = total / 3600L
-    val minutes = (total % 3600L) / 60L
+    val minutes = total % 3600L / 60L
     val seconds = total % 60L
     return if (hours > 0L) {
         String.format(Locale.ROOT, "%d:%02d:%02d", hours, minutes, seconds)
@@ -121,7 +121,7 @@ internal fun MixChapterStrip(
                 targetState = chapter.title,
                 transitionSpec = {
                     if (animated) {
-                        (slideInVertically(tween(260)) { it / 2 } + fadeIn(tween(220))) togetherWith fadeOut(tween(120))
+                        slideInVertically(tween(260)) { it / 2 } + fadeIn(tween(220)) togetherWith fadeOut(tween(120))
                     } else {
                         fadeIn(snap()) togetherWith fadeOut(snap())
                     }
@@ -339,31 +339,8 @@ private fun MixChapterRow(
         if (current) scheme.primaryContainer else Color.Transparent,
         label = "mix-chapter-container"
     )
-    val played = scheme.primary
-    val pending = scheme.outlineVariant
     Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.width(30.dp).fillMaxHeight()) {
-            Canvas(Modifier.fillMaxHeight().width(30.dp)) {
-                val x = size.width / 2f
-                val middle = size.height / 2f
-                val stroke = 3.dp.toPx()
-                if (!isFirst) {
-                    drawLine(if (state == MixChapterRowState.UPCOMING) pending else played, Offset(x, 0f), Offset(x, middle), stroke, StrokeCap.Round)
-                }
-                if (!isLast) {
-                    drawLine(if (state == MixChapterRowState.PAST) played else pending, Offset(x, middle), Offset(x, size.height), stroke, StrokeCap.Round)
-                    if (current) {
-                        drawLine(played, Offset(x, middle), Offset(x, middle + (size.height - middle) * progress), stroke, StrokeCap.Round)
-                    }
-                }
-            }
-            Box(
-                Modifier
-                    .size(nodeSize)
-                    .clip(CircleShape)
-                    .background(if (state == MixChapterRowState.UPCOMING) pending else played)
-            )
-        }
+        MixChapterRail(state, progress, isFirst, isLast, nodeSize)
         Surface(
             color = container,
             shape = RoundedCornerShape(corner),
@@ -374,37 +351,75 @@ private fun MixChapterRow(
                 .clip(RoundedCornerShape(corner))
                 .clickable(role = Role.Button, onClick = onClick)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.heightIn(min = 52.dp).padding(horizontal = 14.dp, vertical = 8.dp)
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        chapter.title,
-                        style = if (current) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium,
-                        fontWeight = if (current) FontWeight.Bold else FontWeight.Medium,
-                        color = when (state) {
-                            MixChapterRowState.CURRENT -> scheme.onPrimaryContainer
-                            MixChapterRowState.PAST -> scheme.onSurfaceVariant
-                            MixChapterRowState.UPCOMING -> scheme.onSurface
-                        },
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        formatMixChapterTime(durationMs),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (current) scheme.onPrimaryContainer.copy(alpha = 0.72f) else scheme.onSurfaceVariant
-                    )
+            MixChapterRowContent(chapter, durationMs, state)
+        }
+    }
+}
+
+@Composable
+private fun MixChapterRail(
+    state: MixChapterRowState,
+    progress: Float,
+    isFirst: Boolean,
+    isLast: Boolean,
+    nodeSize: androidx.compose.ui.unit.Dp
+) {
+    val played = MaterialTheme.colorScheme.primary
+    val pending = MaterialTheme.colorScheme.outlineVariant
+    val upperColor = if (state == MixChapterRowState.UPCOMING) pending else played
+    val lowerColor = if (state == MixChapterRowState.PAST) played else pending
+    val lowerProgress = if (state == MixChapterRowState.CURRENT) progress else 0f
+    Box(contentAlignment = Alignment.Center, modifier = Modifier.width(30.dp).fillMaxHeight()) {
+        Canvas(Modifier.fillMaxHeight().width(30.dp)) {
+            val x = size.width / 2f
+            val middle = size.height / 2f
+            val stroke = 3.dp.toPx()
+            if (!isFirst) {
+                drawLine(upperColor, Offset(x, 0f), Offset(x, middle), stroke, StrokeCap.Round)
+            }
+            if (!isLast) {
+                drawLine(lowerColor, Offset(x, middle), Offset(x, size.height), stroke, StrokeCap.Round)
+                if (lowerProgress > 0f) {
+                    drawLine(played, Offset(x, middle), Offset(x, middle + (size.height - middle) * lowerProgress), stroke, StrokeCap.Round)
                 }
-                Text(
-                    formatMixChapterTime(chapter.startMs),
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (current) scheme.onPrimaryContainer else scheme.primary,
-                    modifier = Modifier.padding(start = 10.dp)
-                )
             }
         }
+        Box(Modifier.size(nodeSize).clip(CircleShape).background(upperColor))
+    }
+}
+
+@Composable
+private fun MixChapterRowContent(chapter: MixChapter, durationMs: Long, state: MixChapterRowState) {
+    val scheme = MaterialTheme.colorScheme
+    val current = state == MixChapterRowState.CURRENT
+    val titleColor = when (state) {
+        MixChapterRowState.CURRENT -> scheme.onPrimaryContainer
+        MixChapterRowState.PAST -> scheme.onSurfaceVariant
+        MixChapterRowState.UPCOMING -> scheme.onSurface
+    }
+    val durationColor = if (current) scheme.onPrimaryContainer.copy(alpha = 0.72f) else scheme.onSurfaceVariant
+    val startColor = if (current) scheme.onPrimaryContainer else scheme.primary
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.heightIn(min = 52.dp).padding(horizontal = 14.dp, vertical = 8.dp)
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                chapter.title,
+                style = if (current) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium,
+                fontWeight = if (current) FontWeight.Bold else FontWeight.Medium,
+                color = titleColor,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(formatMixChapterTime(durationMs), style = MaterialTheme.typography.labelSmall, color = durationColor)
+        }
+        Text(
+            formatMixChapterTime(chapter.startMs),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = startColor,
+            modifier = Modifier.padding(start = 10.dp)
+        )
     }
 }

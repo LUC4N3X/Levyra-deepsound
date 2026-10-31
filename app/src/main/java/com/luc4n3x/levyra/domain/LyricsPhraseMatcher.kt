@@ -140,7 +140,7 @@ object LyricsPhraseMatcher {
         val matched = bestWeight.toInt()
         val coverage = bestWeight / query.size
         val density = bestWeight / max(query.size, min(text.size, query.size * 2)).toFloat()
-        return (coverage * 0.8f + density * 0.2f) to matched
+        return coverage * 0.8f + density * 0.2f to matched
     }
 
     private fun tokenSimilarity(left: String, right: String): Float {

@@ -40,6 +40,9 @@ class NightListeningAudioProcessor : BaseAudioProcessor() {
     private var mixStep = 0f
     private var makeupCoefficient = 0f
     private var meterReductionDb = 0f
+    private var channels = 0
+    private var sampleSize = 2
+    private var floatSamples = false
 
     fun setConfiguration(enabled: Boolean, preset: NightListeningPreset, trimDb: Float) {
         target = Target(
@@ -75,47 +78,62 @@ class NightListeningAudioProcessor : BaseAudioProcessor() {
         processing = state.enabled
         inputBuffer.order(ByteOrder.LITTLE_ENDIAN)
         output.order(ByteOrder.LITTLE_ENDIAN)
-        val channels = inputAudioFormat.channelCount
-        val float = inputAudioFormat.encoding == C.ENCODING_PCM_FLOAT
-        val sampleSize = if (float) 4 else 2
+        channels = inputAudioFormat.channelCount
+        floatSamples = inputAudioFormat.encoding == C.ENCODING_PCM_FLOAT
+        sampleSize = if (floatSamples) 4 else 2
         val frames = remaining / (sampleSize * channels)
         val base = inputBuffer.position()
         val targetMakeupDb = state.preset.makeupDb + state.trimDb
         val targetMix = if (state.enabled) 1f else 0f
         for (frame in 0 until frames) {
             val frameOffset = base + frame * sampleSize * channels
-            var peak = 0f
-            for (channel in 0 until channels) {
-                val offset = frameOffset + channel * sampleSize
-                val sample = if (float) inputBuffer.getFloat(offset) else inputBuffer.getShort(offset) / 32768f
-                peak = max(peak, abs(sample))
-            }
-            val coefficient = if (peak > envelope) attackCoefficient else releaseCoefficient
-            envelope = peak + (envelope - peak) * coefficient
+            advanceEnvelope(framePeak(inputBuffer, frameOffset))
             if (framesUntilUpdate <= 0) {
                 updateControl(state.preset, targetMakeupDb)
                 framesUntilUpdate = CONTROL_INTERVAL_FRAMES
             }
             framesUntilUpdate--
             appliedGain += gainStep
-            mix = when {
-                mix < targetMix -> (mix + mixStep).coerceAtMost(targetMix)
-                mix > targetMix -> (mix - mixStep).coerceAtLeast(targetMix)
-                else -> mix
-            }
-            val gain = 1f + (appliedGain - 1f) * mix
-            for (channel in 0 until channels) {
-                val offset = frameOffset + channel * sampleSize
-                if (float) {
-                    output.putFloat(inputBuffer.getFloat(offset) * gain)
-                } else {
-                    val sample = inputBuffer.getShort(offset) / 32768f * gain
-                    output.putShort((sample.coerceIn(-1f, MAX_16_BIT) * 32768f).roundToInt().toShort())
-                }
-            }
+            advanceMix(targetMix)
+            writeFrame(inputBuffer, output, frameOffset, 1f + (appliedGain - 1f) * mix)
         }
         inputBuffer.position(inputBuffer.limit())
         output.flip()
+    }
+
+    private fun framePeak(input: ByteBuffer, frameOffset: Int): Float {
+        var peak = 0f
+        for (channel in 0 until channels) {
+            peak = max(peak, abs(readSample(input, frameOffset + channel * sampleSize)))
+        }
+        return peak
+    }
+
+    private fun readSample(input: ByteBuffer, offset: Int): Float =
+        if (floatSamples) input.getFloat(offset) else input.getShort(offset) / 32768f
+
+    private fun advanceEnvelope(peak: Float) {
+        val coefficient = if (peak > envelope) attackCoefficient else releaseCoefficient
+        envelope = peak + (envelope - peak) * coefficient
+    }
+
+    private fun advanceMix(targetMix: Float) {
+        mix = if (mix < targetMix) {
+            (mix + mixStep).coerceAtMost(targetMix)
+        } else {
+            (mix - mixStep).coerceAtLeast(targetMix)
+        }
+    }
+
+    private fun writeFrame(input: ByteBuffer, output: ByteBuffer, frameOffset: Int, gain: Float) {
+        for (channel in 0 until channels) {
+            val sample = readSample(input, frameOffset + channel * sampleSize) * gain
+            if (floatSamples) {
+                output.putFloat(sample)
+            } else {
+                output.putShort((sample.coerceIn(-1f, MAX_16_BIT) * 32768f).roundToInt().toShort())
+            }
+        }
     }
 
     private fun prepare(preset: NightListeningPreset) {
