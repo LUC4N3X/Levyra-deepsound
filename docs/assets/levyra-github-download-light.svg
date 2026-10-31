@@ -1,18 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="184" height="57.5" viewBox="0 0 160 50" role="img" aria-label="DOWNLOAD FROM GitHub">
   <title>DOWNLOAD FROM GitHub</title>
-  <defs>
-    <linearGradient id="dl_grad_github_light" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#FFFFFF"/>
-      <stop offset="100%" stop-color="#F1F4F9"/>
-    </linearGradient>
-  </defs>
-  <rect x=".75" y=".75" width="158.5" height="48.5" rx="16" fill="url(#dl_grad_github_light)" stroke="rgba(0, 0, 0, 0.10)" stroke-width="1.2"/>
-  <rect x="1.75" y="1.75" width="156.5" height="46.5" rx="15" fill="none" stroke="rgba(255, 255, 255, 0.70)" stroke-width="1"/>
-  <rect x="8" y="7" width="36" height="36" rx="11" fill="#F0F3F6" stroke="rgba(255, 255, 255, 0.2)" stroke-width="1"/>
-  <g transform="translate(11 10) scale(1.68)"><path fill="#0D1117" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></g>
-  <text x="49" y="19" fill="#64748B" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="7.5" font-weight="700" letter-spacing=".8">DOWNLOAD FROM</text>
-  <text x="49" y="36.5" fill="#0F172A" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" font-weight="750">GitHub</text>
-  <circle cx="140" cy="25" r="13.5" fill="rgba(0, 0, 0, 0.04)" stroke="rgba(0, 0, 0, 0.08)" stroke-width="1"/>
-  <path d="M140 17v10.5m0 0l-3.5-3.5m3.5 3.5l3.5-3.5" fill="none" stroke="#0F172A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M135 31.5h10" fill="none" stroke="#64748B" stroke-width="1.8" stroke-linecap="round"/>
+  <rect x=".75" y=".75" width="158.5" height="48.5" rx="16" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5"/>
+  <path d="M 22.38 11.48 Q 26.00 7.50 29.62 11.48 Q 34.75 9.84 35.90 15.10 Q 41.16 16.25 39.52 21.38 Q 43.50 25.00 39.52 28.62 Q 41.16 33.75 35.90 34.90 Q 34.75 40.16 29.62 38.52 Q 26.00 42.50 22.38 38.52 Q 17.25 40.16 16.10 34.90 Q 10.84 33.75 12.48 28.62 Q 8.50 25.00 12.48 21.38 Q 10.84 16.25 16.10 15.10 Q 17.25 9.84 22.38 11.48 Z" fill="#15803D"/>
+  <g transform="translate(17.5 16.5) scale(0.71)"><path fill="#FFFFFF" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></g>
+  <text x="50" y="19" fill="#15803D" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="7.5" font-weight="700" letter-spacing=".8">DOWNLOAD FROM</text>
+  <text x="50" y="36.5" fill="#0F172A" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" font-weight="750">GitHub</text>
+  <circle cx="140" cy="25" r="13" fill="#15803D18" stroke="#15803D40" stroke-width="1"/>
+  <path d="M140 17v10.5m0 0l-3.5-3.5m3.5 3.5l3.5-3.5" fill="none" stroke="#15803D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M135 31.5h10" fill="none" stroke="#15803D" stroke-width="1.8" stroke-linecap="round"/>
 </svg>

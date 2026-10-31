@@ -1,17 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="126" height="31.0154" viewBox="0 0 130 32" role="img" aria-label="DOWNLOADS 18,563">
-  <title>DOWNLOADS 18,563</title>
-  <defs>
-    <linearGradient id="pill_grad_downloads_light_m" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#FFFFFF"/>
-      <stop offset="100%" stop-color="#F1F4F9"/>
-    </linearGradient>
-  </defs>
-  <rect x=".75" y=".75" width="128.5" height="30.5" rx="15.5" fill="url(#pill_grad_downloads_light_m)" stroke="rgba(0, 0, 0, 0.10)" stroke-width="1.2"/>
-  <rect x="1.75" y="1.75" width="126.5" height="28.5" rx="14.5" fill="none" stroke="rgba(255, 255, 255, 0.70)" stroke-width="1"/>
-  <circle cx="16" cy="16" r="11" fill="#0596691F" stroke="#05966938" stroke-width="1"/>
-  <g transform="translate(16 16)" style="color:#059669;">
+<svg xmlns="http://www.w3.org/2000/svg" width="126" height="31.0154" viewBox="0 0 130 32" role="img" aria-label="DOWNLOADS 18,564">
+  <title>DOWNLOADS 18,564</title>
+  <rect x=".75" y=".75" width="128.5" height="30.5" rx="15.5" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5"/>
+  <path d="M 13.16 7.25 Q 16.00 4.50 18.84 7.25 Q 22.76 6.70 23.44 10.59 Q 26.94 12.45 25.20 16.00 Q 26.94 19.55 23.44 21.41 Q 22.76 25.30 18.84 24.75 Q 16.00 27.50 13.16 24.75 Q 9.24 25.30 8.56 21.41 Q 5.06 19.55 6.80 16.00 Q 5.06 12.45 8.56 10.59 Q 9.24 6.70 13.16 7.25 Z" fill="#059669"/>
+  <g transform="translate(16 16)" style="color:#FFFFFF;">
     <path d="M0 -6 v11 m0 0 l4 -4 m-4 4 l-4 -4 M-6 8 h12" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
-  <text x="35" y="12.2" fill="#64748B" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="7.5" font-weight="700" letter-spacing=".8">DOWNLOADS</text>
-  <text x="35" y="24.5" fill="#0F172A" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="750">18,563</text>
+  <text x="35" y="12.2" fill="#059669" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="7.5" font-weight="700" letter-spacing=".8">DOWNLOADS</text>
+  <text x="35" y="24.5" fill="#0F172A" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="750">18,564</text>
 </svg>
