@@ -111,7 +111,7 @@ internal fun LyricsPhraseSearchScreen(
     state: LyricsPhraseSearchUiState,
     animated: Boolean,
     onSearch: (String) -> Unit,
-    onPlay: (Track, List<Track>) -> Unit,
+    onPlay: (Track) -> Unit,
     onClose: () -> Unit
 ) {
     BackHandler(onBack = onClose)
@@ -210,9 +210,8 @@ private fun PhraseSearching(copy: SmartAudioCopy, animated: Boolean) {
 }
 
 @Composable
-private fun PhraseResults(state: LyricsPhraseSearchUiState, copy: SmartAudioCopy, onPlay: (Track, List<Track>) -> Unit) {
+private fun PhraseResults(state: LyricsPhraseSearchUiState, copy: SmartAudioCopy, onPlay: (Track) -> Unit) {
     val scheme = MaterialTheme.colorScheme
-    val tracks = state.hits.map(LyricsPhraseHit::track)
     LazyColumn(contentPadding = PaddingValues(bottom = 120.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (state.status == LyricsPhraseSearchStatus.RESULTS_UNVERIFIED) {
             item(key = "unverified") {
@@ -220,7 +219,7 @@ private fun PhraseResults(state: LyricsPhraseSearchUiState, copy: SmartAudioCopy
             }
         }
         itemsIndexed(state.hits, key = { _, hit -> hit.track.id }) { index, hit ->
-            PhraseHitRow(hit, copy, first = index == 0) { onPlay(hit.track, tracks) }
+            PhraseHitRow(hit, copy, first = index == 0) { onPlay(hit.track) }
         }
     }
 }

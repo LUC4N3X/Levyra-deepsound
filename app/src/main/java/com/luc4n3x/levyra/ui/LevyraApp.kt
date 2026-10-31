@@ -3307,7 +3307,10 @@ fun LevyraApp(
                     state = lyricsPhraseSearch,
                     animated = state.animationsEnabled,
                     onSearch = viewModel::searchLyricsPhrase,
-                    onPlay = { track, tracks -> viewModel.playFrom(tracks, track) },
+                    onPlay = { track ->
+                        viewModel.playFrom(listOf(track), track)
+                        viewModel.closeLyricsPhraseSearch()
+                    },
                     onClose = viewModel::closeLyricsPhraseSearch
                 )
             }
