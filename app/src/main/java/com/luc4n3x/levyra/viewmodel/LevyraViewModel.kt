@@ -4,6 +4,8 @@ import com.luc4n3x.levyra.player.SECTION_LOOP_POLL_MS
 import com.luc4n3x.levyra.player.SectionLoopState
 import com.luc4n3x.levyra.player.advance
 import com.luc4n3x.levyra.player.belongsTo
+import com.luc4n3x.levyra.player.sectionLoopPollDelayMs
+import com.luc4n3x.levyra.player.sectionLoopRestartTarget
 import com.luc4n3x.levyra.player.sectionLoopSeekTarget
 import android.content.Context
 import android.content.Intent
@@ -4208,6 +4210,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             )
             return
         }
+        if (restartSectionLoopOnCompletion(current, snapshot.jam)) return
         val duration = effectiveDuration(current)
         if (duration > 0L && player.positionMs < (duration - 1_500L).coerceAtLeast(0L)) return
         listenSessionCompleted = true
@@ -4672,27 +4675,56 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun advanceSectionLoop() {
+        if (jamController.rejectGuestLocalMutation()) return
         val track = _state.value.currentTrack ?: return
         if (track.isLiveRadio()) return
-        val next = _sectionLoop.value.advance(track.id, player.positionMs)
-        _sectionLoop.value = next
+        val positionMs = player.positionForTrack(track) ?: return
+        val next = _sectionLoop.value.advance(track.id, positionMs)
+        publishSectionLoop(next)
         sectionLoopJob?.cancel()
         sectionLoopJob = if (next is SectionLoopState.Off) null else viewModelScope.launch {
             while (isActive) {
                 val current = _state.value
                 val loop = _sectionLoop.value
-                if (!loop.belongsTo(current.currentTrack?.id)) {
-                    _sectionLoop.value = SectionLoopState.Off
+                if (loop is SectionLoopState.Off) break
+                if (!sectionLoopStillValid(loop, current)) {
+                    publishSectionLoop(SectionLoopState.Off)
                     break
                 }
-                if (loop is SectionLoopState.Off) break
-                if (current.isPlaying) {
-                    sectionLoopSeekTarget(loop, current.currentTrack?.id, player.positionMs)
-                        ?.let(::seekToPositionMs)
+                if (!current.isPlaying) {
+                    _state.first { it.isPlaying || !sectionLoopStillValid(loop, it) }
+                    continue
                 }
-                delay(SECTION_LOOP_POLL_MS)
+                val playing = current.currentTrack
+                val position = playing?.let(player::positionForTrack)
+                if (playing == null || position == null || current.isResolving) {
+                    delay(SECTION_LOOP_POLL_MS)
+                    continue
+                }
+                sectionLoopSeekTarget(loop, playing.id, position)?.let(::seekSectionLoop)
+                delay(sectionLoopPollDelayMs(loop, position, current.playbackSpeed))
             }
         }
+    }
+
+    private fun sectionLoopStillValid(loop: SectionLoopState, state: LevyraUiState): Boolean =
+        loop.belongsTo(state.currentTrack?.id) && state.jam.role != JamRole.Guest
+
+    private fun publishSectionLoop(loop: SectionLoopState) {
+        _sectionLoop.value = loop
+        PlaybackService.isSectionLoopActive = loop is SectionLoopState.Active
+    }
+
+    private fun seekSectionLoop(targetMs: Long) {
+        if (routeJamAction(JamAction.Seek(targetMs))) return
+        seekToPositionMs(targetMs)
+    }
+
+    private fun restartSectionLoopOnCompletion(current: Track, jam: JamUiState): Boolean {
+        if (jam.role == JamRole.Guest) return false
+        val targetMs = sectionLoopRestartTarget(_sectionLoop.value, current.id) ?: return false
+        seekSectionLoop(targetMs)
+        return true
     }
 
     fun cycleSpeed() {
@@ -14549,6 +14581,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             VideoFrameDropMonitor.Shared.onSustainedFrameDrops = null
         }
         LevyraWidgetBridge.clear()
+        PlaybackService.isSectionLoopActive = false
         if (recognitionCollectorJob != null) {
             recognitionCollectorJob?.cancel()
             recognitionController.cancel()

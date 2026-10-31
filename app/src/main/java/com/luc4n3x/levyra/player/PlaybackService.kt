@@ -477,6 +477,9 @@ class PlaybackService : MediaLibraryService() {
         var isQueueTransitionInProgress: Boolean = false
             private set
 
+        @Volatile
+        var isSectionLoopActive: Boolean = false
+
         fun applyPremiumAudioSettings(
             settings: LevyraAudioSettings,
             audioNormalization: Boolean
@@ -2084,6 +2087,10 @@ class PlaybackService : MediaLibraryService() {
     private fun maybePrepareQueueTransition(player: ExoPlayer) {
         if (isLiveRadioMediaItem(player.currentMediaItem)) return
         if (sleepTimer.isEndOfTrackActive()) return
+        if (isSectionLoopActive) {
+            if (queueTransitionJob?.isActive == true) cancelQueueTransition()
+            return
+        }
         if (queueTransitionJob?.isActive == true || !player.isPlaying || player.playbackState != Player.STATE_READY) return
         val duration = player.duration.takeIf { it > 0L && it != C.TIME_UNSET } ?: return
         val remaining = duration - player.currentPosition

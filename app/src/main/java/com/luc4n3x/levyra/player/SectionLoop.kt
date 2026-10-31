@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.player
 
 const val SECTION_LOOP_MIN_LENGTH_MS = 1_000L
 const val SECTION_LOOP_POLL_MS = 150L
+const val SECTION_LOOP_MIN_POLL_MS = 20L
 
 sealed interface SectionLoopState {
     data object Off : SectionLoopState
@@ -32,4 +33,13 @@ fun SectionLoopState.belongsTo(mediaId: String?): Boolean = when (this) {
 fun sectionLoopSeekTarget(state: SectionLoopState, mediaId: String?, positionMs: Long): Long? {
     if (state !is SectionLoopState.Active || state.mediaId != mediaId) return null
     return if (positionMs >= state.endMs || positionMs < state.startMs - SECTION_LOOP_MIN_LENGTH_MS) state.startMs else null
+}
+
+fun sectionLoopRestartTarget(state: SectionLoopState, mediaId: String?): Long? =
+    (state as? SectionLoopState.Active)?.takeIf { it.mediaId == mediaId }?.startMs
+
+fun sectionLoopPollDelayMs(state: SectionLoopState, positionMs: Long, playbackSpeed: Float): Long {
+    if (state !is SectionLoopState.Active) return SECTION_LOOP_POLL_MS
+    val remainingWallClockMs = (state.endMs - positionMs).coerceAtLeast(0L) / playbackSpeed.coerceAtLeast(0.1f)
+    return remainingWallClockMs.toLong().coerceIn(SECTION_LOOP_MIN_POLL_MS, SECTION_LOOP_POLL_MS)
 }

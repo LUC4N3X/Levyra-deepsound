@@ -46,6 +46,25 @@ class SectionLoopTest {
     }
 
     @Test
+    fun completionRestartsOnlyTheLoopedTrack() {
+        val loop = SectionLoopState.Active("song", 62_000L, 90_000L)
+        assertEquals(62_000L, sectionLoopRestartTarget(loop, "song"))
+        assertNull(sectionLoopRestartTarget(loop, "other"))
+        assertNull(sectionLoopRestartTarget(SectionLoopState.Marking("song", 62_000L), "song"))
+        assertNull(sectionLoopRestartTarget(SectionLoopState.Off, "song"))
+    }
+
+    @Test
+    fun pollTightensNearTheEndAndFollowsPlaybackSpeed() {
+        val loop = SectionLoopState.Active("song", 1_000L, 5_000L)
+        assertEquals(SECTION_LOOP_POLL_MS, sectionLoopPollDelayMs(loop, 2_000L, 1f))
+        assertEquals(60L, sectionLoopPollDelayMs(loop, 4_940L, 1f))
+        assertEquals(30L, sectionLoopPollDelayMs(loop, 4_940L, 2f))
+        assertEquals(SECTION_LOOP_MIN_POLL_MS, sectionLoopPollDelayMs(loop, 5_100L, 1f))
+        assertEquals(SECTION_LOOP_POLL_MS, sectionLoopPollDelayMs(SectionLoopState.Off, 0L, 1f))
+    }
+
+    @Test
     fun loopIsDroppedWhenTheTrackChanges() {
         val loop = SectionLoopState.Active("song", 1_000L, 5_000L)
         assertTrue(loop.belongsTo("song"))
