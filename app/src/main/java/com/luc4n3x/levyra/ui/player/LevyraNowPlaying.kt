@@ -79,9 +79,9 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Share
-import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material.icons.rounded.HighQuality
 import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material.icons.rounded.Tune
@@ -159,10 +159,10 @@ import com.luc4n3x.levyra.ui.harmonizePlayerAccents
 import com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
-import com.luc4n3x.levyra.ui.i18n.shareMomentCopy
 import com.luc4n3x.levyra.ui.i18n.systemPlayerCopy
 import com.luc4n3x.levyra.ui.i18n.technicalAudioInfoCopy
 import com.luc4n3x.levyra.ui.i18n.trackCreditsCopy
+import com.luc4n3x.levyra.ui.i18n.shareMomentCopy
 import com.luc4n3x.levyra.ui.isLevyraCompactLandscape
 import com.luc4n3x.levyra.ui.levyraCompactLandscapeVideoPaneWeight
 import com.luc4n3x.levyra.ui.levyraContentMaxWidthDp
@@ -2300,7 +2300,11 @@ private fun playerSheetActions(
             onClick = onShare
         ),
         shareMomentSeconds(state.positionMs, state.durationMs)
-            ?.takeIf { PlaybackSourceIdentity.sourceVideoId(track).isNotBlank() }
+            ?.takeIf {
+                !state.isResolving &&
+                    !track.isLiveRadio() &&
+                    PlaybackSourceIdentity.sourceVideoId(track).isNotBlank()
+            }
             ?.let { seconds ->
                 PlayerSheetAction(
                     key = "share-moment",
@@ -2391,10 +2395,10 @@ private fun shareTrackMoment(context: Context, track: Track, seconds: Long, stri
     if (videoId.isBlank()) return
     val intent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
-        putExtra(Intent.EXTRA_SUBJECT, "${track.title} — ${track.artist}")
+        putExtra(Intent.EXTRA_SUBJECT, shareMomentSubject(track.title, track.artist))
         putExtra(
             Intent.EXTRA_TEXT,
-            shareMomentText(track.title, track.artist, videoId, seconds, strings.shareMomentCopy().from)
+            shareMomentText(track.title, track.artist, videoId, seconds, strings.shareMomentCopy().fromTemplate)
         )
     }
     context.startActivity(Intent.createChooser(intent, strings.shareSong))
