@@ -1,7 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="184" height="57.5" viewBox="0 0 160 50" role="img" aria-label="DOWNLOAD FOR Windows">
   <title>DOWNLOAD FOR Windows</title>
-  <rect x=".75" y=".75" width="158.5" height="48.5" rx="10" fill="#0D1117" stroke="#30363D" stroke-width="1.5"/>
-  <g transform="translate(11.5 10.5) scale(0.56)" fill="#0078D4"><rect x="0" y="0" width="24" height="24" rx="2.5"/><rect x="28" y="0" width="24" height="24" rx="2.5"/><rect x="0" y="28" width="24" height="24" rx="2.5"/><rect x="28" y="28" width="24" height="24" rx="2.5"/></g>
-  <text x="49" y="19" fill="#8B949E" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="7.5" font-weight="700" letter-spacing=".75">DOWNLOAD FOR</text>
-  <text x="49" y="36" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" font-weight="700">Windows</text>
+  <defs>
+    <linearGradient id="dl_grad_windows_dark" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#161924"/>
+      <stop offset="100%" stop-color="#0E1119"/>
+    </linearGradient>
+  </defs>
+  <rect x=".75" y=".75" width="158.5" height="48.5" rx="16" fill="url(#dl_grad_windows_dark)" stroke="rgba(255, 255, 255, 0.12)" stroke-width="1.2"/>
+  <rect x="1.75" y="1.75" width="156.5" height="46.5" rx="15" fill="none" stroke="rgba(255, 255, 255, 0.05)" stroke-width="1"/>
+  <rect x="8" y="7" width="36" height="36" rx="11" fill="#141E2C" stroke="rgba(0, 120, 212, 0.35)" stroke-width="1"/>
+  <g transform="translate(13.5 12.5) scale(0.48)" fill="#0078D4"><rect x="0" y="0" width="24" height="24" rx="2.5"/><rect x="28" y="0" width="24" height="24" rx="2.5"/><rect x="0" y="28" width="24" height="24" rx="2.5"/><rect x="28" y="28" width="24" height="24" rx="2.5"/></g>
+  <text x="49" y="19" fill="#94A3B8" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="7.5" font-weight="700" letter-spacing=".8">DOWNLOAD FOR</text>
+  <text x="49" y="36.5" fill="#FFFFFF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="15" font-weight="750">Windows</text>
+  <circle cx="140" cy="25" r="13.5" fill="rgba(255, 255, 255, 0.06)" stroke="rgba(255, 255, 255, 0.12)" stroke-width="1"/>
+  <path d="M140 17v10.5m0 0l-3.5-3.5m3.5 3.5l3.5-3.5" fill="none" stroke="#F1F5F9" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M135 31.5h10" fill="none" stroke="#94A3B8" stroke-width="1.8" stroke-linecap="round"/>
 </svg>
