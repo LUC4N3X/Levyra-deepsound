@@ -24,7 +24,6 @@
     <string name="car_connecting_player">プレーヤーに接続中</string>
     <string name="car_now_playing">再生中</string>
     <string name="car_queue">再生キュー</string>
-
     <!-- Android Auto browse tree -->
     <string name="car_root_subtitle">Android Auto向けに最適化された音楽</string>
     <string name="car_home_subtitle">クイックミックス、オフライン、チャート</string>
@@ -55,7 +54,6 @@
     <string name="car_album_unavailable">アルバムを利用できません</string>
     <string name="car_artist_unavailable">アーティストを利用できません</string>
     <string name="car_item_unavailable">アイテムを利用できません</string>
-
     <!-- Android Auto dynamic strings -->
     <plurals name="car_tracks_count">
         <item quantity="other">%1$d曲</item>
