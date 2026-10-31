@@ -846,16 +846,16 @@ README_CARD_SPECS = [
         (185, 28, 28),
     ),
     (
-        "24_signature_looks",
-        "Signature Looks",
-        "From retro hi-fi warmth to modern tactile glass",
-        "Screenshot_20261028_212406_Levyra.jpg",
-        (250, 245, 255),
-        (243, 232, 255),
-        (168, 85, 247),
-        (233, 213, 255),
-        (59, 7, 100),
-        (126, 34, 206),
+        "24_qobuz_style",
+        "Qobuz Style",
+        "Editorial magazine layout, curated panoramas and warm hi-fi",
+        "Screenshot_20261030_123252_Levyra.jpg",
+        (240, 249, 255),
+        (224, 242, 254),
+        (14, 165, 233),
+        (186, 230, 253),
+        (12, 74, 110),
+        (3, 105, 161),
     ),]
 
 def make_campaign_device(filename, width):
