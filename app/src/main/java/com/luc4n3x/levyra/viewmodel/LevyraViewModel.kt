@@ -62,7 +62,17 @@ import com.luc4n3x.levyra.data.ListeningPulseStore
 import com.luc4n3x.levyra.data.OfficialArtworkRepository
 import com.luc4n3x.levyra.data.credits.TrackCredits
 import com.luc4n3x.levyra.data.credits.TrackCreditsRepository
+import com.luc4n3x.levyra.data.LyricsPhraseHit
+import com.luc4n3x.levyra.data.LyricsPhraseOutcome
+import com.luc4n3x.levyra.data.LyricsPhraseSearchRepository
 import com.luc4n3x.levyra.data.LyricsRepository
+import com.luc4n3x.levyra.data.MixChaptersRepository
+import com.luc4n3x.levyra.domain.LyricsPhraseMatcher
+import com.luc4n3x.levyra.domain.MixChapter
+import com.luc4n3x.levyra.domain.MixChapterList
+import com.luc4n3x.levyra.domain.NightListeningPreset
+import com.luc4n3x.levyra.domain.SmartAudioProfile
+import com.luc4n3x.levyra.domain.SmartAudioResolver
 import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.NewPipeRuntime
 import com.luc4n3x.levyra.data.PlaybackSourceIdentity
@@ -389,6 +399,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
@@ -526,6 +537,17 @@ internal fun releaseRadarAlbumHit(entry: ReleaseRadarEntry): AlbumHit? {
         explicit = release.explicit
     )
 }
+
+private const val MIX_CHAPTERS_LOAD_DELAY_MS = 1_500L
+
+enum class LyricsPhraseSearchStatus { IDLE, TOO_SHORT, SEARCHING, RESULTS, RESULTS_UNVERIFIED, NO_MATCH, UNAVAILABLE }
+
+data class LyricsPhraseSearchUiState(
+    val visible: Boolean = false,
+    val query: String = "",
+    val status: LyricsPhraseSearchStatus = LyricsPhraseSearchStatus.IDLE,
+    val hits: List<LyricsPhraseHit> = emptyList()
+)
 
 internal fun releaseRadarSearchQuery(entry: ReleaseRadarEntry): String =
     listOf(entry.release.title, entry.artistName).map(String::trim).filter(String::isNotBlank).joinToString(" ")
@@ -1002,6 +1024,35 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
     private val autoEqCatalogController by autoEqCatalogDelegate
     val autoEqCatalog: StateFlow<AutoEqCatalogUiState> get() = autoEqCatalogController.state
+    private val mixChaptersRepository = MixChaptersRepository()
+    private val _mixChapters = MutableStateFlow<MixChapterList?>(null)
+    val mixChapters: StateFlow<MixChapterList?> = _mixChapters.asStateFlow()
+    private val _showMixChapters = MutableStateFlow(false)
+    val showMixChapters: StateFlow<Boolean> = _showMixChapters.asStateFlow()
+    private val _showSmartAudioProfiles = MutableStateFlow(false)
+    val showSmartAudioProfiles: StateFlow<Boolean> = _showSmartAudioProfiles.asStateFlow()
+    private val _lyricsPhraseSearch = MutableStateFlow(LyricsPhraseSearchUiState())
+    val lyricsPhraseSearch: StateFlow<LyricsPhraseSearchUiState> = _lyricsPhraseSearch.asStateFlow()
+    private var lyricsPhraseSearchJob: Job? = null
+    private val lyricsPhraseSearchRepository by lazy {
+        LyricsPhraseSearchRepository(
+            searchCandidates = { phrase, limit -> repository.search(phrase, limit, _state.value.languageCode) },
+            fetchLyricLines = { track ->
+                lyricsRepository.fetch(
+                    title = track.title,
+                    artist = track.artist,
+                    durationSec = track.durationMs / 1000L,
+                    album = track.album,
+                    videoId = track.id
+                )?.lines?.map { it.text }
+            },
+            isOnline = {
+                val connectivity = application.getSystemService(android.net.ConnectivityManager::class.java)
+                connectivity?.getNetworkCapabilities(connectivity.activeNetwork)
+                    ?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+            }
+        )
+    }
     private val jamBridge = object : JamPlayerBridge {
         override fun snapshot(): JamPlaybackSnapshot = jamPlaybackSnapshot()
 
@@ -1583,6 +1634,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     val playerController get() = player.controller
 
     init {
+        observeMixChapters()
         viewModelScope.launch {
             searchEngine.state.collect(::applySearchSnapshot)
         }
@@ -4977,6 +5029,108 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { it.copy(audioSettings = normalized, playbackSpeed = normalized.playbackSpeed, audioNormalization = audioNormalization) }
     }
 
+
+    fun setNightListeningEnabled(value: Boolean) {
+        updateAudioSettings(_state.value.audioSettings.copy(nightListeningEnabled = value))
+    }
+
+    fun setNightListeningPreset(value: NightListeningPreset) {
+        updateAudioSettings(_state.value.audioSettings.copy(nightListeningPreset = value))
+    }
+
+    fun setNightListeningTrim(value: Float) {
+        updateAudioSettings(_state.value.audioSettings.copy(nightListeningTrimDb = value))
+    }
+
+    fun setSmartAudioProfilesEnabled(value: Boolean) {
+        updateAudioSettings(_state.value.audioSettings.copy(smartAudioProfilesEnabled = value))
+    }
+
+    fun saveSmartAudioProfile(profile: SmartAudioProfile) {
+        val settings = _state.value.audioSettings
+        updateAudioSettings(settings.copy(smartAudioProfiles = SmartAudioResolver.upsert(settings.smartAudioProfiles, profile)))
+    }
+
+    fun removeSmartAudioProfile(deviceKey: String) {
+        val settings = _state.value.audioSettings
+        updateAudioSettings(settings.copy(smartAudioProfiles = settings.smartAudioProfiles.filterNot { it.deviceKey == deviceKey }))
+    }
+
+    fun openSmartAudioProfiles() {
+        _showSmartAudioProfiles.value = true
+    }
+
+    fun closeSmartAudioProfiles() {
+        closeAutoEqCatalog()
+        _showSmartAudioProfiles.value = false
+    }
+
+    fun openMixChapters() {
+        _showMixChapters.value = true
+    }
+
+    fun closeMixChapters() {
+        _showMixChapters.value = false
+    }
+
+    fun seekToMixChapter(chapter: MixChapter) {
+        if (_state.value.currentTrack?.isLiveRadio() == true) return
+        if (routeJamAction(JamAction.Seek(chapter.startMs))) return
+        seekToPositionMs(chapter.startMs)
+    }
+
+    fun openLyricsPhraseSearch() {
+        _lyricsPhraseSearch.update { it.copy(visible = true) }
+    }
+
+    fun closeLyricsPhraseSearch() {
+        lyricsPhraseSearchJob?.cancel()
+        _lyricsPhraseSearch.value = LyricsPhraseSearchUiState()
+    }
+
+    fun searchLyricsPhrase(phrase: String) {
+        lyricsPhraseSearchJob?.cancel()
+        if (!LyricsPhraseMatcher.isSearchable(phrase)) {
+            _lyricsPhraseSearch.update { it.copy(query = phrase, status = LyricsPhraseSearchStatus.TOO_SHORT, hits = emptyList()) }
+            return
+        }
+        _lyricsPhraseSearch.update { it.copy(query = phrase, status = LyricsPhraseSearchStatus.SEARCHING, hits = emptyList()) }
+        lyricsPhraseSearchJob = viewModelScope.launch {
+            val outcome = try {
+                lyricsPhraseSearchRepository.search(phrase)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                Timber.w(error, "lyrics phrase search failed")
+                LyricsPhraseOutcome.ProviderUnavailable
+            }
+            _lyricsPhraseSearch.update { current ->
+                when (outcome) {
+                    is LyricsPhraseOutcome.Results -> current.copy(
+                        status = if (outcome.verificationAvailable) LyricsPhraseSearchStatus.RESULTS else LyricsPhraseSearchStatus.RESULTS_UNVERIFIED,
+                        hits = outcome.hits
+                    )
+                    LyricsPhraseOutcome.NoMatch -> current.copy(status = LyricsPhraseSearchStatus.NO_MATCH, hits = emptyList())
+                    LyricsPhraseOutcome.ProviderUnavailable -> current.copy(status = LyricsPhraseSearchStatus.UNAVAILABLE, hits = emptyList())
+                }
+            }
+        }
+    }
+
+    private fun observeMixChapters() {
+        viewModelScope.launch {
+            _state
+                .map { it.currentTrack?.takeIf(mixChaptersRepository::isEligible) }
+                .distinctUntilChangedBy { it?.id }
+                .collectLatest { track ->
+                    _mixChapters.value = null
+                    _showMixChapters.value = false
+                    if (track == null) return@collectLatest
+                    delay(MIX_CHAPTERS_LOAD_DELAY_MS)
+                    _mixChapters.value = mixChaptersRepository.load(track)
+                }
+        }
+    }
 
     fun openAudioQualityPanel() {
         _state.update { it.copy(showAudioQualityPanel = true) }

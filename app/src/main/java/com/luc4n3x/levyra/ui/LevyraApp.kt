@@ -530,6 +530,15 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel as composeViewModel
+import com.luc4n3x.levyra.feature.audio.rememberLevyraAudioOutputState
+import com.luc4n3x.levyra.ui.player.MixChaptersEntry
+import com.luc4n3x.levyra.ui.player.MixChaptersSheet
+import com.luc4n3x.levyra.ui.smartaudio.LyricsPhraseSearchScreen
+import com.luc4n3x.levyra.ui.smartaudio.LyricsSearchEntry
+import com.luc4n3x.levyra.ui.smartaudio.NightListeningCard
+import com.luc4n3x.levyra.ui.smartaudio.SmartAudioEntryCard
+import com.luc4n3x.levyra.ui.smartaudio.SmartAudioProfilesScreen
+import com.luc4n3x.levyra.viewmodel.AutoEqCatalogUiState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
@@ -3183,6 +3192,7 @@ fun LevyraApp(
 
             AnimatedVisibility(visible = state.showAudioQualityPanel, enter = miniEnter, exit = miniExit) {
                 val autoEqCatalog by viewModel.autoEqCatalog.collectAsStateWithLifecycle()
+                val smartAudioOpen by viewModel.showSmartAudioProfiles.collectAsStateWithLifecycle()
                 AudioSettingsPanel(
                     selected = state.audioQuality,
                     currentTrack = state.currentTrack,
@@ -3226,7 +3236,7 @@ fun LevyraApp(
                     },
                     onApplyParametricAutoEq = viewModel::applyParametricAutoEq,
                     onSaveParametricProfile = viewModel::saveParametricProfile,
-                    autoEqCatalog = autoEqCatalog,
+                    autoEqCatalog = if (smartAudioOpen) AutoEqCatalogUiState() else autoEqCatalog,
                     onOpenAutoEqCatalog = viewModel::openAutoEqCatalog,
                     onAutoEqCatalogQuery = viewModel::updateAutoEqCatalogQuery,
                     onSelectAutoEqCatalogEntry = viewModel::selectAutoEqCatalogEntry,
@@ -3235,7 +3245,70 @@ fun LevyraApp(
                     onReplayGainMode = viewModel::setReplayGainMode,
                     onReplayGainPreamp = viewModel::setReplayGainPreampDb,
                     onReplayGainPreventClipping = viewModel::setReplayGainPreventClipping,
-                    onClose = viewModel::closeAudioQualityPanel
+                    onClose = viewModel::closeAudioQualityPanel,
+                    smartAudioSections = {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            SmartAudioEntryCard(
+                                settings = state.audioSettings,
+                                output = rememberLevyraAudioOutputState(),
+                                onOpen = viewModel::openSmartAudioProfiles
+                            )
+                            NightListeningCard(
+                                settings = state.audioSettings,
+                                animated = state.animationsEnabled,
+                                onEnabled = viewModel::setNightListeningEnabled,
+                                onPreset = viewModel::setNightListeningPreset,
+                                onTrim = viewModel::setNightListeningTrim
+                            )
+                            val chaptersAvailable by viewModel.mixChapters.collectAsStateWithLifecycle()
+                            if (chaptersAvailable != null) {
+                                MixChaptersEntry(onOpen = viewModel::openMixChapters)
+                            }
+                        }
+                    }
+                )
+                if (smartAudioOpen) {
+                    SmartAudioProfilesScreen(
+                        settings = state.audioSettings,
+                        output = rememberLevyraAudioOutputState(),
+                        animated = state.animationsEnabled,
+                        catalog = autoEqCatalog,
+                        onEnabled = viewModel::setSmartAudioProfilesEnabled,
+                        onSave = viewModel::saveSmartAudioProfile,
+                        onRemove = viewModel::removeSmartAudioProfile,
+                        onOpenCatalog = viewModel::openAutoEqCatalog,
+                        onCatalogQuery = viewModel::updateAutoEqCatalogQuery,
+                        onCatalogSelect = viewModel::selectAutoEqCatalogEntry,
+                        onCatalogSelectionConsumed = {
+                            viewModel.dismissAutoEqCatalogProfile()
+                            viewModel.closeAutoEqCatalog()
+                        },
+                        onCatalogClose = viewModel::closeAutoEqCatalog,
+                        onClose = viewModel::closeSmartAudioProfiles
+                    )
+                }
+            }
+
+            val mixChaptersForSheet by viewModel.mixChapters.collectAsStateWithLifecycle()
+            val mixChaptersOpen by viewModel.showMixChapters.collectAsStateWithLifecycle()
+            mixChaptersForSheet?.takeIf { mixChaptersOpen }?.let { chapters ->
+                MixChaptersSheet(
+                    chapters = chapters,
+                    positionMs = state.positionMs,
+                    animated = state.animationsEnabled,
+                    onSeek = viewModel::seekToMixChapter,
+                    onDismiss = viewModel::closeMixChapters
+                )
+            }
+
+            val lyricsPhraseSearch by viewModel.lyricsPhraseSearch.collectAsStateWithLifecycle()
+            AnimatedVisibility(visible = lyricsPhraseSearch.visible, enter = panelEnter, exit = panelExit) {
+                LyricsPhraseSearchScreen(
+                    state = lyricsPhraseSearch,
+                    animated = state.animationsEnabled,
+                    onSearch = viewModel::searchLyricsPhrase,
+                    onPlay = { track, tracks -> viewModel.playFrom(tracks, track) },
+                    onClose = viewModel::closeLyricsPhraseSearch
                 )
             }
 
@@ -14925,6 +14998,9 @@ private fun SearchScreen(
             onSettings = viewModel::openSettings,
             spotifyFocus = spotifySearchFocus
         )
+        if (queryClean.isEmpty() && !spotifySearchFocus.value) {
+            LyricsSearchEntry(onOpen = viewModel::openLyricsPhraseSearch)
+        }
 
         val data = state.searchData
         val filter = state.searchFilter

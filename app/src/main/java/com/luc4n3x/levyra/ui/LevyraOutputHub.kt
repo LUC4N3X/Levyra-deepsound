@@ -74,10 +74,16 @@ internal fun LevyraOutputHub(
         stream?.averageBitrate ?: 0,
         stream?.sampleRate ?: 0
     )
-    val dspActive = audioSettings.equalizerEnabled ||
-        audioSettings.replayGainActive ||
-        audioSettings.virtualizer > 0 ||
-        audioSettings.preampDb != 0f
+    val effectiveSettings = com.luc4n3x.levyra.domain.SmartAudioResolver.resolve(
+        audioSettings,
+        output.active?.let { route -> com.luc4n3x.levyra.feature.audio.smartAudioDeviceKey(route) }
+    )
+    val dspActive = effectiveSettings.equalizerEnabled ||
+        effectiveSettings.parametricEqualizerEnabled ||
+        effectiveSettings.nightListeningEnabled ||
+        effectiveSettings.replayGainActive ||
+        effectiveSettings.virtualizer > 0 ||
+        effectiveSettings.preampDb != 0f
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(

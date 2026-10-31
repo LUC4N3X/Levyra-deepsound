@@ -280,6 +280,7 @@ class HomeViewModel internal constructor(
 }
 
 class SearchViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::searchProjection) {
+    fun openLyricsPhraseSearch() = root.openLyricsPhraseSearch()
     fun openExploreZone(zone: com.luc4n3x.levyra.domain.ExploreZone) = root.openExploreZone(zone)
     fun openExploreSamples(index: Int) = root.openExploreSamples(index)
     fun ensureExploreSamples() = root.ensureExploreSamples()
@@ -505,6 +506,9 @@ class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::li
 }
 
 class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::playerProjection) {
+    val mixChapters get() = root.mixChapters
+    fun openMixChapters() = root.openMixChapters()
+    fun setNightListeningEnabled(value: Boolean) = root.setNightListeningEnabled(value)
     fun toggleFollowArtist(artist: com.luc4n3x.levyra.domain.ArtistHit) = root.toggleFollowArtist(artist)
     fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
     fun addToQueue(track: Track) = root.addToQueue(track)

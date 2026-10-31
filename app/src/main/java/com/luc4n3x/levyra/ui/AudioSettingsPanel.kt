@@ -213,7 +213,8 @@ internal fun AudioSettingsPanel(
     onReplayGainMode: (ReplayGainMode) -> Unit,
     onReplayGainPreamp: (Float) -> Unit,
     onReplayGainPreventClipping: (Boolean) -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    smartAudioSections: @Composable () -> Unit = {}
 ) {
     val strings = LocalLevyraStrings.current
     val replayGainCopy = strings.replayGainCopy()
@@ -273,6 +274,7 @@ internal fun AudioSettingsPanel(
                         audioSettings = audioSettings
                     )
                 }
+                item { smartAudioSections() }
 
                 item { AudioSectionLabel(strings.audioSectionQuality) }
                 item {
@@ -712,7 +714,7 @@ internal fun AudioSettingsPanel(
 }
 
 @Composable
-private fun AutoEqCatalogDialog(
+internal fun AutoEqCatalogDialog(
     state: AutoEqCatalogUiState,
     onQuery: (String) -> Unit,
     onSelect: (AutoEqCatalogEntry) -> Unit,

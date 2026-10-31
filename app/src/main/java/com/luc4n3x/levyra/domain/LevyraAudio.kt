@@ -155,7 +155,12 @@ data class LevyraAudioSettings(
     val customParametricProfiles: List<ParametricEqProfile> = emptyList(),
     val enhancedAudioEnabled: Boolean = true,
     val audioOffloadPreference: AudioOffloadPreference = AudioOffloadPreference.AUTOMATIC,
-    val playbackBuffer: PlaybackBufferSettings = PlaybackBufferSettings()
+    val playbackBuffer: PlaybackBufferSettings = PlaybackBufferSettings(),
+    val nightListeningEnabled: Boolean = false,
+    val nightListeningPreset: NightListeningPreset = NightListeningPreset.BALANCED,
+    val nightListeningTrimDb: Float = 0f,
+    val smartAudioProfilesEnabled: Boolean = false,
+    val smartAudioProfiles: List<SmartAudioProfile> = emptyList()
 ) {
     val effectiveReplayGainMode: ReplayGainMode
         get() = if (replayGainMode == ReplayGainMode.OFF && replayGainEnabled) ReplayGainMode.SMART else replayGainMode
@@ -234,7 +239,13 @@ data class LevyraAudioSettings(
             activeParametricProfile = activeParametric,
             customParametricProfiles = parametricProfiles,
             advancedQueuePrefetchTracks = normalizeAdvancedQueuePrefetchTracks(advancedQueuePrefetchTracks),
-            playbackBuffer = playbackBuffer.normalized()
+            playbackBuffer = playbackBuffer.normalized(),
+            nightListeningTrimDb = nightListeningTrimDb.takeIf(Float::isFinite)
+                ?.coerceIn(NightListeningCurve.MIN_TRIM_DB, NightListeningCurve.MAX_TRIM_DB) ?: 0f,
+            smartAudioProfiles = smartAudioProfiles
+                .mapNotNull(SmartAudioProfile::normalized)
+                .distinctBy(SmartAudioProfile::deviceKey)
+                .takeLast(SmartAudioProfile.MAX_PROFILES)
         )
     }
 }

@@ -56,6 +56,7 @@ import com.luc4n3x.levyra.domain.PlayerLongPressAction
 import com.luc4n3x.levyra.domain.PlayerVerticalSwipeAction
 import com.luc4n3x.levyra.domain.PlayerVisualMode
 import com.luc4n3x.levyra.domain.ParametricEqBand
+import com.luc4n3x.levyra.domain.NightListeningPreset
 import com.luc4n3x.levyra.domain.ParametricEqProfile
 import com.luc4n3x.levyra.domain.ParametricFilterType
 import com.luc4n3x.levyra.domain.AudioOffloadPreference
@@ -222,6 +223,11 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_AUDIO_PARAMETRIC_PROFILES] = parametricProfilesToJson(normalizedAudio.customParametricProfiles)
             mutable[KEY_AUDIO_ENHANCED_AUDIO] = normalizedAudio.enhancedAudioEnabled
             mutable[KEY_AUDIO_OFFLOAD_PREFERENCE] = normalizedAudio.audioOffloadPreference.storageValue
+            mutable[KEY_AUDIO_NIGHT_ENABLED] = normalizedAudio.nightListeningEnabled
+            mutable[KEY_AUDIO_NIGHT_PRESET] = normalizedAudio.nightListeningPreset.storageValue
+            mutable[KEY_AUDIO_NIGHT_TRIM] = normalizedAudio.nightListeningTrimDb
+            mutable[KEY_AUDIO_SMART_PROFILES_ENABLED] = normalizedAudio.smartAudioProfilesEnabled
+            mutable[KEY_AUDIO_SMART_PROFILES] = smartAudioProfilesToJson(normalizedAudio.smartAudioProfiles)
             mutable[KEY_AUDIO_BUFFER_MODE] = normalizedAudio.playbackBuffer.mode.storageValue
             mutable[KEY_AUDIO_BUFFER_MIN_SECONDS] = normalizedAudio.playbackBuffer.minBufferSeconds
             mutable[KEY_AUDIO_BUFFER_MAX_SECONDS] = normalizedAudio.playbackBuffer.maxBufferSeconds
@@ -605,6 +611,11 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             it[KEY_AUDIO_PARAMETRIC_PROFILES] = parametricProfilesToJson(normalized.customParametricProfiles)
             it[KEY_AUDIO_ENHANCED_AUDIO] = normalized.enhancedAudioEnabled
             it[KEY_AUDIO_OFFLOAD_PREFERENCE] = normalized.audioOffloadPreference.storageValue
+            it[KEY_AUDIO_NIGHT_ENABLED] = normalized.nightListeningEnabled
+            it[KEY_AUDIO_NIGHT_PRESET] = normalized.nightListeningPreset.storageValue
+            it[KEY_AUDIO_NIGHT_TRIM] = normalized.nightListeningTrimDb
+            it[KEY_AUDIO_SMART_PROFILES_ENABLED] = normalized.smartAudioProfilesEnabled
+            it[KEY_AUDIO_SMART_PROFILES] = smartAudioProfilesToJson(normalized.smartAudioProfiles)
             it[KEY_AUDIO_BUFFER_MODE] = normalized.playbackBuffer.mode.storageValue
             it[KEY_AUDIO_BUFFER_MIN_SECONDS] = normalized.playbackBuffer.minBufferSeconds
             it[KEY_AUDIO_BUFFER_MAX_SECONDS] = normalized.playbackBuffer.maxBufferSeconds
@@ -1119,6 +1130,11 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             customParametricProfiles = customParametricProfiles,
             enhancedAudioEnabled = preferences[KEY_AUDIO_ENHANCED_AUDIO] ?: true,
             audioOffloadPreference = AudioOffloadPreference.fromStorage(preferences[KEY_AUDIO_OFFLOAD_PREFERENCE]),
+            nightListeningEnabled = preferences[KEY_AUDIO_NIGHT_ENABLED] ?: false,
+            nightListeningPreset = NightListeningPreset.fromStorage(preferences[KEY_AUDIO_NIGHT_PRESET]),
+            nightListeningTrimDb = preferences[KEY_AUDIO_NIGHT_TRIM] ?: 0f,
+            smartAudioProfilesEnabled = preferences[KEY_AUDIO_SMART_PROFILES_ENABLED] ?: false,
+            smartAudioProfiles = smartAudioProfilesFromJson(preferences[KEY_AUDIO_SMART_PROFILES].orEmpty()),
             playbackBuffer = PlaybackBufferSettings(
                 mode = PlaybackBufferMode.fromStorage(preferences[KEY_AUDIO_BUFFER_MODE]),
                 minBufferSeconds = preferences[KEY_AUDIO_BUFFER_MIN_SECONDS] ?: PlaybackBufferSettings.BALANCED_MIN_SECONDS,
@@ -1397,6 +1413,11 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_AUDIO_PARAMETRIC_PROFILES = stringPreferencesKey("audio_parametric_profiles")
         val KEY_AUDIO_ENHANCED_AUDIO = booleanPreferencesKey("audio_enhanced_audio_enabled")
         val KEY_AUDIO_OFFLOAD_PREFERENCE = stringPreferencesKey("audio_offload_preference")
+        val KEY_AUDIO_NIGHT_ENABLED = booleanPreferencesKey("audio_night_listening_enabled")
+        val KEY_AUDIO_NIGHT_PRESET = stringPreferencesKey("audio_night_listening_preset")
+        val KEY_AUDIO_NIGHT_TRIM = floatPreferencesKey("audio_night_listening_trim_db")
+        val KEY_AUDIO_SMART_PROFILES_ENABLED = booleanPreferencesKey("audio_smart_profiles_enabled")
+        val KEY_AUDIO_SMART_PROFILES = stringPreferencesKey("audio_smart_profiles")
         val KEY_AUDIO_BUFFER_MODE = stringPreferencesKey("audio_playback_buffer_mode")
         val KEY_AUDIO_BUFFER_MIN_SECONDS = floatPreferencesKey("audio_playback_buffer_min_seconds")
         val KEY_AUDIO_BUFFER_MAX_SECONDS = floatPreferencesKey("audio_playback_buffer_max_seconds")

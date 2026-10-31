@@ -205,6 +205,7 @@ internal fun AtelierSearchEntry(viewModel: SearchViewModel, state: LevyraUiState
         )
         AtelierSearchScope(state.searchFilter, strings, viewModel::setSearchFilter)
         if (blank) {
+            com.luc4n3x.levyra.ui.smartaudio.LyricsSearchEntry(onOpen = viewModel::openLyricsPhraseSearch, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
             AtelierSearchLanding(viewModel, state, strings, copy, leaveField, onTrackActions)
         } else {
             AtelierSearchResults(viewModel, state, strings, copy, focused, leaveField, onTrackActions)

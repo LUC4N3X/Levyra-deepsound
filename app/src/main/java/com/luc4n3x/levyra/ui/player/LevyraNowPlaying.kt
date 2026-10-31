@@ -127,6 +127,11 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel as composeViewModel
+import androidx.compose.material.icons.automirrored.rounded.ListAlt
+import androidx.compose.material.icons.rounded.Bedtime
+import com.luc4n3x.levyra.ui.i18n.SmartAudioText
+import com.luc4n3x.levyra.ui.i18n.smartAudioCopy
+import com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin
 import com.luc4n3x.levyra.data.ArtworkPalette
 import com.luc4n3x.levyra.data.ArtworkPaletteCache
 import com.luc4n3x.levyra.data.PlaybackSourceIdentity
@@ -1040,7 +1045,20 @@ private fun LevyraNowPlayingContent(
             }
         }
 
+        val mixChapters by viewModel.mixChapters.collectAsStateWithLifecycle()
         val progressBlock: @Composable (PlayerProgressStyle) -> Unit = { style ->
+            Column(modifier = Modifier.fillMaxWidth()) {
+            mixChapters?.takeIf { LevyraIsDefaultSkin && !liveRadio }?.let { chapters ->
+                MixChapterStrip(
+                    chapters = chapters,
+                    positionMs = state.positionMs,
+                    activeColor = if (nocturne) primary else heroTone,
+                    inactiveColor = LevyraPlayerDesign.TrackInactive,
+                    contentColor = surfaces.content,
+                    animated = animated,
+                    onOpen = viewModel::openMixChapters
+                )
+            }
             if (liveRadio) {
                 Box(
                     modifier = Modifier
@@ -1068,6 +1086,7 @@ private fun LevyraNowPlayingContent(
                     onSeek = viewModel::seekTo,
                     style = style
                 )
+            }
             }
         }
 
@@ -1738,6 +1757,15 @@ private fun LevyraNowPlayingContent(
                 track = track,
                 state = state,
                 strings = strings,
+                hasMixChapters = mixChapters != null,
+                onMixChapters = {
+                    showActions = false
+                    viewModel.openMixChapters()
+                },
+                onNightListening = {
+                    viewModel.setNightListeningEnabled(!state.audioSettings.nightListeningEnabled)
+                    hapticFeedback.perform(LevyraHapticAction.Confirm)
+                },
                 onAddToPlaylist = { onOpenPlaylistDialog?.invoke(track) },
                 onStartRadio = {
                     viewModel.startSongRadio()
@@ -2169,7 +2197,10 @@ private fun playerSheetActions(
     onTrackCredits: () -> Unit,
     onRefreshMotionArtwork: () -> Unit,
     onAmbient: () -> Unit,
-    onOpenArtist: () -> Unit
+    onOpenArtist: () -> Unit,
+    hasMixChapters: Boolean,
+    onMixChapters: () -> Unit,
+    onNightListening: () -> Unit
 ): List<PlayerSheetAction> {
     val sleepActive = state.sleepTimerMinutes > 0 || state.sleepTimerEndOfTrack
     val sleepAction = PlayerSheetAction(
@@ -2285,6 +2316,25 @@ private fun playerSheetActions(
         ),
         audioOutputAction,
         audioAction,
+        PlayerSheetAction(
+            key = "night-listening",
+            icon = Icons.Rounded.Bedtime,
+            label = smartAudioCopy(strings.code)[SmartAudioText.NightTitle],
+            onClick = onNightListening,
+            active = state.audioSettings.nightListeningEnabled,
+            toggle = true,
+            keepsSheetOpen = true
+        ),
+        if (hasMixChapters) {
+            PlayerSheetAction(
+                key = "mix-chapters",
+                icon = Icons.AutoMirrored.Rounded.ListAlt,
+                label = smartAudioCopy(strings.code)[SmartAudioText.ChaptersTitle],
+                onClick = onMixChapters
+            )
+        } else {
+            null
+        },
         PlayerSheetAction(
             key = "track-credits",
             icon = Icons.Rounded.Groups,
