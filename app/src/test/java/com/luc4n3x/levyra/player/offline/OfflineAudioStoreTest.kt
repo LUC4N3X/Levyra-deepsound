@@ -242,14 +242,18 @@ class OfflineAudioStoreTest {
     @Test
     fun downloadsWithoutAChosenQualityTryHighBitrateBeforeYoutube() {
         val resolver = read("java/com/luc4n3x/levyra/data/PlaybackResolver.kt")
+        val automatic = resolver.substring(resolver.indexOf("private suspend fun resolveAutomaticDownloadSource("))
+        val lossless = automatic.indexOf("highQualityDownloads.resolveLosslessDownload")
+        val highBitrate = automatic.indexOf("highQualityPlayback.resolveLossyDownload")
         val offline = resolver.substring(resolver.indexOf("suspend fun resolveForOffline("))
-        val lossless = offline.indexOf("highQualityDownloads.resolveLosslessDownload")
-        val highBitrate = offline.indexOf("highQualityPlayback.resolveLossyDownload")
+        val automaticCall = offline.indexOf("resolveAutomaticDownloadSource(requestTrack, quality)")
         val reel = offline.indexOf("resolveVideoWithAndroidReel")
 
         assertTrue(lossless in 0 until highBitrate)
-        assertTrue(highBitrate < reel)
-        assertTrue(offline.contains("qualitySource == null && quality != LevyraAudioQuality.LOW"))
+        assertTrue(automatic.contains("if (supportsLosslessDownloads())"))
+        assertTrue(automatic.contains("quality == LevyraAudioQuality.LOW || !highQualityPlayback.mode.enabled"))
+        assertTrue(automaticCall in 0 until reel)
+        assertTrue(offline.contains("if (qualitySource == null) {"))
     }
 
     @Test
