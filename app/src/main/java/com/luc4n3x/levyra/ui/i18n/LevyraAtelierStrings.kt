@@ -1,6 +1,5 @@
 package com.luc4n3x.levyra.ui.i18n
 
-import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 
 internal data class AtelierCopy(
     val skinBody: String,
@@ -77,5 +76,5 @@ internal object LevyraAtelierStrings {
         )
     )
 
-    fun forCode(code: String): AtelierCopy = copies[LevyraLanguageCatalog.normalize(code)] ?: copies.getValue("en")
+    fun forCode(code: String): AtelierCopy = localizedValueOrEnglish(copies, code)
 }

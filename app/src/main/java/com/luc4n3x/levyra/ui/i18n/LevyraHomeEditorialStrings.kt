@@ -784,5 +784,5 @@ private val homeEditorialEntries = buildMap {
 }
 
 internal fun homeEditorialLocalizationEntries(code: String): Map<String, String> {
-    return homeEditorialEntries[code] ?: homeEditorialEntries.getValue("en")
+    return localizedValueOrEnglish(homeEditorialEntries, code)
 }

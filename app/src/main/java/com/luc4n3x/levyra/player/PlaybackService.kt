@@ -768,6 +768,7 @@ class PlaybackService : MediaLibraryService() {
                 putString("levyra.title", track.title)
                 putString("levyra.artist", track.artist)
                 putString("levyra.album", track.album)
+                putStringArrayList(EXTRA_ARTWORK_FALLBACKS, fresh.extras?.getStringArrayList(EXTRA_ARTWORK_FALLBACKS))
             }
             val metadata = item.mediaMetadata
                 .buildUpon()
@@ -1620,6 +1621,7 @@ class PlaybackService : MediaLibraryService() {
         mediaSession = MediaLibrarySession.Builder(this, forwardingPlayer, callback)
             .setSessionActivity(sessionActivity)
             .setMediaButtonPreferences(systemActions.initialButtons())
+            .setBitmapLoader(LevyraSessionBitmapLoader.create(this, serviceScope))
             .build()
             .also(systemActions::attach)
             .also(studioWidgetSync::attach)

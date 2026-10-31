@@ -42,6 +42,7 @@ import com.luc4n3x.levyra.domain.LevyraCustomTheme
 import com.luc4n3x.levyra.domain.LevyraCustomThemes
 import com.luc4n3x.levyra.domain.LevyraHomeStudioSettings
 import com.luc4n3x.levyra.domain.LevyraMiniPlayerStudioSettings
+import com.luc4n3x.levyra.domain.LevyraMusicRegion
 import com.luc4n3x.levyra.domain.LevyraNavigationStudioSettings
 import com.luc4n3x.levyra.domain.LevyraYtMusicPairing
 import com.luc4n3x.levyra.domain.LevyraLyricsStudioSettings
@@ -2362,18 +2363,20 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun persistHomeSnapshot() {
         val languageCode = _state.value.languageCode
+        val musicRegionId = LevyraMusicRegion.selectedId
         homeSnapshotJob?.cancel()
         homeSnapshotJob = viewModelScope.launch(Dispatchers.IO) {
             delay(280L)
-            if (_state.value.languageCode == languageCode) persistHomeSnapshotSync(languageCode)
+            if (_state.value.languageCode == languageCode) persistHomeSnapshotSync(languageCode, musicRegionId)
         }
     }
 
-    private fun persistHomeSnapshotSync(languageCode: String) {
+    private fun persistHomeSnapshotSync(languageCode: String, musicRegionId: String = LevyraMusicRegion.selectedId) {
         val normalizedLanguage = LevyraLanguageCatalog.normalize(languageCode)
         val snapshot = _state.value
-        if (snapshot.languageCode != normalizedLanguage) return
+        if (snapshot.languageCode != normalizedLanguage || LevyraMusicRegion.selectedId != musicRegionId) return
         homeSnapshotCache.save(
+            musicRegionId = musicRegionId,
             languageCode = normalizedLanguage,
             homeSections = pendingHomeSectionsSnapshot.get() ?: snapshot.homeSections,
             chartRegionId = snapshot.selectedChartId,
@@ -4163,7 +4166,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 else -> File(rawUri).takeIf(File::isFile)?.length() ?: 0L
             }
         }.getOrDefault(0L)
-        if (size > 0L) downloadedMediaSizeCache[rawUri] = size
+        if (size > 0L && !com.luc4n3x.levyra.player.offline.isOfflineAudioStoreUri(rawUri)) downloadedMediaSizeCache[rawUri] = size
         return size
     }
 
@@ -6440,6 +6443,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         localLibrarySortFlow.value =
             snapshot.interfaceSettings.librarySort to snapshot.interfaceSettings.librarySortDirection
         LevyraTypographyController.apply(snapshot.interfaceSettings.fontPreset)
+        LevyraMusicRegion.apply(snapshot.musicRegionId)
+        if (_musicRegionId.value != snapshot.musicRegionId) {
+            _musicRegionId.value = snapshot.musicRegionId
+            freshCurrentsJob?.cancel()
+            freshCurrentsLoadedLanguage = ""
+            freshCurrentsRequestLanguage = ""
+        }
+        NewPipeRuntime.onConfigurationChanged()
         applyLanguageContent(snapshot.languageCode, refreshRemote = true)
         player.setSkipSilence(snapshot.skipSilence)
         player.setPremiumAudioSettings(snapshot.audioSettings, snapshot.audioNormalization)
@@ -6481,6 +6492,31 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    private val _musicRegionId = MutableStateFlow(preferences.musicRegionId())
+    val musicRegionId: StateFlow<String> = _musicRegionId.asStateFlow()
+
+    fun setMusicRegion(regionId: String) {
+        val normalizedRegion = LevyraMusicRegion.normalize(regionId)
+        if (normalizedRegion == _musicRegionId.value) return
+        _musicRegionId.value = normalizedRegion
+        preferences.setMusicRegionId(normalizedRegion)
+        preferences.setChartRegionId(normalizedRegion)
+        NewPipeRuntime.onConfigurationChanged()
+        freshCurrentsJob?.cancel()
+        freshCurrentsLoadedLanguage = ""
+        freshCurrentsRequestLanguage = ""
+        val languageCode = _state.value.languageCode
+        val chartRegion = ChartsCatalog.startupRegion(normalizedRegion, Locale.getDefault().country, languageCode)
+        _state.update {
+            it.copy(
+                selectedChartId = chartRegion.id,
+                exploreFreshTracks = emptyList(),
+                exploreWorldFreshTracks = emptyList()
+            )
+        }
+        applyLanguageContent(languageCode, refreshRemote = true)
+    }
+
     private fun applyLanguageContent(languageCode: String, refreshRemote: Boolean) {
         NewPipeRuntime.setLanguage(languageCode)
         searchEngine.reset()
@@ -6488,9 +6524,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         deferredHomeArtistsSnapshot.set(null)
         homeArtistsFingerprint = ""
         homeArtistsJob?.cancel()
-        val selectedChartRegion = ChartsCatalog.regions
-            .firstOrNull { it.id == _state.value.selectedChartId }
-            ?: ChartsCatalog.defaultRegionForLanguage(languageCode)
+        val selectedChartRegion = ChartsCatalog.regionAfterLanguageChange(
+            storedRegionId = preferences.chartRegionId(),
+            currentRegionId = _state.value.selectedChartId,
+            previousLanguageCode = _state.value.languageCode,
+            languageCode = languageCode
+        )
         val localizedMoods = moodEngine.moodsForLanguage(languageCode)
         val selectedMood = localizedMoods.firstOrNull { it.id == _state.value.selectedMood?.id } ?: localizedMoods.firstOrNull()
         val homeSections = LevyraStartupCatalog.repairHomeSections(
@@ -9030,7 +9069,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         }
                     }
                     WorkInfo.State.CANCELLED -> handleOfflineExportStopped(downloadKey)
-                    else -> handleOfflineExportFailure("Esportazione non riuscita", downloadKey)
+                    else -> handleOfflineExportFailure(null, downloadKey)
                 }
             }.onFailure { error ->
                 if (error is CancellationException) {
@@ -9100,7 +9139,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val completedTrack = activeDownloadTracks.remove(trackId)
         activeDownloadTitles.remove(trackId)
         val fileName = workInfo.outputData.getString(OfflineExportWorker.KEY_FILE_NAME).orEmpty()
-        val destinationLabel = workInfo.outputData.getString(OfflineExportWorker.KEY_DESTINATION_LABEL).orEmpty().ifBlank { "Music/Levyra" }
+        val destinationLabel = workInfo.outputData.getString(OfflineExportWorker.KEY_DESTINATION_LABEL).orEmpty()
         val embedded = workInfo.outputData.getBoolean(OfflineExportWorker.KEY_EMBEDDED_METADATA, false)
         val strings = LevyraStrings.forCode(_state.value.languageCode)
         completedTrack?.let { recordSmartDownload(it) }
@@ -9108,9 +9147,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             it.copy(
                 isOfflineExporting = it.downloadingTrackIds.size > 1,
                 offlineExportMessage = strings.formatOfflineExportSaved(
-                    destination = destinationLabel,
                     fileName = fileName,
-                    embeddedMetadata = embedded
+                    embeddedMetadata = embedded,
+                    destination = destinationLabel
                 ),
                 embeddedMetadataWriterReady = offlineExporter.embeddedMetadataWriterReady,
                 downloadingTrackIds = it.downloadingTrackIds - trackId,
@@ -9141,7 +9180,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update {
             it.copy(
                 isOfflineExporting = it.downloadingTrackIds.size > 1,
-                offlineExportMessage = cleanUserError(message),
+                offlineExportMessage = message ?: cleanUserError(null),
                 embeddedMetadataWriterReady = offlineExporter.embeddedMetadataWriterReady,
                 downloadingTrackIds = it.downloadingTrackIds - trackId,
                 downloadProgressByTrackId = it.downloadProgressByTrackId - trackId,

@@ -252,7 +252,7 @@ private val update2512Highlights: Map<String, List<String>> = mapOf(
 internal fun LevyraStrings.updateReleaseHighlights(version: String): List<String> {
     val normalizedVersion = version.trim().removePrefix("v")
     return if (normalizedVersion == "2.5.12") {
-        update2512Highlights[code] ?: update2512Highlights.getValue("en")
+        localizedValueOrEnglish(update2512Highlights, code)
     } else {
         listOf(updateDescription)
     }

@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.data.locallibrary
 
 import android.content.ContentUris
 import android.content.Context
+import android.media.MediaMetadataRetriever
 import android.os.Build
 import android.provider.MediaStore
 import android.util.Size
@@ -16,7 +17,10 @@ import coil3.fetch.SourceFetchResult
 import coil3.request.Options
 import coil3.size.Dimension
 import coil3.size.pxOrElse
+import com.luc4n3x.levyra.player.offline.isOfflineAudioStoreUri
 import java.io.FileNotFoundException
+import java.io.IOException
+import okio.Buffer
 import okio.buffer
 import okio.source
 
@@ -26,6 +30,7 @@ private const val DEFAULT_LOCAL_ARTWORK_PX = 512
 private const val MIN_LOCAL_ARTWORK_PX = 96
 private const val MAX_LOCAL_ARTWORK_PX = 1024
 private val MEDIA_STORE_URI_PREFIX = "content://" + MediaStore.AUTHORITY + "/"
+private const val EXTERNAL_DOCUMENT_URI_PREFIX = "content://com.android.externalstorage.documents/"
 private val LEGACY_ALBUM_ART_URI by lazy(LazyThreadSafetyMode.NONE) {
     android.net.Uri.parse("content://media/external/audio/albumart")
 }
@@ -38,13 +43,27 @@ fun localArtworkModel(contentUri: String, albumId: Long, revision: Long = 0L): S
 
 fun isLocalArtworkModel(value: String): Boolean = value.startsWith(LOCAL_ARTWORK_PREFIX)
 
+fun downloadArtworkModel(downloadUri: String): String {
+    val uri = downloadUri.trim()
+    return if (isReadableArtworkSource(uri)) localArtworkModel(uri, 0L) else ""
+}
+
+private fun isMediaStoreUri(uri: String): Boolean = uri.startsWith(MEDIA_STORE_URI_PREFIX, ignoreCase = true)
+
+private fun isReadableArtworkSource(uri: String): Boolean {
+    if (uri.contains("..")) return false
+    return isMediaStoreUri(uri) ||
+        uri.startsWith(EXTERNAL_DOCUMENT_URI_PREFIX, ignoreCase = true) ||
+        isOfflineAudioStoreUri(uri)
+}
+
 internal data class LocalArtworkReference(val contentUri: String, val albumId: Long, val revision: Long = 0L)
 
 internal fun parseLocalArtworkModel(value: String): LocalArtworkReference? {
     if (!isLocalArtworkModel(value)) return null
     val parameters = value.removePrefix(LOCAL_ARTWORK_PREFIX)
     val contentUri = parameters.substringAfter("&u=", "")
-    if (!contentUri.startsWith(MEDIA_STORE_URI_PREFIX, ignoreCase = true)) return null
+    if (!isReadableArtworkSource(contentUri)) return null
     val fields = parameters.substringBefore("&u=")
         .split('&')
         .associate { field -> field.substringBefore('=') to field.substringAfter('=', "") }
@@ -70,21 +89,44 @@ class LocalArtworkFetcher private constructor(
 ) : Fetcher {
 
     override suspend fun fetch(): FetchResult {
+        if (!isMediaStoreUri(reference.contentUri)) return fetchEmbeddedPicture()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val target = targetPixels()
-            val bitmap = context.contentResolver.loadThumbnail(
-                android.net.Uri.parse(reference.contentUri),
-                Size(target, target),
-                null
-            )
+            val bitmap = try {
+                context.contentResolver.loadThumbnail(
+                    android.net.Uri.parse(reference.contentUri),
+                    Size(target, target),
+                    null
+                )
+            } catch (error: IOException) {
+                if (reference.albumId > 0L) throw error
+                return fetchEmbeddedPicture()
+            } catch (error: SecurityException) {
+                if (reference.albumId > 0L) throw error
+                return fetchEmbeddedPicture()
+            }
             return ImageFetchResult(image = bitmap.asImage(), isSampled = true, dataSource = DataSource.DISK)
         }
-        val albumId = reference.albumId.takeIf { it > 0L }
-            ?: throw FileNotFoundException("No album artwork for local media")
+        val albumId = reference.albumId.takeIf { it > 0L } ?: return fetchEmbeddedPicture()
         val stream = context.contentResolver.openInputStream(ContentUris.withAppendedId(LEGACY_ALBUM_ART_URI, albumId))
             ?: throw FileNotFoundException("Album artwork unavailable")
         return SourceFetchResult(
             source = ImageSource(source = stream.source().buffer(), fileSystem = options.fileSystem),
+            mimeType = null,
+            dataSource = DataSource.DISK
+        )
+    }
+
+    private fun fetchEmbeddedPicture(): FetchResult {
+        val retriever = MediaMetadataRetriever()
+        val picture = try {
+            retriever.setDataSource(context, android.net.Uri.parse(reference.contentUri))
+            retriever.embeddedPicture
+        } finally {
+            runCatching { retriever.release() }
+        } ?: throw FileNotFoundException("No embedded artwork")
+        return SourceFetchResult(
+            source = ImageSource(source = Buffer().write(picture), fileSystem = options.fileSystem),
             mimeType = null,
             dataSource = DataSource.DISK
         )

@@ -268,7 +268,9 @@ class LocalLibraryRepository private constructor(context: Context) {
         if (newlyIdentified.isEmpty() && !changed) return 0
         database.withTransaction {
             newlyIdentified.chunked(SQL_CHUNK).forEach { dao.updateAll(it) }
-            if (changed) downloadsDao.replaceAll(merged)
+            if (changed) {
+                downloadsDao.replaceAll(keepDownloadsChangedDuringScan(merged, current, downloadsDao.all()))
+            }
         }
         val previousUris = current.mapTo(hashSetOf()) { it.uri }
         return merged.count { it.uri !in previousUris }
@@ -343,3 +345,15 @@ private fun toDownloadEntity(row: LocalMediaEntity) = DownloadEntity(
 
 private fun downloadSignature(entity: DownloadEntity): String =
     "${entity.uri}|${entity.trackId}|${entity.title}|${entity.artist}|${entity.album}"
+
+internal fun keepDownloadsChangedDuringScan(
+    merged: List<DownloadEntity>,
+    scanned: List<DownloadEntity>,
+    fresh: List<DownloadEntity>
+): List<DownloadEntity> {
+    val scannedByUri = scanned.associateBy { it.uri }
+    val freshUris = fresh.mapTo(hashSetOf()) { it.uri }
+    val changedDuringScan = fresh.filter { it != scannedByUri[it.uri] }
+    val stillPresent = merged.filter { it.uri !in scannedByUri || it.uri in freshUris }
+    return (changedDuringScan + stillPresent).distinctBy { it.uri }
+}

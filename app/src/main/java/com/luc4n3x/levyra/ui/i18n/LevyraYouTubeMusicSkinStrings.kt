@@ -1,6 +1,5 @@
 package com.luc4n3x.levyra.ui.i18n
 
-import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 
 internal data class YouTubeMusicSkinCopy(
     val playAll: String,
@@ -1225,5 +1224,33 @@ internal object LevyraYouTubeMusicSkinStrings {
         )
     )
 
-    fun forCode(code: String): YouTubeMusicSkinCopy = copies[LevyraLanguageCatalog.normalize(code)] ?: copies.getValue("en")
+    fun forCode(code: String): YouTubeMusicSkinCopy = localizedValueOrEnglish(copies, code).forBrazil(code) { brazilian() }
 }
+
+private fun YouTubeMusicSkinCopy.brazilian(): YouTubeMusicSkinCopy = copy(
+    playAll = LevyraBrazilianPortuguese.adapt(playAll),
+    more = LevyraBrazilianPortuguese.adapt(more),
+    search = LevyraBrazilianPortuguese.adapt(search),
+    settings = LevyraBrazilianPortuguese.adapt(settings),
+    homeUnavailable = LevyraBrazilianPortuguese.adapt(homeUnavailable),
+    retry = LevyraBrazilianPortuguese.adapt(retry),
+    explicit = LevyraBrazilianPortuguese.adapt(explicit),
+    upNext = LevyraBrazilianPortuguese.adapt(upNext),
+    lyrics = LevyraBrazilianPortuguese.adapt(lyrics),
+    related = LevyraBrazilianPortuguese.adapt(related),
+    song = LevyraBrazilianPortuguese.adapt(song),
+    video = LevyraBrazilianPortuguese.adapt(video),
+    playingFrom = LevyraBrazilianPortuguese.adapt(playingFrom),
+    save = LevyraBrazilianPortuguese.adapt(save),
+    share = LevyraBrazilianPortuguese.adapt(share),
+    subscribe = LevyraBrazilianPortuguese.adapt(subscribe),
+    radio = LevyraBrazilianPortuguese.adapt(radio),
+    shuffle = LevyraBrazilianPortuguese.adapt(shuffle),
+    download = LevyraBrazilianPortuguese.adapt(download),
+    music = LevyraBrazilianPortuguese.adapt(music),
+    latestRelease = LevyraBrazilianPortuguese.adapt(latestRelease),
+    fromYourLibrary = LevyraBrazilianPortuguese.adapt(fromYourLibrary),
+    fansMightLike = LevyraBrazilianPortuguese.adapt(fansMightLike),
+    about = LevyraBrazilianPortuguese.adapt(about),
+    dailyDiscovery = LevyraBrazilianPortuguese.adapt(dailyDiscovery)
+)

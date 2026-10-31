@@ -427,6 +427,7 @@ import androidx.compose.material.icons.rounded.VerticalAlignTop
 import androidx.compose.material.icons.rounded.VerticalAlignBottom
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.LibraryAdd
+import androidx.compose.material.icons.rounded.StayCurrentPortrait
 import androidx.compose.material.icons.rounded.Source
 import androidx.compose.material.icons.rounded.Wifi
 import androidx.compose.material.icons.rounded.NetworkCell
@@ -679,6 +680,7 @@ import com.luc4n3x.levyra.domain.LevyraVisualPerformance
 import com.luc4n3x.levyra.domain.LevyraCanvasSource
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
+import com.luc4n3x.levyra.domain.LevyraDownloadDestination
 import com.luc4n3x.levyra.domain.LevyraDownloadFolderMode
 import com.luc4n3x.levyra.domain.LevyraDownloadPreset
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
@@ -1958,9 +1960,11 @@ fun LevyraApp(
     var showYoutubeMusic by rememberSaveable { mutableStateOf(false) }
 
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val musicRegionId by viewModel.musicRegionId.collectAsStateWithLifecycle()
     val miniPlayerStudio by viewModel.miniPlayerStudio.collectAsStateWithLifecycle()
     val customThemes by viewModel.customThemes.collectAsStateWithLifecycle()
     val navigationStudio by viewModel.navigationStudio.collectAsStateWithLifecycle()
+    LevyraKeepScreenOnEffect(viewModel.state)
     LaunchedEffect(youtubeMusicState.active?.id, state.languageCode) {
         youtubeMusicViewModel.loadHome(state.languageCode)
     }
@@ -3049,6 +3053,8 @@ fun LevyraApp(
                     onDynamicColor = viewModel::setDynamicColor,
                     onSponsorBlock = viewModel::setSponsorBlock,
                     onSkipSilence = viewModel::setSkipSilence,
+                    onMusicRegion = viewModel::setMusicRegion,
+                    musicRegionId = musicRegionId,
                     onLanguage = { code ->
                         val normalized = LevyraLanguageCatalog.normalize(code)
                         if (normalized != state.languageCode) {
@@ -16078,7 +16084,7 @@ private fun DownloadsFolderCard(count: Int, onClick: () -> Unit) {
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = LocalLevyraStrings.current.downloadsFolder,
+                    text = LocalLevyraStrings.current.offlineDownloadsPlain,
                     color = LevyraText,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
@@ -19519,7 +19525,7 @@ private fun LanguageSelector(selectedCode: String, onSelect: (String) -> Unit, m
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        LevyraLanguageCatalog.languages.forEach { language ->
+        LevyraLanguageCatalog.selectableLanguages.forEach { language ->
             val selected = language.code == LevyraLanguageCatalog.normalize(selectedCode)
             val scale by animateFloatAsState(
                 targetValue = if (selected) 1.02f else 1f,
@@ -19677,6 +19683,8 @@ private fun SettingsOverlay(
     onDynamicColor: (Boolean) -> Unit,
     onSponsorBlock: (Boolean) -> Unit,
     onSkipSilence: (Boolean) -> Unit,
+    onMusicRegion: (String) -> Unit,
+    musicRegionId: String,
     onLanguage: (String) -> Unit,
     onCheckUpdates: () -> Unit,
     onDownloadUpdate: () -> Unit,
@@ -20674,6 +20682,19 @@ private fun SettingsOverlay(
                                     onCheckedChange = onSkipSilence
                                 )
                             }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.StayCurrentPortrait,
+                                    title = strings.keepScreenOn,
+                                    subtitle = strings.keepScreenOnSubtitle,
+                                    checked = interfaceSettings.keepScreenOnWhilePlaying,
+                                    onCheckedChange = { value ->
+                                        onInterfaceSettings(
+                                            interfaceSettings.copy(keepScreenOnWhilePlaying = value)
+                                        )
+                                    }
+                                )
+                            }
                             standaloneItem { SettingsSectionLabel(automationCopy.automation) }
                             item {
                                 SettingsToggle(
@@ -20772,40 +20793,55 @@ private fun SettingsOverlay(
                                 )
                             }
                             item {
-                                SettingsButton(
+                                SettingsChoiceRow(
                                     icon = Icons.Rounded.Source,
-                                    title = strings.downloadLocation,
-                                    subtitle = when {
-                                        downloadSettings.destinationTreeUri.isBlank() -> strings.downloadLocationDefault
-                                        !selectedDownloadFolderName.isNullOrBlank() -> selectedDownloadFolderName.orEmpty()
-                                        else -> strings.downloadLocationUnavailable
-                                    },
-                                    onClick = onSelectDownloadLocation
+                                    title = strings.downloadDestination,
+                                    subtitle = strings.downloadDestinationSubtitle,
+                                    options = listOf(
+                                        LevyraDownloadDestination.Private.name to strings.downloadDestinationPrivate,
+                                        LevyraDownloadDestination.Public.name to strings.downloadDestinationPublic
+                                    ),
+                                    selected = downloadSettings.destination.name,
+                                    onSelect = { value -> onDownloadSettings(downloadSettings.copy(destination = LevyraDownloadDestination.valueOf(value))) }
                                 )
                             }
-                            if (downloadSettings.destinationTreeUri.isNotBlank()) {
+                            if (downloadSettings.destination == LevyraDownloadDestination.Public) {
                                 item {
                                     SettingsButton(
-                                        icon = Icons.Rounded.History,
-                                        title = strings.downloadLocationReset,
-                                        subtitle = strings.downloadLocationResetSubtitle,
-                                        onClick = onClearDownloadLocation
+                                        icon = Icons.Rounded.Source,
+                                        title = strings.downloadLocation,
+                                        subtitle = when {
+                                            downloadSettings.destinationTreeUri.isBlank() -> strings.downloadLocationDefault
+                                            !selectedDownloadFolderName.isNullOrBlank() -> selectedDownloadFolderName.orEmpty()
+                                            else -> strings.downloadLocationUnavailable
+                                        },
+                                        onClick = onSelectDownloadLocation
                                     )
                                 }
-                            }
-                            item {
-                                SettingsChoiceRow(
-                                    icon = Icons.Rounded.Album,
-                                    title = strings.downloadFolderOrganization,
-                                    subtitle = strings.downloadFolderOrganizationSubtitle,
-                                    options = listOf(
-                                        LevyraDownloadFolderMode.Flat.name to "Levyra",
-                                        LevyraDownloadFolderMode.Artist.name to strings.downloadFolderArtist,
-                                        LevyraDownloadFolderMode.ArtistAlbum.name to strings.downloadFolderArtistAlbum
-                                    ),
-                                    selected = downloadSettings.folderMode.name,
-                                    onSelect = { value -> onDownloadSettings(downloadSettings.copy(folderMode = LevyraDownloadFolderMode.valueOf(value))) }
-                                )
+                                if (downloadSettings.destinationTreeUri.isNotBlank()) {
+                                    item {
+                                        SettingsButton(
+                                            icon = Icons.Rounded.History,
+                                            title = strings.downloadLocationReset,
+                                            subtitle = strings.downloadLocationResetSubtitle,
+                                            onClick = onClearDownloadLocation
+                                        )
+                                    }
+                                }
+                                item {
+                                    SettingsChoiceRow(
+                                        icon = Icons.Rounded.Album,
+                                        title = strings.downloadFolderOrganization,
+                                        subtitle = strings.downloadFolderOrganizationSubtitle,
+                                        options = listOf(
+                                            LevyraDownloadFolderMode.Flat.name to "Levyra",
+                                            LevyraDownloadFolderMode.Artist.name to strings.downloadFolderArtist,
+                                            LevyraDownloadFolderMode.ArtistAlbum.name to strings.downloadFolderArtistAlbum
+                                        ),
+                                        selected = downloadSettings.folderMode.name,
+                                        onSelect = { value -> onDownloadSettings(downloadSettings.copy(folderMode = LevyraDownloadFolderMode.valueOf(value))) }
+                                    )
+                                }
                             }
                             item {
                                 SettingsChoiceRow(
@@ -21139,6 +21175,29 @@ private fun SettingsOverlay(
                                     subtitle = "${strings.languageSubtitle}: ${LevyraLanguageCatalog.displayName(currentLanguageCode)}",
                                     onClick = { languageExpanded = !languageExpanded }
                                 )
+                            }
+                            item {
+                                val musicRegionCopy = com.luc4n3x.levyra.ui.i18n.musicRegionCopy(strings.code)
+                                var musicRegionSheetOpen by rememberSaveable { mutableStateOf(false) }
+                                SettingsButton(
+                                    icon = Icons.Rounded.Public,
+                                    title = musicRegionCopy.title,
+                                    subtitle = ChartsCatalog.supportedRegion(musicRegionId)
+                                        ?.let { region -> "${region.emoji} ${ChartMarketDirectory.displayName(region, currentLanguageCode)}" }
+                                        ?: musicRegionCopy.automatic,
+                                    onClick = { musicRegionSheetOpen = true }
+                                )
+                                if (musicRegionSheetOpen) {
+                                    ChartMarketSheet(
+                                        regions = ChartsCatalog.regions,
+                                        selectedId = musicRegionId,
+                                        languageCode = currentLanguageCode,
+                                        onSelect = onMusicRegion,
+                                        onDismiss = { musicRegionSheetOpen = false },
+                                        title = musicRegionCopy.title,
+                                        automaticLabel = musicRegionCopy.automatic
+                                    )
+                                }
                             }
                             if (languageExpanded) {
                                 standaloneItem { LanguageSelector(selectedCode = currentLanguageCode, onSelect = onLanguage, modifier = Modifier.padding(top = 6.dp, bottom = 4.dp)) }
@@ -25720,7 +25779,7 @@ private fun ExploreScreen(
     }
     val freshTracks = remember(freshFeed) { freshFeed.spotlight + freshFeed.moment }
     val momentPages = remember(freshFeed) { exploreMomentPages(freshFeed.moment) }
-    val freshRegionLabel = remember(state.languageCode) {
+    val freshRegionLabel = remember(state.languageCode, com.luc4n3x.levyra.domain.LevyraMusicRegion.selectedId) {
         ChartsCatalog.defaultRegionForLanguage(state.languageCode).label
     }
     val samples = remember(state.exploreSamples) {

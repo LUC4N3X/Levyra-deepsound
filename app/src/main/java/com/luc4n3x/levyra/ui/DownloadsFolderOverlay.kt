@@ -1,8 +1,10 @@
 package com.luc4n3x.levyra.ui
 
+import android.text.format.Formatter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.DownloadDone
@@ -15,20 +17,45 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.luc4n3x.levyra.domain.DownloadedTrack
+import com.luc4n3x.levyra.domain.visibleDownloadBatches
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
 import com.luc4n3x.levyra.ui.components.*
 import com.luc4n3x.levyra.ui.downloadhealth.DownloadHealthEntry
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.formatLibraryBytes
+import com.luc4n3x.levyra.ui.library.LibraryBatchDownloadRow
+import com.luc4n3x.levyra.ui.library.LibraryDownloadTaskRow
+import com.luc4n3x.levyra.ui.library.LibrarySectionTitle
 import com.luc4n3x.levyra.ui.theme.*
 
 private val DownloadRowArtworkShape = RoundedCornerShape(8.dp)
+
+internal fun offlineDownloadFormatLabel(mimeType: String, fileName: String): String = when (mimeType.substringBefore(';').trim().lowercase()) {
+    "audio/flac", "audio/x-flac" -> "FLAC"
+    "audio/mp4", "audio/m4a", "audio/x-m4a" -> "M4A"
+    "audio/mpeg", "audio/mp3" -> "MP3"
+    "audio/aac", "audio/aacp" -> "AAC"
+    "audio/ogg", "application/ogg" -> "OGG"
+    "audio/opus" -> "OPUS"
+    "audio/wav", "audio/x-wav", "audio/wave" -> "WAV"
+    "audio/webm" -> "WEBM"
+    else -> fileName.substringAfterLast('.', "").uppercase()
+}
+
+private fun offlineDownloadDetail(download: DownloadedTrack, size: String, coverAndTags: String): String =
+    listOfNotNull(
+        offlineDownloadFormatLabel(download.mimeType, download.fileName).takeIf(String::isNotBlank),
+        size.takeIf { download.sizeBytes > 0L },
+        coverAndTags.takeIf { download.embeddedMetadata }
+    ).joinToString(" · ")
 
 @Composable
 internal fun DownloadsFolderOverlay(
@@ -39,6 +66,8 @@ internal fun DownloadsFolderOverlay(
     val strings = LocalLevyraStrings.current
     val downloadsAccent = rememberNowPlayingAccent(state.currentTrack, LevyraCyan)
     val downloadsStyle = LevyraConnectedDefaults.style(accent = downloadsAccent)
+    val activeBatches = remember(state.downloadBatches) { visibleDownloadBatches(state.downloadBatches) }
+    val hasTransfers = activeBatches.isNotEmpty() || state.downloadQueue.isNotEmpty()
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -66,7 +95,10 @@ internal fun DownloadsFolderOverlay(
                             fontWeight = FontWeight.Black
                         )
                         Text(
-                            text = strings.formatSavedTrackCount(state.downloads.size),
+                            text = listOfNotNull(
+                                strings.formatSavedTrackCount(state.downloads.size),
+                                strings.formatLibraryBytes(state.downloadStorageBytes).takeIf { state.downloadStorageBytes > 0L }
+                            ).joinToString(" · "),
                             color = LevyraMuted,
                             fontSize = 14.sp
                         )
@@ -74,9 +106,36 @@ internal fun DownloadsFolderOverlay(
                 }
             }
             item(key = "download-health-entry") { DownloadHealthEntry() }
+            if (hasTransfers) {
+                item(key = "dlfolder-queue-title", contentType = "downloads-section-title") {
+                    LibrarySectionTitle(strings.downloadsInProgress, strings.downloadInProgress)
+                }
+                items(activeBatches, key = { "dlfolder-batch-${it.key}" }, contentType = { "download-batch" }) { batch ->
+                    LibraryBatchDownloadRow(
+                        batch = batch,
+                        onRetry = { viewModel.retryBatchDownload(batch.key) },
+                        onCancel = { viewModel.cancelBatchDownload(batch.key) }
+                    )
+                }
+                items(state.downloadQueue, key = { "dlfolder-task-${it.taskKey}" }, contentType = { "download-task" }) { task ->
+                    LibraryDownloadTaskRow(
+                        task = task,
+                        onPause = { viewModel.pauseDownload(task.taskKey) },
+                        onResume = { viewModel.resumeDownload(task.taskKey) },
+                        onCancel = { viewModel.cancelDownload(task.taskKey) }
+                    )
+                }
+                if (state.downloads.isNotEmpty()) {
+                    item(key = "dlfolder-saved-title", contentType = "downloads-section-title") {
+                        LibrarySectionTitle(strings.downloaded, "")
+                    }
+                }
+            }
             if (state.downloads.isEmpty()) {
-                item {
-                    EmptyState(strings.noOfflineDownloads)
+                if (!hasTransfers) {
+                    item {
+                        EmptyState(strings.noOfflineDownloads)
+                    }
                 }
             } else {
                 itemsIndexed(
@@ -146,7 +205,11 @@ internal fun DownloadRow(
             Text(download.title, color = if (isCurrent) accent else LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(download.artist, color = LevyraMuted, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
-                if (download.embeddedMetadata) "Music/Levyra · ${LocalLevyraStrings.current.coverAndTags}" else "Music/Levyra",
+                offlineDownloadDetail(
+                    download,
+                    Formatter.formatShortFileSize(LocalContext.current, download.sizeBytes.coerceAtLeast(0L)),
+                    LocalLevyraStrings.current.coverAndTags
+                ),
                 color = LevyraMuted.copy(alpha = 0.7f),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,

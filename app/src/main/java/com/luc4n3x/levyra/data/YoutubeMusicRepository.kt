@@ -2539,7 +2539,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
     ) + LEVYRA_LOCALIZED_ALBUM_LABELS
 
     private fun albumRecommendationQueries(languageCode: String): List<String> {
-        return when (LevyraLanguageCatalog.normalize(languageCode)) {
+        return when (LevyraContentLocales.contentLanguage(languageCode)) {
             "it" -> listOf(
                 "nuovi album italiani",
                 "album italiani",
@@ -2550,7 +2550,8 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             "es" -> listOf("nuevos álbumes", "álbumes populares", "álbumes pop", "álbumes rap")
             "fr" -> listOf("nouveaux albums", "albums populaires", "albums pop", "albums rap")
             "de" -> listOf("neue alben", "beliebte alben", "pop alben", "rap alben")
-            "pt" -> listOf("novos álbuns", "álbuns populares", "álbuns pop", "álbuns rap")
+            "pt" -> listOf("novos álbuns portugueses", "álbuns populares Portugal", "álbuns pop portugueses", "álbuns rap português")
+            "pt-BR" -> listOf("novos álbuns brasileiros", "álbuns populares Brasil", "álbuns sertanejo", "álbuns rap brasileiro")
             "ar" -> listOf("ألبومات عربية جديدة", "ألبومات عربية رائجة", "ألبومات بوب عربية", "ألبومات راب عربية")
             "zh" -> listOf("华语新专辑", "华语热门专辑", "华语流行专辑", "中文说唱专辑")
             "ja" -> listOf("邦楽 新着アルバム", "人気 邦楽アルバム", "J-POP アルバム", "日本語ラップ アルバム")

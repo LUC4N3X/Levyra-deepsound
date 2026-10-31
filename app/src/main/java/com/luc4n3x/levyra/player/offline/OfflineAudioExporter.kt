@@ -12,6 +12,7 @@ import android.provider.MediaStore
 import androidx.annotation.RequiresApi
 import androidx.media3.datasource.cache.CacheSpan
 import com.luc4n3x.levyra.data.DownloadFolderAccess
+import com.luc4n3x.levyra.data.LevyraVaultOperationMutex
 import com.luc4n3x.levyra.data.LyricsMatcher
 import com.luc4n3x.levyra.data.LyricsRepository
 import com.luc4n3x.levyra.data.PlaybackResolver
@@ -26,6 +27,7 @@ import com.luc4n3x.levyra.data.local.DownloadEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.data.apple.AppleMetadataEnricher
+import com.luc4n3x.levyra.domain.LevyraDownloadDestination
 import com.luc4n3x.levyra.domain.LevyraDownloadFolderMode
 import com.luc4n3x.levyra.domain.LevyraDownloadPreset
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
@@ -39,6 +41,7 @@ import com.luc4n3x.levyra.player.LevyraPlaybackCacheKey
 import com.luc4n3x.levyra.player.offline.tagging.LevyraM4aTagWriter
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -515,6 +518,7 @@ class OfflineAudioExporter(
     private val rateLimiter = DownloadRateLimiter(settings.effectiveRateKbps)
     private val appleMetadataEnricher = AppleMetadataEnricher(context)
     private val lyricsRepository = LyricsRepository(context)
+    private val audioStore = OfflineAudioStore(context.filesDir)
     val embeddedMetadataWriterReady: Boolean
         get() = LevyraM4aTagWriter.isAvailable
 
@@ -541,7 +545,7 @@ class OfflineAudioExporter(
         }
         if (playable.streamUrl.isBlank()) throw IOException("Stream audio non disponibile")
         reportProgress(10)
-        val workspace = File(context.cacheDir, "levyra_offline_export").apply { mkdirs() }
+        val workspace = audioStore.stagingWorkspace()
         Timber.i("Offline export started: %s", track.title)
         cleanupWorkspace(workspace)
         var metadataTrack = mergeOfflineMetadataTrack(track, playable)
@@ -566,7 +570,7 @@ class OfflineAudioExporter(
             val downloaded = runCatching {
                 downloadAudio(playable, workspace)
             }.getOrElse { firstError ->
-                if (firstError is CancellationException) throw firstError
+                if (firstError is CancellationException || isOfflineStorageExhausted(firstError)) throw firstError
                 val canRefresh = track.id.isNotBlank() || track.videoUrl.isNotBlank()
                 if (!canRefresh) throw firstError
                 if (isUnsupportedOfflineAudioSource(firstError) || isRejectedOfflinePlaybackSource(firstError)) {
@@ -610,19 +614,20 @@ class OfflineAudioExporter(
                     verifyAudioFile(embeddedFile.file, embeddedFile.container)
                 }
                 reportProgress(92)
-                val exported = saveToMusicCollection(embeddedFile.file, metadataTrack, embeddedFile.container)
-                reportProgress(98)
                 val fileName = buildFileName(metadataTrack, embeddedFile.container.extension)
-                persistDownload(track, metadataTrack, fileName, exported.uri, embeddedFile.container, embeddedFile.fileMetadataEmbedded)
+                val stored = storeFinishedAudio(embeddedFile.file, track, metadataTrack, embeddedFile.container)
+                withContext(NonCancellable) {
+                    persistDownload(track, metadataTrack, fileName, stored.uri, embeddedFile.container, embeddedFile.fileMetadataEmbedded)
+                }
                 releaseOfflineCacheSeed(playable)
                 Timber.i("Offline export completed: %s", fileName)
                 reportProgress(100)
                 OfflineExportResult(
-                    uri = exported.uri,
+                    uri = stored.uri,
                     fileName = fileName,
                     fileMetadataEmbedded = embeddedFile.fileMetadataEmbedded,
                     mimeType = embeddedFile.container.mimeType,
-                    destinationLabel = exported.destinationLabel
+                    destinationLabel = stored.destinationLabel
                 )
             } finally {
                 runCatching { downloaded.file.delete() }
@@ -644,7 +649,7 @@ class OfflineAudioExporter(
         val sourceUrl = playable.streamUrl
         if (isPersonalCollectionStreamingOnly(sourceUrl)) throw IOException(PERSONAL_COLLECTION_STREAM_ONLY)
         reportProgress(8)
-        val workspace = File(context.cacheDir, "levyra_offline_export").apply { mkdirs() }
+        val workspace = audioStore.stagingWorkspace()
         cleanupWorkspace(workspace)
         val partial = resumablePartialFile(workspace, AudioContainer("audio", "application/octet-stream", false))
         val identityFile = resumeIdentitySidecar(partial)
@@ -652,17 +657,18 @@ class OfflineAudioExporter(
         try {
             if (settings.verifyFile) verifyAudioFile(downloaded.file, downloaded.container)
             reportProgress(90)
-            val exported = saveToMusicCollection(downloaded.file, playable, downloaded.container)
-            reportProgress(98)
             val fileName = buildFileName(playable, downloaded.container.extension)
-            persistDownload(track, playable, fileName, exported.uri, downloaded.container, embeddedMetadata = false)
+            val stored = storeFinishedAudio(downloaded.file, track, playable, downloaded.container)
+            withContext(NonCancellable) {
+                persistDownload(track, playable, fileName, stored.uri, downloaded.container, embeddedMetadata = false)
+            }
             reportProgress(100)
             OfflineExportResult(
-                uri = exported.uri,
+                uri = stored.uri,
                 fileName = fileName,
                 fileMetadataEmbedded = false,
                 mimeType = downloaded.container.mimeType,
-                destinationLabel = exported.destinationLabel
+                destinationLabel = stored.destinationLabel
             )
         } finally {
             runCatching { downloaded.file.delete() }
@@ -807,7 +813,7 @@ class OfflineAudioExporter(
                 return downloadAudioAttempt(track, workspace, useRange)
             } catch (error: IOException) {
                 lastError = error
-                if (isUnsupportedOfflineAudioSource(error) || isRejectedOfflinePlaybackSource(error)) throw error
+                if (isOfflineStorageExhausted(error) || isUnsupportedOfflineAudioSource(error) || isRejectedOfflinePlaybackSource(error)) throw error
                 if (index < rangeAttempts.lastIndex) delay(350L * (index + 1))
             }
         }
@@ -846,7 +852,13 @@ class OfflineAudioExporter(
         } else {
             0L
         }
-        ensureStorageAvailable(workspace, expectedLength, existingBytes, requiresAudioExtraction)
+        ensureStorageAvailable(
+            workspace,
+            expectedLength,
+            existingBytes,
+            requiresAudioExtraction,
+            embedsMetadata = settings.embedMetadata && container.supportsEmbeddedMetadata
+        )
         if (expectedLength > 0L && existingBytes == expectedLength) {
             reportProgress(82)
             return DownloadedAudio(partial, container, requiresAudioExtraction)
@@ -878,6 +890,7 @@ class OfflineAudioExporter(
                 } catch (error: CancellationException) {
                     throw error
                 } catch (error: IOException) {
+                    if (isOfflineStorageExhausted(error)) throw error
                     Timber.w(error, "Cached parallel download failed, restarting from network")
                 }
             }
@@ -907,6 +920,7 @@ class OfflineAudioExporter(
             } catch (error: CancellationException) {
                 throw error
             } catch (error: IOException) {
+                if (isOfflineStorageExhausted(error)) throw error
                 Timber.w(error, "Parallel offline download failed, falling back to serial")
             }
         }
@@ -957,7 +971,7 @@ class OfflineAudioExporter(
                 declaredLength > 0L -> baseBytes + declaredLength
                 else -> -1L
             }
-            if (targetLength > MAX_AUDIO_BYTES) throw IOException("File troppo grande per l'esportazione")
+            if (targetLength > MAX_AUDIO_BYTES) throw IOException("File audio troppo grande")
             try {
                 body.byteStream().use { input ->
                     FileOutputStream(partial, append).use { output ->
@@ -970,7 +984,7 @@ class OfflineAudioExporter(
                             if (read < 0) break
                             rateLimiter.consume(read)
                             total += read.toLong()
-                            if (total > MAX_AUDIO_BYTES) throw IOException("File troppo grande per l'esportazione")
+                            if (total > MAX_AUDIO_BYTES) throw IOException("File audio troppo grande")
                             output.write(buffer, 0, read)
                             val nextProgress = downloadProgress(total, targetLength)
                             if (nextProgress > lastProgress) {
@@ -982,7 +996,7 @@ class OfflineAudioExporter(
                         if (targetLength > 0L && total != targetLength) throw IOException("Download non valido: $total/$targetLength byte")
                     }
                 }
-                if (partial.length() <= 0L) throw IOException("File audio esportato vuoto")
+                if (partial.length() <= 0L) throw IOException("File audio vuoto")
                 reportProgress(82)
                 DownloadedAudio(partial, container, requiresAudioExtraction)
             } catch (error: IOException) {
@@ -1016,36 +1030,26 @@ class OfflineAudioExporter(
         workspace: File,
         expectedLength: Long,
         existingBytes: Long,
-        requiresAudioExtraction: Boolean
+        requiresAudioExtraction: Boolean,
+        embedsMetadata: Boolean = false
     ) {
         val remainingDownloadBytes = if (expectedLength > 0L) {
             (expectedLength - existingBytes).coerceAtLeast(0L)
         } else {
             UNKNOWN_LENGTH_STORAGE_ALLOWANCE_BYTES
         }
-        val mediaStoreCopyBytes = expectedLength.takeIf { it > 0L } ?: UNKNOWN_LENGTH_STORAGE_ALLOWANCE_BYTES
-        val stagingBytes = if (requiresAudioExtraction) {
-            mediaStoreCopyBytes.coerceAtMost(MAX_AUDIO_BYTES) * 2L
-        } else {
-            0L
-        }
+        val stagedCopyBytes = (expectedLength.takeIf { it > 0L } ?: UNKNOWN_LENGTH_STORAGE_ALLOWANCE_BYTES)
+            .coerceAtMost(MAX_AUDIO_BYTES)
+        val extractionBytes = if (requiresAudioExtraction) stagedCopyBytes * 2L else 0L
+        val taggingBytes = if (embedsMetadata && expectedLength <= FAST_METADATA_EMBED_MAX_BYTES) stagedCopyBytes else 0L
+        val publicCopyBytes = if (settings.destination == LevyraDownloadDestination.Public) stagedCopyBytes else 0L
         val requiredBytes = remainingDownloadBytes
             .coerceAtMost(MAX_AUDIO_BYTES)
-            .plus(mediaStoreCopyBytes.coerceAtMost(MAX_AUDIO_BYTES))
-            .plus(stagingBytes)
+            .plus(extractionBytes)
+            .plus(taggingBytes)
+            .plus(publicCopyBytes)
             .plus(MIN_FREE_STORAGE_RESERVE_BYTES)
-        if (workspace.usableSpace < requiredBytes) {
-            throw IOException("Spazio insufficiente: servono almeno ${formatStorageBytes(requiredBytes)} liberi")
-        }
-    }
-
-    private fun formatStorageBytes(bytes: Long): String {
-        val megabytes = bytes.toDouble() / (1024.0 * 1024.0)
-        return if (megabytes >= 1024.0) {
-            String.format(Locale.US, "%.1f GB", megabytes / 1024.0)
-        } else {
-            String.format(Locale.US, "%.0f MB", megabytes)
-        }
+        if (workspace.usableSpace < requiredBytes) throw OfflineStorageFullException()
     }
 
     private fun resumablePartialFile(workspace: File, container: AudioContainer): File {
@@ -1534,7 +1538,7 @@ class OfflineAudioExporter(
 
     private suspend fun persistDownload(original: Track, resolved: Track, fileName: String, uri: Uri, container: AudioContainer, embeddedMetadata: Boolean) {
         try {
-            LevyraDatabase.get(context).downloadedTracksDao().insert(
+            registerUnderVaultLock(
                 DownloadEntity(
                     trackId = original.id.ifBlank { resolved.id },
                     title = original.title.ifBlank { resolved.title },
@@ -1555,8 +1559,21 @@ class OfflineAudioExporter(
             throw error
         } catch (error: Throwable) {
             Timber.w(error, "Downloaded track persistence failed")
+            throw IOException("offline_download_registration_failed", error)
         }
     }
+
+    private suspend fun registerUnderVaultLock(download: DownloadEntity) {
+        LevyraVaultOperationMutex.withLock {
+            LevyraDatabase.get(context).downloadedTracksDao().registerDownload(download)
+        }
+    }
+
+    private suspend fun storeFinishedAudio(staged: File, original: Track, resolved: Track, container: AudioContainer): SavedAudioDestination =
+        when (settings.destination) {
+            LevyraDownloadDestination.Private -> SavedAudioDestination(commitToOfflineStore(staged, original, resolved, container), "")
+            LevyraDownloadDestination.Public -> saveToMusicCollection(staged, resolved, container)
+        }
 
     private suspend fun saveToMusicCollection(input: File, track: Track, container: AudioContainer): SavedAudioDestination {
         val customTree = settings.destinationTreeUri
@@ -1797,6 +1814,16 @@ class OfflineAudioExporter(
         }
     }
 
+    private suspend fun commitToOfflineStore(staged: File, original: Track, resolved: Track, container: AudioContainer): Uri {
+        currentCoroutineContext().ensureActive()
+        val stableId = offlineAudioStableId(
+            trackId = original.id.ifBlank { resolved.id }.ifBlank { taskKey },
+            preset = settings.storedPresetKey,
+            quality = downloadQualityKey
+        )
+        return Uri.fromFile(audioStore.commit(staged, stableId, container.extension))
+    }
+
     private suspend fun downloadArtwork(track: Track): ByteArray? {
         val url = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }.trim()
         if (url.isBlank() || !url.startsWith("http", ignoreCase = true)) return null
@@ -1959,24 +1986,22 @@ class OfflineAudioExporter(
     private fun cleanupWorkspace(workspace: File) {
         val now = System.currentTimeMillis()
         workspace.listFiles()?.forEach { file ->
-            val isResumeArtifact = file.name.startsWith("resume-") &&
-                (file.name.endsWith(".part") || file.name.endsWith(".part.id"))
-            val retention = if (isResumeArtifact) {
-                TimeUnit.DAYS.toMillis(7)
-            } else {
-                TimeUnit.HOURS.toMillis(2)
-            }
-            if (now - file.lastModified() > retention) runCatching { file.delete() }
+            if (now - file.lastModified() > offlineStagingRetentionMs(file.name)) runCatching { file.delete() }
         }
     }
 
     companion object {
         fun discardPartialDownload(context: Context, taskKey: String) {
-            val workspace = File(context.applicationContext.cacheDir, "levyra_offline_export")
+            val appContext = context.applicationContext
             val prefix = "resume-${offlineDownloadTaskFileKey(taskKey)}."
-            workspace.listFiles()?.forEach { file ->
-                if (file.name.startsWith(prefix) && (file.name.endsWith(".part") || file.name.endsWith(".part.id"))) {
-                    runCatching { file.delete() }
+            listOf(
+                OfflineAudioStore(appContext.filesDir).stagingDirectory,
+                File(appContext.cacheDir, LEGACY_OFFLINE_CACHE_WORKSPACE)
+            ).forEach { workspace ->
+                workspace.listFiles()?.forEach { file ->
+                    if (file.name.startsWith(prefix) && (file.name.endsWith(".part") || file.name.endsWith(".part.id"))) {
+                        runCatching { file.delete() }
+                    }
                 }
             }
         }
@@ -2006,7 +2031,7 @@ data class OfflineExportResult(
     val fileName: String,
     val fileMetadataEmbedded: Boolean,
     val mimeType: String,
-    val destinationLabel: String
+    val destinationLabel: String = ""
 )
 
 private data class SavedAudioDestination(

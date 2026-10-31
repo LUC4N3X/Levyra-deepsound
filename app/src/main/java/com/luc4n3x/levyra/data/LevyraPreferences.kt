@@ -16,6 +16,7 @@ import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.LevyraAudioQuality
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
+import com.luc4n3x.levyra.domain.LevyraMusicRegion
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioPreset
@@ -29,6 +30,7 @@ import com.luc4n3x.levyra.domain.LevyraBackupSettings
 import com.luc4n3x.levyra.domain.LevyraCanvasQuality
 import com.luc4n3x.levyra.domain.LevyraVisualPerformance
 import com.luc4n3x.levyra.domain.LevyraCanvasSource
+import com.luc4n3x.levyra.domain.LevyraDownloadDestination
 import com.luc4n3x.levyra.domain.LevyraDownloadFolderMode
 import com.luc4n3x.levyra.domain.LevyraDownloadPreset
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
@@ -91,6 +93,7 @@ data class LevyraPreferencesSnapshot(
     val tastes: Set<String>,
     val userName: String,
     val languageCode: String,
+    val musicRegionId: String = LevyraMusicRegion.AUTO,
     val animationsEnabled: Boolean,
     val motionArtworkEnabled: Boolean,
     val dynamicColor: Boolean,
@@ -148,6 +151,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
 
     suspend fun restoreSnapshot(snapshot: LevyraPreferencesSnapshot) {
         val normalizedLanguage = LevyraLanguageCatalog.normalize(snapshot.languageCode)
+        LevyraMusicRegion.apply(snapshot.musicRegionId)
         val normalizedAudio = snapshot.audioSettings.normalized()
         val normalizedInterface = snapshot.interfaceSettings.normalized()
         val normalizedAmbient = snapshot.ambientSettings.normalized()
@@ -163,6 +167,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_TASTES] = snapshot.tastes
             mutable[KEY_USER_NAME] = snapshot.userName
             mutable[KEY_LANGUAGE_CODE] = normalizedLanguage
+            mutable[KEY_MUSIC_REGION_ID] = LevyraMusicRegion.normalize(snapshot.musicRegionId)
             mutable[KEY_ANIMATIONS] = snapshot.animationsEnabled
             mutable[KEY_MOTION_ARTWORK] = snapshot.motionArtworkEnabled
             mutable[KEY_DYNAMIC_COLOR] = snapshot.dynamicColor
@@ -260,6 +265,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_UI_GLASS_REFRACTION] = normalizedInterface.glassRefraction
             mutable[KEY_UI_MOTION_ARTWORK_WIFI_ONLY] = normalizedInterface.motionArtworkWifiOnly
             mutable[KEY_UI_ENHANCE_VIDEO_METADATA] = normalizedInterface.enhanceVideoMetadata
+            mutable[KEY_UI_KEEP_SCREEN_ON_WHILE_PLAYING] = normalizedInterface.keepScreenOnWhilePlaying
             mutable[KEY_UI_PURE_BLACK] = normalizedInterface.pureBlack
             mutable[KEY_UI_SKIN] = normalizedInterface.skin.name
             mutable[KEY_PRISM_APPEARANCE] = normalizedInterface.prism.appearance.name
@@ -288,6 +294,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_DOWNLOAD_CONCURRENCY] = normalizedDownloads.maxConcurrentDownloads
             mutable[KEY_DOWNLOAD_PRESET] = normalizedDownloads.preset.name
             mutable[KEY_DOWNLOAD_FOLDER_MODE] = normalizedDownloads.folderMode.name
+            mutable[KEY_DOWNLOAD_DESTINATION] = normalizedDownloads.destination.name
             mutable[KEY_DOWNLOAD_DESTINATION_TREE_URI] = normalizedDownloads.destinationTreeUri
             mutable[KEY_DOWNLOAD_MAX_RATE] = normalizedDownloads.maxRateKbps
             mutable[KEY_DOWNLOAD_EMBED_METADATA] = normalizedDownloads.embedMetadata
@@ -449,6 +456,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             it[KEY_UI_GLASS_REFRACTION] = normalized.glassRefraction
             it[KEY_UI_MOTION_ARTWORK_WIFI_ONLY] = normalized.motionArtworkWifiOnly
             it[KEY_UI_ENHANCE_VIDEO_METADATA] = normalized.enhanceVideoMetadata
+            it[KEY_UI_KEEP_SCREEN_ON_WHILE_PLAYING] = normalized.keepScreenOnWhilePlaying
             it[KEY_UI_PURE_BLACK] = normalized.pureBlack
             it[KEY_UI_SKIN] = normalized.skin.name
             it[KEY_PRISM_APPEARANCE] = normalized.prism.appearance.name
@@ -505,6 +513,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             it[KEY_DOWNLOAD_CONCURRENCY] = normalized.maxConcurrentDownloads
             it[KEY_DOWNLOAD_PRESET] = normalized.preset.name
             it[KEY_DOWNLOAD_FOLDER_MODE] = normalized.folderMode.name
+            it[KEY_DOWNLOAD_DESTINATION] = normalized.destination.name
             it[KEY_DOWNLOAD_DESTINATION_TREE_URI] = normalized.destinationTreeUri
             it[KEY_DOWNLOAD_MAX_RATE] = normalized.maxRateKbps
             it[KEY_DOWNLOAD_EMBED_METADATA] = normalized.embedMetadata
@@ -643,6 +652,14 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         write { it[KEY_QOBUZ_ENABLED] = enabled }
     }
 
+    fun musicRegionId(): String = read { LevyraMusicRegion.normalize(it[KEY_MUSIC_REGION_ID]) }
+
+    fun setMusicRegionId(regionId: String) {
+        val normalized = LevyraMusicRegion.normalize(regionId)
+        write { it[KEY_MUSIC_REGION_ID] = normalized }
+        LevyraMusicRegion.apply(normalized)
+    }
+
     fun chartRegionId(): String = read { it[KEY_CHART_REGION_ID].orEmpty() }
 
     fun setChartRegionId(regionId: String) {
@@ -695,7 +712,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
 
     fun loadHomeSections(languageCode: String = languageCode()): List<HomeSection> {
         val normalized = LevyraLanguageCatalog.normalize(languageCode)
-        return store.derived("home_sections:$normalized") { preferences ->
+        return store.derived("home_sections:${LevyraMusicRegion.cacheScope(normalized)}") { preferences ->
             parseHomeSections(preferences[homeSectionsKey(normalized)].orEmpty())
         }
     }
@@ -715,7 +732,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
 
     fun loadHomeAlbums(languageCode: String = languageCode()): List<AlbumHit> {
         val normalized = LevyraLanguageCatalog.normalize(languageCode)
-        return store.derived("home_albums:$normalized") { preferences ->
+        return store.derived("home_albums:${LevyraMusicRegion.cacheScope(normalized)}") { preferences ->
             parseAlbumHits(preferences[homeAlbumsKey(normalized)].orEmpty())
         }
     }
@@ -750,7 +767,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
 
     internal fun loadExploreDiscovery(languageCode: String = languageCode()): ExploreDiscoverySnapshot? {
         val normalized = LevyraLanguageCatalog.normalize(languageCode)
-        return store.derived("explore_discovery:$normalized") { preferences ->
+        return store.derived("explore_discovery:${LevyraMusicRegion.cacheScope(normalized)}") { preferences ->
             decodeExploreDiscoverySnapshot(
                 raw = preferences[exploreDiscoveryKey(normalized)].orEmpty(),
                 languageCode = normalized
@@ -833,6 +850,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             tastes = preferences[KEY_TASTES].orEmpty(),
             userName = preferences[KEY_USER_NAME].orEmpty(),
             languageCode = normalizedLanguage,
+            musicRegionId = LevyraMusicRegion.normalize(preferences[KEY_MUSIC_REGION_ID]),
             animationsEnabled = preferences[KEY_ANIMATIONS] ?: true,
             motionArtworkEnabled = preferences[KEY_MOTION_ARTWORK] ?: true,
             dynamicColor = preferences[KEY_DYNAMIC_COLOR] ?: true,
@@ -918,6 +936,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             glassRefraction = preferences[KEY_UI_GLASS_REFRACTION] ?: true,
             motionArtworkWifiOnly = preferences[KEY_UI_MOTION_ARTWORK_WIFI_ONLY] ?: false,
             enhanceVideoMetadata = preferences[KEY_UI_ENHANCE_VIDEO_METADATA] ?: false,
+            keepScreenOnWhilePlaying = preferences[KEY_UI_KEEP_SCREEN_ON_WHILE_PLAYING] ?: false,
             pureBlack = preferences[KEY_UI_PURE_BLACK] ?: false,
             skin = com.luc4n3x.levyra.domain.LevyraSkin.from(preferences[KEY_UI_SKIN].orEmpty()),
             prism = com.luc4n3x.levyra.domain.PrismSettings.from(
@@ -975,6 +994,10 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         maxConcurrentDownloads = preferences[KEY_DOWNLOAD_CONCURRENCY] ?: 2,
         preset = LevyraDownloadPreset.from(preferences[KEY_DOWNLOAD_PRESET].orEmpty()),
         folderMode = LevyraDownloadFolderMode.from(preferences[KEY_DOWNLOAD_FOLDER_MODE].orEmpty()),
+        destination = LevyraDownloadDestination.from(
+            preferences[KEY_DOWNLOAD_DESTINATION].orEmpty(),
+            preferences[KEY_DOWNLOAD_DESTINATION_TREE_URI].orEmpty()
+        ),
         destinationTreeUri = preferences[KEY_DOWNLOAD_DESTINATION_TREE_URI].orEmpty(),
         maxRateKbps = preferences[KEY_DOWNLOAD_MAX_RATE] ?: 0,
         embedMetadata = preferences[KEY_DOWNLOAD_EMBED_METADATA] ?: true,
@@ -1018,12 +1041,12 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         preUpdate = preferences[KEY_BACKUP_PRE_UPDATE] ?: true
     ).normalized()
 
-    private fun homeSectionsKey(languageCode: String): Preferences.Key<String> = stringPreferencesKey("home_sections_v2_${LevyraLanguageCatalog.normalize(languageCode)}")
+    private fun homeSectionsKey(languageCode: String): Preferences.Key<String> = stringPreferencesKey("home_sections_v2_${LevyraMusicRegion.cacheScope(languageCode)}")
 
-    private fun homeAlbumsKey(languageCode: String): Preferences.Key<String> = stringPreferencesKey("home_albums_${LevyraLanguageCatalog.normalize(languageCode)}")
+    private fun homeAlbumsKey(languageCode: String): Preferences.Key<String> = stringPreferencesKey("home_albums_${LevyraMusicRegion.cacheScope(languageCode)}")
 
     private fun exploreDiscoveryKey(languageCode: String): Preferences.Key<String> =
-        stringPreferencesKey("explore_discovery_v1_${LevyraLanguageCatalog.normalize(languageCode)}")
+        stringPreferencesKey("explore_discovery_v1_${LevyraMusicRegion.cacheScope(languageCode)}")
 
     private fun chartTracksKey(languageCode: String, regionId: String): Preferences.Key<String> = stringPreferencesKey("chart_tracks_v2_${LevyraLanguageCatalog.normalize(languageCode)}_${regionId.lowercase()}")
 
@@ -1373,6 +1396,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_HOME_SECTIONS = stringPreferencesKey("home_sections")
         val KEY_CHART_TRACKS = stringPreferencesKey("chart_tracks")
         val KEY_CHART_REGION_ID = stringPreferencesKey("chart_region_id")
+        val KEY_MUSIC_REGION_ID = stringPreferencesKey("music_region_id")
         val KEY_PERSONAL_ORBIT_TRACKS = stringPreferencesKey("personal_orbit_tracks")
         val KEY_DISMISSED_UPDATE_VERSION = stringPreferencesKey("dismissed_update_version")
         val KEY_AUDIO_NORMALIZATION = booleanPreferencesKey("audio_normalization")
@@ -1466,6 +1490,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_UI_GLASS_REFRACTION = booleanPreferencesKey("ui_glass_refraction")
         val KEY_UI_MOTION_ARTWORK_WIFI_ONLY = booleanPreferencesKey("ui_motion_artwork_wifi_only")
         val KEY_UI_ENHANCE_VIDEO_METADATA = booleanPreferencesKey("ui_enhance_video_metadata")
+        val KEY_UI_KEEP_SCREEN_ON_WHILE_PLAYING = booleanPreferencesKey("ui_keep_screen_on_while_playing")
         val KEY_UI_PLAYER_VISUAL_MODE = stringPreferencesKey("ui_player_visual_mode")
         val KEY_UI_PLAYER_BACKGROUND = stringPreferencesKey("ui_player_background")
         val KEY_UI_REACTIVE_AURA_PRESET = stringPreferencesKey("ui_reactive_aura_preset")
@@ -1492,6 +1517,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_DOWNLOAD_CONCURRENCY = intPreferencesKey("download_concurrency")
         val KEY_DOWNLOAD_PRESET = stringPreferencesKey("download_preset")
         val KEY_DOWNLOAD_FOLDER_MODE = stringPreferencesKey("download_folder_mode")
+        val KEY_DOWNLOAD_DESTINATION = stringPreferencesKey("download_destination")
         val KEY_DOWNLOAD_DESTINATION_TREE_URI = stringPreferencesKey("download_destination_tree_uri")
         val KEY_DOWNLOAD_MAX_RATE = intPreferencesKey("download_max_rate_kbps")
         val KEY_DOWNLOAD_EMBED_METADATA = booleanPreferencesKey("download_embed_metadata")

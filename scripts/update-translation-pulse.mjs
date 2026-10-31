@@ -47,7 +47,8 @@ const LOCALE_META = {
   'es': { name: 'Español', code: 'ES' },
   'fr': { name: 'Français', code: 'FR' },
   'de': { name: 'Deutsch', code: 'DE' },
-  'pt': { name: 'Português', code: 'PT' },
+  'pt-PT': { name: 'Português (Portugal)', code: 'PT' },
+  'pt-BR': { name: 'Português (Brasil)', code: 'BR' },
   'nl': { name: 'Nederlands', code: 'NL' },
   'pl': { name: 'Polski', code: 'PL' },
   'ro': { name: 'Română', code: 'RO' },
@@ -135,7 +136,8 @@ const collectRepositoryCoverage = async () => {
       }
     }
 
-    const localized = localizedFiles.get(canon) || new Set()
+    const baseLocalized = localizedFiles.get(canon.split('-')[0]) || new Set()
+    const localized = new Set([...baseLocalized, ...(localizedFiles.get(canon) || [])])
     const translated = Array.from(expectedKeys).filter(key => localized.has(key)).length
     return {
       name: meta.name,

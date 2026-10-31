@@ -8,6 +8,7 @@ import androidx.media3.common.MimeTypes
 import com.luc4n3x.levyra.data.collections.isPersonalCollectionTrack
 import com.luc4n3x.levyra.data.isSpotifySampleAudioUrl
 import com.luc4n3x.levyra.data.locallibrary.mediaSessionArtworkUri
+import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.radio.isLiveRadio
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -119,10 +120,10 @@ object LevyraMediaItemFactory {
         val clean = url.substringBefore('#').lowercase()
         val path = clean.substringBefore('?')
         val isContentUri = clean.startsWith("content://")
-        val isExtensionlessFileUri = clean.startsWith("file://") && !path.substringAfterLast('/').contains('.')
+        val isFileUri = clean.startsWith("file://")
         return when {
             isSpotifySampleAudioUrl(url) -> "audio/mpeg"
-            isContentUri || isExtensionlessFileUri -> null
+            isContentUri || isFileUri -> null
             path.endsWith(".m3u8") || path.contains("/hls_playlist") || path.contains("/manifest/hls") || clean.contains("mime=application%2fx-mpegurl") || clean.contains("mime=application/vnd.apple.mpegurl") || clean.contains("type=application%2fx-mpegurl") -> "application/x-mpegURL"
             path.endsWith(".mpd") || clean.contains("mime=application%2fdash+xml") || clean.contains("mime=application/dash+xml") -> "application/dash+xml"
             clean.contains("mime=video%2fwebm") || clean.contains("mime=video/webm") -> "video/webm"
@@ -171,6 +172,10 @@ object LevyraMediaItemFactory {
             putString("levyra.album", track.album)
             putLong("levyra.durationMs", track.durationMs.coerceAtLeast(0L))
             putString("levyra.source", track.source)
+            putStringArrayList(
+                EXTRA_ARTWORK_FALLBACKS,
+                artworkFallbacks(art, track.thumbnailUrl, LevyraPersonalOrbit.youtubeFallbackArtwork(track))
+            )
             putBoolean(PlaybackService.EXTRA_VIDEO_MODE, videoMode)
             putBoolean(PlaybackService.EXTRA_LIVE_RADIO, track.isLiveRadio())
             putBoolean(PlaybackService.EXTRA_PERSONAL_COLLECTION, isPersonalCollectionStream(track))

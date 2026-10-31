@@ -149,7 +149,7 @@ internal fun combineOnlineSearchResults(songs: List<Track>, mixed: List<Track>, 
 }
 
 internal fun Track.toMatchCandidate(): CatalogCandidate {
-    val local = id.startsWith(LOCAL_TRACK_PREFIX) || streamUrl.startsWith("content://")
+    val local = id.startsWith(LOCAL_TRACK_PREFIX) || streamUrl.startsWith("content://") || streamUrl.startsWith("file://")
     val type = videoType.uppercase()
     val kind = when {
         local -> CandidateKind.UNKNOWN

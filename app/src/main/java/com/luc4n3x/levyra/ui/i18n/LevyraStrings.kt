@@ -16,6 +16,9 @@ class LevyraStrings private constructor(
     private val entries: Map<String, String>
 ) {
     internal fun value(key: String): String = entries.getValue(key)
+    internal val entryKeys: Set<String> get() = entries.keys
+    private fun regional(text: String): String =
+        if (isBrazilianPortuguese(code)) LevyraBrazilianPortuguese.adaptDynamic(text) else text
     private fun directionalValue(value: String): String {
         val clean = value.trim()
         return if (LevyraLanguageCatalog.isRtl(code) && clean.isNotBlank()) "\u2068$clean\u2069" else clean
@@ -519,12 +522,12 @@ class LevyraStrings private constructor(
     val similarToFollowed: String get() = value("similarToFollowed")
     val theme: String get() = value("theme")
     val themeSubtitle: String get() = value("themeSubtitle")
-    val appFont: String get() = when (code) {
+    val appFont: String get() = when (translationKey(code)) {
         "it" -> "Carattere dell'app"
         "es" -> "Fuente de la app"
         "fr" -> "Police de l’application"
         "de" -> "App-Schrift"
-        "pt" -> "Fonte da aplicação"
+        "pt" -> regional("Fonte da aplicação")
         "nl" -> "App-lettertype"
         "pl" -> "Czcionka aplikacji"
         "ro" -> "Fontul aplicației"
@@ -547,7 +550,7 @@ class LevyraStrings private constructor(
         "he" -> "גופן האפליקציה"
         else -> "App font"
     }
-    val appFontSubtitle: String get() = when (code) {
+    val appFontSubtitle: String get() = when (translationKey(code)) {
         "it" -> "Scegli il font usato in tutta Levyra"
         "es" -> "Elige la tipografía usada en toda Levyra"
         "fr" -> "Choisissez la police utilisée dans Levyra"
@@ -591,40 +594,40 @@ class LevyraStrings private constructor(
     val audioSectionEqualizer: String get() = value("audioSectionEqualizer")
     val audioSectionSpatial: String get() = value("audioSectionSpatial")
     val audioSectionDynamics: String get() = value("audioSectionDynamics")
-    val audioSectionEnhancement: String get() = when (code) {
+    val audioSectionEnhancement: String get() = when (translationKey(code)) {
         "it" -> "RESTORATION & ENHANCEMENT"
         else -> "RESTORATION & ENHANCEMENT"
     }
     val enhancedAudioTitle: String get() = "Levyra Enhanced Audio"
-    val enhancedAudioSubtitle: String get() = when (code) {
+    val enhancedAudioSubtitle: String get() = when (translationKey(code)) {
         "it" -> "Ripristina i dettagli persi durante la compressione lossy lasciando il flusso originale intatto quando l'elaborazione non è benefica."
         "es" -> "Restaura los detalles perdidos durante la compresión manteniendo el flujo original si no es beneficioso."
         "fr" -> "Restaure les détails perdus lors de la compression en préservant le flux d'origine si l'amélioration n'est pas bénéfique."
         "de" -> "Stellt bei verlustbehafteter Kompression verlorene Details wieder her und belässt den Originalstream unverändert."
         else -> "Restores detail lost during lossy compression while keeping the original stream untouched when enhancement is not beneficial."
     }
-    val audioEfficiencyTitle: String get() = when (code) {
+    val audioEfficiencyTitle: String get() = when (translationKey(code)) {
         "it" -> "Efficienza audio"
         "es" -> "Eficiencia de audio"
         "fr" -> "Efficacité audio"
         "de" -> "Audio-Effizienz"
         else -> "Audio efficiency"
     }
-    val audioEfficiencySubtitle: String get() = when (code) {
+    val audioEfficiencySubtitle: String get() = when (translationKey(code)) {
         "it" -> "Usa l'offload audio hardware quando il dispositivo e le impostazioni audio attuali lo supportano."
         "es" -> "Usa la descarga de audio por hardware cuando tu dispositivo y los ajustes de audio actuales lo admiten."
         "fr" -> "Utilise le déchargement audio matériel lorsque votre appareil et les réglages audio actuels le permettent."
         "de" -> "Nutzt Hardware-Audio-Offload, wenn dein Gerät und die aktuellen Audioeinstellungen es unterstützen."
         else -> "Use hardware audio offload when your device and current audio settings support it."
     }
-    val audioEfficiencyAutomatic: String get() = when (code) {
+    val audioEfficiencyAutomatic: String get() = when (translationKey(code)) {
         "it" -> "Automatico"
         "es" -> "Automático"
         "fr" -> "Automatique"
         "de" -> "Automatisch"
         else -> "Automatic"
     }
-    val audioEfficiencyOff: String get() = when (code) {
+    val audioEfficiencyOff: String get() = when (translationKey(code)) {
         "it" -> "Disattivato"
         "es" -> "Desactivado"
         "fr" -> "Désactivé"
@@ -661,7 +664,7 @@ class LevyraStrings private constructor(
     val bassBoost: String get() = value("bassBoost")
     val virtualizer: String get() = value("virtualizer")
     val preamp: String get() = "Preamp"
-    val truePeakLimiter: String get() = when (code) {
+    val truePeakLimiter: String get() = when (translationKey(code)) {
         "it" -> "Limiter true-peak"
         "es" -> "Limitador true-peak"
         "fr" -> "Limiteur true-peak"
@@ -1108,7 +1111,7 @@ class LevyraStrings private constructor(
     val readAll: String get() = value("readAll")
     val singlesAndEps: String get() = value("singlesAndEps")
     val compilations: String
-        get() = when (code) {
+        get() = when (translationKey(code)) {
             "it" -> "Raccolte"
             "es" -> "Recopilaciones"
             "fr" -> "Compilations"
@@ -1262,6 +1265,8 @@ class LevyraStrings private constructor(
     val downloadFolderOrganizationSubtitle: String get() = value("downloadFolderOrganizationSubtitle")
     val downloadFolderArtist: String get() = value("downloadFolderArtist")
     val downloadFolderArtistAlbum: String get() = value("downloadFolderArtistAlbum")
+    val keepScreenOn: String get() = value("keepScreenOn")
+    val keepScreenOnSubtitle: String get() = value("keepScreenOnSubtitle")
     val downloadSpeedLimit: String get() = value("downloadSpeedLimit")
     val downloadSpeedLimitSubtitle: String get() = value("downloadSpeedLimitSubtitle")
     val downloadSpeedUnlimited: String get() = value("downloadSpeedUnlimited")
@@ -1347,6 +1352,15 @@ class LevyraStrings private constructor(
     val newAlbum: String get() = value("newAlbum")
     val downloadsFolder: String get() = value("downloadsFolder")
     val offlineDownloadsPlain: String get() = value("offlineDownloadsPlain")
+    val downloadDestination: String get() = value("downloadDestination")
+    val downloadDestinationSubtitle: String get() = value("downloadDestinationSubtitle")
+    val downloadDestinationPrivate: String get() = value("downloadDestinationPrivate")
+    val downloadDestinationPublic: String get() = value("downloadDestinationPublic")
+    val downloadSavedIn: String get() = value("downloadSavedIn")
+    val offlineSavedForListening: String get() = value("offlineSavedForListening")
+    val offlineStorageFull: String get() = value("offlineStorageFull")
+    val offlineRestoreFolderAccess: String get() = value("offlineRestoreFolderAccess")
+    val offlineFolderAccessMismatch: String get() = value("offlineFolderAccessMismatch")
     val personalPlaylists: String get() = value("personalPlaylists")
     val searchingYouTubeMusic: String get() = value("searchingYouTubeMusic")
     val searchingLyrics: String get() = value("searchingLyrics")
@@ -1465,7 +1479,7 @@ class LevyraStrings private constructor(
     fun formatSleepTimerMinutes(minutes: Int): String {
         val amount = NumberFormat.getIntegerInstance(Locale.forLanguageTag(code))
             .format(minutes.coerceAtLeast(0))
-        val normalizedCode = LevyraLanguageCatalog.normalize(code)
+        val normalizedCode = LevyraLanguageCatalog.translationCode(code)
         val unit = when (normalizedCode) {
             "de" -> "Min."
             "el" -> "λεπ."
@@ -1556,7 +1570,7 @@ class LevyraStrings private constructor(
     fun formatReplayPeriod(days: Int): String {
         val value = NumberFormat.getIntegerInstance(Locale.forLanguageTag(code))
             .format(days.coerceAtLeast(0))
-        val unit = when (LevyraLanguageCatalog.normalize(code)) {
+        val unit = when (LevyraLanguageCatalog.translationCode(code)) {
             "it" -> "gg"
             "es" -> "d"
             "fr" -> "j"
@@ -1583,7 +1597,7 @@ class LevyraStrings private constructor(
             "he" -> "ימים"
             else -> "days"
         }
-        val compact = LevyraLanguageCatalog.normalize(code) in setOf("zh", "ja", "ko")
+        val compact = LevyraLanguageCatalog.translationCode(code) in setOf("zh", "ja", "ko")
         return directionalValue(if (compact) "$value$unit" else "$value $unit")
     }
 
@@ -1598,7 +1612,7 @@ class LevyraStrings private constructor(
         val formattedValue = NumberFormat
             .getIntegerInstance(Locale.forLanguageTag(code))
             .format(value)
-        return when (code) {
+        return when (translationKey(code)) {
             "it" -> if (value == 1) "$formattedValue brano" else "$formattedValue brani"
             "es" -> if (value == 1) "$formattedValue canción" else "$formattedValue canciones"
             "fr" -> if (value == 1) "$formattedValue titre" else "$formattedValue titres"
@@ -1680,10 +1694,10 @@ class LevyraStrings private constructor(
 
     fun formatDownloadProgress(progress: Int): String {
         val value = progress.coerceIn(0, 100)
-        return when (code) {
+        return when (translationKey(code)) {
             "es" -> "Descargando $value%"
             "fr" -> "Téléchargement $value%"
-            "pt" -> "A transferir $value%"
+            "pt" -> regional("A transferir $value%")
             "nl" -> "Downloaden $value%"
             "pl" -> "Pobieranie $value%"
             "ro" -> "Se descarcă $value%"
@@ -1712,12 +1726,12 @@ class LevyraStrings private constructor(
 
     fun formatDownloadedTrackCount(count: Int): String {
         val value = count.coerceAtLeast(0)
-        return when (code) {
+        return when (translationKey(code)) {
             "it" -> if (value == 1) "1 brano scaricato" else "$value brani scaricati"
             "es" -> if (value == 1) "1 canción descargada" else "$value canciones descargadas"
             "fr" -> if (value == 1) "1 titre téléchargé" else "$value titres téléchargés"
             "de" -> if (value == 1) "1 Titel heruntergeladen" else "$value Titel heruntergeladen"
-            "pt" -> if (value == 1) "1 música transferida" else "$value músicas transferidas"
+            "pt" -> regional(if (value == 1) "1 música transferida" else "$value músicas transferidas")
             "nl" -> if (value == 1) "1 nummer gedownload" else "$value nummers gedownload"
             "pl" -> "${formatTrackCount(value)} pobrano"
             "ro" -> if (value == 1) "1 piesă descărcată" else "$value piese descărcate"
@@ -1764,25 +1778,17 @@ class LevyraStrings private constructor(
     }
 
     fun formatOfflineExportSaved(
-        destination: String,
         fileName: String,
-        embeddedMetadata: Boolean
+        embeddedMetadata: Boolean,
+        destination: String = ""
     ): String {
-        val safeDestination = directionalValue(destination)
-        val safeFileName = directionalValue(fileName.ifBlank {
-            if (code == "it") "brano esportato" else "exported track"
-        })
-        val tagStatus = when {
-            code == "it" && embeddedMetadata -> "con copertina e tag Levyra"
-            code == "it" -> "con metadati Android"
-            embeddedMetadata -> "with Levyra cover and tags"
-            else -> "with Android metadata"
-        }
-        return if (code == "it") {
-            "Salvato in $safeDestination: $safeFileName ($tagStatus)"
+        val prefix = if (destination.isBlank()) {
+            offlineSavedForListening
         } else {
-            "Saved in $safeDestination: $safeFileName ($tagStatus)"
+            downloadSavedIn.replace("{destination}", directionalValue(destination))
         }
+        val saved = if (fileName.isBlank()) prefix else "$prefix: ${directionalValue(fileName)}"
+        return if (embeddedMetadata) "$saved ($coverAndTags)" else saved
     }
 
     fun localizeUserError(rawMessage: String?, youtubePlayback: Boolean = false): String {
@@ -1818,24 +1824,19 @@ class LevyraStrings private constructor(
                 } else {
                     "YouTube rejected this track link: try again"
                 }
-            raw.contains("Primary directory Music not allowed", ignoreCase = true) ||
-                raw.contains("content://media/external_primary/file", ignoreCase = true) -> if (code == "it") {
-                    "Questo dispositivo non ha consentito il salvataggio in Music/Levyra"
-                } else {
-                    "This device did not allow saving to Music/Levyra"
-                }
+            raw == "offline_storage_full" -> offlineStorageFull
             else -> operationFailed
         }
     }
 
     fun formatSavedTrackCount(count: Int): String {
         val value = count.coerceAtLeast(0)
-        return when (code) {
+        return when (translationKey(code)) {
             "it" -> if (value == 1) "1 brano salvato" else "$value brani salvati"
             "es" -> if (value == 1) "1 canción guardada" else "$value canciones guardadas"
             "fr" -> if (value == 1) "1 titre enregistré" else "$value titres enregistrés"
             "de" -> if (value == 1) "1 Titel gespeichert" else "$value Titel gespeichert"
-            "pt" -> if (value == 1) "1 música guardada" else "$value músicas guardadas"
+            "pt" -> regional(if (value == 1) "1 música guardada" else "$value músicas guardadas")
             "nl" -> if (value == 1) "1 nummer opgeslagen" else "$value nummers opgeslagen"
             "pl" -> "${formatTrackCount(value)} zapisano"
             "ro" -> if (value == 1) "1 piesă salvată" else "$value piese salvate"
@@ -1871,7 +1872,7 @@ class LevyraStrings private constructor(
 
     fun formatSearchResults(count: Int): String {
         val value = count.coerceAtLeast(0)
-        return when (code) {
+        return when (translationKey(code)) {
             "it" -> if (value == 1) "$value risultato" else "$value risultati"
             "es" -> if (value == 1) "$value resultado" else "$value resultados"
             "fr" -> if (value == 1) "$value résultat" else "$value résultats"
@@ -1930,7 +1931,7 @@ class LevyraStrings private constructor(
         val name = userName.trim()
         if (name.isBlank()) return dayPart
         val directionalName = directionalValue(name)
-        return when (code) {
+        return when (translationKey(code)) {
             "ar" -> "$dayPart، $directionalName"
             "he" -> "$dayPart, $directionalName"
             "zh" -> "$dayPart，$directionalName"
@@ -1949,7 +1950,7 @@ class LevyraStrings private constructor(
 
     fun greetingDayPart(hour: Int): String {
         val normalizedHour = hour.coerceIn(0, 23)
-        return when (code) {
+        return when (translationKey(code)) {
             "it" -> when (normalizedHour) { in 5..11 -> "Buongiorno"; in 12..17 -> "Buon pomeriggio"; in 18..22 -> "Buonasera"; else -> "Buonanotte" }
             "es" -> when (normalizedHour) { in 5..11 -> "Buenos días"; in 12..17 -> "Buenas tardes"; in 18..22 -> "Buenas noches"; else -> "Buenas noches" }
             "fr" -> when (normalizedHour) { in 5..11 -> "Bonjour"; in 12..17 -> "Bon après-midi"; in 18..22 -> "Bonsoir"; else -> "Bonne nuit" }
@@ -1992,12 +1993,12 @@ class LevyraStrings private constructor(
             "CANCELLED", "CANCELED" -> "cancelled"
             else -> normalized.lowercase().replaceFirstChar { it.titlecase() }
         }
-        val translations = when (code) {
+        val translations = when (translationKey(code)) {
             "it" -> mapOf("queued" to "In coda", "downloading" to "Download in corso", "paused" to "In pausa", "failed" to "Non riuscito", "completed" to "Completato", "cancelled" to "Annullato")
             "es" -> mapOf("queued" to "En cola", "downloading" to "Descargando", "paused" to "En pausa", "failed" to "Fallido", "completed" to "Completado", "cancelled" to "Cancelado")
             "fr" -> mapOf("queued" to "En attente", "downloading" to "Téléchargement", "paused" to "En pause", "failed" to "Échec", "completed" to "Terminé", "cancelled" to "Annulé")
             "de" -> mapOf("queued" to "In Warteschlange", "downloading" to "Wird heruntergeladen", "paused" to "Pausiert", "failed" to "Fehlgeschlagen", "completed" to "Abgeschlossen", "cancelled" to "Abgebrochen")
-            "pt" -> mapOf("queued" to "Na fila", "downloading" to "A transferir", "paused" to "Em pausa", "failed" to "Falhou", "completed" to "Concluído", "cancelled" to "Cancelado")
+            "pt" -> mapOf("queued" to "Na fila", "downloading" to regional("A transferir"), "paused" to "Em pausa", "failed" to "Falhou", "completed" to "Concluído", "cancelled" to "Cancelado")
             "nl" -> mapOf("queued" to "In wachtrij", "downloading" to "Downloaden", "paused" to "Gepauzeerd", "failed" to "Mislukt", "completed" to "Voltooid", "cancelled" to "Geannuleerd")
             "pl" -> mapOf("queued" to "W kolejce", "downloading" to "Pobieranie", "paused" to "Wstrzymano", "failed" to "Niepowodzenie", "completed" to "Ukończono", "cancelled" to "Anulowano")
             "ro" -> mapOf("queued" to "În așteptare", "downloading" to "Se descarcă", "paused" to "În pauză", "failed" to "Eșuat", "completed" to "Finalizat", "cancelled" to "Anulat")
@@ -2292,16 +2293,26 @@ class LevyraStrings private constructor(
         }
 
         private fun bundle(code: String, entries: Map<String, String>): LevyraStrings {
-            val localizedEntries = entries + profileLocalizationEntries(code) + freshCurrentsLocalizationEntries(code) + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + lyricsShareLocalizationEntries(code) + listeningReceiptLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + audioOutputLocalizationEntries(code) + alternativeAudioLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + jamModerationLocalizationEntries(code) + ambientModeLocalizationEntries(code) + themeStudioLocalizationEntries(code) + lyricsStudioLocalizationEntries(code) + networkLocalizationEntries(code) + resonanceLocalizationEntries(code) + organizationLocalizationEntries(code) + downloadLocationLocalizationEntries(code) + similarSongsLocalizationEntries(code) + playerVisualLocalizationEntries(code) + playerDeckLocalizationEntries(code) + playerGestureLocalizationEntries(code) + playlistStudioLocalizationEntries(code) + queueSelectionLocalizationEntries(code) + librarySortLocalizationEntries(code) + offlineHomeLocalizationEntries(code) + recapLocalizationEntries(code) + listeningInsightsLocalizationEntries(code) + queueSpaceLocalizationEntries(code) + localLibraryLocalizationEntries(code) + localTagLocalizationEntries(code) + playbackTileLocalizationEntries(code) + visualPerformanceLocalizationEntries(code) + liquidGlassLocalizationEntries(code) + immersiveModeLocalizationEntries(code) + musicVideoPreferenceLocalizationEntries(code) + videoQualityLocalizationEntries(code) + lyricsProviderPriorityLocalizationEntries(code) + mixLabLocalizationEntries(code) + chartMarketLocalizationEntries(code) + homeSoundtrackLocalizationEntries(code) + settingsSearchLocalizationEntries(code) + appUpdateLocalizationEntries(code)
+            val localizedEntries = entries + profileLocalizationEntries(code) + freshCurrentsLocalizationEntries(code) + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + lyricsShareLocalizationEntries(code) + listeningReceiptLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + audioOutputLocalizationEntries(code) + alternativeAudioLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + jamModerationLocalizationEntries(code) + ambientModeLocalizationEntries(code) + themeStudioLocalizationEntries(code) + lyricsStudioLocalizationEntries(code) + networkLocalizationEntries(code) + resonanceLocalizationEntries(code) + organizationLocalizationEntries(code) + downloadLocationLocalizationEntries(code) + downloadDestinationLocalizationEntries(code) + offlineStorageLocalizationEntries(code) + keepScreenOnLocalizationEntries(code) + similarSongsLocalizationEntries(code) + playerVisualLocalizationEntries(code) + playerDeckLocalizationEntries(code) + playerGestureLocalizationEntries(code) + playlistStudioLocalizationEntries(code) + queueSelectionLocalizationEntries(code) + librarySortLocalizationEntries(code) + offlineHomeLocalizationEntries(code) + recapLocalizationEntries(code) + listeningInsightsLocalizationEntries(code) + queueSpaceLocalizationEntries(code) + localLibraryLocalizationEntries(code) + localTagLocalizationEntries(code) + playbackTileLocalizationEntries(code) + visualPerformanceLocalizationEntries(code) + liquidGlassLocalizationEntries(code) + immersiveModeLocalizationEntries(code) + musicVideoPreferenceLocalizationEntries(code) + videoQualityLocalizationEntries(code) + lyricsProviderPriorityLocalizationEntries(code) + mixLabLocalizationEntries(code) + chartMarketLocalizationEntries(code) + homeSoundtrackLocalizationEntries(code) + settingsSearchLocalizationEntries(code) + appUpdateLocalizationEntries(code)
             val resolvedEntries = localizedEntries + smartOfflineLocalizationEntries(code, localizedEntries)
-            val allRequiredKeys = requiredKeys + "removeFromPlaylist" + profileKeys + motionArtworkKeys + exploreSectionKeys + freshCurrentsKeys + canvasKeys + audioKeys + audioOutputKeys + alternativeAudioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + jamModerationKeys + ambientModeKeys + themeStudioKeys + lyricsStudioKeys + networkKeys + resonanceKeys + organizationKeys + downloadLocationKeys + similarSongsKeys + playerVisualKeys + playerDeckKeys + playerGestureKeys + playlistStudioKeys + queueSelectionKeys + librarySortKeys + offlineHomeKeys + recapKeys + listeningInsightsKeys + queueSpaceKeys + localLibraryKeys + localTagKeys + lyricsOffsetKeys + lyricsTranslationStatusKeys + playbackTileKeys + visualPerformanceKeys + liquidGlassKeys + immersiveModeKeys + musicVideoPreferenceKeys + videoQualityKeys + lyricsProviderPriorityKeys + mixLabKeys + chartMarketKeys + homeSoundtrackKeys + lyricsShareKeys + listeningReceiptKeys + settingsSearchKeys + smartOfflineLocalizationKeys + appUpdateKeys
+            val allRequiredKeys = requiredKeys + "removeFromPlaylist" + profileKeys + motionArtworkKeys + exploreSectionKeys + freshCurrentsKeys + canvasKeys + audioKeys + audioOutputKeys + alternativeAudioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + jamModerationKeys + ambientModeKeys + themeStudioKeys + lyricsStudioKeys + networkKeys + resonanceKeys + organizationKeys + downloadLocationKeys + downloadDestinationKeys + offlineStorageKeys + keepScreenOnKeys + similarSongsKeys + playerVisualKeys + playerDeckKeys + playerGestureKeys + playlistStudioKeys + queueSelectionKeys + librarySortKeys + offlineHomeKeys + recapKeys + listeningInsightsKeys + queueSpaceKeys + localLibraryKeys + localTagKeys + lyricsOffsetKeys + lyricsTranslationStatusKeys + playbackTileKeys + visualPerformanceKeys + liquidGlassKeys + immersiveModeKeys + musicVideoPreferenceKeys + videoQualityKeys + lyricsProviderPriorityKeys + mixLabKeys + chartMarketKeys + homeSoundtrackKeys + lyricsShareKeys + listeningReceiptKeys + settingsSearchKeys + smartOfflineLocalizationKeys + appUpdateKeys
             require(resolvedEntries.keys == allRequiredKeys) {
                 "Invalid localization bundle $code: missing=${allRequiredKeys - resolvedEntries.keys}, extra=${resolvedEntries.keys - allRequiredKeys}"
             }
             return LevyraStrings(code, resolvedEntries)
         }
 
-        fun forCode(code: String): LevyraStrings = values[LevyraLanguageCatalog.normalize(code)] ?: values.getValue("en")
+        private val brazilianPortuguese: LevyraStrings by lazy(LazyThreadSafetyMode.PUBLICATION) {
+            LevyraStrings(
+                LevyraLanguageCatalog.BRAZILIAN_PORTUGUESE,
+                LevyraBrazilianPortuguese.adaptEntries(values.getValue("pt").entries)
+            )
+        }
+
+        fun forCode(code: String): LevyraStrings = when (val normalized = LevyraLanguageCatalog.normalize(code)) {
+            LevyraLanguageCatalog.BRAZILIAN_PORTUGUESE -> brazilianPortuguese
+            else -> values[normalized] ?: values.getValue("en")
+        }
 
         fun all(): List<LevyraStrings> = LevyraLanguageCatalog.languages.map { forCode(it.code) }
 
@@ -2574,7 +2585,7 @@ class LevyraStrings private constructor(
             "noOfflineDownloads" to "No downloads saved offline.",
             "createFirstPlaylist" to "Create your first playlist",
             "createFirstPlaylistSubtitle" to "Collect the songs you want to find again instantly.",
-            "downloadTrackHint" to "Tap download on a song to save it in Music/Levyra.",
+            "downloadTrackHint" to "Tap download on a song to listen to it offline in Levyra.",
             "savedTracks" to "Saved tracks",
             "favoritesEmpty" to "No favorites yet",
             "playlistEmpty" to "This playlist is empty. Add songs from a song's three-dot menu.",
@@ -2588,7 +2599,7 @@ class LevyraStrings private constructor(
             "lyricsAnalysisCompact" to "Discreet local analysis",
             "lyricsAnalysisCompactSubtitle" to "Stays compact until opened, shows only useful signals and can take you straight to the chorus.",
             "createDataBackup" to "Create data backup",
-            "createDataBackupSubtitle" to "Favorites, playlists, history, queue and settings in a SHA-256 verified archive. Audio files remain in Music/Levyra.",
+            "createDataBackupSubtitle" to "Favorites, playlists, history, queue and settings in a SHA-256 verified archive. Downloaded audio is not included.",
             "updateAvailable" to "Update available",
             "updates" to "Updates",
             "checkingLatestVersion" to "Checking the latest version…",
@@ -2973,7 +2984,7 @@ class LevyraStrings private constructor(
             "noOfflineDownloads" to "Nessun download salvato offline.",
             "createFirstPlaylist" to "Crea la tua prima playlist",
             "createFirstPlaylistSubtitle" to "Raccogli i brani che vuoi ritrovare subito.",
-            "downloadTrackHint" to "Tocca Scarica su un brano per salvarlo in Music/Levyra.",
+            "downloadTrackHint" to "Tocca Scarica su un brano per ascoltarlo offline in Levyra.",
             "savedTracks" to "Brani salvati",
             "favoritesEmpty" to "Nessun preferito",
             "playlistEmpty" to "La playlist è vuota. Aggiungi brani dal menu con i tre puntini di un brano.",
@@ -2987,7 +2998,7 @@ class LevyraStrings private constructor(
             "lyricsAnalysisCompact" to "Analisi locale discreta",
             "lyricsAnalysisCompactSubtitle" to "Rimane compatta finché non la apri, mostra solo segnali utili e può portarti direttamente al ritornello.",
             "createDataBackup" to "Crea backup dei dati",
-            "createDataBackupSubtitle" to "Preferiti, playlist, cronologia, coda e impostazioni in un archivio verificato con SHA-256. I file audio restano in Music/Levyra.",
+            "createDataBackupSubtitle" to "Preferiti, playlist, cronologia, coda e impostazioni in un archivio verificato con SHA-256. L'audio scaricato non è incluso.",
             "updateAvailable" to "Aggiornamento disponibile",
             "updates" to "Aggiornamenti",
             "checkingLatestVersion" to "Controllo dell'ultima versione…",
@@ -3372,7 +3383,7 @@ class LevyraStrings private constructor(
             "noOfflineDownloads" to "No hay descargas guardadas sin conexión.",
             "createFirstPlaylist" to "Crea tu primera playlist",
             "createFirstPlaylistSubtitle" to "Reúne las canciones que quieras volver a encontrar al instante.",
-            "downloadTrackHint" to "Pulsa Descargar en una canción para guardarla en Music/Levyra.",
+            "downloadTrackHint" to "Pulsa Descargar en una canción para escucharla sin conexión en Levyra.",
             "savedTracks" to "Canciones guardadas",
             "favoritesEmpty" to "Aún no hay favoritos",
             "playlistEmpty" to "La playlist está vacía. Añade canciones desde el menú de tres puntos de una canción.",
@@ -3386,7 +3397,7 @@ class LevyraStrings private constructor(
             "lyricsAnalysisCompact" to "Análisis local discreto",
             "lyricsAnalysisCompactSubtitle" to "Permanece compacto hasta que lo abras, muestra solo señales útiles y puede llevarte directamente al estribillo.",
             "createDataBackup" to "Crear copia de seguridad",
-            "createDataBackupSubtitle" to "Favoritos, playlists, historial, cola y ajustes en un archivo verificado con SHA-256. Los archivos de audio permanecen en Music/Levyra.",
+            "createDataBackupSubtitle" to "Favoritos, playlists, historial, cola y ajustes en un archivo verificado con SHA-256. El audio descargado no se incluye.",
             "updateAvailable" to "Actualización disponible",
             "updates" to "Actualizaciones",
             "checkingLatestVersion" to "Comprobando la última versión…",
@@ -3771,7 +3782,7 @@ class LevyraStrings private constructor(
             "noOfflineDownloads" to "Aucun téléchargement enregistré hors connexion.",
             "createFirstPlaylist" to "Créez votre première playlist",
             "createFirstPlaylistSubtitle" to "Regroupez les titres que vous souhaitez retrouver instantanément.",
-            "downloadTrackHint" to "Touchez Télécharger sur un titre pour l'enregistrer dans Music/Levyra.",
+            "downloadTrackHint" to "Touchez Télécharger sur un titre pour l'écouter hors ligne dans Levyra.",
             "savedTracks" to "Titres enregistrés",
             "favoritesEmpty" to "Aucun favori pour le moment",
             "playlistEmpty" to "La playlist est vide. Ajoutez des titres depuis le menu à trois points d'un titre.",
@@ -3785,7 +3796,7 @@ class LevyraStrings private constructor(
             "lyricsAnalysisCompact" to "Analyse locale discrète",
             "lyricsAnalysisCompactSubtitle" to "Reste compacte jusqu'à son ouverture, n'affiche que les signaux utiles et peut vous mener directement au refrain.",
             "createDataBackup" to "Créer une sauvegarde des données",
-            "createDataBackupSubtitle" to "Favoris, playlists, historique, file d'attente et réglages dans une archive vérifiée par SHA-256. Les fichiers audio restent dans Music/Levyra.",
+            "createDataBackupSubtitle" to "Favoris, playlists, historique, file d'attente et réglages dans une archive vérifiée par SHA-256. L'audio téléchargé n'est pas inclus.",
             "updateAvailable" to "Mise à jour disponible",
             "updates" to "Mises à jour",
             "checkingLatestVersion" to "Recherche de la dernière version…",
@@ -4170,7 +4181,7 @@ class LevyraStrings private constructor(
             "noOfflineDownloads" to "Keine Offline-Downloads gespeichert.",
             "createFirstPlaylist" to "Erstelle deine erste Playlist",
             "createFirstPlaylistSubtitle" to "Sammle die Titel, die du sofort wiederfinden möchtest.",
-            "downloadTrackHint" to "Tippe bei einem Titel auf Herunterladen, um ihn in Music/Levyra zu speichern.",
+            "downloadTrackHint" to "Tippe bei einem Titel auf Herunterladen, um ihn in Levyra offline zu hören.",
             "savedTracks" to "Gespeicherte Titel",
             "favoritesEmpty" to "Noch keine Favoriten",
             "playlistEmpty" to "Die Playlist ist leer. Füge Titel über das Drei-Punkte-Menü eines Titels hinzu.",
@@ -4184,7 +4195,7 @@ class LevyraStrings private constructor(
             "lyricsAnalysisCompact" to "Diskrete lokale Analyse",
             "lyricsAnalysisCompactSubtitle" to "Bleibt kompakt, bis du sie öffnest, zeigt nur nützliche Hinweise und kann dich direkt zum Refrain bringen.",
             "createDataBackup" to "Datensicherung erstellen",
-            "createDataBackupSubtitle" to "Favoriten, Playlists, Verlauf, Warteschlange und Einstellungen in einem SHA-256-geprüften Archiv. Audiodateien bleiben in Music/Levyra.",
+            "createDataBackupSubtitle" to "Favoriten, Playlists, Verlauf, Warteschlange und Einstellungen in einem SHA-256-geprüften Archiv. Heruntergeladene Audiodateien sind nicht enthalten.",
             "updateAvailable" to "Update verfügbar",
             "updates" to "Updates",
             "checkingLatestVersion" to "Neueste Version wird geprüft…",
@@ -4382,7 +4393,7 @@ class LevyraStrings private constructor(
             "localWaveQuery" to "novas músicas portuguesas 2026",
             "exploreNewReleases" to "Novos lançamentos",
             "exploreRapDrill" to "Rap e drill",
-            "exploreElectronic" to "Eletrônica",
+            "exploreElectronic" to "Eletrónica",
             "explorePopGlobal" to "Pop global",
             "exploreRnbSoul" to "R&B / Soul",
             "exploreRockAlt" to "Rock e alternativo",
@@ -4569,7 +4580,7 @@ class LevyraStrings private constructor(
             "noOfflineDownloads" to "Não existem transferências guardadas offline.",
             "createFirstPlaylist" to "Cria a tua primeira playlist",
             "createFirstPlaylistSubtitle" to "Reúne as músicas que queres reencontrar de imediato.",
-            "downloadTrackHint" to "Toca em Transferir numa música para a guardar em Music/Levyra.",
+            "downloadTrackHint" to "Toca em Transferir numa música para a ouvir offline no Levyra.",
             "savedTracks" to "Músicas guardadas",
             "favoritesEmpty" to "Ainda não há favoritos",
             "playlistEmpty" to "A playlist está vazia. Adiciona músicas através do menu de três pontos de uma música.",
@@ -4583,7 +4594,7 @@ class LevyraStrings private constructor(
             "lyricsAnalysisCompact" to "Análise local discreta",
             "lyricsAnalysisCompactSubtitle" to "Mantém-se compacta até ser aberta, mostra apenas sinais úteis e pode levar-te diretamente ao refrão.",
             "createDataBackup" to "Criar cópia de segurança dos dados",
-            "createDataBackupSubtitle" to "Favoritos, playlists, histórico, fila e definições num arquivo verificado por SHA-256. Os ficheiros de áudio permanecem em Music/Levyra.",
+            "createDataBackupSubtitle" to "Favoritos, playlists, histórico, fila e definições num arquivo verificado por SHA-256. O áudio transferido não está incluído.",
             "updateAvailable" to "Atualização disponível",
             "updates" to "Atualizações",
             "checkingLatestVersion" to "A verificar a versão mais recente…",
@@ -4968,7 +4979,7 @@ class LevyraStrings private constructor(
             "noOfflineDownloads" to "Geen downloads offline opgeslagen.",
             "createFirstPlaylist" to "Maak je eerste playlist",
             "createFirstPlaylistSubtitle" to "Verzamel de nummers die je direct terug wilt vinden.",
-            "downloadTrackHint" to "Tik bij een nummer op Downloaden om het in Music/Levyra op te slaan.",
+            "downloadTrackHint" to "Tik bij een nummer op Downloaden om het offline te luisteren in Levyra.",
             "savedTracks" to "Opgeslagen nummers",
             "favoritesEmpty" to "Nog geen favorieten",
             "playlistEmpty" to "De playlist is leeg. Voeg nummers toe via het menu met de drie puntjes van een nummer.",
@@ -4982,7 +4993,7 @@ class LevyraStrings private constructor(
             "lyricsAnalysisCompact" to "Discrete lokale analyse",
             "lyricsAnalysisCompactSubtitle" to "Blijft compact tot je deze opent, toont alleen nuttige signalen en kan je rechtstreeks naar het refrein brengen.",
             "createDataBackup" to "Gegevensback-up maken",
-            "createDataBackupSubtitle" to "Favorieten, playlists, geschiedenis, wachtrij en instellingen in een met SHA-256 geverifieerd archief. Audiobestanden blijven in Music/Levyra.",
+            "createDataBackupSubtitle" to "Favorieten, playlists, geschiedenis, wachtrij en instellingen in een met SHA-256 geverifieerd archief. Gedownloade audio is niet inbegrepen.",
             "updateAvailable" to "Update beschikbaar",
             "updates" to "Updates",
             "checkingLatestVersion" to "Nieuwste versie controleren…",
@@ -5367,7 +5378,7 @@ class LevyraStrings private constructor(
             "noOfflineDownloads" to "Brak pobrań zapisanych offline.",
             "createFirstPlaylist" to "Utwórz pierwszą playlistę",
             "createFirstPlaylistSubtitle" to "Zbierz utwory, do których chcesz szybko wracać.",
-            "downloadTrackHint" to "Dotknij Pobierz przy utworze, aby zapisać go w Music/Levyra.",
+            "downloadTrackHint" to "Dotknij Pobierz przy utworze, aby słuchać go offline w Levyra.",
             "savedTracks" to "Zapisane utwory",
             "favoritesEmpty" to "Brak ulubionych",
             "playlistEmpty" to "Playlista jest pusta. Dodaj utwory z menu z trzema kropkami przy utworze.",
@@ -5381,7 +5392,7 @@ class LevyraStrings private constructor(
             "lyricsAnalysisCompact" to "Dyskretna analiza lokalna",
             "lyricsAnalysisCompactSubtitle" to "Pozostaje zwinięta, dopóki jej nie otworzysz, pokazuje tylko przydatne informacje i może przenieść Cię prosto do refrenu.",
             "createDataBackup" to "Utwórz kopię zapasową danych",
-            "createDataBackupSubtitle" to "Ulubione, playlisty, historia, kolejka i ustawienia w archiwum zweryfikowanym SHA-256. Pliki audio pozostają w Music/Levyra.",
+            "createDataBackupSubtitle" to "Ulubione, playlisty, historia, kolejka i ustawienia w archiwum zweryfikowanym SHA-256. Pobrane audio nie jest uwzględnione.",
             "updateAvailable" to "Dostępna aktualizacja",
             "updates" to "Aktualizacje",
             "checkingLatestVersion" to "Sprawdzanie najnowszej wersji…",
@@ -5766,7 +5777,7 @@ class LevyraStrings private constructor(
             "noOfflineDownloads" to "Nu există descărcări salvate offline.",
             "createFirstPlaylist" to "Creează primul tău playlist",
             "createFirstPlaylistSubtitle" to "Adună piesele pe care vrei să le găsești imediat.",
-            "downloadTrackHint" to "Apasă Descarcă pe o piesă pentru a o salva în Music/Levyra.",
+            "downloadTrackHint" to "Apasă Descarcă pe o piesă pentru a o asculta offline în Levyra.",
             "savedTracks" to "Piese salvate",
             "favoritesEmpty" to "Nu există încă favorite",
             "playlistEmpty" to "Playlistul este gol. Adaugă piese din meniul cu trei puncte al unei piese.",
@@ -5780,7 +5791,7 @@ class LevyraStrings private constructor(
             "lyricsAnalysisCompact" to "Analiză locală discretă",
             "lyricsAnalysisCompactSubtitle" to "Rămâne compactă până o deschizi, afișează doar semnalele utile și te poate duce direct la refren.",
             "createDataBackup" to "Creează o copie de siguranță a datelor",
-            "createDataBackupSubtitle" to "Favorite, playlisturi, istoric, coadă și setări într-o arhivă verificată SHA-256. Fișierele audio rămân în Music/Levyra.",
+            "createDataBackupSubtitle" to "Favorite, playlisturi, istoric, coadă și setări într-o arhivă verificată SHA-256. Audio descărcat nu este inclus.",
             "updateAvailable" to "Actualizare disponibilă",
             "updates" to "Actualizări",
             "checkingLatestVersion" to "Se verifică cea mai recentă versiune…",
@@ -6165,7 +6176,7 @@ class LevyraStrings private constructor(
             "noOfflineDownloads" to "Δεν υπάρχουν λήψεις αποθηκευμένες offline.",
             "createFirstPlaylist" to "Δημιούργησε την πρώτη σου playlist",
             "createFirstPlaylistSubtitle" to "Συγκέντρωσε τα τραγούδια που θέλεις να βρίσκεις ξανά αμέσως.",
-            "downloadTrackHint" to "Πάτησε Λήψη σε ένα τραγούδι για να το αποθηκεύσεις στο Music/Levyra.",
+            "downloadTrackHint" to "Πάτησε Λήψη σε ένα τραγούδι για να το ακούς εκτός σύνδεσης στο Levyra.",
             "savedTracks" to "Αποθηκευμένα τραγούδια",
             "favoritesEmpty" to "Δεν υπάρχουν ακόμη αγαπημένα",
             "playlistEmpty" to "Η playlist είναι άδεια. Πρόσθεσε τραγούδια από το μενού με τις τρεις τελείες ενός τραγουδιού.",
@@ -6179,7 +6190,7 @@ class LevyraStrings private constructor(
             "lyricsAnalysisCompact" to "Διακριτική τοπική ανάλυση",
             "lyricsAnalysisCompactSubtitle" to "Παραμένει συμπτυγμένη μέχρι να την ανοίξεις, δείχνει μόνο χρήσιμα στοιχεία και μπορεί να σε μεταφέρει απευθείας στο ρεφρέν.",
             "createDataBackup" to "Δημιουργία αντιγράφου ασφαλείας δεδομένων",
-            "createDataBackupSubtitle" to "Αγαπημένα, playlists, ιστορικό, ουρά και ρυθμίσεις σε αρχείο επαληθευμένο με SHA-256. Τα αρχεία ήχου παραμένουν στο Music/Levyra.",
+            "createDataBackupSubtitle" to "Αγαπημένα, playlists, ιστορικό, ουρά και ρυθμίσεις σε αρχείο επαληθευμένο με SHA-256. Ο ήχος που έχει ληφθεί δεν περιλαμβάνεται.",
             "updateAvailable" to "Διαθέσιμη ενημέρωση",
             "updates" to "Ενημερώσεις",
             "checkingLatestVersion" to "Έλεγχος της πιο πρόσφατης έκδοσης…",
@@ -6564,7 +6575,7 @@ class LevyraStrings private constructor(
             "noOfflineDownloads" to "Inga nedladdningar har sparats offline.",
             "createFirstPlaylist" to "Skapa din första playlist",
             "createFirstPlaylistSubtitle" to "Samla låtarna du vill kunna hitta direkt igen.",
-            "downloadTrackHint" to "Tryck på Ladda ned vid en låt för att spara den i Music/Levyra.",
+            "downloadTrackHint" to "Tryck på Ladda ned vid en låt för att lyssna offline i Levyra.",
             "savedTracks" to "Sparade låtar",
             "favoritesEmpty" to "Inga favoriter än",
             "playlistEmpty" to "Playlisten är tom. Lägg till låtar från trepunktsmenyn på en låt.",
@@ -6578,7 +6589,7 @@ class LevyraStrings private constructor(
             "lyricsAnalysisCompact" to "Diskret lokal analys",
             "lyricsAnalysisCompactSubtitle" to "Förblir kompakt tills du öppnar den, visar bara användbara signaler och kan ta dig direkt till refrängen.",
             "createDataBackup" to "Skapa säkerhetskopia",
-            "createDataBackupSubtitle" to "Favoriter, playlists, historik, kö och inställningar i ett SHA-256-verifierat arkiv. Ljudfilerna ligger kvar i Music/Levyra.",
+            "createDataBackupSubtitle" to "Favoriter, playlists, historik, kö och inställningar i ett SHA-256-verifierat arkiv. Nedladdat ljud ingår inte.",
             "updateAvailable" to "Uppdatering tillgänglig",
             "updates" to "Uppdateringar",
             "checkingLatestVersion" to "Söker efter den senaste versionen…",
@@ -6963,7 +6974,7 @@ class LevyraStrings private constructor(
             "noOfflineDownloads" to "Ingen downloads er gemt offline.",
             "createFirstPlaylist" to "Opret din første playlist",
             "createFirstPlaylistSubtitle" to "Saml de sange, du vil kunne finde igen med det samme.",
-            "downloadTrackHint" to "Tryk på Download ved en sang for at gemme den i Music/Levyra.",
+            "downloadTrackHint" to "Tryk på Download ved en sang for at lytte offline i Levyra.",
             "savedTracks" to "Gemte sange",
             "favoritesEmpty" to "Ingen favoritter endnu",
             "playlistEmpty" to "Playlisten er tom. Tilføj sange fra menuen med tre prikker på en sang.",
@@ -6977,7 +6988,7 @@ class LevyraStrings private constructor(
             "lyricsAnalysisCompact" to "Diskret lokal analyse",
             "lyricsAnalysisCompactSubtitle" to "Forbliver kompakt, indtil du åbner den, viser kun nyttige signaler og kan føre dig direkte til omkvædet.",
             "createDataBackup" to "Opret sikkerhedskopi af data",
-            "createDataBackupSubtitle" to "Favoritter, playlists, historik, kø og indstillinger i et SHA-256-verificeret arkiv. Lydfiler forbliver i Music/Levyra.",
+            "createDataBackupSubtitle" to "Favoritter, playlists, historik, kø og indstillinger i et SHA-256-verificeret arkiv. Downloadet lyd er ikke inkluderet.",
             "updateAvailable" to "Opdatering tilgængelig",
             "updates" to "Opdateringer",
             "checkingLatestVersion" to "Søger efter den nyeste version…",
@@ -7362,7 +7373,7 @@ class LevyraStrings private constructor(
             "noOfflineDownloads" to "Žádné stažené soubory nejsou uloženy offline.",
             "createFirstPlaylist" to "Vytvoř svůj první playlist",
             "createFirstPlaylistSubtitle" to "Shromáždi skladby, které chceš rychle znovu najít.",
-            "downloadTrackHint" to "Klepni u skladby na Stáhnout a ulož ji do Music/Levyra.",
+            "downloadTrackHint" to "Klepni u skladby na Stáhnout a poslouchej ji offline v Levyra.",
             "savedTracks" to "Uložené skladby",
             "favoritesEmpty" to "Zatím žádné oblíbené",
             "playlistEmpty" to "Playlist je prázdný. Přidej skladby z nabídky se třemi tečkami u skladby.",
@@ -7376,7 +7387,7 @@ class LevyraStrings private constructor(
             "lyricsAnalysisCompact" to "Nenápadná místní analýza",
             "lyricsAnalysisCompactSubtitle" to "Zůstává sbalená, dokud ji neotevřeš, zobrazuje jen užitečné informace a může tě přenést přímo na refrén.",
             "createDataBackup" to "Vytvořit zálohu dat",
-            "createDataBackupSubtitle" to "Oblíbené, playlisty, historie, fronta a nastavení v archivu ověřeném SHA-256. Zvukové soubory zůstávají v Music/Levyra.",
+            "createDataBackupSubtitle" to "Oblíbené, playlisty, historie, fronta a nastavení v archivu ověřeném SHA-256. Stažený zvuk není součástí.",
             "updateAvailable" to "Je dostupná aktualizace",
             "updates" to "Aktualizace",
             "checkingLatestVersion" to "Kontrola nejnovější verze…",
@@ -7761,7 +7772,7 @@ class LevyraStrings private constructor(
             "noOfflineDownloads" to "Офлайн-завантажень ще немає.",
             "createFirstPlaylist" to "Створи свій перший плейлист",
             "createFirstPlaylistSubtitle" to "Збери пісні, які хочеш миттєво знаходити знову.",
-            "downloadTrackHint" to "Натисни Завантажити біля пісні, щоб зберегти її в Music/Levyra.",
+            "downloadTrackHint" to "Натисни Завантажити біля пісні, щоб слухати її офлайн у Levyra.",
             "savedTracks" to "Збережені треки",
             "favoritesEmpty" to "Обраного ще немає",
             "playlistEmpty" to "Плейлист порожній. Додай треки з меню з трьома крапками біля треку.",
@@ -7775,7 +7786,7 @@ class LevyraStrings private constructor(
             "lyricsAnalysisCompact" to "Ненав'язливий локальний аналіз",
             "lyricsAnalysisCompactSubtitle" to "Залишається згорнутим, доки ти його не відкриєш, показує лише корисні сигнали й може одразу перенести до приспіву.",
             "createDataBackup" to "Створити резервну копію даних",
-            "createDataBackupSubtitle" to "Обране, плейлисти, історія, черга та налаштування в архіві, перевіреному SHA-256. Аудіофайли залишаються в Music/Levyra.",
+            "createDataBackupSubtitle" to "Обране, плейлисти, історія, черга та налаштування в архіві, перевіреному SHA-256. Завантажене аудіо не включено.",
             "updateAvailable" to "Доступне оновлення",
             "updates" to "Оновлення",
             "checkingLatestVersion" to "Перевіряється найновіша версія…",
@@ -8160,7 +8171,7 @@ class LevyraStrings private constructor(
             "noOfflineDownloads" to "Офлайн-загрузок пока нет.",
             "createFirstPlaylist" to "Создай свой первый плейлист",
             "createFirstPlaylistSubtitle" to "Собери треки, которые хочешь мгновенно находить снова.",
-            "downloadTrackHint" to "Нажми Скачать рядом с треком, чтобы сохранить его в Music/Levyra.",
+            "downloadTrackHint" to "Нажми Скачать рядом с треком, чтобы слушать его офлайн в Levyra.",
             "savedTracks" to "Сохранённые треки",
             "favoritesEmpty" to "В избранном пока пусто",
             "playlistEmpty" to "Плейлист пуст. Добавь треки через меню с тремя точками рядом с треком.",
@@ -8174,7 +8185,7 @@ class LevyraStrings private constructor(
             "lyricsAnalysisCompact" to "Ненавязчивый локальный анализ",
             "lyricsAnalysisCompactSubtitle" to "Остаётся свёрнутым, пока ты его не откроешь, показывает только полезные сигналы и может сразу перейти к припеву.",
             "createDataBackup" to "Создать резервную копию данных",
-            "createDataBackupSubtitle" to "Избранное, плейлисты, история, очередь и настройки в архиве, проверенном SHA-256. Аудиофайлы остаются в Music/Levyra.",
+            "createDataBackupSubtitle" to "Избранное, плейлисты, история, очередь и настройки в архиве, проверенном SHA-256. Скачанное аудио не включено.",
             "updateAvailable" to "Доступно обновление",
             "updates" to "Обновления",
             "checkingLatestVersion" to "Проверяется последняя версия…",
@@ -8559,7 +8570,7 @@ class LevyraStrings private constructor(
             "noOfflineDownloads" to "Çevrimdışı kaydedilmiş indirme yok.",
             "createFirstPlaylist" to "İlk playlistini oluştur",
             "createFirstPlaylistSubtitle" to "Hemen yeniden bulmak istediğin şarkıları bir araya getir.",
-            "downloadTrackHint" to "Bir şarkıyı Music/Levyra'ya kaydetmek için İndir'e dokun.",
+            "downloadTrackHint" to "Bir şarkıyı Levyra'da çevrimdışı dinlemek için İndir'e dokun.",
             "savedTracks" to "Kaydedilen şarkılar",
             "favoritesEmpty" to "Henüz favori yok",
             "playlistEmpty" to "Playlist boş. Bir şarkının üç noktalı menüsünden şarkı ekle.",
@@ -8573,7 +8584,7 @@ class LevyraStrings private constructor(
             "lyricsAnalysisCompact" to "Göze batmayan yerel analiz",
             "lyricsAnalysisCompactSubtitle" to "Sen açana kadar küçük kalır, yalnızca yararlı işaretleri gösterir ve seni doğrudan nakarata götürebilir.",
             "createDataBackup" to "Veri yedeği oluştur",
-            "createDataBackupSubtitle" to "Favoriler, playlistler, geçmiş, sıra ve ayarlar SHA-256 ile doğrulanmış bir arşivde tutulur. Ses dosyaları Music/Levyra'da kalır.",
+            "createDataBackupSubtitle" to "Favoriler, playlistler, geçmiş, sıra ve ayarlar SHA-256 ile doğrulanmış bir arşivde tutulur. İndirilen ses dosyaları dahil değildir.",
             "updateAvailable" to "Güncelleme mevcut",
             "updates" to "Güncellemeler",
             "checkingLatestVersion" to "En son sürüm kontrol ediliyor…",
@@ -8958,7 +8969,7 @@ class LevyraStrings private constructor(
             "noOfflineDownloads" to "لا توجد تنزيلات محفوظة بلا إنترنت.",
             "createFirstPlaylist" to "أنشئ أول قائمة تشغيل",
             "createFirstPlaylistSubtitle" to "اجمع الأغنيات التي تريد العثور عليها مجددًا فورًا.",
-            "downloadTrackHint" to "اضغط تنزيل على أي أغنية لحفظها في Music/Levyra.",
+            "downloadTrackHint" to "اضغط على تنزيل في أي أغنية للاستماع إليها دون اتصال في Levyra.",
             "savedTracks" to "المقاطع المحفوظة",
             "favoritesEmpty" to "لا توجد مفضلات بعد",
             "playlistEmpty" to "قائمة التشغيل هذه فارغة. أضف الأغنيات من قائمة النقاط الثلاث لأي أغنية.",
@@ -8972,7 +8983,7 @@ class LevyraStrings private constructor(
             "lyricsAnalysisCompact" to "تحليل محلي هادئ",
             "lyricsAnalysisCompactSubtitle" to "يبقى مضغوطًا حتى تفتحه، ويعرض الإشارات المفيدة فقط، ويمكنه نقلك مباشرةً إلى اللازمة.",
             "createDataBackup" to "إنشاء نسخة احتياطية للبيانات",
-            "createDataBackupSubtitle" to "المفضلة وقوائم التشغيل والسجل وقائمة الانتظار والإعدادات داخل أرشيف متحقق منه بخوارزمية SHA-256. تبقى ملفات الصوت في Music/Levyra.",
+            "createDataBackupSubtitle" to "المفضلة وقوائم التشغيل والسجل وقائمة الانتظار والإعدادات داخل أرشيف متحقق منه بخوارزمية SHA-256. الصوت الذي تم تنزيله غير مُضمَّن.",
             "updateAvailable" to "يتوفر تحديث",
             "updates" to "التحديثات",
             "checkingLatestVersion" to "جارٍ التحقق من أحدث إصدار…",
@@ -9357,7 +9368,7 @@ class LevyraStrings private constructor(
             "noOfflineDownloads" to "没有离线保存的下载内容。",
             "createFirstPlaylist" to "创建你的第一个播放列表",
             "createFirstPlaylistSubtitle" to "收集那些想要随时再次找到的歌曲。",
-            "downloadTrackHint" to "点击歌曲的下载按钮，将其保存到 Music/Levyra。",
+            "downloadTrackHint" to "点按歌曲上的下载，即可在 Levyra 中离线收听。",
             "savedTracks" to "已保存歌曲",
             "favoritesEmpty" to "还没有收藏",
             "playlistEmpty" to "此播放列表为空。请通过歌曲的三点菜单添加歌曲。",
@@ -9371,7 +9382,7 @@ class LevyraStrings private constructor(
             "lyricsAnalysisCompact" to "低调的本地分析",
             "lyricsAnalysisCompactSubtitle" to "未打开时保持紧凑，只显示有用信息，并可直接跳转到副歌。",
             "createDataBackup" to "创建数据备份",
-            "createDataBackupSubtitle" to "将收藏、播放列表、历史记录、播放队列和设置保存到经 SHA-256 校验的压缩包中。音频文件仍保留在 Music/Levyra。",
+            "createDataBackupSubtitle" to "将收藏、播放列表、历史记录、播放队列和设置保存到经 SHA-256 校验的压缩包中。不包含已下载的音频。",
             "updateAvailable" to "有可用更新",
             "updates" to "更新",
             "checkingLatestVersion" to "正在检查最新版本…",

@@ -159,6 +159,7 @@ class LevyraPreferencesDefaultsTest {
             canvasSource = LevyraCanvasSource.Tidal,
             motionArtworkWifiOnly = true,
             enhanceVideoMetadata = true,
+            keepScreenOnWhilePlaying = true,
             playerVisualMode = PlayerVisualMode.CanvasCard,
             playerBackground = PlayerBackgroundMode.Blur
         )
@@ -171,6 +172,8 @@ class LevyraPreferencesDefaultsTest {
         assertEquals(LevyraCanvasSource.Tidal, restored.canvasSource)
         assertTrue(restored.motionArtworkWifiOnly)
         assertTrue(restored.enhanceVideoMetadata)
+        assertTrue(restored.keepScreenOnWhilePlaying)
+        assertFalse(backupInterfaceSettingsFromJson(JSONObject()).keepScreenOnWhilePlaying)
         assertTrue(restored.releaseNotificationsEnabled)
         assertEquals(PlayerVisualMode.CanvasCard, restored.playerVisualMode)
         assertEquals(PlayerBackgroundMode.Blur, restored.playerBackground)

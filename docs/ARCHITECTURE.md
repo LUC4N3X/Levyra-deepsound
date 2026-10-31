@@ -660,9 +660,9 @@ Precache work is cancelled or recalculated when queue identity changes.
  
 ---
  
-## 14. Downloads and offline export
+## 14. Downloads and offline listening
  
-The offline pipeline is based on WorkManager and MediaStore.
+The offline pipeline is based on WorkManager. The user chooses the destination in Settings: private app storage (the default) or the public Music folder, optionally a user-chosen folder.
  
 ```text
 Download request
@@ -672,17 +672,23 @@ Download request
 → bounded network copy
 → content-length validation
 → metadata and artwork tagging
-→ MediaStore registration
+→ fsync and atomic rename into the private store
+→ transactional Room registration
 → completed Room state
 ```
  
-Output directory:
+Output directories, both excluded from auto backup and device transfer:
  
 ```text
-Music/Levyra
+filesDir/offline_audio/<stable-id>.<ext>
+filesDir/offline_audio_staging/
 ```
  
-Workers use retry policies for eligible network failures and reject incomplete media files.
+`OfflineAudioStore` owns both directories. `OfflineAudioMaintenance` runs at app start, removes rows whose private file is absent, and sweeps orphaned staging and unregistered audio files.
+
+With the Music folder destination the finished file is copied from staging to `Music/Levyra` through MediaStore, or to the chosen folder through document URIs. A stored custom folder keeps this destination after updating. Downloads completed by earlier versions may also point to these locations. Those rows stay readable, playable, and deletable, and their files are never moved or removed automatically.
+
+Workers use retry policies for eligible network failures and reject incomplete media files. Exhausted storage is a terminal failure with its own state and discards the partial data of that task.
 
 ### Offline source eligibility
 

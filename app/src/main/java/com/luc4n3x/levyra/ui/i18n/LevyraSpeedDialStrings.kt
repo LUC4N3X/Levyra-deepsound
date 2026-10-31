@@ -190,4 +190,4 @@ private val speedDialCopies = mapOf(
 
 internal fun speedDialLocalizationCodes(): Set<String> = speedDialCopies.keys
 
-fun LevyraStrings.speedDialCopy(): SpeedDialCopy = speedDialCopies[code] ?: speedDialCopies.getValue("en")
+fun LevyraStrings.speedDialCopy(): SpeedDialCopy = localizedValueOrEnglish(speedDialCopies, code)

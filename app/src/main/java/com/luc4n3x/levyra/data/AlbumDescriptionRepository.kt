@@ -226,7 +226,7 @@ internal class AlbumDescriptionRepository(context: Context?) {
 
     private fun factualFallback(album: AlbumHit, languageCode: String, trackCount: Int): String {
         val year = album.year.ifBlank { album.releaseDate.take(4).takeIf { it.length == 4 && it.all(Char::isDigit) }.orEmpty() }
-        return when (languageCode) {
+        return when (LevyraLanguageCatalog.translationCode(languageCode)) {
             "it" -> buildString {
                 append(album.title).append(" è un album di ").append(album.artist)
                 if (year.isNotBlank()) append(", pubblicato nel ").append(year)

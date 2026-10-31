@@ -39,7 +39,7 @@ internal fun LevyraStrings.formatLibraryBytes(bytes: Long): String {
     return "${number.format(value)} $unit".isolateForRtl(code)
 }
 
-private fun durationUnits(code: String): Pair<String, String> = when (LevyraLanguageCatalog.normalize(code)) {
+private fun durationUnits(code: String): Pair<String, String> = when (LevyraLanguageCatalog.translationCode(code)) {
     "de" -> "Std." to "Min."
     "es" -> "h" to "min"
     "fr" -> "h" to "min"

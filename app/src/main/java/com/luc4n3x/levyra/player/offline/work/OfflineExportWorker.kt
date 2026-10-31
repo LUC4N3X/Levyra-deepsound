@@ -27,6 +27,7 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.luc4n3x.levyra.data.collections.CollectionAccessDeniedException
 import com.luc4n3x.levyra.data.collections.PersonalCollectionUnavailableException
+import com.luc4n3x.levyra.player.offline.OFFLINE_STORAGE_FULL
 import com.luc4n3x.levyra.player.offline.PERSONAL_COLLECTION_NOT_AUDIO
 import com.luc4n3x.levyra.player.offline.PERSONAL_COLLECTION_STREAM_ONLY
 import com.luc4n3x.levyra.player.offline.PERSONAL_COLLECTION_TOO_LARGE
@@ -51,6 +52,8 @@ import com.luc4n3x.levyra.player.liveupdate.DownloadLiveUpdateSlot
 import com.luc4n3x.levyra.player.liveupdate.LiveUpdatePolicy
 import com.luc4n3x.levyra.player.offline.OfflineAudioExporter
 import com.luc4n3x.levyra.player.offline.OfflineExportPipeline
+import com.luc4n3x.levyra.player.offline.isOfflineAudioStoreUri
+import com.luc4n3x.levyra.player.offline.isOfflineStorageExhausted
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import java.io.IOException
 import java.util.UUID
@@ -237,16 +240,19 @@ class OfflineExportWorker(
                     error is PersonalCollectionUnavailableException ||
                     error is CollectionAccessDeniedException
             }
+            val storageFull = isOfflineStorageExhausted(error)
             if (current == null || current.workId != workId) {
                 Result.failure(errorData(ERROR_SUPERSEDED))
-            } else if (error is IOException && !unsupportedSource && runAttemptCount < 2) {
+            } else if (error is IOException && !storageFull && !unsupportedSource && runAttemptCount < 2) {
                 taskDao.updateStateForWork(taskKey, workId, "RETRYING", current.progress, error.message.orEmpty(), System.currentTimeMillis())
                 Timber.w(error, "Offline export retry scheduled")
                 Result.retry()
             } else {
-                taskDao.updateStateForWork(taskKey, workId, "FAILED", current.progress, error.message.orEmpty(), System.currentTimeMillis())
+                if (storageFull) OfflineAudioExporter.discardPartialDownload(applicationContext, taskKey)
+                val failure = if (storageFull) OFFLINE_STORAGE_FULL else error.message.orEmpty()
+                taskDao.updateStateForWork(taskKey, workId, "FAILED", current.progress, failure, System.currentTimeMillis())
                 Timber.e(error, "Offline export failed")
-                Result.failure(errorData(if (unsupportedSource) "contentIsMalformed" else error.message ?: "offline_export_failed"))
+                Result.failure(errorData(if (unsupportedSource) "contentIsMalformed" else failure.ifBlank { "offline_export_failed" }))
             }
         } finally {
             if (LiveUpdatePolicy.isSupported()) DownloadLiveUpdateSlot.release(taskKey)
@@ -276,6 +282,7 @@ class OfflineExportWorker(
     private fun errorData(message: String): Data = workDataOf(KEY_ERROR to message)
 
     private fun existingDownloadDestinationLabel(rawUri: String): String {
+        if (isOfflineAudioStoreUri(rawUri)) return ""
         val uri = runCatching { android.net.Uri.parse(rawUri) }.getOrNull() ?: return "Music/Levyra"
         if (uri.authority == MediaStore.AUTHORITY) return "Music/Levyra"
         val documentId = runCatching {

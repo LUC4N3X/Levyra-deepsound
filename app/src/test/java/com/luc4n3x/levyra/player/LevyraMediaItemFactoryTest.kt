@@ -32,6 +32,8 @@ class LevyraMediaItemFactoryTest {
     @Test
     fun localContentUriUsesExtractorSniffing() {
         assertNull(LevyraMediaItemFactory.mimeTypeFor("content://media/external/audio/media/42", false))
+        assertNull(LevyraMediaItemFactory.mimeTypeFor("file:///data/user/0/pkg/files/offline_audio/stable.flac", false))
+        assertNull(LevyraMediaItemFactory.mimeTypeFor("file:///data/user/0/pkg/files/offline_audio/stable.m4a", false))
         assertNull(LevyraMediaItemFactory.mimeTypeFor("file:///storage/emulated/0/Music/download", false))
     }
 

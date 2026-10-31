@@ -223,6 +223,7 @@ class LevyraPreferencesStoreTest {
         preferences.setLanguageCode("it")
         preferences.setDynamicColor(false)
         preferences.setSkipSilence(true)
+        preferences.setInterfaceSettings(LevyraInterfaceSettings(keepScreenOnWhilePlaying = true))
         preferences.setJamDisplayName("  DJ Luca  ")
         assertEquals("Luca", preferences.userName())
         assertEquals("it", preferences.languageCode())
@@ -237,6 +238,7 @@ class LevyraPreferencesStoreTest {
         assertEquals("it", reopened.languageCode())
         assertFalse(reopened.dynamicColor())
         assertTrue(reopened.skipSilence())
+        assertTrue(reopened.interfaceSettings().keepScreenOnWhilePlaying)
         assertEquals("DJ Luca", reopened.jamDisplayName())
     }
 
@@ -537,6 +539,40 @@ class LevyraPreferencesStoreTest {
         preferences.saveLastPlayback(null, 0L)
         assertNull(preferences.lastTrack())
         assertEquals(0L, preferences.lastPositionMs())
+    }
+
+    @Test
+    fun manualMusicRegionSurvivesLanguageChangeRestartAndBackup() {
+        val (_, preferences) = open()
+        assertEquals("", preferences.musicRegionId())
+
+        preferences.setMusicRegionId("br")
+        preferences.setLanguageCode("it")
+        assertEquals("br", preferences.musicRegionId())
+        assertEquals("it", preferences.languageCode())
+        assertEquals("br", com.luc4n3x.levyra.domain.LevyraMusicRegion.selectedId)
+
+        val snapshot = preferences.snapshot()
+        assertEquals("br", snapshot.musicRegionId)
+        val (_, restarted) = open()
+        assertEquals("br", restarted.musicRegionId())
+
+        preferences.setMusicRegionId("")
+        assertEquals("", com.luc4n3x.levyra.domain.LevyraMusicRegion.selectedId)
+        runBlocking { preferences.restoreSnapshot(snapshot) }
+        assertEquals("br", preferences.musicRegionId())
+        assertEquals("br", com.luc4n3x.levyra.domain.LevyraMusicRegion.selectedId)
+        preferences.setMusicRegionId("")
+    }
+
+    @Test
+    fun storedPortugueseStaysPortugalAndBrazilStaysBrazil() {
+        val (_, preferences) = open()
+        preferences.setLanguageCode("pt")
+        assertEquals("pt", preferences.languageCode())
+        preferences.setLanguageCode("pt_BR")
+        assertEquals("pt-BR", preferences.languageCode())
+        assertEquals("pt-BR", preferences.snapshot().languageCode)
     }
 
     @Test

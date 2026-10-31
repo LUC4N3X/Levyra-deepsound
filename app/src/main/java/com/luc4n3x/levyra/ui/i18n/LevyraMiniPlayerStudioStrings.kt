@@ -18,6 +18,10 @@ enum class MiniStudioText {
 }
 
 class MiniPlayerStudioCopy internal constructor(private val texts: Map<MiniStudioText, String>) {
+    internal val brazilian: MiniPlayerStudioCopy by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        MiniPlayerStudioCopy(texts.mapValues { (_, text) -> LevyraBrazilianPortuguese.adapt(text) })
+    }
+
     operator fun get(key: MiniStudioText): String = texts[key] ?: englishMiniStudio.getValue(key)
 }
 
@@ -941,4 +945,4 @@ private val miniStudioCopyObjects: Map<String, MiniPlayerStudioCopy> by lazy {
 }
 
 internal val LevyraStrings.miniPlayerStudioCopy: MiniPlayerStudioCopy
-    get() = miniStudioCopyObjects[code] ?: miniStudioCopyObjects.getValue("en")
+    get() = localizedValueOrEnglish(miniStudioCopyObjects, code).forBrazil(code) { brazilian }

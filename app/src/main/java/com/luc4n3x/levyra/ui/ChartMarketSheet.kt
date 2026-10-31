@@ -75,7 +75,9 @@ internal fun ChartMarketSheet(
     selectedId: String,
     languageCode: String,
     onSelect: (String) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    title: String? = null,
+    automaticLabel: String? = null
 ) {
     val strings = LocalLevyraStrings.current
     val focusManager = LocalFocusManager.current
@@ -115,7 +117,7 @@ internal fun ChartMarketSheet(
                 .fillMaxHeight(0.9f)
         ) {
             Text(
-                text = strings.chartMarketSheetTitle,
+                text = title ?: strings.chartMarketSheetTitle,
                 color = LevyraText,
                 fontSize = 20.sp,
                 lineHeight = LevyraTypeRhythm.lineHeight(20.sp),
@@ -171,6 +173,16 @@ internal fun ChartMarketSheet(
             ) {
                 when {
                     browsing -> {
+                        if (automaticLabel != null) {
+                            item(key = "chart-market-automatic", contentType = "chart-market-row") {
+                                ChartMarketRow(
+                                    market = ChartMarket(ChartRegion("", automaticLabel, "🌐", ""), automaticLabel, emptyList()),
+                                    selected = selectedId.isEmpty(),
+                                    supporting = null,
+                                    onClick = { choose("") }
+                                )
+                            }
+                        }
                         if (suggested.isNotEmpty()) {
                             item(key = "chart-market-suggested-label", contentType = "chart-market-label") {
                                 ChartMarketSectionLabel(strings.chartMarketSuggested)

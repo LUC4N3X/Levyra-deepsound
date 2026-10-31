@@ -50,8 +50,8 @@ class MoodEngine {
             ),
             Mood(
                 id = "italia",
-                title = texts.getValue("local").first,
-                subtitle = texts.getValue("local").second,
+                title = musicRegionLabel(languageCode) ?: texts.getValue("local").first,
+                subtitle = if (musicRegionLabel(languageCode) == null) texts.getValue("local").second else texts.getValue("hits").second,
                 icon = localIcon(languageCode),
                 energyTarget = 70,
                 tags = setOf("local", "pop", "hit"),
@@ -97,7 +97,7 @@ class MoodEngine {
         return listOf(
             Taste("hits", labels.getValue("hits"), "🔥", locale.queryForTaste("hits")),
             Taste("rap", labels.getValue("rap"), "🎤", locale.queryForTaste("rap")),
-            Taste("italiana", labels.getValue("local"), localIcon(languageCode), locale.queryForTaste("italiana")),
+            Taste("italiana", musicRegionLabel(languageCode) ?: labels.getValue("local"), localIcon(languageCode), locale.queryForTaste("italiana")),
             Taste("pop", labels.getValue("pop"), "✨", locale.queryForTaste("pop")),
             Taste("gym", labels.getValue("gym"), "🏋️", locale.queryForTaste("gym")),
             Taste("chill", labels.getValue("chill"), "😌", locale.queryForTaste("chill")),
@@ -128,13 +128,21 @@ class MoodEngine {
 
     fun tagQueryFor(mood: Mood, languageCode: String): String = LevyraContentLocales.forLanguage(languageCode).queryForMood(mood.id).ifBlank { mood.title }
 
+    private fun musicRegionLabel(languageCode: String): String? {
+        val locale = LevyraContentLocales.forLanguage(languageCode)
+        return ChartsCatalog.supportedRegion(locale.chartRegionId)
+            ?.takeIf { locale.contentLanguageCode != locale.languageCode }
+            ?.label
+    }
+
     private fun localIcon(languageCode: String): String {
-        return when (LevyraLanguageCatalog.normalize(languageCode)) {
+        return when (LevyraContentLocales.contentLanguage(languageCode)) {
             "it" -> "🇮🇹"
             "es" -> "🇪🇸"
             "fr" -> "🇫🇷"
             "de" -> "🇩🇪"
-            "pt" -> "🇧🇷"
+            "pt" -> "🇵🇹"
+            "pt-BR" -> "🇧🇷"
             "nl" -> "🇳🇱"
             "pl" -> "🇵🇱"
             "ro" -> "🇷🇴"
@@ -203,11 +211,21 @@ class MoodEngine {
             )
             "pt" -> mapOf(
                 "hits" to ("Hits do momento" to "as mais ouvidas agora"),
+                "gym" to ("Ginásio" to "energia e força"),
+                "chill" to ("Relax" to "calmo e suave"),
+                "focus" to ("Foco" to "estudo e concentração"),
+                "local" to ("Portugal" to "o melhor em português"),
+                "party" to ("Festa" to "aumenta o volume"),
+                "drive" to ("No carro" to "música para viagem"),
+                "sad" to ("Melancolia" to "emoções lentas")
+            )
+            "pt-BR" -> mapOf(
+                "hits" to ("Hits do momento" to "as mais ouvidas agora"),
                 "gym" to ("Academia" to "energia e força"),
                 "chill" to ("Relax" to "calmo e suave"),
                 "focus" to ("Foco" to "estudo e concentração"),
                 "local" to ("Brasil" to "o melhor em português"),
-                "party" to ("Festa" to "aumenta o volume"),
+                "party" to ("Festa" to "aumente o volume"),
                 "drive" to ("No carro" to "música para viagem"),
                 "sad" to ("Melancolia" to "emoções lentas")
             )
@@ -330,7 +348,8 @@ class MoodEngine {
             "es" -> mapOf("hits" to "Éxitos", "rap" to "Rap & Trap", "local" to "Española", "pop" to "Pop", "gym" to "Gimnasio", "chill" to "Relax", "focus" to "Focus", "sad" to "Melancolía", "party" to "Fiesta", "rock" to "Rock", "electro" to "Electrónica", "rnb" to "R&B")
             "fr" -> mapOf("hits" to "Hits", "rap" to "Rap & Trap", "local" to "Française", "pop" to "Pop", "gym" to "Sport", "chill" to "Relax", "focus" to "Focus", "sad" to "Mélancolie", "party" to "Fête", "rock" to "Rock", "electro" to "Électronique", "rnb" to "R&B")
             "de" -> mapOf("hits" to "Hits", "rap" to "Rap & Trap", "local" to "Deutsch", "pop" to "Pop", "gym" to "Gym", "chill" to "Relax", "focus" to "Focus", "sad" to "Melancholie", "party" to "Party", "rock" to "Rock", "electro" to "Elektronisch", "rnb" to "R&B")
-            "pt" -> mapOf("hits" to "Hits", "rap" to "Rap & Trap", "local" to "Brasileira", "pop" to "Pop", "gym" to "Academia", "chill" to "Relax", "focus" to "Foco", "sad" to "Melancolia", "party" to "Festa", "rock" to "Rock", "electro" to "Eletrônica", "rnb" to "R&B")
+            "pt" -> mapOf("hits" to "Hits", "rap" to "Rap & Trap", "local" to "Portuguesa", "pop" to "Pop", "gym" to "Ginásio", "chill" to "Relax", "focus" to "Foco", "sad" to "Melancolia", "party" to "Festa", "rock" to "Rock", "electro" to "Eletrónica", "rnb" to "R&B")
+            "pt-BR" -> mapOf("hits" to "Hits", "rap" to "Rap & Trap", "local" to "Brasileira", "pop" to "Pop", "gym" to "Academia", "chill" to "Relax", "focus" to "Foco", "sad" to "Melancolia", "party" to "Festa", "rock" to "Rock", "electro" to "Eletrônica", "rnb" to "R&B")
             "ar" -> mapOf("hits" to "الأكثر رواجًا", "rap" to "راب وتراب", "local" to "عربية", "pop" to "بوب", "gym" to "تمرين", "chill" to "استرخاء", "focus" to "تركيز", "sad" to "حزينة", "party" to "حفلة", "rock" to "روك", "electro" to "إلكترونية", "rnb" to "R&B")
             "zh" -> mapOf("hits" to "热门", "rap" to "说唱与 Trap", "local" to "华语", "pop" to "流行", "gym" to "健身", "chill" to "放松", "focus" to "专注", "sad" to "伤感", "party" to "派对", "rock" to "摇滚", "electro" to "电子", "rnb" to "R&B")
             "ja" -> mapOf("hits" to "ヒット", "rap" to "ラップ＆トラップ", "local" to "邦楽", "pop" to "ポップ", "gym" to "ワークアウト", "chill" to "チル", "focus" to "集中", "sad" to "切なさ", "party" to "パーティー", "rock" to "ロック", "electro" to "エレクトロニック", "rnb" to "R&B")

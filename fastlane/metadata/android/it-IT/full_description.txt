@@ -7,7 +7,7 @@ Funzioni principali:
 * ricerca, classifiche, album, artisti, playlist e coda persistente
 * testi sincronizzati con più provider di riserva
 * salto facoltativo dei segmenti tramite SponsorBlock
-* esportazione offline di file audio taggati nella cartella pubblica Music/Levyra
+* ascolto offline, con download salvati privatamente in Levyra o come file taggati in Music/Levyra
 * preferiti, playlist, cronologia e statistiche di ascolto salvati sul dispositivo
 * integrazione con Android Auto, notifiche, schermata di blocco, widget e Picture-in-Picture
 * interfacce chiare, scure, OLED, a colori dinamici e multilingua

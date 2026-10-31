@@ -16,7 +16,7 @@ object LevyraLanguageCatalog {
         LevyraLanguageOption("es", "🇪🇸", "Spanish", "Español"),
         LevyraLanguageOption("fr", "🇫🇷", "French", "Français"),
         LevyraLanguageOption("de", "🇩🇪", "German", "Deutsch"),
-        LevyraLanguageOption("pt", "🇵🇹", "Portuguese", "Português"),
+        LevyraLanguageOption("pt", "🇵🇹", "Portuguese (Portugal)", "Português (Portugal)"),
         LevyraLanguageOption("nl", "🇳🇱", "Dutch", "Nederlands"),
         LevyraLanguageOption("pl", "🇵🇱", "Polish", "Polski"),
         LevyraLanguageOption("ro", "🇷🇴", "Romanian", "Română"),
@@ -54,12 +54,24 @@ object LevyraLanguageCatalog {
         LevyraLanguageOption("he", "🇮🇱", "Hebrew", "עברית")
     )
 
-    private val supportedCodes = languages.map { it.code }.toSet()
+    const val BRAZILIAN_PORTUGUESE = "pt-BR"
+
+    val selectableLanguages: List<LevyraLanguageOption> = languages.flatMap { language ->
+        if (language.code == "pt") {
+            listOf(language, LevyraLanguageOption(BRAZILIAN_PORTUGUESE, "🇧🇷", "Portuguese (Brazil)", "Português (Brasil)"))
+        } else {
+            listOf(language)
+        }
+    }
+
+    private val supportedCodes = selectableLanguages.map { it.code }.toSet()
+    private val androidRegionQualifier = Regex("^([A-Za-z]{2,3})-r([A-Za-z]{2})$")
     private val rtlCodes = setOf("ar", "fa", "he")
     private val traditionalChineseRegions = setOf("TW", "HK", "MO")
 
     fun normalize(code: String): String {
-        val rawTag = code.trim().replace('_', '-')
+        if (code in supportedCodes) return code
+        val rawTag = androidRegionQualifier.replace(code.trim().replace('_', '-'), "$1-$2")
         if (rawTag.isBlank()) return "en"
         val locale = Locale.forLanguageTag(rawTag)
         val language = when (locale.language.lowercase(Locale.ROOT)) {
@@ -74,15 +86,21 @@ object LevyraLanguageCatalog {
                     locale.country.uppercase(Locale.ROOT) in traditionalChineseRegions
             ) -> "zh-Hant"
             language == "zh" -> "zh"
+            language == "pt" && locale.country.equals("BR", ignoreCase = true) -> BRAZILIAN_PORTUGUESE
             else -> language
         }
         return if (canonical in supportedCodes) canonical else "en"
     }
 
+    fun translationCode(code: String): String {
+        val normalized = normalize(code)
+        return if (normalized == BRAZILIAN_PORTUGUESE) "pt" else normalized
+    }
+
     fun deviceDefault(): String = normalize(Locale.getDefault().toLanguageTag())
 
     fun displayName(code: String): String {
-        val language = languages.firstOrNull { it.code == normalize(code) }
+        val language = selectableLanguages.firstOrNull { it.code == normalize(code) }
         return language?.let { "${it.flag} ${it.nativeName}" } ?: "🇬🇧 English"
     }
 

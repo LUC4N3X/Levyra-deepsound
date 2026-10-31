@@ -153,8 +153,24 @@ object ChartsCatalog {
 
     fun startupRegion(storedRegionId: String, deviceCountry: String, languageCode: String): ChartRegion =
         supportedRegion(storedRegionId)
+            ?: supportedRegion(LevyraMusicRegion.selectedId)
             ?: supportedRegion(deviceCountry)
             ?: defaultRegionForLanguage(languageCode)
+
+    fun regionAfterLanguageChange(
+        storedRegionId: String,
+        currentRegionId: String,
+        previousLanguageCode: String,
+        languageCode: String
+    ): ChartRegion {
+        val current = supportedRegion(currentRegionId)
+        return when {
+            current == null -> defaultRegionForLanguage(languageCode)
+            supportedRegion(storedRegionId) != null -> current
+            current == defaultRegionForLanguage(previousLanguageCode) -> defaultRegionForLanguage(languageCode)
+            else -> current
+        }
+    }
 
     fun requiresReload(requestedId: String, currentId: String, hasCharts: Boolean, isLoading: Boolean): Boolean =
         requestedId != currentId || (!hasCharts && !isLoading)
@@ -282,7 +298,14 @@ object ExploreCatalog {
 
     fun getZones(strings: LevyraStrings): List<ExploreZone> {
         val locale = LevyraContentLocales.forLanguage(strings.code)
-        val localQuery = strings.localWaveQuery.ifBlank { locale.homeQueries.firstOrNull().orEmpty() }
+        val localQuery = strings.localWaveQuery
+            .takeIf { locale.contentLanguageCode == locale.languageCode }
+            .orEmpty()
+            .ifBlank { locale.homeQueries.firstOrNull().orEmpty() }
+        val localWaveName = ChartsCatalog.supportedRegion(locale.chartRegionId)
+            ?.takeIf { locale.contentLanguageCode != locale.languageCode }
+            ?.let { "${it.label} Wave" }
+            ?: strings.localWaveName
         val newReleaseQuery = "${locale.homeQueries.firstOrNull().orEmpty()} new releases 2026".trim()
         val rapQuery = locale.queryForTaste("rap")
         val popQuery = locale.queryForTaste("pop")
@@ -293,6 +316,7 @@ object ExploreCatalog {
         val latinoQuery = when (locale.languageCode) {
             "es" -> "reggaeton latino música latina nueva 2026"
             "pt" -> "música latina novos êxitos 2026"
+            "pt-BR" -> "música latina novos sucessos 2026"
             else -> "latin music new hits 2026"
         }
         val jpopQuery = when (locale.languageCode) {
@@ -303,7 +327,7 @@ object ExploreCatalog {
         }
         return listOf(
             ExploreZone(NEW_RELEASES_ZONE_ID, strings.exploreNewReleases, "🌊", newReleaseQuery, 0xFF00E5FF.toInt(), 0xFF2979FF.toInt()),
-            ExploreZone(LOCAL_WAVE_ZONE_ID, strings.localWaveName, strings.localWaveEmoji, localQuery, 0xFF00E676.toInt(), 0xFF00B0FF.toInt()),
+            ExploreZone(LOCAL_WAVE_ZONE_ID, localWaveName, strings.localWaveEmoji, localQuery, 0xFF00E676.toInt(), 0xFF00B0FF.toInt()),
             ExploreZone("rap-drill", strings.exploreRapDrill, "🐙", rapQuery, 0xFF9D4EDD.toInt(), 0xFF7C4DFF.toInt()),
             ExploreZone("elettronica", strings.exploreElectronic, "⚡", electroQuery, 0xFF18FFFF.toInt(), 0xFF9D4EDD.toInt()),
             ExploreZone("pop-global", strings.explorePopGlobal, "🌍", popQuery, 0xFFFF4081.toInt(), 0xFF7C4DFF.toInt()),

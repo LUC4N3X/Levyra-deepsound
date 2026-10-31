@@ -7,7 +7,7 @@ Features include:
 * search, charts, albums, artists, playlists, and a persistent queue
 * synchronized lyrics with multiple fallback providers
 * optional SponsorBlock segment skipping
-* offline exports as tagged audio files in the public Music/Levyra folder
+* offline listening, with downloads saved privately inside Levyra or as tagged files in Music/Levyra
 * favorites, playlists, history, and listening insights stored on-device
 * Android Auto, notification, lock-screen, widget, and Picture-in-Picture integration
 * light, dark, OLED, dynamic-color, and multilingual interfaces

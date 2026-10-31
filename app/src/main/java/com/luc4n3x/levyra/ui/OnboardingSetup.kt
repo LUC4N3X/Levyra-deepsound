@@ -1164,7 +1164,7 @@ private fun SetupLanguageStage(
     accent: Color,
     onLanguage: (String) -> Unit
 ) {
-    val languages = LevyraLanguageCatalog.languages
+    val languages = LevyraLanguageCatalog.selectableLanguages
     val selectedCode = LevyraLanguageCatalog.normalize(languageCode)
     val listState = rememberLazyListState(
         initialFirstVisibleItemIndex = languages.indexOfFirst { it.code == selectedCode }.coerceAtLeast(0)

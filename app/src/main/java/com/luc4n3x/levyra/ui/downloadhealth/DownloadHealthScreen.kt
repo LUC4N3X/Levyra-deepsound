@@ -2,7 +2,11 @@
 
 package com.luc4n3x.levyra.ui.downloadhealth
 
+import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,6 +22,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -27,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.luc4n3x.levyra.data.DownloadHealthResult
+import com.luc4n3x.levyra.data.legacyDownloadTreeUri
 import com.luc4n3x.levyra.data.local.OfflineDownloadTaskSummaryRow
 import com.luc4n3x.levyra.domain.DownloadHealth
 import com.luc4n3x.levyra.ui.experiences.LocalMusicExperiences
@@ -59,9 +65,26 @@ internal fun DownloadHealthEntry() {
 @Composable
 internal fun DownloadHealthScreen(onClose: () -> Unit, onSettings: () -> Unit, viewModel: DownloadHealthViewModel = viewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val strings = LocalLevyraStrings.current
+    var pendingTreeUri by rememberSaveable { mutableStateOf("") }
+    val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { picked ->
+        val expected = pendingTreeUri
+        pendingTreeUri = ""
+        if (picked != null && expected.isNotBlank()) viewModel.restoreFolderAccess(picked, expected)
+    }
+    LaunchedEffect(state.folderAccessMismatch) {
+        if (state.folderAccessMismatch) {
+            Toast.makeText(context, strings.offlineFolderAccessMismatch, Toast.LENGTH_LONG).show()
+            viewModel.consumeFolderAccessMismatch()
+        }
+    }
     DisposableEffect(viewModel) { onDispose { viewModel.cancelScan() } }
     DownloadHealthPresentation(state, onClose, onSettings,
-        HealthActions(viewModel::scan, viewModel::cancelScan, viewModel::repair, { viewModel.cancel(it) }, { viewModel.retry(it) }))
+        HealthActions(viewModel::scan, viewModel::cancelScan, viewModel::repair, { viewModel.cancel(it) }, { viewModel.retry(it) }) { treeUri ->
+            pendingTreeUri = treeUri
+            runCatching { folderPicker.launch(Uri.parse(treeUri)) }.onFailure { pendingTreeUri = "" }
+        })
 }
 
 internal data class HealthActions(
@@ -69,7 +92,8 @@ internal data class HealthActions(
     val cancelScan: () -> Unit,
     val repair: (List<DownloadHealthResult>) -> Unit,
     val cancel: (String) -> Unit,
-    val retry: (String) -> Unit
+    val retry: (String) -> Unit,
+    val restoreFolderAccess: (String) -> Unit = {}
 )
 
 @Composable
@@ -119,7 +143,8 @@ internal fun DownloadHealthPresentation(state: DownloadHealthState, onClose: () 
                 }
                 items(visible, key = { "download:${it.download.id}" }) { result ->
                     HealthResultRow(result, style, strings, enabled = !state.scanning && !state.repairing,
-                        onRepair = { repairIds = listOf(result.download.id) }, onSettings = onSettings)
+                        onRepair = { repairIds = listOf(result.download.id) }, onSettings = onSettings,
+                        onRestoreAccess = actions.restoreFolderAccess)
                 }
             }
         }
@@ -186,7 +211,16 @@ private fun HealthOverview(state: DownloadHealthState, healthy: Int, style: Musi
 }
 
 @Composable
-private fun HealthResultRow(result: DownloadHealthResult, style: MusicExperienceStyle, strings: LevyraStrings, enabled: Boolean, onRepair: () -> Unit, onSettings: () -> Unit) {
+private fun HealthResultRow(
+    result: DownloadHealthResult,
+    style: MusicExperienceStyle,
+    strings: LevyraStrings,
+    enabled: Boolean,
+    onRepair: () -> Unit,
+    onSettings: () -> Unit,
+    onRestoreAccess: (String) -> Unit
+) {
+    val legacyTreeUri = remember(result.download.uri) { legacyDownloadTreeUri(result.download.uri) }
     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Box(Modifier.size(12.dp).background(if (result.health == DownloadHealth.Healthy) style.accent else style.muted, CircleShape))
@@ -204,7 +238,13 @@ private fun HealthResultRow(result: DownloadHealthResult, style: MusicExperience
             else -> MusicExperienceText.Unavailable
         }), color = style.muted, style = MaterialTheme.typography.bodyMedium)
         if (result.repairable) TextButton(onClick = onRepair, enabled = enabled) { Text(strings.musicExperience(MusicExperienceText.Repair)) }
-        if (result.health == DownloadHealth.AccessDenied) TextButton(onClick = onSettings) { Text(strings.settings) }
+        if (result.health == DownloadHealth.AccessDenied) {
+            if (legacyTreeUri != null) {
+                TextButton(onClick = { onRestoreAccess(legacyTreeUri) }, enabled = enabled) { Text(strings.offlineRestoreFolderAccess) }
+            } else {
+                TextButton(onClick = onSettings) { Text(strings.settings) }
+            }
+        }
         HorizontalDivider(color = style.text.copy(alpha = 0.12f))
     }
 }

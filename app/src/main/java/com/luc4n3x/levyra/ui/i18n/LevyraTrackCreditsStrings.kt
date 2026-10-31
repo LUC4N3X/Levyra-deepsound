@@ -28,7 +28,7 @@ internal data class TrackCreditsCopy(
     val writtenBy: String
 )
 
-internal fun LevyraStrings.trackCreditsCopy(): TrackCreditsCopy = when (code) {
+internal fun LevyraStrings.trackCreditsCopy(): TrackCreditsCopy = when (translationKey(code)) {
     "it" -> TrackCreditsCopy(
         title = "Crediti del brano",
         artists = "Artisti",
@@ -1029,4 +1029,32 @@ internal fun LevyraStrings.trackCreditsCopy(): TrackCreditsCopy = when (code) {
         openArtist = "Open artist",
         writtenBy = "Written by"
     )
-}
+}.forBrazil(code) { brazilian() }
+
+private fun TrackCreditsCopy.brazilian(): TrackCreditsCopy = copy(
+    title = LevyraBrazilianPortuguese.adapt(title),
+    artists = LevyraBrazilianPortuguese.adapt(artists),
+    performance = LevyraBrazilianPortuguese.adapt(performance),
+    composition = LevyraBrazilianPortuguese.adapt(composition),
+    production = LevyraBrazilianPortuguese.adapt(production),
+    otherCredits = LevyraBrazilianPortuguese.adapt(otherCredits),
+    release = LevyraBrazilianPortuguese.adapt(release),
+    mainArtist = LevyraBrazilianPortuguese.adapt(mainArtist),
+    participatingArtist = LevyraBrazilianPortuguese.adapt(participatingArtist),
+    album = LevyraBrazilianPortuguese.adapt(album),
+    releaseDate = LevyraBrazilianPortuguese.adapt(releaseDate),
+    label = LevyraBrazilianPortuguese.adapt(label),
+    phonographicCopyright = LevyraBrazilianPortuguese.adapt(phonographicCopyright),
+    copyright = LevyraBrazilianPortuguese.adapt(copyright),
+    isrc = LevyraBrazilianPortuguese.adapt(isrc),
+    upc = LevyraBrazilianPortuguese.adapt(upc),
+    sourcePrefix = LevyraBrazilianPortuguese.adapt(sourcePrefix),
+    loading = LevyraBrazilianPortuguese.adapt(loading),
+    emptyTitle = LevyraBrazilianPortuguese.adapt(emptyTitle),
+    emptyBody = LevyraBrazilianPortuguese.adapt(emptyBody),
+    unavailableTitle = LevyraBrazilianPortuguese.adapt(unavailableTitle),
+    unavailableBody = LevyraBrazilianPortuguese.adapt(unavailableBody),
+    retry = LevyraBrazilianPortuguese.adapt(retry),
+    openArtist = LevyraBrazilianPortuguese.adapt(openArtist),
+    writtenBy = LevyraBrazilianPortuguese.adapt(writtenBy)
+)

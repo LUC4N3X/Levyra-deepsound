@@ -18,6 +18,10 @@ enum class NavStudioText {
 }
 
 class NavigationStudioCopy internal constructor(private val texts: Map<NavStudioText, String>) {
+    internal val brazilian: NavigationStudioCopy by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        NavigationStudioCopy(texts.mapValues { (_, text) -> LevyraBrazilianPortuguese.adapt(text) })
+    }
+
     operator fun get(key: NavStudioText): String = texts[key] ?: englishNavStudio.getValue(key)
 }
 
@@ -777,4 +781,4 @@ internal fun navigationStudioCompleteLocalizationCodes(): Set<String> =
     navStudioCopies.filterValues { it.size == NavStudioText.entries.size }.keys
 
 internal val LevyraStrings.navigationStudioCopy: NavigationStudioCopy
-    get() = navStudioCopyObjects[code] ?: navStudioCopyObjects.getValue("en")
+    get() = localizedValueOrEnglish(navStudioCopyObjects, code).forBrazil(code) { brazilian }

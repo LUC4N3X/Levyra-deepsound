@@ -126,7 +126,9 @@ class AlternativeTrackMatcher {
         val romanizedTitle = expectedTitle.core != candidateTitle.core &&
             romanizedVariant(expectedTitle.core, candidateTitle.core, candidate.language)
         if (expectedTitle.core != candidateTitle.core && !romanizedTitle) return rejected(MatchRejection.TITLE_MISMATCH)
-        if (expectedTitle.versionSignature != candidateTitle.versionSignature) {
+        val remasterOfUnmarkedTitle = expectedTitle.versionSignature.isEmpty() &&
+            candidateTitle.markers == setOf(TrackVersionMarker.REMASTER)
+        if (expectedTitle.versionSignature != candidateTitle.versionSignature && !remasterOfUnmarkedTitle) {
             return rejected(MatchRejection.VERSION_MISMATCH)
         }
         if (expectedCredit.primary !in candidatePrimary) {
@@ -146,6 +148,13 @@ class AlternativeTrackMatcher {
         }
         val isrcConfirmed = expectedIsrc.isNotEmpty() && expectedIsrc == candidateIsrc
         val relation = albumRelation(query.album, candidate, expectedTitle, candidateTitle)
+        if (remasterOfUnmarkedTitle && !isrcConfirmed && (
+                delta > EXCELLENT_DURATION_DELTA_SECONDS ||
+                    (relation != AlbumRelation.SINGLE_RELEASE && relation != AlbumRelation.UNVERIFIED)
+                )
+        ) {
+            return rejected(MatchRejection.VERSION_MISMATCH, relation)
+        }
         if (!isrcConfirmed && (relation == AlbumRelation.REMASTER_CONFLICT || relation == AlbumRelation.MISMATCH)) {
             return rejected(MatchRejection.ALBUM_MISMATCH, relation)
         }
@@ -165,6 +174,9 @@ class AlternativeTrackMatcher {
         }
         val artistsExact = expectedArtists.containsAll(performingPrimary) &&
             candidateArtists.containsAll(expectedCredit.names)
+        if (remasterOfUnmarkedTitle && !isrcConfirmed && !artistsExact) {
+            return rejected(MatchRejection.VERSION_MISMATCH, relation)
+        }
         val titleExact = expectedTitle.fullNormalized == candidateTitle.fullNormalized
         val albumAllowsDrift = relation == AlbumRelation.SAME || (relation == AlbumRelation.UNVERIFIED && titleExact)
         if (delta > EXCELLENT_DURATION_DELTA_SECONDS && !(albumAllowsDrift && artistsExact)) {

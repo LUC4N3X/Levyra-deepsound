@@ -34,7 +34,7 @@ data class LevyraSystemPlayerCopy(
     val noOutputs: String
 )
 
-fun LevyraStrings.systemPlayerCopy(): LevyraSystemPlayerCopy = when (code) {
+fun LevyraStrings.systemPlayerCopy(): LevyraSystemPlayerCopy = when (translationKey(code)) {
     "it" -> LevyraSystemPlayerCopy(
         "Uscita audio", "Il percorso audio reale usato da Levyra", "IN RIPRODUZIONE SU", "Scegli uscita",
         "Gestito da Android", "Altoparlante", "Bluetooth", "Cablata", "Esterna", "Qualità stream",
@@ -116,4 +116,38 @@ fun LevyraStrings.systemPlayerCopy(): LevyraSystemPlayerCopy = when (code) {
         "AVAILABLE OUTPUTS", "Switching output…", "Could not change output", "Sample rates", "Channels",
         "Open system output picker", "No outputs available"
     )
-}
+}.forBrazil(code) { brazilian() }
+
+private fun LevyraSystemPlayerCopy.brazilian(): LevyraSystemPlayerCopy = copy(
+    outputTitle = LevyraBrazilianPortuguese.adapt(outputTitle),
+    outputSubtitle = LevyraBrazilianPortuguese.adapt(outputSubtitle),
+    currentOutput = LevyraBrazilianPortuguese.adapt(currentOutput),
+    chooseOutput = LevyraBrazilianPortuguese.adapt(chooseOutput),
+    systemManaged = LevyraBrazilianPortuguese.adapt(systemManaged),
+    speaker = LevyraBrazilianPortuguese.adapt(speaker),
+    bluetooth = LevyraBrazilianPortuguese.adapt(bluetooth),
+    wired = LevyraBrazilianPortuguese.adapt(wired),
+    external = LevyraBrazilianPortuguese.adapt(external),
+    streamQuality = LevyraBrazilianPortuguese.adapt(streamQuality),
+    dspActive = LevyraBrazilianPortuguese.adapt(dspActive),
+    dspOff = LevyraBrazilianPortuguese.adapt(dspOff),
+    sleepChooseDuration = LevyraBrazilianPortuguese.adapt(sleepChooseDuration),
+    sleepEndsAt = LevyraBrazilianPortuguese.adapt(sleepEndsAt),
+    sleepActive = LevyraBrazilianPortuguese.adapt(sleepActive),
+    sleepAddFifteen = LevyraBrazilianPortuguese.adapt(sleepAddFifteen),
+    sleepMinuteUnit = LevyraBrazilianPortuguese.adapt(sleepMinuteUnit),
+    sleepFadeActive = LevyraBrazilianPortuguese.adapt(sleepFadeActive),
+    releaseReady = LevyraBrazilianPortuguese.adapt(releaseReady),
+    releaseFrom = LevyraBrazilianPortuguese.adapt(releaseFrom),
+    releaseTo = LevyraBrazilianPortuguese.adapt(releaseTo),
+    releaseHighlights = LevyraBrazilianPortuguese.adapt(releaseHighlights),
+    releaseProtection = LevyraBrazilianPortuguese.adapt(releaseProtection),
+    releaseProtectionDetail = LevyraBrazilianPortuguese.adapt(releaseProtectionDetail),
+    availableOutputs = LevyraBrazilianPortuguese.adapt(availableOutputs),
+    switchingOutput = LevyraBrazilianPortuguese.adapt(switchingOutput),
+    outputChangeFailed = LevyraBrazilianPortuguese.adapt(outputChangeFailed),
+    sampleRates = LevyraBrazilianPortuguese.adapt(sampleRates),
+    channels = LevyraBrazilianPortuguese.adapt(channels),
+    openSystemOutput = LevyraBrazilianPortuguese.adapt(openSystemOutput),
+    noOutputs = LevyraBrazilianPortuguese.adapt(noOutputs)
+)

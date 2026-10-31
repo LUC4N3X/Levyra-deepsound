@@ -101,4 +101,8 @@ class DownloadHealthRepository(
     suspend fun cancel(taskKey: String) = withContext(Dispatchers.IO) { OfflineExportWorker.cancel(context, taskKey) }
 
     suspend fun retry(taskKey: String) = withContext(Dispatchers.IO) { OfflineExportWorker.resume(context, taskKey) }
+
+    suspend fun restoreLegacyFolderAccess(pickedTreeUri: Uri, expectedTreeUri: String): Boolean = withContext(Dispatchers.IO) {
+        DownloadFolderAccess.restoreLegacyReadAccess(context, pickedTreeUri, expectedTreeUri)
+    }
 }

@@ -518,6 +518,19 @@ private val freshDiscoveryCopies = mapOf(
 )
 
 internal fun freshDiscoveryCopy(code: String): FreshDiscoveryCopy =
-    localizedValueOrEnglish(freshDiscoveryCopies, code)
+    localizedValueOrEnglish(freshDiscoveryCopies, code).forBrazil(code) { brazilian() }
 
 internal fun freshDiscoveryLocalizationCodes(): Set<String> = freshDiscoveryCopies.keys
+
+private fun FreshDiscoveryCopy.brazilian(): FreshDiscoveryCopy = copy(
+    title = LevyraBrazilianPortuguese.adapt(title),
+    description = LevyraBrazilianPortuguese.adapt(description),
+    windowTitle = LevyraBrazilianPortuguese.adapt(windowTitle),
+    windowDescription = LevyraBrazilianPortuguese.adapt(windowDescription),
+    days7 = LevyraBrazilianPortuguese.adapt(days7),
+    days30 = LevyraBrazilianPortuguese.adapt(days30),
+    days90 = LevyraBrazilianPortuguese.adapt(days90),
+    allTime = LevyraBrazilianPortuguese.adapt(allTime),
+    allowFavoritesTitle = LevyraBrazilianPortuguese.adapt(allowFavoritesTitle),
+    allowFavoritesDescription = LevyraBrazilianPortuguese.adapt(allowFavoritesDescription)
+)

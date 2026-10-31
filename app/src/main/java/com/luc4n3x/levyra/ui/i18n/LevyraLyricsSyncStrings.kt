@@ -723,6 +723,22 @@ private val lyricsSyncCopies = mapOf(
 )
 
 internal fun lyricsSyncCopy(code: String): LyricsSyncCopy =
-    localizedValueOrEnglish(lyricsSyncCopies, code)
+    localizedValueOrEnglish(lyricsSyncCopies, code).forBrazil(code) { brazilian() }
 
 internal fun lyricsSyncLocalizationCodes(): Set<String> = lyricsSyncCopies.keys
+
+private fun LyricsSyncCopy.brazilian(): LyricsSyncCopy = copy(
+    title = LevyraBrazilianPortuguese.adapt(title),
+    hint = LevyraBrazilianPortuguese.adapt(hint),
+    earlierAction = LevyraBrazilianPortuguese.adapt(earlierAction),
+    laterAction = LevyraBrazilianPortuguese.adapt(laterAction),
+    inSync = LevyraBrazilianPortuguese.adapt(inSync),
+    trackScope = LevyraBrazilianPortuguese.adapt(trackScope),
+    trackScopeHint = LevyraBrazilianPortuguese.adapt(trackScopeHint),
+    deviceScope = LevyraBrazilianPortuguese.adapt(deviceScope),
+    deviceScopeHint = LevyraBrazilianPortuguese.adapt(deviceScopeHint),
+    manualLabel = LevyraBrazilianPortuguese.adapt(manualLabel),
+    apply = LevyraBrazilianPortuguese.adapt(apply),
+    invalidInput = LevyraBrazilianPortuguese.adapt(invalidInput),
+    advanced = LevyraBrazilianPortuguese.adapt(advanced)
+)

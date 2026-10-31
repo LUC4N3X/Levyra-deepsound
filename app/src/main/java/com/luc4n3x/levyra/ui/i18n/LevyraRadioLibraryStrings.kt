@@ -4,6 +4,8 @@ import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.feature.radio.CustomRadioError
 
 internal class RadioLibraryCopy(private val values: List<String>) {
+    fun brazilian(): RadioLibraryCopy = RadioLibraryCopy(values.map(LevyraBrazilianPortuguese::adapt))
+
     init { require(values.size == 15 && values.all(String::isNotBlank)) }
     val favorites get() = values[0]
     val custom get() = values[1]
@@ -24,7 +26,12 @@ internal class RadioLibraryCopy(private val values: List<String>) {
     }]
 }
 
-internal fun radioLibraryCopy(code: String): RadioLibraryCopy = radioLibraryCopies.getValue(LevyraLanguageCatalog.normalize(code))
+internal fun radioLibraryCopy(code: String): RadioLibraryCopy =
+    if (isBrazilianPortuguese(code)) brazilianRadioLibraryCopy else radioLibraryCopies.getValue(translationKey(code))
+
+private val brazilianRadioLibraryCopy: RadioLibraryCopy by lazy(LazyThreadSafetyMode.PUBLICATION) {
+    radioLibraryCopies.getValue("pt").brazilian()
+}
 
 private val radioLibraryCopies = mapOf(
     "en" to "Favorite radio stations|My stations|Add station|Edit station|Station name|Stream URL|Image URL (optional)|Enter a name (1–160 characters).|Enter a public HTTP or HTTPS URL without credentials.|This stream is already saved.|Could not save changes. Please try again.|Station limit reached.|Try another name or add a station using its stream URL.|Some results could not be loaded. Load more to retry.|Delete this station and remove it from favorites?",

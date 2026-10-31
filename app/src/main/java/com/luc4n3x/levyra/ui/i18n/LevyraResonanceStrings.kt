@@ -210,5 +210,5 @@ internal val resonanceKeys: Set<String> = setOf(
 internal fun resonanceLocalizationCodes(): Set<String> = supportedLocalizationCodes()
 
 internal fun resonanceLocalizationEntries(code: String): Map<String, String> {
-    return resonanceBundles[code] ?: resonanceBundles.getValue("en")
+    return localizedValueOrEnglish(resonanceBundles, code)
 }

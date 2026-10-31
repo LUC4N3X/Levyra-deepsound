@@ -193,6 +193,6 @@ private val updateReleaseCopies: Map<String, LevyraUpdateReleaseCopy> = mapOf(
 )
 
 internal fun LevyraStrings.updateReleaseCopy(): LevyraUpdateReleaseCopy =
-    updateReleaseCopies[code] ?: updateReleaseCopies.getValue("en")
+    localizedValueOrEnglish(updateReleaseCopies, code)
 
 internal fun updateReleaseLocalizationCodes(): Set<String> = updateReleaseCopies.keys

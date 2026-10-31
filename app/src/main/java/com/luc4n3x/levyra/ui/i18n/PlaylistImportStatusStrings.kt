@@ -2,7 +2,7 @@ package com.luc4n3x.levyra.ui.i18n
 
 import com.luc4n3x.levyra.domain.PlaylistImportFailureKind
 
-fun playlistImportStartedMessage(code: String): String = when (code) {
+fun playlistImportStartedMessage(code: String): String = when (translationKey(code)) {
     "it" -> "Importazione playlist in corso…"
     "es" -> "Importando la playlist…"
     "fr" -> "Importation de la playlist…"
@@ -31,9 +31,9 @@ fun playlistImportStartedMessage(code: String): String = when (code) {
     "fi" -> "Tuodaan soittolistaa…"
     "et" -> "Esitusloendi importimine…"
     else -> "Importing playlist…"
-}
+}.forBrazil(code) { LevyraBrazilianPortuguese.adaptDynamic(this) }
 
-fun playlistImportAlreadyRunningMessage(code: String): String = when (code) {
+fun playlistImportAlreadyRunningMessage(code: String): String = when (translationKey(code)) {
     "it" -> "Un’importazione è già in corso."
     "es" -> "Ya hay una importación en curso."
     "fr" -> "Une importation est déjà en cours."
@@ -62,9 +62,9 @@ fun playlistImportAlreadyRunningMessage(code: String): String = when (code) {
     "fi" -> "Tuonti on jo käynnissä."
     "et" -> "Importimine juba käib."
     else -> "An import is already in progress."
-}
+}.forBrazil(code) { LevyraBrazilianPortuguese.adaptDynamic(this) }
 
-fun playlistImportSuccessMessage(code: String, count: Int, playlistName: String): String = when (code) {
+fun playlistImportSuccessMessage(code: String, count: Int, playlistName: String): String = when (translationKey(code)) {
     "it" -> "Importati $count brani in $playlistName"
     "es" -> "Se importaron $count canciones a $playlistName"
     "fr" -> "$count titres importés dans $playlistName"
@@ -102,7 +102,7 @@ fun playlistImportSuccessMessage(
     playlistName: String
 ): String {
     if (requestedCount <= importedCount) return playlistImportSuccessMessage(code, importedCount, playlistName)
-    return when (code) {
+    return when (translationKey(code)) {
         "it" -> "Importati $importedCount di $requestedCount brani in $playlistName"
         "es" -> "Se importaron $importedCount de $requestedCount canciones a $playlistName"
         "fr" -> "$importedCount titres sur $requestedCount importés dans $playlistName"
@@ -134,7 +134,7 @@ fun playlistImportSuccessMessage(
     }
 }
 
-fun playlistImportFailureMessage(code: String): String = when (code) {
+fun playlistImportFailureMessage(code: String): String = when (translationKey(code)) {
     "it" -> "Importazione non riuscita. Controlla il link o il backup e riprova."
     "es" -> "No se pudo importar. Comprueba el enlace o la copia de seguridad e inténtalo de nuevo."
     "fr" -> "L’importation a échoué. Vérifiez le lien ou la sauvegarde, puis réessayez."
@@ -163,7 +163,7 @@ fun playlistImportFailureMessage(code: String): String = when (code) {
     "fi" -> "Tuonti epäonnistui. Tarkista linkki tai varmuuskopio ja yritä uudelleen."
     "et" -> "Importimine ebaõnnestus. Kontrolli linki või varukoopiat ja proovi uuesti."
     else -> "Import failed. Check the link or backup and try again."
-}
+}.forBrazil(code) { LevyraBrazilianPortuguese.adaptDynamic(this) }
 
 private data class PlaylistImportFailureCopy(
     val invalidInput: String,
@@ -176,7 +176,7 @@ private data class PlaylistImportFailureCopy(
     val dismiss: String
 )
 
-private fun playlistImportFailureCopy(code: String): PlaylistImportFailureCopy = when (code) {
+private fun playlistImportFailureCopy(code: String): PlaylistImportFailureCopy = when (translationKey(code)) {
     "it" -> PlaylistImportFailureCopy("Il link o il backup non è riconosciuto. Controllalo e riprova.", "Non riesco a leggere questa playlist. Verifica che sia pubblica e accessibile.", "Questa playlist supera il limite di importazione supportato{limit}.", "Nessun brano compatibile è stato riconosciuto nel catalogo Levyra.", "Errore di rete durante l’importazione. Controlla la connessione e riprova.", "Il servizio musicale ha restituito un formato non riconosciuto. Riprova più tardi o usa un backup compatibile.", "Non è stato possibile salvare la playlist. Riprova.", "Nascondi suggerimento di importazione")
     "es" -> PlaylistImportFailureCopy("No se reconoce el enlace o la copia de seguridad. Compruébalo e inténtalo de nuevo.", "No se puede leer esta playlist. Comprueba que sea pública y accesible.", "Esta playlist supera el límite de importación admitido{limit}.", "No se pudo identificar ninguna canción compatible en el catálogo de Levyra.", "Se produjo un error de red durante la importación. Comprueba la conexión e inténtalo de nuevo.", "El servicio de música devolvió un formato no reconocido. Inténtalo más tarde o utiliza una copia de seguridad compatible.", "No se pudo guardar la playlist. Inténtalo de nuevo.", "Ocultar sugerencia de importación")
     "fr" -> PlaylistImportFailureCopy("Le lien ou la sauvegarde n’est pas reconnu. Vérifiez-le puis réessayez.", "Impossible de lire cette playlist. Vérifiez qu’elle est publique et accessible.", "Cette playlist dépasse la limite d’importation prise en charge{limit}.", "Aucun titre compatible n’a pu être identifié dans le catalogue Levyra.", "Une erreur réseau s’est produite pendant l’importation. Vérifiez votre connexion puis réessayez.", "Le service musical a renvoyé un format non reconnu. Réessayez plus tard ou utilisez une sauvegarde compatible.", "Impossible d’enregistrer la playlist. Réessayez.", "Masquer la suggestion d’importation")
@@ -205,7 +205,7 @@ private fun playlistImportFailureCopy(code: String): PlaylistImportFailureCopy =
     "fi" -> PlaylistImportFailureCopy("Linkkiä tai varmuuskopiota ei tunnisteta. Tarkista se ja yritä uudelleen.", "Tätä soittolistaa ei voida lukea. Varmista, että se on julkinen ja käytettävissä.", "Tämä soittolista ylittää tuetun tuontirajan{limit}.", "Levyran luettelosta ei löytynyt yhteensopivia kappaleita.", "Tuonnin aikana tapahtui verkkovirhe. Tarkista yhteys ja yritä uudelleen.", "Musiikkipalvelu palautti tuntemattoman muodon. Yritä myöhemmin uudelleen tai käytä yhteensopivaa varmuuskopiota.", "Soittolistaa ei voitu tallentaa. Yritä uudelleen.", "Piilota tuontiehdotus")
     "et" -> PlaylistImportFailureCopy("Linki või varukoopiat ei tuvastatud. Kontrolli seda ja proovi uuesti.", "Seda esitusloendit ei saa lugeda. Veendu, et see on avalik ja kättesaadav.", "See esitusloend ületab toetatud importimislimiidi{limit}.", "Levyra kataloogist ei leitud ühilduvaid lugusid.", "Importimisel tekkis võrguviga. Kontrolli ühendust ja proovi uuesti.", "Muusikateenus tagastas tundmatu vormingu. Proovi hiljem uuesti või kasuta ühilduvat varukoopiat.", "Esitusloendit ei saanud salvestada. Proovi uuesti.", "Peida importimise soovitus")
     else -> PlaylistImportFailureCopy("The link or backup is not recognized. Check it and try again.", "This playlist cannot be read. Make sure it is public and accessible.", "This playlist exceeds the supported import limit{limit}.", "No compatible tracks could be matched in the Levyra catalog.", "A network error occurred while importing. Check your connection and try again.", "The music service returned an unrecognized format. Try again later or use a compatible backup.", "The playlist could not be saved. Try again.", "Hide import suggestion")
-}
+}.forBrazil(code) { brazilian() }
 
 fun playlistImportFailureMessage(
     code: String,
@@ -229,7 +229,7 @@ fun playlistImportFailureMessage(
         PlaylistImportFailureKind.NO_USABLE_TRACKS -> playlistImportHubCopy(code)["fNoTracks"]
     }
     val limitText = limit?.let { value ->
-        when (code) {
+        when (translationKey(code)) {
             "it" -> ": massimo $value brani"
             "es" -> ": máximo $value canciones"
             "fr" -> " : $value titres maximum"
@@ -264,3 +264,14 @@ fun playlistImportFailureMessage(
 }
 
 fun playlistImportDismissMessage(code: String): String = playlistImportFailureCopy(code).dismiss
+
+private fun PlaylistImportFailureCopy.brazilian(): PlaylistImportFailureCopy = copy(
+    invalidInput = LevyraBrazilianPortuguese.adapt(invalidInput),
+    notAvailable = LevyraBrazilianPortuguese.adapt(notAvailable),
+    tooLarge = LevyraBrazilianPortuguese.adapt(tooLarge),
+    noMatches = LevyraBrazilianPortuguese.adapt(noMatches),
+    network = LevyraBrazilianPortuguese.adapt(network),
+    providerChanged = LevyraBrazilianPortuguese.adapt(providerChanged),
+    storage = LevyraBrazilianPortuguese.adapt(storage),
+    dismiss = LevyraBrazilianPortuguese.adapt(dismiss)
+)

@@ -1,6 +1,5 @@
 package com.luc4n3x.levyra.ui.i18n
 
-import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 
 internal data class PrismCopy(
     val body: String, val appearance: String, val player: String,
@@ -793,5 +792,5 @@ internal object LevyraPrismStrings {
         )
     )
 
-    fun forCode(code: String): PrismCopy = copies[LevyraLanguageCatalog.normalize(code)] ?: copies.getValue("en")
+    fun forCode(code: String): PrismCopy = localizedValueOrEnglish(copies, code)
 }

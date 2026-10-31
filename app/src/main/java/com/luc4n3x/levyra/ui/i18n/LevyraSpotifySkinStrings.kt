@@ -1,6 +1,5 @@
 package com.luc4n3x.levyra.ui.i18n
 
-import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 
 internal data class SpotifySkinCopy(
     val all: String,
@@ -71,5 +70,5 @@ internal object LevyraSpotifySkinStrings {
         "he" to SpotifySkinCopy("הכול", "פופולרי", "יציאות פופולריות", "היציאה האחרונה", "הצגת הדיסקוגרפיה", "אודות", "מעריצים אוהבים גם", "מוזיקה", "במעקב", "רדיו", "תצוגה מקדימה של המילים", "הצגת המילים", "על האמן", "לגלות את %s", "שירים של %s", "בדומה ל%s", "קרדיטים", "אמן ראשי", "מה תרצו לשמוע?", "גלו משהו חדש", "החליקו למעלה כדי לראות אפשרויות נוספות")
     )
 
-    fun forCode(code: String): SpotifySkinCopy = copies[LevyraLanguageCatalog.normalize(code)] ?: copies.getValue("en")
+    fun forCode(code: String): SpotifySkinCopy = localizedValueOrEnglish(copies, code)
 }

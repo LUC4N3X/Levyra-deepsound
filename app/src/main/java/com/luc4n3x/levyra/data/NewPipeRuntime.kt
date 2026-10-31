@@ -60,7 +60,7 @@ object NewPipeRuntime {
             try {
                 NewPipe.init(
                     OkHttpNewPipeDownloader(),
-                    Localization(locale.hl, locale.gl),
+                    newPipeLocalization(locale.hl, locale.gl),
                     ContentCountry(locale.gl)
                 )
                 appliedLanguage = locale.languageCode
@@ -90,7 +90,8 @@ object NewPipeRuntime {
         }
         val locale = LevyraContentLocales.forLanguage(appliedLanguage.ifBlank { requestedLanguage })
         val english = locale.hl.equals("en", ignoreCase = true)
-        return "${locale.hl}-${locale.gl},${locale.hl};q=0.9" +
+        val primaryTag = if ('-' in locale.hl) locale.hl else "${locale.hl}-${locale.gl}"
+        return "$primaryTag,${locale.hl.substringBefore('-')};q=0.9" +
             if (english) "" else ",en-US;q=0.8,en;q=0.7"
     }
 
@@ -99,16 +100,19 @@ object NewPipeRuntime {
             val requested = requestedLanguage
             val locale = YoutubeRegionProfile.effectiveLocale(requested)
             if (locale.languageCode.isBlank() || locale.languageCode == appliedLanguage) return
-            NewPipe.setupLocalization(Localization(locale.hl, locale.gl), ContentCountry(locale.gl))
+            NewPipe.setupLocalization(newPipeLocalization(locale.hl, locale.gl), ContentCountry(locale.gl))
             appliedLanguage = locale.languageCode
         }
     }
+
+    private fun newPipeLocalization(hl: String, gl: String): Localization =
+        Localization(hl.substringBefore('-'), hl.substringAfter('-', gl))
 
     fun onConfigurationChanged() {
         synchronized(this) {
             if (initialized.get()) {
                 val locale = YoutubeRegionProfile.effectiveLocale(requestedLanguage)
-                NewPipe.setupLocalization(Localization(locale.hl, locale.gl), ContentCountry(locale.gl))
+                NewPipe.setupLocalization(newPipeLocalization(locale.hl, locale.gl), ContentCountry(locale.gl))
                 appliedLanguage = locale.languageCode
             }
         }

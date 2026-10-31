@@ -1,6 +1,5 @@
 package com.luc4n3x.levyra.ui.i18n
 
-import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 
 internal data class AppleLyricsCopy(
     val lyricsStyle: String,
@@ -58,6 +57,6 @@ private val appleLyricsCopies: Map<String, AppleLyricsCopy> = mapOf(
 )
 
 internal fun appleLyricsCopy(code: String): AppleLyricsCopy =
-    appleLyricsCopies[LevyraLanguageCatalog.normalize(code)] ?: appleLyricsCopies.getValue("en")
+    localizedValueOrEnglish(appleLyricsCopies, code)
 
 internal fun appleLyricsLocalizationCodes(): Set<String> = appleLyricsCopies.keys

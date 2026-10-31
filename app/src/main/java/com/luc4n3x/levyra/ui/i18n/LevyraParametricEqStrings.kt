@@ -279,4 +279,24 @@ private val parametricEqCopies = mapOf(
 
 internal fun parametricEqLocalizationCodes(): Set<String> = parametricEqCopies.keys
 
-fun LevyraStrings.parametricEqCopy(): ParametricEqCopy = parametricEqCopies.getValue(code)
+fun LevyraStrings.parametricEqCopy(): ParametricEqCopy = parametricEqCopies.getValue(translationKey(code)).forBrazil(code) { brazilian() }
+
+private fun ParametricEqCopy.brazilian(): ParametricEqCopy = copy(
+    graphicEq = LevyraBrazilianPortuguese.adapt(graphicEq),
+    parametricEq = LevyraBrazilianPortuguese.adapt(parametricEq),
+    parametricSubtitle = LevyraBrazilianPortuguese.adapt(parametricSubtitle),
+    activeProfile = LevyraBrazilianPortuguese.adapt(activeProfile),
+    bands = LevyraBrazilianPortuguese.adapt(bands),
+    addBand = LevyraBrazilianPortuguese.adapt(addBand),
+    removeBand = LevyraBrazilianPortuguese.adapt(removeBand),
+    frequency = LevyraBrazilianPortuguese.adapt(frequency),
+    gain = LevyraBrazilianPortuguese.adapt(gain),
+    qFactor = LevyraBrazilianPortuguese.adapt(qFactor),
+    saveProfile = LevyraBrazilianPortuguese.adapt(saveProfile),
+    reset = LevyraBrazilianPortuguese.adapt(reset),
+    peak = LevyraBrazilianPortuguese.adapt(peak),
+    lowShelf = LevyraBrazilianPortuguese.adapt(lowShelf),
+    highShelf = LevyraBrazilianPortuguese.adapt(highShelf),
+    importHint = LevyraBrazilianPortuguese.adapt(importHint),
+    invalidDetail = LevyraBrazilianPortuguese.adapt(invalidDetail)
+)

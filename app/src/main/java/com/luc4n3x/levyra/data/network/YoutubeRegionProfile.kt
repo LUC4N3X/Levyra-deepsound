@@ -14,7 +14,7 @@ object YoutubeRegionProfile {
 
     fun effectiveLocale(preferredLanguageCode: String): LevyraContentLocale {
         if (isEnabled()) {
-            return LevyraContentLocales.forLanguage("en")
+            return LevyraContentLocales.catalogLocale("en")
         }
         return LevyraContentLocales.forLanguage(preferredLanguageCode)
     }

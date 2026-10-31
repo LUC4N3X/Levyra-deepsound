@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.domain
 
+import java.util.Locale
+
 data class LevyraContentLocale(
     val languageCode: String,
     val hl: String,
@@ -11,7 +13,8 @@ data class LevyraContentLocale(
     val energySectionTitle: String,
     val homeQueries: List<String>,
     val tasteQueries: Map<String, String>,
-    val moodQueries: Map<String, String>
+    val moodQueries: Map<String, String>,
+    val contentLanguageCode: String = languageCode
 ) {
     fun queryForTaste(id: String): String = tasteQueries[id] ?: homeQueries.firstOrNull().orEmpty()
     fun queryForMood(id: String): String = moodQueries[id] ?: homeQueries.firstOrNull().orEmpty()
@@ -20,12 +23,13 @@ data class LevyraContentLocale(
 object LevyraContentLocales {
 
     fun quickSearches(code: String): List<String> {
-        return when (forLanguage(code).languageCode) {
+        return when (forLanguage(code).contentLanguageCode) {
             "it" -> listOf("Sfera Ebbasta", "Lazza", "Geolier", "Marracash", "top hits Italia", "rap italiano", "night drive", "gym bass")
             "es" -> listOf("Bad Bunny", "Rosalía", "Quevedo", "Aitana", "éxitos España", "reggaeton latino", "conducir de noche", "gym bass")
             "fr" -> listOf("Gazo", "Aya Nakamura", "Damso", "Ninho", "top hits France", "rap français", "conduite de nuit", "gym bass")
             "de" -> listOf("Apache 207", "RAF Camora", "Luciano", "Ayliva", "top hits Deutschland", "deutschrap", "night drive", "gym bass")
             "pt" -> listOf("Dillaz", "Bárbara Bandeira", "Diogo Piçarra", "BISPO", "hits Portugal", "rap português", "condução noturna", "música de treino")
+            "pt-BR" -> listOf("Anitta", "Matuê", "Ana Castela", "Henrique & Juliano", "hits Brasil", "funk brasileiro", "música para dirigir à noite", "música para academia")
             "nl" -> listOf("Frenna", "Suzan & Freek", "Antoon", "Boef", "Nederlandse hits", "nederlandse rap", "night drive", "gym bass")
             "pl" -> listOf("sanah", "Taco Hemingway", "Dawid Podsiadło", "Quebonafide", "polskie hity", "polski rap", "night drive", "gym bass")
             "ro" -> listOf("Inna", "The Motans", "Delia", "Carla's Dreams", "hituri România", "rap românesc", "night drive", "gym bass")
@@ -65,12 +69,13 @@ object LevyraContentLocales {
     }
 
     fun artistSuggestions(code: String): List<String> {
-        return when (forLanguage(code).languageCode) {
+        return when (forLanguage(code).contentLanguageCode) {
             "it" -> listOf("Sfera Ebbasta", "Lazza", "Geolier", "Marracash", "Ultimo", "Annalisa", "Tedua", "Ghali", "Madame", "Capo Plaza")
             "es" -> listOf("Bad Bunny", "Rosalía", "Quevedo", "Aitana", "Feid", "Karol G", "Rauw Alejandro", "Myke Towers", "Mora", "Bizarrap")
             "fr" -> listOf("Gazo", "Aya Nakamura", "Damso", "Ninho", "Tiakola", "SDM", "Zola", "Dadju", "SCH", "Jul")
             "de" -> listOf("Apache 207", "RAF Camora", "Luciano", "Ayliva", "Ufo361", "Shirin David", "Kontra K", "Nina Chuba", "Ski Aggu", "Bonez MC")
             "pt" -> listOf("Dillaz", "Bárbara Bandeira", "Diogo Piçarra", "BISPO", "Carolina Deslandes", "Slow J", "Nena", "Plutónio", "Mizzy Miles", "Wet Bed Gang")
+            "pt-BR" -> listOf("Anitta", "Matuê", "Ana Castela", "Henrique & Juliano", "Luísa Sonza", "Jão", "Veigh", "Ludmilla", "Gusttavo Lima", "Djonga")
             "nl" -> listOf("Frenna", "Suzan & Freek", "Antoon", "Boef", "Roxy Dekker", "Maan", "Ronnie Flex", "Broederliefde", "S10", "Snelle")
             "pl" -> listOf("sanah", "Taco Hemingway", "Dawid Podsiadło", "Quebonafide", "PRO8L3M", "Mata", "Daria Zawiałow", "Kizo", "Oki", "Bambi")
             "ro" -> listOf("Inna", "The Motans", "Delia", "Carla's Dreams", "Irina Rimes", "Smiley", "Andra", "M.G.L.", "Theo Rose", "Ian")
@@ -126,7 +131,7 @@ object LevyraContentLocales {
             "es" -> "Explora artistas"
             "fr" -> "Explore les artistes"
             "de" -> "Künstler entdecken"
-            "pt" -> "Explorar artistas"
+            "pt", "pt-BR" -> "Explorar artistas"
             "nl" -> "Ontdek artiesten"
             "pl" -> "Odkrywaj artystów"
             "ro" -> "Explorează artiști"
@@ -171,7 +176,7 @@ object LevyraContentLocales {
             "es" -> "Sugerencias"
             "fr" -> "Suggestions"
             "de" -> "Vorschläge"
-            "pt" -> "Sugestões"
+            "pt", "pt-BR" -> "Sugestões"
             "nl" -> "Suggesties"
             "pl" -> "Sugestie"
             "ro" -> "Sugestii"
@@ -210,7 +215,43 @@ object LevyraContentLocales {
         }
     }
 
-    fun forLanguage(code: String): LevyraContentLocale {
+    fun forLanguage(code: String): LevyraContentLocale =
+        withMusicRegion(catalogLocale(code), LevyraMusicRegion.selectedId)
+
+    fun contentLanguage(code: String): String {
+        val locale = forLanguage(code)
+        return if (locale.contentLanguageCode == locale.languageCode) {
+            LevyraLanguageCatalog.normalize(code)
+        } else {
+            locale.contentLanguageCode
+        }
+    }
+
+    fun withMusicRegion(base: LevyraContentLocale, regionId: String): LevyraContentLocale {
+        val region = ChartsCatalog.supportedRegion(regionId) ?: return base
+        if (base.chartRegionId == region.id) return base
+        val regional = base.copy(
+            gl = region.country.uppercase(Locale.ROOT),
+            chartRegionId = region.id,
+            chartCountry = region.country,
+            localSectionTitle = region.label
+        )
+        val content = catalogLocale(regionContentLanguages[region.id] ?: return regional)
+        return regional.copy(
+            homeQueries = content.homeQueries,
+            tasteQueries = content.tasteQueries,
+            moodQueries = content.moodQueries,
+            contentLanguageCode = content.languageCode
+        )
+    }
+
+    private val regionContentLanguages: Map<String, String> by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        LevyraLanguageCatalog.selectableLanguages.asReversed()
+            .associate { language -> catalogLocale(language.code).chartRegionId to language.code } +
+            mapOf("gb" to "en", "mx" to "es")
+    }
+
+    fun catalogLocale(code: String): LevyraContentLocale {
         return when (LevyraLanguageCatalog.normalize(code)) {
             "it" -> locale(
                 languageCode = "it",
@@ -385,6 +426,41 @@ object LevyraContentLocales {
                     "party" to "festa dance hits Portugal 2026",
                     "drive" to "música para conduzir à noite Portugal",
                     "sad" to "músicas portuguesas tristes"
+                )
+            )
+            "pt-BR" -> locale(
+                languageCode = "pt-BR",
+                hl = "pt-BR",
+                gl = "BR",
+                chartRegionId = "br",
+                chartCountry = "br",
+                quick = "Escolhas rápidas",
+                local = "Brasil na sua órbita",
+                energy = "Energia imediata",
+                homeQueries = listOf("hits Brasil 2026", "funk brasileiro 2026", "sertanejo 2026", "rap brasileiro 2026"),
+                tasteQueries = mapOf(
+                    "hits" to "hits Brasil 2026",
+                    "rap" to "rap trap brasileiro 2026",
+                    "italiana" to "música brasileira 2026",
+                    "pop" to "pop brasileiro 2026",
+                    "gym" to "música para academia funk trap",
+                    "chill" to "mpb chill relax",
+                    "focus" to "música para foco e concentração",
+                    "sad" to "sofrência músicas tristes",
+                    "party" to "funk pagode festa hits 2026",
+                    "rock" to "rock nacional brasileiro hits",
+                    "electro" to "música eletrônica brasileira 2026",
+                    "rnb" to "r&b soul brasileiro hits"
+                ),
+                moodQueries = mapOf(
+                    "hits" to "hits Brasil 2026",
+                    "gym" to "música para academia funk trap",
+                    "chill" to "mpb chill relax",
+                    "focus" to "música para foco e concentração",
+                    "italia" to "música brasileira 2026",
+                    "party" to "funk pagode festa hits 2026",
+                    "drive" to "música para dirigir à noite Brasil",
+                    "sad" to "sofrência músicas tristes"
                 )
             )
             "nl" -> compact(

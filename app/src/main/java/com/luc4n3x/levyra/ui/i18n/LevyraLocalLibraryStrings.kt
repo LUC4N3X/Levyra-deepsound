@@ -467,7 +467,7 @@ private val localScanFailedMessages = mapOf(
 )
 
 internal fun localScanFailedLocalization(code: String): String =
-    localScanFailedMessages[code] ?: localScanFailedMessages.getValue("en")
+    localizedValueOrEnglish(localScanFailedMessages, code)
 
 internal fun localLibraryLocalizationEntries(code: String): Map<String, String> =
     localizedBundleOrEnglish(localLibraryBundles, code)

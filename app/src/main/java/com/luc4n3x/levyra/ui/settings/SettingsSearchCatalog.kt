@@ -7,6 +7,7 @@ import com.luc4n3x.levyra.ui.i18n.advancedPrefetchMobileDataCopy
 import com.luc4n3x.levyra.ui.i18n.automationCopy
 import com.luc4n3x.levyra.ui.i18n.deviceIntegrationCopy
 import com.luc4n3x.levyra.ui.i18n.dockMorph
+import com.luc4n3x.levyra.ui.i18n.musicRegionCopy
 import com.luc4n3x.levyra.ui.i18n.parametricEqCopy
 import com.luc4n3x.levyra.ui.i18n.smartOfflineCopy
 import com.luc4n3x.levyra.ui.preloadNextTrack
@@ -121,6 +122,7 @@ private fun MutableList<SettingsSearchEntry>.playerEntries(strings: LevyraString
     entry("player.sponsorblock", strings.sponsorBlock, strings.sponsorBlockSubtitle, "sponsorblock segments skip", categories.player)
     entry("player.enhance_video_metadata", strings.enhanceVideoMetadata, strings.enhanceVideoMetadataSubtitle, "video metadata", categories.player)
     entry("player.skip_silence", strings.skipSilence, strings.skipSilenceSubtitle, "silence skip", categories.player)
+    entry("player.keep_screen_on", strings.keepScreenOn, strings.keepScreenOnSubtitle, "keep screen awake display timeout sleep", categories.player)
     entry("player.bluetooth_resume", automation.bluetoothResume, automation.bluetoothResumeSubtitle, "bluetooth headphones car automation", categories.player)
     entry("player.pause_on_mute", automation.pauseOnMute, automation.pauseOnMuteSubtitle, "mute volume automation", categories.player)
     entry("player.auto_download_favorites", automation.autoDownloadFavorites, automation.autoDownloadFavoritesSubtitle, "download favorites automation", categories.player)
@@ -166,6 +168,7 @@ private fun MutableList<SettingsSearchEntry>.libraryEntries(strings: LevyraStrin
     val advancedPrefetchMobileData = advancedPrefetchMobileDataCopy(strings.code)
     entry("downloads.advanced_prefetch_mobile_data", advancedPrefetchMobileData.title, advancedPrefetchMobileData.description, "preload prefetch mobile data cellular 4g 5g lte", categories.downloads)
     entry("downloads.quality", strings.downloadQualityPreset, strings.downloadQualityPresetSubtitle, "quality bitrate format", categories.downloads)
+    entry("downloads.destination", strings.downloadDestination, strings.downloadDestinationSubtitle, "download destination private storage music folder public", categories.downloads)
     entry("downloads.location", strings.downloadLocation, strings.downloadLocationSubtitle, "folder storage sd card", categories.downloads)
     entry("downloads.folder_organization", strings.downloadFolderOrganization, strings.downloadFolderOrganizationSubtitle, "folder organize", categories.downloads)
     entry("downloads.speed_limit", strings.downloadSpeedLimit, strings.downloadSpeedLimitSubtitle, "speed bandwidth", categories.downloads)
@@ -203,6 +206,8 @@ private fun MutableList<SettingsSearchEntry>.systemEntries(
     entry("system.redo_questionnaire", strings.redoQuestionnaire, strings.redoQuestionnaireSubtitle, "onboarding genres taste", categories.system)
     entry("system.profile_photo", strings.profilePhoto, strings.profilePhotoAddSubtitle, "avatar photo profile", categories.system)
     entry("system.language", strings.language, strings.languageSubtitle, "language locale", categories.system)
+    val musicRegion = musicRegionCopy(strings.code)
+    entry("system.music_region", musicRegion.title, musicRegion.automatic, "music region country market charts", categories.system)
     if (updatesAvailable) {
         entry("app.updates", strings.updates, strings.checkNewVersions, "version update", categories.app)
     }

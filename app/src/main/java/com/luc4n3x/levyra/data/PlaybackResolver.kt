@@ -1202,6 +1202,18 @@ class PlaybackResolver private constructor(private val context: Context) {
             DownloadQualitySource.Standard, null -> null
         }
 
+    private suspend fun resolveAutomaticDownloadSource(track: Track, quality: String): Track? {
+        if (supportsLosslessDownloads()) {
+            highQualityDownloads.resolveLosslessDownload(track, quality, ::basePlaybackProvenance)?.let { return it }
+        }
+        if (quality == LevyraAudioQuality.LOW || !highQualityPlayback.mode.enabled) return null
+        return runCatchingPreservingCancellation {
+            highQualityPlayback.resolveLossyDownload(track, LevyraAudioQuality.HIGH, ::basePlaybackProvenance)
+        }.onFailure { error ->
+            Timber.d(error, "Offline high bitrate source unavailable")
+        }.getOrNull()
+    }
+
     suspend fun resolveForOffline(
         track: Track,
         audioQualityOverride: String? = null,
@@ -1214,10 +1226,9 @@ class PlaybackResolver private constructor(private val context: Context) {
             acceptAcrossLanguageChange = { it.playbackManifest?.alternativeSource != null }
         ) { requestTrack, preferredLanguage ->
             resolveAlternativeDownloadSource(requestTrack, qualitySource)?.let { return@resolveWithLanguageRevisionRetry it }
-            val lossless = if (qualitySource == null && supportsLosslessDownloads()) {
-                highQualityDownloads.resolveLosslessDownload(requestTrack, quality, ::basePlaybackProvenance)
-            } else null
-            if (lossless != null) return@resolveWithLanguageRevisionRetry lossless
+            if (qualitySource == null) {
+                resolveAutomaticDownloadSource(requestTrack, quality)?.let { return@resolveWithLanguageRevisionRetry it }
+            }
             val reel = if (preferredLanguage.isBlank()) {
                 runCatchingPreservingCancellation {
                     resolveVideoWithAndroidReel(requestTrack.copy(streamUrl = "", videoStreamUrl = ""))

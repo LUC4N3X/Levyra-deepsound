@@ -1,6 +1,5 @@
 package com.luc4n3x.levyra.ui.i18n
 
-import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 
 internal data class AppleMusicSkinCopy(
     val editorialUnavailable: String,
@@ -427,5 +426,5 @@ internal object LevyraAppleMusicStrings {
         )
     )
 
-    fun forCode(code: String): AppleMusicSkinCopy = copies[LevyraLanguageCatalog.normalize(code)] ?: copies.getValue("en")
+    fun forCode(code: String): AppleMusicSkinCopy = localizedValueOrEnglish(copies, code)
 }

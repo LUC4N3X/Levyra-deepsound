@@ -3,6 +3,8 @@ package com.luc4n3x.levyra.ui.i18n
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 
 internal class DiscoveryCopy(private val values: List<String>) {
+    fun brazilian(): DiscoveryCopy = DiscoveryCopy(values.map(LevyraBrazilianPortuguese::adapt))
+
     init { require(values.size == DISCOVERY_COPY_SIZE && values.all(String::isNotBlank)) }
     val title get() = values[0]
     val lead get() = values[1]
@@ -38,7 +40,12 @@ internal class DiscoveryCopy(private val values: List<String>) {
 
 internal const val DISCOVERY_COPY_SIZE = 30
 
-internal fun discoveryCopy(code: String): DiscoveryCopy = discoveryCopies.getValue(LevyraLanguageCatalog.normalize(code))
+internal fun discoveryCopy(code: String): DiscoveryCopy =
+    if (isBrazilianPortuguese(code)) brazilianDiscoveryCopy else discoveryCopies.getValue(translationKey(code))
+
+private val brazilianDiscoveryCopy: DiscoveryCopy by lazy(LazyThreadSafetyMode.PUBLICATION) {
+    discoveryCopies.getValue("pt").brazilian()
+}
 
 internal fun discoveryCopyLanguages(): Set<String> = discoveryCopies.keys
 

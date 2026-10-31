@@ -12,7 +12,7 @@ data class PlaylistImportCopy(
     val cancel: String
 )
 
-fun LevyraStrings.playlistImportCopy(): PlaylistImportCopy = when (code) {
+fun LevyraStrings.playlistImportCopy(): PlaylistImportCopy = when (translationKey(code)) {
     "it" -> PlaylistImportCopy(
         "Importa playlist",
         "Da servizi musicali supportati e backup compatibili",
@@ -265,7 +265,7 @@ fun LevyraStrings.playlistImportCopy(): PlaylistImportCopy = when (code) {
         "Imported tracks are matched to Levyra's catalog for reliable playback.",
         "Cancel"
     )
-}
+}.forBrazil(code) { brazilian() }
 
 fun LevyraStrings.localizedAudioPresetLabel(presetId: String, fallback: String): String {
     val labels = localizedNewAudioPresetLabels(code)
@@ -294,7 +294,7 @@ private data class NewAudioPresetLabels(
     val deviceTune: String
 )
 
-private fun localizedNewAudioPresetLabels(code: String): NewAudioPresetLabels = when (code) {
+private fun localizedNewAudioPresetLabels(code: String): NewAudioPresetLabels = when (translationKey(code)) {
     "it" -> NewAudioPresetLabels("Rock", "Pop", "Elettronica", "Jazz", "Acustica", "Classica", "Profilo dispositivo")
     "es" -> NewAudioPresetLabels("Rock", "Pop", "Electrónica", "Jazz", "Acústica", "Clásica", "Ajuste de dispositivo")
     "fr" -> NewAudioPresetLabels("Rock", "Pop", "Électronique", "Jazz", "Acoustique", "Classique", "Réglage appareil")
@@ -323,4 +323,24 @@ private fun localizedNewAudioPresetLabels(code: String): NewAudioPresetLabels = 
     "fi" -> NewAudioPresetLabels("Rock", "Pop", "Elektroninen", "Jazz", "Akustinen", "Klassinen", "Laitteen viritys")
     "et" -> NewAudioPresetLabels("Rock", "Pop", "Elektrooniline", "Jazz", "Akustiline", "Klassikaline", "Seadme häälestus")
     else -> NewAudioPresetLabels("Rock", "Pop", "Electronic", "Jazz", "Acoustic", "Classical", "Device tune")
-}
+}.forBrazil(code) { brazilian() }
+
+private fun PlaylistImportCopy.brazilian(): PlaylistImportCopy = copy(
+    title = LevyraBrazilianPortuguese.adapt(title),
+    subtitle = LevyraBrazilianPortuguese.adapt(subtitle),
+    action = LevyraBrazilianPortuguese.adapt(action),
+    body = LevyraBrazilianPortuguese.adapt(body),
+    placeholder = LevyraBrazilianPortuguese.adapt(placeholder),
+    note = LevyraBrazilianPortuguese.adapt(note),
+    cancel = LevyraBrazilianPortuguese.adapt(cancel)
+)
+
+private fun NewAudioPresetLabels.brazilian(): NewAudioPresetLabels = copy(
+    rock = LevyraBrazilianPortuguese.adapt(rock),
+    pop = LevyraBrazilianPortuguese.adapt(pop),
+    electronic = LevyraBrazilianPortuguese.adapt(electronic),
+    jazz = LevyraBrazilianPortuguese.adapt(jazz),
+    acoustic = LevyraBrazilianPortuguese.adapt(acoustic),
+    classical = LevyraBrazilianPortuguese.adapt(classical),
+    deviceTune = LevyraBrazilianPortuguese.adapt(deviceTune)
+)

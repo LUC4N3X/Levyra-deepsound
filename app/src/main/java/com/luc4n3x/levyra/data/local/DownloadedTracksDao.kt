@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import com.luc4n3x.levyra.domain.DownloadOwnership
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -75,6 +76,17 @@ interface DownloadedTracksDao {
 
     @Query("DELETE FROM downloaded_tracks WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    @Query("DELETE FROM downloaded_tracks WHERE uri = :uri")
+    suspend fun deleteByUri(uri: String)
+
+    @Transaction
+    suspend fun registerDownload(download: DownloadEntity): Long {
+        val previousOwnership = byUri(download.uri)?.ownership
+        deleteByUri(download.uri)
+        val ownership = if (previousOwnership == DownloadOwnership.MANUAL.name) previousOwnership else download.ownership
+        return insert(download.copy(ownership = ownership))
+    }
 
     @Query("DELETE FROM downloaded_tracks")
     suspend fun clearAll()

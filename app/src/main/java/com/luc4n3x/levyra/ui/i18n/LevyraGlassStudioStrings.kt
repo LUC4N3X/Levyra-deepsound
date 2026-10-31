@@ -13,7 +13,7 @@ internal data class GlassStudioCopy(
     val reset: String
 )
 
-internal fun LevyraStrings.glassStudioCopy(): GlassStudioCopy = when (code) {
+internal fun LevyraStrings.glassStudioCopy(): GlassStudioCopy = when (translationKey(code)) {
     "it" -> GlassStudioCopy(
         title = "Expressive Glass",
         subtitle = "Profondità e materiale delle superfici in vetro",
@@ -470,4 +470,17 @@ internal fun LevyraStrings.glassStudioCopy(): GlassStudioCopy = when (code) {
         disabledNote = "Turn on Liquid Glass in interface settings to use these controls.",
         reset = "Reset"
     )
-}
+}.forBrazil(code) { brazilian() }
+
+private fun GlassStudioCopy.brazilian(): GlassStudioCopy = copy(
+    title = LevyraBrazilianPortuguese.adapt(title),
+    subtitle = LevyraBrazilianPortuguese.adapt(subtitle),
+    blur = LevyraBrazilianPortuguese.adapt(blur),
+    transparency = LevyraBrazilianPortuguese.adapt(transparency),
+    tint = LevyraBrazilianPortuguese.adapt(tint),
+    refraction = LevyraBrazilianPortuguese.adapt(refraction),
+    refractionSubtitle = LevyraBrazilianPortuguese.adapt(refractionSubtitle),
+    performanceNote = LevyraBrazilianPortuguese.adapt(performanceNote),
+    disabledNote = LevyraBrazilianPortuguese.adapt(disabledNote),
+    reset = LevyraBrazilianPortuguese.adapt(reset)
+)

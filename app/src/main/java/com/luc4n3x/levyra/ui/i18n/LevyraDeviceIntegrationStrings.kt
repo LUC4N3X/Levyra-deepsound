@@ -677,6 +677,23 @@ private val deviceIntegrationCopies: Map<String, DeviceIntegrationCopy> = mapOf(
 )
 
 internal fun deviceIntegrationCopy(code: String): DeviceIntegrationCopy =
-    localizedValueOrEnglish(deviceIntegrationCopies, code)
+    localizedValueOrEnglish(deviceIntegrationCopies, code).forBrazil(code) { brazilian() }
 
 internal fun deviceIntegrationLocalizationCodes(): Set<String> = deviceIntegrationCopies.keys
+
+private fun DeviceIntegrationCopy.brazilian(): DeviceIntegrationCopy = copy(
+    title = LevyraBrazilianPortuguese.adapt(title),
+    subtitle = LevyraBrazilianPortuguese.adapt(subtitle),
+    active = LevyraBrazilianPortuguese.adapt(active),
+    automatic = LevyraBrazilianPortuguese.adapt(automatic),
+    unavailable = LevyraBrazilianPortuguese.adapt(unavailable),
+    notificationsOff = LevyraBrazilianPortuguese.adapt(notificationsOff),
+    openNotifications = LevyraBrazilianPortuguese.adapt(openNotifications),
+    backgroundTitle = LevyraBrazilianPortuguese.adapt(backgroundTitle),
+    backgroundDetail = LevyraBrazilianPortuguese.adapt(backgroundDetail),
+    standardDetail = LevyraBrazilianPortuguese.adapt(standardDetail),
+    superIslandDetail = LevyraBrazilianPortuguese.adapt(superIslandDetail),
+    atomicIslandDetail = LevyraBrazilianPortuguese.adapt(atomicIslandDetail),
+    oplusLyricsDetail = LevyraBrazilianPortuguese.adapt(oplusLyricsDetail),
+    nowBarDetail = LevyraBrazilianPortuguese.adapt(nowBarDetail)
+)
