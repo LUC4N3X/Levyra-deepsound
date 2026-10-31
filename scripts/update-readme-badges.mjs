@@ -83,33 +83,52 @@ const escapeXml = value => String(value)
   .replaceAll('"', '&quot;')
   .replaceAll("'", '&apos;')
 
+const makeArcScallopPath = (cx, cy, rValley, rPeak, lobes = 10) => {
+  const step = (2 * Math.PI) / lobes
+  const halfStep = step / 2
+  const dMid = rValley * Math.cos(halfStep)
+  const C = 2 * rValley * Math.sin(halfStep)
+  const S = rPeak - dMid
+  const R = S / 2.0 + (C ** 2) / (8.0 * S)
+  const d = []
+  const x0 = cx + rValley * Math.sin(-halfStep)
+  const y0 = cy - rValley * Math.cos(-halfStep)
+  d.push(`M ${x0.toFixed(2)} ${y0.toFixed(2)}`)
+  for (let i = 0; i < lobes; i++) {
+    const aEnd = (i + 0.5) * step
+    const xEnd = cx + rValley * Math.sin(aEnd)
+    const yEnd = cy - rValley * Math.cos(aEnd)
+    d.push(`A ${R.toFixed(2)} ${R.toFixed(2)} 0 0 1 ${xEnd.toFixed(2)} ${yEnd.toFixed(2)}`)
+  }
+  d.push('Z')
+  return d.join(' ')
+}
+
+const PILL_SCALLOP = makeArcScallopPath(16, 16, 9.2, 12.2, 10)
+
 const icons = {
   latest: '<path d="M-4 -8 h6 l5 5 -9 9 -6 -6 v-4 Z M1 -5 a1.5 1.5 0 1 0 0 3 A1.5 1.5 0 0 0 1 -5 Z" fill="currentColor"/>',
   downloads: '<path d="M0 -6 v11 m0 0 l4 -4 m-4 4 l-4 -4 M-6 8 h12" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>',
   license: '<path d="M0 -8 l7 3 v4 c0 5 -3 7 -7 9 -4 -2 -7 -4 -7 -9 v-4 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M-3 0 l2 2 4 -5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
-  stars: '<path d="M0 -8 l2.5 5 5.5 .8 -4 3.8 1 5.4 -5 -2.6 -5 2.6 1 -5.4 -4 -3.8 5.5 -.8 Z" fill="currentColor"/>'
+  stars: '<path d="M0 -8 l2.5 5 5.5 .8 -4 3.8 1 5.4 -5 -2.6 -5 2.6 1 -5.4 -4 -3.8 5.5 -.8 Z" fill="currentColor"/>',
+  docs: '<path d="M-5 -7 h7 l4 4 v10 h-11 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M2 -7 v4 h4 M-2 1 h5 M-2 5 h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'
 }
 
-const makePill = ({ label, value, icon, isDark, accentColor, mobile = false }) => {
-  const bg = isDark ? '#0D1117' : '#FFFFFF'
-  const border = isDark ? '#30363D' : '#D0D7DE'
-  const tileBg = isDark ? '#161B22' : '#F6F8FA'
-  const tileBorder = isDark ? '#30363D' : '#D0D7DE'
-  const textSub = '#8B949E'
-  const textMain = isDark ? '#F0F6FC' : '#1F2328'
+const makePill = ({ label, value, icon, accentColor, mobile = false }) => {
   const title = `${label} ${value}`
   const width = mobile ? 126 : 130
   const height = mobile ? 31.0154 : 32
+  const rx = mobile ? 15.5 : 16
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 130 32" role="img" aria-label="${escapeXml(title)}">
   <title>${escapeXml(title)}</title>
-  <rect x=".75" y=".75" width="128.5" height="30.5" rx="8" fill="${bg}" stroke="${border}" stroke-width="1.5"/>
-  <rect x="4" y="4" width="24" height="24" rx="6" fill="${tileBg}" stroke="${tileBorder}" stroke-width="1"/>
-  <g transform="translate(16 16)" style="color:${accentColor};">
+  <rect x=".75" y=".75" width="128.5" height="30.5" rx="${rx}" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
+  <path d="${PILL_SCALLOP}" fill="${accentColor}"/>
+  <g transform="translate(16 16)" style="color:#FFFFFF;">
     ${icon}
   </g>
-  <text x="35" y="12.5" fill="${textSub}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="7.2" font-weight="700" letter-spacing=".75">${escapeXml(label)}</text>
-  <text x="35" y="24.5" fill="${textMain}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="700">${escapeXml(value)}</text>
+  <text x="35" y="12.2" fill="${accentColor}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="7.5" font-weight="700" letter-spacing=".8">${escapeXml(label)}</text>
+  <text x="35" y="24.5" fill="#0F172A" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="750">${escapeXml(value)}</text>
 </svg>`
 }
 
@@ -135,20 +154,24 @@ const starsValue = new Intl.NumberFormat('en-US').format(repositoryData.stargaze
 
 await mkdir('docs/assets', { recursive: true })
 await Promise.all([
-  writeFile('docs/assets/levyra-release.svg', makePill({ label: 'LATEST', value: releaseValue, icon: icons.latest, isDark: true, accentColor: '#A855F7' }), 'utf8'),
-  writeFile('docs/assets/levyra-downloads.svg', makePill({ label: 'DOWNLOADS', value: downloadsValue, icon: icons.downloads, isDark: true, accentColor: '#10B981' }), 'utf8'),
-  writeFile('docs/assets/levyra-license.svg', makePill({ label: 'LICENSE', value: 'GPL-3.0', icon: icons.license, isDark: true, accentColor: '#38BDF8' }), 'utf8'),
-  writeFile('docs/assets/levyra-stars.svg', makePill({ label: 'STARS', value: starsValue, icon: icons.stars, isDark: true, accentColor: '#FBBF24' }), 'utf8'),
-  writeFile('docs/assets/levyra-release-light.svg', makePill({ label: 'LATEST', value: releaseValue, icon: icons.latest, isDark: false, accentColor: '#7C3AED' }), 'utf8'),
-  writeFile('docs/assets/levyra-downloads-light.svg', makePill({ label: 'DOWNLOADS', value: downloadsValue, icon: icons.downloads, isDark: false, accentColor: '#059669' }), 'utf8'),
-  writeFile('docs/assets/levyra-license-light.svg', makePill({ label: 'LICENSE', value: 'GPL-3.0', icon: icons.license, isDark: false, accentColor: '#0284C7' }), 'utf8'),
-  writeFile('docs/assets/levyra-stars-light.svg', makePill({ label: 'STARS', value: starsValue, icon: icons.stars, isDark: false, accentColor: '#D97706' }), 'utf8'),
-  writeFile('docs/assets/levyra-release-mobile.svg', makePill({ label: 'LATEST', value: releaseValue, icon: icons.latest, isDark: true, accentColor: '#A855F7', mobile: true }), 'utf8'),
-  writeFile('docs/assets/levyra-downloads-mobile.svg', makePill({ label: 'DOWNLOADS', value: downloadsValue, icon: icons.downloads, isDark: true, accentColor: '#10B981', mobile: true }), 'utf8'),
-  writeFile('docs/assets/levyra-license-mobile.svg', makePill({ label: 'LICENSE', value: 'GPL-3.0', icon: icons.license, isDark: true, accentColor: '#38BDF8', mobile: true }), 'utf8'),
-  writeFile('docs/assets/levyra-stars-mobile.svg', makePill({ label: 'STARS', value: starsValue, icon: icons.stars, isDark: true, accentColor: '#FBBF24', mobile: true }), 'utf8'),
-  writeFile('docs/assets/levyra-release-mobile-light.svg', makePill({ label: 'LATEST', value: releaseValue, icon: icons.latest, isDark: false, accentColor: '#7C3AED', mobile: true }), 'utf8'),
-  writeFile('docs/assets/levyra-downloads-mobile-light.svg', makePill({ label: 'DOWNLOADS', value: downloadsValue, icon: icons.downloads, isDark: false, accentColor: '#059669', mobile: true }), 'utf8'),
-  writeFile('docs/assets/levyra-license-mobile-light.svg', makePill({ label: 'LICENSE', value: 'GPL-3.0', icon: icons.license, isDark: false, accentColor: '#0284C7', mobile: true }), 'utf8'),
-  writeFile('docs/assets/levyra-stars-mobile-light.svg', makePill({ label: 'STARS', value: starsValue, icon: icons.stars, isDark: false, accentColor: '#D97706', mobile: true }), 'utf8')
+  writeFile('docs/assets/levyra-release.svg', makePill({ label: 'LATEST', value: releaseValue, icon: icons.latest, accentColor: '#7C3AED' }), 'utf8'),
+  writeFile('docs/assets/levyra-downloads.svg', makePill({ label: 'DOWNLOADS', value: downloadsValue, icon: icons.downloads, accentColor: '#059669' }), 'utf8'),
+  writeFile('docs/assets/levyra-license.svg', makePill({ label: 'LICENSE', value: 'GPL-3.0', icon: icons.license, accentColor: '#0284C7' }), 'utf8'),
+  writeFile('docs/assets/levyra-stars.svg', makePill({ label: 'STARS', value: starsValue, icon: icons.stars, accentColor: '#D97706' }), 'utf8'),
+  writeFile('docs/assets/levyra-wiki.svg', makePill({ label: 'DOCS', value: 'Open →', icon: icons.docs, accentColor: '#E11D48' }), 'utf8'),
+  writeFile('docs/assets/levyra-release-light.svg', makePill({ label: 'LATEST', value: releaseValue, icon: icons.latest, accentColor: '#7C3AED' }), 'utf8'),
+  writeFile('docs/assets/levyra-downloads-light.svg', makePill({ label: 'DOWNLOADS', value: downloadsValue, icon: icons.downloads, accentColor: '#059669' }), 'utf8'),
+  writeFile('docs/assets/levyra-license-light.svg', makePill({ label: 'LICENSE', value: 'GPL-3.0', icon: icons.license, accentColor: '#0284C7' }), 'utf8'),
+  writeFile('docs/assets/levyra-stars-light.svg', makePill({ label: 'STARS', value: starsValue, icon: icons.stars, accentColor: '#D97706' }), 'utf8'),
+  writeFile('docs/assets/levyra-wiki-light.svg', makePill({ label: 'DOCS', value: 'Open →', icon: icons.docs, accentColor: '#E11D48' }), 'utf8'),
+  writeFile('docs/assets/levyra-release-mobile.svg', makePill({ label: 'LATEST', value: releaseValue, icon: icons.latest, accentColor: '#7C3AED', mobile: true }), 'utf8'),
+  writeFile('docs/assets/levyra-downloads-mobile.svg', makePill({ label: 'DOWNLOADS', value: downloadsValue, icon: icons.downloads, accentColor: '#059669', mobile: true }), 'utf8'),
+  writeFile('docs/assets/levyra-license-mobile.svg', makePill({ label: 'LICENSE', value: 'GPL-3.0', icon: icons.license, accentColor: '#0284C7', mobile: true }), 'utf8'),
+  writeFile('docs/assets/levyra-stars-mobile.svg', makePill({ label: 'STARS', value: starsValue, icon: icons.stars, accentColor: '#D97706', mobile: true }), 'utf8'),
+  writeFile('docs/assets/levyra-wiki-mobile.svg', makePill({ label: 'DOCS', value: 'Open →', icon: icons.docs, accentColor: '#E11D48', mobile: true }), 'utf8'),
+  writeFile('docs/assets/levyra-release-mobile-light.svg', makePill({ label: 'LATEST', value: releaseValue, icon: icons.latest, accentColor: '#7C3AED', mobile: true }), 'utf8'),
+  writeFile('docs/assets/levyra-downloads-mobile-light.svg', makePill({ label: 'DOWNLOADS', value: downloadsValue, icon: icons.downloads, accentColor: '#059669', mobile: true }), 'utf8'),
+  writeFile('docs/assets/levyra-license-mobile-light.svg', makePill({ label: 'LICENSE', value: 'GPL-3.0', icon: icons.license, accentColor: '#0284C7', mobile: true }), 'utf8'),
+  writeFile('docs/assets/levyra-stars-mobile-light.svg', makePill({ label: 'STARS', value: starsValue, icon: icons.stars, accentColor: '#D97706', mobile: true }), 'utf8'),
+  writeFile('docs/assets/levyra-wiki-mobile-light.svg', makePill({ label: 'DOCS', value: 'Open →', icon: icons.docs, accentColor: '#E11D48', mobile: true }), 'utf8')
 ])

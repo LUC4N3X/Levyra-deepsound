@@ -56,6 +56,10 @@ jobs:
             docs/assets/levyra-downloads-light.svg
             docs/assets/levyra-license-light.svg
             docs/assets/levyra-stars-light.svg
+            docs/assets/levyra-wiki.svg
+            docs/assets/levyra-wiki-light.svg
+            docs/assets/levyra-wiki-mobile.svg
+            docs/assets/levyra-wiki-mobile-light.svg
             docs/assets/levyra-release-mobile.svg
             docs/assets/levyra-downloads-mobile.svg
             docs/assets/levyra-license-mobile.svg
