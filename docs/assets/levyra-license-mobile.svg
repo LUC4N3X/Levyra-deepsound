@@ -1,10 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="126" height="31.0154" viewBox="0 0 130 32" role="img" aria-label="LICENSE GPL-3.0">
-  <title>LICENSE GPL-3.0</title>
-  <path d="M 16.00 0.75 H 123.25 A 6.00 6.00 0 0 1 129.25 6.75 V 16.00 A 15.25 15.25 0 0 1 114.00 31.25 H 6.75 A 6.00 6.00 0 0 1 0.75 25.25 V 16.00 A 15.25 15.25 0 0 1 16.00 0.75 Z" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
-  <path d="M 13.16 7.25 A 2.90 2.90 0 0 1 18.84 7.25 A 2.90 2.90 0 0 1 23.44 10.59 A 2.90 2.90 0 0 1 25.20 16.00 A 2.90 2.90 0 0 1 23.44 21.41 A 2.90 2.90 0 0 1 18.84 24.75 A 2.90 2.90 0 0 1 13.16 24.75 A 2.90 2.90 0 0 1 8.56 21.41 A 2.90 2.90 0 0 1 6.80 16.00 A 2.90 2.90 0 0 1 8.56 10.59 A 2.90 2.90 0 0 1 13.16 7.25 Z" fill="#0284C7"/>
-  <g transform="translate(16 16)" style="color:#FFFFFF;">
+<svg xmlns="http://www.w3.org/2000/svg" width="126" height="38" viewBox="0 0 126 38" role="img" aria-label="GPL-3.0 license">
+<title>GPL-3.0 license</title>
+<path d="M 7 .8 C 3 .8 .8 3 .8 7 V 21 C .8 30 8 37.2 17 37.2 H 119 C 123 37.2 125.2 35 125.2 31 V 18 C 125.2 8 118 .8 108 .8 Z" fill="#303B38"/>
+<g transform="translate(18.5 19) scale(1.28)" style="color:#D7E3DA">
     <path d="M0 -8 l7 3 v4 c0 5 -3 7 -7 9 -4 -2 -7 -4 -7 -9 v-4 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M-3 0 l2 2 4 -5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
-  <text x="35" y="12.2" fill="#0284C7" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="7.5" font-weight="700" letter-spacing=".8">LICENSE</text>
-  <text x="35" y="24.5" fill="#0F172A" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="750">GPL-3.0</text>
+<text x="38" y="23.2" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="10.6" font-weight="650" letter-spacing="-.22" fill="#D7E3DA">GPL-3.0</text>
 </svg>
