@@ -76,6 +76,7 @@ class LevyraStrings private constructor(
     val librarySortShortestFirst: String get() = value("librarySortShortestFirst")
     val librarySortAscending: String get() = value("librarySortAscending")
     val librarySortDescending: String get() = value("librarySortDescending")
+    val librarySortCustomOrder: String get() = value("librarySortCustomOrder")
     val ambientMode: String get() = value("ambientMode")
     val ambientModeSubtitle: String get() = value("ambientModeSubtitle")
     val ambientOpen: String get() = value("ambientOpen")

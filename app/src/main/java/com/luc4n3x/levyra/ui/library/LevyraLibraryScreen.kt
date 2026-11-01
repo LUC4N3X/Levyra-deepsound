@@ -1494,6 +1494,7 @@ internal fun LevyraPlaylistDetailScreen(
     }
     var selectionMode by rememberSaveable(playlist.id) { mutableStateOf(false) }
     var reorderMode by rememberSaveable(playlist.id) { mutableStateOf(false) }
+    var trackSort by rememberSaveable(playlist.id) { mutableStateOf(PlaylistTrackSort.Custom) }
     var orderedTracks by remember(playlist.id) { mutableStateOf(playlist.tracks) }
     var renameDialog by remember { mutableStateOf(false) }
     var tagEditorOpen by remember(playlist.id) { mutableStateOf(false) }
@@ -1537,12 +1538,18 @@ internal fun LevyraPlaylistDetailScreen(
         }
     }
 
-    val searchIndex = remember(orderedTracks) { buildPlaylistSearchIndex(orderedTracks) }
-    val visibleTracks = remember(orderedTracks, query, searchIndex) {
-        filterPlaylistTracks(orderedTracks, query, searchIndex)
+    val sortedTracks = remember(orderedTracks, trackSort, reorderMode) {
+        if (reorderMode) orderedTracks else sortPlaylistTracks(orderedTracks, trackSort)
     }
-    val selectedTracks = remember(orderedTracks, selectedKeys) {
-        selectedPlaylistTracks(orderedTracks, selectedKeys)
+    val playInDisplayOrder: (List<Track>) -> List<Track> = remember(trackSort) {
+        { tracks -> sortPlaylistTracks(tracks, trackSort) }
+    }
+    val searchIndex = remember(orderedTracks) { buildPlaylistSearchIndex(orderedTracks) }
+    val visibleTracks = remember(sortedTracks, query, searchIndex) {
+        filterPlaylistTracks(sortedTracks, query, searchIndex)
+    }
+    val selectedTracks = remember(sortedTracks, selectedKeys) {
+        selectedPlaylistTracks(sortedTracks, selectedKeys)
     }
     val selectionActive = selectionMode
 
@@ -1663,7 +1670,7 @@ internal fun LevyraPlaylistDetailScreen(
                                     label = strings.play,
                                     contentDescription = strings.playAll,
                                     icon = Icons.Rounded.PlayArrow,
-                                    onClick = { viewModel.playPlaylist(playlist.id) }
+                                    onClick = { viewModel.playPlaylist(playlist.id, arrange = playInDisplayOrder) }
                                 ),
                                 shuffleLabel = strings.shuffle,
                                 downloadLabel = strings.downloadPlaylist,
@@ -1713,6 +1720,16 @@ internal fun LevyraPlaylistDetailScreen(
                             trailingIcon = if (query.isNotBlank()) {
                                 { IconButton(onClick = { query = "" }) { Icon(Icons.Rounded.Close, contentDescription = strings.clear) } }
                             } else null
+                        )
+                    }
+                }
+                if (orderedTracks.size > 1) {
+                    item(key = "playlist-detail-sort") {
+                        PlaylistTrackSortControl(
+                            sort = trackSort,
+                            colors = colors,
+                            onSort = { trackSort = it },
+                            modifier = Modifier.padding(start = gutter, end = gutter, bottom = 8.dp)
                         )
                     }
                 }
@@ -1790,7 +1807,7 @@ internal fun LevyraPlaylistDetailScreen(
                         downloadProgress = downloadProgressFor(track, state),
                         onClick = {
                             if (selectionActive) selectedKeys = togglePlaylistTrackSelection(selectedKeys, key)
-                            else viewModel.playPlaylist(playlist.id, track.id)
+                            else viewModel.playPlaylist(playlist.id, track.id, playInDisplayOrder)
                         },
                         onLongClick = {
                             selectionMode = true
@@ -1831,6 +1848,7 @@ internal fun LevyraPlaylistDetailScreen(
                     onRename = { renameDialog = true },
                     onReorder = {
                         reorderMode = !reorderMode
+                        trackSort = PlaylistTrackSort.Custom
                         orderedTracks = playlist.tracks
                         selectedKeys = emptySet()
                         selectionMode = false
