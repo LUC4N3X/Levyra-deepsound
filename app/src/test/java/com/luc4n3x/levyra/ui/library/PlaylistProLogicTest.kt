@@ -53,6 +53,38 @@ class PlaylistProLogicTest {
         assertFalse(areAllPlaylistTracksSelected(tracks, selected))
     }
 
+    @Test
+    fun sortChangesOnlyTheReturnedViewAndCustomKeepsStoredOrder() {
+        val tracks = listOf(
+            track("a", "Beta").copy(durationMs = 200_000L, playlistAddedAt = 10L),
+            track("b", "alpha").copy(durationMs = 0L, playlistAddedAt = 30L),
+            track("c", "Ålpha").copy(durationMs = 100_000L, playlistAddedAt = 20L),
+            track("d", "").copy(durationMs = 300_000L, playlistAddedAt = 20L)
+        )
+        val stored = tracks.toList()
+
+        assertEquals(listOf("b", "c", "a", "d"), sortPlaylistTracks(tracks, PlaylistTrackSort.TitleAscending).map { it.id })
+        assertEquals(listOf("a", "b", "c", "d"), sortPlaylistTracks(tracks, PlaylistTrackSort.TitleDescending).map { it.id })
+        assertEquals(listOf("b", "d", "c", "a"), sortPlaylistTracks(tracks, PlaylistTrackSort.NewestFirst).map { it.id })
+        assertEquals(listOf("a", "c", "d", "b"), sortPlaylistTracks(tracks, PlaylistTrackSort.OldestFirst).map { it.id })
+        assertEquals(listOf("c", "a", "d", "b"), sortPlaylistTracks(tracks, PlaylistTrackSort.ShortestFirst).map { it.id })
+        assertEquals(listOf("d", "a", "c", "b"), sortPlaylistTracks(tracks, PlaylistTrackSort.LongestFirst).map { it.id })
+        assertTrue(sortPlaylistTracks(tracks, PlaylistTrackSort.Custom) === tracks)
+        assertEquals(stored, tracks)
+    }
+
+    @Test
+    fun sortIsStableForDuplicateKeysInLargePlaylists() {
+        val tracks = (0 until 600).map { index ->
+            track("t$index", "Same").copy(playlistAddedAt = 5L, durationMs = 180_000L)
+        }
+
+        assertEquals(tracks.map { it.id }, sortPlaylistTracks(tracks, PlaylistTrackSort.TitleAscending).map { it.id })
+        assertEquals(tracks.map { it.id }, sortPlaylistTracks(tracks, PlaylistTrackSort.OldestFirst).map { it.id })
+        assertEquals(tracks.reversed().map { it.id }, sortPlaylistTracks(tracks, PlaylistTrackSort.NewestFirst).map { it.id })
+        assertEquals(tracks.map { it.id }, sortPlaylistTracks(tracks, PlaylistTrackSort.LongestFirst).map { it.id })
+    }
+
     private fun track(
         id: String,
         title: String = "Track $id",

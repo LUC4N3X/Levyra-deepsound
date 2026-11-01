@@ -58,6 +58,12 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.DragHandle
+import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.SortByAlpha
+import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import com.luc4n3x.levyra.ui.media.ImmersiveMediaColors
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material.icons.rounded.Edit
@@ -810,6 +816,87 @@ internal fun PlaylistCoverArt(
                 tint = Color.White.copy(alpha = 0.80f),
                 modifier = Modifier.size(48.dp)
             )
+        }
+    }
+}
+
+internal fun PlaylistTrackSort.label(strings: LevyraStrings): String = when (this) {
+    PlaylistTrackSort.Custom -> strings.librarySortCustomOrder
+    PlaylistTrackSort.TitleAscending -> strings.librarySortAscending
+    PlaylistTrackSort.TitleDescending -> strings.librarySortDescending
+    PlaylistTrackSort.NewestFirst -> strings.librarySortNewestFirst
+    PlaylistTrackSort.OldestFirst -> strings.librarySortOldestFirst
+    PlaylistTrackSort.ShortestFirst -> strings.librarySortShortestFirst
+    PlaylistTrackSort.LongestFirst -> strings.librarySortLongestFirst
+}
+
+private val PlaylistTrackSort.icon: ImageVector
+    get() = when (this) {
+        PlaylistTrackSort.Custom -> Icons.Rounded.DragHandle
+        PlaylistTrackSort.TitleAscending, PlaylistTrackSort.TitleDescending -> Icons.Rounded.SortByAlpha
+        PlaylistTrackSort.NewestFirst, PlaylistTrackSort.OldestFirst -> Icons.Rounded.Schedule
+        PlaylistTrackSort.ShortestFirst, PlaylistTrackSort.LongestFirst -> Icons.Rounded.Timer
+    }
+
+@Composable
+internal fun PlaylistTrackSortControl(
+    sort: PlaylistTrackSort,
+    colors: ImmersiveMediaColors,
+    onSort: (PlaylistTrackSort) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val strings = LocalLevyraStrings.current
+    var expanded by remember { mutableStateOf(false) }
+    val label = sort.label(strings)
+    Box(modifier = modifier) {
+        Surface(
+            color = colors.secondaryFill,
+            shape = CircleShape,
+            modifier = Modifier
+                .heightIn(min = 48.dp)
+                .clip(CircleShape)
+                .clickable(onClick = { expanded = true })
+                .semantics { contentDescription = "${strings.librarySortBy}: $label" }
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Rounded.Sort,
+                    contentDescription = null,
+                    tint = colors.accent,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = label,
+                    color = colors.content,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.background(colors.fieldTop)
+        ) {
+            PlaylistTrackSort.entries.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option.label(strings)) },
+                    leadingIcon = { Icon(option.icon, contentDescription = null) },
+                    trailingIcon = if (option == sort) {
+                        { Icon(Icons.Rounded.Check, contentDescription = null) }
+                    } else null,
+                    onClick = {
+                        expanded = false
+                        if (option != sort) onSort(option)
+                    }
+                )
+            }
         }
     }
 }

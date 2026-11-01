@@ -100,7 +100,8 @@ fun PlaylistTrackEntity.toTrack(): Track = Track(
     metadataProvider = metadataProvider,
     metadataConfidence = metadataConfidence.coerceIn(0, 100),
     canonicalAlbumUrl = canonicalAlbumUrl,
-    playlistEntryId = entryId
+    playlistEntryId = entryId,
+    playlistAddedAt = addedAt
 )
 
 fun Track.toPlaylistTrackEntity(

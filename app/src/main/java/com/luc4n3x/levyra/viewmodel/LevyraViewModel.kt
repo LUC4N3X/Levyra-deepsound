@@ -4272,12 +4272,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         addTracksToQueue(tracks)
     }
 
-    fun playPlaylist(playlistId: String, startTrackId: String? = null) {
+    fun playPlaylist(
+        playlistId: String,
+        startTrackId: String? = null,
+        arrange: (List<Track>) -> List<Track> = { it }
+    ) {
         viewModelScope.launch {
             val pl = playlistStore.load(playlistId) ?: return@launch
-            if (pl.tracks.isEmpty()) return@launch
-            val start = startTrackId?.let { id -> pl.tracks.firstOrNull { it.id == id } } ?: autoplayStartTrack(pl.tracks)
-            playFrom(pl.tracks, start, loopOnCompletion = true)
+            val tracks = arrange(pl.tracks)
+            if (tracks.isEmpty()) return@launch
+            val start = startTrackId?.let { id -> tracks.firstOrNull { it.id == id } } ?: autoplayStartTrack(tracks)
+            playFrom(tracks, start, loopOnCompletion = true)
         }
     }
 

@@ -64,6 +64,7 @@ data class Track(
     val playbackManifest: ResolvedPlaybackManifest? = null,
     val videoSubtitleTracks: List<VideoSubtitleTrack> = emptyList(),
     val playlistEntryId: String = "",
+    val playlistAddedAt: Long = 0L,
     val albumType: String = ""
 ) {
     val hasPlayableStream: Boolean
