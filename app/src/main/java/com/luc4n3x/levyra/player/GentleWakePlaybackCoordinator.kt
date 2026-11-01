@@ -6,6 +6,7 @@ import android.net.NetworkCapabilities
 import android.net.Uri
 import com.luc4n3x.levyra.data.PlaylistStore
 import com.luc4n3x.levyra.data.TrackJson
+import com.luc4n3x.levyra.data.local.DownloadEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.domain.GentleWakeSettings
 import com.luc4n3x.levyra.domain.GentleWakeSourceType
@@ -51,74 +52,16 @@ internal object GentleWakePlaybackCoordinator {
                 .associateBy { it.trackId }
         }.getOrDefault(emptyMap())
 
-        val candidateTracks: List<Track> = when (normalized.sourceType) {
-            GentleWakeSourceType.PLAYLIST -> {
-                val fromStore = if (normalized.sourceId.isNotBlank()) {
-                    PlaylistStore(appContext).load(normalized.sourceId)?.tracks.orEmpty()
-                } else {
-                    emptyList()
-                }
-                fromStore.ifEmpty { decodePayloadTracks(normalized.sourcePayloadJson) }
-            }
-            GentleWakeSourceType.ALBUM -> {
-                decodePayloadTracks(normalized.sourcePayloadJson)
-            }
-            GentleWakeSourceType.RADIO -> {
-                val payloadTracks = decodePayloadTracks(normalized.sourcePayloadJson)
-                if (payloadTracks.isNotEmpty()) {
-                    payloadTracks
-                } else {
-                    val radioStore = RadioStore(appContext)
-                    val station = (radioStore.favorites() + radioStore.customStations() + radioStore.recent())
-                        .firstOrNull { it.uuid == normalized.sourceId || "live-radio:${it.uuid}" == normalized.sourceId }
-                    station?.let { listOf(it.toTrack(artwork = it.safeFaviconUrl)) }.orEmpty()
-                }
-            }
-            GentleWakeSourceType.LOCAL_AUDIO -> {
-                val payloadTracks = decodePayloadTracks(normalized.sourcePayloadJson)
-                if (payloadTracks.isNotEmpty()) {
-                    payloadTracks
-                } else {
-                    val entity = downloadsByTrackId[normalized.sourceId]
-                    if (entity != null) {
-                        listOf(
-                            Track(
-                                id = entity.trackId,
-                                title = entity.title,
-                                artist = entity.artist,
-                                album = entity.album,
-                                durationMs = entity.durationMs,
-                                streamUrl = entity.uri,
-                                videoUrl = "",
-                                thumbnailUrl = "",
-                                largeThumbnailUrl = "",
-                                source = "LocalDownload",
-                                moodTags = emptySet(),
-                                energy = 50,
-                                vocal = 50,
-                                replayScore = 80,
-                                cacheScore = 100,
-                                accentStart = 0xFFFFB77C.toInt(),
-                                accentEnd = 0xFF7B61FF.toInt()
-                            )
-                        )
-                    } else {
-                        emptyList()
-                    }
-                }
-            }
+        val candidateTracks = when (normalized.sourceType) {
+            GentleWakeSourceType.PLAYLIST -> playlistTracks(appContext, normalized)
+            GentleWakeSourceType.ALBUM -> decodePayloadTracks(normalized.sourcePayloadJson)
+            GentleWakeSourceType.RADIO -> radioTracks(appContext, normalized)
+            GentleWakeSourceType.LOCAL_AUDIO -> localAudioTracks(normalized, downloadsByTrackId)
             GentleWakeSourceType.BUILT_IN_TONE -> listOf(builtInTrack)
         }
 
         val hydratedTracks = candidateTracks.mapNotNull { track ->
-            val downloaded = downloadsByTrackId[track.id]
-            val localUri = downloaded?.uri?.takeIf { isLocalUriReadable(appContext, it) }
-                ?: track.streamUrl.takeIf { isLocalUri(it) && isLocalUriReadable(appContext, it) }
-            when {
-                localUri != null -> track.copy(streamUrl = localUri)
-                online && (track.streamUrl.isNotBlank() || track.id.isNotBlank()) -> track
-                else -> null
-            }
+            hydrateTrack(appContext, track, downloadsByTrackId[track.id], online)
         }
 
         if (hydratedTracks.isEmpty()) {
@@ -134,6 +77,69 @@ internal object GentleWakePlaybackCoordinator {
             displayTitle = normalized.sourceTitle.ifBlank { hydratedTracks.first().title },
             usingEmergencyFallback = false
         )
+    }
+
+    private suspend fun playlistTracks(context: Context, settings: GentleWakeSettings): List<Track> {
+        val fromStore = if (settings.sourceId.isNotBlank()) {
+            PlaylistStore(context).load(settings.sourceId)?.tracks.orEmpty()
+        } else {
+            emptyList()
+        }
+        return fromStore.ifEmpty { decodePayloadTracks(settings.sourcePayloadJson) }
+    }
+
+    private suspend fun radioTracks(context: Context, settings: GentleWakeSettings): List<Track> {
+        val payloadTracks = decodePayloadTracks(settings.sourcePayloadJson)
+        if (payloadTracks.isNotEmpty()) return payloadTracks
+        val radioStore = RadioStore(context)
+        val station = (radioStore.favorites() + radioStore.customStations() + radioStore.recent())
+            .firstOrNull { it.uuid == settings.sourceId || "live-radio:${it.uuid}" == settings.sourceId }
+        return station?.let { listOf(it.toTrack(artwork = it.safeFaviconUrl)) }.orEmpty()
+    }
+
+    private fun localAudioTracks(
+        settings: GentleWakeSettings,
+        downloadsByTrackId: Map<String, DownloadEntity>
+    ): List<Track> {
+        val payloadTracks = decodePayloadTracks(settings.sourcePayloadJson)
+        if (payloadTracks.isNotEmpty()) return payloadTracks
+        val entity = downloadsByTrackId[settings.sourceId] ?: return emptyList()
+        return listOf(
+            Track(
+                id = entity.trackId,
+                title = entity.title,
+                artist = entity.artist,
+                album = entity.album,
+                durationMs = entity.durationMs,
+                streamUrl = entity.uri,
+                videoUrl = "",
+                thumbnailUrl = "",
+                largeThumbnailUrl = "",
+                source = "LocalDownload",
+                moodTags = emptySet(),
+                energy = 50,
+                vocal = 50,
+                replayScore = 80,
+                cacheScore = 100,
+                accentStart = 0xFFFFB77C.toInt(),
+                accentEnd = 0xFF7B61FF.toInt()
+            )
+        )
+    }
+
+    private fun hydrateTrack(
+        context: Context,
+        track: Track,
+        downloaded: DownloadEntity?,
+        online: Boolean
+    ): Track? {
+        val localUri = downloaded?.uri?.takeIf { isLocalUriReadable(context, it) }
+            ?: track.streamUrl.takeIf { isLocalUri(it) && isLocalUriReadable(context, it) }
+        return when {
+            localUri != null -> track.copy(streamUrl = localUri)
+            online && (track.streamUrl.isNotBlank() || track.id.isNotBlank()) -> track
+            else -> null
+        }
     }
 
     fun encodePayloadTracks(tracks: List<Track>): String {

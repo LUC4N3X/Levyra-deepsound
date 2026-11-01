@@ -188,7 +188,7 @@ object GentleWakeScheduler {
     fun cancelScheduledWake(context: Context, alarmManager: AlarmManager? = null) {
         snoozeUntilEpochMs = 0L
         val appContext = context.applicationContext
-        val manager = alarmManager ?: (appContext.getSystemService(Context.ALARM_SERVICE) as? AlarmManager) ?: return
+        val manager = alarmManager ?: appContext.getSystemService(AlarmManager::class.java) ?: return
         val existing = wakeTriggerPendingIntent(appContext, PendingIntent.FLAG_NO_CREATE) ?: return
         runCatching {
             manager.cancel(existing)

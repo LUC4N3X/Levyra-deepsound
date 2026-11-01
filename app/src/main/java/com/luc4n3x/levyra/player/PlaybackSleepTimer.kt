@@ -95,36 +95,7 @@ class PlaybackSleepTimer(
             val untilProcessingWindow = deadline - timbreWindowMs - elapsedRealtime()
             if (untilProcessingWindow > 0L) delay(untilProcessingWindow)
             if (timbreWindowMs > 0L && _state.value == target) {
-                synchronized(fadeLock) {
-                    if (_state.value == target) fadeActive = true
-                }
-                while (_state.value == target) {
-                    val remaining = deadline - elapsedRealtime()
-                    if (remaining <= 0L) break
-                    val emitted = synchronized(fadeLock) {
-                        if (!fadeActive || _state.value != target) {
-                            false
-                        } else {
-                            val nextVolume = if (mode == PlaybackSleepTimerMode.SLEEP_WITH_MUSIC) {
-                                SleepWithMusicCurve.volumeAt(remaining, effectiveFadeMs)
-                            } else {
-                                sleepFadeVolume(remaining, effectiveFadeMs)
-                            }
-                            val nextSoftness = if (mode == PlaybackSleepTimerMode.SLEEP_WITH_MUSIC) {
-                                SleepWithMusicCurve.timbreSoftnessAt(remaining, effectiveFadeMs, timbreSoftening)
-                            } else {
-                                0f
-                            }
-                            activeFadeVolume = nextVolume
-                            activeTimbreSoftness = nextSoftness
-                            onFadeVolume(nextVolume)
-                            onTimbreSoftness(nextSoftness)
-                            true
-                        }
-                    }
-                    if (!emitted) break
-                    delay(minOf(SLEEP_FADE_STEP_MS, remaining))
-                }
+                runFadeWindow(target)
             }
             val remaining = deadline - elapsedRealtime()
             if (remaining > 0L) delay(remaining)
@@ -136,6 +107,38 @@ class PlaybackSleepTimer(
         }
         countdownJob = job
     }
+
+    private suspend fun runFadeWindow(target: PlaybackSleepTimerState.Countdown) {
+        synchronized(fadeLock) {
+            if (_state.value == target) fadeActive = true
+        }
+        while (_state.value == target) {
+            val remaining = target.deadlineElapsedRealtimeMs - elapsedRealtime()
+            if (remaining <= 0L || !emitFadeStep(target, remaining)) break
+            delay(minOf(SLEEP_FADE_STEP_MS, remaining))
+        }
+    }
+
+    private fun emitFadeStep(target: PlaybackSleepTimerState.Countdown, remaining: Long): Boolean =
+        synchronized(fadeLock) {
+            if (!fadeActive || _state.value != target) return@synchronized false
+            val smartSleep = target.mode == PlaybackSleepTimerMode.SLEEP_WITH_MUSIC
+            val nextVolume = if (smartSleep) {
+                SleepWithMusicCurve.volumeAt(remaining, target.fadeMs)
+            } else {
+                sleepFadeVolume(remaining, target.fadeMs)
+            }
+            val nextSoftness = if (smartSleep) {
+                SleepWithMusicCurve.timbreSoftnessAt(remaining, target.fadeMs, target.timbreSoftening)
+            } else {
+                0f
+            }
+            activeFadeVolume = nextVolume
+            activeTimbreSoftness = nextSoftness
+            onFadeVolume(nextVolume)
+            onTimbreSoftness(nextSoftness)
+            true
+        }
 
     fun startEndOfTrack() {
         cancel()

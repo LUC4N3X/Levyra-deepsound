@@ -45,7 +45,7 @@ class SmartListeningTest {
         var triggeredAt = -1L
         while (t - flippedAt < 2_500L) {
             t += 50L
-            val x = if ((t / 50L) % 2L == 0L) 0.1f else -0.1f
+            val x = if (t / 50L % 2L == 0L) 0.1f else -0.1f
             if (detector.onSensorSample(x, 0.1f, -9.8f, t)) {
                 assertEquals(-1L, triggeredAt)
                 triggeredAt = t
@@ -246,7 +246,7 @@ class SmartListeningTest {
         val processor = SleepTimbreAudioProcessor()
         val format = AudioProcessor.AudioFormat(48_000, 2, C.ENCODING_PCM_16BIT)
         processor.configure(format)
-        processor.flush()
+        processor.flush(AudioProcessor.StreamMetadata.DEFAULT)
 
         processor.setTargetSoftness(0f)
         val bypassInput = ByteBuffer.allocateDirect(16).order(ByteOrder.nativeOrder())
@@ -259,7 +259,7 @@ class SmartListeningTest {
         assertEquals(16, bypassOut.remaining())
         assertEquals(12000.toShort(), bypassOut.short)
 
-        processor.flush()
+        processor.flush(AudioProcessor.StreamMetadata.DEFAULT)
         processor.setTargetSoftness(1f)
         val frameCount = 8_192
         val hfInput = ByteBuffer.allocateDirect(frameCount * 4).order(ByteOrder.nativeOrder())

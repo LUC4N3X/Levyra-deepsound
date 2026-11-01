@@ -222,49 +222,58 @@ class ShakeGestureDetector(
             return false
         }
 
-        val horizontalMagnitude = sqrt(linearX * linearX + linearY * linearY)
-        val totalMagnitude = sqrt(linearX * linearX + linearY * linearY + linearZ * linearZ)
-
         if (lastReversalAtMs >= 0L && timestampMs - lastReversalAtMs > 280L) {
             clearWindow()
         }
 
-        if (totalMagnitude < sensitivity.linearAccelerationThresholdMpS2 ||
-            horizontalMagnitude < sensitivity.linearAccelerationThresholdMpS2 * 0.68f
-        ) {
-            return false
-        }
+        if (!isIntentionalJolt(linearX, linearY, linearZ, sensitivity)) return false
 
         val dominantAxis = if (abs(linearX) >= abs(linearY)) linearX else linearY
         val sign = if (dominantAxis >= 0f) 1 else -1
+        return registerReversal(sign, timestampMs, sensitivity)
+    }
 
-        if (lastReversalSign == 0) {
-            lastReversalSign = sign
-            reversalCount = 1
-            firstReversalAtMs = timestampMs
-            lastReversalAtMs = timestampMs
-            return false
-        }
+    private fun isIntentionalJolt(
+        linearX: Float,
+        linearY: Float,
+        linearZ: Float,
+        sensitivity: MotionShakeSensitivity
+    ): Boolean {
+        val horizontalMagnitude = sqrt(linearX * linearX + linearY * linearY)
+        val totalMagnitude = sqrt(linearX * linearX + linearY * linearY + linearZ * linearZ)
+        return totalMagnitude >= sensitivity.linearAccelerationThresholdMpS2 &&
+            horizontalMagnitude >= sensitivity.linearAccelerationThresholdMpS2 * 0.68f
+    }
 
+    private fun registerReversal(
+        sign: Int,
+        timestampMs: Long,
+        sensitivity: MotionShakeSensitivity
+    ): Boolean {
         val gapMs = timestampMs - lastReversalAtMs
-        if (sign != lastReversalSign && gapMs in 45L..270L) {
-            lastReversalSign = sign
-            reversalCount += 1
-            lastReversalAtMs = timestampMs
-
-            val windowSpanMs = timestampMs - firstReversalAtMs
-            if (reversalCount >= sensitivity.requiredReversals && windowSpanMs in 110L..720L) {
-                lastTriggeredAtMs = timestampMs
-                clearWindow()
-                return true
+        when {
+            lastReversalSign == 0 -> startWindow(sign, timestampMs)
+            sign != lastReversalSign && gapMs in 45L..270L -> {
+                lastReversalSign = sign
+                reversalCount += 1
+                lastReversalAtMs = timestampMs
+                val windowSpanMs = timestampMs - firstReversalAtMs
+                if (reversalCount >= sensitivity.requiredReversals && windowSpanMs in 110L..720L) {
+                    lastTriggeredAtMs = timestampMs
+                    clearWindow()
+                    return true
+                }
             }
-        } else if (gapMs > 270L) {
-            lastReversalSign = sign
-            reversalCount = 1
-            firstReversalAtMs = timestampMs
-            lastReversalAtMs = timestampMs
+            gapMs > 270L -> startWindow(sign, timestampMs)
         }
         return false
+    }
+
+    private fun startWindow(sign: Int, timestampMs: Long) {
+        lastReversalSign = sign
+        reversalCount = 1
+        firstReversalAtMs = timestampMs
+        lastReversalAtMs = timestampMs
     }
 }
 
@@ -423,7 +432,7 @@ data class SleepWithMusicSettings(
 object SleepWithMusicCurve {
     fun fadeWindowMsForTotal(totalMs: Long): Long {
         if (totalMs <= 0L) return 0L
-        val proportional = (totalMs * 2L) / 5L
+        val proportional = totalMs * 2L / 5L
         return proportional.coerceIn(15_000L.coerceAtMost(totalMs), 360_000L.coerceAtMost(totalMs))
     }
 

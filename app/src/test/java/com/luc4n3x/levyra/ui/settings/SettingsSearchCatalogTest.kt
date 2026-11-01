@@ -104,7 +104,7 @@ class SettingsSearchCatalogTest {
     private companion object {
         val CATEGORY_IDS = setOf(
             "design", "home", "player", SETTINGS_CATEGORY_AUDIO, "downloads", "lyrics",
-            "backup", "system", "app", "integrations", "network", "jam", "youtube_music"
+            "backup", "system", "app", "integrations", "network", "jam", "youtube_music", "smart_listening"
         )
     }
 }

@@ -46,7 +46,7 @@ import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.QueueMusic
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.ScreenRotation
 import androidx.compose.material.icons.rounded.Sensors
@@ -121,6 +121,7 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import com.luc4n3x.levyra.ui.i18n.LevyraSmartListeningCopy
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.smartListeningCopy
@@ -152,7 +153,6 @@ private val LevyraAdaptiveSubtle: Color get() = LevyraPanelSoft
 private val LevyraSurface: Color get() = LevyraBlack
 private val LevyraGreen = Color(0xFF34D399)
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun SmartListeningSettingsContent(
     strings: LevyraStrings,
@@ -181,14 +181,13 @@ internal fun SmartListeningSettingsContent(
     onDismissMorningResume: () -> Unit
 ) {
     val copy = remember(strings.code) { strings.smartListeningCopy() }
-    val context = LocalContext.current
     val locale = remember(strings.code) { Locale.forLanguageTag(strings.code.replace('_', '-')) }
 
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
-        if (morningResumeSnapshot != null && !morningResumeSnapshot.dismissed) {
+        if (morningResumeSnapshot != null && morningResumeSnapshot.isReadyToPrompt(System.currentTimeMillis())) {
             MorningResumePromptBanner(
                 strings = strings,
                 snapshot = morningResumeSnapshot,
@@ -207,260 +206,128 @@ internal fun SmartListeningSettingsContent(
             )
         }
 
-        SmartListeningSurfaceCard(
+        SmartListeningMotionSection(
+            copy = copy,
+            motionSettings = motionSettings,
+            motionCapability = motionCapability,
+            animationsEnabled = animationsEnabled,
+            onMotionSettingsChange = onMotionSettingsChange
+        )
+
+        SmartListeningGentleWakeSection(
+            strings = strings,
+            copy = copy,
+            locale = locale,
+            animationsEnabled = animationsEnabled,
+            gentleWakeSettings = gentleWakeSettings,
+            gentleWakeReliability = gentleWakeReliability,
+            gentleWakeRuntime = gentleWakeRuntime,
+            playlists = playlists,
+            albums = albums,
+            radioStations = radioStations,
+            downloads = downloads,
+            localTracks = localTracks,
+            onGentleWakeSettingsChange = onGentleWakeSettingsChange,
+            onToggleGentleWakePreview = onToggleGentleWakePreview
+        )
+
+        SmartListeningSleepSection(
+            strings = strings,
+            copy = copy,
+            locale = locale,
+            gentleWakeSettings = gentleWakeSettings,
+            sleepWithMusicSettings = sleepWithMusicSettings,
+            onSleepWithMusicSettingsChange = onSleepWithMusicSettingsChange,
+            onStartSleepWithMusicTimer = onStartSleepWithMusicTimer,
+            onOpenSleepTimerSheet = onOpenSleepTimerSheet
+        )
+    }
+}
+
+@Composable
+private fun SmartListeningMotionSection(
+    copy: LevyraSmartListeningCopy,
+    motionSettings: MotionControlSettings,
+    motionCapability: MotionSensorCapability,
+    animationsEnabled: Boolean,
+    onMotionSettingsChange: (MotionControlSettings) -> Unit
+) {
+    SmartListeningSurfaceCard(
+        accent = LevyraCyan,
+        icon = Icons.Rounded.Sensors,
+        title = copy.motionSectionTitle,
+        subtitle = copy.motionSectionSubtitle
+    ) {
+        SmartListeningSwitchRow(
+            title = copy.motionMasterTitle,
+            subtitle = copy.motionMasterSubtitle,
+            checked = motionSettings.enabled,
             accent = LevyraCyan,
-            icon = Icons.Rounded.Sensors,
-            title = copy.motionSectionTitle,
-            subtitle = copy.motionSectionSubtitle
-        ) {
-            SmartListeningSwitchRow(
-                title = copy.motionMasterTitle,
-                subtitle = copy.motionMasterSubtitle,
-                checked = motionSettings.enabled,
-                accent = LevyraCyan,
-                onCheckedChange = { enabled ->
-                    onMotionSettingsChange(motionSettings.copy(enabled = enabled))
-                }
-            )
-
-            if (!motionCapability.isAvailable) {
-                SmartListeningInfoBanner(
-                    icon = Icons.Rounded.WarningAmber,
-                    text = copy.sensorsUnavailableHint,
-                    tint = LevyraOrange
-                )
+            onCheckedChange = { enabled ->
+                onMotionSettingsChange(motionSettings.copy(enabled = enabled))
             }
+        )
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                MotionGestureIllustrationCard(
-                    modifier = Modifier.weight(1f),
-                    title = copy.flipToPauseTitle,
-                    active = motionSettings.enabled && motionSettings.flipToPauseEnabled,
-                    accent = LevyraCyan,
-                    isFlip = true,
-                    animationsEnabled = animationsEnabled
-                )
-                MotionGestureIllustrationCard(
-                    modifier = Modifier.weight(1f),
-                    title = copy.shakeToSkipTitle,
-                    active = motionSettings.enabled && motionSettings.shakeToSkipEnabled,
-                    accent = LevyraViolet,
-                    isFlip = false,
-                    animationsEnabled = animationsEnabled
-                )
-            }
-
-            SmartListeningSwitchRow(
-                title = copy.flipToPauseTitle,
-                subtitle = copy.flipToPauseSubtitle,
-                checked = motionSettings.flipToPauseEnabled,
-                enabled = motionSettings.enabled && motionCapability.canDetectFlip,
-                accent = LevyraCyan,
-                onCheckedChange = { flip ->
-                    onMotionSettingsChange(motionSettings.copy(flipToPauseEnabled = flip))
-                }
-            )
-
-            SmartListeningSwitchRow(
-                title = copy.shakeToSkipTitle,
-                subtitle = copy.shakeToSkipSubtitle,
-                checked = motionSettings.shakeToSkipEnabled,
-                enabled = motionSettings.enabled && motionCapability.canDetectShake,
-                accent = LevyraViolet,
-                onCheckedChange = { shake ->
-                    onMotionSettingsChange(motionSettings.copy(shakeToSkipEnabled = shake))
-                }
-            )
-
-            AnimatedVisibility(
-                visible = motionSettings.enabled && motionSettings.shakeToSkipEnabled,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically()
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        text = copy.sensitivityLabel,
-                        color = LevyraText,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        val sensitivities = listOf(
-                            MotionShakeSensitivity.LOW to copy.sensitivityLow,
-                            MotionShakeSensitivity.NORMAL to copy.sensitivityNormal,
-                            MotionShakeSensitivity.HIGH to copy.sensitivityHigh
-                        )
-                        sensitivities.forEach { (sensitivity, label) ->
-                            ExpressiveChoicePill(
-                                label = label,
-                                selected = motionSettings.shakeSensitivity == sensitivity,
-                                accent = LevyraViolet,
-                                modifier = Modifier.weight(1f),
-                                onClick = {
-                                    onMotionSettingsChange(motionSettings.copy(shakeSensitivity = sensitivity))
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-
-            SmartListeningSwitchRow(
-                title = copy.screenOffTitle,
-                subtitle = if (motionCapability.wakeUpSensorSupported) {
-                    copy.screenOffSupportedHint
-                } else {
-                    copy.screenOffUnsupportedHint
-                },
-                checked = motionSettings.allowScreenOffWhenSupported && motionCapability.wakeUpSensorSupported,
-                enabled = motionSettings.enabled && motionCapability.wakeUpSensorSupported,
-                accent = LevyraCyan,
-                onCheckedChange = { allow ->
-                    onMotionSettingsChange(motionSettings.copy(allowScreenOffWhenSupported = allow))
-                }
+        if (!motionCapability.isAvailable) {
+            SmartListeningInfoBanner(
+                icon = Icons.Rounded.WarningAmber,
+                text = copy.sensorsUnavailableHint,
+                tint = LevyraOrange
             )
         }
 
-        SmartListeningSurfaceCard(
-            accent = LevyraOrange,
-            icon = Icons.Rounded.WbTwilight,
-            title = copy.gentleWakeTitle,
-            subtitle = copy.gentleWakeSubtitle
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            GentleWakeSunriseBanner(
-                settings = gentleWakeSettings,
-                runtime = gentleWakeRuntime,
+            MotionGestureIllustrationCard(
+                modifier = Modifier.weight(1f),
+                title = copy.flipToPauseTitle,
+                active = motionSettings.enabled && motionSettings.flipToPauseEnabled,
+                accent = LevyraCyan,
+                isFlip = true,
                 animationsEnabled = animationsEnabled
             )
-
-            SmartListeningSwitchRow(
-                title = copy.gentleWakeEnable,
-                subtitle = String.format(locale, "%02d:%02d · %d min", gentleWakeSettings.hour, gentleWakeSettings.minute, gentleWakeSettings.crescendoMinutes),
-                checked = gentleWakeSettings.enabled,
-                accent = LevyraOrange,
-                onCheckedChange = { enabled ->
-                    onGentleWakeSettingsChange(
-                        gentleWakeSettings.copy(
-                            enabled = enabled,
-                            dismissedDateIso = ""
-                        )
-                    )
-                }
+            MotionGestureIllustrationCard(
+                modifier = Modifier.weight(1f),
+                title = copy.shakeToSkipTitle,
+                active = motionSettings.enabled && motionSettings.shakeToSkipEnabled,
+                accent = LevyraViolet,
+                isFlip = false,
+                animationsEnabled = animationsEnabled
             )
+        }
 
-            if (gentleWakeSettings.enabled && !gentleWakeReliability.isReliable) {
-                GentleWakePermissionWarningCard(
-                    copy = copy,
-                    reliability = gentleWakeReliability,
-                    onGrantExactAlarm = {
-                        runCatching {
-                            context.startActivity(GentleWakeScheduler.buildExactAlarmSettingsIntent(context))
-                        }
-                    },
-                    onGrantNotifications = {
-                        runCatching {
-                            context.startActivity(GentleWakeScheduler.buildNotificationSettingsIntent(context))
-                        }
-                    }
-                )
-            } else if (gentleWakeSettings.enabled && gentleWakeReliability.isReliable) {
-                SmartListeningInfoBanner(
-                    icon = Icons.Rounded.CheckCircle,
-                    text = copy.alarmReliableBadge,
-                    tint = LevyraGreen
-                )
+        SmartListeningSwitchRow(
+            title = copy.flipToPauseTitle,
+            subtitle = copy.flipToPauseSubtitle,
+            checked = motionSettings.flipToPauseEnabled,
+            enabled = motionSettings.enabled && motionCapability.canDetectFlip,
+            accent = LevyraCyan,
+            onCheckedChange = { flip ->
+                onMotionSettingsChange(motionSettings.copy(flipToPauseEnabled = flip))
             }
+        )
 
-            GentleWakeTimeSelector(
-                label = copy.gentleWakeTimeLabel,
-                hour = gentleWakeSettings.hour,
-                minute = gentleWakeSettings.minute,
-                locale = locale,
-                accent = LevyraOrange,
-                onTimeChange = { newHour, newMinute ->
-                    onGentleWakeSettingsChange(
-                        gentleWakeSettings.copy(
-                            hour = newHour,
-                            minute = newMinute,
-                            dismissedDateIso = ""
-                        )
-                    )
-                }
-            )
+        SmartListeningSwitchRow(
+            title = copy.shakeToSkipTitle,
+            subtitle = copy.shakeToSkipSubtitle,
+            checked = motionSettings.shakeToSkipEnabled,
+            enabled = motionSettings.enabled && motionCapability.canDetectShake,
+            accent = LevyraViolet,
+            onCheckedChange = { shake ->
+                onMotionSettingsChange(motionSettings.copy(shakeToSkipEnabled = shake))
+            }
+        )
 
+        AnimatedVisibility(
+            visible = motionSettings.enabled && motionSettings.shakeToSkipEnabled,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = copy.gentleWakeDaysLabel,
-                    color = LevyraText,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    DayOfWeek.entries.forEach { day ->
-                        val active = day in gentleWakeSettings.days
-                        val shortName = day.getDisplayName(JavaTextStyle.NARROW_STANDALONE, locale)
-                        val fullName = day.getDisplayName(JavaTextStyle.FULL, locale)
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(48.dp)
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(
-                                    if (active) LevyraOrange.copy(alpha = 0.22f) else LevyraAdaptiveSubtle
-                                )
-                                .border(
-                                    width = 1.dp,
-                                    color = if (active) LevyraOrange else LevyraAdaptiveBorder,
-                                    shape = RoundedCornerShape(16.dp)
-                                )
-                                .semantics {
-                                    role = Role.Checkbox
-                                    selected = active
-                                }
-                                .clickable {
-                                    val updated = if (active && gentleWakeSettings.days.size > 1) {
-                                        gentleWakeSettings.days - day
-                                    } else {
-                                        gentleWakeSettings.days + day
-                                    }
-                                    onGentleWakeSettingsChange(gentleWakeSettings.copy(days = updated))
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = shortName.ifBlank { fullName.take(1) },
-                                color = if (active) LevyraText else LevyraMuted,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
-                            )
-                        }
-                    }
-                }
-            }
-
-            GentleWakeSourceSelector(
-                copy = copy,
-                settings = gentleWakeSettings,
-                playlists = playlists,
-                albums = albums,
-                radioStations = radioStations,
-                downloads = downloads,
-                localTracks = localTracks,
-                onSelectSettings = onGentleWakeSettingsChange
-            )
-
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    text = copy.crescendoLabel,
+                    text = copy.sensitivityLabel,
                     color = LevyraText,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold
@@ -469,188 +336,442 @@ internal fun SmartListeningSettingsContent(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    GENTLE_WAKE_CRESCENDO_MINUTES_OPTIONS.forEach { mins ->
+                    val sensitivities = listOf(
+                        MotionShakeSensitivity.LOW to copy.sensitivityLow,
+                        MotionShakeSensitivity.NORMAL to copy.sensitivityNormal,
+                        MotionShakeSensitivity.HIGH to copy.sensitivityHigh
+                    )
+                    sensitivities.forEach { (sensitivity, label) ->
                         ExpressiveChoicePill(
-                            label = strings.formatSleepTimerMinutes(mins),
-                            selected = gentleWakeSettings.crescendoMinutes == mins,
-                            accent = LevyraOrange,
+                            label = label,
+                            selected = motionSettings.shakeSensitivity == sensitivity,
+                            accent = LevyraViolet,
                             modifier = Modifier.weight(1f),
                             onClick = {
-                                onGentleWakeSettingsChange(gentleWakeSettings.copy(crescendoMinutes = mins))
+                                onMotionSettingsChange(motionSettings.copy(shakeSensitivity = sensitivity))
                             }
                         )
                     }
                 }
             }
+        }
 
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                var draftMaxVolume by remember(gentleWakeSettings.maxVolumeFraction) {
-                    mutableFloatStateOf(gentleWakeSettings.maxVolumeFraction)
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = copy.maxVolumeLabel,
-                        color = LevyraText,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = "${(draftMaxVolume * 100f).roundToInt()}%",
-                        color = LevyraOrange,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                Slider(
-                    value = draftMaxVolume,
-                    onValueChange = { fraction -> draftMaxVolume = fraction },
-                    onValueChangeFinished = {
-                        onGentleWakeSettingsChange(gentleWakeSettings.copy(maxVolumeFraction = draftMaxVolume))
-                    },
-                    valueRange = 0.20f..1.0f,
-                    colors = SliderDefaults.colors(
-                        thumbColor = LevyraOrange,
-                        activeTrackColor = LevyraOrange,
-                        inactiveTrackColor = LevyraAdaptiveBorder
+        SmartListeningSwitchRow(
+            title = copy.screenOffTitle,
+            subtitle = if (motionCapability.wakeUpSensorSupported) {
+                copy.screenOffSupportedHint
+            } else {
+                copy.screenOffUnsupportedHint
+            },
+            checked = motionSettings.allowScreenOffWhenSupported && motionCapability.wakeUpSensorSupported,
+            enabled = motionSettings.enabled && motionCapability.wakeUpSensorSupported,
+            accent = LevyraCyan,
+            onCheckedChange = { allow ->
+                onMotionSettingsChange(motionSettings.copy(allowScreenOffWhenSupported = allow))
+            }
+        )
+    }
+}
+
+@Composable
+private fun SmartListeningGentleWakeSection(
+    strings: LevyraStrings,
+    copy: LevyraSmartListeningCopy,
+    locale: Locale,
+    animationsEnabled: Boolean,
+    gentleWakeSettings: GentleWakeSettings,
+    gentleWakeReliability: GentleWakeReliabilityStatus,
+    gentleWakeRuntime: GentleWakeRuntimeState,
+    playlists: List<Playlist>,
+    albums: List<AlbumHit>,
+    radioStations: List<RadioStation>,
+    downloads: List<DownloadedTrack>,
+    localTracks: List<Track>,
+    onGentleWakeSettingsChange: (GentleWakeSettings) -> Unit,
+    onToggleGentleWakePreview: () -> Unit
+) {
+    val context = LocalContext.current
+    SmartListeningSurfaceCard(
+        accent = LevyraOrange,
+        icon = Icons.Rounded.WbTwilight,
+        title = copy.gentleWakeTitle,
+        subtitle = copy.gentleWakeSubtitle
+    ) {
+        GentleWakeSunriseBanner(
+            settings = gentleWakeSettings,
+            runtime = gentleWakeRuntime,
+            animationsEnabled = animationsEnabled
+        )
+
+        SmartListeningSwitchRow(
+            title = copy.gentleWakeEnable,
+            subtitle = String.format(locale, "%02d:%02d · %d min", gentleWakeSettings.hour, gentleWakeSettings.minute, gentleWakeSettings.crescendoMinutes),
+            checked = gentleWakeSettings.enabled,
+            accent = LevyraOrange,
+            onCheckedChange = { enabled ->
+                onGentleWakeSettingsChange(
+                    gentleWakeSettings.copy(
+                        enabled = enabled,
+                        dismissedDateIso = ""
                     )
                 )
             }
+        )
 
-            val previewing = gentleWakeRuntime.active && gentleWakeRuntime.previewActive
-            OutlinedButton(
-                onClick = onToggleGentleWakePreview,
-                shape = RoundedCornerShape(18.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = if (previewing) LevyraOrange.copy(alpha = 0.16f) else Color.Transparent,
-                    contentColor = LevyraText
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 48.dp)
-            ) {
-                Icon(
-                    imageVector = if (previewing) Icons.Rounded.Stop else Icons.Rounded.PlayArrow,
-                    contentDescription = null,
-                    tint = LevyraOrange
+        if (gentleWakeSettings.enabled && !gentleWakeReliability.isReliable) {
+            GentleWakePermissionWarningCard(
+                copy = copy,
+                reliability = gentleWakeReliability,
+                onGrantExactAlarm = {
+                    runCatching {
+                        context.startActivity(GentleWakeScheduler.buildExactAlarmSettingsIntent(context))
+                    }
+                },
+                onGrantNotifications = {
+                    runCatching {
+                        context.startActivity(GentleWakeScheduler.buildNotificationSettingsIntent(context))
+                    }
+                }
+            )
+        } else if (gentleWakeSettings.enabled && gentleWakeReliability.isReliable) {
+            SmartListeningInfoBanner(
+                icon = Icons.Rounded.CheckCircle,
+                text = copy.alarmReliableBadge,
+                tint = LevyraGreen
+            )
+        }
+
+        GentleWakeTimeSelector(
+            label = copy.gentleWakeTimeLabel,
+            hour = gentleWakeSettings.hour,
+            minute = gentleWakeSettings.minute,
+            locale = locale,
+            accent = LevyraOrange,
+            onTimeChange = { newHour, newMinute ->
+                onGentleWakeSettingsChange(
+                    gentleWakeSettings.copy(
+                        hour = newHour,
+                        minute = newMinute,
+                        dismissedDateIso = ""
+                    )
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+            }
+        )
+
+        GentleWakeDaysSelector(
+            label = copy.gentleWakeDaysLabel,
+            settings = gentleWakeSettings,
+            locale = locale,
+            onGentleWakeSettingsChange = onGentleWakeSettingsChange
+        )
+
+        GentleWakeSourceSelector(
+            copy = copy,
+            settings = gentleWakeSettings,
+            playlists = playlists,
+            albums = albums,
+            radioStations = radioStations,
+            downloads = downloads,
+            localTracks = localTracks,
+            onSelectSettings = onGentleWakeSettingsChange
+        )
+
+        GentleWakeIntensityControls(
+            strings = strings,
+            copy = copy,
+            gentleWakeSettings = gentleWakeSettings,
+            onGentleWakeSettingsChange = onGentleWakeSettingsChange
+        )
+
+        GentleWakePreviewButton(
+            copy = copy,
+            gentleWakeRuntime = gentleWakeRuntime,
+            onToggleGentleWakePreview = onToggleGentleWakePreview
+        )
+    }
+}
+
+@Composable
+private fun GentleWakeDaysSelector(
+    label: String,
+    settings: GentleWakeSettings,
+    locale: Locale,
+    onGentleWakeSettingsChange: (GentleWakeSettings) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            text = label,
+            color = LevyraText,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            DayOfWeek.entries.forEach { day ->
+                val active = day in settings.days
+                val shortName = day.getDisplayName(JavaTextStyle.NARROW_STANDALONE, locale)
+                val fullName = day.getDisplayName(JavaTextStyle.FULL, locale)
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(
+                            if (active) LevyraOrange.copy(alpha = 0.22f) else LevyraAdaptiveSubtle
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = if (active) LevyraOrange else LevyraAdaptiveBorder,
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                        .semantics {
+                            role = Role.Checkbox
+                            selected = active
+                        }
+                        .clickable {
+                            val updated = if (active && settings.days.size > 1) {
+                                settings.days - day
+                            } else {
+                                settings.days + day
+                            }
+                            onGentleWakeSettingsChange(settings.copy(days = updated))
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = shortName.ifBlank { fullName.take(1) },
+                        color = if (active) LevyraText else LevyraMuted,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GentleWakeIntensityControls(
+    strings: LevyraStrings,
+    copy: LevyraSmartListeningCopy,
+    gentleWakeSettings: GentleWakeSettings,
+    onGentleWakeSettingsChange: (GentleWakeSettings) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(
+                text = copy.crescendoLabel,
+                color = LevyraText,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                GENTLE_WAKE_CRESCENDO_MINUTES_OPTIONS.forEach { mins ->
+                    ExpressiveChoicePill(
+                        label = strings.formatSleepTimerMinutes(mins),
+                        selected = gentleWakeSettings.crescendoMinutes == mins,
+                        accent = LevyraOrange,
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            onGentleWakeSettingsChange(gentleWakeSettings.copy(crescendoMinutes = mins))
+                        }
+                    )
+                }
+            }
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            var draftMaxVolume by remember(gentleWakeSettings.maxVolumeFraction) {
+                mutableFloatStateOf(gentleWakeSettings.maxVolumeFraction)
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
-                    text = if (previewing) {
-                        "${copy.stopPreview} (${(gentleWakeRuntime.currentVolumeFraction * 100f).roundToInt()}%)"
-                    } else {
-                        copy.previewCrescendo
-                    },
+                    text = copy.maxVolumeLabel,
+                    color = LevyraText,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = "${(draftMaxVolume * 100f).roundToInt()}%",
+                    color = LevyraOrange,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Slider(
+                value = draftMaxVolume,
+                onValueChange = { fraction -> draftMaxVolume = fraction },
+                onValueChangeFinished = {
+                    onGentleWakeSettingsChange(gentleWakeSettings.copy(maxVolumeFraction = draftMaxVolume))
+                },
+                valueRange = 0.20f..1.0f,
+                colors = SliderDefaults.colors(
+                    thumbColor = LevyraOrange,
+                    activeTrackColor = LevyraOrange,
+                    inactiveTrackColor = LevyraAdaptiveBorder
+                )
+            )
+        }
+    }
+}
+
+@Composable
+private fun GentleWakePreviewButton(
+    copy: LevyraSmartListeningCopy,
+    gentleWakeRuntime: GentleWakeRuntimeState,
+    onToggleGentleWakePreview: () -> Unit
+) {
+    val previewing = gentleWakeRuntime.active && gentleWakeRuntime.previewActive
+    OutlinedButton(
+        onClick = onToggleGentleWakePreview,
+        shape = RoundedCornerShape(18.dp),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = if (previewing) LevyraOrange.copy(alpha = 0.16f) else Color.Transparent,
+            contentColor = LevyraText
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+    ) {
+        Icon(
+            imageVector = if (previewing) Icons.Rounded.Stop else Icons.Rounded.PlayArrow,
+            contentDescription = null,
+            tint = LevyraOrange
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = if (previewing) {
+                "${copy.stopPreview} (${(gentleWakeRuntime.currentVolumeFraction * 100f).roundToInt()}%)"
+            } else {
+                copy.previewCrescendo
+            },
+            fontWeight = FontWeight.SemiBold
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SmartListeningSleepSection(
+    strings: LevyraStrings,
+    copy: LevyraSmartListeningCopy,
+    locale: Locale,
+    gentleWakeSettings: GentleWakeSettings,
+    sleepWithMusicSettings: SleepWithMusicSettings,
+    onSleepWithMusicSettingsChange: (SleepWithMusicSettings) -> Unit,
+    onStartSleepWithMusicTimer: (Int, Boolean) -> Unit,
+    onOpenSleepTimerSheet: () -> Unit
+) {
+    SmartListeningSurfaceCard(
+        accent = LevyraPink,
+        icon = Icons.Rounded.Bedtime,
+        title = copy.sleepWithMusicTitle,
+        subtitle = copy.sleepWithMusicSubtitle
+    ) {
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            SLEEP_WITH_MUSIC_DURATION_PRESETS.forEach { minutes ->
+                ExpressiveChoicePill(
+                    label = strings.formatSleepTimerMinutes(minutes),
+                    selected = sleepWithMusicSettings.defaultDurationMinutes == minutes,
+                    accent = LevyraPink,
+                    onClick = {
+                        onSleepWithMusicSettingsChange(
+                            sleepWithMusicSettings.copy(
+                                preferSmartSleepMode = true,
+                                defaultDurationMinutes = minutes
+                            )
+                        )
+                        onStartSleepWithMusicTimer(minutes, sleepWithMusicSettings.timbreSofteningEnabled)
+                    }
                 )
             }
         }
 
-        SmartListeningSurfaceCard(
+        SmartListeningSwitchRow(
+            title = copy.timbreSofteningTitle,
+            subtitle = copy.timbreSofteningSubtitle,
+            checked = sleepWithMusicSettings.timbreSofteningEnabled,
             accent = LevyraPink,
-            icon = Icons.Rounded.Bedtime,
-            title = copy.sleepWithMusicTitle,
-            subtitle = copy.sleepWithMusicSubtitle
-        ) {
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                SLEEP_WITH_MUSIC_DURATION_PRESETS.forEach { minutes ->
-                    ExpressiveChoicePill(
-                        label = strings.formatSleepTimerMinutes(minutes),
-                        selected = sleepWithMusicSettings.defaultDurationMinutes == minutes,
-                        accent = LevyraPink,
-                        onClick = {
-                            onSleepWithMusicSettingsChange(
-                                sleepWithMusicSettings.copy(
-                                    preferSmartSleepMode = true,
-                                    defaultDurationMinutes = minutes
-                                )
-                            )
-                            onStartSleepWithMusicTimer(minutes, sleepWithMusicSettings.timbreSofteningEnabled)
-                        }
-                    )
-                }
+            onCheckedChange = { enabled ->
+                onSleepWithMusicSettingsChange(
+                    sleepWithMusicSettings.copy(timbreSofteningEnabled = enabled)
+                )
             }
+        )
 
-            SmartListeningSwitchRow(
-                title = copy.timbreSofteningTitle,
-                subtitle = copy.timbreSofteningSubtitle,
-                checked = sleepWithMusicSettings.timbreSofteningEnabled,
-                accent = LevyraPink,
-                onCheckedChange = { enabled ->
-                    onSleepWithMusicSettingsChange(
-                        sleepWithMusicSettings.copy(timbreSofteningEnabled = enabled)
-                    )
-                }
-            )
+        SmartListeningSwitchRow(
+            title = copy.morningResumeTitle,
+            subtitle = copy.morningResumeSubtitle,
+            checked = sleepWithMusicSettings.morningResumeEnabled,
+            accent = LevyraPink,
+            onCheckedChange = { enabled ->
+                onSleepWithMusicSettingsChange(
+                    sleepWithMusicSettings.copy(morningResumeEnabled = enabled)
+                )
+            }
+        )
 
-            SmartListeningSwitchRow(
-                title = copy.morningResumeTitle,
-                subtitle = copy.morningResumeSubtitle,
-                checked = sleepWithMusicSettings.morningResumeEnabled,
-                accent = LevyraPink,
-                onCheckedChange = { enabled ->
-                    onSleepWithMusicSettingsChange(
-                        sleepWithMusicSettings.copy(morningResumeEnabled = enabled)
-                    )
-                }
-            )
-
-            AnimatedVisibility(
-                visible = sleepWithMusicSettings.morningResumeEnabled,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically()
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    SmartListeningSwitchRow(
-                        title = copy.linkMorningToWakeTitle,
-                        subtitle = String.format(locale, "%02d:%02d", gentleWakeSettings.hour, gentleWakeSettings.minute),
-                        checked = sleepWithMusicSettings.linkMorningPromptToGentleWake,
-                        accent = LevyraPink,
-                        onCheckedChange = { link ->
-                            onSleepWithMusicSettingsChange(
-                                sleepWithMusicSettings.copy(linkMorningPromptToGentleWake = link)
-                            )
-                        }
-                    )
-                    if (!sleepWithMusicSettings.linkMorningPromptToGentleWake) {
-                        GentleWakeTimeSelector(
-                            label = copy.morningResumeTitle,
-                            hour = sleepWithMusicSettings.morningPromptHour,
-                            minute = sleepWithMusicSettings.morningPromptMinute,
-                            locale = locale,
-                            accent = LevyraPink,
-                            onTimeChange = { newHour, newMinute ->
-                                onSleepWithMusicSettingsChange(
-                                    sleepWithMusicSettings.copy(
-                                        morningPromptHour = newHour,
-                                        morningPromptMinute = newMinute
-                                    )
-                                )
-                            }
+        AnimatedVisibility(
+            visible = sleepWithMusicSettings.morningResumeEnabled,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                SmartListeningSwitchRow(
+                    title = copy.linkMorningToWakeTitle,
+                    subtitle = String.format(locale, "%02d:%02d", gentleWakeSettings.hour, gentleWakeSettings.minute),
+                    checked = sleepWithMusicSettings.linkMorningPromptToGentleWake,
+                    accent = LevyraPink,
+                    onCheckedChange = { link ->
+                        onSleepWithMusicSettingsChange(
+                            sleepWithMusicSettings.copy(linkMorningPromptToGentleWake = link)
                         )
                     }
+                )
+                if (!sleepWithMusicSettings.linkMorningPromptToGentleWake) {
+                    GentleWakeTimeSelector(
+                        label = copy.morningResumeTitle,
+                        hour = sleepWithMusicSettings.morningPromptHour,
+                        minute = sleepWithMusicSettings.morningPromptMinute,
+                        locale = locale,
+                        accent = LevyraPink,
+                        onTimeChange = { newHour, newMinute ->
+                            onSleepWithMusicSettingsChange(
+                                sleepWithMusicSettings.copy(
+                                    morningPromptHour = newHour,
+                                    morningPromptMinute = newMinute
+                                )
+                            )
+                        }
+                    )
                 }
             }
+        }
 
-            OutlinedButton(
-                onClick = onOpenSleepTimerSheet,
-                shape = RoundedCornerShape(18.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = LevyraText),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 48.dp)
-            ) {
-                Icon(Icons.Rounded.Bedtime, contentDescription = null, tint = LevyraPink)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(strings.sleepTimer, fontWeight = FontWeight.SemiBold)
-            }
+        OutlinedButton(
+            onClick = onOpenSleepTimerSheet,
+            shape = RoundedCornerShape(18.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = LevyraText),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp)
+        ) {
+            Icon(Icons.Rounded.Bedtime, contentDescription = null, tint = LevyraPink)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(strings.sleepTimer, fontWeight = FontWeight.SemiBold)
         }
     }
 }
@@ -1118,7 +1239,7 @@ private fun GentleWakeTimeSelector(
     accent: Color,
     onTimeChange: (Int, Int) -> Unit
 ) {
-    val totalMinutes = (hour.coerceIn(0, 23) * 60 + minute.coerceIn(0, 59))
+    val totalMinutes = hour.coerceIn(0, 23) * 60 + minute.coerceIn(0, 59)
     fun adjustBy(deltaMinutes: Int) {
         val wrapped = ((totalMinutes + deltaMinutes) % 1440 + 1440) % 1440
         onTimeChange(wrapped / 60, wrapped % 60)
@@ -1213,7 +1334,7 @@ private fun GentleWakeSourceSelector(
         ) {
             val types = listOf(
                 Triple(GentleWakeSourceType.BUILT_IN_TONE, copy.sourceBuiltInTone, Icons.Rounded.AutoAwesome),
-                Triple(GentleWakeSourceType.PLAYLIST, copy.sourcePlaylist, Icons.Rounded.QueueMusic),
+                Triple(GentleWakeSourceType.PLAYLIST, copy.sourcePlaylist, Icons.AutoMirrored.Rounded.QueueMusic),
                 Triple(GentleWakeSourceType.ALBUM, copy.sourceAlbum, Icons.Rounded.Album),
                 Triple(GentleWakeSourceType.RADIO, copy.sourceRadio, Icons.Rounded.Radio),
                 Triple(GentleWakeSourceType.LOCAL_AUDIO, copy.sourceLocalAudio, Icons.Rounded.LibraryMusic)
@@ -1257,7 +1378,7 @@ private fun GentleWakeSourceSelector(
             GentleWakeSourceType.PLAYLIST -> {
                 if (playlists.isEmpty()) {
                     SmartListeningInfoBanner(
-                        icon = Icons.Rounded.QueueMusic,
+                        icon = Icons.AutoMirrored.Rounded.QueueMusic,
                         text = copy.builtInToneSubtitle,
                         tint = LevyraMuted
                     )
@@ -1270,7 +1391,7 @@ private fun GentleWakeSourceSelector(
                                 subtitle = "${playlist.tracks.size}",
                                 artworkUrl = artwork,
                                 selected = settings.sourceId == playlist.id,
-                                fallbackIcon = Icons.Rounded.QueueMusic,
+                                fallbackIcon = Icons.AutoMirrored.Rounded.QueueMusic,
                                 onClick = {
                                     onSelectSettings(
                                         settings.copy(
