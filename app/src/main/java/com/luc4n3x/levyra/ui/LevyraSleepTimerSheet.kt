@@ -529,30 +529,18 @@ private fun SleepTimerActiveCard(
                 iconTint = if (isSmartSleep) LevyraViolet else LevyraCyan
             )
             Spacer(Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(
-                    text = if (isSmartSleep) smartCopy.smartSleepMode else copy.sleepActive,
-                    color = if (isSmartSleep) LevyraViolet else LevyraCyan,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                )
-                Text(
-                    text = if (state.sleepTimerEndOfTrack) strings.sleepTimerEndOfTrack else formatTimerClock(remainingSeconds),
-                    color = LevyraText,
-                    fontSize = 27.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(endAt, color = LevyraMuted, fontSize = 11.sp)
-                val detail = when {
+            SleepTimerActiveSummary(
+                modifier = Modifier.weight(1f),
+                label = if (isSmartSleep) smartCopy.smartSleepMode else copy.sleepActive,
+                accent = if (isSmartSleep) LevyraViolet else LevyraCyan,
+                clock = if (state.sleepTimerEndOfTrack) strings.sleepTimerEndOfTrack else formatTimerClock(remainingSeconds),
+                endAt = endAt,
+                detail = when {
                     isSmartSleep -> smartCopy.sleepWithMusicSubtitle
                     state.sleepTimerFadeMs > 0L -> copy.sleepFadeActive
                     else -> null
                 }
-                if (detail != null) {
-                    Text(detail, color = LevyraMuted, fontSize = 11.sp, maxLines = 2)
-                }
-            }
+            )
         }
         Row(
             modifier = Modifier.align(Alignment.End),
@@ -566,6 +554,36 @@ private fun SleepTimerActiveCard(
             TextButton(onClick = onCancel, modifier = Modifier.sizeIn(minHeight = 48.dp)) {
                 Text(strings.sleepTimerCancel, color = LevyraMuted, fontWeight = FontWeight.SemiBold)
             }
+        }
+    }
+}
+
+@Composable
+private fun SleepTimerActiveSummary(
+    label: String,
+    accent: Color,
+    clock: String,
+    endAt: String,
+    detail: String?,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Text(
+            text = label,
+            color = accent,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp
+        )
+        Text(
+            text = clock,
+            color = LevyraText,
+            fontSize = 27.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Text(endAt, color = LevyraMuted, fontSize = 11.sp)
+        if (detail != null) {
+            Text(detail, color = LevyraMuted, fontSize = 11.sp, maxLines = 2)
         }
     }
 }
