@@ -10,6 +10,7 @@ import com.luc4n3x.levyra.ui.i18n.dockMorph
 import com.luc4n3x.levyra.ui.i18n.musicRegionCopy
 import com.luc4n3x.levyra.ui.i18n.parametricEqCopy
 import com.luc4n3x.levyra.ui.i18n.smartOfflineCopy
+import com.luc4n3x.levyra.ui.i18n.smartListeningCopy
 import com.luc4n3x.levyra.ui.preloadNextTrack
 import com.luc4n3x.levyra.ui.preloadNextTrackSubtitle
 import java.util.Locale
@@ -32,6 +33,7 @@ private class SettingsSearchCategories(strings: LevyraStrings, locale: Locale) {
     val integrations = SettingsSearchCategory("integrations", settingsCategoryTitle(strings.integrations, locale))
     val network = SettingsSearchCategory("network", settingsCategoryTitle(strings.networkTitle, locale))
     val jam = SettingsSearchCategory("jam", settingsCategoryTitle(strings.jamTitle, locale))
+    val smartListening = SettingsSearchCategory("smart_listening", strings.smartListeningCopy().hubTitle)
 }
 
 internal fun settingsCategoryTitle(value: String, locale: Locale): String =
@@ -127,6 +129,14 @@ private fun MutableList<SettingsSearchEntry>.playerEntries(strings: LevyraString
     entry("player.pause_on_mute", automation.pauseOnMute, automation.pauseOnMuteSubtitle, "mute volume automation", categories.player)
     entry("player.auto_download_favorites", automation.autoDownloadFavorites, automation.autoDownloadFavoritesSubtitle, "download favorites automation", categories.player)
     entry("player.skip_unrecoverable", automation.skipUnrecoverable, automation.skipUnrecoverableSubtitle, "skip error automation", categories.player)
+    val smartListening = strings.smartListeningCopy()
+    entry("smart_listening.hub", smartListening.hubTitle, smartListening.hubSubtitle, "smart listening ascolto intelligente motion flip shake gentle wake alarm sleep timer morning resume", categories.smartListening)
+    entry("smart_listening.motion", smartListening.motionSectionTitle, smartListening.motionSectionSubtitle, "motion controls controlli movimento flip shake sensor accelerometer", categories.smartListening)
+    entry("smart_listening.flip", smartListening.flipToPauseTitle, smartListening.flipToPauseSubtitle, "flip to pause capovolgi pausa face down sensor", categories.smartListening)
+    entry("smart_listening.shake", smartListening.shakeToSkipTitle, smartListening.shakeToSkipSubtitle, "shake to skip scuoti brano successivo next track sensitivity", categories.smartListening)
+    entry("smart_listening.wake", smartListening.gentleWakeTitle, smartListening.gentleWakeSubtitle, "gentle wake sveglia musicale graduale alarm crescendo snooze", categories.smartListening)
+    entry("smart_listening.sleep", smartListening.sleepWithMusicTitle, smartListening.sleepWithMusicSubtitle, "sleep with music addormentati musica sleep timer fade timbre morning resume", categories.smartListening)
+    entry("smart_listening.morning_resume", smartListening.morningResumeTitle, smartListening.morningResumeSubtitle, "morning resume ripresa mattino buongiorno good morning", categories.smartListening)
 }
 
 private fun MutableList<SettingsSearchEntry>.audioEntries(

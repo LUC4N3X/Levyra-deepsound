@@ -96,7 +96,17 @@ import com.luc4n3x.levyra.domain.SmartResumeTracker
 import com.luc4n3x.levyra.domain.ReplayGainMode
 import com.luc4n3x.levyra.domain.selectReplayGain
 import com.luc4n3x.levyra.domain.LyricLine
+import com.luc4n3x.levyra.domain.GentleWakeCurve
+import com.luc4n3x.levyra.domain.GentleWakeRuntimeState
+import com.luc4n3x.levyra.domain.GentleWakeSettings
+import com.luc4n3x.levyra.domain.MorningResumeSnapshot
+import com.luc4n3x.levyra.domain.MotionControlSettings
+import com.luc4n3x.levyra.domain.PlaybackPriorityCoordinator
+import com.luc4n3x.levyra.domain.PlaybackSleepTimerMode
+import com.luc4n3x.levyra.domain.SleepWithMusicSettings
 import com.luc4n3x.levyra.domain.Track
+import java.time.LocalDate
+import java.time.ZonedDateTime
 import com.luc4n3x.levyra.feature.radio.LIVE_RADIO_SOURCE
 import com.luc4n3x.levyra.feature.radio.LiveRadioPlaylistDataSource
 import com.luc4n3x.levyra.feature.radio.LiveRadioStreamMetadata
@@ -201,6 +211,7 @@ class PlaybackService : MediaLibraryService() {
     private val parametricEqualizerProcessor = LevyraParametricEqualizerAudioProcessor()
     private val spatialAudioProcessor = StereoSpatialAudioProcessor()
     private val nightListeningProcessor = NightListeningAudioProcessor()
+    private val sleepTimbreProcessor = SleepTimbreAudioProcessor()
     private val adaptiveGainProcessor = AdaptiveGainAudioProcessor(meterOutput = true)
     private val limiterProcessor = TruePeakLimiterAudioProcessor()
     private val smartResumeTracker = SmartResumeTracker(SystemClock::elapsedRealtime)
@@ -339,6 +350,11 @@ class PlaybackService : MediaLibraryService() {
         private val _sleepTimerStateFlow = MutableStateFlow<PlaybackSleepTimerState>(PlaybackSleepTimerState.Disabled)
         val sleepTimerStateFlow: StateFlow<PlaybackSleepTimerState> = _sleepTimerStateFlow.asStateFlow()
 
+        private val _gentleWakeRuntimeStateFlow = MutableStateFlow(GentleWakeRuntimeState())
+        val gentleWakeRuntimeStateFlow: StateFlow<GentleWakeRuntimeState> = _gentleWakeRuntimeStateFlow.asStateFlow()
+
+        const val ACTION_START_GENTLE_WAKE_SERVICE = "com.luc4n3x.levyra.action.START_GENTLE_WAKE_SERVICE"
+
         private val _liveRadioMetadataFlow = MutableStateFlow(LiveRadioStreamMetadata())
         internal val liveRadioMetadataFlow: StateFlow<LiveRadioStreamMetadata> = _liveRadioMetadataFlow.asStateFlow()
 
@@ -385,6 +401,84 @@ class PlaybackService : MediaLibraryService() {
             val service = activeService ?: return false
             service.sleepTimer.cancel()
             return true
+        }
+
+        fun startSleepWithMusicTimer(minutes: Int, timbreSoftening: Boolean): Boolean {
+            val service = activeService ?: return false
+            if (!PlaybackPriorityCoordinator.canStartSleepFade(_gentleWakeRuntimeStateFlow.value.active)) {
+                return false
+            }
+            if (minutes <= 0) {
+                service.sleepTimer.cancel()
+                return true
+            }
+            val totalMs = minutes * 60_000L
+            service.sleepTimer.startSleepWithMusic(totalMs, timbreSoftening)
+            return true
+        }
+
+        fun isGentleWakeRinging(): Boolean =
+            _gentleWakeRuntimeStateFlow.value.active && !_gentleWakeRuntimeStateFlow.value.previewActive
+
+        fun triggerGentleWakeAlarm(context: Context, settings: GentleWakeSettings) {
+            val appContext = context.applicationContext
+            val service = activeService
+            if (service != null) {
+                service.startGentleWakeInternal(settings, isPreview = false)
+            } else {
+                val intent = Intent(appContext, PlaybackService::class.java).apply {
+                    action = ACTION_START_GENTLE_WAKE_SERVICE
+                }
+                runCatching {
+                    androidx.core.content.ContextCompat.startForegroundService(appContext, intent)
+                }.recoverCatching {
+                    appContext.startService(intent)
+                }.onFailure { Timber.w(it, "GentleWake service start failed") }
+            }
+        }
+
+        fun startGentleWakePreview(settings: GentleWakeSettings): Boolean {
+            val service = activeService ?: return false
+            service.startGentleWakeInternal(settings, isPreview = true)
+            return true
+        }
+
+        fun stopGentleWakePreview(): Boolean {
+            val service = activeService ?: return false
+            if (_gentleWakeRuntimeStateFlow.value.previewActive) {
+                service.stopGentleWakeInternal(markDismissedForToday = false)
+            }
+            return true
+        }
+
+        fun snoozeGentleWakeAlarm(context: Context, customDelayMs: Long? = null) {
+            val appContext = context.applicationContext
+            val service = activeService
+            if (service != null) {
+                service.snoozeGentleWakeInternal(customDelayMs)
+            } else {
+                val settings = LevyraPreferences(appContext).gentleWakeSettings()
+                val snoozeUntil = GentleWakeScheduler.scheduleSnooze(appContext, settings, customDelayMs)
+                GentleWakeScheduler.cancelGentleWakeNotification(appContext)
+                _gentleWakeRuntimeStateFlow.value = GentleWakeRuntimeState(snoozedUntilEpochMs = snoozeUntil)
+            }
+        }
+
+        fun stopGentleWakeAlarmForToday(context: Context) {
+            val appContext = context.applicationContext
+            val service = activeService
+            if (service != null) {
+                service.stopGentleWakeInternal(markDismissedForToday = true)
+            } else {
+                val prefs = LevyraPreferences(appContext)
+                val updated = prefs.gentleWakeSettings().copy(dismissedDateIso = LocalDate.now().toString())
+                CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+                    prefs.setGentleWakeSettings(updated)
+                    GentleWakeScheduler.clearSnooze(appContext, updated)
+                }
+                GentleWakeScheduler.cancelGentleWakeNotification(appContext)
+                _gentleWakeRuntimeStateFlow.value = GentleWakeRuntimeState()
+            }
         }
 
         fun publishLiveRadioArtwork(trackId: String, artworkUri: String): Boolean {
@@ -507,6 +601,8 @@ class PlaybackService : MediaLibraryService() {
         PlaybackSleepTimer(
             scope = serviceScope,
             onFadeVolume = ::applySleepFadeVolume,
+            onTimbreSoftness = ::applySleepTimbreSoftness,
+            onExpiredWithMode = ::pausePlaybackForSleepTimer,
             onExpired = ::pausePlaybackForSleepTimer
         )
     }
@@ -517,6 +613,21 @@ class PlaybackService : MediaLibraryService() {
     private var automationSettings = LevyraAutomationSettings()
     private val playbackFailureGuard = ConsecutivePlaybackFailureGuard()
     private var sleepFadeBaselineVolume: Float? = null
+    private val motionGestureController by lazy {
+        MotionGestureController(
+            context = this,
+            onFlipToPause = ::handleMotionFlipToPause,
+            onShakeToSkip = ::handleMotionShakeToSkip
+        )
+    }
+    private var motionControlSettingsJob: Job? = null
+    private var sleepWithMusicSettingsJob: Job? = null
+    private var gentleWakeCrescendoJob: Job? = null
+    private var gentleWakePreservedQueue: PlaybackQueueSnapshot? = null
+    private var gentleWakePreservedRepeatMode: Int = Player.REPEAT_MODE_OFF
+
+    @Volatile
+    private var sleepWithMusicSettings = SleepWithMusicSettings()
     private var pausedByRouteLossAtMs: Long? = null
     private var liveRadioPausedAtMs = C.TIME_UNSET
     private var liveRadioReconnectJob: Job? = null
@@ -634,7 +745,8 @@ class PlaybackService : MediaLibraryService() {
                 speed = parameters.speed,
                 pitch = parameters.pitch,
                 skipSilenceEnabled = player.skipSilenceEnabled,
-                aaudioOutputSupported = NativeAudioIntegration.isAaudioOutputSupported()
+                aaudioOutputSupported = NativeAudioIntegration.isAaudioOutputSupported(),
+                sleepTimbreSofteningActive = sleepTimbreProcessor.currentTargetSoftness() > 0.001f
             )
         )
     }
@@ -955,6 +1067,7 @@ class PlaybackService : MediaLibraryService() {
                             parametricEqualizerProcessor,
                             spatialAudioProcessor,
                             nightListeningProcessor,
+                            sleepTimbreProcessor,
                             adaptiveGainProcessor,
                             limiterProcessor,
                             visualizerProcessor,
@@ -1189,6 +1302,7 @@ class PlaybackService : MediaLibraryService() {
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 AdaptiveListeningBus.setPlaybackActive(isPlaying)
+                syncMotionGestureContext()
             }
 
             override fun onEvents(player: Player, events: Player.Events) {
@@ -1223,6 +1337,19 @@ class PlaybackService : MediaLibraryService() {
         automationSettingsJob?.cancel()
         audioRouteSelectionJob?.cancel()
         audioRouteFeedbackResetJob?.cancel()
+        motionControlSettingsJob?.cancel()
+        motionControlSettingsJob = serviceScope.launch {
+            prefs.motionControlSettingsFlow.collect { settings ->
+                motionGestureController.updateSettings(settings)
+                syncMotionGestureContext()
+            }
+        }
+        sleepWithMusicSettingsJob?.cancel()
+        sleepWithMusicSettingsJob = serviceScope.launch {
+            prefs.sleepWithMusicSettingsFlow.collect { settings ->
+                sleepWithMusicSettings = settings
+            }
+        }
         automationSettingsJob = serviceScope.launch {
             prefs.automationSettingsFlow.collect { settings ->
                 automationSettings = settings
@@ -1650,6 +1777,25 @@ class PlaybackService : MediaLibraryService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
+        if (intent?.action == ACTION_START_GENTLE_WAKE_SERVICE) {
+            val prefs = LevyraPreferences(this)
+            runCatching {
+                androidx.core.app.ServiceCompat.startForeground(
+                    this,
+                    GentleWakeScheduler.GENTLE_WAKE_NOTIFICATION_ID,
+                    GentleWakeScheduler.buildGentleWakeRingingNotification(
+                        context = this,
+                        languageCode = prefs.languageCode(),
+                        sourceTitle = "",
+                        usingEmergencyFallback = false
+                    ),
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+                )
+            }.onFailure { Timber.w(it, "GentleWake foreground start failed") }
+            val wakeSettings = prefs.gentleWakeSettings()
+            startGentleWakeInternal(wakeSettings, isPreview = false)
+            return START_STICKY
+        }
         if (intent == null && !scheduleStickyPlaybackRestore(startId)) return START_NOT_STICKY
         return START_STICKY
     }
@@ -2200,7 +2346,7 @@ class PlaybackService : MediaLibraryService() {
             Timber.w(error, "Queue crossfade failed")
         } finally {
             isQueueTransitionInProgress = false
-            primary.volume = 1f
+            primary.volume = currentEffectiveBaseVolume()
             releaseTransitionPlayer(secondary)
         }
     }
@@ -2631,8 +2777,28 @@ class PlaybackService : MediaLibraryService() {
         queueTransitionJob?.cancel()
         queueTransitionJob = null
         isQueueTransitionInProgress = false
-        activePlayer?.volume = 1f
+        activePlayer?.volume = currentEffectiveBaseVolume()
         releaseTransitionPlayer()
+    }
+
+    private fun currentEffectiveBaseVolume(): Float {
+        val wakeState = _gentleWakeRuntimeStateFlow.value
+        val baseline = sleepFadeBaselineVolume ?: 1f
+        val targetMultiplier = PlaybackPriorityCoordinator.effectivePlayerVolume(
+            gentleWakeActive = wakeState.active,
+            gentleWakeVolume = wakeState.currentVolumeFraction,
+            sleepFadeVolume = sleepTimer.currentFadeVolume()
+        )
+        return (baseline * targetMultiplier).coerceIn(0f, 1f)
+    }
+
+    private fun applySleepTimbreSoftness(softness: Float) {
+        val previousActive = sleepTimbreProcessor.currentTargetSoftness() > 0.001f
+        sleepTimbreProcessor.setTargetSoftness(softness)
+        val nowActive = sleepTimbreProcessor.currentTargetSoftness() > 0.001f
+        if (previousActive != nowActive) {
+            refreshAudioOffloadPolicy()
+        }
     }
 
     private fun applySleepFadeVolume(volume: Float) {
@@ -2717,8 +2883,251 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private fun pausePlaybackForSleepTimer() {
+        pausePlaybackForSleepTimer(PlaybackSleepTimerMode.CLASSIC)
+        if (true) return
         cancelQueueTransition()
         mediaSession?.player?.pause()
+    }
+
+    private fun pausePlaybackForSleepTimer(
+        mode: PlaybackSleepTimerMode
+    ) {
+        if (mode == PlaybackSleepTimerMode.SLEEP_WITH_MUSIC) {
+            captureMorningResumeSnapshotIfNeeded()
+        }
+        applySleepTimbreSoftness(0f)
+        applySleepFadeVolume(1f)
+        cancelQueueTransition()
+        mediaSession?.player?.pause()
+    }
+
+    private fun captureMorningResumeSnapshotIfNeeded() {
+        val prefs = LevyraPreferences(this)
+        val currentSleepSettings = sleepWithMusicSettings.normalized()
+        if (!currentSleepSettings.morningResumeEnabled) return
+        val player = mediaSession?.player ?: activePlayer ?: return
+        val queueSnapshot = queueEngine.state.value
+        val activeTrack = queueSnapshot.currentTrack ?: return
+        val positionMs = player.currentPosition.coerceAtLeast(0L)
+        val now = ZonedDateTime.now()
+        val promptAt = MorningResumeSnapshot.computeMorningPromptTime(
+            now = now,
+            sleepSettings = currentSleepSettings,
+            gentleWakeSettings = prefs.gentleWakeSettings()
+        )
+        val snapshot = MorningResumeSnapshot(
+            track = activeTrack,
+            positionMs = if (activeTrack.isLiveRadio()) 0L else positionMs,
+            queue = queueSnapshot.tracks.ifEmpty { listOf(activeTrack) },
+            queueIndex = queueSnapshot.currentIndex.coerceAtLeast(0),
+            shuffleEnabled = queueSnapshot.shuffleEnabled,
+            repeatMode = queueSnapshot.repeatMode,
+            isLiveRadio = activeTrack.isLiveRadio(),
+            radioStationUuid = activeTrack.id.removePrefix("live-radio:"),
+            capturedAtEpochMs = now.toInstant().toEpochMilli(),
+            promptAtEpochMs = promptAt.toInstant().toEpochMilli(),
+            dismissed = false
+        )
+        serviceScope.launch(Dispatchers.IO) {
+            prefs.setMorningResumeSnapshot(snapshot)
+            GentleWakeScheduler.scheduleMorningResumePrompt(this@PlaybackService, snapshot)
+        }
+    }
+
+    private fun isAndroidAutoSessionConnected(): Boolean {
+        val uiModeManager = getSystemService(Context.UI_MODE_SERVICE) as? android.app.UiModeManager
+        if (uiModeManager?.currentModeType == android.content.res.Configuration.UI_MODE_TYPE_CAR) {
+            return true
+        }
+        val controllers = mediaSession?.connectedControllers.orEmpty()
+        return controllers.any { info ->
+            val pkg = info.packageName
+            pkg.contains("projection.gearhead", ignoreCase = true) ||
+                pkg.contains("android.auto", ignoreCase = true) ||
+                pkg.contains("com.google.android.carassistant", ignoreCase = true)
+        }
+    }
+
+    private fun syncMotionGestureContext() {
+        val playing = (mediaSession?.player ?: activePlayer)?.isPlaying == true
+        val alarmRinging = _gentleWakeRuntimeStateFlow.value.active &&
+            !_gentleWakeRuntimeStateFlow.value.previewActive
+        motionGestureController.updatePlaybackContext(
+            playing = playing,
+            alarmRinging = alarmRinging,
+            autoConnected = isAndroidAutoSessionConnected()
+        )
+    }
+
+    private fun handleMotionFlipToPause() {
+        val player = mediaSession?.player ?: activePlayer ?: return
+        if (!player.isPlaying) return
+        pausedByRouteLossAtMs = null
+        lostRouteWasBluetooth = false
+        runCatching { player.pause() }.onFailure { Timber.w(it, "Flip-to-pause failed") }
+    }
+
+    private fun handleMotionShakeToSkip() {
+        val player = mediaSession?.player ?: activePlayer ?: return
+        if (!player.isPlaying || !canSkipToNextTrack()) return
+        val widgetNext = LevyraWidgetBridge.onNext
+        if (widgetNext != null) {
+            widgetNext.invoke()
+        } else {
+            skipQueue(forward = true, respectRepeatOne = false, allowRewind = false)
+        }
+    }
+
+    private fun startGentleWakeInternal(
+        settings: GentleWakeSettings,
+        isPreview: Boolean
+    ) {
+        val normalized = settings.normalized()
+        sleepTimer.cancel()
+        applySleepTimbreSoftness(0f)
+        gentleWakeCrescendoJob?.cancel()
+        gentleWakeCrescendoJob = serviceScope.launch {
+            val prefs = LevyraPreferences(this@PlaybackService)
+            val languageCode = prefs.languageCode()
+            val resolved = withContext(Dispatchers.IO) {
+                GentleWakePlaybackCoordinator.resolveAlarmSource(
+                    context = this@PlaybackService,
+                    settings = normalized,
+                    languageCode = languageCode
+                )
+            }
+            val firstTrack = resolved.tracks.firstOrNull() ?: return@launch
+            val totalDurationMs = if (isPreview) {
+                15_000L
+            } else {
+                normalized.crescendoMinutes * 60_000L
+            }
+            val initialVol = GentleWakeCurve.volumeAt(0L, totalDurationMs, normalized.maxVolumeFraction)
+            _gentleWakeRuntimeStateFlow.value = GentleWakeRuntimeState(
+                active = true,
+                snoozedUntilEpochMs = 0L,
+                currentVolumeFraction = initialVol,
+                targetVolumeFraction = normalized.maxVolumeFraction,
+                crescendoDurationMs = totalDurationMs,
+                elapsedMs = 0L,
+                sourceTitle = resolved.displayTitle,
+                usingEmergencyFallback = resolved.usingEmergencyFallback,
+                previewActive = isPreview
+            )
+            syncMotionGestureContext()
+
+            if (!isPreview) {
+                GentleWakeScheduler.postGentleWakeRingingNotification(
+                    context = this@PlaybackService,
+                    languageCode = languageCode,
+                    sourceTitle = resolved.displayTitle,
+                    usingEmergencyFallback = resolved.usingEmergencyFallback
+                )
+                GentleWakeScheduler.apply(this@PlaybackService, normalized)
+            }
+
+            val player = activePlayer ?: return@launch
+            cancelQueueTransition()
+            val playTrack = if (firstTrack.streamUrl.startsWith("file://") ||
+                firstTrack.streamUrl.startsWith("content://") ||
+                firstTrack.streamUrl.startsWith("/") ||
+                firstTrack.isLiveRadio()
+            ) {
+                firstTrack
+            } else {
+                withContext(Dispatchers.IO) {
+                    runCatching { resolveSkipTarget(firstTrack, autoAdvance = false) }.getOrNull()
+                } ?: GentleWakeToneGenerator.ensureToneTrack(
+                    context = this@PlaybackService,
+                    title = resolved.displayTitle,
+                    subtitle = "Gentle Wake"
+                )
+            }
+
+            if (queueEngine.isTransientPlaybackActive) {
+                queueEngine.replaceTransient(resolved.tracks, 0)
+            } else {
+                val preserved = queueEngine.state.value
+                gentleWakePreservedQueue = preserved
+                gentleWakePreservedRepeatMode = player.repeatMode
+                queueEngine.beginTransientPlayback(preserved, resolved.tracks, 0)
+            }
+            player.volume = initialVol
+            player.repeatMode = if (resolved.tracks.size <= 1) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_ALL
+            player.setMediaItem(LevyraMediaItemFactory.build(playTrack), 0L)
+            player.prepare()
+            player.play()
+
+            val startedAtMs = SystemClock.elapsedRealtime()
+            while (isActive && _gentleWakeRuntimeStateFlow.value.active) {
+                val elapsed = (SystemClock.elapsedRealtime() - startedAtMs).coerceAtLeast(0L)
+                val nextVol = GentleWakeCurve.volumeAt(elapsed, totalDurationMs, normalized.maxVolumeFraction)
+                player.volume = nextVol
+                _gentleWakeRuntimeStateFlow.value = _gentleWakeRuntimeStateFlow.value.copy(
+                    currentVolumeFraction = nextVol,
+                    elapsedMs = elapsed.coerceAtMost(totalDurationMs)
+                )
+                if (isPreview && elapsed >= totalDurationMs) {
+                    stopGentleWakeInternal(markDismissedForToday = false)
+                    break
+                }
+                delay(200L)
+            }
+        }
+    }
+
+    private fun snoozeGentleWakeInternal(customDelayMs: Long? = null) {
+        gentleWakeCrescendoJob?.cancel()
+        gentleWakeCrescendoJob = serviceScope.launch {
+            val player = activePlayer
+            val startVol = player?.volume ?: _gentleWakeRuntimeStateFlow.value.currentVolumeFraction
+            val fadeDurationMs = 900L
+            val startedAt = SystemClock.elapsedRealtime()
+            while (player != null && isActive) {
+                val elapsed = SystemClock.elapsedRealtime() - startedAt
+                if (elapsed >= fadeDurationMs) break
+                player.volume = GentleWakeCurve.snoozeFadeOutVolume(startVol, elapsed, fadeDurationMs)
+                delay(60L)
+            }
+            player?.pause()
+            player?.volume = 1f
+            val settings = LevyraPreferences(this@PlaybackService).gentleWakeSettings()
+            val snoozeUntil = GentleWakeScheduler.scheduleSnooze(this@PlaybackService, settings, customDelayMs)
+            GentleWakeScheduler.cancelGentleWakeNotification(this@PlaybackService)
+            _gentleWakeRuntimeStateFlow.value = GentleWakeRuntimeState(
+                active = false,
+                snoozedUntilEpochMs = snoozeUntil,
+                targetVolumeFraction = settings.maxVolumeFraction
+            )
+            syncMotionGestureContext()
+        }
+    }
+
+    private fun stopGentleWakeInternal(markDismissedForToday: Boolean) {
+        gentleWakeCrescendoJob?.cancel()
+        gentleWakeCrescendoJob = null
+        val player = activePlayer
+        val wasPreview = _gentleWakeRuntimeStateFlow.value.previewActive
+        player?.pause()
+        player?.volume = 1f
+        gentleWakePreservedQueue?.let { preserved ->
+            gentleWakePreservedQueue = null
+            player?.repeatMode = gentleWakePreservedRepeatMode
+            player?.stop()
+            player?.clearMediaItems()
+            queueEngine.endTransientPlayback(preserved)
+        }
+        GentleWakeScheduler.cancelGentleWakeNotification(this)
+        _gentleWakeRuntimeStateFlow.value = GentleWakeRuntimeState()
+        syncMotionGestureContext()
+        if (markDismissedForToday && !wasPreview) {
+            serviceScope.launch(Dispatchers.IO) {
+                val prefs = LevyraPreferences(this@PlaybackService)
+                val updated = prefs.gentleWakeSettings().copy(dismissedDateIso = LocalDate.now().toString())
+                prefs.setGentleWakeSettings(updated)
+                GentleWakeScheduler.clearSnooze(this@PlaybackService, updated)
+            }
+        }
     }
 
     private fun releaseTransitionPlayer(expected: ExoPlayer? = null) {
@@ -2806,6 +3215,10 @@ class PlaybackService : MediaLibraryService() {
         queueTransitionMonitorJob?.cancel()
         sleepTimerStateJob?.cancel()
         automationSettingsJob?.cancel()
+        motionControlSettingsJob?.cancel()
+        sleepWithMusicSettingsJob?.cancel()
+        gentleWakeCrescendoJob?.cancel()
+        motionGestureController.release()
         systemMediaActions?.detach()
         systemMediaActions = null
         studioWidgetSync.detach()

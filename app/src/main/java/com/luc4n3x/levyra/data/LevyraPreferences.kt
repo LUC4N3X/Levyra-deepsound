@@ -62,7 +62,14 @@ import com.luc4n3x.levyra.domain.NightListeningPreset
 import com.luc4n3x.levyra.domain.ParametricEqProfile
 import com.luc4n3x.levyra.domain.ParametricFilterType
 import com.luc4n3x.levyra.domain.AudioOffloadPreference
+import com.luc4n3x.levyra.domain.DEFAULT_GENTLE_WAKE_DAYS
+import com.luc4n3x.levyra.domain.GentleWakeSettings
+import com.luc4n3x.levyra.domain.GentleWakeSourceType
+import com.luc4n3x.levyra.domain.MorningResumeSnapshot
+import com.luc4n3x.levyra.domain.MotionControlSettings
+import com.luc4n3x.levyra.domain.MotionShakeSensitivity
 import com.luc4n3x.levyra.domain.ReplayGainMode
+import com.luc4n3x.levyra.domain.SleepWithMusicSettings
 import com.luc4n3x.levyra.domain.PlaybackBufferMode
 import com.luc4n3x.levyra.domain.PlaybackBufferSettings
 import com.luc4n3x.levyra.domain.Track
@@ -128,7 +135,11 @@ data class LevyraPreferencesSnapshot(
     val preferredAudioLanguage: String = "",
     val miniPlayerStudioSettings: LevyraMiniPlayerStudioSettings = LevyraMiniPlayerStudioSettings(),
     val customThemes: List<LevyraCustomTheme> = emptyList(),
-    val navigationStudioSettings: LevyraNavigationStudioSettings = LevyraNavigationStudioSettings()
+    val navigationStudioSettings: LevyraNavigationStudioSettings = LevyraNavigationStudioSettings(),
+    val motionControlSettings: MotionControlSettings = MotionControlSettings(),
+    val gentleWakeSettings: GentleWakeSettings = GentleWakeSettings(),
+    val sleepWithMusicSettings: SleepWithMusicSettings = SleepWithMusicSettings(),
+    val morningResumeSnapshot: MorningResumeSnapshot? = null
 )
 
 @Volatile
@@ -206,6 +217,10 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_AMBIENT_AMOLED_BLACK] = normalizedAmbient.amoledBlack
             mutable[KEY_JAM_DISPLAY_NAME] = normalizeJamDisplayName(snapshot.jamDisplayName)
             writeAutomationSettings(mutable, snapshot.automationSettings.normalized())
+            writeMotionControlSettings(mutable, snapshot.motionControlSettings.normalized())
+            writeGentleWakeSettings(mutable, snapshot.gentleWakeSettings.normalized())
+            writeSleepWithMusicSettings(mutable, snapshot.sleepWithMusicSettings.normalized())
+            writeMorningResumeSnapshot(mutable, snapshot.morningResumeSnapshot)
             mutable[KEY_AUDIO_EQ_ENABLED] = normalizedAudio.equalizerEnabled
             mutable[KEY_AUDIO_EQ_PRESET] = normalizedAudio.presetId
             mutable[KEY_AUDIO_EQ_BANDS] = normalizedAudio.bandLevels.joinToString(",")
@@ -901,7 +916,11 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             preferredAudioLanguage = com.luc4n3x.levyra.data.AudioLanguageIntelligence.normalizeLanguage(preferences[KEY_PREFERRED_AUDIO_LANGUAGE]),
             miniPlayerStudioSettings = LevyraMiniPlayerStudioSettings.decode(preferences[KEY_MINI_PLAYER_STUDIO_SETTINGS]),
             customThemes = LevyraCustomThemes.decode(preferences[KEY_CUSTOM_THEMES]),
-            navigationStudioSettings = LevyraNavigationStudioSettings.decode(preferences[KEY_NAVIGATION_STUDIO_SETTINGS])
+            navigationStudioSettings = LevyraNavigationStudioSettings.decode(preferences[KEY_NAVIGATION_STUDIO_SETTINGS]),
+            motionControlSettings = motionControlSettingsFrom(preferences),
+            gentleWakeSettings = gentleWakeSettingsFrom(preferences),
+            sleepWithMusicSettings = sleepWithMusicSettingsFrom(preferences),
+            morningResumeSnapshot = morningResumeSnapshotFrom(preferences)
         )
     }
 
@@ -1392,6 +1411,180 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         ).normalized()
     }
 
+    val motionControlSettingsFlow: kotlinx.coroutines.flow.Flow<MotionControlSettings> = store.preferences
+        .map { preferences -> motionControlSettingsFrom(preferences) }
+        .distinctUntilChanged()
+
+    val gentleWakeSettingsFlow: kotlinx.coroutines.flow.Flow<GentleWakeSettings> = store.preferences
+        .map { preferences -> gentleWakeSettingsFrom(preferences) }
+        .distinctUntilChanged()
+
+    val sleepWithMusicSettingsFlow: kotlinx.coroutines.flow.Flow<SleepWithMusicSettings> = store.preferences
+        .map { preferences -> sleepWithMusicSettingsFrom(preferences) }
+        .distinctUntilChanged()
+
+    val morningResumeSnapshotFlow: kotlinx.coroutines.flow.Flow<MorningResumeSnapshot?> = store.preferences
+        .map { preferences -> morningResumeSnapshotFrom(preferences) }
+        .distinctUntilChanged()
+
+    fun motionControlSettings(): MotionControlSettings = read(::motionControlSettingsFrom)
+
+    fun gentleWakeSettings(): GentleWakeSettings = read(::gentleWakeSettingsFrom)
+
+    fun sleepWithMusicSettings(): SleepWithMusicSettings = read(::sleepWithMusicSettingsFrom)
+
+    fun morningResumeSnapshot(): MorningResumeSnapshot? = read(::morningResumeSnapshotFrom)
+
+    suspend fun setMotionControlSettings(value: MotionControlSettings) {
+        val normalized = value.normalized()
+        try {
+            store.commit { writeMotionControlSettings(it, normalized) }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Timber.w(error, "DataStore motion control write failed")
+        }
+    }
+
+    suspend fun setGentleWakeSettings(value: GentleWakeSettings) {
+        val normalized = value.normalized()
+        try {
+            store.commit { writeGentleWakeSettings(it, normalized) }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Timber.w(error, "DataStore gentle wake write failed")
+        }
+    }
+
+    suspend fun setSleepWithMusicSettings(value: SleepWithMusicSettings) {
+        val normalized = value.normalized()
+        try {
+            store.commit { writeSleepWithMusicSettings(it, normalized) }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Timber.w(error, "DataStore sleep with music write failed")
+        }
+    }
+
+    suspend fun setMorningResumeSnapshot(value: MorningResumeSnapshot?) {
+        try {
+            store.commit { writeMorningResumeSnapshot(it, value) }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Timber.w(error, "DataStore morning resume snapshot write failed")
+        }
+    }
+
+    private fun writeMotionControlSettings(
+        mutable: androidx.datastore.preferences.core.MutablePreferences,
+        value: MotionControlSettings
+    ) {
+        mutable[KEY_MOTION_CONTROLS_ENABLED] = value.enabled
+        mutable[KEY_MOTION_FLIP_PAUSE] = value.flipToPauseEnabled
+        mutable[KEY_MOTION_SHAKE_SKIP] = value.shakeToSkipEnabled
+        mutable[KEY_MOTION_SHAKE_SENSITIVITY] = value.shakeSensitivity.id
+        mutable[KEY_MOTION_SCREEN_OFF] = value.allowScreenOffWhenSupported
+        mutable[KEY_MOTION_FLIP_DELAY_MS] = value.flipConfirmationDelayMs
+    }
+
+    private fun motionControlSettingsFrom(preferences: Preferences): MotionControlSettings =
+        MotionControlSettings(
+            enabled = preferences[KEY_MOTION_CONTROLS_ENABLED] ?: false,
+            flipToPauseEnabled = preferences[KEY_MOTION_FLIP_PAUSE] ?: true,
+            shakeToSkipEnabled = preferences[KEY_MOTION_SHAKE_SKIP] ?: true,
+            shakeSensitivity = MotionShakeSensitivity.from(preferences[KEY_MOTION_SHAKE_SENSITIVITY]),
+            allowScreenOffWhenSupported = preferences[KEY_MOTION_SCREEN_OFF] ?: false,
+            flipConfirmationDelayMs = preferences[KEY_MOTION_FLIP_DELAY_MS]
+                ?: MotionControlSettings.DEFAULT_FLIP_CONFIRMATION_DELAY_MS
+        ).normalized()
+
+    private fun writeGentleWakeSettings(
+        mutable: androidx.datastore.preferences.core.MutablePreferences,
+        value: GentleWakeSettings
+    ) {
+        mutable[KEY_GENTLE_WAKE_ENABLED] = value.enabled
+        mutable[KEY_GENTLE_WAKE_HOUR] = value.hour
+        mutable[KEY_GENTLE_WAKE_MINUTE] = value.minute
+        mutable[KEY_GENTLE_WAKE_DAYS] = value.days.map { it.name }.toSet()
+        mutable[KEY_GENTLE_WAKE_SOURCE_TYPE] = value.sourceType.id
+        mutable[KEY_GENTLE_WAKE_SOURCE_ID] = value.sourceId
+        mutable[KEY_GENTLE_WAKE_SOURCE_TITLE] = value.sourceTitle
+        mutable[KEY_GENTLE_WAKE_SOURCE_SUBTITLE] = value.sourceSubtitle
+        mutable[KEY_GENTLE_WAKE_SOURCE_ARTWORK] = value.sourceArtworkUrl
+        mutable[KEY_GENTLE_WAKE_SOURCE_PAYLOAD] = value.sourcePayloadJson
+        mutable[KEY_GENTLE_WAKE_CRESCENDO_MINUTES] = value.crescendoMinutes
+        mutable[KEY_GENTLE_WAKE_MAX_VOLUME] = value.maxVolumeFraction
+        mutable[KEY_GENTLE_WAKE_SNOOZE_MINUTES] = value.snoozeMinutes
+        mutable[KEY_GENTLE_WAKE_DISMISSED_DATE] = value.dismissedDateIso
+    }
+
+    private fun gentleWakeSettingsFrom(preferences: Preferences): GentleWakeSettings {
+        val storedDays = preferences[KEY_GENTLE_WAKE_DAYS]
+            ?.mapNotNull { raw -> runCatching { java.time.DayOfWeek.valueOf(raw) }.getOrNull() }
+            ?.toSet()
+            ?: DEFAULT_GENTLE_WAKE_DAYS
+        return GentleWakeSettings(
+            enabled = preferences[KEY_GENTLE_WAKE_ENABLED] ?: false,
+            hour = preferences[KEY_GENTLE_WAKE_HOUR] ?: 7,
+            minute = preferences[KEY_GENTLE_WAKE_MINUTE] ?: 30,
+            days = storedDays,
+            sourceType = GentleWakeSourceType.from(preferences[KEY_GENTLE_WAKE_SOURCE_TYPE]),
+            sourceId = preferences[KEY_GENTLE_WAKE_SOURCE_ID].orEmpty(),
+            sourceTitle = preferences[KEY_GENTLE_WAKE_SOURCE_TITLE].orEmpty(),
+            sourceSubtitle = preferences[KEY_GENTLE_WAKE_SOURCE_SUBTITLE].orEmpty(),
+            sourceArtworkUrl = preferences[KEY_GENTLE_WAKE_SOURCE_ARTWORK].orEmpty(),
+            sourcePayloadJson = preferences[KEY_GENTLE_WAKE_SOURCE_PAYLOAD].orEmpty(),
+            crescendoMinutes = preferences[KEY_GENTLE_WAKE_CRESCENDO_MINUTES] ?: 3,
+            maxVolumeFraction = preferences[KEY_GENTLE_WAKE_MAX_VOLUME] ?: 0.80f,
+            snoozeMinutes = preferences[KEY_GENTLE_WAKE_SNOOZE_MINUTES] ?: 5,
+            dismissedDateIso = preferences[KEY_GENTLE_WAKE_DISMISSED_DATE].orEmpty()
+        ).normalized()
+    }
+
+    private fun writeSleepWithMusicSettings(
+        mutable: androidx.datastore.preferences.core.MutablePreferences,
+        value: SleepWithMusicSettings
+    ) {
+        mutable[KEY_SLEEP_WITH_MUSIC_PREFER_SMART] = value.preferSmartSleepMode
+        mutable[KEY_SLEEP_WITH_MUSIC_DURATION] = value.defaultDurationMinutes
+        mutable[KEY_SLEEP_WITH_MUSIC_TIMBRE] = value.timbreSofteningEnabled
+        mutable[KEY_SLEEP_WITH_MUSIC_MORNING_RESUME] = value.morningResumeEnabled
+        mutable[KEY_SLEEP_WITH_MUSIC_MORNING_HOUR] = value.morningPromptHour
+        mutable[KEY_SLEEP_WITH_MUSIC_MORNING_MINUTE] = value.morningPromptMinute
+        mutable[KEY_SLEEP_WITH_MUSIC_LINK_WAKE] = value.linkMorningPromptToGentleWake
+    }
+
+    private fun sleepWithMusicSettingsFrom(preferences: Preferences): SleepWithMusicSettings =
+        SleepWithMusicSettings(
+            preferSmartSleepMode = preferences[KEY_SLEEP_WITH_MUSIC_PREFER_SMART] ?: false,
+            defaultDurationMinutes = preferences[KEY_SLEEP_WITH_MUSIC_DURATION] ?: 15,
+            timbreSofteningEnabled = preferences[KEY_SLEEP_WITH_MUSIC_TIMBRE] ?: true,
+            morningResumeEnabled = preferences[KEY_SLEEP_WITH_MUSIC_MORNING_RESUME] ?: true,
+            morningPromptHour = preferences[KEY_SLEEP_WITH_MUSIC_MORNING_HOUR] ?: 8,
+            morningPromptMinute = preferences[KEY_SLEEP_WITH_MUSIC_MORNING_MINUTE] ?: 0,
+            linkMorningPromptToGentleWake = preferences[KEY_SLEEP_WITH_MUSIC_LINK_WAKE] ?: true
+        ).normalized()
+
+    private fun writeMorningResumeSnapshot(
+        mutable: androidx.datastore.preferences.core.MutablePreferences,
+        value: MorningResumeSnapshot?
+    ) {
+        if (value == null) {
+            mutable.remove(KEY_MORNING_RESUME_SNAPSHOT)
+        } else {
+            mutable[KEY_MORNING_RESUME_SNAPSHOT] = value.toJson().toString()
+        }
+    }
+
+    private fun morningResumeSnapshotFrom(preferences: Preferences): MorningResumeSnapshot? {
+        val raw = preferences[KEY_MORNING_RESUME_SNAPSHOT].orEmpty()
+        if (raw.isBlank()) return null
+        return runCatching { MorningResumeSnapshot.fromJson(JSONObject(raw)) }.getOrNull()
+    }
+
     private fun <T> read(selector: (Preferences) -> T): T = selector(store.current())
 
     private fun write(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
@@ -1585,6 +1778,34 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_BACKUP_PRE_UPDATE = booleanPreferencesKey("automatic_backup_pre_update")
         val KEY_VAULT_LAST_BACKUP = longPreferencesKey("vault_last_backup_at")
         val KEY_VAULT_BACKUP_TREE_URI = stringPreferencesKey("vault_backup_tree_uri")
+        val KEY_MOTION_CONTROLS_ENABLED = booleanPreferencesKey("motion_controls_enabled")
+        val KEY_MOTION_FLIP_PAUSE = booleanPreferencesKey("motion_flip_to_pause")
+        val KEY_MOTION_SHAKE_SKIP = booleanPreferencesKey("motion_shake_to_skip")
+        val KEY_MOTION_SHAKE_SENSITIVITY = stringPreferencesKey("motion_shake_sensitivity")
+        val KEY_MOTION_SCREEN_OFF = booleanPreferencesKey("motion_allow_screen_off")
+        val KEY_MOTION_FLIP_DELAY_MS = longPreferencesKey("motion_flip_delay_ms")
+        val KEY_GENTLE_WAKE_ENABLED = booleanPreferencesKey("gentle_wake_enabled")
+        val KEY_GENTLE_WAKE_HOUR = intPreferencesKey("gentle_wake_hour")
+        val KEY_GENTLE_WAKE_MINUTE = intPreferencesKey("gentle_wake_minute")
+        val KEY_GENTLE_WAKE_DAYS = stringSetPreferencesKey("gentle_wake_days")
+        val KEY_GENTLE_WAKE_SOURCE_TYPE = stringPreferencesKey("gentle_wake_source_type")
+        val KEY_GENTLE_WAKE_SOURCE_ID = stringPreferencesKey("gentle_wake_source_id")
+        val KEY_GENTLE_WAKE_SOURCE_TITLE = stringPreferencesKey("gentle_wake_source_title")
+        val KEY_GENTLE_WAKE_SOURCE_SUBTITLE = stringPreferencesKey("gentle_wake_source_subtitle")
+        val KEY_GENTLE_WAKE_SOURCE_ARTWORK = stringPreferencesKey("gentle_wake_source_artwork")
+        val KEY_GENTLE_WAKE_SOURCE_PAYLOAD = stringPreferencesKey("gentle_wake_source_payload")
+        val KEY_GENTLE_WAKE_CRESCENDO_MINUTES = intPreferencesKey("gentle_wake_crescendo_minutes")
+        val KEY_GENTLE_WAKE_MAX_VOLUME = floatPreferencesKey("gentle_wake_max_volume")
+        val KEY_GENTLE_WAKE_SNOOZE_MINUTES = intPreferencesKey("gentle_wake_snooze_minutes")
+        val KEY_GENTLE_WAKE_DISMISSED_DATE = stringPreferencesKey("gentle_wake_dismissed_date")
+        val KEY_SLEEP_WITH_MUSIC_PREFER_SMART = booleanPreferencesKey("sleep_with_music_prefer_smart")
+        val KEY_SLEEP_WITH_MUSIC_DURATION = intPreferencesKey("sleep_with_music_duration_minutes")
+        val KEY_SLEEP_WITH_MUSIC_TIMBRE = booleanPreferencesKey("sleep_with_music_timbre_softening")
+        val KEY_SLEEP_WITH_MUSIC_MORNING_RESUME = booleanPreferencesKey("sleep_with_music_morning_resume")
+        val KEY_SLEEP_WITH_MUSIC_MORNING_HOUR = intPreferencesKey("sleep_with_music_morning_hour")
+        val KEY_SLEEP_WITH_MUSIC_MORNING_MINUTE = intPreferencesKey("sleep_with_music_morning_minute")
+        val KEY_SLEEP_WITH_MUSIC_LINK_WAKE = booleanPreferencesKey("sleep_with_music_link_gentle_wake")
+        val KEY_MORNING_RESUME_SNAPSHOT = stringPreferencesKey("morning_resume_snapshot_json")
     }
 }
 

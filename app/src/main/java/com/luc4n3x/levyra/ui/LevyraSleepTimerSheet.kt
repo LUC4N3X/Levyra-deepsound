@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccessTime
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Timer
@@ -44,6 +45,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -55,16 +57,25 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.luc4n3x.levyra.domain.LevyraAutomationSettings
+import com.luc4n3x.levyra.domain.PlaybackSleepTimerMode
+import com.luc4n3x.levyra.domain.SLEEP_WITH_MUSIC_DURATION_PRESETS
+import com.luc4n3x.levyra.domain.SleepWithMusicSettings
+import com.luc4n3x.levyra.ui.i18n.LevyraSmartListeningCopy
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.automationCopy
+import com.luc4n3x.levyra.ui.i18n.smartListeningCopy
 import com.luc4n3x.levyra.ui.i18n.systemPlayerCopy
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
@@ -73,12 +84,21 @@ import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraPanel
 import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.ui.theme.LevyraViolet
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
+import com.luc4n3x.levyra.viewmodel.LevyraViewModel
+import com.luc4n3x.levyra.viewmodel.SmartListeningUiState
 import java.text.DateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 
 private val SleepSheetShape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
 
@@ -91,9 +111,26 @@ internal fun LevyraSleepTimerSheet(
     onCancel: () -> Unit,
     onClose: () -> Unit
 ) {
+    val owner = LocalViewModelStoreOwner.current
+    val vm = remember(owner) { owner?.let { ViewModelProvider(it)[LevyraViewModel::class.java] } }
+    val smartFlow = remember(vm) { vm?.smartListening ?: MutableStateFlow(SmartListeningUiState()) }
+    val smart by smartFlow.collectAsStateWithLifecycle()
+    val onSleepWithMusicSettings: (SleepWithMusicSettings) -> Unit = { vm?.setSleepWithMusicSettings(it) }
+    val onSelectSleepWithMusicMinutes: (Int, Boolean) -> Unit = { mins, timbre ->
+        if (vm != null) vm.setSleepWithMusicTimerMinutes(mins, timbre) else onSelectMinutes(mins)
+    }
+    val onResumeMorningSnapshot: () -> Unit = { vm?.resumeMorningPlayback() }
+    val onDismissMorningSnapshot: () -> Unit = { vm?.dismissMorningResumePrompt() }
     val strings = LocalLevyraStrings.current
     val copy = strings.systemPlayerCopy()
+    val smartCopy = strings.smartListeningCopy()
     val blocker = remember { MutableInteractionSource() }
+    val timerRunning = state.sleepTimerMinutes > 0 || state.sleepTimerEndOfTrack
+    var selectedMode by remember(timerRunning, smart.sleepTimerMode) {
+        mutableStateOf(initialSleepTimerMode(timerRunning, smart))
+    }
+    val isSleepWithMusicMode = selectedMode == PlaybackSleepTimerMode.SLEEP_WITH_MUSIC
+
     var remainingSeconds by remember(state.sleepTimerDeadlineElapsedRealtimeMs) {
         mutableLongStateOf(timerRemainingSeconds(state.sleepTimerDeadlineElapsedRealtimeMs))
     }
@@ -141,34 +178,230 @@ internal fun LevyraSleepTimerSheet(
                             .background(LevyraGlassBorder, CircleShape)
                     )
                     SleepTimerHeader(
-                        title = strings.sleepTimer,
-                        subtitle = copy.sleepChooseDuration,
+                        title = if (isSleepWithMusicMode) smartCopy.sleepWithMusicTitle else strings.sleepTimer,
+                        subtitle = if (isSleepWithMusicMode) smartCopy.sleepWithMusicSubtitle else copy.sleepChooseDuration,
+                        isSleepWithMusicMode = isSleepWithMusicMode,
                         closeLabel = strings.close,
                         onClose = onClose
                     )
-                    if (state.sleepTimerMinutes > 0 || state.sleepTimerEndOfTrack) {
+                    SleepTimerModeSwitcher(
+                        selectedMode = selectedMode,
+                        classicLabel = smartCopy.classicTimerMode,
+                        sleepWithMusicLabel = smartCopy.smartSleepMode,
+                        onSelectMode = { mode ->
+                            selectedMode = mode
+                            onSleepWithMusicSettings(
+                                smart.sleepWithMusicSettings.copy(
+                                    preferSmartSleepMode = mode == PlaybackSleepTimerMode.SLEEP_WITH_MUSIC
+                                )
+                            )
+                        }
+                    )
+                    val morningSnapshot = smart.morningResumeSnapshot
+                    if (morningSnapshot != null && morningSnapshot.isReadyToPrompt(System.currentTimeMillis())) {
+                        MorningResumePromptBanner(
+                            strings = strings,
+                            snapshot = morningSnapshot,
+                            onResume = onResumeMorningSnapshot,
+                            onDismiss = onDismissMorningSnapshot
+                        )
+                    }
+                    if (timerRunning) {
                         SleepTimerActiveCard(
                             state = state,
+                            sleepTimerMode = smart.sleepTimerMode,
+                            smartCopy = smartCopy,
                             remainingSeconds = remainingSeconds,
                             onAddFifteen = {
-                                val remainingMinutes = ((remainingSeconds + 59L) / 60L).toInt()
-                                onSelectMinutes((remainingMinutes + 15).coerceIn(15, 720))
+                                extendSleepTimerByFifteen(
+                                    remainingSeconds = remainingSeconds,
+                                    smart = smart,
+                                    onSelectMinutes = onSelectMinutes,
+                                    onSelectSleepWithMusicMinutes = onSelectSleepWithMusicMinutes
+                                )
                             },
                             onCancel = onCancel
                         )
                     }
-                    SleepTimerPresets(
-                        selectedMinutes = state.sleepTimerMinutes,
-                        endOfTrack = state.sleepTimerEndOfTrack,
+                    SleepTimerPresetSection(
+                        state = state,
+                        smart = smart,
+                        timerRunning = timerRunning,
+                        isSleepWithMusicMode = isSleepWithMusicMode,
+                        smartCopy = smartCopy,
+                        onAutomationSettings = onAutomationSettings,
                         onSelectMinutes = onSelectMinutes,
-                        onSelectEndOfTrack = onSelectEndOfTrack
-                    )
-                    SleepTimerAutomationCard(
-                        automation = state.automationSettings,
-                        onChange = onAutomationSettings
+                        onSelectEndOfTrack = onSelectEndOfTrack,
+                        onSleepWithMusicSettings = onSleepWithMusicSettings,
+                        onSelectSleepWithMusicMinutes = onSelectSleepWithMusicMinutes
                     )
                 }
             }
+        }
+    }
+}
+
+private fun extendSleepTimerByFifteen(
+    remainingSeconds: Long,
+    smart: SmartListeningUiState,
+    onSelectMinutes: (Int) -> Unit,
+    onSelectSleepWithMusicMinutes: (Int, Boolean) -> Unit
+) {
+    val remainingMinutes = ((remainingSeconds + 59L) / 60L).toInt()
+    val targetMinutes = (remainingMinutes + 15).coerceIn(5, 720)
+    if (smart.sleepTimerMode == PlaybackSleepTimerMode.SLEEP_WITH_MUSIC) {
+        onSelectSleepWithMusicMinutes(targetMinutes, smart.sleepWithMusicSettings.timbreSofteningEnabled)
+    } else {
+        onSelectMinutes(targetMinutes)
+    }
+}
+
+private fun initialSleepTimerMode(timerRunning: Boolean, smart: SmartListeningUiState): PlaybackSleepTimerMode =
+    when {
+        timerRunning -> smart.sleepTimerMode
+        smart.sleepWithMusicSettings.preferSmartSleepMode -> PlaybackSleepTimerMode.SLEEP_WITH_MUSIC
+        else -> PlaybackSleepTimerMode.CLASSIC
+    }
+
+@Composable
+private fun SleepTimerPresetSection(
+    state: LevyraUiState,
+    smart: SmartListeningUiState,
+    timerRunning: Boolean,
+    isSleepWithMusicMode: Boolean,
+    smartCopy: LevyraSmartListeningCopy,
+    onAutomationSettings: (LevyraAutomationSettings) -> Unit,
+    onSelectMinutes: (Int) -> Unit,
+    onSelectEndOfTrack: () -> Unit,
+    onSleepWithMusicSettings: (SleepWithMusicSettings) -> Unit,
+    onSelectSleepWithMusicMinutes: (Int, Boolean) -> Unit
+) {
+    val activeMinutesForMode: (PlaybackSleepTimerMode) -> Int = { mode ->
+        if (timerRunning && smart.sleepTimerMode == mode) state.sleepTimerMinutes else 0
+    }
+    if (isSleepWithMusicMode) {
+        SleepWithMusicPresets(
+            selectedMinutes = activeMinutesForMode(PlaybackSleepTimerMode.SLEEP_WITH_MUSIC),
+            endOfTrack = state.sleepTimerEndOfTrack,
+            onSelectMinutes = { minutes ->
+                onSleepWithMusicSettings(
+                    smart.sleepWithMusicSettings.copy(
+                        preferSmartSleepMode = true,
+                        defaultDurationMinutes = minutes
+                    )
+                )
+                onSelectSleepWithMusicMinutes(minutes, smart.sleepWithMusicSettings.timbreSofteningEnabled)
+            },
+            onSelectEndOfTrack = onSelectEndOfTrack
+        )
+        SleepWithMusicOptionsCard(
+            settings = smart.sleepWithMusicSettings,
+            smartCopy = smartCopy,
+            onChange = onSleepWithMusicSettings
+        )
+    } else {
+        SleepTimerPresets(
+            selectedMinutes = activeMinutesForMode(PlaybackSleepTimerMode.CLASSIC),
+            endOfTrack = state.sleepTimerEndOfTrack,
+            onSelectMinutes = onSelectMinutes,
+            onSelectEndOfTrack = onSelectEndOfTrack
+        )
+        SleepTimerAutomationCard(
+            automation = state.automationSettings,
+            onChange = onAutomationSettings
+        )
+    }
+}
+
+@Composable
+private fun SleepTimerModeSwitcher(
+    selectedMode: PlaybackSleepTimerMode,
+    classicLabel: String,
+    sleepWithMusicLabel: String,
+    onSelectMode: (PlaybackSleepTimerMode) -> Unit
+) {
+    Surface(
+        color = LevyraBlack.copy(alpha = 0.32f),
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.dp, LevyraGlassBorder),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            SleepTimerModeTab(
+                selected = selectedMode == PlaybackSleepTimerMode.CLASSIC,
+                label = classicLabel,
+                icon = Icons.Rounded.Timer,
+                accent = LevyraCyan,
+                selectedLabelColor = LevyraCyan,
+                containerAlpha = 0.16f,
+                borderAlpha = 0.42f,
+                onClick = { onSelectMode(PlaybackSleepTimerMode.CLASSIC) }
+            )
+            SleepTimerModeTab(
+                selected = selectedMode == PlaybackSleepTimerMode.SLEEP_WITH_MUSIC,
+                label = sleepWithMusicLabel,
+                icon = Icons.Rounded.AutoAwesome,
+                accent = LevyraViolet,
+                selectedLabelColor = LevyraText,
+                containerAlpha = 0.20f,
+                borderAlpha = 0.48f,
+                onClick = { onSelectMode(PlaybackSleepTimerMode.SLEEP_WITH_MUSIC) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun RowScope.SleepTimerModeTab(
+    selected: Boolean,
+    label: String,
+    icon: ImageVector,
+    accent: Color,
+    selectedLabelColor: Color,
+    containerAlpha: Float,
+    borderAlpha: Float,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .weight(1f)
+            .sizeIn(minHeight = 44.dp)
+            .semantics {
+                role = Role.Tab
+                this.selected = selected
+            }
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        color = if (selected) accent.copy(alpha = containerAlpha) else LevyraBlack.copy(alpha = 0.01f),
+        border = BorderStroke(
+            1.dp,
+            if (selected) accent.copy(alpha = borderAlpha) else LevyraGlassBorder.copy(alpha = 0f)
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (selected) accent else LevyraMuted,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = label,
+                color = if (selected) selectedLabelColor else LevyraMuted,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
         }
     }
 }
@@ -177,18 +410,24 @@ internal fun LevyraSleepTimerSheet(
 private fun SleepTimerHeader(
     title: String,
     subtitle: String,
+    isSleepWithMusicMode: Boolean,
     closeLabel: String,
     onClose: () -> Unit
 ) {
+    val accent = if (isSleepWithMusicMode) LevyraViolet else LevyraCyan
     Row(verticalAlignment = Alignment.CenterVertically) {
         Surface(
             modifier = Modifier.size(46.dp),
             shape = CircleShape,
-            color = LevyraCyan.copy(alpha = 0.1f),
-            border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.2f))
+            color = accent.copy(alpha = 0.12f),
+            border = BorderStroke(1.dp, accent.copy(alpha = 0.24f))
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Icon(Icons.Rounded.Bedtime, contentDescription = null, tint = LevyraCyan)
+                Icon(
+                    imageVector = if (isSleepWithMusicMode) Icons.Rounded.AutoAwesome else Icons.Rounded.Bedtime,
+                    contentDescription = null,
+                    tint = accent
+                )
             }
         }
         Spacer(Modifier.width(13.dp))
@@ -203,31 +442,66 @@ private fun SleepTimerHeader(
 }
 
 @Composable
+private fun SleepTimerProgressRing(
+    fraction: Float,
+    icon: ImageVector,
+    iconTint: Color
+) {
+    Box(modifier = Modifier.size(86.dp), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.fillMaxSize()) {
+            val stroke = 5.dp.toPx()
+            val diameter = size.minDimension - stroke
+            val topLeft = Offset((size.width - diameter) / 2f, (size.height - diameter) / 2f)
+            drawArc(
+                color = LevyraGlassBorder,
+                startAngle = -90f,
+                sweepAngle = 360f,
+                useCenter = false,
+                topLeft = topLeft,
+                size = Size(diameter, diameter),
+                style = Stroke(width = stroke, cap = StrokeCap.Round)
+            )
+            drawArc(
+                brush = Brush.sweepGradient(listOf(LevyraCyan, LevyraViolet, LevyraCyan)),
+                startAngle = -90f,
+                sweepAngle = 360f * fraction,
+                useCenter = false,
+                topLeft = topLeft,
+                size = Size(diameter, diameter),
+                style = Stroke(width = stroke, cap = StrokeCap.Round)
+            )
+        }
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = iconTint,
+            modifier = Modifier.size(26.dp)
+        )
+    }
+}
+
+@Composable
 private fun SleepTimerActiveCard(
     state: LevyraUiState,
+    sleepTimerMode: PlaybackSleepTimerMode,
+    smartCopy: LevyraSmartListeningCopy,
     remainingSeconds: Long,
     onAddFifteen: () -> Unit,
     onCancel: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     val copy = strings.systemPlayerCopy()
-    val totalSeconds = (state.sleepTimerTotalMs / 1_000L).coerceAtLeast(1L)
-    val fraction = if (state.sleepTimerEndOfTrack) 1f else {
-        (remainingSeconds.toFloat() / totalSeconds.toFloat()).coerceIn(0f, 1f)
-    }
-    val endAt = if (state.sleepTimerEndOfTrack) {
-        strings.sleepTimerEndOfTrack
-    } else {
-        "${copy.sleepEndsAt} ${formatSleepEndClock(state.sleepTimerDeadlineElapsedRealtimeMs, strings.code)}"
-    }
+    val isSmartSleep = sleepTimerMode == PlaybackSleepTimerMode.SLEEP_WITH_MUSIC
+    val accent = if (isSmartSleep) LevyraViolet else LevyraCyan
+    val endOfTrack = state.sleepTimerEndOfTrack
 
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(
                 Brush.linearGradient(
                     listOf(
-                        LevyraViolet.copy(alpha = 0.12f),
+                        LevyraViolet.copy(alpha = if (isSmartSleep) 0.18f else 0.12f),
                         LevyraCyan.copy(alpha = 0.1f),
                         LevyraCyan.copy(alpha = 0.025f)
                     )
@@ -238,65 +512,229 @@ private fun SleepTimerActiveCard(
             .padding(17.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(modifier = Modifier.size(86.dp), contentAlignment = Alignment.Center) {
-                Canvas(Modifier.fillMaxSize()) {
-                    val stroke = 5.dp.toPx()
-                    val diameter = size.minDimension - stroke
-                    val topLeft = Offset((size.width - diameter) / 2f, (size.height - diameter) / 2f)
-                    drawArc(
-                        color = LevyraGlassBorder,
-                        startAngle = -90f,
-                        sweepAngle = 360f,
-                        useCenter = false,
-                        topLeft = topLeft,
-                        size = Size(diameter, diameter),
-                        style = Stroke(width = stroke, cap = StrokeCap.Round)
-                    )
-                    drawArc(
-                        brush = Brush.sweepGradient(listOf(LevyraCyan, LevyraViolet, LevyraCyan)),
-                        startAngle = -90f,
-                        sweepAngle = 360f * fraction,
-                        useCenter = false,
-                        topLeft = topLeft,
-                        size = Size(diameter, diameter),
-                        style = Stroke(width = stroke, cap = StrokeCap.Round)
-                    )
-                }
-                Icon(
-                    imageVector = if (state.sleepTimerEndOfTrack) Icons.Rounded.Bedtime else Icons.Rounded.Timer,
-                    contentDescription = null,
-                    tint = LevyraCyan,
-                    modifier = Modifier.size(26.dp)
-                )
-            }
+            SleepTimerProgressRing(
+                fraction = activeSleepTimerFraction(state, remainingSeconds),
+                icon = activeSleepTimerIcon(isSmartSleep, endOfTrack),
+                iconTint = accent
+            )
             Spacer(Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(copy.sleepActive, color = LevyraCyan, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                Text(
-                    text = if (state.sleepTimerEndOfTrack) strings.sleepTimerEndOfTrack else formatTimerClock(remainingSeconds),
-                    color = LevyraText,
-                    fontSize = 27.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(endAt, color = LevyraMuted, fontSize = 11.sp)
-                if (state.sleepTimerFadeMs > 0L) {
-                    Text(copy.sleepFadeActive, color = LevyraMuted, fontSize = 11.sp)
-                }
-            }
+            SleepTimerActiveSummary(
+                modifier = Modifier.weight(1f),
+                label = if (isSmartSleep) smartCopy.smartSleepMode else copy.sleepActive,
+                accent = accent,
+                clock = if (endOfTrack) strings.sleepTimerEndOfTrack else formatTimerClock(remainingSeconds),
+                endAt = activeSleepTimerEndAt(state, strings.sleepTimerEndOfTrack, copy.sleepEndsAt, strings.code),
+                detail = activeSleepTimerDetail(isSmartSleep, state.sleepTimerFadeMs, smartCopy.sleepWithMusicSubtitle, copy.sleepFadeActive)
+            )
         }
         Row(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(top = 76.dp),
+            modifier = Modifier.align(Alignment.End),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            if (!state.sleepTimerEndOfTrack) {
+            if (!endOfTrack) {
                 TextButton(onClick = onAddFifteen, modifier = Modifier.sizeIn(minHeight = 48.dp)) {
                     Text(copy.sleepAddFifteen, color = LevyraCyan, fontWeight = FontWeight.Bold)
                 }
             }
             TextButton(onClick = onCancel, modifier = Modifier.sizeIn(minHeight = 48.dp)) {
                 Text(strings.sleepTimerCancel, color = LevyraMuted, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+private fun activeSleepTimerFraction(state: LevyraUiState, remainingSeconds: Long): Float {
+    if (state.sleepTimerEndOfTrack) return 1f
+    val totalSeconds = (state.sleepTimerTotalMs / 1_000L).coerceAtLeast(1L)
+    return (remainingSeconds.toFloat() / totalSeconds.toFloat()).coerceIn(0f, 1f)
+}
+
+private fun activeSleepTimerIcon(isSmartSleep: Boolean, endOfTrack: Boolean): ImageVector =
+    when {
+        isSmartSleep -> Icons.Rounded.AutoAwesome
+        endOfTrack -> Icons.Rounded.Bedtime
+        else -> Icons.Rounded.Timer
+    }
+
+private fun activeSleepTimerEndAt(
+    state: LevyraUiState,
+    endOfTrackLabel: String,
+    endsAtLabel: String,
+    languageCode: String
+): String =
+    if (state.sleepTimerEndOfTrack) {
+        endOfTrackLabel
+    } else {
+        "$endsAtLabel ${formatSleepEndClock(state.sleepTimerDeadlineElapsedRealtimeMs, languageCode)}"
+    }
+
+private fun activeSleepTimerDetail(
+    isSmartSleep: Boolean,
+    fadeMs: Long,
+    smartSleepDetail: String,
+    fadeDetail: String
+): String? =
+    when {
+        isSmartSleep -> smartSleepDetail
+        fadeMs > 0L -> fadeDetail
+        else -> null
+    }
+
+@Composable
+private fun SleepTimerActiveSummary(
+    label: String,
+    accent: Color,
+    clock: String,
+    endAt: String,
+    detail: String?,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Text(
+            text = label,
+            color = accent,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp
+        )
+        Text(
+            text = clock,
+            color = LevyraText,
+            fontSize = 27.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Text(endAt, color = LevyraMuted, fontSize = 11.sp)
+        if (detail != null) {
+            Text(detail, color = LevyraMuted, fontSize = 11.sp, maxLines = 2)
+        }
+    }
+}
+
+@Composable
+private fun SleepWithMusicPresets(
+    selectedMinutes: Int,
+    endOfTrack: Boolean,
+    onSelectMinutes: (Int) -> Unit,
+    onSelectEndOfTrack: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val copy = strings.systemPlayerCopy()
+    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            for (minutes in SLEEP_WITH_MUSIC_DURATION_PRESETS) {
+                SleepPreset(
+                    label = minutes.toString(),
+                    suffix = copy.sleepMinuteUnit,
+                    selected = selectedMinutes == minutes && !endOfTrack,
+                    accent = LevyraViolet,
+                    onClick = { onSelectMinutes(minutes) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+        SleepTimerCustomDuration(
+            selectedMinutes = selectedMinutes,
+            endOfTrack = endOfTrack,
+            unit = copy.sleepMinuteUnit,
+            presetMinutes = SLEEP_WITH_MUSIC_DURATION_PRESETS,
+            onSelectMinutes = onSelectMinutes
+        )
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onSelectEndOfTrack)
+                .sizeIn(minHeight = 54.dp),
+            shape = RoundedCornerShape(18.dp),
+            color = if (endOfTrack) LevyraViolet.copy(alpha = 0.14f) else LevyraBlack.copy(alpha = 0.3f),
+            border = BorderStroke(1.dp, if (endOfTrack) LevyraViolet.copy(alpha = 0.42f) else LevyraGlassBorder)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Rounded.AccessTime, contentDescription = null, tint = if (endOfTrack) LevyraViolet else LevyraMuted)
+                Spacer(Modifier.width(12.dp))
+                Text(strings.sleepTimerEndOfTrack, color = LevyraText, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SleepWithMusicOptionsCard(
+    settings: SleepWithMusicSettings,
+    smartCopy: LevyraSmartListeningCopy,
+    onChange: (SleepWithMusicSettings) -> Unit
+) {
+    val context = LocalContext.current
+    Surface(
+        color = LevyraBlack.copy(alpha = 0.24f),
+        shape = RoundedCornerShape(22.dp),
+        border = BorderStroke(1.dp, LevyraGlassBorder)
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                text = smartCopy.sleepWithMusicTitle.uppercase(Locale.ROOT),
+                color = LevyraViolet,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp
+            )
+            SleepAutomationToggle(
+                title = smartCopy.timbreSofteningTitle,
+                subtitle = smartCopy.timbreSofteningSubtitle,
+                checked = settings.timbreSofteningEnabled,
+                onChecked = { onChange(settings.copy(timbreSofteningEnabled = it)) }
+            )
+            SleepAutomationToggle(
+                title = smartCopy.morningResumeTitle,
+                subtitle = smartCopy.morningResumeSubtitle,
+                checked = settings.morningResumeEnabled,
+                onChecked = { onChange(settings.copy(morningResumeEnabled = it)) }
+            )
+            if (settings.morningResumeEnabled) {
+                SleepAutomationToggle(
+                    title = smartCopy.linkMorningToWakeTitle,
+                    subtitle = "",
+                    checked = settings.linkMorningPromptToGentleWake,
+                    onChecked = { onChange(settings.copy(linkMorningPromptToGentleWake = it)) }
+                )
+                if (!settings.linkMorningPromptToGentleWake) {
+                    val promptMinuteOfDay = settings.morningPromptHour * 60 + settings.morningPromptMinute
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                TimePickerDialog(
+                                    context,
+                                    { _, hour, minute ->
+                                        onChange(
+                                            settings.copy(
+                                                morningPromptHour = hour,
+                                                morningPromptMinute = minute
+                                            )
+                                        )
+                                    },
+                                    settings.morningPromptHour,
+                                    settings.morningPromptMinute,
+                                    android.text.format.DateFormat.is24HourFormat(context)
+                                ).show()
+                            }
+                            .sizeIn(minHeight = 48.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(smartCopy.gentleWakeTimeLabel, color = LevyraMuted, fontSize = 12.sp)
+                        Spacer(Modifier.weight(1f))
+                        Text(
+                            formatBedtimeClock(context, promptMinuteOfDay),
+                            color = LevyraText,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
         }
     }
@@ -330,6 +768,7 @@ private fun SleepTimerPresets(
             selectedMinutes = selectedMinutes,
             endOfTrack = endOfTrack,
             unit = copy.sleepMinuteUnit,
+            presetMinutes = SleepTimerPresetMinutes,
             onSelectMinutes = onSelectMinutes
         )
         Surface(
@@ -358,9 +797,10 @@ private fun SleepTimerCustomDuration(
     selectedMinutes: Int,
     endOfTrack: Boolean,
     unit: String,
+    presetMinutes: List<Int>,
     onSelectMinutes: (Int) -> Unit
 ) {
-    val customActive = !endOfTrack && isCustomSleepTimerMinutes(selectedMinutes)
+    val customActive = !endOfTrack && isCustomSleepTimerMinutes(selectedMinutes, presetMinutes)
     var minutes by rememberSaveable(customActive, selectedMinutes) {
         mutableIntStateOf(if (customActive) selectedMinutes else SLEEP_TIMER_CUSTOM_DEFAULT_MINUTES)
     }
@@ -408,21 +848,22 @@ private fun SleepPreset(
     suffix: String,
     selected: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    accent: androidx.compose.ui.graphics.Color = LevyraCyan
 ) {
     Surface(
         modifier = modifier
             .clickable(onClick = onClick)
             .sizeIn(minHeight = 64.dp),
-        color = if (selected) LevyraCyan.copy(alpha = 0.12f) else LevyraBlack.copy(alpha = 0.28f),
+        color = if (selected) accent.copy(alpha = 0.14f) else LevyraBlack.copy(alpha = 0.28f),
         shape = RoundedCornerShape(18.dp),
-        border = BorderStroke(1.dp, if (selected) LevyraCyan.copy(alpha = 0.38f) else LevyraGlassBorder)
+        border = BorderStroke(1.dp, if (selected) accent.copy(alpha = 0.42f) else LevyraGlassBorder)
     ) {
         Column(
             modifier = Modifier.padding(vertical = 9.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(label, color = if (selected) LevyraCyan else LevyraText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(label, color = if (selected) accent else LevyraText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Text(suffix, color = LevyraMuted, fontSize = 9.sp)
         }
     }
@@ -517,7 +958,9 @@ private fun SleepAutomationToggle(
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(modifier = Modifier.weight(1f)) {
             Text(title, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-            Text(subtitle, color = LevyraMuted, fontSize = 11.sp, lineHeight = 15.sp)
+            if (subtitle.isNotBlank()) {
+                Text(subtitle, color = LevyraMuted, fontSize = 11.sp, lineHeight = 15.sp)
+            }
         }
         Switch(checked = checked, onCheckedChange = onChecked)
     }
@@ -536,8 +979,11 @@ internal fun snapSleepTimerMinutes(value: Float): Int {
     return stepped.coerceIn(SLEEP_TIMER_CUSTOM_MIN_MINUTES, SLEEP_TIMER_CUSTOM_MAX_MINUTES)
 }
 
-internal fun isCustomSleepTimerMinutes(minutes: Int): Boolean =
-    minutes in SLEEP_TIMER_CUSTOM_MIN_MINUTES..SLEEP_TIMER_CUSTOM_MAX_MINUTES && minutes !in SleepTimerPresetMinutes
+internal fun isCustomSleepTimerMinutes(
+    minutes: Int,
+    presetMinutes: List<Int> = SleepTimerPresetMinutes
+): Boolean =
+    minutes in SLEEP_TIMER_CUSTOM_MIN_MINUTES..SLEEP_TIMER_CUSTOM_MAX_MINUTES && minutes !in presetMinutes
 
 private fun timerRemainingSeconds(deadlineElapsedRealtimeMs: Long): Long =
     if (deadlineElapsedRealtimeMs > 0L) {

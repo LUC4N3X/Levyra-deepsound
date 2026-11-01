@@ -820,6 +820,7 @@ import com.luc4n3x.levyra.ui.i18n.freshDiscoveryCopy
 import com.luc4n3x.levyra.ui.i18n.advancedPrefetchMobileDataCopy
 import com.luc4n3x.levyra.ui.i18n.automationCopy
 import com.luc4n3x.levyra.ui.i18n.smartOfflineCopy
+import com.luc4n3x.levyra.ui.i18n.smartListeningCopy
 import com.luc4n3x.levyra.ui.i18n.formatLibraryBytes
 import com.luc4n3x.levyra.ui.i18n.localizedAudioPresetLabel
 import com.luc4n3x.levyra.ui.ambient.LevyraAmbientOverlay
@@ -3388,6 +3389,11 @@ fun LevyraApp(
                     onSelectEndOfTrack = viewModel::setSleepTimerEndOfTrack,
                     onCancel = viewModel::cancelSleepTimer,
                     onClose = viewModel::closeSleepTimer
+                )
+            }
+            SmartListeningFloatingHost(state = state, viewModel = viewModel)
+            if (false) {
+                Box(Modifier
                 )
             }
 
@@ -19799,6 +19805,7 @@ private fun SettingsOverlay(
             SettingsCategoryMeta("design", categoryTitle(strings.design), "${strings.theme} · ${strings.animations} · ${strings.dynamicColor}", Icons.Rounded.Palette, LevyraViolet, SettingsHubGroup.Appearance),
             SettingsCategoryMeta("home", categoryTitle(strings.homeInterfaceSection), "${strings.compactHome} · ${strings.newReleases} · ${strings.top50Charts}", Icons.Rounded.Home, LevyraViolet, SettingsHubGroup.Appearance),
             SettingsCategoryMeta("player", categoryTitle(strings.player), "${strings.advancedGestures} · ${strings.sponsorBlock} · ${strings.skipSilence}", Icons.Rounded.PlayArrow, LevyraPink, SettingsHubGroup.Listening),
+            SettingsCategoryMeta("smart_listening", strings.smartListeningCopy().hubTitle, strings.smartListeningCopy().hubSubtitle, Icons.Rounded.AutoAwesome, LevyraPink, SettingsHubGroup.Listening),
             SettingsCategoryMeta("audio", strings.audioEngine, strings.audioEngineSubtitle, Icons.Rounded.GraphicEq, LevyraPink, SettingsHubGroup.Listening),
             SettingsCategoryMeta("lyrics", categoryTitle(strings.lyricsAnalysisSection), strings.lyricsAnalysisCompact, Icons.Rounded.Insights, LevyraPink, SettingsHubGroup.Listening),
             SettingsCategoryMeta("jam", categoryTitle(strings.jamTitle), strings.jamSubtitle, Icons.Rounded.Groups, LevyraPink, SettingsHubGroup.Listening),
@@ -19973,6 +19980,7 @@ private fun SettingsOverlay(
                         )
                     }
                     settingsGroupedItems { when (current) {
+                        "smart_listening" -> standaloneItem { SmartListeningSettingsHost(onClose = onClose) }
                         "network" -> item {
                             NetworkSettingsPanel(
                                 settings = networkSettings,

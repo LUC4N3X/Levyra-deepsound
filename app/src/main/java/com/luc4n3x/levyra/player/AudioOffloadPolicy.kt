@@ -33,7 +33,8 @@ internal data class AudioOffloadInputs(
             speed: Float,
             pitch: Float,
             skipSilenceEnabled: Boolean,
-            aaudioOutputSupported: Boolean
+            aaudioOutputSupported: Boolean,
+            sleepTimbreSofteningActive: Boolean = false
         ): AudioOffloadInputs {
             val normalized = settings.normalized()
             val parametricActive = normalized.parametricEqualizerEnabled && normalized.activeParametricProfile != null
@@ -43,6 +44,7 @@ internal data class AudioOffloadInputs(
                 crossfadeActive = normalized.gaplessEnabled && normalized.crossfadeSeconds > 0,
                 dspActive = normalized.equalizerEnabled || parametricActive || enhancedAudioRequiresPcmProcessing ||
                     normalized.nightListeningEnabled || normalized.adaptiveListeningEnabled ||
+                    sleepTimbreSofteningActive ||
                     truePeakLimiterRequired(normalized, parametricActive, audioNormalization),
                 normalizationActive = audioNormalization || normalized.replayGainActive,
                 speed = speed,
