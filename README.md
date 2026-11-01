@@ -64,6 +64,8 @@ Play streamed music and your own files in the same app, save tracks for offline 
 >
 > External audio integrations do not supply third-party accounts or credentials or authorize access to them. Availability through an external source is not permission to stream, download, or redistribute music. Users must obtain the necessary permissions and respect artists' rights.
 >
+> Third-party artwork, visuals, and editorial content belong to their respective owners. Levyra does not claim ownership or grant rights to use them. For any concerns, rights holders can contact us through GitHub.
+>
 > For details about third-party services, lawful use, downloads, and user responsibilities, please review the complete [Legal Notice](docs/legal/LEGAL.md). It applies to Levyra alongside this README.
 >
 > Levyra does not grant rights to third-party content and is not affiliated with or endorsed by any third-party service.
