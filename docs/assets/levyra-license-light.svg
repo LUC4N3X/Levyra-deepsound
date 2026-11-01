@@ -1,10 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="130" height="32" viewBox="0 0 130 32" role="img" aria-label="LICENSE GPL-3.0">
-  <title>LICENSE GPL-3.0</title>
-  <path d="M 16.00 0.75 H 123.25 A 6.00 6.00 0 0 1 129.25 6.75 V 16.00 A 15.25 15.25 0 0 1 114.00 31.25 H 6.75 A 6.00 6.00 0 0 1 0.75 25.25 V 16.00 A 15.25 15.25 0 0 1 16.00 0.75 Z" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
-  <path d="M 13.16 7.25 A 2.90 2.90 0 0 1 18.84 7.25 A 2.90 2.90 0 0 1 23.44 10.59 A 2.90 2.90 0 0 1 25.20 16.00 A 2.90 2.90 0 0 1 23.44 21.41 A 2.90 2.90 0 0 1 18.84 24.75 A 2.90 2.90 0 0 1 13.16 24.75 A 2.90 2.90 0 0 1 8.56 21.41 A 2.90 2.90 0 0 1 6.80 16.00 A 2.90 2.90 0 0 1 8.56 10.59 A 2.90 2.90 0 0 1 13.16 7.25 Z" fill="#0284C7"/>
-  <g transform="translate(16 16)" style="color:#FFFFFF;">
+<svg xmlns="http://www.w3.org/2000/svg" width="145" height="36" viewBox="0 0 145 36" role="img" aria-label="LICENSE GPL-3.0">
+<title>LICENSE GPL-3.0</title>
+<defs><linearGradient id="mlicensel" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#FCFDFE"/><stop offset="1" stop-color="#EDF3F8"/></linearGradient></defs>
+<path d="M19 .65H132c7.7 0 12.35 4.8 12.35 12v4.4c0 10.5-9.5 18.3-20.7 18.3H11.9C4.6 35.35.65 30.8.65 24V18C.65 8 8.5.65 19 .65Z" fill="url(#mlicensel)" stroke="#D1DCE7" stroke-width="1.3"/>
+<rect x="7.5" y="6" width="27" height="24" rx="9" fill="#3A8296"/>
+<g transform="translate(21 18)" style="color:#FFFFFF;">
     <path d="M0 -8 l7 3 v4 c0 5 -3 7 -7 9 -4 -2 -7 -4 -7 -9 v-4 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M-3 0 l2 2 4 -5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
-  <text x="35" y="12.2" fill="#0284C7" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="7.5" font-weight="700" letter-spacing=".8">LICENSE</text>
-  <text x="35" y="24.5" fill="#0F172A" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="750">GPL-3.0</text>
+<text x="43" y="14.6" fill="#52697B" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif" font-size="8" font-weight="650" letter-spacing=".8">LICENSE</text>
+<text x="43" y="27.3" fill="#203244" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif" font-size="13" font-weight="700">GPL-3.0</text>
+<path d="M45 34.8h67" stroke="#90C6D5" stroke-opacity=".48" stroke-width=".65"/>
 </svg>

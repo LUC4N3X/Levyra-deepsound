@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="185" height="56" viewBox="0 0 185 56" role="img" aria-label="DOWNLOAD FROM GitHub">
-  <title>DOWNLOAD FROM GitHub</title>
-  <path d="M 27.75 0.75 H 174.25 A 10.00 10.00 0 0 1 184.25 10.75 V 28.25 A 27.00 27.00 0 0 1 157.25 55.25 H 10.75 A 10.00 10.00 0 0 1 0.75 45.25 V 27.75 A 27.00 27.00 0 0 1 27.75 0.75 Z" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
-  <path d="M 24.81 12.02 A 5.19 5.19 0 0 1 35.19 12.02 A 5.19 5.19 0 0 1 43.59 18.13 A 5.19 5.19 0 0 1 46.80 28.00 A 5.19 5.19 0 0 1 43.59 37.87 A 5.19 5.19 0 0 1 35.19 43.98 A 5.19 5.19 0 0 1 24.81 43.98 A 5.19 5.19 0 0 1 16.41 37.87 A 5.19 5.19 0 0 1 13.20 28.00 A 5.19 5.19 0 0 1 16.41 18.13 A 5.19 5.19 0 0 1 24.81 12.02 Z" fill="#181717"/>
-  <g transform="translate(17 15) scale(1.08)"><path fill="#FFFFFF" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></g>
-  <text x="59" y="21" fill="#57606A" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".9">DOWNLOAD FROM</text>
-  <text x="59" y="41" fill="#0F172A" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="16.5" font-weight="800">GitHub</text>
-  <circle cx="163" cy="28" r="11" fill="#18171714" stroke="#1817172E" stroke-width="1"/>
-  <path d="M163 21v8.5m0 0l-2.8-2.8m2.8 2.8l2.8-2.8" fill="none" stroke="#181717" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M159 33.5h8" fill="none" stroke="#181717" stroke-width="1.7" stroke-linecap="round"/>
+<title>DOWNLOAD FROM GitHub</title>
+<defs><linearGradient id="dgithubdownloadd" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#22313F"/><stop offset="1" stop-color="#1B2936"/></linearGradient></defs>
+<path d="M25 .7H172.5C179.6.7 184.3 5.4 184.3 12.5V28c0 16-12.1 27.3-27.7 27.3H12.5C5.5 55.3.7 50.6.7 43.5V27.7C.7 12.5 9.8.7 25 .7Z" fill="url(#dgithubdownloadd)" stroke="#4C6171" stroke-width="1.35"/>
+<rect x="9" y="8" width="42" height="40" rx="15" fill="#58637E"/>
+<g transform="translate(17 15) scale(1.08)"><path fill="#FFFFFF" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></g>
+<text x="59" y="21" fill="#C1D1DF" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif" font-size="7.8" font-weight="650" letter-spacing=".8">DOWNLOAD FROM</text>
+<text x="59" y="41" fill="#F3F7FB" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif" font-size="17.2" font-weight="720">GitHub</text>
+<circle cx="166" cy="28" r="10.6" fill="#324453" stroke="#5A6F7D" stroke-width="1"/>
+<path d="M166 21.6v9m0 0-3.5-3.6m3.5 3.6 3.5-3.6m-7 6.9h7" fill="none" stroke="#D6E3EF" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
