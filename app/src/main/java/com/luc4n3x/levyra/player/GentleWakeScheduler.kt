@@ -228,6 +228,14 @@ object GentleWakeScheduler {
         val appContext = context.applicationContext
         if (!reliabilityStatus(appContext).notificationsPermitted) return
         val notification = buildGentleWakeRingingNotification(appContext, languageCode, sourceTitle, usingEmergencyFallback)
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                appContext,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) return
+
         runCatching {
             NotificationManagerCompat.from(appContext).notify(GENTLE_WAKE_NOTIFICATION_ID, notification)
         }.onFailure { Timber.w(it, "GentleWakeScheduler: notify ringing failed") }
@@ -349,6 +357,14 @@ object GentleWakeScheduler {
             .addAction(0, copy.morningPromptActionResume, resumePending)
             .addAction(0, copy.morningPromptActionLater, dismissPending)
             .build()
+
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                appContext,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) return
 
         runCatching {
             NotificationManagerCompat.from(appContext).notify(MORNING_RESUME_NOTIFICATION_ID, notification)
