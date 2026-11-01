@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-01T06:14:20Z",
+  "generatedAt": "2026-11-01T13:35:06Z",
   "items": [
     {
       "song": "Sentire La Musica",
@@ -581,6 +581,13 @@
       "artist": "Alex Warren",
       "album": "You'll Be Alright, Kid (Chapter 1)",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/fa41c665765f46f9bc0cba39028b00d5.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Shotta's.",
+      "artist": "Season 25",
+      "album": "Shotta's.",
+      "url": "https://canvaz.scdn.co/upload/artist/1WtceoonufhxRc6AnUSbat/video/902eb8cb2ea244e19e73cb27f8dfd0a8.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2513,6 +2520,13 @@
       "artist": "Swedish House Mafia, Lykke Li",
       "album": "Happiness Is So Sad",
       "url": "https://canvaz.scdn.co/upload/artist/1h6Cn3P4NGzXbaXidqURXs/video/29f81c0fe8db4a479e606a88e22b93fe.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "The Art of Loving",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4644,17 +4658,17 @@
       "scope": "track"
     },
     {
+      "song": "Iris",
+      "artist": "The Goo Goo Dolls",
+      "album": "Stay with You",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/4ab38c8ea56645c5ab7d8ebfb5e4edc2.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Die With A Smile",
       "artist": "Lady Gaga, Bruno Mars",
       "album": "MAYHEM",
       "url": "https://canvaz.scdn.co/upload/artist/1HY2Jd0NmPuamShAr6KMms/video/904bbcf6ecb6434babef1fea651c4495.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "The Art of Loving",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -5239,6 +5253,13 @@
       "scope": "track"
     },
     {
+      "song": "El Teléfono",
+      "artist": "Héctor \"El Father\", Wisin & Yandel",
+      "album": "The Bad Boy",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/b23b719ccbb445188126f29f094d154a.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Sexo, Sudor y Calor",
       "artist": "J Alvarez, Ñejo & Dalmata",
       "album": "Timeless",
@@ -5306,13 +5327,6 @@
       "artist": "La Factoria, Eddy Lover",
       "album": "Nuevas Metas",
       "url": "https://canvaz.scdn.co/upload/artist/7gR53ad9JjCweCv4f9MWEX/video/fbdf2e79f6824470b7e9b8e36fc76bf3.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "El Teléfono",
-      "artist": "Héctor \"El Father\", Wisin & Yandel",
-      "album": "The Bad Boy",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/b23b719ccbb445188126f29f094d154a.cnvs.mp4",
       "scope": "track"
     },
     {
