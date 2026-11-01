@@ -165,67 +165,103 @@ internal fun AdaptiveListeningPanel(
             modifier = Modifier.padding(18.dp).then(if (animated) Modifier.animateContentSize() else Modifier),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                AmbientGlyph(active = enabled && snapshot.condition == AdaptiveListeningCondition.Adapting, animated = animated)
-                Column(Modifier.weight(1f).padding(horizontal = 14.dp)) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            copy[SmartMusicText.AdaptiveTitle],
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = scheme.onSurface,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Surface(color = scheme.tertiaryContainer, contentColor = scheme.onTertiaryContainer, shape = RoundedCornerShape(8.dp)) {
-                            Text(copy[SmartMusicText.AdaptiveExperimental], style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
-                        }
-                    }
-                    Text(copy[SmartMusicText.AdaptiveSubtitle], style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
-                }
-                Switch(
-                    checked = enabled,
-                    onCheckedChange = { checked -> if (checked) consentOpen = true else onEnabled(false) }
-                )
-            }
+            AdaptiveHeader(
+                enabled = enabled,
+                adapting = enabled && snapshot.condition == AdaptiveListeningCondition.Adapting,
+                animated = animated,
+                copy = copy,
+                onToggle = { checked -> if (checked) consentOpen = true else onEnabled(false) }
+            )
             AnimatedVisibility(visible = enabled) {
-                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    ConditionPill(snapshot.condition, copy, animated)
-                    if (snapshot.condition == AdaptiveListeningCondition.PermissionMissing) {
-                        FilledTonalButton(onClick = { permissionLauncher.launch(Manifest.permission.RECORD_AUDIO) }, modifier = Modifier.heightIn(min = 48.dp)) {
-                            Text(copy[SmartMusicText.AdaptiveGrant])
-                        }
-                    }
-                    AmbientGraph(
-                        snapshot = snapshot,
-                        description = copy[SmartMusicText.AdaptiveHistory],
-                        modifier = Modifier.fillMaxWidth().aspectRatio(2.1f)
-                    )
-                    AdaptiveReadout(snapshot, copy)
-                    Text(copy[SmartMusicText.AdaptiveRelativeNote], style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
-                    SensitivitySelector(settings.adaptiveListeningSensitivity, animated, copy, onSensitivity)
-                    MaxBoostControl(settings.adaptiveListeningMaxBoostDb, copy, onMaxBoost)
-                    Text(copy[SmartMusicText.AdaptiveHeadphonesNote], style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
-                }
+                AdaptiveDetails(
+                    settings = settings,
+                    snapshot = snapshot,
+                    animated = animated,
+                    copy = copy,
+                    onGrant = { permissionLauncher.launch(Manifest.permission.RECORD_AUDIO) },
+                    onSensitivity = onSensitivity,
+                    onMaxBoost = onMaxBoost
+                )
             }
         }
     }
     if (consentOpen) {
-        AlertDialog(
-            onDismissRequest = { consentOpen = false },
-            title = { Text(copy[SmartMusicText.AdaptiveConsentTitle]) },
-            text = { Text(copy[SmartMusicText.AdaptiveConsentBody]) },
-            confirmButton = {
-                TextButton(onClick = {
-                    consentOpen = false
-                    requestEnable()
-                }) { Text(copy[SmartMusicText.AdaptiveConsentAllow]) }
+        AdaptiveConsentDialog(
+            copy = copy,
+            onAllow = {
+                consentOpen = false
+                requestEnable()
             },
-            dismissButton = {
-                TextButton(onClick = { consentOpen = false }) { Text(copy[SmartMusicText.AdaptiveConsentCancel]) }
-            }
+            onDismiss = { consentOpen = false }
         )
     }
+}
+
+@Composable
+private fun AdaptiveHeader(enabled: Boolean, adapting: Boolean, animated: Boolean, copy: SmartMusicCopy, onToggle: (Boolean) -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        AmbientGlyph(active = adapting, animated = animated)
+        Column(Modifier.weight(1f).padding(horizontal = 14.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    copy[SmartMusicText.AdaptiveTitle],
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = scheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Surface(color = scheme.tertiaryContainer, contentColor = scheme.onTertiaryContainer, shape = RoundedCornerShape(8.dp)) {
+                    Text(copy[SmartMusicText.AdaptiveExperimental], style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                }
+            }
+            Text(copy[SmartMusicText.AdaptiveSubtitle], style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
+        }
+        Switch(checked = enabled, onCheckedChange = onToggle)
+    }
+}
+
+@Composable
+private fun AdaptiveDetails(
+    settings: LevyraAudioSettings,
+    snapshot: AdaptiveListeningSnapshot,
+    animated: Boolean,
+    copy: SmartMusicCopy,
+    onGrant: () -> Unit,
+    onSensitivity: (AdaptiveSensitivity) -> Unit,
+    onMaxBoost: (Float) -> Unit
+) {
+    val scheme = MaterialTheme.colorScheme
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        ConditionPill(snapshot.condition, copy, animated)
+        if (snapshot.condition == AdaptiveListeningCondition.PermissionMissing) {
+            FilledTonalButton(onClick = onGrant, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(copy[SmartMusicText.AdaptiveGrant])
+            }
+        }
+        AmbientGraph(
+            snapshot = snapshot,
+            description = copy[SmartMusicText.AdaptiveHistory],
+            modifier = Modifier.fillMaxWidth().aspectRatio(2.1f)
+        )
+        AdaptiveReadout(snapshot, copy)
+        Text(copy[SmartMusicText.AdaptiveRelativeNote], style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
+        SensitivitySelector(settings.adaptiveListeningSensitivity, animated, copy, onSensitivity)
+        MaxBoostControl(settings.adaptiveListeningMaxBoostDb, copy, onMaxBoost)
+        Text(copy[SmartMusicText.AdaptiveHeadphonesNote], style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun AdaptiveConsentDialog(copy: SmartMusicCopy, onAllow: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(copy[SmartMusicText.AdaptiveConsentTitle]) },
+        text = { Text(copy[SmartMusicText.AdaptiveConsentBody]) },
+        confirmButton = { TextButton(onClick = onAllow) { Text(copy[SmartMusicText.AdaptiveConsentAllow]) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(copy[SmartMusicText.AdaptiveConsentCancel]) } }
+    )
 }
 
 @Composable

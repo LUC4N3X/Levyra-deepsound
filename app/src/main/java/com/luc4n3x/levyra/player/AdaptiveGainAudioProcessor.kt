@@ -120,30 +120,30 @@ class AdaptiveGainAudioProcessor(private val meterOutput: Boolean) : BaseAudioPr
         val limit = if (floatSamples || (target == 0f && appliedDb == 0f)) target else minOf(target, headroomDb(inputBuffer, base, frames * channels))
         if (appliedDb > limit) appliedDb = limit.coerceAtLeast(0f)
         var gain = linear(appliedDb)
-        var framesUntilGainUpdate = 0
         for (frame in 0 until frames) {
-            if (framesUntilGainUpdate <= 0) {
+            if (frame % GAIN_UPDATE_FRAMES == 0) {
                 appliedDb = stepToward(appliedDb, limit, GAIN_UPDATE_FRAMES)
                 gain = linear(appliedDb)
-                framesUntilGainUpdate = GAIN_UPDATE_FRAMES
             }
-            framesUntilGainUpdate--
-            val frameOffset = base + frame * sampleSize * channels
-            for (channel in 0 until channels) {
-                val offset = frameOffset + channel * sampleSize
-                val sample = if (floatSamples) inputBuffer.getFloat(offset) else inputBuffer.getShort(offset) / 32768f
-                if (metering && channel == 0) meterSum += (sample * sample).toDouble()
-                val shaped = sample * gain
-                if (floatSamples) output.putFloat(shaped) else output.putShort((shaped.coerceIn(-1f, MAX_16_BIT) * 32768f).roundToInt().toShort())
-            }
-            if (metering) {
-                meterFrames++
-                if (meterFrames >= meterWindowFrames) publishMeter()
-            }
+            writeFrame(inputBuffer, output, base + frame * sampleSize * channels, sampleSize, gain, metering)
         }
         inputBuffer.position(inputBuffer.limit())
         output.flip()
         AdaptiveListeningBus.appliedBoostDb = appliedDb
+    }
+
+    private fun writeFrame(input: ByteBuffer, output: ByteBuffer, frameOffset: Int, sampleSize: Int, gain: Float, metering: Boolean) {
+        for (channel in 0 until channels) {
+            val offset = frameOffset + channel * sampleSize
+            val sample = if (floatSamples) input.getFloat(offset) else input.getShort(offset) / 32768f
+            if (metering && channel == 0) meterSum += (sample * sample).toDouble()
+            val shaped = sample * gain
+            if (floatSamples) output.putFloat(shaped) else output.putShort((shaped.coerceIn(-1f, MAX_16_BIT) * 32768f).roundToInt().toShort())
+        }
+        if (metering) {
+            meterFrames++
+            if (meterFrames >= meterWindowFrames) publishMeter()
+        }
     }
 
     private fun headroomDb(input: ByteBuffer, base: Int, samples: Int): Float {

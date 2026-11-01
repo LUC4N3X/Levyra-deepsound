@@ -167,47 +167,55 @@ class AdaptiveListeningEngine(
     fun onWindow(window: AmbientWindow): AdaptiveListeningSnapshot {
         val frames = window.frameLevelsDb
         if (frames.isEmpty()) return snapshot
-        if (!window.headphonesActive) {
-            return settle(AdaptiveListeningCondition.SpeakerOutput, Float.NaN, window.atMs, dropBoost = true)
-        }
-        if (frames.all { it <= DIGITAL_SILENCE_DB }) {
-            silentWindows++
-            return if (silentWindows >= SILENT_WINDOWS_LIMIT) {
-                settle(AdaptiveListeningCondition.MicrophoneSilent, Float.NaN, window.atMs, dropBoost = true)
-            } else {
-                settle(snapshot.condition, Float.NaN, window.atMs, dropBoost = false)
-            }
-        }
-        silentWindows = 0
-        if (window.clippedFrames * 2 > frames.size) {
-            return settle(AdaptiveListeningCondition.Overload, Float.NaN, window.atMs, dropBoost = false)
-        }
+        unreliableInput(window, frames)?.let { return it }
         val floorDb = noiseFloor(frames)
         recordHistory(floorDb)
         recordBleed(floorDb, window.outputLevelDb)
         if (bleedDetected()) {
             return settle(AdaptiveListeningCondition.PlaybackBleed, floorDb, window.atMs, dropBoost = true)
         }
-        if (recentSpreadDb() > UNSTABLE_SPREAD_DB) {
-            val smoothed = smoothedDb
-            if (smoothed.isFinite() && floorDb < smoothed) {
-                smooth(floorDb, window.atMs)
-                val desired = desiredBoostDb(smoothedDb - referenceDb)
-                if (desired < currentBoostDb) applyHysteresis(desired, window.atMs)
-            }
-            return settle(AdaptiveListeningCondition.Unstable, floorDb, window.atMs, dropBoost = false)
+        if (recentSpreadDb() > UNSTABLE_SPREAD_DB) return holdWhileUnstable(floorDb, window.atMs)
+        return adapt(floorDb, window.atMs)
+    }
+
+    private fun unreliableInput(window: AmbientWindow, frames: FloatArray): AdaptiveListeningSnapshot? {
+        if (!window.headphonesActive) {
+            return settle(AdaptiveListeningCondition.SpeakerOutput, Float.NaN, window.atMs, dropBoost = true)
         }
-        smooth(floorDb, window.atMs)
+        if (frames.all { it <= DIGITAL_SILENCE_DB }) {
+            silentWindows++
+            val muted = silentWindows >= SILENT_WINDOWS_LIMIT
+            val condition = if (muted) AdaptiveListeningCondition.MicrophoneSilent else snapshot.condition
+            return settle(condition, Float.NaN, window.atMs, dropBoost = muted)
+        }
+        silentWindows = 0
+        if (window.clippedFrames * 2 > frames.size) {
+            return settle(AdaptiveListeningCondition.Overload, Float.NaN, window.atMs, dropBoost = false)
+        }
+        return null
+    }
+
+    private fun holdWhileUnstable(floorDb: Float, atMs: Long): AdaptiveListeningSnapshot {
+        val smoothed = smoothedDb
+        if (smoothed.isFinite() && floorDb < smoothed) {
+            smooth(floorDb, atMs)
+            val desired = desiredBoostDb(smoothedDb - referenceDb)
+            if (desired < currentBoostDb) applyHysteresis(desired, atMs)
+        }
+        return settle(AdaptiveListeningCondition.Unstable, floorDb, atMs, dropBoost = false)
+    }
+
+    private fun adapt(floorDb: Float, atMs: Long): AdaptiveListeningSnapshot {
+        smooth(floorDb, atMs)
         reliableWindows++
         val smoothed = smoothedDb
         if (reliableWindows >= CALIBRATION_WINDOWS && smoothed.isFinite()) {
             sessionMinimumDb = if (sessionMinimumDb.isFinite()) minOf(sessionMinimumDb, smoothed) else smoothed
         }
         if (reliableWindows < CALIBRATION_WINDOWS) {
-            return settle(AdaptiveListeningCondition.Calibrating, floorDb, window.atMs, dropBoost = false)
+            return settle(AdaptiveListeningCondition.Calibrating, floorDb, atMs, dropBoost = false)
         }
-        val desired = desiredBoostDb(smoothed - referenceDb)
-        applyHysteresis(desired, window.atMs)
+        applyHysteresis(desiredBoostDb(smoothed - referenceDb), atMs)
         val condition = if (currentBoostDb > 0f) AdaptiveListeningCondition.Adapting else AdaptiveListeningCondition.Listening
         return publish(condition, floorDb)
     }

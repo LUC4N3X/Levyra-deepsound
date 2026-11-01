@@ -410,46 +410,75 @@ object MoodJourneyEngine {
         val slotCandidates = Array(count) { slot ->
             pinnedSlots[slot]?.let { intArrayOf(it) } ?: nearest(eligible, targets[slot], pinnedCandidates, max(CANDIDATES_PER_SLOT, count * 3))
         }
+        val context = SearchContext(eligible, request, targets, keys, artists, albums, pinnedSlots, artistCap)
         val words = (eligible.size + 63) / 64
         var beam = listOf(BeamState(IntArray(count), 0, LongArray(words), 0f))
         for (slot in 0 until count) {
             val expansions = ArrayList<Expansion>(beam.size * slotCandidates[slot].size)
-            for (relaxed in booleanArrayOf(false, true)) {
-                if (expansions.isNotEmpty()) break
-                val pool = if (relaxed) relaxedCandidates(eligible.size, pinnedCandidates) else slotCandidates[slot]
-            beam.forEachIndexed { parentIndex, state ->
-                for (candidateIndex in pool) {
-                    if (state.used[candidateIndex ushr 6] and (1L shl (candidateIndex and 63)) != 0L) continue
-                    val pinned = pinnedSlots[slot] == candidateIndex
-                    if (!pinned && !relaxed && violatesArtistRules(state, candidateIndex, artists, artistCap)) continue
-                    val candidate = eligible[candidateIndex]
-                    var step = fitCost(candidate.mood, targets[slot]) + (1f - candidate.mood.confidence) * UNCERTAINTY_WEIGHT
-                    step -= candidate.affinity.coerceIn(0f, 1f) * AFFINITY_BONUS
-                    if (keys[candidateIndex] in request.avoidKeys) step += AVOID_PENALTY
-                    step += jitter(keys[candidateIndex], request.seed)
-                    if (state.length > 0) {
-                        val previous = state.sequence[state.length - 1]
-                        step += transitionCost(eligible[previous].mood, candidate.mood, targets[slot - 1], targets[slot])
-                        if (albums[previous].isNotEmpty() && albums[previous] == albums[candidateIndex]) step += ADJACENT_ALBUM_PENALTY
-                    }
-                    if (relaxed && violatesArtistRules(state, candidateIndex, artists, artistCap)) step += RELAXED_ARTIST_PENALTY
-                    expansions += Expansion(parentIndex, candidateIndex, state.cost + step)
-                }
-            }
-            }
+            expandSlot(context, beam, slot, slotCandidates[slot], relaxed = false, out = expansions)
+            if (expansions.isEmpty()) expandSlot(context, beam, slot, relaxedCandidates(eligible.size, pinnedCandidates), relaxed = true, out = expansions)
             if (expansions.isEmpty()) break
             expansions.sortBy { it.cost }
-            beam = expansions.take(BEAM_WIDTH).map { expansion ->
-                val parent = beam[expansion.parent]
-                val sequence = parent.sequence.copyOf()
-                sequence[parent.length] = expansion.candidate
-                val used = parent.used.copyOf()
-                used[expansion.candidate ushr 6] = used[expansion.candidate ushr 6] or (1L shl (expansion.candidate and 63))
-                BeamState(sequence, parent.length + 1, used, expansion.cost)
-            }
+            beam = expansions.take(BEAM_WIDTH).map { advance(beam[it.parent], it) }
         }
         val best = beam.minByOrNull { it.cost } ?: return emptyList()
         return best.sequence.copyOf(best.length).toList()
+    }
+
+    private class SearchContext(
+        val eligible: List<MoodJourneyCandidate>,
+        val request: MoodJourneyRequest,
+        val targets: Array<MoodPoint>,
+        val keys: List<String>,
+        val artists: List<String>,
+        val albums: List<String>,
+        val pinnedSlots: Map<Int, Int>,
+        val artistCap: Int
+    )
+
+    private fun expandSlot(
+        context: SearchContext,
+        beam: List<BeamState>,
+        slot: Int,
+        pool: IntArray,
+        relaxed: Boolean,
+        out: MutableList<Expansion>
+    ) {
+        beam.forEachIndexed { parentIndex, state ->
+            for (candidateIndex in pool) {
+                if (isUsed(state, candidateIndex)) continue
+                val pinned = context.pinnedSlots[slot] == candidateIndex
+                val violates = !pinned && violatesArtistRules(state, candidateIndex, context.artists, context.artistCap)
+                if (violates && !relaxed) continue
+                val penalty = if (violates) RELAXED_ARTIST_PENALTY else 0f
+                out += Expansion(parentIndex, candidateIndex, state.cost + stepCost(context, state, slot, candidateIndex) + penalty)
+            }
+        }
+    }
+
+    private fun stepCost(context: SearchContext, state: BeamState, slot: Int, candidateIndex: Int): Float {
+        val candidate = context.eligible[candidateIndex]
+        val key = context.keys[candidateIndex]
+        var step = fitCost(candidate.mood, context.targets[slot]) + (1f - candidate.mood.confidence) * UNCERTAINTY_WEIGHT
+        step -= candidate.affinity.coerceIn(0f, 1f) * AFFINITY_BONUS
+        if (key in context.request.avoidKeys) step += AVOID_PENALTY
+        step += jitter(key, context.request.seed)
+        if (state.length == 0) return step
+        val previous = state.sequence[state.length - 1]
+        step += transitionCost(context.eligible[previous].mood, candidate.mood, context.targets[slot - 1], context.targets[slot])
+        val album = context.albums[previous]
+        if (album.isNotEmpty() && album == context.albums[candidateIndex]) step += ADJACENT_ALBUM_PENALTY
+        return step
+    }
+
+    private fun isUsed(state: BeamState, index: Int): Boolean = state.used[index ushr 6] and (1L shl (index and 63)) != 0L
+
+    private fun advance(parent: BeamState, expansion: Expansion): BeamState {
+        val sequence = parent.sequence.copyOf()
+        sequence[parent.length] = expansion.candidate
+        val used = parent.used.copyOf()
+        used[expansion.candidate ushr 6] = used[expansion.candidate ushr 6] or (1L shl (expansion.candidate and 63))
+        return BeamState(sequence, parent.length + 1, used, expansion.cost)
     }
 
     private fun assignPinned(
