@@ -126,7 +126,7 @@ internal fun LevyraSleepTimerSheet(
     val smartCopy = strings.smartListeningCopy()
     val blocker = remember { MutableInteractionSource() }
     val timerRunning = state.sleepTimerMinutes > 0 || state.sleepTimerEndOfTrack
-    var selectedMode by remember(timerRunning, smart.sleepTimerMode, smart.sleepWithMusicSettings.preferSmartSleepMode) {
+    var selectedMode by remember(timerRunning, smart.sleepTimerMode) {
         mutableStateOf(initialSleepTimerMode(timerRunning, smart))
     }
     val isSleepWithMusicMode = selectedMode == PlaybackSleepTimerMode.SLEEP_WITH_MUSIC
