@@ -242,7 +242,10 @@ Contributions and bug reports are welcome. Technical documentation and architect
 ### LUC4N3X
 
 <p>
-  <img src="docs/assets/levyra-creator-badge-light.svg" width="224" height="46" alt="Creator &amp; Maintainer">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-creator-badge-dark.svg?v=m3-expressive-role-1">
+    <img src="docs/assets/levyra-creator-badge-light.svg?v=m3-expressive-role-1" width="270" height="60" alt="Project role: Creator &amp; Maintainer">
+  </picture>
 </p>
 
 <p>
