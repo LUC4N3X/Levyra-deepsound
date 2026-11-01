@@ -78,7 +78,15 @@ import com.luc4n3x.levyra.data.MixChaptersRepository
 import com.luc4n3x.levyra.domain.LyricsPhraseMatcher
 import com.luc4n3x.levyra.domain.MixChapter
 import com.luc4n3x.levyra.domain.MixChapterList
+import com.luc4n3x.levyra.domain.GentleWakeSettings
+import com.luc4n3x.levyra.domain.MorningResumeSnapshot
+import com.luc4n3x.levyra.domain.MotionControlSettings
 import com.luc4n3x.levyra.domain.NightListeningPreset
+import com.luc4n3x.levyra.domain.PlaybackSleepTimerMode
+import com.luc4n3x.levyra.domain.SleepWithMusicSettings
+import com.luc4n3x.levyra.feature.radio.RadioStore
+import com.luc4n3x.levyra.player.GentleWakeScheduler
+import com.luc4n3x.levyra.player.MotionGestureController
 import com.luc4n3x.levyra.domain.SmartAudioProfile
 import com.luc4n3x.levyra.domain.SmartAudioResolver
 import com.luc4n3x.levyra.data.PlaybackResolver
@@ -1266,6 +1274,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             exploreCategoryArtwork = startupExploreDiscovery?.artwork.orEmpty()
         )
     )
+    private val _smartListening = MutableStateFlow(
+        SmartListeningUiState(
+            motionControlSettings = startupSettings.motionControlSettings,
+            motionSensorCapability = MotionGestureController.inspectCapability(application),
+            gentleWakeSettings = startupSettings.gentleWakeSettings,
+            gentleWakeReliability = GentleWakeScheduler.reliabilityStatus(application),
+            sleepWithMusicSettings = startupSettings.sleepWithMusicSettings,
+            morningResumeSnapshot = startupSettings.morningResumeSnapshot
+        )
+    )
+    val smartListening: StateFlow<SmartListeningUiState> = _smartListening.asStateFlow()
     private val spotifySearchClient by lazy {
         com.luc4n3x.levyra.data.spotify.SpotifySearchClient(
             catalogSearch = editorialChartsRepository::searchSpotifyMetadata,
@@ -1761,6 +1780,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         )
         viewModelScope.launch(Dispatchers.IO) {
             applyAutomationSettings(startupSettings.automationSettings, persist = false)
+            GentleWakeScheduler.apply(application, startupSettings.gentleWakeSettings)
+            GentleWakeScheduler.scheduleMorningResumePrompt(application, startupSettings.morningResumeSnapshot)
         }
         viewModelScope.launch(Dispatchers.IO) {
             com.luc4n3x.levyra.feature.recognition.LevyraRecognitionCenter.restoreAudD(
@@ -1982,8 +2003,31 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
         sleepTimerCollectorJob?.cancel()
+        viewModelScope.launch {
+            PlaybackService.gentleWakeRuntimeStateFlow.collect { runtimeState ->
+                _smartListening.update { it.copy(gentleWakeRuntimeState = runtimeState) }
+            }
+        }
+        viewModelScope.launch {
+            preferences.morningResumeSnapshotFlow.collect { snapshot ->
+                _smartListening.update { it.copy(morningResumeSnapshot = snapshot) }
+            }
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            val radioStore = RadioStore(application)
+            val stations = (radioStore.favorites() + radioStore.customStations() + radioStore.recent())
+                .distinctBy { it.uuid }
+            _smartListening.update { it.copy(availableRadioStations = stations) }
+        }
         sleepTimerCollectorJob = viewModelScope.launch {
             PlaybackService.sleepTimerStateFlow.collect { timerState ->
+                val countdown = timerState as? PlaybackSleepTimerState.Countdown
+                _smartListening.update {
+                    it.copy(
+                        sleepTimerMode = countdown?.mode ?: PlaybackSleepTimerMode.CLASSIC,
+                        sleepTimerTimbreSoftening = countdown?.timbreSoftening ?: false
+                    )
+                }
                 _state.update { current ->
                     when (timerState) {
                         is PlaybackSleepTimerState.Disabled -> current.copy(
@@ -5403,6 +5447,135 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setSleepTimerEndOfTrack() {
         PlaybackService.startSleepTimerEndOfTrack()
+    }
+
+    fun setSleepWithMusicTimerMinutes(minutes: Int, timbreSoftening: Boolean) {
+        if (!PlaybackService.startSleepWithMusicTimer(minutes, timbreSoftening)) {
+            PlaybackService.startSleepTimer(minutes)
+        }
+    }
+
+    fun setMotionControlSettings(value: MotionControlSettings) {
+        val normalized = value.normalized()
+        if (normalized == _smartListening.value.motionControlSettings) return
+        _smartListening.update {
+            it.copy(
+                motionControlSettings = normalized,
+                motionSensorCapability = MotionGestureController.inspectCapability(getApplication())
+            )
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            preferences.setMotionControlSettings(normalized)
+        }
+    }
+
+    fun setGentleWakeSettings(value: GentleWakeSettings) {
+        val normalized = value.normalized()
+        val app = getApplication<Application>()
+        val reliability = GentleWakeScheduler.reliabilityStatus(app)
+        _smartListening.update {
+            it.copy(
+                gentleWakeSettings = normalized,
+                gentleWakeReliability = reliability
+            )
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            preferences.setGentleWakeSettings(normalized)
+            GentleWakeScheduler.apply(app, normalized)
+            if (_smartListening.value.sleepWithMusicSettings.linkMorningPromptToGentleWake) {
+                val snapshot = preferences.morningResumeSnapshot()
+                if (snapshot != null && !snapshot.dismissed) {
+                    val nextPrompt = MorningResumeSnapshot.computeMorningPromptTime(
+                        now = java.time.ZonedDateTime.now(),
+                        sleepSettings = _smartListening.value.sleepWithMusicSettings,
+                        gentleWakeSettings = normalized
+                    )
+                    val updatedSnapshot = snapshot.copy(promptAtEpochMs = nextPrompt.toInstant().toEpochMilli())
+                    preferences.setMorningResumeSnapshot(updatedSnapshot)
+                    GentleWakeScheduler.scheduleMorningResumePrompt(app, updatedSnapshot)
+                }
+            }
+        }
+    }
+
+    fun refreshGentleWakeReliability() {
+        val app = getApplication<Application>()
+        val reliability = GentleWakeScheduler.reliabilityStatus(app)
+        val capability = MotionGestureController.inspectCapability(app)
+        _smartListening.update {
+            it.copy(
+                gentleWakeReliability = reliability,
+                motionSensorCapability = capability
+            )
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            val radioStore = RadioStore(app)
+            val stations = (radioStore.favorites() + radioStore.customStations() + radioStore.recent())
+                .distinctBy { it.uuid }
+            _smartListening.update { it.copy(availableRadioStations = stations) }
+        }
+    }
+
+    fun toggleGentleWakePreview() {
+        val runtime = _smartListening.value.gentleWakeRuntimeState
+        if (runtime.active && runtime.previewActive) {
+            PlaybackService.stopGentleWakePreview()
+        } else {
+            PlaybackService.startGentleWakePreview(_smartListening.value.gentleWakeSettings)
+        }
+    }
+
+    fun snoozeGentleWake(customDelayMs: Long? = null) {
+        PlaybackService.snoozeGentleWakeAlarm(getApplication(), customDelayMs)
+    }
+
+    fun stopGentleWakeForToday() {
+        val todayIso = java.time.LocalDate.now().toString()
+        val updated = _smartListening.value.gentleWakeSettings.copy(dismissedDateIso = todayIso)
+        _smartListening.update { it.copy(gentleWakeSettings = updated) }
+        PlaybackService.stopGentleWakeAlarmForToday(getApplication())
+    }
+
+    fun setSleepWithMusicSettings(value: SleepWithMusicSettings) {
+        val normalized = value.normalized()
+        if (normalized == _smartListening.value.sleepWithMusicSettings) return
+        _smartListening.update { it.copy(sleepWithMusicSettings = normalized) }
+        viewModelScope.launch(Dispatchers.IO) {
+            preferences.setSleepWithMusicSettings(normalized)
+        }
+    }
+
+    fun resumeMorningPlayback() {
+        val snapshot = _smartListening.value.morningResumeSnapshot ?: preferences.morningResumeSnapshot() ?: return
+        if (snapshot.dismissed) return
+        val app = getApplication<Application>()
+        GentleWakeScheduler.cancelMorningResumeNotification(app)
+        val dismissed = snapshot.copy(dismissed = true)
+        _smartListening.update { it.copy(morningResumeSnapshot = dismissed) }
+        viewModelScope.launch(Dispatchers.IO) {
+            preferences.setMorningResumeSnapshot(dismissed)
+        }
+        val tracks = snapshot.queue
+            .takeIf { queue -> queue.any { samePlayableTrack(it, snapshot.track) } }
+            ?: listOf(snapshot.track)
+        queueEngine.setShuffle(snapshot.shuffleEnabled)
+        queueEngine.setRepeatMode(snapshot.repeatMode)
+        playAudioFrom(
+            tracks,
+            snapshot.track,
+            startPositionMs = if (snapshot.canRestoreExactPosition) snapshot.positionMs else 0L
+        )
+    }
+
+    fun dismissMorningResumePrompt() {
+        val snapshot = _smartListening.value.morningResumeSnapshot ?: preferences.morningResumeSnapshot() ?: return
+        val app = getApplication<Application>()
+        GentleWakeScheduler.cancelMorningResumeNotification(app)
+        val dismissed = snapshot.copy(dismissed = true)
+        _smartListening.update { it.copy(morningResumeSnapshot = dismissed) }
+        viewModelScope.launch(Dispatchers.IO) {
+            preferences.setMorningResumeSnapshot(dismissed)
+        }
     }
 
     fun cancelSleepTimer() {
@@ -10621,7 +10794,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         startResolve(contextualQueue.getOrElse(index) { track })
     }
 
-    fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) {
+    fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false, startPositionMs: Long = 0L) {
         if (list.isEmpty()) return
         if (_state.value.jam.role == JamRole.Guest) {
             play(track)
@@ -10630,7 +10803,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         leaveLiveRadioQueue()
         loopCurrentQueueOnCompletion = loopOnCompletion
         val index = list.indexOfFirst { samePlayableTrack(it, track) }.coerceAtLeast(0)
-        queueEngine.replace(list, index, keepPlaybackModes = true, radioEnabled = queueEngine.state.value.radioEnabled)
+        val restoredPositionMs = startPositionMs.coerceAtLeast(0L)
+        queueEngine.replace(
+            list,
+            index,
+            positionMs = restoredPositionMs,
+            keepPlaybackModes = true,
+            radioEnabled = queueEngine.state.value.radioEnabled
+        )
+        if (restoredPositionMs > 0L) pendingSeekMs = restoredPositionMs
         queueIndex = index
         val start = list.getOrElse(index) { track }
         if (YoutubeMusicVideoType.isVideo(start.videoType)) {
@@ -10639,10 +10820,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         startResolve(start)
     }
 
-    fun playAudioFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) {
+    fun playAudioFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false, startPositionMs: Long = 0L) {
         if (list.isEmpty()) return
         _state.update { current -> current.withExplicitPlaybackMode(videoMode = musicVideoStartMode(track, requestedVideoMode = false)) }
-        playFrom(list, track, loopOnCompletion)
+        playFrom(list, track, loopOnCompletion, startPositionMs)
     }
 
     internal fun discoveryProfile(): com.luc4n3x.levyra.feature.discovery.DiscoveryTasteProfile {

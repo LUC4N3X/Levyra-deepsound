@@ -85,6 +85,15 @@ class LevyraApplication : Application() {
                     LevyraPreferences(this@LevyraApplication).smartOfflineSettings()
                 )
             }.onFailure { Timber.w(it, "Smart Offline scheduling failed") }
+            runCatching {
+                val prefs = LevyraPreferences(this@LevyraApplication)
+                com.luc4n3x.levyra.player.MotionGestureController.inspectCapability(this@LevyraApplication)
+                com.luc4n3x.levyra.player.GentleWakeScheduler.apply(this@LevyraApplication, prefs.gentleWakeSettings())
+                com.luc4n3x.levyra.player.GentleWakeScheduler.scheduleMorningResumePrompt(
+                    this@LevyraApplication,
+                    prefs.morningResumeSnapshot()
+                )
+            }.onFailure { Timber.w(it, "Smart listening scheduling failed") }
             try {
                 OfflineAudioMaintenance.run(this@LevyraApplication)
             } catch (cancelled: CancellationException) {

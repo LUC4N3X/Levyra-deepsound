@@ -249,6 +249,7 @@ class PersistentQueueEngine internal constructor(
     private var playNextIntent: PlayNextIntent? = null
     private val tombstones = AutoQueueTombstones()
     @Volatile private var transientPlaybackActive: Boolean = false
+    val isTransientPlaybackActive: Boolean get() = transientPlaybackActive
     @Volatile private var feedback: RecommendationFeedback = RecommendationFeedback.Empty
     private var feedbackPublished = false
 

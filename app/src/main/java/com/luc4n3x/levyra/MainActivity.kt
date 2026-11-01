@@ -287,6 +287,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleRecognitionLaunchRequest() {
+        if (intent?.action == com.luc4n3x.levyra.player.GentleWakeScheduler.ACTION_MORNING_RESUME_PLAY) {
+            intent.action = null
+            viewModel.resumeMorningPlayback()
+        }
         if (LevyraLaunchActions.pendingShortcut.value != LevyraLaunchActions.SHORTCUT_RECOGNITION) return
         val permissionRequest = intent.getBooleanExtra(
             LevyraLaunchActions.EXTRA_RECOGNITION_PERMISSION_REQUEST,
@@ -323,6 +327,11 @@ class MainActivity : ComponentActivity() {
         if (!AppUpdateContract.matches(intent)) return false
         if (BuildConfig.UPSTREAM_UPDATES_ENABLED) beginInAppUpdate()
         return true
+    }
+
+    override fun onResume() {
+        super.onResume()
+        viewModel.refreshGentleWakeReliability()
     }
 
     override fun onUserLeaveHint() {

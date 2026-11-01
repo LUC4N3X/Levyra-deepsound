@@ -32,7 +32,15 @@ import com.luc4n3x.levyra.domain.LevyraSmartOfflineSettings
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.LevyraHomeStudioSettings
 import com.luc4n3x.levyra.domain.LevyraLyricsStudioSettings
+import com.luc4n3x.levyra.domain.GentleWakeReliabilityStatus
+import com.luc4n3x.levyra.domain.GentleWakeRuntimeState
+import com.luc4n3x.levyra.domain.GentleWakeSettings
 import com.luc4n3x.levyra.domain.LevyraAutomationSettings
+import com.luc4n3x.levyra.domain.MorningResumeSnapshot
+import com.luc4n3x.levyra.domain.MotionControlSettings
+import com.luc4n3x.levyra.domain.MotionSensorCapability
+import com.luc4n3x.levyra.domain.PlaybackSleepTimerMode
+import com.luc4n3x.levyra.domain.SleepWithMusicSettings
 import com.luc4n3x.levyra.domain.LevyraBackupSettings
 import com.luc4n3x.levyra.domain.PlaylistImportFailureKind
 import com.luc4n3x.levyra.domain.LevyraVaultStatus
@@ -353,4 +361,18 @@ data class MiniPlayerStudioState(
 data class NavigationStudioState(
     val settings: com.luc4n3x.levyra.domain.LevyraNavigationStudioSettings = com.luc4n3x.levyra.domain.LevyraNavigationStudioSettings(),
     val visible: Boolean = false
+)
+
+@Immutable
+data class SmartListeningUiState(
+    val sleepTimerMode: PlaybackSleepTimerMode = PlaybackSleepTimerMode.CLASSIC,
+    val sleepTimerTimbreSoftening: Boolean = false,
+    val motionControlSettings: MotionControlSettings = MotionControlSettings(),
+    val motionSensorCapability: MotionSensorCapability = MotionSensorCapability(),
+    val gentleWakeSettings: GentleWakeSettings = GentleWakeSettings(),
+    val gentleWakeReliability: GentleWakeReliabilityStatus = GentleWakeReliabilityStatus(),
+    val gentleWakeRuntimeState: GentleWakeRuntimeState = GentleWakeRuntimeState(),
+    val sleepWithMusicSettings: SleepWithMusicSettings = SleepWithMusicSettings(),
+    val morningResumeSnapshot: MorningResumeSnapshot? = null,
+    val availableRadioStations: List<RadioStation> = emptyList()
 )

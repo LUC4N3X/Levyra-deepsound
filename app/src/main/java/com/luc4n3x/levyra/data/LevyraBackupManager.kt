@@ -39,7 +39,13 @@ import com.luc4n3x.levyra.domain.isExcludableArtist
 import com.luc4n3x.levyra.domain.normalizePlaylistTagName
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.AudioOffloadPreference
+import com.luc4n3x.levyra.domain.DEFAULT_GENTLE_WAKE_DAYS
+import com.luc4n3x.levyra.domain.GentleWakeSettings
+import com.luc4n3x.levyra.domain.GentleWakeSourceType
+import com.luc4n3x.levyra.domain.MotionControlSettings
+import com.luc4n3x.levyra.domain.MotionShakeSensitivity
 import com.luc4n3x.levyra.domain.ReplayGainMode
+import com.luc4n3x.levyra.domain.SleepWithMusicSettings
 import com.luc4n3x.levyra.domain.PlaybackBufferMode
 import com.luc4n3x.levyra.domain.PlaybackBufferSettings
 import com.luc4n3x.levyra.domain.LevyraBackupFrequency
@@ -653,6 +659,7 @@ class LevyraBackupManager(private val context: Context) {
         playlistCoverStore.prune(restoredCoverReferences)
         AutomaticBackupScheduler.schedule(appContext, restoredSettings.backupSettings)
         SmartOfflineScheduler.schedule(appContext, restoredSettings.smartOfflineSettings)
+        com.luc4n3x.levyra.player.GentleWakeScheduler.apply(appContext, restoredSettings.gentleWakeSettings)
     }
 
     private fun scanLevyraDownloads(): List<DownloadEntity> {
@@ -1052,6 +1059,9 @@ class LevyraBackupManager(private val context: Context) {
             .put("smartOfflineSettings", smartOfflineSettingsToJson(snapshot.smartOfflineSettings))
             .put("backupSettings", backupSettingsToJson(snapshot.backupSettings))
             .put("automationSettings", automationSettingsToJson(snapshot.automationSettings))
+            .put("motionControlSettings", motionControlSettingsToJson(snapshot.motionControlSettings))
+            .put("gentleWakeSettings", gentleWakeSettingsToJson(snapshot.gentleWakeSettings))
+            .put("sleepWithMusicSettings", sleepWithMusicSettingsToJson(snapshot.sleepWithMusicSettings))
             .put("jamDisplayName", snapshot.jamDisplayName)
             .put("recentSearches", JSONArray().apply { snapshot.recentSearches.forEach { put(TrackJson.toJson(it)) } })
             .put("personalOrbitTracks", JSONArray().apply { snapshot.personalOrbitTracks.forEach { put(TrackJson.toJson(it)) } })
@@ -1134,6 +1144,9 @@ class LevyraBackupManager(private val context: Context) {
             smartOfflineSettings = parseSmartOfflineSettings(json.optJSONObject("smartOfflineSettings")),
             backupSettings = parseBackupSettings(json.optJSONObject("backupSettings")),
             automationSettings = parseAutomationSettings(json.optJSONObject("automationSettings")),
+            motionControlSettings = parseMotionControlSettings(json.optJSONObject("motionControlSettings")),
+            gentleWakeSettings = parseGentleWakeSettings(json.optJSONObject("gentleWakeSettings")),
+            sleepWithMusicSettings = parseSleepWithMusicSettings(json.optJSONObject("sleepWithMusicSettings")),
             jamDisplayName = json.optString("jamDisplayName"),
             videoQualityTarget = VideoQualityTarget.fromStorage(json.optString("videoQualityTarget")),
             lyricsProviderOrdering = json.optJSONArray("lyricsProviderOrdering")
@@ -1192,6 +1205,106 @@ class LevyraBackupManager(private val context: Context) {
                 window = FreshDiscoveryWindow.from(json.optString("freshDiscoveryWindow", defaults.freshDiscovery.window.id)),
                 allowFavorites = json.optBoolean("freshDiscoveryAllowFavorites", defaults.freshDiscovery.allowFavorites)
             )
+        ).normalized()
+    }
+
+    private fun motionControlSettingsToJson(value: MotionControlSettings): JSONObject {
+        val normalized = value.normalized()
+        return JSONObject()
+            .put("enabled", normalized.enabled)
+            .put("flipToPauseEnabled", normalized.flipToPauseEnabled)
+            .put("shakeToSkipEnabled", normalized.shakeToSkipEnabled)
+            .put("shakeSensitivity", normalized.shakeSensitivity.id)
+            .put("allowScreenOffWhenSupported", normalized.allowScreenOffWhenSupported)
+            .put("flipConfirmationDelayMs", normalized.flipConfirmationDelayMs)
+    }
+
+    private fun parseMotionControlSettings(json: JSONObject?): MotionControlSettings {
+        if (json == null) return preferences.motionControlSettings()
+        val defaults = MotionControlSettings()
+        return MotionControlSettings(
+            enabled = json.optBoolean("enabled", defaults.enabled),
+            flipToPauseEnabled = json.optBoolean("flipToPauseEnabled", defaults.flipToPauseEnabled),
+            shakeToSkipEnabled = json.optBoolean("shakeToSkipEnabled", defaults.shakeToSkipEnabled),
+            shakeSensitivity = MotionShakeSensitivity.from(json.optString("shakeSensitivity", defaults.shakeSensitivity.id)),
+            allowScreenOffWhenSupported = json.optBoolean("allowScreenOffWhenSupported", defaults.allowScreenOffWhenSupported),
+            flipConfirmationDelayMs = json.optLong("flipConfirmationDelayMs", defaults.flipConfirmationDelayMs)
+        ).normalized()
+    }
+
+    private fun gentleWakeSettingsToJson(value: GentleWakeSettings): JSONObject {
+        val normalized = value.normalized()
+        return JSONObject()
+            .put("enabled", normalized.enabled)
+            .put("hour", normalized.hour)
+            .put("minute", normalized.minute)
+            .put("days", JSONArray().apply { normalized.days.forEach { put(it.name) } })
+            .put("sourceType", normalized.sourceType.id)
+            .put("sourceId", normalized.sourceId)
+            .put("sourceTitle", normalized.sourceTitle)
+            .put("sourceSubtitle", normalized.sourceSubtitle)
+            .put("sourceArtworkUrl", normalized.sourceArtworkUrl)
+            .put("sourcePayloadJson", normalized.sourcePayloadJson)
+            .put("crescendoMinutes", normalized.crescendoMinutes)
+            .put("maxVolumeFraction", normalized.maxVolumeFraction.toDouble())
+            .put("snoozeMinutes", normalized.snoozeMinutes)
+            .put("dismissedDateIso", normalized.dismissedDateIso)
+    }
+
+    private fun parseGentleWakeSettings(json: JSONObject?): GentleWakeSettings {
+        if (json == null) return preferences.gentleWakeSettings()
+        val defaults = GentleWakeSettings()
+        val storedDays = json.optJSONArray("days")
+        val days = if (storedDays == null) {
+            DEFAULT_GENTLE_WAKE_DAYS
+        } else {
+            (0 until storedDays.length())
+                .mapNotNull { index ->
+                    runCatching { java.time.DayOfWeek.valueOf(storedDays.optString(index)) }.getOrNull()
+                }
+                .toSet()
+        }
+        return GentleWakeSettings(
+            enabled = json.optBoolean("enabled", defaults.enabled),
+            hour = json.optInt("hour", defaults.hour),
+            minute = json.optInt("minute", defaults.minute),
+            days = days,
+            sourceType = GentleWakeSourceType.from(json.optString("sourceType", defaults.sourceType.id)),
+            sourceId = json.optString("sourceId", defaults.sourceId),
+            sourceTitle = json.optString("sourceTitle", defaults.sourceTitle),
+            sourceSubtitle = json.optString("sourceSubtitle", defaults.sourceSubtitle),
+            sourceArtworkUrl = json.optString("sourceArtworkUrl", defaults.sourceArtworkUrl),
+            sourcePayloadJson = json.optString("sourcePayloadJson", defaults.sourcePayloadJson),
+            crescendoMinutes = json.optInt("crescendoMinutes", defaults.crescendoMinutes),
+            maxVolumeFraction = json.optDouble("maxVolumeFraction", defaults.maxVolumeFraction.toDouble()).toFloat(),
+            snoozeMinutes = json.optInt("snoozeMinutes", defaults.snoozeMinutes),
+            dismissedDateIso = json.optString("dismissedDateIso", defaults.dismissedDateIso)
+        ).normalized()
+    }
+
+    private fun sleepWithMusicSettingsToJson(value: SleepWithMusicSettings): JSONObject {
+        val normalized = value.normalized()
+        return JSONObject()
+            .put("preferSmartSleepMode", normalized.preferSmartSleepMode)
+            .put("defaultDurationMinutes", normalized.defaultDurationMinutes)
+            .put("timbreSofteningEnabled", normalized.timbreSofteningEnabled)
+            .put("morningResumeEnabled", normalized.morningResumeEnabled)
+            .put("morningPromptHour", normalized.morningPromptHour)
+            .put("morningPromptMinute", normalized.morningPromptMinute)
+            .put("linkMorningPromptToGentleWake", normalized.linkMorningPromptToGentleWake)
+    }
+
+    private fun parseSleepWithMusicSettings(json: JSONObject?): SleepWithMusicSettings {
+        if (json == null) return preferences.sleepWithMusicSettings()
+        val defaults = SleepWithMusicSettings()
+        return SleepWithMusicSettings(
+            preferSmartSleepMode = json.optBoolean("preferSmartSleepMode", defaults.preferSmartSleepMode),
+            defaultDurationMinutes = json.optInt("defaultDurationMinutes", defaults.defaultDurationMinutes),
+            timbreSofteningEnabled = json.optBoolean("timbreSofteningEnabled", defaults.timbreSofteningEnabled),
+            morningResumeEnabled = json.optBoolean("morningResumeEnabled", defaults.morningResumeEnabled),
+            morningPromptHour = json.optInt("morningPromptHour", defaults.morningPromptHour),
+            morningPromptMinute = json.optInt("morningPromptMinute", defaults.morningPromptMinute),
+            linkMorningPromptToGentleWake = json.optBoolean("linkMorningPromptToGentleWake", defaults.linkMorningPromptToGentleWake)
         ).normalized()
     }
 
