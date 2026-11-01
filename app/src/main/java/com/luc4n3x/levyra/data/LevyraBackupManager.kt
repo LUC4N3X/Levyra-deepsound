@@ -18,7 +18,12 @@ import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.data.local.ListenEventEntity
 import com.luc4n3x.levyra.data.local.PlaybackQueueItemEntity
 import com.luc4n3x.levyra.data.local.PlaybackQueueStateEntity
+import com.luc4n3x.levyra.data.local.PlaylistAlbumEntity
 import com.luc4n3x.levyra.data.local.PlaylistEntity
+import com.luc4n3x.levyra.data.local.decodePlaylistAlbumTracks
+import com.luc4n3x.levyra.data.local.layoutSlots
+import com.luc4n3x.levyra.data.local.toAlbumHit
+import com.luc4n3x.levyra.data.local.toPlaylistAlbumEntity
 import com.luc4n3x.levyra.data.local.QueueSpaceEntity
 import com.luc4n3x.levyra.data.local.toFavoriteTrackEntity
 import com.luc4n3x.levyra.data.local.toPlaylistTrackEntity
@@ -381,6 +386,13 @@ class LevyraBackupManager(private val context: Context) {
                         .put("hidden", playlist.hidden)
                         .put("tagIds", JSONArray(tagsDao.tagIdsOf(playlist.id)))
                         .put("tracks", JSONArray().apply { tracks.forEach { put(TrackJson.toJson(it.toTrack())) } })
+                        .put(
+                            "albums",
+                            JSONArray().apply {
+                                playlistAlbumBackups(tracks, database.playlistDao().albumsOf(playlist.id))
+                                    .forEach { put(PlaylistAlbumBackupJson.toJson(it)) }
+                            }
+                        )
                         .toString()
                     writer.write(json)
                 }
@@ -591,7 +603,8 @@ class LevyraBackupManager(private val context: Context) {
     private suspend fun currentSnapshot(): VaultSnapshot {
         val snapshot = preferences.snapshot()
         val playlists = database.playlistDao().allPlaylists().map { playlist ->
-            val tracks = database.playlistDao().tracksOf(playlist.id).map { it.toTrack() }
+            val trackRows = database.playlistDao().tracksOf(playlist.id)
+            val tracks = trackRows.map { it.toTrack() }
             val requestedMode = PlaylistCoverMode.from(playlist.coverMode)
             val coverBytes = if (requestedMode == PlaylistCoverMode.CUSTOM) {
                 playlistCoverStore.readBackup(playlist.coverUrl)
@@ -616,7 +629,8 @@ class LevyraBackupManager(private val context: Context) {
                 updatedAt = playlist.updatedAt,
                 hidden = playlist.hidden,
                 tagIds = tagsDao.tagIdsOf(playlist.id),
-                tracks = tracks
+                tracks = tracks,
+                albums = playlistAlbumBackups(trackRows, database.playlistDao().albumsOf(playlist.id))
             )
         }
         return VaultSnapshot(
@@ -763,13 +777,47 @@ class LevyraBackupManager(private val context: Context) {
                     playlist.coverMode.name
                 )
             )
+            val layout = restoredPlaylistLayout(playlist.tracks.size, playlist.albums.map { it.slot })
             if (playlist.tracks.isNotEmpty()) {
                 dao.insertTracks(
-                    playlist.tracks.mapIndexed { position, track ->
-                        track.toPlaylistTrackEntity(playlist.id, position, playlist.createdAt + position)
+                    playlist.tracks.mapIndexed { index, track ->
+                        track.toPlaylistTrackEntity(playlist.id, layout.trackPositions[index], playlist.createdAt + index)
                     }
                 )
             }
+            if (playlist.albums.isNotEmpty()) {
+                dao.insertAlbums(
+                    playlist.albums.mapIndexed { index, entry ->
+                        entry.album.toPlaylistAlbumEntity(
+                            playlistId = playlist.id,
+                            entryId = entry.entryId,
+                            position = layout.albumPositions[index],
+                            tracks = entry.tracks,
+                            addedAt = entry.addedAt
+                        )
+                    }
+                )
+            }
+        }
+    }
+
+    private fun playlistAlbumBackups(
+        tracks: List<com.luc4n3x.levyra.data.local.PlaylistTrackEntity>,
+        albums: List<PlaylistAlbumEntity>
+    ): List<PlaylistAlbumBackup> {
+        if (albums.isEmpty()) return emptyList()
+        val slots = layoutSlots(tracks, albums)
+        val slotByEntry = slots.withIndex().filter { it.value.isAlbum }.associate { it.value.entryId to it.index }
+        return albums.mapNotNull { album ->
+            val albumTracks = decodePlaylistAlbumTracks(album.tracksJson)
+            if (albumTracks.isEmpty()) return@mapNotNull null
+            PlaylistAlbumBackup(
+                entryId = album.entryId,
+                slot = slotByEntry[album.entryId] ?: slots.size,
+                album = album.toAlbumHit(),
+                tracks = albumTracks,
+                addedAt = album.addedAt
+            )
         }
     }
 
@@ -1016,7 +1064,8 @@ class LevyraBackupManager(private val context: Context) {
                         updatedAt = updatedAt,
                         hidden = json.optBoolean("hidden", false),
                         tagIds = json.optJSONArray("tagIds").toStringList(),
-                        tracks = json.optJSONArray("tracks").toTrackList()
+                        tracks = json.optJSONArray("tracks").toTrackList(),
+                        albums = PlaylistAlbumBackupJson.parseArray(json.optJSONArray("albums"), createdAt)
                     )
                 )
             }
@@ -1559,7 +1608,8 @@ class LevyraBackupManager(private val context: Context) {
         val updatedAt: Long,
         val hidden: Boolean,
         val tagIds: List<String>,
-        val tracks: List<Track>
+        val tracks: List<Track>,
+        val albums: List<PlaylistAlbumBackup> = emptyList()
     )
 
     private data class VaultSnapshot(

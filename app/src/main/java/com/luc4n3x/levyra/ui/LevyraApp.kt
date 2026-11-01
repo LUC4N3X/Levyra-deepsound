@@ -2,6 +2,7 @@
 package com.luc4n3x.levyra.ui
 
 import com.luc4n3x.levyra.ui.theme.*
+import com.luc4n3x.levyra.domain.playableTrackCount
 import com.luc4n3x.levyra.domain.exploreSamplesRequestIndex
 import com.luc4n3x.levyra.ui.theme.nocturneMiniSettings
 import com.luc4n3x.levyra.ui.theme.nocturneNavSettings
@@ -726,6 +727,8 @@ import com.luc4n3x.levyra.domain.HomeCollectionSource
 import com.luc4n3x.levyra.domain.HomeSpotlightCandidate
 import com.luc4n3x.levyra.domain.HomeSpotlightKind
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.containsAlbum
+import com.luc4n3x.levyra.ui.i18n.playlistAlbumCopy
 import com.luc4n3x.levyra.domain.YoutubeComment
 import com.luc4n3x.levyra.domain.YoutubeCommentsState
 import com.luc4n3x.levyra.domain.YoutubeEngagementState
@@ -1123,7 +1126,7 @@ private fun HomeOfflinePlaylistRow(
                     }
                     LevyraCardCaption(
                         title = playlist.name,
-                        subtitle = strings.formatTrackCount(playlist.size)
+                        subtitle = strings.formatTrackCount(playlist.playableTrackCount)
                     )
                 }
             }
@@ -3420,6 +3423,12 @@ fun LevyraApp(
                     onExportTracks = { tracks -> viewModel.exportTracks(tracks, currentStrings.offline) },
                     onAddTracksToPlaylist = viewModel::addTracksToPlaylist,
                     onCreatePlaylistWithTracks = viewModel::createPlaylistWithTracks,
+                    onAddAlbumToPlaylist = { playlistId ->
+                        state.albumDetail?.let { detail -> viewModel.addAlbumToPlaylist(playlistId, detail.album, detail.tracks) }
+                    },
+                    onCreatePlaylistWithAlbum = { name ->
+                        state.albumDetail?.let { detail -> viewModel.createPlaylistWithAlbum(name, detail.album, detail.tracks) }
+                    },
                     onOpenAlbumArtist = viewModel::openArtistFromAlbum,
                     onOpenTrackArtist = viewModel::openArtist,
                     onOpenPlayer = viewModel::openPlayerScreen,
@@ -4631,12 +4640,15 @@ private fun AlbumOverlay(
     onExportTracks: (List<Track>) -> Unit,
     onAddTracksToPlaylist: (String, List<Track>) -> Unit,
     onCreatePlaylistWithTracks: (String, List<Track>) -> Unit,
+    onAddAlbumToPlaylist: (String) -> Unit,
+    onCreatePlaylistWithAlbum: (String) -> Unit,
     onOpenAlbumArtist: () -> Unit,
     onOpenTrackArtist: (Track) -> Unit,
     onOpenPlayer: () -> Unit,
     onClose: () -> Unit
 ) {
     val detail = state.albumDetail
+    var albumPlaylistPicker by remember(detail?.album?.browseId, detail?.album?.title, detail?.album?.artist) { mutableStateOf(false) }
     val album = detail?.album
     val tracks = detail?.tracks.orEmpty()
     val description = detail?.description.orEmpty()
@@ -5003,6 +5015,12 @@ private fun AlbumOverlay(
                                 }
                             )
                             DropdownMenuItem(
+                                text = { Text(strings.playlistAlbumCopy().addAlbumToPlaylist) },
+                                leadingIcon = { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, null) },
+                                enabled = tracks.isNotEmpty(),
+                                onClick = { albumMenuExpanded = false; albumPlaylistPicker = true }
+                            )
+                            DropdownMenuItem(
                                 text = { Text(strings.share) },
                                 leadingIcon = { Icon(Icons.Rounded.Share, null) },
                                 onClick = { albumMenuExpanded = false; shareAlbum() }
@@ -5074,6 +5092,29 @@ private fun AlbumOverlay(
                 onCreateWith = { name ->
                     onCreatePlaylistWithTrack(name, track)
                     addTarget = null
+                }
+            )
+        }
+
+        if (albumPlaylistPicker && album != null && tracks.isNotEmpty()) {
+            val albumCopy = strings.playlistAlbumCopy()
+            val containing = remember(state.playlists, album) {
+                state.playlists.filter { it.containsAlbum(album) }.mapTo(hashSetOf()) { it.id }
+            }
+            com.luc4n3x.levyra.ui.library.AddTracksToPlaylistDialog(
+                tracks = tracks,
+                playlists = state.playlists,
+                title = albumCopy.addAlbumToPlaylist,
+                unavailablePlaylistIds = containing,
+                unavailableLabel = albumCopy.inPlaylist,
+                onDismiss = { albumPlaylistPicker = false },
+                onAdd = { playlistId ->
+                    onAddAlbumToPlaylist(playlistId)
+                    albumPlaylistPicker = false
+                },
+                onCreate = { name ->
+                    onCreatePlaylistWithAlbum(name)
+                    albumPlaylistPicker = false
                 }
             )
         }
@@ -17313,7 +17354,7 @@ private fun PlaylistRow(
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(playlist.name, color = LevyraText, fontSize = 17.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
-                LocalLevyraStrings.current.formatTrackCount(playlist.size),
+                LocalLevyraStrings.current.formatTrackCount(playlist.playableTrackCount),
                 color = LevyraMuted, fontSize = 14.sp, fontWeight = FontWeight.Medium
             )
         }
@@ -17454,7 +17495,7 @@ private fun PlaylistDetailOverlay(viewModel: LevyraViewModel, state: LevyraUiSta
                     Spacer(Modifier.width(4.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(playlist.name, color = LevyraText, fontSize = 26.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(LocalLevyraStrings.current.formatTrackCount(playlist.size), color = LevyraMuted, fontSize = 14.sp)
+                        Text(LocalLevyraStrings.current.formatTrackCount(playlist.playableTrackCount), color = LevyraMuted, fontSize = 14.sp)
                     }
                     if (playlist.tracks.isNotEmpty()) {
                         val shareContext = LocalContext.current

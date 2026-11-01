@@ -584,7 +584,10 @@ internal fun AddTracksToPlaylistDialog(
     playlists: List<Playlist>,
     onDismiss: () -> Unit,
     onAdd: (String) -> Unit,
-    onCreate: (String) -> Unit
+    onCreate: (String) -> Unit,
+    title: String? = null,
+    unavailablePlaylistIds: Set<String> = emptySet(),
+    unavailableLabel: String = ""
 ) {
     val strings = LocalLevyraStrings.current
     var creating by remember { mutableStateOf(false) }
@@ -592,7 +595,7 @@ internal fun AddTracksToPlaylistDialog(
     var submitting by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("${strings.addToPlaylist} · ${strings.formatTrackCount(tracks.size)}") },
+        title = { Text(title ?: "${strings.addToPlaylist} · ${strings.formatTrackCount(tracks.size)}") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
                 if (creating) {
@@ -613,11 +616,12 @@ internal fun AddTracksToPlaylistDialog(
                         verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         items(playlists, key = { it.id }) { playlist ->
+                            val unavailable = playlist.id in unavailablePlaylistIds
                             Surface(
                                 color = Color.Transparent,
                                 shape = RoundedCornerShape(12.dp),
                                 modifier = Modifier.fillMaxWidth().combinedClickable(
-                                    enabled = !submitting,
+                                    enabled = !submitting && !unavailable,
                                     onClick = {
                                         submitting = true
                                         onAdd(playlist.id)
@@ -629,11 +633,16 @@ internal fun AddTracksToPlaylistDialog(
                                     Spacer(Modifier.width(10.dp))
                                     Text(
                                         playlist.name,
-                                        color = LevyraText,
+                                        color = if (unavailable) LevyraMuted else LevyraText,
                                         fontWeight = FontWeight.Bold,
                                         maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f)
                                     )
+                                    if (unavailable && unavailableLabel.isNotBlank()) {
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(unavailableLabel, color = LevyraMuted, fontSize = 12.sp, maxLines = 1)
+                                    }
                                 }
                             }
                         }
@@ -945,7 +954,7 @@ internal fun PlaylistDetailTopActions(
         }
         return
     }
-    if (playlist.tracks.isNotEmpty()) {
+    if (playlist.tracks.isNotEmpty() || playlist.albums.isNotEmpty()) {
         PlayerGlassIconButton(
             icon = if (searchActive) Icons.Rounded.Close else Icons.Rounded.Search,
             contentDescription = if (searchActive) strings.close else strings.search,
@@ -993,6 +1002,8 @@ internal fun PlaylistDetailTopActions(
                     leadingIcon = { Icon(Icons.Rounded.Favorite, null) },
                     onClick = { menuExpanded = false; onLikeAll() }
                 )
+            }
+            if (playlist.tracks.isNotEmpty() || playlist.albums.isNotEmpty()) {
                 DropdownMenuItem(
                     text = { Text(strings.selectAll) },
                     leadingIcon = { Icon(Icons.Rounded.SelectAll, null) },
@@ -1009,7 +1020,7 @@ internal fun PlaylistDetailTopActions(
                 leadingIcon = { Icon(Icons.Rounded.LocalOffer, null) },
                 onClick = { menuExpanded = false; onEditTags() }
             )
-            if (playlist.tracks.size > 1) {
+            if (playlist.tracks.size + playlist.albums.size > 1) {
                 DropdownMenuItem(
                     text = { Text(strings.dragToReorder) },
                     leadingIcon = { Icon(Icons.AutoMirrored.Rounded.Sort, null) },
@@ -1100,11 +1111,32 @@ internal fun PlaylistReorderRow(
     actions: PlaylistReorderRowActions,
     modifier: Modifier = Modifier
 ) {
+    PlaylistReorderRow(
+        dragKey = track.id,
+        artworkUrl = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
+        title = track.title,
+        subtitle = track.artist,
+        state = state,
+        actions = actions,
+        modifier = modifier
+    )
+}
+
+@Composable
+internal fun PlaylistReorderRow(
+    dragKey: String,
+    artworkUrl: String,
+    title: String,
+    subtitle: String,
+    state: PlaylistReorderRowState,
+    actions: PlaylistReorderRowActions,
+    modifier: Modifier = Modifier
+) {
     val strings = LocalLevyraStrings.current
     val haptics = LocalLevyraHaptics.current
     val rowModifier = modifier
         .fillMaxWidth()
-        .playlistReorderDrag(track.id, state, actions) {
+        .playlistReorderDrag(dragKey, state, actions) {
             haptics.perform(LevyraHapticAction.Reorder)
         }
 
@@ -1123,8 +1155,8 @@ internal fun PlaylistReorderRow(
                 modifier = Modifier.width(28.dp)
             )
             LibraryArtwork(
-                track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
-                track.title,
+                artworkUrl,
+                title,
                 Modifier.size(50.dp),
                 RoundedCornerShape(13.dp),
                 false
@@ -1132,7 +1164,7 @@ internal fun PlaylistReorderRow(
             Spacer(Modifier.width(10.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    track.title,
+                    title,
                     color = LevyraText,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
@@ -1140,7 +1172,7 @@ internal fun PlaylistReorderRow(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    track.artist,
+                    subtitle,
                     color = LevyraMuted,
                     fontSize = 11.sp,
                     maxLines = 1,

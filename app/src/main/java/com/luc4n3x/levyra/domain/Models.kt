@@ -677,7 +677,8 @@ data class Playlist(
     val updatedAt: Long,
     val tags: List<PlaylistTag> = emptyList(),
     val hidden: Boolean = false,
-    val coverMode: PlaylistCoverMode = PlaylistCoverMode.AUTO
+    val coverMode: PlaylistCoverMode = PlaylistCoverMode.AUTO,
+    val albums: List<PlaylistAlbumEntry> = emptyList()
 ) {
     val size: Int get() = tracks.size
 }

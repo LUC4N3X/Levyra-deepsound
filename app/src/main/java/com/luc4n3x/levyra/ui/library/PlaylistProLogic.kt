@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.library
 
+import com.luc4n3x.levyra.domain.PlaylistItem
 import com.luc4n3x.levyra.domain.Track
 
 internal typealias PlaylistSearchIndex = Map<String, String>
@@ -53,50 +54,105 @@ internal enum class PlaylistTrackSort {
     LongestFirst
 }
 
-private class PlaylistSortEntry(
-    val track: Track,
+private class PlaylistSortEntry<T>(
+    val value: T,
     val position: Int,
     val title: String,
-    val artist: String
+    val artist: String,
+    val addedAt: Long,
+    val durationMs: Long
 )
 
-private val playlistTitleOrder: Comparator<PlaylistSortEntry> =
-    compareBy<PlaylistSortEntry> { it.title.isEmpty() }.thenBy { it.title }
-
-private val playlistTieBreakOrder: Comparator<PlaylistSortEntry> =
-    compareBy<PlaylistSortEntry> { it.artist }.thenBy { it.position }
-
-private val playlistDurationOrder: Comparator<PlaylistSortEntry> =
-    compareBy { it.track.durationMs <= 0L }
+private fun <T> playlistSortComparator(sort: PlaylistTrackSort): Comparator<PlaylistSortEntry<T>>? {
+    val titleOrder = compareBy<PlaylistSortEntry<T>> { it.title.isEmpty() }.thenBy { it.title }
+    val tieBreak = compareBy<PlaylistSortEntry<T>> { it.artist }.thenBy { it.position }
+    val durationKnown = compareBy<PlaylistSortEntry<T>> { it.durationMs <= 0L }
+    return when (sort) {
+        PlaylistTrackSort.Custom -> null
+        PlaylistTrackSort.TitleAscending -> titleOrder.then(tieBreak)
+        PlaylistTrackSort.TitleDescending -> compareBy<PlaylistSortEntry<T>> { it.title.isEmpty() }
+            .thenByDescending { it.title }
+            .then(tieBreak)
+        PlaylistTrackSort.NewestFirst -> compareByDescending<PlaylistSortEntry<T>> { it.addedAt }
+            .thenByDescending { it.position }
+        PlaylistTrackSort.OldestFirst -> compareBy<PlaylistSortEntry<T>> { it.addedAt }
+            .thenBy { it.position }
+        PlaylistTrackSort.ShortestFirst -> durationKnown
+            .thenBy { it.durationMs }
+            .then(titleOrder)
+            .then(tieBreak)
+        PlaylistTrackSort.LongestFirst -> durationKnown
+            .thenByDescending { it.durationMs }
+            .then(titleOrder)
+            .then(tieBreak)
+    }
+}
 
 internal fun sortPlaylistTracks(tracks: List<Track>, sort: PlaylistTrackSort): List<Track> {
-    if (sort == PlaylistTrackSort.Custom || tracks.size < 2) return tracks
-    val entries = tracks.mapIndexed { index, track ->
+    if (tracks.size < 2) return tracks
+    val comparator = playlistSortComparator<Track>(sort) ?: return tracks
+    return tracks.mapIndexed { index, track ->
         PlaylistSortEntry(
-            track = track,
+            value = track,
             position = index,
             title = normalizeLibraryText(track.title),
-            artist = normalizeLibraryText(track.artist)
+            artist = normalizeLibraryText(track.artist),
+            addedAt = track.playlistAddedAt,
+            durationMs = track.durationMs
         )
-    }
-    val comparator: Comparator<PlaylistSortEntry> = when (sort) {
-        PlaylistTrackSort.Custom -> return tracks
-        PlaylistTrackSort.TitleAscending -> playlistTitleOrder.then(playlistTieBreakOrder)
-        PlaylistTrackSort.TitleDescending -> compareBy<PlaylistSortEntry> { it.title.isEmpty() }
-            .thenByDescending { it.title }
-            .then(playlistTieBreakOrder)
-        PlaylistTrackSort.NewestFirst -> compareByDescending<PlaylistSortEntry> { it.track.playlistAddedAt }
-            .thenByDescending { it.position }
-        PlaylistTrackSort.OldestFirst -> compareBy<PlaylistSortEntry> { it.track.playlistAddedAt }
-            .thenBy { it.position }
-        PlaylistTrackSort.ShortestFirst -> playlistDurationOrder
-            .thenBy { it.track.durationMs }
-            .then(playlistTitleOrder)
-            .then(playlistTieBreakOrder)
-        PlaylistTrackSort.LongestFirst -> playlistDurationOrder
-            .thenByDescending { it.track.durationMs }
-            .then(playlistTitleOrder)
-            .then(playlistTieBreakOrder)
-    }
-    return entries.sortedWith(comparator).map { it.track }
+    }.sortedWith(comparator).map { it.value }
 }
+
+internal fun sortPlaylistItems(items: List<PlaylistItem>, sort: PlaylistTrackSort): List<PlaylistItem> {
+    if (items.size < 2) return items
+    val comparator = playlistSortComparator<PlaylistItem>(sort) ?: return items
+    return items.mapIndexed { index, item ->
+        when (item) {
+            is PlaylistItem.Song -> PlaylistSortEntry<PlaylistItem>(
+                value = item,
+                position = index,
+                title = normalizeLibraryText(item.track.title),
+                artist = normalizeLibraryText(item.track.artist),
+                addedAt = item.track.playlistAddedAt,
+                durationMs = item.track.durationMs
+            )
+            is PlaylistItem.Album -> PlaylistSortEntry<PlaylistItem>(
+                value = item,
+                position = index,
+                title = normalizeLibraryText(item.entry.album.title),
+                artist = normalizeLibraryText(item.entry.album.artist),
+                addedAt = item.entry.addedAt,
+                durationMs = item.entry.durationMs
+            )
+        }
+    }.sortedWith(comparator).map { it.value }
+}
+
+internal fun buildPlaylistItemSearchIndex(items: List<PlaylistItem>): PlaylistSearchIndex =
+    items.associate { item ->
+        val fields = when (item) {
+            is PlaylistItem.Song -> listOf(item.track.title, item.track.artist, item.track.album)
+            is PlaylistItem.Album -> listOf(item.entry.album.title, item.entry.album.artist) +
+                item.entry.tracks.map { it.title }
+        }
+        item.key to fields.joinToString("\u0000", transform = ::normalizeLibraryText)
+    }
+
+internal fun filterPlaylistItems(
+    items: List<PlaylistItem>,
+    query: String,
+    searchIndex: PlaylistSearchIndex
+): List<PlaylistItem> {
+    val normalizedQuery = normalizeLibraryText(query)
+    if (normalizedQuery.isEmpty()) return items
+    return items.filter { item -> searchIndex[item.key]?.contains(normalizedQuery) == true }
+}
+
+internal fun selectedPlaylistItems(items: List<PlaylistItem>, selectedKeys: Set<String>): List<PlaylistItem> =
+    items.filter { it.key in selectedKeys }
+
+internal fun selectAllPlaylistItemKeys(items: List<PlaylistItem>): Set<String> =
+    items.mapTo(linkedSetOf()) { it.key }
+
+internal fun areAllPlaylistItemsSelected(items: List<PlaylistItem>, selectedKeys: Set<String>): Boolean =
+    items.isNotEmpty() && items.all { it.key in selectedKeys }

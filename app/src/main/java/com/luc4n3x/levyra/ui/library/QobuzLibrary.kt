@@ -65,6 +65,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.luc4n3x.levyra.domain.playableTrackCount
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.LibrarySort
 import com.luc4n3x.levyra.domain.Track
@@ -172,7 +173,7 @@ private fun buildQobuzLibraryRows(
     val all = buildList {
         if (filter == null || filter == QobuzLibraryFilter.Artists) catalog.artists.forEach { add(QobuzLibraryRow.Artist(it, artistLabel)) }
         if (filter == null || filter == QobuzLibraryFilter.Playlists) playlists.filterNot { it.hidden }.forEach {
-            add(QobuzLibraryRow.Playlist(it, listOf(strings.playlistsPlain, it.tracks.size.takeIf { size -> size > 0 }?.toString().orEmpty()).filter(String::isNotBlank).joinToString(" • ")))
+            add(QobuzLibraryRow.Playlist(it, listOf(strings.playlistsPlain, it.playableTrackCount.takeIf { size -> size > 0 }?.toString().orEmpty()).filter(String::isNotBlank).joinToString(" • ")))
         }
         if (filter == null || filter == QobuzLibraryFilter.Albums) catalog.albums.forEach { add(QobuzLibraryRow.Album(it, listOf(strings.albumPlain, it.artist).filter(String::isNotBlank).joinToString(" • "))) }
         if (filter == QobuzLibraryFilter.Songs) catalog.tracks.forEach {

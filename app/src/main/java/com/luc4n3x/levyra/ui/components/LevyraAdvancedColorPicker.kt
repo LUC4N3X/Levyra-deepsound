@@ -37,6 +37,9 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Tune
@@ -96,6 +99,7 @@ import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
 import com.luc4n3x.levyra.ui.i18n.ColorPickerCopy
 import com.luc4n3x.levyra.ui.i18n.ColorPickerText
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.colorPickerExtraCopy
 import com.luc4n3x.levyra.ui.i18n.colorPickerCopy
 import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
@@ -196,14 +200,85 @@ internal fun argbToHsv(argb: Int, preserveHue: Float = 0f): LevyraHsvColor {
     )
 }
 
+@Immutable
+internal data class LevyraHslColor(
+    val hue: Float,
+    val saturation: Float,
+    val lightness: Float
+) {
+    fun normalized(): LevyraHslColor {
+        val hsv = LevyraHsvColor(hue, 0f, 0f).normalized()
+        val safeSaturation = if (saturation.isFinite()) saturation.coerceIn(0f, 1f) else 0f
+        val safeLightness = if (lightness.isFinite()) lightness.coerceIn(0f, 1f) else 0f
+        return LevyraHslColor(hsv.hue, safeSaturation, safeLightness)
+    }
+
+    fun toHsv(): LevyraHsvColor {
+        val clean = normalized()
+        val value = clean.lightness + clean.saturation * minOf(clean.lightness, 1f - clean.lightness)
+        val saturation = if (value <= 1e-6f) 0f else 2f * (1f - clean.lightness / value)
+        return LevyraHsvColor(clean.hue, saturation, value).normalized()
+    }
+}
+
+internal fun LevyraHsvColor.toHsl(fallbackSaturation: Float = 0f): LevyraHslColor {
+    val clean = normalized()
+    val lightness = clean.value * (1f - clean.saturation / 2f)
+    val span = minOf(lightness, 1f - lightness)
+    val saturation = if (span <= 1e-6f) fallbackSaturation else (clean.value - lightness) / span
+    return LevyraHslColor(clean.hue, saturation, lightness).normalized()
+}
+
+internal fun argbFromRgb(red: Int, green: Int, blue: Int): Int =
+    (0xFF shl 24) or (red.coerceIn(0, 255) shl 16) or (green.coerceIn(0, 255) shl 8) or blue.coerceIn(0, 255)
+
+internal fun levyraContrastRatio(first: Int, second: Int): Float {
+    fun channel(value: Int): Double {
+        val normalized = value / 255.0
+        return if (normalized <= 0.04045) normalized / 12.92 else Math.pow((normalized + 0.055) / 1.055, 2.4)
+    }
+    fun luminance(argb: Int): Double {
+        val (r, g, b) = rgbChannelsOf(argb)
+        return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b)
+    }
+    val a = luminance(first)
+    val b = luminance(second)
+    return ((maxOf(a, b) + 0.05) / (minOf(a, b) + 0.05)).toFloat()
+}
+
+private fun stripHexPrefix(raw: String): String {
+    val trimmed = raw.trim()
+    return when {
+        trimmed.startsWith("#") -> trimmed.drop(1)
+        trimmed.startsWith("0x") || trimmed.startsWith("0X") -> trimmed.drop(2)
+        else -> trimmed
+    }
+}
+
 internal fun sanitizeHexInput(raw: String): String =
-    raw.trim().removePrefix("#").filter { it in HexAllowedChars }.take(6).uppercase(Locale.ROOT)
+    stripHexPrefix(raw).filter { it in HexAllowedChars }.take(6).uppercase(Locale.ROOT)
 
 internal fun parseLevyraHexColor(raw: String): Int? {
-    val digits = raw.trim().removePrefix("#")
+    val digits = stripHexPrefix(raw)
     if (digits.length != 6 || digits.any { it !in HexAllowedChars }) return null
     return (0xFF000000 or digits.toLong(16)).toInt()
 }
+
+internal fun expandLevyraHexShorthand(raw: String): String? {
+    val digits = stripHexPrefix(raw)
+    if (digits.length != 3 || digits.any { it !in HexAllowedChars }) return null
+    return digits.uppercase(Locale.ROOT).flatMap { listOf(it, it) }.joinToString("")
+}
+
+internal fun resolveLevyraHexInput(raw: String): Int? =
+    parseLevyraHexColor(raw) ?: expandLevyraHexShorthand(raw)?.let(::parseLevyraHexColor)
+
+internal fun rememberRecentColor(recent: List<Int>, color: Int, limit: Int = RecentColorLimit): List<Int> {
+    val opaque = color or 0xFF000000.toInt()
+    return (listOf(opaque) + recent.map { it or 0xFF000000.toInt() }.filter { it != opaque }).take(limit)
+}
+
+internal const val RecentColorLimit = 8
 
 internal fun formatLevyraHexColor(color: Int): String =
     String.format(Locale.ROOT, "%06X", color and 0xFFFFFF)
@@ -382,10 +457,17 @@ internal fun LevyraAdvancedColorPickerDialog(
     var hexInput by remember { mutableStateOf(formatLevyraHexColor(normalizedInitial)) }
     var showSliders by remember { mutableStateOf(false) }
     var lastPreviewedArgb by remember { mutableStateOf(normalizedInitial) }
+    var hslSaturationMemory by remember { mutableStateOf(argbToHsv(normalizedInitial).toHsl().saturation) }
+    var sliderModel by remember { mutableStateOf(ColorSliderModel.Hsv) }
+    val extraCopy = LocalLevyraStrings.current.colorPickerExtraCopy()
+    val appContext = androidx.compose.ui.platform.LocalContext.current.applicationContext
+    var recentColors by remember { mutableStateOf(emptyList<Int>()) }
+    androidx.compose.runtime.LaunchedEffect(Unit) { recentColors = LevyraRecentColors.load(appContext) }
 
     val selectedArgb = remember(hsv) { hsv.toArgb() }
     val selectedColor = Color(selectedArgb)
-    val hexParsed = parseLevyraHexColor(hexInput)
+    val hexParsed = resolveLevyraHexInput(hexInput)
+    val hsl = remember(hsv, hslSaturationMemory) { hsv.toHsl(hslSaturationMemory) }
 
     val dispatchPreview: (Int) -> Unit = { argb ->
         if (argb != lastPreviewedArgb) {
@@ -430,6 +512,7 @@ internal fun LevyraAdvancedColorPickerDialog(
                     onApply = {
                         val finalArgb = hexParsed ?: selectedArgb
                         haptics.perform(LevyraHapticAction.Confirm)
+                        recentColors = LevyraRecentColors.remember(appContext, recentColors, finalArgb)
                         latestOnConfirmColor(finalArgb)
                     }
                 )
@@ -444,9 +527,28 @@ internal fun LevyraAdvancedColorPickerDialog(
                     selectArgb(normalizedInitial)
                 }
             )
+            AnimatedVisibility(
+                visible = selectedArgb != normalizedInitial,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        haptics.perform(LevyraHapticAction.Transport)
+                        selectArgb(normalizedInitial)
+                    }
+                ) {
+                    Icon(Icons.Rounded.Restore, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                    Spacer(modifier = Modifier.size(ButtonDefaults.IconSpacing))
+                    Text(extraCopy.restoreOriginal)
+                }
+            }
             ColorPickerMetricsRow(
                 hsv = hsv,
-                selectedArgb = selectedArgb
+                hsl = hsl,
+                selectedArgb = selectedArgb,
+                contrastLabel = extraCopy.contrast,
+                lowContrastLabel = extraCopy.lowContrast
             )
             ColorPickerHsvWorkspace(
                 hsv = hsv,
@@ -454,6 +556,19 @@ internal fun LevyraAdvancedColorPickerDialog(
                 copy = copy,
                 onHsvChange = updateFromHsv
             )
+            if (recentColors.isNotEmpty()) {
+                ColorPickerPresetsRow(
+                    presets = recentColors,
+                    selectedArgb = selectedArgb,
+                    copy = copy,
+                    label = extraCopy.recent,
+                    onSelectPreset = { swatch ->
+                        haptics.perform(LevyraHapticAction.Confirm)
+                        focusManager.clearFocus()
+                        selectArgb(swatch)
+                    }
+                )
+            }
             if (presets.isNotEmpty()) {
                 ColorPickerPresetsRow(
                     presets = presets,
@@ -484,7 +599,13 @@ internal fun LevyraAdvancedColorPickerDialog(
                     haptics.perform(LevyraHapticAction.Transport)
                     showSliders = !showSliders
                 },
-                onDoneIme = { focusManager.clearFocus() }
+                onDoneIme = {
+                    expandLevyraHexShorthand(hexInput)?.let { expanded ->
+                        hexInput = expanded
+                        parseLevyraHexColor(expanded)?.let(selectArgb)
+                    }
+                    focusManager.clearFocus()
+                }
             )
             AnimatedVisibility(
                 visible = showSliders,
@@ -493,8 +614,18 @@ internal fun LevyraAdvancedColorPickerDialog(
             ) {
                 ColorPickerPrecisionSliders(
                     hsv = hsv,
+                    hsl = hsl,
+                    selectedArgb = selectedArgb,
+                    model = sliderModel,
                     copy = copy,
-                    onHsvChange = updateFromHsv
+                    extraCopy = extraCopy,
+                    onModelChange = { sliderModel = it },
+                    onHsvChange = updateFromHsv,
+                    onHslChange = { next ->
+                        hslSaturationMemory = next.saturation
+                        updateFromHsv(next.toHsv())
+                    },
+                    onRgbChange = selectArgb
                 )
             }
         }
@@ -778,27 +909,40 @@ private fun ColorPickerSwatchPane(
     }
 }
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun ColorPickerMetricsRow(
     hsv: LevyraHsvColor,
-    selectedArgb: Int
+    hsl: LevyraHslColor,
+    selectedArgb: Int,
+    contrastLabel: String,
+    lowContrastLabel: String
 ) {
-    val accentColor = MaterialTheme.colorScheme.primary
+    val scheme = MaterialTheme.colorScheme
+    val accentColor = scheme.primary
     val (r, g, b) = rgbChannelsOf(selectedArgb)
     val hDeg = hsv.hue.roundToInt().coerceIn(0, 360)
-    val sPct = (hsv.saturation * 100f).roundToInt().coerceIn(0, 100)
-    val vPct = (hsv.value * 100f).roundToInt().coerceIn(0, 100)
-    Row(
+    val contrast = levyraContrastRatio(selectedArgb, scheme.surface.toArgb())
+    val contrastText = String.format(Locale.ROOT, "%.1f:1", contrast)
+    androidx.compose.foundation.layout.FlowRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        ColorMetricText(badge = "HSV", valueText = "${hDeg}° $sPct% $vPct%", accentColor = accentColor)
+        ColorMetricText(badge = "HSV", valueText = "${hDeg}° ${percent(hsv.saturation)}% ${percent(hsv.value)}%", accentColor = accentColor)
+        ColorMetricText(badge = "HSL", valueText = "${hDeg}° ${percent(hsl.saturation)}% ${percent(hsl.lightness)}%", accentColor = accentColor)
         ColorMetricText(badge = "RGB", valueText = "$r $g $b", accentColor = accentColor)
+        ColorMetricText(
+            badge = contrastLabel,
+            valueText = if (contrast < 3f) "$contrastText · $lowContrastLabel" else contrastText,
+            accentColor = if (contrast < 3f) scheme.error else accentColor
+        )
     }
 }
+
+private fun percent(value: Float): Int = (value * 100f).roundToInt().coerceIn(0, 100)
 
 @Composable
 private fun ColorMetricText(
@@ -1110,6 +1254,7 @@ private fun ColorPickerPresetsRow(
     presets: List<Int>,
     selectedArgb: Int,
     copy: ColorPickerCopy,
+    label: String = copy[ColorPickerText.PresetsLabel],
     onSelectPreset: (Int) -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -1117,7 +1262,7 @@ private fun ColorPickerPresetsRow(
     val activeCookieShape = MaterialShapes.Cookie9Sided.toShape()
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
-            text = copy[ColorPickerText.PresetsLabel],
+            text = label,
             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
             color = scheme.onSurfaceVariant,
             modifier = Modifier.padding(start = 4.dp)
@@ -1187,11 +1332,20 @@ private fun ColorPickerPresetsRow(
     }
 }
 
+internal enum class ColorSliderModel(val label: String) { Hsv("HSV"), Hsl("HSL"), Rgb("RGB") }
+
 @Composable
 private fun ColorPickerPrecisionSliders(
     hsv: LevyraHsvColor,
+    hsl: LevyraHslColor,
+    selectedArgb: Int,
+    model: ColorSliderModel,
     copy: ColorPickerCopy,
-    onHsvChange: (LevyraHsvColor) -> Unit
+    extraCopy: com.luc4n3x.levyra.ui.i18n.ColorPickerExtraCopy,
+    onModelChange: (ColorSliderModel) -> Unit,
+    onHsvChange: (LevyraHsvColor) -> Unit,
+    onHslChange: (LevyraHslColor) -> Unit,
+    onRgbChange: (Int) -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
     Surface(
@@ -1205,30 +1359,52 @@ private fun ColorPickerPrecisionSliders(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            ColorChannelSlider(
-                label = copy[ColorPickerText.HueLabel],
-                valueText = "${hsv.hue.roundToInt().coerceIn(0, 360)}°",
-                value = hsv.hue.coerceIn(0f, 360f),
-                range = 0f..360f,
-                onValueChange = { onHsvChange(hsv.copy(hue = it)) }
-            )
-            ColorChannelSlider(
-                label = copy[ColorPickerText.SaturationLabel],
-                valueText = "${(hsv.saturation * 100f).roundToInt().coerceIn(0, 100)}%",
-                value = (hsv.saturation * 100f).coerceIn(0f, 100f),
-                range = 0f..100f,
-                onValueChange = { onHsvChange(hsv.copy(saturation = (it / 100f).coerceIn(0f, 1f))) }
-            )
-            ColorChannelSlider(
-                label = copy[ColorPickerText.BrightnessLabel],
-                valueText = "${(hsv.value * 100f).roundToInt().coerceIn(0, 100)}%",
-                value = (hsv.value * 100f).coerceIn(0f, 100f),
-                range = 0f..100f,
-                onValueChange = { onHsvChange(hsv.copy(value = (it / 100f).coerceIn(0f, 1f))) }
-            )
+            androidx.compose.material3.SingleChoiceSegmentedButtonRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics { contentDescription = extraCopy.models }
+            ) {
+                ColorSliderModel.entries.forEachIndexed { index, option ->
+                    SegmentedButton(
+                        selected = option == model,
+                        onClick = { onModelChange(option) },
+                        shape = androidx.compose.material3.SegmentedButtonDefaults.itemShape(index, ColorSliderModel.entries.size)
+                    ) { Text(option.label, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold) }
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            when (model) {
+                ColorSliderModel.Hsv -> {
+                    ColorChannelSlider(copy[ColorPickerText.HueLabel], "${hsv.hue.roundToInt().coerceIn(0, 360)}°", hsv.hue.coerceIn(0f, 360f), 0f..360f,
+                        hueStops { hsv.copy(hue = it, saturation = 1f, value = 1f).toColor() }) { onHsvChange(hsv.copy(hue = it)) }
+                    ColorChannelSlider(copy[ColorPickerText.SaturationLabel], "${percent(hsv.saturation)}%", hsv.saturation * 100f, 0f..100f,
+                        listOf(hsv.copy(saturation = 0f).toColor(), hsv.copy(saturation = 1f).toColor())) { onHsvChange(hsv.copy(saturation = it / 100f)) }
+                    ColorChannelSlider(copy[ColorPickerText.BrightnessLabel], "${percent(hsv.value)}%", hsv.value * 100f, 0f..100f,
+                        listOf(Color.Black, hsv.copy(value = 1f).toColor())) { onHsvChange(hsv.copy(value = it / 100f)) }
+                }
+                ColorSliderModel.Hsl -> {
+                    ColorChannelSlider(copy[ColorPickerText.HueLabel], "${hsl.hue.roundToInt().coerceIn(0, 360)}°", hsl.hue.coerceIn(0f, 360f), 0f..360f,
+                        hueStops { hsl.copy(hue = it).toHsv().toColor() }) { onHslChange(hsl.copy(hue = it)) }
+                    ColorChannelSlider(copy[ColorPickerText.SaturationLabel], "${percent(hsl.saturation)}%", hsl.saturation * 100f, 0f..100f,
+                        listOf(hsl.copy(saturation = 0f).toHsv().toColor(), hsl.copy(saturation = 1f).toHsv().toColor())) { onHslChange(hsl.copy(saturation = it / 100f)) }
+                    ColorChannelSlider(extraCopy.lightness, "${percent(hsl.lightness)}%", hsl.lightness * 100f, 0f..100f,
+                        listOf(Color.Black, hsl.copy(lightness = 0.5f).toHsv().toColor(), Color.White)) { onHslChange(hsl.copy(lightness = it / 100f)) }
+                }
+                ColorSliderModel.Rgb -> {
+                    val (r, g, b) = rgbChannelsOf(selectedArgb)
+                    ColorChannelSlider(extraCopy.red, "$r", r.toFloat(), 0f..255f,
+                        listOf(Color(argbFromRgb(0, g, b)), Color(argbFromRgb(255, g, b)))) { onRgbChange(argbFromRgb(it.roundToInt(), g, b)) }
+                    ColorChannelSlider(extraCopy.green, "$g", g.toFloat(), 0f..255f,
+                        listOf(Color(argbFromRgb(r, 0, b)), Color(argbFromRgb(r, 255, b)))) { onRgbChange(argbFromRgb(r, it.roundToInt(), b)) }
+                    ColorChannelSlider(extraCopy.blue, "$b", b.toFloat(), 0f..255f,
+                        listOf(Color(argbFromRgb(r, g, 0)), Color(argbFromRgb(r, g, 255)))) { onRgbChange(argbFromRgb(r, g, it.roundToInt())) }
+                }
+            }
         }
     }
 }
+
+private inline fun hueStops(color: (Float) -> Color): List<Color> = (0..6).map { color(it * 60f) }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -1237,6 +1413,7 @@ private fun ColorChannelSlider(
     valueText: String,
     value: Float,
     range: ClosedFloatingPointRange<Float>,
+    trackPreview: List<Color>,
     onValueChange: (Float) -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -1258,6 +1435,14 @@ private fun ColorChannelSlider(
                 color = scheme.primary
             )
         }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 6.dp)
+                .height(6.dp)
+                .clip(CircleShape)
+                .background(androidx.compose.ui.graphics.Brush.horizontalGradient(trackPreview))
+        )
         val sliderState = remember(range) { SliderState(value, 0, range) }
         sliderState.value = value
         Slider(

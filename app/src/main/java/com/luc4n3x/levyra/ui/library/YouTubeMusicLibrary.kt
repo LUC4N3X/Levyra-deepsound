@@ -24,6 +24,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.luc4n3x.levyra.domain.playableTrackCount
 import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.CoverImage
@@ -99,7 +100,7 @@ internal fun YouTubeMusicLibraryOverview(
         playlists.forEach { playlist ->
             YouTubeMusicLibraryRow(
                 title = playlist.name,
-                subtitle = "${copy.playlistLabel} • ${copy.trackCount(playlist.size)}",
+                subtitle = "${copy.playlistLabel} • ${copy.trackCount(playlist.playableTrackCount)}",
                 onClick = { actions.onOpenPlaylist(playlist) },
                 onMore = { actions.onPlaylistMore(playlist) },
                 moreLabel = copy.moreLabel,

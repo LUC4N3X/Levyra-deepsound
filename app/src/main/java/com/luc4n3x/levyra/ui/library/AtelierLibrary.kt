@@ -112,6 +112,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.size.Size as CoilSize
+import com.luc4n3x.levyra.domain.playableTrackCount
 import com.luc4n3x.levyra.domain.DownloadOwnership
 import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.LibrarySort
@@ -225,7 +226,7 @@ private fun buildAtelierLibrarySnapshot(
         AtelierLibraryTab.Playlists -> {
             val scoped = if (hiddenOnly) playlists.hiddenInLibrary() else playlists.visibleInLibrary()
             filterLibraryPlaylists(scoped.filterByTagIds(tagIds), query, sort, direction)
-                .map { AtelierLibraryEntry.PlaylistEntry(it, strings.formatTrackCount(it.size)) }
+                .map { AtelierLibraryEntry.PlaylistEntry(it, strings.formatTrackCount(it.playableTrackCount)) }
         }
         AtelierLibraryTab.Albums -> filterLibraryAlbums(catalog.albums, query, sort, direction).map { AtelierLibraryEntry.AlbumEntry(it) }
         AtelierLibraryTab.Artists -> filterLibraryArtists(catalog.artists, query, sort, direction).map { artist ->

@@ -285,7 +285,7 @@ private fun rememberStudioReorder(
         listState = listState,
         snapshotProvider = {
             reorder.draggedTrackId?.let { trackId ->
-                PlaylistDragSnapshot(trackId, controller.session.value?.draft?.tracks.orEmpty(), reorder.dragOffsetY)
+                PlaylistDragSnapshot(trackId, controller.session.value?.draft?.tracks.orEmpty().map { it.id }, reorder.dragOffsetY)
             }
         },
         actions = PlaylistDragFrameActions(
