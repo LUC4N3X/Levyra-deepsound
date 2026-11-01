@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="145" height="40" viewBox="0 0 145 40" role="img" aria-label="GPL-3.0 license">
 <title>GPL-3.0 license</title>
-<path d="M 7 .8 C 3 .8 .8 3 .8 7 V 22 C .8 32 8 39.2 18 39.2 H 138 C 142 39.2 144.2 37 144.2 33 V 19 C 144.2 9 136 .8 126 .8 Z" fill="#BAE8D5"/>
-<g transform="translate(20 20) scale(1.42)" style="color:#234D3B">
+<path d="M 7 .8 C 3 .8 .8 3 .8 7 V 22 C .8 32 8 39.2 18 39.2 H 138 C 142 39.2 144.2 37 144.2 33 V 19 C 144.2 9 136 .8 126 .8 Z" fill="#303B38"/>
+<g transform="translate(20 20) scale(1.42)" style="color:#D7E3DA">
     <path d="M0 -8 l7 3 v4 c0 5 -3 7 -7 9 -4 -2 -7 -4 -7 -9 v-4 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M-3 0 l2 2 4 -5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
-<text x="42" y="25.2" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="12" font-weight="650" letter-spacing="-.22" fill="#234D3B">GPL-3.0</text>
+<text x="42" y="25.2" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="12" font-weight="650" letter-spacing="-.22" fill="#D7E3DA">GPL-3.0</text>
 </svg>

@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="185" height="56" viewBox="0 0 185 56" role="img" aria-label="Download Levyra for Windows">
 <title>Download Levyra for Windows</title>
-<path d="M 11 .8 C 5 .8 .8 5 .8 11 V 30 C .8 44 12 55.2 26 55.2 H 157 C 172 55.2 184.2 43 184.2 28 V 9 C 184.2 4 181 .8 176 .8 Z" fill="#D1CEFF"/>
+<path d="M 11 .8 C 5 .8 .8 5 .8 11 V 30 C .8 44 12 55.2 26 55.2 H 157 C 172 55.2 184.2 43 184.2 28 V 9 C 184.2 4 181 .8 176 .8 Z" fill="#CBCFE2"/>
 <clipPath id="badge"><path d="M 11 .8 C 5 .8 .8 5 .8 11 V 30 C .8 44 12 55.2 26 55.2 H 157 C 172 55.2 184.2 43 184.2 28 V 9 C 184.2 4 181 .8 176 .8 Z"/></clipPath>
 <path d="M 0 0 H 38 C 64 10 67 29 61 48 C 54 55 38 56 H 0 Z" clip-path="url(#badge)" fill="#FFFFFF" opacity=".13"/>
-<g transform="translate(9 9) scale(.76)" fill="#353164"><rect x="0" y="0" width="23" height="23" rx="3"/><rect x="27" y="0" width="23" height="23" rx="3"/><rect x="0" y="27" width="23" height="23" rx="3"/><rect x="27" y="27" width="23" height="23" rx="3"/></g>
-<text x="67" y="36" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="18.3" font-weight="690" letter-spacing="-.35" fill="#353164">Windows</text>
+<g transform="translate(9 9) scale(.76)" fill="#3E4760"><rect x="0" y="0" width="23" height="23" rx="3"/><rect x="27" y="0" width="23" height="23" rx="3"/><rect x="0" y="27" width="23" height="23" rx="3"/><rect x="27" y="27" width="23" height="23" rx="3"/></g>
+<text x="67" y="36" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="18.3" font-weight="690" letter-spacing="-.35" fill="#3E4760">Windows</text>
 </svg>
