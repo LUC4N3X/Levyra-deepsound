@@ -1,12 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="145" height="36" viewBox="0 0 145 36" role="img" aria-label="LATEST v3.0.5">
 <title>LATEST v3.0.5</title>
-<defs><linearGradient id="mreleasel" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FAF0FF"/><stop offset="56%" stop-color="#EED6FE"/><stop offset="100%" stop-color="#C99DF2"/></linearGradient><clipPath id="tone-releasel"><path d="M19 .65H132c7.7 0 12.35 4.8 12.35 12v4.4c0 10.5-9.5 18.3-20.7 18.3H11.9C4.6 35.35.65 30.8.65 24V18C.65 8 8.5.65 19 .65Z"/></clipPath></defs>
-<path d="M19 .65H132c7.7 0 12.35 4.8 12.35 12v4.4c0 10.5-9.5 18.3-20.7 18.3H11.9C4.6 35.35.65 30.8.65 24V18C.65 8 8.5.65 19 .65Z" fill="url(#mreleasel)" stroke="#BDA0EA" stroke-width="1.3"/>
-<g clip-path="url(#tone-releasel)"><path d="M100 40C105 29 113 30 119 21C126 11 133 4 149 6V40Z" fill="#B881E5" opacity=".82"/><path d="M120 40C117 25 125 24 132 17C137 12 141 10 150 9V40Z" fill="#D0A0F0" opacity=".78"/><ellipse cx="137" cy="1.5" rx="17" ry="13.5" fill="#D0A0F0" opacity=".63"/></g>
-<rect x="7.5" y="6" width="27" height="24" rx="9" fill="#E8D3FB"/>
-<g transform="translate(21 18)" style="color:#7541BA;">
+<rect x=".75" y=".75" width="143.5" height="34.5" rx="14" fill="#F0EAF5" stroke="#CBBBD8" stroke-width="1.3"/>
+<rect x="8" y="5.5" width="26" height="25" rx="10" fill="#E1D3EB"/>
+<g transform="translate(21 18)" style="color:#78529D">
     <path d="M-4 -8 h6 l5 5 -9 9 -6 -6 v-4 Z M1 -5 a1.5 1.5 0 1 0 0 3 A1.5 1.5 0 0 0 1 -5 Z" fill="currentColor"/>
   </g>
-<text x="43" y="14.6" fill="#7440B5" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif" font-size="8" font-weight="650" letter-spacing=".8">LATEST</text>
-<text x="43" y="27.3" fill="#273044" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif" font-size="13" font-weight="700">v3.0.5</text>
+<text x="43" y="14.8" fill="#795E91" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif" font-size="8" font-weight="600" letter-spacing=".65">LATEST</text>
+<text x="43" y="27.4" fill="#283243" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif" font-size="13" font-weight="700">v3.0.5</text>
 </svg>
