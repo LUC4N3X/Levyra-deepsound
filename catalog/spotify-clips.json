@@ -1038,26 +1038,6 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/80c0bd68e652b85b6dfeac9c51da3c6e712116d7"
   },
   {
-   "id": "levyra-046114c2c1e1bb7281bc",
-   "genre": "dance-party",
-   "title": "Give It To Me - Full Vocal Mix",
-   "artist": "Matt Sassari",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2736a1e9d7201b74142e2d47b69",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/741fb252d45c4856b3d63edfe826c7db.cnvs.mp4",
-   "spotifyTrackId": "5ZduaRci3iNUiDfJbBfAaf",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/50081928cfabde0d63a4d78f893542711259652d"
-  },
-  {
-   "id": "levyra-abcefdcdd14811510835",
-   "genre": "dance-party",
-   "title": "Friday (feat. Mufasa & Hypeman) - Dopamine Re-Edit",
-   "artist": "Riton, Nightcrawlers, Mufasa & Hypeman, Mufasa, Dopamine",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273815cb538fd7821595b2bc8c5",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/617e7b002d6f4df8a703a096dfcc7efb.cnvs.mp4",
-   "spotifyTrackId": "4cG7HUWYHBV6R6tHn1gxrl",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/0a9ed687dddcd95c83e37099958bdc6d54430e4d"
-  },
-  {
    "id": "levyra-032fa13818ecee393548",
    "genre": "dance-party",
    "title": "World Hold On - FISHER Rework",
@@ -1078,6 +1058,16 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/c9ba41fd56c50e4af303216b3a76bb1372ef1e00"
   },
   {
+   "id": "levyra-046114c2c1e1bb7281bc",
+   "genre": "dance-party",
+   "title": "Give It To Me - Full Vocal Mix",
+   "artist": "Matt Sassari",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2736a1e9d7201b74142e2d47b69",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/741fb252d45c4856b3d63edfe826c7db.cnvs.mp4",
+   "spotifyTrackId": "5ZduaRci3iNUiDfJbBfAaf",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/50081928cfabde0d63a4d78f893542711259652d"
+  },
+  {
    "id": "levyra-ec81c9a2aa0e07366fc4",
    "genre": "dance-party",
    "title": "Good Girl",
@@ -1086,6 +1076,16 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/7MdlXmq2HViAJWo9cf30sR/video/04f523b582da47fa9f399b1f1f3462e1.cnvs.mp4",
    "spotifyTrackId": "263Ecah3YA4hVZHxR2Ex9p",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/099eb86040fe00c6e7f14328f5cec483542728a5"
+  },
+  {
+   "id": "levyra-abcefdcdd14811510835",
+   "genre": "dance-party",
+   "title": "Friday (feat. Mufasa & Hypeman) - Dopamine Re-Edit",
+   "artist": "Riton, Nightcrawlers, Mufasa & Hypeman, Mufasa, Dopamine",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273815cb538fd7821595b2bc8c5",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/617e7b002d6f4df8a703a096dfcc7efb.cnvs.mp4",
+   "spotifyTrackId": "4cG7HUWYHBV6R6tHn1gxrl",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/0a9ed687dddcd95c83e37099958bdc6d54430e4d"
   },
   {
    "id": "levyra-8739c72808e270fed5b2",
@@ -1136,16 +1136,6 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/327472d482ae422d9ddfcebb426cfd2a.cnvs.mp4",
    "spotifyTrackId": "0cZN3g7rtfNE6vsmX0k8OF",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/265e15be487a4b6bbabacc8c565afdbee404e045"
-  },
-  {
-   "id": "levyra-2f21990911f610c6f250",
-   "genre": "dance-party",
-   "title": "Addicted",
-   "artist": "Zerb, The Chainsmokers, Ink",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27386662f0bf0b8df09e7e6ee34",
-   "canvasUrl": "https://canvaz.scdn.co/upload/artist/6mDl7lQiLxT0iQ8LYhAlWy/video/66132e8ec0b242f6a6ec6d5c630b296b.cnvs.mp4",
-   "spotifyTrackId": "5ZUIPLoTLJZrPQh2kFZEUM",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/0f6ed1e0061fffcc2e67d06f33a8a92ab7cf2952"
   },
   {
    "id": "levyra-e32935668cb20681852b",
@@ -1588,14 +1578,14 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/58f29909978e2e110e990788a1247232f0c1151a"
   },
   {
-   "id": "levyra-ccebc3c606a86bc967d6",
+   "id": "levyra-8b8835c6895de731c21b",
    "genre": "edm",
-   "title": "crystallized (feat. Inéz) - Subtronics Remix",
-   "artist": "John Summit, Subtronics, Inéz",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27369b2ee70a8319389df3b595e",
-   "canvasUrl": "https://canvaz.scdn.co/upload/artist/7kNqXtgeIwFtelmRjWv205/video/d36f753d8bf243e3beb670af4074bbef.cnvs.mp4",
-   "spotifyTrackId": "0nRYjxQQCzMVyjgpTtKjLt",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/a0d352546af3b8d7a4daec5fba655c8e9231c430"
+   "title": "Sh*t's On F*re",
+   "artist": "Virtual Riot",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273f782f857dea21319097c5720",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/0JQjqa5cooeB27reBZbl5m/video/71a911a2b8b34668831c7ac37d20d5b9.cnvs.mp4",
+   "spotifyTrackId": "53VFQ23T8h7f4ECrih68nP",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/4419adf7de02464bd8f5b15c9aa9bfad864fd01a"
   },
   {
    "id": "levyra-36500f4c3e644960d645",
@@ -1913,7 +1903,7 @@
    "title": "Self Aware",
    "artist": "Temper City",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273d6c26d2ae723f7ab553d64cc",
-   "canvasUrl": "https://canvaz.scdn.co/upload/artist/5mHUmlJWkcoOk1NbjfrXWz/video/d625435b5713482d8b1344fe0c7842a9.cnvs.mp4",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/5mHUmlJWkcoOk1NbjfrXWz/video/05642878205f4a6cbb040212c5a8be45.cnvs.mp4",
    "spotifyTrackId": "4qW3BbQAwZsrnu8a3ZRdyT",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/98af5b6b77831ad55b6d1129148745705a311973"
   },
