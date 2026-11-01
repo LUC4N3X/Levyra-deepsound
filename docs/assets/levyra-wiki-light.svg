@@ -1,8 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="145" height="40" viewBox="0 0 145 40" role="img" aria-label="Levyra documentation">
-<title>Levyra documentation</title>
-<path d="M 19 .8 C 9 .8 .8 9 .8 19 V 23 C .8 32 8 39.2 17 39.2 H 139 C 142 39.2 144.2 37 144.2 34 V 7 C 144.2 3 142 .8 138 .8 Z" fill="#EEE9ED"/>
-<g transform="translate(20 20) scale(1.42)" style="color:#604F61">
+<svg xmlns="http://www.w3.org/2000/svg" width="130" height="32" viewBox="0 0 130 32" role="img" aria-label="DOCS Open →">
+  <title>DOCS Open →</title>
+  <path d="M 16.00 0.75 H 123.25 A 6.00 6.00 0 0 1 129.25 6.75 V 16.00 A 15.25 15.25 0 0 1 114.00 31.25 H 6.75 A 6.00 6.00 0 0 1 0.75 25.25 V 16.00 A 15.25 15.25 0 0 1 16.00 0.75 Z" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
+  <path d="M 13.16 7.25 A 2.90 2.90 0 0 1 18.84 7.25 A 2.90 2.90 0 0 1 23.44 10.59 A 2.90 2.90 0 0 1 25.20 16.00 A 2.90 2.90 0 0 1 23.44 21.41 A 2.90 2.90 0 0 1 18.84 24.75 A 2.90 2.90 0 0 1 13.16 24.75 A 2.90 2.90 0 0 1 8.56 21.41 A 2.90 2.90 0 0 1 6.80 16.00 A 2.90 2.90 0 0 1 8.56 10.59 A 2.90 2.90 0 0 1 13.16 7.25 Z" fill="#E11D48"/>
+  <g transform="translate(16 16)" style="color:#FFFFFF;">
     <path d="M-5 -7 h7 l4 4 v10 h-11 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M2 -7 v4 h4 M-2 1 h5 M-2 5 h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
-<text x="42" y="25.2" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="12" font-weight="650" letter-spacing="-.22" fill="#604F61">Documentation</text>
+  <text x="35" y="12.2" fill="#E11D48" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="7.5" font-weight="700" letter-spacing=".8">DOCS</text>
+  <text x="35" y="24.5" fill="#0F172A" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="750">Open →</text>
 </svg>
