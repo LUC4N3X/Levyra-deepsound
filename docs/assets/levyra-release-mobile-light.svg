@@ -1,10 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="126" height="31.0154" viewBox="0 0 130 32" role="img" aria-label="LATEST v3.0.5">
-  <title>LATEST v3.0.5</title>
-  <path d="M 16.00 0.75 H 123.25 A 6.00 6.00 0 0 1 129.25 6.75 V 16.00 A 15.25 15.25 0 0 1 114.00 31.25 H 6.75 A 6.00 6.00 0 0 1 0.75 25.25 V 16.00 A 15.25 15.25 0 0 1 16.00 0.75 Z" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
-  <path d="M 13.16 7.25 A 2.90 2.90 0 0 1 18.84 7.25 A 2.90 2.90 0 0 1 23.44 10.59 A 2.90 2.90 0 0 1 25.20 16.00 A 2.90 2.90 0 0 1 23.44 21.41 A 2.90 2.90 0 0 1 18.84 24.75 A 2.90 2.90 0 0 1 13.16 24.75 A 2.90 2.90 0 0 1 8.56 21.41 A 2.90 2.90 0 0 1 6.80 16.00 A 2.90 2.90 0 0 1 8.56 10.59 A 2.90 2.90 0 0 1 13.16 7.25 Z" fill="#7C3AED"/>
-  <g transform="translate(16 16)" style="color:#FFFFFF;">
+<svg xmlns="http://www.w3.org/2000/svg" width="126" height="33.075" viewBox="0 0 160 42" role="img" aria-label="Latest Levyra release v3.0.5">
+<title>Latest Levyra release v3.0.5</title>
+<path d="M 19 0.8 H 151.2 Q 159.2 0.8 159.2 8 V 22.2 Q 159.2 41.2 140.2 41.2 H 8.8 Q .8 41.2 .8 33.2 V 19 Q .8 .8 19 .8 Z" fill="#EEE8F3"/>
+<path d="M 1 21 C 1 10 10 1 24 1 H 33 C 45 10 46 31 34 41 H 17 C 7 41 1 32 1 21 Z" fill="#72548D" opacity="0.13"/>
+<g transform="translate(23 21) scale(1.33)" style="color:#72548D">
     <path d="M-4 -8 h6 l5 5 -9 9 -6 -6 v-4 Z M1 -5 a1.5 1.5 0 1 0 0 3 A1.5 1.5 0 0 0 1 -5 Z" fill="currentColor"/>
   </g>
-  <text x="35" y="12.2" fill="#7C3AED" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="7.5" font-weight="700" letter-spacing=".8">LATEST</text>
-  <text x="35" y="24.5" fill="#0F172A" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="750">v3.0.5</text>
+<text x="51" y="16.2" fill="#715387" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="9.4" font-weight="670" letter-spacing=".65">LATEST</text>
+<text x="51" y="31.7" fill="#33283C" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="15.3" font-weight="710" letter-spacing="-.35">v3.0.5</text>
 </svg>

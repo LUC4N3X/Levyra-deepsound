@@ -1,10 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="126" height="31.0154" viewBox="0 0 130 32" role="img" aria-label="LICENSE GPL-3.0">
-  <title>LICENSE GPL-3.0</title>
-  <path d="M 16.00 0.75 H 123.25 A 6.00 6.00 0 0 1 129.25 6.75 V 16.00 A 15.25 15.25 0 0 1 114.00 31.25 H 6.75 A 6.00 6.00 0 0 1 0.75 25.25 V 16.00 A 15.25 15.25 0 0 1 16.00 0.75 Z" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
-  <path d="M 13.16 7.25 A 2.90 2.90 0 0 1 18.84 7.25 A 2.90 2.90 0 0 1 23.44 10.59 A 2.90 2.90 0 0 1 25.20 16.00 A 2.90 2.90 0 0 1 23.44 21.41 A 2.90 2.90 0 0 1 18.84 24.75 A 2.90 2.90 0 0 1 13.16 24.75 A 2.90 2.90 0 0 1 8.56 21.41 A 2.90 2.90 0 0 1 6.80 16.00 A 2.90 2.90 0 0 1 8.56 10.59 A 2.90 2.90 0 0 1 13.16 7.25 Z" fill="#0284C7"/>
-  <g transform="translate(16 16)" style="color:#FFFFFF;">
+<svg xmlns="http://www.w3.org/2000/svg" width="126" height="33.075" viewBox="0 0 160 42" role="img" aria-label="Levyra license GPL-3.0">
+<title>Levyra license GPL-3.0</title>
+<path d="M 9 0.8 H 139.2 Q 159.2 0.8 159.2 20 V 32.2 Q 159.2 41.2 150.2 41.2 H 19.8 Q .8 41.2 .8 22.2 V 9 Q .8 .8 9 .8 Z" fill="#364B49"/>
+<path d="M 1 21 C 1 10 10 1 24 1 H 33 C 45 10 46 31 34 41 H 17 C 7 41 1 32 1 21 Z" fill="#B8E7DA" opacity="0.12"/>
+<g transform="translate(23 21) scale(1.33)" style="color:#B8E7DA">
     <path d="M0 -8 l7 3 v4 c0 5 -3 7 -7 9 -4 -2 -7 -4 -7 -9 v-4 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M-3 0 l2 2 4 -5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
-  <text x="35" y="12.2" fill="#0284C7" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="7.5" font-weight="700" letter-spacing=".8">LICENSE</text>
-  <text x="35" y="24.5" fill="#0F172A" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="12" font-weight="750">GPL-3.0</text>
+<text x="51" y="16.2" fill="#C1EBDD" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="9.4" font-weight="670" letter-spacing=".65">LICENSE</text>
+<text x="51" y="31.7" fill="#F4FFFA" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="15.3" font-weight="710" letter-spacing="-.35">GPL-3.0</text>
 </svg>

@@ -13,15 +13,11 @@
 Play streamed music and your own files in the same app, save tracks for offline listening, and follow synced lyrics. Levyra does not need an account and does not track you.
 
 <p>
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-release-mobile-light.svg?v=m3-cool-tonal-6 126w, docs/assets/levyra-release-light.svg?v=m3-cool-tonal-6 145w" sizes="(max-width: 480px) 126px, 145px"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-release-mobile.svg?v=m3-cool-tonal-6 126w, docs/assets/levyra-release.svg?v=m3-cool-tonal-6 145w" sizes="(max-width: 480px) 126px, 145px"><img src="docs/assets/levyra-release.svg?v=m3-cool-tonal-6" srcset="docs/assets/levyra-release-mobile.svg?v=m3-cool-tonal-6 126w, docs/assets/levyra-release.svg?v=m3-cool-tonal-6 145w" sizes="(max-width: 480px) 126px, 145px" alt="Latest release"></picture></a>
-  <a href="LICENSE"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-license-mobile-light.svg?v=m3-cool-tonal-6 126w, docs/assets/levyra-license-light.svg?v=m3-cool-tonal-6 145w" sizes="(max-width: 480px) 126px, 145px"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-license-mobile.svg?v=m3-cool-tonal-6 126w, docs/assets/levyra-license.svg?v=m3-cool-tonal-6 145w" sizes="(max-width: 480px) 126px, 145px"><img src="docs/assets/levyra-license.svg?v=m3-cool-tonal-6" srcset="docs/assets/levyra-license-mobile.svg?v=m3-cool-tonal-6 126w, docs/assets/levyra-license.svg?v=m3-cool-tonal-6 145w" sizes="(max-width: 480px) 126px, 145px" alt="GPL-3.0 License"></picture></a>
-  <a href="https://levyra.dpdns.org/docs/"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-wiki-mobile-light.svg?v=m3-cool-tonal-6 126w, docs/assets/levyra-wiki-light.svg?v=m3-cool-tonal-6 145w" sizes="(max-width: 480px) 126px, 145px"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-wiki-mobile.svg?v=m3-cool-tonal-6 126w, docs/assets/levyra-wiki.svg?v=m3-cool-tonal-6 145w" sizes="(max-width: 480px) 126px, 145px"><img src="docs/assets/levyra-wiki.svg?v=m3-cool-tonal-6" srcset="docs/assets/levyra-wiki-mobile.svg?v=m3-cool-tonal-6 126w, docs/assets/levyra-wiki.svg?v=m3-cool-tonal-6 145w" sizes="(max-width: 480px) 126px, 145px" alt="Levyra Documentation"></picture></a>
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-release-mobile-light.svg?v=m3-info-readability-2 126w, docs/assets/levyra-release-light.svg?v=m3-info-readability-2 160w" sizes="(max-width: 480px) 126px, 160px"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-release-mobile.svg?v=m3-info-readability-2 126w, docs/assets/levyra-release.svg?v=m3-info-readability-2 160w" sizes="(max-width: 480px) 126px, 160px"><img src="docs/assets/levyra-release.svg?v=m3-info-readability-2" srcset="docs/assets/levyra-release-mobile.svg?v=m3-info-readability-2 126w, docs/assets/levyra-release.svg?v=m3-info-readability-2 160w" sizes="(max-width: 480px) 126px, 160px" alt="Latest release"></picture></a>
+  <a href="LICENSE"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-license-mobile-light.svg?v=m3-info-readability-2 126w, docs/assets/levyra-license-light.svg?v=m3-info-readability-2 160w" sizes="(max-width: 480px) 126px, 160px"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-license-mobile.svg?v=m3-info-readability-2 126w, docs/assets/levyra-license.svg?v=m3-info-readability-2 160w" sizes="(max-width: 480px) 126px, 160px"><img src="docs/assets/levyra-license.svg?v=m3-info-readability-2" srcset="docs/assets/levyra-license-mobile.svg?v=m3-info-readability-2 126w, docs/assets/levyra-license.svg?v=m3-info-readability-2 160w" sizes="(max-width: 480px) 126px, 160px" alt="GPL-3.0 License"></picture></a>
+  <a href="https://levyra.dpdns.org/docs/"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-wiki-mobile-light.svg?v=m3-info-readability-2 126w, docs/assets/levyra-wiki-light.svg?v=m3-info-readability-2 160w" sizes="(max-width: 480px) 126px, 160px"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-wiki-mobile.svg?v=m3-info-readability-2 126w, docs/assets/levyra-wiki.svg?v=m3-info-readability-2 160w" sizes="(max-width: 480px) 126px, 160px"><img src="docs/assets/levyra-wiki.svg?v=m3-info-readability-2" srcset="docs/assets/levyra-wiki-mobile.svg?v=m3-info-readability-2 126w, docs/assets/levyra-wiki.svg?v=m3-info-readability-2 160w" sizes="(max-width: 480px) 126px, 160px" alt="Levyra Documentation"></picture></a>
 </p>
 
-
-<p align="center">
-  <a href="https://trendshift.io/repositories/204798?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-204798"><img src="https://trendshift.io/api/badge/trendshift/repositories/204798/daily?language=Kotlin" alt="Levyra Trendshift daily ranking" width="250" height="55"></a>
-</p>
 
 <p align="center"><b>Download Levyra</b></p>
 
@@ -53,7 +49,11 @@ Play streamed music and your own files in the same app, save tracks for offline 
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/discussions">Join the discussion</a>
 </h3>
 
-<p align="center"><sub>41 languages &nbsp;·&nbsp; 100% Android translation coverage &nbsp;·&nbsp; Zero tracking</sub></p>
+<p align="center"><sub>42 languages &nbsp;·&nbsp; 100% Android translation coverage &nbsp;·&nbsp; Zero tracking</sub></p>
+
+<p align="center">
+  <a href="https://trendshift.io/repositories/204798?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-204798"><img src="https://trendshift.io/api/badge/trendshift/repositories/204798/daily?language=Kotlin" alt="Levyra Trendshift daily ranking" width="224" height="49"></a>
+</p>
 
 </div>
 
@@ -191,7 +191,7 @@ For independent verification, an Apptizo scan of the F-Droid build confirmed zer
 
 ## ✦ Translations
 
-Levyra is available in 41 languages, thanks to the people who help translate it. If something sounds off or your language is missing, you're welcome to pitch in.
+Levyra is available in 42 languages, thanks to the people who help translate it. If something sounds off or your language is missing, you're welcome to pitch in.
 
 <p align="center">
   <a href="https://hosted.weblate.org/engage/levyra/"><img src="https://hosted.weblate.org/widget/levyra/svg-badge.svg" alt="Levyra translation status"></a>
@@ -203,7 +203,7 @@ Levyra is available in 41 languages, thanks to the people who help translate it.
     <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse-mobile.svg?v=editorial-atlas-v8">
     <source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-translation-pulse-light.svg?v=editorial-atlas-v8">
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-translation-pulse.svg?v=editorial-atlas-v8">
-    <img src="docs/assets/levyra-translation-pulse.svg?v=editorial-atlas-v8" alt="Levyra translation coverage across 41 languages and five writing systems" width="920">
+    <img src="docs/assets/levyra-translation-pulse.svg?v=editorial-atlas-v8" alt="Levyra translation coverage across 42 languages and five writing systems" width="920">
   </picture>
 </div>
 
