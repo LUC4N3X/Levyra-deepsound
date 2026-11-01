@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="126" height="33.075" viewBox="0 0 160 42" role="img" aria-label="Latest Levyra release v3.0.5">
 <title>Latest Levyra release v3.0.5</title>
-<path d="M 19 0.8 H 151.2 Q 159.2 0.8 159.2 8 V 22.200000000000003 Q 159.2 41.2 140.2 41.2 H 8.8 Q .8 41.2 .8 33.2 V 19 Q .8 .8 19 .8 Z" fill="#474151"/>
+<path d="M 19 0.8 H 151.2 Q 159.2 0.8 159.2 8 V 22.2 Q 159.2 41.2 140.2 41.2 H 8.8 Q .8 41.2 .8 33.2 V 19 Q .8 .8 19 .8 Z" fill="#474151"/>
 <path d="M 1 21 C 1 10 10 1 24 1 H 33 C 45 10 46 31 34 41 H 17 C 7 41 1 32 1 21 Z" fill="#DECDF4" opacity="0.12"/>
 <g transform="translate(23 21) scale(1.33)" style="color:#DECDF4">
     <path d="M-4 -8 h6 l5 5 -9 9 -6 -6 v-4 Z M1 -5 a1.5 1.5 0 1 0 0 3 A1.5 1.5 0 0 0 1 -5 Z" fill="currentColor"/>
