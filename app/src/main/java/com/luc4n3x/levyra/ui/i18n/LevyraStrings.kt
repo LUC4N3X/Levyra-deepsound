@@ -194,6 +194,8 @@ class LevyraStrings private constructor(
     val playerDeckFolioHint: String get() = value("playerDeckFolioHint")
     val playerDeckFlow: String get() = value("playerDeckFlow")
     val playerDeckFlowHint: String get() = value("playerDeckFlowHint")
+    val playerDeckEmber: String get() = value("playerDeckEmber")
+    val playerDeckEmberHint: String get() = value("playerDeckEmberHint")
     val removeDownloadPrompt: String get() = LevyraDownloadRemovalStrings.prompt(code)
     internal val downloadQuality: DownloadQualityCopy get() = LevyraDownloadQualityStrings.forCode(code)
     val playerDeckDefaultBadge: String get() = value("playerDeckDefaultBadge")

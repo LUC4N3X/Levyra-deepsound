@@ -71,6 +71,7 @@ import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.Newspaper
 import androidx.compose.material.icons.rounded.Waves
+import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.Nightlight
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.Person
@@ -430,7 +431,8 @@ private fun LevyraNowPlayingContent(
         state.interfaceSettings.playerVisualMode == PlayerVisualMode.Artwork ||
         state.interfaceSettings.playerVisualMode == PlayerVisualMode.Folio ||
         state.interfaceSettings.playerVisualMode == PlayerVisualMode.Flow ||
-        state.interfaceSettings.playerVisualMode == PlayerVisualMode.Pulse
+        state.interfaceSettings.playerVisualMode == PlayerVisualMode.Pulse ||
+        state.interfaceSettings.playerVisualMode == PlayerVisualMode.Ember
     val artRestScale = if (artworkRestsFullBleed) 1f else LevyraPlayerDesign.ArtworkPausedScale
     val artRestOffset = if (artworkRestsFullBleed) 0.dp else 4.dp
     SideEffect {
@@ -905,7 +907,7 @@ private fun LevyraNowPlayingContent(
                         swipeOffset = swipeOffset,
                         artScale = artScale,
                         artOffset = artOffset,
-                        glowColor = if (!nocturne && (deckLayout == PlayerDeckLayout.Levyra || deckLayout == PlayerDeckLayout.Sleeve || deckLayout == PlayerDeckLayout.Pulse || deckLayout == PlayerDeckLayout.Halo)) primary else Color.Transparent,
+                        glowColor = if (!nocturne && (deckLayout == PlayerDeckLayout.Levyra || deckLayout == PlayerDeckLayout.Sleeve || deckLayout == PlayerDeckLayout.Pulse || deckLayout == PlayerDeckLayout.Halo || deckLayout == PlayerDeckLayout.Ember)) primary else Color.Transparent,
                         modifier = Modifier
                             .fillMaxSize()
                             .playerLyricsFlipFace(
@@ -917,7 +919,8 @@ private fun LevyraNowPlayingContent(
                         dynamicBackdropEnabled = backgroundMode == PlayerBackgroundMode.Dynamic &&
                             motionBackdropVisible,
                         onDynamicBackdropPalette = acceptDynamicBackdropPalette,
-                        staticPresentation = LevyraIsSpotify
+                        staticPresentation = LevyraIsSpotify,
+                        staticArtworkMotion = deckLayout != PlayerDeckLayout.Ember
                     )
                     if (lyricsFlipAvailable && lyricsFlip.lyricsComposed) {
                         PlayerLyricsCard(
@@ -1395,6 +1398,37 @@ private fun LevyraNowPlayingContent(
                         ?: viewModel.openArtist(track, artistIndex)
                 },
                 onToggleFavorite = { viewModel.toggleFavorite(track) },
+                headlineModifier = lyricsFlipSwipeModifier,
+                modifier = deckModifier
+            )
+        } else if (deckLayout == PlayerDeckLayout.Ember && track != null) {
+            PlayerEmberDeck(
+                track = track,
+                slots = deckSlots,
+                surfaces = surfaces,
+                accent = heroTone,
+                isFavorite = track.id in state.favoriteIds,
+                isPlaying = state.isPlaying,
+                isResolving = state.isResolving,
+                shuffleOn = state.shuffleEnabled,
+                repeatMode = state.repeatMode,
+                labels = playerControlLabels,
+                animated = animated,
+                compact = compactPlayer,
+                scrollable = !fitsViewport,
+                gutter = gutter,
+                artworkCap = artworkCap,
+                stepDirection = stepDirection,
+                onArtistClick = { artistIndex ->
+                    playerArtistHits.getOrNull(artistIndex)?.let(viewModel::openArtist)
+                        ?: viewModel.openArtist(track, artistIndex)
+                },
+                onToggleFavorite = { viewModel.toggleFavorite(track) },
+                onShuffle = viewModel::toggleShuffle,
+                onPrevious = viewModel::previous,
+                onTogglePlay = viewModel::togglePlay,
+                onNext = viewModel::next,
+                onRepeat = viewModel::toggleRepeat,
                 headlineModifier = lyricsFlipSwipeModifier,
                 modifier = deckModifier
             )
@@ -2497,6 +2531,7 @@ internal fun visualModeStateDescription(
     PlayerVisualMode.Halo -> strings.playerDeckHalo
     PlayerVisualMode.Folio -> strings.playerDeckFolio
     PlayerVisualMode.Flow -> strings.playerDeckFlow
+    PlayerVisualMode.Ember -> strings.playerDeckEmber
 }
 
 internal fun visualModeIcon(mode: PlayerVisualMode): ImageVector = when (mode) {
@@ -2508,6 +2543,7 @@ internal fun visualModeIcon(mode: PlayerVisualMode): ImageVector = when (mode) {
     PlayerVisualMode.Halo -> Icons.Rounded.Album
     PlayerVisualMode.Folio -> Icons.Rounded.Newspaper
     PlayerVisualMode.Flow -> Icons.Rounded.Waves
+    PlayerVisualMode.Ember -> Icons.Rounded.LocalFireDepartment
 }
 
 @Composable

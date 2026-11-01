@@ -72,7 +72,8 @@ internal fun PlayerArtworkHero(
     modifier: Modifier = Modifier,
     dynamicBackdropEnabled: Boolean = false,
     onDynamicBackdropPalette: (MotionBackdropPalette?) -> Unit = {},
-    staticPresentation: Boolean = false
+    staticPresentation: Boolean = false,
+    staticArtworkMotion: Boolean = true
 ) {
     val artworkShadow by animateDpAsState(
         targetValue = if (isPlaying && !staticPresentation) 28.dp else 12.dp,
@@ -117,7 +118,8 @@ internal fun PlayerArtworkHero(
             glowColor = glowColor,
             dynamicBackdropEnabled = dynamicBackdropEnabled,
             onDynamicBackdropPalette = onDynamicBackdropPalette,
-            staticPresentation = staticPresentation
+            staticPresentation = staticPresentation,
+            staticArtworkMotion = staticArtworkMotion
         )
     }
 }
@@ -177,7 +179,8 @@ private fun PlayerArtworkHeroSurface(
     glowColor: Color,
     dynamicBackdropEnabled: Boolean,
     onDynamicBackdropPalette: (MotionBackdropPalette?) -> Unit,
-    staticPresentation: Boolean
+    staticPresentation: Boolean,
+    staticArtworkMotion: Boolean
 ) {
     Box(
         modifier = Modifier
@@ -202,6 +205,7 @@ private fun PlayerArtworkHeroSurface(
                 cornerRadius = cornerRadius,
                 presentation = MotionArtworkPresentation.Card,
                 quality = canvasQuality,
+                staticArtworkMotionEnabled = staticArtworkMotion,
                 livingArtwork = livingArtwork.takeUnless { staticPresentation },
                 dynamicBackdropEnabled = dynamicBackdropEnabled,
                 onDynamicBackdropPalette = onDynamicBackdropPalette,
