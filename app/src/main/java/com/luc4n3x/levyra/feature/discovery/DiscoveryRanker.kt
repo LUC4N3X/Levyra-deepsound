@@ -35,6 +35,7 @@ object DiscoveryRanker {
     private const val MAX_UNANCHORED_FRESH_SHARE = 4
     private const val MIN_DURATION_MS = 45_000L
     private const val MAX_DURATION_MS = 12L * 60L * 1000L
+    private val BAND_SLACK = floatArrayOf(0f, 0.08f, 0.16f)
 
     private val variantMarkers = listOf(
         "live", "en vivo", "ao vivo", "dal vivo", "remix", "rmx", "karaoke", "cover", "sped up", "speed up", "slowed",
@@ -48,18 +49,27 @@ object DiscoveryRanker {
         profile: DiscoveryTasteProfile,
         interactions: DiscoveryInteractions,
         limit: Int,
-        rotation: Long
+        rotation: Long,
+        request: DiscoveryRequest = DiscoveryRequest()
     ): List<DiscoveryCard> {
         if (limit <= 0) return emptyList()
-        val merged = LinkedHashMap<String, Pair<DiscoveryCandidate, Int>>()
-        candidates.forEach { candidate ->
-            if (!isEligible(candidate, profile, interactions)) return@forEach
-            val key = discoveryTrackKey(candidate.track)
-            val value = score(candidate, profile, interactions, rotation)
-            val previous = merged[key]
-            if (previous == null || value > previous.second) merged[key] = candidate to value
+        val eligible = candidates.filter { isEligible(it, profile, interactions) }
+        val distances = eligible.associateWith { BubbleDistance.estimate(it, profile) }
+        var admitted = emptyList<DiscoveryCandidate>()
+        for (slack in BAND_SLACK) {
+            admitted = eligible.filter { BubbleDistance.admits(request, distances.getValue(it), it, profile, slack) }
+            if (admitted.size >= limit || request.level == BubbleLevel.Near) break
         }
-        return diversify(merged.values.sortedByDescending { it.second }, profile, limit)
+        val merged = LinkedHashMap<String, Triple<DiscoveryCandidate, Int, Float>>()
+        admitted.forEach { candidate ->
+            val key = discoveryTrackKey(candidate.track)
+            val distance = distances.getValue(candidate)
+            var value = score(candidate, profile, interactions, rotation)
+            if (request.level != BubbleLevel.Near && request.usesDistanceBand) value += BubbleDistance.bandScore(request.level, distance)
+            val previous = merged[key]
+            if (previous == null || value > previous.second) merged[key] = Triple(candidate, value, distance)
+        }
+        return diversify(merged.values.sortedByDescending { it.second }, profile, limit, request)
     }
 
     internal fun isEligible(candidate: DiscoveryCandidate, profile: DiscoveryTasteProfile, interactions: DiscoveryInteractions): Boolean {
@@ -95,6 +105,11 @@ object DiscoveryRanker {
             DiscoveryReasonKind.NewRelease -> 20
             DiscoveryReasonKind.Editorial -> 16
             DiscoveryReasonKind.Trending -> 14
+            DiscoveryReasonKind.SecondHop -> 24
+            DiscoveryReasonKind.Scene -> 20
+            DiscoveryReasonKind.Country -> 18
+            DiscoveryReasonKind.Decade -> 22
+            DiscoveryReasonKind.City -> 22
         }
         score += affinity / 2
         if (followed) score += 18
@@ -120,18 +135,24 @@ object DiscoveryRanker {
     private fun jitter(key: String, rotation: Long): Int = (key.hashCode().toLong() * 31L + rotation).hashCode().absoluteValue % 9
 
     private fun diversify(
-        scored: List<Pair<DiscoveryCandidate, Int>>,
+        scored: List<Triple<DiscoveryCandidate, Int, Float>>,
         profile: DiscoveryTasteProfile,
-        limit: Int
+        limit: Int,
+        request: DiscoveryRequest
     ): List<DiscoveryCard> {
+        val distances = scored.associate { it.first to it.third }
         val pending = scored.map { it.first }.toMutableList()
         val result = ArrayList<DiscoveryCard>(limit)
         val perArtist = HashMap<String, Int>()
+        val perKind = HashMap<DiscoveryReasonKind, Int>()
+        val artistCap = if (request.level == BubbleLevel.Near) MAX_PER_ARTIST else 1
+        val kindCap = if (request.level == BubbleLevel.Near || !request.usesDistanceBand) Int.MAX_VALUE else (limit + 1) / 2
         val maxUnanchoredFresh = (limit / MAX_UNANCHORED_FRESH_SHARE).coerceAtLeast(1)
         var unanchoredFresh = 0
         fun allowed(candidate: DiscoveryCandidate): Boolean =
-            (perArtist[discoveryPrimaryArtistKey(candidate.track.artist)] ?: 0) < MAX_PER_ARTIST &&
-                (!isUnanchoredFresh(candidate, profile) || unanchoredFresh < maxUnanchoredFresh)
+            (perArtist[discoveryPrimaryArtistKey(candidate.track.artist)] ?: 0) < artistCap &&
+                (perKind[candidate.reason.kind] ?: 0) < kindCap &&
+                (request.level != BubbleLevel.Near || !isUnanchoredFresh(candidate, profile) || unanchoredFresh < maxUnanchoredFresh)
         while (result.size < limit && pending.isNotEmpty()) {
             val recentArtists = result.takeLast(ARTIST_SPACING).mapTo(HashSet()) { discoveryPrimaryArtistKey(it.track.artist) }
             val spaced = pending.indexOfFirst { allowed(it) && discoveryPrimaryArtistKey(it.track.artist) !in recentArtists }
@@ -140,8 +161,9 @@ object DiscoveryRanker {
             val picked = pending.removeAt(pickIndex)
             val artist = discoveryPrimaryArtistKey(picked.track.artist)
             perArtist[artist] = (perArtist[artist] ?: 0) + 1
+            perKind[picked.reason.kind] = (perKind[picked.reason.kind] ?: 0) + 1
             if (isUnanchoredFresh(picked, profile)) unanchoredFresh++
-            result += DiscoveryCard(picked.track, picked.reason)
+            result += DiscoveryCard(picked.track, picked.reason, distances[picked] ?: 0f)
         }
         return result
     }

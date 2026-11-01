@@ -3,7 +3,11 @@ package com.luc4n3x.levyra.viewmodel
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.luc4n3x.levyra.domain.ExploreCategory
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
+import com.luc4n3x.levyra.feature.discovery.BubbleLevel
+import com.luc4n3x.levyra.feature.discovery.DiscoveryLens
+import com.luc4n3x.levyra.feature.discovery.DiscoveryRequest
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.discovery.DiscoveryCard
 import com.luc4n3x.levyra.feature.discovery.DiscoveryDecision
@@ -51,7 +55,9 @@ data class DiscoveryUiState(
     val refreshing: Boolean = false,
     val weeklyPlaylistId: String = "",
     val savedThisWeek: Int = 0,
-    val message: DiscoveryMessage? = null
+    val message: DiscoveryMessage? = null,
+    val request: DiscoveryRequest = DiscoveryRequest(),
+    val scenes: List<ExploreCategory> = emptyList()
 ) {
     val teaser: List<DiscoveryCard> get() = listOfNotNull(deck.current) + deck.upcoming
 }
@@ -78,6 +84,14 @@ class DiscoveryViewModel internal constructor(private val root: LevyraViewModel)
     private var previewArmed = false
     private var mainResumeToken: String? = null
     private var messageId = 0L
+    private val bubblePreferences = root.getApplication<android.app.Application>()
+        .getSharedPreferences(BUBBLE_PREFERENCES, android.content.Context.MODE_PRIVATE)
+    private var scenesJob: Job? = null
+
+    init {
+        val level = BubbleLevel.fromStorage(bubblePreferences.getString(KEY_LEVEL, null))
+        feed.update { it.copy(request = DiscoveryRequest(level = level)) }
+    }
 
     val state: StateFlow<DiscoveryUiState> = combine(
         feed,
@@ -125,6 +139,30 @@ class DiscoveryViewModel internal constructor(private val root: LevyraViewModel)
     }
 
     fun retry() = load(keepVisible = false)
+
+    fun setLevel(level: BubbleLevel) {
+        val current = feed.value.request
+        if (current.level == level) return
+        bubblePreferences.edit().putString(KEY_LEVEL, level.storageValue).apply()
+        feed.update { it.copy(request = it.request.copy(level = level)) }
+        rotation++
+        load(keepVisible = false)
+    }
+
+    fun setLens(lens: DiscoveryLens) {
+        if (feed.value.request.lens == lens) return
+        feed.update { it.copy(request = it.request.copy(lens = lens)) }
+        rotation++
+        load(keepVisible = false)
+    }
+
+    fun loadScenes() {
+        if (feed.value.scenes.isNotEmpty() || scenesJob?.isActive == true) return
+        scenesJob = viewModelScope.launch {
+            val scenes = runCatchingSafely { root.discoveryScenes() }.orEmpty()
+            feed.update { it.copy(scenes = scenes) }
+        }
+    }
 
     fun openSession() {
         sessionActive = true
@@ -294,7 +332,7 @@ class DiscoveryViewModel internal constructor(private val root: LevyraViewModel)
         loadJob = viewModelScope.launch {
             try {
                 interactions = runCatchingSafely { interactionStore.load() } ?: interactions
-                val result = engine.build(root.discoveryProfile(), interactions, FEED_SIZE, dayRotation())
+                val result = engine.build(root.discoveryProfile(), interactions, FEED_SIZE, dayRotation(), feed.value.request)
                 loadedLanguage = language
                 loadedAtMs = System.currentTimeMillis()
                 failedKeys.clear()
@@ -324,7 +362,7 @@ class DiscoveryViewModel internal constructor(private val root: LevyraViewModel)
         moreJob = viewModelScope.launch {
             val known = feed.value.deck.cards.associate { it.key to 0L }
             val result = runCatchingSafely {
-                engine.build(root.discoveryProfile(), interactions.copy(dismissed = interactions.dismissed + known), FEED_SIZE, dayRotation() + 1)
+                engine.build(root.discoveryProfile(), interactions.copy(dismissed = interactions.dismissed + known), FEED_SIZE, dayRotation() + 1, feed.value.request)
             } ?: return@launch
             if (result.cards.isNotEmpty()) {
                 feed.update { it.copy(deck = it.deck.appended(result.cards), status = DiscoveryFeedStatus.Ready) }
@@ -376,5 +414,7 @@ class DiscoveryViewModel internal constructor(private val root: LevyraViewModel)
         const val PREFETCH_AHEAD = 2
         const val RESOLVED_CACHE_SIZE = 16
         const val FEED_TTL_MS = 6L * 60L * 60L * 1000L
+        const val BUBBLE_PREFERENCES = "levyra_discovery_bubble"
+        const val KEY_LEVEL = "level"
     }
 }

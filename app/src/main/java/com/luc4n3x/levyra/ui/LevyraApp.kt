@@ -1967,6 +1967,7 @@ fun LevyraApp(
     val customThemes by viewModel.customThemes.collectAsStateWithLifecycle()
     val navigationStudio by viewModel.navigationStudio.collectAsStateWithLifecycle()
     LevyraKeepScreenOnEffect(viewModel.state)
+    com.luc4n3x.levyra.ui.smartmusic.AdaptiveListeningAutostart(state.audioSettings)
     LaunchedEffect(youtubeMusicState.active?.id, state.languageCode) {
         youtubeMusicViewModel.loadHome(state.languageCode)
     }
@@ -3274,6 +3275,20 @@ fun LevyraApp(
                                 onPreset = viewModel::setNightListeningPreset,
                                 onTrim = viewModel::setNightListeningTrim
                             )
+                            com.luc4n3x.levyra.ui.smartmusic.SmartResumeCard(
+                                settings = state.audioSettings,
+                                animated = state.animationsEnabled,
+                                onEnabled = viewModel::setSmartResumeEnabled,
+                                onProfile = viewModel::setSmartResumeProfile,
+                                onMinPause = viewModel::setSmartResumeMinPause
+                            )
+                            com.luc4n3x.levyra.ui.smartmusic.AdaptiveListeningPanel(
+                                settings = state.audioSettings,
+                                animated = state.animationsEnabled,
+                                onEnabled = viewModel::setAdaptiveListeningEnabled,
+                                onSensitivity = viewModel::setAdaptiveListeningSensitivity,
+                                onMaxBoost = viewModel::setAdaptiveListeningMaxBoost
+                            )
                             val chaptersAvailable by viewModel.mixChapters.collectAsStateWithLifecycle()
                             if (chaptersAvailable != null) {
                                 MixChaptersEntry(onOpen = viewModel::openMixChapters)
@@ -3488,6 +3503,25 @@ fun LevyraApp(
                         downloadedTrackIds = state.downloadedTrackIds,
                         animated = state.animationsEnabled,
                         onClose = viewModel::closePlaylistStudio
+                    )
+                }
+            }
+
+            val moodJourneySession by viewModel.moodJourney.session.collectAsStateWithLifecycle()
+            val lastMoodJourneySession = rememberLastNonNull(moodJourneySession)
+            AnimatedVisibility(
+                visible = moodJourneySession != null,
+                enter = LevyraMotion.sheetEnter(state.animationsEnabled),
+                exit = LevyraMotion.overlayExit(state.animationsEnabled)
+            ) {
+                lastMoodJourneySession?.let { session ->
+                    com.luc4n3x.levyra.ui.moodjourney.MoodJourneyScreen(
+                        session = session,
+                        controller = viewModel.moodJourney,
+                        animated = state.animationsEnabled,
+                        onClose = viewModel::closeMoodJourney,
+                        onPlay = viewModel::playMoodJourney,
+                        onAddToQueue = viewModel::addMoodJourneyToQueue
                     )
                 }
             }
@@ -11678,6 +11712,7 @@ private fun PersonalListeningShelf(
         }
     }
 
+    val bubbleHandle = LocalHomeDiscovery.current
     Column(verticalArrangement = Arrangement.spacedBy(homeHeaderContentGap())) {
         HomeSectionInset {
             HomeOrbitHeader(
@@ -11737,6 +11772,20 @@ private fun PersonalListeningShelf(
                         }
                     }
                 }
+            }
+        }
+        if (bubbleHandle != null) {
+            val strings = LocalLevyraStrings.current
+            val bubbleArtworks = remember(tracks) {
+                tracks.mapNotNull { track -> track.thumbnailUrl.ifBlank { track.largeThumbnailUrl }.takeIf(String::isNotBlank) }.distinct().take(3)
+            }
+            HomeSectionInset {
+                com.luc4n3x.levyra.ui.discovery.BubbleOrbitEntry(
+                    copy = com.luc4n3x.levyra.ui.i18n.smartMusicCopy(strings.code),
+                    animated = LocalAnimationsEnabled.current,
+                    artworks = bubbleArtworks,
+                    onOpen = { bubbleHandle.onOpenBubble(com.luc4n3x.levyra.feature.discovery.BubbleLevel.Adventurous) }
+                )
             }
         }
     }
@@ -25998,6 +26047,10 @@ private fun ExploreContentRow(
                 onOpenYourSound = viewModel::openYourSound,
                 onOpenMixLab = { viewModel.openMixLab() },
                 modifier = Modifier.padding(horizontal = HomeHorizontalInset)
+            )
+            com.luc4n3x.levyra.ui.moodjourney.MoodJourneyEntry(
+                onOpen = viewModel::openMoodJourney,
+                modifier = Modifier.padding(horizontal = HomeHorizontalInset, vertical = 4.dp)
             )
         }
         is ExploreRow.Header -> ExploreAnchorHeader(

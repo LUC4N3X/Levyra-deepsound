@@ -401,6 +401,7 @@ class ExploreViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::ex
 
     fun openYourSound() = root.openYourSound()
     fun openMixLab(initialParams: com.luc4n3x.levyra.domain.MixLabParams = com.luc4n3x.levyra.domain.MixLabParams()) = root.openMixLab(initialParams)
+    fun openMoodJourney() = root.openMoodJourney()
     fun openListeningRecap() = root.openListeningRecap()
     fun openListeningInsights() = root.openListeningInsights()
     fun toggleFavorite(track: Track) = root.toggleFavorite(track)
@@ -412,6 +413,7 @@ class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::li
     fun refreshSmartOffline() = root.refreshSmartOffline()
     fun openYourSound() = root.openYourSound()
     fun openMixLab(initialParams: com.luc4n3x.levyra.domain.MixLabParams = com.luc4n3x.levyra.domain.MixLabParams()) = root.openMixLab(initialParams)
+    fun openMoodJourney() = root.openMoodJourney()
     fun openListeningRecap() = root.openListeningRecap()
     fun openListeningInsights() = root.openListeningInsights()
     fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)

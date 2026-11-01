@@ -89,6 +89,9 @@ import com.luc4n3x.levyra.domain.LevyraAutomationSettings
 import com.luc4n3x.levyra.domain.PlaybackBufferMode
 import com.luc4n3x.levyra.domain.ReplayGainMetadata
 import com.luc4n3x.levyra.domain.SmartAudioResolver
+import com.luc4n3x.levyra.domain.SmartResumeCause
+import com.luc4n3x.levyra.domain.SmartResumeMedia
+import com.luc4n3x.levyra.domain.SmartResumeTracker
 import com.luc4n3x.levyra.domain.ReplayGainMode
 import com.luc4n3x.levyra.domain.selectReplayGain
 import com.luc4n3x.levyra.domain.LyricLine
@@ -197,7 +200,9 @@ class PlaybackService : MediaLibraryService() {
     private val parametricEqualizerProcessor = LevyraParametricEqualizerAudioProcessor()
     private val spatialAudioProcessor = StereoSpatialAudioProcessor()
     private val nightListeningProcessor = NightListeningAudioProcessor()
+    private val adaptiveGainProcessor = AdaptiveGainAudioProcessor(meterOutput = true)
     private val limiterProcessor = TruePeakLimiterAudioProcessor()
+    private val smartResumeTracker = SmartResumeTracker(SystemClock::elapsedRealtime)
     private val visualizerProcessor = VisualizerAudioProcessor()
     private val pcm16OutputProcessor = Pcm16OutputAudioProcessor()
     private val audioOffloadController = AudioOffloadController()
@@ -547,6 +552,13 @@ class PlaybackService : MediaLibraryService() {
             normalized.nightListeningEnabled,
             normalized.nightListeningPreset,
             normalized.nightListeningTrimDb
+        )
+        AdaptiveListeningBus.configure(
+            AdaptiveListeningConfig(
+                enabled = requestedAudioSettings.adaptiveListeningEnabled,
+                sensitivity = requestedAudioSettings.adaptiveListeningSensitivity,
+                maxBoostDb = requestedAudioSettings.adaptiveListeningMaxBoostDb
+            )
         )
         enhancedAudioProcessor.userEnabled = normalized.enhancedAudioEnabled
         normalizationProcessor.enabled = audioNormalization || normalized.replayGainActive
@@ -964,6 +976,7 @@ class PlaybackService : MediaLibraryService() {
                             parametricEqualizerProcessor,
                             spatialAudioProcessor,
                             nightListeningProcessor,
+                            adaptiveGainProcessor,
                             limiterProcessor,
                             visualizerProcessor,
                             pcm16OutputProcessor
@@ -1037,6 +1050,7 @@ class PlaybackService : MediaLibraryService() {
             }
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                smartResumeTracker.onMediaChanged(mediaItem?.mediaId.orEmpty())
                 if (mediaItem?.mediaId != lastTransitionMediaId) {
                     lastTransitionMediaId = mediaItem?.mediaId
                     VideoDecoderFallback.Shared.reset()
@@ -1178,6 +1192,24 @@ class PlaybackService : MediaLibraryService() {
                     serviceRecoveryAttempts = 0
                     markPlaybackExpected(true, force = true)
                 }
+                trackSmartResume(player, playWhenReady, reason)
+            }
+
+            override fun onPlaybackSuppressionReasonChanged(playbackSuppressionReason: Int) {
+                if (!player.playWhenReady) return
+                when (playbackSuppressionReason) {
+                    Player.PLAYBACK_SUPPRESSION_REASON_TRANSIENT_AUDIO_FOCUS_LOSS ->
+                        smartResumeTracker.onInterrupted(SmartResumeCause.TransientFocusLoss, player.currentMediaItem?.mediaId.orEmpty())
+                    Player.PLAYBACK_SUPPRESSION_REASON_NONE -> applySmartResume(player)
+                }
+            }
+
+            override fun onPositionDiscontinuity(oldPosition: Player.PositionInfo, newPosition: Player.PositionInfo, reason: Int) {
+                if (reason == Player.DISCONTINUITY_REASON_SEEK && !player.playWhenReady) smartResumeTracker.onUserTookControl()
+            }
+
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                AdaptiveListeningBus.setPlaybackActive(isPlaying)
             }
 
             override fun onEvents(player: Player, events: Player.Events) {
@@ -2423,6 +2455,7 @@ class PlaybackService : MediaLibraryService() {
                         parametricEqualizer,
                         spatial,
                         nightListening,
+                        AdaptiveGainAudioProcessor(meterOutput = false),
                         limiter,
                         Pcm16OutputAudioProcessor()
                     )
@@ -2747,7 +2780,41 @@ class PlaybackService : MediaLibraryService() {
         if (!keepAlive) pauseAllPlayersAndStopSelf()
     }
 
+    private fun trackSmartResume(player: Player, playWhenReady: Boolean, reason: Int) {
+        val mediaKey = player.currentMediaItem?.mediaId.orEmpty()
+        if (playWhenReady) {
+            if (player.playbackSuppressionReason == Player.PLAYBACK_SUPPRESSION_REASON_NONE) applySmartResume(player)
+            return
+        }
+        when (reason) {
+            Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_FOCUS_LOSS -> smartResumeTracker.onInterrupted(SmartResumeCause.FocusLoss, mediaKey)
+            Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_BECOMING_NOISY -> smartResumeTracker.onInterrupted(SmartResumeCause.OutputLost, mediaKey)
+            Player.PLAY_WHEN_READY_CHANGE_REASON_SUPPRESSED_TOO_LONG -> smartResumeTracker.onInterrupted(SmartResumeCause.SuppressedOutput, mediaKey)
+            else -> smartResumeTracker.onUserTookControl()
+        }
+    }
+
+    private fun applySmartResume(player: Player) {
+        if (!smartResumeTracker.hasPendingInterruption) return
+        val settings = requestedAudioSettings
+        val duration = player.duration
+        val target = smartResumeTracker.onResumed(
+            enabled = settings.smartResumeEnabled,
+            profile = settings.smartResumeProfile,
+            minPauseSeconds = settings.smartResumeMinPauseSeconds,
+            media = SmartResumeMedia(
+                key = player.currentMediaItem?.mediaId.orEmpty(),
+                positionMs = player.currentPosition,
+                durationMs = if (duration == C.TIME_UNSET) 0L else duration,
+                seekable = player.isCurrentMediaItemSeekable,
+                live = player.isCurrentMediaItemLive || isLiveRadioMediaItem(player.currentMediaItem)
+            )
+        ) ?: return
+        player.seekTo(target)
+    }
+
     override fun onDestroy() {
+        AdaptiveListeningBus.setPlaybackActive(false)
         RuntimeHooks.dsp(RuntimeSignal.DSP_RELEASED)
         queueSkipJob?.cancel()
         clearPreparedQueueNextInternal()
@@ -3681,7 +3748,7 @@ internal fun truePeakLimiterRequired(
     settings: LevyraAudioSettings,
     parametricActive: Boolean,
     audioNormalization: Boolean
-): Boolean = settings.nightListeningEnabled || settings.limiterEnabled &&
+): Boolean = settings.nightListeningEnabled || settings.adaptiveListeningEnabled || settings.limiterEnabled &&
     (settings.equalizerEnabled || parametricActive || settings.virtualizer > 0 ||
         settings.replayGainActive || audioNormalization)
 

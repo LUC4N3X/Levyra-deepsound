@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.ui
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Casino
+import androidx.compose.material.icons.rounded.Timeline
 import androidx.compose.material.icons.rounded.Equalizer
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Tune
@@ -238,7 +239,14 @@ private fun YouTubeMusicLevyraMix(viewModel: com.luc4n3x.levyra.viewmodel.Explor
                 viewModel.startLevyraMix(com.luc4n3x.levyra.domain.LevyraMixKind.SurpriseMe)
             },
             YouTubeMusicMixCard("mix-your-sound", strings.yourSound, Icons.Rounded.Equalizer, listOf(Color(0xFF0E8A6B), Color(0xFF06302A)), viewModel::openYourSound),
-            YouTubeMusicMixCard("mix-lab", strings.mixLab, Icons.Rounded.Tune, listOf(Color(0xFF8A5A0E), Color(0xFF33210A))) { viewModel.openMixLab() }
+            YouTubeMusicMixCard("mix-lab", strings.mixLab, Icons.Rounded.Tune, listOf(Color(0xFF8A5A0E), Color(0xFF33210A))) { viewModel.openMixLab() },
+            YouTubeMusicMixCard(
+                "mood-journey",
+                com.luc4n3x.levyra.ui.i18n.smartMusicCopy(strings.code)[com.luc4n3x.levyra.ui.i18n.SmartMusicText.MoodTitle],
+                Icons.Rounded.Timeline,
+                listOf(Color(0xFF5B2A86), Color(0xFF1E0E33)),
+                viewModel::openMoodJourney
+            )
         )
     }
     Column {
