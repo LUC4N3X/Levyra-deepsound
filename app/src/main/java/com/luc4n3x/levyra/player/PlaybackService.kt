@@ -71,6 +71,7 @@ import com.luc4n3x.levyra.MainActivity
 import com.luc4n3x.levyra.data.FavoritesStore
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.PlaybackResolver
+import com.luc4n3x.levyra.data.RecommendationFeedbackStore
 import com.luc4n3x.levyra.data.SPOTIFY_CLIP_ID_PREFIX
 import com.luc4n3x.levyra.data.SpotifyClipCanvasRegistry
 import com.luc4n3x.levyra.data.isSpotifySampleAudioUrl
@@ -687,31 +688,6 @@ class PlaybackService : MediaLibraryService() {
         return neighborIndices.any { replayGainAlbumIdentity(snapshot.tracks[it]) == identity }
     }
 
-    private fun queueTransitionTargetIndex(snapshot: PlaybackQueueSnapshot): Int? {
-        val currentIndex = snapshot.currentIndex
-        if (currentIndex !in snapshot.tracks.indices) return null
-        return if (snapshot.shuffleEnabled) {
-            val order = snapshot.shuffleOrder
-                .filter { it in snapshot.tracks.indices }
-                .distinct()
-                .takeIf { it.size == snapshot.tracks.size }
-                ?: return null
-            val cursor = order.indexOf(currentIndex)
-            when {
-                cursor < 0 -> null
-                cursor + 1 < order.size -> order[cursor + 1]
-                snapshot.repeatMode == com.luc4n3x.levyra.domain.RepeatMode.All -> order.firstOrNull()
-                else -> null
-            }
-        } else {
-            when {
-                currentIndex < snapshot.tracks.lastIndex -> currentIndex + 1
-                snapshot.repeatMode == com.luc4n3x.levyra.domain.RepeatMode.All -> 0
-                else -> null
-            }
-        }
-    }
-
     private fun replayGainAlbumIdentity(track: Track): String {
         val browseId = track.albumBrowseId.trim()
         if (browseId.isNotEmpty()) return "id:$browseId"
@@ -856,6 +832,9 @@ class PlaybackService : MediaLibraryService() {
             .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "$packageName:PlaybackService")
             .apply { setReferenceCounted(false) }
         queueEngine = PersistentQueueEngine.get(this)
+        serviceScope.launch {
+            queueEngine.seedRecommendationFeedback(RecommendationFeedbackStore(applicationContext).load())
+        }
         favoritesStore = FavoritesStore(this)
         resolver = PlaybackResolver.getInstance(this)
         musicRepository = YoutubeMusicRepository(this)
@@ -2131,7 +2110,7 @@ class PlaybackService : MediaLibraryService() {
         if (remaining !in 1L..MAX_TRANSITION_LOOKAHEAD_MS) return
         val snapshot = queueEngine.state.value
         val current = snapshot.currentTrack ?: return
-        val nextIndex = queueTransitionTargetIndex(snapshot) ?: return
+        val nextIndex = queueEngine.nextPlayableIndex(snapshot) ?: return
         val next = snapshot.tracks.getOrNull(nextIndex) ?: return
         val videoMode = player.currentMediaItem?.mediaMetadata?.extras?.getBoolean(EXTRA_VIDEO_MODE, false) == true
         val plan = planAutoMix(

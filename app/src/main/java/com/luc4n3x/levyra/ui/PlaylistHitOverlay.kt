@@ -139,7 +139,8 @@ internal fun PlaylistHitOverlay(
     onAddTracksToQueue: (List<Track>) -> Unit,
     onAddTracksToPlaylist: (String, List<Track>) -> Unit,
     onCreatePlaylistWithTracks: (String, List<Track>) -> Unit,
-    onDownloadTracks: (List<Track>) -> Unit
+    onDownloadTracks: (List<Track>) -> Unit,
+    onDislikeTracks: (List<Track>) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     val density = LocalDensity.current
@@ -251,6 +252,12 @@ internal fun PlaylistHitOverlay(
                 onDownload = selectedTracks.takeIf { it.isNotEmpty() }?.let {
                     {
                         onDownloadTracks(selectedTracks)
+                        selection.exit()
+                    }
+                },
+                onDislike = selectedTracks.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        onDislikeTracks(selectedTracks)
                         selection.exit()
                     }
                 }

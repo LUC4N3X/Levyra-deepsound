@@ -75,6 +75,16 @@ class PlayerDeckTest {
     }
 
     @Test
+    fun `bloom keeps its play pill when landscape falls back to the shared transport`() {
+        assertTrue(PlayerVisualMode.Expressive.usesExpressivePlayPill())
+        val landscape = resolvePlayerDeckLayout(PlayerVisualMode.Expressive, false, false, LevyraPlayerPane.SideBySide, true)
+        assertEquals(PlayerDeckLayout.Levyra, landscape)
+        PlayerVisualMode.entries
+            .filterNot { it == PlayerVisualMode.Expressive }
+            .forEach { assertFalse(it.usesExpressivePlayPill()) }
+    }
+
+    @Test
     fun `fallback presentation never lands on the immersive exit affordance`() {
         assertEquals(
             PlayerVisualMode.CanvasCard,

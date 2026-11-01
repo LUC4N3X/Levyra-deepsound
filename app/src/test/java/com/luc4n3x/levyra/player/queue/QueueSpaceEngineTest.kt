@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.player.queue
 
+import com.luc4n3x.levyra.domain.RecommendationFeedback
+import com.luc4n3x.levyra.domain.RecommendationFeedbackKind
 import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.domain.Track
 import java.util.concurrent.ConcurrentHashMap
@@ -677,6 +679,116 @@ class QueueSpaceEngineTest {
         storage.put(persisted(spaceId, tracks, currentIndex = 0, positionMs = 0L))
         storage.activeId = spaceId
         return PersistentQueueEngine(storage, ManualDispatcher()).also { it.restore(emptyList(), -1, 0L) }
+    }
+
+    @Test
+    fun nextSkipsConsecutiveDislikedTracks() {
+        val engine = dislikeEngine(5, disliked = setOf("2", "3"))
+
+        assertEquals("4", engine.next()?.id)
+        assertEquals(3, engine.state.value.currentIndex)
+    }
+
+    @Test
+    fun nextStopsAtTheEndWhenEveryRemainingTrackIsDisliked() {
+        val engine = dislikeEngine(4, disliked = setOf("2", "3", "4"))
+
+        assertNull(engine.next())
+        assertEquals(0, engine.state.value.currentIndex)
+    }
+
+    @Test
+    fun repeatAllWrapsPastDislikedTracksWithoutLooping() {
+        val engine = dislikeEngine(4, disliked = setOf("1", "4"), startIndex = 2)
+        engine.setRepeatMode(RepeatMode.All)
+
+        assertEquals("2", engine.next()?.id)
+        assertEquals("3", engine.next()?.id)
+    }
+
+    @Test
+    fun fullyDislikedQueueYieldsNoNextTrackEvenWithRepeatAll() {
+        val engine = dislikeEngine(3, disliked = setOf("1", "2", "3"))
+        engine.setRepeatMode(RepeatMode.All)
+
+        assertNull(engine.next())
+        assertNull(engine.next(respectRepeatOne = false))
+        assertTrue(engine.upcoming(10).isEmpty())
+        assertNull(engine.firstPlayableIndex())
+    }
+
+    @Test
+    fun repeatOneAdvancesAwayFromADislikedCurrentTrack() {
+        val engine = dislikeEngine(3, disliked = setOf("1"))
+        engine.setRepeatMode(RepeatMode.One)
+
+        assertEquals("2", engine.next()?.id)
+        assertEquals("2", engine.next()?.id)
+    }
+
+    @Test
+    fun upcomingHidesDislikedTracksWithoutRemovingThemFromTheQueue() {
+        val engine = dislikeEngine(6, disliked = setOf("2", "4"))
+
+        assertEquals(listOf("3", "5"), engine.upcoming(2).map { it.id })
+        assertEquals(listOf("1", "2", "3", "4", "5", "6"), engine.state.value.tracks.map { it.id })
+    }
+
+    @Test
+    fun shuffleNeverLandsOnDislikedTracks() {
+        val engine = dislikeEngine(8, disliked = setOf("3", "5", "6"))
+        engine.setRepeatMode(RepeatMode.All)
+        engine.setShuffle(true)
+
+        val visited = (1..12).mapNotNull { engine.next()?.id }
+
+        assertEquals(12, visited.size)
+        assertTrue(visited.none { it in setOf("3", "5", "6") })
+    }
+
+    @Test
+    fun previousSkipsDislikedTracks() {
+        val engine = dislikeEngine(4, disliked = setOf("2", "3"), startIndex = 3)
+
+        assertEquals("1", engine.previous()?.id)
+    }
+
+    @Test
+    fun removingADislikeRestoresTheTrack() {
+        val engine = dislikeEngine(3, disliked = setOf("2"))
+        engine.setRecommendationFeedback(RecommendationFeedback.Empty)
+
+        assertEquals("2", engine.next()?.id)
+    }
+
+    @Test
+    fun explicitSelectionStillPlaysADislikedTrack() {
+        val engine = dislikeEngine(3, disliked = setOf("2"))
+
+        assertEquals("2", engine.select(1)?.id)
+        assertEquals("3", engine.next()?.id)
+    }
+
+    @Test
+    fun serviceSeedDoesNotOverrideFeedbackPublishedByTheApp() {
+        val engine = dislikeEngine(3, disliked = setOf("2"))
+        engine.seedRecommendationFeedback(RecommendationFeedback.Empty)
+
+        assertEquals("3", engine.next()?.id)
+    }
+
+    private fun dislikeEngine(count: Int, disliked: Set<String>, startIndex: Int = 0): PersistentQueueEngine {
+        val tracks = (1..count).map { track(it.toString()) }
+        val engine = PersistentQueueEngine(FakeQueueSpaceStorage(), ManualDispatcher())
+        engine.replace(tracks, startIndex)
+        engine.setRecommendationFeedback(
+            RecommendationFeedback.from(
+                tracks.filter { it.id in disliked }.mapNotNull {
+                    RecommendationFeedback.entryFor(it, RecommendationFeedbackKind.LESS_LIKE_THIS)
+                }
+            )
+        )
+        return engine
     }
 
     private fun persisted(id: String, tracks: List<Track>, currentIndex: Int, positionMs: Long) = PersistentQueueSnapshot(

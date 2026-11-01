@@ -38,6 +38,7 @@ import com.luc4n3x.levyra.domain.LibrarySortDirection
 import com.luc4n3x.levyra.domain.PlayerBackgroundMode
 import com.luc4n3x.levyra.domain.PlayerVisualMode
 import com.luc4n3x.levyra.domain.ReactiveAuraPreset
+import com.luc4n3x.levyra.domain.RecommendationFeedback
 import com.luc4n3x.levyra.domain.LevyraMixKind
 import com.luc4n3x.levyra.domain.ListeningPulse
 import com.luc4n3x.levyra.domain.LyricLine
@@ -324,6 +325,7 @@ class SearchViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::sea
     fun exportAlbumHit(album: AlbumHit) = root.exportAlbumHit(album)
     fun toggleFavorite(track: Track) = root.toggleFavorite(track)
     fun toggleFavorites(tracks: List<Track>) = root.toggleFavorites(tracks)
+    fun dislikeTracks(tracks: List<Track>) = root.dislikeTracks(tracks)
     fun startSongRadio() = root.startSongRadio()
     fun startSongRadioFrom(track: Track) = root.startSongRadioFrom(track)
 }
@@ -564,6 +566,8 @@ class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::pla
     fun setMotionArtworkEnabled(value: Boolean) = root.setMotionArtworkEnabled(value)
     fun refreshCurrentMotionArtwork() = root.refreshCurrentMotionArtwork()
     fun toggleFavorite(track: Track) = root.toggleFavorite(track)
+    fun setTrackFeedback(track: Track, kind: com.luc4n3x.levyra.domain.RecommendationFeedbackKind) =
+        root.setTrackFeedback(track, kind)
     fun togglePlay() = root.togglePlay()
     fun toggleRepeat() = root.toggleRepeat()
     fun toggleShuffle() = root.toggleShuffle()
@@ -1553,6 +1557,7 @@ internal data class PlayerProjection(
     val radioEnabled: Boolean,
     val queue: List<Track>,
     val artistExclusions: ArtistExclusions,
+    val recommendationFeedback: RecommendationFeedback,
     val canPlaySimilarSongNow: Boolean,
     val canQueueSimilarSong: Boolean
 )
@@ -1592,6 +1597,7 @@ internal fun playerProjection(state: LevyraUiState): PlayerProjection = PlayerPr
     radioEnabled = state.radioEnabled,
     queue = state.queue,
     artistExclusions = state.artistExclusions,
+    recommendationFeedback = state.recommendationFeedback,
     canPlaySimilarSongNow = !state.jam.isActive || state.jam.canControlPlayback,
     canQueueSimilarSong = !state.jam.isActive || state.jam.canAddTracks
 )

@@ -100,6 +100,7 @@ import com.luc4n3x.levyra.ui.player.queueSpaceLabel
 import com.luc4n3x.levyra.ui.StableRemoteArtwork
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.speedDialCopy
+import com.luc4n3x.levyra.ui.i18n.trackDislikeCopy
 import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
@@ -493,7 +494,9 @@ internal fun LevyraTrackActionSheet(
                             )
                             TrackActionRow(
                                 icon = Icons.Rounded.ThumbDown,
-                                label = strings.lessLikeThis,
+                                label = trackDislikeCopy(strings.code).let { copy ->
+                                    if (feedbackKind == RecommendationFeedbackKind.LESS_LIKE_THIS) copy.removeDislike else copy.dislike
+                                },
                                 tint = if (feedbackKind == RecommendationFeedbackKind.LESS_LIKE_THIS) {
                                     LevyraPink
                                 } else {
