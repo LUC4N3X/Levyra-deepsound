@@ -62,6 +62,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.luc4n3x.levyra.domain.playableTrackCount
+import com.luc4n3x.levyra.domain.totalDurationMs
 import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.components.LevyraArtistAvatar
@@ -335,7 +337,7 @@ internal fun LibraryPlaylistRow(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    "${strings.formatTrackCount(playlist.size)} · ${strings.formatLibraryDuration(playlist.tracks.sumOf { it.durationMs })}",
+                    "${strings.formatTrackCount(playlist.playableTrackCount)} · ${strings.formatLibraryDuration(playlist.totalDurationMs)}",
                     color = LevyraMuted,
                     style = LevyraType.caption
                 )
@@ -527,7 +529,7 @@ private fun LibraryPlaylistGridCard(
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
-        Text(strings.formatTrackCount(playlist.size), color = LevyraMuted, style = LevyraType.caption)
+        Text(strings.formatTrackCount(playlist.playableTrackCount), color = LevyraMuted, style = LevyraType.caption)
     }
 }
 

@@ -88,6 +88,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.luc4n3x.levyra.domain.playableTrackCount
 import com.luc4n3x.levyra.domain.SpeedDial
 import com.luc4n3x.levyra.domain.offlineDownloadStageOf
 import com.luc4n3x.levyra.ui.LevyraHorizontalSafeInsets
@@ -102,7 +103,12 @@ import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.filterByTagIds
 import com.luc4n3x.levyra.domain.hiddenInLibrary
 import com.luc4n3x.levyra.domain.visibleInLibrary
+import com.luc4n3x.levyra.domain.PlaylistItem
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.albumCount
+import com.luc4n3x.levyra.domain.items
+import com.luc4n3x.levyra.domain.playableTracks
+import com.luc4n3x.levyra.ui.i18n.playlistAlbumCopy
 import com.luc4n3x.levyra.domain.visibleDownloadBatches
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.formatLibraryBytes
@@ -183,7 +189,7 @@ private data class PlaylistDragUpdate(
 private fun playlistDragUpdate(
     layoutInfo: LazyListLayoutInfo,
     draggedEntryKey: String,
-    orderedTracks: List<Track>,
+    orderedKeys: List<String>,
     dragOffsetY: Float
 ): PlaylistDragUpdate {
     val draggedLayout = layoutInfo.visibleItemsInfo.firstOrNull {
@@ -201,9 +207,7 @@ private fun playlistDragUpdate(
     val targetKey = (targetLayout?.key as? String)
         ?.takeIf { it != draggedLayout.key }
         ?.removePrefix("reorder-")
-    val targetIndex = targetKey?.let { key ->
-        orderedTracks.indexOfFirst { it.id == key }
-    } ?: -1
+    val targetIndex = targetKey?.let(orderedKeys::indexOf) ?: -1
     val offsetAdjustment = if (targetIndex >= 0 && targetLayout != null) {
         (draggedLayout.offset - targetLayout.offset).toFloat()
     } else {
@@ -232,7 +236,7 @@ private fun playlistDragUpdate(
 
 internal data class PlaylistDragSnapshot(
     val entryKey: String,
-    val orderedTracks: List<Track>,
+    val orderedKeys: List<String>,
     val dragOffsetY: Float
 )
 
@@ -259,12 +263,10 @@ internal fun PlaylistDragFrameLoop(
             val update = playlistDragUpdate(
                 layoutInfo = listState.layoutInfo,
                 draggedEntryKey = snapshot.entryKey,
-                orderedTracks = snapshot.orderedTracks,
+                orderedKeys = snapshot.orderedKeys,
                 dragOffsetY = snapshot.dragOffsetY
             )
-            val currentIndex = snapshot.orderedTracks.indexOfFirst {
-                it.id == snapshot.entryKey
-            }
+            val currentIndex = snapshot.orderedKeys.indexOf(snapshot.entryKey)
             if (currentIndex >= 0 && update.targetIndex >= 0 && currentIndex != update.targetIndex) {
                 currentActions.onMove(currentIndex, update.targetIndex, update.offsetAdjustment)
             }
@@ -1495,10 +1497,12 @@ internal fun LevyraPlaylistDetailScreen(
     var selectionMode by rememberSaveable(playlist.id) { mutableStateOf(false) }
     var reorderMode by rememberSaveable(playlist.id) { mutableStateOf(false) }
     var trackSort by rememberSaveable(playlist.id) { mutableStateOf(PlaylistTrackSort.Custom) }
-    var orderedTracks by remember(playlist.id) { mutableStateOf(playlist.tracks) }
+    var orderedItems by remember(playlist.id) { mutableStateOf(playlist.items()) }
+    val orderedTracks = remember(orderedItems) { orderedItems.mapNotNull { (it as? PlaylistItem.Song)?.track } }
+    val albumCopy = strings.playlistAlbumCopy()
     var renameDialog by remember { mutableStateOf(false) }
     var tagEditorOpen by remember(playlist.id) { mutableStateOf(false) }
-    var tracksToRemove by remember(playlist.id) { mutableStateOf<List<Track>>(emptyList()) }
+    var itemsToRemove by remember(playlist.id) { mutableStateOf<List<PlaylistItem>>(emptyList()) }
     var addTracksDialog by remember { mutableStateOf(false) }
     var changeMatchTrack by remember(playlist.id) { mutableStateOf<Track?>(null) }
     var coverSource by remember(playlist.id) { mutableStateOf<android.net.Uri?>(null) }
@@ -1515,12 +1519,12 @@ internal fun LevyraPlaylistDetailScreen(
         listState = playlistListState,
         snapshotProvider = {
             draggedEntryKey?.let { entryKey ->
-                PlaylistDragSnapshot(entryKey, orderedTracks, dragOffsetY)
+                PlaylistDragSnapshot(entryKey, orderedItems.map { it.key }, dragOffsetY)
             }
         },
         actions = PlaylistDragFrameActions(
             onMove = { fromIndex, toIndex, offsetAdjustment ->
-                orderedTracks = orderedTracks.move(fromIndex, toIndex)
+                orderedItems = orderedItems.move(fromIndex, toIndex)
                 dragOffsetY += offsetAdjustment
                 haptics.perform(LevyraHapticAction.Reorder)
             },
@@ -1530,31 +1534,37 @@ internal fun LevyraPlaylistDetailScreen(
         )
     )
 
-    LaunchedEffect(playlist.tracks, reorderMode) {
+    LaunchedEffect(playlist, reorderMode) {
         if (!reorderMode) {
-            orderedTracks = playlist.tracks
+            orderedItems = playlist.items()
             draggedEntryKey = null
             dragOffsetY = 0f
         }
     }
 
-    val sortedTracks = remember(orderedTracks, trackSort, reorderMode) {
-        if (reorderMode) orderedTracks else sortPlaylistTracks(orderedTracks, trackSort)
+    val sortedItems = remember(orderedItems, trackSort, reorderMode) {
+        if (reorderMode) orderedItems else sortPlaylistItems(orderedItems, trackSort)
     }
-    val playInDisplayOrder: (List<Track>) -> List<Track> = remember(trackSort) {
-        { tracks -> sortPlaylistTracks(tracks, trackSort) }
+    val playInDisplayOrder: (List<PlaylistItem>) -> List<PlaylistItem> = remember(trackSort) {
+        { items -> sortPlaylistItems(items, trackSort) }
     }
-    val searchIndex = remember(orderedTracks) { buildPlaylistSearchIndex(orderedTracks) }
-    val visibleTracks = remember(sortedTracks, query, searchIndex) {
-        filterPlaylistTracks(sortedTracks, query, searchIndex)
+    val searchIndex = remember(orderedItems) { buildPlaylistItemSearchIndex(orderedItems) }
+    val visibleItems = remember(sortedItems, query, searchIndex) {
+        filterPlaylistItems(sortedItems, query, searchIndex)
     }
-    val selectedTracks = remember(sortedTracks, selectedKeys) {
-        selectedPlaylistTracks(sortedTracks, selectedKeys)
+    val selectedItems = remember(sortedItems, selectedKeys) {
+        selectedPlaylistItems(sortedItems, selectedKeys)
+    }
+    val selectedTracks = remember(selectedItems) {
+        selectedItems.flatMap { it.playableTracks() }.distinctBy { it.id }
+    }
+    val playableTracks = remember(orderedItems) {
+        orderedItems.flatMap { it.playableTracks() }.distinctBy { it.id }
     }
     val selectionActive = selectionMode
 
-    LaunchedEffect(orderedTracks) {
-        val available = selectAllPlaylistTrackKeys(orderedTracks)
+    LaunchedEffect(orderedItems) {
+        val available = selectAllPlaylistItemKeys(orderedItems)
         selectedKeys = selectedKeys.intersect(available)
     }
 
@@ -1564,7 +1574,7 @@ internal fun LevyraPlaylistDetailScreen(
             selectionMode = false
         } else if (reorderMode) {
             reorderMode = false
-            orderedTracks = playlist.tracks
+            orderedItems = playlist.items()
         } else if (searchActive) {
             query = ""
             searchActive = false
@@ -1598,10 +1608,13 @@ internal fun LevyraPlaylistDetailScreen(
         immersiveMediaColors(Color(palette.start), Color(palette.end), lightTheme)
     }
     val colors = animatedImmersiveMediaColors(targetColors, animated = state.animationsEnabled, labelPrefix = "user-playlist")
-    val totalDurationMs = remember(orderedTracks) { orderedTracks.sumOf { it.durationMs.coerceAtLeast(0L) } }
-    val heroMetadata = remember(playlist.size, totalDurationMs, strings) {
+    val totalDurationMs = remember(orderedItems) {
+        orderedItems.sumOf { item -> item.playableTracks().sumOf { it.durationMs.coerceAtLeast(0L) } }
+    }
+    val heroMetadata = remember(playlist.size, playlist.albumCount, totalDurationMs, strings) {
         listOf(
-            strings.formatTrackCount(playlist.size),
+            if (playlist.size > 0 || playlist.albumCount == 0) strings.formatTrackCount(playlist.size) else "",
+            if (playlist.albumCount > 0) albumCopy.albumCount(playlist.albumCount) else "",
             if (totalDurationMs > 0L) strings.formatLibraryDuration(totalDurationMs) else ""
         )
             .filter { it.isNotBlank() }
@@ -1666,22 +1679,19 @@ internal fun LevyraPlaylistDetailScreen(
                         actions = {
                             ImmersiveMediaActionRow(
                                 primary = ImmersiveMediaPrimaryAction(
-                                    enabled = orderedTracks.isNotEmpty(),
+                                    enabled = playableTracks.isNotEmpty(),
                                     label = strings.play,
                                     contentDescription = strings.playAll,
                                     icon = Icons.Rounded.PlayArrow,
-                                    onClick = { viewModel.playPlaylist(playlist.id, arrange = playInDisplayOrder) }
+                                    onClick = { viewModel.playPlaylistItems(playlist.id, arrangeItems = playInDisplayOrder) }
                                 ),
                                 shuffleLabel = strings.shuffle,
                                 downloadLabel = strings.downloadPlaylist,
                                 colors = colors,
-                                shuffleEnabled = orderedTracks.size > 1,
-                                downloadEnabled = orderedTracks.isNotEmpty(),
-                                onShuffle = {
-                                    val shuffled = orderedTracks.shuffled()
-                                    shuffled.firstOrNull()?.let { first -> viewModel.playFrom(shuffled, first) }
-                                },
-                                onDownload = { viewModel.exportTracks(orderedTracks, strings.offline) }
+                                shuffleEnabled = playableTracks.size > 1,
+                                downloadEnabled = playableTracks.isNotEmpty(),
+                                onShuffle = { viewModel.playPlaylistItems(playlist.id, shuffle = true) },
+                                onDownload = { viewModel.exportTracks(playableTracks, strings.offline) }
                             )
                         },
                         artwork = {
@@ -1723,7 +1733,7 @@ internal fun LevyraPlaylistDetailScreen(
                         )
                     }
                 }
-                if (orderedTracks.size > 1) {
+                if (orderedItems.size > 1) {
                     item(key = "playlist-detail-sort") {
                         PlaylistTrackSortControl(
                             sort = trackSort,
@@ -1736,36 +1746,40 @@ internal fun LevyraPlaylistDetailScreen(
             }
 
             val rowPadding = Modifier.padding(horizontal = gutter - LevyraCardDesign.RowHorizontalPadding)
-            if (orderedTracks.isEmpty()) {
+            if (orderedItems.isEmpty()) {
                 item {
                     Box(modifier = Modifier.padding(horizontal = gutter)) {
                         LibraryEmpty(Icons.AutoMirrored.Rounded.QueueMusic, strings.playlistEmpty)
                     }
                 }
             } else if (reorderMode) {
-                items(orderedTracks, key = { "reorder-${it.id}" }) { track ->
-                    val entryKey = track.id
-                    val index = orderedTracks.indexOfFirst { it.id == entryKey }
+                items(orderedItems, key = { "reorder-${it.key}" }) { item ->
+                    val entryKey = item.key
+                    val index = orderedItems.indexOfFirst { it.key == entryKey }
                     if (index < 0) return@items
                     val isDragging = draggedEntryKey == entryKey
+                    val presentation = playlistItemReorderPresentation(item, albumCopy.albumLabel)
                     PlaylistReorderRow(
-                        track = track,
+                        dragKey = entryKey,
+                        artworkUrl = presentation.artworkUrl,
+                        title = presentation.title,
+                        subtitle = presentation.subtitle,
                         state = PlaylistReorderRowState(
                             index = index,
-                            count = orderedTracks.size,
+                            count = orderedItems.size,
                             isDragging = isDragging,
                             dragOffsetY = if (isDragging) dragOffsetY else 0f
                         ),
                         actions = PlaylistReorderRowActions(
                             onMoveUp = {
                                 if (index > 0) {
-                                    orderedTracks = orderedTracks.move(index, index - 1)
+                                    orderedItems = orderedItems.move(index, index - 1)
                                     haptics.perform(LevyraHapticAction.Reorder)
                                 }
                             },
                             onMoveDown = {
-                                if (index in 0 until orderedTracks.lastIndex) {
-                                    orderedTracks = orderedTracks.move(index, index + 1)
+                                if (index in 0 until orderedItems.lastIndex) {
+                                    orderedItems = orderedItems.move(index, index + 1)
                                     haptics.perform(LevyraHapticAction.Reorder)
                                 }
                             },
@@ -1787,38 +1801,69 @@ internal fun LevyraPlaylistDetailScreen(
                             .padding(horizontal = gutter, vertical = 4.dp)
                     )
                 }
-            } else if (visibleTracks.isEmpty()) {
+            } else if (visibleItems.isEmpty()) {
                 item(key = "playlist-search-empty") {
                     Box(modifier = Modifier.padding(horizontal = gutter)) {
                         LibraryEmpty(Icons.Rounded.Search, playlistProCopy.noSearchResults)
                     }
                 }
             } else {
-                items(visibleTracks, key = { "playlist-track-${playlistEntryKey(it)}" }) { track ->
-                    val key = playlistEntryKey(track)
-                    LibraryTrackRow(
-                        track = track,
-                        selected = key in selectedKeys,
-                        selectionActive = selectionActive,
-                        isCurrent = track.id == state.currentTrack?.id,
-                        isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
-                        isFavorite = track.id in state.favoriteIds,
-                        isDownloaded = libraryDownloadForTrack(track, state.downloads) != null,
-                        downloadProgress = downloadProgressFor(track, state),
-                        onClick = {
-                            if (selectionActive) selectedKeys = togglePlaylistTrackSelection(selectedKeys, key)
-                            else viewModel.playPlaylist(playlist.id, track.id, playInDisplayOrder)
-                        },
-                        onLongClick = {
-                            selectionMode = true
-                            selectedKeys = togglePlaylistTrackSelection(selectedKeys, key)
-                        },
-                        onFavorite = { viewModel.toggleFavorite(track) },
-                        onDownload = { viewModel.exportTrack(track) },
-                        onRemoveFromPlaylist = { tracksToRemove = listOf(track) },
-                        onChangeMatch = { changeMatchTrack = track },
-                        modifier = rowPadding
-                    )
+                items(visibleItems, key = { "playlist-item-${it.key}" }) { item ->
+                    val key = item.key
+                    val toggleSelection = { selectedKeys = togglePlaylistTrackSelection(selectedKeys, key) }
+                    val startSelection = {
+                        selectionMode = true
+                        selectedKeys = togglePlaylistTrackSelection(selectedKeys, key)
+                    }
+                    when (item) {
+                        is PlaylistItem.Song -> {
+                            val track = item.track
+                            LibraryTrackRow(
+                                track = track,
+                                selected = key in selectedKeys,
+                                selectionActive = selectionActive,
+                                isCurrent = track.id == state.currentTrack?.id,
+                                isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
+                                isFavorite = track.id in state.favoriteIds,
+                                isDownloaded = libraryDownloadForTrack(track, state.downloads) != null,
+                                downloadProgress = downloadProgressFor(track, state),
+                                onClick = {
+                                    if (selectionActive) toggleSelection()
+                                    else viewModel.playPlaylistItems(playlist.id, key, arrangeItems = playInDisplayOrder)
+                                },
+                                onLongClick = startSelection,
+                                onFavorite = { viewModel.toggleFavorite(track) },
+                                onDownload = { viewModel.exportTrack(track) },
+                                onRemoveFromPlaylist = { itemsToRemove = listOf(item) },
+                                onChangeMatch = { changeMatchTrack = track },
+                                modifier = Modifier.animateItem().then(rowPadding)
+                            )
+                        }
+                        is PlaylistItem.Album -> {
+                            val entry = item.entry
+                            val currentId = state.currentTrack?.id
+                            val containsCurrent = remember(entry, currentId) {
+                                currentId != null && entry.tracks.any { it.id == currentId }
+                            }
+                            PlaylistAlbumRow(
+                                entry = entry,
+                                selected = key in selectedKeys,
+                                selectionActive = selectionActive,
+                                isCurrent = containsCurrent,
+                                isPlaying = containsCurrent && state.isPlaying,
+                                actions = PlaylistAlbumRowActions(
+                                    onPlay = { viewModel.playPlaylistItems(playlist.id, key, arrangeItems = playInDisplayOrder) },
+                                    onOpenAlbum = { viewModel.openPlaylistAlbum(entry) },
+                                    onLongClick = startSelection,
+                                    onPlayNext = { viewModel.playTracksNext(entry.tracks) },
+                                    onAddToQueue = { viewModel.addTracksToQueue(entry.tracks) },
+                                    onRemove = { itemsToRemove = listOf(item) }
+                                ),
+                                onSelectionToggle = toggleSelection,
+                                modifier = Modifier.animateItem().then(rowPadding)
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -1842,14 +1887,14 @@ internal fun LevyraPlaylistDetailScreen(
                         if (!searchActive) query = ""
                     },
                     onSaveOrder = {
-                        viewModel.reorderPlaylist(playlist.id, orderedTracks)
+                        viewModel.reorderPlaylistItems(playlist.id, orderedItems)
                         reorderMode = false
                     },
                     onRename = { renameDialog = true },
                     onReorder = {
                         reorderMode = !reorderMode
                         trackSort = PlaylistTrackSort.Custom
-                        orderedTracks = playlist.tracks
+                        orderedItems = playlist.items()
                         selectedKeys = emptySet()
                         selectionMode = false
                         searchActive = false
@@ -1869,7 +1914,7 @@ internal fun LevyraPlaylistDetailScreen(
                         searchActive = false
                         query = ""
                         selectionMode = true
-                        selectedKeys = selectAllPlaylistTrackKeys(orderedTracks)
+                        selectedKeys = selectAllPlaylistItemKeys(orderedItems)
                     }
                 )
             }
@@ -1879,7 +1924,7 @@ internal fun LevyraPlaylistDetailScreen(
             LibrarySelectionBar(
                 count = selectedKeys.size,
                 canOperateTracks = selectedTracks.isNotEmpty(),
-                canDelete = selectedTracks.isNotEmpty(),
+                canDelete = selectedItems.isNotEmpty(),
                 onClear = {
                     selectedKeys = clearPlaylistTrackSelection()
                     selectionMode = false
@@ -1900,10 +1945,10 @@ internal fun LevyraPlaylistDetailScreen(
                     selectionMode = false
                 },
                 onAddToPlaylist = { addTracksDialog = true },
-                onDelete = { tracksToRemove = selectedTracks },
+                onDelete = { itemsToRemove = selectedItems },
                 deleteLabel = strings.remove,
-                onSelectAll = { selectedKeys = selectPlaylistTracks(selectedKeys, visibleTracks) },
-                allSelected = areAllPlaylistTracksSelected(visibleTracks, selectedKeys),
+                onSelectAll = { selectedKeys = selectedKeys + selectAllPlaylistItemKeys(visibleItems) },
+                allSelected = areAllPlaylistItemsSelected(visibleItems, selectedKeys),
                 primaryLabel = strings.playNext,
                 canPlayTracks = selectedTracks.isNotEmpty() && (!state.jam.isActive || state.jam.isHost),
                 canQueueTracks = selectedTracks.isNotEmpty() && (
@@ -1999,21 +2044,30 @@ internal fun LevyraPlaylistDetailScreen(
         )
     }
 
-    if (tracksToRemove.isNotEmpty()) {
+    if (itemsToRemove.isNotEmpty()) {
+        val removedAlbums = itemsToRemove.count { it is PlaylistItem.Album }
+        val removedSongs = itemsToRemove.size - removedAlbums
         AlertDialog(
-            onDismissRequest = { tracksToRemove = emptyList() },
-            title = { Text(strings.removeFromPlaylist) },
-            text = { Text(strings.formatTrackCount(tracksToRemove.size)) },
+            onDismissRequest = { itemsToRemove = emptyList() },
+            title = { Text(if (removedSongs == 0) albumCopy.removeAlbum else strings.removeFromPlaylist) },
+            text = {
+                Text(
+                    listOf(
+                        if (removedSongs > 0) strings.formatTrackCount(removedSongs) else "",
+                        if (removedAlbums > 0) albumCopy.albumCount(removedAlbums) else ""
+                    ).filter(String::isNotBlank).joinToString(" · ")
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.removeTracksFromPlaylist(playlist.id, tracksToRemove)
+                    viewModel.removePlaylistItems(playlist.id, itemsToRemove)
                     selectedKeys = clearPlaylistTrackSelection()
                     selectionMode = false
-                    tracksToRemove = emptyList()
+                    itemsToRemove = emptyList()
                 }) { Text(strings.remove) }
             },
             dismissButton = {
-                TextButton(onClick = { tracksToRemove = emptyList() }) { Text(strings.cancel) }
+                TextButton(onClick = { itemsToRemove = emptyList() }) { Text(strings.cancel) }
             }
         )
     }
@@ -2029,3 +2083,23 @@ internal fun LevyraPlaylistDetailScreen(
         )
     }
 }
+
+private data class PlaylistItemReorderPresentation(
+    val artworkUrl: String,
+    val title: String,
+    val subtitle: String
+)
+
+private fun playlistItemReorderPresentation(item: PlaylistItem, albumLabel: String): PlaylistItemReorderPresentation =
+    when (item) {
+        is PlaylistItem.Song -> PlaylistItemReorderPresentation(
+            artworkUrl = item.track.largeThumbnailUrl.ifBlank { item.track.thumbnailUrl },
+            title = item.track.title,
+            subtitle = item.track.artist
+        )
+        is PlaylistItem.Album -> PlaylistItemReorderPresentation(
+            artworkUrl = item.entry.artworkUrl,
+            title = item.entry.album.title,
+            subtitle = listOf(albumLabel, item.entry.album.artist).filter(String::isNotBlank).joinToString(" · ")
+        )
+    }

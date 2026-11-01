@@ -24,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.luc4n3x.levyra.domain.playableTrackCount
 import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.ui.components.LevyraExpressiveIconButton
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
@@ -72,7 +73,7 @@ internal fun LibraryPlaylistShelf(
                         }
                     }
                     Text(playlist.name, style = LevyraType.cardTitle, color = colors.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Text(strings.formatTrackCount(playlist.size), style = LevyraType.caption, color = colors.onSurfaceVariant)
+                    Text(strings.formatTrackCount(playlist.playableTrackCount), style = LevyraType.caption, color = colors.onSurfaceVariant)
                 }
             }
         }

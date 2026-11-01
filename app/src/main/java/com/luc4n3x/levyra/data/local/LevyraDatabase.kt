@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-const val LEVYRA_DATABASE_VERSION = 26
+const val LEVYRA_DATABASE_VERSION = 27
 
 @Database(
     entities = [
@@ -15,6 +15,7 @@ const val LEVYRA_DATABASE_VERSION = 26
         DownloadEntity::class,
         PlaylistEntity::class,
         PlaylistTrackEntity::class,
+        PlaylistAlbumEntity::class,
         ListenEventEntity::class,
         PlaybackQueueItemEntity::class,
         PlaybackQueueStateEntity::class,
@@ -833,6 +834,44 @@ abstract class LevyraDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_26_27 = object : Migration(26, 27) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS playlist_albums (
+                        entryId TEXT NOT NULL PRIMARY KEY,
+                        playlistId TEXT NOT NULL,
+                        albumKey TEXT NOT NULL,
+                        position INTEGER NOT NULL,
+                        title TEXT NOT NULL,
+                        artist TEXT NOT NULL,
+                        year TEXT NOT NULL,
+                        thumbnailUrl TEXT NOT NULL,
+                        query TEXT NOT NULL,
+                        browseId TEXT NOT NULL,
+                        artistBrowseId TEXT NOT NULL,
+                        audioPlaylistId TEXT NOT NULL,
+                        explicit INTEGER NOT NULL,
+                        releaseDate TEXT NOT NULL,
+                        upc TEXT NOT NULL,
+                        canonicalUrl TEXT NOT NULL,
+                        metadataProvider TEXT NOT NULL,
+                        metadataConfidence INTEGER NOT NULL,
+                        releaseType TEXT NOT NULL,
+                        tracksJson TEXT NOT NULL,
+                        addedAt INTEGER NOT NULL,
+                        FOREIGN KEY(playlistId) REFERENCES playlists(id) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_playlist_albums_playlistId ON playlist_albums(playlistId)")
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_playlist_albums_playlistId_albumKey " +
+                        "ON playlist_albums(playlistId, albumKey)"
+                )
+            }
+        }
+
         internal val MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2,
             MIGRATION_2_3,
@@ -858,7 +897,8 @@ abstract class LevyraDatabase : RoomDatabase() {
             MIGRATION_22_23,
             MIGRATION_23_24,
             MIGRATION_24_25,
-            MIGRATION_25_26
+            MIGRATION_25_26,
+            MIGRATION_26_27
         )
 
         fun get(context: Context): LevyraDatabase {

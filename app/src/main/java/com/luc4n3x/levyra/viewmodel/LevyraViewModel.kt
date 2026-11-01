@@ -250,6 +250,8 @@ import com.luc4n3x.levyra.domain.MusicVideoPlaybackPreference
 import com.luc4n3x.levyra.domain.withPairedArtTrackAudio
 import com.luc4n3x.levyra.domain.OfflineDownloadTask
 import com.luc4n3x.levyra.domain.Playlist
+import com.luc4n3x.levyra.domain.items
+import com.luc4n3x.levyra.domain.playableTracks
 import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.YoutubeMusicVideoType
@@ -440,6 +442,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
+private const val PLAYLIST_ALBUM_RECOVERY_TIMEOUT_MS = 8_000L
 private const val ARTIST_PROFILE_UNAVAILABLE_ERROR = "artist_profile_unavailable"
 private const val ARTIST_INITIAL_BIOGRAPHY_WAIT_MS = 250L
 private const val RADIO_TAIL_MAX_APPEND_ROUNDS = 3
@@ -1408,6 +1411,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private sealed interface DetailPage {
         data class AlbumPage(val detail: AlbumDetail) : DetailPage
         data class ArtistPage(val profile: ArtistProfile, val listStateKey: String) : DetailPage
+        data class PlaylistPage(val playlistId: String) : DetailPage
     }
 
     private val detailBackStack = ArrayDeque<DetailPage>()
@@ -1484,6 +1488,33 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
                 refreshArtistMotionArtwork(page.profile)
                 startArtistLore(page.profile)
+            }
+            is DetailPage.PlaylistPage -> {
+                val cached = _state.value.playlists.firstOrNull { it.id == page.playlistId }
+                _state.update {
+                    it.copy(
+                        openPlaylist = cached,
+                        showAlbum = false,
+                        albumLoading = false,
+                        albumError = null,
+                        albumMotionArtwork = null,
+                        showArtist = false,
+                        artistLoading = false,
+                        artistError = null,
+                        artistMotionArtwork = null,
+                        detailReturnTarget = DetailReturnTarget.None
+                    )
+                }
+                viewModelScope.launch {
+                    val fresh = playlistStore.load(page.playlistId)
+                    _state.update { current ->
+                        if (current.openPlaylist?.id == page.playlistId || (cached == null && !current.showAlbum && !current.showArtist)) {
+                            current.copy(openPlaylist = fresh)
+                        } else {
+                            current
+                        }
+                    }
+                }
             }
         }
         return true
@@ -4174,6 +4205,98 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun addAlbumToPlaylist(playlistId: String, album: AlbumHit, tracks: List<Track>) {
+        if (tracks.isEmpty()) return
+        viewModelScope.launch {
+            val result = runCatchingPreservingCancellation {
+                playlistStore.addAlbum(playlistId, album, tracks.map { it.copy(streamUrl = "") })
+            }.onFailure { Timber.w(it, "Playlist album add failed") }
+                .getOrDefault(com.luc4n3x.levyra.data.PlaylistAlbumAddResult.Unavailable)
+            loadPlaylists()
+            refreshOpenPlaylist(playlistId)
+            _state.update {
+                val copy = com.luc4n3x.levyra.ui.i18n.playlistAlbumCopy(it.languageCode)
+                val playlistName = it.playlists.firstOrNull { playlist -> playlist.id == playlistId }?.name.orEmpty()
+                it.copy(
+                    offlineExportMessage = when (result) {
+                        com.luc4n3x.levyra.data.PlaylistAlbumAddResult.Added -> copy.addedTo(playlistName)
+                        com.luc4n3x.levyra.data.PlaylistAlbumAddResult.AlreadyPresent -> copy.alreadyInPlaylist
+                        com.luc4n3x.levyra.data.PlaylistAlbumAddResult.Unavailable -> copy.addFailed
+                    }
+                )
+            }
+        }
+    }
+
+    fun createPlaylistWithAlbum(name: String, album: AlbumHit, tracks: List<Track>) {
+        if (tracks.isEmpty() || name.isBlank()) return
+        viewModelScope.launch {
+            val created = runCatchingPreservingCancellation {
+                playlistStore.createWithAlbum(name, album, tracks.map { it.copy(streamUrl = "") })
+            }.onFailure { Timber.w(it, "Playlist creation with album failed") }.getOrNull()
+            loadPlaylists()
+            _state.update {
+                val copy = com.luc4n3x.levyra.ui.i18n.playlistAlbumCopy(it.languageCode)
+                it.copy(offlineExportMessage = if (created != null) copy.addedTo(created.name) else copy.addFailed)
+            }
+        }
+    }
+
+    fun removePlaylistItems(playlistId: String, items: List<com.luc4n3x.levyra.domain.PlaylistItem>) {
+        val trackEntryIds = items.filterIsInstance<com.luc4n3x.levyra.domain.PlaylistItem.Song>()
+            .mapNotNull { it.track.playlistEntryId.takeIf(String::isNotBlank) }
+            .toSet()
+        val albumEntryIds = items.filterIsInstance<com.luc4n3x.levyra.domain.PlaylistItem.Album>()
+            .mapTo(hashSetOf()) { it.entry.entryId }
+        val legacyTrackIds = items.filterIsInstance<com.luc4n3x.levyra.domain.PlaylistItem.Song>()
+            .filter { it.track.playlistEntryId.isBlank() }
+            .map { it.track.id }
+            .filter(String::isNotBlank)
+            .toSet()
+        if (trackEntryIds.isEmpty() && albumEntryIds.isEmpty() && legacyTrackIds.isEmpty()) return
+        viewModelScope.launch {
+            playlistStore.removeEntries(playlistId, trackEntryIds, albumEntryIds)
+            if (legacyTrackIds.isNotEmpty()) playlistStore.removeTracks(playlistId, legacyTrackIds)
+            loadPlaylists()
+            refreshOpenPlaylist(playlistId)
+        }
+    }
+
+    fun reorderPlaylistItems(playlistId: String, orderedItems: List<com.luc4n3x.levyra.domain.PlaylistItem>) {
+        val slots = orderedItems.map { item ->
+            when (item) {
+                is com.luc4n3x.levyra.domain.PlaylistItem.Song ->
+                    com.luc4n3x.levyra.domain.PlaylistLayoutSlot(item.track.playlistEntryId, isAlbum = false)
+                is com.luc4n3x.levyra.domain.PlaylistItem.Album ->
+                    com.luc4n3x.levyra.domain.PlaylistLayoutSlot(item.entry.entryId, isAlbum = true)
+            }
+        }
+        viewModelScope.launch {
+            var saved = slots.none { it.entryId.isBlank() } && playlistStore.reorderItems(playlistId, slots)
+            if (!saved && orderedItems.none { it is com.luc4n3x.levyra.domain.PlaylistItem.Album }) {
+                playlistStore.reorder(
+                    playlistId,
+                    orderedItems.filterIsInstance<com.luc4n3x.levyra.domain.PlaylistItem.Song>().map { it.track }
+                )
+                saved = true
+            }
+            loadPlaylists()
+            refreshOpenPlaylist(playlistId)
+            _state.update {
+                it.copy(
+                    offlineExportMessage = if (saved) "Ordine playlist salvato"
+                    else LevyraStrings.forCode(it.languageCode).mixLabSaveFailed
+                )
+            }
+        }
+    }
+
+    fun openPlaylistAlbum(entry: com.luc4n3x.levyra.domain.PlaylistAlbumEntry) {
+        val playlistId = _state.value.openPlaylist?.id
+        if (playlistId != null) pushDetailPage(DetailPage.PlaylistPage(playlistId))
+        openAlbumInternal(entry.album, DetailReturnTarget.None)
+    }
+
     fun removeFromPlaylist(playlistId: String, trackId: String) {
         viewModelScope.launch {
             playlistStore.removeTrack(playlistId, trackId)
@@ -4279,11 +4402,85 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     ) {
         viewModelScope.launch {
             val pl = playlistStore.load(playlistId) ?: return@launch
-            val tracks = arrange(pl.tracks)
-            if (tracks.isEmpty()) return@launch
-            val start = startTrackId?.let { id -> tracks.firstOrNull { it.id == id } } ?: autoplayStartTrack(tracks)
-            playFrom(tracks, start, loopOnCompletion = true)
+            if (pl.albums.isEmpty()) {
+                val tracks = arrange(pl.tracks)
+                if (tracks.isEmpty()) return@launch
+                val start = startTrackId?.let { id -> tracks.firstOrNull { it.id == id } } ?: autoplayStartTrack(tracks)
+                playFrom(tracks, start, loopOnCompletion = true)
+                return@launch
+            }
+            val items = withPlayableAlbums(pl).items()
+            val startKey = startTrackId?.let { id ->
+                items.firstOrNull { it is com.luc4n3x.levyra.domain.PlaylistItem.Song && it.track.id == id }?.key
+            }
+            playPlaylistPlan(items, startKey, shuffle = false)
         }
+    }
+
+    fun playPlaylistItems(
+        playlistId: String,
+        startItemKey: String? = null,
+        shuffle: Boolean = false,
+        arrangeItems: (List<com.luc4n3x.levyra.domain.PlaylistItem>) -> List<com.luc4n3x.levyra.domain.PlaylistItem> = { it }
+    ) {
+        viewModelScope.launch {
+            val pl = playlistStore.load(playlistId) ?: return@launch
+            playPlaylistPlan(arrangeItems(withPlayableAlbums(pl).items()), startItemKey, shuffle)
+        }
+    }
+
+    private fun playPlaylistPlan(
+        items: List<com.luc4n3x.levyra.domain.PlaylistItem>,
+        startKey: String?,
+        shuffle: Boolean
+    ) {
+        val plan = com.luc4n3x.levyra.domain.expandPlaylistQueue(
+            items,
+            startKey,
+            { track -> com.luc4n3x.levyra.player.queue.playbackQueueIdentity(track) }
+        )
+        if (plan.tracks.isEmpty()) {
+            _state.update {
+                it.copy(offlineExportMessage = com.luc4n3x.levyra.ui.i18n.playlistAlbumCopy(it.languageCode).albumUnavailable)
+            }
+            return
+        }
+        if (shuffle) {
+            val shuffled = plan.tracks.shuffled()
+            playFrom(shuffled, shuffled.first())
+            return
+        }
+        val start = if (startKey == null) autoplayStartTrack(plan.tracks) else plan.tracks[plan.startIndex]
+        playFrom(plan.tracks, start, loopOnCompletion = true)
+    }
+
+    private suspend fun withPlayableAlbums(playlist: Playlist): Playlist {
+        val missing = playlist.albums.filter { it.tracks.isEmpty() }
+        if (missing.isEmpty()) return playlist
+        val languageCode = _state.value.languageCode
+        val recovered = coroutineScope {
+            missing.map { entry ->
+                async {
+                    val tracks = withTimeoutOrNull(PLAYLIST_ALBUM_RECOVERY_TIMEOUT_MS) {
+                        runCatchingPreservingCancellation { providerRouter.albumDetail(entry.album, languageCode) }
+                            .onFailure { Timber.w(it, "Playlist album recovery failed") }
+                            .getOrNull()?.tracks
+                    }.orEmpty()
+                    if (tracks.isNotEmpty()) playlistStore.refreshAlbumTracks(playlist.id, entry.entryId, tracks)
+                    entry.entryId to tracks
+                }
+            }.awaitAll().toMap()
+        }
+        if (recovered.values.any { it.isEmpty() }) {
+            _state.update {
+                it.copy(offlineExportMessage = com.luc4n3x.levyra.ui.i18n.playlistAlbumCopy(it.languageCode).albumUnavailable)
+            }
+        }
+        return playlist.copy(
+            albums = playlist.albums.map { entry ->
+                recovered[entry.entryId]?.takeIf(List<Track>::isNotEmpty)?.let { entry.copy(tracks = it) } ?: entry
+            }
+        )
     }
 
     private suspend fun refreshOpenPlaylist(playlistId: String) {
@@ -9077,7 +9274,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             canonicalId = playlist.id,
             title = playlist.name,
             artworkUrl = playlist.coverUrl,
-            tracks = playlist.tracks
+            tracks = playlist.items().flatMap { it.playableTracks() }.distinctBy { it.id }
         )
     }
 
