@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="185" height="56" viewBox="0 0 185 56" role="img" aria-label="Download Levyra for Windows">
 <title>Download Levyra for Windows</title>
-<rect width="185" height="56" rx="28" fill="#3A4656"/>
-<g transform="translate(17 15) scale(.52)" fill="#EAF0F8"><rect x="0" y="0" width="23" height="23" rx="3"/><rect x="27" y="0" width="23" height="23" rx="3"/><rect x="0" y="27" width="23" height="23" rx="3"/><rect x="27" y="27" width="23" height="23" rx="3"/></g>
-<text x="56" y="35" fill="#EAF0F8" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="17.5" font-weight="650" letter-spacing="-0.3">Windows</text>
+<path d="M 22 0 H 175 Q 185 0 185 10 V 34 Q 185 56 163 56 H 10 Q 0 56 0 46 V 22 Q 0 0 22 0 Z" fill="#3A4656"/>
+<g transform="translate(10 11) scale(.66)" fill="#EAF0F8"><rect x="0" y="0" width="23" height="23" rx="3"/><rect x="27" y="0" width="23" height="23" rx="3"/><rect x="0" y="27" width="23" height="23" rx="3"/><rect x="27" y="27" width="23" height="23" rx="3"/></g>
+<text x="61" y="35.1" fill="#EAF0F8" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="17.8" font-weight="680" letter-spacing="-0.35">Windows</text>
 </svg>

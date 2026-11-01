@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="126" height="38" viewBox="0 0 126 38" role="img" aria-label="Levyra documentation">
 <title>Levyra documentation</title>
-<rect width="126" height="38" rx="19" fill="#EEE5EB"/>
-<g transform="translate(18 19)" style="color:#65485B">
+<path d="M 15 0 H 120 Q 126 0 126 6 V 23 Q 126 38 111 38 H 6 Q 0 38 0 32 V 15 Q 0 0 15 0 Z" fill="#EEE5EB"/>
+<g transform="translate(19 19) scale(1.38)" style="color:#65485B">
     <path d="M-5 -7 h7 l4 4 v10 h-11 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M2 -7 v4 h4 M-2 1 h5 M-2 5 h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
-<text x="34" y="24.1" fill="#65485B" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="11.2" font-weight="600" letter-spacing="-0.15">Documentation</text>
+<text x="41" y="23.8" fill="#65485B" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="10.9" font-weight="650" letter-spacing="-0.28">Documentation</text>
 </svg>

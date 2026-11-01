@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="126" height="38" viewBox="0 0 126 38" role="img" aria-label="Latest release v3.0.5">
 <title>Latest release v3.0.5</title>
-<rect width="126" height="38" rx="19" fill="#DCEBF3"/>
-<g transform="translate(18 19)" style="color:#264B5F">
+<path d="M 15 0 H 120 Q 126 0 126 6 V 23 Q 126 38 111 38 H 6 Q 0 38 0 32 V 15 Q 0 0 15 0 Z" fill="#DCEBF3"/>
+<g transform="translate(19 19) scale(1.38)" style="color:#264B5F">
     <path d="M-4 -8 h6 l5 5 -9 9 -6 -6 v-4 Z M1 -5 a1.5 1.5 0 1 0 0 3 A1.5 1.5 0 0 0 1 -5 Z" fill="currentColor"/>
   </g>
-<text x="34" y="24.1" fill="#264B5F" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="11.2" font-weight="600" letter-spacing="-0.15">Latest v3.0.5</text>
+<text x="41" y="23.8" fill="#264B5F" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="10.9" font-weight="650" letter-spacing="-0.28">Latest v3.0.5</text>
 </svg>
