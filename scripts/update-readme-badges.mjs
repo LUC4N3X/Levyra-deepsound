@@ -104,6 +104,22 @@ const makeArcScallopPath = (cx, cy, rValley, rPeak, lobes = 10) => {
   return d.join(' ')
 }
 
+const makeExpressivePillPath = (w, h, rLarge = 15.5, rSmall = 6.0) => {
+  const x0 = 0.75
+  const y0 = 0.75
+  const rL = Math.min(rLarge, h / 2)
+  const rS = Math.min(rSmall, h / 4)
+  return `M ${(x0 + rL).toFixed(2)} ${y0.toFixed(2)} ` +
+    `H ${(x0 + w - rS).toFixed(2)} ` +
+    `A ${rS.toFixed(2)} ${rS.toFixed(2)} 0 0 1 ${(x0 + w).toFixed(2)} ${(y0 + rS).toFixed(2)} ` +
+    `V ${(y0 + h - rL).toFixed(2)} ` +
+    `A ${rL.toFixed(2)} ${rL.toFixed(2)} 0 0 1 ${(x0 + w - rL).toFixed(2)} ${(y0 + h).toFixed(2)} ` +
+    `H ${(x0 + rS).toFixed(2)} ` +
+    `A ${rS.toFixed(2)} ${rS.toFixed(2)} 0 0 1 ${x0.toFixed(2)} ${(y0 + h - rS).toFixed(2)} ` +
+    `V ${(y0 + rL).toFixed(2)} ` +
+    `A ${rL.toFixed(2)} ${rL.toFixed(2)} 0 0 1 ${(x0 + rL).toFixed(2)} ${y0.toFixed(2)} Z`
+}
+
 const PILL_SCALLOP = makeArcScallopPath(16, 16, 9.2, 12.2, 10)
 
 const icons = {
@@ -118,11 +134,11 @@ const makePill = ({ label, value, icon, accentColor, mobile = false }) => {
   const title = `${label} ${value}`
   const width = mobile ? 126 : 130
   const height = mobile ? 31.0154 : 32
-  const rx = mobile ? 15.5 : 16
+  const pillPath = makeExpressivePillPath(128.5, 30.5, 15.5, 6.0)
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 130 32" role="img" aria-label="${escapeXml(title)}">
   <title>${escapeXml(title)}</title>
-  <rect x=".75" y=".75" width="128.5" height="30.5" rx="${rx}" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
+  <path d="${pillPath}" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
   <path d="${PILL_SCALLOP}" fill="${accentColor}"/>
   <g transform="translate(16 16)" style="color:#FFFFFF;">
     ${icon}

@@ -2,7 +2,7 @@
 """
 Generate Material 3 Expressive badges for Levyra.
 Applies:
-- Material 3 Expressive container: clean white surface with smooth rounded corners (rx=22)
+- Material 3 Expressive asymmetric slanted squircle container (r_large=27, r_small=10)
 - Distinctive signature M3 Expressive blooming rosettes (10-lobe & 12-lobe circular arc petals)
 - BIG, bold, crisp brand logos (26px-28px) centered inside the expressive flower
 - Authentic brand palettes: GitHub in official Dark Charcoal (#181717), F-Droid (#0284C7),
@@ -14,6 +14,23 @@ Applies:
 import math
 import os
 import re
+
+# Material 3 Expressive Asymmetric Slanted Squircle Path (185 x 56)
+def make_expressive_card_path(w=183.5, h=54.5, r_large=27.0, r_small=10.0):
+    x0, y0 = 0.75, 0.75
+    return (
+        f"M {x0 + r_large:.2f} {y0:.2f} "
+        f"H {x0 + w - r_small:.2f} "
+        f"A {r_small:.2f} {r_small:.2f} 0 0 1 {x0 + w:.2f} {y0 + r_small:.2f} "
+        f"V {y0 + h - r_large:.2f} "
+        f"A {r_large:.2f} {r_large:.2f} 0 0 1 {x0 + w - r_large:.2f} {y0 + h:.2f} "
+        f"H {x0 + r_small:.2f} "
+        f"A {r_small:.2f} {r_small:.2f} 0 0 1 {x0:.2f} {y0 + h - r_small:.2f} "
+        f"V {y0 + r_large:.2f} "
+        f"A {r_large:.2f} {r_large:.2f} 0 0 1 {x0 + r_large:.2f} {y0:.2f} Z"
+    )
+
+CARD_PATH = make_expressive_card_path(183.5, 54.5, 27.0, 10.0)
 
 # Material 3 Expressive Blooming Rosette Generators (using smooth circular convex arcs)
 def make_flower_10(cx, cy, r_valley=16.8, r_peak=21.2, lobes=10):
@@ -74,7 +91,7 @@ def make_primary_card(label, brand, icon_svg, brand_color, shape_path, label_col
 
     return f"""<svg xmlns="http://www.w3.org/2000/svg" width="185" height="56" viewBox="0 0 185 56" role="img" aria-label="{title}">
   <title>{title}</title>
-  <rect x=".75" y=".75" width="183.5" height="54.5" rx="22" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
+  <path d="{CARD_PATH}" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
   <path d="{shape_path}" fill="{brand_color}"/>
   {icon_svg}
   <text x="59" y="21" fill="{label_color}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".9">{label}</text>
@@ -91,7 +108,7 @@ def make_secondary_card(label, brand, icon_svg, brand_color, shape_path, label_c
 
     return f"""<svg xmlns="http://www.w3.org/2000/svg" width="185" height="56" viewBox="0 0 185 56" role="img" aria-label="{title}">
   <title>{title}</title>
-  <rect x=".75" y=".75" width="183.5" height="54.5" rx="22" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
+  <path d="{CARD_PATH}" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
   <path d="{shape_path}" fill="{brand_color}"/>
   {icon_svg}
   <text x="59" y="21" fill="{label_color}" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".9">{label}</text>
@@ -232,7 +249,7 @@ def main():
         with open(os.path.join(assets_dir, f_name), "w", encoding="utf-8", newline="\n") as f:
             f.write(badge_appteka)
 
-    print("Generated all M3 Expressive download badges with big logos & authentic colors.")
+    print("Generated all M3 Expressive download badges with expressive slanted squircle shape & big logos.")
 
 if __name__ == "__main__":
     main()
