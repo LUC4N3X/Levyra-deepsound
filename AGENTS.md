@@ -26,10 +26,6 @@ for non-trivial completion evidence.
 - `only this`, `solo questo`, and equivalents are hard scope boundaries.
 - Inspect the current implementation and nearby tests before changing behavior.
 - Fix the root cause with the smallest coherent change and reuse existing owners.
-- For implementation, prefer existing project code, then platform/standard APIs,
-  then installed dependencies before introducing new ones. Skip speculative
-  wrappers, abstractions, options, and config; never skip required validation,
-  error handling, security, accessibility, or tests to reduce code size.
 - Do not perform unrelated refactors, dependency churn, version changes, renames,
   cleanup, or architecture work.
 - Do not add explanatory source-code comments. Prefer clear names and structure.
