@@ -91,6 +91,7 @@ private val EmberSeekHeight = 56.dp
 private const val EmberSeekBarCount = 48
 private const val EmberSeekGapRatio = 0.32f
 private const val EmberSeekFloor = 0.08f
+private const val EmberSeedMask = 0xFFFFFFFFFFFFL
 private const val EmberUnplayedAlpha = 0.38f
 private const val EmberTopTint = 0.55f
 private const val EmberBottomDepth = 0.9f
@@ -490,7 +491,7 @@ internal fun emberSeekBars(waveform: FloatArray?, seed: String): FloatArray {
     }
     var state = seed.hashCode().toLong() xor 0x5DEECE66DL
     return FloatArray(EmberSeekBarCount) { index ->
-        state = (state * 0x5DEECE66DL + 0xBL) and ((1L shl 48) - 1)
+        state = state * 0x5DEECE66DL + 0xBL and EmberSeedMask
         val noise = (state ushr 17).toInt() % 1000 / 1000f
         val ramp = when {
             index < 4 -> 0.15f + index * 0.12f
