@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="185" height="56" viewBox="0 0 185 56" role="img" aria-label="DOWNLOAD FOR Windows">
   <title>DOWNLOAD FOR Windows</title>
-  <rect x=".75" y=".75" width="183.5" height="54.5" rx="22" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
+  <path d="M 27.75 0.75 H 174.25 A 10.00 10.00 0 0 1 184.25 10.75 V 28.25 A 27.00 27.00 0 0 1 157.25 55.25 H 10.75 A 10.00 10.00 0 0 1 0.75 45.25 V 27.75 A 27.00 27.00 0 0 1 27.75 0.75 Z" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
   <path d="M 25.55 11.39 A 4.45 4.45 0 0 1 34.45 11.39 A 4.45 4.45 0 0 1 42.16 15.84 A 4.45 4.45 0 0 1 46.61 23.55 A 4.45 4.45 0 0 1 46.61 32.45 A 4.45 4.45 0 0 1 42.16 40.16 A 4.45 4.45 0 0 1 34.45 44.61 A 4.45 4.45 0 0 1 25.55 44.61 A 4.45 4.45 0 0 1 17.84 40.16 A 4.45 4.45 0 0 1 13.39 32.45 A 4.45 4.45 0 0 1 13.39 23.55 A 4.45 4.45 0 0 1 17.84 15.84 A 4.45 4.45 0 0 1 25.55 11.39 Z" fill="#0078D4"/>
   <g transform="translate(17 15) scale(0.52)" fill="#FFFFFF"><rect x="0" y="0" width="23" height="23" rx="3"/><rect x="27" y="0" width="23" height="23" rx="3"/><rect x="0" y="27" width="23" height="23" rx="3"/><rect x="27" y="27" width="23" height="23" rx="3"/></g>
   <text x="59" y="21" fill="#0078D4" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" font-size="8.5" font-weight="700" letter-spacing=".9">DOWNLOAD FOR</text>
