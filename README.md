@@ -6,6 +6,8 @@
   <img src="docs/assets/levyra-github-banner.webp?v=urban-neon-night-20261016" alt="Levyra" width="100%">
 </picture>
 
+<img src="docs/branding/levyra-mark.svg" alt="Official Levyra logo" width="88" height="88">
+
 # Levyra
 
 **Open-source music player for Android and Windows.**
