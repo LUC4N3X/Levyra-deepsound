@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="126" height="38" viewBox="0 0 126 38" role="img" aria-label="GPL-3.0 license">
 <title>GPL-3.0 license</title>
-<path d="M 15 0 H 120 Q 126 0 126 6 V 23 Q 126 38 111 38 H 6 Q 0 38 0 32 V 15 Q 0 0 15 0 Z" fill="#E2ECE9"/>
-<g transform="translate(19 19) scale(1.38)" style="color:#355246">
+<path d="M 7 .8 C 3 .8 .8 3 .8 7 V 21 C .8 30 8 37.2 17 37.2 H 119 C 123 37.2 125.2 35 125.2 31 V 18 C 125.2 8 118 .8 108 .8 Z" fill="#317257"/>
+<g transform="translate(18.5 19) scale(1.28)" style="color:#FFFFFF">
     <path d="M0 -8 l7 3 v4 c0 5 -3 7 -7 9 -4 -2 -7 -4 -7 -9 v-4 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M-3 0 l2 2 4 -5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
-<text x="41" y="23.8" fill="#355246" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="10.9" font-weight="650" letter-spacing="-0.28">GPL-3.0</text>
+<text x="38" y="23.2" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="10.6" font-weight="650" letter-spacing="-.22" fill="#FFFFFF">GPL-3.0</text>
 </svg>

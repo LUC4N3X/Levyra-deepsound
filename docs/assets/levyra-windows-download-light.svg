@@ -1,6 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="185" height="56" viewBox="0 0 185 56" role="img" aria-label="Download Levyra for Windows">
 <title>Download Levyra for Windows</title>
-<path d="M 22 0 H 175 Q 185 0 185 10 V 34 Q 185 56 163 56 H 10 Q 0 56 0 46 V 22 Q 0 0 22 0 Z" fill="#E2E9F4"/>
-<g transform="translate(10 11) scale(.66)" fill="#364A66"><rect x="0" y="0" width="23" height="23" rx="3"/><rect x="27" y="0" width="23" height="23" rx="3"/><rect x="0" y="27" width="23" height="23" rx="3"/><rect x="27" y="27" width="23" height="23" rx="3"/></g>
-<text x="61" y="35.1" fill="#364A66" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="17.8" font-weight="680" letter-spacing="-0.35">Windows</text>
+<path d="M 11 .8 C 5 .8 .8 5 .8 11 V 30 C .8 44 12 55.2 26 55.2 H 157 C 172 55.2 184.2 43 184.2 28 V 9 C 184.2 4 181 .8 176 .8 Z" fill="#6453A9"/>
+<clipPath id="badge"><path d="M 11 .8 C 5 .8 .8 5 .8 11 V 30 C .8 44 12 55.2 26 55.2 H 157 C 172 55.2 184.2 43 184.2 28 V 9 C 184.2 4 181 .8 176 .8 Z"/></clipPath>
+<path d="M 0 0 H 38 C 64 10 67 29 61 48 C 54 55 38 56 H 0 Z" clip-path="url(#badge)" fill="#FFFFFF" opacity=".07"/>
+<g transform="translate(9 9) scale(.76)" fill="#FFFFFF"><rect x="0" y="0" width="23" height="23" rx="3"/><rect x="27" y="0" width="23" height="23" rx="3"/><rect x="0" y="27" width="23" height="23" rx="3"/><rect x="27" y="27" width="23" height="23" rx="3"/></g>
+<text x="67" y="36" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="18.3" font-weight="690" letter-spacing="-.35" fill="#FFFFFF">Windows</text>
 </svg>
