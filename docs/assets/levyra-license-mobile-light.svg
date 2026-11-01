@@ -1,13 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="126" height="31.3" viewBox="0 0 145 36" role="img" aria-label="LICENSE GPL-3.0">
-<title>LICENSE GPL-3.0</title>
-<defs><linearGradient id="tonal" x1="0" y1="0" x2="100%" y2="100%"><stop offset="0" stop-color="#F1F8FB"/><stop offset="1" stop-color="#E4F1F7"/></linearGradient></defs>
-<rect x=".75" y=".75" width="143.5" height="34.5" rx="15" fill="url(#tonal)" stroke="#427E94" stroke-opacity=".28" stroke-width="1.2"/>
-<path d="M20 5.5 C28 4.3 34 9.3 34 16.6 C35 23.8 30.2 30.5 22.1 30.5 C14.1 31.6 7.7 27.6 7.7 20.1 C6.5 12 10.8 6.5 20 5.5 Z" fill="#CEEBF3" fill-opacity=".94"/>
-<path d="M37.2 9.4 C39.7 14.3 39.7 21.9 37.2 26.5" stroke="#427E94" stroke-opacity=".36" stroke-width="1.2" fill="none" stroke-linecap="round"/>
-<circle cx="133" cy="10.5" r="2.3" fill="#427E94" fill-opacity=".43"/>
-<g transform="translate(21 18)" style="color:#427E94">
+<svg xmlns="http://www.w3.org/2000/svg" width="126" height="38" viewBox="0 0 126 38" role="img" aria-label="GPL-3.0 license">
+<title>GPL-3.0 license</title>
+<rect width="126" height="38" rx="19" fill="#E2ECE9"/>
+<g transform="translate(18 19)" style="color:#355246">
     <path d="M0 -8 l7 3 v4 c0 5 -3 7 -7 9 -4 -2 -7 -4 -7 -9 v-4 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M-3 0 l2 2 4 -5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
-<text x="43" y="14.6" fill="#477488" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif" font-size="7.7" font-weight="650" letter-spacing=".74">LICENSE</text>
-<text x="43" y="27.8" fill="#27323C" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif" font-size="13.5" font-weight="700" letter-spacing="-.25">GPL-3.0</text>
+<text x="34" y="24.1" fill="#355246" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="11.2" font-weight="600" letter-spacing="-0.15">GPL-3.0</text>
 </svg>

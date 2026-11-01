@@ -1,13 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="145" height="36" viewBox="0 0 145 36" role="img" aria-label="LATEST v3.0.5">
-<title>LATEST v3.0.5</title>
-<defs><linearGradient id="tonal" x1="0" y1="0" x2="100%" y2="100%"><stop offset="0" stop-color="#F8F4FC"/><stop offset="1" stop-color="#ECE5F7"/></linearGradient></defs>
-<rect x=".75" y=".75" width="143.5" height="34.5" rx="15" fill="url(#tonal)" stroke="#7555A1" stroke-opacity=".28" stroke-width="1.2"/>
-<path d="M20 5.5 C28 4.3 34 9.3 34 16.6 C35 23.8 30.2 30.5 22.1 30.5 C14.1 31.6 7.7 27.6 7.7 20.1 C6.5 12 10.8 6.5 20 5.5 Z" fill="#E3D6F3" fill-opacity=".94"/>
-<path d="M37.2 9.4 C39.7 14.3 39.7 21.9 37.2 26.5" stroke="#7555A1" stroke-opacity=".36" stroke-width="1.2" fill="none" stroke-linecap="round"/>
-<circle cx="133" cy="10.5" r="2.3" fill="#7555A1" fill-opacity=".43"/>
-<g transform="translate(21 18)" style="color:#7555A1">
+<svg xmlns="http://www.w3.org/2000/svg" width="145" height="40" viewBox="0 0 145 40" role="img" aria-label="Latest release v3.0.5">
+<title>Latest release v3.0.5</title>
+<rect width="145" height="40" rx="20" fill="#DCEBF3"/>
+<g transform="translate(20 20)" style="color:#264B5F">
     <path d="M-4 -8 h6 l5 5 -9 9 -6 -6 v-4 Z M1 -5 a1.5 1.5 0 1 0 0 3 A1.5 1.5 0 0 0 1 -5 Z" fill="currentColor"/>
   </g>
-<text x="43" y="14.6" fill="#6F538F" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif" font-size="7.7" font-weight="650" letter-spacing=".74">LATEST</text>
-<text x="43" y="27.8" fill="#27323C" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif" font-size="13.5" font-weight="700" letter-spacing="-.25">v3.0.5</text>
+<text x="38" y="25.1" fill="#264B5F" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="12.3" font-weight="600" letter-spacing="-0.15">Latest v3.0.5</text>
 </svg>

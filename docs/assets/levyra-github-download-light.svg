@@ -1,11 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="185" height="56" viewBox="0 0 185 56" role="img" aria-label="DOWNLOAD FROM GitHub">
-<title>DOWNLOAD FROM GitHub</title>
-<defs><linearGradient id="tonal" x1="0" y1="0" x2="100%" y2="100%"><stop offset="0" stop-color="#F5F9F6"/><stop offset="1" stop-color="#E7F0E9"/></linearGradient></defs>
-<rect x=".75" y=".75" width="183.5" height="54.5" rx="21" fill="url(#tonal)" stroke="#417B66" stroke-opacity=".28" stroke-width="1.2"/>
-<path d="M29 8.5 C40.5 6.4 49.2 15.7 49.2 26.4 C51.4 39.5 42.6 48.2 30.2 47.7 C17.9 49.6 9 43.3 9 30.8 C7 18.6 16 8.5 29 8.5 Z" fill="#D6EBE0" fill-opacity=".94"/>
-<path d="M55.5 10.7 C61.3 19.9 61.3 36.1 55.5 45.3" stroke="#417B66" stroke-opacity=".32" stroke-width="1.2" fill="none" stroke-linecap="round"/>
-<path d="M168.5 23 v9 m-3.7-3.5 3.7 3.7 3.7-3.7 M164 35.5 h9" fill="none" stroke="#417B66" stroke-width="1.65" stroke-opacity=".68" stroke-linecap="round" stroke-linejoin="round"/>
-<g transform="translate(17 15) scale(1.08)"><path fill="#417B66" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></g>
-<text x="63" y="22.3" fill="#557668" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif" font-size="8.1" font-weight="650" letter-spacing=".77">DOWNLOAD FROM</text>
-<text x="63" y="40.7" fill="#27323C" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif" font-size="17.3" font-weight="700" letter-spacing="-.25">GitHub</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="185" height="56" viewBox="0 0 185 56" role="img" aria-label="Download Levyra from GitHub">
+<title>Download Levyra from GitHub</title>
+<rect width="185" height="56" rx="28" fill="#2F6178"/>
+<g transform="translate(17 15) scale(1.08)"><path fill="#FFFFFF" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></g>
+<text x="56" y="35" fill="#FFFFFF" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="17.5" font-weight="650" letter-spacing="-0.3">GitHub</text>
 </svg>
