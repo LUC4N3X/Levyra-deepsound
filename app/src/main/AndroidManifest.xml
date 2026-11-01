@@ -330,6 +330,12 @@
             tools:node="merge" />
 
         <service
+            android:name=".feature.adaptive.AdaptiveListeningService"
+            android:exported="false"
+            android:foregroundServiceType="microphone"
+            android:stopWithTask="true" />
+
+        <service
             android:name=".feature.recognition.MusicRecognitionService"
             android:exported="false"
             android:foregroundServiceType="microphone|mediaProjection"

@@ -160,7 +160,13 @@ data class LevyraAudioSettings(
     val nightListeningPreset: NightListeningPreset = NightListeningPreset.BALANCED,
     val nightListeningTrimDb: Float = 0f,
     val smartAudioProfilesEnabled: Boolean = false,
-    val smartAudioProfiles: List<SmartAudioProfile> = emptyList()
+    val smartAudioProfiles: List<SmartAudioProfile> = emptyList(),
+    val smartResumeEnabled: Boolean = false,
+    val smartResumeProfile: SmartResumeProfile = SmartResumeProfile.BALANCED,
+    val smartResumeMinPauseSeconds: Int = SmartResumeCurve.DEFAULT_PAUSE_SECONDS,
+    val adaptiveListeningEnabled: Boolean = false,
+    val adaptiveListeningSensitivity: AdaptiveSensitivity = AdaptiveSensitivity.BALANCED,
+    val adaptiveListeningMaxBoostDb: Float = AdaptiveListeningLimits.DEFAULT_BOOST_DB
 ) {
     val effectiveReplayGainMode: ReplayGainMode
         get() = if (replayGainMode == ReplayGainMode.OFF && replayGainEnabled) ReplayGainMode.SMART else replayGainMode
@@ -245,7 +251,9 @@ data class LevyraAudioSettings(
             smartAudioProfiles = smartAudioProfiles
                 .mapNotNull(SmartAudioProfile::normalized)
                 .distinctBy(SmartAudioProfile::deviceKey)
-                .takeLast(SmartAudioProfile.MAX_PROFILES)
+                .takeLast(SmartAudioProfile.MAX_PROFILES),
+            smartResumeMinPauseSeconds = SmartResumeCurve.normalizedPauseSeconds(smartResumeMinPauseSeconds),
+            adaptiveListeningMaxBoostDb = AdaptiveListeningLimits.normalizedMaxBoost(adaptiveListeningMaxBoostDb)
         )
     }
 }

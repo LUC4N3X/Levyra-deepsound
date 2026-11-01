@@ -389,7 +389,7 @@ private fun ComposedDiscoverySection(handle: DiscoveryHomeHandle, kit: SkinHomeK
     val cards = remember(teaser, copy) {
         teaser.take(DISCOVERY_CARD_LIMIT).map { card ->
             ComposedCard(
-                "discovery-${card.key}", card.track.title, discoveryReasonLabel(card, copy),
+                "discovery-${card.key}", card.track.title, discoveryReasonLabel(card, copy, com.luc4n3x.levyra.ui.i18n.smartMusicCopy(strings.code)),
                 card.track.largeThumbnailUrl.ifBlank { card.track.thumbnailUrl }, track = card.track, onClick = handle.onOpen
             )
         }

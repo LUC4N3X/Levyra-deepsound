@@ -5,10 +5,10 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.viewmodel.playbackTitleKey
 import java.util.Locale
 
-enum class DiscoveryReasonKind { SimilarToTrack, FollowedArtist, NewRelease, SimilarArtist, Trending, Editorial }
+enum class DiscoveryReasonKind { SimilarToTrack, FollowedArtist, NewRelease, SimilarArtist, Trending, Editorial, SecondHop, Scene, Country, Decade, City }
 
 @Immutable
-data class DiscoveryReason(val kind: DiscoveryReasonKind, val seedTitle: String = "")
+data class DiscoveryReason(val kind: DiscoveryReasonKind, val seedTitle: String = "", val place: String = "")
 
 @Immutable
 data class DiscoveryCandidate(
@@ -19,7 +19,7 @@ data class DiscoveryCandidate(
 )
 
 @Immutable
-data class DiscoveryCard(val track: Track, val reason: DiscoveryReason) {
+data class DiscoveryCard(val track: Track, val reason: DiscoveryReason, val distance: Float = 0f) {
     val key: String get() = discoveryTrackKey(track)
 }
 
@@ -31,8 +31,15 @@ data class DiscoveryTasteProfile(
     val followedArtistKeys: Set<String>,
     val excludedArtistKeys: Set<String>,
     val knownTrackKeys: Set<String>,
-    val similarArtistNames: List<String>
+    val similarArtistNames: List<String>,
+    val tasteTags: Set<String> = emptySet()
 ) {
+    val similarArtistKeys: Set<String> by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        similarArtistNames.flatMapTo(HashSet(), ::discoveryArtistKeys)
+    }
+
+    fun nearSimilar(artist: String): Boolean = discoveryArtistKeys(artist).any { it in similarArtistKeys }
+
     val isColdStart: Boolean get() = seeds.size < COLD_START_SEEDS
 
     fun affinityFor(artist: String): Int = discoveryArtistKeys(artist).sumOf { artistAffinity[it] ?: 0 }
@@ -49,6 +56,7 @@ data class DiscoveryTasteProfile(
         private const val RECENT_WEIGHT = 6
         private const val PLAYLIST_WEIGHT = 3
         private const val MAX_ARTIST_WEIGHT = 80
+        private val GENERIC_TAGS = setOf("hit", "music", "new", "shared", "imported", "local", "offline", "chart", "video")
 
         fun from(
             languageCode: String,
@@ -58,7 +66,8 @@ data class DiscoveryTasteProfile(
             playlistTracks: List<Track>,
             followedArtists: List<String>,
             excludedArtists: List<String>,
-            similarArtists: List<String>
+            similarArtists: List<String>,
+            tasteTags: Set<String> = emptySet()
         ): DiscoveryTasteProfile {
             val weights = HashMap<String, Int>()
             fun credit(artist: String, amount: Int) {
@@ -82,7 +91,11 @@ data class DiscoveryTasteProfile(
                 followedArtistKeys = followedArtists.flatMapTo(HashSet(), ::discoveryArtistKeys),
                 excludedArtistKeys = excludedArtists.flatMapTo(HashSet(), ::discoveryArtistKeys),
                 knownTrackKeys = known,
-                similarArtistNames = similarArtists.filter(String::isNotBlank).distinctBy { it.lowercase(Locale.ROOT) }
+                similarArtistNames = similarArtists.filter(String::isNotBlank).distinctBy { it.lowercase(Locale.ROOT) },
+                tasteTags = (tasteTags + (recentListens + favorites).flatMap { it.moodTags })
+                    .map { it.trim().lowercase(Locale.ROOT) }
+                    .filter { it.length >= 3 && it !in GENERIC_TAGS }
+                    .toSet()
             )
         }
     }

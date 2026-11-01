@@ -35,7 +35,11 @@ internal fun DiscoveryHomeHost(
             state = discovery.state,
             onWarm = discovery::warm,
             onOpen = { openChange(true) },
-            onRetry = discovery::retry
+            onRetry = discovery::retry,
+            onOpenBubble = { level ->
+                discovery.setLevel(level)
+                openChange(true)
+            }
         )
     }
     CompositionLocalProvider(LocalHomeDiscovery provides handle) { content() }

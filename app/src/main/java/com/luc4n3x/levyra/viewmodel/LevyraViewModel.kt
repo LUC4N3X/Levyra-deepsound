@@ -467,6 +467,14 @@ private const val DISCOVERY_SOURCE_LIMIT = 16
 private const val DISCOVERY_REGIONAL_LIMIT = 30
 private const val DISCOVERY_RELEASE_RADAR_LIMIT = 5
 private const val DISCOVERY_ARTIST_LIMIT = 8
+private const val DISCOVERY_SCENE_LANGUAGE = "en"
+private const val MOOD_JOURNEY_EDITORIAL_LANGUAGE = "en"
+private const val MOOD_JOURNEY_PLAYLIST_LIMIT = 400
+private const val MOOD_JOURNEY_PREFERENCES = "levyra_mood_journey"
+private const val DISCOVERY_SCENE_PLAYLISTS = 2
+private const val DISCOVERY_SCOUT_PAGES = 5
+private const val DISCOVERY_SCOUT_PAGE = 40
+private const val DISCOVERY_SCOUT_ARTISTS = 10
 private const val DISCOVERY_RESOLVE_TIMEOUT_MS = 12_000L
 private const val DISCOVERY_MATCH_SEARCH_LIMIT = 8
 private const val DISCOVERY_MATCH_DURATION_TOLERANCE_MS = 20_000L
@@ -1157,6 +1165,45 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
     )
+    private val moodEvidenceSource = com.luc4n3x.levyra.feature.moodjourney.MoodEvidenceSource(
+        com.luc4n3x.levyra.feature.moodjourney.MoodEditorialGateway(
+            categories = { repository.moodCategories(MOOD_JOURNEY_EDITORIAL_LANGUAGE) },
+            playlists = { params ->
+                repository.moodPlaylists(params, MOOD_JOURNEY_EDITORIAL_LANGUAGE, 6)
+                    .map { com.luc4n3x.levyra.feature.moodjourney.EditorialPlaylistRef(it.playlistId, it.title) }
+            },
+            tracks = { playlistId -> repository.playlist(playlistId, _state.value.languageCode, 60)?.tracks.orEmpty() }
+        )
+    )
+
+    val moodJourney = MoodJourneyController(
+        scope = viewModelScope,
+        gateway = object : MoodJourneyGateway {
+            override suspend fun libraryTracks(): List<MoodJourneyLibraryTrack> {
+                val current = _state.value
+                val favorites = current.favorites.map { MoodJourneyLibraryTrack(it, 1f) }
+                val recent = current.recentListens.map { MoodJourneyLibraryTrack(it, 0.6f) }
+                val playlists = current.playlists.asSequence().flatMap { it.tracks.asSequence() }
+                    .take(MOOD_JOURNEY_PLAYLIST_LIMIT).map { MoodJourneyLibraryTrack(it, 0.4f) }.toList()
+                val home = current.homeSections.flatMap { it.tracks }.map { MoodJourneyLibraryTrack(it, 0.1f) }
+                return favorites + recent + playlists + home
+            }
+
+            override suspend fun editorialEvidence(): com.luc4n3x.levyra.feature.moodjourney.MoodEditorialEvidence = moodEvidenceSource.load()
+
+            override suspend fun exclusions(): ArtistExclusions = _state.value.artistExclusions
+
+            override suspend fun saveAsPlaylist(name: String, tracks: List<Track>): String =
+                playlistStore.createForStudio(name, tracks).id
+
+            override fun onSaved(playlistId: String) {
+                loadPlaylists()
+                viewModelScope.launch { refreshOpenPlaylist(playlistId) }
+            }
+        },
+        store = MoodJourneyCurveStore(application.applicationContext.getSharedPreferences(MOOD_JOURNEY_PREFERENCES, android.content.Context.MODE_PRIVATE))
+    )
+
     private val preferences = LevyraPreferences(application.applicationContext)
     private val _qobuzEnabled = MutableStateFlow(preferences.qobuzEnabled())
     val qobuzEnabled: StateFlow<Boolean> = _qobuzEnabled.asStateFlow()
@@ -4104,6 +4151,22 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun closeMixLab() = mixLab.close()
 
+    fun openMoodJourney() = moodJourney.open()
+
+    fun closeMoodJourney() = moodJourney.close()
+
+    fun playMoodJourney() {
+        val tracks = moodJourney.session.value?.result?.tracks.orEmpty()
+        if (tracks.isEmpty()) return
+        playAudioFrom(tracks, tracks.first())
+    }
+
+    fun addMoodJourneyToQueue() {
+        val tracks = moodJourney.session.value?.result?.tracks.orEmpty()
+        if (tracks.isEmpty()) return
+        addTracksToQueue(tracks)
+    }
+
     fun playMixLabResult(shuffled: Boolean = false) {
         val tracks = mixLab.session.value?.result?.tracks.orEmpty()
         if (tracks.isEmpty()) return
@@ -5128,6 +5191,34 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setNightListeningTrim(value: Float) {
         updateAudioSettings(_state.value.audioSettings.copy(nightListeningTrimDb = value))
+    }
+
+    fun setSmartResumeEnabled(value: Boolean) {
+        updateAudioSettings(_state.value.audioSettings.copy(smartResumeEnabled = value))
+    }
+
+    fun setSmartResumeProfile(value: com.luc4n3x.levyra.domain.SmartResumeProfile) {
+        updateAudioSettings(_state.value.audioSettings.copy(smartResumeProfile = value))
+    }
+
+    fun setSmartResumeMinPause(seconds: Int) {
+        updateAudioSettings(_state.value.audioSettings.copy(smartResumeMinPauseSeconds = seconds))
+    }
+
+    fun setAdaptiveListeningEnabled(value: Boolean) {
+        updateAudioSettings(_state.value.audioSettings.copy(adaptiveListeningEnabled = value))
+        if (!value) {
+            com.luc4n3x.levyra.player.AdaptiveListeningBus.configure(com.luc4n3x.levyra.player.AdaptiveListeningConfig(enabled = false))
+            com.luc4n3x.levyra.feature.adaptive.AdaptiveListeningService.stop(getApplication())
+        }
+    }
+
+    fun setAdaptiveListeningSensitivity(value: com.luc4n3x.levyra.domain.AdaptiveSensitivity) {
+        updateAudioSettings(_state.value.audioSettings.copy(adaptiveListeningSensitivity = value))
+    }
+
+    fun setAdaptiveListeningMaxBoost(value: Float) {
+        updateAudioSettings(_state.value.audioSettings.copy(adaptiveListeningMaxBoostDb = value))
     }
 
     fun setSmartAudioProfilesEnabled(value: Boolean) {
@@ -10520,8 +10611,81 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             editorial = { language ->
                 com.luc4n3x.levyra.domain.LevyraContentLocales.forLanguage(language).homeQueries.take(2)
                     .flatMap { query -> repository.search(query, DISCOVERY_SOURCE_LIMIT, language) }
+            },
+            sceneCategories = { discoveryScenes() },
+            sceneTracks = { params -> discoverySceneTracks(params) },
+            cityTracks = { city, rotation -> discoveryCityTracks(city, rotation) },
+            decadeTracks = { year, rotation -> discoveryDecadeTracks(year, rotation) },
+            distantRegions = { market, language ->
+                com.luc4n3x.levyra.feature.discovery.BubbleRegions.distant(
+                    com.luc4n3x.levyra.domain.ChartsCatalog.regions.map { it.id to it.label },
+                    market,
+                    language
+                )
             }
         )
+
+    private val discoveryScout by lazy { com.luc4n3x.levyra.feature.discovery.MusicBrainzScout() }
+    private val discoverySceneMutex = kotlinx.coroutines.sync.Mutex()
+    @Volatile private var discoverySceneCache: List<com.luc4n3x.levyra.domain.ExploreCategory> = emptyList()
+
+    internal suspend fun discoveryScenes(): List<com.luc4n3x.levyra.domain.ExploreCategory> = discoverySceneMutex.withLock {
+        discoverySceneCache.takeIf { it.isNotEmpty() }?.let { return@withLock it }
+        val all = repository.moodCategories(DISCOVERY_SCENE_LANGUAGE)
+        val genres = all.filter { it.section.contains("genre", ignoreCase = true) }
+            .ifEmpty { all.filter { com.luc4n3x.levyra.domain.MoodCategoryKind.fromTitle(it.title) == null } }
+            .filter { it.params.isNotBlank() && it.title.isNotBlank() }
+            .distinctBy { it.params }
+        if (genres.isNotEmpty()) discoverySceneCache = genres
+        genres
+    }
+
+    private suspend fun discoverySceneTracks(params: String): List<Track> {
+        val language = _state.value.languageCode
+        val playlists = repository.moodPlaylists(params, language, DISCOVERY_SCENE_PLAYLISTS * 3)
+            .filter { it.playlistId.isNotBlank() }
+            .shuffled(kotlin.random.Random(params.hashCode().toLong() + java.time.LocalDate.now().toEpochDay()))
+            .take(DISCOVERY_SCENE_PLAYLISTS)
+        return coroutineScope {
+            playlists.map { playlist ->
+                async { runCatchingPreservingCancellation { repository.playlist(playlist.playlistId, language, DISCOVERY_SOURCE_LIMIT * 2)?.tracks }.getOrNull().orEmpty() }
+            }.flatMap { it.await() }
+        }
+    }
+
+    private suspend fun discoveryCityTracks(city: String, rotation: Long): List<Track> {
+        val offset = Math.floorMod(rotation, DISCOVERY_SCOUT_PAGES.toLong()).toInt() * DISCOVERY_SCOUT_PAGE
+        val artists = discoveryScout.artistsFromArea(city, offset).ifEmpty { if (offset > 0) discoveryScout.artistsFromArea(city, 0) else emptyList() }
+        return coroutineScope {
+            artists.take(DISCOVERY_SCOUT_ARTISTS).map { artist ->
+                async { runCatchingPreservingCancellation { discoveryArtistTracks(artist.name).take(2) }.getOrDefault(emptyList()) }
+            }.flatMap { it.await() }
+        }
+    }
+
+    private suspend fun discoveryDecadeTracks(startYear: Int, rotation: Long): List<Track> {
+        val offset = Math.floorMod(rotation, DISCOVERY_SCOUT_PAGES.toLong()).toInt() * DISCOVERY_SCOUT_PAGE
+        val releases = discoveryScout.releasesFromDecade(startYear, offset)
+        val language = _state.value.languageCode
+        return coroutineScope {
+            releases.take(DISCOVERY_SCOUT_ARTISTS).map { release ->
+                async {
+                    runCatchingPreservingCancellation {
+                        val artistKey = com.luc4n3x.levyra.feature.discovery.discoveryPrimaryArtistKey(release.artist)
+                        val albumKey = playbackTitleKey(release.title)
+                        repository.search("${release.artist} ${release.title}", DISCOVERY_ARTIST_LIMIT, language)
+                            .filter { candidate ->
+                                artistKey.isNotBlank() &&
+                                    com.luc4n3x.levyra.feature.discovery.discoveryArtistKeys(candidate.artist).contains(artistKey) &&
+                                    (playbackTitleKey(candidate.album) == albumKey ||
+                                        candidate.year.take(4).toIntOrNull()?.let { it in startYear..startYear + 9 } == true)
+                            }
+                            .take(2)
+                    }.getOrDefault(emptyList())
+                }
+            }.flatMap { it.await() }
+        }
+    }
 
     private suspend fun discoveryNewMusic(market: String, language: String): List<Track> = coroutineScope {
         val apple = async {

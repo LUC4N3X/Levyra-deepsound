@@ -117,13 +117,18 @@ import kotlin.math.floor
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
+import com.luc4n3x.levyra.feature.discovery.BubbleLevel
+import com.luc4n3x.levyra.ui.i18n.SmartMusicCopy
+import com.luc4n3x.levyra.ui.i18n.SmartMusicText
+import com.luc4n3x.levyra.ui.i18n.smartMusicCopy
 
 @Stable
 internal class DiscoveryHomeHandle(
     val state: StateFlow<DiscoveryUiState>,
     val onWarm: () -> Unit,
     val onOpen: () -> Unit,
-    val onRetry: () -> Unit
+    val onRetry: () -> Unit,
+    val onOpenBubble: (BubbleLevel) -> Unit = {}
 )
 
 internal val LocalHomeDiscovery = staticCompositionLocalOf<DiscoveryHomeHandle?> { null }
@@ -159,7 +164,8 @@ private fun DiscoveryHomeSection(
         return
     }
     val loading = ui.status == DiscoveryFeedStatus.Loading || ui.status == DiscoveryFeedStatus.Idle
-    val model = DiscoveryTeaserModel(teaser, loading, copy, handle.onOpen)
+    val music = remember(strings.code) { smartMusicCopy(strings.code) }
+    val model = DiscoveryTeaserModel(teaser, loading, copy, music, handle.onOpen)
     when (style) {
         HomeStyle.Original -> OriginalDiscoveryTeaser(model, spec, animationsEnabled)
         HomeStyle.ExpressiveMax -> ExpressiveMaxDiscoveryTeaser(model, spec, animationsEnabled)
@@ -175,19 +181,25 @@ private class DiscoveryTeaserModel(
     val cards: List<DiscoveryCard>,
     val loading: Boolean,
     val copy: DiscoveryCopy,
+    val music: SmartMusicCopy,
     val onOpen: () -> Unit
 ) {
     val lead: DiscoveryCard? get() = cards.firstOrNull()
     fun card(index: Int): DiscoveryCard? = cards.getOrNull(index)
 }
 
-internal fun discoveryReasonLabel(card: DiscoveryCard, copy: DiscoveryCopy): String = when (card.reason.kind) {
+internal fun discoveryReasonLabel(card: DiscoveryCard, copy: DiscoveryCopy, music: SmartMusicCopy): String = when (card.reason.kind) {
     DiscoveryReasonKind.SimilarToTrack -> card.reason.seedTitle.takeIf(String::isNotBlank)?.let(copy::reasonBecause) ?: copy.reasonSimilarArtist
     DiscoveryReasonKind.FollowedArtist -> copy.reasonFollowedArtist
     DiscoveryReasonKind.NewRelease -> copy.reasonNewRelease
     DiscoveryReasonKind.SimilarArtist -> copy.reasonSimilarArtist
     DiscoveryReasonKind.Trending -> copy.reasonTrending
     DiscoveryReasonKind.Editorial -> copy.reasonEditorial
+    DiscoveryReasonKind.SecondHop -> music[SmartMusicText.ReasonSecondHop]
+    DiscoveryReasonKind.Scene -> music[SmartMusicText.ReasonScene].replace("{place}", card.reason.place)
+    DiscoveryReasonKind.Country -> music[SmartMusicText.ReasonCountry].replace("{place}", card.reason.place)
+    DiscoveryReasonKind.Decade -> music[SmartMusicText.ReasonDecade].replace("{place}", card.reason.place)
+    DiscoveryReasonKind.City -> music[SmartMusicText.ReasonCity].replace("{place}", card.reason.place)
 }
 
 @Composable
@@ -214,7 +226,7 @@ private fun DiscoveryLeadLine(model: DiscoveryTeaserModel, color: Color, style: 
     Text(
         text = when {
             model.loading && lead == null -> model.copy.loading
-            lead != null -> discoveryReasonLabel(lead, model.copy)
+            lead != null -> discoveryReasonLabel(lead, model.copy, model.music)
             else -> model.copy.lead
         },
         style = style,
@@ -356,7 +368,7 @@ private fun DiscoveryDeck(
                 ) {
                     Icon(Icons.Rounded.AutoAwesome, null, Modifier.size(14.dp))
                     AnimatedContent(
-                        targetState = discoveryReasonLabel(frontCard, model.copy),
+                        targetState = discoveryReasonLabel(frontCard, model.copy, model.music),
                         transitionSpec = {
                             fadeIn(tween(220, delayMillis = 60)) + slideInVertically(tween(220, delayMillis = 60)) { it / 3 } togetherWith
                                 fadeOut(tween(140))
@@ -583,7 +595,7 @@ private fun EditorialDiscoveryTeaser(model: DiscoveryTeaserModel, spec: HomeStyl
                 )
                 model.lead?.let { lead ->
                     Text(
-                        discoveryReasonLabel(lead, model.copy).uppercase(locale),
+                        discoveryReasonLabel(lead, model.copy, model.music).uppercase(locale),
                         style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.2.sp),
                         color = scheme.primary,
                         maxLines = 2,

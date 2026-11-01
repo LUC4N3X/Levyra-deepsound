@@ -100,7 +100,10 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.luc4n3x.levyra.domain.HomeStyle
+import com.luc4n3x.levyra.feature.discovery.BubbleLevel
 import com.luc4n3x.levyra.feature.discovery.DiscoveryCard
+import com.luc4n3x.levyra.feature.discovery.DiscoveryLens
+import com.luc4n3x.levyra.feature.discovery.DiscoveryRequest
 import com.luc4n3x.levyra.feature.discovery.DiscoveryDecision
 import com.luc4n3x.levyra.feature.discovery.DiscoveryPreviewStatus
 import com.luc4n3x.levyra.ui.LevyraIsLight
@@ -110,6 +113,8 @@ import com.luc4n3x.levyra.ui.components.rememberLevyraPlayMorphShape
 import com.luc4n3x.levyra.ui.homeCanvasColor
 import com.luc4n3x.levyra.ui.i18n.DiscoveryCopy
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.SmartMusicCopy
+import com.luc4n3x.levyra.ui.i18n.smartMusicCopy
 import com.luc4n3x.levyra.ui.i18n.discoveryCopy
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraText
@@ -193,6 +198,7 @@ internal fun DiscoveryScreen(
     val ui by viewModel.state.collectAsStateWithLifecycle()
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { discoveryCopy(strings.code) }
+    val music = remember(strings.code) { smartMusicCopy(strings.code) }
     val look = rememberDiscoveryLook(style)
     val activity = LocalActivity.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -230,9 +236,20 @@ internal fun DiscoveryScreen(
         DiscoveryBackdropLayer(look, ui.deck.current, animationsEnabled)
         Column(Modifier.fillMaxSize().statusBarsPadding().padding(bottom = bottomInset)) {
             DiscoveryTopBar(copy, look, ui, strings.back, onDismiss, viewModel::refresh, onOpenSaved)
+            BubbleOrbitSelector(
+                request = ui.request,
+                scenes = ui.scenes,
+                animated = animationsEnabled,
+                copy = music,
+                ink = if (look.backdrop == DiscoveryBackdrop.Bleed) Color.White else LevyraText,
+                onLevel = viewModel::setLevel,
+                onLens = viewModel::setLens,
+                onLoadScenes = viewModel::loadScenes,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
+            )
             Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 20.dp), contentAlignment = Alignment.Center) {
                 when {
-                    ui.deck.current != null -> DiscoveryCardStack(ui, look, copy, animationsEnabled, controller, decide, viewModel::togglePreview)
+                    ui.deck.current != null -> DiscoveryCardStack(ui, look, copy, music, animationsEnabled, controller, decide, viewModel::togglePreview)
                     ui.status == DiscoveryFeedStatus.Loading || ui.status == DiscoveryFeedStatus.Idle -> DiscoveryStatePanel(copy.loading, null, null, loading = true)
                     ui.status == DiscoveryFeedStatus.Error -> DiscoveryStatePanel(copy.error, copy.retry, viewModel::retry, loading = false)
                     else -> DiscoveryStatePanel(copy.empty, copy.refresh, viewModel::refresh, loading = false)
@@ -323,6 +340,7 @@ private fun DiscoveryTopBar(
 }
 
 private val DiscoveryCardChrome = 132.dp
+private val DiscoveryDistanceChrome = 36.dp
 
 internal class DiscoveryStackController {
     val offset = Animatable(0f)
@@ -358,6 +376,7 @@ private fun DiscoveryCardStack(
     ui: DiscoveryUiState,
     look: DiscoveryLook,
     copy: DiscoveryCopy,
+    music: SmartMusicCopy,
     animationsEnabled: Boolean,
     controller: DiscoveryStackController,
     onDecide: (DiscoveryDecision) -> Unit,
@@ -370,7 +389,8 @@ private fun DiscoveryCardStack(
     val density = LocalDensity.current
     BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         val widthPx = with(density) { maxWidth.toPx() }
-        val artSide = minOf(maxWidth - 32.dp, maxHeight - DiscoveryCardChrome - look.stackGap * 2).coerceAtLeast(96.dp)
+        val chrome = DiscoveryCardChrome + if (showsDistance(ui.request)) DiscoveryDistanceChrome else 0.dp
+        val artSide = minOf(maxWidth - 32.dp, maxHeight - chrome - look.stackGap * 2).coerceAtLeast(96.dp)
         controller.width = widthPx
         val threshold = widthPx * 0.3f
         LaunchedEffect(controller, animationsEnabled) {
@@ -386,7 +406,7 @@ private fun DiscoveryCardStack(
             val baseScale = 1f - 0.06f * depth
             val scale = baseScale + 0.06f * progress * if (depth == 1) 1f else 0.5f
             DiscoveryCardFace(
-                card, look, copy, artSide, preview = null,
+                card, look, copy, music, ui.request, artSide, preview = null,
                 modifier = Modifier
                     .graphicsLayer {
                         scaleX = scale
@@ -399,7 +419,7 @@ private fun DiscoveryCardStack(
         }
         val label = copy.cardDescription(current.track.title, current.track.artist)
         DiscoveryCardFace(
-            current, look, copy, artSide, preview = ui.preview.takeIf { it.isFor(current.key) }?.status,
+            current, look, copy, music, ui.request, artSide, preview = ui.preview.takeIf { it.isFor(current.key) }?.status,
             onTogglePreview = onTogglePreview,
             modifier = Modifier
                 .graphicsLayer {
@@ -407,7 +427,7 @@ private fun DiscoveryCardStack(
                     rotationZ = if (animationsEnabled) look.tilt * (controller.offset.value / widthPx) else 0f
                 }
                 .semantics {
-                    contentDescription = label + ". " + discoveryReasonLabel(current, copy)
+                    contentDescription = label + ". " + discoveryReasonLabel(current, copy, music)
                     customActions = listOf(
                         CustomAccessibilityAction(copy.save) { decide(DiscoveryDecision.Saved); true },
                         CustomAccessibilityAction(copy.skip) { decide(DiscoveryDecision.Dismissed); true }
@@ -460,6 +480,8 @@ private fun DiscoveryCardFace(
     card: DiscoveryCard,
     look: DiscoveryLook,
     copy: DiscoveryCopy,
+    music: SmartMusicCopy,
+    request: DiscoveryRequest,
     artSide: Dp,
     preview: DiscoveryPreviewStatus?,
     modifier: Modifier = Modifier,
@@ -471,7 +493,8 @@ private fun DiscoveryCardFace(
         Box(modifier.fillMaxWidth().height(artSide + DiscoveryCardChrome).clip(look.cardShape).background(scheme.surfaceContainerHigh)) {
             DiscoveryArtwork(card, Modifier.fillMaxSize(), highRes = true)
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.4f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.86f))))
-            DiscoveryReasonChip(card, copy, Color.Black.copy(alpha = 0.45f), Color.White, Modifier.align(Alignment.TopStart).padding(16.dp))
+            DiscoveryReasonChip(card, copy, music, Color.Black.copy(alpha = 0.45f), Color.White, Modifier.align(Alignment.TopStart).padding(16.dp))
+            if (showsDistance(request)) BubbleDistanceBadge(card.distance, music, Color.Black.copy(alpha = 0.45f), Color.White, Modifier.align(Alignment.TopEnd).padding(16.dp))
             Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(22.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(card.track.title, style = look.titleStyle, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(card.track.artist, style = MaterialTheme.typography.bodyLarge, color = Color.White.copy(alpha = 0.82f), maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -497,7 +520,7 @@ private fun DiscoveryCardFace(
     ) {
         Box(Modifier.align(Alignment.CenterHorizontally).size(artSide)) {
             DiscoveryArtwork(card, Modifier.fillMaxSize().clip(look.artworkShape), highRes = true)
-            DiscoveryReasonChip(card, copy, Color.Black.copy(alpha = 0.5f), Color.White, Modifier.align(Alignment.TopStart).padding(12.dp))
+            DiscoveryReasonChip(card, copy, music, Color.Black.copy(alpha = 0.5f), Color.White, Modifier.align(Alignment.TopStart).padding(12.dp))
         }
         Text(card.track.title, style = look.titleStyle, color = LevyraText, maxLines = 2, overflow = TextOverflow.Ellipsis)
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -506,6 +529,15 @@ private fun DiscoveryCardFace(
                 val album = card.track.album.takeUnless { discoveryTitleKey(it) == discoveryTitleKey(card.track.title) }.orEmpty()
                 val meta = listOf(album, card.track.year).filter(String::isNotBlank).joinToString(" · ")
                 if (meta.isNotBlank()) Text(meta, style = MaterialTheme.typography.bodySmall, color = LevyraMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (showsDistance(request)) {
+                    BubbleDistanceBadge(
+                        card.distance,
+                        music,
+                        MaterialTheme.colorScheme.tertiaryContainer,
+                        MaterialTheme.colorScheme.onTertiaryContainer,
+                        Modifier.padding(top = 4.dp)
+                    )
+                }
             }
             DiscoveryPreviewBadge(preview, copy, MaterialTheme.colorScheme.primary, onTogglePreview)
         }
@@ -513,11 +545,14 @@ private fun DiscoveryCardFace(
 }
 
 @Composable
-private fun DiscoveryReasonChip(card: DiscoveryCard, copy: DiscoveryCopy, container: Color, content: Color, modifier: Modifier = Modifier) {
+private fun showsDistance(request: DiscoveryRequest): Boolean = request.level != BubbleLevel.Near || request.lens != DiscoveryLens.Open
+
+@Composable
+private fun DiscoveryReasonChip(card: DiscoveryCard, copy: DiscoveryCopy, music: SmartMusicCopy, container: Color, content: Color, modifier: Modifier = Modifier) {
     Surface(color = container, contentColor = content, shape = RoundedCornerShape(10.dp), modifier = modifier) {
         Row(Modifier.padding(horizontal = 10.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Icon(Icons.Rounded.AutoAwesome, null, Modifier.size(14.dp))
-            Text(discoveryReasonLabel(card, copy), style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(discoveryReasonLabel(card, copy, music), style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }

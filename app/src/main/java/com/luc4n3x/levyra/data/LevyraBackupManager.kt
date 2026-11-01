@@ -1751,6 +1751,11 @@ internal fun backupAudioSettingsToJson(value: LevyraAudioSettings): JSONObject =
     .put("nightListeningTrimDb", value.nightListeningTrimDb.toDouble())
     .put("smartAudioProfilesEnabled", value.smartAudioProfilesEnabled)
     .put("smartAudioProfiles", JSONArray().apply { value.smartAudioProfiles.forEach { put(smartAudioProfileToJson(it)) } })
+    .put("smartResumeEnabled", value.smartResumeEnabled)
+    .put("smartResumeProfile", value.smartResumeProfile.storageValue)
+    .put("smartResumeMinPauseSeconds", value.smartResumeMinPauseSeconds)
+    .put("adaptiveListeningSensitivity", value.adaptiveListeningSensitivity.storageValue)
+    .put("adaptiveListeningMaxBoostDb", value.adaptiveListeningMaxBoostDb.toDouble())
     .put("playbackBuffer", JSONObject()
         .put("mode", value.playbackBuffer.mode.storageValue)
         .put("minSeconds", value.playbackBuffer.minBufferSeconds.toDouble())
@@ -1838,6 +1843,12 @@ internal fun backupAudioSettingsFromJson(json: JSONObject?): LevyraAudioSettings
         nightListeningTrimDb = json.optDouble("nightListeningTrimDb", 0.0).toFloat(),
         smartAudioProfilesEnabled = json.optBoolean("smartAudioProfilesEnabled", false),
         smartAudioProfiles = smartAudioProfilesFromJson(json.optJSONArray("smartAudioProfiles")?.toString().orEmpty()),
+        smartResumeEnabled = json.optBoolean("smartResumeEnabled", false),
+        smartResumeProfile = com.luc4n3x.levyra.domain.SmartResumeProfile.fromStorage(json.optString("smartResumeProfile")),
+        smartResumeMinPauseSeconds = json.optInt("smartResumeMinPauseSeconds", com.luc4n3x.levyra.domain.SmartResumeCurve.DEFAULT_PAUSE_SECONDS),
+        adaptiveListeningEnabled = false,
+        adaptiveListeningSensitivity = com.luc4n3x.levyra.domain.AdaptiveSensitivity.fromStorage(json.optString("adaptiveListeningSensitivity")),
+        adaptiveListeningMaxBoostDb = json.optDouble("adaptiveListeningMaxBoostDb", com.luc4n3x.levyra.domain.AdaptiveListeningLimits.DEFAULT_BOOST_DB.toDouble()).toFloat(),
         playbackBuffer = playbackBuffer
     ).normalized()
 }
