@@ -263,7 +263,7 @@ class AdaptiveListeningEngine(
         if (!previous.isFinite() || lastWindowAtMs < 0L) {
             smoothedDb = floorDb
         } else {
-            val dtSeconds = ((atMs - lastWindowAtMs).coerceIn(1L, 10_000L)) / 1000f
+            val dtSeconds = (atMs - lastWindowAtMs).coerceIn(1L, 10_000L) / 1000f
             val tau = if (floorDb > previous) RISE_TAU_SECONDS else FALL_TAU_SECONDS
             val alpha = 1f - exp(-dtSeconds / tau)
             smoothedDb = previous + (floorDb - previous) * alpha

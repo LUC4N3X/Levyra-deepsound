@@ -161,11 +161,17 @@ class MoodJourneyTest {
     }
 
     @Test
-    fun artistDominatedPoolReturnsAShortfallInsteadOfCrashing() {
+    fun artistDominatedPoolRelaxesSpacingAndKeepsLaterPinnedSongs() {
         val pool = List(80) { MoodJourneyCandidate(song("Song $it", if (it < 75) "Solo Artist" else "Guest $it"), MoodEstimate(0.5f, 0.5f, 1f)) }
-        val result = MoodJourneyEngine.build(pool, MoodJourneyRequest(MoodCurve.preset(MoodCurvePreset.Steady), trackCount = 40))
-        assertTrue(result.steps.size < 40)
-        assertEquals(40 - result.steps.size, result.shortfall)
+        val late = MoodJourneyCandidate(song("Finale", "Closing Guest"), MoodEstimate(0.95f, 0.5f, 1f))
+        val result = MoodJourneyEngine.build(
+            pool + late,
+            MoodJourneyRequest(MoodCurve.preset(MoodCurvePreset.Sunrise), trackCount = 40, pinnedKeys = listOf(MoodJourneyEngine.keyOf(late.track)))
+        )
+        assertEquals(40, result.steps.size)
+        assertEquals(0, result.shortfall)
+        assertTrue(result.steps.any { it.pinned })
+        assertEquals(0, result.metrics.duplicateRecordings)
     }
 
     @Test

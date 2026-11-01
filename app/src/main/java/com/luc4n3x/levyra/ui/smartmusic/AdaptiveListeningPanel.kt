@@ -107,8 +107,9 @@ internal fun AdaptiveListeningAutostart(settings: LevyraAudioSettings) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val config = adaptiveConfigOf(settings)
-    LaunchedEffect(config, lifecycleOwner) {
-        if (!config.enabled) return@LaunchedEffect
+    val stopped by AdaptiveListeningBus.stoppedByUser.collectAsStateWithLifecycle()
+    LaunchedEffect(config, stopped, lifecycleOwner) {
+        if (!config.enabled || stopped) return@LaunchedEffect
         lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             AdaptiveListeningService.start(context.applicationContext, config)
         }
@@ -127,11 +128,13 @@ internal fun AdaptiveListeningPanel(
     val copy = smartMusicCopy(LocalLevyraStrings.current.code)
     val scheme = MaterialTheme.colorScheme
     val context = LocalContext.current
-    val enabled = settings.adaptiveListeningEnabled
+    val stopped by AdaptiveListeningBus.stoppedByUser.collectAsStateWithLifecycle()
+    val enabled = settings.adaptiveListeningEnabled && !stopped
     val snapshot by AdaptiveListeningBus.snapshot.collectAsStateWithLifecycle()
     var consentOpen by rememberSaveable { mutableStateOf(false) }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) {
+            AdaptiveListeningBus.markStoppedByUser(false)
             onEnabled(true)
             AdaptiveListeningService.start(context.applicationContext, adaptiveConfigOf(settings).copy(enabled = true))
         } else {
@@ -141,6 +144,7 @@ internal fun AdaptiveListeningPanel(
     val requestEnable = {
         val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
         if (granted) {
+            AdaptiveListeningBus.markStoppedByUser(false)
             onEnabled(true)
             AdaptiveListeningService.start(context.applicationContext, adaptiveConfigOf(settings).copy(enabled = true))
         } else {
@@ -303,7 +307,7 @@ private fun AmbientGraph(snapshot: AdaptiveListeningSnapshot, description: Strin
     val reference = snapshot.referenceDb
     Canvas(modifier.clip(RoundedCornerShape(20.dp)).background(scheme.surfaceContainerLow).semantics { contentDescription = description }) {
         val range = GRAPH_CEILING_DB - GRAPH_FLOOR_DB
-        fun y(db: Float) = size.height - ((db.coerceIn(GRAPH_FLOOR_DB, GRAPH_CEILING_DB) - GRAPH_FLOOR_DB) / range) * size.height
+        fun y(db: Float) = size.height - (db.coerceIn(GRAPH_FLOOR_DB, GRAPH_CEILING_DB) - GRAPH_FLOOR_DB) / range * size.height
         val step = size.width / (60 - 1).toFloat()
         for (line in 1..3) {
             val gy = size.height * line / 4f
@@ -315,7 +319,7 @@ private fun AmbientGraph(snapshot: AdaptiveListeningSnapshot, description: Strin
             area.moveTo(step * offset, size.height)
             boosts.forEachIndexed { index, boost ->
                 val bx = step * (offset + index)
-                area.lineTo(bx, size.height - (boost / AdaptiveListeningLimits.MAX_BOOST_DB) * size.height * 0.35f)
+                area.lineTo(bx, size.height - boost / AdaptiveListeningLimits.MAX_BOOST_DB * size.height * 0.35f)
             }
             area.lineTo(step * (offset + boosts.lastIndex), size.height)
             area.close()

@@ -61,6 +61,48 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.border
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.rounded.Category
+import androidx.compose.material.icons.rounded.Explore
+import androidx.compose.material.icons.rounded.Flag
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.LocationCity
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Public
+import androidx.compose.material.icons.rounded.RocketLaunch
+import androidx.compose.material.icons.rounded.TripOrigin
+import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonDefaults
+import androidx.compose.material3.toShape
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
+import kotlin.math.abs
 import com.luc4n3x.levyra.domain.ChartsCatalog
 import com.luc4n3x.levyra.domain.ExploreCategory
 import com.luc4n3x.levyra.feature.discovery.BubbleLevel
@@ -90,13 +132,19 @@ private fun bubbleLevelHint(level: BubbleLevel): SmartMusicText = when (level) {
     BubbleLevel.OutOfOrbit -> SmartMusicText.BubbleOutHint
 }
 
+private fun bubbleLevelIcon(level: BubbleLevel): ImageVector = when (level) {
+    BubbleLevel.Near -> Icons.Rounded.TripOrigin
+    BubbleLevel.Adventurous -> Icons.Rounded.Explore
+    BubbleLevel.OutOfOrbit -> Icons.Rounded.RocketLaunch
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun BubbleOrbitSelector(
     request: DiscoveryRequest,
     scenes: List<ExploreCategory>,
     animated: Boolean,
     copy: SmartMusicCopy,
-    ink: Color,
     onLevel: (BubbleLevel) -> Unit,
     onLens: (DiscoveryLens) -> Unit,
     onLoadScenes: () -> Unit,
@@ -104,52 +152,93 @@ internal fun BubbleOrbitSelector(
 ) {
     val scheme = MaterialTheme.colorScheme
     val haptics = LocalLevyraHaptics.current
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            OrbitDiagram(request.level, animated, Modifier.size(44.dp))
-            BubbleLevel.entries.forEach { level ->
-                val active = level == request.level
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
-                    modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = 48.dp)
-                        .clip(RoundedCornerShape(if (active) 24.dp else 12.dp))
-                        .background(if (active) scheme.primaryContainer else scheme.surfaceContainerHigh.copy(alpha = 0.8f))
-                        .selectable(selected = active, role = Role.RadioButton) {
-                            haptics.perform(LevyraHapticAction.Confirm)
-                            onLevel(level)
-                        }
-                        .padding(horizontal = 6.dp, vertical = 8.dp)
-                ) {
-                    if (active) Box(Modifier.size(10.dp).clip(rememberSelectionMorph(true, animated)).background(scheme.primary))
-                    Text(
-                        copy[bubbleLevelName(level)],
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
-                        color = if (active) scheme.onPrimaryContainer else scheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            Modifier.padding(horizontal = 20.dp).fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            OrbitDiagram(request.level, animated, Modifier.size(48.dp))
+            Row(
+                modifier = Modifier.weight(1f).height(IntrinsicSize.Min).selectableGroup(),
+                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
+            ) {
+                BubbleLevel.entries.forEachIndexed { index, level ->
+                    val checked = level == request.level
+                    val label = copy[bubbleLevelName(level)]
+                    val weight by animateFloatAsState(
+                        targetValue = if (checked) 2.6f else 1f,
+                        animationSpec = if (animated) spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow) else snap(),
+                        label = "bubble-level-weight"
                     )
+                    ToggleButton(
+                        checked = checked,
+                        onCheckedChange = {
+                            if (!checked) {
+                                haptics.perform(LevyraHapticAction.Confirm)
+                                onLevel(level)
+                            }
+                        },
+                        shapes = when (index) {
+                            0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                            BubbleLevel.entries.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                            else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                        },
+                        colors = ToggleButtonDefaults.colors(
+                            containerColor = scheme.surfaceContainerHigh,
+                            contentColor = scheme.onSurface
+                        ),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                        modifier = Modifier
+                            .weight(weight)
+                            .fillMaxHeight()
+                            .heightIn(min = 48.dp)
+                            .semantics {
+                                role = Role.RadioButton
+                                contentDescription = label
+                            }
+                    ) {
+                        Icon(bubbleLevelIcon(level), contentDescription = null, modifier = Modifier.size(18.dp))
+                        AnimatedVisibility(visible = checked) {
+                            Row {
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    label,
+                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                                    maxLines = 1,
+                                    autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = 14.sp)
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
         AnimatedContent(
             targetState = request.level,
             transitionSpec = {
-                if (animated) (slideInVertically { it / 2 } + fadeIn()) togetherWith (slideOutVertically { -it / 2 } + fadeOut())
-                else fadeIn(snap()) togetherWith fadeOut(snap())
+                if (animated) {
+                    slideInVertically { it / 2 } + fadeIn() togetherWith slideOutVertically { -it / 2 } + fadeOut()
+                } else {
+                    fadeIn(snap()) togetherWith fadeOut(snap())
+                }
             },
-            label = "bubble-level-hint"
+            label = "bubble-level-hint",
+            modifier = Modifier.padding(horizontal = 20.dp)
         ) { level ->
-            Text(copy[bubbleLevelHint(level)], style = MaterialTheme.typography.bodySmall, color = ink.copy(alpha = 0.72f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                copy[bubbleLevelHint(level)],
+                style = MaterialTheme.typography.bodySmall,
+                color = scheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
-        LensRow(request.lens, scenes, copy, onLens, onLoadScenes)
+        LensRow(request.lens, scenes, animated, copy, onLens, onLoadScenes)
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun OrbitDiagram(level: BubbleLevel, animated: Boolean, modifier: Modifier = Modifier) {
     val scheme = MaterialTheme.colorScheme
@@ -160,22 +249,32 @@ private fun OrbitDiagram(level: BubbleLevel, animated: Boolean, modifier: Modifi
     )
     val angle = if (animated) {
         rememberInfiniteTransition(label = "bubble-orbit").animateFloat(
-            0f, 360f, infiniteRepeatable(tween(18_000, easing = LinearEasing), RepeatMode.Restart), label = "bubble-orbit-angle"
-        ).value
-    } else 45f
+            0f, 360f, infiniteRepeatable(tween(16_000, easing = LinearEasing), RepeatMode.Restart), label = "bubble-orbit-angle"
+        )
+    } else null
     Box(modifier, contentAlignment = Alignment.Center) {
         Canvas(Modifier.matchParentSize()) {
             val maxRadius = size.minDimension / 2f - 4.dp.toPx()
+            drawCircle(Brush.radialGradient(listOf(scheme.primary.copy(alpha = 0.22f), Color.Transparent), center, maxRadius), maxRadius)
             for (index in 0..2) {
                 val radius = maxRadius * (0.42f + 0.29f * index)
-                drawCircle(scheme.outlineVariant.copy(alpha = if (index.toFloat() <= ring + 0.01f) 0.75f else 0.3f), radius, style = Stroke(1.5.dp.toPx()))
+                val active = abs(index - ring) < 0.5f
+                drawCircle(
+                    color = if (active) scheme.tertiary else scheme.outlineVariant.copy(alpha = 0.45f),
+                    radius = radius,
+                    style = Stroke(
+                        width = if (active) 2.5.dp.toPx() else 1.dp.toPx(),
+                        pathEffect = if (index == 2 && !active) PathEffect.dashPathEffect(floatArrayOf(6f, 6f)) else null
+                    )
+                )
             }
             val radius = maxRadius * (0.42f + 0.29f * ring)
-            val radians = Math.toRadians(angle.toDouble())
+            val radians = Math.toRadians((angle?.value ?: 45f).toDouble())
             val satellite = Offset(center.x + radius * cos(radians).toFloat(), center.y + radius * sin(radians).toFloat())
-            drawCircle(scheme.tertiary, 5.dp.toPx(), satellite)
+            drawCircle(scheme.tertiary.copy(alpha = 0.3f), 8.dp.toPx(), satellite)
+            drawCircle(scheme.tertiary, 4.5.dp.toPx(), satellite)
         }
-        Box(Modifier.size(20.dp).clip(rememberOrbitMorph(level != BubbleLevel.Near, animated)).background(scheme.primary))
+        Box(Modifier.fillMaxSize(0.32f).clip(rememberOrbitMorph(level != BubbleLevel.Near, animated)).background(scheme.primary))
     }
 }
 
@@ -183,6 +282,7 @@ private fun OrbitDiagram(level: BubbleLevel, animated: Boolean, modifier: Modifi
 private fun LensRow(
     lens: DiscoveryLens,
     scenes: List<ExploreCategory>,
+    animated: Boolean,
     copy: SmartMusicCopy,
     onLens: (DiscoveryLens) -> Unit,
     onLoadScenes: () -> Unit
@@ -192,14 +292,17 @@ private fun LensRow(
     var decadeOpen by remember { mutableStateOf(false) }
     var cityOpen by rememberSaveable { mutableStateOf(false) }
     Row(
-        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(copy[SmartMusicText.BubbleExplore], style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        LensChip(copy[SmartMusicText.BubbleAnywhere], lens == DiscoveryLens.Open, dropdown = false) { onLens(DiscoveryLens.Open) }
+        LensChip(Icons.Rounded.Public, copy[SmartMusicText.BubbleAnywhere], lens == DiscoveryLens.Open, dropdown = false, animated = animated) {
+            onLens(DiscoveryLens.Open)
+        }
         Box {
-            LensChip((lens as? DiscoveryLens.Country)?.label ?: copy[SmartMusicText.BubbleCountry], lens is DiscoveryLens.Country, dropdown = true) { countryOpen = true }
+            LensChip(Icons.Rounded.Flag, (lens as? DiscoveryLens.Country)?.label ?: copy[SmartMusicText.BubbleCountry], lens is DiscoveryLens.Country, dropdown = true, animated = animated) {
+                countryOpen = true
+            }
             DropdownMenu(expanded = countryOpen, onDismissRequest = { countryOpen = false }) {
                 ChartsCatalog.regions.forEach { region ->
                     DropdownMenuItem(
@@ -213,7 +316,7 @@ private fun LensRow(
             }
         }
         Box {
-            LensChip((lens as? DiscoveryLens.Scene)?.title ?: copy[SmartMusicText.BubbleScene], lens is DiscoveryLens.Scene, dropdown = true) {
+            LensChip(Icons.Rounded.Category, (lens as? DiscoveryLens.Scene)?.title ?: copy[SmartMusicText.BubbleScene], lens is DiscoveryLens.Scene, dropdown = true, animated = animated) {
                 onLoadScenes()
                 sceneOpen = true
             }
@@ -230,7 +333,9 @@ private fun LensRow(
             }
         }
         Box {
-            LensChip((lens as? DiscoveryLens.Decade)?.let { "${it.startYear}s" } ?: copy[SmartMusicText.BubbleDecade], lens is DiscoveryLens.Decade, dropdown = true) { decadeOpen = true }
+            LensChip(Icons.Rounded.History, (lens as? DiscoveryLens.Decade)?.let { "${it.startYear}s" } ?: copy[SmartMusicText.BubbleDecade], lens is DiscoveryLens.Decade, dropdown = true, animated = animated) {
+                decadeOpen = true
+            }
             DropdownMenu(expanded = decadeOpen, onDismissRequest = { decadeOpen = false }) {
                 Decades.forEach { decade ->
                     DropdownMenuItem(
@@ -243,7 +348,9 @@ private fun LensRow(
                 }
             }
         }
-        LensChip((lens as? DiscoveryLens.City)?.name ?: copy[SmartMusicText.BubbleCity], lens is DiscoveryLens.City, dropdown = false) { cityOpen = true }
+        LensChip(Icons.Rounded.LocationCity, (lens as? DiscoveryLens.City)?.name ?: copy[SmartMusicText.BubbleCity], lens is DiscoveryLens.City, dropdown = false, animated = animated) {
+            cityOpen = true
+        }
     }
     if (cityOpen) {
         CityDialog(copy, onDismiss = { cityOpen = false }) { city ->
@@ -254,18 +361,40 @@ private fun LensRow(
 }
 
 @Composable
-private fun LensChip(label: String, selected: Boolean, dropdown: Boolean, onClick: () -> Unit) {
+private fun LensChip(icon: ImageVector, label: String, selected: Boolean, dropdown: Boolean, animated: Boolean, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
-    Surface(
-        color = if (selected) scheme.secondaryContainer else scheme.surfaceContainerHigh,
-        contentColor = if (selected) scheme.onSecondaryContainer else scheme.onSurface,
-        shape = RoundedCornerShape(topStart = 14.dp, topEnd = 6.dp, bottomEnd = 14.dp, bottomStart = 6.dp),
-        modifier = Modifier.heightIn(min = 40.dp).clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick)
+    val corner by animateDpAsState(
+        targetValue = if (selected) 22.dp else 12.dp,
+        animationSpec = if (animated) spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow) else snap(),
+        label = "bubble-lens-corner"
+    )
+    val shape = RoundedCornerShape(corner)
+    Row(
+        modifier = Modifier
+            .heightIn(min = 44.dp)
+            .clip(shape)
+            .background(if (selected) scheme.secondaryContainer else scheme.surfaceContainerHigh)
+            .selectable(selected = selected, role = Role.Tab, onClick = onClick)
+            .padding(start = 6.dp, end = 14.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Row(Modifier.padding(horizontal = 12.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (dropdown) Icon(Icons.Rounded.ArrowDropDown, contentDescription = null, modifier = Modifier.size(18.dp))
+        Box(
+            Modifier.size(30.dp).clip(rememberSelectionMorph(selected, animated)).background(if (selected) scheme.secondary else scheme.surfaceContainerHighest),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription = null, tint = if (selected) scheme.onSecondary else scheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
         }
+        Text(
+            label,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            color = if (selected) scheme.onSecondaryContainer else scheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.widthIn(max = 180.dp)
+        )
+        if (dropdown) Icon(Icons.Rounded.ArrowDropDown, contentDescription = null, tint = scheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
     }
 }
 
@@ -312,28 +441,84 @@ internal fun BubbleDistanceBadge(distance: Float, copy: SmartMusicCopy, containe
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-internal fun BubbleOrbitEntry(copy: SmartMusicCopy, animated: Boolean, onOpen: () -> Unit, modifier: Modifier = Modifier) {
+internal fun BubbleOrbitEntry(
+    copy: SmartMusicCopy,
+    animated: Boolean,
+    artworks: List<String>,
+    onOpen: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     val scheme = MaterialTheme.colorScheme
     val haptics = LocalLevyraHaptics.current
     Row(
         modifier
             .fillMaxWidth()
             .heightIn(min = 64.dp)
-            .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 12.dp, bottomEnd = 28.dp, bottomStart = 12.dp))
-            .background(scheme.surfaceContainerHigh)
-            .clickable {
+            .clip(RoundedCornerShape(20.dp))
+            .clickable(role = Role.Button) {
                 haptics.perform(LevyraHapticAction.Confirm)
                 onOpen()
             }
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .padding(horizontal = 4.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        OrbitDiagram(BubbleLevel.Adventurous, animated, Modifier.size(44.dp))
+        ArtworkConstellation(artworks, animated)
         Column(Modifier.weight(1f)) {
-            Text(copy[SmartMusicText.BubbleTitle], style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = scheme.onSurface)
-            Text(copy[SmartMusicText.BubbleEntry], style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(
+                copy[SmartMusicText.BubbleTitle],
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = scheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                copy[SmartMusicText.BubbleEntry],
+                style = MaterialTheme.typography.bodySmall,
+                color = scheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null, tint = scheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun ArtworkConstellation(artworks: List<String>, animated: Boolean) {
+    val scheme = MaterialTheme.colorScheme
+    val shapes = listOf(MaterialShapes.Cookie9Sided.toShape(), MaterialShapes.Clover4Leaf.toShape(), MaterialShapes.Sunny.toShape())
+    val fallback = listOf(scheme.tertiaryContainer, scheme.secondaryContainer, scheme.primaryContainer)
+    val spin = if (animated) {
+        rememberInfiniteTransition(label = "bubble-constellation").animateFloat(
+            0f, 360f, infiniteRepeatable(tween(40_000, easing = LinearEasing), RepeatMode.Restart), label = "bubble-constellation-spin"
+        )
+    } else null
+    Box(Modifier.size(width = 84.dp, height = 44.dp)) {
+        repeat(3) { index ->
+            val url = artworks.getOrNull(index)
+            Box(
+                Modifier
+                    .offset(x = (index * 20).dp)
+                    .size(44.dp)
+                    .graphicsLayer { rotationZ = (spin?.value ?: 0f) * if (index % 2 == 0) 1f else -1f }
+                    .clip(shapes[index])
+                    .background(fallback[index])
+                    .border(2.dp, scheme.surface, shapes[index])
+            ) {
+                if (url != null) {
+                    AsyncImage(
+                        model = url,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.matchParentSize().graphicsLayer { rotationZ = -((spin?.value ?: 0f) * if (index % 2 == 0) 1f else -1f) }
+                    )
+                }
+            }
         }
     }
 }

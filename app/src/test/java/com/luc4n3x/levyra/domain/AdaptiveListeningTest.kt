@@ -161,7 +161,7 @@ class AdaptiveListeningTest {
     @Test
     fun processingCostStaysBounded() {
         val meter = AmbientFrameMeter(16_000)
-        val second = ShortArray(16_000) { (random.nextInt(-3000, 3000)).toShort() }
+        val second = ShortArray(16_000) { random.nextInt(-3000, 3000).toShort() }
         val monitor = engine()
         val started = System.nanoTime()
         repeat(3600) {

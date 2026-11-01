@@ -11723,16 +11723,6 @@ private fun PersonalListeningShelf(
                 onPlayAll = onPlayAll
             )
         }
-        if (bubbleHandle != null) {
-            val strings = LocalLevyraStrings.current
-            HomeSectionInset {
-                com.luc4n3x.levyra.ui.discovery.BubbleOrbitEntry(
-                    copy = com.luc4n3x.levyra.ui.i18n.smartMusicCopy(strings.code),
-                    animated = LocalAnimationsEnabled.current,
-                    onOpen = { bubbleHandle.onOpenBubble(com.luc4n3x.levyra.feature.discovery.BubbleLevel.Adventurous) }
-                )
-            }
-        }
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val wall = maxWidth >= LevyraHomeDesign.OrbitWallMinWidth
             if (wall) {
@@ -11782,6 +11772,20 @@ private fun PersonalListeningShelf(
                         }
                     }
                 }
+            }
+        }
+        if (bubbleHandle != null) {
+            val strings = LocalLevyraStrings.current
+            val bubbleArtworks = remember(tracks) {
+                tracks.mapNotNull { track -> track.thumbnailUrl.ifBlank { track.largeThumbnailUrl }.takeIf(String::isNotBlank) }.distinct().take(3)
+            }
+            HomeSectionInset {
+                com.luc4n3x.levyra.ui.discovery.BubbleOrbitEntry(
+                    copy = com.luc4n3x.levyra.ui.i18n.smartMusicCopy(strings.code),
+                    animated = LocalAnimationsEnabled.current,
+                    artworks = bubbleArtworks,
+                    onOpen = { bubbleHandle.onOpenBubble(com.luc4n3x.levyra.feature.discovery.BubbleLevel.Adventurous) }
+                )
             }
         }
     }

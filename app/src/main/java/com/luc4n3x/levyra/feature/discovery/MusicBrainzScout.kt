@@ -33,7 +33,7 @@ class MusicBrainzScout(private val clock: () -> Long = System::currentTimeMillis
     }
 
     suspend fun releasesFromDecade(startYear: Int, offset: Int): List<ScoutRelease> {
-        val start = (startYear / 10) * 10
+        val start = startYear / 10 * 10
         val query = "firstreleasedate:[$start TO ${start + 9}] AND primarytype:album AND status:official"
         val body = get("release-group", query, offset) ?: return emptyList()
         return MusicBrainzParser.releaseGroups(body, start)

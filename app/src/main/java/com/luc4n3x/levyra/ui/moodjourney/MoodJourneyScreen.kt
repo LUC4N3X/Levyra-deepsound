@@ -312,7 +312,7 @@ private fun CurveEditor(
                 area.lineTo(px(1f), size.height - pad)
                 area.close()
                 val stops = curve.normalized.mapIndexed { index, point ->
-                    (index / (curve.normalized.size - 1f)) to lerp(calm, bright, point.valence)
+                    index / (curve.normalized.size - 1f) to lerp(calm, bright, point.valence)
                 }.toTypedArray()
                 drawPath(area, Brush.verticalGradient(listOf(bright.copy(alpha = 0.28f), calm.copy(alpha = 0.02f)), startY = pad, endY = size.height - pad))
                 drawPath(stroke, Brush.horizontalGradient(*stops, startX = pad, endX = size.width - pad), style = Stroke(width = 5.dp.toPx(), cap = StrokeCap.Round))
@@ -330,7 +330,7 @@ private fun CurveEditor(
             curve.points.forEachIndexed { index, point ->
                 val clean = point.clamped()
                 val count = curve.points.size
-                val targetX = pad + (index / (count - 1f)) * (widthPx - pad * 2) - pointPx / 2f
+                val targetX = pad + index / (count - 1f) * (widthPx - pad * 2) - pointPx / 2f
                 val targetY = pad + (1f - clean.energy) * (heightPx - pad * 2) - pointPx / 2f
                 val y by animateFloatAsState(targetY, if (animated) spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessHigh) else snap(), label = "mood-point-y")
                 val active = index == selected

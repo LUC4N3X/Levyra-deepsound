@@ -207,7 +207,7 @@ object MoodEvidence {
         val valence = if (valenceWeight > 0f) valenceSum / valenceWeight else 0.5f
         val evidence = energyWeight + 0.5f * valenceWeight
         val titleOnly = editorial.isEmpty() && track.moodTags.none { tagCues.containsKey(it.trim().lowercase(Locale.ROOT)) }
-        val confidence = (1f - exp(-evidence)).coerceIn(0f, 1f) * (if (energyWeight > 0f) 1f else 0.45f) * (if (titleOnly) 0.5f else 1f)
+        val confidence = (1f - exp(-evidence)).coerceIn(0f, 1f) * (if (energyWeight > 0f) 1f else 0.45f) * if (titleOnly) 0.5f else 1f
         return MoodEstimate(energy.coerceIn(0f, 1f), valence.coerceIn(0f, 1f), confidence)
     }
 }
@@ -277,6 +277,7 @@ object MoodJourneyEngine {
     private const val ENERGY_JUMP_WEIGHT = 2.2f
     private const val VALENCE_JUMP_WEIGHT = 0.9f
     private const val ADJACENT_ALBUM_PENALTY = 0.08f
+    private const val RELAXED_ARTIST_PENALTY = 0.05f
     private const val AVOID_PENALTY = 0.01f
     private const val AFFINITY_BONUS = 0.002f
     private const val ARTIST_SPACING = 2
@@ -413,11 +414,14 @@ object MoodJourneyEngine {
         var beam = listOf(BeamState(IntArray(count), 0, LongArray(words), 0f))
         for (slot in 0 until count) {
             val expansions = ArrayList<Expansion>(beam.size * slotCandidates[slot].size)
+            for (relaxed in booleanArrayOf(false, true)) {
+                if (expansions.isNotEmpty()) break
+                val pool = if (relaxed) relaxedCandidates(eligible.size, pinnedCandidates) else slotCandidates[slot]
             beam.forEachIndexed { parentIndex, state ->
-                for (candidateIndex in slotCandidates[slot]) {
+                for (candidateIndex in pool) {
                     if (state.used[candidateIndex ushr 6] and (1L shl (candidateIndex and 63)) != 0L) continue
                     val pinned = pinnedSlots[slot] == candidateIndex
-                    if (!pinned && violatesArtistRules(state, candidateIndex, artists, artistCap)) continue
+                    if (!pinned && !relaxed && violatesArtistRules(state, candidateIndex, artists, artistCap)) continue
                     val candidate = eligible[candidateIndex]
                     var step = fitCost(candidate.mood, targets[slot]) + (1f - candidate.mood.confidence) * UNCERTAINTY_WEIGHT
                     step -= candidate.affinity.coerceIn(0f, 1f) * AFFINITY_BONUS
@@ -428,8 +432,10 @@ object MoodJourneyEngine {
                         step += transitionCost(eligible[previous].mood, candidate.mood, targets[slot - 1], targets[slot])
                         if (albums[previous].isNotEmpty() && albums[previous] == albums[candidateIndex]) step += ADJACENT_ALBUM_PENALTY
                     }
+                    if (relaxed && violatesArtistRules(state, candidateIndex, artists, artistCap)) step += RELAXED_ARTIST_PENALTY
                     expansions += Expansion(parentIndex, candidateIndex, state.cost + step)
                 }
+            }
             }
             if (expansions.isEmpty()) break
             expansions.sortBy { it.cost }
@@ -467,6 +473,9 @@ object MoodJourneyEngine {
         }
         return assignment
     }
+
+    private fun relaxedCandidates(size: Int, pinned: Set<Int>): IntArray =
+        (0 until size).filterNot { it in pinned }.toIntArray()
 
     private fun nearest(eligible: List<MoodJourneyCandidate>, target: MoodPoint, excluded: Set<Int>, limit: Int): IntArray {
         val scored = ArrayList<Pair<Int, Float>>(eligible.size)

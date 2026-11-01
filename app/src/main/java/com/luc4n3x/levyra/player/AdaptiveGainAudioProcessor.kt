@@ -9,6 +9,7 @@ import com.luc4n3x.levyra.domain.AdaptiveListeningSnapshot
 import com.luc4n3x.levyra.domain.AdaptiveSensitivity
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import kotlin.math.abs
 import kotlin.math.log10
 import kotlin.math.pow
 import kotlin.math.roundToInt
@@ -46,6 +47,13 @@ object AdaptiveListeningBus {
 
     private val _playbackActive = MutableStateFlow(false)
     val playbackActive: StateFlow<Boolean> = _playbackActive.asStateFlow()
+
+    private val _stoppedByUser = MutableStateFlow(false)
+    val stoppedByUser: StateFlow<Boolean> = _stoppedByUser.asStateFlow()
+
+    fun markStoppedByUser(stopped: Boolean) {
+        _stoppedByUser.value = stopped
+    }
 
     fun configure(value: AdaptiveListeningConfig) {
         _config.value = value
@@ -109,11 +117,13 @@ class AdaptiveGainAudioProcessor(private val meterOutput: Boolean) : BaseAudioPr
         val sampleSize = if (floatSamples) 4 else 2
         val frames = remaining / (sampleSize * channels)
         val base = inputBuffer.position()
+        val limit = if (floatSamples || (target == 0f && appliedDb == 0f)) target else minOf(target, headroomDb(inputBuffer, base, frames * channels))
+        if (appliedDb > limit) appliedDb = limit.coerceAtLeast(0f)
         var gain = linear(appliedDb)
         var framesUntilGainUpdate = 0
         for (frame in 0 until frames) {
             if (framesUntilGainUpdate <= 0) {
-                appliedDb = stepToward(appliedDb, target, GAIN_UPDATE_FRAMES)
+                appliedDb = stepToward(appliedDb, limit, GAIN_UPDATE_FRAMES)
                 gain = linear(appliedDb)
                 framesUntilGainUpdate = GAIN_UPDATE_FRAMES
             }
@@ -134,6 +144,16 @@ class AdaptiveGainAudioProcessor(private val meterOutput: Boolean) : BaseAudioPr
         inputBuffer.position(inputBuffer.limit())
         output.flip()
         AdaptiveListeningBus.appliedBoostDb = appliedDb
+    }
+
+    private fun headroomDb(input: ByteBuffer, base: Int, samples: Int): Float {
+        var peak = 0
+        for (index in 0 until samples) {
+            val value = abs(input.getShort(base + index * 2).toInt())
+            if (value > peak) peak = value
+        }
+        if (peak == 0) return AdaptiveListeningLimits.MAX_BOOST_DB
+        return (20.0 * log10(HEADROOM_CEILING * 32768.0 / peak)).toFloat().coerceAtLeast(0f)
     }
 
     private fun stepToward(current: Float, target: Float, frames: Int): Float = when {
@@ -173,5 +193,6 @@ class AdaptiveGainAudioProcessor(private val meterOutput: Boolean) : BaseAudioPr
         const val GAIN_UPDATE_FRAMES = 64
         const val METER_WINDOW_MS = 250
         const val MAX_16_BIT = 0.9999695f
+        const val HEADROOM_CEILING = 0.98
     }
 }

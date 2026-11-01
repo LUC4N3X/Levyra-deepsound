@@ -132,7 +132,7 @@ private fun RewindGlyph(reach: Float, animated: Boolean, modifier: Modifier = Mo
             style = Stroke(width = stroke, cap = StrokeCap.Round)
         )
         val radius = arcSize.width / 2f
-        val angle = Math.toRadians((-90.0 - sweep))
+        val angle = Math.toRadians(-90.0 - sweep)
         val tip = Offset(center.x + radius * kotlin.math.cos(angle).toFloat(), center.y + radius * kotlin.math.sin(angle).toFloat())
         drawCircle(scheme.primary, stroke * 0.9f, tip)
     }

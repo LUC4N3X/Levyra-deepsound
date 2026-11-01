@@ -241,11 +241,10 @@ internal fun DiscoveryScreen(
                 scenes = ui.scenes,
                 animated = animationsEnabled,
                 copy = music,
-                ink = if (look.backdrop == DiscoveryBackdrop.Bleed) Color.White else LevyraText,
                 onLevel = viewModel::setLevel,
                 onLens = viewModel::setLens,
                 onLoadScenes = viewModel::loadScenes,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
+                modifier = Modifier.padding(vertical = 6.dp)
             )
             Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 20.dp), contentAlignment = Alignment.Center) {
                 when {

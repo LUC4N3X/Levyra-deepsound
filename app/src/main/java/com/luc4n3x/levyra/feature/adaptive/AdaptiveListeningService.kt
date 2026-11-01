@@ -59,7 +59,8 @@ class AdaptiveListeningService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
-            AdaptiveListeningBus.reset(AdaptiveListeningSnapshot(AdaptiveListeningCondition.Waiting))
+            AdaptiveListeningBus.markStoppedByUser(true)
+            AdaptiveListeningBus.reset(AdaptiveListeningSnapshot(AdaptiveListeningCondition.Off))
             shutdown()
             return START_NOT_STICKY
         }
