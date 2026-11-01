@@ -39,6 +39,12 @@
         "source": "github",
         "repo": "hamen/material-3-skill"
       }
+    },
+    "ponytail": {
+      "source": {
+        "source": "github",
+        "repo": "DietrichGebert/ponytail"
+      }
     }
   },
   "enabledPlugins": {
@@ -48,7 +54,8 @@
     "mattpocock-skills@claude-plugins-official": true,
     "android-reverse-engineering@android-reverse-engineering-skill": true,
     "kotlin-footguns@maxrave": true,
-    "material-3@material-3-skill": true
+    "material-3@material-3-skill": true,
+    "ponytail@ponytail": true
   },
   "permissions": {
     "allow": [

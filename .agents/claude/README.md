@@ -100,6 +100,33 @@ minimal static fallback rather than silently providing no context.
 Optional tooling is fail-open: unavailable RTK, jCodeMunch, or memory tooling
 must not block normal coding. Validation claims remain evidence-based.
 
+## Ponytail coding mode
+
+The canonical `.agents/claude/settings.json` registers the upstream
+[DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail)
+marketplace and enables `ponytail@ponytail`. When Claude Code has the plugin
+installed and enabled, its default `full` mode applies during code writing,
+bug fixing, refactoring, and subagent work, not just PR review.
+
+If the local Claude Code installation has not downloaded the plugin, run these
+commands separately and start a new session:
+
+```text
+/plugin marketplace add DietrichGebert/ponytail
+/plugin install ponytail@ponytail
+```
+
+Use `/ponytail full` to select the normal coding mode explicitly. The plugin
+uses Node.js for its lifecycle hooks; if Node.js is unavailable or the plugin
+fails to load, Levyra's always-on `AGENTS.md` coding rules still apply. Project
+settings declare the plugin but do not prove it is installed on a given machine.
+
+Levyra's root/scoped `AGENTS.md`, two-skill phase budget, product invariants,
+validation gates, and owner-controlled publication always take precedence over
+external Ponytail advice. Do not vendor Ponytail, replace existing project
+instructions, auto-load its full skill alongside domain skills, or use shorter
+code as a reason to skip necessary checks.
+
 ## Personal local overrides
 
 Generated `.claude/` is ignored by Git. The synchronizer owns only files listed
