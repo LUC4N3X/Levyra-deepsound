@@ -2229,6 +2229,25 @@ private fun Track.isLocalMotionArtworkTrack(): Boolean {
         cleanStreamUrl.startsWith("file://", ignoreCase = true)
 }
 
+private fun playerDislikeAction(
+    track: Track,
+    state: LevyraUiState,
+    strings: LevyraStrings,
+    onToggleDislike: () -> Unit
+): PlayerSheetAction {
+    val disliked = state.recommendationFeedback.isExplicitlyAvoided(track)
+    val copy = trackDislikeCopy(strings.code)
+    return PlayerSheetAction(
+        key = "dislike",
+        icon = Icons.Rounded.ThumbDown,
+        label = if (disliked) copy.removeDislike else copy.dislike,
+        value = copy.skipped.takeIf { disliked },
+        active = disliked,
+        enabled = state.jam.role != JamRole.Guest,
+        onClick = onToggleDislike
+    )
+}
+
 private fun playerSheetActions(
     track: Track,
     state: LevyraUiState,
@@ -2347,18 +2366,7 @@ private fun playerSheetActions(
             label = strings.share,
             onClick = onShare
         ),
-        state.recommendationFeedback.isExplicitlyAvoided(track).let { disliked ->
-            val copy = trackDislikeCopy(strings.code)
-            PlayerSheetAction(
-                key = "dislike",
-                icon = Icons.Rounded.ThumbDown,
-                label = if (disliked) copy.removeDislike else copy.dislike,
-                value = if (disliked) copy.skipped else null,
-                active = disliked,
-                enabled = state.jam.role != JamRole.Guest,
-                onClick = onToggleDislike
-            )
-        },
+        playerDislikeAction(track, state, strings, onToggleDislike),
         shareMomentSeconds(state.positionMs, state.durationMs)
             ?.takeIf {
                 !state.isResolving &&

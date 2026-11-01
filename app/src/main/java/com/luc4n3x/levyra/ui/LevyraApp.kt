@@ -3410,7 +3410,7 @@ fun LevyraApp(
                     onPlayTracksNext = viewModel::playTracksNext,
                     onAddTracksToQueue = viewModel::addTracksToQueue,
                     onToggleFavorites = viewModel::toggleFavorites,
-                    onDislikeTracks = viewModel::toggleTracksDislike,
+                    onDislikeTracks = viewModel::dislikeTracks,
                     onExportTracks = { tracks -> viewModel.exportTracks(tracks, currentStrings.offline) },
                     onAddTracksToPlaylist = viewModel::addTracksToPlaylist,
                     onCreatePlaylistWithTracks = viewModel::createPlaylistWithTracks,
@@ -3432,7 +3432,7 @@ fun LevyraApp(
                     onPlayTracksNext = viewModel::playTracksNext,
                     onAddTracksToQueue = viewModel::addTracksToQueue,
                     onToggleFavorites = viewModel::toggleFavorites,
-                    onDislikeTracks = viewModel::toggleTracksDislike,
+                    onDislikeTracks = viewModel::dislikeTracks,
                     onExportTracks = { tracks -> viewModel.exportTracks(tracks, currentStrings.offline) },
                     onAddTracksToPlaylist = viewModel::addTracksToPlaylist,
                     onCreatePlaylistWithTracks = viewModel::createPlaylistWithTracks,
@@ -3487,7 +3487,7 @@ fun LevyraApp(
                         onAddTracksToPlaylist = viewModel::addTracksToPlaylist,
                         onCreatePlaylistWithTracks = viewModel::createPlaylistWithTracks,
                         onDownloadTracks = { tracks -> viewModel.exportTracks(tracks, currentStrings.offline) },
-                        onDislikeTracks = viewModel::toggleTracksDislike
+                        onDislikeTracks = viewModel::dislikeTracks
                     )
                 }
             }
@@ -15774,7 +15774,7 @@ private fun SearchScreen(
                     onAddToPlaylist = { batchAddTargets = it },
                     onFavorite = viewModel::toggleFavorites,
                     onDownload = { tracks -> viewModel.exportTracks(tracks, strings.offline) },
-                    onDislike = viewModel::toggleTracksDislike
+                    onDislike = viewModel::dislikeTracks
                 ),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)

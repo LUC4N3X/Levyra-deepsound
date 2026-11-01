@@ -827,6 +827,8 @@ class PersistentQueueEngine internal constructor(
         return result
     }
 
+    fun nextPlayableIndex(snapshot: PlaybackQueueSnapshot): Int? = nextTargetIndex(snapshot)
+
     private fun nextTargetIndex(current: PlaybackQueueSnapshot): Int? {
         if (current.tracks.isEmpty() || current.currentIndex !in current.tracks.indices) return null
         val cursor = if (current.shuffleEnabled) {

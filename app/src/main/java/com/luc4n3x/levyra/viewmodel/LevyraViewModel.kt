@@ -3273,56 +3273,62 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun setTrackFeedback(track: Track, kind: RecommendationFeedbackKind) {
         val entry = RecommendationFeedback.entryFor(track, kind) ?: return
         viewModelScope.launch {
-            val updated = recommendationFeedbackMutationMutex.withLock {
-                val current = _state.value.recommendationFeedback.kindFor(track)
-                val updated = if (current == kind) {
+            val (before, updated) = recommendationFeedbackMutationMutex.withLock {
+                val before = _state.value.recommendationFeedback
+                val updated = if (before.kindFor(track) == kind) {
                     recommendationFeedbackStore.clear(entry.trackKey)
                 } else {
                     recommendationFeedbackStore.record(entry)
                 }
                 applyRecommendationFeedback(updated)
-                updated
+                before to updated
             }
-            if (kind == RecommendationFeedbackKind.LESS_LIKE_THIS) skipCurrentTrackIfAvoided(updated)
+            skipCurrentTrackIfNewlyAvoided(before, updated)
         }
     }
 
-    fun toggleTracksDislike(tracks: List<Track>) {
+    fun dislikeTracks(tracks: List<Track>) {
+        if (_state.value.jam.role == JamRole.Guest) return
         val entries = tracks.mapNotNull { track ->
             RecommendationFeedback.entryFor(track, RecommendationFeedbackKind.LESS_LIKE_THIS)?.let { track to it }
         }.distinctBy { (_, entry) -> entry.trackKey }
         if (entries.isEmpty()) return
         viewModelScope.launch {
-            val updated = recommendationFeedbackMutationMutex.withLock {
-                val feedback = _state.value.recommendationFeedback
-                val removeAll = entries.all { (track, _) -> feedback.isExplicitlyAvoided(track) }
-                var latest = feedback
+            val (before, updated) = recommendationFeedbackMutationMutex.withLock {
+                val before = _state.value.recommendationFeedback
+                var latest = before
                 entries.forEach { (track, entry) ->
-                    latest = when {
-                        removeAll -> recommendationFeedbackStore.clear(entry.trackKey)
-                        feedback.isExplicitlyAvoided(track) -> latest
-                        else -> recommendationFeedbackStore.record(entry)
-                    }
+                    if (!before.isExplicitlyAvoided(track)) latest = recommendationFeedbackStore.record(entry)
                 }
                 applyRecommendationFeedback(latest)
-                latest
+                before to latest
             }
-            skipCurrentTrackIfAvoided(updated)
+            skipCurrentTrackIfNewlyAvoided(before, updated)
         }
     }
 
-    private suspend fun clearTrackDislike(track: Track) {
-        if (!_state.value.recommendationFeedback.isExplicitlyAvoided(track)) return
-        val entry = RecommendationFeedback.entryFor(track, RecommendationFeedbackKind.LESS_LIKE_THIS) ?: return
+    private suspend fun clearTrackDislikes(tracks: List<Track>) {
+        if (tracks.none(_state.value.recommendationFeedback::isExplicitlyAvoided)) return
         recommendationFeedbackMutationMutex.withLock {
-            if (_state.value.recommendationFeedback.kindFor(track) != RecommendationFeedbackKind.LESS_LIKE_THIS) return@withLock
-            applyRecommendationFeedback(recommendationFeedbackStore.clear(entry.trackKey))
+            val feedback = _state.value.recommendationFeedback
+            val keys = tracks.filter(feedback::isExplicitlyAvoided).mapNotNull { track ->
+                RecommendationFeedback.entryFor(track, RecommendationFeedbackKind.LESS_LIKE_THIS)?.trackKey
+            }.distinct()
+            if (keys.isEmpty()) return@withLock
+            var latest = feedback
+            keys.forEach { key -> latest = recommendationFeedbackStore.clear(key) }
+            applyRecommendationFeedback(latest)
         }
     }
 
-    private fun skipCurrentTrackIfAvoided(feedback: RecommendationFeedback) {
+    private fun skipCurrentTrackIfNewlyAvoided(before: RecommendationFeedback, after: RecommendationFeedback) {
         val current = _state.value.currentTrack ?: return
-        if (!feedback.isExplicitlyAvoided(current) || _state.value.jam.role == JamRole.Guest) return
+        if (before.isExplicitlyAvoided(current) || !after.isExplicitlyAvoided(current)) return
+        if (_state.value.jam.role == JamRole.Guest) return
+        if (queueEngine.upcoming(1).isEmpty() && !queueEngine.state.value.radioEnabled) {
+            pause()
+            return
+        }
         next()
     }
 
@@ -8074,7 +8080,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
                 updated to isFavorite
             }
-            if (isFavorite) clearTrackDislike(track)
+            if (isFavorite) clearTrackDislikes(listOf(track))
             refreshForgottenFavorites()
             LevyraArtworkCache.preloadPriority(
                 getApplication<Application>().applicationContext,
@@ -8143,6 +8149,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     }
                 }
             }
+            clearTrackDislikes(tracks.filter { track -> areAllFavoriteTracks(updated, listOf(track)) })
             refreshForgottenFavorites()
             LevyraArtworkCache.preloadPriority(
                 getApplication<Application>().applicationContext,
@@ -8178,6 +8185,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     }
                 }
             }
+            clearTrackDislikes(cleanTracks.filter { track -> areAllFavoriteTracks(updated, listOf(track)) })
             refreshForgottenFavorites()
             LevyraArtworkCache.preloadPriority(
                 getApplication<Application>().applicationContext,
@@ -8221,6 +8229,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 _state.update { it.copy(offlineExportMessage = copy.alreadyLiked) }
                 return@launch
             }
+            clearTrackDislikes(addition.added)
             refreshForgottenFavorites()
             LevyraArtworkCache.preloadPriority(
                 getApplication<Application>().applicationContext,
