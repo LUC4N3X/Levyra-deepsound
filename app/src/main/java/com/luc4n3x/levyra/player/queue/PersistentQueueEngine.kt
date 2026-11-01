@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.player.queue
 import android.content.Context
 import com.luc4n3x.levyra.data.local.DEFAULT_QUEUE_SPACE_ID
 import com.luc4n3x.levyra.data.runCatchingPreservingCancellation
+import com.luc4n3x.levyra.domain.RecommendationFeedback
 import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.domain.Track
 import java.util.Locale
@@ -248,8 +249,30 @@ class PersistentQueueEngine internal constructor(
     private var playNextIntent: PlayNextIntent? = null
     private val tombstones = AutoQueueTombstones()
     @Volatile private var transientPlaybackActive: Boolean = false
+    @Volatile private var feedback: RecommendationFeedback = RecommendationFeedback.Empty
+    private var feedbackPublished = false
 
     val state: StateFlow<PlaybackQueueSnapshot> = _state.asStateFlow()
+
+    fun setRecommendationFeedback(feedback: RecommendationFeedback) {
+        synchronized(lock) {
+            feedbackPublished = true
+            this.feedback = feedback
+        }
+    }
+
+    fun seedRecommendationFeedback(feedback: RecommendationFeedback) {
+        synchronized(lock) {
+            if (feedbackPublished) return
+            feedbackPublished = true
+            this.feedback = feedback
+        }
+    }
+
+    fun isSkippedInAutoplay(track: Track): Boolean = feedback.isExplicitlyAvoided(track)
+
+    fun firstPlayableIndex(): Int? =
+        _state.value.tracks.indexOfFirst { !isSkippedInAutoplay(it) }.takeIf { it >= 0 }
 
     val spaces: Flow<List<QueueSpaceSummary>> = store.spaces
 
@@ -788,8 +811,8 @@ class PersistentQueueEngine internal constructor(
         var result: Track? = null
         mutate(immediatePersist = true) { current ->
             if (current.tracks.isEmpty() || current.currentIndex !in current.tracks.indices) return@mutate current
-            if (respectRepeatOne && current.repeatMode == RepeatMode.One) {
-                val repeated = current.currentTrack
+            val repeated = current.currentTrack
+            if (respectRepeatOne && current.repeatMode == RepeatMode.One && repeated?.let(::isSkippedInAutoplay) != true) {
                 if (expectedIdentity != null && repeated?.let(::playbackQueueIdentity) != expectedIdentity) return@mutate current
                 result = repeated
                 return@mutate current.copy(positionMs = 0L)
@@ -806,22 +829,24 @@ class PersistentQueueEngine internal constructor(
 
     private fun nextTargetIndex(current: PlaybackQueueSnapshot): Int? {
         if (current.tracks.isEmpty() || current.currentIndex !in current.tracks.indices) return null
-        return if (current.shuffleEnabled) {
-            val order = normalizedShuffleOrder(current)
-            val cursor = order.indexOf(current.currentIndex).takeIf { it >= 0 } ?: current.shuffleCursor.coerceAtLeast(0)
-            val nextCursor = cursor + 1
-            when {
-                nextCursor < order.size -> order[nextCursor]
-                current.repeatMode == RepeatMode.All -> order.firstOrNull()
-                else -> null
-            }
+        val cursor = if (current.shuffleEnabled) {
+            normalizedShuffleOrder(current).indexOf(current.currentIndex).takeIf { it >= 0 }
+                ?: current.shuffleCursor.coerceAtLeast(0)
         } else {
-            when {
-                current.currentIndex < current.tracks.lastIndex -> current.currentIndex + 1
-                current.repeatMode == RepeatMode.All -> 0
-                else -> null
-            }
+            current.currentIndex
         }
+        return forwardQueueIndices(current, cursor).firstOrNull { !isSkippedInAutoplay(current.tracks[it]) }
+    }
+
+    private fun forwardQueueIndices(current: PlaybackQueueSnapshot, cursor: Int): Sequence<Int> {
+        val order = if (current.shuffleEnabled) normalizedShuffleOrder(current) else current.tracks.indices.toList()
+        if (order.isEmpty()) return emptySequence()
+        val wraps = current.repeatMode == RepeatMode.All
+        return (1..order.size).asSequence()
+            .map { offset -> cursor + offset }
+            .takeWhile { position -> wraps || position < order.size }
+            .map { position -> order[position % order.size] }
+            .filter { index -> index in current.tracks.indices }
     }
 
     fun previous(): Track? {
@@ -832,14 +857,16 @@ class PersistentQueueEngine internal constructor(
             var target: Int? = null
             while (history.isNotEmpty() && target == null) {
                 val candidate = history.removeAt(history.lastIndex)
-                if (candidate in current.tracks.indices && candidate != current.currentIndex) target = candidate
+                if (
+                    candidate in current.tracks.indices &&
+                    candidate != current.currentIndex &&
+                    !isSkippedInAutoplay(current.tracks[candidate])
+                ) {
+                    target = candidate
+                }
             }
             if (target == null && !current.shuffleEnabled) {
-                target = when {
-                    current.currentIndex > 0 -> current.currentIndex - 1
-                    current.repeatMode == RepeatMode.All -> current.tracks.lastIndex
-                    else -> current.currentIndex.takeIf { it in current.tracks.indices }
-                }
+                target = previousPlayableIndex(current) ?: current.currentIndex.takeIf { it in current.tracks.indices }
             }
             val index = target ?: return@mutate current.copy(history = history)
             playNextIntent = null
@@ -847,6 +874,17 @@ class PersistentQueueEngine internal constructor(
             selectSnapshot(current.copy(history = history), index, 0L, rememberCurrent = false)
         }
         return result
+    }
+
+    private fun previousPlayableIndex(current: PlaybackQueueSnapshot): Int? {
+        val size = current.tracks.size
+        val start = current.currentIndex
+        val wraps = current.repeatMode == RepeatMode.All
+        return (1 until size).asSequence()
+            .map { offset -> start - offset }
+            .takeWhile { position -> wraps || position >= 0 }
+            .map { position -> Math.floorMod(position, size) }
+            .firstOrNull { index -> !isSkippedInAutoplay(current.tracks[index]) }
     }
 
     fun updatePosition(positionMs: Long) {
@@ -862,34 +900,17 @@ class PersistentQueueEngine internal constructor(
     fun upcoming(limit: Int): List<Track> {
         val current = _state.value
         if (limit <= 0 || current.tracks.isEmpty() || current.currentIndex !in current.tracks.indices) return emptyList()
-        val indices = if (current.shuffleEnabled) {
-            val order = normalizedShuffleOrder(current)
-            val cursor = order.indexOf(current.currentIndex).coerceAtLeast(0)
-            buildList {
-                for (offset in 1..limit) {
-                    val candidateCursor = cursor + offset
-                    val index = when {
-                        candidateCursor < order.size -> order[candidateCursor]
-                        current.repeatMode == RepeatMode.All && order.isNotEmpty() -> order[candidateCursor % order.size]
-                        else -> -1
-                    }
-                    if (index >= 0 && index !in this) add(index)
-                }
-            }
+        val cursor = if (current.shuffleEnabled) {
+            normalizedShuffleOrder(current).indexOf(current.currentIndex).coerceAtLeast(0)
         } else {
-            buildList {
-                for (offset in 1..limit) {
-                    val raw = current.currentIndex + offset
-                    val index = when {
-                        raw < current.tracks.size -> raw
-                        current.repeatMode == RepeatMode.All && current.tracks.isNotEmpty() -> raw % current.tracks.size
-                        else -> -1
-                    }
-                    if (index >= 0 && index !in this) add(index)
-                }
-            }
+            current.currentIndex
         }
-        return indices.mapNotNull(current.tracks::getOrNull)
+        return forwardQueueIndices(current, cursor)
+            .distinct()
+            .map(current.tracks::get)
+            .filterNot(::isSkippedInAutoplay)
+            .take(limit)
+            .toList()
     }
 
     fun appendRadioTracks(tracks: List<Track>): PlaybackQueueSnapshot =

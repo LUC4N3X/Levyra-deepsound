@@ -43,6 +43,7 @@ import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.SelectAll
+import androidx.compose.material.icons.rounded.ThumbDown
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -84,6 +85,7 @@ import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.ui.components.LevyraExpressiveIconButton
 import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.trackDislikeCopy
 import com.luc4n3x.levyra.ui.theme.AppleMusicDesign
 import com.luc4n3x.levyra.ui.theme.IvoryDesign
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
@@ -111,7 +113,8 @@ internal data class TrackSelectionActions(
     val onAddToQueue: (() -> Unit)? = null,
     val onAddToPlaylist: (() -> Unit)? = null,
     val onFavorite: (() -> Unit)? = null,
-    val onDownload: (() -> Unit)? = null
+    val onDownload: (() -> Unit)? = null,
+    val onDislike: (() -> Unit)? = null
 )
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -211,6 +214,7 @@ private fun TrackSelectionActions.dockActions(): List<SelectionDockAction> {
         onAddToPlaylist?.let { add(SelectionDockAction(strings.addToPlaylist, Icons.AutoMirrored.Rounded.PlaylistAdd, it)) }
         onFavorite?.let { add(SelectionDockAction(strings.favorite, Icons.Rounded.Favorite, it)) }
         onDownload?.let { add(SelectionDockAction(strings.download, Icons.Rounded.Download, it)) }
+        onDislike?.let { add(SelectionDockAction(trackDislikeCopy(strings.code).dislike, Icons.Rounded.ThumbDown, it)) }
     }
 }
 

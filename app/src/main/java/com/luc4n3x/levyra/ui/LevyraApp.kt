@@ -3410,6 +3410,7 @@ fun LevyraApp(
                     onPlayTracksNext = viewModel::playTracksNext,
                     onAddTracksToQueue = viewModel::addTracksToQueue,
                     onToggleFavorites = viewModel::toggleFavorites,
+                    onDislikeTracks = viewModel::toggleTracksDislike,
                     onExportTracks = { tracks -> viewModel.exportTracks(tracks, currentStrings.offline) },
                     onAddTracksToPlaylist = viewModel::addTracksToPlaylist,
                     onCreatePlaylistWithTracks = viewModel::createPlaylistWithTracks,
@@ -3431,6 +3432,7 @@ fun LevyraApp(
                     onPlayTracksNext = viewModel::playTracksNext,
                     onAddTracksToQueue = viewModel::addTracksToQueue,
                     onToggleFavorites = viewModel::toggleFavorites,
+                    onDislikeTracks = viewModel::toggleTracksDislike,
                     onExportTracks = { tracks -> viewModel.exportTracks(tracks, currentStrings.offline) },
                     onAddTracksToPlaylist = viewModel::addTracksToPlaylist,
                     onCreatePlaylistWithTracks = viewModel::createPlaylistWithTracks,
@@ -3484,7 +3486,8 @@ fun LevyraApp(
                         onAddTracksToQueue = viewModel::addTracksToQueue,
                         onAddTracksToPlaylist = viewModel::addTracksToPlaylist,
                         onCreatePlaylistWithTracks = viewModel::createPlaylistWithTracks,
-                        onDownloadTracks = { tracks -> viewModel.exportTracks(tracks, currentStrings.offline) }
+                        onDownloadTracks = { tracks -> viewModel.exportTracks(tracks, currentStrings.offline) },
+                        onDislikeTracks = viewModel::toggleTracksDislike
                     )
                 }
             }
@@ -4618,6 +4621,7 @@ private fun AlbumOverlay(
     onPlayTracksNext: (List<Track>) -> Unit,
     onAddTracksToQueue: (List<Track>) -> Unit,
     onToggleFavorites: (List<Track>) -> Unit,
+    onDislikeTracks: (List<Track>) -> Unit,
     onExportTracks: (List<Track>) -> Unit,
     onAddTracksToPlaylist: (String, List<Track>) -> Unit,
     onCreatePlaylistWithTracks: (String, List<Track>) -> Unit,
@@ -5044,7 +5048,8 @@ private fun AlbumOverlay(
                 onAddToQueue = onAddTracksToQueue,
                 onAddToPlaylist = { batchAddTargets = it },
                 onFavorite = onToggleFavorites,
-                onDownload = onExportTracks
+                onDownload = onExportTracks,
+                onDislike = onDislikeTracks
             ),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -5425,6 +5430,7 @@ private fun ArtistOverlay(
     onPlayTracksNext: (List<Track>) -> Unit,
     onAddTracksToQueue: (List<Track>) -> Unit,
     onToggleFavorites: (List<Track>) -> Unit,
+    onDislikeTracks: (List<Track>) -> Unit,
     onExportTracks: (List<Track>) -> Unit,
     onAddTracksToPlaylist: (String, List<Track>) -> Unit,
     onCreatePlaylistWithTracks: (String, List<Track>) -> Unit,
@@ -5810,7 +5816,8 @@ private fun ArtistOverlay(
                 onAddToQueue = onAddTracksToQueue,
                 onAddToPlaylist = { batchAddTargets = it },
                 onFavorite = onToggleFavorites,
-                onDownload = onExportTracks
+                onDownload = onExportTracks,
+                onDislike = onDislikeTracks
             ),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -15766,7 +15773,8 @@ private fun SearchScreen(
                     onAddToQueue = viewModel::addTracksToQueue,
                     onAddToPlaylist = { batchAddTargets = it },
                     onFavorite = viewModel::toggleFavorites,
-                    onDownload = { tracks -> viewModel.exportTracks(tracks, strings.offline) }
+                    onDownload = { tracks -> viewModel.exportTracks(tracks, strings.offline) },
+                    onDislike = viewModel::toggleTracksDislike
                 ),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)

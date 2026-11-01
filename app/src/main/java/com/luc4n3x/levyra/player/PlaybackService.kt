@@ -71,6 +71,7 @@ import com.luc4n3x.levyra.MainActivity
 import com.luc4n3x.levyra.data.FavoritesStore
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.PlaybackResolver
+import com.luc4n3x.levyra.data.RecommendationFeedbackStore
 import com.luc4n3x.levyra.data.SPOTIFY_CLIP_ID_PREFIX
 import com.luc4n3x.levyra.data.SpotifyClipCanvasRegistry
 import com.luc4n3x.levyra.data.isSpotifySampleAudioUrl
@@ -856,6 +857,9 @@ class PlaybackService : MediaLibraryService() {
             .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "$packageName:PlaybackService")
             .apply { setReferenceCounted(false) }
         queueEngine = PersistentQueueEngine.get(this)
+        serviceScope.launch {
+            queueEngine.seedRecommendationFeedback(RecommendationFeedbackStore(applicationContext).load())
+        }
         favoritesStore = FavoritesStore(this)
         resolver = PlaybackResolver.getInstance(this)
         musicRepository = YoutubeMusicRepository(this)

@@ -3265,6 +3265,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun applyRecommendationFeedback(feedback: RecommendationFeedback) {
+        queueEngine.setRecommendationFeedback(feedback)
         if (_state.value.recommendationFeedback == feedback) return
         _state.update { it.copy(recommendationFeedback = feedback) }
     }
@@ -3272,7 +3273,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun setTrackFeedback(track: Track, kind: RecommendationFeedbackKind) {
         val entry = RecommendationFeedback.entryFor(track, kind) ?: return
         viewModelScope.launch {
-            recommendationFeedbackMutationMutex.withLock {
+            val updated = recommendationFeedbackMutationMutex.withLock {
                 val current = _state.value.recommendationFeedback.kindFor(track)
                 val updated = if (current == kind) {
                     recommendationFeedbackStore.clear(entry.trackKey)
@@ -3280,8 +3281,49 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     recommendationFeedbackStore.record(entry)
                 }
                 applyRecommendationFeedback(updated)
+                updated
             }
+            if (kind == RecommendationFeedbackKind.LESS_LIKE_THIS) skipCurrentTrackIfAvoided(updated)
         }
+    }
+
+    fun toggleTracksDislike(tracks: List<Track>) {
+        val entries = tracks.mapNotNull { track ->
+            RecommendationFeedback.entryFor(track, RecommendationFeedbackKind.LESS_LIKE_THIS)?.let { track to it }
+        }.distinctBy { (_, entry) -> entry.trackKey }
+        if (entries.isEmpty()) return
+        viewModelScope.launch {
+            val updated = recommendationFeedbackMutationMutex.withLock {
+                val feedback = _state.value.recommendationFeedback
+                val removeAll = entries.all { (track, _) -> feedback.isExplicitlyAvoided(track) }
+                var latest = feedback
+                entries.forEach { (track, entry) ->
+                    latest = when {
+                        removeAll -> recommendationFeedbackStore.clear(entry.trackKey)
+                        feedback.isExplicitlyAvoided(track) -> latest
+                        else -> recommendationFeedbackStore.record(entry)
+                    }
+                }
+                applyRecommendationFeedback(latest)
+                latest
+            }
+            skipCurrentTrackIfAvoided(updated)
+        }
+    }
+
+    private suspend fun clearTrackDislike(track: Track) {
+        if (!_state.value.recommendationFeedback.isExplicitlyAvoided(track)) return
+        val entry = RecommendationFeedback.entryFor(track, RecommendationFeedbackKind.LESS_LIKE_THIS) ?: return
+        recommendationFeedbackMutationMutex.withLock {
+            if (_state.value.recommendationFeedback.kindFor(track) != RecommendationFeedbackKind.LESS_LIKE_THIS) return@withLock
+            applyRecommendationFeedback(recommendationFeedbackStore.clear(entry.trackKey))
+        }
+    }
+
+    private fun skipCurrentTrackIfAvoided(feedback: RecommendationFeedback) {
+        val current = _state.value.currentTrack ?: return
+        if (!feedback.isExplicitlyAvoided(current) || _state.value.jam.role == JamRole.Guest) return
+        next()
     }
 
     private fun loadAmbientSettings() {
@@ -4184,7 +4226,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             val pl = playlistStore.load(playlistId) ?: return@launch
             if (pl.tracks.isEmpty()) return@launch
-            val start = startTrackId?.let { id -> pl.tracks.firstOrNull { it.id == id } } ?: pl.tracks.first()
+            val start = startTrackId?.let { id -> pl.tracks.firstOrNull { it.id == id } } ?: autoplayStartTrack(pl.tracks)
             playFrom(pl.tracks, start, loopOnCompletion = true)
         }
     }
@@ -4306,8 +4348,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         when {
             nextTrack != null -> startResolve(nextTrack, autoRetryWhenOffline = true)
             queueEngine.state.value.radioEnabled -> ensureRadioTail(force = true, playWhenReady = true)
-            loopCurrentQueueOnCompletion && queueEngine.state.value.tracks.isNotEmpty() -> {
-                val first = queueEngine.select(0, rememberCurrent = true)
+            loopCurrentQueueOnCompletion && queueEngine.firstPlayableIndex() != null -> {
+                val first = queueEngine.firstPlayableIndex()?.let { queueEngine.select(it, rememberCurrent = true) }
                 if (first != null) startResolve(first)
             }
             else -> {
@@ -6853,9 +6895,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun playAll(tracks: List<Track>) {
         if (tracks.isEmpty()) return
         leaveLiveRadioQueue()
-        queueEngine.replace(tracks, 0, keepPlaybackModes = true, radioEnabled = queueEngine.state.value.radioEnabled)
-        queueIndex = 0
-        startResolve(tracks.first())
+        val startIndex = tracks.indexOf(autoplayStartTrack(tracks))
+        queueEngine.replace(tracks, startIndex, keepPlaybackModes = true, radioEnabled = queueEngine.state.value.radioEnabled)
+        queueIndex = startIndex
+        startResolve(tracks[startIndex])
+    }
+
+    private fun autoplayStartTrack(tracks: List<Track>, random: Boolean = false): Track {
+        val feedback = _state.value.recommendationFeedback
+        val allowed = tracks.filterNot(feedback::isExplicitlyAvoided).ifEmpty { tracks }
+        return if (random) allowed.random() else allowed.first()
     }
 
     private suspend fun refreshLocalQueueAvailability(tracks: List<Track>) {
@@ -8025,6 +8074,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
                 updated to isFavorite
             }
+            if (isFavorite) clearTrackDislike(track)
             refreshForgottenFavorites()
             LevyraArtworkCache.preloadPriority(
                 getApplication<Application>().applicationContext,
@@ -8792,14 +8842,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun playCurrentAlbum() {
         val detail = _state.value.albumDetail ?: return
         if (detail.tracks.isEmpty()) return
-        playFrom(detail.tracks, detail.tracks.first(), loopOnCompletion = true)
+        playFrom(detail.tracks, autoplayStartTrack(detail.tracks), loopOnCompletion = true)
     }
 
     fun shuffleCurrentAlbum() {
         val detail = _state.value.albumDetail ?: return
         if (detail.tracks.isEmpty() || _state.value.jam.role == JamRole.Guest) return
         if (!queueEngine.state.value.shuffleEnabled) queueEngine.setShuffle(true)
-        playFrom(detail.tracks, detail.tracks.random(), loopOnCompletion = true)
+        playFrom(detail.tracks, autoplayStartTrack(detail.tracks, random = true), loopOnCompletion = true)
     }
 
     fun exportCurrentAlbum() {
@@ -8936,7 +8986,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (tracks.isEmpty()) return
         _state.update { it.copy(tracks = mergeTracks(it.tracks, tracks)) }
         val queue = if (shuffled) tracks.shuffled() else tracks
-        playFrom(queue, from ?: queue.first())
+        playFrom(queue, from ?: autoplayStartTrack(queue))
     }
 
     fun exportOpenPlaylistHit() {

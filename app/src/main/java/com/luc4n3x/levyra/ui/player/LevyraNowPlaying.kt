@@ -86,6 +86,7 @@ import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material.icons.rounded.HighQuality
 import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.ThumbDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -141,7 +142,10 @@ import com.luc4n3x.levyra.data.youtubeWatchUrl
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.PlayerBackgroundMode
 import com.luc4n3x.levyra.domain.PlayerVisualMode
+import com.luc4n3x.levyra.domain.RecommendationFeedbackKind
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.feature.jam.JamRole
+import com.luc4n3x.levyra.ui.i18n.trackDislikeCopy
 import com.luc4n3x.levyra.feature.cast.CastRouteButton
 import com.luc4n3x.levyra.feature.radio.isLiveRadio
 import com.luc4n3x.levyra.feature.radio.LiveRadioViewModel
@@ -345,6 +349,13 @@ private fun LevyraNowPlayingContent(
         )
     }
     var showActions by remember { mutableStateOf(false) }
+    var dislikeUndoTrack by remember { mutableStateOf<Track?>(null) }
+    LaunchedEffect(dislikeUndoTrack) {
+        if (dislikeUndoTrack != null) {
+            delay(DislikeUndoVisibleMs)
+            dislikeUndoTrack = null
+        }
+    }
     var showTechnicalAudioInfo by remember(track?.id) { mutableStateOf(false) }
     var showTrackCredits by remember(track?.id) { mutableStateOf(false) }
     var creditWriters by remember { mutableStateOf<Pair<String, List<String>>?>(null) }
@@ -1757,6 +1768,28 @@ private fun LevyraNowPlayingContent(
             )
         }
 
+        dislikeUndoTrack?.let { disliked ->
+            PlayerDislikeUndoPill(
+                copy = trackDislikeCopy(strings.code),
+                onUndo = {
+                    dislikeUndoTrack = null
+                    if (state.recommendationFeedback.isExplicitlyAvoided(disliked)) {
+                        viewModel.setTrackFeedback(disliked, RecommendationFeedbackKind.LESS_LIKE_THIS)
+                    }
+                    hapticFeedback.perform(LevyraHapticAction.Confirm)
+                },
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(
+                        start = gutter,
+                        end = gutter,
+                        top = LevyraPlayerDesign.MinimumTouchTarget + LevyraPlayerDesign.SpaceLg
+                    )
+                    .zIndex(26f)
+            )
+        }
+
         if (showActions && track != null) {
             val sectionLoop by viewModel.sectionLoop.collectAsStateWithLifecycle()
             val sheetActions = playerSheetActions(
@@ -1764,6 +1797,12 @@ private fun LevyraNowPlayingContent(
                 state = state,
                 sectionLoop = sectionLoop,
                 strings = strings,
+                onToggleDislike = {
+                    val wasDisliked = state.recommendationFeedback.isExplicitlyAvoided(track)
+                    viewModel.setTrackFeedback(track, RecommendationFeedbackKind.LESS_LIKE_THIS)
+                    dislikeUndoTrack = if (wasDisliked) null else track
+                    hapticFeedback.perform(LevyraHapticAction.Confirm)
+                },
                 hasMixChapters = mixChapters != null,
                 onMixChapters = {
                     showActions = false
@@ -2195,6 +2234,7 @@ private fun playerSheetActions(
     state: LevyraUiState,
     sectionLoop: SectionLoopState,
     strings: LevyraStrings,
+    onToggleDislike: () -> Unit,
     onAddToPlaylist: () -> Unit,
     onStartRadio: () -> Unit,
     onShare: () -> Unit,
@@ -2307,6 +2347,18 @@ private fun playerSheetActions(
             label = strings.share,
             onClick = onShare
         ),
+        state.recommendationFeedback.isExplicitlyAvoided(track).let { disliked ->
+            val copy = trackDislikeCopy(strings.code)
+            PlayerSheetAction(
+                key = "dislike",
+                icon = Icons.Rounded.ThumbDown,
+                label = if (disliked) copy.removeDislike else copy.dislike,
+                value = if (disliked) copy.skipped else null,
+                active = disliked,
+                enabled = state.jam.role != JamRole.Guest,
+                onClick = onToggleDislike
+            )
+        },
         shareMomentSeconds(state.positionMs, state.durationMs)
             ?.takeIf {
                 !state.isResolving &&

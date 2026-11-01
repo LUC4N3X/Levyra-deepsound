@@ -9,7 +9,8 @@ internal fun trackSelectionActions(
     onAddToQueue: (List<Track>) -> Unit,
     onAddToPlaylist: (List<Track>) -> Unit,
     onFavorite: (List<Track>) -> Unit,
-    onDownload: (List<Track>) -> Unit
+    onDownload: (List<Track>) -> Unit,
+    onDislike: ((List<Track>) -> Unit)? = null
 ): TrackSelectionActions {
     val playlistTracks = selectedTracks.filter { it.id.isNotBlank() }
     return TrackSelectionActions(
@@ -19,7 +20,8 @@ internal fun trackSelectionActions(
             { onAddToPlaylist(tracks) }
         },
         onFavorite = selectedTracks.selectionAction(state, onFavorite),
-        onDownload = selectedTracks.selectionAction(state, onDownload)
+        onDownload = selectedTracks.selectionAction(state, onDownload),
+        onDislike = onDislike?.let { selectedTracks.selectionAction(state, it) }
     )
 }
 
