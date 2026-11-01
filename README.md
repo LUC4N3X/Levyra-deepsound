@@ -13,15 +13,11 @@
 Play streamed music and your own files in the same app, save tracks for offline listening, and follow synced lyrics. Levyra does not need an account and does not track you.
 
 <p>
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-release-mobile-light.svg?v=m3-cool-tonal-6 126w, docs/assets/levyra-release-light.svg?v=m3-cool-tonal-6 145w" sizes="(max-width: 480px) 126px, 145px"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-release-mobile.svg?v=m3-cool-tonal-6 126w, docs/assets/levyra-release.svg?v=m3-cool-tonal-6 145w" sizes="(max-width: 480px) 126px, 145px"><img src="docs/assets/levyra-release.svg?v=m3-cool-tonal-6" srcset="docs/assets/levyra-release-mobile.svg?v=m3-cool-tonal-6 126w, docs/assets/levyra-release.svg?v=m3-cool-tonal-6 145w" sizes="(max-width: 480px) 126px, 145px" alt="Latest release"></picture></a>
-  <a href="LICENSE"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-license-mobile-light.svg?v=m3-cool-tonal-6 126w, docs/assets/levyra-license-light.svg?v=m3-cool-tonal-6 145w" sizes="(max-width: 480px) 126px, 145px"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-license-mobile.svg?v=m3-cool-tonal-6 126w, docs/assets/levyra-license.svg?v=m3-cool-tonal-6 145w" sizes="(max-width: 480px) 126px, 145px"><img src="docs/assets/levyra-license.svg?v=m3-cool-tonal-6" srcset="docs/assets/levyra-license-mobile.svg?v=m3-cool-tonal-6 126w, docs/assets/levyra-license.svg?v=m3-cool-tonal-6 145w" sizes="(max-width: 480px) 126px, 145px" alt="GPL-3.0 License"></picture></a>
-  <a href="https://levyra.dpdns.org/docs/"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-wiki-mobile-light.svg?v=m3-cool-tonal-6 126w, docs/assets/levyra-wiki-light.svg?v=m3-cool-tonal-6 145w" sizes="(max-width: 480px) 126px, 145px"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-wiki-mobile.svg?v=m3-cool-tonal-6 126w, docs/assets/levyra-wiki.svg?v=m3-cool-tonal-6 145w" sizes="(max-width: 480px) 126px, 145px"><img src="docs/assets/levyra-wiki.svg?v=m3-cool-tonal-6" srcset="docs/assets/levyra-wiki-mobile.svg?v=m3-cool-tonal-6 126w, docs/assets/levyra-wiki.svg?v=m3-cool-tonal-6 145w" sizes="(max-width: 480px) 126px, 145px" alt="Levyra Documentation"></picture></a>
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-release-mobile-light.svg?v=m3-info-secondary-1 126w, docs/assets/levyra-release-light.svg?v=m3-info-secondary-1 145w" sizes="(max-width: 480px) 126px, 145px"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-release-mobile.svg?v=m3-info-secondary-1 126w, docs/assets/levyra-release.svg?v=m3-info-secondary-1 145w" sizes="(max-width: 480px) 126px, 145px"><img src="docs/assets/levyra-release.svg?v=m3-info-secondary-1" srcset="docs/assets/levyra-release-mobile.svg?v=m3-info-secondary-1 126w, docs/assets/levyra-release.svg?v=m3-info-secondary-1 145w" sizes="(max-width: 480px) 126px, 145px" alt="Latest release"></picture></a>
+  <a href="LICENSE"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-license-mobile-light.svg?v=m3-info-secondary-1 126w, docs/assets/levyra-license-light.svg?v=m3-info-secondary-1 145w" sizes="(max-width: 480px) 126px, 145px"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-license-mobile.svg?v=m3-info-secondary-1 126w, docs/assets/levyra-license.svg?v=m3-info-secondary-1 145w" sizes="(max-width: 480px) 126px, 145px"><img src="docs/assets/levyra-license.svg?v=m3-info-secondary-1" srcset="docs/assets/levyra-license-mobile.svg?v=m3-info-secondary-1 126w, docs/assets/levyra-license.svg?v=m3-info-secondary-1 145w" sizes="(max-width: 480px) 126px, 145px" alt="GPL-3.0 License"></picture></a>
+  <a href="https://levyra.dpdns.org/docs/"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-wiki-mobile-light.svg?v=m3-info-secondary-1 126w, docs/assets/levyra-wiki-light.svg?v=m3-info-secondary-1 145w" sizes="(max-width: 480px) 126px, 145px"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-wiki-mobile.svg?v=m3-info-secondary-1 126w, docs/assets/levyra-wiki.svg?v=m3-info-secondary-1 145w" sizes="(max-width: 480px) 126px, 145px"><img src="docs/assets/levyra-wiki.svg?v=m3-info-secondary-1" srcset="docs/assets/levyra-wiki-mobile.svg?v=m3-info-secondary-1 126w, docs/assets/levyra-wiki.svg?v=m3-info-secondary-1 145w" sizes="(max-width: 480px) 126px, 145px" alt="Levyra Documentation"></picture></a>
 </p>
 
-
-<p align="center">
-  <a href="https://trendshift.io/repositories/204798?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-204798"><img src="https://trendshift.io/api/badge/trendshift/repositories/204798/daily?language=Kotlin" alt="Levyra Trendshift daily ranking" width="250" height="55"></a>
-</p>
 
 <p align="center"><b>Download Levyra</b></p>
 
@@ -54,6 +50,10 @@ Play streamed music and your own files in the same app, save tracks for offline 
 </h3>
 
 <p align="center"><sub>41 languages &nbsp;·&nbsp; 100% Android translation coverage &nbsp;·&nbsp; Zero tracking</sub></p>
+
+<p align="center">
+  <a href="https://trendshift.io/repositories/204798?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-204798"><img src="https://trendshift.io/api/badge/trendshift/repositories/204798/daily?language=Kotlin" alt="Levyra Trendshift daily ranking" width="208" height="46"></a>
+</p>
 
 </div>
 
