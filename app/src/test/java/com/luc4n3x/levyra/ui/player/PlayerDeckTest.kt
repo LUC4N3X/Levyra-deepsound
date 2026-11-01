@@ -31,6 +31,18 @@ class PlayerDeckTest {
         assertEquals(PlayerDeckLayout.Expressive, PlayerVisualMode.Expressive.deckLayout())
         assertEquals(PlayerDeckLayout.Pulse, PlayerVisualMode.Pulse.deckLayout())
         assertEquals(PlayerDeckLayout.Flow, PlayerVisualMode.Flow.deckLayout())
+        assertEquals(PlayerDeckLayout.Ember, PlayerVisualMode.Ember.deckLayout())
+    }
+
+    @Test
+    fun `ember seek bars keep a fixed count and stay within bounds`() {
+        val fromWaveform = emberSeekBars(FloatArray(96) { it / 95f }, "id")
+        val generated = emberSeekBars(null, "id")
+        assertEquals(48, fromWaveform.size)
+        assertEquals(48, generated.size)
+        assertEquals(1f, fromWaveform.last(), 0f)
+        (fromWaveform.toList() + generated.toList()).forEach { assertTrue(it in 0.08f..1f) }
+        assertEquals(generated.toList(), emberSeekBars(null, "id").toList())
     }
 
     @Test
@@ -44,7 +56,7 @@ class PlayerDeckTest {
 
     @Test
     fun `new styles fall back to the levyra layout where they are not designed to run`() {
-        listOf(PlayerVisualMode.CanvasImmersive, PlayerVisualMode.Expressive, PlayerVisualMode.Artwork, PlayerVisualMode.Pulse, PlayerVisualMode.Flow, PlayerVisualMode.CanvasCard).forEach { mode ->
+        listOf(PlayerVisualMode.CanvasImmersive, PlayerVisualMode.Expressive, PlayerVisualMode.Artwork, PlayerVisualMode.Pulse, PlayerVisualMode.Flow, PlayerVisualMode.CanvasCard, PlayerVisualMode.Ember).forEach { mode ->
             val supported = resolvePlayerDeckLayout(mode, false, false, LevyraPlayerPane.Stacked, true)
             assertEquals(mode.deckLayout(), supported)
             assertEquals(PlayerDeckLayout.Levyra, resolvePlayerDeckLayout(mode, true, false, LevyraPlayerPane.Stacked, true))

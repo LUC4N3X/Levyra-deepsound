@@ -23,11 +23,13 @@ internal enum class PlayerDeckLayout {
     Halo,
     Folio,
     Flow,
-    Sleeve
+    Sleeve,
+    Ember
 }
 
 internal val PlayerDeckOrder: List<PlayerVisualMode> = listOf(
     PlayerVisualMode.Flow,
+    PlayerVisualMode.Ember,
     PlayerVisualMode.CanvasCard,
     PlayerVisualMode.CanvasImmersive,
     PlayerVisualMode.Halo,
@@ -46,6 +48,7 @@ internal fun PlayerVisualMode.deckLayout(): PlayerDeckLayout = when (this) {
     PlayerVisualMode.Halo -> PlayerDeckLayout.Halo
     PlayerVisualMode.Folio -> PlayerDeckLayout.Folio
     PlayerVisualMode.Flow -> PlayerDeckLayout.Flow
+    PlayerVisualMode.Ember -> PlayerDeckLayout.Ember
 }
 
 internal fun PlayerVisualMode.usesAuraPlayPause(): Boolean =

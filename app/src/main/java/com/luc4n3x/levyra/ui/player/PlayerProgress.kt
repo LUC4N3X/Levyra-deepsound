@@ -33,7 +33,8 @@ import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 internal enum class PlayerProgressStyle {
     Classic,
     Wavy,
-    Expressive
+    Expressive,
+    Bars
 }
 
 @Composable
@@ -70,7 +71,17 @@ internal fun PlayerProgress(
         playerProgressAppearance(style, activeColor, secondaryColor, motionActive, waveform)
     }
     Column(modifier = modifier.fillMaxWidth()) {
-        if (appearance.wavy) {
+        if (style == PlayerProgressStyle.Bars) {
+            val bars = remember(waveform, mediaId) { emberSeekBars(waveform, mediaId) }
+            EmberWaveSeek(
+                bars = bars,
+                positionMs = positionMs,
+                durationMs = durationMs,
+                activeColor = activeColor,
+                interactionKey = mediaId,
+                onSeek = onSeek
+            )
+        } else if (appearance.wavy) {
             LevyraWavySeekbar(
                 positionMs = positionMs,
                 durationMs = durationMs,

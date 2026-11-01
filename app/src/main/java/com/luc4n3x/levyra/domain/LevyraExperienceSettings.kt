@@ -76,7 +76,8 @@ enum class PlayerVisualMode {
     Pulse,
     Halo,
     Folio,
-    Flow;
+    Flow,
+    Ember;
 
     companion object {
         fun from(value: String): PlayerVisualMode =

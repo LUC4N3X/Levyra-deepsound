@@ -16,6 +16,8 @@ internal val playerDeckKeys = setOf(
     "playerDeckFolioHint",
     "playerDeckFlow",
     "playerDeckFlowHint",
+    "playerDeckEmber",
+    "playerDeckEmberHint",
     "playerDeckDefaultBadge",
     "playerDeckLandscapeNote"
 )
@@ -52,7 +54,8 @@ internal data class PlayerDeckShortLabels(
     val pulse: String,
     val halo: String = "Liner Notes",
     val folio: String = "Folio",
-    val flow: String = "Levyra Flow"
+    val flow: String = "Levyra Flow",
+    val ember: String = "Ember"
 )
 
 private val playerDeckShortLabelsByCode: Map<String, PlayerDeckShortLabels> = mapOf(
@@ -239,6 +242,50 @@ private val playerDeckFlowHints: Map<String, String> = mapOf(
     "ms" to "Kulit, cahaya dan kawalan pada satu permukaan yang mengalir."
 )
 
+private val playerDeckEmberHints: Map<String, String> = mapOf(
+    "en" to "Artwork glow, waveform seek and a bold play key.",
+    "it" to "Bagliore della copertina, waveform da scorrere e tasto play deciso.",
+    "es" to "Brillo de portada, forma de onda y un gran botón de reproducir.",
+    "fr" to "Lueur de pochette, forme d'onde et grande touche lecture.",
+    "de" to "Cover-Glühen, Wellenform-Suchleiste und große Play-Taste.",
+    "pt" to "Brilho da capa, forma de onda e um botão de reproduzir marcante.",
+    "nl" to "Gloed van de hoes, golfvorm-zoekbalk en grote afspeelknop.",
+    "pl" to "Poświata okładki, przewijanie po fali i duży przycisk odtwarzania.",
+    "ro" to "Strălucirea copertei, formă de undă și un buton de redare amplu.",
+    "sv" to "Omslagsglöd, vågformssökning och en stor spelknapp.",
+    "da" to "Coverglød, bølgeformssøgning og en stor afspilningsknap.",
+    "cs" to "Záře obalu, posun po vlně a výrazné tlačítko přehrávání.",
+    "uk" to "Сяйво обкладинки, хвильова шкала й велика кнопка відтворення.",
+    "ru" to "Сияние обложки, волновая шкала и крупная кнопка воспроизведения.",
+    "tr" to "Kapak ışıltısı, dalga formu arama ve büyük oynat tuşu.",
+    "zh" to "封面光晕、波形进度条与醒目的播放键。",
+    "ja" to "ジャケットの輝き、波形シークと大きな再生キー。",
+    "ko" to "앨범 아트 글로우, 파형 탐색, 큼직한 재생 버튼.",
+    "zh-Hant" to "封面光暈、波形進度條與醒目的播放鍵。",
+    "el" to "Λάμψη εξωφύλλου, κυματομορφή αναζήτησης και μεγάλο κουμπί αναπαραγωγής.",
+    "ar" to "توهج الغلاف وشريط تقدم بشكل موجة وزر تشغيل كبير.",
+    "hi" to "कवर की चमक, वेवफ़ॉर्म सीक और बड़ा प्ले बटन।",
+    "id" to "Cahaya sampul, penggeser gelombang, dan tombol putar besar.",
+    "vi" to "Ánh sáng ảnh bìa, thanh tua dạng sóng và nút phát lớn.",
+    "th" to "แสงเรืองจากปก แถบเลื่อนรูปคลื่น และปุ่มเล่นขนาดใหญ่",
+    "fil" to "Liwanag ng cover, waveform na seek bar at malaking play button.",
+    "he" to "זוהר עטיפה, סרגל גל לניווט וכפתור ניגון גדול.",
+    "fi" to "Kansikuvan hehku, aaltomuotoinen kelaus ja iso toistopainike.",
+    "et" to "Kaanepildi kuma, lainekujuline kerimisriba ja suur esitusnupp.",
+    "sk" to "Žiara obalu, posun po vlne a výrazné tlačidlo prehrávania.",
+    "bn" to "কভারের আভা, তরঙ্গরূপ সিক বার ও বড় প্লে বোতাম।",
+    "kk" to "Мұқаба жарқылы, толқын тәрізді шкала және үлкен ойнату түймесі.",
+    "sr" to "Сјај омота, таласни приказ напретка и велико дугме за пуштање.",
+    "sq" to "Shkëlqim i kopertinës, shirit vale për kërkim dhe buton i madh luajtjeje.",
+    "hr" to "Sjaj omota, valni prikaz napretka i veliki gumb za reprodukciju.",
+    "bg" to "Сияние на обложката, вълнова лента за превъртане и голям бутон за пускане.",
+    "hu" to "Borítófény, hullámforma-csúszka és nagy lejátszás gomb.",
+    "nb" to "Omslagsglød, bølgeformsøk og en stor avspillingsknapp.",
+    "ca" to "Brillantor de la portada, ona per avançar i un gran botó de reproduir.",
+    "fa" to "درخشش جلد، نوار پیشرفت موجی و دکمه پخش بزرگ.",
+    "ms" to "Cahaya kulit album, gelangsar gelombang dan butang main yang besar."
+)
+
 private val playerDeckSleeveHints: Map<String, String> = mapOf(
     "en" to "Cover with a vinyl that slides out while it plays.",
     "it" to "Copertina con un vinile che scivola fuori mentre suona.",
@@ -323,6 +370,8 @@ internal fun playerDeckLocalizationEntries(code: String): Map<String, String> =
         "playerDeckFlow" to "Levyra Flow",
         "playerDeckCardHint" to localizedValueOrEnglish(playerDeckSleeveHints, code),
         "playerDeckFlowHint" to localizedValueOrEnglish(playerDeckFlowHints, code),
+        "playerDeckEmber" to "Ember",
+        "playerDeckEmberHint" to localizedValueOrEnglish(playerDeckEmberHints, code),
         "playerDeckDefaultBadge" to localizedValueOrEnglish(playerDeckDefaultBadges, code)
     )
 
