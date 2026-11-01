@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -236,7 +235,8 @@ private fun ExpressiveTransportRow(
                 height = height,
                 surfaces = surfaces,
                 animated = animated,
-                onClick = onTogglePlay
+                onClick = onTogglePlay,
+                modifier = Modifier.weight(1f)
             )
             ExpressiveRoundButton(
                 icon = Icons.Rounded.SkipNext,
@@ -368,14 +368,15 @@ private fun ExpressiveHeadline(
 }
 
 @Composable
-private fun RowScope.ExpressivePlayPill(
+internal fun ExpressivePlayPill(
     isPlaying: Boolean,
     isResolving: Boolean,
     labels: PlayerControlLabels,
     height: Dp,
     surfaces: PlayerSurfaceTokens,
     animated: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val haptics = LocalLevyraHaptics.current
     val interaction = remember { MutableInteractionSource() }
@@ -403,8 +404,7 @@ private fun RowScope.ExpressivePlayPill(
     )
     val label = if (isPlaying) labels.pause else labels.play
     Row(
-        modifier = Modifier
-            .weight(1f)
+        modifier = modifier
             .height(height)
             .clip(RoundedCornerShape(corner))
             .background(fill)

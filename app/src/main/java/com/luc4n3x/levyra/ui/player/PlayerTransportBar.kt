@@ -102,6 +102,7 @@ internal fun PlayerTransportBar(
     compact: Boolean,
     animated: Boolean,
     useAuraPlayPause: Boolean = false,
+    useExpressivePlayPill: Boolean = false,
     labels: PlayerControlLabels,
     onShuffle: () -> Unit,
     onPrevious: () -> Unit,
@@ -153,7 +154,18 @@ internal fun PlayerTransportBar(
             ) {
                 PlayerIcon(Icons.Rounded.SkipPrevious, surfaces.content, Modifier.size(skipGlyph))
             }
-            if (useAuraPlayPause) {
+            if (useExpressivePlayPill) {
+                ExpressivePlayPill(
+                    isPlaying = isPlaying,
+                    isResolving = isResolving,
+                    labels = labels,
+                    height = height,
+                    surfaces = surfaces,
+                    animated = animated,
+                    onClick = onTogglePlay,
+                    modifier = Modifier.weight(weights.playWeight)
+                )
+            } else if (useAuraPlayPause) {
                 PlayerModeSlot(weight = weights.playWeight) {
                     PlayerAuraPlayPauseButton(
                         isPlaying = isPlaying,

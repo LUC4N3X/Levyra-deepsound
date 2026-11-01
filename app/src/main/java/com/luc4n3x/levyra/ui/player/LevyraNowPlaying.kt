@@ -1128,6 +1128,7 @@ private fun LevyraNowPlayingContent(
                     compact = compactPlayer,
                     animated = animated,
                     useAuraPlayPause = !nocturne && visualMode.usesAuraPlayPause(),
+                    useExpressivePlayPill = !nocturne && visualMode.usesExpressivePlayPill(),
                     labels = playerControlLabels,
                     onShuffle = viewModel::toggleShuffle,
                     onPrevious = viewModel::previous,
