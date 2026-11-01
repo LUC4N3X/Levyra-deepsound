@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="126" height="38" viewBox="0 0 126 38" role="img" aria-label="Levyra documentation">
 <title>Levyra documentation</title>
-<path d="M 18 .8 C 8 .8 .8 8 .8 18 V 22 C .8 30 8 37.2 16 37.2 H 120 C 123 37.2 125.2 35 125.2 32 V 7 C 125.2 3 123 .8 119 .8 Z" fill="#DFD0F9"/>
-<g transform="translate(18.5 19) scale(1.28)" style="color:#493267">
+<path d="M 18 .8 C 8 .8 .8 8 .8 18 V 22 C .8 30 8 37.2 16 37.2 H 120 C 123 37.2 125.2 35 125.2 32 V 7 C 125.2 3 123 .8 119 .8 Z" fill="#3B363E"/>
+<g transform="translate(18.5 19) scale(1.28)" style="color:#E0D8E5">
     <path d="M-5 -7 h7 l4 4 v10 h-11 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M2 -7 v4 h4 M-2 1 h5 M-2 5 h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
-<text x="38" y="23.2" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="10.6" font-weight="650" letter-spacing="-.22" fill="#493267">Documentation</text>
+<text x="38" y="23.2" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="10.6" font-weight="650" letter-spacing="-.22" fill="#E0D8E5">Documentation</text>
 </svg>
