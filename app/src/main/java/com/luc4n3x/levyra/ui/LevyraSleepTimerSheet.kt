@@ -492,15 +492,8 @@ private fun SleepTimerActiveCard(
     val strings = LocalLevyraStrings.current
     val copy = strings.systemPlayerCopy()
     val isSmartSleep = sleepTimerMode == PlaybackSleepTimerMode.SLEEP_WITH_MUSIC
-    val totalSeconds = (state.sleepTimerTotalMs / 1_000L).coerceAtLeast(1L)
-    val fraction = if (state.sleepTimerEndOfTrack) 1f else {
-        (remainingSeconds.toFloat() / totalSeconds.toFloat()).coerceIn(0f, 1f)
-    }
-    val endAt = if (state.sleepTimerEndOfTrack) {
-        strings.sleepTimerEndOfTrack
-    } else {
-        "${copy.sleepEndsAt} ${formatSleepEndClock(state.sleepTimerDeadlineElapsedRealtimeMs, strings.code)}"
-    }
+    val accent = if (isSmartSleep) LevyraViolet else LevyraCyan
+    val endOfTrack = state.sleepTimerEndOfTrack
 
     Column(
         modifier = Modifier
@@ -520,33 +513,25 @@ private fun SleepTimerActiveCard(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             SleepTimerProgressRing(
-                fraction = fraction,
-                icon = when {
-                    isSmartSleep -> Icons.Rounded.AutoAwesome
-                    state.sleepTimerEndOfTrack -> Icons.Rounded.Bedtime
-                    else -> Icons.Rounded.Timer
-                },
-                iconTint = if (isSmartSleep) LevyraViolet else LevyraCyan
+                fraction = activeSleepTimerFraction(state, remainingSeconds),
+                icon = activeSleepTimerIcon(isSmartSleep, endOfTrack),
+                iconTint = accent
             )
             Spacer(Modifier.width(16.dp))
             SleepTimerActiveSummary(
                 modifier = Modifier.weight(1f),
                 label = if (isSmartSleep) smartCopy.smartSleepMode else copy.sleepActive,
-                accent = if (isSmartSleep) LevyraViolet else LevyraCyan,
-                clock = if (state.sleepTimerEndOfTrack) strings.sleepTimerEndOfTrack else formatTimerClock(remainingSeconds),
-                endAt = endAt,
-                detail = when {
-                    isSmartSleep -> smartCopy.sleepWithMusicSubtitle
-                    state.sleepTimerFadeMs > 0L -> copy.sleepFadeActive
-                    else -> null
-                }
+                accent = accent,
+                clock = if (endOfTrack) strings.sleepTimerEndOfTrack else formatTimerClock(remainingSeconds),
+                endAt = activeSleepTimerEndAt(state, strings.sleepTimerEndOfTrack, copy.sleepEndsAt, strings.code),
+                detail = activeSleepTimerDetail(isSmartSleep, state.sleepTimerFadeMs, smartCopy.sleepWithMusicSubtitle, copy.sleepFadeActive)
             )
         }
         Row(
             modifier = Modifier.align(Alignment.End),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            if (!state.sleepTimerEndOfTrack) {
+            if (!endOfTrack) {
                 TextButton(onClick = onAddFifteen, modifier = Modifier.sizeIn(minHeight = 48.dp)) {
                     Text(copy.sleepAddFifteen, color = LevyraCyan, fontWeight = FontWeight.Bold)
                 }
@@ -557,6 +542,43 @@ private fun SleepTimerActiveCard(
         }
     }
 }
+
+private fun activeSleepTimerFraction(state: LevyraUiState, remainingSeconds: Long): Float {
+    if (state.sleepTimerEndOfTrack) return 1f
+    val totalSeconds = (state.sleepTimerTotalMs / 1_000L).coerceAtLeast(1L)
+    return (remainingSeconds.toFloat() / totalSeconds.toFloat()).coerceIn(0f, 1f)
+}
+
+private fun activeSleepTimerIcon(isSmartSleep: Boolean, endOfTrack: Boolean): ImageVector =
+    when {
+        isSmartSleep -> Icons.Rounded.AutoAwesome
+        endOfTrack -> Icons.Rounded.Bedtime
+        else -> Icons.Rounded.Timer
+    }
+
+private fun activeSleepTimerEndAt(
+    state: LevyraUiState,
+    endOfTrackLabel: String,
+    endsAtLabel: String,
+    languageCode: String
+): String =
+    if (state.sleepTimerEndOfTrack) {
+        endOfTrackLabel
+    } else {
+        "$endsAtLabel ${formatSleepEndClock(state.sleepTimerDeadlineElapsedRealtimeMs, languageCode)}"
+    }
+
+private fun activeSleepTimerDetail(
+    isSmartSleep: Boolean,
+    fadeMs: Long,
+    smartSleepDetail: String,
+    fadeDetail: String
+): String? =
+    when {
+        isSmartSleep -> smartSleepDetail
+        fadeMs > 0L -> fadeDetail
+        else -> null
+    }
 
 @Composable
 private fun SleepTimerActiveSummary(
