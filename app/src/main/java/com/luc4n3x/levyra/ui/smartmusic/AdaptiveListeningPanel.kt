@@ -26,6 +26,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -126,31 +127,67 @@ internal fun AdaptiveListeningPanel(
     modifier: Modifier = Modifier
 ) {
     val copy = smartMusicCopy(LocalLevyraStrings.current.code)
-    val scheme = MaterialTheme.colorScheme
-    val context = LocalContext.current
     val stopped by AdaptiveListeningBus.stoppedByUser.collectAsStateWithLifecycle()
     val enabled = settings.adaptiveListeningEnabled && !stopped
     val snapshot by AdaptiveListeningBus.snapshot.collectAsStateWithLifecycle()
     var consentOpen by rememberSaveable { mutableStateOf(false) }
-    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) {
-            AdaptiveListeningBus.markStoppedByUser(false)
-            onEnabled(true)
-            AdaptiveListeningService.start(context.applicationContext, adaptiveConfigOf(settings).copy(enabled = true))
-        } else {
-            AdaptiveListeningBus.reset(AdaptiveListeningSnapshot(AdaptiveListeningCondition.PermissionMissing))
+    val enabler = rememberAdaptiveEnabler(settings, onEnabled)
+    AdaptiveCard(enabled = enabled, animated = animated, modifier = modifier) {
+        AdaptiveHeader(
+            enabled = enabled,
+            adapting = enabled && snapshot.condition == AdaptiveListeningCondition.Adapting,
+            animated = animated,
+            copy = copy,
+            onToggle = { checked -> if (checked) consentOpen = true else onEnabled(false) }
+        )
+        AnimatedVisibility(visible = enabled) {
+            AdaptiveDetails(
+                settings = settings,
+                snapshot = snapshot,
+                animated = animated,
+                copy = copy,
+                onGrant = enabler.grant,
+                onSensitivity = onSensitivity,
+                onMaxBoost = onMaxBoost
+            )
         }
     }
-    val requestEnable = {
+    if (consentOpen) {
+        AdaptiveConsentDialog(
+            copy = copy,
+            onAllow = {
+                consentOpen = false
+                enabler.request()
+            },
+            onDismiss = { consentOpen = false }
+        )
+    }
+}
+
+private class AdaptiveEnabler(val request: () -> Unit, val grant: () -> Unit)
+
+@Composable
+private fun rememberAdaptiveEnabler(settings: LevyraAudioSettings, onEnabled: (Boolean) -> Unit): AdaptiveEnabler {
+    val context = LocalContext.current
+    val enable = {
+        AdaptiveListeningBus.markStoppedByUser(false)
+        onEnabled(true)
+        AdaptiveListeningService.start(context.applicationContext, adaptiveConfigOf(settings).copy(enabled = true))
+    }
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) enable() else AdaptiveListeningBus.reset(AdaptiveListeningSnapshot(AdaptiveListeningCondition.PermissionMissing))
+    }
+    val grant = { launcher.launch(Manifest.permission.RECORD_AUDIO) }
+    val request = {
         val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-        if (granted) {
-            AdaptiveListeningBus.markStoppedByUser(false)
-            onEnabled(true)
-            AdaptiveListeningService.start(context.applicationContext, adaptiveConfigOf(settings).copy(enabled = true))
-        } else {
-            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-        }
+        if (granted) enable() else grant()
     }
+    return AdaptiveEnabler(request, grant)
+}
+
+@Composable
+private fun AdaptiveCard(enabled: Boolean, animated: Boolean, modifier: Modifier, content: @Composable ColumnScope.() -> Unit) {
+    val scheme = MaterialTheme.colorScheme
     val corner by animateDpAsState(
         targetValue = if (enabled) 36.dp else 24.dp,
         animationSpec = if (animated) spring(Spring.DampingRatioLowBouncy, Spring.StiffnessLow) else snap(),
@@ -163,36 +200,8 @@ internal fun AdaptiveListeningPanel(
     ) {
         Column(
             modifier = Modifier.padding(18.dp).then(if (animated) Modifier.animateContentSize() else Modifier),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            AdaptiveHeader(
-                enabled = enabled,
-                adapting = enabled && snapshot.condition == AdaptiveListeningCondition.Adapting,
-                animated = animated,
-                copy = copy,
-                onToggle = { checked -> if (checked) consentOpen = true else onEnabled(false) }
-            )
-            AnimatedVisibility(visible = enabled) {
-                AdaptiveDetails(
-                    settings = settings,
-                    snapshot = snapshot,
-                    animated = animated,
-                    copy = copy,
-                    onGrant = { permissionLauncher.launch(Manifest.permission.RECORD_AUDIO) },
-                    onSensitivity = onSensitivity,
-                    onMaxBoost = onMaxBoost
-                )
-            }
-        }
-    }
-    if (consentOpen) {
-        AdaptiveConsentDialog(
-            copy = copy,
-            onAllow = {
-                consentOpen = false
-                requestEnable()
-            },
-            onDismiss = { consentOpen = false }
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+            content = content
         )
     }
 }
