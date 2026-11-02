@@ -127,6 +127,7 @@ import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.PlaybackBufferMode
 import com.luc4n3x.levyra.domain.PlaybackBufferSettings
+import com.luc4n3x.levyra.domain.OrbitEqualizer
 import com.luc4n3x.levyra.domain.ParametricEqualizer
 import com.luc4n3x.levyra.domain.ParametricEqProfile
 import com.luc4n3x.levyra.domain.AudioOffloadPreference
@@ -138,6 +139,7 @@ import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.CrossfadeLabCopy
 import com.luc4n3x.levyra.ui.i18n.crossfadeLabCopy
 import com.luc4n3x.levyra.ui.i18n.localizedAudioPresetLabel
+import com.luc4n3x.levyra.ui.i18n.orbitEqCopy
 import com.luc4n3x.levyra.ui.i18n.parametricEqCopy
 import com.luc4n3x.levyra.ui.i18n.parametricProfileCopy
 import com.luc4n3x.levyra.ui.i18n.PlaybackBufferCopy
@@ -225,14 +227,22 @@ internal fun AudioSettingsPanel(
     val blocker = remember { MutableInteractionSource() }
     val equalizerEnabled = audioSettings.equalizerEnabled
     var showAutoEqImport by remember { mutableStateOf(false) }
+    val orbitCopy = strings.orbitEqCopy()
+    val orbitActive = audioSettings.parametricEqualizerEnabled &&
+        OrbitEqualizer.positionOf(audioSettings.activeParametricProfile) != null
     var equalizerMode by rememberSaveable {
         mutableStateOf(
-            if (audioSettings.parametricEqualizerEnabled) EqualizerEditorMode.PARAMETRIC else EqualizerEditorMode.GRAPHIC
+            when {
+                orbitActive -> EqualizerEditorMode.ORBIT
+                audioSettings.parametricEqualizerEnabled -> EqualizerEditorMode.PARAMETRIC
+                else -> EqualizerEditorMode.GRAPHIC
+            }
         )
     }
     LaunchedEffect(audioSettings.equalizerEnabled, audioSettings.parametricEqualizerEnabled) {
         when {
-            audioSettings.parametricEqualizerEnabled -> equalizerMode = EqualizerEditorMode.PARAMETRIC
+            audioSettings.parametricEqualizerEnabled && equalizerMode == EqualizerEditorMode.GRAPHIC ->
+                equalizerMode = if (orbitActive) EqualizerEditorMode.ORBIT else EqualizerEditorMode.PARAMETRIC
             audioSettings.equalizerEnabled -> equalizerMode = EqualizerEditorMode.GRAPHIC
         }
     }
@@ -307,6 +317,7 @@ internal fun AudioSettingsPanel(
                     EqualizerModeSelector(
                         selected = equalizerMode,
                         copy = parametricCopy,
+                        orbitLabel = orbitCopy.title,
                         onSelect = { equalizerMode = it }
                     )
                 }
@@ -404,6 +415,19 @@ internal fun AudioSettingsPanel(
                         onValue = { onBassBoost(it.roundToInt()) }
                     )
                 }
+                } else if (equalizerMode == EqualizerEditorMode.ORBIT) {
+                    item {
+                        OrbitEqualizerCard(
+                            enabled = orbitActive,
+                            activeProfile = audioSettings.activeParametricProfile,
+                            customProfiles = audioSettings.customParametricProfiles,
+                            copy = orbitCopy,
+                            savedTitle = parametricProfileCopy.yourProfiles,
+                            actions = parametricActions,
+                            onApply = onApplyParametricAutoEq,
+                            onSave = onSaveParametricProfile
+                        )
+                    }
                 } else {
                     item {
                         ParametricEqualizerCard(
@@ -1868,6 +1892,7 @@ internal fun RowScope.AudioSegment(
     selected: Boolean,
     first: Boolean,
     last: Boolean,
+    maxLines: Int = 1,
     onClick: () -> Unit
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -1907,7 +1932,7 @@ internal fun RowScope.AudioSegment(
                 label,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                maxLines = 1,
+                maxLines = maxLines,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center
             )

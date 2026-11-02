@@ -88,32 +88,23 @@ class LevyraParametricEqualizerAudioProcessor : AudioProcessor {
         val output = replaceOutputBuffer(sampleCount * 4)
         inputBuffer.order(ByteOrder.LITTLE_ENDIAN)
         output.order(ByteOrder.LITTLE_ENDIAN)
+        var remaining = sampleCount
         if (inputFormat.encoding == C.ENCODING_PCM_FLOAT) {
-            processFloat(inputBuffer, output, sampleCount)
+            while (remaining > 0) {
+                output.putFloat(processSample(inputBuffer.float))
+                remaining -= 1
+            }
         } else {
-            processPcm16(inputBuffer, output, sampleCount)
+            while (remaining > 0) {
+                output.putFloat(processSample(inputBuffer.short / 32768f))
+                remaining -= 1
+            }
         }
         output.flip()
         inputBuffer.position(limit)
     }
 
-    private fun processPcm16(input: ByteBuffer, output: ByteBuffer, sampleCount: Int) {
-        var remaining = sampleCount
-        while (remaining > 0) {
-            processAndWrite(input.short / 32768f, output)
-            remaining -= 1
-        }
-    }
-
-    private fun processFloat(input: ByteBuffer, output: ByteBuffer, sampleCount: Int) {
-        var remaining = sampleCount
-        while (remaining > 0) {
-            processAndWrite(input.float, output)
-            remaining -= 1
-        }
-    }
-
-    private fun processAndWrite(input: Float, output: ByteBuffer) {
+    private fun processSample(input: Float): Float {
         val current = banks[activeBank].process(input, channelIndex)
         val processed = if (transitionFramesRemaining > 0) {
             val next = banks[transitionBank].process(input, channelIndex)
@@ -122,7 +113,6 @@ class LevyraParametricEqualizerAudioProcessor : AudioProcessor {
         } else {
             current
         }
-        output.putFloat(if (processed.isFinite()) processed else input)
         channelIndex += 1
         if (channelIndex == inputFormat.channelCount) {
             channelIndex = 0
@@ -134,6 +124,7 @@ class LevyraParametricEqualizerAudioProcessor : AudioProcessor {
                 }
             }
         }
+        return if (processed.isFinite()) processed else input
     }
 
     private fun applyRequestedConfiguration(force: Boolean) {
@@ -226,21 +217,25 @@ class LevyraParametricEqualizerAudioProcessor : AudioProcessor {
         private val types = IntArray(ParametricEqualizer.MAX_BANDS)
         private val frequencies = FloatArray(ParametricEqualizer.MAX_BANDS)
         private val qValues = FloatArray(ParametricEqualizer.MAX_BANDS)
-        private var states = emptyArray<Array<FilterState>>()
+        private var z1 = FloatArray(0)
+        private var z2 = FloatArray(0)
         private var filterCount = 0
         private var preampLinear = 1f
         private var targetPreampLinear = 1f
 
         fun prepareChannels(channelCount: Int) {
-            if (states.size != channelCount) {
-                states = Array(channelCount) { Array(ParametricEqualizer.MAX_BANDS) { FilterState() } }
+            val size = channelCount * ParametricEqualizer.MAX_BANDS
+            if (z1.size != size) {
+                z1 = FloatArray(size)
+                z2 = FloatArray(size)
             } else {
                 clearStates()
             }
         }
 
         fun releaseChannels() {
-            states = emptyArray()
+            z1 = FloatArray(0)
+            z2 = FloatArray(0)
             filterCount = 0
             preampLinear = 1f
             targetPreampLinear = 1f
@@ -292,32 +287,29 @@ class LevyraParametricEqualizerAudioProcessor : AudioProcessor {
         fun process(input: Float, channel: Int): Float {
             var value = input
             var index = 0
+            var slot = channel * ParametricEqualizer.MAX_BANDS
             while (index < filterCount) {
                 val coefficient = coefficients[index]
-                val state = states[channel][index]
-                val filtered = coefficient.b0 * value + state.z1
-                state.z1 = coefficient.b1 * value - coefficient.a1 * filtered + state.z2
-                state.z2 = coefficient.b2 * value - coefficient.a2 * filtered
-                if (!filtered.isFinite() || !state.z1.isFinite() || !state.z2.isFinite()) {
-                    state.clear()
+                val filtered = coefficient.b0 * value + z1[slot]
+                val nextZ1 = coefficient.b1 * value - coefficient.a1 * filtered + z2[slot]
+                val nextZ2 = coefficient.b2 * value - coefficient.a2 * filtered
+                if (!filtered.isFinite() || !nextZ1.isFinite() || !nextZ2.isFinite()) {
+                    z1[slot] = 0f
+                    z2[slot] = 0f
                 } else {
+                    z1[slot] = nextZ1
+                    z2[slot] = nextZ2
                     value = filtered
                 }
                 index += 1
+                slot += 1
             }
             return value * preampLinear
         }
 
         fun clearStates() {
-            var channel = 0
-            while (channel < states.size) {
-                var band = 0
-                while (band < states[channel].size) {
-                    states[channel][band].clear()
-                    band += 1
-                }
-                channel += 1
-            }
+            z1.fill(0f)
+            z2.fill(0f)
         }
 
         private fun writeTopology(
@@ -403,13 +395,6 @@ class LevyraParametricEqualizerAudioProcessor : AudioProcessor {
             1.0 + a1 + a2 > STABILITY_EPSILON &&
                 1.0 - a1 + a2 > STABILITY_EPSILON &&
                 1.0 - a2 > STABILITY_EPSILON
-    }
-
-    private class FilterState(var z1: Float = 0f, var z2: Float = 0f) {
-        fun clear() {
-            z1 = 0f
-            z2 = 0f
-        }
     }
 
     companion object {

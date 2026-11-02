@@ -87,6 +87,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.luc4n3x.levyra.data.parametricProfileFromJsonText
 import com.luc4n3x.levyra.data.parametricProfileToJson
+import com.luc4n3x.levyra.domain.OrbitEqualizer
 import com.luc4n3x.levyra.domain.ParametricBiquad
 import com.luc4n3x.levyra.domain.ParametricEqBand
 import com.luc4n3x.levyra.domain.ParametricEqProfile
@@ -96,6 +97,7 @@ import com.luc4n3x.levyra.domain.ParametricProfiles
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.ParametricEqCopy
 import com.luc4n3x.levyra.ui.i18n.ParametricProfileCopy
+import com.luc4n3x.levyra.ui.i18n.orbitEqCopy
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
@@ -108,17 +110,19 @@ import kotlin.math.log10
 import kotlin.math.pow
 import kotlin.math.roundToInt
 
-internal enum class EqualizerEditorMode { GRAPHIC, PARAMETRIC }
+internal enum class EqualizerEditorMode { GRAPHIC, PARAMETRIC, ORBIT }
 
 @Composable
 internal fun EqualizerModeSelector(
     selected: EqualizerEditorMode,
     copy: ParametricEqCopy,
+    orbitLabel: String,
     onSelect: (EqualizerEditorMode) -> Unit
 ) {
     val modes = listOf(
         EqualizerEditorMode.GRAPHIC to copy.graphicEq,
-        EqualizerEditorMode.PARAMETRIC to copy.parametricEq
+        EqualizerEditorMode.PARAMETRIC to copy.parametricEq,
+        EqualizerEditorMode.ORBIT to orbitLabel
     )
     Row(
         modifier = Modifier.fillMaxWidth().selectableGroup(),
@@ -130,6 +134,7 @@ internal fun EqualizerModeSelector(
                 selected = selected == mode,
                 first = index == 0,
                 last = index == modes.lastIndex,
+                maxLines = 2,
                 onClick = { onSelect(mode) }
             )
         }
@@ -257,7 +262,13 @@ internal fun ParametricEqualizerCard(
             )
 
             if (externalActive != null) {
-                ProfileSectionTitle(profileCopy.autoEq)
+                ProfileSectionTitle(
+                    if (externalActive.id == OrbitEqualizer.PROFILE_ID) {
+                        LocalLevyraStrings.current.orbitEqCopy().title
+                    } else {
+                        profileCopy.autoEq
+                    }
+                )
                 ParametricProfileRow(
                     name = externalActive.name,
                     detail = "${copy.bands} · ${externalActive.bands.size}",
@@ -862,7 +873,7 @@ private fun parametricFieldColors() = OutlinedTextFieldDefaults.colors(
 )
 
 @Composable
-private fun ParametricResponseCurve(
+internal fun ParametricResponseCurve(
     profile: ParametricEqProfile,
     description: String,
     modifier: Modifier = Modifier
@@ -949,7 +960,7 @@ private fun ParametricChip(
 }
 
 @Composable
-private fun ParametricAction(
+internal fun ParametricAction(
     label: String,
     icon: ImageVector,
     enabled: Boolean,

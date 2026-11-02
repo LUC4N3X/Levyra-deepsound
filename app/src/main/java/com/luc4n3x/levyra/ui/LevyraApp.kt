@@ -9641,7 +9641,8 @@ private fun HomeScreen(
             isRefreshing = homeRefreshing,
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = statusBarTop + LevyraHomeDesign.HorizontalInset),
+                .zIndex(1f)
+                .padding(top = statusBarTop),
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             color = MaterialTheme.colorScheme.onPrimaryContainer
         )
@@ -10492,7 +10493,8 @@ private fun StudioHomeContent(
                     isRefreshing = homeRefreshing,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
-                        .padding(top = statusBarTop + LevyraHomeDesign.HorizontalInset),
+                        .zIndex(1f)
+                        .padding(top = statusBarTop),
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
