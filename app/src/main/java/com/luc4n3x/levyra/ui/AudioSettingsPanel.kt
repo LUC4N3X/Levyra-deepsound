@@ -231,18 +231,12 @@ internal fun AudioSettingsPanel(
     val orbitActive = audioSettings.parametricEqualizerEnabled &&
         OrbitEqualizer.positionOf(audioSettings.activeParametricProfile) != null
     var equalizerMode by rememberSaveable {
-        mutableStateOf(
-            when {
-                orbitActive -> EqualizerEditorMode.ORBIT
-                audioSettings.parametricEqualizerEnabled -> EqualizerEditorMode.PARAMETRIC
-                else -> EqualizerEditorMode.GRAPHIC
-            }
-        )
+        mutableStateOf(activeEqualizerMode(audioSettings.parametricEqualizerEnabled, orbitActive))
     }
     LaunchedEffect(audioSettings.equalizerEnabled, audioSettings.parametricEqualizerEnabled) {
         when {
             audioSettings.parametricEqualizerEnabled && equalizerMode == EqualizerEditorMode.GRAPHIC ->
-                equalizerMode = if (orbitActive) EqualizerEditorMode.ORBIT else EqualizerEditorMode.PARAMETRIC
+                equalizerMode = activeEqualizerMode(parametricEnabled = true, orbitActive = orbitActive)
             audioSettings.equalizerEnabled -> equalizerMode = EqualizerEditorMode.GRAPHIC
         }
     }

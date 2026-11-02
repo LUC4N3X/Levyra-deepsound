@@ -112,6 +112,12 @@ import kotlin.math.roundToInt
 
 internal enum class EqualizerEditorMode { GRAPHIC, PARAMETRIC, ORBIT }
 
+internal fun activeEqualizerMode(parametricEnabled: Boolean, orbitActive: Boolean): EqualizerEditorMode = when {
+    orbitActive -> EqualizerEditorMode.ORBIT
+    parametricEnabled -> EqualizerEditorMode.PARAMETRIC
+    else -> EqualizerEditorMode.GRAPHIC
+}
+
 @Composable
 internal fun EqualizerModeSelector(
     selected: EqualizerEditorMode,

@@ -31,7 +31,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BookmarkAdd
-import androidx.compose.material.icons.rounded.CompareArrows
+import androidx.compose.material.icons.automirrored.rounded.CompareArrows
 import androidx.compose.material.icons.rounded.FilterCenterFocus
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -96,7 +96,6 @@ private const val POLE_REACH = 0.75f
 private const val NUDGE = 0.1f
 private val GRAB_RADIUS = 40.dp
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun OrbitEqualizerCard(
     enabled: Boolean,
@@ -198,9 +197,7 @@ internal fun OrbitEqualizerCard(
                 onDrag = { target ->
                     val previous = dragTarget ?: OrbitPosition(satellite.value.x, satellite.value.y)
                     val snapped = if (target.radius < CENTER_SNAP) OrbitPosition.Center else target
-                    if ((previous.radius >= CENTER_SNAP) != (snapped.radius >= CENTER_SNAP) ||
-                        (previous.radius < 0.999f && snapped.radius >= 0.999f)
-                    ) {
+                    if (crossesHapticBoundary(previous, snapped)) {
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     }
                     dragTarget = snapped
@@ -241,45 +238,91 @@ internal fun OrbitEqualizerCard(
                     .alpha(if (enabled || dragging) 1f else 0.45f)
             )
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ParametricAction(
-                    label = copy.center,
-                    icon = Icons.Rounded.FilterCenterFocus,
-                    enabled = live != OrbitPosition.Center,
-                    modifier = Modifier.weight(1f),
-                    onClick = { glideTo(OrbitPosition.Center) }
-                )
-                OrbitCompareAction(
-                    label = copy.compare,
-                    enabled = enabled && live != OrbitPosition.Center,
-                    comparing = comparing,
-                    modifier = Modifier.weight(1f),
-                    onComparing = { comparing = it }
-                )
-            }
-            ParametricAction(
-                label = copy.save,
-                icon = Icons.Rounded.BookmarkAdd,
-                enabled = live != OrbitPosition.Center,
-                modifier = Modifier.fillMaxWidth(),
-                onClick = {
+            OrbitActions(
+                copy = copy,
+                shaped = live != OrbitPosition.Center,
+                enabled = enabled,
+                comparing = comparing,
+                onCenter = { glideTo(OrbitPosition.Center) },
+                onComparing = { comparing = it },
+                onSave = {
                     val name = ParametricProfiles.availableName(copy.title, copy.title, customProfiles) { stem, number -> "$stem $number" }
                     onSave(name, shape.profile)
                 }
             )
 
-            val saved = remember(customProfiles) { customProfiles.filter { OrbitEqualizer.positionOf(it) != null } }
-            if (saved.isNotEmpty()) {
-                Text(savedTitle, color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.Black)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    saved.forEach { profile ->
-                        OrbitSavedChip(
-                            label = profile.name,
-                            selected = enabled && activeProfile?.id == profile.id,
-                            onClick = { actions.onActivateCustom(profile.id) }
-                        )
-                    }
-                }
+            OrbitSavedProfiles(
+                title = savedTitle,
+                customProfiles = customProfiles,
+                activeId = activeProfile?.id.takeIf { enabled },
+                onActivate = actions.onActivateCustom
+            )
+        }
+    }
+}
+
+@Composable
+private fun OrbitActions(
+    copy: OrbitEqCopy,
+    shaped: Boolean,
+    enabled: Boolean,
+    comparing: Boolean,
+    onCenter: () -> Unit,
+    onComparing: (Boolean) -> Unit,
+    onSave: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ParametricAction(
+                label = copy.center,
+                icon = Icons.Rounded.FilterCenterFocus,
+                enabled = shaped,
+                modifier = Modifier.weight(1f),
+                onClick = onCenter
+            )
+            OrbitCompareAction(
+                label = copy.compare,
+                enabled = enabled && shaped,
+                comparing = comparing,
+                modifier = Modifier.weight(1f),
+                onComparing = onComparing
+            )
+        }
+        ParametricAction(
+            label = copy.save,
+            icon = Icons.Rounded.BookmarkAdd,
+            enabled = shaped,
+            modifier = Modifier.fillMaxWidth(),
+            onClick = onSave
+        )
+    }
+}
+
+private fun crossesHapticBoundary(previous: OrbitPosition, next: OrbitPosition): Boolean {
+    val enteredCenter = previous.radius >= CENTER_SNAP != next.radius >= CENTER_SNAP
+    val reachedRim = previous.radius < 0.999f && next.radius >= 0.999f
+    return enteredCenter || reachedRim
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun OrbitSavedProfiles(
+    title: String,
+    customProfiles: List<ParametricEqProfile>,
+    activeId: String?,
+    onActivate: (String) -> Unit
+) {
+    val saved = remember(customProfiles) { customProfiles.filter { OrbitEqualizer.positionOf(it) != null } }
+    if (saved.isEmpty()) return
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(title, color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.Black)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            saved.forEach { profile ->
+                OrbitSavedChip(
+                    label = profile.name,
+                    selected = activeId == profile.id,
+                    onClick = { onActivate(profile.id) }
+                )
             }
         }
     }
@@ -468,7 +511,7 @@ private fun OrbitCompareAction(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            Icon(Icons.Rounded.CompareArrows, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(18.dp))
+            Icon(Icons.AutoMirrored.Rounded.CompareArrows, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(18.dp))
             Text(
                 label,
                 color = LevyraText,
