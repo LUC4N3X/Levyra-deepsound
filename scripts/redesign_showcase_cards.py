@@ -1,10 +1,8 @@
 import os
-import math
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
 
 SCREENSHOT_DIR = r"C:\Users\Luca Drogo\Desktop\screenshots"
 OUT_DIR = r"C:\Users\Luca Drogo\repo-work\Levyra-deepsound\docs\assets\showcase\editorial-cards"
-EMBLEM_PATH = os.path.join(SCREENSHOT_DIR, "Emblema a nastro neon astratto.png")
 
 os.makedirs(OUT_DIR, exist_ok=True)
 
@@ -20,24 +18,14 @@ def get_font(path, size):
         return ImageFont.truetype(path, size)
     return ImageFont.load_default()
 
-# Display typography for Row 1 diptychs (2-line sculptural headlines)
-font_diptych_title = get_font(FONT_BOLD, 76)
-font_diptych_sub = get_font(FONT_BOLD, 34)
+# Apple-style hierarchy: crisp uppercase eyebrow + sculptural headline + refined subtitle
+font_eyebrow_diptych = get_font(FONT_BOLD, 22)
+font_diptych_title = get_font(FONT_BOLD, 78)
+font_diptych_sub = get_font(FONT_SEMIBOLD, 34)
 
-# Display typography for Rows 2-6 upright cards (centered editorial header)
+font_eyebrow_upright = get_font(FONT_BOLD, 21)
 font_upright_title = get_font(FONT_BOLD, 64)
-font_upright_sub = get_font(FONT_BOLD, 31)
-
-# Load official Levyra ribbon emblem
-emblem_img = None
-if os.path.exists(EMBLEM_PATH):
-    emblem_raw = Image.open(EMBLEM_PATH).convert("RGBA")
-    alpha_bbox = emblem_raw.getchannel("A").getbbox()
-    if alpha_bbox:
-        emblem_raw = emblem_raw.crop(alpha_bbox)
-    ew = 66
-    eh = int(round(ew * emblem_raw.height / emblem_raw.width))
-    emblem_img = emblem_raw.resize((ew, eh), Image.Resampling.LANCZOS)
+font_upright_sub = get_font(FONT_SEMIBOLD, 31)
 
 def resolve_screenshot_path(filename):
     candidates = [
@@ -67,111 +55,74 @@ def enhance_screenshot(img):
     img = ImageEnhance.Sharpness(img).enhance(1.05)
     return img
 
-_PIN_CACHE = {}
+def measure_tracked_text(draw, text, font, tracking=5):
+    if not text:
+        return 0
+    total_w = 0
+    for i, ch in enumerate(text):
+        bbox = draw.textbbox((0, 0), ch, font=font)
+        total_w += (bbox[2] - bbox[0])
+        if i < len(text) - 1:
+            total_w += tracking
+    return total_w
 
-def draw_modern_pin(card, cx, cy, radius=17):
-    """Draws a realistic 3D CNC-machined titanium studio pin/stud ('chiodo moderno') with cast shadow."""
-    if radius not in _PIN_CACHE:
-        scale = 4
-        R = radius * scale
-        pad = 18 * scale
-        size = (R + pad) * 2
-        pin_canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-        c = size // 2
+def draw_tracked_text(draw, text, x, y, font, fill, tracking=5, align="left"):
+    """Draws uppercase Apple-style tracked eyebrow typography."""
+    total_w = measure_tracked_text(draw, text, font, tracking=tracking)
+    if align == "center":
+        curr_x = x - total_w // 2
+    elif align == "right":
+        curr_x = x - total_w
+    else:
+        curr_x = x
 
-        # 1. Directional cast shadow (bottom-right)
-        shadow = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-        sdraw = ImageDraw.Draw(shadow)
-        sx, sy = c + 5 * scale, c + 8 * scale
-        sdraw.ellipse((sx - R, sy - R, sx + R, sy + R), fill=(15, 23, 42, 130))
-        shadow = shadow.filter(ImageFilter.GaussianBlur(6 * scale))
-        pin_canvas.alpha_composite(shadow)
+    for ch in text:
+        draw.text((curr_x, y), ch, font=font, fill=fill)
+        bbox = draw.textbbox((0, 0), ch, font=font)
+        curr_x += (bbox[2] - bbox[0]) + tracking
 
-        # 2. Tight contact occlusion shadow
-        contact = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-        cdraw = ImageDraw.Draw(contact)
-        cx_occ, cy_occ = c + 1 * scale, c + 2 * scale
-        cdraw.ellipse((cx_occ - R, cy_occ - R, cx_occ + R, cy_occ + R), fill=(10, 14, 24, 165))
-        contact = contact.filter(ImageFilter.GaussianBlur(2 * scale))
-        pin_canvas.alpha_composite(contact)
-
-        # 3. Outer machined titanium flange with diagonal directional lighting
-        head = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-        for y in range(c - R, c + R + 1):
-            for x in range(c - R, c + R + 1):
-                dx, dy = x - c, y - c
-                dist = math.hypot(dx, dy)
-                if dist <= R:
-                    t = ((dx + dy) / (2.0 * R) + 1.0) * 0.5
-                    t = max(0.0, min(1.0, t))
-                    if dist > R - 2.4 * scale:
-                        r = int(240 * (1 - t) + 38 * t)
-                        g = int(244 * (1 - t) + 44 * t)
-                        b = int(252 * (1 - t) + 56 * t)
-                    elif dist > R * 0.62:
-                        r = int(125 * (1 - t) + 24 * t)
-                        g = int(132 * (1 - t) + 28 * t)
-                        b = int(148 * (1 - t) + 38 * t)
-                    elif dist > R * 0.50:
-                        r = int(18 * (1 - t) + 85 * t)
-                        g = int(22 * (1 - t) + 92 * t)
-                        b = int(30 * (1 - t) + 108 * t)
-                    else:
-                        inner_t = ((dx / (R * 0.50) + dy / (R * 0.50)) * 0.5 + 1.0) * 0.5
-                        inner_t = max(0.0, min(1.0, inner_t))
-                        r = int(180 * (1 - inner_t) + 30 * inner_t)
-                        g = int(188 * (1 - inner_t) + 35 * inner_t)
-                        b = int(205 * (1 - inner_t) + 46 * inner_t)
-                    head.putpixel((x, y), (r, g, b, 255))
-
-        mask = Image.new("L", (size, size), 0)
-        ImageDraw.Draw(mask).ellipse((c - R, c - R, c + R, c + R), fill=255)
-        head.putalpha(mask)
-
-        # 4. Crisp specular hotspot on top-left of dome
-        glint = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-        gdraw = ImageDraw.Draw(glint)
-        gx, gy = c - int(R * 0.22), c - int(R * 0.22)
-        gr = int(R * 0.17)
-        gdraw.ellipse((gx - gr, gy - gr, gx + gr, gy + gr), fill=(255, 255, 255, 230))
-        glint = glint.filter(ImageFilter.GaussianBlur(int(scale * 1.1)))
-        head.alpha_composite(glint)
-
-        pin_canvas.alpha_composite(head)
-        out_size = size // scale
-        _PIN_CACHE[radius] = pin_canvas.resize((out_size, out_size), Image.Resampling.LANCZOS)
-
-    pin_final = _PIN_CACHE[radius]
-    out_size = pin_final.width
-    card.alpha_composite(pin_final, (cx - out_size // 2, cy - out_size // 2))
-
-def draw_diptych_editorial_block(card, title_lines, subtitle, x, y, align="left", title_fill=(15, 23, 42, 255), sub_fill=(71, 85, 105, 255), show_pin=True):
-    """Draws a bold 2-line display headline + concise 1-line subhead anchored by a modern 3D pin."""
+def draw_diptych_editorial_block(
+    card,
+    eyebrow,
+    title_lines,
+    subtitle,
+    x,
+    y,
+    align="left",
+    eyebrow_fill=(67, 56, 202, 255),
+    title_fill=(15, 23, 42, 255),
+    sub_fill=(71, 85, 105, 255),
+):
+    """Draws an authentic Apple App Store / Apple Music editorial block:
+    Tracked uppercase category eyebrow + sculptural 2-line display headline + concise subhead.
+    Zero artificial pins, bars, or gimmicks.
+    """
     draw = ImageDraw.Draw(card)
-    pin_r = 17
+
+    draw_tracked_text(
+        draw,
+        eyebrow.upper(),
+        x,
+        y,
+        font=font_eyebrow_diptych,
+        fill=eyebrow_fill,
+        tracking=5,
+        align=align,
+    )
+    curr_y = y + 36
 
     if align == "left":
-        if show_pin:
-            draw_modern_pin(card, x + pin_r, y, radius=pin_r)
-            curr_y = y + pin_r + 18
-        else:
-            curr_y = y
         for line in title_lines:
             draw.text((x, curr_y), line, font=font_diptych_title, fill=title_fill)
-            curr_y += 82
+            curr_y += 84
         curr_y += 14
         draw.text((x, curr_y), subtitle, font=font_diptych_sub, fill=sub_fill)
     else:
-        if show_pin:
-            draw_modern_pin(card, x - pin_r, y, radius=pin_r)
-            curr_y = y + pin_r + 18
-        else:
-            curr_y = y
         for line in title_lines:
             bbox = draw.textbbox((0, 0), line, font=font_diptych_title)
             lw = bbox[2] - bbox[0]
             draw.text((x - lw, curr_y), line, font=font_diptych_title, fill=title_fill)
-            curr_y += 82
+            curr_y += 84
         curr_y += 14
         sbbox = draw.textbbox((0, 0), subtitle, font=font_diptych_sub)
         sw = sbbox[2] - sbbox[0]
@@ -319,7 +270,7 @@ def finalize_card(card, border_rgb):
 
     frame = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     fdraw = ImageDraw.Draw(frame)
-    fdraw.rounded_rectangle((1, 1, w - 2, h - 2), radius=41, outline=(255, 255, 255, 150), width=2)
+    fdraw.rounded_rectangle((1, 1, w - 2, h - 2), radius=41, outline=(255, 255, 255, 165), width=2)
     fdraw.rounded_rectangle((0, 0, w - 1, h - 1), radius=42, outline=border_rgb + (255,), width=2)
     card.alpha_composite(frame)
     card.putalpha(mask)
@@ -364,27 +315,28 @@ def build_row1_cards():
     c1 = pair1.crop((0, 0, CARD_W, CARD_H))
     c2 = pair1.crop((CARD_W + GAP, 0, pair_w, CARD_H))
 
-    # Top-left 3D pin on Card 01 aligned at y=76 with Cards 02-04
-    draw_modern_pin(c1, 68 + 17, 76, radius=17)
     draw_diptych_editorial_block(
         c1,
+        eyebrow="PURE SOUND",
         title_lines=["Pure", "Listening."],
         subtitle="Your music, zero ads.",
         x=68,
-        y=1455,
+        y=1430,
         align="left",
+        eyebrow_fill=(45, 78, 178, 255),
         title_fill=(17, 24, 39, 255),
         sub_fill=(55, 71, 107, 255),
-        show_pin=False,
     )
 
     draw_diptych_editorial_block(
         c2,
+        eyebrow="NOW PLAYING",
         title_lines=["Stay with", "the Song."],
         subtitle="Live synced lyrics.",
         x=CARD_W - 68,
-        y=76,
+        y=68,
         align="right",
+        eyebrow_fill=(162, 38, 104, 255),
         title_fill=(36, 16, 30, 255),
         sub_fill=(108, 54, 88, 255),
     )
@@ -420,22 +372,26 @@ def build_row1_cards():
 
     draw_diptych_editorial_block(
         c3,
+        eyebrow="LIGHT THEME",
         title_lines=["Daylight", "Expressive."],
         subtitle="Tuned for bright clarity.",
         x=68,
-        y=76,
+        y=68,
         align="left",
+        eyebrow_fill=(142, 92, 34, 255),
         title_fill=(28, 23, 18, 255),
         sub_fill=(104, 85, 62, 255),
     )
 
     draw_diptych_editorial_block(
         c4,
+        eyebrow="OLED THEME",
         title_lines=["Midnight", "Obsidian."],
         subtitle="Deep OLED contrast.",
         x=CARD_W - 68,
-        y=76,
+        y=68,
         align="right",
+        eyebrow_fill=(38, 78, 138, 255),
         title_fill=(15, 23, 42, 255),
         sub_fill=(48, 64, 87, 255),
     )
@@ -446,183 +402,204 @@ def build_row1_cards():
     return [c1, c2, c3, c4]
 
 # ==============================================================================
-# ROWS 2 TO 6 — UPRIGHT FLAGSHIP STAGE (Cards 05-24)
+# ROWS 2 TO 6 — UPRIGHT APPLE-STYLE FLAGSHIP STAGE (Cards 05-24)
 # ==============================================================================
 UPRIGHT_CARD_SPECS = [
     # Row 2: Discovery & Audio Precision (05-08)
     (
         "05_fresh_currents",
+        "DISCOVERY",
         "Instant Search",
         "Tracks, albums & artists in real time.",
         "Screenshot_20261024_144737_Levyra.jpg",
         (241, 246, 254), (218, 230, 248), (184, 206, 242), (194, 210, 236),
-        (15, 23, 42), (48, 69, 104),
+        (37, 99, 235), (15, 23, 42), (56, 74, 106),
     ),
     (
         "06_built_for_your_taste",
+        "CUSTOMIZATION",
         "Player Styles",
         "Layouts crafted for your taste.",
         "Screenshot_20261024_203401_Levyra.jpg",
         (250, 244, 236), (234, 220, 204), (218, 195, 170), (216, 199, 180),
-        (28, 20, 16), (102, 74, 56),
+        (154, 84, 42), (28, 20, 16), (102, 74, 56),
     ),
     (
         "07_every_genre",
+        "CURATION",
         "Every Mood & Genre",
         "Explore by energy and atmosphere.",
         "Screenshot_20261015_140910_LEVYRA.jpg",
         (239, 250, 246), (212, 239, 230), (174, 224, 208), (182, 222, 209),
-        (15, 34, 29), (38, 92, 78),
+        (16, 122, 92), (15, 34, 29), (44, 92, 78),
     ),
     (
         "08_acoustic_precision",
+        "HIGH FIDELITY",
         "Acoustic Precision",
         "Pure 320 kbps & lossless output.",
         "Screenshot_20261024_150113_Levyra.jpg",
         (237, 243, 250), (212, 225, 239), (178, 200, 226), (188, 205, 224),
-        (15, 23, 42), (48, 67, 98),
+        (42, 82, 142), (15, 23, 42), (52, 70, 98),
     ),
 
     # Row 3: Library & Insights (09-12)
     (
         "09_keep_it_personal",
+        "YOUR LIBRARY",
         "Unified Library",
         "Streamed and local tracks in one home.",
         "Screenshot_20261020_142741_LEVYRA.jpg",
         (240, 244, 253), (220, 229, 247), (186, 203, 238), (196, 210, 238),
-        (17, 24, 39), (55, 71, 107),
+        (52, 82, 184), (17, 24, 39), (58, 74, 108),
     ),
     (
         "10_curated_for_you",
+        "QUICK ACCESS",
         "Curated Search",
         "Artist shortcuts and instant filters.",
         "Screenshot_20261024_193919_Levyra.jpg",
         (253, 245, 238), (242, 223, 206), (228, 198, 172), (226, 202, 182),
-        (34, 20, 14), (112, 68, 46),
+        (168, 76, 38), (34, 20, 14), (112, 68, 46),
     ),
     (
         "11_your_rhythm",
+        "ANALYTICS",
         "Listening Insights",
         "On-device stats and personal habits.",
         "Screenshot_20261024_210317_Levyra.jpg",
         (238, 247, 252), (211, 232, 246), (175, 212, 238), (184, 214, 234),
-        (14, 28, 42), (42, 82, 112),
+        (24, 108, 158), (14, 28, 42), (46, 82, 112),
     ),
     (
         "12_in_your_orbit",
+        "PLAYLISTS",
         "Levyra Collections",
         "Handpicked playlists around your taste.",
         "Screenshot_20261024_210532_Levyra.jpg",
         (245, 240, 252), (226, 216, 243), (204, 188, 234), (204, 190, 228),
-        (24, 17, 38), (82, 62, 118),
+        (108, 62, 172), (24, 17, 38), (82, 62, 118),
     ),
 
     # Row 4: Personalization & Artists (13-16)
     (
         "13_tailor_every_detail",
+        "DESIGN SYSTEM",
         "Skin Studio",
         "Seven complete looks in one tap.",
         "Screenshot_20261023_212906_LEVYRA.jpg",
         (246, 241, 253), (228, 217, 246), (206, 188, 238), (208, 194, 232),
-        (26, 17, 42), (86, 60, 126),
+        (114, 58, 184), (26, 17, 42), (86, 60, 126),
     ),
     (
         "14_fresh_off_the_stage",
+        "ON AIR",
         "Live Radio",
         "Thousands of global stations live.",
         "Screenshot_20261024_145819_Levyra.jpg",
         (253, 241, 243), (242, 216, 221), (228, 186, 195), (226, 196, 203),
-        (38, 16, 22), (116, 52, 66),
+        (178, 42, 68), (38, 16, 22), (116, 52, 66),
     ),
     (
         "15_meet_the_artist",
+        "ARTIST PAGES",
         "Meet the Artist",
         "Biographies, audience and discography.",
         "Screenshot_20261024_145036_Levyra.jpg",
         (251, 247, 240), (237, 226, 208), (222, 205, 178), (218, 204, 184),
-        (28, 23, 18), (98, 80, 58),
+        (138, 92, 46), (28, 23, 18), (98, 80, 58),
     ),
     (
         "16_listen_together",
+        "SHARED SESSIONS",
         "Levyra Jam",
         "Real-time shared queue with friends.",
         "Screenshot_20261011_133434_LEVYRA.jpg",
         (239, 249, 243), (213, 237, 224), (176, 220, 198), (186, 220, 202),
-        (14, 34, 24), (38, 94, 68),
+        (22, 124, 78), (14, 34, 24), (42, 94, 68),
     ),
 
     # Row 5: Lyrics, Offline & Highlights (17-20)
     (
         "17_sing_along",
+        "TIME-SYNCED",
         "Synced Lyrics",
         "Tap-to-seek timing and translations.",
         "screen-lyrics.jpg",
         (253, 248, 236), (240, 226, 196), (228, 206, 162), (224, 206, 172),
-        (32, 24, 12), (108, 78, 36),
+        (158, 98, 24), (32, 24, 12), (108, 78, 36),
     ),
     (
         "18_open_the_album",
+        "OFFLINE PLAYBACK",
         "Offline Music",
         "Full albums saved directly on device.",
         "Screenshot_20261024_193647_Levyra.jpg",
         (241, 245, 249), (218, 226, 236), (186, 200, 218), (194, 206, 220),
-        (15, 23, 42), (51, 65, 85),
+        (54, 78, 114), (15, 23, 42), (56, 70, 92),
     ),
     (
         "19_discover_for_you",
+        "DAILY FEED",
         "Discover for You",
         "Swipe to save or explore next.",
         "Screenshot_20261024_195654_Levyra.jpg",
         (250, 243, 235), (233, 218, 200), (218, 194, 168), (214, 196, 176),
-        (28, 21, 16), (102, 74, 54),
+        (148, 82, 44), (28, 21, 16), (102, 74, 54),
     ),
     (
         "20_your_year_in_music",
+        "ANNUAL RECAP",
         "Your Year in Music",
         "Personal annual recap on device.",
         "Screenshot_20261016_223757_LEVYRA.jpg",
         (251, 240, 250), (238, 214, 236), (224, 184, 222), (222, 192, 220),
-        (36, 14, 36), (108, 48, 106),
+        (152, 42, 144), (36, 14, 36), (108, 52, 106),
     ),
 
     # Row 6: Global Streaming Skins (21-24)
     (
         "21_spotify_style",
+        "SIGNATURE PRESET",
         "Spotify Style",
         "Familiar dark surfaces & green accents.",
         "Screenshot_20261026_204307_Levyra.jpg",
         (238, 249, 242), (211, 236, 221), (172, 220, 192), (184, 218, 198),
-        (12, 36, 22), (34, 94, 58),
+        (20, 128, 68), (12, 36, 22), (38, 94, 58),
     ),
     (
         "22_apple_music_style",
+        "SIGNATURE PRESET",
         "Apple Music Style",
         "Editorial white shelves & bold type.",
         "Screenshot_20261024_201549_Levyra.jpg",
         (248, 250, 253), (226, 233, 243), (198, 210, 228), (198, 208, 222),
-        (15, 23, 42), (190, 34, 68),
+        (214, 32, 68), (15, 23, 42), (71, 85, 105),
     ),
     (
         "23_youtube_music_style",
+        "SIGNATURE PRESET",
         "YouTube Music Style",
         "Dynamic mood chips & daily charts.",
         "Screenshot_20261024_201709_Levyra.jpg",
         (243, 241, 253), (222, 216, 245), (196, 186, 236), (200, 192, 230),
-        (22, 16, 38), (76, 52, 128),
+        (98, 58, 178), (22, 16, 38), (76, 58, 124),
     ),
     (
         "24_qobuz_style",
+        "SIGNATURE PRESET",
         "Qobuz Style",
         "Magazine layout & warm hi-fi curation.",
         "Screenshot_20261030_123252_Levyra.jpg",
         (238, 246, 252), (212, 230, 245), (176, 208, 236), (186, 210, 232),
-        (14, 28, 44), (40, 78, 114),
+        (28, 96, 156), (14, 28, 44), (44, 78, 114),
     ),
 ]
 
 def render_upright_card(spec):
     (
         card_id,
+        eyebrow,
         title,
         subtitle,
         screenshot_file,
@@ -630,6 +607,7 @@ def render_upright_card(spec):
         bot_rgb,
         wash_rgb,
         border_rgb,
+        eyebrow_rgb,
         title_rgb,
         sub_rgb,
     ) = spec
@@ -637,8 +615,17 @@ def render_upright_card(spec):
     card = create_editorial_surface(CARD_W, CARD_H, top_rgb, bot_rgb, wash_rgb, wash_pos=(0.50, 0.60))
     draw = ImageDraw.Draw(card)
 
-    # 1. Centered 3D Machined Titanium Pin ('Chiodo Moderno')
-    draw_modern_pin(card, CARD_W // 2, 54, radius=17)
+    # 1. Apple-Style Tracked Uppercase Category Eyebrow (Zero pins, zero bars)
+    draw_tracked_text(
+        draw,
+        eyebrow.upper(),
+        CARD_W // 2,
+        54,
+        font=font_eyebrow_upright,
+        fill=eyebrow_rgb + (255,),
+        tracking=5,
+        align="center",
+    )
 
     # 2. Large Centered Display Title
     tbbox = draw.textbbox((0, 0), title, font=font_upright_title)
@@ -651,7 +638,7 @@ def render_upright_card(spec):
     sbbox = draw.textbbox((0, 0), subtitle, font=font_upright_sub)
     sw = sbbox[2] - sbbox[0]
     sx = (CARD_W - sw) // 2
-    sy = 174
+    sy = 172
     draw.text((sx, sy), subtitle, font=font_upright_sub, fill=sub_rgb + (255,))
 
     # 4. Upright Galaxy S25 Ultra Smartphone (100% uncut, large & centered)
@@ -694,7 +681,7 @@ def save_row_variants(row_cards, row_index):
     return spaced_row
 
 def main():
-    print("Rendering Row 1 (Cards 01-04 with dynamic diptych cuts)...")
+    print("Rendering Row 1 (Cards 01-04 with dynamic diptych cuts & Apple editorial typography)...")
     row1_cards = build_row1_cards()
     row1_names = [
         "01_pure_listening",
@@ -707,10 +694,10 @@ def main():
 
     all_cards = list(row1_cards)
 
-    print("Rendering Rows 2-6 (Cards 05-24 as upright flagship cards)...")
+    print("Rendering Rows 2-6 (Cards 05-24 as upright Apple-style flagship cards)...")
     for idx, spec in enumerate(UPRIGHT_CARD_SPECS):
         fname = spec[0]
-        print(f"  Card {idx + 5:02d}/24: {spec[1]} ({fname})...")
+        print(f"  Card {idx + 5:02d}/24: {spec[2]} ({fname})...")
         c = render_upright_card(spec)
         c.save(os.path.join(OUT_DIR, fname + ".webp"), "WEBP", quality=95, method=6)
         all_cards.append(c)
@@ -734,7 +721,7 @@ def main():
         row_slice = all_cards[row_idx * 4 : (row_idx + 1) * 4]
         save_row_variants(row_slice, row_idx)
 
-    print("Successfully generated all 24 showcase cards and 6 grid rows!")
+    print("Successfully generated all 24 Apple-style showcase cards and 6 grid rows!")
 
 if __name__ == "__main__":
     main()
