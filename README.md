@@ -120,7 +120,7 @@ Enhanced Audio is on by default and can be turned off in Audio Settings. Technic
 
 <div align="center">
 
-<a href="docs/assets/showcase/00_levyra_hero_note_nella_pioggia.webp"><img src="docs/assets/showcase/00_levyra_hero_note_nella_pioggia.webp" width="100%" alt="Levyra music player for Android and Windows" /></a>
+<a href="docs/assets/showcase/levyra_street_banner_2160x810.webp"><img src="docs/assets/showcase/levyra_street_banner_2160x810.webp" width="100%" alt="Levyra music player for Android and Windows" /></a>
 
 <div align="center">
 <div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-01-spaced.webp?v=editorial-campaign-v9" width="900" align="top" alt="Levyra showcase: radio, now playing, light theme, and dark theme" /></div>
