@@ -45,10 +45,6 @@ Play streamed music and your own files in the same app, save tracks for offline 
 
 </details>
 
-<h3 align="center">
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/discussions">Join the discussion</a>
-</h3>
-
 <p align="center"><sub>42 languages &nbsp;·&nbsp; 100% Android translation coverage &nbsp;·&nbsp; Zero tracking</sub></p>
 
 <p align="center">
@@ -229,7 +225,7 @@ FLAC playback on Android depends on independent third-party sources. Their inclu
 
 Previous Levyra app logo designed by [@gauravbhindwar](https://github.com/gauravbhindwar) in [#525](https://github.com/LUC4N3X/Levyra-deepsound/issues/525). The current logo and visual identity are by [@LUC4N3X](https://github.com/LUC4N3X).
 
-Contributions and bug reports are welcome. Technical documentation and architecture notes are in the [project documentation](https://levyra.dpdns.org/docs/).
+Contributions and bug reports are welcome. Questions and ideas can be shared in [GitHub Discussions](https://github.com/LUC4N3X/Levyra-deepsound/discussions). Technical documentation and architecture notes are in the [project documentation](https://levyra.dpdns.org/docs/).
 
 ---
 
