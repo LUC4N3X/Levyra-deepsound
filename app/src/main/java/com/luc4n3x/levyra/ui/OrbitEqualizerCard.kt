@@ -41,6 +41,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -109,51 +110,18 @@ internal fun OrbitEqualizerCard(
 ) {
     val scope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
-    val latestAudition by rememberUpdatedState(actions.onAudition)
     val latestApply by rememberUpdatedState(onApply)
     val committed = remember(activeProfile) { OrbitEqualizer.positionOf(activeProfile) ?: OrbitPosition.Center }
-    val satellite = remember { Animatable(Offset(committed.tilt, committed.contour), Offset.VectorConverter) }
-    var dragging by remember { mutableStateOf(false) }
-    var dragTarget by remember { mutableStateOf<OrbitPosition?>(null) }
-    var comparing by remember { mutableStateOf(false) }
-    var auditioning by remember { mutableStateOf(false) }
-
-    fun positionNow() = (dragTarget ?: OrbitPosition(satellite.value.x, satellite.value.y)).clamped().quantized()
+    val orbit = remember { OrbitEqualizerState(committed) }
     fun commit(position: OrbitPosition) = latestApply(OrbitEqualizer.shape(position, copy.title).profile)
     fun glideTo(position: OrbitPosition) {
-        val target = position.clamped()
-        scope.launch {
-            satellite.animateTo(Offset(target.tilt, target.contour), spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow))
-            commit(target.quantized())
-        }
+        scope.launch { commit(orbit.glideTo(position)) }
     }
+    OrbitAuditionEffects(orbit, committed, copy.title, actions.onAudition)
 
-    LaunchedEffect(committed) {
-        if (!dragging && !satellite.isRunning) satellite.snapTo(Offset(committed.tilt, committed.contour))
-    }
-    LaunchedEffect(Unit) {
-        snapshotFlow { if (dragging || satellite.isRunning) positionNow() else null }
-            .filterNotNull()
-            .distinctUntilChanged()
-            .collect { position ->
-                auditioning = true
-                latestAudition(OrbitEqualizer.shape(position, copy.title).profile)
-            }
-    }
-    DisposableEffect(Unit) {
-        onDispose { if (auditioning) latestAudition(null) }
-    }
-    LaunchedEffect(comparing) {
-        if (comparing) {
-            latestAudition(OrbitEqualizer.comparisonProfile(OrbitEqualizer.shape(positionNow(), copy.title)))
-            auditioning = true
-        } else if (auditioning) {
-            latestAudition(null)
-            auditioning = false
-        }
-    }
-
-    val live = positionNow()
+    val dragging = orbit.dragging
+    val comparing = orbit.comparing
+    val live = orbit.positionNow()
     val shape = remember(live) { OrbitEqualizer.shape(live, copy.title) }
     val accent = lerp(LevyraPink, LevyraCyan, ((live.tilt + 1f) / 2f).coerceIn(0f, 1f))
 
@@ -172,7 +140,7 @@ internal fun OrbitEqualizerCard(
                 Switch(
                     checked = enabled,
                     onCheckedChange = { checked ->
-                        if (checked) commit(positionNow()) else actions.onEnabled(false)
+                        if (checked) commit(orbit.positionNow()) else actions.onEnabled(false)
                     },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = LevyraBlack,
@@ -190,26 +158,14 @@ internal fun OrbitEqualizerCard(
                 dragging = dragging,
                 copy = copy,
                 onPole = { glideTo(it) },
-                onDragStart = {
-                    dragging = true
-                    scope.launch { satellite.stop() }
-                },
+                onDragStart = { scope.launch { orbit.startDrag() } },
                 onDrag = { target ->
-                    val previous = dragTarget ?: OrbitPosition(satellite.value.x, satellite.value.y)
-                    val snapped = if (target.radius < CENTER_SNAP) OrbitPosition.Center else target
-                    if (crossesHapticBoundary(previous, snapped)) {
-                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    }
-                    dragTarget = snapped
+                    if (orbit.dragTo(target)) haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 },
                 onDragEnd = {
-                    val final = positionNow()
+                    val final = orbit.positionNow()
                     commit(final)
-                    scope.launch {
-                        satellite.snapTo(Offset(final.tilt, final.contour))
-                        dragTarget = null
-                        dragging = false
-                    }
+                    scope.launch { orbit.endDrag(final) }
                 },
                 onNudge = { dx, dy -> glideTo(OrbitPosition(live.tilt + dx, live.contour + dy)) }
             )
@@ -244,7 +200,7 @@ internal fun OrbitEqualizerCard(
                 enabled = enabled,
                 comparing = comparing,
                 onCenter = { glideTo(OrbitPosition.Center) },
-                onComparing = { comparing = it },
+                onComparing = { orbit.comparing = it },
                 onSave = {
                     val name = ParametricProfiles.availableName(copy.title, copy.title, customProfiles) { stem, number -> "$stem $number" }
                     onSave(name, shape.profile)
@@ -257,6 +213,81 @@ internal fun OrbitEqualizerCard(
                 activeId = activeProfile?.id.takeIf { enabled },
                 onActivate = actions.onActivateCustom
             )
+        }
+    }
+}
+
+@Stable
+private class OrbitEqualizerState(initial: OrbitPosition) {
+    private val satellite = Animatable(Offset(initial.tilt, initial.contour), Offset.VectorConverter)
+    private var dragTarget by mutableStateOf<OrbitPosition?>(null)
+    var dragging by mutableStateOf(false)
+        private set
+    var comparing by mutableStateOf(false)
+    var auditioning = false
+
+    val moving: Boolean get() = dragging || satellite.isRunning
+
+    fun positionNow(): OrbitPosition =
+        (dragTarget ?: OrbitPosition(satellite.value.x, satellite.value.y)).clamped().quantized()
+
+    suspend fun glideTo(position: OrbitPosition): OrbitPosition {
+        val target = position.clamped()
+        satellite.animateTo(Offset(target.tilt, target.contour), spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow))
+        return target.quantized()
+    }
+
+    suspend fun settle(position: OrbitPosition) {
+        if (!moving) satellite.snapTo(Offset(position.tilt, position.contour))
+    }
+
+    suspend fun startDrag() {
+        dragging = true
+        satellite.stop()
+    }
+
+    fun dragTo(target: OrbitPosition): Boolean {
+        val previous = dragTarget ?: OrbitPosition(satellite.value.x, satellite.value.y)
+        val snapped = if (target.radius < CENTER_SNAP) OrbitPosition.Center else target
+        dragTarget = snapped
+        return crossesHapticBoundary(previous, snapped)
+    }
+
+    suspend fun endDrag(final: OrbitPosition) {
+        satellite.snapTo(Offset(final.tilt, final.contour))
+        dragTarget = null
+        dragging = false
+    }
+}
+
+@Composable
+private fun OrbitAuditionEffects(
+    orbit: OrbitEqualizerState,
+    committed: OrbitPosition,
+    title: String,
+    onAudition: (ParametricEqProfile?) -> Unit
+) {
+    val latestAudition by rememberUpdatedState(onAudition)
+    LaunchedEffect(committed) { orbit.settle(committed) }
+    LaunchedEffect(orbit) {
+        snapshotFlow { if (orbit.moving) orbit.positionNow() else null }
+            .filterNotNull()
+            .distinctUntilChanged()
+            .collect { position ->
+                orbit.auditioning = true
+                latestAudition(OrbitEqualizer.shape(position, title).profile)
+            }
+    }
+    DisposableEffect(orbit) {
+        onDispose { if (orbit.auditioning) latestAudition(null) }
+    }
+    LaunchedEffect(orbit.comparing) {
+        if (orbit.comparing) {
+            latestAudition(OrbitEqualizer.comparisonProfile(OrbitEqualizer.shape(orbit.positionNow(), title)))
+            orbit.auditioning = true
+        } else if (orbit.auditioning) {
+            latestAudition(null)
+            orbit.auditioning = false
         }
     }
 }

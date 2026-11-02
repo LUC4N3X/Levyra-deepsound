@@ -48,7 +48,7 @@ There's now a podcast library with subscriptions, listening history and resume f
 
 Qobuz is now an optional FLAC source, and lossless resolution checks the stream more carefully before using it, with better fallbacks when a source fails. Shared audio credentials were removed from the app. Lossless is still experimental and still depends on outside services, same as before. Startup is lighter too.
 
-The parametric equalizer itself also got cheaper to run: it now moves audio in blocks instead of one sample at a time.
+The parametric equalizer also keeps its filter memory in plain flat arrays now, which is a little lighter on the audio thread. The sound math didn't change.
 
 ## ✦ Thanks
 
