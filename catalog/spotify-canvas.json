@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-01T22:05:56Z",
+  "generatedAt": "2026-11-02T06:15:21Z",
   "items": [
     {
       "song": "Sentire La Musica",
@@ -504,6 +504,13 @@
       "artist": "Sam Fender, Olivia Dean",
       "album": "People Watching (Deluxe Edition)",
       "url": "https://canvaz.scdn.co/upload/artist/6zlR5ttMfMNmwf2lecU9Cc/video/c376916e9524470db551c735393b9866.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "The Art of Loving",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4322,6 +4329,13 @@
       "scope": "track"
     },
     {
+      "song": "TMA",
+      "artist": "groundZERO Records, Tyler, Primera, ODP",
+      "album": "TMA",
+      "url": "https://canvaz.scdn.co/upload/artist/4LsXG0tI52IkUbQmWJwRc1/video/56dcf14c89574e199ed62ae8e87c6f38.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Libu-Libong Buwan (Uuwian)",
       "artist": "Kyle Raphael",
       "album": "Libu-Libong Buwan (Uuwian)",
@@ -4476,13 +4490,6 @@
       "scope": "track"
     },
     {
-      "song": "Iris",
-      "artist": "The Goo Goo Dolls",
-      "album": "Stay with You",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/4ab38c8ea56645c5ab7d8ebfb5e4edc2.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "End of Beginning",
       "artist": "Djo",
       "album": "DECIDE",
@@ -4555,7 +4562,7 @@
     {
       "song": "El Teléfono",
       "artist": "Héctor \"El Father\", Wisin & Yandel",
-      "album": "Machete Music Chronicles: Vol. I",
+      "album": "The Bad Boy",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/b23b719ccbb445188126f29f094d154a.cnvs.mp4",
       "scope": "track"
     },
@@ -5036,6 +5043,13 @@
       "scope": "track"
     },
     {
+      "song": "El Teléfono",
+      "artist": "Héctor \"El Father\", Wisin & Yandel",
+      "album": "Machete Music Chronicles: Vol. I",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/b23b719ccbb445188126f29f094d154a.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "BRINCAITO",
       "artist": "Ryan Castro",
       "album": "BRINCAITO",
@@ -5124,13 +5138,6 @@
       "artist": "La Factoria, Eddy Lover",
       "album": "Nuevas Metas",
       "url": "https://canvaz.scdn.co/upload/artist/7gR53ad9JjCweCv4f9MWEX/video/fbdf2e79f6824470b7e9b8e36fc76bf3.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "El Teléfono",
-      "artist": "Héctor \"El Father\", Wisin & Yandel",
-      "album": "The Bad Boy",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/b23b719ccbb445188126f29f094d154a.cnvs.mp4",
       "scope": "track"
     },
     {
