@@ -293,9 +293,8 @@ class ChartsRepository(context: Context) {
     }
 
     private suspend fun selectTopSongs(country: String, limit: Int): List<Track> = coroutineScope {
-        val editorial = editorialCharts.cachedTopTracks(country, limit)
+        val editorial = editorialCharts.topTracks(country, limit)
         if (editorial.isNotEmpty()) return@coroutineScope editorial
-        editorialCharts.warm()
 
         val youtube = async { fetchYoutubeTopSongs(country, limit) }
         val youtubeWithinBudget = withTimeoutOrNull(YOUTUBE_PRIMARY_BUDGET_MS) { youtube.await() }

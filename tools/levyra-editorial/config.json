@@ -117,9 +117,10 @@
       "id": "top-50-ru",
       "kind": "chart",
       "market": "RU",
-      "playlistId": "37i9dQZEVXbL8l7ra5vVdB",
+      "playlistId": "0kErR9JoVCvRrguANeXxKX",
       "title": "Top 50 Россия",
-      "optional": true
+      "limit": 50,
+      "optional": false
     },
     {
       "id": "top-50-tr",

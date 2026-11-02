@@ -81,13 +81,9 @@ internal class EditorialChartsRepository private constructor(context: Context) {
         refreshAsync()
     }
 
-    suspend fun cachedTopTracks(country: String, limit: Int): List<Track> = withContext(Dispatchers.IO) {
+    suspend fun topTracks(country: String, limit: Int): List<Track> = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
-        val snapshot = usableSnapshot(now)
-        if (snapshot == null) {
-            warm()
-            return@withContext emptyList()
-        }
+        val snapshot = usableSnapshot(now) ?: refreshAsync().await() ?: return@withContext emptyList()
         if (snapshot.needsRefresh(now)) warm()
         snapshot.tracks(country, limit)
     }

@@ -108,7 +108,7 @@ class MaterialExpressiveContractTest {
             "src/main/java/com/luc4n3x/levyra/ui/ExploreFreshCurrents.kt"
         )
 
-        assertTrue(mix.contains("SonicReactorSpectrum("))
+        assertTrue(mix.contains("LevyraMixCoverRail("))
         assertTrue(mix.contains("MixPresetChip("))
         assertTrue(fresh.contains("FreshArtworkCorner = 36.dp"))
     }

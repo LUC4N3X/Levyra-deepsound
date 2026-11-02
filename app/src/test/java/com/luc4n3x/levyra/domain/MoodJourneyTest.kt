@@ -54,6 +54,28 @@ class MoodJourneyTest {
     }
 
     @Test
+    fun moodToneCoversTheEnergyValenceGrid() {
+        assertEquals(MoodTone.Melancholy, MoodTone.of(0.1f, 0.1f))
+        assertEquals(MoodTone.Calm, MoodTone.of(0.2f, 0.5f))
+        assertEquals(MoodTone.Tender, MoodTone.of(0.3f, 0.8f))
+        assertEquals(MoodTone.Flowing, MoodTone.of(0.5f, 0.5f))
+        assertEquals(MoodTone.Tense, MoodTone.of(0.9f, 0.2f))
+        assertEquals(MoodTone.Euphoric, MoodTone.of(0.95f, 0.9f))
+        assertEquals(MoodTone.Flowing, MoodTone.of(Float.NaN, Float.NaN))
+    }
+
+    @Test
+    fun peakIndexPointsAtTheMostEnergeticStep() {
+        val steps = listOf(0.2f, 0.9f, 0.4f).mapIndexed { index, energy ->
+            val track = song("Peak $index", "Artist $index")
+            MoodJourneyStep(track, "k$index", MoodEstimate(energy, 0.5f, 1f), MoodPoint(energy, 0.5f), index / 3f, false)
+        }
+        val metrics = MoodJourneyEngine.measure(steps, 3, 0L)
+        assertEquals(1, MoodJourneyResult(steps, metrics, 0).peakIndex)
+        assertEquals(-1, MoodJourneyResult(emptyList(), metrics, 0).peakIndex)
+    }
+
+    @Test
     fun curveNormalizesInvalidInput() {
         val curve = MoodCurve(listOf(MoodPoint(Float.NaN, 2f)))
         assertEquals(2, curve.normalized.size)
