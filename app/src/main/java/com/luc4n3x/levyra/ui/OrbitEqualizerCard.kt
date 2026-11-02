@@ -158,7 +158,10 @@ internal fun OrbitEqualizerCard(
                 dragging = dragging,
                 copy = copy,
                 onPole = { glideTo(it) },
-                onDragStart = { scope.launch { orbit.startDrag() } },
+                onDragStart = {
+                    orbit.beginDrag()
+                    scope.launch { orbit.stopGlide() }
+                },
                 onDrag = { target ->
                     if (orbit.dragTo(target)) haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 },
@@ -241,8 +244,11 @@ private class OrbitEqualizerState(initial: OrbitPosition) {
         if (!moving) satellite.snapTo(Offset(position.tilt, position.contour))
     }
 
-    suspend fun startDrag() {
+    fun beginDrag() {
         dragging = true
+    }
+
+    suspend fun stopGlide() {
         satellite.stop()
     }
 
