@@ -376,6 +376,7 @@ import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Radio
+import androidx.compose.material.icons.rounded.Podcasts
 import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.Equalizer
 import androidx.compose.material.icons.rounded.Favorite
@@ -25838,6 +25839,7 @@ private fun ExploreScreen(
     val context = LocalContext.current
     val listState = rememberLazyListState()
     var addToPlaylistTarget by remember { mutableStateOf<Track?>(null) }
+    var podcastsOpen by rememberSaveable { mutableStateOf(false) }
     var samplesStartIndex by rememberSaveable { mutableStateOf<Int?>(null) }
     var exploreDestination by rememberSaveable { mutableStateOf<String?>(null) }
     var exploreMoodReturn by rememberSaveable { mutableStateOf<String?>(null) }
@@ -25917,6 +25919,10 @@ private fun ExploreScreen(
             ExploreShortcut.Moods -> {
                 samplesStartIndex = null
                 exploreDestination = ExploreMoodsDestination
+            }
+            ExploreShortcut.Podcasts -> {
+                samplesStartIndex = null
+                podcastsOpen = true
             }
         }
     }
@@ -26044,6 +26050,17 @@ private fun ExploreScreen(
             onMoodReturnChange = { exploreMoodReturn = it },
             onLiveRadioOpenChange = onLiveRadioOpenChange
         )
+
+        if (podcastsOpen) {
+            PodcastLibraryScreen(
+                languageCode = state.languageCode,
+                playback = PodcastPlayback(state.currentTrack?.id, state.isPlaying),
+                bottomInset = exploreBottomInset,
+                backEnabled = backEnabled,
+                onBack = { podcastsOpen = false },
+                onPlay = viewModel::playPodcastEpisode
+            )
+        }
     }
 }
 
@@ -26569,6 +26586,7 @@ internal fun ExplorePrimaryShortcuts(
             add(ExploreShortcutEntry("moods", Icons.Rounded.Mood, strings.exploreMoods, MaterialShapes.Clover4Leaf, colors.secondaryContainer, colors.onSecondaryContainer) { onSelect(ExploreShortcut.Moods) })
         }
         add(ExploreShortcutEntry("radio", Icons.Rounded.Radio, radioStrings.title, MaterialShapes.SoftBurst, colors.errorContainer, colors.onErrorContainer, onOpenRadio))
+        add(ExploreShortcutEntry("podcasts", Icons.Rounded.Podcasts, com.luc4n3x.levyra.ui.i18n.podcastCopy(strings.code).title, MaterialShapes.Puffy, colors.secondary, colors.onSecondary) { onSelect(ExploreShortcut.Podcasts) })
         add(ExploreShortcutEntry("jam", Icons.Rounded.PersonAdd, strings.jamTitle, MaterialShapes.Cookie9Sided, colors.inversePrimary, colors.onPrimaryContainer, onOpenJam))
     }
     Column(

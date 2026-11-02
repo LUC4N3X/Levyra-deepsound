@@ -58,7 +58,8 @@ internal enum class ExploreAnchor {
 internal enum class ExploreShortcut(val anchor: ExploreAnchor?, val zoneId: String?) {
     NewReleases(ExploreAnchor.Fresh, ExploreCatalog.NEW_RELEASES_ZONE_ID),
     Samples(null, null),
-    Moods(ExploreAnchor.Moods, null)
+    Moods(ExploreAnchor.Moods, null),
+    Podcasts(null, null)
 }
 
 internal sealed interface ExploreRow {
