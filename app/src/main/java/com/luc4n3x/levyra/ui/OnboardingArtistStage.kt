@@ -134,42 +134,7 @@ internal fun SetupArtistStage(
     ) {
         item(key = "artist-intro", span = { GridItemSpan(maxLineSpan) }) {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text(copy.title, color = ink, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.semantics { heading() })
-                Text(copy.body, color = muted, style = MaterialTheme.typography.bodyLarge)
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        repeat(3) { index ->
-                            val filled = selected.size > index
-                            val width by animateDpAsState(if (filled) 22.dp else 8.dp,
-                                if (LocalAnimationsEnabled.current) spring(dampingRatio = 0.6f, stiffness = 500f) else snap(),
-                                label = "artist-progress-$index")
-                            Box(Modifier.height(8.dp).width(width).background(if (filled) accent else muted.copy(alpha = 0.25f), CircleShape))
-                        }
-                    }
-                    Text(
-                        "${selected.size} · ${strings.artists}", color = if (selected.size >= 3) accent else muted,
-                        style = MaterialTheme.typography.labelLarge,
-                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
-                    )
-                }
-                OutlinedTextField(
-                    value = query, onValueChange = { query = it }, singleLine = true,
-                    label = { Text(strings.search) },
-                    leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
-                    trailingIcon = if (query.isNotEmpty()) {
-                        { IconButton(onClick = { query = "" }) { Icon(Icons.Rounded.Close, contentDescription = strings.clear) } }
-                    } else null,
-                    shape = CircleShape,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = ink, unfocusedTextColor = ink, cursorColor = accent,
-                        focusedBorderColor = accent, unfocusedBorderColor = muted.copy(alpha = 0.35f),
-                        focusedLabelColor = accent, unfocusedLabelColor = muted,
-                        focusedLeadingIconColor = muted, unfocusedLeadingIconColor = muted,
-                        focusedTrailingIconColor = muted, unfocusedTrailingIconColor = muted
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
+                ArtistStageIntro(languageCode, selected.size, query, accent, ink, muted) { query = it }
                 LazyRow(
                     modifier = Modifier.recentSearchesBleed(20.dp).selectableGroup(),
                     contentPadding = PaddingValues(horizontal = 20.dp),
@@ -202,6 +167,58 @@ internal fun SetupArtistStage(
                 onToggle(artist.id)
             }
         }
+    }
+}
+
+@Composable
+private fun ArtistStageIntro(
+    languageCode: String,
+    selectedCount: Int,
+    query: String,
+    accent: Color,
+    ink: Color,
+    muted: Color,
+    onQueryChange: (String) -> Unit
+) {
+    val copy = LevyraOnboardingArtistStrings.forCode(languageCode)
+    val strings = LevyraStrings.forCode(languageCode)
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Text(copy.title, color = ink, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold,
+            modifier = Modifier.semantics { heading() })
+        Text(copy.body, color = muted, style = MaterialTheme.typography.bodyLarge)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                repeat(3) { index ->
+                    val filled = selectedCount > index
+                    val width by animateDpAsState(if (filled) 22.dp else 8.dp,
+                        if (LocalAnimationsEnabled.current) spring(dampingRatio = 0.6f, stiffness = 500f) else snap(),
+                        label = "artist-progress-$index")
+                    Box(Modifier.height(8.dp).width(width).background(if (filled) accent else muted.copy(alpha = 0.25f), CircleShape))
+                }
+            }
+            Text(
+                "$selectedCount · ${strings.artists}", color = if (selectedCount >= 3) accent else muted,
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+            )
+        }
+        OutlinedTextField(
+            value = query, onValueChange = onQueryChange, singleLine = true,
+            label = { Text(strings.search) },
+            leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+            trailingIcon = if (query.isNotEmpty()) {
+                { IconButton(onClick = { onQueryChange("") }) { Icon(Icons.Rounded.Close, contentDescription = strings.clear) } }
+            } else null,
+            shape = CircleShape,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = ink, unfocusedTextColor = ink, cursorColor = accent,
+                focusedBorderColor = accent, unfocusedBorderColor = muted.copy(alpha = 0.35f),
+                focusedLabelColor = accent, unfocusedLabelColor = muted,
+                focusedLeadingIconColor = muted, unfocusedLeadingIconColor = muted,
+                focusedTrailingIconColor = muted, unfocusedTrailingIconColor = muted
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
