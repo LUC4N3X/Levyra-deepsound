@@ -263,6 +263,81 @@ private fun CurveEditor(
     val steps = session.result?.steps.orEmpty()
     val peak = session.result?.peakIndex ?: -1
     val stepColors = remember(steps, style) { steps.map { style.toneColor(it.mood.energy, it.mood.valence) } }
+    val reveal = rememberArcReveal(steps, animated)
+    Surface(color = panel, shape = style.panelShape, modifier = modifier.fillMaxWidth()) {
+        Column {
+            BoxWithConstraints(
+                Modifier
+                    .fillMaxWidth()
+                    .height(CurveHeight)
+                    .semantics { contentDescription = copy[SmartMusicText.MoodCurveDescription] }
+                    .curveGestures(
+                        curve = { curve },
+                        padPx = with(density) { CurvePadding.toPx() },
+                        onHaptic = { haptics.perform(it) },
+                        onSelect = { select(it) },
+                        onMove = { index, point -> move(index, point) },
+                        onCommit = { commit() }
+                    )
+            ) {
+                val widthPx = with(density) { maxWidth.toPx() }
+                val heightPx = with(density) { maxHeight.toPx() }
+                val pad = with(density) { CurvePadding.toPx() }
+                val outline = scheme.outlineVariant
+                val muted = scheme.onSurfaceVariant
+                val pinRing = scheme.primary
+                Canvas(Modifier.fillMaxSize()) {
+                    val frame = ArcFrame(pad, size.width - pad * 2, size.height - pad * 2)
+                    for (band in 1..3) {
+                        val gy = pad + frame.usableH * band / 4f
+                        drawLine(outline.copy(alpha = 0.28f), Offset(pad, gy), Offset(size.width - pad, gy), 1.dp.toPx())
+                    }
+                    val target = targetPath(curve, frame::x, frame::y)
+                    if (steps.isEmpty()) {
+                        drawTargetOnly(curve, target, frame, style)
+                    } else {
+                        drawPath(
+                            target,
+                            muted.copy(alpha = 0.5f),
+                            style = Stroke(width = 1.5.dp.toPx(), cap = StrokeCap.Round, pathEffect = PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(), 6.dp.toPx())))
+                        )
+                        drawSongArc(steps, stepColors, peak, frame, style, panel, pinRing, reveal.value)
+                    }
+                }
+                Text(style.label(copy[SmartMusicText.MoodIntense]), style = MaterialTheme.typography.labelSmall, fontFamily = style.numerals, color = muted, modifier = Modifier.align(Alignment.TopStart).padding(start = 14.dp, top = 4.dp))
+                Text(style.label(copy[SmartMusicText.MoodCalm]), style = MaterialTheme.typography.labelSmall, fontFamily = style.numerals, color = muted, modifier = Modifier.align(Alignment.BottomStart).padding(start = 14.dp, bottom = 4.dp))
+                steps.getOrNull(peak)?.let { peakStep ->
+                    PeakLabel(peakStep, ArcFrame(pad, widthPx - pad * 2, heightPx - pad * 2), widthPx, style, copy, reveal)
+                }
+                curve.points.forEachIndexed { index, point ->
+                    CurveHandle(
+                        index = index,
+                        point = point.clamped(),
+                        count = curve.points.size,
+                        frame = ArcFrame(pad, widthPx - pad * 2, heightPx - pad * 2),
+                        active = index == selected,
+                        dimmed = steps.isNotEmpty(),
+                        animated = animated,
+                        copy = copy,
+                        style = style,
+                        onMove = onMove,
+                        onCommit = onCommit
+                    )
+                }
+            }
+            if (steps.isNotEmpty()) ArcLegend(copy, style, stepColors)
+        }
+    }
+}
+
+private class ArcFrame(val pad: Float, val usableW: Float, val usableH: Float) {
+    val floor: Float get() = pad + usableH
+    fun x(t: Float): Float = pad + t * usableW
+    fun y(energy: Float): Float = pad + (1f - energy) * usableH
+}
+
+@Composable
+private fun rememberArcReveal(steps: List<MoodJourneyStep>, animated: Boolean): Animatable<Float, *> {
     val sequence = remember(steps) { steps.map { it.key }.hashCode() }
     var revealed by rememberSaveable { mutableIntStateOf(0) }
     val reveal = remember { Animatable(if (animated && steps.isNotEmpty() && sequence != revealed) 0f else 1f) }
@@ -275,178 +350,181 @@ private fun CurveEditor(
         }
         revealed = sequence
     }
-    Surface(color = panel, shape = style.panelShape, modifier = modifier.fillMaxWidth()) {
-        Column {
-            BoxWithConstraints(
-                Modifier
-                    .fillMaxWidth()
-                    .height(CurveHeight)
-                    .semantics { contentDescription = copy[SmartMusicText.MoodCurveDescription] }
-                    .pointerInput(Unit) {
-                        detectTapGestures { offset ->
-                            val nearest = nearestPoint(curve, offset.x, size.width.toFloat(), with(density) { CurvePadding.toPx() })
-                            haptics.perform(LevyraHapticAction.Confirm)
-                            select(nearest)
-                        }
-                    }
-                    .pointerInput(Unit) {
-                        var active = 0
-                        var lastBand = 0
-                        val pad = with(density) { CurvePadding.toPx() }
-                        detectDragGestures(
-                            onDragStart = { offset ->
-                                active = nearestPoint(curve, offset.x, size.width.toFloat(), pad)
-                                lastBand = (curve.points[active].energy * 4).toInt()
-                                haptics.perform(LevyraHapticAction.Confirm)
-                                select(active)
-                            },
-                            onDragEnd = { commit() },
-                            onDragCancel = { commit() }
-                        ) { change, _ ->
-                            change.consume()
-                            val usable = (size.height - pad * 2).coerceAtLeast(1f)
-                            val energy = (1f - (change.position.y - pad) / usable).coerceIn(0f, 1f)
-                            val band = (energy * 4).toInt()
-                            if (band != lastBand) {
-                                lastBand = band
-                                haptics.perform(LevyraHapticAction.SeekSnap)
-                            }
-                            val current = curve.points.getOrNull(active) ?: return@detectDragGestures
-                            move(active, MoodPoint(energy, current.valence))
-                        }
-                    }
-            ) {
-                val widthPx = with(density) { maxWidth.toPx() }
-                val heightPx = with(density) { maxHeight.toPx() }
-                val pad = with(density) { CurvePadding.toPx() }
-                Canvas(Modifier.fillMaxSize()) {
-                    val usableW = size.width - pad * 2
-                    val usableH = size.height - pad * 2
-                    val floor = size.height - pad
-                    fun px(t: Float) = pad + t * usableW
-                    fun py(e: Float) = pad + (1f - e) * usableH
-                    for (band in 1..3) {
-                        val gy = pad + usableH * band / 4f
-                        drawLine(scheme.outlineVariant.copy(alpha = 0.28f), Offset(pad, gy), Offset(size.width - pad, gy), 1.dp.toPx())
-                    }
-                    val target = targetPath(curve, ::px, ::py)
-                    if (steps.isEmpty()) {
-                        val area = Path().apply {
-                            addPath(target)
-                            lineTo(px(1f), floor)
-                            lineTo(px(0f), floor)
-                            close()
-                        }
-                        val stops = curve.normalized.mapIndexed { index, point ->
-                            index / (curve.normalized.size - 1f) to style.toneColor(point.energy, point.valence)
-                        }.toTypedArray()
-                        drawPath(area, Brush.verticalGradient(listOf(style.toneColor(1f, 0.5f).copy(alpha = 0.24f), Color.Transparent), startY = pad, endY = floor))
-                        drawPath(target, Brush.horizontalGradient(*stops, startX = pad, endX = size.width - pad), style = Stroke(width = style.stroke.toPx(), cap = StrokeCap.Round))
-                        return@Canvas
-                    }
-                    drawPath(
-                        target,
-                        scheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        style = Stroke(width = 1.5.dp.toPx(), cap = StrokeCap.Round, pathEffect = PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(), 6.dp.toPx())))
-                    )
-                    val points = steps.map { Offset(px(it.position), py(it.mood.energy)) }
-                    val line = smoothThrough(points)
-                    val area = Path().apply {
-                        addPath(line)
-                        lineTo(points.last().x, floor)
-                        lineTo(points.first().x, floor)
-                        close()
-                    }
-                    val span = (points.last().x - points.first().x).coerceAtLeast(1f)
-                    val brush = if (points.size < 2) SolidColor(stepColors.first()) else Brush.horizontalGradient(
-                        *points.indices.map { ((points[it].x - points.first().x) / span).coerceIn(0f, 1f) to stepColors[it] }.toTypedArray(),
-                        startX = points.first().x,
-                        endX = points.last().x
-                    )
-                    val peakColor = stepColors.getOrElse(peak) { stepColors.first() }
-                    val dot = style.dot.toPx() * if (steps.size > 14) 0.8f else 1f
-                    clipRect(right = pad + usableW * reveal.value + dot * 3f) {
-                        drawPath(area, Brush.verticalGradient(listOf(peakColor.copy(alpha = 0.26f), peakColor.copy(alpha = 0f)), startY = pad, endY = floor))
-                        points.forEachIndexed { index, point ->
-                            drawLine(stepColors[index].copy(alpha = 0.18f), Offset(point.x, point.y + dot * 2f), Offset(point.x, floor), 1.dp.toPx())
-                        }
-                        drawPath(line, brush, style = Stroke(width = style.stroke.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
-                        points.forEachIndexed { index, point ->
-                            val step = steps[index]
-                            val color = stepColors[index]
-                            if (index == peak) drawMark(style.squareDots, color.copy(alpha = 0.45f), point, dot * 2.6f, Stroke(1.5.dp.toPx()))
-                            drawMark(style.squareDots, panel, point, dot + 2.dp.toPx(), Fill)
-                            if (step.mood.confidence < 0.5f) {
-                                drawMark(style.squareDots, color, point, dot - 0.75.dp.toPx(), Stroke(1.5.dp.toPx()))
-                            } else {
-                                drawMark(style.squareDots, color, point, dot, Fill)
-                            }
-                            if (step.pinned) drawMark(style.squareDots, scheme.primary, point, dot + 3.5.dp.toPx(), Stroke(1.5.dp.toPx()))
-                        }
-                    }
-                }
-                Text(style.label(copy[SmartMusicText.MoodIntense]), style = MaterialTheme.typography.labelSmall, fontFamily = style.numerals, color = scheme.onSurfaceVariant, modifier = Modifier.align(Alignment.TopStart).padding(start = 14.dp, top = 4.dp))
-                Text(style.label(copy[SmartMusicText.MoodCalm]), style = MaterialTheme.typography.labelSmall, fontFamily = style.numerals, color = scheme.onSurfaceVariant, modifier = Modifier.align(Alignment.BottomStart).padding(start = 14.dp, bottom = 4.dp))
-                steps.getOrNull(peak)?.let { peakStep ->
-                    val usableW = widthPx - pad * 2
-                    val usableH = heightPx - pad * 2
-                    val anchorX = pad + peakStep.position * usableW
-                    val anchorY = pad + (1f - peakStep.mood.energy) * usableH - with(density) { (style.dot * 2.6f + 4.dp).toPx() }
-                    Text(
-                        style.label(copy[SmartMusicText.ArcPeak]),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = style.numerals,
-                        color = scheme.onSurface,
-                        modifier = Modifier
-                            .graphicsLayer { alpha = ((reveal.value - peakStep.position) / (1f - peakStep.position).coerceIn(0.01f, 0.25f)).coerceIn(0f, 1f) }
-                            .layout { measurable, constraints ->
-                                val placeable = measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
-                                layout(placeable.width, placeable.height) {
-                                    val x = (anchorX - placeable.width / 2f).coerceIn(0f, (widthPx - placeable.width).coerceAtLeast(0f))
-                                    val y = (anchorY - placeable.height).coerceAtLeast(0f)
-                                    placeable.place(x.roundToInt(), y.roundToInt())
-                                }
-                            }
-                    )
-                }
-                val pointPx = with(density) { PointSize.toPx() }
-                curve.points.forEachIndexed { index, point ->
-                    val clean = point.clamped()
-                    val count = curve.points.size
-                    val targetX = pad + index / (count - 1f) * (widthPx - pad * 2) - pointPx / 2f
-                    val targetY = pad + (1f - clean.energy) * (heightPx - pad * 2) - pointPx / 2f
-                    val y by animateFloatAsState(targetY, if (animated) spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessHigh) else snap(), label = "mood-point-y")
-                    val active = index == selected
-                    val description = copy[SmartMusicText.MoodPointDescription]
-                        .replace("{n}", (index + 1).toString())
-                        .replace("{e}", (clean.energy * 100).roundToInt().toString())
-                        .replace("{b}", (clean.valence * 100).roundToInt().toString())
-                    Box(
-                        Modifier
-                            .offset { IntOffset(targetX.roundToInt(), y.roundToInt()) }
-                            .size(PointSize)
-                            .clip(rememberSelectionMorph(active, animated, rotation = clean.valence * 40f))
-                            .background(if (active) style.toneColor(clean.energy, clean.valence) else scheme.surfaceContainerHighest.copy(alpha = if (steps.isEmpty()) 1f else 0.72f))
-                            .semantics {
-                                contentDescription = description
-                                this.selected = active
-                                customActions = listOf(
-                                    CustomAccessibilityAction(copy[SmartMusicText.MoodRaise]) {
-                                        onMove(index, MoodPoint((clean.energy + 0.1f).coerceAtMost(1f), clean.valence)); onCommit(); true
-                                    },
-                                    CustomAccessibilityAction(copy[SmartMusicText.MoodLower]) {
-                                        onMove(index, MoodPoint((clean.energy - 0.1f).coerceAtLeast(0f), clean.valence)); onCommit(); true
-                                    }
-                                )
-                            }
-                    ) {
-                        Box(Modifier.align(Alignment.Center).size(10.dp).clip(CircleShape).background(if (active) scheme.surface else style.toneColor(clean.energy, clean.valence)))
-                    }
+    return reveal
+}
+
+private fun Modifier.curveGestures(
+    curve: () -> MoodCurve,
+    padPx: Float,
+    onHaptic: (LevyraHapticAction) -> Unit,
+    onSelect: (Int) -> Unit,
+    onMove: (Int, MoodPoint) -> Unit,
+    onCommit: () -> Unit
+): Modifier = this
+    .pointerInput(Unit) {
+        detectTapGestures { offset ->
+            onHaptic(LevyraHapticAction.Confirm)
+            onSelect(nearestPoint(curve(), offset.x, size.width.toFloat(), padPx))
+        }
+    }
+    .pointerInput(Unit) {
+        var active = 0
+        var lastBand = 0
+        detectDragGestures(
+            onDragStart = { offset ->
+                active = nearestPoint(curve(), offset.x, size.width.toFloat(), padPx)
+                lastBand = (curve().points[active].energy * 4).toInt()
+                onHaptic(LevyraHapticAction.Confirm)
+                onSelect(active)
+            },
+            onDragEnd = onCommit,
+            onDragCancel = onCommit
+        ) { change, _ ->
+            change.consume()
+            val usable = (size.height - padPx * 2).coerceAtLeast(1f)
+            val energy = (1f - (change.position.y - padPx) / usable).coerceIn(0f, 1f)
+            val band = (energy * 4).toInt()
+            if (band != lastBand) {
+                lastBand = band
+                onHaptic(LevyraHapticAction.SeekSnap)
+            }
+            val current = curve().points.getOrNull(active) ?: return@detectDragGestures
+            onMove(active, MoodPoint(energy, current.valence))
+        }
+    }
+
+private fun DrawScope.drawTargetOnly(curve: MoodCurve, target: Path, frame: ArcFrame, style: MoodArcStyle) {
+    val area = Path().apply {
+        addPath(target)
+        lineTo(frame.x(1f), frame.floor)
+        lineTo(frame.x(0f), frame.floor)
+        close()
+    }
+    val stops = curve.normalized.mapIndexed { index, point ->
+        index / (curve.normalized.size - 1f) to style.toneColor(point.energy, point.valence)
+    }.toTypedArray()
+    drawPath(area, Brush.verticalGradient(listOf(style.toneColor(1f, 0.5f).copy(alpha = 0.24f), Color.Transparent), startY = frame.pad, endY = frame.floor))
+    drawPath(target, Brush.horizontalGradient(*stops, startX = frame.pad, endX = frame.x(1f)), style = Stroke(width = style.stroke.toPx(), cap = StrokeCap.Round))
+}
+
+private fun DrawScope.drawSongArc(
+    steps: List<MoodJourneyStep>,
+    colors: List<Color>,
+    peak: Int,
+    frame: ArcFrame,
+    style: MoodArcStyle,
+    panel: Color,
+    pinRing: Color,
+    reveal: Float
+) {
+    val points = steps.map { Offset(frame.x(it.position), frame.y(it.mood.energy)) }
+    val line = smoothThrough(points)
+    val area = Path().apply {
+        addPath(line)
+        lineTo(points.last().x, frame.floor)
+        lineTo(points.first().x, frame.floor)
+        close()
+    }
+    val span = (points.last().x - points.first().x).coerceAtLeast(1f)
+    val brush = if (points.size < 2) SolidColor(colors.first()) else Brush.horizontalGradient(
+        *points.indices.map { ((points[it].x - points.first().x) / span).coerceIn(0f, 1f) to colors[it] }.toTypedArray(),
+        startX = points.first().x,
+        endX = points.last().x
+    )
+    val peakColor = colors.getOrElse(peak) { colors.first() }
+    val dot = style.dot.toPx() * if (steps.size > 14) 0.8f else 1f
+    clipRect(right = frame.pad + frame.usableW * reveal + dot * 3f) {
+        drawPath(area, Brush.verticalGradient(listOf(peakColor.copy(alpha = 0.26f), peakColor.copy(alpha = 0f)), startY = frame.pad, endY = frame.floor))
+        points.forEachIndexed { index, point ->
+            drawLine(colors[index].copy(alpha = 0.18f), Offset(point.x, point.y + dot * 2f), Offset(point.x, frame.floor), 1.dp.toPx())
+        }
+        drawPath(line, brush, style = Stroke(width = style.stroke.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+        points.forEachIndexed { index, point ->
+            drawStepMark(steps[index], colors[index], point, dot, index == peak, style.squareDots, panel, pinRing)
+        }
+    }
+}
+
+private fun DrawScope.drawStepMark(step: MoodJourneyStep, color: Color, point: Offset, dot: Float, peak: Boolean, square: Boolean, panel: Color, pinRing: Color) {
+    if (peak) drawMark(square, color.copy(alpha = 0.45f), point, dot * 2.6f, Stroke(1.5.dp.toPx()))
+    drawMark(square, panel, point, dot + 2.dp.toPx(), Fill)
+    if (step.mood.confidence < 0.5f) {
+        drawMark(square, color, point, dot - 0.75.dp.toPx(), Stroke(1.5.dp.toPx()))
+    } else {
+        drawMark(square, color, point, dot, Fill)
+    }
+    if (step.pinned) drawMark(square, pinRing, point, dot + 3.5.dp.toPx(), Stroke(1.5.dp.toPx()))
+}
+
+@Composable
+private fun PeakLabel(peakStep: MoodJourneyStep, frame: ArcFrame, widthPx: Float, style: MoodArcStyle, copy: SmartMusicCopy, reveal: Animatable<Float, *>) {
+    val density = LocalDensity.current
+    val anchorX = frame.x(peakStep.position)
+    val anchorY = frame.y(peakStep.mood.energy) - with(density) { (style.dot * 2.6f + 4.dp).toPx() }
+    val fadeSpan = (1f - peakStep.position).coerceIn(0.01f, 0.25f)
+    Text(
+        style.label(copy[SmartMusicText.ArcPeak]),
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.Bold,
+        fontFamily = style.numerals,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier
+            .graphicsLayer { alpha = ((reveal.value - peakStep.position) / fadeSpan).coerceIn(0f, 1f) }
+            .layout { measurable, constraints ->
+                val placeable = measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
+                layout(placeable.width, placeable.height) {
+                    val x = (anchorX - placeable.width / 2f).coerceIn(0f, (widthPx - placeable.width).coerceAtLeast(0f))
+                    val y = (anchorY - placeable.height).coerceAtLeast(0f)
+                    placeable.place(x.roundToInt(), y.roundToInt())
                 }
             }
-            if (steps.isNotEmpty()) ArcLegend(copy, style, stepColors)
-        }
+    )
+}
+
+@Composable
+private fun CurveHandle(
+    index: Int,
+    point: MoodPoint,
+    count: Int,
+    frame: ArcFrame,
+    active: Boolean,
+    dimmed: Boolean,
+    animated: Boolean,
+    copy: SmartMusicCopy,
+    style: MoodArcStyle,
+    onMove: (Int, MoodPoint) -> Unit,
+    onCommit: () -> Unit
+) {
+    val scheme = MaterialTheme.colorScheme
+    val pointPx = with(LocalDensity.current) { PointSize.toPx() }
+    val targetX = frame.x(index / (count - 1f)) - pointPx / 2f
+    val targetY = frame.y(point.energy) - pointPx / 2f
+    val y by animateFloatAsState(targetY, if (animated) spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessHigh) else snap(), label = "mood-point-y")
+    val tone = style.toneColor(point.energy, point.valence)
+    val description = copy[SmartMusicText.MoodPointDescription]
+        .replace("{n}", (index + 1).toString())
+        .replace("{e}", (point.energy * 100).roundToInt().toString())
+        .replace("{b}", (point.valence * 100).roundToInt().toString())
+    Box(
+        Modifier
+            .offset { IntOffset(targetX.roundToInt(), y.roundToInt()) }
+            .size(PointSize)
+            .clip(rememberSelectionMorph(active, animated, rotation = point.valence * 40f))
+            .background(if (active) tone else scheme.surfaceContainerHighest.copy(alpha = if (dimmed) 0.72f else 1f))
+            .semantics {
+                contentDescription = description
+                this.selected = active
+                customActions = listOf(
+                    CustomAccessibilityAction(copy[SmartMusicText.MoodRaise]) {
+                        onMove(index, MoodPoint((point.energy + 0.1f).coerceAtMost(1f), point.valence)); onCommit(); true
+                    },
+                    CustomAccessibilityAction(copy[SmartMusicText.MoodLower]) {
+                        onMove(index, MoodPoint((point.energy - 0.1f).coerceAtLeast(0f), point.valence)); onCommit(); true
+                    }
+                )
+            }
+    ) {
+        Box(Modifier.align(Alignment.Center).size(10.dp).clip(CircleShape).background(if (active) scheme.surface else tone))
     }
 }
 
@@ -675,55 +753,73 @@ private fun JourneyStepRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Box(Modifier.size(52.dp)) {
-            AsyncImage(
-                model = step.track.largeThumbnailUrl.ifBlank { step.track.thumbnailUrl },
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.size(52.dp).clip(style.coverShape).background(scheme.surfaceContainerHighest)
-            )
-            Box(
-                Modifier
-                    .align(Alignment.BottomEnd)
-                    .offset(x = 4.dp, y = 4.dp)
-                    .size(20.dp)
-                    .clip(if (style.squareDots) RoundedCornerShape(4.dp) else CircleShape)
-                    .background(tone),
-                contentAlignment = Alignment.Center
-            ) {
-                Text((index + 1).toString(), style = MaterialTheme.typography.labelSmall, fontFamily = style.numerals, color = if (tone.luminance() > 0.45f) Color.Black else Color.White, fontWeight = FontWeight.Bold)
-            }
-        }
+        StepCover(index, step, tone, style)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(step.track.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = scheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(step.track.artist, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-                itemVerticalAlignment = Alignment.CenterVertically
-            ) {
-                ToneTag(copy[moodToneLabel(MoodTone.of(step.mood.energy, step.mood.valence))], tone, style, estimated = step.mood.confidence < 0.5f)
-                EnergyGauge(step, animated)
-                if (peak) Badge(style.label(copy[SmartMusicText.ArcPeak]), scheme.onSurface)
-                if (step.pinned) Badge(copy[SmartMusicText.MoodKept], scheme.primary)
-                if (step.mood.confidence < 0.5f) Badge(copy[SmartMusicText.MoodEstimated], scheme.outline)
-            }
+            StepTags(step, peak, animated, copy, style, tone)
         }
-        IconButton(onClick = { haptics.perform(LevyraHapticAction.Favorite); onPin() }) {
-            Box(
-                Modifier.size(36.dp).clip(rememberPinMorph(step.pinned, animated)).background(if (step.pinned) scheme.primary else scheme.surfaceContainerHighest),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Rounded.PushPin,
-                    contentDescription = copy[if (step.pinned) SmartMusicText.MoodUnpin else SmartMusicText.MoodPin],
-                    tint = if (step.pinned) scheme.onPrimary else scheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        }
+        PinButton(step.pinned, animated, copy) { haptics.perform(LevyraHapticAction.Favorite); onPin() }
         IconButton(onClick = onExclude) {
             Icon(Icons.Rounded.Close, contentDescription = copy[SmartMusicText.MoodExclude], tint = scheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun StepCover(index: Int, step: MoodJourneyStep, tone: Color, style: MoodArcStyle) {
+    Box(Modifier.size(52.dp)) {
+        AsyncImage(
+            model = step.track.largeThumbnailUrl.ifBlank { step.track.thumbnailUrl },
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.size(52.dp).clip(style.coverShape).background(MaterialTheme.colorScheme.surfaceContainerHighest)
+        )
+        Box(
+            Modifier
+                .align(Alignment.BottomEnd)
+                .offset(x = 4.dp, y = 4.dp)
+                .size(20.dp)
+                .clip(if (style.squareDots) RoundedCornerShape(4.dp) else CircleShape)
+                .background(tone),
+            contentAlignment = Alignment.Center
+        ) {
+            Text((index + 1).toString(), style = MaterialTheme.typography.labelSmall, fontFamily = style.numerals, color = if (tone.luminance() > 0.45f) Color.Black else Color.White, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun StepTags(step: MoodJourneyStep, peak: Boolean, animated: Boolean, copy: SmartMusicCopy, style: MoodArcStyle, tone: Color) {
+    val scheme = MaterialTheme.colorScheme
+    val estimated = step.mood.confidence < 0.5f
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+        itemVerticalAlignment = Alignment.CenterVertically
+    ) {
+        ToneTag(copy[moodToneLabel(MoodTone.of(step.mood.energy, step.mood.valence))], tone, style, estimated)
+        EnergyGauge(step, animated)
+        if (peak) Badge(style.label(copy[SmartMusicText.ArcPeak]), scheme.onSurface)
+        if (step.pinned) Badge(copy[SmartMusicText.MoodKept], scheme.primary)
+        if (estimated) Badge(copy[SmartMusicText.MoodEstimated], scheme.outline)
+    }
+}
+
+@Composable
+private fun PinButton(pinned: Boolean, animated: Boolean, copy: SmartMusicCopy, onClick: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    IconButton(onClick = onClick) {
+        Box(
+            Modifier.size(36.dp).clip(rememberPinMorph(pinned, animated)).background(if (pinned) scheme.primary else scheme.surfaceContainerHighest),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Rounded.PushPin,
+                contentDescription = copy[if (pinned) SmartMusicText.MoodUnpin else SmartMusicText.MoodPin],
+                tint = if (pinned) scheme.onPrimary else scheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp)
+            )
         }
     }
 }
