@@ -430,7 +430,7 @@ private fun PlayerSheetHeader(
                 .size(SheetArtwork)
                 .clip(artworkShape)
         ) {
-            InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
+            InstantArtworkPlaceholder(modifier = Modifier.fillMaxSize())
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(

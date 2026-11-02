@@ -202,7 +202,7 @@ private fun TrackCreditsHeader(track: Track, artworkUrl: String, title: String) 
                 .size(CreditsArtworkSize)
                 .clip(MaterialShapes.Cookie9Sided.toShape())
         ) {
-            InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
+            InstantArtworkPlaceholder(modifier = Modifier.fillMaxSize())
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(

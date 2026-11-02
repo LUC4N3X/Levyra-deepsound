@@ -112,7 +112,7 @@ private fun AtelierPlayerActionsHeader(track: Track, artworkUrl: String) {
             url = artworkUrl,
             modifier = Modifier.size(AtelierSheetArtwork).clip(AtelierDesign.sleeveShape).border(1.dp, AtelierDesign.hairline, AtelierDesign.sleeveShape)
         ) {
-            InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
+            InstantArtworkPlaceholder(modifier = Modifier.fillMaxSize())
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(

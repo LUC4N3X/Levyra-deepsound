@@ -14,26 +14,22 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.unit.Dp
 import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
+import kotlin.math.abs
 
-private const val SweepDurationMs = 1_150
+private const val PulseDurationMs = 1_150
 private const val HoldDurationMs = 620
-private val SweepEasing = CubicBezierEasing(0.25f, 0f, 0.2f, 1f)
-private const val SweepWidthFraction = 0.55f
-private const val TiltPx = 220f
+private val PulseEasing = CubicBezierEasing(0.25f, 0f, 0.2f, 1f)
 
 object LevyraShimmerDefaults {
     val Shape: Shape = LevyraPlayerDesign.ShapeXs
     val Base: Color = Color.White.copy(alpha = 0.055f)
-    val Highlight: Color = Color.White.copy(alpha = 0.13f)
+    val Highlight: Color = Color.White.copy(alpha = 0.07f)
 }
 
 @Composable
@@ -45,40 +41,28 @@ fun rememberLevyraShimmerProgress(active: Boolean = true): State<Float>? {
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
             animation = keyframes {
-                durationMillis = SweepDurationMs + HoldDurationMs
-                0f at 0 using SweepEasing
-                1f at SweepDurationMs
-                1f at SweepDurationMs + HoldDurationMs
+                durationMillis = PulseDurationMs + HoldDurationMs
+                0f at 0 using PulseEasing
+                1f at PulseDurationMs
+                1f at PulseDurationMs + HoldDurationMs
             }
         ),
         label = "levyra-shimmer-progress"
     )
 }
 
+internal fun levyraPulseStrength(progress: Float): Float = 1f - abs(2f * progress.coerceIn(0f, 1f) - 1f)
+
 fun Modifier.levyraShimmerSweep(
     progress: State<Float>?,
     accent: Color? = null
 ): Modifier {
     if (progress == null) return this
-    return this.drawWithCache {
-        val highlight = accent?.copy(alpha = 0.16f) ?: LevyraShimmerDefaults.Highlight
-        val sweepWidth = (size.width * SweepWidthFraction).coerceAtLeast(1f)
-        val brush = Brush.linearGradient(
-            colorStops = arrayOf(
-                0f to Color.Transparent,
-                0.5f to highlight,
-                1f to Color.Transparent
-            ),
-            start = Offset(0f, 0f),
-            end = Offset(sweepWidth, TiltPx)
-        )
-        val travel = size.width + sweepWidth
-        onDrawWithContent {
-            drawContent()
-            translate(left = -sweepWidth + travel * progress.value) {
-                drawRect(brush = brush, topLeft = Offset.Zero, size = size)
-            }
-        }
+    val highlight = accent?.copy(alpha = 0.09f) ?: LevyraShimmerDefaults.Highlight
+    return this.drawWithContent {
+        drawContent()
+        val strength = levyraPulseStrength(progress.value)
+        if (strength > 0f) drawRect(color = highlight, alpha = strength)
     }
 }
 

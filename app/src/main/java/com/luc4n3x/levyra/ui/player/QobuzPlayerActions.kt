@@ -90,7 +90,7 @@ private fun QobuzPlayerActionsHeader(track: Track, artworkUrl: String) {
                 .size(QobuzSheetArtwork)
                 .clip(RoundedCornerShape(4.dp))
         ) {
-            InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
+            InstantArtworkPlaceholder(modifier = Modifier.fillMaxSize())
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(

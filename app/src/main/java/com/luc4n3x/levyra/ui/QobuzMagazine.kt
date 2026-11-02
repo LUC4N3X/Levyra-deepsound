@@ -46,7 +46,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.luc4n3x.levyra.data.qobuz.QobuzStore
 import com.luc4n3x.levyra.data.qobuz.QobuzStory
-import com.luc4n3x.levyra.domain.ExploreCategory
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LevyraQobuzSkinStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
@@ -56,11 +55,11 @@ import com.luc4n3x.levyra.viewmodel.QobuzMagazineViewModel
 
 internal class QobuzMagazineInputs(
     val chartCountry: String,
-    val categories: List<ExploreCategory>,
     val freshTracks: List<Track>,
     val currentId: String?,
     val onOpenSearch: () -> Unit,
-    val onOpenCategory: (ExploreCategory) -> Unit,
+    val onOpenMoods: () -> Unit,
+    val onOpenMoodJourney: (com.luc4n3x.levyra.domain.MoodCurvePreset?) -> Unit,
     val onOpenNewReleases: () -> Unit,
     val onOpenSamples: () -> Unit,
     val onOpenPodcasts: () -> Unit,
@@ -196,6 +195,7 @@ private fun QobuzLevyraRubrics(inputs: QobuzMagazineInputs, copy: QobuzSkinCopy)
         val shortcuts = listOf(
             strings.exploreNewReleases to inputs.onOpenNewReleases,
             strings.exploreSamples to inputs.onOpenSamples,
+            strings.exploreMoods to inputs.onOpenMoods,
             com.luc4n3x.levyra.ui.i18n.podcastCopy(strings.code).title to inputs.onOpenPodcasts
         )
         Column {
@@ -207,17 +207,10 @@ private fun QobuzLevyraRubrics(inputs: QobuzMagazineInputs, copy: QobuzSkinCopy)
                 }
             }
         }
-        if (inputs.categories.isNotEmpty()) {
-            Column {
-                QobuzSectionHeader(strings.exploreMoods, null, copy.seeAll, null)
-                Spacer(Modifier.height(QobuzDesign.headerToContent))
-                LazyRow(contentPadding = QobuzRowPadding, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(inputs.categories.distinctBy { it.title }, key = { it.title + it.params }) { category ->
-                        QobuzRubricCard(category.title, qobuzTagPalette(category.title)) { inputs.onOpenCategory(category) }
-                    }
-                }
-            }
-        }
+        com.luc4n3x.levyra.ui.moodjourney.MoodJourneyEntryCard(
+            onOpen = inputs.onOpenMoodJourney,
+            modifier = Modifier.padding(horizontal = QobuzDesign.gutter)
+        )
         if (inputs.freshTracks.isNotEmpty()) {
             Column {
                 QobuzSectionHeader(strings.exploreFresh, null, copy.seeAll, null)
@@ -252,17 +245,16 @@ internal fun QobuzMagazineEntry(
     listState: LazyListState,
     bottomInset: Dp,
     onShortcut: (ExploreShortcut) -> Unit,
-    onTrackActions: (Track) -> Unit,
-    onOpenCategory: (ExploreCategory) -> Unit
+    onTrackActions: (Track) -> Unit
 ) {
     QobuzMagazineScreen(
         QobuzMagazineInputs(
             chartCountry = state.selectedChartId,
-            categories = state.exploreCategories,
             freshTracks = freshTracks,
             currentId = state.currentTrack?.id,
             onOpenSearch = viewModel::openSearch,
-            onOpenCategory = onOpenCategory,
+            onOpenMoods = { onShortcut(ExploreShortcut.Moods) },
+            onOpenMoodJourney = { preset -> if (preset == null) viewModel.openMoodJourney() else viewModel.openMoodJourney(preset) },
             onOpenNewReleases = { onShortcut(ExploreShortcut.NewReleases) },
             onOpenSamples = { onShortcut(ExploreShortcut.Samples) },
             onOpenPodcasts = { onShortcut(ExploreShortcut.Podcasts) },

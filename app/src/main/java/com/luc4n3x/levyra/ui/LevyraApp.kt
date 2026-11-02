@@ -1540,7 +1540,7 @@ internal fun CoverImage(
     }
     var modelIndex by remember(models) { mutableStateOf(0) }
     val model = models.getOrNull(modelIndex)
-    val crossfadeMs = if (LocalAnimationsEnabled.current && highRes && model !is File) 120 else 0
+    val crossfadeMs = if (LocalAnimationsEnabled.current && model !is File) 180 else 0
     var artworkLoaded by remember(track.id, highRes, model) { mutableStateOf(false) }
     var artworkSucceeded by remember(track.id, highRes, model) { mutableStateOf(false) }
     LaunchedEffect(artworkSucceeded, crossfadeMs) {
@@ -1570,15 +1570,9 @@ internal fun CoverImage(
             if (model == null) LevyraArtworkStartupMetrics.recordArtworkLoading(artworkKey)
         }
     }
-    val background = remember(track.accentStart, track.accentEnd) {
-        Brush.linearGradient(listOf(Color(track.accentStart), Color(track.accentEnd)))
-    }
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         if (!artworkLoaded) {
-            InstantArtworkPlaceholder(
-                track = track,
-                modifier = Modifier.fillMaxSize().background(background)
-            )
+            InstantArtworkPlaceholder(modifier = Modifier.fillMaxSize())
         }
         if (model != null) {
             val request = remember(context, model, crossfadeMs) {
@@ -1612,45 +1606,22 @@ internal fun CoverImage(
 }
 
 @Composable
-internal fun InstantArtworkPlaceholder(track: Track, modifier: Modifier) {
-    val initials = remember(track.title, track.artist) {
-        listOf(track.title, track.artist)
-            .mapNotNull { value -> value.trim().firstOrNull()?.uppercaseChar()?.toString() }
-            .take(2)
-            .joinToString("")
-            .ifBlank { "♪" }
-    }
-    Box(
-        modifier = modifier
-            .background(
-                Brush.radialGradient(
-                    listOf(
-                        Color.White.copy(alpha = 0.22f),
-                        Color(track.accentStart).copy(alpha = 0.46f),
-                        Color(track.accentEnd).copy(alpha = 0.64f)
-                    )
-                )
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = initials,
-            color = LevyraText.copy(alpha = 0.88f),
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Black,
-            maxLines = 1,
-            overflow = TextOverflow.Clip
+internal fun InstantArtworkPlaceholder(modifier: Modifier) {
+    Box(modifier = modifier.background(LevyraPanel), contentAlignment = Alignment.Center) {
+        Icon(
+            imageVector = Icons.Rounded.MusicNote,
+            contentDescription = null,
+            tint = LevyraMuted.copy(alpha = 0.5f),
+            modifier = Modifier.fillMaxSize(ArtworkPlaceholderGlyphFraction)
         )
     }
 }
+
+private const val ArtworkPlaceholderGlyphFraction = 0.22f
+
 @Composable
 private fun EmptyCover(modifier: Modifier) {
-    Box(
-        modifier = modifier.background(Brush.linearGradient(listOf(LevyraCyan.copy(alpha = 0.72f), LevyraViolet.copy(alpha = 0.72f)))),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(Icons.Rounded.MusicNote, null, tint = LevyraBlack, modifier = Modifier.size(30.dp))
-    }
+    InstantArtworkPlaceholder(modifier = modifier)
 }
 
 @Composable
@@ -9251,6 +9222,7 @@ private fun HomeScreen(
                 }
             }
 
+
             discoverySection(
                 homeDiscovery,
                 HomeStyle.Original,
@@ -13651,7 +13623,7 @@ private fun HomeMusicVideoArtwork(item: HomeVideoCardItem) {
     }
     val frameFit = fit
     if (frameFit == null) {
-        InstantArtworkPlaceholder(track = item.track, modifier = Modifier.fillMaxSize())
+        InstantArtworkPlaceholder(modifier = Modifier.fillMaxSize())
         return
     }
     val squareArtwork = item.squareArtwork
@@ -17739,7 +17711,7 @@ private fun PlayerArtworkCanvas(
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
-                    InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
+                    InstantArtworkPlaceholder(modifier = Modifier.fillMaxSize())
                 }
             }
             Box(
@@ -17792,7 +17764,7 @@ private fun PlayerImmersiveMotionCanvas(
                     modifier = Modifier.fillMaxSize()
                 )
             } else {
-                InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
+                InstantArtworkPlaceholder(modifier = Modifier.fillMaxSize())
             }
         }
         PlayerCanvasFusionScrim(
@@ -25899,7 +25871,8 @@ private fun ExploreScreen(
             hasFreshScopes = freshScopes.size > 1,
             hasFreshMoment = momentPages.isNotEmpty(),
             spotifyStyle = spotifyExplore,
-            moodsInSearch = moodsInSearch
+            moodsInSearch = moodsInSearch,
+            journeyInPlaceOfMoods = true
         )
     }
     val availableAnchors = remember(rows) { exploreAvailableAnchors(rows) }
@@ -25973,17 +25946,9 @@ private fun ExploreScreen(
             .background(Color.Transparent)
     ) {
         if (LevyraIsAtelier) {
-            AtelierExploreEntry(state, viewModel, freshTracks, listState, exploreBottomInset, onShortcut, { addToPlaylistTarget = it }) { category ->
-                samplesStartIndex = null
-                exploreMoodReturn = null
-                exploreDestination = exploreCategoryDestination(category)
-            }
+            AtelierExploreEntry(state, viewModel, freshTracks, listState, exploreBottomInset, onShortcut) { addToPlaylistTarget = it }
         } else if (LevyraIsQobuz) {
-            QobuzMagazineEntry(state, viewModel, freshTracks, listState, exploreBottomInset, onShortcut, { addToPlaylistTarget = it }) { category ->
-                samplesStartIndex = null
-                exploreMoodReturn = null
-                exploreDestination = exploreCategoryDestination(category)
-            }
+            QobuzMagazineEntry(state, viewModel, freshTracks, listState, exploreBottomInset, onShortcut) { addToPlaylistTarget = it }
         } else if (LevyraIsYouTubeMusic) {
             YouTubeMusicExploreScreen(
                 viewModel, listState, state.currentTrack?.id, exploreBottomInset, availableAnchors, onShortcut, onOpenJam, onLiveRadioOpenChange,
@@ -26092,6 +26057,10 @@ private fun ExploreContentRow(
 ) {
     val strings = LocalLevyraStrings.current
     when (row) {
+        ExploreRow.MoodJourney -> com.luc4n3x.levyra.ui.moodjourney.MoodJourneyEntryCard(
+            onOpen = { preset -> if (preset == null) viewModel.openMoodJourney() else viewModel.openMoodJourney(preset) },
+            modifier = Modifier.padding(horizontal = HomeHorizontalInset, vertical = 8.dp)
+        )
         ExploreRow.Samples -> SpotifyExploreSamples(state, viewModel)
         ExploreRow.Shortcuts -> Column(
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -26122,10 +26091,6 @@ private fun ExploreContentRow(
                 onOpenYourSound = viewModel::openYourSound,
                 onOpenMixLab = { viewModel.openMixLab() },
                 modifier = Modifier.padding(horizontal = HomeHorizontalInset)
-            )
-            com.luc4n3x.levyra.ui.moodjourney.MoodJourneyEntry(
-                onOpen = viewModel::openMoodJourney,
-                modifier = Modifier.padding(horizontal = HomeHorizontalInset, vertical = 4.dp)
             )
         }
         is ExploreRow.Header -> ExploreAnchorHeader(

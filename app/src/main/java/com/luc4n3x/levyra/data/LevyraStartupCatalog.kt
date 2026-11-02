@@ -113,10 +113,13 @@ object LevyraStartupCatalog {
 
     private fun seedTrackKey(title: String, artist: String): String = "${seedTitleKey(title)}|${seedTitleKey(artist)}"
 
+    private val seedNonWordPattern = Regex("""[^\p{L}\p{M}\p{N}\s]""")
+    private val seedWhitespacePattern = Regex("""\s+""")
+
     private fun seedTitleKey(value: String): String {
         return value.lowercase()
-            .replace(Regex("""[^\p{L}\p{M}\p{N}\s]"""), " ")
-            .replace(Regex("""\s+"""), " ")
+            .replace(seedNonWordPattern, " ")
+            .replace(seedWhitespacePattern, " ")
             .trim()
     }
 

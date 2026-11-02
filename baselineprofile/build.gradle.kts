@@ -28,9 +28,11 @@ android {
     }
 }
 
+val useConnectedProfileDevice = providers.gradleProperty("levyraBaselineProfileConnected").isPresent
+
 baselineProfile {
-    managedDevices += "pixel6Api35"
-    useConnectedDevices = false
+    if (!useConnectedProfileDevice) managedDevices += "pixel6Api35"
+    useConnectedDevices = useConnectedProfileDevice
 }
 
 dependencies {

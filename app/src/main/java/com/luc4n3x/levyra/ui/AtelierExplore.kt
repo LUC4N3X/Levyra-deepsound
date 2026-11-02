@@ -82,7 +82,6 @@ import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.data.fullResolutionArtworkUrl
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ChartMarketDirectory
-import com.luc4n3x.levyra.domain.ExploreCategory
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
@@ -98,7 +97,6 @@ private const val AtelierExploreCollapsedCharts = 10
 private const val AtelierCrateSize = 4
 private const val AtelierCratePoolMax = 48
 private const val AtelierShufflePoolMax = 60
-private const val AtelierGenreLinesMax = 12
 private val AtelierCrateLean = floatArrayOf(-2.5f, 1.5f, -1f, 2.5f)
 
 @Immutable
@@ -464,59 +462,6 @@ private fun AtelierCabinet(artTrack: Track?, artAlbum: AlbumHit?, onShortcut: (E
 }
 
 @Composable
-private fun AtelierGenreLine(category: ExploreCategory, artworkUrl: String, onRequestArtwork: (String) -> Unit, onOpen: () -> Unit) {
-    LaunchedEffect(category.params) { onRequestArtwork(category.params) }
-    Box(
-        Modifier.fillMaxWidth().heightIn(min = 76.dp)
-            .levyraPressable(onClick = onOpen, role = Role.Button, pressedScale = LevyraPressScale.Row)
-    ) {
-        if (artworkUrl.isNotBlank()) {
-            Box(Modifier.matchParentSize()) {
-                Box(
-                    Modifier.align(Alignment.CenterEnd).fillMaxHeight().fillMaxWidth(0.58f)
-                        .drawWithCache {
-                            val colors = listOf(AtelierDesign.room, AtelierDesign.room.copy(alpha = 0.4f), Color.Transparent)
-                            val veil = Brush.horizontalGradient(if (layoutDirection == LayoutDirection.Rtl) colors.reversed() else colors)
-                            onDrawWithContent {
-                                drawContent()
-                                drawRect(veil)
-                            }
-                        }
-                ) {
-                    AsyncImage(
-                        artworkUrl,
-                        null,
-                        contentScale = ContentScale.Crop,
-                        alpha = 0.42f,
-                        modifier = Modifier.fillMaxSize().clearAndSetSemantics {}
-                    )
-                }
-            }
-        }
-        Row(
-            Modifier.fillMaxWidth().atelierBottomRule()
-                .padding(start = AtelierDesign.gutter, end = 12.dp, top = 16.dp, bottom = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = category.title,
-                style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Light),
-                color = AtelierDesign.text,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
-            )
-            Icon(
-                Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                null,
-                tint = AtelierDesign.accent,
-                modifier = Modifier.size(26.dp)
-            )
-        }
-    }
-}
-
-@Composable
 internal fun AtelierExploreEntry(
     state: LevyraUiState,
     viewModel: ExploreViewModel,
@@ -524,8 +469,7 @@ internal fun AtelierExploreEntry(
     listState: LazyListState,
     bottomInset: Dp,
     onShortcut: (ExploreShortcut) -> Unit,
-    onTrackActions: (Track) -> Unit,
-    onOpenCategory: (ExploreCategory) -> Unit
+    onTrackActions: (Track) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     val currentId = state.currentTrack?.id
@@ -536,7 +480,6 @@ internal fun AtelierExploreEntry(
     val chartsTitle = remember(strings, charts.size, state.chartRegions, state.selectedChartId, state.languageCode) {
         atelierExploreChartsTitle(strings, charts.size, state)
     }
-    val categorySections = remember(state.exploreCategories) { buildExploreCategorySections(state.exploreCategories) }
     val heroAlbum = releases.firstOrNull()
     val heroTrack = atelierExploreHeroTrack(heroAlbum, fresh, charts)
     val shufflePool = remember(fresh, charts) { (fresh + charts).distinctBy(Track::id).take(AtelierShufflePoolMax) }
@@ -546,7 +489,7 @@ internal fun AtelierExploreEntry(
     val crate = remember(cratePool, crateRoll) { atelierExploreCrateSelection(cratePool, crateRoll) }
     val cabinetAlbum = releases.getOrNull(1) ?: heroAlbum
     val cabinetTrack = atelierExploreCabinetTrack(cabinetAlbum, fresh)
-    val nothingLoaded = releases.isEmpty() && fresh.isEmpty() && charts.isEmpty() && categorySections.isEmpty()
+    val nothingLoaded = releases.isEmpty() && fresh.isEmpty() && charts.isEmpty()
     val stillLoading = state.isExploreCategoriesLoading || state.isFreshCurrentsLoading || state.isNewReleasesLoading
     var chartsExpanded by rememberSaveable { mutableStateOf(false) }
     val trackAction = strings.addToPlaylist
@@ -568,7 +511,12 @@ internal fun AtelierExploreEntry(
             atelierExploreChartRows(charts, chartsTitle, chartsExpanded, currentId, trackAction, play, onTrackActions) {
                 chartsExpanded = !chartsExpanded
             }
-            atelierExploreCategories(categorySections, strings, state, viewModel, onShortcut, onOpenCategory)
+            item(key = "atelier-explore-journey", contentType = "atelier-explore-journey") {
+                com.luc4n3x.levyra.ui.moodjourney.MoodJourneyEntryCard(
+                    onOpen = { preset -> if (preset == null) viewModel.openMoodJourney() else viewModel.openMoodJourney(preset) },
+                    modifier = Modifier.padding(horizontal = AtelierDesign.gutter, vertical = AtelierDesign.sectionGap / 2)
+                )
+            }
             atelierExploreFallback(nothingLoaded, stillLoading, strings)
         }
     }
@@ -775,38 +723,6 @@ private fun LazyListScope.atelierExploreChartRows(
             )
         }
         atelierExpandToggle("atelier-explore-charts", charts.size, AtelierExploreCollapsedCharts, chartsExpanded, onToggleCharts)
-    }
-}
-
-private fun LazyListScope.atelierExploreCategories(
-    categorySections: List<ExploreCategorySection>,
-    strings: LevyraStrings,
-    state: LevyraUiState,
-    viewModel: ExploreViewModel,
-    onShortcut: (ExploreShortcut) -> Unit,
-    onOpenCategory: (ExploreCategory) -> Unit
-) {
-    categorySections.forEach { section ->
-        val structured = section.presentation == ExploreCategoryPresentation.Structured
-        val title = section.providerTitle.ifBlank { if (structured) strings.genres else strings.exploreMoods }
-        val categories = section.categories.filter { it.params.isNotBlank() }.distinctBy { it.params }
-        val lines = categories.take(AtelierGenreLinesMax)
-        val overflow = categories.size > lines.size
-        item(key = "${section.key}-label", contentType = "atelier-label") {
-            AtelierSectionLabel(title) {
-                if (!structured || overflow) {
-                    AtelierTextAction(strings.showAll, { onShortcut(ExploreShortcut.Moods) })
-                }
-            }
-        }
-        items(lines, key = { "${section.key}-${it.params}" }, contentType = { "atelier-genre-line" }) { category ->
-            AtelierGenreLine(
-                category = category,
-                artworkUrl = state.exploreCategoryArtwork[category.params].orEmpty(),
-                onRequestArtwork = { params -> viewModel.ensureExploreCategoryArtwork(params, true) },
-                onOpen = { onOpenCategory(category) }
-            )
-        }
     }
 }
 

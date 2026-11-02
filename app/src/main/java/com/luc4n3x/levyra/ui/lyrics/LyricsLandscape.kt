@@ -264,7 +264,7 @@ internal fun LyricsLandscapeArtworkPane(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     SeamlessArtworkImage(url = artworkUrl, modifier = Modifier.fillMaxSize()) {
-                        InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
+                        InstantArtworkPlaceholder(modifier = Modifier.fillMaxSize())
                     }
                 }
             }

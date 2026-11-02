@@ -152,6 +152,7 @@ class HomeViewModel internal constructor(
 
     private val freezeHomeContent = MutableStateFlow(false)
     private val explicitMoodSelection = MutableStateFlow<Mood?>(null)
+    private val initialRenderSnapshot = initialHomeRenderSnapshot()
 
     internal val renderState: StateFlow<HomeRenderSnapshot> = combine(
         state,
@@ -165,7 +166,7 @@ class HomeViewModel internal constructor(
             source = source
         )
     }
-        .scan(initialHomeRenderSnapshot()) { previous, input ->
+        .scan(initialRenderSnapshot) { previous, input ->
             withContext(Dispatchers.Default) {
                 buildStableHomeRenderSnapshot(
                     state = input.state,
@@ -179,7 +180,7 @@ class HomeViewModel internal constructor(
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000L),
-            initialValue = initialHomeRenderSnapshot()
+            initialValue = initialRenderSnapshot
         )
 
     private fun initialHomeRenderSnapshot(): HomeRenderSnapshot =
@@ -403,9 +404,10 @@ class ExploreViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::ex
         }
     }
 
+    fun openMoodJourney() = root.openMoodJourney()
+    fun openMoodJourney(preset: com.luc4n3x.levyra.domain.MoodCurvePreset) = root.openMoodJourney(preset)
     fun openYourSound() = root.openYourSound()
     fun openMixLab(initialParams: com.luc4n3x.levyra.domain.MixLabParams = com.luc4n3x.levyra.domain.MixLabParams()) = root.openMixLab(initialParams)
-    fun openMoodJourney() = root.openMoodJourney()
     fun openListeningRecap() = root.openListeningRecap()
     fun openListeningInsights() = root.openListeningInsights()
     fun toggleFavorite(track: Track) = root.toggleFavorite(track)
@@ -417,7 +419,6 @@ class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::li
     fun refreshSmartOffline() = root.refreshSmartOffline()
     fun openYourSound() = root.openYourSound()
     fun openMixLab(initialParams: com.luc4n3x.levyra.domain.MixLabParams = com.luc4n3x.levyra.domain.MixLabParams()) = root.openMixLab(initialParams)
-    fun openMoodJourney() = root.openMoodJourney()
     fun openListeningRecap() = root.openListeningRecap()
     fun openListeningInsights() = root.openListeningInsights()
     fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
