@@ -127,8 +127,9 @@ internal fun PodcastLibraryScreen(
             targetState = state.openShow?.show?.browseId,
             transitionSpec = {
                 val opening = targetState != null
-                (fadeIn(tween(PodcastPaneMillis)) + slideInHorizontally(tween(PodcastPaneMillis)) { if (opening) it / 6 else -it / 6 }) togetherWith
-                    (fadeOut(tween(PodcastPaneMillis / 2)) + slideOutHorizontally(tween(PodcastPaneMillis)) { if (opening) -it / 6 else it / 6 })
+                val enter = fadeIn(tween(PodcastPaneMillis)) + slideInHorizontally(tween(PodcastPaneMillis)) { if (opening) it / 6 else -it / 6 }
+                val exit = fadeOut(tween(PodcastPaneMillis / 2)) + slideOutHorizontally(tween(PodcastPaneMillis)) { if (opening) -it / 6 else it / 6 }
+                enter togetherWith exit
             },
             label = "podcast-pane"
         ) { browseId ->
