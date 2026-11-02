@@ -67,47 +67,106 @@ def enhance_screenshot(img):
     img = ImageEnhance.Sharpness(img).enhance(1.05)
     return img
 
-def draw_ribbon_pill(card, x, y, width=64, height=7):
-    """Draws a sleek editorial accent bar using the exact Levyra ribbon colors."""
-    pill = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    pdraw = ImageDraw.Draw(pill)
-    c1 = (79, 117, 255)   # Cobalt
-    c2 = (139, 92, 246)   # Violet
-    c3 = (236, 72, 153)   # Magenta
-    for px in range(width):
-        t = px / max(1, width - 1)
-        if t < 0.5:
-            lt = t * 2.0
-            r = int(c1[0] * (1 - lt) + c2[0] * lt)
-            g = int(c1[1] * (1 - lt) + c2[1] * lt)
-            b = int(c1[2] * (1 - lt) + c2[2] * lt)
-        else:
-            lt = (t - 0.5) * 2.0
-            r = int(c2[0] * (1 - lt) + c3[0] * lt)
-            g = int(c2[1] * (1 - lt) + c3[1] * lt)
-            b = int(c2[2] * (1 - lt) + c3[2] * lt)
-        pdraw.line([(px, 0), (px, height)], fill=(r, g, b, 255))
+_PIN_CACHE = {}
 
-    mask = Image.new("L", (width, height), 0)
-    ImageDraw.Draw(mask).rounded_rectangle((0, 0, width - 1, height - 1), radius=height // 2, fill=255)
-    card.paste(pill, (x, y), mask)
+def draw_modern_pin(card, cx, cy, radius=17):
+    """Draws a realistic 3D CNC-machined titanium studio pin/stud ('chiodo moderno') with cast shadow."""
+    if radius not in _PIN_CACHE:
+        scale = 4
+        R = radius * scale
+        pad = 18 * scale
+        size = (R + pad) * 2
+        pin_canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        c = size // 2
 
-def draw_diptych_editorial_block(card, title_lines, subtitle, x, y, align="left", title_fill=(15, 23, 42, 255), sub_fill=(71, 85, 105, 255)):
-    """Draws a bold 2-line display headline + concise 1-line subhead for Row 1 diptychs."""
+        # 1. Directional cast shadow (bottom-right)
+        shadow = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        sdraw = ImageDraw.Draw(shadow)
+        sx, sy = c + 5 * scale, c + 8 * scale
+        sdraw.ellipse((sx - R, sy - R, sx + R, sy + R), fill=(15, 23, 42, 130))
+        shadow = shadow.filter(ImageFilter.GaussianBlur(6 * scale))
+        pin_canvas.alpha_composite(shadow)
+
+        # 2. Tight contact occlusion shadow
+        contact = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        cdraw = ImageDraw.Draw(contact)
+        cx_occ, cy_occ = c + 1 * scale, c + 2 * scale
+        cdraw.ellipse((cx_occ - R, cy_occ - R, cx_occ + R, cy_occ + R), fill=(10, 14, 24, 165))
+        contact = contact.filter(ImageFilter.GaussianBlur(2 * scale))
+        pin_canvas.alpha_composite(contact)
+
+        # 3. Outer machined titanium flange with diagonal directional lighting
+        head = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        for y in range(c - R, c + R + 1):
+            for x in range(c - R, c + R + 1):
+                dx, dy = x - c, y - c
+                dist = math.hypot(dx, dy)
+                if dist <= R:
+                    t = ((dx + dy) / (2.0 * R) + 1.0) * 0.5
+                    t = max(0.0, min(1.0, t))
+                    if dist > R - 2.4 * scale:
+                        r = int(240 * (1 - t) + 38 * t)
+                        g = int(244 * (1 - t) + 44 * t)
+                        b = int(252 * (1 - t) + 56 * t)
+                    elif dist > R * 0.62:
+                        r = int(125 * (1 - t) + 24 * t)
+                        g = int(132 * (1 - t) + 28 * t)
+                        b = int(148 * (1 - t) + 38 * t)
+                    elif dist > R * 0.50:
+                        r = int(18 * (1 - t) + 85 * t)
+                        g = int(22 * (1 - t) + 92 * t)
+                        b = int(30 * (1 - t) + 108 * t)
+                    else:
+                        inner_t = ((dx / (R * 0.50) + dy / (R * 0.50)) * 0.5 + 1.0) * 0.5
+                        inner_t = max(0.0, min(1.0, inner_t))
+                        r = int(180 * (1 - inner_t) + 30 * inner_t)
+                        g = int(188 * (1 - inner_t) + 35 * inner_t)
+                        b = int(205 * (1 - inner_t) + 46 * inner_t)
+                    head.putpixel((x, y), (r, g, b, 255))
+
+        mask = Image.new("L", (size, size), 0)
+        ImageDraw.Draw(mask).ellipse((c - R, c - R, c + R, c + R), fill=255)
+        head.putalpha(mask)
+
+        # 4. Crisp specular hotspot on top-left of dome
+        glint = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        gdraw = ImageDraw.Draw(glint)
+        gx, gy = c - int(R * 0.22), c - int(R * 0.22)
+        gr = int(R * 0.17)
+        gdraw.ellipse((gx - gr, gy - gr, gx + gr, gy + gr), fill=(255, 255, 255, 230))
+        glint = glint.filter(ImageFilter.GaussianBlur(int(scale * 1.1)))
+        head.alpha_composite(glint)
+
+        pin_canvas.alpha_composite(head)
+        out_size = size // scale
+        _PIN_CACHE[radius] = pin_canvas.resize((out_size, out_size), Image.Resampling.LANCZOS)
+
+    pin_final = _PIN_CACHE[radius]
+    out_size = pin_final.width
+    card.alpha_composite(pin_final, (cx - out_size // 2, cy - out_size // 2))
+
+def draw_diptych_editorial_block(card, title_lines, subtitle, x, y, align="left", title_fill=(15, 23, 42, 255), sub_fill=(71, 85, 105, 255), show_pin=True):
+    """Draws a bold 2-line display headline + concise 1-line subhead anchored by a modern 3D pin."""
     draw = ImageDraw.Draw(card)
-    pill_w, pill_h = 60, 7
+    pin_r = 17
 
     if align == "left":
-        draw_ribbon_pill(card, x, y, pill_w, pill_h)
-        curr_y = y + pill_h + 20
+        if show_pin:
+            draw_modern_pin(card, x + pin_r, y, radius=pin_r)
+            curr_y = y + pin_r + 18
+        else:
+            curr_y = y
         for line in title_lines:
             draw.text((x, curr_y), line, font=font_diptych_title, fill=title_fill)
             curr_y += 82
         curr_y += 14
         draw.text((x, curr_y), subtitle, font=font_diptych_sub, fill=sub_fill)
     else:
-        draw_ribbon_pill(card, x - pill_w, y, pill_w, pill_h)
-        curr_y = y + pill_h + 20
+        if show_pin:
+            draw_modern_pin(card, x - pin_r, y, radius=pin_r)
+            curr_y = y + pin_r + 18
+        else:
+            curr_y = y
         for line in title_lines:
             bbox = draw.textbbox((0, 0), line, font=font_diptych_title)
             lw = bbox[2] - bbox[0]
@@ -305,17 +364,18 @@ def build_row1_cards():
     c1 = pair1.crop((0, 0, CARD_W, CARD_H))
     c2 = pair1.crop((CARD_W + GAP, 0, pair_w, CARD_H))
 
-    if emblem_img:
-        c1.paste(emblem_img, (68, 68), emblem_img)
+    # Top-left 3D pin on Card 01 aligned at y=76 with Cards 02-04
+    draw_modern_pin(c1, 68 + 17, 76, radius=17)
     draw_diptych_editorial_block(
         c1,
         title_lines=["Pure", "Listening."],
         subtitle="Your music, zero ads.",
         x=68,
-        y=1420,
+        y=1455,
         align="left",
         title_fill=(17, 24, 39, 255),
         sub_fill=(55, 71, 107, 255),
+        show_pin=False,
     )
 
     draw_diptych_editorial_block(
@@ -577,9 +637,8 @@ def render_upright_card(spec):
     card = create_editorial_surface(CARD_W, CARD_H, top_rgb, bot_rgb, wash_rgb, wash_pos=(0.50, 0.60))
     draw = ImageDraw.Draw(card)
 
-    # 1. Centered Levyra Ribbon Accent Bar
-    pill_w, pill_h = 64, 7
-    draw_ribbon_pill(card, (CARD_W - pill_w) // 2, 62, pill_w, pill_h)
+    # 1. Centered 3D Machined Titanium Pin ('Chiodo Moderno')
+    draw_modern_pin(card, CARD_W // 2, 54, radius=17)
 
     # 2. Large Centered Display Title
     tbbox = draw.textbbox((0, 0), title, font=font_upright_title)

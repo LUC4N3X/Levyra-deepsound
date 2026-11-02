@@ -123,17 +123,17 @@ Enhanced Audio is on by default and can be turned off in Audio Settings. Technic
 <a href="docs/assets/showcase/00_levyra_hero_note_nella_pioggia.webp"><img src="docs/assets/showcase/00_levyra_hero_note_nella_pioggia.webp" width="100%" alt="Levyra music player for Android and Windows" /></a>
 
 <div align="center">
-<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-01-spaced.webp?v=editorial-campaign-v5" width="900" align="top" alt="Levyra showcase: radio, now playing, light theme, and dark theme" /></div>
+<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-01-spaced.webp?v=editorial-campaign-v7" width="900" align="top" alt="Levyra showcase: radio, now playing, light theme, and dark theme" /></div>
 <br />
-<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-02-spaced.webp?v=editorial-campaign-v5" width="900" align="top" alt="Levyra showcase: discovery, player styles, moods, and audio controls" /></div>
+<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-02-spaced.webp?v=editorial-campaign-v7" width="900" align="top" alt="Levyra showcase: discovery, player styles, moods, and audio controls" /></div>
 <br />
-<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-03-spaced.webp?v=editorial-campaign-v5" width="900" align="top" alt="Levyra showcase: library, curated search, listening insights, and collections" /></div>
+<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-03-spaced.webp?v=editorial-campaign-v7" width="900" align="top" alt="Levyra showcase: library, curated search, listening insights, and collections" /></div>
 <br />
-<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-04-spaced.webp?v=editorial-campaign-v5" width="900" align="top" alt="Levyra showcase: settings, new releases, artists, and Jam" /></div>
+<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-04-spaced.webp?v=editorial-campaign-v7" width="900" align="top" alt="Levyra showcase: settings, new releases, artists, and Jam" /></div>
 <br />
-<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-05-spaced.webp?v=editorial-campaign-v5" width="900" align="top" alt="Levyra showcase: synced lyrics, offline albums, discovery, and Year in Music" /></div>
+<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-05-spaced.webp?v=editorial-campaign-v7" width="900" align="top" alt="Levyra showcase: synced lyrics, offline albums, discovery, and Year in Music" /></div>
 <br />
-<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-06-skins-spaced.webp?v=editorial-campaign-v6" width="900" align="top" alt="Levyra showcase: Spotify Style, Apple Music Style, YouTube Music Style, and Qobuz Style" /></div>
+<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-06-skins-spaced.webp?v=editorial-campaign-v7" width="900" align="top" alt="Levyra showcase: Spotify Style, Apple Music Style, YouTube Music Style, and Qobuz Style" /></div>
 </div>
 
 </div>
