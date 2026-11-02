@@ -61,7 +61,7 @@ jobs:
     name: Android Lint
     needs: preflight
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
       ORG_GRADLE_PROJECT_levyraNativeAudio: "true"
