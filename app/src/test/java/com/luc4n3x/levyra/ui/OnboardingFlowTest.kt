@@ -6,11 +6,36 @@ import org.junit.Assert.assertTrue
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.ui.i18n.LevyraOnboardingAppearanceStrings
 import com.luc4n3x.levyra.ui.i18n.LevyraOnboardingYoutubeMusicStrings
+import com.luc4n3x.levyra.ui.i18n.LevyraStrings
+import com.luc4n3x.levyra.ui.i18n.LevyraOnboardingIntroStrings
 import org.junit.Test
 import java.nio.file.Files
 import java.nio.file.Path
 
 class OnboardingFlowTest {
+
+    @Test
+    fun `intro copy is translated for every selectable language`() {
+        val english = LevyraStrings.forCode("en")
+        LevyraLanguageCatalog.selectableLanguages.forEach { language ->
+            val strings = LevyraStrings.forCode(language.code)
+            val fields = listOf(strings.welcomeBadge, strings.introHeadline, strings.introBody, strings.introFeatureSound,
+                strings.introFeatureLyrics, strings.introFeatureOffline, strings.introStart,
+                LevyraOnboardingIntroStrings.forCode(language.code).title, LevyraOnboardingIntroStrings.forCode(language.code).body,
+                LevyraOnboardingYoutubeMusicStrings.forCode(language.code).optionalBody)
+            assertTrue(language.code, fields.all(String::isNotBlank))
+            if (language.code != "en") {
+                assertTrue(language.code, strings.introHeadline != english.introHeadline)
+                assertTrue(language.code, strings.introBody != english.introBody)
+                assertTrue(language.code, strings.introFeatureSound != english.introFeatureSound)
+                assertTrue(language.code, strings.introFeatureLyrics != english.introFeatureLyrics)
+                assertTrue(language.code, strings.introFeatureOffline != english.introFeatureOffline)
+                assertTrue(language.code, strings.introStart != english.introStart)
+                assertTrue(language.code, LevyraOnboardingIntroStrings.forCode(language.code).title != LevyraOnboardingIntroStrings.forCode("en").title)
+                assertTrue(language.code, LevyraOnboardingIntroStrings.forCode(language.code).body != LevyraOnboardingIntroStrings.forCode("en").body)
+            }
+        }
+    }
 
     @Test
     fun `flow advances through intro language appearance profile taste and youtube music`() {
@@ -62,16 +87,16 @@ class OnboardingFlowTest {
     }
 
     @Test
-    fun `taste labels follow the selected onboarding language`() {
+    fun `artist setup receives the selected onboarding language`() {
         val source = sequenceOf(
             Path.of("app/src/main/java/com/luc4n3x/levyra/ui/OnboardingSetup.kt"),
             Path.of("src/main/java/com/luc4n3x/levyra/ui/OnboardingSetup.kt")
         ).firstOrNull(Files::exists) ?: error("OnboardingSetup.kt not found")
         val content = Files.readString(source)
 
-        assertTrue(content.contains("val tastes = remember(languageCode)"))
-        assertTrue(content.contains("moodEngine.tastesForLanguage(languageCode)"))
-        assertFalse(content.contains("OnboardingOverlay(tastes = state.tastes"))
+        assertTrue(content.contains("OnboardingStep.Taste -> SetupArtistStage("))
+        assertTrue(content.contains("languageCode = languageCode"))
+        assertFalse(content.contains("SetupTasteTile("))
     }
 
     @Test

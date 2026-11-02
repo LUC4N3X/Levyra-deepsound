@@ -35,6 +35,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
@@ -46,10 +49,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.itemsIndexed as gridItemsIndexed
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -62,17 +61,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.SelfImprovement
-import androidx.compose.material.icons.rounded.Public
-import androidx.compose.material.icons.rounded.Nightlife
-import androidx.compose.material.icons.rounded.MusicNote
-import androidx.compose.material.icons.rounded.Mic
-import androidx.compose.material.icons.rounded.LocalFireDepartment
-import androidx.compose.material.icons.rounded.Headphones
-import androidx.compose.material.icons.rounded.FitnessCenter
-import androidx.compose.material.icons.rounded.ElectricBolt
-import androidx.compose.material.icons.rounded.Cloud
-import androidx.compose.material.icons.rounded.Celebration
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.LibraryMusic
@@ -99,6 +87,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
@@ -136,8 +125,6 @@ import androidx.graphics.shapes.Morph
 import androidx.graphics.shapes.RoundedPolygon
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraLanguageOption
-import com.luc4n3x.levyra.domain.MoodEngine
-import com.luc4n3x.levyra.domain.Taste
 import com.luc4n3x.levyra.ui.components.LevyraMorphShape
 import com.luc4n3x.levyra.ui.components.LevyraWavyProgress
 import com.luc4n3x.levyra.ui.components.levyraGroupedListShape
@@ -164,8 +151,6 @@ import com.luc4n3x.levyra.ui.i18n.LevyraOnboardingAppearanceStrings
 import com.luc4n3x.levyra.ui.i18n.OnboardingAppearanceCopy
 import com.luc4n3x.levyra.ui.theme.LevyraPalette
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
-import androidx.compose.material3.LocalTextStyle
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.core.AnimationSpec
@@ -220,7 +205,7 @@ internal fun OnboardingOverlay(
     selectedLanguageCode: String,
     artwork: Map<String, List<String>>,
     youtubeMusic: YoutubeMusicAccountUiState,
-    onTasteLanguage: (String) -> Unit,
+    onRequestArtistArtwork: (String, Set<String>) -> Unit,
     onConnectYoutubeMusic: (String) -> Unit,
     onYoutubeMusicCookie: (String) -> Unit,
     onCancelYoutubeMusicLogin: () -> Unit,
@@ -231,18 +216,16 @@ internal fun OnboardingOverlay(
     val deviceLanguageCode = remember(currentLocale, selectedLanguageCode) {
         LevyraLanguageCatalog.normalize(currentLocale.toLanguageTag().ifBlank { selectedLanguageCode })
     }
-    var selected by remember { mutableStateOf(setOf<String>()) }
-    var name by remember { mutableStateOf("") }
-    var step by remember { mutableStateOf(OnboardingStep.Intro) }
-    var languageCode by remember(deviceLanguageCode) { mutableStateOf(deviceLanguageCode) }
-    val moodEngine = remember { MoodEngine() }
-    val tastes = remember(languageCode) { moodEngine.tastesForLanguage(languageCode) }
+    var selectedArtists by rememberSaveable { mutableStateOf(emptyList<String>()) }
+    val selected = selectedArtists.toSet()
+    var name by rememberSaveable { mutableStateOf("") }
+    var step by rememberSaveable { mutableStateOf(OnboardingStep.Intro) }
+    var languageCode by rememberSaveable(deviceLanguageCode) { mutableStateOf(deviceLanguageCode) }
     val strings = LevyraStrings.forCode(languageCode)
     val youtubeMusicCopy = LevyraOnboardingYoutubeMusicStrings.forCode(languageCode)
     val youtubeMusicAccount = youtubeMusic.active
     val youtubeMusicError = youtubeMusic.error?.takeIf { youtubeMusicAccount == null && !youtubeMusic.restoring }
     val animated = LocalAnimationsEnabled.current
-    LaunchedEffect(languageCode) { onTasteLanguage(languageCode) }
     val accent by animateColorAsState(onboardingAccent(step), setupMotion(animated, tween(520)), label = "setup-accent")
     val introLevel = rememberSetupIntroLevel(step, animated)
     val finish: () -> Unit = { onDone(name, selected, languageCode) }
@@ -273,7 +256,7 @@ internal fun OnboardingOverlay(
                     .windowInsetsPadding(LevyraHorizontalSafeInsets)
             ) {
                 SetupHeader(step = step, accent = accent, backLabel = strings.back, onBack = { step = step.previous() })
-                SetupHero(
+                if (step != OnboardingStep.Taste && step != OnboardingStep.Intro) SetupHero(
                     step = step,
                     accent = accent,
                     initial = name.trim().take(1).uppercase(currentLocale),
@@ -293,8 +276,8 @@ internal fun OnboardingOverlay(
                         languageCode = languageCode,
                         accent = accent,
                         name = name,
-                        tastes = tastes,
                         artwork = artwork,
+                        onRequestArtistArtwork = onRequestArtistArtwork,
                         selected = selected,
                         youtubeMusicCopy = youtubeMusicCopy,
                         youtubeMusicAccount = youtubeMusicAccount,
@@ -305,7 +288,7 @@ internal fun OnboardingOverlay(
                         onName = { name = preserveProfileNameInput(it) },
                         onSubmit = advance,
                         onToggleTaste = { tasteId ->
-                            selected = if (tasteId in selected) selected - tasteId else selected + tasteId
+                            selectedArtists = (if (tasteId in selected) selected - tasteId else selected + tasteId).toList()
                         }
                     )
                 }
@@ -358,8 +341,8 @@ private fun SetupStepContent(
     languageCode: String,
     accent: Color,
     name: String,
-    tastes: List<Taste>,
     artwork: Map<String, List<String>>,
+    onRequestArtistArtwork: (String, Set<String>) -> Unit,
     selected: Set<String>,
     youtubeMusicCopy: OnboardingYoutubeMusicCopy,
     youtubeMusicAccount: YoutubeMusicAccount?,
@@ -372,7 +355,7 @@ private fun SetupStepContent(
     onToggleTaste: (String) -> Unit
 ) {
     when (step) {
-        OnboardingStep.Intro -> SetupIntroStage(strings = strings, accent = accent)
+        OnboardingStep.Intro -> SetupIntroStage(strings = strings)
         OnboardingStep.Language -> SetupLanguageStage(
             strings = strings,
             languageCode = languageCode,
@@ -392,12 +375,16 @@ private fun SetupStepContent(
             onName = onName,
             onSubmit = onSubmit
         )
-        OnboardingStep.Taste -> SetupTasteStage(
-            strings = strings,
-            tastes = tastes,
+        OnboardingStep.Taste -> SetupArtistStage(
+            languageCode = languageCode,
             artwork = artwork,
             selected = selected,
             accent = accent,
+            ink = SetupInk,
+            muted = SetupMuted,
+            surface = SetupSurfaceHigh,
+            onAccent = SetupOnAccent,
+            onRequestArtwork = onRequestArtistArtwork,
             onToggle = onToggleTaste
         )
         OnboardingStep.YoutubeMusic -> SetupYoutubeMusicStage(
@@ -474,7 +461,7 @@ private fun onboardingYoutubeMusicErrorText(copy: OnboardingYoutubeMusicCopy, er
 private fun Modifier.setupAmbience(accent: Color, hero: () -> Float): Modifier = drawBehind {
     val heroLevel = hero().coerceIn(0f, 1f)
     if (heroLevel > 0f) {
-        val strength = if (LevyraIsLight) 0.20f else 0.30f
+        val strength = if (LevyraIsLight) 0.06f else 0.08f
         drawRect(
             Brush.radialGradient(
                 colors = listOf(SetupLavender.copy(alpha = strength * heroLevel), Color.Transparent),
@@ -779,97 +766,101 @@ private fun SetupTitle(text: String, modifier: Modifier = Modifier, textAlign: T
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun SetupIntroStage(strings: LevyraStrings, accent: Color) {
-    val features = remember(strings) {
-        listOf(
-            SetupFeature(Icons.Rounded.GraphicEq, strings.introFeatureSound, MaterialShapes.Cookie4Sided, SetupFeatureTone.Peach),
-            SetupFeature(Icons.Rounded.TextFields, strings.introFeatureLyrics, MaterialShapes.Clover4Leaf, SetupFeatureTone.Rose),
-            SetupFeature(Icons.Rounded.Download, strings.introFeatureOffline, MaterialShapes.Sunny, SetupFeatureTone.Lavender)
-        )
-    }
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 28.dp, vertical = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        LevyraWordmark(fontSize = 24.sp)
-        Spacer(modifier = Modifier.height(10.dp))
-        SetupTitle(text = strings.introHeadline, textAlign = TextAlign.Center)
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(
-            text = strings.introBody,
-            color = SetupMuted,
-            fontSize = 16.sp,
-            lineHeight = 23.sp,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(22.dp))
+private fun SetupIntroStage(strings: LevyraStrings) {
+    val discoveryCopy = com.luc4n3x.levyra.ui.i18n.LevyraOnboardingIntroStrings.forCode(strings.code)
+    val colors = androidx.compose.material3.MaterialTheme.colorScheme
+    val type = androidx.compose.material3.MaterialTheme.typography
+    val shapes = androidx.compose.material3.MaterialTheme.shapes
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
+        val bannerHeight = (maxHeight * 0.26f).coerceIn(144.dp, 200.dp)
         Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(3.dp)
+            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            features.forEachIndexed { index, feature ->
-                SetupFeatureTile(
-                    feature = feature,
-                    accent = feature.tone.color,
-                    shape = levyraGroupedListShape(index, features.size)
+            Surface(
+                color = if (LevyraIsLight) colors.inverseSurface else colors.surfaceContainerLow, contentColor = colors.onSurface,
+                shape = shapes.extraLarge.copy(topEnd = androidx.compose.foundation.shape.CornerSize(64.dp)),
+                modifier = Modifier.fillMaxWidth().height(bannerHeight)
+            ) {
+                Box(Modifier.fillMaxSize()) {
+                    Box(Modifier.align(Alignment.TopEnd).offset(x = 40.dp, y = (-56).dp).size(248.dp)
+                        .graphicsLayer { rotationZ = -24f }
+                        .background(colors.primaryContainer, MaterialShapes.Cookie4Sided.toShape()))
+                    Box(Modifier.align(Alignment.BottomStart).offset(x = (-88).dp, y = 100.dp).size(240.dp)
+                        .graphicsLayer { rotationZ = 24f }
+                        .background(colors.secondaryContainer, MaterialShapes.Cookie4Sided.toShape()))
+                    AsyncImage(
+                        model = com.luc4n3x.levyra.R.drawable.onboarding_levyra_brand, contentDescription = "Levyra Deepsound",
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 12.dp)
+                    )
+                }
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(strings.introHeadline, color = SetupInk, style = type.headlineLarge, fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.8).sp, modifier = Modifier.semantics { heading() })
+                Text(strings.introBody, color = SetupMuted, style = type.bodyMedium)
+            }
+            Surface(color = colors.surfaceContainerHigh, contentColor = colors.onSurface, shape = shapes.extraLarge) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(20.dp), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Icon(Icons.Rounded.GraphicEq, contentDescription = null, modifier = Modifier.size(26.dp))
+                    Text(strings.introFeatureSound, style = type.titleSmall, modifier = Modifier.weight(1f))
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                SetupIntroFeature(
+                    icon = Icons.Rounded.TextFields, label = strings.introFeatureLyrics,
+                    modifier = Modifier.weight(1f).fillMaxHeight(), shape = shapes.extraLarge,
+                    container = colors.secondaryContainer, content = colors.onSecondaryContainer
                 )
+                SetupIntroFeature(
+                    icon = Icons.Rounded.Download, label = strings.introFeatureOffline,
+                    modifier = Modifier.weight(1f).fillMaxHeight(), shape = shapes.extraLarge.copy(topStart = shapes.small.topStart),
+                    container = colors.surfaceContainerHigh, content = colors.onSurface
+                )
+            }
+            Surface(color = colors.surfaceContainerLow, contentColor = colors.onSurface, shape = shapes.extraLarge) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(20.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Icon(Icons.Rounded.AutoAwesome, contentDescription = null, tint = colors.primary, modifier = Modifier.size(28.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(discoveryCopy.title, style = type.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text(discoveryCopy.body, color = colors.onSurfaceVariant, style = type.bodyMedium)
+                    }
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Icon(Icons.Rounded.Lock, contentDescription = null, tint = SetupMuted, modifier = Modifier.size(16.dp))
+                Text(LevyraOnboardingYoutubeMusicStrings.forCode(strings.code).optionalBody,
+                    color = SetupMuted, style = type.bodySmall)
             }
         }
     }
 }
 
-private enum class SetupFeatureTone {
-    Peach,
-    Rose,
-    Lavender;
-
-    val color: Color
-        get() = when (this) {
-            Peach -> SetupPeach
-            Rose -> SetupRose
-            Lavender -> SetupLavender
-        }
-}
-
-private class SetupFeature(
-    val icon: androidx.compose.ui.graphics.vector.ImageVector,
-    val label: String,
-    val polygon: RoundedPolygon,
-    val tone: SetupFeatureTone
-)
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun SetupFeatureTile(feature: SetupFeature, accent: Color, shape: Shape, modifier: Modifier = Modifier) {
-    val badgeShape = feature.polygon.toShape()
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(accent.copy(alpha = if (LevyraIsLight) 0.10f else 0.12f).compositeOver(SetupSurface), shape)
-            .padding(horizontal = 14.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .background(accent, badgeShape),
-            contentAlignment = Alignment.Center
+private fun SetupIntroFeature(icon: ImageVector, label: String, modifier: Modifier, shape: Shape, container: Color, content: Color) {
+    Surface(color = container, contentColor = content, shape = shape, modifier = modifier) {
+        Column(
+            modifier = Modifier.heightIn(min = 136.dp).padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Icon(feature.icon, contentDescription = null, tint = SetupOnHero, modifier = Modifier.size(24.dp))
+            Icon(icon, contentDescription = null, modifier = Modifier.size(26.dp))
+            Text(label, style = androidx.compose.material3.MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
         }
-        Text(
-            text = feature.label,
-            color = SetupInk,
-            fontSize = 15.sp,
-            lineHeight = LevyraTypeRhythm.lineHeight(15.sp),
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.weight(1f)
-        )
     }
 }
 
@@ -1329,242 +1320,6 @@ private fun SetupProfileStage(
     }
 }
 
-@Composable
-private fun SetupTasteStage(
-    strings: LevyraStrings,
-    tastes: List<Taste>,
-    artwork: Map<String, List<String>>,
-    selected: Set<String>,
-    accent: Color,
-    onToggle: (String) -> Unit
-) {
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 156.dp),
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 24.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        item(key = "setup-taste-header", span = { GridItemSpan(maxLineSpan) }) {
-            SetupTitle(text = strings.tasteQuestion, modifier = Modifier.padding(bottom = 10.dp))
-        }
-        gridItemsIndexed(tastes, key = { _, taste -> taste.id }) { index, taste ->
-            SetupTasteTile(
-                taste = taste,
-                badgePolygon = setupTastePolygon(index),
-                portraits = artwork[taste.id].orEmpty(),
-                selected = taste.id in selected,
-                accent = accent,
-                onClick = { onToggle(taste.id) }
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-private val SetupTastePolygons: List<RoundedPolygon> by lazy {
-    listOf(
-        MaterialShapes.Cookie9Sided,
-        MaterialShapes.Clover4Leaf,
-        MaterialShapes.Sunny,
-        MaterialShapes.Flower,
-        MaterialShapes.Cookie6Sided,
-        MaterialShapes.Gem,
-        MaterialShapes.SoftBurst,
-        MaterialShapes.Puffy,
-        MaterialShapes.Cookie12Sided,
-        MaterialShapes.Clover8Leaf,
-        MaterialShapes.Pentagon,
-        MaterialShapes.Cookie7Sided
-    )
-}
-
-private fun setupTastePolygon(index: Int): RoundedPolygon =
-    SetupTastePolygons[Math.floorMod(index, SetupTastePolygons.size)]
-
-private fun setupTasteIcon(id: String): ImageVector = when (id) {
-    "hits" -> Icons.Rounded.LocalFireDepartment
-    "rap" -> Icons.Rounded.Mic
-    "italiana" -> Icons.Rounded.Public
-    "pop" -> Icons.Rounded.AutoAwesome
-    "gym" -> Icons.Rounded.FitnessCenter
-    "chill" -> Icons.Rounded.SelfImprovement
-    "focus" -> Icons.Rounded.Headphones
-    "sad" -> Icons.Rounded.Cloud
-    "party" -> Icons.Rounded.Celebration
-    "rock" -> Icons.Rounded.ElectricBolt
-    "electro" -> Icons.Rounded.GraphicEq
-    "rnb" -> Icons.Rounded.Nightlife
-    else -> Icons.Rounded.MusicNote
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun SetupTasteTile(
-    taste: Taste,
-    badgePolygon: RoundedPolygon,
-    portraits: List<String>,
-    selected: Boolean,
-    accent: Color,
-    onClick: () -> Unit
-) {
-    val tint = remember(taste.id) { setupTastePalette(taste.id).first }
-    val style = rememberSetupTasteStyle(selected, accent)
-    val shape = RoundedCornerShape(style.corner)
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(112.dp)
-            .clip(shape)
-            .background(style.fill)
-            .drawBehind {
-                drawRect(
-                    Brush.radialGradient(
-                        colors = listOf(tint.copy(alpha = if (selected) 0.18f else 0.34f), Color.Transparent),
-                        center = Offset(size.width, 0f),
-                        radius = size.width * 0.9f
-                    )
-                )
-            }
-            .border(BorderStroke(1.5.dp, style.outline), shape)
-            .semantics(mergeDescendants = true) { this.selected = selected }
-            .levyraPressable(onClick = onClick)
-    ) {
-        SetupTasteArtwork(portraits = portraits, selected = selected, accent = accent)
-        val onImage = portraits.isNotEmpty()
-        Box(modifier = Modifier.fillMaxSize().padding(14.dp)) {
-            SetupTasteIconBadge(id = taste.id, polygon = badgePolygon, selected = selected, accent = accent, onImage = onImage)
-            SetupTasteBadge(visible = selected, accent = accent, modifier = Modifier.align(Alignment.TopEnd))
-            Text(
-                text = taste.label,
-                color = if (onImage) Color.White else SetupInk,
-                fontSize = 16.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(16.sp),
-                fontWeight = FontWeight.Bold,
-                style = if (onImage) SetupTasteImageLabel else LocalTextStyle.current,
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .fillMaxWidth()
-            )
-        }
-    }
-}
-
-private class SetupTasteStyle(val corner: Dp, val fill: Color, val outline: Color)
-
-@Composable
-private fun rememberSetupTasteStyle(selected: Boolean, accent: Color): SetupTasteStyle {
-    val animated = LocalAnimationsEnabled.current
-    val corner by animateDpAsState(
-        targetValue = if (selected) 14.dp else 26.dp,
-        animationSpec = if (animated) spring(dampingRatio = 0.6f, stiffness = 380f) else snap(),
-        label = "setup-taste-corner"
-    )
-    val fill by animateColorAsState(
-        targetValue = if (selected) accent.copy(alpha = 0.16f) else SetupSurface,
-        animationSpec = if (animated) tween(200) else snap(),
-        label = "setup-taste-fill"
-    )
-    val outline by animateColorAsState(
-        targetValue = if (selected) accent else SetupVeil.copy(alpha = 0.06f),
-        animationSpec = if (animated) tween(200) else snap(),
-        label = "setup-taste-outline"
-    )
-    return SetupTasteStyle(corner, fill, outline)
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun SetupTasteIconBadge(id: String, polygon: RoundedPolygon, selected: Boolean, accent: Color, onImage: Boolean) {
-    val idle = if (onImage) Color.White.copy(alpha = 0.20f) else SetupVeil.copy(alpha = 0.08f)
-    Box(
-        modifier = Modifier
-            .size(34.dp)
-            .background(if (selected) accent else idle, polygon.toShape()),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            setupTasteIcon(id),
-            contentDescription = null,
-            tint = when {
-                selected -> SetupOnAccent
-                onImage -> Color.White
-                else -> SetupInk
-            },
-            modifier = Modifier.size(18.dp)
-        )
-    }
-}
-
-private val SetupTasteImageLabel = TextStyle(
-    shadow = Shadow(color = Color.Black.copy(alpha = 0.55f), offset = Offset(0f, 1f), blurRadius = 6f)
-)
-
-@Composable
-private fun SetupTasteArtwork(portraits: List<String>, selected: Boolean, accent: Color) {
-    val lead = portraits.firstOrNull() ?: return
-    Box(modifier = Modifier.fillMaxSize()) {
-        AsyncImage(
-            model = lead,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.Black.copy(alpha = 0.15f),
-                            Color.Black.copy(alpha = 0.45f),
-                            Color.Black.copy(alpha = 0.85f)
-                        )
-                    )
-                )
-                .then(if (selected) Modifier.background(accent.copy(alpha = 0.22f)) else Modifier)
-        )
-        Row(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 12.dp, end = 40.dp),
-            horizontalArrangement = Arrangement.spacedBy((-10).dp)
-        ) {
-            portraits.drop(1).take(2).forEach { url ->
-                AsyncImage(
-                    model = url,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(26.dp)
-                        .clip(CircleShape)
-                        .border(1.5.dp, SetupBase, CircleShape)
-                )
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun SetupTasteBadge(visible: Boolean, accent: Color, modifier: Modifier = Modifier) {
-    AnimatedVisibility(
-        visible = visible,
-        enter = scaleIn(spring(dampingRatio = 0.45f, stiffness = 420f)) + fadeIn(),
-        exit = scaleOut() + fadeOut(),
-        modifier = modifier
-    ) {
-        Box(
-            modifier = Modifier
-                .size(22.dp)
-                .background(accent, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.Rounded.Check, contentDescription = null, tint = SetupOnAccent, modifier = Modifier.size(14.dp))
-        }
-    }
-}
-
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SetupYoutubeMusicStage(
@@ -1821,22 +1576,6 @@ private fun setupLinkGlow(phase: Float?, index: Int): Float =
 
 private const val SetupLinkDots = 5
 
-private fun setupTastePalette(id: String): Pair<Color, Color> {
-    val palette = listOf(
-        Color(0xFFE8115B) to Color(0xFF8C0B37),
-        Color(0xFF1E3264) to Color(0xFF0D1A36),
-        Color(0xFF8D67AB) to Color(0xFF4F3A61),
-        Color(0xFF148A08) to Color(0xFF0A4D04),
-        Color(0xFFE1118C) to Color(0xFF7D0A4E),
-        Color(0xFF0D73EC) to Color(0xFF07407F),
-        Color(0xFFBA5D07) to Color(0xFF6B3604),
-        Color(0xFF477D95) to Color(0xFF274654),
-        Color(0xFFDC148C) to Color(0xFF7A0B4E),
-        Color(0xFF503750) to Color(0xFF2B1E2B)
-    )
-    return palette[(id.hashCode() and Int.MAX_VALUE) % palette.size]
-}
-
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SetupFooter(
@@ -1859,8 +1598,8 @@ private fun SetupFooter(
             enabled = enabled,
             shapes = if (hero) ButtonDefaults.shapes(shape = CircleShape, pressedShape = CircleShape) else ButtonDefaults.shapes(),
             colors = ButtonDefaults.buttonColors(
-                containerColor = if (hero) Color.Transparent else accent,
-                contentColor = if (hero) SetupOnHero else SetupOnAccent,
+                containerColor = if (hero) SetupLavender else accent,
+                contentColor = SetupOnAccent,
                 disabledContainerColor = SetupVeil.copy(alpha = 0.10f),
                 disabledContentColor = SetupMuted
             ),
@@ -1868,13 +1607,13 @@ private fun SetupFooter(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(64.dp)
-                .then(if (hero && enabled) Modifier.background(SetupHeroGradient, CircleShape) else Modifier)
+
         ) {
             Text(text = label, fontSize = 17.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Spacer(modifier = Modifier.width(8.dp))
             Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, modifier = Modifier.size(22.dp))
         }
-        Box(modifier = Modifier.height(48.dp), contentAlignment = Alignment.Center) {
+        if (!hero) Box(modifier = Modifier.height(48.dp), contentAlignment = Alignment.Center) {
             if (skipLabel != null) {
                 TextButton(onClick = onSkip) {
                     Text(skipLabel, color = SetupMuted, fontSize = 14.sp, fontWeight = FontWeight.Bold)

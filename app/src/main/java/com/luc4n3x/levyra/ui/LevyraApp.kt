@@ -2937,7 +2937,7 @@ fun LevyraApp(
                         selectedLanguageCode = state.languageCode,
                         artwork = onboardingArtwork,
                         youtubeMusic = youtubeMusicState,
-                        onTasteLanguage = viewModel::loadOnboardingArtwork,
+                        onRequestArtistArtwork = viewModel::loadOnboardingArtwork,
                         onConnectYoutubeMusic = { code ->
                             youtubeMusicViewModel.open(code)
                             youtubeMusicViewModel.beginLogin()
