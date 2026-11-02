@@ -212,7 +212,7 @@ private fun PlayerArtworkHeroSurface(
                 modifier = Modifier.fillMaxSize()
             ) {
                 SeamlessArtworkImage(url = artworkUrl, modifier = Modifier.fillMaxSize()) {
-                    InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
+                    InstantArtworkPlaceholder(modifier = Modifier.fillMaxSize())
                 }
             }
         }
@@ -254,7 +254,7 @@ private fun LiveRadioLogoArtwork(track: Track, artworkUrl: String) {
         contentAlignment = Alignment.Center
     ) {
         if (artworkUrl.isBlank() || failed) {
-            InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
+            InstantArtworkPlaceholder(modifier = Modifier.fillMaxSize())
         } else {
             AsyncImage(
                 model = artworkUrl,

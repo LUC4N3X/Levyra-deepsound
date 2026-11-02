@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.ui
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
@@ -14,15 +15,21 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items as rowItems
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
@@ -96,18 +103,20 @@ internal fun SetupArtistStage(
         else listOf(OnboardingArtistSection("selected-artists", strings.artists, otherSelections)) + catalog
     }
     var query by rememberSaveable(languageCode) { mutableStateOf("") }
-    var expanded by rememberSaveable(languageCode) { mutableStateOf(emptyList<String>()) }
-    val visibleSections = remember(sections, query, expanded) {
-        val needle = artistSearchKey(query.trim())
-        sections.map { section ->
-            section.copy(artists = when {
-                needle.isNotEmpty() -> section.artists.filter { artistSearchKey(it.name).contains(needle) }
-                section.id in expanded -> section.artists
-                else -> section.artists.take(OnboardingArtists.InitialSectionSize)
-            })
-        }.filter { it.artists.isNotEmpty() }
+    var genre by rememberSaveable(languageCode) { mutableStateOf<String?>(null) }
+    LaunchedEffect(sections) {
+        if (genre != null && sections.none { it.id == genre }) genre = null
     }
-    val visibleIds = remember(visibleSections) { visibleSections.flatMap { it.artists }.map { it.id }.toSet() }
+    val visibleArtists = remember(sections, query, genre) {
+        val needle = artistSearchKey(query.trim())
+        sections.asSequence()
+            .filter { genre == null || it.id == genre }
+            .flatMap { it.artists }
+            .distinctBy { it.id }
+            .filter { needle.isEmpty() || artistSearchKey(it.name).contains(needle) }
+            .toList()
+    }
+    val visibleIds = remember(visibleArtists) { visibleArtists.map { it.id }.toSet() }
     val gridState = rememberLazyGridState()
     LaunchedEffect(languageCode, visibleIds) {
         snapshotFlow {
@@ -116,47 +125,30 @@ internal fun SetupArtistStage(
     }
 
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(96.dp),
+        columns = GridCells.Fixed(3),
         state = gridState,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
         item(key = "artist-intro", span = { GridItemSpan(maxLineSpan) }) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(copy.title, color = ink, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.semantics { heading() })
-                Text(copy.body, color = muted, style = MaterialTheme.typography.bodyLarge)
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        repeat(3) { index ->
-                            Box(Modifier.size(8.dp).background(if (selected.size > index) accent else muted.copy(alpha = 0.25f), CircleShape))
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                ArtistStageIntro(languageCode, selected.size, query, accent, ink, muted) { query = it }
+                LazyRow(
+                    modifier = Modifier.recentSearchesBleed(20.dp).selectableGroup(),
+                    contentPadding = PaddingValues(horizontal = 20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    item(key = "genre-all") {
+                        ArtistGenreChip(strings.all, genre == null, accent, ink, muted, onAccent) { genre = null }
+                    }
+                    rowItems(sections, key = { "genre-${it.id}" }) { section ->
+                        ArtistGenreChip(section.label, genre == section.id, accent, ink, muted, onAccent) {
+                            genre = if (genre == section.id) null else section.id
                         }
                     }
-                    Text(
-                        "${selected.size} · ${strings.artists}", color = if (selected.size >= 3) accent else muted,
-                        style = MaterialTheme.typography.labelLarge,
-                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
-                    )
                 }
-                OutlinedTextField(
-                    value = query, onValueChange = { query = it }, singleLine = true,
-                    label = { Text(strings.search) },
-                    leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
-                    trailingIcon = if (query.isNotEmpty()) {
-                        { IconButton(onClick = { query = "" }) { Icon(Icons.Rounded.Close, contentDescription = strings.clear) } }
-                    } else null,
-                    shape = CircleShape,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = ink, unfocusedTextColor = ink, cursorColor = accent,
-                        focusedBorderColor = accent, unfocusedBorderColor = muted.copy(alpha = 0.35f),
-                        focusedLabelColor = accent, unfocusedLabelColor = muted,
-                        focusedLeadingIconColor = muted, unfocusedLeadingIconColor = muted,
-                        focusedTrailingIconColor = muted, unfocusedTrailingIconColor = muted
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
                 if (visibleIds.any { artwork[it]?.isEmpty() == true }) {
                     TextButton(onClick = { onRequestArtwork(languageCode, visibleIds) }) {
                         Text(strings.updateRetry, color = accent)
@@ -164,32 +156,94 @@ internal fun SetupArtistStage(
                 }
             }
         }
-        if (visibleSections.isEmpty()) {
+        if (visibleArtists.isEmpty()) {
             item(key = "artist-empty", span = { GridItemSpan(maxLineSpan) }) {
                 Text(copy.empty, color = muted, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(vertical = 24.dp))
             }
         }
-        visibleSections.forEach { section ->
-            item(key = "section-${section.id}", span = { GridItemSpan(maxLineSpan) }) {
-                Text(section.label, color = ink, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 12.dp).semantics { heading() })
-            }
-            items(section.artists, key = { it.id }) { artist ->
-                SetupArtistPortrait(artist, artwork[artist.id]?.firstOrNull(), artwork[artist.id]?.isEmpty() == true,
-                    artist.id in selected, accent, ink, surface, onAccent) {
-                    onToggle(artist.id)
-                }
-            }
-            if (query.isBlank() && section.id !in expanded && sections.first { it.id == section.id }.artists.size > section.artists.size) {
-                item(key = "more-${section.id}", span = { GridItemSpan(maxLineSpan) }) {
-                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        TextButton(onClick = { expanded = expanded + section.id }) {
-                            Text("${strings.more} · ${section.label}", color = accent)
-                        }
-                    }
-                }
+        items(visibleArtists, key = { it.id }) { artist ->
+            SetupArtistPortrait(artist, artwork[artist.id]?.firstOrNull(), artwork[artist.id]?.isEmpty() == true,
+                artist.id in selected, accent, ink, surface, onAccent) {
+                onToggle(artist.id)
             }
         }
+    }
+}
+
+@Composable
+private fun ArtistStageIntro(
+    languageCode: String,
+    selectedCount: Int,
+    query: String,
+    accent: Color,
+    ink: Color,
+    muted: Color,
+    onQueryChange: (String) -> Unit
+) {
+    val copy = LevyraOnboardingArtistStrings.forCode(languageCode)
+    val strings = LevyraStrings.forCode(languageCode)
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Text(copy.title, color = ink, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold,
+            modifier = Modifier.semantics { heading() })
+        Text(copy.body, color = muted, style = MaterialTheme.typography.bodyLarge)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                repeat(3) { index ->
+                    val filled = selectedCount > index
+                    val width by animateDpAsState(if (filled) 22.dp else 8.dp,
+                        if (LocalAnimationsEnabled.current) spring(dampingRatio = 0.6f, stiffness = 500f) else snap(),
+                        label = "artist-progress-$index")
+                    Box(Modifier.height(8.dp).width(width).background(if (filled) accent else muted.copy(alpha = 0.25f), CircleShape))
+                }
+            }
+            Text(
+                "$selectedCount · ${strings.artists}", color = if (selectedCount >= 3) accent else muted,
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+            )
+        }
+        OutlinedTextField(
+            value = query, onValueChange = onQueryChange, singleLine = true,
+            label = { Text(strings.search) },
+            leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+            trailingIcon = if (query.isNotEmpty()) {
+                { IconButton(onClick = { onQueryChange("") }) { Icon(Icons.Rounded.Close, contentDescription = strings.clear) } }
+            } else null,
+            shape = CircleShape,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = ink, unfocusedTextColor = ink, cursorColor = accent,
+                focusedBorderColor = accent, unfocusedBorderColor = muted.copy(alpha = 0.35f),
+                focusedLabelColor = accent, unfocusedLabelColor = muted,
+                focusedLeadingIconColor = muted, unfocusedLeadingIconColor = muted,
+                focusedTrailingIconColor = muted, unfocusedTrailingIconColor = muted
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Composable
+private fun ArtistGenreChip(
+    label: String,
+    selected: Boolean,
+    accent: Color,
+    ink: Color,
+    muted: Color,
+    onAccent: Color,
+    onClick: () -> Unit
+) {
+    val animated = LocalAnimationsEnabled.current
+    val container by animateColorAsState(if (selected) accent else Color.Transparent,
+        if (animated) spring() else snap(), label = "artist-genre-container")
+    Box(
+        Modifier.heightIn(min = 48.dp).clip(CircleShape).background(container)
+            .border(1.dp, if (selected) Color.Transparent else muted.copy(alpha = 0.35f), CircleShape)
+            .selectable(selected = selected, role = Role.Tab, onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 9.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(label, color = if (selected) onAccent else ink, style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold, maxLines = 1)
     }
 }
 

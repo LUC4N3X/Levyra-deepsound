@@ -1879,40 +1879,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             settings.languageCode
         )
         val startupOrbitSeed = mergeTracks(rawCachedOrbitTracks + repairedRecentSearches + favorites, startupHomeTracks + startupCharts)
-        val cachedOrbitTracks = LevyraPersonalOrbit.build(
-            currentTrack = null,
-            recentSearches = repairedRecentSearches,
-            favorites = favorites,
-            tracks = startupOrbitSeed,
-            homeSections = startupHomeSections,
-            charts = startupCharts,
-            cachedOrbit = rawCachedOrbitTracks,
-            limit = LevyraPersonalOrbit.DISPLAY_LIMIT,
-            languageCode = settings.languageCode
-        )
+        val cachedOrbitTracks = rawCachedOrbitTracks.take(LevyraPersonalOrbit.DISPLAY_LIMIT)
         val initialTracks = mergeTracks(cachedOrbitTracks + repairedRecentSearches + favorites, startupHomeTracks + startupCharts)
-        val startupInstantAlbums = instantAlbumRecommendationsFromTracks(
-            primary = repairedRecentSearches + favorites,
-            secondary = cachedOrbitTracks + initialTracks,
-            limit = HOME_ALBUM_RECOMMENDATION_LIMIT,
-            profile = startupSmartProfile
-        )
-        val startupAlbumState = LevyraUiState(
-            languageCode = settings.languageCode,
-            recentSearches = repairedRecentSearches,
-            personalOrbitTracks = cachedOrbitTracks,
-            favorites = favorites,
-            homeSections = startupHomeSections,
-            charts = startupCharts,
-            tracks = initialTracks,
-            smartProfile = startupSmartProfile
-        )
-        val startupAlbums = rankAlbumRecommendations(
-            remote = preferences.loadHomeAlbums(settings.languageCode),
-            instant = startupInstantAlbums,
-            state = startupAlbumState,
-            limit = HOME_ALBUM_RECOMMENDATION_LIMIT
-        ).ifEmpty { startupInstantAlbums }
+        val startupAlbums = preferences.loadHomeAlbums(settings.languageCode)
         val initialQueue = moodEngine.buildQueue(startupMoods.firstOrNull(), initialTracks)
         val restoredTrack = settings.lastTrack
             ?.copy(streamUrl = "", videoStreamUrl = "")
@@ -1965,20 +1934,74 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 lyrics = emptyList()
             )
         }
+        val startupTrackRanking = viewModelScope.async(Dispatchers.Default) {
+            val rankedOrbit = LevyraPersonalOrbit.build(
+                currentTrack = null,
+                recentSearches = repairedRecentSearches,
+                favorites = favorites,
+                tracks = startupOrbitSeed,
+                homeSections = startupHomeSections,
+                charts = startupCharts,
+                cachedOrbit = rawCachedOrbitTracks,
+                limit = LevyraPersonalOrbit.DISPLAY_LIMIT,
+                languageCode = settings.languageCode
+            )
+            val rankedTracks = mergeTracks(rankedOrbit + repairedRecentSearches + favorites, startupHomeTracks + startupCharts)
+            _state.update { current ->
+                if (current.recentSearches !== repairedRecentSearches || current.favorites !== favorites) return@update current
+                current.copy(
+                    personalOrbitTracks = if (current.personalOrbitTracks === cachedOrbitTracks) rankedOrbit else current.personalOrbitTracks,
+                    tracks = if (current.tracks === initialTracks) rankedTracks else current.tracks
+                )
+            }
+            rankedOrbit to rankedTracks
+        }
+        viewModelScope.launch(Dispatchers.Default) {
+            val (rankedOrbit, rankedTracks) = startupTrackRanking.await()
+            val instantAlbums = instantAlbumRecommendationsFromTracks(
+                primary = repairedRecentSearches + favorites,
+                secondary = rankedOrbit + rankedTracks,
+                limit = HOME_ALBUM_RECOMMENDATION_LIMIT,
+                profile = startupSmartProfile
+            )
+            val rankedAlbums = rankAlbumRecommendations(
+                remote = startupAlbums,
+                instant = instantAlbums,
+                state = LevyraUiState(
+                    languageCode = settings.languageCode,
+                    recentSearches = repairedRecentSearches,
+                    personalOrbitTracks = rankedOrbit,
+                    favorites = favorites,
+                    homeSections = startupHomeSections,
+                    charts = startupCharts,
+                    tracks = rankedTracks,
+                    smartProfile = startupSmartProfile
+                ),
+                limit = HOME_ALBUM_RECOMMENDATION_LIMIT
+            ).ifEmpty { instantAlbums }
+            _state.update { current ->
+                if (current.recentSearches !== repairedRecentSearches || current.favorites !== favorites) return@update current
+                current.copy(
+                    homeAlbums = if (current.homeAlbums === startupAlbums) rankedAlbums else current.homeAlbums,
+                    homeAlbumsLoading = if (current.homeAlbums === startupAlbums) rankedAlbums.isEmpty() else current.homeAlbumsLoading
+                )
+            }
+        }
         if (repairedRecentSearches != settings.recentSearches) {
             viewModelScope.launch(Dispatchers.IO) {
                 preferences.saveRecentSearches(repairedRecentSearches)
             }
         }
-        val fallbackQueue = restoredTrack
-            ?.let { track -> (listOf(track) + initialQueue).distinctBy { playbackIdentity(it) } }
-            .orEmpty()
-        val fallbackIndex = restoredTrack
-            ?.let { target -> fallbackQueue.indexOfFirst { samePlayableTrack(it, target) } }
-            ?.takeIf { it >= 0 }
-            ?: -1
         viewModelScope.launch {
             val restoreTransitionId = streamTransitionId
+            val rankedQueue = moodEngine.buildQueue(startupMoods.firstOrNull(), startupTrackRanking.await().second)
+            val fallbackQueue = restoredTrack
+                ?.let { track -> (listOf(track) + rankedQueue).distinctBy { playbackIdentity(it) } }
+                .orEmpty()
+            val fallbackIndex = restoredTrack
+                ?.let { target -> fallbackQueue.indexOfFirst { samePlayableTrack(it, target) } }
+                ?.takeIf { it >= 0 }
+                ?: -1
             val restoredStation = withContext(Dispatchers.IO) {
                 queueEngine.restore(
                     fallbackTracks = fallbackQueue,
@@ -4360,6 +4383,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun closeMixLab() = mixLab.close()
 
     fun openMoodJourney() = moodJourney.open()
+
+    fun openMoodJourney(preset: com.luc4n3x.levyra.domain.MoodCurvePreset) {
+        moodJourney.open()
+        moodJourney.applyPreset(preset)
+    }
 
     fun closeMoodJourney() = moodJourney.close()
 

@@ -2249,77 +2249,110 @@ class LevyraStrings private constructor(
             "subtitlesLabel"
         )
 
-        private val values: Map<String, LevyraStrings> by lazy(LazyThreadSafetyMode.PUBLICATION) {
-            mapOf(
-                "en" to bundle("en", enEntries()),
-                "it" to bundle("it", itEntries()),
-                "es" to bundle("es", esEntries()),
-                "fr" to bundle("fr", frEntries()),
-                "de" to bundle("de", deEntries()),
-                "pt" to bundle("pt", ptEntries()),
-                "nl" to bundle("nl", nlEntries()),
-                "pl" to bundle("pl", plEntries()),
-                "ro" to bundle("ro", roEntries()),
-                "el" to bundle("el", elEntries()),
-                "sv" to bundle("sv", svEntries()),
-                "da" to bundle("da", daEntries()),
-                "cs" to bundle("cs", csEntries()),
-                "uk" to bundle("uk", ukEntries()),
-                "ru" to bundle("ru", ruEntries()),
-                "tr" to bundle("tr", trEntries()),
-                "ar" to bundle("ar", arEntries()),
-                "zh" to bundle("zh", zhEntries()),
-                "ja" to bundle("ja", jaLocalizationEntries()),
-                "ko" to bundle("ko", koLocalizationEntries()),
-                "hi" to bundle("hi", hiLocalizationEntries()),
-                "id" to bundle("id", idLocalizationEntries()),
-                "vi" to bundle("vi", viLocalizationEntries()),
-                "th" to bundle("th", thLocalizationEntries()),
-                "fil" to bundle("fil", filLocalizationEntries()),
-                "he" to bundle("he", heLocalizationEntries()),
-                "fi" to bundle("fi", fiLocalizationEntries()),
-                "et" to bundle("et", etLocalizationEntries()),
-                "zh-Hant" to bundle("zh-Hant", enEntries() + newLocaleCoreOverrides("zh-Hant") + zhHantLocalizationEntries()),
-                "hu" to bundle("hu", enEntries() + newLocaleCoreOverrides("hu") + huLocalizationEntries()),
-                "bg" to bundle("bg", enEntries() + newLocaleCoreOverrides("bg") + bgLocalizationEntries()),
-                "nb" to bundle("nb", enEntries() + newLocaleCoreOverrides("nb") + nbLocalizationEntries()),
-                "ca" to bundle("ca", enEntries() + newLocaleCoreOverrides("ca") + caLocalizationEntries()),
-                "bn" to bundle("bn", enEntries() + newLocaleCoreOverrides("bn") + bnLocalizationEntries()),
-                "kk" to bundle("kk", enEntries() + newLocaleCoreOverrides("kk") + kkLocalizationEntries()),
-                "sr" to bundle("sr", enEntries() + newLocaleCoreOverrides("sr") + srLocalizationEntries()),
-                "sq" to bundle("sq", enEntries() + newLocaleCoreOverrides("sq") + sqLocalizationEntries()),
-                "hr" to bundle("hr", enEntries() + newLocaleCoreOverrides("hr") + hrLocalizationEntries()),
-                "sk" to bundle("sk", enEntries() + newLocaleCoreOverrides("sk") + skLocalizationEntries()),
-                "ms" to bundle("ms", enEntries() + newLocaleCoreOverrides("ms") + msLocalizationEntries()),
-                "fa" to bundle("fa", enEntries() + newLocaleCoreOverrides("fa") + faLocalizationEntries())
-            )
+        private val entrySources: Map<String, () -> Map<String, String>> = mapOf(
+            "en" to { enEntries() },
+            "it" to { itEntries() },
+            "es" to { esEntries() },
+            "fr" to { frEntries() },
+            "de" to { deEntries() },
+            "pt" to { ptEntries() },
+            "nl" to { nlEntries() },
+            "pl" to { plEntries() },
+            "ro" to { roEntries() },
+            "el" to { elEntries() },
+            "sv" to { svEntries() },
+            "da" to { daEntries() },
+            "cs" to { csEntries() },
+            "uk" to { ukEntries() },
+            "ru" to { ruEntries() },
+            "tr" to { trEntries() },
+            "ar" to { arEntries() },
+            "zh" to { zhEntries() },
+            "ja" to { jaLocalizationEntries() },
+            "ko" to { koLocalizationEntries() },
+            "hi" to { hiLocalizationEntries() },
+            "id" to { idLocalizationEntries() },
+            "vi" to { viLocalizationEntries() },
+            "th" to { thLocalizationEntries() },
+            "fil" to { filLocalizationEntries() },
+            "he" to { heLocalizationEntries() },
+            "fi" to { fiLocalizationEntries() },
+            "et" to { etLocalizationEntries() },
+            "zh-Hant" to { enEntries() + newLocaleCoreOverrides("zh-Hant") + zhHantLocalizationEntries() },
+            "hu" to { enEntries() + newLocaleCoreOverrides("hu") + huLocalizationEntries() },
+            "bg" to { enEntries() + newLocaleCoreOverrides("bg") + bgLocalizationEntries() },
+            "nb" to { enEntries() + newLocaleCoreOverrides("nb") + nbLocalizationEntries() },
+            "ca" to { enEntries() + newLocaleCoreOverrides("ca") + caLocalizationEntries() },
+            "bn" to { enEntries() + newLocaleCoreOverrides("bn") + bnLocalizationEntries() },
+            "kk" to { enEntries() + newLocaleCoreOverrides("kk") + kkLocalizationEntries() },
+            "sr" to { enEntries() + newLocaleCoreOverrides("sr") + srLocalizationEntries() },
+            "sq" to { enEntries() + newLocaleCoreOverrides("sq") + sqLocalizationEntries() },
+            "hr" to { enEntries() + newLocaleCoreOverrides("hr") + hrLocalizationEntries() },
+            "sk" to { enEntries() + newLocaleCoreOverrides("sk") + skLocalizationEntries() },
+            "ms" to { enEntries() + newLocaleCoreOverrides("ms") + msLocalizationEntries() },
+            "fa" to { enEntries() + newLocaleCoreOverrides("fa") + faLocalizationEntries() }
+        )
+
+        private val builtBundles = java.util.concurrent.ConcurrentHashMap<String, LevyraStrings>()
+
+        private val allRequiredKeys: Set<String> by lazy(LazyThreadSafetyMode.PUBLICATION) {
+            requiredKeys + "removeFromPlaylist" + profileKeys + motionArtworkKeys + exploreSectionKeys + freshCurrentsKeys + canvasKeys + audioKeys + audioOutputKeys + alternativeAudioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + jamModerationKeys + ambientModeKeys + themeStudioKeys + lyricsStudioKeys + networkKeys + resonanceKeys + organizationKeys + downloadLocationKeys + downloadDestinationKeys + offlineStorageKeys + keepScreenOnKeys + similarSongsKeys + playerVisualKeys + playerDeckKeys + playerGestureKeys + playlistStudioKeys + queueSelectionKeys + librarySortKeys + offlineHomeKeys + recapKeys + listeningInsightsKeys + queueSpaceKeys + localLibraryKeys + localTagKeys + lyricsOffsetKeys + lyricsTranslationStatusKeys + playbackTileKeys + visualPerformanceKeys + liquidGlassKeys + immersiveModeKeys + musicVideoPreferenceKeys + videoQualityKeys + lyricsProviderPriorityKeys + mixLabKeys + chartMarketKeys + homeSoundtrackKeys + lyricsShareKeys + listeningReceiptKeys + settingsSearchKeys + smartOfflineLocalizationKeys + appUpdateKeys
+        }
+
+        private fun bundleFor(code: String): LevyraStrings? {
+            builtBundles[code]?.let { return it }
+            val source = entrySources[code] ?: return null
+            val built = bundle(code, source())
+            return builtBundles.putIfAbsent(code, built) ?: built
         }
 
         private fun bundle(code: String, entries: Map<String, String>): LevyraStrings {
-            val localizedEntries = entries + profileLocalizationEntries(code) + freshCurrentsLocalizationEntries(code) + homeEditorialLocalizationEntries(code) + lyricsActionLocalizationEntries(code) + lyricsShareLocalizationEntries(code) + listeningReceiptLocalizationEntries(code) + playerExperienceLocalizationEntries(code) + exploreLocalizationEntries(code) + canvasLocalizationEntries(code) + audioLocalizationEntries(code) + audioOutputLocalizationEntries(code) + alternativeAudioLocalizationEntries(code) + autoEqLocalizationEntries(code) + experienceLocalizationEntries(code) + insightLocalizationEntries(code) + systemActionLocalizationEntries(code) + integrationLocalizationEntries(code) + recognitionLocalizationEntries(code) + jamLocalizationEntries(code) + jamModerationLocalizationEntries(code) + ambientModeLocalizationEntries(code) + themeStudioLocalizationEntries(code) + lyricsStudioLocalizationEntries(code) + networkLocalizationEntries(code) + resonanceLocalizationEntries(code) + organizationLocalizationEntries(code) + downloadLocationLocalizationEntries(code) + downloadDestinationLocalizationEntries(code) + offlineStorageLocalizationEntries(code) + keepScreenOnLocalizationEntries(code) + similarSongsLocalizationEntries(code) + playerVisualLocalizationEntries(code) + playerDeckLocalizationEntries(code) + playerGestureLocalizationEntries(code) + playlistStudioLocalizationEntries(code) + queueSelectionLocalizationEntries(code) + librarySortLocalizationEntries(code) + offlineHomeLocalizationEntries(code) + recapLocalizationEntries(code) + listeningInsightsLocalizationEntries(code) + queueSpaceLocalizationEntries(code) + localLibraryLocalizationEntries(code) + localTagLocalizationEntries(code) + playbackTileLocalizationEntries(code) + visualPerformanceLocalizationEntries(code) + liquidGlassLocalizationEntries(code) + immersiveModeLocalizationEntries(code) + musicVideoPreferenceLocalizationEntries(code) + videoQualityLocalizationEntries(code) + lyricsProviderPriorityLocalizationEntries(code) + mixLabLocalizationEntries(code) + chartMarketLocalizationEntries(code) + homeSoundtrackLocalizationEntries(code) + settingsSearchLocalizationEntries(code) + appUpdateLocalizationEntries(code)
-            val resolvedEntries = localizedEntries + smartOfflineLocalizationEntries(code, localizedEntries)
-            val allRequiredKeys = requiredKeys + "removeFromPlaylist" + profileKeys + motionArtworkKeys + exploreSectionKeys + freshCurrentsKeys + canvasKeys + audioKeys + audioOutputKeys + alternativeAudioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + jamModerationKeys + ambientModeKeys + themeStudioKeys + lyricsStudioKeys + networkKeys + resonanceKeys + organizationKeys + downloadLocationKeys + downloadDestinationKeys + offlineStorageKeys + keepScreenOnKeys + similarSongsKeys + playerVisualKeys + playerDeckKeys + playerGestureKeys + playlistStudioKeys + queueSelectionKeys + librarySortKeys + offlineHomeKeys + recapKeys + listeningInsightsKeys + queueSpaceKeys + localLibraryKeys + localTagKeys + lyricsOffsetKeys + lyricsTranslationStatusKeys + playbackTileKeys + visualPerformanceKeys + liquidGlassKeys + immersiveModeKeys + musicVideoPreferenceKeys + videoQualityKeys + lyricsProviderPriorityKeys + mixLabKeys + chartMarketKeys + homeSoundtrackKeys + lyricsShareKeys + listeningReceiptKeys + settingsSearchKeys + smartOfflineLocalizationKeys + appUpdateKeys
-            require(resolvedEntries.keys == allRequiredKeys) {
-                "Invalid localization bundle $code: missing=${allRequiredKeys - resolvedEntries.keys}, extra=${resolvedEntries.keys - allRequiredKeys}"
+            val localizedEntries = LinkedHashMap<String, String>(entries.size * 2).apply {
+                putAll(entries)
+                listOf(
+                    profileLocalizationEntries(code), freshCurrentsLocalizationEntries(code), homeEditorialLocalizationEntries(code),
+                    lyricsActionLocalizationEntries(code), lyricsShareLocalizationEntries(code), listeningReceiptLocalizationEntries(code),
+                    playerExperienceLocalizationEntries(code), exploreLocalizationEntries(code), canvasLocalizationEntries(code),
+                    audioLocalizationEntries(code), audioOutputLocalizationEntries(code), alternativeAudioLocalizationEntries(code),
+                    autoEqLocalizationEntries(code), experienceLocalizationEntries(code), insightLocalizationEntries(code),
+                    systemActionLocalizationEntries(code), integrationLocalizationEntries(code), recognitionLocalizationEntries(code),
+                    jamLocalizationEntries(code), jamModerationLocalizationEntries(code), ambientModeLocalizationEntries(code),
+                    themeStudioLocalizationEntries(code), lyricsStudioLocalizationEntries(code), networkLocalizationEntries(code),
+                    resonanceLocalizationEntries(code), organizationLocalizationEntries(code), downloadLocationLocalizationEntries(code),
+                    downloadDestinationLocalizationEntries(code), offlineStorageLocalizationEntries(code), keepScreenOnLocalizationEntries(code),
+                    similarSongsLocalizationEntries(code), playerVisualLocalizationEntries(code), playerDeckLocalizationEntries(code),
+                    playerGestureLocalizationEntries(code), playlistStudioLocalizationEntries(code), queueSelectionLocalizationEntries(code),
+                    librarySortLocalizationEntries(code), offlineHomeLocalizationEntries(code), recapLocalizationEntries(code),
+                    listeningInsightsLocalizationEntries(code), queueSpaceLocalizationEntries(code), localLibraryLocalizationEntries(code),
+                    localTagLocalizationEntries(code), playbackTileLocalizationEntries(code), visualPerformanceLocalizationEntries(code),
+                    liquidGlassLocalizationEntries(code), immersiveModeLocalizationEntries(code), musicVideoPreferenceLocalizationEntries(code),
+                    videoQualityLocalizationEntries(code), lyricsProviderPriorityLocalizationEntries(code), mixLabLocalizationEntries(code),
+                    chartMarketLocalizationEntries(code), homeSoundtrackLocalizationEntries(code), settingsSearchLocalizationEntries(code),
+                    appUpdateLocalizationEntries(code)
+                ).forEach(::putAll)
             }
-            return LevyraStrings(code, resolvedEntries)
+            localizedEntries.putAll(smartOfflineLocalizationEntries(code, localizedEntries))
+            require(localizedEntries.keys == allRequiredKeys) {
+                "Invalid localization bundle $code: missing=${allRequiredKeys - localizedEntries.keys}, extra=${localizedEntries.keys - allRequiredKeys}"
+            }
+            return LevyraStrings(code, localizedEntries)
         }
 
         private val brazilianPortuguese: LevyraStrings by lazy(LazyThreadSafetyMode.PUBLICATION) {
             LevyraStrings(
                 LevyraLanguageCatalog.BRAZILIAN_PORTUGUESE,
-                LevyraBrazilianPortuguese.adaptEntries(values.getValue("pt").entries)
+                LevyraBrazilianPortuguese.adaptEntries(requireNotNull(bundleFor("pt")).entries)
             )
         }
 
         fun forCode(code: String): LevyraStrings = when (val normalized = LevyraLanguageCatalog.normalize(code)) {
             LevyraLanguageCatalog.BRAZILIAN_PORTUGUESE -> brazilianPortuguese
-            else -> values[normalized] ?: values.getValue("en")
+            else -> bundleFor(normalized) ?: requireNotNull(bundleFor("en"))
         }
 
         fun all(): List<LevyraStrings> = LevyraLanguageCatalog.languages.map { forCode(it.code) }
 
-        fun supportedCodes(): Set<String> = values.keys
+        fun supportedCodes(): Set<String> = entrySources.keys
 
         private fun enEntries(): Map<String, String> = mapOf(
             "welcomeBadge" to "Welcome",

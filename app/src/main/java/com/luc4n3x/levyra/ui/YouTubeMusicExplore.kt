@@ -2,7 +2,6 @@ package com.luc4n3x.levyra.ui
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Casino
-import androidx.compose.material.icons.rounded.Timeline
 import androidx.compose.material.icons.rounded.Equalizer
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Tune
@@ -59,7 +58,8 @@ internal fun YouTubeMusicExploreContent(
     actions: YouTubeMusicHomeActions,
     onOpenMood: (String, String) -> Unit,
     shortcuts: @Composable () -> Unit,
-    levyraMix: @Composable () -> Unit = {}
+    levyraMix: @Composable () -> Unit = {},
+    moodJourney: @Composable () -> Unit = {}
 ) {
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { LevyraYouTubeMusicSkinStrings.forCode(strings.code) }
@@ -88,7 +88,10 @@ internal fun YouTubeMusicExploreContent(
                     YouTubeMusicNotice(copy.homeUnavailable, copy.retry) { exploreViewModel.load(strings.code, force = true, browseId = EXPLORE_BROWSE_ID) }
                 }
             }
-            val shelves = feed.allShelves.filterNot { it.headerBrowseId == NEW_VIDEOS_BROWSE_ID }
+            item(key = "explore-mood-journey", contentType = "explore-mood-journey") { moodJourney() }
+            val shelves = feed.allShelves.filterNot {
+                it.headerBrowseId == NEW_VIDEOS_BROWSE_ID || it.headerBrowseId == "FEmusic_moods_and_genres"
+            }
             shelves.forEach { shelf ->
                 item(key = "ytm-explore-${shelf.key}", contentType = "ytm-explore-${shelf.style}") {
                     when (shelf.style) {
@@ -217,7 +220,13 @@ internal fun YouTubeMusicExploreScreen(
                 modifier = Modifier
             )
         },
-        levyraMix = { YouTubeMusicLevyraMix(viewModel) }
+        levyraMix = { YouTubeMusicLevyraMix(viewModel) },
+        moodJourney = {
+            com.luc4n3x.levyra.ui.moodjourney.MoodJourneyEntryCard(
+                onOpen = { preset -> if (preset == null) viewModel.openMoodJourney() else viewModel.openMoodJourney(preset) },
+                modifier = Modifier.padding(horizontal = YouTubeMusicDesign.gutter)
+            )
+        }
     )
 }
 
@@ -239,14 +248,7 @@ private fun YouTubeMusicLevyraMix(viewModel: com.luc4n3x.levyra.viewmodel.Explor
                 viewModel.startLevyraMix(com.luc4n3x.levyra.domain.LevyraMixKind.SurpriseMe)
             },
             YouTubeMusicMixCard("mix-your-sound", strings.yourSound, Icons.Rounded.Equalizer, listOf(Color(0xFF0E8A6B), Color(0xFF06302A)), viewModel::openYourSound),
-            YouTubeMusicMixCard("mix-lab", strings.mixLab, Icons.Rounded.Tune, listOf(Color(0xFF8A5A0E), Color(0xFF33210A))) { viewModel.openMixLab() },
-            YouTubeMusicMixCard(
-                "mood-journey",
-                com.luc4n3x.levyra.ui.i18n.smartMusicCopy(strings.code)[com.luc4n3x.levyra.ui.i18n.SmartMusicText.MoodTitle],
-                Icons.Rounded.Timeline,
-                listOf(Color(0xFF5B2A86), Color(0xFF1E0E33)),
-                viewModel::openMoodJourney
-            )
+            YouTubeMusicMixCard("mix-lab", strings.mixLab, Icons.Rounded.Tune, listOf(Color(0xFF8A5A0E), Color(0xFF33210A))) { viewModel.openMixLab() }
         )
     }
     Column {

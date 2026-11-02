@@ -371,7 +371,7 @@ private fun nearestPoint(curve: MoodCurve, x: Float, width: Float, pad: Float): 
     return (t * (count - 1)).roundToInt().coerceIn(0, count - 1)
 }
 
-private fun presetLabel(preset: MoodCurvePreset): SmartMusicText = when (preset) {
+internal fun presetLabel(preset: MoodCurvePreset): SmartMusicText = when (preset) {
     MoodCurvePreset.Sunrise -> SmartMusicText.MoodPresetSunrise
     MoodCurvePreset.WindDown -> SmartMusicText.MoodPresetWindDown
     MoodCurvePreset.Summit -> SmartMusicText.MoodPresetSummit
@@ -659,42 +659,4 @@ private fun SaveJourneyDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(copy[SmartMusicText.MoodClose]) } }
     )
-}
-
-@Composable
-internal fun MoodJourneyEntry(onOpen: () -> Unit, modifier: Modifier = Modifier) {
-    val scheme = MaterialTheme.colorScheme
-    val copy = smartMusicCopy(LocalLevyraStrings.current.code)
-    val haptics = LocalLevyraHaptics.current
-    val curve = remember { MoodCurve.preset(MoodCurvePreset.Summit) }
-    Row(
-        modifier
-            .fillMaxWidth()
-            .heightIn(min = 72.dp)
-            .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 30.dp, bottomEnd = 12.dp, bottomStart = 30.dp))
-            .background(Brush.horizontalGradient(listOf(scheme.secondaryContainer, scheme.tertiaryContainer)))
-            .clickable(role = Role.Button) {
-                haptics.perform(LevyraHapticAction.Confirm)
-                onOpen()
-            }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        Canvas(Modifier.size(width = 64.dp, height = 40.dp)) {
-            val path = Path()
-            for (i in 0..32) {
-                val t = i / 32f
-                val x = t * size.width
-                val y = (1f - curve.sample(t).energy) * size.height
-                if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
-            }
-            drawPath(path, scheme.onTertiaryContainer, style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round))
-            drawCircle(scheme.onTertiaryContainer, 4.dp.toPx(), Offset(size.width / 2f, (1f - curve.sample(0.5f).energy) * size.height))
-        }
-        Column(Modifier.weight(1f)) {
-            Text(copy[SmartMusicText.MoodTitle], style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = scheme.onSecondaryContainer)
-            Text(copy[SmartMusicText.MoodEntry], style = MaterialTheme.typography.bodySmall, color = scheme.onSecondaryContainer.copy(alpha = 0.8f), maxLines = 2, overflow = TextOverflow.Ellipsis)
-        }
-    }
 }

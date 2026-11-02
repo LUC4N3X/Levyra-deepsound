@@ -93,6 +93,10 @@ internal sealed interface ExploreRow {
         override val key: String = "explore-fresh-moment"
     }
 
+    data object MoodJourney : ExploreRow {
+        override val key: String = "explore-mood-journey"
+    }
+
     data object MixTools : ExploreRow {
         override val key: String = "explore-mix-tools"
     }
@@ -113,7 +117,8 @@ internal fun buildExploreRows(
     hasFreshScopes: Boolean = false,
     hasFreshMoment: Boolean = false,
     spotifyStyle: Boolean = false,
-    moodsInSearch: Boolean = spotifyStyle
+    moodsInSearch: Boolean = spotifyStyle,
+    journeyInPlaceOfMoods: Boolean = false
 ): List<ExploreRow> {
     val rows = mutableListOf<ExploreRow>()
     rows += ExploreRow.Shortcuts
@@ -130,7 +135,9 @@ internal fun buildExploreRows(
     }
 
     val distinctZones = zones.distinctBy { it.id }
-    if (distinctZones.isNotEmpty() && !moodsInSearch) {
+    if (journeyInPlaceOfMoods) {
+        rows += ExploreRow.MoodJourney
+    } else if (distinctZones.isNotEmpty() && !moodsInSearch) {
         rows += ExploreRow.Header(ExploreAnchor.Moods)
         rows += ExploreRow.MoodRail(distinctZones)
     }
@@ -147,6 +154,7 @@ internal fun exploreAvailableAnchors(rows: List<ExploreRow>): Set<ExploreAnchor>
         .filterIsInstance<ExploreRow.Header>()
         .map { row -> row.anchor }
         .toSet()
+        .let { anchors -> if (ExploreRow.MoodJourney in rows) anchors + ExploreAnchor.Moods else anchors }
 
 internal fun exploreSampleTracks(videos: List<Track>, limit: Int = ExploreSampleLimit): List<Track> {
     if (limit <= 0) return emptyList()

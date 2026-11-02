@@ -13,6 +13,20 @@ import org.junit.Test
 
 class ExploreLayoutTest {
     @Test
+    fun emotionalJourneyReplacesDuplicatedMoodsAndStaysAvailableWithoutCatalog() {
+        listOf(emptyList(), zones(4)).forEach { catalog ->
+            listOf(false, true).forEach { skinOwnsMoods ->
+                val rows = buildExploreRows(catalog, false, false, moodsInSearch = skinOwnsMoods, journeyInPlaceOfMoods = true)
+
+                assertEquals(1, rows.count { it == ExploreRow.MoodJourney })
+                assertTrue(rows.none { it is ExploreRow.MoodRail })
+                assertTrue(ExploreAnchor.Moods in exploreAvailableAnchors(rows))
+                assertTrue(rows.indexOf(ExploreRow.MoodJourney) < rows.indexOf(ExploreRow.MixTools))
+            }
+        }
+    }
+
+    @Test
     fun spotifyDiscoveryReplacesMoodGridWithSamplesAndRemovesItsShortcut() {
         val rows = buildExploreRows(zones(4), false, true, spotifyStyle = true)
 
