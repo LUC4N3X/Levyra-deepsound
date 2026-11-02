@@ -28,6 +28,8 @@ import com.luc4n3x.levyra.data.collections.isPersonalCollectionTrack
 import com.luc4n3x.levyra.data.ArtistRepository
 import com.luc4n3x.levyra.data.ChartsRepository
 import com.luc4n3x.levyra.data.isChartArtworkPlaceholder
+import com.luc4n3x.levyra.data.isPodcastEpisode
+import com.luc4n3x.levyra.feature.podcast.stablePodcastEpisode
 import com.luc4n3x.levyra.data.EditorialChartsRepository
 import com.luc4n3x.levyra.data.FavoriteMembership
 import com.luc4n3x.levyra.data.FavoritesStore
@@ -1564,6 +1566,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var listeningPulseRefreshJob: Job? = null
     private var listeningRecapJob: Job? = null
     private var lastPlaybackSaveJob: Job? = null
+    private var podcastProgressSaveJob: Job? = null
     private var lastListeningPulseRefreshMs = 0L
     private val activeDownloadKeys = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
     private val activeDownloadTitles = ConcurrentHashMap<String, String>()
@@ -14604,6 +14607,29 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    private fun savePodcastProgressAsync(track: Track, positionMs: Long, durationMs: Long) {
+        if (podcastProgressSaveJob?.isActive == true) return
+        val row = com.luc4n3x.levyra.data.local.PodcastEpisodeProgressEntity(
+            episodeId = track.id,
+            payload = TrackPayloadCodec.encode(track.stablePodcastEpisode()),
+            positionMs = positionMs,
+            durationMs = durationMs,
+            completed = com.luc4n3x.levyra.data.local.podcastEpisodeCompleted(positionMs, durationMs),
+            updatedAt = System.currentTimeMillis()
+        )
+        podcastProgressSaveJob = viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val dao = database.podcastLibraryDao()
+                dao.saveProgress(row)
+                dao.trimHistory()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Timber.w(error, "Podcast progress save failed")
+            }
+        }
+    }
+
     fun livePlaybackPositionMs(): Long =
         if (!player.isPlaying && player.positionMs == 0L && pendingSeekMs > 0L) {
             pendingSeekMs
@@ -14670,6 +14696,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
                 if (current != null && player.isPlaying && nowElapsed - lastPlaybackSaveMs >= 4_000L) {
                     saveLastPlaybackAsync(current, position)
+                    if (current.isPodcastEpisode()) savePodcastProgressAsync(current, position, duration)
                     lastPlaybackSaveMs = nowElapsed
                 }
                 if (playbackStateChanged) {

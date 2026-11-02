@@ -456,6 +456,10 @@ private fun AtelierCabinet(artTrack: Track?, artAlbum: AlbumHit?, onShortcut: (E
             Box(Modifier.width(1.dp).fillMaxHeight().background(AtelierDesign.hairlineStrong))
             AtelierCabinetCell(strings.exploreSamples, -40f, Modifier.weight(1f)) { onShortcut(ExploreShortcut.Samples) }
         }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(AtelierDesign.hairlineStrong))
+        AtelierCabinetCell(com.luc4n3x.levyra.ui.i18n.podcastCopy(strings.code).title, 60f, Modifier.fillMaxWidth()) {
+            onShortcut(ExploreShortcut.Podcasts)
+        }
     }
 }
 
