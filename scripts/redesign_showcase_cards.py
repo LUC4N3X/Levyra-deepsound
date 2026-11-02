@@ -95,7 +95,6 @@ def draw_diptych_editorial_block(
 ):
     """Draws an authentic Apple App Store / Apple Music editorial block:
     Tracked uppercase category eyebrow + sculptural 2-line display headline + concise subhead.
-    Zero artificial pins, bars, or gimmicks.
     """
     draw = ImageDraw.Draw(card)
 
@@ -302,12 +301,12 @@ def build_row1_cards():
     pair1.paste(bg1, (0, 0))
     pair1.paste(bg2, (CARD_W + GAP, 0))
 
-    # Phone 1: Pure Listening descending from top-right at +12.5 deg
+    # Phone 1: Zero Ads. Zero Tracking. descending from top-right at +12.5 deg
     dev1, _, _, _ = create_phone_mockup("Screenshot_20261016_223653_LEVYRA.jpg", outer_w=725)
     rot1 = rotate_device(dev1, 12.5)
     place_rotated_device(pair1, rot1, pos=(215, -185), shadow_offset=(22, 40))
 
-    # Phone 2: Stay with the Song rising from bottom-right at -8.5 deg
+    # Phone 2: Audio & Video in One Tap rising from bottom-right at -8.5 deg
     dev2, _, _, _ = create_phone_mockup("Screenshot_20261016_135636_LEVYRA.jpg", outer_w=725)
     rot2 = rotate_device(dev2, -8.5)
     place_rotated_device(pair1, rot2, pos=(CARD_W + GAP + 195, 415), shadow_offset=(22, 40))
@@ -317,9 +316,9 @@ def build_row1_cards():
 
     draw_diptych_editorial_block(
         c1,
-        eyebrow="PURE SOUND",
-        title_lines=["Pure", "Listening."],
-        subtitle="Your music, zero ads.",
+        eyebrow="NO ACCOUNT NEEDED",
+        title_lines=["Zero Ads.", "Zero Tracking."],
+        subtitle="Play everything in total privacy.",
         x=68,
         y=1430,
         align="left",
@@ -330,9 +329,9 @@ def build_row1_cards():
 
     draw_diptych_editorial_block(
         c2,
-        eyebrow="NOW PLAYING",
-        title_lines=["Stay with", "the Song."],
-        subtitle="Live synced lyrics.",
+        eyebrow="NATIVE MEDIA3 PLAYER",
+        title_lines=["Audio & Video", "in One Tap."],
+        subtitle="Motion artwork & SponsorBlock.",
         x=CARD_W - 68,
         y=68,
         align="right",
@@ -344,7 +343,7 @@ def build_row1_cards():
     c1 = finalize_card(c1, border_rgb=(195, 208, 238))
     c2 = finalize_card(c2, border_rgb=(224, 196, 213))
 
-    # Diptych 2: Card 03 (Daylight Expressive) & Card 04 (Midnight Obsidian)
+    # Diptych 2: Card 03 (Adaptive Daylight UI) & Card 04 (True Pitch-Black OLED)
     c3 = create_editorial_surface(
         CARD_W, CARD_H,
         top_rgb=(252, 248, 240),
@@ -372,9 +371,9 @@ def build_row1_cards():
 
     draw_diptych_editorial_block(
         c3,
-        eyebrow="LIGHT THEME",
-        title_lines=["Daylight", "Expressive."],
-        subtitle="Tuned for bright clarity.",
+        eyebrow="MATERIAL 3 EXPRESSIVE",
+        title_lines=["Adaptive", "Daylight UI."],
+        subtitle="16 presets & custom HEX themes.",
         x=68,
         y=68,
         align="left",
@@ -385,9 +384,9 @@ def build_row1_cards():
 
     draw_diptych_editorial_block(
         c4,
-        eyebrow="OLED THEME",
-        title_lines=["Midnight", "Obsidian."],
-        subtitle="Deep OLED contrast.",
+        eyebrow="ARTWORK-TINTED PLAYER",
+        title_lines=["True Pitch-Black", "OLED."],
+        subtitle="Battery-saving depth & live glow.",
         x=CARD_W - 68,
         y=68,
         align="right",
@@ -405,153 +404,153 @@ def build_row1_cards():
 # ROWS 2 TO 6 — UPRIGHT APPLE-STYLE FLAGSHIP STAGE (Cards 05-24)
 # ==============================================================================
 UPRIGHT_CARD_SPECS = [
-    # Row 2: Discovery & Audio Precision (05-08)
+    # Row 2: Killer Audio, Recognition & Discovery Features (05-08)
     (
         "05_fresh_currents",
-        "DISCOVERY",
-        "Instant Search",
-        "Tracks, albums & artists in real time.",
+        "ON-DEVICE AUDIO ID",
+        "Built-In Song ID",
+        "Identify any song playing around you.",
         "Screenshot_20261024_144737_Levyra.jpg",
         (241, 246, 254), (218, 230, 248), (184, 206, 242), (194, 210, 236),
         (37, 99, 235), (15, 23, 42), (56, 74, 106),
     ),
     (
         "06_built_for_your_taste",
-        "CUSTOMIZATION",
-        "Player Styles",
-        "Layouts crafted for your taste.",
+        "UNINTERRUPTED PLAYBACK",
+        "Gapless & Crossfade",
+        "10-band EQ, AutoEQ & pitch control.",
         "Screenshot_20261024_203401_Levyra.jpg",
         (250, 244, 236), (234, 220, 204), (218, 195, 170), (216, 199, 180),
         (154, 84, 42), (28, 20, 16), (102, 74, 56),
     ),
     (
         "07_every_genre",
-        "CURATION",
-        "Every Mood & Genre",
-        "Explore by energy and atmosphere.",
+        "CHARTS & GENRE HUBS",
+        "Moods & Global Charts",
+        "Browse genres, scenes & trending hits.",
         "Screenshot_20261015_140910_LEVYRA.jpg",
         (239, 250, 246), (212, 239, 230), (174, 224, 208), (182, 222, 209),
         (16, 122, 92), (15, 34, 29), (44, 92, 78),
     ),
     (
         "08_acoustic_precision",
-        "HIGH FIDELITY",
-        "Acoustic Precision",
-        "Pure 320 kbps & lossless output.",
+        "VERIFIED HIGH-BITRATE",
+        "Verified 320 kbps & FLAC",
+        "Header-checked streams & Enhanced Audio.",
         "Screenshot_20261024_150113_Levyra.jpg",
         (237, 243, 250), (212, 225, 239), (178, 200, 226), (188, 205, 224),
         (42, 82, 142), (15, 23, 42), (52, 70, 98),
     ),
 
-    # Row 3: Library & Insights (09-12)
+    # Row 3: Library, Search & Insights (09-12)
     (
         "09_keep_it_personal",
-        "YOUR LIBRARY",
+        "LOCAL + STREAMING",
         "Unified Library",
-        "Streamed and local tracks in one home.",
+        "Your files & streams in one place.",
         "Screenshot_20261020_142741_LEVYRA.jpg",
         (240, 244, 253), (220, 229, 247), (186, 203, 238), (196, 210, 238),
         (52, 82, 184), (17, 24, 39), (58, 74, 108),
     ),
     (
         "10_curated_for_you",
-        "QUICK ACCESS",
+        "INSTANT DEEP FILTERING",
         "Curated Search",
-        "Artist shortcuts and instant filters.",
+        "Top results, artist radios & live chips.",
         "Screenshot_20261024_193919_Levyra.jpg",
         (253, 245, 238), (242, 223, 206), (228, 198, 172), (226, 202, 182),
         (168, 76, 38), (34, 20, 14), (112, 68, 46),
     ),
     (
         "11_your_rhythm",
-        "ANALYTICS",
+        "100% PRIVATE ANALYTICS",
         "Listening Insights",
-        "On-device stats and personal habits.",
+        "On-device stats & Last.fm scrobbling.",
         "Screenshot_20261024_210317_Levyra.jpg",
         (238, 247, 252), (211, 232, 246), (175, 212, 238), (184, 214, 234),
         (24, 108, 158), (14, 28, 42), (46, 82, 112),
     ),
     (
         "12_in_your_orbit",
-        "PLAYLISTS",
-        "Levyra Collections",
-        "Handpicked playlists around your taste.",
+        "AUTO-BUILT MIXES",
+        "Smart Auto-Playlists",
+        "Dynamic mixes built from your history.",
         "Screenshot_20261024_210532_Levyra.jpg",
         (245, 240, 252), (226, 216, 243), (204, 188, 234), (204, 190, 228),
         (108, 62, 172), (24, 17, 38), (82, 62, 118),
     ),
 
-    # Row 4: Personalization & Artists (13-16)
+    # Row 4: Skins, Radio, Artists & Group Sessions (13-16)
     (
         "13_tailor_every_detail",
-        "DESIGN SYSTEM",
-        "Skin Studio",
-        "Seven complete looks in one tap.",
+        "FULL UI OVERHAUL",
+        "7 Complete App Skins",
+        "Restyle every screen, dock & player.",
         "Screenshot_20261023_212906_LEVYRA.jpg",
         (246, 241, 253), (228, 217, 246), (206, 188, 238), (208, 194, 232),
         (114, 58, 184), (26, 17, 42), (86, 60, 126),
     ),
     (
         "14_fresh_off_the_stage",
-        "ON AIR",
-        "Live Radio",
-        "Thousands of global stations live.",
+        "LIVE WORLD BROADCASTS",
+        "Global Live Radio",
+        "Stream FM & internet stations worldwide.",
         "Screenshot_20261024_145819_Levyra.jpg",
         (253, 241, 243), (242, 216, 221), (228, 186, 195), (226, 196, 203),
         (178, 42, 68), (38, 16, 22), (116, 52, 66),
     ),
     (
         "15_meet_the_artist",
-        "ARTIST PAGES",
-        "Meet the Artist",
-        "Biographies, audience and discography.",
+        "COMPLETE DISCOGRAPHIES",
+        "Full Artist Hubs",
+        "Albums, singles, bio & top tracks.",
         "Screenshot_20261024_145036_Levyra.jpg",
         (251, 247, 240), (237, 226, 208), (222, 205, 178), (218, 204, 184),
         (138, 92, 46), (28, 23, 18), (98, 80, 58),
     ),
     (
         "16_listen_together",
-        "SHARED SESSIONS",
-        "Levyra Jam",
-        "Real-time shared queue with friends.",
+        "LOCAL NETWORK PARTY",
+        "Live Group Jam",
+        "Share one live queue over Wi-Fi.",
         "Screenshot_20261011_133434_LEVYRA.jpg",
         (239, 249, 243), (213, 237, 224), (176, 220, 198), (186, 220, 202),
         (22, 124, 78), (14, 34, 24), (42, 94, 68),
     ),
 
-    # Row 5: Lyrics, Offline & Highlights (17-20)
+    # Row 5: Lyrics, Real Offline Downloads, Swipe Discovery & Annual Recap (17-20)
     (
         "17_sing_along",
-        "TIME-SYNCED",
-        "Synced Lyrics",
-        "Tap-to-seek timing and translations.",
+        "WORD-BY-WORD SYNC",
+        "Time-Synced Lyrics",
+        "Romanization, offset & tap-to-seek.",
         "screen-lyrics.jpg",
         (253, 248, 236), (240, 226, 196), (228, 206, 162), (224, 206, 172),
         (158, 98, 24), (32, 24, 12), (108, 78, 36),
     ),
     (
         "18_open_the_album",
-        "OFFLINE PLAYBACK",
-        "Offline Music",
-        "Full albums saved directly on device.",
+        "NO DRM LOCK-IN",
+        "True M4A Downloads",
+        "Saved to storage with tags & lyrics.",
         "Screenshot_20261024_193647_Levyra.jpg",
         (241, 245, 249), (218, 226, 236), (186, 200, 218), (194, 206, 220),
         (54, 78, 114), (15, 23, 42), (56, 70, 92),
     ),
     (
         "19_discover_for_you",
-        "DAILY FEED",
-        "Discover for You",
-        "Swipe to save or explore next.",
+        "FAST TRACK DIGGING",
+        "Swipe-to-Save Feed",
+        "Preview songs & build playlists fast.",
         "Screenshot_20261024_195654_Levyra.jpg",
         (250, 243, 235), (233, 218, 200), (218, 194, 168), (214, 196, 176),
         (148, 82, 44), (28, 21, 16), (102, 74, 54),
     ),
     (
         "20_your_year_in_music",
-        "ANNUAL RECAP",
-        "Your Year in Music",
-        "Personal annual recap on device.",
+        "ZERO CLOUD UPLOAD",
+        "On-Device Year Recap",
+        "Your annual music story, 100% private.",
         "Screenshot_20261016_223757_LEVYRA.jpg",
         (251, 240, 250), (238, 214, 236), (224, 184, 222), (222, 192, 220),
         (152, 42, 144), (36, 14, 36), (108, 52, 106),
@@ -560,16 +559,16 @@ UPRIGHT_CARD_SPECS = [
     # Row 6: Global Streaming Skins (21-24)
     (
         "21_spotify_style",
-        "SIGNATURE PRESET",
+        "ONE-TAP UI SKIN",
         "Spotify Style",
-        "Familiar dark surfaces & green accents.",
+        "Dense shortcut grids & green accents.",
         "Screenshot_20261026_204307_Levyra.jpg",
         (238, 249, 242), (211, 236, 221), (172, 220, 192), (184, 218, 198),
         (20, 128, 68), (12, 36, 22), (38, 94, 58),
     ),
     (
         "22_apple_music_style",
-        "SIGNATURE PRESET",
+        "ONE-TAP UI SKIN",
         "Apple Music Style",
         "Editorial white shelves & bold type.",
         "Screenshot_20261024_201549_Levyra.jpg",
@@ -578,7 +577,7 @@ UPRIGHT_CARD_SPECS = [
     ),
     (
         "23_youtube_music_style",
-        "SIGNATURE PRESET",
+        "ONE-TAP UI SKIN",
         "YouTube Music Style",
         "Dynamic mood chips & daily charts.",
         "Screenshot_20261024_201709_Levyra.jpg",
@@ -587,9 +586,9 @@ UPRIGHT_CARD_SPECS = [
     ),
     (
         "24_qobuz_style",
-        "SIGNATURE PRESET",
+        "ONE-TAP UI SKIN",
         "Qobuz Style",
-        "Magazine layout & warm hi-fi curation.",
+        "Hi-fi magazine layout & warm curation.",
         "Screenshot_20261030_123252_Levyra.jpg",
         (238, 246, 252), (212, 230, 245), (176, 208, 236), (186, 210, 232),
         (28, 96, 156), (14, 28, 44), (44, 78, 114),
@@ -615,7 +614,7 @@ def render_upright_card(spec):
     card = create_editorial_surface(CARD_W, CARD_H, top_rgb, bot_rgb, wash_rgb, wash_pos=(0.50, 0.60))
     draw = ImageDraw.Draw(card)
 
-    # 1. Apple-Style Tracked Uppercase Category Eyebrow (Zero pins, zero bars)
+    # 1. Apple-Style Tracked Uppercase Category Eyebrow
     draw_tracked_text(
         draw,
         eyebrow.upper(),
@@ -627,12 +626,17 @@ def render_upright_card(spec):
         align="center",
     )
 
-    # 2. Large Centered Display Title
-    tbbox = draw.textbbox((0, 0), title, font=font_upright_title)
+    # 2. Large Centered Display Title (Auto-scales slightly if long so it never clips)
+    title_font = font_upright_title
+    tbbox = draw.textbbox((0, 0), title, font=title_font)
     tw = tbbox[2] - tbbox[0]
+    if tw > CARD_W - 88:
+        title_font = get_font(FONT_BOLD, 56)
+        tbbox = draw.textbbox((0, 0), title, font=title_font)
+        tw = tbbox[2] - tbbox[0]
     tx = (CARD_W - tw) // 2
-    ty = 88
-    draw.text((tx, ty), title, font=font_upright_title, fill=title_rgb + (255,))
+    ty = 88 if title_font == font_upright_title else 94
+    draw.text((tx, ty), title, font=title_font, fill=title_rgb + (255,))
 
     # 3. Concise Centered 1-Line Subtitle
     sbbox = draw.textbbox((0, 0), subtitle, font=font_upright_sub)
@@ -681,7 +685,7 @@ def save_row_variants(row_cards, row_index):
     return spaced_row
 
 def main():
-    print("Rendering Row 1 (Cards 01-04 with dynamic diptych cuts & Apple editorial typography)...")
+    print("Rendering Row 1 (Cards 01-04 with killer product copy)...")
     row1_cards = build_row1_cards()
     row1_names = [
         "01_pure_listening",
@@ -694,7 +698,7 @@ def main():
 
     all_cards = list(row1_cards)
 
-    print("Rendering Rows 2-6 (Cards 05-24 as upright Apple-style flagship cards)...")
+    print("Rendering Rows 2-6 (Cards 05-24 with killer feature copy)...")
     for idx, spec in enumerate(UPRIGHT_CARD_SPECS):
         fname = spec[0]
         print(f"  Card {idx + 5:02d}/24: {spec[2]} ({fname})...")
@@ -721,7 +725,7 @@ def main():
         row_slice = all_cards[row_idx * 4 : (row_idx + 1) * 4]
         save_row_variants(row_slice, row_idx)
 
-    print("Successfully generated all 24 Apple-style showcase cards and 6 grid rows!")
+    print("Successfully generated all 24 showcase cards with killer product copy!")
 
 if __name__ == "__main__":
     main()
