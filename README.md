@@ -133,7 +133,7 @@ Enhanced Audio is on by default and can be turned off in Audio Settings. Technic
 <br />
 <div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-05-spaced.webp?v=editorial-campaign-v5" width="900" align="top" alt="Levyra showcase: synced lyrics, offline albums, discovery, and Year in Music" /></div>
 <br />
-<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-06-skins-spaced.webp?v=editorial-campaign-v5" width="900" align="top" alt="Levyra showcase: Spotify Style, Apple Music Style, YouTube Music Style, and Qobuz Style" /></div>
+<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-06-skins-spaced.webp?v=editorial-campaign-v6" width="900" align="top" alt="Levyra showcase: Spotify Style, Apple Music Style, YouTube Music Style, and Qobuz Style" /></div>
 </div>
 
 </div>
