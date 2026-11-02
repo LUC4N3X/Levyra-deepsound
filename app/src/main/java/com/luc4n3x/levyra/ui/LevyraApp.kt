@@ -26090,6 +26090,13 @@ private fun ExploreContentRow(
                 onStartMix = { kind -> viewModel.startLevyraMix(kind) },
                 onOpenYourSound = viewModel::openYourSound,
                 onOpenMixLab = { viewModel.openMixLab() },
+                coverSources = remember(state.mostPlayedTracks, state.recentListens, state.forgottenFavorites, state.favorites) {
+                    LevyraMixCoverSources(
+                        personalized = state.mostPlayedTracks,
+                        rotation = state.recentListens,
+                        throwback = state.forgottenFavorites.ifEmpty { state.favorites }
+                    )
+                },
                 modifier = Modifier.padding(horizontal = HomeHorizontalInset)
             )
         }

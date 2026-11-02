@@ -4,12 +4,6 @@ import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 import com.luc4n3x.levyra.ui.theme.Nocturne78Design
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -18,7 +12,6 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -31,13 +24,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Casino
 import androidx.compose.material.icons.rounded.GraphicEq
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -45,22 +34,16 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSliderState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -73,25 +56,13 @@ import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.LevyraType
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.MaterialShapes
-import androidx.compose.material3.toShape
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.luminance
 import com.luc4n3x.levyra.ui.components.levyraExpressiveCorner
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerShapes
 import com.luc4n3x.levyra.ui.theme.LevyraSegment
 import com.luc4n3x.levyra.ui.components.levyraExpressiveToggleCorner
 import androidx.compose.ui.semantics.selected
-import kotlin.math.abs
 import kotlin.math.roundToInt
-import kotlin.math.sin
-
-private const val ReactorBarCount = 17
-private val ReactorBasePhases = floatArrayOf(
-    0.30f, 0.45f, 0.65f, 0.82f, 0.95f, 0.88f, 0.72f, 0.55f,
-    0.42f, 0.58f, 0.76f, 0.92f, 0.98f, 0.80f, 0.62f, 0.40f, 0.28f
-)
 
 @Composable
 internal fun LevyraMixLauncherPanel(
@@ -102,7 +73,8 @@ internal fun LevyraMixLauncherPanel(
     onFamiliarityChange: (Float) -> Unit,
     onStartMix: (LevyraMixKind) -> Unit,
     onOpenYourSound: () -> Unit,
-    onOpenMixLab: () -> Unit
+    onOpenMixLab: () -> Unit,
+    coverSources: LevyraMixCoverSources = LevyraMixCoverSources()
 ) {
     if (com.luc4n3x.levyra.ui.theme.LevyraSkinManagesLayout) {
         SkinMixPanel(familiarity, loading, accent, modifier, onFamiliarityChange, onStartMix, onOpenYourSound, onOpenMixLab)
@@ -129,56 +101,17 @@ internal fun LevyraMixLauncherPanel(
             .padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        LevyraMixHeroCard(
-            familiarity = familiarity,
+        val strings = LocalLevyraStrings.current
+        LevyraMixCoverRail(
+            sources = coverSources,
             loading = loading,
             accent = accent,
-            onFamiliarityChange = onFamiliarityChange,
+            mixForYou = strings.mixForYou,
+            onRepeat = strings.collectionRepeat,
+            throwback = strings.collectionThrowback,
+            surprise = strings.surpriseMe,
             onStartMix = onStartMix
         )
-        LevyraSecondaryToolsRow(
-            loading = loading,
-            onStartMix = onStartMix,
-            onOpenYourSound = onOpenYourSound,
-            onOpenMixLab = onOpenMixLab
-        )
-    }
-}
-
-@Composable
-internal fun LevyraMixHeroCard(
-    familiarity: Float,
-    loading: Boolean,
-    accent: Color,
-    modifier: Modifier = Modifier,
-    onFamiliarityChange: (Float) -> Unit,
-    onStartMix: (LevyraMixKind) -> Unit
-) {
-    val strings = LocalLevyraStrings.current
-    val colors = MaterialTheme.colorScheme
-
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            SonicReactorSpectrum(
-                familiarity = familiarity,
-                accent = accent,
-                active = loading,
-                modifier = Modifier.weight(1f)
-            )
-            MixPlayButton(
-                loading = loading,
-                accent = accent,
-                contentDescription = strings.mixForYou,
-                onClick = { onStartMix(LevyraMixKind.Personalized) }
-            )
-        }
-
         MixBalanceSlider(
             familiarity = familiarity,
             enabled = !loading,
@@ -187,113 +120,13 @@ internal fun LevyraMixHeroCard(
             discoveryLabel = strings.mixDiscoveryLabel,
             onFamiliarityChange = onFamiliarityChange
         )
+        LevyraSecondaryToolsRow(
+            loading = loading,
+            onStartMix = onStartMix,
+            onOpenYourSound = onOpenYourSound,
+            onOpenMixLab = onOpenMixLab
+        )
     }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun MixPlayButton(
-    loading: Boolean,
-    accent: Color,
-    contentDescription: String,
-    onClick: () -> Unit
-) {
-    val content = if (accent.luminance() > 0.5f) Color.Black.copy(alpha = 0.87f) else Color.White
-    Box(
-        modifier = Modifier
-            .size(64.dp)
-            .clip(MaterialShapes.Cookie9Sided.toShape())
-            .background(accent)
-            .levyraPressable(
-                onClick = onClick,
-                enabled = !loading,
-                role = Role.Button,
-                pressedScale = LevyraPressScale.Control
-            )
-            .semantics { this.contentDescription = contentDescription },
-        contentAlignment = Alignment.Center
-    ) {
-        if (loading) {
-            DiscoveryLoadingIndicator(modifier = Modifier.size(26.dp), color = content)
-        } else {
-            Icon(
-                imageVector = Icons.Rounded.PlayArrow,
-                contentDescription = null,
-                tint = content,
-                modifier = Modifier.size(30.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun SonicReactorSpectrum(
-    familiarity: Float,
-    accent: Color,
-    active: Boolean,
-    modifier: Modifier = Modifier
-) {
-    val animationsEnabled = LocalAnimationsEnabled.current
-    val phase = rememberReactorPhase(active && animationsEnabled)
-    val colors = MaterialTheme.colorScheme
-    val discoveryFactor = (1f - familiarity).coerceIn(0f, 1f)
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(64.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(colors.surfaceContainer.copy(alpha = 0.72f))
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val slot = size.width / ReactorBarCount
-            val barWidth = (slot * 0.32f).coerceIn(1.5f, 3.5f)
-            val cornerRad = CornerRadius(barWidth / 2f, barWidth / 2f)
-            val drift = if (animationsEnabled && active) phase.value else 0f
-            val baseEnergy = if (active) 1.1f else 0.8f
-
-            for (index in 0 until ReactorBarCount) {
-                val base = ReactorBasePhases[index]
-                val waveFreq = 1.0f + discoveryFactor * 1.5f
-                val dynamicWave = if (animationsEnabled && active) {
-                    val angle = (drift * waveFreq + index * 0.36f) * 3.14159f
-                    abs(sin(angle))
-                } else {
-                    0.15f
-                }
-                val heightMultiplier = (base + (1f - base) * dynamicWave * baseEnergy)
-                    .coerceIn(0.14f, 1.0f)
-                val barHeight = size.height * heightMultiplier
-                val x = index * slot + (slot - barWidth) / 2f
-                val y = (size.height - barHeight) / 2f
-                val barColor = if (active) accent else colors.onSurfaceVariant
-
-                drawRoundRect(
-                    color = barColor.copy(alpha = if (active) 0.58f else 0.35f),
-                    topLeft = Offset(x, y),
-                    size = Size(barWidth, barHeight),
-                    cornerRadius = cornerRad
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun rememberReactorPhase(active: Boolean): State<Float> {
-    if (!active) return remember { mutableFloatStateOf(0f) }
-    val transition = rememberInfiniteTransition(label = "reactor-spectrum")
-    return transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2_200),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "reactor-spectrum-phase"
-    )
 }
 
 @Composable

@@ -15,6 +15,26 @@ private fun Float.finiteOr(fallback: Float): Float = if (isFinite()) this else f
 
 enum class MoodCurvePreset { Sunrise, WindDown, Summit, Wave, Steady }
 
+enum class MoodTone {
+    Melancholy, Calm, Tender,
+    Brooding, Flowing, Warm,
+    Tense, Driving, Euphoric;
+
+    companion object {
+        fun of(energy: Float, valence: Float): MoodTone {
+            val e = band(energy.finiteOr(0.5f), 0.36f, 0.66f)
+            val v = band(valence.finiteOr(0.5f), 0.4f, 0.62f)
+            return entries[e * 3 + v]
+        }
+
+        private fun band(value: Float, low: Float, high: Float): Int = when {
+            value < low -> 0
+            value < high -> 1
+            else -> 2
+        }
+    }
+}
+
 data class MoodCurve(val points: List<MoodPoint>) {
     val normalized: List<MoodPoint> by lazy(LazyThreadSafetyMode.PUBLICATION) {
         val clean = points.map(MoodPoint::clamped)
@@ -265,6 +285,7 @@ data class MoodJourneyResult(
     val shortfall: Int
 ) {
     val tracks: List<Track> get() = steps.map { it.track }
+    val peakIndex: Int get() = steps.indices.maxByOrNull { steps[it].mood.energy } ?: -1
 }
 
 object MoodJourneyEngine {
