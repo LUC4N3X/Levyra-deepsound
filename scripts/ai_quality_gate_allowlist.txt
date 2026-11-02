@@ -1,5 +1,6 @@
 # Exact repository-relative binary or generated paths explicitly approved by
 # the owner may be listed here, one per line. Keep this empty by default.
+app/src/main/res/drawable-nodpi/onboarding_levyra_brand.webp
 docs/assets/levyra-github-banner.webp
 docs/assets/levyra-github-banner-light.webp
 docs/assets/levyra-banner-ai-cinematic.png

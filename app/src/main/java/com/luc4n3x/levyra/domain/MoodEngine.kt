@@ -114,7 +114,7 @@ class MoodEngine {
 
     fun queriesForTastes(ids: Set<String>, languageCode: String): List<String> {
         val locale = LevyraContentLocales.forLanguage(languageCode)
-        val selected = ids.mapNotNull { id -> locale.tasteQueries[id] }.distinct()
+        val selected = (OnboardingArtists.selectedNames(ids) + ids.mapNotNull { id -> locale.tasteQueries[id] }).distinct()
         return if (selected.isEmpty()) locale.homeQueries else selected
     }
 

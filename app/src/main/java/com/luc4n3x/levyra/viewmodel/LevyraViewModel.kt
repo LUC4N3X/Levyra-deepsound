@@ -245,6 +245,8 @@ import com.luc4n3x.levyra.domain.LyricsEngine
 import com.luc4n3x.levyra.domain.LyricsTranslationState
 import com.luc4n3x.levyra.domain.Mood
 import com.luc4n3x.levyra.domain.MoodEngine
+import com.luc4n3x.levyra.domain.OnboardingArtist
+import com.luc4n3x.levyra.domain.OnboardingArtists
 import com.luc4n3x.levyra.domain.MixLabCandidate
 import com.luc4n3x.levyra.domain.MusicVideoPlaybackPreference
 import com.luc4n3x.levyra.domain.withPairedArtTrackAudio
@@ -452,21 +454,8 @@ private const val RADIO_START_TRACKS = 20
 private const val RADIO_START_FETCH = 30
 private const val EXPLORE_SHORTS_FEED_LIMIT = 60
 private const val ONBOARDING_ARTWORK_PARALLELISM = 4
-private const val ONBOARDING_ARTWORK_SEARCH_LIMIT = 12
-private const val ONBOARDING_ARTWORK_ARTISTS = 3
-private const val ONBOARDING_ARTWORK_ATTEMPTS = 3
+private const val ONBOARDING_ARTWORK_TIMEOUT_MS = 10_000L
 private const val HOME_PULL_REFRESH_TIMEOUT_MS = 12_000L
-private val ONBOARDING_TASTE_ARTISTS = mapOf(
-    "gym" to listOf("Eminem", "Travis Scott", "Kendrick Lamar", "Kanye West"),
-    "chill" to listOf("Billie Eilish", "Tame Impala", "Lana Del Rey", "Rex Orange County"),
-    "focus" to listOf("Ludovico Einaudi", "Hans Zimmer", "Max Richter", "Ólafur Arnalds"),
-    "sad" to listOf("Lewis Capaldi", "Adele", "Billie Eilish", "Sam Smith"),
-    "party" to listOf("David Guetta", "Dua Lipa", "Calvin Harris", "Pitbull"),
-    "rock" to listOf("Måneskin", "Imagine Dragons", "Arctic Monkeys", "Foo Fighters"),
-    "electro" to listOf("Daft Punk", "Avicii", "Calvin Harris", "Martin Garrix"),
-    "rnb" to listOf("The Weeknd", "SZA", "Frank Ocean", "Beyoncé")
-)
-private const val ONBOARDING_ARTWORK_RETRY_MS = 1_500L
 private const val EXPLORE_DISCOVERY_DEEP_WARMUP_LIMIT = 6
 private const val EXPLORE_EDITORIAL_MIN_TRACKS = 10
 private const val SIMILAR_SONGS_DEBOUNCE_MS = 400L
@@ -1737,7 +1726,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     val customThemes: StateFlow<List<LevyraCustomTheme>> = _customThemes.asStateFlow()
     private val _onboardingArtwork = MutableStateFlow<Map<String, List<String>>>(emptyMap())
     val onboardingArtwork: StateFlow<Map<String, List<String>>> = _onboardingArtwork.asStateFlow()
-    private var onboardingArtworkJob: Job? = null
+    private val onboardingArtworkJobs = mutableMapOf<String, Job>()
+    private val onboardingArtworkGate = Semaphore(ONBOARDING_ARTWORK_PARALLELISM)
     private var onboardingArtworkLanguage: String? = null
     val playerController get() = player.controller
 
@@ -5814,58 +5804,46 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun loadOnboardingArtwork(languageCode: String) {
+    fun loadOnboardingArtwork(languageCode: String, artistIds: Set<String>) {
         val code = LevyraLanguageCatalog.normalize(languageCode)
-        if (onboardingArtworkLanguage == code && onboardingArtworkJob?.isActive == true) return
-        if (onboardingArtworkLanguage == code && _onboardingArtwork.value.isNotEmpty()) return
-        onboardingArtworkLanguage = code
-        onboardingArtworkJob?.cancel()
-        _onboardingArtwork.value = emptyMap()
-        val tastes = moodEngine.tastesForLanguage(code)
-        onboardingArtworkJob = viewModelScope.launch {
-            val gate = Semaphore(ONBOARDING_ARTWORK_PARALLELISM)
-            tastes.forEach { taste ->
-                launch {
-                    repeat(ONBOARDING_ARTWORK_ATTEMPTS) { attempt ->
-                        if (attempt > 0) delay(ONBOARDING_ARTWORK_RETRY_MS * attempt)
-                        val portraits = gate.withPermit { onboardingPortraitsFor(taste.id, taste.query, code) }
-                        if (portraits.isNotEmpty()) {
-                            _onboardingArtwork.update { current ->
-                                current + (taste.id to distinctOnboardingPortraits(portraits, current - taste.id))
-                            }
-                            return@launch
-                        }
-                    }
+        if (onboardingArtworkLanguage != code) {
+            onboardingArtworkJobs.values.forEach(Job::cancel)
+            onboardingArtworkJobs.clear()
+            onboardingArtworkLanguage = code
+            _onboardingArtwork.value = emptyMap()
+        }
+        val artists = OnboardingArtists.selectedNames(artistIds).map(::OnboardingArtist)
+            .filter { _onboardingArtwork.value[it.id].isNullOrEmpty() && onboardingArtworkJobs[it.id]?.isActive != true }
+        artists.forEach { artist ->
+            _onboardingArtwork.update { it - artist.id }
+            onboardingArtworkJobs[artist.id] = viewModelScope.launch {
+                val portrait = onboardingArtworkGate.withPermit { onboardingPortraitFor(artist.name) }
+                if (currentCoroutineContext().isActive && onboardingArtworkLanguage == code) {
+                    _onboardingArtwork.update { it + (artist.id to listOfNotNull(portrait)) }
                 }
             }
         }
     }
 
-    private suspend fun onboardingPortraitsFor(tasteId: String, query: String, languageCode: String): List<String> {
-        val curated = ONBOARDING_TASTE_ARTISTS[tasteId]
-        val tracks = if (curated == null) {
-            runCatchingPreservingCancellation {
-                repository.search(query, limit = ONBOARDING_ARTWORK_SEARCH_LIMIT, languageCode = languageCode)
-            }.getOrNull().orEmpty()
-        } else {
-            emptyList()
+    private suspend fun onboardingPortraitFor(name: String): String? = withContext(Dispatchers.IO) {
+        val context = getApplication<Application>()
+        val sources: List<suspend () -> String> = listOf(
+            { com.luc4n3x.levyra.data.AppleArtistArtworkRepository.get(context).resolveArtistPortrait(name) },
+            { com.luc4n3x.levyra.data.SpotifyArtistArtworkRepository.get(context).resolveArtistPortrait(name) },
+            { artistRepository.artistHitFor(name)?.thumbnailUrl.orEmpty() }
+        )
+        for (source in sources) {
+            val loaded = withTimeoutOrNull(ONBOARDING_ARTWORK_TIMEOUT_MS) {
+                runCatchingPreservingCancellation {
+                    val url = source().takeIf(String::isNotBlank) ?: return@runCatchingPreservingCancellation null
+                    val request = coil3.request.ImageRequest.Builder(context).data(url).size(320).build()
+                    val result = coil3.SingletonImageLoader.get(context).execute(request)
+                    url.takeIf { result is coil3.request.SuccessResult }
+                }.getOrNull()
+            }
+            if (loaded != null) return@withContext loaded
         }
-        val artists = curated ?: tracks
-            .map { primaryArtistSegment(it.artist) }
-            .filter { it.isNotBlank() }
-            .distinctBy { it.lowercase(Locale.ROOT) }
-            .take(ONBOARDING_ARTWORK_ARTISTS)
-        val portraits = artists.mapNotNull { artist ->
-            runCatchingPreservingCancellation { artistRepository.artistHitFor(artist) }
-                .getOrNull()
-                ?.thumbnailUrl
-                ?.takeIf { it.isNotBlank() }
-        }.distinct()
-        if (portraits.isNotEmpty()) return portraits.take(ONBOARDING_ARTWORK_ARTISTS)
-        return tracks
-            .mapNotNull { track -> track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }.takeIf { it.isNotBlank() } }
-            .distinct()
-            .take(ONBOARDING_ARTWORK_ARTISTS)
+        null
     }
 
     fun dismissYoutubeMusicIntro() {
@@ -5875,8 +5853,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun completeOnboarding(name: String, tasteIds: Set<String>, languageCode: String) {
-        onboardingArtworkJob?.cancel()
-        onboardingArtworkJob = null
+        onboardingArtworkJobs.values.forEach(Job::cancel)
+        onboardingArtworkJobs.clear()
         onboardingArtworkLanguage = null
         _onboardingArtwork.value = emptyMap()
         val normalizedLanguage = LevyraLanguageCatalog.normalize(languageCode)
@@ -11610,6 +11588,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun discoveryPreferredArtists(snapshot: LevyraUiState, limit: Int = 24): List<String> = buildList {
         snapshot.currentTrack?.artist?.let(::add)
         addAll(snapshot.followedArtists.map { artist -> artist.name })
+        addAll(OnboardingArtists.selectedNames(preferences.tastes()))
         addAll(snapshot.recentListens.map { track -> track.artist })
         addAll(snapshot.favorites.map { track -> track.artist })
         addAll(snapshot.personalOrbitTracks.map { track -> track.artist })

@@ -19,7 +19,7 @@ object LevyraLocalizedDiscovery {
 
     fun homeBoostQueries(languageCode: String, tasteIds: Set<String>): List<String> {
         val locale = LevyraContentLocales.forLanguage(languageCode)
-        val tasteQueries = tasteIds.mapNotNull { id -> locale.tasteQueries[id] }
+        val tasteQueries = OnboardingArtists.selectedNames(tasteIds) + tasteIds.mapNotNull { id -> locale.tasteQueries[id] }
         return (tasteQueries + locale.homeQueries + contextualQueries("", locale.contentLanguageCode)).distinctClean().take(10)
     }
 
