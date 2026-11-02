@@ -86,6 +86,21 @@ class AudioSettingsLocalizationTest {
     }
 
     @Test
+    fun everySupportedLanguageShipsOrbitEqualizerCopy() {
+        val catalogCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+        assertEquals(catalogCodes, orbitEqLocalizationCodes())
+        LevyraStrings.all().forEach { strings ->
+            val copy = strings.orbitEqCopy()
+            val values = listOf(
+                copy.title, copy.subtitle, copy.warm, copy.bright, copy.forward, copy.open,
+                copy.headroom, copy.center, copy.compare, copy.save, copy.padDescription
+            )
+            assertTrue(strings.code, values.all(String::isNotBlank))
+            assertEquals(strings.code, 4, setOf(copy.warm, copy.bright, copy.forward, copy.open).size)
+        }
+    }
+
+    @Test
     fun everySupportedLanguageShipsTheAudioScreenCopy() {
         val catalogCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
         assertEquals(catalogCodes, audioLocalizationCodes())

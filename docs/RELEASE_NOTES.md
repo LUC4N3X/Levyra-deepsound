@@ -1,77 +1,86 @@
-# Levyra 3.0.5
+# Levyra 3.0.6
 
 ## Highlights
 
-The idea for this release came from a complaint I kept hearing: radio and recommendations bringing back songs people had heard a hundred times. So now there's Fresh Discovery, a setting you can switch on to keep the songs you've already played out of automatic queues. It's off unless you choose to turn it on.
+This one got big. I meant to ship a small update after 3.0.5 and then a week went by and there were podcasts, a new equalizer, two skins, a new player deck and a pile of smart listening stuff sitting on main. So here it all is.
 
-Then there's a round of polish on the default look, settings that finally show the whole description instead of cutting it off halfway, a few annoying bugs with navigation and the Gallery fixed, and better translations. Two of these changes come from people outside the project, and I thank them at the end.
+If you only read one section, read the Orbit one. It's the thing I'm happiest with in this release, and it's the first time the equalizer feels like something you play with instead of something you configure.
 
-## ✦ Fresh Discovery
+## ✦ Orbit, a new way to shape the sound
 
-You'll find it in Settings → Player. Once it's on, radio and the automatic queue skip songs you've already heard, and so do the discoveries in Your Orbit.
+In the audio panel the equalizer now has a third tab next to Graphic EQ and Parametric EQ: Orbit.
 
-You choose how far back Levyra looks: 7, 30 or 90 days, or your whole history. 30 days is the default. There's also an "Allow favorites" option, on by default, so your favorite songs can still show up even if you've just listened to them.
+It's one point inside a circle. Left is Warm, right is Bright, up is Forward (voices and guitars come closer), down is Open (more space, a bit of a V shape). The further you move from the center, the stronger it gets, and the corners mix the two, so up-left is warm and close, down-right is airy and wide. The center is exactly flat.
 
-A few things I cared about:
+Some details I cared about:
 
-- When it's off, nothing changes. Everything works exactly as it did before.
-- Songs you pick yourself always play. The filter only touches what Levyra picks for you.
-- If there aren't enough new songs, the queue doesn't stall: it fills up with the ones you haven't heard for the longest time.
-- It's careful with duplicates. If an upload clearly matches a song you've already heard, it skips that too, but it won't guess when it isn't sure. One limit I'll be honest about: a different upload of the same song can still get through when it doesn't show up next to the one you've already heard.
-- It uses the listening history already on your phone and doesn't send anything anywhere.
+- You grab the point and drag it, or tap anywhere in the circle and it glides there. Swiping elsewhere on the circle still scrolls the panel, so you can't change your sound by accident while scrolling.
+- You hear it while you move. Changes are smoothed, so moving the point doesn't click or pop.
+- It never clips. Levyra works out the headroom for every position and lowers the level just enough, and it shows you how much.
+- "Hold to compare" plays the flat sound at a matched level, so you're comparing the tone and not just "louder vs quieter".
+- "Save as profile" keeps the position as one of your parametric profiles, and your saved orbits show up as chips under the circle.
+- The switch turns it off without forgetting where you were.
 
-## ✦ A sharper default look
+Under the hood it's the same parametric engine that already runs your AutoEQ profiles, so it works with every source, FLAC included, and there's no second equalizer stacked on top of the first. TalkBack users can move the point with actions (Warm, Bright, Forward, Open, Center) and hear where it is.
 
-The default skin got a visual pass. Long lists in your library now have a scrollbar you can drag, with the letter showing as you scroll. The classic home header shrinks into a compact bar when you scroll down, and the Flow player has a bit more depth and feel under your finger.
+## ✦ Podcasts
 
-In Settings, titles and descriptions no longer end in three dots. Fresh Discovery's new card shows the full text, and the same goes for the other settings, the headers of the Mini player, Navigation and Home studios, and the audio panel.
+There's now a podcast library with subscriptions, listening history and resume from where you stopped.
 
-Eclipse, the effect from 3.0.3 that tucks the mini player into the navigation bar, now only kicks in with the Levyra Original and Liquid Capsule navigation styles, the two it was really designed for. With the other styles the dock stays as it is. Your setting is kept, so if you switch back to one of those two styles, Eclipse comes back.
+## ✦ Smarter listening
 
-## ✦ FLAC
+- Mood Journey, Break the Bubble, Smart Resume and Adaptive Listening.
+- A smart listening suite on top of that.
+- Songs you dislike are skipped in automatic playback.
+- Smart Audio Profiles, YouTube chapters, Night Listening and lyrics search.
+- The mood arc curve, an instant Top 50 and covers for Levyra Mix.
 
-When you ask for lossless, Levyra now tries a new source first and only uses it if it finds a matching, verified stream. If it doesn't, it falls back to the sources from before, in the same order. It's still experimental, just like in 3.0.3: it depends on outside services, and I can't promise how stable it'll be day to day. If you stay on 320 kbps, nothing changes.
+## ✦ Looks and library
 
-## ✦ The everyday fixes
+- New player deck: Ember.
+- New skins: Atelier, with a 3D shelf and a turntable player, and Qobuz Style.
+- Each skin can have its own Home mode, and language, country and audio preferences are now separate settings.
+- Playlists can hold whole albums, there's a new HSL/HSV color picker, and you can sort the tracks inside a playlist.
+- Onboarding now asks for a few artists you love and has a new welcome.
+- You can choose where downloads go, downloads get proper artwork, there's a keep-screen-on option and Brazilian Portuguese is in.
 
-- Floating navigation is truly transparent again: the dark band that cut across the page above the dock is gone.
-- Bottom navigation labels are no longer cut off at the bottom, for example in Russian or with larger system text.
-- The Play button in the Gallery now stays still in every layout, instead of animating in some and not in others.
-- Long-pressing tracks in Search no longer leaves the selection actions hidden behind the mini player or navigation bar.
-- The French translation has been updated and finished, and some plurals in Czech, Slovak, Polish, Russian and Ukrainian are now correct.
-- App and widget names no longer risk ending up empty in translations: they live in a separate file that translators don't touch.
+## ✦ FLAC and performance
+
+Qobuz is now an optional FLAC source, and lossless resolution checks the stream more carefully before using it, with better fallbacks when a source fails. Shared audio credentials were removed from the app. Lossless is still experimental and still depends on outside services, same as before. Startup is lighter too.
+
+The parametric equalizer also keeps its filter memory in plain flat arrays now, which is a little lighter on the audio thread. The sound math didn't change.
 
 ## ✦ Thanks
 
-This time I didn't do it all alone. Thanks to @mvanhorn for the fix to the Play button in the Gallery, and to @Mickael81 for the work on the French translation. Small contributions like these make a difference for everyone who uses Levyra every day.
+Again I didn't do all of this alone. Thanks to @mvanhorn for two features I use every day now: looping a section of the current song, and sharing a song from the exact moment you're listening to. And thanks to everyone translating on Weblate, Mickaël Binos (@Mickael81) included, for the updates to Chinese, German, Spanish, French, Japanese, Korean, Portuguese and Russian.
 
 ## Validation
 
-These notes cover what was merged into main after 3.0.3, from `v3.0.3` to the commit of this release. They describe the code and how it's meant to behave; they don't mean the 3.0.5 APK has already passed release testing.
+These notes cover what was merged into main after `v3.0.5`, plus the Orbit equalizer that ships with this version bump. They describe the code; they don't mean the 3.0.6 APK has already passed release testing.
 
-For Fresh Discovery, the new unit tests on the selection logic and the translation checks across all 41 languages passed locally, along with the existing tests for automations, the radio mixer and Smart Orbit. On an emulator I checked startup with no crashes, that the setting is off by default, that the choices stick after the app is closed, switching it off from the interface, and the filter on Your Orbit with real history (on that emulator the history lookup took 54 ms the first time and 6 ms after that, off the main thread). The filter on the radio queue is covered only by unit tests: on that emulator, starting the radio didn't add any songs whether the setting was on or off, so I couldn't watch it work on a device.
+For Orbit I ran the new unit tests, which push audio through the real equalizer processor: the measured response matches the designed one within 0.01 dB, distortion at 1 kHz is about -142 dB, the center position is bit-exact, a 0.99 full-scale signal stays below 0.6 full scale at every pole, and moving the point while music plays produced no clicks. The existing equalizer tests and the translation checks for all 42 languages passed too. On an emulator, with a minified release-type build, the playback thread went from 2.1% to 2.5% of one core with Orbit on. On a Galaxy S25+, in a debug build, the same processing ran at 18 times real time; debug builds are much slower, so that number is an upper bound, not the real cost. I checked the Orbit screen and its drag on the emulator.
 
-The translation changes were checked by validating the XML files and with a resource merge build. The local fast AI quality gate stopped on a known line-ending issue in a file this release doesn't touch. I didn't run the full quality gate, an Android release build, a full regression pass on a physical device, Android Auto checks or signing verification: their status is unverified, not passed. I haven't checked the Eclipse limit on the other navigation styles on a device.
+I didn't do a long listening session on a physical phone, and I didn't check Bluetooth, USB DAC output, TalkBack, Android Auto or a full regression pass. Those are unverified, not passed.
 
 The GitHub release workflow still has to pass the release-note checks and Android lint, build and sign the APK, verify the version and signing certificate, generate the SHA-256 checksum and publish the files. Treat the GitHub release and the downloadable APK as available only once that workflow succeeds.
 
 ## Versioning
 
-- Version name: `3.0.5`
-- Version code: `3000500`
+- Version name: `3.0.6`
+- Version code: `3000600`
 
 This is an Android release. Levyra Desktop is versioned and released separately; this update doesn't change the Windows app.
 
 ## Upgrade notes
 
-No manual migration is expected. Your library, playlists, favorites, downloads, listening history, settings, skin and player style stay as they are. Fresh Discovery starts off, so nothing changes until you turn it on. If you were using Eclipse with a navigation style other than Levyra Original or Liquid Capsule, the dock now stays put.
+No manual migration is expected. Your library, playlists, favorites, downloads, listening history, settings, skin and player style stay as they are. Your graphic or parametric equalizer setup stays as it is. Orbit only takes over when you move it.
 
-Catalogs, regional releases, lyrics, search, video and lossless sources depend in part on external services: results and availability can vary by region and over time.
+Catalogs, regional releases, lyrics, search, video, podcasts and lossless sources depend in part on external services: results and availability can vary by region and over time.
 
 Once the publishing workflow finishes successfully, the signed Android APK and its checksum will be on the GitHub release page. F-Droid and other channels may update later.
 
 ## Final note
 
-3.0.5 is about listening to something new. If radio kept bringing you back to the same ten songs, try turning on Fresh Discovery and tell me how it goes.
+Go open the audio panel, put on a song you know really well and drag the point around for a minute. Then tell me where you ended up, I'm curious.
 
 Thanks for listening, and for telling me when something feels off.
