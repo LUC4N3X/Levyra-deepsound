@@ -8,8 +8,8 @@ the WebView cipher runtime and its Media3 SABR data source. Windows resolves
 extractor audio candidates and passes verified direct streams to libVLC. Download
 selection remains separate from Android's playback-only reduced-quality recovery.
 
-This change keeps those owners. It introduces no InnerTubeX dependency, copied
-implementation, additional transport, JavaScript interpreter or account mechanism.
+This change keeps those owners. It introduces no new extraction dependency,
+additional transport, JavaScript interpreter or account mechanism.
 Java production sources continue to target Java 17.
 
 ## Client recovery contract
@@ -109,22 +109,14 @@ $env:LEVYRA_NATIVE_SMOKE = '1'
 
 This local-file check does not establish online YouTube stream availability.
 
-## External comparison and remaining limits
+## Remaining verification limits
 
-The [InnerTubeX README](https://github.com/MetrolistGroup/innertubex/blob/main/README.md),
-its cipher service, client director, health tracker and SABR processor were read as
-capability references. The [Metrolist integration change](https://github.com/MetrolistGroup/Metrolist/commit/e6fea3b36c68841bad21daa6252e1d69ecd3afbe)
-motivates checking exhausted alternatives, quality preservation, error boundaries,
-IAS selection and `Math.pow`. Its code and recovery architecture are not imported.
-InnerTubeX describes bounded compiled-player caches, scoped client health and
-seekable SABR; Levyra retains its existing architecture and only changes defects
-established by local evidence.
-
-There is no measured claim of overall parity or superiority over InnerTubeX.
-Cross-request decoder single-flight, Windows-specific adaptive client recovery,
-real-player compatibility across changing script versions, live comparative
-latency/reliability benchmarks, sustained physical-device memory and online
-Windows/libVLC playback require separate direct evidence. Synthetic byte integrity
+The changes target defects demonstrated by Levyra's local regression tests and
+benchmarks. They do not establish general improvements in live playback reliability,
+latency or audio quality. Cross-request decoder single-flight, Windows-specific
+adaptive client recovery, compatibility across changing player script versions,
+live streaming and download reliability, sustained physical-device memory and
+online Windows playback require separate direct evidence. Synthetic byte integrity
 and format-order tests do not prove perceived audio quality or live download
 availability. Validation results for this patch belong to its pull request and
 the generated test reports.
