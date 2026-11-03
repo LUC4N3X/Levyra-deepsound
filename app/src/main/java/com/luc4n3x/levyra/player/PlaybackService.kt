@@ -294,6 +294,7 @@ class PlaybackService : MediaLibraryService() {
     }
 
     companion object {
+        private const val GENTLE_WAKE_RAMP_START_GRACE_MS = 10_000L
         private const val RUNNING_LOW_LEVEL = 10
         private const val RUNNING_CRITICAL_LEVEL = 15
         const val EXTRA_VIDEO_URL = "levyra.videoUrl"
@@ -3058,9 +3059,16 @@ class PlaybackService : MediaLibraryService() {
             player.prepare()
             player.play()
 
-            val startedAtMs = SystemClock.elapsedRealtime()
+            val requestedAtMs = SystemClock.elapsedRealtime()
+            var rampStartedAtMs = -1L
             while (isActive && _gentleWakeRuntimeStateFlow.value.active) {
-                val elapsed = (SystemClock.elapsedRealtime() - startedAtMs).coerceAtLeast(0L)
+                val nowMs = SystemClock.elapsedRealtime()
+                if (rampStartedAtMs < 0L &&
+                    (player.isPlaying || nowMs - requestedAtMs >= GENTLE_WAKE_RAMP_START_GRACE_MS)
+                ) {
+                    rampStartedAtMs = nowMs
+                }
+                val elapsed = if (rampStartedAtMs < 0L) 0L else (nowMs - rampStartedAtMs).coerceAtLeast(0L)
                 val nextVol = GentleWakeCurve.volumeAt(elapsed, totalDurationMs, normalized.maxVolumeFraction)
                 player.volume = nextVol
                 _gentleWakeRuntimeStateFlow.value = _gentleWakeRuntimeStateFlow.value.copy(
