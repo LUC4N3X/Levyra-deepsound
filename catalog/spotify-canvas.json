@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-03T01:01:58Z",
+  "generatedAt": "2026-11-03T14:23:18Z",
   "items": [
     {
       "song": "Sentire La Musica",
@@ -376,7 +376,7 @@
     {
       "song": "Man I Need",
       "artist": "Olivia Dean",
-      "album": "Man I Need",
+      "album": "The Art of Loving",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
@@ -448,13 +448,6 @@
       "artist": "Nelly Furtado, Timbaland",
       "album": "Loose",
       "url": "https://canvaz.scdn.co/upload/artist/2jw70GZXlAI8QzWeY2bgRc/video/f5ed7335efb648a9a4bdc04a5ab19178.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Iris",
-      "artist": "The Goo Goo Dolls",
-      "album": "Stay with You",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/4ab38c8ea56645c5ab7d8ebfb5e4edc2.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -586,7 +579,7 @@
     {
       "song": "Nice To Each Other",
       "artist": "Olivia Dean",
-      "album": "Nice To Each Other",
+      "album": "The Art of Loving",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/aca2daddec534de8a3bcc1de7200d256.cnvs.mp4",
       "scope": "track"
     },
@@ -1830,6 +1823,13 @@
       "scope": "track"
     },
     {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "Man I Need",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Rapido",
       "artist": "Bankzitters, Robert van Hemert",
       "album": "Rapido",
@@ -2586,13 +2586,6 @@
       "scope": "track"
     },
     {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "The Art of Loving",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Ingen Kommentar",
       "artist": "Noah Carter",
       "album": "Noahs Ark II",
@@ -2877,6 +2870,13 @@
       "artist": "vers1zee, micheff",
       "album": "люблю москву, но снится london",
       "url": "https://canvaz.scdn.co/upload/artist/7BqkA3Oot59tq1AbXWymAZ/video/086509b232564be19a48a2ed63fa8741.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Не сам",
+      "artist": "Povin', Фабрика Зірок",
+      "album": "Не сам",
+      "url": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/bb8e09ef6b5547bc8a5af977f95b82f8.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4616,6 +4616,13 @@
       "scope": "track"
     },
     {
+      "song": "ako ang bagyo",
+      "artist": "SHEAN",
+      "album": "ako ang bagyo",
+      "url": "https://canvaz.scdn.co/upload/artist/254t4pEFzwyr6bnd1GCSKz/video/9c970c3ee3684dea96dc5b3fcda25ed2.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Mahal Magmahal",
       "artist": "Esremborak",
       "album": "Mahal Magmahal",
@@ -4812,13 +4819,6 @@
       "scope": "track"
     },
     {
-      "song": "hate that i made you love me",
-      "artist": "Ariana Grande",
-      "album": "petal",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/d452cf603ae3428696c975d6394f2e78.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "NO LES DA",
       "artist": "Callejero Fino, Lea in the Mix",
       "album": "MEGA CALLEJERO FINO RKT 2",
@@ -4877,7 +4877,7 @@
     {
       "song": "El Teléfono",
       "artist": "Héctor \"El Father\", Wisin & Yandel",
-      "album": "The Bad Boy",
+      "album": "Machete Music Chronicles: Vol. I",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/b23b719ccbb445188126f29f094d154a.cnvs.mp4",
       "scope": "track"
     },
@@ -4975,7 +4975,7 @@
     {
       "song": "Nice To Each Other",
       "artist": "Olivia Dean",
-      "album": "The Art of Loving",
+      "album": "Nice To Each Other",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/aca2daddec534de8a3bcc1de7200d256.cnvs.mp4",
       "scope": "track"
     },
@@ -5362,6 +5362,13 @@
       "artist": "Yeison Jimenez, Luis Alfonso",
       "album": "Destino Final",
       "url": "https://canvaz.scdn.co/upload/artist/3SEztK9fNxg81qZ8qETGNT/video/05470add1da94450b194330cb953a5f1.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "El Teléfono",
+      "artist": "Héctor \"El Father\", Wisin & Yandel",
+      "album": "The Bad Boy",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/b23b719ccbb445188126f29f094d154a.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -6051,13 +6058,6 @@
       "scope": "track"
     },
     {
-      "song": "El Teléfono",
-      "artist": "Héctor \"El Father\", Wisin & Yandel",
-      "album": "Machete Music Chronicles: Vol. I",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/b23b719ccbb445188126f29f094d154a.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "666",
       "artist": "Yan Block, Cris MJ, Panda Black",
       "album": "666",
@@ -6345,9 +6345,9 @@
       "scope": "track"
     },
     {
-      "song": "Felicidades (feat. Maluma)",
+      "song": "Felicidades",
       "artist": "Yami Safdie, Maluma",
-      "album": "Felicidades (feat. Maluma)",
+      "album": "Felicidades",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/fcbb2664525e4ab88e35a312c5e7d702.cnvs.mp4",
       "scope": "track"
     },
@@ -6576,17 +6576,17 @@
       "scope": "track"
     },
     {
-      "song": "U Bram",
-      "artist": "Sw@da, Niczos, Kasary",
-      "album": "U Bram",
-      "url": "https://canvaz.scdn.co/upload/artist/4YZ4ez3imuoabYA9WyrRIk/video/a1a410ee50d3484a91675f93c74ea22a.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "BIS",
       "artist": "Zippy Ogar, Gedz",
       "album": "BIS",
       "url": "https://canvaz.scdn.co/upload/artist/4Gtcjb9mBxQhQMIoktLSkU/video/95cac447f6a74982b60604401665171d.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Away",
+      "artist": "Pola, SHDØW",
+      "album": "Away",
+      "url": "https://canvaz.scdn.co/upload/artist/35TNTrLhxCXmfO4wL4IWUa/video/a5ebf363c60b42b8b2c8b29b28e34586.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -6886,7 +6886,7 @@
     {
       "song": "birds and butterflies",
       "artist": "Niko Rubio",
-      "album": "birds and butterflies",
+      "album": "late night swim",
       "url": "https://canvaz.scdn.co/upload/artist/6XdCL1kwMFNqPim2JwXjKa/video/c085b3c6d33047a78c7fc5f7ce0627be.cnvs.mp4",
       "scope": "track"
     },
@@ -6933,6 +6933,13 @@
       "scope": "track"
     },
     {
+      "song": "DND (โหมดพระจันทร์🌙)",
+      "artist": "Saran, Sexski",
+      "album": "DND (โหมดพระจันทร์🌙)",
+      "url": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/a2b5dc8e0d034a988b8cfdad0118dfae.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Golden Retriever (feat. BILLKIN)",
       "artist": "JAYLERR, BILLKIN",
       "album": "Golden Retriever (feat. BILLKIN)",
@@ -6968,10 +6975,24 @@
       "scope": "track"
     },
     {
+      "song": "Kailangan Kita",
+      "artist": "Naara",
+      "album": "Kailangan Kita",
+      "url": "https://canvaz.scdn.co/upload/artist/5njm2fzIq2vei2a5Dwy5ZH/video/aef7f7d5d3ef482ea58f365a14fdd0c8.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Filipina Baddie",
       "artist": "Yudino",
       "album": "LOVER BOY: CHAPTER 2: Filipina Baddie",
       "url": "https://canvaz.scdn.co/upload/artist/48Nnq14bV6DdMvkYPuw7Z5/video/45c99c321b1d4dc098184400f3fa10c5.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "feeva",
+      "artist": "Karencitta, felhony",
+      "album": "feeva",
+      "url": "https://canvaz.scdn.co/upload/artist/0touaoSr4QOLYxBJ9lmGgK/video/792d7f70f3e64d67846f1a210a735cb3.cnvs.mp4",
       "scope": "track"
     }
   ]
