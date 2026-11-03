@@ -1,5 +1,20 @@
 package com.luc4n3x.levyra.ui.smartaudio
 
+import com.luc4n3x.levyra.ui.theme.LevyraType
+import com.luc4n3x.levyra.ui.components.levyraPressable
+import com.luc4n3x.levyra.ui.components.levyraExpressiveCorner
+import com.luc4n3x.levyra.ui.components.LevyraPressScale
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.runtime.remember
+import androidx.compose.material3.toShape
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.LinearEasing
@@ -13,6 +28,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -103,6 +119,73 @@ internal fun LyricsSearchEntry(onOpen: () -> Unit, modifier: Modifier = Modifier
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+internal fun LyricsSearchKey(onOpen: () -> Unit, modifier: Modifier = Modifier) {
+    val scheme = MaterialTheme.colorScheme
+    val strings = LocalLevyraStrings.current
+    val description = smartAudioCopy(strings.code)[SmartAudioText.LyricsTitle]
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val medallionTurn by animateFloatAsState(
+        targetValue = if (pressed) 45f else 0f,
+        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
+        label = "lyrics-key-medallion"
+    )
+    val tail = levyraExpressiveCorner(
+        interactionSource = interaction,
+        rest = 6.dp,
+        pressed = 24.dp,
+        label = "lyrics-key-tail"
+    )
+    val bubble = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomEnd = 24.dp, bottomStart = tail)
+    Box(
+        modifier = modifier
+            .heightIn(min = 48.dp)
+            .levyraPressable(
+                onClick = onOpen,
+                interactionSource = interaction,
+                role = Role.Button,
+                pressedScale = LevyraPressScale.Control
+            )
+            .clearAndSetSemantics { contentDescription = description },
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .clip(bubble)
+                .border(1.dp, scheme.outlineVariant, bubble)
+                .padding(start = 4.dp, end = 16.dp, top = 4.dp, bottom = 4.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .graphicsLayer { rotationZ = medallionTurn }
+                    .clip(MaterialShapes.Cookie4Sided.toShape())
+                    .background(scheme.tertiaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.FormatQuote,
+                    contentDescription = null,
+                    tint = scheme.onTertiaryContainer,
+                    modifier = Modifier
+                        .size(18.dp)
+                        .graphicsLayer { rotationZ = -medallionTurn }
+                )
+            }
+            Text(
+                text = strings.lyrics,
+                color = scheme.onSurface,
+                style = LevyraType.cardTitle.copy(fontWeight = FontWeight.Bold),
+                maxLines = 1,
+                modifier = Modifier.padding(start = 10.dp)
+            )
+        }
     }
 }
 

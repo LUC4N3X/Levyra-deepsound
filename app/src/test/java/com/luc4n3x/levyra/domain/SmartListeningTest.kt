@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.domain
 
 import androidx.media3.common.C
 import androidx.media3.common.audio.AudioProcessor
+import com.luc4n3x.levyra.player.MotionGestureRegistrationPolicy
 import com.luc4n3x.levyra.player.PlaybackSleepTimer
 import com.luc4n3x.levyra.player.SleepTimbreAudioProcessor
 import com.luc4n3x.levyra.ui.i18n.smartListeningCopyForCode
@@ -13,6 +14,7 @@ import java.time.ZonedDateTime
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.abs
+import kotlin.math.log10
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -360,5 +362,39 @@ class SmartListeningTest {
             assertTrue("morningPromptActionResume blank for $code", copy.morningPromptActionResume.isNotBlank())
             assertTrue("morningPromptActionLater blank for $code", copy.morningPromptActionLater.isNotBlank())
         }
+    }
+
+    @Test
+    fun gentleWakeCurve_isAudibleEarlyAndRampsWithoutAudibleSteps() {
+        val maxCap = 0.8f
+        val tickMs = 200L
+        val durations = GENTLE_WAKE_CRESCENDO_MINUTES_OPTIONS.map { it * 60_000L } + 15_000L
+        durations.forEach { totalMs ->
+            val tenth = GentleWakeCurve.volumeAt(totalMs / 10, totalMs, maxCap)
+            val quarter = GentleWakeCurve.volumeAt(totalMs / 4, totalMs, maxCap)
+            assertTrue("10% too quiet for $totalMs", 20f * log10(tenth / maxCap) >= -22f)
+            assertTrue("25% too quiet for $totalMs", 20f * log10(quarter / maxCap) >= -15f)
+            assertEquals(maxCap, GentleWakeCurve.volumeAt(totalMs, totalMs, maxCap), 0.0001f)
+            var previous = GentleWakeCurve.volumeAt(0L, totalMs, maxCap)
+            var elapsed = tickMs
+            while (elapsed <= totalMs) {
+                val next = GentleWakeCurve.volumeAt(elapsed, totalMs, maxCap)
+                assertTrue("curve not monotonic at $elapsed/$totalMs", next >= previous)
+                assertTrue("step above 1 dB at $elapsed/$totalMs", 20f * log10(next / previous) <= 1f)
+                previous = next
+                elapsed += tickMs
+            }
+        }
+    }
+
+    @Test
+    fun motionRegistrationPolicy_keepsShakeOptInWithScreenOffAndUsesEventClock() {
+        assertTrue(MotionGestureRegistrationPolicy.shakeAllowed(screenInteractive = true, allowScreenOff = false))
+        assertFalse(MotionGestureRegistrationPolicy.shakeAllowed(screenInteractive = false, allowScreenOff = false))
+        assertTrue(MotionGestureRegistrationPolicy.shakeAllowed(screenInteractive = false, allowScreenOff = true))
+
+        assertEquals(5_040L, MotionGestureRegistrationPolicy.sampleTimeMs(5_040_000_000L, 5_100L))
+        assertEquals(5_100L, MotionGestureRegistrationPolicy.sampleTimeMs(0L, 5_100L))
+        assertEquals(90_000L, MotionGestureRegistrationPolicy.sampleTimeMs(5_040_000_000L, 90_000L))
     }
 }

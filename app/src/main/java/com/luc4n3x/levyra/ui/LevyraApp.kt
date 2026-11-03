@@ -538,6 +538,7 @@ import com.luc4n3x.levyra.ui.player.MixChaptersEntry
 import com.luc4n3x.levyra.ui.player.MixChaptersSheet
 import com.luc4n3x.levyra.ui.smartaudio.LyricsPhraseSearchScreen
 import com.luc4n3x.levyra.ui.smartaudio.LyricsSearchEntry
+import com.luc4n3x.levyra.ui.smartaudio.LyricsSearchKey
 import com.luc4n3x.levyra.ui.smartaudio.NightListeningCard
 import com.luc4n3x.levyra.ui.smartaudio.SmartAudioEntryCard
 import com.luc4n3x.levyra.ui.smartaudio.SmartAudioProfilesScreen
@@ -15167,7 +15168,7 @@ private fun SearchScreen(
             onSettings = viewModel::openSettings,
             spotifyFocus = spotifySearchFocus
         )
-        if (queryClean.isEmpty() && !spotifySearchFocus.value) {
+        if (queryClean.isEmpty() && !spotifySearchFocus.value && !LevyraIsDefaultSkin) {
             LyricsSearchEntry(onOpen = viewModel::openLyricsPhraseSearch)
         }
 
@@ -15299,6 +15300,7 @@ private fun SearchScreen(
                 item(key = "search-taste-hints", contentType = "search-taste-hints") {
                     SearchTasteHints(
                         suggestions = tasteHintQueries,
+                        onOpenLyricsSearch = if (LevyraIsDefaultSkin) viewModel::openLyricsPhraseSearch else null,
                         onClick = { suggestion ->
                             focusManager.clearFocus()
                             keyboardController?.hide()
@@ -16194,6 +16196,7 @@ private fun SearchQuerySuggestionChip(
 @Composable
 private fun SearchTasteHints(
     suggestions: List<String>,
+    onOpenLyricsSearch: (() -> Unit)?,
     onClick: (String) -> Unit
 ) {
     LazyRow(
@@ -16202,6 +16205,19 @@ private fun SearchTasteHints(
         verticalAlignment = Alignment.CenterVertically,
         contentPadding = PaddingValues(horizontal = RecentSearchGutter)
     ) {
+        if (onOpenLyricsSearch != null) {
+            item(key = "search-lyrics-key", contentType = "search-lyrics-key") {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    LyricsSearchKey(onOpen = onOpenLyricsSearch)
+                    Box(
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                            .size(width = 1.dp, height = 24.dp)
+                            .background(MaterialTheme.colorScheme.outlineVariant)
+                    )
+                }
+            }
+        }
         items(
             items = suggestions,
             key = { suggestion -> suggestion }

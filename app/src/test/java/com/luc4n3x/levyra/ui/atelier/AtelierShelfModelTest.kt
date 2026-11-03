@@ -93,4 +93,25 @@ class AtelierShelfModelTest {
             assertTrue(high <= 110)
         }
     }
+
+    @Test
+    fun recordFlip_neverMirrorsAndAlwaysTurnsForwardPastTheEdge() {
+        assertEquals(0, AtelierRecordFlip.faceOf(0f))
+        assertEquals(0, AtelierRecordFlip.faceOf(89.9f))
+        assertEquals(1, AtelierRecordFlip.faceOf(90f))
+        assertEquals(1, AtelierRecordFlip.faceOf(180f))
+        for (step in 0..720) {
+            val local = AtelierRecordFlip.localAngle(step * 0.5f)
+            assertTrue("local angle $local escapes the front hemisphere", local >= -90f && local < 90f)
+        }
+        assertEquals(0f, AtelierRecordFlip.presence(180f), 0.0001f)
+        assertEquals(1f, AtelierRecordFlip.presence(90f), 0.0001f)
+        assertEquals(1f, AtelierRecordFlip.foreshortening(360f), 0.0001f)
+
+        val interrupted = 135f
+        val target = AtelierRecordFlip.targetAngleAfter(interrupted)
+        assertEquals(360f, target, 0.0001f)
+        assertTrue(target - interrupted > 90f)
+        assertEquals(AtelierRecordFlip.faceOf(interrupted) + 1, AtelierRecordFlip.faceOf(target))
+    }
 }

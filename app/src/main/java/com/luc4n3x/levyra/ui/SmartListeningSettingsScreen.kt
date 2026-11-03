@@ -15,7 +15,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,7 +32,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -93,6 +91,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -244,6 +243,7 @@ internal fun SmartListeningSettingsContent(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SmartListeningMotionSection(
     copy: LevyraSmartListeningCopy,
@@ -332,9 +332,10 @@ private fun SmartListeningMotionSection(
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold
                 )
-                Row(
+                FlowRow(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     val sensitivities = listOf(
                         MotionShakeSensitivity.LOW to copy.sensitivityLow,
@@ -346,7 +347,6 @@ private fun SmartListeningMotionSection(
                             label = label,
                             selected = motionSettings.shakeSensitivity == sensitivity,
                             accent = LevyraViolet,
-                            modifier = Modifier.weight(1f),
                             onClick = {
                                 onMotionSettingsChange(motionSettings.copy(shakeSensitivity = sensitivity))
                             }
@@ -358,13 +358,9 @@ private fun SmartListeningMotionSection(
 
         SmartListeningSwitchRow(
             title = copy.screenOffTitle,
-            subtitle = if (motionCapability.wakeUpSensorSupported) {
-                copy.screenOffSupportedHint
-            } else {
-                copy.screenOffUnsupportedHint
-            },
-            checked = motionSettings.allowScreenOffWhenSupported && motionCapability.wakeUpSensorSupported,
-            enabled = motionSettings.enabled && motionCapability.wakeUpSensorSupported,
+            subtitle = copy.screenOffHint,
+            checked = motionSettings.allowScreenOffWhenSupported,
+            enabled = motionSettings.enabled && motionSettings.shakeToSkipEnabled && motionCapability.hasAccelerometer,
             accent = LevyraCyan,
             onCheckedChange = { allow ->
                 onMotionSettingsChange(motionSettings.copy(allowScreenOffWhenSupported = allow))
@@ -405,7 +401,8 @@ private fun SmartListeningGentleWakeSection(
 
         SmartListeningSwitchRow(
             title = copy.gentleWakeEnable,
-            subtitle = String.format(locale, "%02d:%02d · %d min", gentleWakeSettings.hour, gentleWakeSettings.minute, gentleWakeSettings.crescendoMinutes),
+            subtitle = String.format(locale, "%02d:%02d", gentleWakeSettings.hour, gentleWakeSettings.minute) +
+                " · " + strings.formatSleepTimerMinutes(gentleWakeSettings.crescendoMinutes),
             checked = gentleWakeSettings.enabled,
             accent = LevyraOrange,
             onCheckedChange = { enabled ->
@@ -552,6 +549,7 @@ private fun GentleWakeDaysSelector(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun GentleWakeIntensityControls(
     strings: LevyraStrings,
@@ -567,16 +565,16 @@ private fun GentleWakeIntensityControls(
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold
             )
-            Row(
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 GENTLE_WAKE_CRESCENDO_MINUTES_OPTIONS.forEach { mins ->
                     ExpressiveChoicePill(
                         label = strings.formatSleepTimerMinutes(mins),
                         selected = gentleWakeSettings.crescendoMinutes == mins,
                         accent = LevyraOrange,
-                        modifier = Modifier.weight(1f),
                         onClick = {
                             onGentleWakeSettingsChange(gentleWakeSettings.copy(crescendoMinutes = mins))
                         }
@@ -1260,25 +1258,22 @@ private fun GentleWakeTimeSelector(
             fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold
         )
+        Text(
+            text = String.format(locale, "%02d:%02d", hour, minute),
+            color = LevyraText,
+            fontSize = 34.sp,
+            fontWeight = FontWeight.ExtraBold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                TimeStepChip(label = "-1h", accent = accent) { adjustBy(-60) }
-                TimeStepChip(label = "-5m", accent = accent) { adjustBy(-5) }
-            }
-            Text(
-                text = String.format(locale, "%02d:%02d", hour, minute),
-                color = LevyraText,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.ExtraBold
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                TimeStepChip(label = "+5m", accent = accent) { adjustBy(5) }
-                TimeStepChip(label = "+1h", accent = accent) { adjustBy(60) }
-            }
+            TimeStepChip(label = "-1h", accent = accent, modifier = Modifier.weight(1f)) { adjustBy(-60) }
+            TimeStepChip(label = "-5m", accent = accent, modifier = Modifier.weight(1f)) { adjustBy(-5) }
+            TimeStepChip(label = "+5m", accent = accent, modifier = Modifier.weight(1f)) { adjustBy(5) }
+            TimeStepChip(label = "+1h", accent = accent, modifier = Modifier.weight(1f)) { adjustBy(60) }
         }
     }
 }
@@ -1287,11 +1282,12 @@ private fun GentleWakeTimeSelector(
 private fun TimeStepChip(
     label: String,
     accent: Color,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     Box(
-        modifier = Modifier
-            .heightIn(min = 42.dp)
+        modifier = modifier
+            .heightIn(min = 48.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(accent.copy(alpha = 0.14f))
             .border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
@@ -1308,6 +1304,7 @@ private fun TimeStepChip(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun GentleWakeSourceSelector(
     copy: com.luc4n3x.levyra.ui.i18n.LevyraSmartListeningCopy,
@@ -1326,11 +1323,10 @@ private fun GentleWakeSourceSelector(
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold
         )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             val types = listOf(
                 Triple(GentleWakeSourceType.BUILT_IN_TONE, copy.sourceBuiltInTone, Icons.Rounded.AutoAwesome),
@@ -1372,6 +1368,7 @@ private fun GentleWakeSourceSelector(
                     artworkUrl = "",
                     selected = true,
                     fallbackIcon = Icons.Rounded.AutoAwesome,
+                    modifier = Modifier.fillMaxWidth(),
                     onClick = {}
                 )
             }
@@ -1565,11 +1562,11 @@ private fun SourceOptionCard(
     artworkUrl: String,
     selected: Boolean,
     fallbackIcon: ImageVector,
+    modifier: Modifier = Modifier.width(210.dp),
     onClick: () -> Unit
 ) {
     Row(
-        modifier = Modifier
-            .width(210.dp)
+        modifier = modifier
             .clip(RoundedCornerShape(18.dp))
             .background(if (selected) LevyraOrange.copy(alpha = 0.16f) else LevyraAdaptiveSubtle)
             .border(

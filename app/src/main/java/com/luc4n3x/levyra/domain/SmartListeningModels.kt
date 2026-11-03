@@ -10,6 +10,7 @@ import java.time.ZonedDateTime
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.log10
 import kotlin.math.pow
 import kotlin.math.sqrt
 import org.json.JSONArray
@@ -343,7 +344,8 @@ data class GentleWakeRuntimeState(
 )
 
 object GentleWakeCurve {
-    const val INITIAL_VOLUME_FRACTION: Float = 0.025f
+    const val INITIAL_VOLUME_FRACTION: Float = 0.04f
+    private const val EASE_OUT_EXPONENT: Float = 2f
 
     fun volumeAt(
         elapsedMs: Long,
@@ -354,9 +356,9 @@ object GentleWakeCurve {
         val start = INITIAL_VOLUME_FRACTION.coerceAtMost(cappedMax * 0.25f)
         if (totalDurationMs <= 0L) return cappedMax
         val progress = (elapsedMs.coerceAtLeast(0L).toFloat() / totalDurationMs.toFloat()).coerceIn(0f, 1f)
-        val smoothStep = progress * progress * (3f - 2f * progress)
-        val perceptual = smoothStep.pow(1.35f)
-        return (start + (cappedMax - start) * perceptual).coerceIn(start, cappedMax)
+        val startGainDb = 20f * log10(start / cappedMax)
+        val gainDb = startGainDb * (1f - progress).pow(EASE_OUT_EXPONENT)
+        return (cappedMax * 10f.pow(gainDb / 20f)).coerceIn(start, cappedMax)
     }
 
     fun snoozeFadeOutVolume(

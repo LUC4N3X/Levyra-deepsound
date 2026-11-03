@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import timber.log.Timber
+import kotlin.math.abs
 
 internal class MotionGestureController(
     context: Context,
@@ -51,6 +52,8 @@ internal class MotionGestureController(
     private var screenInteractive = powerManager?.isInteractive ?: true
     private var screenReceiverRegistered = false
     private var sensorsRegistered = false
+    private var registeredFlipSensor: Sensor? = null
+    private var registeredShakeSensor: Sensor? = null
 
     private var flipDetector = FlipGestureDetector(settings.flipConfirmationDelayMs)
     private val shakeDetector = ShakeGestureDetector()
@@ -142,42 +145,67 @@ internal class MotionGestureController(
         runCatching { appContext.unregisterReceiver(screenStateReceiver) }
     }
 
-    private fun shouldMonitorSensors(): Boolean {
-        val canAccept = PlaybackPriorityCoordinator.canAcceptMotionGesture(
-            motionEnabled = settings.hasActiveGesture && capability.isAvailable,
-            isPlaying = isPlaying,
-            gentleWakeRinging = gentleWakeRinging,
-            inVoiceCall = isVoiceCallActive(),
-            androidAutoConnected = androidAutoConnected
-        )
-        val screenAllowed = screenInteractive ||
-            (settings.allowScreenOffWhenSupported && capability.wakeUpSensorSupported)
-        return canAccept && screenAllowed
-    }
+    private fun canAcceptGestures(): Boolean = PlaybackPriorityCoordinator.canAcceptMotionGesture(
+        motionEnabled = settings.hasActiveGesture && capability.isAvailable,
+        isPlaying = isPlaying,
+        gentleWakeRinging = gentleWakeRinging,
+        inVoiceCall = isVoiceCallActive(),
+        androidAutoConnected = androidAutoConnected
+    )
 
     private fun reconcileRegistration() {
-        if (!shouldMonitorSensors()) {
+        val manager = sensorManager
+        if (manager == null || !canAcceptGestures()) {
             unregisterSensors()
             return
         }
 
-        if (sensorsRegistered) {
-            unregisterSensors()
+        val useWakeUp = !screenInteractive && capability.wakeUpSensorSupported
+        val flipTarget = if (settings.flipToPauseEnabled) flipSensorFor(useWakeUp) else null
+        val shakeAllowed = settings.shakeToSkipEnabled &&
+            MotionGestureRegistrationPolicy.shakeAllowed(screenInteractive, settings.allowScreenOffWhenSupported)
+        val shakeTarget = if (shakeAllowed) shakeSensorFor(useWakeUp) else null
+
+        if (sensorsRegistered && flipTarget == registeredFlipSensor && shakeTarget == registeredShakeSensor) {
+            return
         }
 
-        val manager = sensorManager ?: return
-        flipDetector.reset()
-        shakeDetector.reset()
+        val resumingMonitoring = sensorsRegistered
+        if (sensorsRegistered) {
+            runCatching { manager.unregisterListener(this) }
+        }
+        if (!resumingMonitoring) {
+            flipDetector.reset()
+            shakeDetector.reset()
+        }
 
-        val useWakeUp = !screenInteractive && settings.allowScreenOffWhenSupported && capability.wakeUpSensorSupported
-        val flipRegistered = settings.flipToPauseEnabled &&
-            registerSensor(manager, flipSensorFor(useWakeUp), SensorManager.SENSOR_DELAY_UI, 80_000)
-        val shakeRegistered = settings.shakeToSkipEnabled &&
-            registerSensor(manager, shakeSensorFor(useWakeUp), SensorManager.SENSOR_DELAY_GAME, 40_000)
+        val (flipRegistered, shakeRegistered) = registerTargets(manager, flipTarget, shakeTarget)
+        registeredFlipSensor = flipTarget.takeIf { flipRegistered }
+        registeredShakeSensor = shakeTarget.takeIf { shakeRegistered }
         val anyRegistered = flipRegistered || shakeRegistered
 
         sensorsRegistered = anyRegistered
+        if (!anyRegistered) {
+            flipDetector.reset()
+            shakeDetector.reset()
+        }
         _activeMonitoringFlow.value = anyRegistered
+    }
+
+    private fun registerTargets(
+        manager: SensorManager,
+        flipTarget: Sensor?,
+        shakeTarget: Sensor?
+    ): Pair<Boolean, Boolean> {
+        if (flipTarget != null && flipTarget == shakeTarget) {
+            val shared = registerSensor(manager, flipTarget, SensorManager.SENSOR_DELAY_GAME, 40_000)
+            return shared to shared
+        }
+        val flipRegistered = flipTarget != null &&
+            registerSensor(manager, flipTarget, SensorManager.SENSOR_DELAY_UI, 80_000)
+        val shakeRegistered = shakeTarget != null &&
+            registerSensor(manager, shakeTarget, SensorManager.SENSOR_DELAY_GAME, 40_000)
+        return flipRegistered to shakeRegistered
     }
 
     private fun flipSensorFor(useWakeUp: Boolean): Sensor? =
@@ -191,21 +219,25 @@ internal class MotionGestureController(
         if (useWakeUp) {
             wakeUpAccelerometer ?: defaultAccelerometer
         } else {
-            defaultAccelerometer ?: defaultGravitySensor
+            defaultAccelerometer
         }
 
     private fun registerSensor(
         manager: SensorManager,
-        sensor: Sensor?,
+        sensor: Sensor,
         samplingPeriod: Int,
         maxReportLatencyUs: Int
-    ): Boolean = sensor != null && manager.registerListener(this, sensor, samplingPeriod, maxReportLatencyUs)
+    ): Boolean = runCatching {
+        manager.registerListener(this, sensor, samplingPeriod, maxReportLatencyUs)
+    }.getOrDefault(false)
 
     private fun unregisterSensors() {
         if (sensorsRegistered) {
             runCatching { sensorManager?.unregisterListener(this) }
             sensorsRegistered = false
         }
+        registeredFlipSensor = null
+        registeredShakeSensor = null
         flipDetector.reset()
         shakeDetector.reset()
         _activeMonitoringFlow.value = false
@@ -213,37 +245,30 @@ internal class MotionGestureController(
 
     override fun onSensorChanged(event: SensorEvent?) {
         val safeEvent = event ?: return
-        if (!sensorsRegistered || !isPlaying || gentleWakeRinging || isVoiceCallActive() || androidAutoConnected) {
+        if (!sensorsRegistered || !isPlaying || gentleWakeRinging || androidAutoConnected) {
             return
         }
         val values = safeEvent.values
         if (values.size < 3) return
-        val nowMs = SystemClock.elapsedRealtime()
+        val sensor = safeEvent.sensor
+        val sampleMs = MotionGestureRegistrationPolicy.sampleTimeMs(safeEvent.timestamp, SystemClock.elapsedRealtime())
         val x = values[0]
         val y = values[1]
         val z = values[2]
 
-        when (safeEvent.sensor.type) {
-            Sensor.TYPE_GRAVITY -> {
-                if (settings.flipToPauseEnabled && flipDetector.onSensorSample(x, y, z, nowMs)) {
-                    Timber.i("MotionGestureController: flip-to-pause confirmed")
-                    onFlipToPause()
-                }
+        if (sensor == registeredFlipSensor && flipDetector.onSensorSample(x, y, z, sampleMs)) {
+            if (!isVoiceCallActive()) {
+                Timber.i("MotionGestureController: flip-to-pause confirmed (%s)", sensor.name)
+                onFlipToPause()
             }
-            Sensor.TYPE_ACCELEROMETER -> {
-                val useAccelForFlip = settings.flipToPauseEnabled && defaultGravitySensor == null
-                if (useAccelForFlip && flipDetector.onSensorSample(x, y, z, nowMs)) {
-                    Timber.i("MotionGestureController: flip-to-pause confirmed via accelerometer")
-                    onFlipToPause()
-                    return
-                }
-                if (settings.shakeToSkipEnabled &&
-                    shakeDetector.onAccelerometerSample(x, y, z, nowMs, settings.shakeSensitivity)
-                ) {
-                    Timber.i("MotionGestureController: shake-to-skip confirmed (%s)", settings.shakeSensitivity.id)
-                    onShakeToSkip()
-                }
-            }
+            return
+        }
+        if (sensor == registeredShakeSensor &&
+            shakeDetector.onAccelerometerSample(x, y, z, sampleMs, settings.shakeSensitivity) &&
+            !isVoiceCallActive()
+        ) {
+            Timber.i("MotionGestureController: shake-to-skip confirmed (%s)", settings.shakeSensitivity.id)
+            onShakeToSkip()
         }
     }
 
@@ -269,5 +294,17 @@ internal class MotionGestureController(
             _capabilityFlow.value = cap
             return cap
         }
+    }
+}
+
+internal object MotionGestureRegistrationPolicy {
+    private const val MAX_CLOCK_SKEW_MS = 10_000L
+
+    fun shakeAllowed(screenInteractive: Boolean, allowScreenOff: Boolean): Boolean =
+        screenInteractive || allowScreenOff
+
+    fun sampleTimeMs(eventTimestampNs: Long, elapsedRealtimeMs: Long): Long {
+        val eventMs = eventTimestampNs / 1_000_000L
+        return if (eventMs > 0L && abs(elapsedRealtimeMs - eventMs) <= MAX_CLOCK_SKEW_MS) eventMs else elapsedRealtimeMs
     }
 }
