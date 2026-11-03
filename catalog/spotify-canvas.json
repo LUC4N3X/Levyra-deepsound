@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-02T16:14:02Z",
+  "generatedAt": "2026-11-03T01:01:58Z",
   "items": [
     {
       "song": "Sentire La Musica",
@@ -376,7 +376,7 @@
     {
       "song": "Man I Need",
       "artist": "Olivia Dean",
-      "album": "The Art of Loving",
+      "album": "Man I Need",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
@@ -448,6 +448,13 @@
       "artist": "Nelly Furtado, Timbaland",
       "album": "Loose",
       "url": "https://canvaz.scdn.co/upload/artist/2jw70GZXlAI8QzWeY2bgRc/video/f5ed7335efb648a9a4bdc04a5ab19178.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Iris",
+      "artist": "The Goo Goo Dolls",
+      "album": "Stay with You",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/4ab38c8ea56645c5ab7d8ebfb5e4edc2.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -579,7 +586,7 @@
     {
       "song": "Nice To Each Other",
       "artist": "Olivia Dean",
-      "album": "The Art of Loving",
+      "album": "Nice To Each Other",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/aca2daddec534de8a3bcc1de7200d256.cnvs.mp4",
       "scope": "track"
     },
@@ -1823,13 +1830,6 @@
       "scope": "track"
     },
     {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "Man I Need",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Rapido",
       "artist": "Bankzitters, Robert van Hemert",
       "album": "Rapido",
@@ -2586,6 +2586,13 @@
       "scope": "track"
     },
     {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "The Art of Loving",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Ingen Kommentar",
       "artist": "Noah Carter",
       "album": "Noahs Ark II",
@@ -2891,6 +2898,237 @@
       "artist": "IVAN LIULENOV, DAMNITSKYI",
       "album": "ШОВКОВИЦЯ",
       "url": "https://canvaz.scdn.co/upload/artist/4xhNOTAubxW5eBEXohgxIs/video/e4b4a8a5f7ad4319937e407e895203ec.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Dale",
+      "artist": "VOLB3X, Siadou",
+      "album": "Dale",
+      "url": "https://canvaz.scdn.co/upload/licensor/2Y9QpVq23PTBtMZwyCwosk/video/5beebf599ee84b138a36d99b68c7cdc1.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Black Widow",
+      "artist": "VOLB3X",
+      "album": "Black Widow",
+      "url": "https://canvaz.scdn.co/upload/artist/29nkqEfPr4KzAnoDcKriTu/video/871023500673461f8650724643bec59b.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Driftin'",
+      "artist": "GHALIA, IMPSTR",
+      "album": "Driftin'",
+      "url": "https://canvaz.scdn.co/upload/artist/7G25QOtyexazRpK1ZYqhOc/video/b9ffb59882ec40c599b5a49e049dd32f.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Enjoy The Silence",
+      "artist": "Next Promises, Sonaba",
+      "album": "Enjoy The Silence",
+      "url": "https://canvaz.scdn.co/upload/artist/5LiU09JFPCk43nglKY1aHu/video/e93f791d125a47149915d0b635d08dde.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Let It Be",
+      "artist": "AVDJI",
+      "album": "Let It Be",
+      "url": "https://canvaz.scdn.co/upload/artist/7DWWe7GaXyqBS4VpHg2ZjY/video/de788d679ee14c40931ffc039a436f76.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Can U See Me",
+      "artist": "BARIŞ BERBER",
+      "album": "Can U See Me",
+      "url": "https://canvaz.scdn.co/upload/artist/2Nv2Yytr23u7EnwiugU2Yv/video/897536e7d33c4e7abe1e86a18c8b06f0.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Nomad",
+      "artist": "Hylost",
+      "album": "Nomad",
+      "url": "https://canvaz.scdn.co/upload/artist/24XmLX09IoRFjNcrOsUulE/video/4cc28d580e544c6a8cc36f8fb125cea4.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Voice of a New Dawn",
+      "artist": "Moosa Saleem, Lineage",
+      "album": "Voice of a New Dawn",
+      "url": "https://canvaz.scdn.co/upload/artist/7uH2uNVq6CU00yQsYpKFiJ/video/546ebb6ae684496cb17070198bdb5320.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Chem Trail",
+      "artist": "Setou & Senyo, Lil Eddie, DobleU",
+      "album": "Chem Trail",
+      "url": "https://canvaz.scdn.co/upload/licensor/2Y9QpVq23PTBtMZwyCwosk/video/32a1070f017041aea6bbeda54b9ce925.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Open Your Eyes",
+      "artist": "SINAN, Zahdiel",
+      "album": "Open Your Eyes",
+      "url": "https://canvaz.scdn.co/upload/artist/53if93AW8Qh39CgGFF5t62/video/8535422fcbf5491d831c6728a5c0acdf.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Don't You Worry Child",
+      "artist": "Next Promises",
+      "album": "Don't You Worry Child",
+      "url": "https://canvaz.scdn.co/upload/artist/5LiU09JFPCk43nglKY1aHu/video/171965fac5a34aac81a79c7e541b2353.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Wasted Love",
+      "artist": "GHALIA, Anika, MAESTRI",
+      "album": "Wasted Love",
+      "url": "https://canvaz.scdn.co/upload/artist/7G25QOtyexazRpK1ZYqhOc/video/14407adae54d41ea86ccd06d400acc8d.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Karma",
+      "artist": "Olivia Addams",
+      "album": "Summer Dance Hits 2025",
+      "url": "https://canvaz.scdn.co/upload/artist/56o9EclNeDcE7p8txENfLn/video/fe88e4ad987e43cb8a8da6338e597f6a.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Lady (Hear Me Tonight)",
+      "artist": "Next Promises, OUTRAGE",
+      "album": "Lady (Hear Me Tonight)",
+      "url": "https://canvaz.scdn.co/upload/artist/5LiU09JFPCk43nglKY1aHu/video/54219dc979464b64b1172604d59aa73e.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Faded",
+      "artist": "MWH",
+      "album": "Faded",
+      "url": "https://canvaz.scdn.co/upload/artist/1F5EgTwaHXl5PgfZaqdD7l/video/d382351acb6943d79e427fc9fcc0557a.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Unstoppable",
+      "artist": "Bahni, Aize",
+      "album": "Unstoppable",
+      "url": "https://canvaz.scdn.co/upload/artist/4WxQgavN3db61Xi9XCGQBa/video/9be16767fcb640c0bd42542cc5c8fd9d.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Lose Myself Tonight",
+      "artist": "TØRISMAD",
+      "album": "Lose Myself Tonight",
+      "url": "https://canvaz.scdn.co/upload/artist/48TwJJw5yBLn6sqZqJR5re/video/6342c4daa55945dba0fee7724fbed1be.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Prayer in C",
+      "artist": "Ellister",
+      "album": "Prayer in C",
+      "url": "https://canvaz.scdn.co/upload/artist/0mMd8Kof3AjcIvVPHP4vuj/video/b8c0e75f13a8433294fe1a481bd2d4d6.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Believe",
+      "artist": "Acko, Swae Boy, SRJY",
+      "album": "Believe",
+      "url": "https://canvaz.scdn.co/upload/artist/0bchw6MIrkOUAU5E0sP0Gd/video/72348995c3194ddab71080da7d4669c9.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "I Kissed A Girl",
+      "artist": "RRIDAH, MWH",
+      "album": "I Kissed A Girl",
+      "url": "https://canvaz.scdn.co/upload/artist/1F5EgTwaHXl5PgfZaqdD7l/video/7bd5f4d7f5b9473e8e299d893a0cd08b.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Celebrate",
+      "artist": "Jakblauz",
+      "album": "Celebrate",
+      "url": "https://canvaz.scdn.co/upload/artist/0jBf3A4p8Cv5UovH9LPDvg/video/127fe1456f204049916767ed26d99842.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Man On The Internet",
+      "artist": "Ex Music, Boy Acuff",
+      "album": "Man On The Internet",
+      "url": "https://canvaz.scdn.co/upload/artist/4UdV3xkQivY94241kmSshU/video/7cdd83cc4c094c8babb3e7ef3960ebb6.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Lead Me",
+      "artist": "Jon Castel, Lineage",
+      "album": "Lead Me",
+      "url": "https://canvaz.scdn.co/upload/artist/1JzUHvCe2YaqJ4eKzMPBfq/video/7895124b30f34f4a80aee5633f403e68.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Feel The Bass",
+      "artist": "M!NTɆX, BadMakers",
+      "album": "Feel The Bass",
+      "url": "https://canvaz.scdn.co/upload/artist/7q4I8MPHx2vtdaDuEwHmFT/video/1a5aad815dbe45b2affcfd1b7456582b.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Break My Heart",
+      "artist": "RUSH",
+      "album": "Break My Heart",
+      "url": "https://canvaz.scdn.co/upload/artist/4utRxiFtqide5WxqmIesX1/video/d5500616ecbc4db89b08999fd79d7aec.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "1, 2 Step",
+      "artist": "Ellister, Krayoni, Rawanne",
+      "album": "1, 2 Step",
+      "url": "https://canvaz.scdn.co/upload/artist/0mMd8Kof3AjcIvVPHP4vuj/video/2f72a39a93bf401bb03ab29cb240b923.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "RIGHT",
+      "artist": "HYPR, M!NTɆX",
+      "album": "RIGHT",
+      "url": "https://canvaz.scdn.co/upload/artist/7q4I8MPHx2vtdaDuEwHmFT/video/ae9d6a94e49948338a0d981a5459bf6b.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Fruity",
+      "artist": "RUSH",
+      "album": "Fruity",
+      "url": "https://canvaz.scdn.co/upload/artist/4utRxiFtqide5WxqmIesX1/video/71d93fec33e849c3aafc4b1af5d69516.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Festa",
+      "artist": "GeeKan, Sama D.",
+      "album": "Festa",
+      "url": "https://canvaz.scdn.co/upload/artist/75RUOHHM8vVH1EEgeZOMMT/video/581f28b954874d038653e42acb78a720.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Feel Dat",
+      "artist": "Anar Gasimov",
+      "album": "Feel Dat",
+      "url": "https://canvaz.scdn.co/upload/artist/2lSGu9AjDkj8ebLm1gRsXQ/video/61a14ccefdb44894bad0a67b72a8d479.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "No Stopping",
+      "artist": "RadWulf, AdamDarling, ZEETS",
+      "album": "No Stopping",
+      "url": "https://canvaz.scdn.co/upload/artist/5G1S3UDl45hYFHLRkz3EVE/video/7beca8c8bc2445d9b5930ea786ce2deb.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Who This",
+      "artist": "ODENN, Onur Enfal",
+      "album": "Who This",
+      "url": "https://canvaz.scdn.co/upload/artist/1kI91ce6uHcJZymFcavzZL/video/d368805137e84aa8b14fb0ab8778100f.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Perfection",
+      "artist": "ZVBXR, RUTA",
+      "album": "Perfection",
+      "url": "https://canvaz.scdn.co/upload/artist/092VXJBobAtcfVU1aF1w3s/video/ecb9e2a3813a464f94313ae36b0d9c0f.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4567,13 +4805,6 @@
       "scope": "track"
     },
     {
-      "song": "Iris",
-      "artist": "The Goo Goo Dolls",
-      "album": "Stay with You",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/4ab38c8ea56645c5ab7d8ebfb5e4edc2.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Every Breath You Take",
       "artist": "The Police",
       "album": "Synchronicity (Remastered 2003)",
@@ -4744,7 +4975,7 @@
     {
       "song": "Nice To Each Other",
       "artist": "Olivia Dean",
-      "album": "Nice To Each Other",
+      "album": "The Art of Loving",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/aca2daddec534de8a3bcc1de7200d256.cnvs.mp4",
       "scope": "track"
     },
@@ -4767,13 +4998,6 @@
       "artist": "Kings of Leon",
       "album": "Mechanical Bull (Expanded Edition)",
       "url": "https://canvaz.scdn.co/upload/artist/2qk9voo8llSGYcZ6xrBzKx/video/5c85e36240854484b9bb264db8d4cf84.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "The One That Got Away",
-      "artist": "Katy Perry",
-      "album": "Teenage Dream",
-      "url": "https://canvaz.scdn.co/upload/artist/6jJ0s89eD6GaHleKKya26X/video/f374d8ce515d475489868ec09202c9a1.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4865,6 +5089,13 @@
       "artist": "Galin, KSIOR",
       "album": "На пожар",
       "url": "https://canvaz.scdn.co/upload/licensor/2M11JUmsiaOPqoBujzcFEC/video/44743f1569a84178b8a908afc3876f67.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Изневяра",
+      "artist": "Emanuela",
+      "album": "Изневяра",
+      "url": "https://canvaz.scdn.co/upload/licensor/2M11JUmsiaOPqoBujzcFEC/video/c06e8bf45ba240b1a33b6f0a40806e6e.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -5131,13 +5362,6 @@
       "artist": "Yeison Jimenez, Luis Alfonso",
       "album": "Destino Final",
       "url": "https://canvaz.scdn.co/upload/artist/3SEztK9fNxg81qZ8qETGNT/video/05470add1da94450b194330cb953a5f1.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "El Teléfono",
-      "artist": "Héctor \"El Father\", Wisin & Yandel",
-      "album": "Machete Music Chronicles: Vol. I",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/b23b719ccbb445188126f29f094d154a.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -5827,6 +6051,13 @@
       "scope": "track"
     },
     {
+      "song": "El Teléfono",
+      "artist": "Héctor \"El Father\", Wisin & Yandel",
+      "album": "Machete Music Chronicles: Vol. I",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/b23b719ccbb445188126f29f094d154a.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "666",
       "artist": "Yan Block, Cris MJ, Panda Black",
       "album": "666",
@@ -5858,7 +6089,7 @@
       "song": "I LIKE IT (feat. Loe Shimmy)",
       "artist": "BigXthaPlug, Loe Shimmy",
       "album": "BETTER OVER TIME",
-      "url": "https://canvaz.scdn.co/upload/licensor/6S70MLDkQRjy2RIyKIO2FC/video/de81986b07994b00a5a623e7ba272a55.cnvs.mp4",
+      "url": "https://canvaz.scdn.co/upload/licensor/6S70MLDkQRjy2RIyKIO2FC/video/df36f5c40326422aa60c8014b492fa97.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -6635,7 +6866,7 @@
       "song": "I LIKE IT (feat. Loe Shimmy)",
       "artist": "BigXthaPlug, Loe Shimmy",
       "album": "I LIKE IT (feat. Loe Shimmy)",
-      "url": "https://canvaz.scdn.co/upload/licensor/6S70MLDkQRjy2RIyKIO2FC/video/de81986b07994b00a5a623e7ba272a55.cnvs.mp4",
+      "url": "https://canvaz.scdn.co/upload/licensor/6S70MLDkQRjy2RIyKIO2FC/video/df36f5c40326422aa60c8014b492fa97.cnvs.mp4",
       "scope": "track"
     },
     {

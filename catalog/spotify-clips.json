@@ -103,7 +103,7 @@
    "title": "I LIKE IT (feat. Loe Shimmy)",
    "artist": "BigXthaPlug, Loe Shimmy",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273e1108a4abb822c713fe13a51",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/6S70MLDkQRjy2RIyKIO2FC/video/de81986b07994b00a5a623e7ba272a55.cnvs.mp4",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/6S70MLDkQRjy2RIyKIO2FC/video/df36f5c40326422aa60c8014b492fa97.cnvs.mp4",
    "spotifyTrackId": "27OOVdqE1aZI6scIxeES0T",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/a7e8923895e78ba9758160b179e522436f8adc70"
   },
@@ -1038,6 +1038,16 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/80c0bd68e652b85b6dfeac9c51da3c6e712116d7"
   },
   {
+   "id": "levyra-abcefdcdd14811510835",
+   "genre": "dance-party",
+   "title": "Friday (feat. Mufasa & Hypeman) - Dopamine Re-Edit",
+   "artist": "Riton, Nightcrawlers, Mufasa & Hypeman, Mufasa, Dopamine",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273815cb538fd7821595b2bc8c5",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/617e7b002d6f4df8a703a096dfcc7efb.cnvs.mp4",
+   "spotifyTrackId": "4cG7HUWYHBV6R6tHn1gxrl",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/0a9ed687dddcd95c83e37099958bdc6d54430e4d"
+  },
+  {
    "id": "levyra-ec81c9a2aa0e07366fc4",
    "genre": "dance-party",
    "title": "Good Girl",
@@ -1046,6 +1056,16 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/7MdlXmq2HViAJWo9cf30sR/video/04f523b582da47fa9f399b1f1f3462e1.cnvs.mp4",
    "spotifyTrackId": "263Ecah3YA4hVZHxR2Ex9p",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/099eb86040fe00c6e7f14328f5cec483542728a5"
+  },
+  {
+   "id": "levyra-032fa13818ecee393548",
+   "genre": "dance-party",
+   "title": "World Hold On - FISHER Rework",
+   "artist": "Bob Sinclar, FISHER, Steve Edwards",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2731145b908b1822b273a2379de",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/5YFS41yoX0YuFY39fq21oN/video/557a03099be6415c86c6955268e7a373.cnvs.mp4",
+   "spotifyTrackId": "6t180YbVeK9MWrj2zjMr5Z",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/adae361145c433bcc47279b57374767940b96957"
   },
   {
    "id": "levyra-eb856260d385e91e9a37",
@@ -1066,26 +1086,6 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/741fb252d45c4856b3d63edfe826c7db.cnvs.mp4",
    "spotifyTrackId": "5ZduaRci3iNUiDfJbBfAaf",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/50081928cfabde0d63a4d78f893542711259652d"
-  },
-  {
-   "id": "levyra-032fa13818ecee393548",
-   "genre": "dance-party",
-   "title": "World Hold On - FISHER Rework",
-   "artist": "Bob Sinclar, FISHER, Steve Edwards",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2731145b908b1822b273a2379de",
-   "canvasUrl": "https://canvaz.scdn.co/upload/artist/5YFS41yoX0YuFY39fq21oN/video/557a03099be6415c86c6955268e7a373.cnvs.mp4",
-   "spotifyTrackId": "6t180YbVeK9MWrj2zjMr5Z",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/adae361145c433bcc47279b57374767940b96957"
-  },
-  {
-   "id": "levyra-abcefdcdd14811510835",
-   "genre": "dance-party",
-   "title": "Friday (feat. Mufasa & Hypeman) - Dopamine Re-Edit",
-   "artist": "Riton, Nightcrawlers, Mufasa & Hypeman, Mufasa, Dopamine",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273815cb538fd7821595b2bc8c5",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/617e7b002d6f4df8a703a096dfcc7efb.cnvs.mp4",
-   "spotifyTrackId": "4cG7HUWYHBV6R6tHn1gxrl",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/0a9ed687dddcd95c83e37099958bdc6d54430e4d"
   },
   {
    "id": "levyra-8739c72808e270fed5b2",
@@ -1118,16 +1118,6 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/ec2aa978d0aa75eb24054af59554e0e63d44537e"
   },
   {
-   "id": "levyra-e38ca6ceb21d47433340",
-   "genre": "dance-party",
-   "title": "Smack Yo'",
-   "artist": "Beltran",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2736dcfcf7e021ccc5791eb2a29",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/2Y9QpVq23PTBtMZwyCwosk/video/00cb73609d1848168b7d713713104917.cnvs.mp4",
-   "spotifyTrackId": "2UdCQIDwFvGhslUYZH5tRR",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/9029ddfed3e4a7c48767ab7c08f0e60631461cbb"
-  },
-  {
    "id": "levyra-26c5b7268c0b366bd4b0",
    "genre": "dance-party",
    "title": "Positive",
@@ -1138,14 +1128,24 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/265e15be487a4b6bbabacc8c565afdbee404e045"
   },
   {
-   "id": "levyra-3694cc14be3c6267960e",
+   "id": "levyra-e38ca6ceb21d47433340",
    "genre": "dance-party",
-   "title": "Victory Lap",
-   "artist": "Fred again.., Skepta, PlaqueBoyMax",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273bf705b821b031cefe91d7b90",
-   "canvasUrl": "https://canvaz.scdn.co/upload/artist/4oLeXFyACqeem2VImYeBFe/video/9c078aa3c74646069b43d64e4db84b9d.cnvs.mp4",
-   "spotifyTrackId": "1lbNgoJ5iMrMluCyhI4OQP",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/7a52939c36a748786e19a2a4d640c5852d4ae55b"
+   "title": "Smack Yo'",
+   "artist": "Beltran",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2736dcfcf7e021ccc5791eb2a29",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/2Y9QpVq23PTBtMZwyCwosk/video/00cb73609d1848168b7d713713104917.cnvs.mp4",
+   "spotifyTrackId": "2UdCQIDwFvGhslUYZH5tRR",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/9029ddfed3e4a7c48767ab7c08f0e60631461cbb"
+  },
+  {
+   "id": "levyra-e32935668cb20681852b",
+   "genre": "dance-party",
+   "title": "Prada",
+   "artist": "cassö, RAYE, D-Block Europe",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273e4b7dccdfd54375ded9ccc5c",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/bcb5bcd55e5549759ae03392df3a8b12.cnvs.mp4",
+   "spotifyTrackId": "59NraMJsLaMCVtwXTSia8i",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/07ca5d41f53802807fd40d2778e66f633a2f3b8b"
   },
   {
    "id": "levyra-0d219238795bf93e0ba3",
@@ -1578,14 +1578,14 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/58f29909978e2e110e990788a1247232f0c1151a"
   },
   {
-   "id": "levyra-8b8835c6895de731c21b",
+   "id": "levyra-ccebc3c606a86bc967d6",
    "genre": "edm",
-   "title": "Sh*t's On F*re",
-   "artist": "Virtual Riot",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273f782f857dea21319097c5720",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/0JQjqa5cooeB27reBZbl5m/video/71a911a2b8b34668831c7ac37d20d5b9.cnvs.mp4",
-   "spotifyTrackId": "53VFQ23T8h7f4ECrih68nP",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/4419adf7de02464bd8f5b15c9aa9bfad864fd01a"
+   "title": "crystallized (feat. Inéz) - Subtronics Remix",
+   "artist": "John Summit, Subtronics, Inéz",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27369b2ee70a8319389df3b595e",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/7kNqXtgeIwFtelmRjWv205/video/d36f753d8bf243e3beb670af4074bbef.cnvs.mp4",
+   "spotifyTrackId": "0nRYjxQQCzMVyjgpTtKjLt",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/a0d352546af3b8d7a4daec5fba655c8e9231c430"
   },
   {
    "id": "levyra-36500f4c3e644960d645",
