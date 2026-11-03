@@ -76,6 +76,7 @@ internal object YoutubeClientFailureAttribution {
         if (YoutubePlaybackSecurity.isLocalRuntimeFailure(error)) return YoutubeClientFailureScope.NOT_ATTRIBUTABLE
         val chain = generateSequence(error) { it.cause }.take(MAX_CAUSE_DEPTH).toList()
         val request = chain.firstNotNullOfOrNull { it as? YoutubePlayerRequestException }
+        if (request?.noPlayableStream == true) return YoutubeClientFailureScope.NOT_ATTRIBUTABLE
         request?.playabilityScope?.let { return it }
         val code = request?.httpCode
         if (code != null) {

@@ -99,8 +99,13 @@ class YoutubeLocalDecoder private constructor(
             }
         } catch (error: ParsingException) {
             throw error
+        } catch (error: TimeoutCancellationException) {
+            throw ParsingException("Local YouTube decoder timed out during $label", error)
         } catch (error: CancellationException) {
-            throw ParsingException("Local YouTube decoder cancelled during $label", error)
+            throw error
+        } catch (error: InterruptedException) {
+            Thread.currentThread().interrupt()
+            throw CancellationException("Local YouTube decoder interrupted during $label").apply { initCause(error) }
         } catch (error: Throwable) {
             throw ParsingException("Local YouTube decoder failed during $label", error)
         }

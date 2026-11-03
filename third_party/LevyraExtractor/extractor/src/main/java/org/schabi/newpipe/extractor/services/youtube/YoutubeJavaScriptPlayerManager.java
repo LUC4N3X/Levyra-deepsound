@@ -8,16 +8,20 @@ import org.schabi.newpipe.extractor.downloader.Response;
 import org.schabi.newpipe.extractor.exceptions.ParsingException;
 import org.schabi.newpipe.extractor.exceptions.ReCaptchaException;
 import org.schabi.newpipe.extractor.localization.Localization;
-import org.schabi.newpipe.extractor.utils.Parser;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
 import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 /**
  * Manage the extraction and the usage of YouTube's player JavaScript needed data in the YouTube
@@ -37,7 +41,7 @@ import java.util.regex.Pattern;
  */
 public final class YoutubeJavaScriptPlayerManager {
 
-    private static final Pattern THROTTLING_PARAM_PATTERN = Pattern.compile("[&?]n=([^&]+)");
+    private static final Pattern THROTTLING_PARAM_PATTERN = Pattern.compile("(?:^|&)n=([^&#]+)");
 
     private static final String LATEST_PLAYER_URL =
             "https://api.pipepipe.dev/decoder/latest-player";
@@ -146,8 +150,15 @@ public final class YoutubeJavaScriptPlayerManager {
         final String deobfuscatedThrottlingParameter = YoutubeApiDecoder.decodeThrottlingParameter(
                 metadata.playerId, obfuscatedThrottlingParameter);
 
-        return streamingUrl.replace(
-                obfuscatedThrottlingParameter, deobfuscatedThrottlingParameter);
+        final Matcher matcher = throttlingMatcher(streamingUrl);
+        if (!matcher.find()) return streamingUrl;
+        try {
+            return streamingUrl.substring(0, matcher.start(1))
+                    + URLEncoder.encode(deobfuscatedThrottlingParameter, StandardCharsets.UTF_8.name())
+                    + streamingUrl.substring(matcher.end(1));
+        } catch (final UnsupportedEncodingException error) {
+            throw new ParsingException("Could not encode throttling parameter", error);
+        }
     }
 
     /**
@@ -181,11 +192,16 @@ public final class YoutubeJavaScriptPlayerManager {
     @Nullable
     public static String getThrottlingParameterFromStreamingUrl(
             @Nonnull final String streamingUrl) {
-        try {
-            return Parser.matchGroup1(THROTTLING_PARAM_PATTERN, streamingUrl);
-        } catch (final Parser.RegexException e) {
-            return null;
-        }
+        final Matcher matcher = throttlingMatcher(streamingUrl);
+        return matcher.find() ? matcher.group(1) : null;
+    }
+
+    private static Matcher throttlingMatcher(@Nonnull final String url) {
+        final int fragment = url.indexOf('#');
+        final int end = fragment < 0 ? url.length() : fragment;
+        final int query = url.indexOf('?');
+        return THROTTLING_PARAM_PATTERN.matcher(url).region(
+                query < 0 || query >= end ? end : query + 1, end);
     }
 
     /**
@@ -244,6 +260,8 @@ public final class YoutubeJavaScriptPlayerManager {
                     nextRefreshAttemptAtMillis = 0L;
                     lastRefreshFailure = null;
                     return localMetadata;
+                } catch (final CancellationException error) {
+                    throw error;
                 } catch (final Exception error) {
                     localFailure = error instanceof ParsingException
                             ? (ParsingException) error

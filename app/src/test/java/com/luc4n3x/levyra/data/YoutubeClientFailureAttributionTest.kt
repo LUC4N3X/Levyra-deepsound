@@ -12,6 +12,13 @@ class YoutubeClientFailureAttributionTest {
         YoutubeClientFailureAttribution.playabilityScope(JSONObject(json))
 
     @Test
+    fun conclusiveFormatAbsenceDoesNotPoisonOtherVideosClientHealth() {
+        assertEquals(YoutubeClientFailureScope.NOT_ATTRIBUTABLE,
+            YoutubeClientFailureAttribution.scope(
+                YoutubePlayerRequestException(null, "empty", noPlayableStream = true)))
+    }
+
+    @Test
     fun botCheckIsAttributedToTheClient() {
         assertEquals(
             YoutubeClientFailureScope.CLIENT,

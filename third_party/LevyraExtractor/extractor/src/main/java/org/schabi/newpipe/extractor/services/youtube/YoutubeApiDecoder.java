@@ -17,8 +17,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
 
 /**
  * Decoder for YouTube signature and throttling parameters using the PipePipe API.
@@ -105,6 +107,8 @@ public final class YoutubeApiDecoder {
                 requireTransformed(value, decodedValue, "Local decoder", paramType);
                 DECODE_CACHE.put(cacheKey, decodedValue);
                 return decodedValue;
+            } catch (final CancellationException error) {
+                throw error;
             } catch (final Exception error) {
                 localFailure = error instanceof ParsingException
                         ? (ParsingException) error
@@ -139,6 +143,8 @@ public final class YoutubeApiDecoder {
 
             DECODE_CACHE.put(cacheKey, decodedValue);
             return decodedValue;
+        } catch (final CancellationException error) {
+            throw error;
         } catch (final Exception error) {
             final ParsingException failure = error instanceof ParsingException
                     ? (ParsingException) error
@@ -183,16 +189,22 @@ public final class YoutubeApiDecoder {
                                          @Nullable final List<String> signatureParams,
                                          @Nullable final List<String> nParams)
             throws ParsingException {
+        final List<String> signatures = signatureParams == null ? null
+                : new java.util.ArrayList<>(new LinkedHashSet<>(signatureParams));
+        final List<String> nParameters = nParams == null ? null
+                : new java.util.ArrayList<>(new LinkedHashSet<>(nParams));
         ParsingException localFailure = null;
         final YoutubeJavaScriptDecoder decoder = localDecoder;
         if (decoder != null) {
             try {
                 final BatchDecodeResult local = decoder.decodeBatch(
-                        playerId, signatureParams, nParams);
-                cacheBatchResult(playerId, local, signatureParams, nParams);
-                requireComplete(local.getSignatures(), signatureParams, "signature");
-                requireComplete(local.getNParameters(), nParams, "n parameter");
+                        playerId, signatures, nParameters);
+                cacheBatchResult(playerId, local, signatures, nParameters);
+                requireComplete(local.getSignatures(), signatures, "signature");
+                requireComplete(local.getNParameters(), nParameters, "n parameter");
                 return local;
+            } catch (final CancellationException error) {
+                throw error;
             } catch (final Exception error) {
                 localFailure = error instanceof ParsingException
                         ? (ParsingException) error
@@ -201,7 +213,7 @@ public final class YoutubeApiDecoder {
         }
 
         try {
-            return decodeBatchRemote(playerId, signatureParams, nParams);
+            return decodeBatchRemote(playerId, signatures, nParameters);
         } catch (final ParsingException remoteFailure) {
             if (localFailure != null) {
                 remoteFailure.addSuppressed(localFailure);
@@ -368,6 +380,8 @@ public final class YoutubeApiDecoder {
             throw new ParsingException("Failed to call batch decode API", e);
         } catch (final JsonParserException e) {
             throw new ParsingException("Failed to parse batch API response", e);
+        } catch (final CancellationException e) {
+            throw e;
         } catch (final Exception e) {
             throw e instanceof ParsingException
                     ? (ParsingException) e

@@ -88,6 +88,33 @@ class SabrSegmentAssemblerTest {
     }
 
     @Test
+    fun replacingAHeaderAtCapacityKeepsOtherActiveSegments() {
+        val assembler = SabrSegmentAssembler(targetItag = 140, maxTrackedHeaders = 2)
+        assembler.onMediaHeader(header(id = 0, itag = 140, start = 0L))
+        assembler.onMediaHeader(header(id = 1, itag = 140, start = 10L))
+        assembler.onMediaHeader(header(id = 1, itag = 140, start = 20L))
+
+        assertEquals(SabrMediaWindow(1, 10), assembler.onMedia(0, 10, position = 0L))
+    }
+
+    @Test
+    fun addingAHeaderAtCapacityEvictsOnlyTheOldestSegment() {
+        val assembler = SabrSegmentAssembler(targetItag = 140, maxTrackedHeaders = 2)
+        repeat(3) { assembler.onMediaHeader(header(id = it, itag = 140, start = 0L)) }
+
+        assertNull(assembler.onMedia(0, 10, position = 0L))
+        assertEquals(SabrMediaWindow(1, 10), assembler.onMedia(1, 10, position = 0L))
+        assertEquals(SabrMediaWindow(1, 10), assembler.onMedia(2, 10, position = 0L))
+    }
+
+    @Test(expected = SabrProtocolException::class)
+    fun mediaRangeOverflowFailsBeforeUpdatingTheSegment() {
+        val assembler = SabrSegmentAssembler(targetItag = 140)
+        assembler.onMediaHeader(header(id = 0, itag = 140, start = Long.MAX_VALUE - 2))
+        assembler.onMedia(0, 10, position = 0L)
+    }
+
+    @Test
     fun headerTrackingStaysBounded() {
         val assembler = SabrSegmentAssembler(targetItag = 140, maxTrackedHeaders = 4)
         repeat(64) { index -> assembler.onMediaHeader(header(id = index, itag = 140, start = 0L)) }

@@ -11,6 +11,29 @@ import org.junit.Test
 
 class UmpReaderTest {
     @Test
+    fun zeroLengthBulkReadsStillMakeProgress() {
+        val payload = byteArrayOf(1, 2, 3)
+        val input = object : ByteArrayInputStream(umpPart(SabrPart.MEDIA, payload)) {
+            override fun read(target: ByteArray, offset: Int, length: Int): Int =
+                if (length == 0) 0 else if (available() == 0) -1 else 0
+        }
+        val reader = UmpReader(input)
+        assertTrue(reader.next())
+        assertArrayEquals(payload, reader.partPayload.copyOf(reader.partLength))
+    }
+
+    @Test(expected = java.io.InterruptedIOException::class)
+    fun interruptedReadsStopWithoutClearingTheInterrupt() {
+        Thread.currentThread().interrupt()
+        try {
+            UmpReader(ByteArrayInputStream(umpPart(SabrPart.MEDIA, byteArrayOf(1)))).next()
+        } finally {
+            assertTrue(Thread.currentThread().isInterrupted)
+            Thread.interrupted()
+        }
+    }
+
+    @Test
     fun decodesTheFramingObservedOnLiveSabrResponses() {
         // 0x33 0xa0 0x07 is the two-varint header of a 480 byte part observed on a real response.
         val payload = ByteArray(480) { (it % 251).toByte() }

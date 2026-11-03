@@ -71,7 +71,8 @@ internal data class YoutubePoTokens(
 internal class YoutubePlayerRequestException(
     val httpCode: Int?,
     message: String,
-    val playabilityScope: YoutubeClientFailureScope? = null
+    val playabilityScope: YoutubeClientFailureScope? = null,
+    val noPlayableStream: Boolean = false
 ) : IllegalStateException(message)
 
 internal class YoutubePoTokenRuntimeUnavailableException(
