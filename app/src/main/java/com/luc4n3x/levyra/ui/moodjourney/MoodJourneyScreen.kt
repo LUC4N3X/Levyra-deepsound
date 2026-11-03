@@ -12,8 +12,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -39,19 +41,22 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Remove
-import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -73,15 +78,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.DrawStyle
 import androidx.compose.ui.graphics.drawscope.Fill
@@ -101,6 +109,7 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -111,14 +120,18 @@ import com.luc4n3x.levyra.domain.MoodCurvePreset
 import com.luc4n3x.levyra.domain.MoodJourneyRequest
 import com.luc4n3x.levyra.domain.MoodJourneyStep
 import com.luc4n3x.levyra.domain.MoodPoint
+import com.luc4n3x.levyra.domain.MoodStyle
 import com.luc4n3x.levyra.domain.MoodTone
 import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.MoodStyleCopy
 import com.luc4n3x.levyra.ui.i18n.SmartMusicCopy
 import com.luc4n3x.levyra.ui.i18n.SmartMusicText
+import com.luc4n3x.levyra.ui.i18n.moodStyleCopy
 import com.luc4n3x.levyra.ui.i18n.smartMusicCopy
 import com.luc4n3x.levyra.ui.smartmusic.rememberPinMorph
 import com.luc4n3x.levyra.ui.smartmusic.rememberSelectionMorph
+import com.luc4n3x.levyra.ui.theme.AtelierDesign
 import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
 import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
 import com.luc4n3x.levyra.viewmodel.MoodJourneyController
@@ -141,11 +154,60 @@ internal fun MoodJourneyScreen(
     animated: Boolean,
     onClose: () -> Unit,
     onPlay: () -> Unit,
-    onAddToQueue: () -> Unit
+    onAddToQueue: () -> Unit,
+    backEnabled: Boolean = true,
+    onPlayFrom: (String) -> Unit = {}
 ) {
-    BackHandler(onBack = onClose)
+    BackHandler(enabled = backEnabled, onBack = onClose)
+    val atelier = activeMoodArcSkin() == MoodArcSkin.Atelier
+    val baseScheme = MaterialTheme.colorScheme
+    val screenScheme = if (atelier) atelierMoodScheme(baseScheme, AtelierDesign.accent) else baseScheme
+    MaterialTheme(colorScheme = screenScheme, typography = MaterialTheme.typography, shapes = MaterialTheme.shapes) {
+        MoodJourneyContent(session, controller, animated, onClose, onPlay, onAddToQueue, onPlayFrom, atelier)
+    }
+}
+
+@Composable
+private fun atelierMoodScheme(base: ColorScheme, accent: Color): ColorScheme = remember(base, accent) {
+    base.copy(
+        primary = accent,
+        onPrimary = AtelierDesign.onAccent,
+        primaryContainer = accent.copy(alpha = 0.2f).compositeOver(AtelierDesign.panel),
+        onPrimaryContainer = AtelierDesign.accentBright,
+        secondary = AtelierDesign.accentBright,
+        secondaryContainer = AtelierDesign.panelRaised,
+        onSecondaryContainer = AtelierDesign.text,
+        tertiary = AtelierDesign.accentBright,
+        tertiaryContainer = AtelierDesign.cabinet,
+        onTertiaryContainer = AtelierDesign.text,
+        background = AtelierDesign.room,
+        surface = AtelierDesign.room,
+        onSurface = AtelierDesign.text,
+        onSurfaceVariant = AtelierDesign.textSecondary,
+        surfaceContainerLowest = AtelierDesign.room,
+        surfaceContainerLow = AtelierDesign.cabinet,
+        surfaceContainer = AtelierDesign.panel,
+        surfaceContainerHigh = AtelierDesign.panelRaised,
+        surfaceContainerHighest = AtelierDesign.panelRaised.copy(alpha = 1f).compositeOver(AtelierDesign.hairlineStrong),
+        outline = AtelierDesign.textFaint,
+        outlineVariant = AtelierDesign.hairlineStrong
+    )
+}
+
+@Composable
+private fun MoodJourneyContent(
+    session: MoodJourneySession,
+    controller: MoodJourneyController,
+    animated: Boolean,
+    onClose: () -> Unit,
+    onPlay: () -> Unit,
+    onAddToQueue: () -> Unit,
+    onPlayFrom: (String) -> Unit,
+    atelier: Boolean
+) {
     val strings = LocalLevyraStrings.current
     val copy = smartMusicCopy(strings.code)
+    val styleCopy = moodStyleCopy(strings.code)
     val scheme = MaterialTheme.colorScheme
     val style = rememberMoodArcStyle()
     var selectedPoint by rememberSaveable { mutableIntStateOf(0) }
@@ -153,8 +215,20 @@ internal fun MoodJourneyScreen(
     LaunchedEffect(session.savedPlaylistId) { if (session.savedPlaylistId != null) saveOpen = false }
     val mood = averageMood(session.curve)
     val wash = lerp(scheme.secondaryContainer, scheme.tertiaryContainer, mood.energy)
+    val glow = scheme.primary
     Surface(modifier = Modifier.fillMaxSize(), color = scheme.surface) {
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to wash.copy(alpha = 0.55f), 0.45f to scheme.surface))) {
+        Box(
+            Modifier.fillMaxSize().then(
+                if (atelier) {
+                    Modifier.drawBehind {
+                        val center = Offset(size.width * (0.2f + 0.6f * mood.energy), 0f)
+                        drawRect(Brush.radialGradient(listOf(glow.copy(alpha = 0.14f + 0.1f * mood.energy), Color.Transparent), center = center, radius = size.width * 1.1f))
+                    }
+                } else {
+                    Modifier.background(Brush.verticalGradient(0f to wash.copy(alpha = 0.55f), 0.45f to scheme.surface))
+                }
+            )
+        ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().statusBarsPadding(),
                 contentPadding = PaddingValues(bottom = 132.dp)
@@ -165,14 +239,15 @@ internal fun MoodJourneyScreen(
                         Column(Modifier.weight(1f).padding(horizontal = 8.dp)) {
                             Text(
                                 copy[SmartMusicText.MoodTitle],
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Black,
+                                style = if (atelier) MaterialTheme.typography.headlineLarge else MaterialTheme.typography.headlineSmall,
+                                fontWeight = if (atelier) FontWeight.Light else FontWeight.Black,
                                 color = scheme.onSurface,
                                 modifier = Modifier.semantics { heading() }
                             )
                             Text(copy[SmartMusicText.MoodSubtitle], style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
                         }
                     }
+                    if (atelier) Box(Modifier.padding(horizontal = 16.dp, vertical = 6.dp).fillMaxWidth().height(1.dp).background(AtelierDesign.hairline))
                 }
                 item(key = "curve") {
                     CurveEditor(
@@ -190,9 +265,10 @@ internal fun MoodJourneyScreen(
                 item(key = "controls") {
                     Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         PresetRow(animated, copy, controller::applyPreset)
-                        BrightnessControl(session, selectedPoint.coerceIn(0, session.curve.points.lastIndex), copy, controller)
+                        StyleSelector(session.styles, styleCopy, style, controller::selectStyle)
+                        ToneControl(session, selectedPoint.coerceIn(0, session.curve.points.lastIndex), styleCopy, controller)
                         LengthStepper(session.trackCount, copy, controller::setTrackCount)
-                        JourneyStatus(session, copy, animated)
+                        JourneyStatus(session, copy, styleCopy, animated)
                     }
                 }
                 val steps = session.result?.steps.orEmpty()
@@ -207,6 +283,8 @@ internal fun MoodJourneyScreen(
                         style = style,
                         onPin = { controller.togglePin(step.key) },
                         onExclude = { controller.exclude(step.key) },
+                        onPlay = { onPlayFrom(step.key) },
+                        cueSheet = atelier,
                         modifier = Modifier
                             .then(if (animated) Modifier.animateItem() else Modifier)
                             .padding(horizontal = 16.dp, vertical = 4.dp)
@@ -220,6 +298,7 @@ internal fun MoodJourneyScreen(
                 onAddToQueue = onAddToQueue,
                 onSave = { saveOpen = true },
                 onRegenerate = controller::regenerate,
+                atelier = atelier,
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
@@ -264,7 +343,13 @@ private fun CurveEditor(
     val peak = session.result?.peakIndex ?: -1
     val stepColors = remember(steps, style) { steps.map { style.toneColor(it.mood.energy, it.mood.valence) } }
     val reveal = rememberArcReveal(steps, animated)
-    Surface(color = panel, shape = style.panelShape, modifier = modifier.fillMaxWidth()) {
+    val atelierPanel = style.skin == MoodArcSkin.Atelier
+    Surface(
+        color = panel,
+        shape = style.panelShape,
+        border = if (atelierPanel) BorderStroke(1.dp, AtelierDesign.hairlineStrong) else null,
+        modifier = modifier.fillMaxWidth()
+    ) {
         Column {
             BoxWithConstraints(
                 Modifier
@@ -292,6 +377,7 @@ private fun CurveEditor(
                         val gy = pad + frame.usableH * band / 4f
                         drawLine(outline.copy(alpha = 0.28f), Offset(pad, gy), Offset(size.width - pad, gy), 1.dp.toPx())
                     }
+                    if (atelierPanel) drawAtelierRuler(frame, outline, size.width)
                     val target = targetPath(curve, frame::x, frame::y)
                     if (steps.isEmpty()) {
                         drawTargetOnly(curve, target, frame, style)
@@ -327,6 +413,22 @@ private fun CurveEditor(
             }
             if (steps.isNotEmpty()) ArcLegend(copy, style, stepColors)
         }
+    }
+}
+
+private fun DrawScope.drawAtelierRuler(frame: ArcFrame, color: Color, width: Float) {
+    val minor = 4.dp.toPx()
+    val major = 9.dp.toPx()
+    val stroke = 1.dp.toPx()
+    for (tick in 0..20) {
+        val y = frame.pad + frame.usableH * tick / 20f
+        val length = if (tick % 5 == 0) major else minor
+        drawLine(color.copy(alpha = if (tick % 5 == 0) 0.7f else 0.35f), Offset(width - length, y), Offset(width, y), stroke)
+    }
+    for (tick in 0..24) {
+        val x = frame.pad + frame.usableW * tick / 24f
+        val length = if (tick % 6 == 0) major else minor
+        drawLine(color.copy(alpha = if (tick % 6 == 0) 0.7f else 0.35f), Offset(x, size.height - length), Offset(x, size.height), stroke)
     }
 }
 
@@ -501,7 +603,7 @@ private fun CurveHandle(
     val targetY = frame.y(point.energy) - pointPx / 2f
     val y by animateFloatAsState(targetY, if (animated) spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessHigh) else snap(), label = "mood-point-y")
     val tone = style.toneColor(point.energy, point.valence)
-    val description = copy[SmartMusicText.MoodPointDescription]
+    val description = moodStyleCopy(LocalLevyraStrings.current.code).pointDescription
         .replace("{n}", (index + 1).toString())
         .replace("{e}", (point.energy * 100).roundToInt().toString())
         .replace("{b}", (point.valence * 100).roundToInt().toString())
@@ -646,24 +748,67 @@ private fun PresetRow(animated: Boolean, copy: SmartMusicCopy, onPreset: (MoodCu
 }
 
 @Composable
-private fun BrightnessControl(session: MoodJourneySession, selected: Int, copy: SmartMusicCopy, controller: MoodJourneyController) {
+private fun StyleSelector(selected: Set<MoodStyle>, copy: MoodStyleCopy, style: MoodArcStyle, onSelect: (MoodStyle?) -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val haptics = LocalLevyraHaptics.current
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(style.label(copy.title), style = MaterialTheme.typography.labelLarge, color = scheme.onSurface, modifier = Modifier.semantics { heading() })
+        Text(copy.hint, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            StyleChip(copy.mixed, selected.isEmpty(), style) {
+                haptics.perform(LevyraHapticAction.Confirm)
+                onSelect(null)
+            }
+            MoodStyle.entries.forEach { entry ->
+                StyleChip(copy.name(entry), entry in selected, style) {
+                    haptics.perform(LevyraHapticAction.Confirm)
+                    onSelect(entry)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StyleChip(label: String, selected: Boolean, style: MoodArcStyle, onClick: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val shape = if (selected) style.rowShapes.second else style.rowShapes.first
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier
+            .heightIn(min = 48.dp)
+            .clip(shape)
+            .background(if (selected) scheme.secondaryContainer else scheme.surfaceContainerHigh)
+            .border(1.dp, if (selected) scheme.secondary.copy(alpha = 0.6f) else Color.Transparent, shape)
+            .toggleable(value = selected, role = Role.Checkbox, onValueChange = { onClick() })
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+    ) {
+        if (selected) Icon(Icons.Rounded.Check, contentDescription = null, tint = scheme.onSecondaryContainer, modifier = Modifier.size(18.dp))
+        Text(label, style = MaterialTheme.typography.labelLarge, color = if (selected) scheme.onSecondaryContainer else scheme.onSurface, maxLines = 1)
+    }
+}
+
+@Composable
+private fun ToneControl(session: MoodJourneySession, selected: Int, copy: MoodStyleCopy, controller: MoodJourneyController) {
     val scheme = MaterialTheme.colorScheme
     val point = session.curve.points.getOrNull(selected)?.clamped() ?: return
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(copy[SmartMusicText.MoodBrightness], style = MaterialTheme.typography.labelLarge, color = scheme.onSurface, modifier = Modifier.weight(1f))
+            Text(copy.tone, style = MaterialTheme.typography.labelLarge, color = scheme.onSurface, modifier = Modifier.weight(1f))
             Text("${selected + 1}/${session.curve.points.size}", style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(copy[SmartMusicText.MoodDark], style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+            Text(copy.toneLow, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
             Slider(
                 value = point.valence,
                 onValueChange = { controller.movePoint(selected, MoodPoint(point.energy, it)) },
                 onValueChangeFinished = controller::commitCurve,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f).semantics { contentDescription = copy.tone }
             )
-            Text(copy[SmartMusicText.MoodBright], style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+            Text(copy.toneHigh, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
         }
+        Text(copy.toneHint, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
     }
 }
 
@@ -686,7 +831,7 @@ private fun LengthStepper(count: Int, copy: SmartMusicCopy, onCount: (Int) -> Un
 }
 
 @Composable
-private fun JourneyStatus(session: MoodJourneySession, copy: SmartMusicCopy, animated: Boolean) {
+private fun JourneyStatus(session: MoodJourneySession, copy: SmartMusicCopy, styleCopy: MoodStyleCopy, animated: Boolean) {
     val scheme = MaterialTheme.colorScheme
     AnimatedContent(
         targetState = session.stage,
@@ -697,7 +842,11 @@ private fun JourneyStatus(session: MoodJourneySession, copy: SmartMusicCopy, ani
             when (stage) {
                 MoodJourneyStage.Loading -> Text(copy[SmartMusicText.MoodLoading], style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
                 MoodJourneyStage.Generating -> Text(copy[SmartMusicText.MoodGenerating], style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
-                MoodJourneyStage.Empty -> Text(copy[SmartMusicText.MoodEmpty], style = MaterialTheme.typography.bodyMedium, color = scheme.onSurface)
+                MoodJourneyStage.Empty -> Text(
+                    if (session.styles.isEmpty()) copy[SmartMusicText.MoodEmpty] else styleCopy.empty,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = scheme.onSurface
+                )
                 MoodJourneyStage.Error -> Text(copy[SmartMusicText.MoodError], style = MaterialTheme.typography.bodyMedium, color = scheme.error)
                 MoodJourneyStage.Ready -> {
                     val metrics = session.result?.metrics
@@ -708,9 +857,11 @@ private fun JourneyStatus(session: MoodJourneySession, copy: SmartMusicCopy, ani
                     }
                 }
             }
-            val evidence = if (session.editorialPlaylists > 0) copy[SmartMusicText.MoodEvidence].replace("{n}", session.editorialPlaylists.toString())
+            val playlists = session.editorialPlaylists + session.stylePlaylists
+            val evidence = if (playlists > 0) copy[SmartMusicText.MoodEvidence].replace("{n}", playlists.toString())
             else copy[SmartMusicText.MoodEvidenceNone]
             if (stage != MoodJourneyStage.Loading) Text(evidence, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
+            if (session.stylesLoading) Text(styleCopy.loading, style = MaterialTheme.typography.bodySmall, color = scheme.primary)
             val shortfall = session.result?.shortfall ?: 0
             if (stage == MoodJourneyStage.Ready && shortfall > 0) {
                 Text(copy[SmartMusicText.MoodShortfall].replace("{n}", session.result?.steps?.size?.toString().orEmpty()), style = MaterialTheme.typography.bodySmall, color = scheme.tertiary)
@@ -738,6 +889,8 @@ private fun JourneyStepRow(
     style: MoodArcStyle,
     onPin: () -> Unit,
     onExclude: () -> Unit,
+    onPlay: () -> Unit,
+    cueSheet: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -748,12 +901,34 @@ private fun JourneyStepRow(
         modifier = modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(if (step.pinned) scheme.primaryContainer.copy(alpha = 0.55f) else scheme.surfaceContainer)
+            .then(
+                if (cueSheet) {
+                    Modifier.drawBehind {
+                        if (step.pinned) drawRect(scheme.primary, size = androidx.compose.ui.geometry.Size(3.dp.toPx(), size.height))
+                        drawLine(AtelierDesign.hairline, Offset(0f, size.height - 0.5f), Offset(size.width, size.height - 0.5f), 1.dp.toPx())
+                    }
+                } else {
+                    Modifier.background(if (step.pinned) scheme.primaryContainer.copy(alpha = 0.55f) else scheme.surfaceContainer)
+                }
+            )
+            .clickable(role = Role.Button, onClickLabel = step.track.title) {
+                haptics.perform(LevyraHapticAction.Confirm)
+                onPlay()
+            }
             .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        StepCover(index, step, tone, style)
+        if (cueSheet) {
+            Text(
+                (index + 1).toString().padStart(2, '0'),
+                style = MaterialTheme.typography.titleMedium,
+                fontFamily = FontFamily.Monospace,
+                color = if (step.pinned) scheme.primary else scheme.onSurfaceVariant,
+                modifier = Modifier.width(28.dp)
+            )
+        }
+        StepCover(index, step, tone, style, showIndex = !cueSheet)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(step.track.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = scheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(step.track.artist, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -767,7 +942,7 @@ private fun JourneyStepRow(
 }
 
 @Composable
-private fun StepCover(index: Int, step: MoodJourneyStep, tone: Color, style: MoodArcStyle) {
+private fun StepCover(index: Int, step: MoodJourneyStep, tone: Color, style: MoodArcStyle, showIndex: Boolean = true) {
     Box(Modifier.size(52.dp)) {
         AsyncImage(
             model = step.track.largeThumbnailUrl.ifBlank { step.track.thumbnailUrl },
@@ -775,7 +950,7 @@ private fun StepCover(index: Int, step: MoodJourneyStep, tone: Color, style: Moo
             contentScale = ContentScale.Crop,
             modifier = Modifier.size(52.dp).clip(style.coverShape).background(MaterialTheme.colorScheme.surfaceContainerHighest)
         )
-        Box(
+        if (showIndex) Box(
             Modifier
                 .align(Alignment.BottomEnd)
                 .offset(x = 4.dp, y = 4.dp)
@@ -872,14 +1047,16 @@ private fun JourneyActions(
     onAddToQueue: () -> Unit,
     onSave: () -> Unit,
     onRegenerate: () -> Unit,
+    atelier: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val scheme = MaterialTheme.colorScheme
     val ready = session.stage == MoodJourneyStage.Ready && !session.result?.steps.isNullOrEmpty()
     Surface(
-        color = scheme.surfaceContainerHigh,
-        shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
-        shadowElevation = 6.dp,
+        color = if (atelier) AtelierDesign.cabinet else scheme.surfaceContainerHigh,
+        shape = if (atelier) RectangleShape else RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+        shadowElevation = if (atelier) 0.dp else 6.dp,
+        border = if (atelier) BorderStroke(1.dp, AtelierDesign.hairlineStrong) else null,
         modifier = modifier.fillMaxWidth()
     ) {
         Row(

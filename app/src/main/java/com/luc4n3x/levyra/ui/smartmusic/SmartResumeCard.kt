@@ -208,6 +208,7 @@ private fun RewindLadder(settings: LevyraAudioSettings, animated: Boolean, copy:
             )
             val pauseLabel = copy[SmartMusicText.ResumeAfter].replace("{time}", pauseText(pause))
             val rewindLabel = if (rewind == 0L) "0 s" else copy[SmartMusicText.ResumeBack].replace("{n}", formatSeconds(rewind))
+            val rewindAmount = rewindAmountLabel(copy[SmartMusicText.ResumeBack], if (rewind == 0L) "0" else formatSeconds(rewind))
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -218,7 +219,7 @@ private fun RewindLadder(settings: LevyraAudioSettings, animated: Boolean, copy:
                 BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
                     val barHeight = (maxHeight - 22.dp) * (0.06f + 0.94f * fraction)
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(rewindLabel, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = scheme.onSurface, maxLines = 1)
+                        Text(rewindAmount, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = scheme.onSurface, maxLines = 1, softWrap = false)
                         Box(
                             Modifier
                                 .fillMaxWidth(0.62f)
@@ -258,6 +259,16 @@ private fun pauseText(ms: Long): String = when {
     ms < 60_000L -> "${ms / 1000} s"
     ms < 3_600_000L -> "${ms / 60_000L} min"
     else -> "${ms / 3_600_000L} h"
+}
+
+internal fun rewindAmountLabel(template: String, value: String): String {
+    val tail = template.substringAfter("{n}", "")
+    val unit = tail.trimStart().substringBefore(' ')
+    return when {
+        unit.isEmpty() -> value
+        tail.startsWith(" ") -> "$value $unit"
+        else -> "$value$unit"
+    }
 }
 
 private fun formatSeconds(ms: Long): String {

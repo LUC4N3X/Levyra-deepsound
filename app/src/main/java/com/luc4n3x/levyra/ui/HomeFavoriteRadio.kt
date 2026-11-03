@@ -60,9 +60,17 @@ internal fun LazyListScope.favoriteRadioSection(radio: HomeRadioState) {
 private fun HomeFavoriteRadio(radio: HomeRadioState) {
     val strings = LocalLevyraStrings.current
     val title = radioLibraryCopy(strings.code).favorites
-    val inset = when { LevyraIsAppleMusic -> AppleMusicDesign.gutter; LevyraIsYouTubeMusic -> YouTubeMusicDesign.gutter; else -> 24.dp }
+    val inset = when {
+        LevyraIsAppleMusic -> AppleMusicDesign.gutter
+        LevyraIsYouTubeMusic -> YouTubeMusicDesign.gutter
+        LevyraIsQobuz -> QobuzDesign.gutter
+        LevyraIsAtelier -> AtelierDesign.gutter
+        else -> 24.dp
+    }
     Column(verticalArrangement = Arrangement.spacedBy(if (LevyraSkinManagesLayout) 8.dp else 12.dp)) {
-        if (LevyraSkinManagesLayout && !LevyraIsAppleMusic && !LevyraIsYouTubeMusic) SkinSectionTitle(title, inset)
+        if (LevyraIsQobuz) QobuzSectionHeader(title, null, "", null, Modifier.padding(top = QobuzDesign.sectionGap))
+        else if (LevyraIsAtelier) AtelierSectionLabel(title)
+        else if (LevyraSkinManagesLayout && !LevyraIsAppleMusic && !LevyraIsYouTubeMusic) SkinSectionTitle(title, inset)
         else Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = LevyraText,
             modifier = Modifier.padding(horizontal = inset).semantics { heading() })
         when {

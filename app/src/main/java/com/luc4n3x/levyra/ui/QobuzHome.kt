@@ -77,6 +77,7 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LevyraQobuzSkinStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.QobuzSkinCopy
+import com.luc4n3x.levyra.ui.i18n.speedDialCopy
 import com.luc4n3x.levyra.ui.theme.QobuzDesign
 import com.luc4n3x.levyra.viewmodel.QobuzDiscoverTab
 import com.luc4n3x.levyra.viewmodel.QobuzDiscoverUiState
@@ -96,7 +97,8 @@ internal class QobuzHomeActions(
 internal class QobuzHomeExtras(
     val categories: List<ExploreCategory>,
     val followedArtistKeys: Set<String>,
-    val chartCountry: String
+    val chartCountry: String,
+    val pinnedCards: List<ComposedCard> = emptyList()
 )
 
 private sealed interface QobuzSeeAll {
@@ -106,6 +108,8 @@ private sealed interface QobuzSeeAll {
     data class Category(val category: ExploreCategory) : QobuzSeeAll
     data class Mix(val mix: QobuzMix) : QobuzSeeAll
 }
+
+private const val QobuzTabsKey = "qobuz-tabs"
 
 private typealias QobuzBlock = Pair<String, @Composable () -> Unit>
 
@@ -125,12 +129,20 @@ internal fun QobuzHomeContent(
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { LevyraQobuzSkinStrings.forCode(strings.code) }
     val discover = viewModel<QobuzDiscoverViewModel>()
+    val homeRadio = LocalHomeRadio.current
     val feed by discover.state.collectAsStateWithLifecycle()
     val playlist by discover.playlist.collectAsStateWithLifecycle()
     val locale = remember(strings.code, extras.chartCountry) { QobuzStore.locale(strings.code, extras.chartCountry) }
     val feedActive = composition?.showsSkinFeed != false
     LaunchedEffect(locale, feedActive) { if (feedActive) discover.load(locale) }
     var seeAll by remember { mutableStateOf<QobuzSeeAll?>(null) }
+    var shownTab by remember { mutableStateOf(feed.tab) }
+    LaunchedEffect(feed.tab) {
+        if (shownTab == feed.tab) return@LaunchedEffect
+        shownTab = feed.tab
+        val tabsIndex = homeListState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == QobuzTabsKey }?.index ?: return@LaunchedEffect
+        if (homeListState.firstVisibleItemIndex > tabsIndex) homeListState.scrollToItem(tabsIndex)
+    }
     val coveredSections = remember(composition?.blocks) {
         composition?.blocks.orEmpty().filterIsInstance<HomeBlock.Section>().mapTo(HashSet()) { it.id }
     }
@@ -154,9 +166,13 @@ internal fun QobuzHomeContent(
                 }
             }
             val feedItems: LazyListScope.() -> Unit = {
-                stickyHeader(key = "qobuz-tabs", contentType = "qobuz-tabs") {
+                stickyHeader(key = QobuzTabsKey, contentType = "qobuz-tabs") {
                     QobuzDiscoverTabs(copy, feed.tab, homeListState.firstVisibleItemIndex > 0, discover::selectTab)
                 }
+                if (feed.tab == QobuzDiscoverTab.Home && extras.pinnedCards.isNotEmpty() && HomeSectionId.SpeedDial !in coveredSections) {
+                    item(key = "qobuz-pinned", contentType = "qobuz-pinned") { kit.Cards(strings.speedDialCopy().title, extras.pinnedCards) }
+                }
+                if (feed.tab == QobuzDiscoverTab.Home && HomeSectionId.FavoriteRadio !in coveredSections) favoriteRadioSection(homeRadio)
                 qobuzHomeSections(data, actions.withCategory { seeAll = QobuzSeeAll.Category(it) }, extras, copy, feed, strings.personalOrbitTitle, strings.quickPicks,
                     onOpenPlaylist = discover::openPlaylist, onSeeAll = { seeAll = it }, onRetry = { discover.load(locale, force = true) },
                     coveredSections = coveredSections, composed = composition != null)
@@ -752,9 +768,11 @@ internal fun QobuzHomeEntry(
     homeRefreshing: Boolean,
     homePullState: PullToRefreshState,
     onPullRefresh: () -> Unit,
-    composition: ComposedHomeRequest? = null
+    composition: ComposedHomeRequest? = null,
+    speedDialPins: List<com.luc4n3x.levyra.domain.SpeedDialPin> = emptyList()
 ) {
     val strings = LocalLevyraStrings.current
+    val pinnedCards = remember(speedDialPins, viewModel) { speedDialCards(speedDialPins, viewModel::openSpeedDialPin) }
     val needsExplore = state.exploreCategories.isEmpty() && composition?.showsSkinFeed != false
     LaunchedEffect(needsExplore, strings.code) { if (needsExplore) viewModel.ensureExplore(strings) }
     QobuzHomeContent(
@@ -768,7 +786,7 @@ internal fun QobuzHomeEntry(
             languageCode = state.languageCode,
             addToQueue = viewModel::addToQueue
         ),
-        extras = QobuzHomeExtras(state.exploreCategories, state.followedArtistKeys, state.selectedChartId),
+        extras = QobuzHomeExtras(state.exploreCategories, state.followedArtistKeys, state.selectedChartId, pinnedCards),
         homeListState = homeListState,
         homeBottomInset = homeBottomInset,
         homeRefreshing = homeRefreshing,

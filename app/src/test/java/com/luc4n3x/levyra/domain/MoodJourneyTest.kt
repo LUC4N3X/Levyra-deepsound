@@ -219,11 +219,71 @@ class MoodJourneyTest {
     @Test
     fun curveCodecRoundTrips() {
         val curve = MoodCurve.preset(MoodCurvePreset.Summit, 7)
-        val decoded = MoodJourneyCurveCodec.decode(MoodJourneyCurveCodec.encode(curve, 24))
+        val decoded = MoodJourneyCurveCodec.decode(MoodJourneyCurveCodec.encode(curve, 24, setOf(MoodStyle.DISCO, MoodStyle.ROCK)))
         assertNotNull(decoded)
-        assertEquals(24, decoded!!.second)
-        decoded.first.points.zip(curve.normalized).forEach { (a, b) -> assertEquals(b.energy, a.energy, 1e-4f) }
+        assertEquals(24, decoded!!.trackCount)
+        assertEquals(setOf(MoodStyle.ROCK, MoodStyle.DISCO), decoded.styles)
+        decoded.curve.points.zip(curve.normalized).forEach { (a, b) -> assertEquals(b.energy, a.energy, 1e-4f) }
+        assertEquals(emptySet<MoodStyle>(), MoodJourneyCurveCodec.decode("{\"count\":12,\"points\":[[0.2,0.3],[0.4,0.5],[0.6,0.7]],\"styles\":[\"gone\"]}")!!.styles)
+        assertEquals(12, MoodJourneyCurveCodec.decode("{\"count\":12,\"points\":[[0.2,0.3],[0.4,0.5],[0.6,0.7]]}")!!.trackCount)
         assertEquals(null, MoodJourneyCurveCodec.decode("{\"points\":[[0.2,0.3]]}"))
         assertEquals(null, MoodJourneyCurveCodec.decode("not json"))
+    }
+
+    @Test
+    fun selectedStylesKeepOnlyMatchingSongsExceptPinned() {
+        val rock = List(30) { MoodJourneyCandidate(song("Rock $it", "Band $it"), MoodEstimate(it / 30f, 0.5f, 0.8f), styles = setOf(MoodStyle.ROCK)) }
+        val disco = List(30) { MoodJourneyCandidate(song("Disco $it", "Diva $it"), MoodEstimate(it / 30f, 0.8f, 0.8f), styles = setOf(MoodStyle.DISCO)) }
+        val plain = List(30) { MoodJourneyCandidate(song("Plain $it", "Singer $it"), MoodEstimate(it / 30f, 0.5f, 0.8f)) }
+        val pinned = plain.first()
+        val request = MoodJourneyRequest(
+            MoodCurve.preset(MoodCurvePreset.Sunrise),
+            trackCount = 20,
+            styles = setOf(MoodStyle.ROCK, MoodStyle.DISCO),
+            pinnedKeys = listOf(MoodJourneyEngine.keyOf(pinned.track))
+        )
+        val result = MoodJourneyEngine.build(rock + disco + plain, request)
+        assertEquals(20, result.steps.size)
+        val chosen = result.steps.map { it.track.title }
+        assertTrue(chosen.all { it.startsWith("Rock") || it.startsWith("Disco") || it == pinned.track.title })
+        assertTrue(pinned.track.title in chosen)
+        val mixed = MoodJourneyEngine.build(rock + disco + plain, request.copy(styles = emptySet(), pinnedKeys = emptyList()))
+        assertEquals(61, result.metrics.candidateCount)
+        assertEquals(90, mixed.metrics.candidateCount)
+    }
+
+    @Test
+    fun styleCueGivesGenreSongsEnoughConfidenceAndBlendsWithMood() {
+        val unlabelled = song("Untitled", "Band")
+        assertTrue(MoodEvidence.estimate(unlabelled, emptyList()).confidence < MoodEvidence.MIN_CONFIDENCE)
+        val rock = MoodEvidence.estimate(unlabelled, emptyList(), listOf(MoodStyle.ROCK))
+        assertTrue(rock.confidence >= MoodEvidence.MIN_CONFIDENCE)
+        assertEquals(MoodStyle.ROCK.energy, rock.energy, 1e-4f)
+        val chillRock = MoodEvidence.estimate(unlabelled, listOf(MoodCategoryKind.CHILL), listOf(MoodStyle.ROCK))
+        assertTrue(chillRock.energy < rock.energy && chillRock.energy > MoodCategoryKind.CHILL.energy)
+    }
+
+    @Test
+    fun playlistTitlesMapToMoodsOnWholeWords() {
+        assertEquals(MoodCategoryKind.WORKOUT, MoodCategoryKind.fromPlaylistTitle("Classic Rock Workout"))
+        assertEquals(MoodCategoryKind.FEEL_GOOD, MoodCategoryKind.fromPlaylistTitle("Feel-Good Rock Hits"))
+        assertEquals(MoodCategoryKind.CHILL, MoodCategoryKind.fromPlaylistTitle("Reggae Relaxation"))
+        assertEquals(MoodCategoryKind.SAD, MoodCategoryKind.fromPlaylistTitle("Country Breakup"))
+        assertEquals(MoodCategoryKind.ROMANCE, MoodCategoryKind.fromPlaylistTitle("Country Love Songs"))
+        assertEquals(MoodCategoryKind.SLEEP, MoodCategoryKind.fromPlaylistTitle("New Age Meditation"))
+        assertEquals(null, MoodCategoryKind.fromPlaylistTitle("Brunch Classics"))
+        assertEquals(null, MoodCategoryKind.fromPlaylistTitle("'90s Rock"))
+    }
+
+    @Test
+    fun stylesMatchYouTubeMusicGenreTitlesExactly() {
+        assertTrue(MoodStyle.ROCK.matchesCategory("Rock"))
+        assertTrue(MoodStyle.COUNTRY.matchesCategory("Country & Americana"))
+        assertTrue(MoodStyle.REGGAE.matchesCategory("Reggae & caribbean"))
+        assertFalse(MoodStyle.POP.matchesCategory("K-Pop"))
+        assertFalse(MoodStyle.POP.matchesCategory("J-Pop"))
+        assertTrue(MoodStyle.DISCO.categoryTitles.isEmpty() && MoodStyle.DISCO.searchQueries.isNotEmpty())
+        assertTrue(MoodStyle.NEW_AGE.categoryTitles.isEmpty() && MoodStyle.NEW_AGE.searchQueries.isNotEmpty())
+        MoodStyle.entries.forEach { assertEquals(it, MoodStyle.from(it.storageId)) }
     }
 }

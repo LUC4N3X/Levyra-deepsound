@@ -20,7 +20,6 @@ import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.discoveryCopy
 import com.luc4n3x.levyra.ui.i18n.homeVideoShelfTitle
 import com.luc4n3x.levyra.ui.i18n.speedDialCopy
-import com.luc4n3x.levyra.ui.i18n.radioLibraryCopy
 import com.luc4n3x.levyra.viewmodel.DiscoveryFeedStatus
 
 internal class ComposedCard(
@@ -142,7 +141,7 @@ private fun LazyListScope.composedSection(id: HomeSectionId, content: ComposedHo
         HomeSectionId.Spotlight -> composedSpotlight(content, kit)
         HomeSectionId.Discovery -> composedDiscovery(content, kit)
         HomeSectionId.PersonalOrbit -> composedOrbit(content, kit)
-        HomeSectionId.FavoriteRadio -> composedRadio(content, kit)
+        HomeSectionId.FavoriteRadio -> favoriteRadioSection(content.radio)
         HomeSectionId.EditorialCollections -> composedCollections(content, kit)
         HomeSectionId.QuickPicks -> composedQuickPicks(content, kit)
         HomeSectionId.ForgottenFavorites -> composedForgotten(content, kit)
@@ -186,14 +185,18 @@ private fun LazyListScope.composedSpeedDial(content: ComposedHomeContent, kit: S
     if (content.speedDialPins.isEmpty()) return
     item(key = "composed-speed-dial", contentType = "composed-cards") {
         val strings = LocalLevyraStrings.current
-        val pins = remember(content.speedDialPins) {
-            content.speedDialPins.map { pin ->
-                ComposedCard("pin-${pin.key}", pin.title, pin.subtitle, pin.artworkUrl, track = pin.track) { content.onOpenPin(pin) }
-            }
-        }
+        val pins = remember(content.speedDialPins) { speedDialCards(content.speedDialPins, content.onOpenPin) }
         kit.Cards(strings.speedDialCopy().title, pins)
     }
 }
+
+internal fun speedDialCards(pins: List<SpeedDialPin>, onOpen: (SpeedDialPin) -> Unit): List<ComposedCard> =
+    pins.map { pin ->
+        ComposedCard(
+            "pin-${pin.key}", pin.title, pin.subtitle, pin.artworkUrl,
+            circular = pin.kind == com.luc4n3x.levyra.domain.SpeedDialKind.ARTIST, track = pin.track
+        ) { onOpen(pin) }
+    }
 
 private fun LazyListScope.composedSpotlight(content: ComposedHomeContent, kit: SkinHomeKit) {
     val hero = content.data.soundtrack ?: return
@@ -213,20 +216,6 @@ private fun LazyListScope.composedOrbit(content: ComposedHomeContent, kit: SkinH
         val title = LocalLevyraStrings.current.personalOrbitTitle
         val tracks = data.personalTracks
         if (tracks.isNotEmpty()) kit.Songs("orbit", title, tracks, false, data.currentId, { actions.playFrom(tracks, it) }, { actions.playAll(tracks) }, actions.onTrackActions)
-    }
-}
-
-private fun LazyListScope.composedRadio(content: ComposedHomeContent, kit: SkinHomeKit) {
-    val radio = content.radio
-    if (!radio.visible || radio.stations.isEmpty()) return
-    item(key = "composed-radio", contentType = "composed-cards") {
-        val title = radioLibraryCopy(LocalLevyraStrings.current.code).favorites
-        val stations = remember(radio.stations) {
-            radio.stations.map { station ->
-                ComposedCard("radio-${station.uuid}", station.name, station.country, station.faviconUrl) { radio.onPlay(station) }
-            }
-        }
-        kit.Cards(title, stations)
     }
 }
 

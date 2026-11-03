@@ -370,7 +370,7 @@ private fun AtelierCrate(items: List<AtelierCrateItem>, roll: Int, onReroll: () 
 }
 
 @Composable
-private fun AtelierCabinetKnob(angle: Float, modifier: Modifier) {
+internal fun AtelierCabinetKnob(angle: Float, modifier: Modifier) {
     Canvas(modifier) {
         val radius = size.minDimension / 2f
         drawCircle(Brush.verticalGradient(listOf(Color(0xFF2C2C31), Color(0xFF141417))), radius)
@@ -408,7 +408,7 @@ private fun AtelierCabinetCell(label: String, angle: Float, modifier: Modifier, 
 }
 
 @Composable
-private fun AtelierCabinet(artTrack: Track?, artAlbum: AlbumHit?, onShortcut: (ExploreShortcut) -> Unit) {
+private fun AtelierCabinet(artTrack: Track?, artAlbum: AlbumHit?, onShortcut: (ExploreShortcut) -> Unit, onOpenRadio: () -> Unit, onOpenJam: () -> Unit) {
     val strings = LocalLevyraStrings.current
     Column(
         Modifier.fillMaxWidth().padding(top = AtelierDesign.sectionGap).padding(horizontal = AtelierDesign.gutter)
@@ -455,9 +455,15 @@ private fun AtelierCabinet(artTrack: Track?, artAlbum: AlbumHit?, onShortcut: (E
             AtelierCabinetCell(strings.exploreSamples, -40f, Modifier.weight(1f)) { onShortcut(ExploreShortcut.Samples) }
         }
         Box(Modifier.fillMaxWidth().height(1.dp).background(AtelierDesign.hairlineStrong))
-        AtelierCabinetCell(com.luc4n3x.levyra.ui.i18n.podcastCopy(strings.code).title, 60f, Modifier.fillMaxWidth()) {
-            onShortcut(ExploreShortcut.Podcasts)
+        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+            AtelierCabinetCell(com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog.forCode(strings.code).title, 160f, Modifier.weight(1f), onOpenRadio)
+            Box(Modifier.width(1.dp).fillMaxHeight().background(AtelierDesign.hairlineStrong))
+            AtelierCabinetCell(com.luc4n3x.levyra.ui.i18n.podcastCopy(strings.code).title, 60f, Modifier.weight(1f)) {
+                onShortcut(ExploreShortcut.Podcasts)
+            }
         }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(AtelierDesign.hairlineStrong))
+        AtelierCabinetCell(strings.jamTitle, -90f, Modifier.fillMaxWidth(), onOpenJam)
     }
 }
 
@@ -469,6 +475,8 @@ internal fun AtelierExploreEntry(
     listState: LazyListState,
     bottomInset: Dp,
     onShortcut: (ExploreShortcut) -> Unit,
+    onOpenRadio: () -> Unit,
+    onOpenJam: () -> Unit,
     onTrackActions: (Track) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -505,7 +513,7 @@ internal fun AtelierExploreEntry(
             contentPadding = PaddingValues(bottom = bottomInset + AtelierDesign.sectionGap)
         ) {
             atelierExploreLead(heroAlbum, heroTrack, fresh, charts, strings, statusTop, heroHeight, listState, viewModel, play, shuffle)
-            atelierExploreCrateAndCabinet(crate, crateRoll, { crateRoll += 1 }, openCrate, cabinetTrack, cabinetAlbum, onShortcut)
+            atelierExploreCrateAndCabinet(crate, crateRoll, { crateRoll += 1 }, openCrate, cabinetTrack, cabinetAlbum, onShortcut, onOpenRadio, onOpenJam)
             atelierExploreReleases(releases, strings, viewModel, onShortcut)
             atelierExploreFresh(fresh, currentId, trackAction, strings, play, onTrackActions)
             atelierExploreChartRows(charts, chartsTitle, chartsExpanded, currentId, trackAction, play, onTrackActions) {
@@ -629,7 +637,9 @@ private fun LazyListScope.atelierExploreCrateAndCabinet(
     openCrate: (AtelierCrateItem) -> Unit,
     cabinetTrack: Track?,
     cabinetAlbum: AlbumHit?,
-    onShortcut: (ExploreShortcut) -> Unit
+    onShortcut: (ExploreShortcut) -> Unit,
+    onOpenRadio: () -> Unit,
+    onOpenJam: () -> Unit
 ) {
     if (crate.isNotEmpty()) {
         item(key = "atelier-explore-crate", contentType = "atelier-crate") {
@@ -637,7 +647,7 @@ private fun LazyListScope.atelierExploreCrateAndCabinet(
         }
     }
     item(key = "atelier-explore-cabinet", contentType = "atelier-cabinet") {
-        AtelierCabinet(cabinetTrack, cabinetAlbum, onShortcut)
+        AtelierCabinet(cabinetTrack, cabinetAlbum, onShortcut, onOpenRadio, onOpenJam)
     }
 }
 

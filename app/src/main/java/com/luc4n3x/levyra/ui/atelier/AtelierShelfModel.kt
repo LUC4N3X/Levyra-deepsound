@@ -100,34 +100,34 @@ internal object AtelierSlot {
     const val FrontWidthFraction = 0.56f
     const val VisibleDepth = 7f
 
-    private const val FrontX = 0.14f
-    private const val FrontY = 0.27f
-    private const val FrontZ = -0.55f
-    private const val FrontYaw = -11f
-    private const val FrontPitch = 2.5f
-    private const val FrontRoll = -1.4f
-    private const val SideYaw = 50f
+    private const val FrontY = 0.24f
+    private const val FrontZ = -0.62f
+    private const val ArcStepDegrees = 21f
+    private const val ArcRadius = 2.5f
+    private const val ArcSpread = 0.6f
+    private const val ArcRecede = 1.7f
+    private const val ArcYawFactor = 1.25f
+    private const val LeanBack = -8f
+    private const val FrontLift = 0.07f
+    private const val FrontPull = 0.14f
 
     fun fill(depth: Float, enter: Float, out: FloatArray) {
         val entry = enter.coerceIn(0f, 1f)
         val advance = atelierSmooth(0.56f, 1f, entry)
         val d = depth + (1f - advance) * 0.95f
         val fly = atelierSmooth(0.04f + min(abs(depth), 5f) * 0.035f, 0.62f, entry)
-        val side = if (d >= 0f) 1f else -1f
         val reach = abs(d)
-        val blend = atelierSmooth(0f, 1f, min(reach, 1f))
-        val beyond = max(reach - 1f, 0f)
-        val sideX = if (side > 0f) -0.06f + beyond * 0.17f else -0.72f - beyond * 0.17f
-        val sideY = -0.33f - beyond * 0.035f
-        val sideZ = 0.02f + beyond * 0.34f
-        val sideYaw = if (side > 0f) -SideYaw else SideYaw
-        out[X] = atelierLerp(FrontX, sideX, blend) + (1f - fly) * 1.15f
-        out[Y] = atelierLerp(FrontY, sideY, blend) - (1f - fly) * 0.7f
-        out[Z] = atelierLerp(FrontZ, sideZ, blend) + (1f - fly) * 1.8f
-        out[YAW] = atelierLerp(FrontYaw, sideYaw, blend)
-        out[PITCH] = atelierLerp(FrontPitch, 0f, blend)
-        out[ROLL] = atelierLerp(FrontRoll, 0f, blend)
-        val edge = 1f - atelierSmooth(VisibleDepth - 2.5f, VisibleDepth, reach)
+        val focus = 1f - atelierSmooth(0f, 1f, min(reach, 1f))
+        val arc = Math.toRadians((d.coerceIn(-4.2f, 4.2f) * ArcStepDegrees).toDouble())
+        val sinA = sin(arc).toFloat()
+        val cosA = cos(arc).toFloat()
+        out[X] = sinA * ArcRadius * ArcSpread
+        out[Y] = FrontY - focus * FrontLift + (1f - fly) * 0.9f
+        out[Z] = FrontZ + (1f - cosA) * ArcRadius * ArcRecede - focus * FrontPull + max(reach - 4.2f, 0f) * 0.4f + (1f - fly) * 0.8f
+        out[YAW] = -(d.coerceIn(-4.2f, 4.2f) * ArcStepDegrees) * ArcYawFactor * (1f - focus * 0.6f)
+        out[PITCH] = atelierLerp(LeanBack, 1.5f, focus)
+        out[ROLL] = 0f
+        val edge = 1f - atelierSmooth(VisibleDepth - 3.5f, VisibleDepth - 1.5f, reach)
         out[ALPHA] = edge * fly
     }
 }

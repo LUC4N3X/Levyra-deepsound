@@ -471,6 +471,7 @@ private const val DISCOVERY_RELEASE_RADAR_LIMIT = 5
 private const val DISCOVERY_ARTIST_LIMIT = 8
 private const val DISCOVERY_SCENE_LANGUAGE = "en"
 private const val MOOD_JOURNEY_EDITORIAL_LANGUAGE = "en"
+private const val MOOD_JOURNEY_APPLE_STOREFRONT = "us"
 private const val MOOD_JOURNEY_PLAYLIST_LIMIT = 400
 private const val MOOD_JOURNEY_PREFERENCES = "levyra_mood_journey"
 private const val DISCOVERY_SCENE_PLAYLISTS = 2
@@ -1178,6 +1179,32 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         )
     )
 
+    private val moodStyleSource = com.luc4n3x.levyra.feature.moodjourney.MoodStyleSource(
+        com.luc4n3x.levyra.feature.moodjourney.MoodStyleGateway(
+            applePlaylists = { genre ->
+                com.luc4n3x.levyra.data.apple.AppleMusicEditorialRepository.get(getApplication<Application>())
+                    .genre(genre, "", MOOD_JOURNEY_APPLE_STOREFRONT, MOOD_JOURNEY_EDITORIAL_LANGUAGE)
+                    ?.shelves.orEmpty().flatMap { it.items }
+                    .filter { it.kind == com.luc4n3x.levyra.data.apple.AppleCatalogItemKind.Playlist }
+                    .map { com.luc4n3x.levyra.feature.moodjourney.EditorialPlaylistRef(it.id, it.title) }
+            },
+            appleTracks = { playlistId ->
+                com.luc4n3x.levyra.data.apple.AppleMusicEditorialRepository.get(getApplication<Application>())
+                    .playlist(MOOD_JOURNEY_APPLE_STOREFRONT, playlistId, MOOD_JOURNEY_EDITORIAL_LANGUAGE)?.tracks.orEmpty()
+            },
+            categories = { repository.moodCategories(MOOD_JOURNEY_EDITORIAL_LANGUAGE) },
+            playlists = { params ->
+                repository.moodPlaylists(params, MOOD_JOURNEY_EDITORIAL_LANGUAGE, 60)
+                    .map { com.luc4n3x.levyra.feature.moodjourney.EditorialPlaylistRef(it.playlistId, it.title) }
+            },
+            searchPlaylists = { query ->
+                repository.searchPlaylistsPage(query, MOOD_JOURNEY_EDITORIAL_LANGUAGE).items
+                    .map { com.luc4n3x.levyra.feature.moodjourney.EditorialPlaylistRef(it.playlistId.ifBlank { it.browseId.removePrefix("VL") }, it.title) }
+            },
+            tracks = { playlistId -> repository.playlist(playlistId, _state.value.languageCode, 60)?.tracks.orEmpty() }
+        )
+    )
+
     val moodJourney = MoodJourneyController(
         scope = viewModelScope,
         gateway = object : MoodJourneyGateway {
@@ -1192,6 +1219,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
 
             override suspend fun editorialEvidence(): com.luc4n3x.levyra.feature.moodjourney.MoodEditorialEvidence = moodEvidenceSource.load()
+
+            override suspend fun styleShelf(style: com.luc4n3x.levyra.domain.MoodStyle): com.luc4n3x.levyra.feature.moodjourney.MoodStyleShelf =
+                moodStyleSource.load(style)
 
             override suspend fun exclusions(): ArtistExclusions = _state.value.artistExclusions
 
@@ -4392,9 +4422,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun closeMoodJourney() = moodJourney.close()
 
     fun playMoodJourney() {
-        val tracks = moodJourney.session.value?.result?.tracks.orEmpty()
-        if (tracks.isEmpty()) return
-        playAudioFrom(tracks, tracks.first())
+        val steps = moodJourney.session.value?.result?.steps.orEmpty()
+        steps.firstOrNull()?.let { playMoodJourneyFrom(it.key) }
+    }
+
+    fun playMoodJourneyFrom(key: String) {
+        val steps = moodJourney.session.value?.result?.steps.orEmpty()
+        val start = steps.firstOrNull { it.key == key } ?: return
+        playAudioFrom(steps.map { it.track }, start.track)
+        openPlayerScreen()
     }
 
     fun addMoodJourneyToQueue() {

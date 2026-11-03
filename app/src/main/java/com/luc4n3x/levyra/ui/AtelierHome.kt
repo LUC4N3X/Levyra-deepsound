@@ -125,6 +125,7 @@ import com.luc4n3x.levyra.ui.i18n.AtelierCopy
 import com.luc4n3x.levyra.ui.i18n.LevyraAtelierStrings
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.speedDialCopy
 import com.luc4n3x.levyra.ui.theme.AtelierDesign
 import com.luc4n3x.levyra.viewmodel.HomeViewModel
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
@@ -1330,9 +1331,11 @@ internal fun AtelierHomeEntry(
     homeRefreshing: Boolean,
     homePullState: PullToRefreshState,
     onPullRefresh: () -> Unit,
-    composition: ComposedHomeRequest? = null
+    composition: ComposedHomeRequest? = null,
+    speedDialPins: List<com.luc4n3x.levyra.domain.SpeedDialPin> = emptyList()
 ) {
     val strings = LocalLevyraStrings.current
+    val pinnedCards = remember(speedDialPins, viewModel) { speedDialCards(speedDialPins, viewModel::openSpeedDialPin) }
     val render by viewModel.renderState.collectAsStateWithLifecycle()
     val releaseSection = render.derived.newReleases
     val showReleases = state.interfaceSettings.showNewReleases
@@ -1351,7 +1354,8 @@ internal fun AtelierHomeEntry(
         homeRefreshing = homeRefreshing,
         homePullState = homePullState,
         onPullRefresh = onPullRefresh,
-        composition = composition
+        composition = composition,
+        pinnedCards = pinnedCards
     )
 }
 
@@ -1370,9 +1374,11 @@ private fun AtelierHomeContent(
     homeRefreshing: Boolean,
     homePullState: PullToRefreshState,
     onPullRefresh: () -> Unit,
-    composition: ComposedHomeRequest? = null
+    composition: ComposedHomeRequest? = null,
+    pinnedCards: List<ComposedCard> = emptyList()
 ) {
     val strings = LocalLevyraStrings.current
+    val homeRadio = LocalHomeRadio.current
     val copy = remember(strings.code) { LevyraAtelierStrings.forCode(strings.code) }
     val currentId = data.currentId
     val recordings = remember(state.recentListens) { LevyraPersonalOrbit.distinctRecordings(state.recentListens) }
@@ -1456,13 +1462,17 @@ private fun AtelierHomeContent(
                 return@LazyColumn
             }
             atelierHomeLead(heroTrack, state, statusTop, data, actions, heroPlay)
-            atelierHomeFallback(nothingToShow, stillLoading, state, copy, viewModel)
+            atelierHomeFallback(nothingToShow && pinnedCards.isEmpty() && !(homeRadio.visible && homeRadio.stations.isNotEmpty()), stillLoading, state, copy, viewModel)
+            if (pinnedCards.isNotEmpty()) {
+                item(key = "atelier-home-pinned", contentType = "atelier-home-pinned") { composedKit.Cards(strings.speedDialCopy().title, pinnedCards) }
+            }
             atelierHomeFeatureRow(features, featureWidth, currentId, state, playFeature)
             atelierHomePicks(picks, picksTitle, pairWidth, currentId, trackOptions, picksExpanded, actions) {
                 picksExpanded = !picksExpanded
             }
             atelierHomeOrbitAndWall(orbit, wallRows, currentId, trackOptions, strings, copy, actions)
             atelierHomeTeaserAndRecents(fanSleeves, shelfRecents, currentId, trackOptions, state, strings, viewModel, actions, playRecent)
+            favoriteRadioSection(homeRadio)
             atelierHomeAlbumGrid(albumRows, columns, strings, actions)
             atelierHomeReleases(newTracks, newAlbums, releaseTitle, currentId, trackOptions, actions)
             atelierHomeTrendingArtists(artists, strings, actions)

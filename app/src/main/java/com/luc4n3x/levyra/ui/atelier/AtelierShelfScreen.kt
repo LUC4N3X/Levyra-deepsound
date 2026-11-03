@@ -108,6 +108,8 @@ import kotlin.math.roundToInt
 
 private const val ShelfDragSpan = 0.40f
 private const val ShelfSceneAnchor = 0.43f
+private const val ShelfReflection = 0.07f
+private const val ReflectionDepth = 0.42f
 private const val ShelfEnterMillis = 980
 private const val CoverWindow = 5
 
@@ -117,6 +119,7 @@ private class AtelierShelfRenderer {
     val slot = FloatArray(AtelierSlot.SIZE)
     val quad = FloatArray(8)
     val frontQuad = FloatArray(8)
+    val mirror = FloatArray(8)
     val rect = RectF()
     val glowPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.DITHER_FLAG)
     val shadowMask: Bitmap = atelierBakeSoftMask(128, 24f, 16f)
@@ -426,6 +429,10 @@ private fun drawAtelierShelfSleeves(
             val focus = 1f - atelierSmooth(0f, 1f, abs(depth).coerceAtMost(1f))
             if (focus > 0.5f) publishAtelierShelfFront(r, items, index, state, focus, entered, covers)
             if (handedOff && focus > 0.5f) continue
+            if (rich) {
+                mirrorAtelierQuad(r.quad, r.mirror)
+                r.painter.draw(canvas, r.mirror, covers[items[index].coverUrl], null, 0f, null, 0f, 0f, 0.55f, alpha * ShelfReflection, false)
+            }
             val discOut = focus * atelierSmooth(0.74f, 1f, entered)
             r.painter.draw(
                 canvas, r.quad, covers[items[index].coverUrl], disc(), discOut,
@@ -435,6 +442,13 @@ private fun drawAtelierShelfSleeves(
         }
         outward--
     }
+}
+
+private fun mirrorAtelierQuad(quad: FloatArray, out: FloatArray) {
+    out[0] = quad[6] + (quad[6] - quad[0]) * ReflectionDepth; out[1] = quad[7] + (quad[7] - quad[1]) * ReflectionDepth
+    out[2] = quad[4] + (quad[4] - quad[2]) * ReflectionDepth; out[3] = quad[5] + (quad[5] - quad[3]) * ReflectionDepth
+    out[4] = quad[4]; out[5] = quad[5]
+    out[6] = quad[6]; out[7] = quad[7]
 }
 
 private fun publishAtelierShelfFront(
