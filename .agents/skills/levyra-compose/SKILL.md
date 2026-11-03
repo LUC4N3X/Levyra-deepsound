@@ -103,6 +103,18 @@ Use screenshot tests as visual-regression evidence, not as behavior tests.
 
 On Android UI work, the product direction is Material 3 Expressive. Use Levyra components and semantic tokens first. At the later visual compliance phase, load the official upstream `material-3` skill from `hamen/material-3-skill` and relevant reference files only. For implementation involving Kotlin/Compose or state, consult the matching `kotlin-footguns` index and only implicated trap files in a separate review phase (usually `compose-screens-footguns`, `compose-visuals-footguns`, or `state-and-background-footguns`). Keep no more than two skill bodies active at once. Use `docs/ai/UPSTREAM_ANDROID_SKILLS.md` for setup, paths, and fallbacks.
 
+## Regression guard: localized settings, skin gestures and compact search (PR #1156)
+
+Preserve the user-visible PR #1156 fixes when changing Smart Listening/Gentle Wake, player skins, responsive rows, animation or Default search.
+
+- **Reachable controls:** Validate narrow phones, longer translations (including Russian), font scaling and accessibility. Keep the time display and all four time-step buttons visible with 48dp touch targets; do not squeeze them into an overflowing single row.
+- **Adaptive options:** Keep all music-source, crescendo-duration and shake-sensitivity options visible. Prefer FlowRow or a suitable adaptive layout to horizontally clipped content behind card gutters. Keep the tone card within available width and format times/durations using localized resources.
+- **Actual gesture surface:** Canvas drawing does not mount gestures automatically. In custom skins, verify the real shared swipe hit region and pointer handling; do not intercept header actions or change gesture thresholds, settings or behavior of other skins.
+- **Track animation continuity:** Key by track ID and cover state separately. Validate same-album track changes, notification/media-key changes, rapid transitions, late/missing art, no-mirror label swaps and disabled/reduced motion.
+- **Default Search by lyrics:** Preserve the compact tool key in the suggestion strip rather than restoring an intrusive full-width row. Keep 48dp hit area, accessible action name, contrast and alignment with chips in dark/light/dynamic themes; leave other skins unchanged.
+
+For affected UI, inspect compact-width renderings in English and Russian at large font scale, plus light/dark and relevant RTL cases. Use interaction and semantics tests for buttons, swipes and animation state; screenshots alone do not establish working interactions. Mark any unrun UI/device checks UNVERIFIED.
+
 ## Validation
 
 Test recomposition-sensitive paths, state restoration, rapid navigation, background/foreground transitions, long translations, RTL, large font scale, empty/error states, edge-to-edge/IME ownership, relevant larger widths, and accessibility semantics when applicable. Run focused UI or ViewModel tests before broader Android checks.
