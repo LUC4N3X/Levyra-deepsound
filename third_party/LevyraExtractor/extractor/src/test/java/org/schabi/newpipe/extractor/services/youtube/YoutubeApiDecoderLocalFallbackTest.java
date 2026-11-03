@@ -28,6 +28,91 @@ class YoutubeApiDecoderLocalFallbackTest {
     }
 
     @Test
+    void nTransformationChangesOnlyTheQueryParameter() throws Exception {
+        YoutubeApiDecoder.setLocalDecoder(new StubDecoder(0));
+        final String url = "https://example.test/n1/media?other=n1&n=n1&tail=n1#n=n1";
+
+        assertEquals("https://example.test/n1/media?other=n1&n=decoded-n1&tail=n1#n=n1",
+                YoutubeJavaScriptPlayerManager.getUrlWithThrottlingParameterDeobfuscated("video", url));
+    }
+
+    @Test
+    void nestedQuestionMarkDoesNotStartAnotherQuery() throws Exception {
+        YoutubeApiDecoder.setLocalDecoder(new StubDecoder(0));
+        assertEquals("https://example.test/media?other=?n=n1&n=decoded-n2",
+                YoutubeJavaScriptPlayerManager.getUrlWithThrottlingParameterDeobfuscated(
+                        "video", "https://example.test/media?other=?n=n1&n=n2"));
+        final String withoutN = "https://example.test/media?other=?n=n1";
+        assertEquals(withoutN, YoutubeJavaScriptPlayerManager
+                .getUrlWithThrottlingParameterDeobfuscated("video", withoutN));
+    }
+
+    @Test
+    void fragmentDoesNotContainAThrottlingQueryParameter() throws Exception {
+        final String url = "https://example.test/media?x=1#fragment?n=n1";
+        assertEquals(url,
+                YoutubeJavaScriptPlayerManager.getUrlWithThrottlingParameterDeobfuscated("video", url));
+    }
+
+    @Test
+    void challengesAreDeduplicatedWithoutBypassingTheLocalDecoderEpoch() throws Exception {
+        final List<List<String>> calls = new ArrayList<>();
+        YoutubeApiDecoder.setLocalDecoder(new StubDecoder(0) {
+            @Override
+            public YoutubeApiDecoder.BatchDecodeResult decodeBatch(final String playerId,
+                    final List<String> signatures, final List<String> throttlingParameters) {
+                calls.add(new ArrayList<>(signatures));
+                return super.decodeBatch(playerId, signatures, throttlingParameters);
+            }
+        });
+        YoutubeApiDecoder.decodeBatch("player", Arrays.asList("s1", "s1", "s2"), null);
+        final YoutubeApiDecoder.BatchDecodeResult result = YoutubeApiDecoder.decodeBatch(
+                "player", Arrays.asList("s1", "s2"), null);
+
+        assertEquals(Arrays.asList(Arrays.asList("s1", "s2"), Arrays.asList("s1", "s2")), calls);
+        assertEquals("decoded-s1", result.getSignatures().get("s1"));
+        assertEquals("decoded-s2", result.getSignatures().get("s2"));
+    }
+
+    @Test
+    void localDecoderRemainsTheAuthorityAfterItsGenerationChanges() throws Exception {
+        final java.util.concurrent.atomic.AtomicInteger generation = new java.util.concurrent.atomic.AtomicInteger();
+        YoutubeApiDecoder.setLocalDecoder(new StubDecoder(0) {
+            @Override
+            public YoutubeApiDecoder.BatchDecodeResult decodeBatch(final String playerId,
+                    final List<String> signatures, final List<String> throttlingParameters) {
+                return new YoutubeApiDecoder.BatchDecodeResult(
+                        java.util.Collections.singletonMap("s1", "decoded-" + generation.get()),
+                        java.util.Collections.emptyMap());
+            }
+        });
+        assertEquals("decoded-0", YoutubeApiDecoder.decodeBatch(
+                "player", Arrays.asList("s1"), null).getSignatures().get("s1"));
+        generation.incrementAndGet();
+        assertEquals("decoded-1", YoutubeApiDecoder.decodeBatch(
+                "player", Arrays.asList("s1"), null).getSignatures().get("s1"));
+    }
+
+    @Test
+    void localCancellationDoesNotStartRemoteFallback() {
+        final java.util.concurrent.CancellationException expected =
+                new java.util.concurrent.CancellationException("cancelled");
+        YoutubeApiDecoder.setLocalDecoder(new StubDecoder(0) {
+            @Override
+            public YoutubeApiDecoder.BatchDecodeResult decodeBatch(final String playerId,
+                    final List<String> signatures, final List<String> throttlingParameters) {
+                throw expected;
+            }
+        });
+        org.junit.jupiter.api.Assertions.assertSame(expected,
+                assertThrows(java.util.concurrent.CancellationException.class,
+                        () -> YoutubeApiDecoder.decodeBatch("player", Arrays.asList("s1"), null)));
+        org.junit.jupiter.api.Assertions.assertSame(expected,
+                assertThrows(java.util.concurrent.CancellationException.class,
+                        () -> YoutubeApiDecoder.decodeSignature("player", "s1")));
+    }
+
+    @Test
     void completeLocalBatchIsReturnedAndCached() throws Exception {
         YoutubeApiDecoder.setLocalDecoder(new StubDecoder(0));
 
@@ -87,7 +172,7 @@ class YoutubeApiDecoderLocalFallbackTest {
                 "cache size was " + YoutubeApiDecoder.getCacheSize());
     }
 
-    private static final class StubDecoder implements YoutubeJavaScriptDecoder {
+    private static class StubDecoder implements YoutubeJavaScriptDecoder {
         private final int droppedSignatures;
         private final boolean unchangedSignatures;
         private final boolean unchangedNParameters;

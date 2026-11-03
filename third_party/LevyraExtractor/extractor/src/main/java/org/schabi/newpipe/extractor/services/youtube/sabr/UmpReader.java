@@ -68,6 +68,7 @@ public final class UmpReader {
     public static void readPayloadsUntil(@Nonnull final InputStream in,
                                          @Nonnull final StoppablePayloadConsumer consumer)
             throws SabrProtocolException, IOException {
+        byte[] drainBuffer = null;
         while (true) {
             throwIfInterrupted();
             final int first = in.read();
@@ -85,7 +86,10 @@ public final class UmpReader {
             }
             final BoundedInputStream payload = new BoundedInputStream(in, size);
             final boolean keepGoing = consumer.accept(type, size, payload);
-            payload.drain();
+            if (payload.remaining > 0) {
+                if (drainBuffer == null) drainBuffer = new byte[8192];
+                payload.drain(drainBuffer);
+            }
             if (!keepGoing) {
                 return;
             }
@@ -178,6 +182,10 @@ public final class UmpReader {
         @Override
         public int read(@Nonnull final byte[] buffer, final int offset, final int length)
                 throws IOException {
+            if (offset < 0 || length < 0 || offset > buffer.length - length) {
+                throw new IndexOutOfBoundsException();
+            }
+            if (length == 0) return 0;
             throwIfInterrupted();
             if (remaining <= 0) {
                 return -1;
@@ -186,12 +194,15 @@ public final class UmpReader {
             if (read < 0) {
                 throw new EOFException("Unexpected EOF while reading UMP part data");
             }
+            if (read == 0) {
+                buffer[offset] = (byte) read();
+                return 1;
+            }
             remaining -= read;
             return read;
         }
 
-        private void drain() throws IOException {
-            final byte[] buffer = new byte[8192];
+        private void drain(@Nonnull final byte[] buffer) throws IOException {
             while (remaining > 0) {
                 read(buffer, 0, Math.min(buffer.length, remaining));
             }

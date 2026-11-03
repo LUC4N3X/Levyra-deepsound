@@ -5,8 +5,39 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicBoolean
+
+internal suspend fun <T> hedgedAudioWithRecovery(
+    tiers: List<List<suspend () -> T?>>,
+    hedgeBudgetMs: Long,
+    recovery: (suspend () -> T?)?,
+    onAttemptError: (Throwable) -> Unit = {}
+): T? {
+    val inconclusive = AtomicBoolean(false)
+    val guarded = tiers.map { tier ->
+        tier.map { attempt ->
+            suspend { attempt().also { if (it == null) inconclusive.set(true) } }
+        }
+    }
+    val stream = hedgedFirst(guarded, hedgeBudgetMs) { error ->
+        if (error !is YoutubePlayerRequestException || !error.noPlayableStream) inconclusive.set(true)
+        onAttemptError(error)
+    }
+    if (stream != null || inconclusive.get() || tiers.none { it.isNotEmpty() } || recovery == null) return stream
+    currentCoroutineContext().ensureActive()
+    return try {
+        recovery()
+    } catch (cancellation: CancellationException) {
+        throw cancellation
+    } catch (error: Exception) {
+        onAttemptError(error)
+        null
+    }
+}
 
 internal object LevyraResolverLatency {
     const val INNER_TUBE_HEDGE_BUDGET_MS = 35L
@@ -50,6 +81,7 @@ internal suspend fun <T> hedgedFirst(
                 val outcome = try {
                     attempt()
                 } catch (cancellation: CancellationException) {
+                    winner.completeExceptionally(cancellation)
                     throw cancellation
                 } catch (error: Throwable) {
                     onAttemptError(error)

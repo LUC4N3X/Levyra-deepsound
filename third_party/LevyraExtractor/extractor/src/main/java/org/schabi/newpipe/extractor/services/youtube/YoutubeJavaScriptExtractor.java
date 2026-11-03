@@ -12,6 +12,7 @@ import org.schabi.newpipe.extractor.utils.Utils;
 
 import javax.annotation.Nonnull;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.util.regex.Pattern;
 
 /**
@@ -35,7 +36,9 @@ final class YoutubeJavaScriptExtractor {
     private static final Pattern IFRAME_RES_JS_BASE_PLAYER_HASH_PATTERN = Pattern.compile(
             "player\\\\/([a-z0-9]{8})\\\\/");
     private static final Pattern EMBEDDED_WATCH_PAGE_JS_BASE_PLAYER_URL_PATTERN = Pattern.compile(
-            "\"jsUrl\":\"(/s/player/[A-Za-z0-9]+/player_ias\\.vflset/[A-Za-z_-]+/base\\.js)\"");
+            "\"jsUrl\":\"(/s/player/[A-Za-z0-9]+/player_(?:ias|es6)\\.vflset/[A-Za-z_-]+/base\\.js)\"");
+    private static final Pattern PLAYER_PATH_PATTERN = Pattern.compile(
+            "/s/player/([A-Za-z0-9]+)/player_(?:ias|es6)\\.vflset/[A-Za-z_-]+/base\\.js");
 
 
     // Override hash - set this to force a specific player version
@@ -88,7 +91,7 @@ final class YoutubeJavaScriptExtractor {
                         EMBEDDED_WATCH_PAGE_JS_BASE_PLAYER_URL_PATTERN, embedPageContent);
 
                 // Extract hash from URL like "/s/player/0004de42/player_ias.vflset/..."
-                return Parser.matchGroup1(IFRAME_RES_JS_BASE_PLAYER_HASH_PATTERN,
+                return Parser.matchGroup1(PLAYER_PATH_PATTERN,
                         jsUrl.replace("\\/", "/"));
             } catch (final Exception ex) {
                 // Last resort: return the hardcoded override value
@@ -142,7 +145,7 @@ final class YoutubeJavaScriptExtractor {
                         "The extracted and built JavaScript URL is invalid", exception);
             }
 
-            return YoutubeJavaScriptExtractor.downloadJavaScriptCode("https://www.youtube.com/s/player/0004de42/player_ias.vflset/en_GB/base.js");
+            return YoutubeJavaScriptExtractor.downloadJavaScriptCode(playerJsUrl);
         }
     }
 
@@ -185,8 +188,7 @@ final class YoutubeJavaScriptExtractor {
 
         // Parse HTML response with jsoup and look at script elements first
         final Document doc = Jsoup.parse(embedPageContent);
-        final Elements elems = doc.select("script")
-                .attr("name", "player/base");
+        final Elements elems = doc.select("script[src]");
         for (final Element elem : elems) {
             // Script URLs should be relative and not absolute
             final String playerUrl = elem.attr("src");
@@ -223,6 +225,13 @@ final class YoutubeJavaScriptExtractor {
     private static String downloadJavaScriptCode(@Nonnull final String javaScriptPlayerUrl)
             throws ParsingException {
         try {
+            final URI uri = new URI(javaScriptPlayerUrl);
+            if (!"https".equals(uri.getScheme()) || !"www.youtube.com".equals(uri.getHost())
+                    || uri.getRawUserInfo() != null || (uri.getPort() != -1 && uri.getPort() != 443)
+                    || uri.getRawQuery() != null || uri.getRawFragment() != null
+                    || !PLAYER_PATH_PATTERN.matcher(uri.getRawPath()).matches()) {
+                throw new ParsingException("Invalid YouTube player script URL");
+            }
             return NewPipe.getDownloader()
                     .get(javaScriptPlayerUrl, Localization.DEFAULT)
                     .responseBody();

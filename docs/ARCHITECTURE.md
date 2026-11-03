@@ -350,6 +350,14 @@ The URL that reached Media3 is associated in memory with the strategy that produ
 
 Dynamic client health can delay unhealthy fallback clients, but it does not demote Android VR inside the standard InnerTube client path.
 
+After every normal hedged audio client conclusively reports no playable stream,
+one policy-allowed client cooling down after an invalid URL may receive a
+reduced-quality recovery invocation. Its permit is consumed atomically. Network,
+HTTP, restriction, decoder and ambiguous verification failures suppress recovery;
+normal success preserves the requested quality. Video and offline export keep
+their existing selection paths. See [extractor reliability](EXTRACTOR_RELIABILITY.md)
+for the error boundaries, protocol changes and measured UMP allocation results.
+
 Resolved stream entries, failed-playback URL quarantine and rejected-video URL quarantine prune expired entries when updated and enforce fixed entry limits. The Media3 disk cache remains a separate bounded LRU owner.
 
 ### 6.5 Server-driven compatibility policy

@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.player.sabr
 
 import java.io.EOFException
 import java.io.InputStream
+import java.io.InterruptedIOException
 
 internal class UmpReader(
     private val input: InputStream,
@@ -20,6 +21,7 @@ internal class UmpReader(
         get() = payload
 
     fun next(): Boolean {
+        ensureNotInterrupted()
         val first = input.read()
         if (first < 0) {
             partType = -1
@@ -40,6 +42,7 @@ internal class UmpReader(
     }
 
     private fun readByte(): Int {
+        ensureNotInterrupted()
         val value = input.read()
         if (value < 0) throw EOFException("truncated UMP header")
         return value
@@ -48,10 +51,19 @@ internal class UmpReader(
     private fun readFully(target: ByteArray, length: Int) {
         var read = 0
         while (read < length) {
+            ensureNotInterrupted()
             val count = input.read(target, read, length - read)
             if (count < 0) throw EOFException("truncated UMP payload")
-            read += count
+            if (count == 0) {
+                target[read++] = readByte().toByte()
+            } else {
+                read += count
+            }
         }
+    }
+
+    private fun ensureNotInterrupted() {
+        if (Thread.currentThread().isInterrupted) throw InterruptedIOException("interrupted UMP read")
     }
 
     private fun readVarint(prefix: Int): Int {

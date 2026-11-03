@@ -6,14 +6,20 @@ internal class SabrSegmentAssembler(
     private val targetItag: Int,
     private val maxTrackedHeaders: Int = MAX_TRACKED_HEADERS
 ) {
-    private val headers = HashMap<Int, HeaderState>()
+    private val headers = LinkedHashMap<Int, HeaderState>()
+
+    init {
+        require(maxTrackedHeaders > 0)
+    }
 
     fun reset() {
         headers.clear()
     }
 
     fun onMediaHeader(header: SabrMediaHeader) {
-        if (headers.size >= maxTrackedHeaders) headers.clear()
+        if (headers.size >= maxTrackedHeaders && header.headerId !in headers) {
+            headers.remove(headers.keys.first())
+        }
         headers[header.headerId] = HeaderState(header.itag, header.startDataRange)
     }
 
@@ -21,6 +27,9 @@ internal class SabrSegmentAssembler(
         val state = headers[headerId] ?: return null
         if (payloadLength <= 0) return null
         val chunkStart = state.nextOffset
+        if (chunkStart < 0L || chunkStart > Long.MAX_VALUE - payloadLength) {
+            throw SabrProtocolException("invalid SABR media range")
+        }
         state.nextOffset = chunkStart + payloadLength
         if (state.itag != targetItag) return null
         val chunkEnd = chunkStart + payloadLength

@@ -2747,15 +2747,20 @@ class PlaybackResolver private constructor(private val context: Context) {
         isVideoMode: Boolean,
         audioQuality: String
     ): DirectStream? {
-        val ladder = orderedProfiles().map { profile ->
+        val normalProfiles = orderedProfiles()
+        val recoveryProfile = if (isVideoMode || normalizeAudioQuality(audioQuality).equals("Low", true)) {
+            null
+        } else {
+            effectiveProfiles().filter { candidate ->
+                normalProfiles.none { it.clientName == candidate.clientName } &&
+                    clientHealth[candidate.clientName]?.canRecoverAtLowQuality == true
+            }.maxByOrNull { clientHealth[it.clientName]?.score ?: 50.0 }
+        }
+        val ladder = normalProfiles.map { profile ->
             listOf(
                 suspend {
-                    runCatchingPreservingCancellation { resolveWithInnerTube(track, profile, isVideoMode, false, audioQuality) }
-                        .onFailure { error ->
-                            error.message?.takeIf { it.isNotBlank() }?.let { errors += "${profile.label}: $it" }
-                        }
-                        .getOrNull()
-                        ?.takeIf { stream ->
+                    resolveWithInnerTube(track, profile, isVideoMode, false, audioQuality)
+                        .takeIf { stream ->
                             val accepted = acceptResolvedStream(stream, isVideoMode, "${profile.label} probe", errors)
                             if (!accepted) recordClientFailure(profile, null, IllegalStateException("Stream non valido o URL scaduto"))
                             accepted
@@ -2763,7 +2768,32 @@ class PlaybackResolver private constructor(private val context: Context) {
                 }
             )
         }
-        return hedgedFirst(ladder, hedgeBudgetMs)
+        val recovery: (suspend () -> DirectStream?)? = recoveryProfile?.let { profile ->
+            suspend {
+                var reserved = false
+                clientHealth.computeIfPresent(profile.clientName) { _, health ->
+                    if (health.canRecoverAtLowQuality) {
+                        reserved = true
+                        health.copy(canRecoverAtLowQuality = false).also { persistClientHealth(profile.clientName, it) }
+                    } else health
+                }
+                if (!reserved) null else {
+                    resolveWithInnerTube(track, profile, false, false, "Low")
+                        .takeIf { stream ->
+                            val accepted = acceptResolvedStream(stream, false, "${profile.label} recovery", errors)
+                            if (!accepted) {
+                                recordClientFailure(profile, null,
+                                    IllegalStateException("Stream non valido o URL scaduto"),
+                                    allowLowQualityRecovery = false)
+                            }
+                            accepted
+                        }
+                }
+            }
+        }
+        return hedgedAudioWithRecovery(ladder, hedgeBudgetMs, recovery) { error ->
+            error.message?.takeIf { it.isNotBlank() }?.let { errors += it }
+        }
     }
 
     private fun Track.withDirectStream(stream: DirectStream): Track {
@@ -2848,7 +2878,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 requiresPoToken = override?.requiresPoToken ?: base.requiresPoToken
             )
         }
-        return effective.ifEmpty { profiles }
+        return effective
     }
 
     private fun profileFromSource(source: String): ClientProfile? {
@@ -2896,12 +2926,18 @@ class PlaybackResolver private constructor(private val context: Context) {
                 consecutiveFailures = 0,
                 averageLatencyMs = average.coerceAtLeast(1L),
                 blockedUntilMs = 0L,
+                canRecoverAtLowQuality = false,
                 updatedAtMs = System.currentTimeMillis()
             ).also { persistClientHealth(name, it) }
         }
     }
 
-    private fun recordClientFailure(profile: ClientProfile, latencyMs: Long?, error: Throwable) {
+    private fun recordClientFailure(
+        profile: ClientProfile,
+        latencyMs: Long?,
+        error: Throwable,
+        allowLowQualityRecovery: Boolean = true
+    ) {
         if (!hasValidatedInternet()) {
             clearTransientClientPenalties()
             return
@@ -2938,6 +2974,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 consecutiveFailures = consecutive,
                 averageLatencyMs = averageLatencyMs,
                 blockedUntilMs = System.currentTimeMillis() + blockDurationMs,
+                canRecoverAtLowQuality = allowLowQualityRecovery && invalidStream && !hardBlock,
                 updatedAtMs = System.currentTimeMillis()
             ).also { persistClientHealth(name, it) }
         }
@@ -2956,6 +2993,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 consecutiveFailures = json.optInt("consecutiveFailures", 0),
                 averageLatencyMs = json.optLong("averageLatencyMs", Long.MAX_VALUE),
                 blockedUntilMs = json.optLong("blockedUntilMs", 0L),
+                canRecoverAtLowQuality = json.optBoolean("canRecoverAtLowQuality", false),
                 updatedAtMs = json.optLong("updatedAtMs", 0L)
             )
             val normalized = if (restored.blockedUntilMs in 1L..now) {
@@ -2975,6 +3013,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             .put("consecutiveFailures", health.consecutiveFailures)
             .put("averageLatencyMs", health.averageLatencyMs)
             .put("blockedUntilMs", health.blockedUntilMs)
+            .put("canRecoverAtLowQuality", health.canRecoverAtLowQuality)
             .put("updatedAtMs", health.updatedAtMs)
         clientHealthPrefs.edit().putString(name, json.toString()).apply()
     }
@@ -3400,7 +3439,8 @@ class PlaybackResolver private constructor(private val context: Context) {
                 )
             }
             val streamingData = root.optJSONObject("streamingData")
-                ?: throw YoutubePlayerRequestException(null, "Nessun blocco streamingData")
+                ?: throw YoutubePlayerRequestException(null, "Nessun blocco streamingData",
+                    noPlayableStream = status == "OK")
             val adaptiveFormats = streamingData.optJSONArray("adaptiveFormats") ?: JSONArray()
             val muxedFormats = streamingData.optJSONArray("formats") ?: JSONArray()
             val audioConfig = root.optJSONObject("playerConfig")?.optJSONObject("audioConfig")
@@ -3658,7 +3698,10 @@ class PlaybackResolver private constructor(private val context: Context) {
                     YoutubeStreamingDataShape.of(streamingData),
                     sabrDelivery != null
                 )
-                throw YoutubePlayerRequestException(null, "URL streaming assente")
+                throw YoutubePlayerRequestException(null, "URL streaming assente",
+                    noPlayableStream = status == "OK" && audioCandidates.isEmpty() && sabrCandidates.isEmpty()
+                        && streamingData.optString("hlsManifestUrl").isBlank()
+                        && streamingData.optString("dashManifestUrl").isBlank())
             }
             val thumbnail = details?.optJSONObject("thumbnail")?.optJSONArray("thumbnails")?.bestThumbnail().orEmpty()
             val directAudioStreams = if (bestAudioUrl.isBlank()) {
@@ -4644,6 +4687,7 @@ private data class ClientHealth(
     val consecutiveFailures: Int = 0,
     val averageLatencyMs: Long = Long.MAX_VALUE,
     val blockedUntilMs: Long = 0L,
+    val canRecoverAtLowQuality: Boolean = false,
     val updatedAtMs: Long = 0L
 ) {
     val score: Double
