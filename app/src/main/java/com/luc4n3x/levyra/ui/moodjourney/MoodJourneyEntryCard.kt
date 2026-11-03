@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
@@ -33,9 +34,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -45,7 +48,9 @@ import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.domain.MoodCurve
 import com.luc4n3x.levyra.domain.MoodCurvePreset
 import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
+import com.luc4n3x.levyra.ui.atelierUppercase
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.SmartMusicCopy
 import com.luc4n3x.levyra.ui.i18n.SmartMusicText
 import com.luc4n3x.levyra.ui.i18n.smartMusicCopy
 import com.luc4n3x.levyra.ui.theme.AtelierDesign
@@ -67,6 +72,10 @@ internal fun MoodJourneyEntryCard(onOpen: (MoodCurvePreset?) -> Unit, modifier: 
     val open: (MoodCurvePreset?) -> Unit = { preset ->
         haptics.perform(LevyraHapticAction.Confirm)
         onOpen(preset)
+    }
+    if (LevyraIsAtelier) {
+        AtelierMoodJourneyEntry(copy, open, modifier)
+        return
     }
     Column(modifier.fillMaxWidth().padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(
@@ -157,8 +166,8 @@ private fun JourneyCurve() {
 }
 
 @Composable
-private fun JourneyPresetGlyph(preset: MoodCurvePreset) {
-    val color = MaterialTheme.colorScheme.onSurfaceVariant
+private fun JourneyPresetGlyph(preset: MoodCurvePreset, tint: Color = Color.Unspecified) {
+    val color = tint.takeOrElse { MaterialTheme.colorScheme.onSurfaceVariant }
     val energies = remember(preset) { val curve = MoodCurve.preset(preset); List(17) { curve.sample(it / 16f).energy } }
     Canvas(Modifier.size(width = 28.dp, height = 12.dp)) {
         val path = Path()
@@ -169,4 +178,79 @@ private fun JourneyPresetGlyph(preset: MoodCurvePreset) {
         }
         drawPath(path, color, style = Stroke(1.5.dp.toPx(), cap = StrokeCap.Round))
     }
+}
+
+@Composable
+private fun AtelierMoodJourneyEntry(copy: SmartMusicCopy, open: (MoodCurvePreset?) -> Unit, modifier: Modifier) {
+    Column(modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+        Box(Modifier.fillMaxWidth().height(1.dp).background(AtelierDesign.hairline))
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button) { open(null) },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                atelierUppercase(copy[SmartMusicText.MoodTitle]),
+                style = MaterialTheme.typography.labelMedium,
+                color = AtelierDesign.textSecondary,
+                modifier = Modifier.weight(1f).semantics { heading() }
+            )
+            Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null, tint = AtelierDesign.textSecondary, modifier = Modifier.size(18.dp))
+        }
+        Text(
+            copy[SmartMusicText.MoodSubtitle],
+            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Light),
+            color = AtelierDesign.text,
+            modifier = Modifier.fillMaxWidth().clickable(role = Role.Button) { open(null) }.padding(bottom = 18.dp)
+        )
+        AtelierJourneyTimeline(Modifier.fillMaxWidth().height(72.dp).clickable(role = Role.Button) { open(null) })
+        Box(Modifier.padding(top = 18.dp).fillMaxWidth().height(1.dp).background(AtelierDesign.hairline))
+        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+            JourneyPresets.forEachIndexed { index, preset ->
+                if (index > 0) Box(Modifier.padding(vertical = 14.dp).width(1.dp).fillMaxHeight().background(AtelierDesign.hairline))
+                Column(
+                    Modifier.weight(1f).heightIn(min = 56.dp).clickable(role = Role.Button) { open(preset) }.padding(vertical = 12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically)
+                ) {
+                    JourneyPresetGlyph(preset, AtelierDesign.textSecondary)
+                    Text(copy[presetLabel(preset)], style = MaterialTheme.typography.labelLarge, color = AtelierDesign.text, textAlign = TextAlign.Center, maxLines = 1)
+                }
+            }
+        }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(AtelierDesign.hairline))
+    }
+}
+
+@Composable
+private fun AtelierJourneyTimeline(modifier: Modifier) {
+    val line = AtelierDesign.text
+    val tick = AtelierDesign.hairlineStrong
+    val accent = AtelierDesign.accent
+    val energies = remember { val curve = MoodCurve.preset(MoodCurvePreset.Wave); List(65) { curve.sample(it / 64f).energy } }
+    val travel: State<Float>? = if (LocalAnimationsEnabled.current) {
+        rememberInfiniteTransition(label = "atelier-journey").animateFloat(
+            0f, 1f, infiniteRepeatable(tween(9_000, easing = LinearEasing)), label = "atelier-journey-head"
+        )
+    } else null
+    Box(modifier.drawWithCache {
+        val baseline = size.height - 1.dp.toPx()
+        val usable = size.height - 14.dp.toPx()
+        fun point(index: Int) = Offset(index / 64f * size.width, baseline - 8.dp.toPx() - energies[index] * (usable - 8.dp.toPx()))
+        val trace = Path().apply { energies.indices.forEach { index -> point(index).let { if (index == 0) moveTo(it.x, it.y) else lineTo(it.x, it.y) } } }
+        val stroke = Stroke(1.25.dp.toPx(), cap = StrokeCap.Round)
+        onDrawBehind {
+            drawLine(tick, Offset(0f, baseline), Offset(size.width, baseline), 1.dp.toPx())
+            for (index in 0..32) {
+                val x = index / 32f * size.width
+                val height = if (index % 8 == 0) 7.dp.toPx() else 3.dp.toPx()
+                drawLine(tick, Offset(x, baseline), Offset(x, baseline - height), 1.dp.toPx())
+            }
+            drawPath(trace, line.copy(alpha = 0.9f), style = stroke)
+            val position = (travel?.value ?: 0.5f) * 64f
+            val index = position.toInt().coerceIn(0, 63)
+            val head = point(index) + (point(index + 1) - point(index)) * (position - index)
+            drawLine(accent.copy(alpha = 0.5f), Offset(head.x, head.y), Offset(head.x, baseline), 1.dp.toPx())
+            drawCircle(accent, 3.dp.toPx(), head)
+        }
+    })
 }

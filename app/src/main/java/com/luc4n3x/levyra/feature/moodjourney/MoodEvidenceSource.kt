@@ -14,7 +14,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withTimeoutOrNull
 
-data class EditorialPlaylistRef(val playlistId: String, val title: String)
+data class EditorialPlaylistRef(val playlistId: String, val title: String, val apple: Boolean = false)
 
 class MoodEditorialGateway(
     val categories: suspend () -> List<ExploreCategory>,

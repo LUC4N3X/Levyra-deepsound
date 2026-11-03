@@ -156,10 +156,79 @@ enum class MoodCategoryKind(val energy: Float, val valence: Float) {
             COMMUTE to listOf("commute", "drive", "driving", "travel")
         )
 
+        private val playlistMatchers: List<Pair<MoodCategoryKind, List<String>>> = listOf(
+            SLEEP to listOf("sleep", "bedtime", "meditation", "lullaby"),
+            WORKOUT to listOf("workout", "gym", "fitness", "training", "cardio", "running", "run"),
+            PARTY to listOf("party", "club", "dance", "tailgate", "celebrate", "bashment", "throwdown"),
+            ENERGIZE to listOf("energy", "energize", "pump", "pump-up", "anthems", "bangers", "decibels", "hard"),
+            SAD to listOf("sad", "heartbreak", "breakup", "wallow", "melancholy", "ballads", "tears"),
+            ROMANCE to listOf("love", "romance", "romantic", "cuddle", "cuddling", "serenades", "sweetheart", "lovers"),
+            FEEL_GOOD to listOf("feel-good", "feel good", "happy", "happiest", "sunshine", "summer", "good vibes"),
+            CHILL to listOf("chill", "chillout", "relax", "relaxation", "relaxing", "calm", "easy", "kick-back", "lite", "soft", "unwind", "coffeehouse", "fireside"),
+            FOCUS to listOf("focus", "study", "concentration", "piano"),
+            COMMUTE to listOf("commute", "drive", "driving", "road", "road trip", "travel")
+        )
+
+        private val titleNoise = Regex("""[^\p{L}\p{N}-]+""")
+
         fun fromTitle(title: String): MoodCategoryKind? {
             val text = title.lowercase(Locale.ROOT)
             return matchers.firstOrNull { (_, needles) -> needles.any { text.contains(it) } }?.first
         }
+
+        fun fromPlaylistTitle(title: String): MoodCategoryKind? {
+            val words = " " + title.lowercase(Locale.ROOT).replace(titleNoise, " ").trim() + " "
+            return playlistMatchers.firstOrNull { (_, needles) -> needles.any { words.contains(" $it ") } }?.first
+        }
+    }
+}
+
+enum class MoodStyle(
+    val storageId: String,
+    val categoryTitles: Set<String>,
+    val searchQueries: List<String>,
+    val energy: Float,
+    val valence: Float
+) {
+    POP("pop", setOf("pop"), listOf("pop hits", "feel good pop", "chill pop", "sad pop songs"), 0.62f, 0.72f),
+    ROCK("rock", setOf("rock"), listOf("rock hits", "chill rock", "rock workout", "rock ballads"), 0.74f, 0.52f),
+    HIP_HOP("hip_hop", setOf("hip-hop", "hip hop"), listOf("hip hop hits", "chill hip hop", "hip hop workout", "sad rap"), 0.7f, 0.5f),
+    ELECTRONIC("electronic", setOf("dance & electronic", "electronic"), listOf("dance hits", "chill electronic", "edm workout", "deep house"), 0.8f, 0.64f),
+    RNB("rnb", setOf("r&b & soul", "r&b"), listOf("r&b hits", "chill r&b", "soul classics", "r&b love songs"), 0.46f, 0.6f),
+    JAZZ("jazz", setOf("jazz"), listOf("jazz classics", "chill jazz", "upbeat jazz", "jazz ballads"), 0.36f, 0.6f),
+    CLASSICAL("classical", setOf("classical"), listOf("classical essentials", "relaxing classical", "epic classical", "classical piano"), 0.26f, 0.54f),
+    REGGAE("reggae", setOf("reggae & caribbean", "reggae"), listOf("reggae classics", "reggae relaxation", "dancehall party", "roots reggae"), 0.56f, 0.76f),
+    FOLK("folk", setOf("folk & acoustic", "folk"), listOf("folk classics", "acoustic chill", "indie folk", "sad folk songs"), 0.34f, 0.54f),
+    COUNTRY("country", setOf("country & americana", "country"), listOf("country hits", "chill country", "country workout", "country love songs"), 0.56f, 0.64f),
+    DISCO("disco", emptySet(), listOf("disco classics", "disco party", "nu disco", "disco love songs", "chill disco"), 0.82f, 0.82f),
+    NEW_AGE("new_age", emptySet(), listOf("new age music", "new age relaxation", "new age meditation", "new age piano", "new age ambient"), 0.16f, 0.56f),
+    LATIN("latin", setOf("latin"), listOf("latin hits", "latin party", "chill latin", "latin love songs"), 0.74f, 0.78f),
+    METAL("metal", setOf("metal"), listOf("metal essentials", "metal workout", "melodic metal", "metal ballads"), 0.92f, 0.32f),
+    BLUES("blues", setOf("blues"), listOf("blues classics", "chill blues", "blues rock", "sad blues"), 0.4f, 0.38f);
+
+    fun matchesCategory(title: String): Boolean = title.trim().lowercase(Locale.ROOT) in categoryTitles
+
+    val appleGenres: List<String>
+        get() = when (this) {
+            POP -> listOf("Pop")
+            ROCK -> listOf("Rock")
+            HIP_HOP -> listOf("Hip-Hop/Rap")
+            ELECTRONIC -> listOf("Electronic", "Dance")
+            RNB -> listOf("R&B/Soul")
+            JAZZ -> listOf("Jazz")
+            CLASSICAL -> listOf("Classical")
+            REGGAE -> listOf("Reggae")
+            FOLK -> listOf("Folk", "Singer/Songwriter")
+            COUNTRY -> listOf("Country")
+            DISCO -> listOf("Disco")
+            NEW_AGE -> listOf("New Age")
+            LATIN -> listOf("Latin")
+            METAL -> listOf("Metal", "Hard Rock")
+            BLUES -> listOf("Blues")
+        }
+
+    companion object {
+        fun from(storageId: String?): MoodStyle? = entries.firstOrNull { it.storageId == storageId }
     }
 }
 
@@ -173,6 +242,7 @@ object MoodEvidence {
     const val EDITORIAL_WEIGHT = 1.2f
     const val TAG_WEIGHT = 0.35f
     const val TITLE_WEIGHT = 0.25f
+    const val STYLE_WEIGHT = 0.3f
     const val MIN_CONFIDENCE = 0.2f
 
     private class Cue(val energy: Float?, val valence: Float?)
@@ -205,7 +275,7 @@ object MoodEvidence {
 
     private val wordSplit = Regex("""[^\p{L}\p{N}'-]+""")
 
-    fun estimate(track: Track, editorial: Collection<MoodCategoryKind>): MoodEstimate {
+    fun estimate(track: Track, editorial: Collection<MoodCategoryKind>, styles: Collection<MoodStyle> = emptyList()): MoodEstimate {
         var energySum = 0f
         var energyWeight = 0f
         var valenceSum = 0f
@@ -215,6 +285,7 @@ object MoodEvidence {
             cue.valence?.let { valenceSum += it * weight; valenceWeight += weight }
         }
         editorial.forEach { kind -> add(Cue(kind.energy, kind.valence), EDITORIAL_WEIGHT) }
+        styles.forEach { style -> add(Cue(style.energy, style.valence), STYLE_WEIGHT / styles.size) }
         track.moodTags.forEach { raw -> tagCues[raw.trim().lowercase(Locale.ROOT)]?.let { add(it, TAG_WEIGHT) } }
         val words = "${track.title} ${track.album}".lowercase(Locale.ROOT).split(wordSplit)
         val seen = HashSet<String>()
@@ -226,7 +297,7 @@ object MoodEvidence {
         val energy = if (energyWeight > 0f) energySum / energyWeight else 0.5f
         val valence = if (valenceWeight > 0f) valenceSum / valenceWeight else 0.5f
         val evidence = energyWeight + 0.5f * valenceWeight
-        val titleOnly = editorial.isEmpty() && track.moodTags.none { tagCues.containsKey(it.trim().lowercase(Locale.ROOT)) }
+        val titleOnly = editorial.isEmpty() && styles.isEmpty() && track.moodTags.none { tagCues.containsKey(it.trim().lowercase(Locale.ROOT)) }
         val confidence = (1f - exp(-evidence)).coerceIn(0f, 1f) * (if (energyWeight > 0f) 1f else 0.45f) * if (titleOnly) 0.5f else 1f
         return MoodEstimate(energy.coerceIn(0f, 1f), valence.coerceIn(0f, 1f), confidence)
     }
@@ -235,7 +306,8 @@ object MoodEvidence {
 data class MoodJourneyCandidate(
     val track: Track,
     val mood: MoodEstimate,
-    val affinity: Float = 0f
+    val affinity: Float = 0f,
+    val styles: Set<MoodStyle> = emptySet()
 )
 
 data class MoodJourneyRequest(
@@ -245,7 +317,8 @@ data class MoodJourneyRequest(
     val excludedKeys: Set<String> = emptySet(),
     val exclusions: ArtistExclusions = ArtistExclusions.Empty,
     val avoidKeys: Set<String> = emptySet(),
-    val seed: Long = 0L
+    val seed: Long = 0L,
+    val styles: Set<MoodStyle> = emptySet()
 ) {
     val boundedTrackCount: Int get() = trackCount.coerceIn(MIN_TRACKS, MAX_TRACKS)
 
@@ -387,6 +460,7 @@ object MoodJourneyEngine {
                 if (!LevyraPersonalOrbit.isReliableMusicCandidate(track)) continue
                 if (request.exclusions.excludesTrack(track)) continue
                 if (candidate.mood.confidence < MoodEvidence.MIN_CONFIDENCE) continue
+                if (request.styles.isNotEmpty() && candidate.styles.none { it in request.styles }) continue
             }
             val existing = byKey[key]
             if (existing != null) {

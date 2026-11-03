@@ -2,6 +2,22 @@
 
 package com.luc4n3x.levyra.ui.jam
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.TextFieldColors
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.semantics.heading
+import com.luc4n3x.levyra.ui.AtelierCabinetKnob
+import com.luc4n3x.levyra.ui.atelierUppercase
+import com.luc4n3x.levyra.ui.theme.AtelierDesign
+import com.luc4n3x.levyra.ui.theme.LevyraIsAtelier
 import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
@@ -48,6 +64,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -104,6 +121,37 @@ internal fun LevyraJamOverlay(
     onDismissFailure: () -> Unit,
     onClose: () -> Unit
 ) {
+    CompositionLocalProvider(LocalJamLook provides jamLookForActiveSkin()) {
+        JamOverlayContent(
+            jam, displayName, onDisplayNameChange, onCreate, onJoin, onLeave, onEnd, onPermissionChange,
+            onApprovalRequiredChange, onLockedChange, onApproveParticipant, onRejectParticipant, onRemoveParticipant,
+            onClearBans, onShare, onDismissFailure, onClose
+        )
+    }
+}
+
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
+@Composable
+private fun JamOverlayContent(
+    jam: JamUiState,
+    displayName: String,
+    onDisplayNameChange: (String) -> Unit,
+    onCreate: (JamGuestPermission, Boolean) -> Unit,
+    onJoin: (String) -> Unit,
+    onLeave: () -> Unit,
+    onEnd: () -> Unit,
+    onPermissionChange: (JamGuestPermission) -> Unit,
+    onApprovalRequiredChange: (Boolean) -> Unit,
+    onLockedChange: (Boolean) -> Unit,
+    onApproveParticipant: (String) -> Unit,
+    onRejectParticipant: (String) -> Unit,
+    onRemoveParticipant: (String, Boolean) -> Unit,
+    onClearBans: () -> Unit,
+    onShare: (String) -> Unit,
+    onDismissFailure: () -> Unit,
+    onClose: () -> Unit
+) {
+    val look = LocalJamLook.current
     val strings = LocalLevyraStrings.current
     var joinCode by rememberSaveable { mutableStateOf("") }
     var pendingPermissionId by rememberSaveable { mutableStateOf(JamGuestPermission.AddSongs.id) }
@@ -119,16 +167,20 @@ internal fun LevyraJamOverlay(
         modifier = Modifier
             .fillMaxSize()
             .background(
-                Brush.verticalGradient(
-                    listOf(
-                        MaterialTheme.colorScheme.surfaceContainerLow,
-                        MaterialTheme.colorScheme.background,
-                        MaterialTheme.colorScheme.background
+                if (look.skinned) {
+                    Brush.verticalGradient(listOf(if (LevyraIsAtelier) look.card else look.background, look.background, look.background))
+                } else {
+                    Brush.verticalGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.surfaceContainerLow,
+                            MaterialTheme.colorScheme.background,
+                            MaterialTheme.colorScheme.background
+                        )
                     )
-                )
+                }
             )
     ) {
-        JamAmbientBackdrop()
+        if (LevyraIsAtelier) AtelierJamBackdrop() else if (!look.skinned) JamAmbientBackdrop()
         LazyColumn(
             modifier = Modifier.fillMaxSize().statusBarsPadding(),
             contentPadding = PaddingValues(
@@ -162,6 +214,8 @@ internal fun LevyraJamOverlay(
                             onValueChange = onDisplayNameChange,
                             singleLine = true,
                             label = { Text(strings.jamDisplayName) },
+                            colors = jamFieldColors(),
+                            shape = jamFieldShape(),
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -194,6 +248,8 @@ internal fun LevyraJamOverlay(
                             onValueChange = { joinCode = it.take(JamSessionState.MAX_TEXT_LENGTH) },
                             singleLine = true,
                             label = { Text(strings.jamCodeHint) },
+                            colors = jamFieldColors(),
+                            shape = jamFieldShape(),
                             modifier = Modifier.fillMaxWidth()
                         )
                         JamPrimaryButton(
@@ -203,7 +259,7 @@ internal fun LevyraJamOverlay(
                         )
                         Text(
                             strings.jamLocalNetworkOnly,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = if (look.skinned) look.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -341,7 +397,64 @@ private fun JamAmbientBackdrop() {
 }
 
 @Composable
+private fun AtelierJamBackdrop() {
+    val accent = AtelierDesign.accent
+    Box(
+        Modifier
+            .fillMaxSize()
+            .clearAndSetSemantics { }
+            .drawBehind {
+                drawCircle(
+                    Brush.radialGradient(listOf(accent.copy(alpha = 0.16f), Color.Transparent), center = Offset(size.width * 0.86f, size.height * 0.04f), radius = size.width * 0.9f),
+                    radius = size.width * 0.9f,
+                    center = Offset(size.width * 0.86f, size.height * 0.04f)
+                )
+            }
+    )
+}
+
+@Composable
+private fun AtelierJamHeader(title: String, subtitle: String, onClose: () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+            LevyraBackButton(onClick = onClose, contentDescription = LocalLevyraStrings.current.back, size = 48.dp)
+            Box(
+                Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(AtelierDesign.cabinet)
+                    .border(1.dp, AtelierDesign.hairlineStrong, CircleShape)
+                    .clearAndSetSemantics { },
+                contentAlignment = Alignment.Center
+            ) {
+                AtelierCabinetKnob(-48f, Modifier.size(40.dp))
+            }
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(title, color = AtelierDesign.text, style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Light), modifier = Modifier.semantics { heading() })
+            Text(subtitle, color = AtelierDesign.textSecondary, style = MaterialTheme.typography.bodyLarge)
+        }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(AtelierDesign.hairline))
+    }
+}
+
+@Composable
 private fun JamHeader(title: String, subtitle: String, onClose: () -> Unit) {
+    if (LevyraIsAtelier) {
+        AtelierJamHeader(title, subtitle, onClose)
+        return
+    }
+    val look = LocalJamLook.current
+    if (look.skinned) {
+        Column(Modifier.fillMaxWidth().padding(bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            LevyraBackButton(onClick = onClose, contentDescription = LocalLevyraStrings.current.back, size = 48.dp)
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(title, color = look.text, style = MaterialTheme.typography.headlineLarge, fontWeight = look.displayWeight, modifier = Modifier.semantics { heading() })
+                Text(subtitle, color = look.textSecondary, style = MaterialTheme.typography.bodyLarge)
+            }
+        }
+        return
+    }
     Column(
         modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp)
@@ -386,7 +499,63 @@ private fun JamHeader(title: String, subtitle: String, onClose: () -> Unit) {
 }
 
 @Composable
+private fun SkinnedJamSessionHero(jam: JamUiState, strings: LevyraStrings, onShare: () -> Unit) {
+    val look = LocalJamLook.current
+    val connected = jam.connection == JamConnectionState.Connected
+    val led by animateColorAsState(if (connected) look.mark else look.textSecondary, label = "jam-led")
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(look.cardShape)
+            .background(look.card)
+            .border(1.dp, look.border, look.cardShape)
+    ) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(
+                Modifier
+                    .size(10.dp)
+                    .drawBehind {
+                        drawCircle(led.copy(alpha = 0.28f), radius = size.minDimension)
+                        drawCircle(led)
+                    }
+                    .clearAndSetSemantics { }
+            )
+            Column(Modifier.weight(1f)) {
+                Text(jamLabel(look, if (jam.isHost) strings.jamRoleHost else strings.jamRoleGuest), color = look.text, style = MaterialTheme.typography.labelMedium)
+                Text(jamConnectionText(jam.connection, strings), color = if (connected) look.accent else look.textSecondary, style = MaterialTheme.typography.bodySmall)
+            }
+            if (jam.isHost && jam.locked) JamBadge(label = strings.jamLocked, icon = Icons.Rounded.Lock)
+        }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(look.border))
+        if (jam.isHost && jam.code.isNotBlank()) {
+            Column(
+                Modifier.fillMaxWidth().background(look.background.copy(alpha = 0.6f)).padding(horizontal = 20.dp, vertical = 26.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(jamLabel(look, strings.jamSessionCode), color = look.textSecondary, style = MaterialTheme.typography.labelSmall)
+                Text(jam.code, color = look.text, style = MaterialTheme.typography.displayMedium.copy(fontWeight = look.displayWeight), letterSpacing = 6.sp, maxLines = 1)
+            }
+            Box(Modifier.fillMaxWidth().height(1.dp).background(look.border))
+        }
+        Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(jamLabel(look, strings.jamParticipants), color = look.textSecondary, style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f))
+            Text((jam.session?.participants?.size ?: 0).toString(), color = look.text, style = MaterialTheme.typography.headlineMedium.copy(fontWeight = look.displayWeight))
+        }
+        if (jam.isHost && jam.code.isNotBlank()) {
+            Box(Modifier.padding(start = 20.dp, end = 20.dp, bottom = 20.dp)) {
+                JamPrimaryButton(label = strings.jamShareInvite, icon = Icons.Rounded.IosShare, onClick = onShare)
+            }
+        }
+    }
+}
+
+@Composable
 private fun JamSessionHero(jam: JamUiState, strings: LevyraStrings, onShare: () -> Unit) {
+    if (LocalJamLook.current.skinned) {
+        SkinnedJamSessionHero(jam, strings, onShare)
+        return
+    }
     val connected = jam.connection == JamConnectionState.Connected
     val statusColor by animateColorAsState(
         targetValue = if (connected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -494,9 +663,11 @@ private fun JamPendingRow(
     onApprove: () -> Unit,
     onReject: () -> Unit
 ) {
+    val look = LocalJamLook.current
     Surface(
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        shape = MaterialTheme.shapes.large,
+        color = if (look.skinned) look.card else MaterialTheme.colorScheme.secondaryContainer,
+        shape = if (look.skinned) look.cardShape else MaterialTheme.shapes.large,
+        border = if (look.skinned) BorderStroke(1.dp, look.accent.copy(alpha = 0.45f)) else null,
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -507,11 +678,11 @@ private fun JamPendingRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            JamAvatar(name = request.name.ifBlank { strings.jamRoleGuest }, accent = MaterialTheme.colorScheme.secondary)
+            JamAvatar(name = request.name.ifBlank { strings.jamRoleGuest }, accent = if (look.skinned) look.accent else MaterialTheme.colorScheme.secondary)
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     request.name.ifBlank { strings.jamRoleGuest },
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    color = if (look.skinned) look.text else MaterialTheme.colorScheme.onSecondaryContainer,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -519,7 +690,7 @@ private fun JamPendingRow(
                 )
                 Text(
                     strings.jamPendingRequests,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.72f),
+                    color = if (look.skinned) look.textSecondary else MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.72f),
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -534,7 +705,11 @@ private fun JamPendingRow(
             }
             IconButton(
                 onClick = onApprove,
-                colors = IconButtonDefaults.filledTonalIconButtonColors(),
+                colors = if (look.skinned) {
+                    IconButtonDefaults.filledIconButtonColors(containerColor = look.accent, contentColor = look.onAccent)
+                } else {
+                    IconButtonDefaults.filledTonalIconButtonColors()
+                },
                 shapes = IconButtonDefaults.shapes(),
                 modifier = Modifier.size(48.dp)
             ) {
@@ -544,6 +719,7 @@ private fun JamPendingRow(
     }
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 private fun JamParticipantRow(
     participant: JamParticipant,
@@ -554,6 +730,7 @@ private fun JamParticipantRow(
     onKick: () -> Unit,
     onBan: () -> Unit
 ) {
+    val look = LocalJamLook.current
     val role = when {
         participant.isHost -> strings.jamRoleHost
         else -> strings.jamRoleGuest
@@ -564,8 +741,9 @@ private fun JamParticipantRow(
         role
     }
     Surface(
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        shape = MaterialTheme.shapes.large,
+        color = if (look.skinned) look.card else MaterialTheme.colorScheme.surfaceContainer,
+        shape = if (look.skinned) look.cardShape else MaterialTheme.shapes.large,
+        border = if (look.skinned) BorderStroke(1.dp, look.border) else null,
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -578,7 +756,12 @@ private fun JamParticipantRow(
         ) {
             JamAvatar(
                 name = participant.name.ifBlank { role },
-                accent = if (participant.isHost) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
+                accent = when {
+                    look.skinned && participant.isHost -> look.mark
+                    look.skinned -> look.textSecondary
+                    participant.isHost -> MaterialTheme.colorScheme.primary
+                    else -> MaterialTheme.colorScheme.secondary
+                }
             )
             Column(modifier = Modifier.weight(1f)) {
                 Row(
@@ -587,7 +770,7 @@ private fun JamParticipantRow(
                 ) {
                     Text(
                         participant.name.ifBlank { role },
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = if (look.skinned) look.text else MaterialTheme.colorScheme.onSurface,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -598,7 +781,7 @@ private fun JamParticipantRow(
                 }
                 Text(
                     detail,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (look.skinned) look.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -626,13 +809,16 @@ private fun JamParticipantRow(
 
 @Composable
 private fun JamAvatar(name: String, accent: Color) {
+    val look = LocalJamLook.current
     val initial = remember(name) {
         name.trim().firstOrNull()?.uppercase() ?: "?"
     }
+    val shape = if (look.skinned) CircleShape else MaterialShapes.Cookie9Sided.toShape()
     Box(
         modifier = Modifier
             .size(40.dp)
-            .background(accent.copy(alpha = 0.16f), MaterialShapes.Cookie9Sided.toShape())
+            .background(accent.copy(alpha = if (look.skinned) 0.1f else 0.16f), shape)
+            .then(if (look.skinned) Modifier.border(1.dp, accent.copy(alpha = 0.5f), shape) else Modifier)
             .clearAndSetSemantics { },
         contentAlignment = Alignment.Center
     ) {
@@ -642,10 +828,12 @@ private fun JamAvatar(name: String, accent: Color) {
 
 @Composable
 private fun JamBadge(label: String, icon: ImageVector? = null) {
+    val look = LocalJamLook.current
     Surface(
-        color = MaterialTheme.colorScheme.tertiaryContainer,
-        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-        shape = MaterialTheme.shapes.extraLarge
+        color = if (look.skinned) Color.Transparent else MaterialTheme.colorScheme.tertiaryContainer,
+        contentColor = if (look.skinned) look.mark else MaterialTheme.colorScheme.onTertiaryContainer,
+        shape = if (look.skinned) look.buttonShape else MaterialTheme.shapes.extraLarge,
+        border = if (look.skinned) BorderStroke(1.dp, look.border) else null
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
@@ -655,13 +843,26 @@ private fun JamBadge(label: String, icon: ImageVector? = null) {
             if (icon != null) {
                 Icon(icon, contentDescription = null, modifier = Modifier.size(14.dp))
             }
-            Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+            Text(if (look.skinned) jamLabel(look, label) else label, style = if (look.skinned) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
         }
     }
 }
 
 @Composable
 private fun JamCard(content: @Composable () -> Unit) {
+    val look = LocalJamLook.current
+    if (look.skinned) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .clip(look.cardShape)
+                .background(look.card)
+                .border(1.dp, look.border, look.cardShape)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) { content() }
+        return
+    }
     ElevatedCard(
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         shape = MaterialTheme.shapes.extraLarge,
@@ -678,6 +879,14 @@ private fun JamCard(content: @Composable () -> Unit) {
 
 @Composable
 private fun JamCardTitle(text: String) {
+    val look = LocalJamLook.current
+    if (look.skinned) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.semantics(mergeDescendants = true) { heading() }) {
+            if (LevyraIsAtelier) AtelierCabinetKnob(-40f, Modifier.size(22.dp).clearAndSetSemantics { })
+            Text(jamLabel(look, text), color = look.mark, style = MaterialTheme.typography.labelMedium)
+        }
+        return
+    }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -701,10 +910,11 @@ private fun JamCardTitle(text: String) {
 
 @Composable
 private fun JamSectionLabel(text: String) {
+    val look = LocalJamLook.current
     Text(
-        text,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        style = MaterialTheme.typography.labelLarge,
+        if (look.skinned) jamLabel(look, text) else text,
+        color = if (look.skinned) look.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
+        style = if (look.skinned) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelLarge,
         fontWeight = FontWeight.SemiBold,
         modifier = Modifier.padding(top = 8.dp, start = 4.dp)
     )
@@ -712,26 +922,63 @@ private fun JamSectionLabel(text: String) {
 
 @Composable
 private fun JamEmptyRow(text: String) {
+    val look = LocalJamLook.current
     Surface(
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        shape = MaterialTheme.shapes.large,
+        color = if (look.skinned) look.card else MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = if (look.skinned) look.cardShape else MaterialTheme.shapes.large,
+        border = if (look.skinned) BorderStroke(1.dp, look.border) else null,
         modifier = Modifier.fillMaxWidth()
     ) {
         Text(
             text,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = if (look.skinned) look.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(20.dp)
         )
     }
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 private fun JamPermissionPicker(
     selected: JamGuestPermission,
     strings: LevyraStrings,
     onSelect: (JamGuestPermission) -> Unit
 ) {
+    if (LevyraIsAtelier) {
+        AtelierJamPermissionPicker(selected, strings, onSelect)
+        return
+    }
+    val look = LocalJamLook.current
+    if (look.skinned) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.selectableGroup()) {
+            JamPermissionOptions.forEach { permission ->
+                val active = permission == selected
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 56.dp)
+                        .clip(look.rowShape)
+                        .background(if (active) look.selectedRow else look.background.copy(alpha = 0.4f))
+                        .then(if (active) Modifier.border(1.dp, look.mark.copy(alpha = 0.7f), look.rowShape) else Modifier)
+                        .selectable(selected = active, role = Role.RadioButton) { onSelect(permission) }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        jamPermissionLabel(permission, strings),
+                        color = if (active) look.text else look.textSecondary,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = if (active) look.titleWeight else FontWeight.Normal,
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (active) Icon(Icons.Rounded.Check, contentDescription = null, tint = look.mark, modifier = Modifier.size(18.dp))
+                }
+            }
+        }
+        return
+    }
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.selectableGroup()
@@ -779,12 +1026,53 @@ private fun JamPermissionPicker(
 }
 
 @Composable
+private fun AtelierJamPermissionPicker(
+    selected: JamGuestPermission,
+    strings: LevyraStrings,
+    onSelect: (JamGuestPermission) -> Unit
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(AtelierDesign.panelShape)
+            .border(1.dp, AtelierDesign.hairlineStrong, AtelierDesign.panelShape)
+            .selectableGroup()
+    ) {
+        JamPermissionOptions.forEachIndexed { index, permission ->
+            val active = permission == selected
+            val knob by animateFloatAsState(if (active) -40f else -140f, label = "atelier-jam-knob")
+            if (index > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(AtelierDesign.hairline))
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 60.dp)
+                    .background(if (active) AtelierDesign.panelRaised else Color.Transparent)
+                    .selectable(selected = active, role = Role.RadioButton) { onSelect(permission) }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                AtelierCabinetKnob(knob, Modifier.size(26.dp))
+                Text(
+                    jamPermissionLabel(permission, strings),
+                    color = if (active) AtelierDesign.text else AtelierDesign.textSecondary,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f)
+                )
+                Box(Modifier.size(8.dp).background(if (active) AtelierDesign.accentBright else AtelierDesign.hairlineStrong, CircleShape))
+            }
+        }
+    }
+}
+
+@Composable
 private fun JamSwitchRow(
     title: String,
     subtitle: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
+    val look = LocalJamLook.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -795,19 +1083,31 @@ private fun JamSwitchRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 title,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = if (look.skinned) look.text else MaterialTheme.colorScheme.onSurface,
                 style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
+                fontWeight = if (look.skinned) FontWeight.Medium else FontWeight.Bold
             )
             Text(
                 subtitle,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (look.skinned) look.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall
             )
         }
         Switch(
             checked = checked,
-            onCheckedChange = onCheckedChange
+            onCheckedChange = onCheckedChange,
+            colors = if (look.skinned) {
+                SwitchDefaults.colors(
+                    checkedThumbColor = look.onAccent,
+                    checkedTrackColor = look.accent,
+                    checkedBorderColor = look.accent,
+                    uncheckedThumbColor = look.textSecondary,
+                    uncheckedTrackColor = look.background,
+                    uncheckedBorderColor = look.border
+                )
+            } else {
+                SwitchDefaults.colors()
+            }
         )
     }
 }
@@ -845,10 +1145,21 @@ private fun JamPrimaryButton(
     icon: ImageVector? = null,
     onClick: () -> Unit
 ) {
+    val look = LocalJamLook.current
     Button(
         enabled = enabled,
         onClick = onClick,
-        shapes = ButtonDefaults.shapes(),
+        shapes = if (look.skinned) ButtonDefaults.shapes(shape = look.buttonShape, pressedShape = look.cardShape) else ButtonDefaults.shapes(),
+        colors = if (look.skinned) {
+            ButtonDefaults.buttonColors(
+                containerColor = look.accent,
+                contentColor = look.onAccent,
+                disabledContainerColor = look.selectedRow,
+                disabledContentColor = look.textSecondary
+            )
+        } else {
+            ButtonDefaults.buttonColors()
+        },
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp),
         modifier = Modifier
             .fillMaxWidth()
@@ -876,9 +1187,12 @@ private fun JamPrimaryButton(
 
 @Composable
 private fun JamSecondaryButton(label: String, onClick: () -> Unit) {
+    val look = LocalJamLook.current
     OutlinedButton(
         onClick = onClick,
-        shapes = ButtonDefaults.shapes(),
+        shapes = if (look.skinned) ButtonDefaults.shapes(shape = look.buttonShape, pressedShape = look.cardShape) else ButtonDefaults.shapes(),
+        colors = if (look.skinned) ButtonDefaults.outlinedButtonColors(contentColor = look.text) else ButtonDefaults.outlinedButtonColors(),
+        border = if (look.skinned) BorderStroke(1.dp, look.border) else ButtonDefaults.outlinedButtonBorder(true),
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 56.dp)
@@ -920,6 +1234,35 @@ private fun JamFailureBanner(message: String, dismissLabel: String, onDismiss: (
         }
     }
 }
+
+@Composable
+private fun jamFieldColors(): TextFieldColors =
+    LocalJamLook.current.let { look ->
+    if (look.skinned) {
+        OutlinedTextFieldDefaults.colors(
+            focusedTextColor = look.text,
+            unfocusedTextColor = look.text,
+            focusedBorderColor = look.accent,
+            unfocusedBorderColor = look.border,
+            focusedLabelColor = look.mark,
+            unfocusedLabelColor = look.textSecondary,
+            cursorColor = look.mark,
+            focusedContainerColor = look.background,
+            unfocusedContainerColor = look.background
+        )
+    } else {
+        OutlinedTextFieldDefaults.colors()
+    }
+    }
+
+@Composable
+private fun jamFieldShape(): Shape {
+    val look = LocalJamLook.current
+    return if (look.skinned) look.rowShape else OutlinedTextFieldDefaults.shape
+}
+
+@Composable
+private fun jamLabel(look: JamLook, text: String): String = if (look.uppercaseLabels) atelierUppercase(text) else text
 
 internal fun jamContributions(
     queue: List<JamTrack>,

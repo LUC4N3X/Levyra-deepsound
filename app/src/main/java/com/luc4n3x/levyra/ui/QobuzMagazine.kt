@@ -63,6 +63,8 @@ internal class QobuzMagazineInputs(
     val onOpenNewReleases: () -> Unit,
     val onOpenSamples: () -> Unit,
     val onOpenPodcasts: () -> Unit,
+    val onOpenRadio: () -> Unit,
+    val onOpenJam: () -> Unit,
     val onPlay: (List<Track>, Track) -> Unit,
     val onTrackActions: (Track) -> Unit
 )
@@ -196,7 +198,9 @@ private fun QobuzLevyraRubrics(inputs: QobuzMagazineInputs, copy: QobuzSkinCopy)
             strings.exploreNewReleases to inputs.onOpenNewReleases,
             strings.exploreSamples to inputs.onOpenSamples,
             strings.exploreMoods to inputs.onOpenMoods,
-            com.luc4n3x.levyra.ui.i18n.podcastCopy(strings.code).title to inputs.onOpenPodcasts
+            com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog.forCode(strings.code).title to inputs.onOpenRadio,
+            com.luc4n3x.levyra.ui.i18n.podcastCopy(strings.code).title to inputs.onOpenPodcasts,
+            strings.jamTitle to inputs.onOpenJam
         )
         Column {
             QobuzSectionHeader(copy.levyraExplore, null, copy.seeAll, null)
@@ -245,6 +249,8 @@ internal fun QobuzMagazineEntry(
     listState: LazyListState,
     bottomInset: Dp,
     onShortcut: (ExploreShortcut) -> Unit,
+    onOpenRadio: () -> Unit,
+    onOpenJam: () -> Unit,
     onTrackActions: (Track) -> Unit
 ) {
     QobuzMagazineScreen(
@@ -258,6 +264,8 @@ internal fun QobuzMagazineEntry(
             onOpenNewReleases = { onShortcut(ExploreShortcut.NewReleases) },
             onOpenSamples = { onShortcut(ExploreShortcut.Samples) },
             onOpenPodcasts = { onShortcut(ExploreShortcut.Podcasts) },
+            onOpenRadio = onOpenRadio,
+            onOpenJam = onOpenJam,
             onPlay = { list, track -> viewModel.playFrom(list, track) },
             onTrackActions = onTrackActions
         ),

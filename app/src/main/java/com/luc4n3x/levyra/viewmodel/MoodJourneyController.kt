@@ -11,13 +11,19 @@ import com.luc4n3x.levyra.domain.MoodJourneyEngine
 import com.luc4n3x.levyra.domain.MoodJourneyRequest
 import com.luc4n3x.levyra.domain.MoodJourneyResult
 import com.luc4n3x.levyra.domain.MoodPoint
+import com.luc4n3x.levyra.domain.MoodStyle
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.moodjourney.MoodEditorialEvidence
+import com.luc4n3x.levyra.feature.moodjourney.MoodStyleEvidence
+import com.luc4n3x.levyra.feature.moodjourney.MoodStyleShelf
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,6 +40,7 @@ data class MoodJourneyLibraryTrack(val track: Track, val affinity: Float)
 interface MoodJourneyGateway {
     suspend fun libraryTracks(): List<MoodJourneyLibraryTrack>
     suspend fun editorialEvidence(): MoodEditorialEvidence
+    suspend fun styleShelf(style: MoodStyle): MoodStyleShelf
     suspend fun exclusions(): ArtistExclusions
     suspend fun saveAsPlaylist(name: String, tracks: List<Track>): String
     fun onSaved(playlistId: String)
@@ -55,7 +62,10 @@ data class MoodJourneySession(
     val saving: Boolean = false,
     val savedPlaylistId: String? = null,
     val saveFailed: Boolean = false,
-    val seed: Long = 0L
+    val seed: Long = 0L,
+    val styles: Set<MoodStyle> = emptySet(),
+    val stylesLoading: Boolean = false,
+    val stylePlaylists: Int = 0
 )
 
 class MoodJourneyController(
@@ -71,8 +81,12 @@ class MoodJourneyController(
     private var loadJob: Job? = null
     private var buildJob: Job? = null
     private var saveJob: Job? = null
+    private var styleJob: Job? = null
     private var pool: List<MoodJourneyCandidate> = emptyList()
     private var exclusions: ArtistExclusions = ArtistExclusions.Empty
+    private var library: List<MoodJourneyLibraryTrack> = emptyList()
+    private var editorial: MoodEditorialEvidence = MoodEditorialEvidence.Empty
+    private val shelves = HashMap<MoodStyle, MoodStyleShelf>()
 
     fun open() {
         generation += 1
@@ -81,11 +95,12 @@ class MoodJourneyController(
         val saved = store.load()
         _session.value = MoodJourneySession(
             generation = sessionGeneration,
-            curve = saved?.first ?: MoodCurve.preset(MoodCurvePreset.Sunrise),
-            trackCount = saved?.second ?: MoodJourneyRequest.DEFAULT_TRACKS
+            curve = saved?.curve ?: MoodCurve.preset(MoodCurvePreset.Sunrise),
+            trackCount = saved?.trackCount ?: MoodJourneyRequest.DEFAULT_TRACKS,
+            styles = saved?.styles.orEmpty()
         )
         loadJob = scope.launch {
-            val library = try {
+            library = try {
                 withContext(computeDispatcher) {
                     exclusions = gateway.exclusions()
                     gateway.libraryTracks()
@@ -96,24 +111,98 @@ class MoodJourneyController(
                 Timber.w(error, "Mood Journey library failed")
                 emptyList()
             }
-            pool = withContext(computeDispatcher) { candidatesFrom(library, MoodEditorialEvidence.Empty) }
-            mutate(sessionGeneration) { it.copy(poolSize = pool.size) }
+            refreshPool(sessionGeneration)
             if (pool.isNotEmpty()) rebuild(debounceMs = 0L)
-            val evidence = try {
-                gateway.editorialEvidence()
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Exception) {
-                Timber.w(error, "Mood Journey editorial evidence unavailable")
-                MoodEditorialEvidence.Empty
+            coroutineScope {
+                val evidence = async {
+                    try {
+                        gateway.editorialEvidence()
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (error: Exception) {
+                        Timber.w(error, "Mood Journey editorial evidence unavailable")
+                        MoodEditorialEvidence.Empty
+                    }
+                }
+                val styled = launch {
+                    if (loadStyles(sessionGeneration)) {
+                        refreshPool(sessionGeneration)
+                        if (pool.isNotEmpty()) rebuild(debounceMs = 0L)
+                    }
+                }
+                editorial = evidence.await()
+                styled.join()
             }
-            pool = withContext(computeDispatcher) { candidatesFrom(library, evidence) }
-            mutate(sessionGeneration) { it.copy(editorialPlaylists = evidence.playlistsRead, poolSize = pool.size) }
-            if (pool.isEmpty()) {
-                mutate(sessionGeneration) { it.copy(stage = MoodJourneyStage.Empty) }
-            } else {
-                rebuild(debounceMs = 0L)
+            mutate(sessionGeneration) { it.copy(editorialPlaylists = editorial.playlistsRead) }
+            refreshPool(sessionGeneration)
+            settle(sessionGeneration)
+        }
+    }
+
+    fun selectStyle(style: MoodStyle?) {
+        val current = _session.value ?: return
+        val styles = when {
+            style == null -> emptySet()
+            style in current.styles -> current.styles - style
+            else -> current.styles + style
+        }
+        if (styles == current.styles) return
+        mutate(current.generation) { it.copy(styles = styles) }
+        store.save(current.curve, current.trackCount, styles)
+        val sessionGeneration = current.generation
+        styleJob?.cancel()
+        styleJob = scope.launch {
+            loadStyles(sessionGeneration)
+            refreshPool(sessionGeneration)
+            if (loadJob?.isActive != true) settle(sessionGeneration)
+        }
+    }
+
+    private suspend fun loadStyles(sessionGeneration: Long): Boolean {
+        val missing = _session.value?.takeIf { it.generation == sessionGeneration }?.styles.orEmpty().filterNot { it in shelves }
+        if (missing.isEmpty()) return false
+        mutate(sessionGeneration) { it.copy(stylesLoading = true) }
+        try {
+            val loaded = coroutineScope {
+                missing.map { style ->
+                    async {
+                        try {
+                            gateway.styleShelf(style)
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (error: Exception) {
+                            Timber.w(error, "Mood Journey style %s unavailable", style.storageId)
+                            MoodStyleShelf.empty(style)
+                        }
+                    }
+                }.awaitAll()
             }
+            loaded.filter { it.playlistsRead > 0 }.forEach { shelves[it.style] = it }
+        } finally {
+            mutate(sessionGeneration) { it.copy(stylesLoading = false) }
+        }
+        return true
+    }
+
+    private suspend fun refreshPool(sessionGeneration: Long) {
+        val styles = _session.value?.takeIf { it.generation == sessionGeneration }?.styles ?: return
+        val styleEvidence = MoodStyleEvidence(styles.mapNotNull { shelves[it] })
+        val currentLibrary = library
+        val currentEditorial = editorial
+        val candidates = withContext(computeDispatcher) { candidatesFrom(currentLibrary, currentEditorial, styleEvidence, styles) }
+        if (_session.value?.generation != sessionGeneration) return
+        pool = candidates
+        mutate(sessionGeneration) { it.copy(poolSize = candidates.size, stylePlaylists = styleEvidence.playlistsRead) }
+    }
+
+    private fun settle(sessionGeneration: Long) {
+        val session = _session.value ?: return
+        if (session.generation != sessionGeneration) return
+        if (pool.isEmpty()) {
+            buildJob?.cancel()
+            mutate(sessionGeneration) { it.copy(stage = MoodJourneyStage.Empty, result = null) }
+        } else {
+            rebuild(debounceMs = 0L)
         }
     }
 
@@ -121,6 +210,8 @@ class MoodJourneyController(
         generation += 1
         cancelJobs()
         pool = emptyList()
+        library = emptyList()
+        editorial = MoodEditorialEvidence.Empty
         _session.value = null
     }
 
@@ -132,7 +223,7 @@ class MoodJourneyController(
 
     fun commitCurve() {
         val current = _session.value ?: return
-        store.save(current.curve, current.trackCount)
+        store.save(current.curve, current.trackCount, current.styles)
         rebuild(debounceMs = 0L)
     }
 
@@ -140,7 +231,7 @@ class MoodJourneyController(
         val current = _session.value ?: return
         val curve = MoodCurve.preset(preset, current.curve.points.size)
         mutate(current.generation) { it.copy(curve = curve) }
-        store.save(curve, current.trackCount)
+        store.save(curve, current.trackCount, current.styles)
         rebuild(debounceMs = 0L)
     }
 
@@ -149,7 +240,7 @@ class MoodJourneyController(
         val bounded = count.coerceIn(MoodJourneyRequest.MIN_TRACKS, MoodJourneyRequest.MAX_TRACKS)
         if (bounded == current.trackCount) return
         mutate(current.generation) { it.copy(trackCount = bounded) }
-        store.save(current.curve, bounded)
+        store.save(current.curve, bounded, current.styles)
         rebuild(debounceMs = LIVE_DEBOUNCE_MS)
     }
 
@@ -214,7 +305,8 @@ class MoodJourneyController(
                 excludedKeys = snapshot.excludedKeys,
                 exclusions = exclusions,
                 avoidKeys = avoid,
-                seed = snapshot.seed
+                seed = snapshot.seed,
+                styles = snapshot.styles
             )
             val result = try {
                 withContext(computeDispatcher) { MoodJourneyEngine.build(candidates, request) }
@@ -234,14 +326,21 @@ class MoodJourneyController(
         }
     }
 
-    private fun candidatesFrom(library: List<MoodJourneyLibraryTrack>, evidence: MoodEditorialEvidence): List<MoodJourneyCandidate> {
-        val candidates = ArrayList<MoodJourneyCandidate>(library.size + evidence.tracks.size)
-        library.forEach { entry ->
-            candidates += MoodJourneyCandidate(entry.track, MoodEvidence.estimate(entry.track, evidence.labelsFor(entry.track)), entry.affinity)
+    private fun candidatesFrom(
+        library: List<MoodJourneyLibraryTrack>,
+        evidence: MoodEditorialEvidence,
+        styleEvidence: MoodStyleEvidence,
+        styles: Set<MoodStyle>
+    ): List<MoodJourneyCandidate> {
+        val candidates = ArrayList<MoodJourneyCandidate>(library.size + evidence.tracks.size + styleEvidence.tracks.size)
+        fun candidate(track: Track, affinity: Float): MoodJourneyCandidate {
+            val trackStyles = if (styles.isEmpty()) emptySet() else styleEvidence.stylesFor(track).filterTo(HashSet()) { it in styles }
+            val labels = evidence.labelsFor(track) + styleEvidence.labelsFor(track)
+            return MoodJourneyCandidate(track, MoodEvidence.estimate(track, labels, trackStyles), affinity, trackStyles)
         }
-        evidence.tracks.forEach { track ->
-            candidates += MoodJourneyCandidate(track, MoodEvidence.estimate(track, evidence.labelsFor(track)), 0f)
-        }
+        library.forEach { entry -> candidates += candidate(entry.track, entry.affinity) }
+        styleEvidence.tracks.forEach { track -> candidates += candidate(track, 0f) }
+        evidence.tracks.forEach { track -> candidates += candidate(track, 0f) }
         return candidates
     }
 
@@ -249,6 +348,8 @@ class MoodJourneyController(
         loadJob?.cancel()
         buildJob?.cancel()
         saveJob?.cancel()
+        styleJob?.cancel()
+        styleJob = null
         loadJob = null
         buildJob = null
         saveJob = null
@@ -264,11 +365,13 @@ class MoodJourneyController(
     }
 }
 
-class MoodJourneyCurveStore(private val preferences: SharedPreferences) {
-    fun load(): Pair<MoodCurve, Int>? = MoodJourneyCurveCodec.decode(preferences.getString(KEY_CURVE, null))
+data class MoodJourneySaved(val curve: MoodCurve, val trackCount: Int, val styles: Set<MoodStyle>)
 
-    fun save(curve: MoodCurve, trackCount: Int) {
-        preferences.edit().putString(KEY_CURVE, MoodJourneyCurveCodec.encode(curve, trackCount)).apply()
+class MoodJourneyCurveStore(private val preferences: SharedPreferences) {
+    fun load(): MoodJourneySaved? = MoodJourneyCurveCodec.decode(preferences.getString(KEY_CURVE, null))
+
+    fun save(curve: MoodCurve, trackCount: Int, styles: Set<MoodStyle>) {
+        preferences.edit().putString(KEY_CURVE, MoodJourneyCurveCodec.encode(curve, trackCount, styles)).apply()
     }
 
     private companion object {
@@ -277,14 +380,15 @@ class MoodJourneyCurveStore(private val preferences: SharedPreferences) {
 }
 
 internal object MoodJourneyCurveCodec {
-    fun encode(curve: MoodCurve, trackCount: Int): String = JSONObject()
+    fun encode(curve: MoodCurve, trackCount: Int, styles: Set<MoodStyle> = emptySet()): String = JSONObject()
         .put("count", trackCount)
+        .put("styles", JSONArray().apply { MoodStyle.entries.filter { it in styles }.forEach { put(it.storageId) } })
         .put("points", JSONArray().apply {
             curve.normalized.forEach { put(JSONArray().put(it.energy.toDouble()).put(it.valence.toDouble())) }
         })
         .toString()
 
-    fun decode(raw: String?): Pair<MoodCurve, Int>? {
+    fun decode(raw: String?): MoodJourneySaved? {
         if (raw.isNullOrBlank()) return null
         val root = runCatching { JSONObject(raw) }.getOrNull() ?: return null
         val array = root.optJSONArray("points") ?: return null
@@ -295,6 +399,8 @@ internal object MoodJourneyCurveCodec {
         if (points.size < MoodCurve.MIN_POINTS) return null
         val curve = MoodCurve(points.take(MoodCurve.MAX_POINTS))
         val count = root.optInt("count", MoodJourneyRequest.DEFAULT_TRACKS).coerceIn(MoodJourneyRequest.MIN_TRACKS, MoodJourneyRequest.MAX_TRACKS)
-        return curve to count
+        val stored = root.optJSONArray("styles")
+        val styles = if (stored == null) emptySet() else (0 until stored.length()).mapNotNullTo(LinkedHashSet()) { MoodStyle.from(stored.optString(it)) }
+        return MoodJourneySaved(curve, count, styles)
     }
 }

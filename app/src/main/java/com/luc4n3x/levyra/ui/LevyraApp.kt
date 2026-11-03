@@ -2326,6 +2326,15 @@ fun LevyraApp(
             val playerVisible by remember { derivedStateOf { playerExpansion.value > 0f } }
             HideSystemBars(state.interfaceSettings.immersive.hiddenBars(fullPlayerVisible = !chromeVisible && !rootOverlayOpen))
             val morphAllowed = state.animationsEnabled && !state.isVideoMode && !LevyraIsAtelier
+            val atelierContext = LocalContext.current
+            val atelierWindowWidth = androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.width
+            LaunchedEffect(LevyraIsAtelier, atelierWindowWidth) {
+                if (LevyraIsAtelier) {
+                    com.luc4n3x.levyra.ui.player.prewarmAtelierDeck(atelierContext, atelierWindowWidth)
+                } else {
+                    com.luc4n3x.levyra.ui.player.AtelierDeckAssetCache.clear()
+                }
+            }
             DisposableEffect(morphAnchors) {
                 com.luc4n3x.levyra.ui.atelier.AtelierStage.expansion = { playerExpansion.value }
                 com.luc4n3x.levyra.ui.atelier.AtelierStage.miniRect = { morphAnchors.miniBounds }
@@ -2794,7 +2803,9 @@ fun LevyraApp(
                 }
                 val playerViewModel: PlayerViewModel = composeViewModel(key = "levyra-player", factory = screenViewModelFactory)
                 val playerScreenState by playerViewModel.state.collectAsStateWithLifecycle()
-                val playerAboveDetail = detailUnderPlayer && (state.showAlbum || state.showArtist || state.openPlaylist != null || state.playlistHitPreview != null)
+                val moodJourneyOpen = viewModel.moodJourney.session.collectAsStateWithLifecycle().value != null
+                val playerAboveDetail = detailUnderPlayer &&
+                    (state.showAlbum || state.showArtist || state.openPlaylist != null || state.playlistHitPreview != null || moodJourneyOpen)
                 Box(
                     modifier = Modifier
                         .zIndex(if (playerAboveDetail) 41f else if (settingsDockVisible) 1f else 0f)
@@ -3512,7 +3523,9 @@ fun LevyraApp(
                         animated = state.animationsEnabled,
                         onClose = viewModel::closeMoodJourney,
                         onPlay = viewModel::playMoodJourney,
-                        onAddToQueue = viewModel::addMoodJourneyToQueue
+                        onAddToQueue = viewModel::addMoodJourneyToQueue,
+                        backEnabled = state.selectedTab != LevyraTab.Player,
+                        onPlayFrom = viewModel::playMoodJourneyFrom
                     )
                 }
             }
@@ -9887,9 +9900,9 @@ private fun StudioHomeScreen(
             ComposedHomeRequest(blocks, composedHomeContent(homeContext, skinHomeData, skinHomeActions, composedRadio, composedDiscovery, composedZones))
         }
         if (LevyraIsAtelier) {
-            AtelierHomeEntry(skinHomeData, skinHomeActions, homeContext.viewModel, state, homeListState, homeBottomInset, homeRefreshing, homePullState, onPullRefresh, composedRequest)
+            AtelierHomeEntry(skinHomeData, skinHomeActions, homeContext.viewModel, state, homeListState, homeBottomInset, homeRefreshing, homePullState, onPullRefresh, composedRequest, homeContext.speedDialPins)
         } else if (LevyraIsQobuz) {
-            QobuzHomeEntry(skinHomeData, skinHomeActions, homeContext.viewModel, state, homeListState, homeBottomInset, homeRefreshing, homePullState, onPullRefresh, composedRequest)
+            QobuzHomeEntry(skinHomeData, skinHomeActions, homeContext.viewModel, state, homeListState, homeBottomInset, homeRefreshing, homePullState, onPullRefresh, composedRequest, homeContext.speedDialPins)
         } else if (LevyraIsYouTubeMusic) {
             YouTubeMusicHomeContent(
                 data = skinHomeData,
@@ -25964,9 +25977,9 @@ private fun ExploreScreen(
             .background(Color.Transparent)
     ) {
         if (LevyraIsAtelier) {
-            AtelierExploreEntry(state, viewModel, freshTracks, listState, exploreBottomInset, onShortcut) { addToPlaylistTarget = it }
+            AtelierExploreEntry(state, viewModel, freshTracks, listState, exploreBottomInset, onShortcut, { onLiveRadioOpenChange(true) }, onOpenJam) { addToPlaylistTarget = it }
         } else if (LevyraIsQobuz) {
-            QobuzMagazineEntry(state, viewModel, freshTracks, listState, exploreBottomInset, onShortcut) { addToPlaylistTarget = it }
+            QobuzMagazineEntry(state, viewModel, freshTracks, listState, exploreBottomInset, onShortcut, { onLiveRadioOpenChange(true) }, onOpenJam) { addToPlaylistTarget = it }
         } else if (LevyraIsYouTubeMusic) {
             YouTubeMusicExploreScreen(
                 viewModel, listState, state.currentTrack?.id, exploreBottomInset, availableAnchors, onShortcut, onOpenJam, onLiveRadioOpenChange,

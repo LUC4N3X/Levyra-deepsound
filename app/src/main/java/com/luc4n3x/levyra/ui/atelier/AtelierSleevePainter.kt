@@ -76,27 +76,36 @@ internal fun atelierBakeDisc(sizePx: Int): Bitmap {
     val canvas = Canvas(bitmap)
     val c = sizePx * 0.5f
     val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-    paint.shader = RadialGradient(c, c, c, intArrayOf(0xFF17151A.toInt(), 0xFF0E0D10.toInt(), 0xFF09080A.toInt()), floatArrayOf(0f, 0.7f, 1f), Shader.TileMode.CLAMP)
+    paint.shader = RadialGradient(c, c, c, intArrayOf(0xFF141317.toInt(), 0xFF0C0B0E.toInt(), 0xFF070608.toInt()), floatArrayOf(0f, 0.72f, 1f), Shader.TileMode.CLAMP)
     canvas.drawCircle(c, c, c, paint)
     paint.shader = null
     paint.style = Paint.Style.STROKE
-    val outer = 0.965f
-    val inner = 0.36f
-    val pitch = (2f / sizePx).coerceAtLeast(0.002f) * 1.4f
+    val outer = 0.955f
+    val inner = 0.405f
+    val pitch = (1.6f / sizePx).coerceAtLeast(0.0016f) * 1.3f
     var ratio = inner
     var seed = 7
     while (ratio < outer) {
         seed = seed * 31 + 11
         val wobble = (seed and 0xFF) / 255f
-        val gap = BandGaps.any { ratio > it && ratio < it + 0.008f }
-        paint.color = if (gap) 0x00FFFFFF else AndroidColor.argb((10 + wobble * 22).toInt(), 255, 255, 255)
-        paint.strokeWidth = 1f
+        val gap = BandGaps.any { ratio > it && ratio < it + 0.007f }
+        paint.color = if (gap) 0x08FFFFFF else AndroidColor.argb((7 + wobble * 18).toInt(), 255, 255, 255)
+        paint.strokeWidth = 0.8f
         canvas.drawCircle(c, c, ratio * c, paint)
         ratio += pitch
     }
-    paint.color = 0x24FFFFFF
-    paint.strokeWidth = 1.6f
-    canvas.drawCircle(c, c, c * 0.992f, paint)
+    paint.strokeWidth = c * 0.03f
+    paint.color = 0x0AFFFFFF
+    canvas.drawCircle(c, c, c * 0.383f, paint)
+    paint.strokeWidth = c * 0.022f
+    paint.color = 0x0DFFFFFF
+    canvas.drawCircle(c, c, c * 0.972f, paint)
+    paint.strokeWidth = 2f
+    paint.color = 0x3DFFFFFF
+    canvas.drawCircle(c, c, c * 0.993f, paint)
+    paint.color = 0x66000000
+    paint.strokeWidth = 1.2f
+    canvas.drawCircle(c, c, c * 0.985f, paint)
     paint.style = Paint.Style.FILL
     return bitmap
 }
@@ -110,9 +119,11 @@ internal fun atelierBakeDiscLight(sizePx: Int): Bitmap {
     val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     paint.shader = SweepGradient(
         c, c,
-        intArrayOf(0x00FFFFFF, 0x2CFFF4E2, 0x08FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x1EDCE6FF, 0x06FFFFFF, 0x00FFFFFF, 0x00FFFFFF),
-        floatArrayOf(0f, 0.07f, 0.14f, 0.22f, 0.47f, 0.56f, 0.64f, 0.72f, 1f)
+        intArrayOf(0x00FFFFFF, 0x14FFF1DD, 0x30FFF6EA, 0x14FFF1DD, 0x00FFFFFF, 0x00FFFFFF, 0x10DDE6FF, 0x26E8EEFF, 0x10DDE6FF, 0x00FFFFFF, 0x00FFFFFF),
+        floatArrayOf(0f, 0.045f, 0.085f, 0.13f, 0.21f, 0.46f, 0.505f, 0.545f, 0.59f, 0.67f, 1f)
     )
+    canvas.drawCircle(c, c, c * 0.985f, paint)
+    paint.shader = RadialGradient(c, c, c, intArrayOf(0x00000000, 0x00000000, 0x22000000), floatArrayOf(0f, 0.8f, 1f), Shader.TileMode.CLAMP)
     canvas.drawCircle(c, c, c * 0.985f, paint)
     paint.shader = null
     paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
@@ -145,11 +156,15 @@ internal fun atelierBakeLabel(cover: Bitmap?, sizePx: Int): Bitmap {
     paint.strokeWidth = sizePx * 0.006f
     paint.color = 0x30FFFFFF
     canvas.drawCircle(c, c, c * 0.992f, paint)
+    paint.strokeWidth = sizePx * 0.003f
+    paint.color = 0x55E8D9B8
+    canvas.drawCircle(c, c, c * 0.9f, paint)
     paint.style = Paint.Style.FILL
     paint.color = 0xFF0B0A09.toInt()
-    canvas.drawCircle(c, c, sizePx * 0.042f, paint)
-    paint.color = 0xFFB9B4AC.toInt()
-    canvas.drawCircle(c, c, sizePx * 0.026f, paint)
+    canvas.drawCircle(c, c, sizePx * 0.044f, paint)
+    paint.shader = RadialGradient(c - sizePx * 0.008f, c - sizePx * 0.01f, sizePx * 0.03f, 0xFFF3F1EC.toInt(), 0xFF7E7A74.toInt(), Shader.TileMode.CLAMP)
+    canvas.drawCircle(c, c, sizePx * 0.027f, paint)
+    paint.shader = null
     return bitmap
 }
 
@@ -195,7 +210,7 @@ internal class AtelierSleevePainter {
     private val sheenShader = LinearGradient(-260f, -160f, 260f, 160f, intArrayOf(0x00FFFFFF, 0x24FFFFFF, 0x00FFFFFF), floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP)
     private val sheenPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { shader = sheenShader }
     private val castPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        shader = LinearGradient(UnitSize, 0f, UnitSize + 120f, 0f, intArrayOf(0x8C000000.toInt(), 0x00000000), null, Shader.TileMode.CLAMP)
+        shader = LinearGradient(0f, 0f, 0f, -120f, intArrayOf(0x8C000000.toInt(), 0x00000000), null, Shader.TileMode.CLAMP)
     }
 
     fun draw(
@@ -222,12 +237,12 @@ internal class AtelierSleevePainter {
             canvas.drawBitmap(shadowMask, null, dst, maskPaint)
         }
         if (disc != null && discOut > 0.001f) {
-            val centerX = HalfUnit + discOut * DiscTravel
-            dst.set(centerX - DiscRadius, HalfUnit - DiscRadius, centerX + DiscRadius, HalfUnit + DiscRadius)
+            val centerY = HalfUnit - discOut * DiscTravel
+            dst.set(HalfUnit - DiscRadius, centerY - DiscRadius, HalfUnit + DiscRadius, centerY + DiscRadius)
             coverPaint.alpha = byteAlpha
             canvas.drawBitmap(disc, null, dst, coverPaint)
             castPaint.alpha = byteAlpha
-            canvas.drawRect(UnitSize, HalfUnit - DiscRadius, UnitSize + 120f, HalfUnit + DiscRadius, castPaint)
+            canvas.drawRect(HalfUnit - DiscRadius, -120f, HalfUnit + DiscRadius, 0f, castPaint)
         }
         fillPaint.color = 0xFF2A241E.toInt()
         fillPaint.alpha = byteAlpha
@@ -268,6 +283,6 @@ internal class AtelierSleevePainter {
         const val UnitSize = 1000f
         const val HalfUnit = 500f
         const val DiscRadius = 478f
-        const val DiscTravel = 400f
+        const val DiscTravel = 300f
     }
 }

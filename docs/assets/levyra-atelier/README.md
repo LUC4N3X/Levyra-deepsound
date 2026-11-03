@@ -29,7 +29,7 @@ The skin is wired like the other skins: a `LevyraSkin.Atelier` entry, a palette 
 
 The Shelf opens inside Library. A "Collection" pill switches to the list view and back.
 
-- **Scene.** One `Canvas` draws every visible sleeve. Each sleeve has a slot (position, yaw, pitch, roll, alpha) computed from its distance to the current selection, projected through a pinhole camera into a quad, and mapped onto the cover with `Matrix.setPolyToPoly`. Sleeves to the right recede at -50°, sleeves to the left fold away at +50°, and the selected one stands forward, slightly turned, with its record half out.
+- **Scene.** One `Canvas` draws every visible sleeve. Each sleeve has a slot (position, yaw, pitch, roll, alpha) computed from its distance to the current selection, projected through a pinhole camera into a quad, and mapped onto the cover with `Matrix.setPolyToPoly`. Sleeves stand on a gentle concave arc, leaning back and turning towards the centre as they recede. The selected one lifts forward, and its record rises out of the top of the sleeve. A faint reflection on the floor sits under each sleeve on the high quality tier.
 - **Input.** A horizontal drag moves a continuous position; release projects the fling velocity and settles on a sleeve with a low-stiffness spring. A tap on the front sleeve plays it and opens the player; taps on either stack step one sleeve. The A–Z dial below scrubs the whole shelf.
 - **Light.** Two radial glows take their colour from the current and next covers (saturated tone and mean tone, sampled from a 24px decode) and cross-fade with the scroll position, so the room tints as you browse.
 - **Materials.** A drop shadow from a baked soft mask, a spine shade, a fold gradient, an edge highlight and a sheen whose phase follows depth.
@@ -41,24 +41,25 @@ The player has one scene clock, the existing player expansion value. Opening run
 
 | Clock | What moves |
 | --- | --- |
-| 0.00–0.46 | The sleeve leaves its origin (the shelf quad, or the mini player artwork) and settles top-left with a -6° roll |
+| 0.00–0.46 | The sleeve leaves its origin (the shelf quad, or the mini player artwork). In portrait it settles above the deck; in landscape it settles top-left with a -6° roll |
 | 0.08–0.46 | The room darkens behind it, warm key light from the top, cover-tinted light from below |
-| 0.18–0.64 | The deck rises from below, its perspective flattening to top-down |
+| 0.18–0.64 | The deck rises from below. In portrait it turns to a -6° tabletop angle; in landscape its perspective flattens to top-down |
 | 0.28–0.48 | The record slides out of the sleeve |
-| 0.46–0.90 | The record arcs onto the platter, lifting and growing, its shadow converging |
+| 0.46–0.90 | The record arcs onto the platter, lifting and growing, its shadow converging. In portrait it drops from the bottom of the sleeve already turning, and the sleeve then glides away |
+| 0.88–1.00 | The record settles with a small elastic landing and accent ripples; the strobe dots on the platter rim fade in |
 | 0.80–1.00 | Metadata, seek bar and transport fade up |
-| 0.90–1.00 | The tonearm swings onto the groove |
+| 0.90–1.00 | The tonearm swings onto the groove with a slight settle |
 
 During playback:
 - the platter spins at 200°/s and spins up in 620ms after play, coasting down over 1.5s after pause;
 - the tonearm tracks the groove radius from the song position (outer to inner groove) on a soft spring, and returns to its rest when paused;
 - a track change cross-fades the sleeve and the record label in 280ms without rebuilding the scene.
 
-The transport is a deck console: a recessed carbon tray with mechanical keys that press down; the play key is filled with the accent taken from the playing cover and its glyph morphs between play and pause. The seek bar is a wave in the cover accent that flows while the song plays and rests when paused. Canvas motion artwork keeps working and is shown inside the sleeve.
+The transport is a deck console: a recessed carbon tray with mechanical keys that press down; the play key is filled with the accent taken from the playing cover and its glyph morphs between play and pause. The seek bar is a wave in the cover accent that flows while the song plays and rests when paused. Canvas motion artwork keeps working. In landscape it is shown inside the sleeve; in portrait it is projected softly on the wall behind the turntable, and when a track has no Canvas the blurred cover drifts there instead.
 
 ## Performance
 
-- The deck, tonearm, vinyl disc and light are baked once per size on `Dispatchers.Default`, converted to hardware bitmaps where possible, and reused every frame. Nothing is decoded or allocated per frame.
+- The deck, tonearm, vinyl disc and light are baked once per size on `Dispatchers.Default`, converted to hardware bitmaps where possible, and reused every frame. The bake is kept in a small process cache, warmed when the skin is active so the first opening already has its deck, and released when another skin is selected. Nothing is decoded or allocated per frame.
 - Shelf covers load through the existing Coil loader at the drawn size, only for a window of ±5 sleeves around the selection; covers leaving the window are released.
 - Rotation pauses when the app is stopped or the player is collapsed; audio is unaffected.
 - Devices with low RAM or a small memory class use the standard quality tier: smaller bakes and no sheen or sleeve thickness.

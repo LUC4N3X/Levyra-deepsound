@@ -12,6 +12,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -69,6 +70,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
@@ -142,6 +144,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.PI
@@ -152,6 +155,20 @@ import kotlin.math.sin
 
 private const val SpinDegreesPerSecond = 200f
 private const val SleeveTravelRoll = -6f
+private const val StrobeDots = 72
+private const val MacroScale = 0.92f
+private const val MacroAngle = -6f
+private const val MacroCenterX = 0.5f
+private const val MacroLift = 0.045f
+private const val MacroSleeveFraction = 0.40f
+private const val SleeveExitStart = 0.50f
+private const val FlightPreSpin = 160f
+private const val SleeveExitRoll = -22f
+private const val ArmSettleOvershoot = 0.07f
+private const val ProjectionStrength = 0.9f
+private const val ProjectionDriftMillis = 18_000
+private val ProjectionBlur = 22.dp
+private const val MacroSleeveX = 0.5f
 private const val ArmLiftDuringTurn = 0.55f
 private const val TurnLiftScale = 0.035f
 private const val TurnRise = 0.06f
@@ -162,7 +179,7 @@ private const val CameraPixelsPerInch = 72f
 private const val RecordRimFraction = 0.035f
 private const val RecordRimColor = 0xFF0C0B0A.toInt()
 
-private class AtelierDeckAssets(
+internal class AtelierDeckAssets(
     val deck: Bitmap,
     val arm: AtelierArmSprite,
     val disc: Bitmap,
@@ -182,6 +199,7 @@ private class AtelierStageRenderer {
     val bitmapPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     val glowPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.DITHER_FLAG)
     val fillPaint = Paint()
+    val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     val shadowMask: Bitmap = atelierBakeSoftMask(128, 24f, 16f)
     val glow: Bitmap = atelierBakeGlow(128)
     val camera = Camera()
@@ -212,8 +230,10 @@ private class AtelierRecordTurn {
     }
 }
 
-private fun fillSleeveFinal(out: FloatArray, centerX: Float, centerY: Float, side: Float) {
-    val radians = Math.toRadians(SleeveTravelRoll.toDouble())
+private fun atelierMacroSleeveCenterY(height: Float, side: Float): Float = height * 0.205f - side * 0.30f
+
+private fun fillSleeveFinal(out: FloatArray, centerX: Float, centerY: Float, side: Float, roll: Float) {
+    val radians = Math.toRadians(roll.toDouble())
     val c = cos(radians).toFloat()
     val s = sin(radians).toFloat()
     val half = side * 0.5f
@@ -223,6 +243,18 @@ private fun fillSleeveFinal(out: FloatArray, centerX: Float, centerY: Float, sid
         val keystone = 1f + v / side * 0.035f
         out[corner * 2] = centerX + (u * keystone * c - v * s)
         out[corner * 2 + 1] = centerY + (u * keystone * s + v * c)
+    }
+}
+
+private fun fillMacroDeckQuad(out: FloatArray, centerX: Float, centerY: Float, width: Float, height: Float, angle: Float) {
+    val radians = Math.toRadians(angle.toDouble())
+    val c = cos(radians).toFloat()
+    val s = sin(radians).toFloat()
+    for (corner in 0 until 4) {
+        val u = if (corner == 0 || corner == 3) -width * 0.5f else width * 0.5f
+        val v = if (corner < 2) -height * 0.5f else height * 0.5f
+        out[corner * 2] = centerX + u * c - v * s
+        out[corner * 2 + 1] = centerY + u * s + v * c
     }
 }
 
@@ -252,9 +284,9 @@ internal fun AtelierPlayerScene(
     val wide = sizePx.first > sizePx.second && sizePx.second > 0
     val deckWidthPx = if (wide) min(sizePx.first * 0.56f, sizePx.second * 1.18f).toInt() else sizePx.first
 
-    val assets by produceState<AtelierDeckAssets?>(null, deckWidthPx, rich) {
+    val assets by produceState(AtelierDeckAssetCache.peek(deckWidthPx, rich), deckWidthPx, rich) {
         if (deckWidthPx <= 0) return@produceState
-        value = withContext(Dispatchers.Default) { bakeAtelierDeckAssets(deckWidthPx, rich) }
+        value = AtelierDeckAssetCache.peek(deckWidthPx, rich) ?: AtelierDeckAssetCache.obtain(deckWidthPx, rich)
     }
     val coverUrl = remember(track.id) { preferredPlayerArtworkUrl(track) }
     val coverNow = remember { mutableStateOf<Bitmap?>(null) }
@@ -286,10 +318,17 @@ internal fun AtelierPlayerScene(
     val coverNowProvider = { coverNow.value }
 
     Box(modifier.fillMaxSize().onSizeChanged { sizePx = it.width to it.height }) {
+        val projecting = !wide && sizePx.first > 0
+        if (projecting) {
+            Canvas(Modifier.fillMaxSize()) {
+                drawIntoCanvas { drawAtelierRoom(it.nativeCanvas, renderer, AtelierStage.expansion().coerceIn(0f, 1f), size.width, size.height, toneProvider) }
+            }
+            AtelierSceneProjection(track, slots, sizePx, density, hasCanvas, coverUrl)
+        }
         Canvas(Modifier.fillMaxSize()) {
             drawAtelierStage(
                 renderer, assets, wide, rich, toneProvider, arm, spinDegrees, swap,
-                turn, coverOldProvider, coverNowProvider
+                turn, coverOldProvider, coverNowProvider, room = !projecting
             )
         }
 
@@ -302,7 +341,7 @@ internal fun AtelierPlayerScene(
 
         AtelierSceneSleeveSlot(track, slots, hasCanvas, visibleControls, wide, deckWidthPx, sizePx, density)
         AtelierSceneGestureSurface(track, slots, visibleControls, wide, deckWidthPx, sizePx, density)
-        AtelierSceneTopChrome(slots, copy, visibleControls, sizePx, density, controls)
+        AtelierSceneTopChrome(slots, copy, visibleControls, sizePx, density, controls, wide)
         AtelierScenePanel(track, slots, visibleControls, wide, deckWidthPx, sizePx, density, controls, metadata, transport)
     }
 }
@@ -355,6 +394,36 @@ private suspend fun CoroutineScope.startAtelierTurn(
     }
 }
 
+internal object AtelierDeckAssetCache {
+    private val lock = Any()
+    private val bakes = kotlinx.coroutines.sync.Mutex()
+    private var key: Pair<Int, Boolean>? = null
+    private var assets: AtelierDeckAssets? = null
+
+    fun peek(deckWidthPx: Int, rich: Boolean): AtelierDeckAssets? = synchronized(lock) { assets.takeIf { key == deckWidthPx to rich } }
+
+    suspend fun obtain(deckWidthPx: Int, rich: Boolean): AtelierDeckAssets {
+        peek(deckWidthPx, rich)?.let { return it }
+        return bakes.withLock {
+            peek(deckWidthPx, rich) ?: withContext(Dispatchers.Default) { bakeAtelierDeckAssets(deckWidthPx, rich) }.also { baked ->
+                synchronized(lock) {
+                    key = deckWidthPx to rich
+                    assets = baked
+                }
+            }
+        }
+    }
+
+    fun clear() = synchronized(lock) {
+        key = null
+        assets = null
+    }
+}
+
+internal suspend fun prewarmAtelierDeck(context: Context, widthPx: Int) {
+    if (widthPx > 0) AtelierDeckAssetCache.obtain(widthPx, atelierQualityOf(context) == AtelierQuality.High)
+}
+
 private fun bakeAtelierDeckAssets(deckWidthPx: Int, rich: Boolean): AtelierDeckAssets {
     val bakeWidth = if (rich) deckWidthPx else (deckWidthPx * 0.72f).toInt()
     return AtelierDeckAssets(
@@ -387,10 +456,11 @@ private suspend fun runAtelierSpin(spinDegrees: MutableFloatState, spinSpeed: An
     }
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 private fun DrawScope.drawAtelierStage(
     r: AtelierStageRenderer, loaded: AtelierDeckAssets?, wide: Boolean, rich: Boolean, tone: () -> Color,
     arm: Animatable<Float, AnimationVector1D>, spinDegrees: MutableFloatState, swap: Animatable<Float, AnimationVector1D>,
-    turn: AtelierRecordTurn, coverOld: () -> Bitmap?, coverNow: () -> Bitmap?
+    turn: AtelierRecordTurn, coverOld: () -> Bitmap?, coverNow: () -> Bitmap?, room: Boolean
 ) {
     val clock = AtelierStage.expansion().coerceIn(0f, 1f)
     val w = size.width
@@ -403,35 +473,41 @@ private fun DrawScope.drawAtelierStage(
     val insetFraction = atelierLerp(0.15f, 0.012f, rise)
     val travel = atelierLerp(h * 0.58f, 0f, rise)
     val statusGuess = 24.dp.toPx()
-    val sleeveSide = if (wide) deckW * 0.30f else w * 0.44f
-    val sleeveCenterX = sleeveSide * 0.42f
-    val sleeveCenterY = (if (wide) statusGuess + sleeveSide * 0.46f else finalTop - sleeveSide * 0.09f).coerceAtLeast(sleeveSide * 0.40f)
+    val sleeveSide = if (wide) deckW * 0.30f else w * MacroSleeveFraction
+    val sleeveCenterX = if (wide) sleeveSide * 0.42f else w * MacroSleeveX
+    val sleeveCenterY = if (wide) (statusGuess + sleeveSide * 0.46f).coerceAtLeast(sleeveSide * 0.40f) else atelierMacroSleeveCenterY(h, sleeveSide)
+    val stageDeckW = if (wide) deckW else deckW * MacroScale
     drawIntoCanvas { composeCanvas ->
         val canvas = composeCanvas.nativeCanvas
-        drawAtelierRoom(canvas, r, clock, w, h, tone)
+        if (room) drawAtelierRoom(canvas, r, clock, w, h, tone)
         if (loaded == null) return@drawIntoCanvas
 
         val deckAlpha = (AtelierStageClock.deckAlpha(clock) * 255f).toInt()
         fillRectQuad(r.deckUnit, 0f, 0f, 1000f, 0f)
         r.deckUnit[4] = 1000f; r.deckUnit[5] = 1000f * deckH / deckW
         r.deckUnit[6] = 0f; r.deckUnit[7] = 1000f * deckH / deckW
-        val topInset = deckW * insetFraction
-        fillRectQuad(r.deckQuad, finalLeft + topInset, finalTop + travel, finalLeft + deckW - topInset, finalTop + travel + deckH * atelierLerp(0.82f, 1f, rise))
-        r.deckQuad[4] = finalLeft + deckW + deckW * insetFraction * 0.25f
-        r.deckQuad[6] = finalLeft - deckW * insetFraction * 0.25f
+        if (wide) {
+            val topInset = deckW * insetFraction
+            fillRectQuad(r.deckQuad, finalLeft + topInset, finalTop + travel, finalLeft + deckW - topInset, finalTop + travel + deckH * atelierLerp(0.82f, 1f, rise))
+            r.deckQuad[4] = finalLeft + deckW + deckW * insetFraction * 0.25f
+            r.deckQuad[6] = finalLeft - deckW * insetFraction * 0.25f
+        } else {
+            fillMacroDeckQuad(r.deckQuad, w * MacroCenterX, finalTop + deckH * 0.5f - h * MacroLift + travel, stageDeckW, deckH * MacroScale, atelierLerp(0f, MacroAngle, rise))
+        }
         val deckMatrixReady = r.matrix.setPolyToPoly(r.deckUnit, 0, r.deckQuad, 0, 4)
 
         val flight = AtelierStageClock.recordFlight(clock)
         val landed = flight >= 0.999f
         val turnAngle = turn.angle.value
         val armLift = 1f - AtelierRecordFlip.presence(turnAngle) * ArmLiftDuringTurn
-        val armAngle = atelierLerp(AtelierDeckGeometry.RestAngle, arm.value, AtelierStageClock.armEngage(clock) * armLift)
+        val engage = AtelierStageClock.armEngage(clock)
+        val armAngle = atelierLerp(AtelierDeckGeometry.RestAngle, arm.value, (engage + sin(engage * PI.toFloat()) * ArmSettleOvershoot) * armLift)
 
+        fillAtelierSleeveQuad(r, clock, w, h, sleeveCenterX, sleeveCenterY, sleeveSide, if (wide) SleeveTravelRoll else MacroAngle)
         drawAtelierDeck(canvas, r, loaded, deckAlpha, deckMatrixReady, landed, armAngle)
-        fillAtelierSleeveQuad(r, clock, w, h, sleeveCenterX, sleeveCenterY, sleeveSide)
-        drawAtelierRecord(canvas, r, loaded, clock, flight, deckW, sleeveSide, spinDegrees, turn, turnAngle)
+        drawAtelierRecord(canvas, r, loaded, clock, flight, stageDeckW, sleeveSide, spinDegrees, turn, turnAngle, !wide)
         if (landed && deckAlpha > 0 && deckMatrixReady) drawAtelierArm(canvas, r, loaded, deckAlpha, armAngle)
-        drawAtelierSleeve(canvas, r, clock, swap, coverOld, coverNow, rich)
+        if (wide) drawAtelierSleeve(canvas, r, clock, swap, coverOld, coverNow, rich) else drawAtelierDepartingSleeve(canvas, r, clock, w, swap, coverOld, coverNow, rich)
     }
 }
 
@@ -489,10 +565,10 @@ private fun drawAtelierDeck(
 }
 
 private fun DrawScope.fillAtelierSleeveQuad(
-    r: AtelierStageRenderer, clock: Float, w: Float, h: Float, sleeveCenterX: Float, sleeveCenterY: Float, sleeveSide: Float
+    r: AtelierStageRenderer, clock: Float, w: Float, h: Float, sleeveCenterX: Float, sleeveCenterY: Float, sleeveSide: Float, sleeveRoll: Float
 ) {
     val sleeveMove = AtelierStageClock.sleeve(clock)
-    fillSleeveFinal(r.sleeveFinal, sleeveCenterX, sleeveCenterY, sleeveSide)
+    fillSleeveFinal(r.sleeveFinal, sleeveCenterX, sleeveCenterY, sleeveSide, sleeveRoll)
     val fromShelf = AtelierStage.shelfQuadValid
     val mini = AtelierStage.miniRect()
     when {
@@ -503,9 +579,10 @@ private fun DrawScope.fillAtelierSleeveQuad(
     for (i in 0 until 8) r.sleeveQuad[i] = atelierLerp(r.sleeveOrigin[i], r.sleeveFinal[i], sleeveMove)
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 private fun drawAtelierRecord(
     canvas: android.graphics.Canvas, r: AtelierStageRenderer, loaded: AtelierDeckAssets, clock: Float, flight: Float, deckW: Float, sleeveSide: Float,
-    spinDegrees: MutableFloatState, turn: AtelierRecordTurn, turnAngle: Float
+    spinDegrees: MutableFloatState, turn: AtelierRecordTurn, turnAngle: Float, drop: Boolean
 ) {
     val recordAlpha = AtelierStageClock.recordAlpha(clock)
     if (recordAlpha > 0.003f) {
@@ -514,17 +591,25 @@ private fun drawAtelierRecord(
         val sleeveCx = (r.sleeveFinal[0] + r.sleeveFinal[4]) * 0.5f
         val sleeveCy = (r.sleeveFinal[1] + r.sleeveFinal[5]) * 0.5f
         val peek = atelierSmooth(0.28f, 0.48f, clock)
-        val startX = sleeveCx + sleeveSide * 0.42f * peek
-        val startY = sleeveCy + sleeveSide * 0.02f * peek
+        val startX = if (drop) sleeveCx - sleeveSide * 0.08f * peek else sleeveCx + sleeveSide * 0.42f * peek
+        val startY = if (drop) sleeveCy + sleeveSide * 0.40f * peek else sleeveCy + sleeveSide * 0.02f * peek
         val startRadius = sleeveSide * 0.478f
         r.point[0] = 1000f * AtelierDeckGeometry.PlatterX
         r.point[1] = 1000f * AtelierDeckGeometry.PlatterY
         r.matrix.mapPoints(r.point)
         val finalRadius = deckW * AtelierDeckGeometry.RecordRadius
         val arc = sin(flight * PI.toFloat())
+        val landing = atelierSmooth(0.90f, 1f, clock)
+        val bounce = if (landing in 0.001f..0.999f) sin(landing * PI.toFloat() * 2f) * (1f - landing) * 0.035f else 0f
+        if (flight >= 0.999f) {
+            canvas.save()
+            canvas.concat(r.matrix)
+            drawAtelierStrobe(canvas, r, 1000f * AtelierDeckGeometry.PlatterX, 1000f * AtelierDeckGeometry.PlatterY, 1000f * AtelierDeckGeometry.RecordRadius, spinDegrees.floatValue, (recordAlpha * 255f * atelierSmooth(0.88f, 1f, clock)).toInt())
+            canvas.restore()
+        }
         val x = atelierLerp(startX, r.point[0], flight) + arc * deckW * 0.09f
         val y = atelierLerp(startY, r.point[1], flight) - arc * deckW * 0.015f
-        val radius = atelierLerp(startRadius, finalRadius, flight) * (1f + arc * 0.05f) * (1f + turnPresence * TurnLiftScale)
+        val radius = atelierLerp(startRadius, finalRadius, flight) * (1f + arc * 0.05f) * (1f + turnPresence * TurnLiftScale) * (1f - bounce)
         val turnRise = turnPresence * finalRadius * TurnRise
         val lift = arc * finalRadius * 0.20f + (1f - flight) * finalRadius * 0.05f + turnRise * 1.6f
         val alphaByte = (recordAlpha * 255f).toInt()
@@ -558,7 +643,7 @@ private fun drawAtelierRecord(
         r.rect.set(-radius, -radius, radius, radius)
         r.bitmapPaint.alpha = alphaByte
         canvas.save()
-        canvas.rotate(spinDegrees.floatValue)
+        canvas.rotate(spinDegrees.floatValue - if (drop) (1f - flight) * FlightPreSpin else 0f)
         canvas.drawBitmap(loaded.disc, null, r.rect, r.bitmapPaint)
         val labelRadius = radius * (AtelierDeckGeometry.LabelRadius / AtelierDeckGeometry.RecordRadius)
         r.rect.set(-labelRadius, -labelRadius, labelRadius, labelRadius)
@@ -576,7 +661,62 @@ private fun drawAtelierRecord(
         canvas.rotate(-24f + AtelierRecordFlip.localAngle(turnAngle) * TurnSheenTravel)
         canvas.drawBitmap(loaded.light, null, r.rect, r.bitmapPaint)
         canvas.restoreToCount(checkpoint)
+        if (landing in 0.001f..0.999f) drawAtelierLandingRipple(canvas, r, x, y, finalRadius, landing, alphaByte)
     }
+}
+
+private fun drawAtelierStrobe(canvas: android.graphics.Canvas, r: AtelierStageRenderer, cx: Float, cy: Float, recordRadius: Float, spin: Float, alpha: Int) {
+    val accent = AtelierDesign.accentBright.toArgb()
+    val ring = recordRadius * 1.045f
+    val dot = recordRadius * 0.0105f
+    r.ringPaint.style = android.graphics.Paint.Style.FILL
+    val checkpoint = canvas.save()
+    canvas.translate(cx, cy)
+    canvas.rotate(spin)
+    for (index in 0 until StrobeDots) {
+        val major = index % 6 == 0
+        r.ringPaint.color = accent
+        r.ringPaint.alpha = (alpha * if (major) 0.85f else 0.32f).toInt()
+        val angle = index * (2f * PI.toFloat() / StrobeDots)
+        canvas.drawCircle(cos(angle) * ring, sin(angle) * ring, if (major) dot * 1.4f else dot, r.ringPaint)
+    }
+    canvas.restoreToCount(checkpoint)
+}
+
+private fun drawAtelierLandingRipple(canvas: android.graphics.Canvas, r: AtelierStageRenderer, cx: Float, cy: Float, recordRadius: Float, landing: Float, alpha: Int) {
+    val accent = AtelierDesign.accent.toArgb()
+    r.ringPaint.style = android.graphics.Paint.Style.STROKE
+    for (wave in 0 until 3) {
+        val t = (landing - wave * 0.16f).coerceIn(0f, 1f)
+        if (t <= 0f || t >= 1f) continue
+        r.ringPaint.strokeWidth = recordRadius * 0.018f * (1f - t)
+        r.ringPaint.color = accent
+        r.ringPaint.alpha = (alpha * (1f - t) * (0.55f - wave * 0.14f)).toInt().coerceAtLeast(0)
+        canvas.drawCircle(cx, cy, recordRadius * (1f + t * 0.42f), r.ringPaint)
+    }
+}
+
+private fun drawAtelierDepartingSleeve(
+    canvas: android.graphics.Canvas, r: AtelierStageRenderer, clock: Float, w: Float, swap: Animatable<Float, AnimationVector1D>,
+    coverOld: () -> Bitmap?, coverNow: () -> Bitmap?, rich: Boolean
+) {
+    val exit = atelierSmooth(SleeveExitStart, 0.88f, clock)
+    if (exit >= 0.999f) return
+    val cx = (r.sleeveQuad[0] + r.sleeveQuad[4]) * 0.5f
+    val cy = (r.sleeveQuad[1] + r.sleeveQuad[5]) * 0.5f
+    val radians = Math.toRadians((SleeveExitRoll * exit).toDouble())
+    val c = cos(radians).toFloat()
+    val s = sin(radians).toFloat()
+    val lift = exit * exit
+    for (corner in 0 until 4) {
+        val dx = r.sleeveQuad[corner * 2] - cx
+        val dy = r.sleeveQuad[corner * 2 + 1] - cy
+        r.sleeveQuad[corner * 2] = cx + dx * c - dy * s - lift * w * 0.9f
+        r.sleeveQuad[corner * 2 + 1] = cy + dx * s + dy * c - lift * w * 0.28f
+    }
+    val mix = swap.value
+    val cover = coverNow() ?: coverOld() ?: AtelierStage.shelfCover
+    r.painter.draw(canvas, r.sleeveQuad, cover, null, 0f, r.shadowMask, 0.5f, exit * 0.3f, 0f, (1f - exit) * if (coverOld() != null) mix else 1f, rich)
 }
 
 private fun drawAtelierSleeve(
@@ -594,7 +734,7 @@ private fun drawAtelierSleeve(
 
 @Composable
 private fun BoxScope.AtelierSceneTopChrome(
-    slots: PlayerDeckSlots, copy: AtelierCopy, visibleControls: Boolean, sizePx: Pair<Int, Int>, density: Density, controls: Modifier
+    slots: PlayerDeckSlots, copy: AtelierCopy, visibleControls: Boolean, sizePx: Pair<Int, Int>, density: Density, controls: Modifier, wide: Boolean
 ) {
     Box(Modifier.fillMaxWidth().statusBarsPadding().then(controls)) {
         if (visibleControls) {
@@ -603,7 +743,7 @@ private fun BoxScope.AtelierSceneTopChrome(
             }
         }
     }
-    if (visibleControls) {
+    if (visibleControls && wide) {
         Text(
             copy.sideA, color = AtelierDesign.textFaint, style = MaterialTheme.typography.labelSmall,
             modifier = Modifier.align(Alignment.TopEnd).offset(y = with(density) { (sizePx.second * 0.205f).toDp() } - 24.dp).padding(end = 22.dp).then(controls)
@@ -612,12 +752,59 @@ private fun BoxScope.AtelierSceneTopChrome(
 }
 
 @Composable
+private fun AtelierSceneProjection(
+    track: Track, slots: PlayerDeckSlots, sizePx: Pair<Int, Int>, density: Density, hasCanvas: Boolean, coverUrl: String
+) {
+    val wallPx = sizePx.second * 0.205f + sizePx.first * (AtelierDeckGeometry.Aspect + AtelierDeckPlinth)
+    val room = AtelierDesign.room
+    Box(
+        Modifier.fillMaxWidth().height(with(density) { wallPx.toDp() })
+            .graphicsLayer { alpha = ProjectionStrength * AtelierStageClock.scrim(AtelierStage.expansion().coerceIn(0f, 1f)) }
+            .drawWithContent {
+                drawContent()
+                drawRect(Brush.verticalGradient(0f to room.copy(alpha = 0.55f), 0.22f to Color.Transparent, 0.7f to Color.Transparent, 1f to room))
+                drawRect(Brush.horizontalGradient(0f to room.copy(alpha = 0.45f), 0.18f to Color.Transparent, 0.82f to Color.Transparent, 1f to room.copy(alpha = 0.45f)))
+            }
+    ) {
+        if (hasCanvas) {
+            slots.stage(track, Modifier.fillMaxSize(), 0.dp)
+        } else {
+            val drift = if (LocalAnimationsEnabled.current) {
+                androidx.compose.animation.core.rememberInfiniteTransition(label = "atelier-wall").animateFloat(
+                    0f, 1f,
+                    androidx.compose.animation.core.infiniteRepeatable(
+                        tween<Float>(ProjectionDriftMillis, easing = androidx.compose.animation.core.LinearEasing),
+                        androidx.compose.animation.core.RepeatMode.Reverse
+                    ),
+                    label = "atelier-wall-drift"
+                )
+            } else null
+            coil3.compose.AsyncImage(
+                model = coverUrl,
+                contentDescription = null,
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+                    .graphicsLayer {
+                        val t = drift?.value ?: 0.5f
+                        val zoom = 1.12f + t * 0.14f
+                        scaleX = zoom
+                        scaleY = zoom
+                        translationX = (t - 0.5f) * size.width * 0.08f
+                        translationY = (0.5f - t) * size.height * 0.04f
+                    }
+                    .blur(ProjectionBlur)
+            )
+        }
+    }
+}
+
+@Composable
 private fun AtelierSceneSleeveSlot(
     track: Track, slots: PlayerDeckSlots, hasCanvas: Boolean, visibleControls: Boolean, wide: Boolean,
     deckWidthPx: Int, sizePx: Pair<Int, Int>, density: Density
 ) {
-    if (hasCanvas && visibleControls) {
-        val side = with(density) { (if (wide) deckWidthPx * 0.30f else sizePx.first * 0.44f).toDp() }
+    if (hasCanvas && visibleControls && wide) {
+        val side = with(density) { (deckWidthPx * 0.30f).toDp() }
         val centerX = side * 0.42f
         val top = with(density) { sizePx.second.toFloat().times(0.205f).toDp() } - side * 0.09f - side * 0.5f
         Box(

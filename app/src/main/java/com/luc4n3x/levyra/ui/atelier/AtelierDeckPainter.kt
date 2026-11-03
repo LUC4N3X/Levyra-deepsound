@@ -193,8 +193,7 @@ internal fun atelierBakeArm(deckWidthPx: Int): AtelierArmSprite {
     val tube = Path().apply {
         moveTo(px, py - w * 0.036f)
         lineTo(px, py + length * 0.20f)
-        cubicTo(px, py + length * 0.46f, px + w * 0.058f, py + length * 0.52f, px + w * 0.050f, py + length * 0.72f)
-        cubicTo(px + w * 0.045f, py + length * 0.84f, px + w * 0.010f, py + length * 0.88f, px, py + length * 0.925f)
+        lineTo(px, py + length * 0.925f)
     }
     paint.strokeWidth = w * 0.0125f
     paint.color = 0xFF2C2925.toInt()
