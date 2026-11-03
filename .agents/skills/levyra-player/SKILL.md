@@ -45,6 +45,19 @@ Issue #427 established that apparently small hot-path changes can create catastr
 - For a change that can materially affect playback/native/graphics memory, pair this skill with `levyra-android-performance` and validate the memory trend, not only a point-in-time heap value. Include native heap and process PSS/RSS when possible.
 - Stable acceptance means memory reaches a bounded plateau/oscillation after warm-up and normal track transitions rather than climbing monotonically with playback duration. Device-specific absolute MB values may differ.
 
+## Regression guard: motion gestures, Gentle Wake and Atelier (PR #1156)
+
+Protect the behaviors restored in PR #1156 when editing motion controls, audio fade-in, track changes, Atelier, or shared player gestures. Validate the relevant runtime path, not only the changed function.
+
+- **Sensor lifecycle:** Face-down pause must keep working after repeated flips and screen on/off transitions while music plays. Do not unregister sensors or reset a pending detector merely because the display turned off; reconcile registrations only when targets or gesture eligibility change. Release listeners on pause, stop and the owning lifecycle boundary.
+- **Separate gesture policies:** Face-down pause remains active with the screen off where Android supplies sensor events. Screen-off shake-to-skip remains opt-in; do not disable that setting solely because a wake-up accelerometer is absent when a regular accelerometer is available. Real background behavior may vary by OEM and needs physical-device evidence.
+- **Sensor events and cost:** Route events by actual registered sensor identity, use sensor event timestamps for batched samples, avoid duplicate registration of a shared accelerometer and select the faster needed sampling rate. Do not make Binder calls or allocate repeatedly per sensor event. Preserve voice-call, alarm, Android Auto and playback-priority exclusions.
+- **Gentle Wake audio:** Start the ramp clock when audio really starts, not at stream-resolution time; tolerate delayed streams. Keep the curve audible early, monotonic and smoothly bounded by the chosen maximum across preview and all durations. Modify player gain only, never device-wide volume.
+- **Atelier swipes:** A visual Canvas is not a gesture layer. Ensure the shared gesture surface actually covers the intended deck, with correct priority under the header; test left/right, repeated and rapid swipes, playing/paused states, and tracks with or without motion artwork. Preserve gesture settings, haptics and other skins.
+- **Atelier record changes:** Drive flips from track identity, not album art identity, including same-album next/previous, notification, media keys and Android Auto. Never show a mirrored label. Handle cover arrival delays, absent covers, rapid consecutive changes, reduced-motion settings, and frame-time allocation without snapping or stale state.
+
+For affected changes, add or rerun focused PlayerGesturesTest, SmartListeningTest and ui.atelier.* coverage as applicable. Exercise screen-on/off gestures, ramp start and preview, track changes from multiple sources and repeated actions on an emulator or device. Report OEM sensors, actual speaker loudness, real-GPU frame pacing and sustained memory as UNVERIFIED unless measured directly.
+
 ## Validation
 
 Add or update focused regression coverage for relevant cases such as rapid track changes, cancellation, same-identity replacement, queue mutation, mode switching, background/foreground transitions, notification actions, end-of-queue behavior, and bounded cache/lifecycle cleanup.
