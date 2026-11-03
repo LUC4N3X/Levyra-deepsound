@@ -11,6 +11,8 @@ data class LevyraLanguageOption(
 )
 
 object LevyraLanguageCatalog {
+    const val BRAZILIAN_PORTUGUESE = "pt-BR"
+
     val languages: List<LevyraLanguageOption> = AppLanguage.entries.map { language ->
         LevyraLanguageOption(
             code = language.tag,
@@ -24,9 +26,11 @@ object LevyraLanguageCatalog {
     private val rtlCodes = AppLanguage.entries.filter { it.isRtl }.map { it.tag }.toSet()
 
     fun normalize(code: String): String {
-        val normalized = code
-            .trim()
-            .replace('_', '-')
+        val tag = code.trim().replace('_', '-')
+        if (tag.equals(BRAZILIAN_PORTUGUESE, ignoreCase = true) ||
+            tag.equals("pt-rBR", ignoreCase = true)
+        ) return BRAZILIAN_PORTUGUESE
+        val normalized = tag
             .substringBefore('-')
             .lowercase(Locale.ROOT)
         val canonical = when (normalized) {
@@ -36,6 +40,10 @@ object LevyraLanguageCatalog {
             else -> normalized
         }
         return if (canonical in supportedCodes) canonical else "en"
+    }
+
+    fun translationCode(code: String): String = normalize(code).let { normalized ->
+        if (normalized == BRAZILIAN_PORTUGUESE) "pt" else normalized
     }
 
     fun deviceDefault(): String = normalize(Locale.getDefault().language)

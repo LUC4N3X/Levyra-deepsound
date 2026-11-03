@@ -55,12 +55,15 @@ kotlin {
             include("com/luc4n3x/levyra/domain/LevyraAudio.kt")
             include("com/luc4n3x/levyra/domain/ParametricEqualizer.kt")
             include("com/luc4n3x/levyra/domain/PlaylistImportFailureKind.kt")
+            include("com/luc4n3x/levyra/domain/DownloadQualityChoice.kt")
             include("com/luc4n3x/levyra/domain/LyricsProviderPriority.kt")
             include("com/luc4n3x/levyra/feature/radio/RadioCategory.kt")
             exclude("com/luc4n3x/levyra/ui/i18n/LevyraPersonalizedSearchStrings.kt")
             exclude("com/luc4n3x/levyra/ui/i18n/LevyraPersonalCollectionStrings.kt")
             exclude("com/luc4n3x/levyra/ui/i18n/LevyraSmartOfflineCount.kt")
             exclude("com/luc4n3x/levyra/ui/i18n/LevyraRadioLibraryStrings.kt")
+            exclude("com/luc4n3x/levyra/ui/i18n/LevyraHomeCompositionStrings.kt")
+            exclude("com/luc4n3x/levyra/ui/i18n/LevyraMoodStyleStrings.kt")
         }
         kotlin.source(sharedAndroidSources)
     }
