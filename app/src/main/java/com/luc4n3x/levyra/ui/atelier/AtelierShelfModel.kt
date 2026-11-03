@@ -258,3 +258,19 @@ internal object AtelierStageClock {
     fun armEngage(clock: Float) = atelierSmooth(0.90f, 1f, clock)
     fun controls(clock: Float) = atelierSmooth(0.80f, 1f, clock)
 }
+
+internal object AtelierRecordFlip {
+    const val DurationMs = 720
+    const val LabelWaitMs = 380L
+    const val HalfTurnDegrees = 180f
+
+    fun faceOf(angle: Float): Int = kotlin.math.floor((angle + 90f) / HalfTurnDegrees).toInt()
+
+    fun localAngle(angle: Float): Float = angle - faceOf(angle) * HalfTurnDegrees
+
+    fun presence(angle: Float): Float = abs(sin(Math.toRadians(localAngle(angle).toDouble()))).toFloat()
+
+    fun foreshortening(angle: Float): Float = abs(cos(Math.toRadians(localAngle(angle).toDouble()))).toFloat()
+
+    fun targetAngleAfter(angle: Float): Float = (faceOf(angle) + 1) * HalfTurnDegrees
+}
