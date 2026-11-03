@@ -456,6 +456,7 @@ private suspend fun runAtelierSpin(spinDegrees: MutableFloatState, spinSpeed: An
     }
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 private fun DrawScope.drawAtelierStage(
     r: AtelierStageRenderer, loaded: AtelierDeckAssets?, wide: Boolean, rich: Boolean, tone: () -> Color,
     arm: Animatable<Float, AnimationVector1D>, spinDegrees: MutableFloatState, swap: Animatable<Float, AnimationVector1D>,
@@ -578,6 +579,7 @@ private fun DrawScope.fillAtelierSleeveQuad(
     for (i in 0 until 8) r.sleeveQuad[i] = atelierLerp(r.sleeveOrigin[i], r.sleeveFinal[i], sleeveMove)
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 private fun drawAtelierRecord(
     canvas: android.graphics.Canvas, r: AtelierStageRenderer, loaded: AtelierDeckAssets, clock: Float, flight: Float, deckW: Float, sleeveSide: Float,
     spinDegrees: MutableFloatState, turn: AtelierRecordTurn, turnAngle: Float, drop: Boolean
@@ -641,7 +643,7 @@ private fun drawAtelierRecord(
         r.rect.set(-radius, -radius, radius, radius)
         r.bitmapPaint.alpha = alphaByte
         canvas.save()
-        canvas.rotate(spinDegrees.floatValue - (if (drop) (1f - flight) * FlightPreSpin else 0f))
+        canvas.rotate(spinDegrees.floatValue - if (drop) (1f - flight) * FlightPreSpin else 0f)
         canvas.drawBitmap(loaded.disc, null, r.rect, r.bitmapPaint)
         val labelRadius = radius * (AtelierDeckGeometry.LabelRadius / AtelierDeckGeometry.RecordRadius)
         r.rect.set(-labelRadius, -labelRadius, labelRadius, labelRadius)
@@ -714,7 +716,7 @@ private fun drawAtelierDepartingSleeve(
     }
     val mix = swap.value
     val cover = coverNow() ?: coverOld() ?: AtelierStage.shelfCover
-    r.painter.draw(canvas, r.sleeveQuad, cover, null, 0f, r.shadowMask, 0.5f, exit * 0.3f, 0f, (1f - exit) * (if (coverOld() != null) mix else 1f), rich)
+    r.painter.draw(canvas, r.sleeveQuad, cover, null, 0f, r.shadowMask, 0.5f, exit * 0.3f, 0f, (1f - exit) * if (coverOld() != null) mix else 1f, rich)
 }
 
 private fun drawAtelierSleeve(

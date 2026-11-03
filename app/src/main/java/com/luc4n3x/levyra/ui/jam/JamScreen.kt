@@ -130,6 +130,7 @@ internal fun LevyraJamOverlay(
     }
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 private fun JamOverlayContent(
     jam: JamUiState,
@@ -718,6 +719,7 @@ private fun JamPendingRow(
     }
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 private fun JamParticipantRow(
     participant: JamParticipant,
@@ -936,6 +938,7 @@ private fun JamEmptyRow(text: String) {
     }
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 private fun JamPermissionPicker(
     selected: JamGuestPermission,
