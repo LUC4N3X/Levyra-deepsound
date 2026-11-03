@@ -3029,21 +3029,7 @@ class PlaybackService : MediaLibraryService() {
 
             val player = activePlayer ?: return@launch
             cancelQueueTransition()
-            val playTrack = if (firstTrack.streamUrl.startsWith("file://") ||
-                firstTrack.streamUrl.startsWith("content://") ||
-                firstTrack.streamUrl.startsWith("/") ||
-                firstTrack.isLiveRadio()
-            ) {
-                firstTrack
-            } else {
-                withContext(Dispatchers.IO) {
-                    runCatching { resolveSkipTarget(firstTrack, autoAdvance = false) }.getOrNull()
-                } ?: GentleWakeToneGenerator.ensureToneTrack(
-                    context = this@PlaybackService,
-                    title = resolved.displayTitle,
-                    subtitle = "Gentle Wake"
-                )
-            }
+            val playTrack = gentleWakePlayableTrack(firstTrack, resolved.displayTitle)
 
             if (queueEngine.isTransientPlaybackActive) {
                 queueEngine.replaceTransient(resolved.tracks, 0)
@@ -3059,28 +3045,51 @@ class PlaybackService : MediaLibraryService() {
             player.prepare()
             player.play()
 
-            val requestedAtMs = SystemClock.elapsedRealtime()
-            var rampStartedAtMs = -1L
-            while (isActive && _gentleWakeRuntimeStateFlow.value.active) {
-                val nowMs = SystemClock.elapsedRealtime()
-                if (rampStartedAtMs < 0L &&
-                    (player.isPlaying || nowMs - requestedAtMs >= GENTLE_WAKE_RAMP_START_GRACE_MS)
-                ) {
-                    rampStartedAtMs = nowMs
-                }
-                val elapsed = if (rampStartedAtMs < 0L) 0L else (nowMs - rampStartedAtMs).coerceAtLeast(0L)
-                val nextVol = GentleWakeCurve.volumeAt(elapsed, totalDurationMs, normalized.maxVolumeFraction)
-                player.volume = nextVol
-                _gentleWakeRuntimeStateFlow.value = _gentleWakeRuntimeStateFlow.value.copy(
-                    currentVolumeFraction = nextVol,
-                    elapsedMs = elapsed.coerceAtMost(totalDurationMs)
-                )
-                if (isPreview && elapsed >= totalDurationMs) {
-                    stopGentleWakeInternal(markDismissedForToday = false)
-                    break
-                }
-                delay(200L)
+            runGentleWakeRamp(player, totalDurationMs, normalized.maxVolumeFraction, isPreview)
+        }
+    }
+
+    private suspend fun gentleWakePlayableTrack(firstTrack: Track, displayTitle: String): Track {
+        val local = firstTrack.streamUrl.startsWith("file://") ||
+            firstTrack.streamUrl.startsWith("content://") ||
+            firstTrack.streamUrl.startsWith("/")
+        if (local || firstTrack.isLiveRadio()) return firstTrack
+        return withContext(Dispatchers.IO) {
+            runCatching { resolveSkipTarget(firstTrack, autoAdvance = false) }.getOrNull()
+        } ?: GentleWakeToneGenerator.ensureToneTrack(
+            context = this@PlaybackService,
+            title = displayTitle,
+            subtitle = "Gentle Wake"
+        )
+    }
+
+    private suspend fun CoroutineScope.runGentleWakeRamp(
+        player: ExoPlayer,
+        totalDurationMs: Long,
+        maxVolumeFraction: Float,
+        isPreview: Boolean
+    ) {
+        val requestedAtMs = SystemClock.elapsedRealtime()
+        var rampStartedAtMs = -1L
+        while (isActive && _gentleWakeRuntimeStateFlow.value.active) {
+            val nowMs = SystemClock.elapsedRealtime()
+            if (rampStartedAtMs < 0L &&
+                (player.isPlaying || nowMs - requestedAtMs >= GENTLE_WAKE_RAMP_START_GRACE_MS)
+            ) {
+                rampStartedAtMs = nowMs
             }
+            val elapsed = if (rampStartedAtMs < 0L) 0L else (nowMs - rampStartedAtMs).coerceAtLeast(0L)
+            val nextVol = GentleWakeCurve.volumeAt(elapsed, totalDurationMs, maxVolumeFraction)
+            player.volume = nextVol
+            _gentleWakeRuntimeStateFlow.value = _gentleWakeRuntimeStateFlow.value.copy(
+                currentVolumeFraction = nextVol,
+                elapsedMs = elapsed.coerceAtMost(totalDurationMs)
+            )
+            if (isPreview && elapsed >= totalDurationMs) {
+                stopGentleWakeInternal(markDismissedForToday = false)
+                return
+            }
+            delay(200L)
         }
     }
 

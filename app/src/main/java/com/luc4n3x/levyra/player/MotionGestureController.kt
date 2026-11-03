@@ -179,18 +179,7 @@ internal class MotionGestureController(
             shakeDetector.reset()
         }
 
-        val flipRegistered: Boolean
-        val shakeRegistered: Boolean
-        if (flipTarget != null && flipTarget == shakeTarget) {
-            val shared = registerSensor(manager, flipTarget, SensorManager.SENSOR_DELAY_GAME, 40_000)
-            flipRegistered = shared
-            shakeRegistered = shared
-        } else {
-            flipRegistered = flipTarget != null &&
-                registerSensor(manager, flipTarget, SensorManager.SENSOR_DELAY_UI, 80_000)
-            shakeRegistered = shakeTarget != null &&
-                registerSensor(manager, shakeTarget, SensorManager.SENSOR_DELAY_GAME, 40_000)
-        }
+        val (flipRegistered, shakeRegistered) = registerTargets(manager, flipTarget, shakeTarget)
         registeredFlipSensor = flipTarget.takeIf { flipRegistered }
         registeredShakeSensor = shakeTarget.takeIf { shakeRegistered }
         val anyRegistered = flipRegistered || shakeRegistered
@@ -201,6 +190,22 @@ internal class MotionGestureController(
             shakeDetector.reset()
         }
         _activeMonitoringFlow.value = anyRegistered
+    }
+
+    private fun registerTargets(
+        manager: SensorManager,
+        flipTarget: Sensor?,
+        shakeTarget: Sensor?
+    ): Pair<Boolean, Boolean> {
+        if (flipTarget != null && flipTarget == shakeTarget) {
+            val shared = registerSensor(manager, flipTarget, SensorManager.SENSOR_DELAY_GAME, 40_000)
+            return shared to shared
+        }
+        val flipRegistered = flipTarget != null &&
+            registerSensor(manager, flipTarget, SensorManager.SENSOR_DELAY_UI, 80_000)
+        val shakeRegistered = shakeTarget != null &&
+            registerSensor(manager, shakeTarget, SensorManager.SENSOR_DELAY_GAME, 40_000)
+        return flipRegistered to shakeRegistered
     }
 
     private fun flipSensorFor(useWakeUp: Boolean): Sensor? =

@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.ui.player
 
 import com.luc4n3x.levyra.ui.theme.atelierCarbon
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Camera
 import android.graphics.Matrix
@@ -56,6 +57,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.MutableFloatState
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -133,8 +135,11 @@ import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.preferredPlayerArtworkUrl
 import com.luc4n3x.levyra.ui.rememberSpotifyCoverTone
 import com.luc4n3x.levyra.ui.theme.AtelierDesign
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -252,45 +257,12 @@ internal fun AtelierPlayerScene(
         value = withContext(Dispatchers.Default) { bakeAtelierDeckAssets(deckWidthPx, rich) }
     }
     val coverUrl = remember(track.id) { preferredPlayerArtworkUrl(track) }
-    var coverNow by remember { mutableStateOf<Bitmap?>(null) }
-    var coverOld by remember { mutableStateOf<Bitmap?>(null) }
+    val coverNow = remember { mutableStateOf<Bitmap?>(null) }
+    val coverOld = remember { mutableStateOf<Bitmap?>(null) }
     val swap = remember { Animatable(1f) }
     val turn = remember { AtelierRecordTurn() }
     LaunchedEffect(track.id) {
-        val turning = animated && turn.hasLabel
-        coroutineScope {
-            val artwork = async {
-                val cover = atelierLoadCover(context, coverUrl, 520, hardware = false)
-                cover to withContext(Dispatchers.Default) { atelierBakeLabel(cover, 360) }
-            }
-            val flipJob = if (turning) {
-                if (AtelierRecordFlip.presence(turn.angle.value) < 0.01f) {
-                    withTimeoutOrNull(AtelierRecordFlip.LabelWaitMs) { artwork.await() }
-                }
-                turn.beginTurn()
-                val early = if (artwork.isCompleted) artwork.await().second else null
-                turn.labelTarget = early
-                turn.reveal.snapTo(if (early != null) 1f else 0f)
-                launch {
-                    turn.angle.animateTo(
-                        turn.targetFace * AtelierRecordFlip.HalfTurnDegrees,
-                        tween(AtelierRecordFlip.DurationMs, easing = FastOutSlowInEasing)
-                    )
-                }
-            } else {
-                null
-            }
-            val (cover, label) = artwork.await()
-            turn.labelTarget = label
-            launch { turn.reveal.animateTo(1f, tween(if (turning) 240 else 0)) }
-            coverOld = coverNow
-            coverNow = cover
-            swap.snapTo(0f)
-            swap.animateTo(1f, tween(if (animated) 280 else 0))
-            coverOld = null
-            flipJob?.join()
-        }
-        turn.settle()
+        changeAtelierRecord(context, coverUrl, animated, turn, swap, coverNow, coverOld)
     }
 
     val spinDegrees = remember { mutableFloatStateOf(0f) }
@@ -310,8 +282,8 @@ internal fun AtelierPlayerScene(
         runAtelierSpin(spinDegrees, spinSpeed, clockProvider)
     }
     val toneProvider = { tone }
-    val coverOldProvider = { coverOld }
-    val coverNowProvider = { coverNow }
+    val coverOldProvider = { coverOld.value }
+    val coverNowProvider = { coverNow.value }
 
     Box(modifier.fillMaxSize().onSizeChanged { sizePx = it.width to it.height }) {
         Canvas(Modifier.fillMaxSize()) {
@@ -332,6 +304,54 @@ internal fun AtelierPlayerScene(
         AtelierSceneGestureSurface(track, slots, visibleControls, wide, deckWidthPx, sizePx, density)
         AtelierSceneTopChrome(slots, copy, visibleControls, sizePx, density, controls)
         AtelierScenePanel(track, slots, visibleControls, wide, deckWidthPx, sizePx, density, controls, metadata, transport)
+    }
+}
+
+private suspend fun changeAtelierRecord(
+    context: Context,
+    coverUrl: String,
+    animated: Boolean,
+    turn: AtelierRecordTurn,
+    swap: Animatable<Float, AnimationVector1D>,
+    coverNow: MutableState<Bitmap?>,
+    coverOld: MutableState<Bitmap?>
+) {
+    val turning = animated && turn.hasLabel
+    coroutineScope {
+        val artwork = async {
+            val cover = atelierLoadCover(context, coverUrl, 520, hardware = false)
+            cover to withContext(Dispatchers.Default) { atelierBakeLabel(cover, 360) }
+        }
+        val flipJob = if (turning) startAtelierTurn(turn, artwork) else null
+        val (cover, label) = artwork.await()
+        turn.labelTarget = label
+        launch { turn.reveal.animateTo(1f, tween(if (turning) 240 else 0)) }
+        coverOld.value = coverNow.value
+        coverNow.value = cover
+        swap.snapTo(0f)
+        swap.animateTo(1f, tween(if (animated) 280 else 0))
+        coverOld.value = null
+        flipJob?.join()
+    }
+    turn.settle()
+}
+
+private suspend fun CoroutineScope.startAtelierTurn(
+    turn: AtelierRecordTurn,
+    artwork: Deferred<Pair<Bitmap?, Bitmap>>
+): Job {
+    if (AtelierRecordFlip.presence(turn.angle.value) < 0.01f) {
+        withTimeoutOrNull(AtelierRecordFlip.LabelWaitMs) { artwork.await() }
+    }
+    turn.beginTurn()
+    val early = if (artwork.isCompleted) artwork.await().second else null
+    turn.labelTarget = early
+    turn.reveal.snapTo(if (early != null) 1f else 0f)
+    return launch {
+        turn.angle.animateTo(
+            turn.targetFace * AtelierRecordFlip.HalfTurnDegrees,
+            tween(AtelierRecordFlip.DurationMs, easing = FastOutSlowInEasing)
+        )
     }
 }
 
