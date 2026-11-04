@@ -110,10 +110,14 @@ active task matches them; never preload the whole tree.
 
 The official pstack marketplace is declared and enabled in
 `.agents/claude/settings.json`. Its upstream skills and playbooks are installed
-by Claude Code rather than duplicated under `.agents/skills/`. See
-`docs/ai/PSTACK_INTEGRATION.md` for manual installation, compatible workflows,
-limitations, and the precedence of Levyra's rules. It is never a substitute for
-project-domain skills, the two-skill phase cap, or the mandatory validation gate.
+by Claude Code rather than duplicated under `.agents/skills/`. Their availability
+does not authorize automatic execution. Use one primary workflow per phase, never
+multiple equivalent skills from pstack, Levyra, or other marketplaces. For prose,
+use only `levyra-humanizer` by default; an explicitly selected pstack writing
+command replaces it, without chaining a second polish pass. See
+`docs/ai/PSTACK_INTEGRATION.md` for selection rules and setup instructions.
+The two-skill phase cap is a ceiling, not an instruction to fill two slots.
+Domain-specific safety and mandatory validation are unaffected.
 
 ## Context efficiency
 
