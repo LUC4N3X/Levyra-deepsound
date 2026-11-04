@@ -90,14 +90,6 @@ FLAC on Android goes through the same steps with stricter checks. Levyra looks f
 
 Each provider's terms and access rules apply to its sources and content. See [Third-party services and rights](docs/legal/LEGAL.md#3-third-party-services-and-rights).
 
-### Levyra Enhanced Audio
-
-JioSaavn's 320 kbps streams already go up to about 20 kHz, so Levyra doesn't process them. Enhanced Audio is for sources that lost more in encoding, for example a 128 kbps fallback with nothing above 17 kHz.
-
-On a stream like that, Levyra rebuilds the missing high frequencies from the band just below the cutoff, similar to the SBR technique that some codecs use. It only does this when the drop is steep and nothing is left above it. Levyra keeps the rebuilt highs a little quieter than they would be in the original recording. It never processes FLAC or other lossless files.
-
-Enhanced Audio is on by default, and you can turn it off in Audio Settings. Technical Audio Info shows whether it's running on the current track, or why it skipped it. Enhanced Audio doesn't make a lossy stream lossless, and Levyra still labels the stream as lossy.
-
 <div align="center">
   <p><code>OFF</code> &nbsp;·&nbsp; <code>AUTOMATIC</code> &nbsp;·&nbsp; <code>PREFER&nbsp;320&nbsp;KBPS</code></p>
   <sub>Levyra measures each stream before using it and goes back to the normal source when JioSaavn isn't a safe match.</sub>
