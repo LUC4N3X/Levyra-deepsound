@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.viewmodel
 import com.luc4n3x.levyra.data.LevyraStartupCatalog
 import com.luc4n3x.levyra.domain.ArtistExclusions
 import com.luc4n3x.levyra.domain.ExcludedArtist
+import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.Track
@@ -119,6 +120,53 @@ class HomeRenderSnapshotTest {
 
         assertFalse(quickPicks.any { it.artist == "Blocked Artist" })
         assertEquals("Allowed Artist", quickPicks.firstOrNull()?.artist)
+    }
+
+    @Test
+    fun excludedArtistNeverLeadsSoundtrackFromChartsFavoritesOrCurrentTrack() {
+        val blockedChart = track("aaaaaaaaaaa").copy(artist = "Marracash")
+        val blockedFavorite = track("bbbbbbbbbbb").copy(artist = "Marracash feat. Guè")
+        val blockedCurrent = track("ccccccccccc").copy(artist = "Marracash")
+        val allowed = track("ddddddddddd").copy(artist = "Elodie")
+        val excluded = ExcludedArtist("", "Marracash", 1L)
+        val state = LevyraUiState(
+            charts = listOf(blockedChart, allowed),
+            favorites = listOf(blockedFavorite),
+            currentTrack = blockedCurrent,
+            excludedArtists = listOf(excluded),
+            artistExclusions = ArtistExclusions.from(listOf(excluded))
+        )
+
+        val snapshot = buildHomeRenderSnapshot(state)
+        val candidates = snapshot.derived.spotlightCandidates.map { it.track }
+
+        assertTrue(candidates.isNotEmpty())
+        assertFalse(candidates.any { it.artist.startsWith("Marracash") })
+        assertFalse(snapshot.derived.resonanceTracks.any { it.artist.startsWith("Marracash") })
+        assertEquals("Elodie", candidates.first().artist)
+    }
+
+    @Test
+    fun removingExclusionRestoresArtistToSoundtrackCandidates() {
+        val blocked = track("aaaaaaaaaaa").copy(artist = "Marracash")
+        val excluded = ExcludedArtist("UCmarracash", "Marracash", 1L)
+        val excludedState = LevyraUiState(
+            charts = listOf(blocked),
+            followedArtists = listOf(FollowedArtist("UCmarracash", "Marracash", "https://example.com/m.jpg", 1L)),
+            excludedArtists = listOf(excluded),
+            artistExclusions = ArtistExclusions.from(listOf(excluded))
+        )
+
+        val hidden = buildHomeRenderSnapshot(excludedState)
+        val restored = buildHomeRenderSnapshot(
+            excludedState.copy(excludedArtists = emptyList(), artistExclusions = ArtistExclusions.Empty),
+            hidden
+        )
+
+        assertFalse(hidden.derived.spotlightCandidates.any { it.track.id == blocked.id })
+        assertTrue(hidden.state.followedArtists.isEmpty())
+        assertTrue(restored.derived.spotlightCandidates.any { it.track.id == blocked.id })
+        assertEquals(1, restored.state.followedArtists.size)
     }
 
     @Test
