@@ -147,6 +147,26 @@ class HomeRenderSnapshotTest {
     }
 
     @Test
+    fun resonanceKeepsAllowedTracksRankedBelowEightExcludedOnes() {
+        val blocked = (0 until 8).map { index ->
+            track("blocked${index}xxx").copy(artist = "Marracash", replayScore = 100)
+        }
+        val allowed = (0 until 3).map { index ->
+            track("allowed${index}xxx").copy(artist = "Elodie", replayScore = 1)
+        }
+        val excluded = ExcludedArtist("", "Marracash", 1L)
+        val state = LevyraUiState(
+            charts = blocked + allowed,
+            excludedArtists = listOf(excluded),
+            artistExclusions = ArtistExclusions.from(listOf(excluded))
+        )
+
+        val resonance = buildHomeRenderSnapshot(state).derived.resonanceTracks
+
+        assertEquals(allowed.map { it.id }.toSet(), resonance.map { it.id }.toSet())
+    }
+
+    @Test
     fun removingExclusionRestoresArtistToSoundtrackCandidates() {
         val blocked = track("aaaaaaaaaaa").copy(artist = "Marracash")
         val excluded = ExcludedArtist("UCmarracash", "Marracash", 1L)

@@ -947,9 +947,7 @@ private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
         similarArtistCount = input.similarArtists.size,
         hasCurrentTrack = input.currentTrack != null
     )
-    val resonanceTracks = input.cachedResonanceTracks.ifEmpty {
-        input.artistExclusions.filterTracks(buildHomeResonanceTracks(input))
-    }
+    val resonanceTracks = input.cachedResonanceTracks.ifEmpty { buildHomeResonanceTracks(input) }
     val spotlightCandidates = HomeEditorialEngine.buildSpotlightCandidates(
         showNewReleases = input.showNewReleases,
         newReleaseTracks = moodRank(newReleases?.tracks.orEmpty()),
@@ -1094,6 +1092,7 @@ private fun buildHomeResonanceTracks(input: HomeDerivedInput): List<Track> {
     }
         .asSequence()
         .filter { it.id.length == 11 && isReliableHomeMusicCandidate(it) }
+        .filterNot(input.artistExclusions::excludesTrack)
         .distinctBy { it.id }
         .sortedWith(
             compareByDescending<Track> {
