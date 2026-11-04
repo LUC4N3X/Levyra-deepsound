@@ -200,6 +200,20 @@ if [[ -z "$PYTHON_COMMAND" ]]; then
   exit 1
 fi
 
+if [[ "$SKIP_EXTERNAL_SKILLS" -ne 1 ]] && has_command claude; then
+  if [[ "$DRY_RUN" -ne 1 ]] && (cd "$REPO_ROOT" && "$PYTHON_COMMAND" scripts/pstack_auto_route.py --check-installed >/dev/null 2>&1); then
+    echo "[skip] Official pstack plugin is already installed for Claude Code"
+  elif [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[dry-run] Register pstack marketplace: claude plugin marketplace add cursor/plugins"
+    echo "[dry-run] Install official pstack: claude plugin install pstack@cursor-plugins --scope user"
+  else
+    claude plugin marketplace add cursor/plugins || echo "[warn] pstack marketplace registration unavailable; trying direct install" >&2
+    if ! claude plugin install pstack@cursor-plugins --scope user; then
+      echo "[warn] pstack installation unavailable; continuing with existing Levyra skills" >&2
+    fi
+  fi
+fi
+
 if [[ "$ENABLE_HEADROOM" -eq 1 ]]; then
   run_step "Enable optional Headroom integration" "$PYTHON_COMMAND" scripts/headroom_adapter.py enable
 elif [[ "$DISABLE_HEADROOM" -eq 1 ]]; then
