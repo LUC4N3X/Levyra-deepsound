@@ -34,6 +34,10 @@ ROUTES = (
 RULES = tuple((name, re.compile(pattern, re.IGNORECASE)) for name, pattern in ROUTES)
 EXPLICIT_COMMAND = re.compile(r"^\s*/pstack:[a-z][a-z0-9-]*(?=\s|$)", re.IGNORECASE)
 COMMAND_MENTION = re.compile(r"/pstack:[a-z][a-z0-9-]*", re.IGNORECASE)
+FORBIDDEN_COMMAND = re.compile(
+    r"(?:do not use|don\u0027t use|non usare|avoid|не используй)\s+[`\u0027\"]*/pstack:([a-z][a-z0-9-]*)",
+    re.IGNORECASE,
+)
 IMPLEMENTATION_ACTION = re.compile(
     r"(?:^|[;.!?]\s*|\b(?:and|then|also|e|poi)\s+)"
     r"\s*(?:(?:please|per favore|vai)\s+)?"
@@ -55,8 +59,11 @@ def pick_skill(prompt: str) -> str | None:
     if explicit_command(prompt):
         return None
     clean = COMMAND_MENTION.sub("", lowered)
+    forbidden = {match.group(1) for match in FORBIDDEN_COMMAND.finditer(lowered)}
     implementation = IMPLEMENTATION_ACTION.search(clean) is not None
     for name, pattern in RULES:
+        if name in forbidden:
+            continue
         if pattern.search(clean):
             if implementation and name in WRITING_SKILLS:
                 continue
