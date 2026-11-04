@@ -94,7 +94,7 @@ When an Android change needs runtime verification, prefer semantic, reproducible
 - Confirm `mCurrentFocus` is the Levyra activity before recording; a stray `BACK` leaves the app and the capture shows the launcher.
 - Read playback state per package from `dumpsys media_session`; the first `state=` line may belong to another session.
 - Clear text fields with `input keyevent 123` then repeated `67`; `input keycombination` injects stray characters. Close the IME (`mInputShown=false`) before any swipe, or glide typing corrupts the field.
-- Phones force portrait below 600dp: test landscape layouts with `wm size 1600x2560`, `wm density 320`, `wm user-rotation lock 1`, and always reset all three.
+- Levyra requests `FULL_USER` orientation outside PiP, so test phone landscape at the device's normal size with `wm user-rotation lock 1`. Check adaptive tablet layouts separately with `wm size 1600x2560` and `wm density 320`. Reset size, density and rotation afterwards.
 - Inject motion with `adb emu sensor set acceleration x:y:z`. The emulator accelerometer reports about every 66 ms, so hold each shake direction about 90 ms. `dumpsys sensorservice` lists registrations with batching and result (`OK`/`BAD_VALUE`).
 - Emulator frame time sits near 20 ms at p50 even at rest. Compare `gfxinfo` before and after on the same target and never present emulator jank as device performance.
 - Frame-by-frame review: `screenrecord` then `ffmpeg -vf "fps=30,crop=...,tile=12x6"` contact sheets of the changed region.

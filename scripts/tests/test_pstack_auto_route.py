@@ -70,6 +70,14 @@ class PstackAutoRouteTests(unittest.TestCase):
         self.assertEqual("unslop", pick_skill("Update the PR description"))
         self.assertEqual("technical-writing", pick_skill("Write technical documentation for the player"))
 
+    def test_implementation_is_judged_per_clause(self) -> None:
+        self.assertIsNone(pick_skill("Update the playback code and write the PR description afterward"))
+        self.assertIsNone(pick_skill("Aggiorna il codice del player e poi scrivi la descrizione PR"))
+        self.assertEqual("unslop", pick_skill("Fix typos in the release notes"))
+        self.assertEqual("unslop", pick_skill("Add a line to the changelog"))
+        self.assertEqual("unslop", pick_skill("Remove the extra sentence from the release notes"))
+        self.assertEqual("technical-writing", pick_skill("Aggiorna il README"))
+
     def test_mentioned_commands_are_not_invoked(self) -> None:
         self.assertIsNone(pick_skill("Fix the playback crash; do not use `/pstack:tdd`"))
         self.assertIsNone(pick_skill("/pstack:tdd fix this bug"))
