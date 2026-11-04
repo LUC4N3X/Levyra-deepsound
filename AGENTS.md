@@ -68,6 +68,15 @@ Root `CLAUDE.md` is only a small Claude-native bridge importing this file.
 `scripts/agent_skill_router.py` selects only the current phase. The owner never
 needs to name a skill. It must route no more than two skill bodies at once.
 
+Use one workflow owner for each phase. Do not stack pstack, Matt Pocock,
+Levyra generic-workflow skills, or other upstream equivalents for the same
+purpose. An explicitly invoked `/pstack:<skill>` selects that workflow in
+place of the router's generic workflow recommendation, not alongside it.
+Domain-specific Levyra engineering rules and mandatory verification remain
+binding even when pstack runs. A second skill is justified only for a genuinely
+different concern, such as Compose plus visual design or Intent plus security;
+it is not an invitation to run multiple reviewers or writing assistants.
+
 Implementation/debugging loads the narrowest domain skill first. Ordinary bugs
 do not automatically load the large `levyra-real-engineering` workflow; reserve
 it for explicit architecture, cross-domain, multi-step, concurrency, root-cause,
@@ -101,7 +110,8 @@ Phase examples:
 - Claude/Codex agent tooling -> `levyra-codex-bootstrap`;
 - final branch/PR review -> `levyra-pr-review`;
 - release/runtime validation -> `levyra-release-check`;
-- PR description -> `levyra-humanizer`;
+- PR description -> `levyra-humanizer` by default; use `/pstack:unslop`
+  instead when explicitly selected, never together;
 - requirements/roadmap -> `levyra-project-manager`;
 - cross-domain orientation -> `levyra-engineering`;
 - OpenClaw coordination -> `levyra-openclaw-orchestrator`;
@@ -111,11 +121,16 @@ Do not preload skill bodies. Read only routed
 `.agents/skills/<name>/SKILL.md` files for the active phase. External workflows
 in `docs/ai/MATT_POCOCK_SKILLS.md` are supplementary and opt-in; repository
 rules remain authoritative.
-The official `pstack` Claude Code plugin is also optional; see
-`docs/ai/PSTACK_INTEGRATION.md`. Use focused pstack skills in separate phases,
-never as an override of Levyra safety, publication, validation, or the
-maximum-two-active-skills rule. Do not enable autonomous merging or shipping
-by default.
+The official `pstack` Claude Code plugin is optional; see
+`docs/ai/PSTACK_INTEGRATION.md`. If selected, it replaces overlapping generic
+methods rather than adding another skill stack. For writing, choose exactly
+one pass: `levyra-humanizer` by default, or `/pstack:unslop` when explicitly
+selected and installed. For a substantial technical document, `/pstack:technical-writing`
+can replace either one; do not invoke a second separate polishing skill.
+Keep PR descriptions, releases, README text, and community replies natural,
+brief, accurate, and consistent with the owner's actual voice in the target
+language. Preserve all verified facts, tests, risks, links, and required
+sections. Do not enable autonomous merging or shipping by default.
 
 ## Product invariants
 
@@ -191,8 +206,9 @@ explicit owner authorization for that action and scope.
 
 When PR publication is authorized, use a dedicated branch and draft PR by
 default, preserve the complete `.github/pull_request_template.md`, keep
-validation claims truthful, and apply `levyra-humanizer` only in the PR-writing
-phase without changing facts.
+validation claims truthful, and apply at most one writing pass in the PR-writing
+phase without changing facts (`levyra-humanizer` by default, or the explicitly
+selected pstack writing skill).
 
 ## Delivery contract
 
