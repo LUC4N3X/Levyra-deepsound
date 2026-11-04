@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -12,20 +14,47 @@ CLAUDE_ROOT = ROOT / ".agents" / "claude"
 HOOK = CLAUDE_ROOT / "hooks" / "user-prompt-submit.sh"
 
 
-def route(prompt: str) -> str:
+def route(prompt: str, *, with_pstack: bool = False) -> str:
     bash = find_bash()
     if not bash:
         raise unittest.SkipTest("Bash is required for Claude prompt routing test")
-    result = subprocess.run(
-        [bash, str(HOOK)],
-        input=json.dumps({"prompt": prompt}),
-        text=True,
-        capture_output=True,
-        check=True,
-        cwd=ROOT,
-    )
+    with tempfile.TemporaryDirectory() as directory:
+        config = Path(directory)
+        env = os.environ.copy()
+        env["CLAUDE_CONFIG_DIR"] = str(config)
+        env["CLAUDE_PROJECT_DIR"] = str(ROOT)
+        if with_pstack:
+            plugin = config / "pstack"
+            for name in ("unslop", "technical-writing", "tdd", "blast-radius"):
+                skill = plugin / "skills" / name / "SKILL.md"
+                skill.parent.mkdir(parents=True, exist_ok=True)
+                skill.write_text(f"# {name}\n", encoding="utf-8")
+            registry = config / "plugins" / "installed_plugins.json"
+            registry.parent.mkdir(parents=True, exist_ok=True)
+            registry.write_text(
+                json.dumps(
+                    {
+                        "plugins": {
+                            "pstack@cursor-plugins": [
+                                {"scope": "project", "projectPath": str(ROOT), "installPath": str(plugin)}
+                            ]
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+        result = subprocess.run(
+            [bash, str(HOOK)],
+            input=json.dumps({"prompt": prompt}),
+            text=True,
+            capture_output=True,
+            check=True,
+            cwd=ROOT,
+            env=env,
+        )
     payload = json.loads(result.stdout)
     return payload["hookSpecificOutput"]["additionalContext"]
+
 
 
 class ClaudePromptRoutingTest(unittest.TestCase):
@@ -160,6 +189,35 @@ class ClaudePromptRoutingTest(unittest.TestCase):
                 self.assertIn("levyra-humanizer", context)
                 self.assertIn("levyra-pr-review", context)
                 self.assertNotIn("levyra-mode", context)
+
+    def test_installed_pstack_writing_is_single_phase(self) -> None:
+        context = route("Update the PR description", with_pstack=True)
+        self.assertIn("pstack unslop", context)
+        self.assertNotIn("Mandatory skill load", context)
+        self.assertNotIn("levyra-pr-review", context)
+
+    def test_implementation_precedes_writing_with_installed_pstack(self) -> None:
+        context = route(
+            "Fix the playback crash and write the PR description afterward",
+            with_pstack=True,
+        )
+        self.assertIn("levyra-player", context)
+        self.assertNotIn("pstack unslop", context)
+        context = route("Riscrivi il README", with_pstack=True)
+        self.assertIn("pstack technical-writing", context)
+
+    def test_command_mentions_do_not_disable_routing(self) -> None:
+        prompt = "Fix the playback crash; do not use `/pstack:tdd`"
+        context = route(prompt, with_pstack=True)
+        self.assertIn("levyra-player", context)
+        self.assertNotIn("pstack tdd", context)
+        self.assertIn("levyra-player", route(prompt))
+
+    def test_explicit_pstack_command_owns_only_its_phase(self) -> None:
+        context = route("/pstack:tdd fix this bug", with_pstack=True)
+        self.assertIn("An explicit pstack command already owns this phase", context)
+        self.assertNotIn("Mandatory skill load", context)
+        self.assertIn("levyra-player", route("/pstack:tdd fix the playback crash"))
 
     def test_implementation_prompt_defers_pr_and_release_phase(self) -> None:
         context = route("VAI fix playback crash, test release APK, review and open PR")

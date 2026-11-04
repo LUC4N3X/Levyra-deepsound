@@ -92,6 +92,14 @@ Check, as applicable:
 - Android/Desktop version separation, signing, packaging, artifacts, and release behavior;
 - whether tests actually fail for the original defect and cover the changed behavior.
 
+## Publication hygiene
+
+- Never name reference apps or other repositories in PR text, commit messages, code or comments; describe Levyra changes on their own terms.
+- Commits and PRs belong to the owner: no assistant co-author trailers, footers or attribution.
+- Write PR prose with one unslop pass that keeps every fact; no em dashes, inline-header lists or invented results.
+- CodeFactor runs detekt on Kotlin and flags functions above cyclomatic complexity 15 ("Complex Method"). Keep new or changed functions under that bound by extracting cohesive helpers; check moved code too, because a moved function counts as new.
+- Run `scripts/ai_quality_gate.py` with Python 3.11+. On Windows, `test_service_skill_bodies_stay_compact` can fail only from CRLF size (6150 vs 6008 bytes); report it as environment-only when the branch does not touch that file.
+
 ## Output format
 
 Put confirmed findings before the summary and order them by severity. Each reported finding must include:

@@ -58,6 +58,12 @@ Protect the behaviors restored in PR #1156 when editing motion controls, audio f
 
 For affected changes, add or rerun focused PlayerGesturesTest, SmartListeningTest and ui.atelier.* coverage as applicable. Exercise screen-on/off gestures, ramp start and preview, track changes from multiple sources and repeated actions on an emulator or device. Report OEM sensors, actual speaker loudness, real-GPU frame pacing and sustained memory as UNVERIFIED unless measured directly.
 
+## Sensor registration lessons
+
+- Virtual sensors such as gravity often have no FIFO: request `maxReportLatencyUs` only when `fifoMaxEventCount > 0`, and retry without batching if registration fails. Some firmwares return `false` instead of falling back, which silently disables flip-to-pause.
+- Track requested and registered sensors separately. Retry only the missing target; re-registering everything on each playback change drops the working gesture.
+- If gravity cannot register, flip can use the accelerometer; the flip detector tolerates raw accelerometer samples.
+
 ## Validation
 
 Add or update focused regression coverage for relevant cases such as rapid track changes, cancellation, same-identity replacement, queue mutation, mode switching, background/foreground transitions, notification actions, end-of-queue behavior, and bounded cache/lifecycle cleanup.

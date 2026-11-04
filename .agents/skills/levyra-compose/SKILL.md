@@ -115,6 +115,14 @@ Preserve the user-visible PR #1156 fixes when changing Smart Listening/Gentle Wa
 
 For affected UI, inspect compact-width renderings in English and Russian at large font scale, plus light/dark and relevant RTL cases. Use interaction and semantics tests for buttons, swipes and animation state; screenshots alone do not establish working interactions. Mark any unrun UI/device checks UNVERIFIED.
 
+## Structural lessons
+
+- `LevyraAppKt` sits at the JVM class-size limit; new code in `LevyraApp.kt` can fail with "Class too large". Put new composables and helpers in dedicated files and keep `LevyraApp.kt` edits to call sites.
+- Content that changes parent branch (Settings vs dock, morph vs plain stack, portrait vs side-by-side) must be `movableContentOf` content (PR #1163 adds `rememberMovableSlot`), or its state and artwork reload on every switch.
+- Navigation chrome changes geometry continuously through animated values such as `DockLink.attach`; never swap layouts or drop a link with a boolean in one frame.
+- Artwork colors have one owner, `rememberArtworkPalette`. Surfaces that follow the current track use `retainPreviousUntilLoaded = true` and pass a blank key when fixed accents override artwork. Do not reimplement cache reads in a composable.
+- Do not run continuous transforms (rotation, shape morph) on artwork during playback without a reason; they redraw every frame and clip the cover.
+
 ## Validation
 
 Test recomposition-sensitive paths, state restoration, rapid navigation, background/foreground transitions, long translations, RTL, large font scale, empty/error states, edge-to-edge/IME ownership, relevant larger widths, and accessibility semantics when applicable. Run focused UI or ViewModel tests before broader Android checks.

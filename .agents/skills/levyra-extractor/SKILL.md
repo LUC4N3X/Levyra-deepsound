@@ -33,6 +33,13 @@ Map the current request path and explicitly distinguish:
 - Validate provider-controlled URLs, redirect hops, hosts, ports, resolved destinations, MIME types, and response sizes.
 - Do not weaken validation merely to accept one upstream response.
 
+## Catalog facts
+
+- Exact-artist album results list only browseId-verified releases from that artist, complete and untruncated; never add name matches.
+- YouTube Music mood/genre `params` are the same in every language; only titles change. Russian YouTube Music joins artists with "и".
+- Apple core genre curators exist only in the `us` storefront, and `ru` has no album shelves or album RSS feed.
+- Verify import or resolver changes by replaying recorded traces (`PlaylistTraceRecorder`, `PlaylistImportTraceReplayTest`). Live runs stay at 50 tracks or fewer: YouTube Music search 403 throttling is per IP.
+
 ## Validation
 
 Add or update focused tests for fallback order, configuration parsing and epoch changes, invalid upstream payloads, timeout, cancellation, cache semantics, stale publication, and URL/redirect rejection when applicable.

@@ -32,16 +32,49 @@ ROUTES = (
 )
 
 RULES = tuple((name, re.compile(pattern, re.IGNORECASE)) for name, pattern in ROUTES)
+EXPLICIT_COMMAND = re.compile(r"^\s*/pstack:[a-z][a-z0-9-]*(?=\s|$)", re.IGNORECASE)
+COMMAND_MENTION = re.compile(r"/pstack:[a-z][a-z0-9-]*", re.IGNORECASE)
+FORBIDDEN_COMMAND = re.compile(
+    r"(?:do not use|don\u0027t use|non usare|avoid|не используй)\s+[`\u0027\"]*/pstack:([a-z][a-z0-9-]*)",
+    re.IGNORECASE,
+)
+CLAUSE_SPLIT = re.compile(r"[;.!?\n]+|,?\s+(?:and|then|also|afterwards?|e|poi|dopo)\s+", re.IGNORECASE)
+ACTION_VERB = re.compile(
+    r"^\s*(?:(?:please|per favore|vai)\s+)?"
+    r"(?:fix|debug|implement|refactor|repair|resolve|investigate|build|test|add|remove|modify|update|change|write|"
+    r"correggi|sistema|risolvi|implementa|aggiungi|rimuovi|modifica|testa|aggiorna|cambia|scrivi)\b",
+    re.IGNORECASE,
+)
+WRITING_SKILLS = frozenset(("unslop", "technical-writing"))
+WRITING_RULES = tuple(pattern for name, pattern in RULES if name in WRITING_SKILLS)
+
+
+def requests_implementation(prompt: str) -> bool:
+    return any(
+        ACTION_VERB.search(clause) and not any(rule.search(clause) for rule in WRITING_RULES)
+        for clause in CLAUSE_SPLIT.split(prompt)
+    )
+
+
+def explicit_command(prompt: str) -> bool:
+    return EXPLICIT_COMMAND.match(prompt) is not None
 
 
 def pick_skill(prompt: str) -> str | None:
     lowered = prompt.strip().lower()
     if not lowered or any(marker in lowered for marker in AUTOMATED_MARKERS):
         return None
-    if re.search(r"(?<![\w/])/pstack:[a-z][a-z0-9-]*\b", lowered):
+    if explicit_command(prompt):
         return None
+    clean = COMMAND_MENTION.sub("", lowered)
+    forbidden = {match.group(1) for match in FORBIDDEN_COMMAND.finditer(lowered)}
+    implementation = requests_implementation(clean)
     for name, pattern in RULES:
-        if pattern.search(lowered):
+        if name in forbidden:
+            continue
+        if pattern.search(clean):
+            if implementation and name in WRITING_SKILLS:
+                continue
             return name
     return None
 
@@ -77,6 +110,12 @@ def installed_root(config: Path, project: Path) -> Path | None:
 def context_for(prompt: str, root: Path | None) -> str:
     if root is None:
         return ""
+    if explicit_command(prompt):
+        return (
+            "An explicit pstack command already owns this phase. "
+            "Do not load an overlapping Levyra or other marketplace workflow. "
+            "Follow root/scoped AGENTS.md and retain mandatory validation and publication guards."
+        )
     skill = pick_skill(prompt)
     if skill is None:
         return ""
