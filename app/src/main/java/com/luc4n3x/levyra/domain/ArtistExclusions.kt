@@ -56,6 +56,14 @@ data class ArtistExclusions(
         return keepSourceWhenUnchanged(artists, artists.filterNot(::excludesArtistHit))
     }
 
+    fun filterFollowedArtists(artists: List<FollowedArtist>): List<FollowedArtist> {
+        if (isEmpty) return artists
+        val kept = artists.filterNot { artist ->
+            excludesBrowseId(artist.browseId) || excludesArtistName(artist.name)
+        }
+        return keepSourceWhenUnchanged(artists, kept)
+    }
+
     fun filterReleaseRadar(entries: List<ReleaseRadarEntry>): List<ReleaseRadarEntry> {
         if (isEmpty) return entries
         val kept = entries.filterNot { entry ->

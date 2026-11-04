@@ -80,27 +80,27 @@ Some features need outside services for music, lyrics, artwork and metadata. The
 
 ## High-quality audio · JioSaavn & FLAC
 
-Turn on high-quality audio and Levyra can play the same track from JioSaavn. Nothing about the track in your library changes.
+With high-quality audio on, Levyra plays a track from JioSaavn when it finds the same recording there. The track in your library doesn't change.
 
-Before it switches, Levyra makes sure it found the same recording. A title match is not enough. It compares performers and their roles, album and release details, duration, explicit status, language, featured artists and version markers. When a search result is ambiguous, it opens JioSaavn's track details to tell an original release from a compilation, a reissue or an alternate version.
+A matching title isn't enough to switch. Levyra compares the performers and their roles, the album and release details, duration, the explicit flag, language, featured artists and version markers. If the search results are ambiguous, it opens the JioSaavn track page to tell the original release apart from a compilation, a reissue or an alternate version.
 
-Then it checks the stream itself. Levyra tries the 320, 160 and 96 kbps versions, and a stream labeled 320 kbps that measures well below that is not shown as 320 kbps. A good match plays straight from JioSaavn's CDN and is remembered, so the next play skips the lookup. If JioSaavn is down, or the match can't be verified, playback stays on the normal source. Artwork, lyrics, queue position, history and recommendations always stay tied to the original track.
+Levyra also checks the stream. It tries the 320, 160 and 96 kbps versions and measures what it gets. A stream labeled 320 kbps that measures well below that doesn't get shown as 320 kbps. A verified match plays straight from JioSaavn's CDN, and Levyra saves the match so the next play skips the lookup. If JioSaavn is down or Levyra can't verify the match, the track plays from its normal source. Artwork, lyrics, queue position, history and recommendations stay attached to the original track either way.
 
-FLAC on Android works the same way, with stricter checks. Levyra looks for a lossless copy of the same recording through independent third-party sources and reads the audio headers to confirm the format, bit depth and sample rate. With no verified lossless match, the usual fallbacks take over. FLAC support is still experimental, and what you get depends on the track, your region and your access rights.
+FLAC on Android goes through the same steps with stricter checks. Levyra looks for a lossless copy of the same recording through independent third-party sources, then reads the audio headers to confirm the format, bit depth and sample rate. If no lossless copy passes, playback falls back the same way as above. FLAC support is experimental. Whether you get it depends on the track, your region and your access rights.
 
-External sources and their content remain subject to each provider's terms and access rules. See [Third-party services and rights](docs/legal/LEGAL.md#3-third-party-services-and-rights).
+Each provider's terms and access rules apply to its sources and content. See [Third-party services and rights](docs/legal/LEGAL.md#3-third-party-services-and-rights).
 
 ### Levyra Enhanced Audio
 
-JioSaavn's 320 kbps streams already reach about 20 kHz, so Levyra leaves them alone. Enhanced Audio is for sources that lost more in encoding, like a 128 kbps fallback with everything above 17 kHz cut off.
+JioSaavn's 320 kbps streams already go up to about 20 kHz, so Levyra doesn't process them. Enhanced Audio is for sources that lost more in encoding, for example a 128 kbps fallback with nothing above 17 kHz.
 
-When Levyra finds a cut like that, it rebuilds the missing top end from the band just below it, similar to the SBR technique some codecs use. It acts only when the drop is steep and the band above is empty, and it keeps the rebuilt highs slightly quieter than the original recording would have had them. FLAC and other lossless files are never touched.
+On a stream like that, Levyra rebuilds the missing high frequencies from the band just below the cutoff, similar to the SBR technique that some codecs use. It only does this when the drop is steep and nothing is left above it. Levyra keeps the rebuilt highs a little quieter than they would be in the original recording. It never processes FLAC or other lossless files.
 
-Enhanced Audio is on by default. You can turn it off in Audio Settings, and Technical Audio Info tells you whether it is running on the current track or why it skipped it. A lossy stream is still lossy with Enhanced Audio on, and Levyra labels it that way.
+Enhanced Audio is on by default, and you can turn it off in Audio Settings. Technical Audio Info shows whether it's running on the current track, or why it skipped it. Enhanced Audio doesn't make a lossy stream lossless, and Levyra still labels the stream as lossy.
 
 <div align="center">
   <p><code>OFF</code> &nbsp;·&nbsp; <code>AUTOMATIC</code> &nbsp;·&nbsp; <code>PREFER&nbsp;320&nbsp;KBPS</code></p>
-  <sub>Levyra measures the stream before using it and falls back on its own when JioSaavn is not a safe match.</sub>
+  <sub>Levyra measures each stream before using it and goes back to the normal source when JioSaavn isn't a safe match.</sub>
 </div>
 
 ---

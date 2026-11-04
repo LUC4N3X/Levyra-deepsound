@@ -801,6 +801,7 @@ private fun LevyraUiState.withoutExcludedArtists(): LevyraUiState {
     val filteredRadar = exclusions.filterReleaseRadar(releaseRadar)
     val filteredTracks = exclusions.filterTracks(tracks)
     val filteredForgotten = exclusions.filterTracks(forgottenFavorites)
+    val filteredFollowed = exclusions.filterFollowedArtists(followedArtists)
     val unchanged = filteredSections === homeSections &&
         filteredAlbums === homeAlbums &&
         filteredArtists === homeArtists &&
@@ -809,7 +810,8 @@ private fun LevyraUiState.withoutExcludedArtists(): LevyraUiState {
         filteredResonance === homeResonanceTracks &&
         filteredRadar === releaseRadar &&
         filteredTracks === tracks &&
-        filteredForgotten === forgottenFavorites
+        filteredForgotten === forgottenFavorites &&
+        filteredFollowed === followedArtists
     if (unchanged) return this
     return copy(
         homeSections = filteredSections,
@@ -820,7 +822,8 @@ private fun LevyraUiState.withoutExcludedArtists(): LevyraUiState {
         homeResonanceTracks = filteredResonance,
         releaseRadar = filteredRadar,
         tracks = filteredTracks,
-        forgottenFavorites = filteredForgotten
+        forgottenFavorites = filteredForgotten,
+        followedArtists = filteredFollowed
     )
 }
 
@@ -956,7 +959,7 @@ private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
         fallbackSections = otherSections.map { moodRank(it.tracks) },
         chartTracks = if (input.showCharts) moodRank(input.charts) else emptyList(),
         preferenceScore = ::moodPreferenceScore
-    )
+    ).filterNot { candidate -> input.artistExclusions.excludesTrack(candidate.track) }
     val visibleCollectionSections = otherSections.filter { section ->
         isHomeSectionVisible(section.title, input)
     }
@@ -1089,6 +1092,7 @@ private fun buildHomeResonanceTracks(input: HomeDerivedInput): List<Track> {
     }
         .asSequence()
         .filter { it.id.length == 11 && isReliableHomeMusicCandidate(it) }
+        .filterNot(input.artistExclusions::excludesTrack)
         .distinctBy { it.id }
         .sortedWith(
             compareByDescending<Track> {
