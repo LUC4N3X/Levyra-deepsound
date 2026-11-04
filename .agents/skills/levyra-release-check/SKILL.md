@@ -87,6 +87,20 @@ When an Android change needs runtime verification, prefer semantic, reproducible
 
 This adopts the strongest idea from SimpMusic's Android emulator workflow: semantic navigation and structured evidence instead of brittle pixel automation, without vendoring its helper scripts into Levyra.
 
+## Field lessons for local Android evidence
+
+- Drive `com.luc4n3x.levyra.debug` (the debug `applicationIdSuffix`); a release `com.luc4n3x.levyra` may share the device.
+- Build local debug APKs with `-PlevyraFdroidBuild=true` so InnerTube search, album and playlist tracks load without CI secrets. Without it, album-track checks are BLOCKED by environment, not app failures.
+- Never pipe Gradle into `tail`/`grep` when its status matters: log to a file, print the exit code, and confirm the APK timestamp changed before installing.
+- In Git Bash, export `MSYS_NO_PATHCONV=1` before `adb` commands with device paths such as `/sdcard/...`; otherwise they are rewritten to Windows paths.
+- Confirm `mCurrentFocus` is the Levyra activity before recording; a stray `BACK` leaves the app and the capture shows the launcher.
+- Read playback state per package from `dumpsys media_session`; the first `state=` line may belong to another session.
+- Clear text fields with `input keyevent 123` then repeated `67`; `input keycombination` injects stray characters. Close the IME (`mInputShown=false`) before any swipe, or glide typing corrupts the field.
+- Phones force portrait below 600dp: test landscape layouts with `wm size 1600x2560`, `wm density 320`, `wm user-rotation lock 1`, and always reset all three.
+- Inject motion with `adb emu sensor set acceleration x:y:z`. The emulator accelerometer reports about every 66 ms, so hold each shake direction about 90 ms. `dumpsys sensorservice` lists registrations with batching and result (`OK`/`BAD_VALUE`).
+- Emulator frame time sits near 20 ms at p50 even at rest. Compare `gfxinfo` before and after on the same target and never present emulator jank as device performance.
+- Frame-by-frame review: `screenrecord` then `ffmpeg -vf "fps=30,crop=...,tile=12x6"` contact sheets of the changed region.
+
 ## Reporting
 
 List every command/check with its result. A blocked or skipped check is not a pass. Report manual playback, Android Auto, notification, PiP, Windows installer, update, protocol, media-key, and native VLC checks as unverified unless actually performed.
