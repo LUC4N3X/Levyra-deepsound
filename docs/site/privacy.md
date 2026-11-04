@@ -38,6 +38,8 @@ Levyra connects to external services only when necessary to perform features you
 
 When contacting these third-party services, standard HTTP request metadata (such as your IP address and User-Agent) is transmitted to the respective providers according to their own privacy policies.
 
+You can configure a proxy or DNS in Levyra's settings.
+
 ## Android permissions
 
 Levyra requests only the permissions required for core audio functionality:
@@ -66,6 +68,8 @@ Tracks downloaded through Levyra are standard M4A files saved to your device sto
 ## Open source transparency
 
 The complete source code and permission manifest are open for inspection in [AndroidManifest.xml](https://github.com/LUC4N3X/Levyra-deepsound/blob/main/app/src/main/AndroidManifest.xml).
+
+An [Apptizo scan](https://apptizo.com/app/levyra/) of the F-Droid build found no third-party tracker SDKs. The Levyra 2.5.10 APK had [0/68 detections on VirusTotal](https://www.virustotal.com/gui/file/f4508db409560441ab1779ff00546ba709520cea567fa769c17e783372487cd9?nocache=1). These results concern the builds scanned, not every release.
 
 For additional legal and licensing details, see [LEGAL.md](https://github.com/LUC4N3X/Levyra-deepsound/blob/main/docs/legal/LEGAL.md).
 
