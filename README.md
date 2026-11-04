@@ -205,30 +205,30 @@ Bug reports and pull requests are welcome. For questions and ideas, use [GitHub 
 <div align="center">
 
 <a href="https://luc4n3x.pages.dev/">
-  <img src="docs/assets/levyra-signature.webp?v=levyra-room" width="350" alt="LUC4N3X — Creator &amp; Maintainer">
+  <img src="docs/assets/levyra-signature.webp?v=levyra-room" width="290" alt="LUC4N3X, creator of Levyra">
 </a>
 
 ### LUC4N3X
 
+<p><sub>Creator &amp; maintainer</sub></p>
+
 <p>
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-creator-badge-dark.svg?v=m3-expressive-role-1">
-    <img src="docs/assets/levyra-creator-badge-light.svg?v=m3-expressive-role-1" width="270" height="60" alt="Project role: Creator &amp; Maintainer">
-  </picture>
+  I built Levyra and still maintain the Android and Windows apps.<br>
+  I review contributions, fix bugs and handle releases.
 </p>
 
 <p>
-  I created Levyra and I still build and maintain it, on Android and Windows.<br>
-  I review community pull requests, fix the bugs, and ship every release.
+  <a href="https://github.com/LUC4N3X">GitHub</a>
+  &nbsp;·&nbsp;
+  <a href="https://luc4n3x.pages.dev/">Website</a>
 </p>
 
-<p>
-  <a href="https://github.com/LUC4N3X"><b>GitHub</b></a>
-  &nbsp;•&nbsp;
-  <a href="https://luc4n3x.pages.dev/"><b>Website</b></a>
-</p>
+</div>
 
-<p>
+<details>
+<summary>Project checks and mentions</summary>
+
+<p align="center">
   <a href="https://www.codefactor.io/repository/github/luc4n3x/levyra-deepsound"><img src="https://www.codefactor.io/repository/github/luc4n3x/levyra-deepsound/badge" alt="CodeFactor"></a>
   &nbsp;
   <a href="https://www.bestpractices.dev/projects/14606"><img src="https://www.bestpractices.dev/projects/14606/badge" alt="OpenSSF Best Practices"></a>
@@ -238,13 +238,7 @@ Bug reports and pull requests are welcome. For questions and ideas, use [GitHub 
   <a href="https://www.saashub.com/levyra-deepsound?utm_source=badge&utm_campaign=badge&utm_content=levyra-deepsound&badge_variant=color&badge_kind=approved"><img src="https://cdn-b.saashub.com/img/badges/approved-color.png?v=1" alt="Levyra Deepsound approved on SaaSHub" height="20"></a>
 </p>
 
-<br>
-
-<p>
-  <b>Featured in tech media & open-source spotlights</b>
-</p>
-
-<p>
+<p align="center">
   <a href="https://mailchi.mp/kotlinweekly/kotlin-weekly-530">Kotlin Weekly</a> &nbsp;•&nbsp;
   <a href="https://techno360.in/levyra-review/">Techno360</a> &nbsp;•&nbsp;
   <a href="https://australiabyaussie.com/levyra-open-source-music-player-gains-kotlin-spotlight/">Australia By Aussie</a> &nbsp;•&nbsp;
@@ -259,7 +253,7 @@ Bug reports and pull requests are welcome. For questions and ideas, use [GitHub 
   <a href="https://www.pitchhut.com/project/levyra-music-player">PitchHut</a>
 </p>
 
-</div>
+</details>
 
 ---
 
