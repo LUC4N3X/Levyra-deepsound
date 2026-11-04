@@ -1031,6 +1031,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
         )
     }
+    val playlistExport: PlaylistExportController by lazy {
+        PlaylistExportController(viewModelScope, getApplication<Application>().applicationContext)
+    }
     private val deArrowRepository = lazy { DeArrowRepository(DeArrowApi()) }
     private val videoMetadataEnhancer by lazy { VideoMetadataEnhancer(deArrowRepository.value) }
     private val levyraContext: Context get() = getApplication<Application>().applicationContext
