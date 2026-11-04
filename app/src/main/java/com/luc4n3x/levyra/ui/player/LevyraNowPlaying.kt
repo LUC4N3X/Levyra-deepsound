@@ -1237,6 +1237,7 @@ private fun LevyraNowPlayingContent(
             },
             dock = dockBlock,
             dockActions = dockActionsFor,
+            addToPlaylist = onOpenPlaylistDialog,
             headerTrailing = headerTrailing,
             modeSwitch = {
                 if (track != null && (track.videoUrl.isNotBlank() || track.counterpartVideoId.isNotBlank())) modeSwitchContent?.invoke()

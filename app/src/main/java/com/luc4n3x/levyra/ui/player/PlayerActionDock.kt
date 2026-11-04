@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraExpressiveToggleCorner
 import com.luc4n3x.levyra.ui.components.levyraPressable
+import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 
 @Immutable
@@ -48,7 +49,8 @@ internal data class PlayerDockAction(
     val toggle: Boolean = false,
     val busy: Boolean = false,
     val enabled: Boolean = true,
-    val stateDescription: String? = null
+    val stateDescription: String? = null,
+    val haptic: LevyraHapticAction? = null
 )
 
 @Composable
@@ -122,7 +124,8 @@ private fun RowScope.PlayerDockSegment(
                 enabled = action.enabled,
                 interactionSource = interaction,
                 pressedScale = LevyraPressScale.Control,
-                role = Role.Button
+                role = Role.Button,
+                haptic = action.haptic
             )
             .dockActionSemantics(action),
         contentAlignment = Alignment.Center

@@ -11,7 +11,7 @@ class PlaybackResourceLifecycleContractTest {
     fun `transition player excludes video renderers and has one release path`() {
         val service = readSource("player/PlaybackService.kt")
         val transitionStart = service.indexOf("private fun buildTransitionPlayer")
-        val transitionEnd = service.indexOf("private suspend fun fadePlayers", transitionStart)
+        val transitionEnd = service.indexOf("private suspend fun runCrossfadeRamp", transitionStart)
         val transition = service.substring(transitionStart, transitionEnd)
         val videoRendererOverride = transition
             .substringAfter("override fun buildVideoRenderers")

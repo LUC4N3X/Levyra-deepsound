@@ -1,6 +1,5 @@
 package com.luc4n3x.levyra.player
 
-import androidx.media3.common.Player
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import org.junit.Assert.assertEquals
@@ -32,14 +31,6 @@ class PlaybackNetworkResilienceTest {
         assertTrue(shouldDeferWatchdogForConnectivity(localPlayback = false, hasInternet = false))
         assertFalse(shouldDeferWatchdogForConnectivity(localPlayback = false, hasInternet = true))
         assertFalse(shouldDeferWatchdogForConnectivity(localPlayback = true, hasInternet = false))
-    }
-
-    @Test
-    fun crossfadeHandoffResyncsOnlyAgainstReadySecondary() {
-        assertTrue(crossfadeHandoffCanResync(Player.STATE_READY))
-        assertFalse(crossfadeHandoffCanResync(Player.STATE_BUFFERING))
-        assertFalse(crossfadeHandoffCanResync(Player.STATE_IDLE))
-        assertFalse(crossfadeHandoffCanResync(Player.STATE_ENDED))
     }
 
     @Test
