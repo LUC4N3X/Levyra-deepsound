@@ -103,12 +103,18 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--prompt", default="")
     parser.add_argument("--plain", action="store_true")
+    parser.add_argument("--check-installed", action="store_true")
     parser.add_argument("--plugin-root", type=Path)
     parser.add_argument("--project-root", type=Path)
     args = parser.parse_args()
     project = args.project_root or Path(os.environ.get("CLAUDE_PROJECT_DIR") or Path(__file__).resolve().parents[1])
     config = Path(os.environ.get("CLAUDE_CONFIG_DIR") or (Path.home() / ".claude")).expanduser()
     root = args.plugin_root if args.plugin_root is not None else installed_root(config, project)
+    if args.check_installed:
+        if root is None:
+            return 1
+        print(root)
+        return 0
     result = context_for(args.prompt, root)
     if args.plain:
         print(result)
