@@ -77,8 +77,8 @@ class PstackAutoRouteTests(unittest.TestCase):
             "An explicit pstack command already owns this phase",
             context_for("/pstack:tdd fix this bug", self.skill_root),
         )
-        self.assertNotIn(
-            "An explicit pstack command",
+        self.assertEqual(
+            "",
             context_for("Do not use `/pstack:unslop`; rewrite the release notes", self.skill_root),
         )
 
