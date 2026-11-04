@@ -153,6 +153,7 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -195,6 +196,7 @@ class PlaybackService : MediaLibraryService() {
     private var lastMemoryRecycleElapsedMs = 0L
     private var transitionPlayer: ExoPlayer? = null
     private var transitionNormalization: NormalizationAudioProcessor? = null
+    private var abandonedTransitionKey: String? = null
     private var currentAudioSettings = LevyraAudioSettings()
     private var requestedAudioSettings = LevyraAudioSettings()
     private var appliedSmartAudioDeviceKey: String? = null
@@ -329,13 +331,11 @@ class PlaybackService : MediaLibraryService() {
         private const val PREPARED_QUEUE_MAX_AGE_MS = 15L * 60L * 1_000L
         private const val PREPARED_QUEUE_PRIME_BYTES = 384L * 1024L
         private const val PRIMARY_HANDOFF_WARN_MS = 5_000L
-        private const val PRIMARY_HANDOFF_SYNC_TIMEOUT_MS = 2_500L
         private const val RECOVERY_CONNECTIVITY_WAIT_MS = 15_000L
         private const val RECOVERY_CONNECTIVITY_POLL_MS = 5_000L
         private const val PRIMARY_HANDOFF_FADE_MS = 240L
-        private const val PRIMARY_HANDOFF_SYNC_TOLERANCE_MS = 250L
-        private const val PRIMARY_HANDOFF_SYNC_LEAD_MS = 120L
-        private const val TRANSITION_STEP_MS = 50L
+        private const val CROSSFADE_TICK_MS = 25L
+        private const val INCOMING_AUDIBLE_TIMEOUT_MS = 1_500L
         private const val SEEK_TOLERANCE_MS = 1_500L
         private const val AUDIO_ROUTE_SELECTION_VERIFY_MS = 1_200L
         private const val AUDIO_ROUTE_FAILURE_FEEDBACK_MS = 4_000L
@@ -2259,6 +2259,7 @@ class PlaybackService : MediaLibraryService() {
         val current = snapshot.currentTrack ?: return
         val nextIndex = queueEngine.nextPlayableIndex(snapshot) ?: return
         val next = snapshot.tracks.getOrNull(nextIndex) ?: return
+        if (abandonedTransitionKey == transitionKey(snapshot.generation, playbackQueueIdentity(next))) return
         val videoMode = player.currentMediaItem?.mediaMetadata?.extras?.getBoolean(EXTRA_VIDEO_MODE, false) == true
         val plan = planAutoMix(
             current = current.copy(durationMs = duration),
@@ -2296,7 +2297,10 @@ class PlaybackService : MediaLibraryService() {
                 queueIndex = targetQueueIndex
             ) {
                 transitionStillValid(snapshot.generation, currentIdentity, targetIdentity, primary)
-            } ?: return
+            } ?: run {
+                abandonedTransitionKey = transitionKey(snapshot.generation, targetIdentity)
+                return
+            }
 
             while (primary.duration > 0L && primary.duration - primary.currentPosition > plan.transitionMs) {
                 if (!transitionStillValid(snapshot.generation, currentIdentity, targetIdentity, primary)) return
@@ -2306,9 +2310,20 @@ class PlaybackService : MediaLibraryService() {
 
             isQueueTransitionInProgress = true
             secondary.play()
-            fadePlayers(primary, secondary, plan.transitionMs) {
+            val crossfaded = runCrossfadeRamp(
+                outgoing = primary,
+                incoming = secondary,
+                ramp = CrossfadeRamp(CrossfadeCurve.EqualPower, fixedSpanMs = null, INCOMING_AUDIBLE_TIMEOUT_MS),
+                sessionPlayer = primary,
+                outgoingRemainingMs = { (primary.duration - primary.currentPosition).coerceAtLeast(0L) }
+            ) {
                 transitionStillValid(snapshot.generation, currentIdentity, targetIdentity, primary) &&
                     primary.duration - primary.currentPosition <= plan.transitionMs + SEEK_TOLERANCE_MS
+            }
+            if (!crossfaded) {
+                Timber.w("Crossfade incoming player never became audible for %s", resolved.title)
+                abandonedTransitionKey = transitionKey(snapshot.generation, targetIdentity)
+                return
             }
 
             val handedOff = queueEngine.handoffNext(
@@ -2323,22 +2338,7 @@ class PlaybackService : MediaLibraryService() {
             }
             consumePreparedQueueNextInternal(target.id.ifBlank { resolved.id })
 
-            transitionNormalization?.let { normalizationProcessor.continueFromGain(it.appliedGain) }
-            primary.volume = 0f
-            primary.setMediaItem(
-                LevyraMediaItemFactory.build(resolved),
-                secondary.currentPosition.coerceAtLeast(0L)
-            )
-            RuntimeHooks.player(RuntimeSignal.PLAYER_PREPARE)
-            RuntimeHooks.hot(RuntimeSignal.HOT_PLAYER_PREPARE)
-            primary.prepare()
-
-            if (!awaitPrimaryHandoffReady(primary, secondary, targetIdentity, resolved.title)) return
-            if (!synchronizePrimaryHandoff(primary, secondary, targetIdentity)) return
-
-            fadePlayers(secondary, primary, PRIMARY_HANDOFF_FADE_MS) {
-                handoffStillValid(primary, secondary, targetIdentity)
-            }
+            if (!handBackToPrimary(primary, secondary, resolved, targetIdentity)) return
             queueEngine.updatePosition(primary.currentPosition)
             if (!isLocalPlaybackTrack(resolved)) prefetchServiceQueueNext()
         } catch (cancelled: CancellationException) {
@@ -2346,10 +2346,49 @@ class PlaybackService : MediaLibraryService() {
         } catch (error: Exception) {
             Timber.w(error, "Queue crossfade failed")
         } finally {
-            isQueueTransitionInProgress = false
-            primary.volume = currentEffectiveBaseVolume()
-            releaseTransitionPlayer(secondary)
+            finishQueueTransition(primary, secondary)
         }
+    }
+
+    private suspend fun handBackToPrimary(
+        primary: ExoPlayer,
+        secondary: ExoPlayer,
+        resolved: Track,
+        targetIdentity: String
+    ): Boolean {
+        transitionNormalization?.let { normalizationProcessor.continueFromGain(it.appliedGain) }
+        primary.volume = 0f
+        primary.setMediaItem(
+            LevyraMediaItemFactory.build(resolved),
+            secondary.currentPosition.coerceAtLeast(0L)
+        )
+        RuntimeHooks.player(RuntimeSignal.PLAYER_PREPARE)
+        RuntimeHooks.hot(RuntimeSignal.HOT_PLAYER_PREPARE)
+        primary.prepare()
+
+        if (!awaitPrimaryHandoffReady(primary, secondary, targetIdentity, resolved.title)) return false
+        if (!alignPrimaryHandoff(primary, secondary, targetIdentity)) return false
+        return runCrossfadeRamp(
+            outgoing = secondary,
+            incoming = primary,
+            ramp = CrossfadeRamp(CrossfadeCurve.EqualGain, PRIMARY_HANDOFF_FADE_MS, INCOMING_AUDIBLE_TIMEOUT_MS),
+            sessionPlayer = primary,
+            outgoingRemainingMs = { (secondary.duration - secondary.currentPosition).coerceAtLeast(0L) }
+        ) {
+            handoffStillValid(primary, secondary, targetIdentity)
+        }
+    }
+
+    private suspend fun finishQueueTransition(primary: ExoPlayer, secondary: ExoPlayer?) {
+        val endedWhileTransitionHeld = isQueueTransitionInProgress &&
+            primary.playbackState == Player.STATE_ENDED &&
+            currentCoroutineContext().isActive
+        isQueueTransitionInProgress = false
+        primary.volume = currentEffectiveBaseVolume()
+        releaseTransitionPlayer(secondary)
+        if (!endedWhileTransitionHeld) return
+        LevyraWidgetBridge.onTrackCompleted?.invoke()
+            ?: skipQueue(forward = true, respectRepeatOne = true, autoAdvance = true)
     }
 
     private suspend fun prepareTransitionPlayerWithDecoderFallback(
@@ -2413,73 +2452,39 @@ class PlaybackService : MediaLibraryService() {
         }
     }
 
-    private suspend fun synchronizePrimaryHandoff(
+    private suspend fun alignPrimaryHandoff(
         primary: ExoPlayer,
         secondary: ExoPlayer,
         targetIdentity: String
     ): Boolean {
-        repeat(3) {
+        val aligner = HandoffAligner()
+        while (true) {
             if (!handoffStillValid(primary, secondary, targetIdentity)) return false
-            if (!awaitHandoffSecondaryReady(primary, secondary, targetIdentity)) return@repeat
-            if (!crossfadeHandoffNeedsResync(
-                    primary.currentPosition,
-                    secondary.currentPosition,
-                    PRIMARY_HANDOFF_SYNC_TOLERANCE_MS
+            if (primary.playerError != null || secondary.playerError != null) return false
+            if (secondary.playbackState == Player.STATE_ENDED) return false
+            when (
+                val step = aligner.step(
+                    nowMs = SystemClock.elapsedRealtime(),
+                    primaryPositionMs = primary.currentPosition,
+                    primaryPlaying = primary.isPlaying,
+                    secondaryPositionMs = secondary.currentPosition,
+                    primaryDurationMs = primary.duration
                 )
-            ) return true
-
-            if (resyncPrimaryHandoff(primary, secondary, targetIdentity)) return true
+            ) {
+                HandoffAlignStep.Wait -> Unit
+                is HandoffAlignStep.Seek -> primary.seekTo(step.positionMs)
+                is HandoffAlignStep.Aligned -> return true
+                is HandoffAlignStep.Unaligned -> {
+                    Timber.w("Crossfade handoff fading with %d ms residual offset", step.offsetMs)
+                    return true
+                }
+                HandoffAlignStep.PrimarySilent -> {
+                    Timber.w("Crossfade handoff primary player never became audible")
+                    return false
+                }
+            }
+            delay(CROSSFADE_TICK_MS)
         }
-        return primary.playbackState == Player.STATE_READY &&
-            handoffStillValid(primary, secondary, targetIdentity) &&
-            !crossfadeHandoffNeedsResync(
-                primary.currentPosition,
-                secondary.currentPosition,
-                PRIMARY_HANDOFF_SYNC_TOLERANCE_MS
-            )
-    }
-
-    private suspend fun awaitHandoffSecondaryReady(
-        primary: ExoPlayer,
-        secondary: ExoPlayer,
-        targetIdentity: String
-    ): Boolean {
-        if (crossfadeHandoffCanResync(secondary.playbackState)) return true
-        return withTimeoutOrNull(PRIMARY_HANDOFF_SYNC_TIMEOUT_MS) {
-            while (!crossfadeHandoffCanResync(secondary.playbackState)) {
-                if (!handoffStillValid(primary, secondary, targetIdentity)) return@withTimeoutOrNull false
-                delay(30L)
-            }
-            true
-        } == true
-    }
-
-    private suspend fun resyncPrimaryHandoff(
-        primary: ExoPlayer,
-        secondary: ExoPlayer,
-        targetIdentity: String
-    ): Boolean {
-        primary.seekTo(
-            crossfadeHandoffSeekPosition(
-                secondaryPositionMs = secondary.currentPosition,
-                durationMs = primary.duration,
-                leadMs = PRIMARY_HANDOFF_SYNC_LEAD_MS
-            )
-        )
-        return withTimeoutOrNull(PRIMARY_HANDOFF_SYNC_TIMEOUT_MS) {
-            while (true) {
-                if (!handoffStillValid(primary, secondary, targetIdentity)) return@withTimeoutOrNull false
-                if (primary.playerError != null) return@withTimeoutOrNull false
-                if (primary.playbackState == Player.STATE_READY &&
-                    !crossfadeHandoffNeedsResync(
-                        primary.currentPosition,
-                        secondary.currentPosition,
-                        PRIMARY_HANDOFF_SYNC_TOLERANCE_MS
-                    )
-                ) return@withTimeoutOrNull true
-                delay(30L)
-            }
-        } == true
     }
 
     private fun handoffStillValid(
@@ -2492,6 +2497,7 @@ class PlaybackService : MediaLibraryService() {
             current.repeatMode != com.luc4n3x.levyra.domain.RepeatMode.One &&
             primary.playWhenReady &&
             secondary.playWhenReady &&
+            primary.playbackSuppressionReason == Player.PLAYBACK_SUPPRESSION_REASON_NONE &&
             primary.currentMediaItem?.mediaMetadata?.extras?.getBoolean(EXTRA_VIDEO_MODE, false) != true
     }
 
@@ -2629,27 +2635,46 @@ class PlaybackService : MediaLibraryService() {
             }
     }
 
-    private suspend fun fadePlayers(
+    private suspend fun runCrossfadeRamp(
         outgoing: ExoPlayer,
         incoming: ExoPlayer,
-        durationMs: Long,
-        isValid: () -> Boolean = { true }
-    ) {
-        val steps = (durationMs / TRANSITION_STEP_MS).toInt().coerceIn(8, 120)
-        val mediaStepMs = (durationMs / steps).coerceAtLeast(10L)
-        repeat(steps + 1) { step ->
-            if ((!outgoing.playWhenReady || !incoming.playWhenReady || !isValid()) && step < steps) {
+        ramp: CrossfadeRamp,
+        sessionPlayer: ExoPlayer,
+        outgoingRemainingMs: () -> Long,
+        isValid: () -> Boolean
+    ): Boolean {
+        while (true) {
+            if (!outgoing.playWhenReady || !incoming.playWhenReady || !isValid()) {
                 throw CancellationException("Playback paused during crossfade")
             }
-            val gains = equalPowerCrossfade(step.toFloat() / steps.toFloat())
-            outgoing.volume = gains.outgoing
-            incoming.volume = gains.incoming
-            if (step < steps) {
-                val stepDelay = crossfadeStepWallClockMs(mediaStepMs, outgoing.playbackParameters.speed)
-                delay(stepDelay)
+            if (sessionPlayer.playbackSuppressionReason != Player.PLAYBACK_SUPPRESSION_REASON_NONE) {
+                throw CancellationException("Playback suppressed during crossfade")
             }
+            val base = currentEffectiveBaseVolume()
+            when (
+                val step = ramp.step(
+                    nowMs = SystemClock.elapsedRealtime(),
+                    incomingPositionMs = incoming.currentPosition,
+                    incomingPlaying = incoming.isPlaying,
+                    outgoingRemainingMs = outgoingRemainingMs()
+                )
+            ) {
+                is CrossfadeRampStep.Gains -> {
+                    outgoing.volume = step.outgoing * base
+                    incoming.volume = step.incoming * base
+                }
+                CrossfadeRampStep.Complete -> {
+                    outgoing.volume = 0f
+                    incoming.volume = base
+                    return true
+                }
+                CrossfadeRampStep.IncomingSilent -> return false
+            }
+            delay(CROSSFADE_TICK_MS)
         }
     }
+
+    private fun transitionKey(generation: Long, targetIdentity: String): String = "$generation:$targetIdentity"
 
     private fun transitionStillValid(
         generation: Long,
@@ -4130,8 +4155,6 @@ internal class WatchdogRecoveryAllowance(private val limit: Int = WATCHDOG_RECOV
 
 internal fun shouldDeferWatchdogForConnectivity(localPlayback: Boolean, hasInternet: Boolean): Boolean =
     !localPlayback && !hasInternet
-
-internal fun crossfadeHandoffCanResync(secondaryState: Int): Boolean = secondaryState == Player.STATE_READY
 
 internal fun isGenuineWatchdogProgress(previousPositionMs: Long, positionMs: Long): Boolean =
     previousPositionMs != C.TIME_UNSET && positionMs > previousPositionMs + WATCHDOG_PROGRESS_THRESHOLD_MS

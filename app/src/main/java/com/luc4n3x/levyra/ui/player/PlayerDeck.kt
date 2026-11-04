@@ -186,7 +186,8 @@ internal class PlayerDeckSlots(
     val lyricsPreview: PlayerLyricsPreview? = null,
     val artistPanel: PlayerArtistPanel? = null,
     val headerTrailing: @Composable () -> Unit = {},
-    val modeSwitch: @Composable () -> Unit = {}
+    val modeSwitch: @Composable () -> Unit = {},
+    val addToPlaylist: ((Track) -> Unit)? = null
 )
 
 internal class PlayerArtistPanel(

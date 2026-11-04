@@ -11,7 +11,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -29,6 +28,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.Shuffle
@@ -81,6 +81,7 @@ import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.PlayerControlLabels
 import com.luc4n3x.levyra.ui.components.PlayerIcon
 import com.luc4n3x.levyra.ui.components.levyraPressable
+import com.luc4n3x.levyra.feature.radio.isLiveRadio
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.playerMix
 import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
@@ -99,7 +100,6 @@ private const val FlowLightReach = 0.86f
 private const val FlowFloorDepth = 0.86f
 private const val FlowFloorStart = 0.46f
 private const val FlowArtistAlpha = 0.74f
-private const val FlowFixedActionCount = 2
 private const val FlowAmbientPlaying = 0.24f
 private const val FlowAmbientPaused = 0.12f
 private const val FlowAmbientCenter = 0.3f
@@ -675,51 +675,83 @@ private fun FlowActionRow(
     onRepeat: () -> Unit
 ) {
     val dockActions = slots.dockActions(track)
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-        val controlCount = FlowFixedActionCount + dockActions.size
-        val fits = maxWidth >= LevyraPlayerDesign.MinimumTouchTarget * controlCount
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(if (fits) Modifier else Modifier.horizontalScroll(rememberScrollState())),
-            horizontalArrangement = if (fits) Arrangement.SpaceBetween else Arrangement.Start,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            PlayerToggleControl(
+    val addToPlaylist = slots.addToPlaylist
+    val playlistLabel = LocalLevyraStrings.current.addToPlaylist
+    val modeActions = remember(shuffleOn, repeatMode, labels, onShuffle, onRepeat) {
+        listOf(
+            PlayerDockAction(
+                key = "shuffle",
                 icon = Icons.Rounded.Shuffle,
                 label = labels.shuffle,
                 active = shuffleOn,
                 toggle = true,
-                surfaces = surfaces,
-                animated = animated,
-                glyph = LevyraPlayerDesign.TransportModeGlyph,
+                haptic = LevyraHapticAction.Confirm,
                 onClick = onShuffle
-            )
-            dockActions.forEach { action ->
-                PlayerToggleControl(
-                    icon = action.icon,
-                    label = action.label,
-                    active = action.active,
-                    toggle = action.toggle,
-                    surfaces = surfaces,
-                    animated = animated,
-                    glyph = LevyraPlayerDesign.TransportModeGlyph,
-                    onClick = action.onClick,
-                    enabled = action.enabled,
-                    busy = action.busy,
-                    stateDescription = action.stateDescription
-                )
-            }
-            PlayerToggleControl(
+            ),
+            PlayerDockAction(
+                key = "repeat",
                 icon = if (repeatMode == RepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
                 label = labels.repeat,
                 active = repeatMode != RepeatMode.Off,
                 toggle = true,
-                surfaces = surfaces,
-                animated = animated,
-                glyph = LevyraPlayerDesign.TransportModeGlyph,
+                haptic = LevyraHapticAction.Confirm,
                 onClick = onRepeat
             )
+        )
+    }
+    val collectionActions = remember(dockActions, track.id, addToPlaylist, playlistLabel) {
+        val queue = dockActions.filter { it.key == FlowQueueKey }
+            .map { it.copy(haptic = LevyraHapticAction.Transport) }
+        val playlist = if (addToPlaylist != null && !track.isLiveRadio()) {
+            listOf(
+                PlayerDockAction(
+                    key = "playlist",
+                    icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
+                    label = playlistLabel,
+                    haptic = LevyraHapticAction.Confirm,
+                    onClick = { addToPlaylist(track) }
+                )
+            )
+        } else {
+            emptyList()
+        }
+        queue + playlist + dockActions.filter { it.key != FlowQueueKey }
+            .map { if (it.key == FlowVisualModeKey) it.copy(active = false) else it }
+    }
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val segments = modeActions.size + collectionActions.size
+        val singleRow = maxWidth >= LevyraPlayerDesign.MinimumTouchTarget * segments + FlowGroupGap
+        if (singleRow) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(FlowGroupGap),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                PlayerActionDock(
+                    actions = modeActions,
+                    surfaces = surfaces,
+                    compact = true,
+                    animated = animated,
+                    modifier = Modifier.weight(modeActions.size.toFloat())
+                )
+                PlayerActionDock(
+                    actions = collectionActions,
+                    surfaces = surfaces,
+                    compact = true,
+                    animated = animated,
+                    modifier = Modifier.weight(collectionActions.size.toFloat())
+                )
+            }
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(FlowGroupGap)) {
+                PlayerActionDock(modeActions + collectionActions.take(FlowStackedLeadCount), surfaces, compact = true, animated = animated)
+                PlayerActionDock(collectionActions.drop(FlowStackedLeadCount), surfaces, compact = true, animated = animated)
+            }
         }
     }
 }
+
+private const val FlowQueueKey = "queue"
+private const val FlowVisualModeKey = "visual-mode"
+private const val FlowStackedLeadCount = 2
+private val FlowGroupGap = 10.dp
