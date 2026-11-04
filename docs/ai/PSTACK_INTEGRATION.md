@@ -17,22 +17,41 @@ Restart Claude Code if the commands are not immediately available. Check the ins
 
 On Cursor, install the original plugin using `/add-plugin pstack`. Cursor-only capabilities are not automatically available in Claude Code. For Codex, there is no official pstack installation procedure documented by this upstream package; do not silently copy its Cursor-specific orchestration into Codex.
 
-## Use with Levyra
+## One workflow per phase
 
-Keep the root and nearest path-specific `AGENTS.md` authoritative. `docs/ai/ALWAYS_ON_AGENT_GUARDS.md`, the existing skill router, privacy and playback invariants, publication authorization, and mandatory quality gates are unchanged. pstack is an optional source of focused techniques, not a replacement agent policy.
+pstack makes its entire upstream skill collection available. Availability is not an instruction to run the collection. **Choose exactly one primary workflow for each phase, and load it only when relevant.** Do not automatically chain pstack with Levyra's generic workflow skills, Matt Pocock skills, or other marketplaces for the same task. Do not run multiple agents or playbooks to repeat the same review.
 
-The useful complementary tasks include:
+The canonical root and path-specific `AGENTS.md` files remain binding, including project invariants, authorization, privacy, validation and required test evidence. Domain-specific Levyra rules still apply to app code; they are not extra generic workflows to stack. The repository's maximum of two active skill bodies per phase is a *ceiling*, not a target. One is preferred. The second must address a genuinely separate concern, such as Compose and visual design, never two competing methods for one concern.
 
-- `/pstack:blast-radius` before a narrow but risky change.
-- `/pstack:architect` for cross-boundary design.
-- `/pstack:tdd` for a reproducible defect with suitable local tests.
-- `/pstack:interrogate` for adversarial diff review when supported models and tools are available.
-- `/pstack:benchmark-checklist` for credible performance comparisons.
-- `/pstack:correct` or `/pstack:reflect` to turn recurring verified mistakes into checks.
-- `/pstack:unslop` and `/pstack:technical-writing` for final documentation or PR prose. The existing `levyra-humanizer` remains the default for PR descriptions.
-- The verification skill generators only after inspecting and successfully exercising the existing Android or desktop harness. A generated plan is not proof of a real device test.
+When the owner explicitly invokes a `/pstack:<skill>` command, the shared `scripts/agent_skill_router.py` does not automatically propose a parallel Levyra skill in that prompt. If pstack is missing or its capabilities are unsupported, use the existing Levyra workflow instead. Never secretly switch to a different agent methodology mid-task. Keep planning, implementation, review, and writing as separate phases.
 
-Do not force pstack into each prompt. Use no more than two skill bodies in the same phase; if two Levyra domain skills are already needed, defer the pstack review to a later phase. Preserve the existing deterministic `scripts/agent_skill_router.py` selection.
+## Writing is an exclusive choice
+
+The owner wants human writing in Italian, English and Russian: direct, concise, natural punctuation, restrained formatting, and no marketing language or chatbot filler. Keep technical terms precise. Match real samples of the owner's voice when available. Never remove or invent test claims, version numbers, limitations, links, release facts, or mandatory PR sections.
+
+- **Default:** `levyra-humanizer` for PR descriptions, release notes and other short public text. This is the single automatic writing skill already routed by Levyra.
+- **When explicitly using pstack:** select `/pstack:unslop` **instead of** `levyra-humanizer`, not before or after it. Upstream Unslop is opt-in, not auto-invoked.
+- **For substantial technical documentation:** `/pstack:technical-writing` may replace the other writing choices when explicitly requested. It incorporates Unslop guidance internally. Do not call `/pstack:unslop` separately on top.
+- **If pstack is unavailable:** fall back to the existing humanizer alone. Do not install another competing writing plugin as a workaround.
+
+The writing phase comes after the technical change and verification. Do one editing pass and check factual parity. The PR template is mandatory, and an attractive description does not prove that builds or tests passed.
+
+## What to choose, not what to combine
+
+| Task | Single primary approach |
+| --- | --- |
+| Specific Levyra playback, extraction, UI or desktop implementation | Existing narrow Levyra domain workflow |
+| Cross-cutting design | `/pstack:architect` *or* `levyra-real-engineering`, not both |
+| Reproducible bug | `/pstack:tdd` *or* Levyra's existing focused debug workflow |
+| Change impact | `/pstack:blast-radius` *or* existing impact investigation |
+| Pull-request review | `/pstack:interrogate` *or* `levyra-pr-review`; retain required review and quality gates |
+| Benchmark planning | `/pstack:benchmark-checklist` *or* the established performance procedure |
+| Human writing | `/pstack:unslop` *or* `levyra-humanizer` |
+| Technical writing | `/pstack:technical-writing` instead of an additional writing pass |
+
+Advanced orchestration such as `/pstack:poteto-mode`, swarm, arena, or autonomous modes should not be the default for Levyra. It is easy for them to bypass the single-owner model or silently add duplicate work. Use them only for an expressly requested, bounded task with supported tools and verified isolation.
+
+The upstream verification generators may be evaluated separately after inspecting Levyra's real Android/Windows test harness. They do not replace `ai_quality_gate.py`, Android runtime testing, CI, or an independent review.
 
 ## Unsupported or restricted actions
 
