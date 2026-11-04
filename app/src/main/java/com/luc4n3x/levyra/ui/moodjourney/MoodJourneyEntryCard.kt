@@ -101,7 +101,7 @@ private fun DefaultMoodJourneyEntry(copy: SmartMusicCopy, open: (MoodCurvePreset
                     .clickable(role = Role.Button, onClickLabel = copy[SmartMusicText.MoodTitle]) { open(null) },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Rounded.Add, contentDescription = null, tint = scheme.onSurface, modifier = Modifier.size(24.dp))
+                Icon(Icons.Rounded.Add, contentDescription = copy[SmartMusicText.MoodTitle], tint = scheme.onSurface, modifier = Modifier.size(24.dp))
             }
         }
         JourneyCoverRail(copy, journeyCoverStyle(), open)
