@@ -1915,7 +1915,8 @@ internal fun LevyraPlaylistDetailScreen(
                         query = ""
                         selectionMode = true
                         selectedKeys = selectAllPlaylistItemKeys(orderedItems)
-                    }
+                    },
+                    onExport = { viewModel.playlistExport.open(playlist) }
                 )
             }
         )
@@ -1977,6 +1978,11 @@ internal fun LevyraPlaylistDetailScreen(
                     .padding(14.dp)
             )
         }
+    }
+
+    val exportState by viewModel.playlistExport.state.collectAsStateWithLifecycle()
+    if (exportState.visible && exportState.playlistId == playlist.id) {
+        PlaylistExportSheet(viewModel.playlistExport, exportState)
     }
 
     changeMatchTrack?.let { target ->

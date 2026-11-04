@@ -147,6 +147,8 @@ import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.i18n.playlistProCopy
 import com.luc4n3x.levyra.ui.i18n.speedDialCopy
 import com.luc4n3x.levyra.ui.i18n.likeAllCopy
+import com.luc4n3x.levyra.ui.i18n.playlistExportCopy
+import androidx.compose.material.icons.rounded.IosShare
 import com.luc4n3x.levyra.ui.i18n.smartOfflineCopy
 import com.luc4n3x.levyra.ui.i18n.formatLibraryBytes
 import com.luc4n3x.levyra.ui.i18n.formatLibraryDuration
@@ -928,9 +930,11 @@ internal fun PlaylistDetailTopActions(
     isPinnedToHome: Boolean,
     onTogglePinToHome: () -> Unit,
     onLikeAll: () -> Unit,
-    onSelectAll: () -> Unit
+    onSelectAll: () -> Unit,
+    onExport: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    val exportLabel = remember(strings.code) { playlistExportCopy(strings.code).action }
     val speedDialCopy = remember(strings) { strings.speedDialCopy() }
     var menuExpanded by remember { mutableStateOf(false) }
 
@@ -1003,6 +1007,11 @@ internal fun PlaylistDetailTopActions(
                     onClick = { menuExpanded = false; onLikeAll() }
                 )
             }
+            DropdownMenuItem(
+                text = { Text(exportLabel) },
+                leadingIcon = { Icon(Icons.Rounded.IosShare, null) },
+                onClick = { menuExpanded = false; onExport() }
+            )
             if (playlist.tracks.isNotEmpty() || playlist.albums.isNotEmpty()) {
                 DropdownMenuItem(
                     text = { Text(strings.selectAll) },
