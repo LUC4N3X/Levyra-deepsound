@@ -205,7 +205,7 @@ Bug reports and pull requests are welcome. For questions and ideas, use [GitHub 
 <div align="center">
 
 <a href="https://luc4n3x.pages.dev/">
-  <img src="docs/assets/levyra-signature.webp?v=levyra-room" width="270" alt="LUC4N3X, creator of Levyra">
+  <img src="docs/assets/levyra-signature.webp?v=levyra-room" width="290" alt="LUC4N3X, creator of Levyra">
 </a>
 
 ### LUC4N3X
