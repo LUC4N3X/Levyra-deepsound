@@ -216,7 +216,7 @@ class CrossfadeRampTest {
             if (!primary.playing) primary.play(now, restartLatencyMs)
             if (trustReadyState) {
                 if (naiveStartMs < 0L) naiveStartMs = now
-                val gains = crossfadeGains(curve, ((now - naiveStartMs) / 240f))
+                val gains = crossfadeGains(curve, (now - naiveStartMs) / 240f)
                 secondary.gain = gains.outgoing
                 primary.gain = gains.incoming
                 completed = now - naiveStartMs >= 240L

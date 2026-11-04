@@ -2338,29 +2338,7 @@ class PlaybackService : MediaLibraryService() {
             }
             consumePreparedQueueNextInternal(target.id.ifBlank { resolved.id })
 
-            transitionNormalization?.let { normalizationProcessor.continueFromGain(it.appliedGain) }
-            primary.volume = 0f
-            primary.setMediaItem(
-                LevyraMediaItemFactory.build(resolved),
-                secondary.currentPosition.coerceAtLeast(0L)
-            )
-            RuntimeHooks.player(RuntimeSignal.PLAYER_PREPARE)
-            RuntimeHooks.hot(RuntimeSignal.HOT_PLAYER_PREPARE)
-            primary.prepare()
-
-            if (!awaitPrimaryHandoffReady(primary, secondary, targetIdentity, resolved.title)) return
-            if (!alignPrimaryHandoff(primary, secondary, targetIdentity)) return
-
-            val handedBack = runCrossfadeRamp(
-                outgoing = secondary,
-                incoming = primary,
-                ramp = CrossfadeRamp(CrossfadeCurve.EqualGain, PRIMARY_HANDOFF_FADE_MS, INCOMING_AUDIBLE_TIMEOUT_MS),
-                sessionPlayer = primary,
-                outgoingRemainingMs = { (secondary.duration - secondary.currentPosition).coerceAtLeast(0L) }
-            ) {
-                handoffStillValid(primary, secondary, targetIdentity)
-            }
-            if (!handedBack) return
+            if (!handBackToPrimary(primary, secondary, resolved, targetIdentity)) return
             queueEngine.updatePosition(primary.currentPosition)
             if (!isLocalPlaybackTrack(resolved)) prefetchServiceQueueNext()
         } catch (cancelled: CancellationException) {
@@ -2368,15 +2346,48 @@ class PlaybackService : MediaLibraryService() {
         } catch (error: Exception) {
             Timber.w(error, "Queue crossfade failed")
         } finally {
-            val endedWhileTransitionHeld = isQueueTransitionInProgress &&
-                primary.playbackState == Player.STATE_ENDED &&
-                currentCoroutineContext().isActive
-            isQueueTransitionInProgress = false
-            primary.volume = currentEffectiveBaseVolume()
-            releaseTransitionPlayer(secondary)
-            if (endedWhileTransitionHeld && LevyraWidgetBridge.onNext == null) {
-                skipQueue(forward = true, respectRepeatOne = true, autoAdvance = true)
-            }
+            finishQueueTransition(primary, secondary)
+        }
+    }
+
+    private suspend fun handBackToPrimary(
+        primary: ExoPlayer,
+        secondary: ExoPlayer,
+        resolved: Track,
+        targetIdentity: String
+    ): Boolean {
+        transitionNormalization?.let { normalizationProcessor.continueFromGain(it.appliedGain) }
+        primary.volume = 0f
+        primary.setMediaItem(
+            LevyraMediaItemFactory.build(resolved),
+            secondary.currentPosition.coerceAtLeast(0L)
+        )
+        RuntimeHooks.player(RuntimeSignal.PLAYER_PREPARE)
+        RuntimeHooks.hot(RuntimeSignal.HOT_PLAYER_PREPARE)
+        primary.prepare()
+
+        if (!awaitPrimaryHandoffReady(primary, secondary, targetIdentity, resolved.title)) return false
+        if (!alignPrimaryHandoff(primary, secondary, targetIdentity)) return false
+        return runCrossfadeRamp(
+            outgoing = secondary,
+            incoming = primary,
+            ramp = CrossfadeRamp(CrossfadeCurve.EqualGain, PRIMARY_HANDOFF_FADE_MS, INCOMING_AUDIBLE_TIMEOUT_MS),
+            sessionPlayer = primary,
+            outgoingRemainingMs = { (secondary.duration - secondary.currentPosition).coerceAtLeast(0L) }
+        ) {
+            handoffStillValid(primary, secondary, targetIdentity)
+        }
+    }
+
+    private suspend fun finishQueueTransition(primary: ExoPlayer, secondary: ExoPlayer?) {
+        val endedWhileTransitionHeld = isQueueTransitionInProgress &&
+            primary.playbackState == Player.STATE_ENDED &&
+            currentCoroutineContext().isActive
+        isQueueTransitionInProgress = false
+        primary.volume = currentEffectiveBaseVolume()
+        releaseTransitionPlayer(secondary)
+        if (endedWhileTransitionHeld && LevyraWidgetBridge.onNext == null) {
+            skipQueue(forward = true, respectRepeatOne = true, autoAdvance = true)
         }
     }
 
