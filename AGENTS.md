@@ -110,8 +110,8 @@ Phase examples:
 - Claude/Codex agent tooling -> `levyra-codex-bootstrap`;
 - final branch/PR review -> `levyra-pr-review`;
 - release/runtime validation -> `levyra-release-check`;
-- PR description -> `levyra-humanizer` by default; use `/pstack:unslop`
-  instead when explicitly selected, never together;
+- PR description -> the single writing skill chosen for that phase:
+  pstack `unslop` when installed or `levyra-humanizer` as fallback;
 - requirements/roadmap -> `levyra-project-manager`;
 - cross-domain orientation -> `levyra-engineering`;
 - OpenClaw coordination -> `levyra-openclaw-orchestrator`;
@@ -122,11 +122,12 @@ Do not preload skill bodies. Read only routed
 in `docs/ai/MATT_POCOCK_SKILLS.md` are supplementary and opt-in; repository
 rules remain authoritative.
 The official `pstack` Claude Code plugin is optional; see
-`docs/ai/PSTACK_INTEGRATION.md`. If selected, it replaces overlapping generic
-methods rather than adding another skill stack. For writing, choose exactly
-one pass: `levyra-humanizer` by default, or `/pstack:unslop` when explicitly
-selected and installed. For a substantial technical document, `/pstack:technical-writing`
-can replace either one; do not invoke a second separate polishing skill.
+`docs/ai/PSTACK_INTEGRATION.md`. When installed, Claude's prompt hook can
+select one relevant pstack workflow automatically instead of an overlapping
+Levyra generic workflow. Do not preload every skill. For writing, use exactly
+one pass: installed pstack `unslop` for short public prose, `technical-writing`
+for substantial documentation, or `levyra-humanizer` when pstack is unavailable.
+Do not run two writing passes in sequence.
 Keep PR descriptions, releases, README text, and community replies natural,
 brief, accurate, and consistent with the owner's actual voice in the target
 language. Preserve all verified facts, tests, risks, links, and required
@@ -207,8 +208,7 @@ explicit owner authorization for that action and scope.
 When PR publication is authorized, use a dedicated branch and draft PR by
 default, preserve the complete `.github/pull_request_template.md`, keep
 validation claims truthful, and apply at most one writing pass in the PR-writing
-phase without changing facts (`levyra-humanizer` by default, or the explicitly
-selected pstack writing skill).
+phase without changing facts (pstack `unslop` when installed and routed, otherwise `levyra-humanizer`).
 
 ## Delivery contract
 
