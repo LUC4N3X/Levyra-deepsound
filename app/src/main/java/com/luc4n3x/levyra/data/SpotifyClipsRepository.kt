@@ -145,7 +145,7 @@ internal class SpotifyClipsRepository(private val context: Context) {
             runInterruptible {
                 val request = Request.Builder().url(CLIPS_REMOTE_URL).build()
                 LevyraHttpClientFactory.general(context).newCall(request).execute().use { response ->
-                    val body = response.body?.string().orEmpty()
+                    val body = response.body.string()
                     if (response.isSuccessful && body.isNotBlank()) parseSpotifyClips(body) else null
                 }
             }

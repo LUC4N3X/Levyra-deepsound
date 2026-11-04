@@ -59,7 +59,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -146,6 +145,7 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import com.luc4n3x.levyra.ui.components.LevyraSlider
 
 private val LevyraAdaptiveBorder: Color get() = LevyraGlassBorder
 private val LevyraAdaptiveSubtle: Color get() = LevyraPanelSoft
@@ -605,7 +605,7 @@ private fun GentleWakeIntensityControls(
                     fontWeight = FontWeight.Bold
                 )
             }
-            Slider(
+            LevyraSlider(
                 value = draftMaxVolume,
                 onValueChange = { fraction -> draftMaxVolume = fraction },
                 onValueChangeFinished = {

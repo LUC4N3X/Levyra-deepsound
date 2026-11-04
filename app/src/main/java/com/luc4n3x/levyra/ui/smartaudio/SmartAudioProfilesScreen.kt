@@ -56,12 +56,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -105,6 +103,9 @@ import java.util.Locale
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.luc4n3x.levyra.ui.components.LevyraSlider
+import androidx.compose.material3.rememberBottomSheetState
+import androidx.compose.material3.SheetValue
 
 internal data class SmartAudioDeviceUi(
     val key: String,
@@ -270,7 +271,7 @@ internal fun SmartAudioProfilesScreen(
         }
     }
     editing?.let { device ->
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded))
         ModalBottomSheet(onDismissRequest = { editing = null }, sheetState = sheetState, containerColor = scheme.surfaceContainerLow) {
             SmartAudioProfileEditor(
                 device = device,
@@ -541,7 +542,7 @@ private fun SmartAudioProfileEditor(
                     Text(copy[SmartAudioText.SmartPreamp], style = MaterialTheme.typography.labelLarge, color = scheme.onSurfaceVariant, modifier = Modifier.weight(1f))
                     Text(String.format(Locale.ROOT, "%+.1f dB", draft.preampDb), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = scheme.onSurface)
                 }
-                Slider(
+                LevyraSlider(
                     value = draft.preampDb,
                     onValueChange = { draft = draft.copy(preampDb = (it * 2f).roundToInt() / 2f) },
                     valueRange = SmartAudioProfile.MIN_PREAMP_DB..SmartAudioProfile.MAX_PREAMP_DB

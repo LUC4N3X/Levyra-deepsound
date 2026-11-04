@@ -59,7 +59,6 @@ import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -130,6 +129,8 @@ import java.util.Locale
 import kotlin.math.PI
 import kotlin.math.sin
 import kotlinx.coroutines.launch
+import androidx.compose.material3.rememberBottomSheetState
+import androidx.compose.material3.SheetValue
 
 internal enum class DownloadQualitySkin { Expressive, Nocturne, Prism, Torque, Ivory, Spotify, Apple, YouTube }
 
@@ -201,7 +202,7 @@ private fun DownloadQualitySheet(
     val style = rememberQualitySheetStyle(activeDownloadQualitySkin())
     val haptics = LocalLevyraHaptics.current
     val animate = LocalAnimationsEnabled.current
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded))
     val scope = rememberCoroutineScope()
     var committed by remember { mutableStateOf(false) }
     val phase = state.snapshot.phase

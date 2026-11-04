@@ -24,7 +24,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
@@ -37,6 +36,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.rememberBottomSheetState
+import androidx.compose.material3.SheetValue
 
 private val AppleSheetSurface = Color(0xFF1C1C1E)
 private val AppleSheetGroup = Color(0xFF2C2C2E)
@@ -67,7 +68,7 @@ internal fun AppleLyricsOptionsSheet(
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)),
         containerColor = AppleSheetSurface,
         contentColor = AppleSheetLabel,
         shape = RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp)

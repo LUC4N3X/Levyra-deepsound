@@ -6,7 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -36,6 +35,7 @@ import java.time.format.FormatStyle
 import java.time.format.TextStyle
 import java.util.Locale
 import kotlin.math.roundToInt
+import com.luc4n3x.levyra.ui.components.LevyraSlider
 
 @Composable
 internal fun ColumnScope.RewindRhythm(summary: RewindSummary, style: MusicExperienceStyle, locale: Locale, number: NumberFormat, reveal: Float) {
@@ -68,7 +68,7 @@ internal fun ColumnScope.RewindRhythm(summary: RewindSummary, style: MusicExperi
             Text("${number.format(hours.getOrElse(selectedHour) { 0L } / 60_000L)} ${strings.recapUnitMinutes}", color = style.muted, style = MaterialTheme.typography.titleMedium)
         }
     }
-    Slider(
+    LevyraSlider(
         value = selectedHour.toFloat(), onValueChange = { selectedHour = it.roundToInt() }, valueRange = 0f..23f, steps = 22,
         colors = SliderDefaults.colors(thumbColor = style.accent, activeTrackColor = style.accent, inactiveTrackColor = style.surface),
         modifier = Modifier.semantics { contentDescription = strings.pulsePeakHour }
@@ -103,7 +103,7 @@ internal fun ColumnScope.RewindTimeline(summary: RewindSummary, style: MusicExpe
             }
         }
     }
-    Slider(value = selectedMonth.toFloat(), onValueChange = { selectedMonth = it.roundToInt() }, valueRange = 0f..11f, steps = 10,
+    LevyraSlider(value = selectedMonth.toFloat(), onValueChange = { selectedMonth = it.roundToInt() }, valueRange = 0f..11f, steps = 10,
         colors = SliderDefaults.colors(thumbColor = style.accent, activeTrackColor = style.accent, inactiveTrackColor = style.surface),
         modifier = Modifier.semantics { contentDescription = strings.insightsActivity })
     val peakDay = summary.snapshot.metrics.peakDayEpochMs

@@ -213,6 +213,7 @@ internal fun MixChaptersSheet(
     val copy = smartAudioCopy(LocalLevyraStrings.current.code)
     val scheme = MaterialTheme.colorScheme
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+    @Suppress("DEPRECATION")
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = landscape)
     val currentIndex = chapters.indexAt(positionMs)
     var follow by rememberSaveable { mutableStateOf(true) }

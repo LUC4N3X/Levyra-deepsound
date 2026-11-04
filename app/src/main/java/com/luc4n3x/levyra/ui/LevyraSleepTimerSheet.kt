@@ -34,7 +34,6 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -99,6 +98,7 @@ import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import com.luc4n3x.levyra.ui.components.LevyraSlider
 
 private val SleepSheetShape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
 
@@ -823,7 +823,7 @@ private fun SleepTimerCustomDuration(
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.width(72.dp)
             )
-            Slider(
+            LevyraSlider(
                 value = minutes.toFloat(),
                 onValueChange = { minutes = snapSleepTimerMinutes(it) },
                 onValueChangeFinished = { onSelectMinutes(minutes) },

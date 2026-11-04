@@ -55,7 +55,7 @@ class MusicBrainzScout(private val clock: () -> Long = System::currentTimeMillis
                     .build()
                 LevyraHttpClientFactory.externalIntegrations().newCall(request).execute().use { response ->
                     if (!response.isSuccessful) return@withContext null
-                    response.body?.string()
+                    response.body.string()
                 }
             }?.also { body -> synchronized(cache) { cache[url] = body } }
         }

@@ -148,7 +148,7 @@ internal class YoutubeShortsRepository(private val context: Context) {
             .post(payload.toString().toRequestBody(SAMPLES_JSON))
             .build()
         LevyraHttpClientFactory.general(context).newCall(request).execute().use { response ->
-            val body = response.body?.string().orEmpty()
+            val body = response.body.string()
             check(response.isSuccessful && body.isNotBlank()) { "Samples request failed: ${response.code}" }
             JSONObject(body)
         }

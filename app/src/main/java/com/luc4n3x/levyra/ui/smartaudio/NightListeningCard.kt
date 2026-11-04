@@ -29,7 +29,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -52,7 +51,6 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -73,6 +71,8 @@ import com.luc4n3x.levyra.ui.i18n.smartAudioCopy
 import java.util.Locale
 import kotlin.math.abs
 import kotlinx.coroutines.delay
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.luc4n3x.levyra.ui.components.LevyraSlider
 
 private const val CURVE_FLOOR_DB = -60f
 private const val CURVE_CEILING_DB = 0f
@@ -380,7 +380,7 @@ private fun NightAdvancedControls(settings: LevyraAudioSettings, onTrim: (Float)
         NightParameter(copy[SmartAudioText.NightMakeup], String.format(Locale.ROOT, "+%.1f dB", preset.makeupDb))
         Spacer(Modifier.height(4.dp))
         NightParameter(copy[SmartAudioText.NightTrim], String.format(Locale.ROOT, "%+.1f dB", trim))
-        Slider(
+        LevyraSlider(
             value = trim,
             onValueChange = { trim = it },
             onValueChangeFinished = { onTrim(trim) },

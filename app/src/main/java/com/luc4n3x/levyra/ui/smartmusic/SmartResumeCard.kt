@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -56,6 +55,7 @@ import com.luc4n3x.levyra.ui.i18n.smartMusicCopy
 import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
 import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
 import kotlin.math.roundToInt
+import com.luc4n3x.levyra.ui.components.LevyraSlider
 
 private val ExamplePausesMs = longArrayOf(30_000L, 5L * 60_000L, 60L * 60_000L, 8L * 60L * 60_000L)
 
@@ -245,7 +245,7 @@ private fun MinPauseControl(seconds: Int, copy: SmartMusicCopy, onMinPause: (Int
             style = MaterialTheme.typography.bodyMedium,
             color = scheme.onSurface
         )
-        Slider(
+        LevyraSlider(
             value = value,
             onValueChange = { value = it },
             onValueChangeFinished = { onMinPause(value.roundToInt()) },

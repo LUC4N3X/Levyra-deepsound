@@ -183,7 +183,7 @@ internal class SleepTimbreAudioProcessor : BaseAudioProcessor() {
         }
     }
 
-    override fun onFlush() {
+    override fun onFlush(streamMetadata: AudioProcessor.StreamMetadata) {
         filterState.fill(0f)
         if (targetSoftness <= 0.0005f) {
             currentSoftness = 0f
