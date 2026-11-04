@@ -169,6 +169,7 @@ internal class MotionGestureController(
         val shakeTarget = if (shakeAllowed) shakeSensorFor(useWakeUp) else null
 
         if (sensorsRegistered && flipTarget == requestedFlipSensor && shakeTarget == requestedShakeSensor) {
+            retryMissingTargets(manager, flipTarget, shakeTarget, shakeSensorFor(useWakeUp))
             return
         }
 
@@ -211,15 +212,37 @@ internal class MotionGestureController(
             return shared to shared
         }
         val shakeSensor = shakeTarget?.takeIf { registerSensor(manager, it, SensorManager.SENSOR_DELAY_GAME, 40_000) }
-        if (flipTarget == null) return null to shakeSensor
-        if (registerSensor(manager, flipTarget, SensorManager.SENSOR_DELAY_UI, 80_000)) return flipTarget to shakeSensor
-        val fallback = when {
-            accelerometer == null || accelerometer == flipTarget -> null
-            accelerometer == shakeSensor -> accelerometer
-            registerSensor(manager, accelerometer, SensorManager.SENSOR_DELAY_UI, 80_000) -> accelerometer
-            else -> null
+        return registerFlip(manager, flipTarget, shakeSensor, accelerometer) to shakeSensor
+    }
+
+    private fun retryMissingTargets(
+        manager: SensorManager,
+        flipTarget: Sensor?,
+        shakeTarget: Sensor?,
+        accelerometer: Sensor?
+    ) {
+        if (shakeTarget != null && registeredShakeSensor == null &&
+            registerSensor(manager, shakeTarget, SensorManager.SENSOR_DELAY_GAME, 40_000)
+        ) {
+            registeredShakeSensor = shakeTarget
         }
-        return fallback to shakeSensor
+        if (flipTarget != null && registeredFlipSensor == null) {
+            registeredFlipSensor = registerFlip(manager, flipTarget, registeredShakeSensor, accelerometer)
+        }
+    }
+
+    private fun registerFlip(
+        manager: SensorManager,
+        flipTarget: Sensor?,
+        shakeSensor: Sensor?,
+        accelerometer: Sensor?
+    ): Sensor? = when {
+        flipTarget == null -> null
+        registerSensor(manager, flipTarget, SensorManager.SENSOR_DELAY_UI, 80_000) -> flipTarget
+        accelerometer == null || accelerometer == flipTarget -> null
+        accelerometer == shakeSensor -> accelerometer
+        registerSensor(manager, accelerometer, SensorManager.SENSOR_DELAY_UI, 80_000) -> accelerometer
+        else -> null
     }
 
     private fun flipSensorFor(useWakeUp: Boolean): Sensor? =

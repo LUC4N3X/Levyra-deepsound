@@ -121,7 +121,7 @@ internal fun MiniPlayer(
         )
     }
     val activePalette by rememberArtworkPalette(
-        paletteKey = paletteKey,
+        paletteKey = if (fixedAccents == null) paletteKey else "",
         artworkUrl = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
         fallback = fallbackPalette,
         retainPreviousUntilLoaded = true
