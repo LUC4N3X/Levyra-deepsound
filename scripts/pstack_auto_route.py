@@ -32,16 +32,34 @@ ROUTES = (
 )
 
 RULES = tuple((name, re.compile(pattern, re.IGNORECASE)) for name, pattern in ROUTES)
+EXPLICIT_COMMAND = re.compile(r"^\s*/pstack:[a-z][a-z0-9-]*(?=\s|$)", re.IGNORECASE)
+COMMAND_MENTION = re.compile(r"/pstack:[a-z][a-z0-9-]*", re.IGNORECASE)
+IMPLEMENTATION_ACTION = re.compile(
+    r"(?:^|[;.!?]\s*|\b(?:and|then|also|e|poi)\s+)"
+    r"\s*(?:(?:please|per favore|vai)\s+)?"
+    r"(?:fix|debug|implement|refactor|repair|resolve|investigate|build|test|add|remove|modify|"
+    r"correggi|sistema|risolvi|implementa|aggiungi|rimuovi|modifica|testa)\b",
+    re.IGNORECASE,
+)
+WRITING_SKILLS = frozenset(("unslop", "technical-writing"))
+
+
+def explicit_command(prompt: str) -> bool:
+    return EXPLICIT_COMMAND.match(prompt) is not None
 
 
 def pick_skill(prompt: str) -> str | None:
     lowered = prompt.strip().lower()
     if not lowered or any(marker in lowered for marker in AUTOMATED_MARKERS):
         return None
-    if re.search(r"(?<![\w/])/pstack:[a-z][a-z0-9-]*\b", lowered):
+    if explicit_command(prompt):
         return None
+    clean = COMMAND_MENTION.sub("", lowered)
+    implementation = IMPLEMENTATION_ACTION.search(clean) is not None
     for name, pattern in RULES:
-        if pattern.search(lowered):
+        if pattern.search(clean):
+            if implementation and name in WRITING_SKILLS:
+                continue
             return name
     return None
 
@@ -77,6 +95,12 @@ def installed_root(config: Path, project: Path) -> Path | None:
 def context_for(prompt: str, root: Path | None) -> str:
     if root is None:
         return ""
+    if explicit_command(prompt):
+        return (
+            "An explicit pstack command already owns this phase. "
+            "Do not load an overlapping Levyra or other marketplace workflow. "
+            "Follow root/scoped AGENTS.md and retain mandatory validation and publication guards."
+        )
     skill = pick_skill(prompt)
     if skill is None:
         return ""
