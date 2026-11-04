@@ -13,7 +13,7 @@ PLUGIN_ID = "pstack@cursor-plugins"
 AUTOMATED_MARKERS = ("<github-webhook-activity", "<untrusted_external_data", "<system-reminder")
 
 ROUTES = (
-    ("technical-writing", r"(?:\b(?:readme|documentation|docs|rfc|technical writing)\b|documentazion|guida tecnica|техническ\w* документац)\b?.{0,80}(?:scriv|redig|riscriv|aggiorn|write|rewrite|draft|update|edit|polish|созда|напиши)|(?:scriv|redig|riscriv|aggiorn|write|rewrite|draft|update|edit|polish|созда|напиши).{0,80}(?:\b(?:readme|documentation|docs|rfc)\b|documentazion|guida tecnica|документац)"),
+    ("technical-writing", r"(?:\b(?:readme|documentation|docs|rfc|technical writing)\b|documentazion|guida tecnica|техническ\w* документац).{0,80}(?:scriv|redig|riscriv|aggiorn|write|rewrite|draft|update|edit|polish|созда|напиши)|(?:scriv|redig|riscriv|aggiorn|write|rewrite|draft|update|edit|polish|созда|напиши).{0,80}(?:\b(?:readme|documentation|docs|rfc)\b|documentazion|guida tecnica|документац)"),
     ("unslop", r"(?:\b(?:unslop|humaniz|changelog|release notes)\b|note di rilascio|annuncio|comunicat|описание релиз|примечания к выпуску|пост для форума|descrizion\w*.{0,18}(?:\bpr\b|pull request)|(?:\bpr\b|pull request).{0,18}(?:description|body|descrizion)|(?:scriv|riscriv|traduci|write|rewrite|translate|polish|перевед|напиши|перепиши).{0,60}(?:messaggio|risposta|testo|post\b|forum\b|message\b|reply\b|text\b|forum post\b|сообщени|ответ|текст))"),
     ("blast-radius", r"blast radius|what (?:could|will) (?:this |it )?break|cosa (?:pu[oò]|potrebbe) rompere|rischi di regressione|impact analysis|analisi d.impatto|что может сломать"),
     ("interrogate", r"\binterrogate\b|adversarial review|multi.model review|find blind spots|tear this apart|revisione avversarial|revisione critica approfondita"),
