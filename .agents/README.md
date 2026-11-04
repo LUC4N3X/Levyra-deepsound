@@ -106,6 +106,15 @@ active task matches them; never preload the whole tree.
 - `levyra-release-check`
 - `levyra-security-review`
 
+## Optional pstack plugin
+
+The official pstack marketplace is declared and enabled in
+`.agents/claude/settings.json`. Its upstream skills and playbooks are installed
+by Claude Code rather than duplicated under `.agents/skills/`. See
+`docs/ai/PSTACK_INTEGRATION.md` for manual installation, compatible workflows,
+limitations, and the precedence of Levyra's rules. It is never a substitute for
+project-domain skills, the two-skill phase cap, or the mandatory validation gate.
+
 ## Context efficiency
 
 `AGENTS.md` intentionally stays concise. Detailed multi-step procedure belongs in
