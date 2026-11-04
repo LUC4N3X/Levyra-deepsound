@@ -2,6 +2,9 @@ package com.luc4n3x.levyra.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -11,6 +14,10 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import com.luc4n3x.levyra.ui.components.levyraExpressiveCorner
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -73,6 +80,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel as composeViewModel
 import coil3.compose.AsyncImage
+import com.luc4n3x.levyra.data.PodcastShelf
 import com.luc4n3x.levyra.data.PodcastShow
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.podcast.PodcastEpisodeProgress
@@ -92,7 +100,8 @@ import com.luc4n3x.levyra.ui.i18n.PodcastCopy
 import com.luc4n3x.levyra.ui.i18n.podcastCopy
 
 private val PodcastGutter = 20.dp
-private val PodcastCardWidth = 156.dp
+private val PodcastCardWidth = 248.dp
+private const val PodcastWideRatio = 16f / 9f
 private val PodcastRowArtwork = 60.dp
 private const val PodcastPaneMillis = 320
 
@@ -158,12 +167,33 @@ private fun PodcastLibraryPane(
     play: (List<Track>, Track) -> Unit,
     contentPadding: PaddingValues
 ) {
-    val retry = LocalLevyraStrings.current.exploreSamplesRetry
+    val strings = LocalLevyraStrings.current
+    val retry = strings.exploreSamplesRetry
+    var genre by rememberSaveable { mutableStateOf<String?>(null) }
+    val activeGenre = genre?.takeIf { selected -> state.discover.any { it.title == selected } }
+    val shelves = if (activeGenre == null) state.discover else state.discover.filter { it.title == activeGenre }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = contentPadding) {
         item(key = "podcast-search") { PodcastSearchField(state.query, copy.searchHint, viewModel::setQuery) }
         if (state.query.trim().length >= 2) {
             podcastSearchResults(state, copy, retry, viewModel)
             return@LazyColumn
+        }
+        if (state.discover.size > 1) {
+            item(key = "podcast-genres") {
+                PodcastGenreRow(
+                    genres = state.discover.map { it.title },
+                    selected = activeGenre,
+                    allLabel = strings.all,
+                    onSelect = { genre = it }
+                )
+            }
+        }
+        val featuredShelf = shelves.firstOrNull { it.episodes.isNotEmpty() }
+        if (featuredShelf != null) {
+            item(key = "podcast-featured") {
+                val featured = featuredShelf.episodes.first()
+                PodcastFeaturedCard(featured, featuredShelf.title, playback) { play(featuredShelf.episodes, featured) }
+            }
         }
         val resume = state.continueListening
         if (resume.isNotEmpty()) {
@@ -204,15 +234,28 @@ private fun PodcastLibraryPane(
                 PodcastNotice(copy.loadFailed, retry, viewModel::retryDiscover)
             }
         }
-        state.discover.forEach { shelf ->
-            item(key = "discover-title-${shelf.title}") {
-                Text(shelf.title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = PodcastGutter, vertical = 8.dp))
-            }
-            item(key = "discover-${shelf.title}") {
-                PodcastRail(shelf.episodes, key = { "discover-${shelf.title}-${it.id}" }) { episode ->
-                    PodcastEpisodeCard(episode, state.progressById[episode.id], copy, playback) { play(shelf.episodes, episode) }
-                }
+        podcastDiscoverShelves(shelves, featuredShelf, state, copy, playback, play)
+    }
+}
+
+private fun LazyListScope.podcastDiscoverShelves(
+    shelves: List<PodcastShelf>,
+    featuredShelf: PodcastShelf?,
+    state: PodcastLibraryUiState,
+    copy: PodcastCopy,
+    playback: PodcastPlayback,
+    play: (List<Track>, Track) -> Unit
+) {
+    shelves.forEach { shelf ->
+        val railEpisodes = if (shelf === featuredShelf) shelf.episodes.drop(1) else shelf.episodes
+        if (railEpisodes.isEmpty()) return@forEach
+        item(key = "discover-title-${shelf.title}") {
+            Text(shelf.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(start = PodcastGutter, end = PodcastGutter, top = 18.dp, bottom = 10.dp).semantics { heading() })
+        }
+        item(key = "discover-${shelf.title}") {
+            PodcastRail(railEpisodes, key = { "discover-${shelf.title}-${it.id}" }) { episode ->
+                PodcastEpisodeCard(episode, state.progressById[episode.id], copy, playback) { play(shelf.episodes, episode) }
             }
         }
     }
@@ -340,16 +383,131 @@ private fun PodcastArtwork(url: String, size: Dp, corner: Dp) {
 @Composable
 private fun PodcastEpisodeCard(episode: Track, progress: PodcastEpisodeProgress?, copy: PodcastCopy, playback: PodcastPlayback, onPlay: () -> Unit) {
     val colors = MaterialTheme.colorScheme
+    val interaction = remember { MutableInteractionSource() }
+    val corners = podcastSkinCorners()
+    val corner = levyraExpressiveCorner(interaction, rest = corners.card, pressed = corners.cardPressed, label = "podcast-episode-corner")
     Column(
-        Modifier.width(PodcastCardWidth).levyraPressable(onClick = onPlay, role = Role.Button, onClickLabel = episode.title, pressedScale = LevyraPressScale.Surface),
+        Modifier.width(PodcastCardWidth).levyraPressable(
+            onClick = onPlay, role = Role.Button, onClickLabel = episode.title, pressedScale = LevyraPressScale.Surface, interactionSource = interaction
+        ),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Box {
-            PodcastArtwork(episode.thumbnailUrl, PodcastCardWidth, 20.dp)
-            if (playback.currentTrackId == episode.id && playback.isPlaying) PodcastNowPlayingBadge(Modifier.align(Alignment.BottomEnd).padding(8.dp))
+            PodcastWideArtwork(episode.largeThumbnailUrl.ifBlank { episode.thumbnailUrl }, PodcastCardWidth, corner)
+            if (playback.currentTrackId == episode.id && playback.isPlaying) {
+                PodcastNowPlayingBadge(Modifier.align(Alignment.BottomEnd).padding(8.dp))
+            } else {
+                PodcastPlayDisc(Modifier.align(Alignment.BottomEnd).padding(8.dp), size = 34.dp)
+            }
         }
         Text(episode.title, style = MaterialTheme.typography.titleSmall, color = colors.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
         PodcastProgressLine(progress, copy, fallback = episode.artist)
+    }
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun PodcastNoticeShape(): androidx.compose.ui.graphics.Shape =
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin) androidx.compose.material3.MaterialShapes.Cookie9Sided.toShape() else CircleShape
+
+private data class PodcastSkinCorners(val hero: Dp, val heroPressed: Dp, val card: Dp, val cardPressed: Dp)
+
+private fun podcastSkinCorners(): PodcastSkinCorners = when {
+    com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin -> PodcastSkinCorners(28.dp, 44.dp, 18.dp, 32.dp)
+    com.luc4n3x.levyra.ui.theme.LevyraIsAtelier -> com.luc4n3x.levyra.ui.theme.AtelierDesign.cardCorner.let { PodcastSkinCorners(it, it, it, it) }
+    com.luc4n3x.levyra.ui.theme.LevyraIsQobuz -> com.luc4n3x.levyra.ui.theme.QobuzDesign.cardCorner.let { PodcastSkinCorners(it, it, it, it) }
+    else -> {
+        val base = com.luc4n3x.levyra.ui.theme.LevyraHomeDesign.HeroCorner
+        PodcastSkinCorners(base.coerceAtMost(16.dp), base.coerceAtMost(16.dp), base.coerceAtMost(12.dp), base.coerceAtMost(12.dp))
+    }
+}
+
+@Composable
+private fun PodcastGenreRow(genres: List<String>, selected: String?, allLabel: String, onSelect: (String?) -> Unit) {
+    val options = listOf<String?>(null) + genres.distinct()
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = PodcastGutter, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(options, key = { it ?: "podcast-genre-all" }) { option ->
+            PodcastGenreChip(label = option ?: allLabel, selected = option == selected) { onSelect(option) }
+        }
+    }
+}
+
+@Composable
+private fun PodcastGenreChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val colorSpec: androidx.compose.animation.core.AnimationSpec<Color> =
+        if (LocalAnimationsEnabled.current) androidx.compose.animation.core.spring() else androidx.compose.animation.core.snap()
+    val container by animateColorAsState(if (selected) colors.onSurface else colors.surfaceContainerHigh, colorSpec, label = "podcast-genre-container")
+    val content by animateColorAsState(if (selected) colors.surface else colors.onSurface, colorSpec, label = "podcast-genre-content")
+    Box(
+        Modifier.heightIn(min = 40.dp).clip(CircleShape).background(container)
+            .selectable(selected = selected, role = Role.Tab, onClick = onClick)
+            .padding(horizontal = 16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(label, color = content, style = MaterialTheme.typography.labelLarge, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, maxLines = 1)
+    }
+}
+
+@Composable
+private fun PodcastWideArtwork(url: String, width: Dp, corner: Dp) {
+    val colors = MaterialTheme.colorScheme
+    Box(
+        Modifier.width(width).aspectRatio(PodcastWideRatio).clip(RoundedCornerShape(corner)).background(colors.surfaceContainerHigh),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(Icons.Rounded.Podcasts, null, tint = colors.onSurfaceVariant, modifier = Modifier.size(36.dp))
+        if (url.isNotBlank()) AsyncImage(url, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+    }
+}
+
+@Composable
+private fun PodcastPlayDisc(modifier: Modifier = Modifier, size: Dp) {
+    Box(modifier.size(size).clip(CircleShape).background(Color.White.copy(alpha = 0.92f)), contentAlignment = Alignment.Center) {
+        Icon(Icons.Rounded.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(size * 0.56f))
+    }
+}
+
+@Composable
+private fun PodcastFeaturedCard(episode: Track, overline: String, playback: PodcastPlayback, onPlay: () -> Unit) {
+    val playing = playback.currentTrackId == episode.id && playback.isPlaying
+    val colors = MaterialTheme.colorScheme
+    val interaction = remember { MutableInteractionSource() }
+    val corners = podcastSkinCorners()
+    val corner = levyraExpressiveCorner(interaction, rest = corners.hero, pressed = corners.heroPressed, label = "podcast-featured-corner")
+    Column(
+        Modifier.padding(horizontal = PodcastGutter, vertical = 8.dp).fillMaxWidth()
+            .clip(RoundedCornerShape(corner)).background(colors.surfaceContainerHigh)
+            .levyraPressable(onClick = onPlay, role = Role.Button, onClickLabel = episode.title, pressedScale = LevyraPressScale.Surface, interactionSource = interaction)
+    ) {
+        Box(Modifier.fillMaxWidth().aspectRatio(PodcastWideRatio).background(colors.surfaceContainerHighest), contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.Podcasts, null, tint = colors.onSurfaceVariant, modifier = Modifier.size(40.dp))
+            val url = episode.largeThumbnailUrl.ifBlank { episode.thumbnailUrl }
+            if (url.isNotBlank()) AsyncImage(url, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+        }
+        Row(
+            Modifier.fillMaxWidth().padding(start = 18.dp, end = 14.dp, top = 14.dp, bottom = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(overline.uppercase(), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = colors.primary, maxLines = 1)
+                Text(episode.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = colors.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                if (episode.artist.isNotBlank()) {
+                    Text(episode.artist, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            if (playing) {
+                PodcastNowPlayingBadge()
+            } else {
+                Box(Modifier.size(52.dp).clip(PodcastNoticeShape()).background(colors.onSurface), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.PlayArrow, null, tint = colors.surface, modifier = Modifier.size(26.dp))
+                }
+            }
+        }
     }
 }
 
@@ -490,7 +648,7 @@ private fun PodcastProgressLine(progress: PodcastEpisodeProgress?, copy: Podcast
 @Composable
 private fun PodcastNowPlayingBadge(modifier: Modifier = Modifier) {
     val colors = MaterialTheme.colorScheme
-    Box(modifier.size(28.dp).clip(CircleShape).background(colors.primary), contentAlignment = Alignment.Center) {
+    Box(modifier.size(34.dp).clip(PodcastNoticeShape()).background(colors.primary), contentAlignment = Alignment.Center) {
         Icon(Icons.Rounded.GraphicEq, null, tint = colors.onPrimary, modifier = Modifier.size(16.dp))
     }
 }
@@ -502,12 +660,19 @@ private fun PodcastLoading() {
 
 @Composable
 private fun PodcastNotice(text: String, action: String? = null, onAction: (() -> Unit)? = null) {
-    Column(
-        Modifier.fillMaxWidth().padding(horizontal = PodcastGutter, vertical = 6.dp).clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+    val colors = MaterialTheme.colorScheme
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = PodcastGutter, vertical = 6.dp).clip(RoundedCornerShape(24.dp))
+            .background(colors.surfaceContainer).padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (action != null && onAction != null) TextButton(onClick = onAction) { Text(action) }
+        Box(Modifier.size(44.dp).clip(PodcastNoticeShape()).background(colors.surfaceContainerHighest), contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.Podcasts, null, tint = colors.onSurfaceVariant, modifier = Modifier.size(22.dp))
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(text, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
+            if (action != null && onAction != null) TextButton(onClick = onAction) { Text(action) }
+        }
     }
 }

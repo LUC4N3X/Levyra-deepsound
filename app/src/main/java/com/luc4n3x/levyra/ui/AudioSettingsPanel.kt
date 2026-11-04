@@ -16,6 +16,20 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.foundation.layout.offset
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.PlayCircle
+import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.ui.semantics.heading
+import com.luc4n3x.levyra.ui.i18n.AudioTabsCopy
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
@@ -50,6 +64,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.progressSemantics
@@ -137,6 +152,7 @@ import com.luc4n3x.levyra.feature.audio.rememberLevyraAudioOutputState
 import com.luc4n3x.levyra.player.equalPowerCrossfade
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.CrossfadeLabCopy
+import com.luc4n3x.levyra.ui.i18n.audioTabsCopy
 import com.luc4n3x.levyra.ui.i18n.crossfadeLabCopy
 import com.luc4n3x.levyra.ui.i18n.localizedAudioPresetLabel
 import com.luc4n3x.levyra.ui.i18n.orbitEqCopy
@@ -172,6 +188,8 @@ private val AudioSegmentGap = 3.dp
 private const val DISABLED_ALPHA = 0.42f
 private const val CROSSFADE_CURVE_SAMPLE_COUNT = 49
 private val EqualizerHandleRadius = 5.dp
+
+private enum class AudioPanelTab { SOUND, PLAYBACK, SMART }
 
 @Composable
 internal fun AudioSettingsPanel(
@@ -228,6 +246,8 @@ internal fun AudioSettingsPanel(
     val equalizerEnabled = audioSettings.equalizerEnabled
     var showAutoEqImport by remember { mutableStateOf(false) }
     val orbitCopy = strings.orbitEqCopy()
+    val tabsCopy = remember(strings.code) { audioTabsCopy(strings.code) }
+    var panelTab by rememberSaveable { mutableStateOf(AudioPanelTab.SOUND) }
     val orbitActive = audioSettings.parametricEqualizerEnabled &&
         OrbitEqualizer.positionOf(audioSettings.activeParametricProfile) != null
     var equalizerMode by rememberSaveable {
@@ -256,21 +276,32 @@ internal fun AudioSettingsPanel(
                 .navigationBarsPadding()
                 .clickable(interactionSource = blocker, indication = null) {}
         ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 10.dp, bottom = 28.dp),
+            Column(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                item { AudioPanelHandle() }
-                item {
-                    AudioPanelHeader(
-                        title = strings.audioEngine,
-                        subtitle = strings.audioEngineSubtitle,
-                        volumeLabel = "${outputState.volumePercent}%",
-                        closeLabel = strings.close,
-                        onClose = onClose
-                    )
-                }
+                AudioPanelHandle()
+                AudioPanelHeader(
+                    title = strings.audioEngine,
+                    volumeLabel = "${outputState.volumePercent}%",
+                    closeLabel = strings.close,
+                    onClose = onClose
+                )
+                AudioPanelTabs(
+                    selected = panelTab,
+                    copy = tabsCopy,
+                    onSelect = { panelTab = it }
+                )
+            }
+            val tabListState = remember(panelTab) { LazyListState() }
+            LazyColumn(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                state = tabListState,
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 28.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (panelTab == AudioPanelTab.PLAYBACK) {
                 item {
                     LevyraOutputHub(
                         output = outputState,
@@ -278,7 +309,6 @@ internal fun AudioSettingsPanel(
                         audioSettings = audioSettings
                     )
                 }
-                item { smartAudioSections() }
 
                 item { AudioSectionLabel(strings.audioSectionQuality) }
                 item {
@@ -306,6 +336,11 @@ internal fun AudioSettingsPanel(
                         onSelect = onHighQualityAudioMode
                     )
                 }
+                }
+                if (panelTab == AudioPanelTab.SMART) {
+                    item { smartAudioSections() }
+                }
+                if (panelTab == AudioPanelTab.SOUND) {
                 item { AudioSectionLabel(strings.audioSectionEqualizer) }
                 item {
                     EqualizerModeSelector(
@@ -528,6 +563,9 @@ internal fun AudioSettingsPanel(
                     }
                 }
 
+                }
+
+                if (panelTab == AudioPanelTab.PLAYBACK) {
                 item { AudioSectionLabel(strings.audioSectionPlayback) }
                 item {
                     AudioSliderRow(
@@ -678,6 +716,7 @@ internal fun AudioSettingsPanel(
                         onValue = { onPitch((it * 100f).roundToInt() / 100f) }
                     )
                 }
+                }
                 item {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                         Surface(
@@ -694,6 +733,7 @@ internal fun AudioSettingsPanel(
                         }
                     }
                 }
+            }
             }
         }
     }
@@ -1348,7 +1388,6 @@ private fun AudioPanelHandle() {
 @Composable
 private fun AudioPanelHeader(
     title: String,
-    subtitle: String,
     volumeLabel: String,
     closeLabel: String,
     onClose: () -> Unit
@@ -1381,13 +1420,6 @@ private fun AudioPanelHeader(
                     Icon(Icons.Rounded.GraphicEq, null, tint = LevyraCyan, modifier = Modifier.size(14.dp))
                     Text(volumeLabel, color = LevyraCyan, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
-                Text(
-                    subtitle,
-                    color = LevyraMuted,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    lineHeight = 16.sp,
-                )
             }
         }
         LevyraExpressiveIconButton(
@@ -1414,12 +1446,77 @@ private fun AudioSectionLabel(text: String) {
     }
     Text(
         title,
-        color = LevyraCyan,
-        fontSize = 14.sp,
-        fontWeight = FontWeight.Bold,
+        color = LevyraMuted,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.SemiBold,
         letterSpacing = 0.2.sp,
-        modifier = Modifier.padding(top = 14.dp, start = 6.dp, bottom = 2.dp)
+        modifier = Modifier.padding(top = 14.dp, start = 6.dp, bottom = 2.dp).semantics { heading() }
     )
+}
+
+@Composable
+private fun AudioPanelTabs(
+    selected: AudioPanelTab,
+    copy: AudioTabsCopy,
+    onSelect: (AudioPanelTab) -> Unit
+) {
+    val tabs = listOf(
+        Triple(AudioPanelTab.SOUND, copy.sound, Icons.Rounded.Tune),
+        Triple(AudioPanelTab.PLAYBACK, copy.playback, Icons.Rounded.PlayCircle),
+        Triple(AudioPanelTab.SMART, copy.smart, Icons.Rounded.AutoAwesome)
+    )
+    val animate = LocalAnimationsEnabled.current
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .clip(CircleShape)
+            .background(AudioCardSurface)
+            .padding(4.dp)
+    ) {
+        val segment = maxWidth / tabs.size
+        val indicatorOffset by animateDpAsState(
+            targetValue = segment * selected.ordinal,
+            animationSpec = if (animate) spring(dampingRatio = 0.68f, stiffness = Spring.StiffnessMediumLow) else snap(),
+            label = "audio-tab-indicator"
+        )
+        Box(
+            modifier = Modifier
+                .offset(x = indicatorOffset)
+                .width(segment)
+                .fillMaxHeight()
+                .clip(CircleShape)
+                .background(AudioSelected)
+        )
+        Row(modifier = Modifier.fillMaxSize().selectableGroup()) {
+            tabs.forEach { (tab, label, icon) ->
+                val isSelected = selected == tab
+                val content = if (isSelected) LevyraBlack else LevyraMuted
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clip(CircleShape)
+                        .selectable(selected = isSelected, role = Role.Tab, onClick = { onSelect(tab) })
+                        .padding(horizontal = 6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(1.dp, Alignment.CenterVertically)
+                ) {
+                    Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(16.dp))
+                    BasicText(
+                        text = label,
+                        style = TextStyle(
+                            color = content,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = 13.sp)
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -1887,6 +1984,7 @@ internal fun RowScope.AudioSegment(
     first: Boolean,
     last: Boolean,
     maxLines: Int = 1,
+    showCheck: Boolean = true,
     onClick: () -> Unit
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -1919,7 +2017,7 @@ internal fun RowScope.AudioSegment(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)
         ) {
-            AnimatedVisibility(visible = selected) {
+            AnimatedVisibility(visible = selected && showCheck) {
                 Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(18.dp))
             }
             Text(
@@ -2090,10 +2188,10 @@ private fun EqualizerCurve(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(196.dp)
-                .clip(RoundedCornerShape(16.dp))
+                .height(236.dp)
+                .clip(RoundedCornerShape(20.dp))
                 .background(if (LevyraIsLight) LevyraBlack.copy(alpha = 0.05f) else LevyraBlack.copy(alpha = 0.35f))
-                .border(1.dp, LevyraAdaptiveHairline, RoundedCornerShape(16.dp))
+                .border(1.dp, LevyraAdaptiveHairline, RoundedCornerShape(20.dp))
                 .alpha(if (enabled) 1f else DISABLED_ALPHA)
                 .pointerInput(enabled, bandCount) {
                     if (!enabled) return@pointerInput
@@ -2131,6 +2229,17 @@ private fun EqualizerCurve(
                     handleRadius = handleRadiusPx,
                     strokeWidth = with(density) { 2.dp.toPx() }
                 )
+            }
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                val maxDb = LevyraAudioPresets.maxBandDb.roundToInt()
+                Column(
+                    modifier = Modifier.fillMaxHeight().padding(start = 8.dp, top = 6.dp, bottom = 6.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    listOf("+$maxDb", "0", "−$maxDb").forEach { label ->
+                        Text(label, color = LevyraMuted.copy(alpha = 0.8f), fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
             }
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
                 Row(modifier = Modifier.fillMaxSize()) {

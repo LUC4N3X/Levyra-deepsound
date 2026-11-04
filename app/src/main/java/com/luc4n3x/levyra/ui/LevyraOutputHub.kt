@@ -88,9 +88,9 @@ internal fun LevyraOutputHub(
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
             text = copy.outputTitle,
-            color = LevyraCyan,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
+            color = LevyraMuted,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
             letterSpacing = 0.2.sp,
             modifier = Modifier.padding(start = 6.dp, top = 6.dp)
         )

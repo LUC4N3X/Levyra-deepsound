@@ -77,7 +77,7 @@ private class MixCover(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun coverShapes(): List<Shape> = listOf(
+internal fun coverShapes(): List<Shape> = listOf(
     MaterialShapes.Cookie9Sided.toShape(),
     MaterialShapes.Sunny.toShape(),
     MaterialShapes.Clover4Leaf.toShape(),
@@ -212,7 +212,7 @@ private fun MixCoverCard(
 }
 
 @Composable
-private fun ArtworkMosaic(artworks: List<String>) {
+internal fun ArtworkMosaic(artworks: List<String>) {
     Column(Modifier.fillMaxSize()) {
         for (row in 0 until 2) {
             Row(Modifier.weight(1f).fillMaxWidth()) {
@@ -230,7 +230,7 @@ private fun ArtworkMosaic(artworks: List<String>) {
 }
 
 @Composable
-private fun GenerativeCover(index: Int, shapes: List<Shape>, tint: Color, deep: Color, icon: ImageVector, onTint: Color) {
+internal fun GenerativeCover(index: Int, shapes: List<Shape>, tint: Color, deep: Color, icon: ImageVector, onTint: Color) {
     Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(tint.copy(alpha = 0.55f), deep)))) {
         Box(
             Modifier
@@ -263,7 +263,7 @@ private fun GenerativeCover(index: Int, shapes: List<Shape>, tint: Color, deep: 
     }
 }
 
-private fun shiftedTone(accent: Color, hueShift: Double, tone: Double): Color {
+internal fun shiftedTone(accent: Color, hueShift: Double, tone: Double): Color {
     val source = Hct.fromInt(accent.toArgb())
     val hue = ((source.hue + hueShift) % 360.0 + 360.0) % 360.0
     return Color(Hct.from(hue, source.chroma.coerceAtLeast(36.0), tone).toInt())

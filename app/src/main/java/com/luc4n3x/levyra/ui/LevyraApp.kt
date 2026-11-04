@@ -2957,7 +2957,7 @@ fun LevyraApp(
                 )
             }
 
-            AnimatedVisibility(visible = state.showSettings, enter = overlayEnter, exit = overlayExit) {
+            AnimatedVisibility(visible = state.showSettings, enter = panelEnter, exit = panelExit) {
                 SettingsOverlay(
                     onExitApplication = onExitApplication,
                     backEnabled = !playerVisible && !(state.showJam || state.showThemeStudio || state.showLyricsStudio ||
@@ -25617,7 +25617,8 @@ private fun ExploreScreen(
         state.isFreshCurrentsLoading,
         freshFeed.spotlight.isNotEmpty(),
         freshScopes.size > 1,
-        momentPages.isNotEmpty()
+        momentPages.isNotEmpty(),
+        LevyraIsDefaultSkin
     ) {
         buildExploreRows(
             zones = zones,
@@ -25627,7 +25628,8 @@ private fun ExploreScreen(
             hasFreshMoment = momentPages.isNotEmpty(),
             spotifyStyle = spotifyExplore,
             moodsInSearch = moodsInSearch,
-            journeyInPlaceOfMoods = true
+            journeyInPlaceOfMoods = true,
+            personalFirst = LevyraIsDefaultSkin
         )
     }
     val availableAnchors = remember(rows) { exploreAvailableAnchors(rows) }
@@ -25836,7 +25838,8 @@ private fun ExploreContentRow(
         ExploreRow.MixTools -> Column(
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            ExploreSectionHeader(title = strings.levyraMix, subtitle = strings.mixCreate)
+            val forYou = if (LevyraIsDefaultSkin) com.luc4n3x.levyra.ui.i18n.exploreForYouCopy(strings.code) else null
+            ExploreSectionHeader(title = forYou?.title ?: strings.levyraMix, subtitle = forYou?.subtitle ?: strings.mixCreate)
             LevyraMixLauncherPanel(
                 familiarity = state.mixFamiliarity,
                 loading = state.mixLoading,
@@ -26316,6 +26319,10 @@ internal fun ExplorePrimaryShortcuts(
         add(ExploreShortcutEntry("podcasts", Icons.Rounded.Podcasts, com.luc4n3x.levyra.ui.i18n.podcastCopy(strings.code).title, MaterialShapes.Puffy, colors.secondary, colors.onSecondary) { onSelect(ExploreShortcut.Podcasts) })
         add(ExploreShortcutEntry("jam", Icons.Rounded.PersonAdd, strings.jamTitle, MaterialShapes.Cookie9Sided, colors.inversePrimary, colors.onPrimaryContainer, onOpenJam))
     }
+    if (LevyraIsDefaultSkin) {
+        ExploreShortcutChipRow(entries, modifier)
+        return
+    }
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -26340,7 +26347,7 @@ internal fun ExplorePrimaryShortcuts(
 }
 
 @Immutable
-private class ExploreShortcutEntry(
+internal class ExploreShortcutEntry(
     val key: String,
     val icon: ImageVector,
     val label: String,
