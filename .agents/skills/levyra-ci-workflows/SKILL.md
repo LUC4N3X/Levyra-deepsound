@@ -71,7 +71,7 @@ Treat build-speed changes as performance engineering, not a bag of `gradle.prope
 6. Do not add remote caches, Develocity/Build Scan publishing, third-party analytics, new CI services, or data-uploading plugins merely for diagnostics. Any external upload or persistent service requires an explicit task plus privacy, credential, supply-chain, and maintenance review.
 7. Do not skip tests/lint in CI to make a timing number look better unless the repository already has a safe path-based job design that preserves the mandatory quality gate.
 
-Record the before/after command, environment-relevant differences, and timing or task evidence when claiming a build-performance improvement. SimpMusic's Gradle performance skill is useful here for its baseline -> isolate phase -> one change -> remeasure discipline; its generic flags and services are not Levyra defaults.
+Record the before/after command, environment-relevant differences, and timing or task evidence when claiming a build-performance improvement. Measure a baseline, isolate one phase, make one change, then remeasure. Generic Gradle flags and build services are not Levyra defaults until measured here.
 
 ## Validation
 

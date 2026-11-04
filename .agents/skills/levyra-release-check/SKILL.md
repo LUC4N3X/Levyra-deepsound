@@ -85,8 +85,6 @@ When an Android change needs runtime verification, prefer semantic, reproducible
 - For playback changes, verify the exact affected path (song/audio mode, native-video mode, queue transition, background/foreground, notification, or other relevant behavior) rather than treating a successful app launch as playback validation.
 - Emulator success does not prove physical-device, Android Auto, notification, Bluetooth/media-key, battery, OEM, or hardware-decoder behavior. Report each category separately.
 
-This adopts the strongest idea from SimpMusic's Android emulator workflow: semantic navigation and structured evidence instead of brittle pixel automation, without vendoring its helper scripts into Levyra.
-
 ## Field lessons for local Android evidence
 
 - Drive `com.luc4n3x.levyra.debug` (the debug `applicationIdSuffix`); a release `com.luc4n3x.levyra` may share the device.
