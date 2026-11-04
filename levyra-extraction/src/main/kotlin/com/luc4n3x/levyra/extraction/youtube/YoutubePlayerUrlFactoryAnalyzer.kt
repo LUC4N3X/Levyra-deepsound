@@ -1,4 +1,4 @@
-package com.luc4n3x.levyra.data
+package com.luc4n3x.levyra.extraction.youtube
 
 internal object YoutubePlayerUrlFactoryAnalyzer {
     private val factoryRegex = Regex(
@@ -20,7 +20,7 @@ internal object YoutubePlayerUrlFactoryAnalyzer {
             urlClassRegex.findAll(body).map { it.groupValues[1] }.distinct().toList().singleOrNull()?.let { nClass ->
                 add(
                     YoutubeSemanticTransformCandidate(
-                        YoutubePlayerConfigParser.buildNExpression(nClass),
+                        YoutubePlayerAnalyzer.buildNExpression(nClass),
                         URL_CLASS_CONFIDENCE
                     )
                 )
