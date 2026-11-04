@@ -66,7 +66,7 @@ Streamed tracks and local files share one library. You can save music for offlin
 >
 > Levyra does not grant rights to third-party content and is not affiliated with or endorsed by any third-party service.
 
-## ✦ Why Levyra
+## Why Levyra
 
 I built Levyra because I was tired of keeping two players: one for streaming and one for the files on my phone. I wanted a single library where a local album and a streamed single sit in the same playlist, and where my history and downloads don't depend on yet another account.
 
@@ -78,7 +78,7 @@ The rest grew out of daily use. Every time another player had something I missed
 
 Some features need outside services for music, lyrics, artwork and metadata. The app itself is open source, and your library stays yours.
 
-## ✦ High-quality audio · JioSaavn & FLAC
+## High-quality audio · JioSaavn & FLAC
 
 Turn on high-quality audio and Levyra can play the same track from JioSaavn. Nothing about the track in your library changes.
 
@@ -105,7 +105,7 @@ Enhanced Audio is on by default. You can turn it off in Audio Settings, and Tech
 
 ---
 
-## ✦ Interface & screenshots
+## Interface & screenshots
 
 <div align="center">
 
@@ -127,7 +127,7 @@ Enhanced Audio is on by default. You can turn it off in Audio Settings, and Tech
 
 </div>
 
-## ✦ Features
+## Features
 
 - **Native playback.** Media3 and ExoPlayer on Android. libVLC through direct C bindings on Windows. No web wrappers on either.
 - **Gapless playback and audio tuning.** Albums play without gaps. There is also crossfade, pitch shifting, custom speed, a 10-band EQ and AutoEQ headphone profiles.
@@ -152,7 +152,7 @@ Enhanced Audio is on by default. You can turn it off in Audio Settings, and Tech
 
 Technical notes, platform architecture and build details are in the [documentation](https://levyra.dpdns.org/docs/).
 
-## ✦ Under the hood
+## Under the hood
 
 I wanted the two apps to share as much logic as possible without pushing either one into a web view or a slow cross-platform container. So Levyra is a shared Kotlin core with two native apps on top.
 
@@ -172,7 +172,7 @@ Stream resolution, YouTube extraction and network retries live in one Kotlin eng
 
 A lot of cross-platform music players are a browser in disguise. They take seconds to open and hold on to memory while they sit in the tray. Levyra skips the web runtime, so it starts fast and stays light.
 
-## ✦ Built in public · Zero tracking
+## Built in public · Zero tracking
 
 Everything happens in the open: commits, pull requests, issues, releases, and the engineering rules I follow on this project. I use AI-assisted tools for research, debugging and review when they help. Generated code gets the same treatment as any unverified draft: I review it, fit it to the architecture, and test what it touches before it ships. [More on how I work on Levyra](docs/site/development-notes.md).
 
@@ -180,7 +180,7 @@ There is no telemetry, no analytics and no advertising, and no account is requir
 
 If you'd rather check than trust: an Apptizo scan of the F-Droid build found no third-party tracker SDKs ([see the Apptizo report](https://apptizo.com/app/levyra/)), and the Levyra 2.5.10 APK came back with **0/68 detections** on [VirusTotal](https://www.virustotal.com/gui/file/f4508db409560441ab1779ff00546ba709520cea567fa769c17e783372487cd9?nocache=1).
 
-## ✦ Translations
+## Translations
 
 Levyra speaks 42 languages because people volunteer their time to translate it. If a string reads wrong or your language is missing, jump in.
 
@@ -204,7 +204,7 @@ Levyra speaks 42 languages because people volunteer their time to translate it. 
   <sub>Translation hosting is kindly provided free of charge by <a href="https://weblate.org/">Hosted Weblate</a>. Thank you for supporting Levyra.</sub>
 </p>
 
-## ✦ Open-source acknowledgements
+## Open-source acknowledgements
 
 Levyra stands on work from these open-source projects:
 
@@ -222,7 +222,7 @@ Bug reports and pull requests are welcome. For questions and ideas, use [GitHub 
 
 ---
 
-## ✦ Author & credits
+## Author & credits
 
 <div align="center">
 
@@ -285,7 +285,7 @@ Bug reports and pull requests are welcome. For questions and ideas, use [GitHub 
 
 ---
 
-## ✦ Legal disclaimer and terms of use
+## Legal disclaimer and terms of use
 
 <div align="center">
 
