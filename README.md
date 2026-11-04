@@ -158,14 +158,6 @@ I kept Android and Windows as two separate apps instead of putting a web interfa
 
 They share `LevyraExtractor` for stream resolution and network requests. When something breaks there, I can fix it once for both apps.
 
-## Built in public · Zero tracking
-
-Everything happens in the open: commits, pull requests, issues, releases, and the engineering rules I follow on this project. I use AI-assisted tools for research, debugging and review when they help. Generated code gets the same treatment as any unverified draft: I review it, fit it to the architecture, and test what it touches before it ships. [More on how I work on Levyra](docs/site/development-notes.md).
-
-There is no telemetry, no analytics and no advertising, and no account is required. Playback history, listening stats, playlists and cached metadata stay on your device. When a feature needs an outside service, for streaming, lyrics or optional scrobbling, Levyra talks to that provider directly. The microphone is used only when you start song identification yourself. You can also route traffic through your own proxy or DNS in Settings.
-
-If you'd rather check than trust: an Apptizo scan of the F-Droid build found no third-party tracker SDKs ([see the Apptizo report](https://apptizo.com/app/levyra/)), and the Levyra 2.5.10 APK came back with **0/68 detections** on [VirusTotal](https://www.virustotal.com/gui/file/f4508db409560441ab1779ff00546ba709520cea567fa769c17e783372487cd9?nocache=1).
-
 ## Translations
 
 Levyra speaks 42 languages because people volunteer their time to translate it. If a string reads wrong or your language is missing, jump in.
