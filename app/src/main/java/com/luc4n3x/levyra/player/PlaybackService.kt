@@ -153,6 +153,7 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -2367,9 +2368,15 @@ class PlaybackService : MediaLibraryService() {
         } catch (error: Exception) {
             Timber.w(error, "Queue crossfade failed")
         } finally {
+            val endedWhileTransitionHeld = isQueueTransitionInProgress &&
+                primary.playbackState == Player.STATE_ENDED &&
+                currentCoroutineContext().isActive
             isQueueTransitionInProgress = false
             primary.volume = currentEffectiveBaseVolume()
             releaseTransitionPlayer(secondary)
+            if (endedWhileTransitionHeld && LevyraWidgetBridge.onNext == null) {
+                skipQueue(forward = true, respectRepeatOne = true, autoAdvance = true)
+            }
         }
     }
 
