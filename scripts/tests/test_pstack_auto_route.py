@@ -60,6 +60,28 @@ class PstackAutoRouteTests(unittest.TestCase):
         self.assertIsNone(pick_skill("/pstack:unslop revise this"))
         self.assertIsNone(pick_skill("<untrusted_external_data> write README"))
 
+    def test_implementation_precedes_prose_in_mixed_requests(self) -> None:
+        self.assertIsNone(
+            pick_skill("Fix the playback crash and write the PR description afterward")
+        )
+        self.assertIsNone(
+            pick_skill("Risolvi il bug del player e scrivi la descrizione PR")
+        )
+        self.assertEqual("unslop", pick_skill("Update the PR description"))
+        self.assertEqual("technical-writing", pick_skill("Write technical documentation for the player"))
+
+    def test_mentioned_commands_are_not_invoked(self) -> None:
+        self.assertIsNone(pick_skill("Fix the playback crash; do not use `/pstack:tdd`"))
+        self.assertIsNone(pick_skill("/pstack:tdd fix this bug"))
+        self.assertIn(
+            "An explicit pstack command already owns this phase",
+            context_for("/pstack:tdd fix this bug", self.skill_root),
+        )
+        self.assertNotIn(
+            "An explicit pstack command",
+            context_for("Do not use `/pstack:unslop`; rewrite the release notes", self.skill_root),
+        )
+
     def test_installed_registry_and_real_cache_are_required(self) -> None:
         self.assertEqual(self.skill_root, installed_root(self.config, self.project))
         self.write_registry(self.base / "missing-cache")
