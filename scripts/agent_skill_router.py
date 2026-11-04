@@ -73,7 +73,6 @@ def route_prompt(prompt: str) -> list[tuple[str, str]]:
     if not text or any(marker in text for marker in AUTOMATED_MARKERS):
         return []
 
-    # Explicit pstack commands own their phase; avoid parallel generic skill routing.
     if re.search(r"(?<![\w/])/pstack:[a-z][a-z0-9-]*\b", text):
         return []
 
