@@ -74,10 +74,12 @@ private suspend fun loadArtworkPalette(
     ArtworkPaletteCache.load(context, key)?.let { return it }
     val url = artworkUrl()
     if (url.isBlank()) return null
-    val extracted = extractArtworkPalette(context, url, fallback()) ?: return null
-    onExtracted(extracted)
-    ArtworkPaletteCache.store(context, key, extracted)
-    return extracted
+    return ArtworkPaletteCache.loadShared(key) {
+        ArtworkPaletteCache.load(context, key) ?: extractArtworkPalette(context, url, fallback())?.also { extracted ->
+            onExtracted(extracted)
+            ArtworkPaletteCache.store(context, key, extracted)
+        }
+    }
 }
 
 private suspend fun extractArtworkPalette(

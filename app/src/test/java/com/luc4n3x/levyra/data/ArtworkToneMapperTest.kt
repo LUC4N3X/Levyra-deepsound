@@ -83,6 +83,14 @@ class ArtworkToneMapperTest {
     }
 
     @Test
+    fun `bright saturated pixels count as colored`() {
+        assertTrue(ArtworkToneMapper.isChromatic(saturation = 0.9f, value = 0.99f))
+        assertTrue(ArtworkToneMapper.isChromatic(saturation = 0.5f, value = 0.4f))
+        assertFalse(ArtworkToneMapper.isChromatic(saturation = 0.05f, value = 0.99f))
+        assertFalse(ArtworkToneMapper.isChromatic(saturation = 0.9f, value = 0.05f))
+    }
+
+    @Test
     fun `neutral palette is deterministic`() {
         assertEquals(ArtworkToneMapper.neutral(0xFF808080.toInt()), ArtworkToneMapper.neutral(0xFF808080.toInt()))
     }

@@ -21,6 +21,8 @@ internal object ArtworkToneMapper {
         return Hct.from(source.hue, source.chroma.coerceAtMost(chromaCeiling), tone).toInt()
     }
 
+    fun isChromatic(saturation: Float, value: Float): Boolean = saturation >= 0.13f && value >= 0.11f
+
     fun isMonochrome(chromaticWeight: Float, totalWeight: Float): Boolean =
         totalWeight > 0f && chromaticWeight / totalWeight < MonochromeChromaticShare
 

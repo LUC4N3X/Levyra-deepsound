@@ -26,6 +26,7 @@ internal object ArtworkPaletteCache {
     private val memory = LruCache<String, ArtworkPalette>(memoryLimit)
     private val memoryLock = Any()
     private val diskLock = Any()
+    private val pending = SharedLoads<String, ArtworkPalette?>()
 
     fun key(
         trackId: String,
@@ -88,6 +89,9 @@ internal object ArtworkPaletteCache {
         }
     }
 
+    suspend fun loadShared(key: String, produce: suspend () -> ArtworkPalette?): ArtworkPalette? =
+        pending.load(key, produce)
+
     private fun clearLegacy(context: Context) {
         if (legacyCleared) return
         legacyCleared = true
@@ -122,8 +126,8 @@ internal object ArtworkPaletteCache {
             AndroidColor.RGBToHSV(red, green, blue, hsv)
             val saturation = hsv[1]
             val value = hsv[2]
+            if (ArtworkToneMapper.isChromatic(saturation, value)) chromaticCount += 1
             if (value < 0.11f || value > 0.97f || saturation < 0.13f) return@forEach
-            chromaticCount += 1
             val hueBin = (hsv[0] / 15f).toInt().coerceIn(0, 23)
             val saturationBin = (saturation * 4f).toInt().coerceIn(0, 3)
             val valueBin = (value * 4f).toInt().coerceIn(0, 3)
