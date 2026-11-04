@@ -29,6 +29,13 @@ fi
 
 prompt="$(printf '%s' "$payload" | "${py[@]}" -c 'import json,sys; data=json.load(sys.stdin); print(str(data.get("prompt") or ""))' 2>/dev/null || true)"
 route_context="$("${py[@]}" "$router" --prompt "$prompt" --plain 2>/dev/null || true)"
+pstack_router="$root/scripts/pstack_auto_route.py"
+if [[ -f "$pstack_router" ]]; then
+  pstack_context="$("${py[@]}" "$pstack_router" --prompt "$prompt" --plain 2>/dev/null || true)"
+  if [[ -n "$pstack_context" ]]; then
+    route_context="$pstack_context"
+  fi
+fi
 
 "${py[@]}" - "$route_context" <<'PY'
 import json
