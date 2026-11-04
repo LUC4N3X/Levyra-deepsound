@@ -58,6 +58,7 @@ import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 
+private val ForYouGutter = com.luc4n3x.levyra.ui.theme.LevyraHomeDesign.HorizontalInset
 private val ForYouCoverSize = 148.dp
 private val ForYouCoverShape = RoundedCornerShape(20.dp)
 private const val FamiliarPreset = 0.85f
@@ -97,7 +98,7 @@ internal fun ForYouMixPanel(
     }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            modifier = Modifier.recentSearchesBleed(ForYouGutter).horizontalScroll(rememberScrollState()).padding(horizontal = ForYouGutter),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             mixes.forEachIndexed { index, mix ->
@@ -121,7 +122,7 @@ internal fun ForYouMixPanel(
             onFamiliarityChange = onFamiliarityChange
         )
         Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            modifier = Modifier.recentSearchesBleed(ForYouGutter).horizontalScroll(rememberScrollState()).padding(horizontal = ForYouGutter),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             ForYouTool(Icons.Rounded.GraphicEq, strings.yourSound, onOpenYourSound)

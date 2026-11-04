@@ -192,7 +192,9 @@ private fun PodcastLibraryPane(
         if (featuredShelf != null) {
             item(key = "podcast-featured") {
                 val featured = featuredShelf.episodes.first()
-                PodcastFeaturedCard(featured, featuredShelf.title, playback) { play(featuredShelf.episodes, featured) }
+                PodcastFeaturedCard(featured, featuredShelf.title, state.progressById[featured.id], copy, playback) {
+                    play(featuredShelf.episodes, featured)
+                }
             }
         }
         val resume = state.continueListening
@@ -472,7 +474,14 @@ private fun PodcastPlayDisc(modifier: Modifier = Modifier, size: Dp) {
 }
 
 @Composable
-private fun PodcastFeaturedCard(episode: Track, overline: String, playback: PodcastPlayback, onPlay: () -> Unit) {
+private fun PodcastFeaturedCard(
+    episode: Track,
+    overline: String,
+    progress: PodcastEpisodeProgress?,
+    copy: PodcastCopy,
+    playback: PodcastPlayback,
+    onPlay: () -> Unit
+) {
     val playing = playback.currentTrackId == episode.id && playback.isPlaying
     val colors = MaterialTheme.colorScheme
     val interaction = remember { MutableInteractionSource() }
@@ -496,9 +505,7 @@ private fun PodcastFeaturedCard(episode: Track, overline: String, playback: Podc
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(overline.uppercase(), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = colors.primary, maxLines = 1)
                 Text(episode.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = colors.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                if (episode.artist.isNotBlank()) {
-                    Text(episode.artist, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
+                PodcastProgressLine(progress, copy, fallback = episode.artist)
             }
             if (playing) {
                 PodcastNowPlayingBadge()

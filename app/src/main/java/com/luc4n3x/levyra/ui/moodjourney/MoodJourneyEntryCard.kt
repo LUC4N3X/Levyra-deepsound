@@ -64,6 +64,10 @@ import com.luc4n3x.levyra.ui.theme.LevyraIsQobuz
 import com.luc4n3x.levyra.ui.theme.LevyraSkinManagesLayout
 import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
 import com.luc4n3x.levyra.ui.theme.QobuzDesign
+import com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic
+import com.luc4n3x.levyra.ui.theme.YouTubeMusicDesign
+import com.luc4n3x.levyra.ui.recentSearchesBleed
+import androidx.compose.foundation.layout.PaddingValues
 
 private val JourneyCoverSize = 148.dp
 private const val JourneySamples = 33
@@ -171,7 +175,8 @@ private data class JourneyCoverStyle(
     val vividness: Float,
     val muted: Boolean,
     val labelColor: Color,
-    val uppercaseLabel: Boolean
+    val uppercaseLabel: Boolean,
+    val gutter: Dp
 )
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -186,7 +191,8 @@ private fun journeyCoverStyle(): JourneyCoverStyle {
             vividness = 0.6f,
             muted = true,
             labelColor = AtelierDesign.text,
-            uppercaseLabel = true
+            uppercaseLabel = true,
+            gutter = AtelierDesign.gutter
         )
         LevyraIsDefaultSkin -> JourneyCoverStyle(
             corner = 20.dp,
@@ -195,7 +201,8 @@ private fun journeyCoverStyle(): JourneyCoverStyle {
             vividness = 0.74f,
             muted = false,
             labelColor = scheme.onSurface,
-            uppercaseLabel = false
+            uppercaseLabel = false,
+            gutter = LevyraHomeDesign.HorizontalInset
         )
         else -> JourneyCoverStyle(
             corner = when {
@@ -208,14 +215,23 @@ private fun journeyCoverStyle(): JourneyCoverStyle {
             vividness = 0.68f,
             muted = false,
             labelColor = scheme.onSurface,
-            uppercaseLabel = false
+            uppercaseLabel = false,
+            gutter = when {
+                LevyraIsQobuz -> QobuzDesign.gutter
+                LevyraIsYouTubeMusic -> YouTubeMusicDesign.gutter
+                else -> LevyraHomeDesign.HorizontalInset
+            }
         )
     }
 }
 
 @Composable
 private fun JourneyCoverRail(copy: SmartMusicCopy, style: JourneyCoverStyle, open: (MoodCurvePreset?) -> Unit) {
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyRow(
+        modifier = Modifier.recentSearchesBleed(style.gutter),
+        contentPadding = PaddingValues(horizontal = style.gutter),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
         items(JourneyPresets, key = { it.name }) { preset ->
             val label = copy[presetLabel(preset)]
             JourneyCoverCard(preset, if (style.uppercaseLabel) atelierUppercase(label) else label, style) { open(preset) }
