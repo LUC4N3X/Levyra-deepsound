@@ -305,7 +305,8 @@ private fun LevyraNowPlayingContent(
     val activePalette by rememberArtworkPalette(
         paletteKey = if (fixedAccents == null) paletteKey else "",
         artworkUrl = paletteArtworkUrl,
-        fallback = fallbackPalette
+        fallback = fallbackPalette,
+        retainPreviousUntilLoaded = true
     )
     val motionEnabled = animated && !state.isVideoMode && !motionSuspended
     var canvasBackdropPalette by remember(track?.id, state.isVideoMode) {

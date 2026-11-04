@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
@@ -12,8 +13,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
@@ -29,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
@@ -65,6 +69,7 @@ import com.luc4n3x.levyra.ui.components.levyraCookieLandingShape
 import com.luc4n3x.levyra.ui.i18n.LevyraDockMorphCopy
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.dockMorph
+import com.luc4n3x.levyra.ui.theme.LevyraMotion
 
 private const val DockAnchorEmphasis = 2.2f
 private const val DockBadgeScale = 0.92f
@@ -91,6 +96,28 @@ internal fun rememberMorphedDockLink(link: DockLink, morph: DockMorph?): DockLin
             fuse = link.fuse,
             outerCorner = link.outerCorner
         )
+    }
+}
+
+@Composable
+internal fun rememberMovableSlot(content: @Composable () -> Unit): @Composable () -> Unit {
+    val latest = rememberUpdatedState(content)
+    return remember { movableContentOf { latest.value() } }
+}
+
+@Composable
+internal fun LevyraRetractableDock(retracted: Boolean, animated: Boolean, dock: @Composable () -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        AnimatedVisibility(
+            visible = !retracted,
+            enter = LevyraMotion.dockRevealEnter(animated),
+            exit = LevyraMotion.dockRevealExit(animated)
+        ) { dock() }
+        AnimatedVisibility(
+            visible = retracted,
+            enter = LevyraMotion.dockRevealEnter(animated),
+            exit = LevyraMotion.dockRevealExit(animated)
+        ) { Spacer(modifier = Modifier.navigationBarsPadding()) }
     }
 }
 

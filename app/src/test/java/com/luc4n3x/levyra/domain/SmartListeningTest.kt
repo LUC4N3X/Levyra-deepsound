@@ -397,4 +397,11 @@ class SmartListeningTest {
         assertEquals(5_100L, MotionGestureRegistrationPolicy.sampleTimeMs(0L, 5_100L))
         assertEquals(90_000L, MotionGestureRegistrationPolicy.sampleTimeMs(5_040_000_000L, 90_000L))
     }
+
+    @Test
+    fun motionRegistrationPolicy_requestsBatchingOnlyFromSensorsWithFifo() {
+        assertEquals(0, MotionGestureRegistrationPolicy.reportLatencyUs(fifoMaxEventCount = 0, requestedLatencyUs = 80_000))
+        assertEquals(80_000, MotionGestureRegistrationPolicy.reportLatencyUs(fifoMaxEventCount = 300, requestedLatencyUs = 80_000))
+        assertEquals(0, MotionGestureRegistrationPolicy.reportLatencyUs(fifoMaxEventCount = 300, requestedLatencyUs = -1))
+    }
 }
