@@ -78,10 +78,6 @@ The rest grew out of daily use. Every time another player had something I missed
 
 Some features need outside services for music, lyrics, artwork and metadata. The app itself is open source, and your library stays yours.
 
-The full documentation covers setup, every feature, audio sources, troubleshooting and the architecture.
-
-[**Open the full Levyra documentation →**](https://levyra.dpdns.org/docs/)
-
 ## ✦ High-quality audio · JioSaavn & FLAC
 
 Turn on high-quality audio and Levyra can play the same track from JioSaavn. Nothing about the track in your library changes.
