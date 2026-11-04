@@ -49,6 +49,14 @@ class PlaylistExportTest {
     }
 
     @Test
+    fun m3uKeepsDashedTitleWhenArtistIsEmpty() {
+        val text = writePlaylistFile("List", listOf(track("local:1", "Home - Demo", "")), PlaylistFileFormat.M3U8)
+        val parsed = PlaylistTextParsers.parse(PlaylistTextFormat.M3U, text)
+        assertEquals("Home - Demo", parsed.tracks.single().title)
+        assertEquals(emptyList<String>(), parsed.tracks.single().artists)
+    }
+
+    @Test
     fun csvRoundTripsWithQuotedFieldsAndOrder() {
         val text = writePlaylistFile("List", tracks, PlaylistFileFormat.CSV)
         val parsed = PlaylistTextParsers.parse(PlaylistTextFormat.CSV, text)

@@ -24,6 +24,9 @@ interface RemotePlaylistExporter {
 }
 
 private val youtubeVideoId = Regex("^[A-Za-z0-9_-]{11}$")
+private val lineBreaks = Regex("[\\r\\n]+")
+private val reservedFileNameCharacters = Regex("[\\\\/:*?\"<>|\\p{Cntrl}]")
+private val whitespaceRuns = Regex("\\s+")
 
 fun Track.youtubeVideoIdOrNull(): String? =
     listOf(id, audioVideoId).firstOrNull(youtubeVideoId::matches)
@@ -43,7 +46,7 @@ fun planRemotePlaylistExport(tracks: List<Track>): RemotePlaylistExportPlan {
 }
 
 fun playlistFileName(title: String, format: PlaylistFileFormat): String {
-    val base = title.replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), " ").trim().replace(Regex("\\s+"), " ").take(80)
+    val base = title.replace(reservedFileNameCharacters, " ").trim().replace(whitespaceRuns, " ").take(80)
     return "${base.ifBlank { "Levyra playlist" }}.${format.extension}"
 }
 
@@ -55,7 +58,7 @@ fun writePlaylistFile(title: String, tracks: List<Track>, format: PlaylistFileFo
             val seconds = if (track.durationMs > 0) track.durationMs / 1000 else -1
             val display = listOf(track.artist.singleLine(), track.title.singleLine()).filter(String::isNotBlank).joinToString(" - ")
             append("#EXTINF:").append(seconds).append(',').append(display).append('\n')
-            if (track.artist.isNotBlank()) append("#EXTART:").append(track.artist.singleLine()).append('\n')
+            append("#EXTART:").append(track.artist.singleLine()).append('\n')
             if (track.album.isNotBlank()) append("#EXTALB:").append(track.album.singleLine()).append('\n')
             append(track.portableUrl()).append('\n')
         }
@@ -83,7 +86,7 @@ private fun Track.portableUrl(): String {
     return "https://music.youtube.com/search?q=" + URLEncoder.encode(query, "UTF-8")
 }
 
-private fun String.singleLine(): String = replace(Regex("[\\r\\n]+"), " ").trim()
+private fun String.singleLine(): String = replace(lineBreaks, " ").trim()
 
 private fun String.csvField(): String {
     val clean = singleLine()

@@ -16,7 +16,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Description
@@ -48,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.data.playlistexport.PlaylistFileFormat
 import com.luc4n3x.levyra.data.playlistexport.playlistFileName
+import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
 import com.luc4n3x.levyra.ui.components.LevyraWavyProgress
 import com.luc4n3x.levyra.ui.components.levyraGroupedListShape
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
@@ -99,6 +102,7 @@ internal fun PlaylistExportSheet(controller: PlaylistExportController, state: Pl
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .navigationBarsPadding()
                 .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -128,6 +132,10 @@ internal fun PlaylistExportSheet(controller: PlaylistExportController, state: Pl
                         Text(copy.cancel, color = LevyraText)
                     }
                 }
+                PlaylistExportPhase.SAVING -> LevyraLoadingIndicator(
+                    color = LevyraCyan,
+                    modifier = Modifier.align(Alignment.CenterHorizontally).size(36.dp)
+                )
                 else -> ExportOutcome(
                     copy = copy,
                     state = state,

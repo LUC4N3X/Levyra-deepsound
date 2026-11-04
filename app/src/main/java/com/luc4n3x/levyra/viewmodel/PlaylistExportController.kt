@@ -31,7 +31,7 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.IOException
 
-enum class PlaylistExportPhase { CHOOSE, SENDING, SENT, PARTIAL, CANCELLED, FAILED, FILE_SAVED, FILE_FAILED }
+enum class PlaylistExportPhase { CHOOSE, SENDING, SAVING, SENT, PARTIAL, CANCELLED, FAILED, FILE_SAVED, FILE_FAILED }
 
 enum class PlaylistExportError { NETWORK, SIGN_IN, SERVICE }
 
@@ -59,9 +59,11 @@ class PlaylistExportController internal constructor(
     val state: StateFlow<PlaylistExportUiState> = _state.asStateFlow()
     private var session: YoutubeMusicSession? = null
     private var job: Job? = null
+    private var attempt = 0L
 
     fun open(playlist: Playlist) {
         job?.cancel()
+        attempt++
         val tracks = playlist.items().flatMap { it.playableTracks() }
         _state.value = PlaylistExportUiState(
             visible = true,
@@ -84,18 +86,20 @@ class PlaylistExportController internal constructor(
     fun dismiss() {
         if (_state.value.phase == PlaylistExportPhase.SENDING) return
         job?.cancel()
+        attempt++
         _state.value = PlaylistExportUiState()
     }
 
     fun back() {
-        if (_state.value.phase == PlaylistExportPhase.SENDING) return
+        val phase = _state.value.phase
+        if (phase == PlaylistExportPhase.SENDING || phase == PlaylistExportPhase.SAVING) return
         _state.update { it.copy(phase = PlaylistExportPhase.CHOOSE, error = null, added = 0, remoteUrl = "", savedFormat = null) }
     }
 
     fun exportToYoutubeMusic() {
         val current = _state.value
         val active = session ?: return
-        if (current.phase == PlaylistExportPhase.SENDING || current.plan.videoIds.isEmpty()) return
+        if (current.phase != PlaylistExportPhase.CHOOSE || current.plan.videoIds.isEmpty()) return
         exportRemote(YoutubeMusicPlaylistExporter(active), current)
     }
 
@@ -130,6 +134,9 @@ class PlaylistExportController internal constructor(
 
     fun saveFile(uri: Uri, format: PlaylistFileFormat) {
         val current = _state.value
+        if (current.phase != PlaylistExportPhase.CHOOSE && current.phase != PlaylistExportPhase.FILE_FAILED) return
+        val saveAttempt = ++attempt
+        _state.update { it.copy(phase = PlaylistExportPhase.SAVING, savedFormat = format) }
         scope.launch {
             val saved = withContext(Dispatchers.IO) {
                 runCatching {
@@ -139,7 +146,7 @@ class PlaylistExportController internal constructor(
                 }.onFailure { Timber.w(it, "playlist file export failed") }.isSuccess
             }
             _state.update {
-                if (!it.visible) it else it.copy(
+                if (saveAttempt != attempt || it.phase != PlaylistExportPhase.SAVING) it else it.copy(
                     phase = if (saved) PlaylistExportPhase.FILE_SAVED else PlaylistExportPhase.FILE_FAILED,
                     savedFormat = format
                 )
