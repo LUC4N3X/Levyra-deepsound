@@ -111,6 +111,11 @@ Do not preload skill bodies. Read only routed
 `.agents/skills/<name>/SKILL.md` files for the active phase. External workflows
 in `docs/ai/MATT_POCOCK_SKILLS.md` are supplementary and opt-in; repository
 rules remain authoritative.
+The official `pstack` Claude Code plugin is also optional; see
+`docs/ai/PSTACK_INTEGRATION.md`. Use focused pstack skills in separate phases,
+never as an override of Levyra safety, publication, validation, or the
+maximum-two-active-skills rule. Do not enable autonomous merging or shipping
+by default.
 
 ## Product invariants
 
