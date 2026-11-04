@@ -193,7 +193,7 @@ class ClaudePromptRoutingTest(unittest.TestCase):
     def test_installed_pstack_writing_is_single_phase(self) -> None:
         context = route("Update the PR description", with_pstack=True)
         self.assertIn("pstack unslop", context)
-        self.assertNotIn("levyra-humanizer", context)
+        self.assertNotIn("Mandatory skill load", context)
         self.assertNotIn("levyra-pr-review", context)
 
     def test_implementation_precedes_writing_with_installed_pstack(self) -> None:
