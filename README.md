@@ -142,8 +142,6 @@ Each provider's terms and access rules apply to its sources and content. See [Th
 - **Levyra Vault.** Back up and restore playlists, favorites, history and preferences in one local file.
 - **Private stats.** Play counts and listening hours computed on your device, with optional Last.fm and ListenBrainz scrobbling.
 
-Technical notes, platform architecture and build details are in the [documentation](https://levyra.dpdns.org/docs/).
-
 ## Technology
 
 I kept Android and Windows as two separate apps instead of putting a web interface inside both. Android uses Kotlin, Jetpack Compose and Media3. Windows uses Compose Multiplatform and libVLC for audio.
