@@ -229,6 +229,9 @@ if (-not $SkipExternalSkills -and (Test-Command 'claude')) {
             & $pythonCommand scripts/pstack_auto_route.py --check-installed *> $null
             $pstackInstalled = $LASTEXITCODE -eq 0
         }
+        catch {
+            $pstackInstalled = $false
+        }
         finally {
             Pop-Location
         }
