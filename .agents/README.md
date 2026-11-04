@@ -106,6 +106,20 @@ active task matches them; never preload the whole tree.
 - `levyra-release-check`
 - `levyra-security-review`
 
+## Optional pstack plugin
+
+The official pstack marketplace is declared and enabled in
+`.agents/claude/settings.json`. Its upstream skills and playbooks are installed
+by Claude Code rather than duplicated under `.agents/skills/`. Their installation enables the Claude Code prompt hook to select one fitting
+pstack skill automatically, but it never preloads the entire plugin. Use one
+primary workflow per phase, never multiple equivalent skills from pstack, Levyra,
+or other marketplaces. For prose, use installed `pstack:unslop` or
+`pstack:technical-writing` as the one writing pass; fall back to
+`levyra-humanizer` when pstack is unavailable. See
+`docs/ai/PSTACK_INTEGRATION.md` for selection rules and setup instructions.
+The two-skill phase cap is a ceiling, not an instruction to fill two slots.
+Domain-specific safety and mandatory validation are unaffected.
+
 ## Context efficiency
 
 `AGENTS.md` intentionally stays concise. Detailed multi-step procedure belongs in

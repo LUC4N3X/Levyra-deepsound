@@ -101,7 +101,7 @@ Phase examples:
 - Claude/Codex agent tooling -> `levyra-codex-bootstrap`;
 - final branch/PR review -> `levyra-pr-review`;
 - release/runtime validation -> `levyra-release-check`;
-- PR description -> `levyra-humanizer`;
+- PR description -> pstack `unslop` if installed and routed, else `levyra-humanizer`;
 - requirements/roadmap -> `levyra-project-manager`;
 - cross-domain orientation -> `levyra-engineering`;
 - OpenClaw coordination -> `levyra-openclaw-orchestrator`;
@@ -109,8 +109,8 @@ Phase examples:
 
 Do not preload skill bodies. Read only routed
 `.agents/skills/<name>/SKILL.md` files for the active phase. External workflows
-in `docs/ai/MATT_POCOCK_SKILLS.md` are supplementary and opt-in; repository
-rules remain authoritative.
+in `docs/ai/MATT_POCOCK_SKILLS.md` and `docs/ai/PSTACK_INTEGRATION.md`
+remain subordinate to Levyra rules; never stack equivalent workflows.
 
 ## Product invariants
 
@@ -186,8 +186,8 @@ explicit owner authorization for that action and scope.
 
 When PR publication is authorized, use a dedicated branch and draft PR by
 default, preserve the complete `.github/pull_request_template.md`, keep
-validation claims truthful, and apply `levyra-humanizer` only in the PR-writing
-phase without changing facts.
+validation claims truthful, and use just one prose pass: installed pstack
+`unslop` when routed, else `levyra-humanizer`; do not change facts.
 
 ## Delivery contract
 

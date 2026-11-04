@@ -220,6 +220,47 @@ if (-not $pythonCommand) {
     throw 'Validation blocked: Python is required to materialize and verify Levyra agent runtime configuration.'
 }
 
+if (-not $SkipExternalSkills -and (Test-Command 'claude')) {
+    $pstackInstalled = $false
+    if (-not $DryRun) {
+        Push-Location $repoRoot
+        try {
+            $global:LASTEXITCODE = 0
+            & $pythonCommand scripts/pstack_auto_route.py --check-installed *> $null
+            $pstackInstalled = $LASTEXITCODE -eq 0
+        }
+        catch {
+            $pstackInstalled = $false
+        }
+        finally {
+            Pop-Location
+        }
+    }
+
+    if ($pstackInstalled) {
+        Write-Output '[skip] Official pstack plugin is already installed for Claude Code'
+    }
+    else {
+        try {
+            Invoke-SetupCommand 'Register official pstack marketplace for Claude Code' {
+                claude plugin marketplace add cursor/plugins
+            }
+        }
+        catch {
+            Write-Warning "pstack marketplace setup was unavailable: $($_.Exception.Message)"
+        }
+        try {
+            Invoke-SetupCommand 'Install official pstack for Claude Code' {
+                claude plugin install pstack@cursor-plugins --scope user
+            }
+        }
+        catch {
+            Write-Warning "pstack installation was unavailable: $($_.Exception.Message)"
+            Write-Warning 'Continuing with existing Levyra skills; automatic pstack routing stays disabled until installed.'
+        }
+    }
+}
+
 if ($Headroom) {
     Invoke-SetupCommand 'Enable optional Headroom integration' {
         Push-Location $repoRoot

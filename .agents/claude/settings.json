@@ -45,6 +45,12 @@
         "source": "github",
         "repo": "DietrichGebert/ponytail"
       }
+    },
+    "cursor-plugins": {
+      "source": {
+        "source": "github",
+        "repo": "cursor/plugins"
+      }
     }
   },
   "enabledPlugins": {
@@ -55,7 +61,8 @@
     "android-reverse-engineering@android-reverse-engineering-skill": true,
     "kotlin-footguns@maxrave": true,
     "material-3@material-3-skill": true,
-    "ponytail@ponytail": true
+    "ponytail@ponytail": true,
+    "pstack@cursor-plugins": true
   },
   "permissions": {
     "allow": [

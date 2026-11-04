@@ -73,6 +73,9 @@ def route_prompt(prompt: str) -> list[tuple[str, str]]:
     if not text or any(marker in text for marker in AUTOMATED_MARKERS):
         return []
 
+    if re.search(r"(?<![\w/])/pstack:[a-z][a-z0-9-]*\b", text):
+        return []
+
     matched = [(skill, topic) for skill, topic in _matched(text) if skill not in CORE_RULE_SKILLS]
     implementation = [(skill, topic) for skill, topic in matched if skill not in DEFERRED_SKILLS]
     if implementation:
