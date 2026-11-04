@@ -259,7 +259,7 @@ private fun JourneyCoverCard(preset: MoodCurvePreset, label: String, style: Jour
                     val relief = size.height - horizon
                     fun front(i: Int) = Offset(i / last.toFloat() * size.width, horizon + (1f - energies[i]) * relief * 0.72f)
                     val frontEdge = Path().apply {
-                        (0..last).forEach { i -> front(i).let { if (i == 0) moveTo(it.x, it.y) else lineTo(it.x, it.y) } }
+                        for (i in 0..last) front(i).let { if (i == 0) moveTo(it.x, it.y) else lineTo(it.x, it.y) }
                     }
                     val frontLand = Path().apply { addPath(frontEdge); lineTo(size.width, size.height); lineTo(0f, size.height); close() }
                     val sky = Brush.verticalGradient(listOf(skyTop, skyBottom))

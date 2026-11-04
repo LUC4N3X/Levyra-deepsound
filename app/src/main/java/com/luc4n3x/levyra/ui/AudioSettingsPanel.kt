@@ -254,11 +254,12 @@ internal fun AudioSettingsPanel(
         mutableStateOf(activeEqualizerMode(audioSettings.parametricEqualizerEnabled, orbitActive))
     }
     LaunchedEffect(audioSettings.equalizerEnabled, audioSettings.parametricEqualizerEnabled) {
-        when {
-            audioSettings.parametricEqualizerEnabled && equalizerMode == EqualizerEditorMode.GRAPHIC ->
-                equalizerMode = activeEqualizerMode(parametricEnabled = true, orbitActive = orbitActive)
-            audioSettings.equalizerEnabled -> equalizerMode = EqualizerEditorMode.GRAPHIC
-        }
+        equalizerMode = syncedEqualizerMode(
+            current = equalizerMode,
+            equalizerEnabled = audioSettings.equalizerEnabled,
+            parametricEnabled = audioSettings.parametricEqualizerEnabled,
+            orbitActive = orbitActive
+        )
     }
     Box(
         modifier = Modifier
@@ -748,25 +749,63 @@ internal fun AudioSettingsPanel(
         )
     }
 
-    val catalogSelection = autoEqCatalog.selection
-    if (catalogSelection != null) {
+    AutoEqCatalogDialogs(
+        catalog = autoEqCatalog,
+        onApplyAutoEq = onApplyAutoEq,
+        onSaveAutoEqPreset = onSaveAutoEqPreset,
+        onApplyParametricAutoEq = onApplyParametricAutoEq,
+        onSaveParametricProfile = onSaveParametricProfile,
+        onDismissProfile = onDismissAutoEqCatalogProfile,
+        onQuery = onAutoEqCatalogQuery,
+        onSelect = onSelectAutoEqCatalogEntry,
+        onRetry = onOpenAutoEqCatalog,
+        onClose = onCloseAutoEqCatalog
+    )
+}
+
+private fun syncedEqualizerMode(
+    current: EqualizerEditorMode,
+    equalizerEnabled: Boolean,
+    parametricEnabled: Boolean,
+    orbitActive: Boolean
+): EqualizerEditorMode = when {
+    parametricEnabled && current == EqualizerEditorMode.GRAPHIC -> activeEqualizerMode(parametricEnabled = true, orbitActive = orbitActive)
+    equalizerEnabled -> EqualizerEditorMode.GRAPHIC
+    else -> current
+}
+
+@Composable
+private fun AutoEqCatalogDialogs(
+    catalog: AutoEqCatalogUiState,
+    onApplyAutoEq: (AutoEqImporter.ImportedProfile) -> Unit,
+    onSaveAutoEqPreset: (String, AutoEqImporter.ImportedProfile) -> Boolean,
+    onApplyParametricAutoEq: (ParametricEqProfile) -> Unit,
+    onSaveParametricProfile: (String, ParametricEqProfile) -> Boolean,
+    onDismissProfile: () -> Unit,
+    onQuery: (String) -> Unit,
+    onSelect: (AutoEqCatalogEntry) -> Unit,
+    onRetry: () -> Unit,
+    onClose: () -> Unit
+) {
+    val selection = catalog.selection
+    if (selection != null) {
         AutoEqImportDialog(
-            initialText = catalogSelection.profileText,
-            initialPresetName = catalogSelection.name,
-            catalogDetail = catalogSelection.detail,
-            onDismiss = onDismissAutoEqCatalogProfile,
+            initialText = selection.profileText,
+            initialPresetName = selection.name,
+            catalogDetail = selection.detail,
+            onDismiss = onDismissProfile,
             onApply = onApplyAutoEq,
             onSavePreset = onSaveAutoEqPreset,
             onApplyParametric = onApplyParametricAutoEq,
             onSaveParametric = onSaveParametricProfile
         )
-    } else if (autoEqCatalog.visible) {
+    } else if (catalog.visible) {
         AutoEqCatalogDialog(
-            state = autoEqCatalog,
-            onQuery = onAutoEqCatalogQuery,
-            onSelect = onSelectAutoEqCatalogEntry,
-            onRetry = onOpenAutoEqCatalog,
-            onDismiss = onCloseAutoEqCatalog
+            state = catalog,
+            onQuery = onQuery,
+            onSelect = onSelect,
+            onRetry = onRetry,
+            onDismiss = onClose
         )
     }
 }
