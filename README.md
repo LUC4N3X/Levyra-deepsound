@@ -261,13 +261,15 @@ Bug reports and pull requests are welcome. For questions and ideas, use [GitHub 
 
 </div>
 
-#### - Third-party services and content
+### Services and lawful access
+
+#### Third-party services and content
 
 Levyra is client-side software that runs on your device. It does not own or host music catalogs, artwork, lyrics, or video files. When you stream or search, Levyra connects to the external services needed for that feature. Those services can change, rate-limit, or restrict access at any time.
 
 If there is a problem with media hosted by another service, contact that service or the relevant rights holder. If the issue is with something distributed as part of Levyra itself, use the GitHub issue tracker.
 
-#### - FLAC sources and lawful access
+#### FLAC sources and lawful access
 
 Levyra's FLAC integration relies on responses and audio streams supplied by independent third-party sites. Their operation, access arrangements, and catalog availability are outside Levyra's control. Levyra does not host, obtain, provide, or share third-party accounts, account credentials, or login sessions for these integrations, and does not authorize access to anyone else's account or catalog.
 
@@ -275,13 +277,13 @@ These integrations are provided for developer study, research, interoperability,
 
 Availability through an external site does not establish permission to access an account, stream a recording, or download or redistribute music. This notice does not grant those permissions or remove any legal obligations of project maintainers or users.
 
-#### - Lawful use and user responsibility
+#### Lawful use and user responsibility
 
 Levyra is built for lawful use, research, and interoperability, not for piracy or copyright infringement. Streaming, downloading, format conversion, and offline caching are software features. They do not transfer copyright or ownership of third-party media.
 
 Levyra may cache media temporarily for playback and can save user-requested downloads as standard media files. Neither feature gives you permission to redistribute third-party content. You are responsible for making sure your use of Levyra complies with applicable law and with the terms of any third-party service you choose to access.
 
-#### - Regional availability and experimental network compatibility
+#### Regional availability and experimental network compatibility
 
 Some streaming features depend on third-party services such as YouTube Music. Those services may be unavailable, filtered, or unreliable in some countries, networks, or accounts.
 
@@ -291,7 +293,9 @@ Enabling a compatibility option does not grant access rights, unlock paid featur
 
 Local playback and features that do not depend on the affected service continue to work independently.
 
-#### - Support artists and creators
+### Artists and privacy
+
+#### Support artists and creators
 
 Respect for artists and their music is fundamental to Levyra. Please support the people who create the music you listen to and use only content you are entitled to access.
 
@@ -299,17 +303,19 @@ Levyra does not unlock paid subscriptions or grant access rights offered by thir
 
 You can also support artists directly through licensed streaming services, music purchases, concerts, merchandise, and other official channels.
 
-#### - Privacy
+#### Privacy
 
 Levyra does not require a Levyra account and does not include telemetry, analytics, or ads. Network requests go directly to the services used by the features you enable, including optional integrations.
 
-#### - Technical interoperability and access restrictions
+### Technical limits and warranty
+
+#### Technical interoperability and access restrictions
 
 Levyra includes client-side code for compatibility with external services. Depending on the feature, it may resolve streams, process requests and tokens, use alternate DNS or routing, or apply optional experimental connection methods.
 
 Those capabilities do not grant permission to access a service, region, catalog item, account feature, subscription tier, or paid entitlement that you are not otherwise allowed to use. Availability and authorization remain governed by the service, your account, the network you are using, applicable terms, and applicable law. Network compatibility options are provided on a best-effort basis and may stop working at any time.
 
-#### - Warranty and third-party availability
+#### Warranty and third-party availability
 
 Levyra is released under the **[GNU GPL v3.0](LICENSE)** and is provided "as is", without warranty of any kind, to the fullest extent permitted by applicable law.
 
