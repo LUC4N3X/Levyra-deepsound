@@ -2386,9 +2386,9 @@ class PlaybackService : MediaLibraryService() {
         isQueueTransitionInProgress = false
         primary.volume = currentEffectiveBaseVolume()
         releaseTransitionPlayer(secondary)
-        if (endedWhileTransitionHeld && LevyraWidgetBridge.onNext == null) {
-            skipQueue(forward = true, respectRepeatOne = true, autoAdvance = true)
-        }
+        if (!endedWhileTransitionHeld) return
+        LevyraWidgetBridge.onTrackCompleted?.invoke()
+            ?: skipQueue(forward = true, respectRepeatOne = true, autoAdvance = true)
     }
 
     private suspend fun prepareTransitionPlayerWithDecoderFallback(
@@ -2497,6 +2497,7 @@ class PlaybackService : MediaLibraryService() {
             current.repeatMode != com.luc4n3x.levyra.domain.RepeatMode.One &&
             primary.playWhenReady &&
             secondary.playWhenReady &&
+            primary.playbackSuppressionReason == Player.PLAYBACK_SUPPRESSION_REASON_NONE &&
             primary.currentMediaItem?.mediaMetadata?.extras?.getBoolean(EXTRA_VIDEO_MODE, false) != true
     }
 

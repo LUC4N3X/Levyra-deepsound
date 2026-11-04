@@ -10,9 +10,13 @@ object LevyraWidgetBridge {
     @Volatile
     var onPrevious: (() -> Unit)? = null
 
+    @Volatile
+    var onTrackCompleted: (() -> Unit)? = null
+
     fun clear() {
         onToggle = null
         onNext = null
         onPrevious = null
+        onTrackCompleted = null
     }
 }

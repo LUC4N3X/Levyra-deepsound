@@ -2244,6 +2244,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         LevyraWidgetBridge.onToggle = { togglePlay() }
         LevyraWidgetBridge.onNext = { next() }
         LevyraWidgetBridge.onPrevious = { previous() }
+        LevyraWidgetBridge.onTrackCompleted = { onTrackCompleted() }
         updateWidget()
         refreshHomeResonanceComments(startupResonanceTracks)
     }
