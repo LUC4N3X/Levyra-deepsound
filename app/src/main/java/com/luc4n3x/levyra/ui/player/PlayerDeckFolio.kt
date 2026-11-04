@@ -2,10 +2,6 @@ package com.luc4n3x.levyra.ui.player
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.AnimationVector1D
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -33,14 +29,12 @@ import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -62,7 +56,6 @@ import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.PlayerControlLabels
 import com.luc4n3x.levyra.ui.components.PlayerIcon
-import com.luc4n3x.levyra.ui.components.levyraCookieLandingShape
 import com.luc4n3x.levyra.ui.components.levyraExpressiveCorner
 import com.luc4n3x.levyra.ui.components.levyraExpressiveToggleCorner
 import com.luc4n3x.levyra.ui.components.levyraPressable
@@ -74,14 +67,12 @@ import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
 
 private val FolioScrollingStage = 300.dp
-private val FolioStageCorner = 0.dp
+private val FolioStageCorner = LevyraPlayerDesign.CornerLg
 private val FolioControlHeight = 80.dp
 private val FolioControlHeightCompact = 66.dp
 private const val FolioPaperDepth = 0.74f
 private const val FolioArtistAlpha = 0.78f
 private const val FolioFixedActionCount = 3
-private const val FolioCoverLobeDegrees = 30f
-private const val FolioCoverLobeMillis = 4_000
 
 @Composable
 internal fun PlayerFolioDeck(
@@ -147,15 +138,11 @@ internal fun PlayerFolioDeck(
             contentAlignment = Alignment.Center
         ) {
             val side = minOf(maxWidth, maxHeight, artworkCap)
-            val turn = rememberFolioCoverTurn(isPlaying, animated)
             slots.stage(
                 track,
                 Modifier
                     .size(side)
-                    .graphicsLayer {
-                        shape = levyraCookieLandingShape(1f, turn.value)
-                        clip = true
-                    },
+                    .clip(RoundedCornerShape(FolioStageCorner)),
                 FolioStageCorner
             )
             slots.gestures(track, Modifier.matchParentSize())
@@ -196,19 +183,6 @@ internal fun PlayerFolioDeck(
             onRepeat = onRepeat
         )
     }
-}
-
-@Composable
-private fun rememberFolioCoverTurn(isPlaying: Boolean, animated: Boolean): Animatable<Float, AnimationVector1D> {
-    val turn = remember { Animatable(0f) }
-    LaunchedEffect(isPlaying, animated) {
-        if (!isPlaying || !animated) return@LaunchedEffect
-        while (true) {
-            turn.animateTo(turn.value + FolioCoverLobeDegrees, tween(FolioCoverLobeMillis, easing = LinearEasing))
-            turn.snapTo(0f)
-        }
-    }
-    return turn
 }
 
 @Composable
@@ -322,7 +296,7 @@ private fun FolioHeadline(
                 style = TextStyle(
                     fontSize = if (compact) 13.sp else 15.sp,
                     fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 2.6.sp
+                    letterSpacing = 0.4.sp
                 ),
                 onClickLabel = strings.openArtist,
                 onArtistClick = onArtistClick,

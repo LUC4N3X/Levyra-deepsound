@@ -13,10 +13,12 @@ import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
@@ -25,7 +27,9 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
 
 @Immutable
@@ -161,6 +165,20 @@ object LevyraMotion {
         if (enabled) {
             slideOutVertically(tween(Durations.Short, easing = Easings.Accelerate)) { it / 4 } +
                 fadeOut(tween(Durations.Quick, easing = Easings.Standard))
+        } else {
+            ExitTransition.None
+        }
+
+    fun dockRevealEnter(enabled: Boolean): EnterTransition =
+        if (enabled) {
+            expandVertically(spatial.spec(visibilityThreshold = IntSize.VisibilityThreshold), expandFrom = Alignment.Top)
+        } else {
+            EnterTransition.None
+        }
+
+    fun dockRevealExit(enabled: Boolean): ExitTransition =
+        if (enabled) {
+            shrinkVertically(spatial.spec(visibilityThreshold = IntSize.VisibilityThreshold), shrinkTowards = Alignment.Top)
         } else {
             ExitTransition.None
         }

@@ -54,6 +54,8 @@ internal class MotionGestureController(
     private var sensorsRegistered = false
     private var registeredFlipSensor: Sensor? = null
     private var registeredShakeSensor: Sensor? = null
+    private var requestedFlipSensor: Sensor? = null
+    private var requestedShakeSensor: Sensor? = null
 
     private var flipDetector = FlipGestureDetector(settings.flipConfirmationDelayMs)
     private val shakeDetector = ShakeGestureDetector()
@@ -166,7 +168,7 @@ internal class MotionGestureController(
             MotionGestureRegistrationPolicy.shakeAllowed(screenInteractive, settings.allowScreenOffWhenSupported)
         val shakeTarget = if (shakeAllowed) shakeSensorFor(useWakeUp) else null
 
-        if (sensorsRegistered && flipTarget == registeredFlipSensor && shakeTarget == registeredShakeSensor) {
+        if (sensorsRegistered && flipTarget == requestedFlipSensor && shakeTarget == requestedShakeSensor) {
             return
         }
 
@@ -179,10 +181,16 @@ internal class MotionGestureController(
             shakeDetector.reset()
         }
 
-        val (flipRegistered, shakeRegistered) = registerTargets(manager, flipTarget, shakeTarget)
-        registeredFlipSensor = flipTarget.takeIf { flipRegistered }
-        registeredShakeSensor = shakeTarget.takeIf { shakeRegistered }
-        val anyRegistered = flipRegistered || shakeRegistered
+        val (flipSensor, shakeSensor) = registerTargets(manager, flipTarget, shakeTarget, shakeSensorFor(useWakeUp))
+        requestedFlipSensor = flipTarget
+        requestedShakeSensor = shakeTarget
+        if (flipTarget != null && flipSensor != flipTarget) {
+            Timber.w("MotionGestureController: flip sensor %s unavailable, using %s", flipTarget.name, flipSensor?.name)
+        }
+        if (shakeTarget != null && shakeSensor == null) Timber.w("MotionGestureController: shake sensor unavailable (%s)", shakeTarget.name)
+        registeredFlipSensor = flipSensor
+        registeredShakeSensor = shakeSensor
+        val anyRegistered = flipSensor != null || shakeSensor != null
 
         sensorsRegistered = anyRegistered
         if (!anyRegistered) {
@@ -195,17 +203,23 @@ internal class MotionGestureController(
     private fun registerTargets(
         manager: SensorManager,
         flipTarget: Sensor?,
-        shakeTarget: Sensor?
-    ): Pair<Boolean, Boolean> {
+        shakeTarget: Sensor?,
+        accelerometer: Sensor?
+    ): Pair<Sensor?, Sensor?> {
         if (flipTarget != null && flipTarget == shakeTarget) {
-            val shared = registerSensor(manager, flipTarget, SensorManager.SENSOR_DELAY_GAME, 40_000)
+            val shared = flipTarget.takeIf { registerSensor(manager, it, SensorManager.SENSOR_DELAY_GAME, 40_000) }
             return shared to shared
         }
-        val flipRegistered = flipTarget != null &&
-            registerSensor(manager, flipTarget, SensorManager.SENSOR_DELAY_UI, 80_000)
-        val shakeRegistered = shakeTarget != null &&
-            registerSensor(manager, shakeTarget, SensorManager.SENSOR_DELAY_GAME, 40_000)
-        return flipRegistered to shakeRegistered
+        val shakeSensor = shakeTarget?.takeIf { registerSensor(manager, it, SensorManager.SENSOR_DELAY_GAME, 40_000) }
+        if (flipTarget == null) return null to shakeSensor
+        if (registerSensor(manager, flipTarget, SensorManager.SENSOR_DELAY_UI, 80_000)) return flipTarget to shakeSensor
+        val fallback = when {
+            accelerometer == null || accelerometer == flipTarget -> null
+            accelerometer == shakeSensor -> accelerometer
+            registerSensor(manager, accelerometer, SensorManager.SENSOR_DELAY_UI, 80_000) -> accelerometer
+            else -> null
+        }
+        return fallback to shakeSensor
     }
 
     private fun flipSensorFor(useWakeUp: Boolean): Sensor? =
@@ -228,7 +242,9 @@ internal class MotionGestureController(
         samplingPeriod: Int,
         maxReportLatencyUs: Int
     ): Boolean = runCatching {
-        manager.registerListener(this, sensor, samplingPeriod, maxReportLatencyUs)
+        val latencyUs = MotionGestureRegistrationPolicy.reportLatencyUs(sensor.fifoMaxEventCount, maxReportLatencyUs)
+        manager.registerListener(this, sensor, samplingPeriod, latencyUs) ||
+            (latencyUs > 0 && manager.registerListener(this, sensor, samplingPeriod))
     }.getOrDefault(false)
 
     private fun unregisterSensors() {
@@ -238,6 +254,8 @@ internal class MotionGestureController(
         }
         registeredFlipSensor = null
         registeredShakeSensor = null
+        requestedFlipSensor = null
+        requestedShakeSensor = null
         flipDetector.reset()
         shakeDetector.reset()
         _activeMonitoringFlow.value = false
@@ -299,6 +317,9 @@ internal class MotionGestureController(
 
 internal object MotionGestureRegistrationPolicy {
     private const val MAX_CLOCK_SKEW_MS = 10_000L
+
+    fun reportLatencyUs(fifoMaxEventCount: Int, requestedLatencyUs: Int): Int =
+        if (fifoMaxEventCount > 0) requestedLatencyUs.coerceAtLeast(0) else 0
 
     fun shakeAllowed(screenInteractive: Boolean, allowScreenOff: Boolean): Boolean =
         screenInteractive || allowScreenOff

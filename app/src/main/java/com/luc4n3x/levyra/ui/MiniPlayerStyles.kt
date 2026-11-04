@@ -51,7 +51,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import com.luc4n3x.levyra.ui.artwork.rememberArtworkPalette
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -74,7 +74,6 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.onClick
@@ -182,7 +181,6 @@ internal class MiniPlayerPalette(
 
 @Composable
 private fun rememberMiniArtworkPalette(track: Track): ArtworkPalette {
-    val context = LocalContext.current
     val fallback = remember(track.accentStart, track.accentEnd) {
         ArtworkPalette(track.accentStart, track.accentEnd)
     }
@@ -193,14 +191,13 @@ private fun rememberMiniArtworkPalette(track: Track): ArtworkPalette {
             largeThumbnailUrl = track.largeThumbnailUrl
         )
     }
-    val memory = remember(key) { ArtworkPaletteCache.peek(key) }
-    val state = remember(key) { mutableStateOf(memory ?: fallback) }
-    LaunchedEffect(key) {
-        if (memory == null) {
-            ArtworkPaletteCache.load(context, key)?.let { state.value = it }
-        }
-    }
-    return state.value
+    val palette by rememberArtworkPalette(
+        paletteKey = key,
+        artworkUrl = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
+        fallback = fallback,
+        retainPreviousUntilLoaded = true
+    )
+    return palette
 }
 
 @Composable

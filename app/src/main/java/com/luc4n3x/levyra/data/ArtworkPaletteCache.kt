@@ -17,7 +17,9 @@ internal data class ArtworkPalette(
 )
 
 internal object ArtworkPaletteCache {
-    private const val preferencesName = "levyra_artwork_palette_v2"
+    private const val preferencesName = "levyra_artwork_palette_v3"
+    private const val legacyPreferencesName = "levyra_artwork_palette_v2"
+    @Volatile private var legacyCleared = false
     private const val orderKey = "__order__"
     private const val persistentLimit = 128
     private const val memoryLimit = 96
@@ -45,6 +47,7 @@ internal object ArtworkPaletteCache {
         peek(key)?.let { return it }
         val palette = withContext(Dispatchers.IO) {
             synchronized(diskLock) {
+                clearLegacy(context)
                 val encoded = context.applicationContext
                     .getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
                     .getString(key, null)
@@ -85,6 +88,12 @@ internal object ArtworkPaletteCache {
         }
     }
 
+    private fun clearLegacy(context: Context) {
+        if (legacyCleared) return
+        legacyCleared = true
+        context.applicationContext.deleteSharedPreferences(legacyPreferencesName)
+    }
+
     fun extract(
         bitmap: Bitmap,
         fallbackStart: Int,
@@ -102,21 +111,30 @@ internal object ArtworkPaletteCache {
         sample.getPixels(pixels, 0, sample.width, 0, 0, sample.width, sample.height)
         val buckets = HashMap<Int, ColorBucket>(96)
         val hsv = FloatArray(3)
+        val overall = ColorBucket()
+        var chromaticCount = 0
         pixels.forEach { pixel ->
             if (AndroidColor.alpha(pixel) < 210) return@forEach
             val red = AndroidColor.red(pixel)
             val green = AndroidColor.green(pixel)
             val blue = AndroidColor.blue(pixel)
+            overall.add(red, green, blue, 1f)
             AndroidColor.RGBToHSV(red, green, blue, hsv)
             val saturation = hsv[1]
             val value = hsv[2]
             if (value < 0.11f || value > 0.97f || saturation < 0.13f) return@forEach
+            chromaticCount += 1
             val hueBin = (hsv[0] / 15f).toInt().coerceIn(0, 23)
             val saturationBin = (saturation * 4f).toInt().coerceIn(0, 3)
             val valueBin = (value * 4f).toInt().coerceIn(0, 3)
             val bucketKey = hueBin * 16 + saturationBin * 4 + valueBin
             val weight = (0.42f + saturation * 1.58f) * (0.58f + value * 0.92f)
             buckets.getOrPut(bucketKey) { ColorBucket() }.add(red, green, blue, weight)
+        }
+        if (overall.count > 0 && ArtworkToneMapper.isMonochrome(chromaticCount.toFloat(), overall.count.toFloat())) {
+            if (sample !== bitmap) sample.recycle()
+            val (start, end) = ArtworkToneMapper.neutral(overall.toCandidate().toArgb())
+            return ArtworkPalette(start, end)
         }
         if (buckets.isEmpty()) {
             if (sample !== bitmap) sample.recycle()

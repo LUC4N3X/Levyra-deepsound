@@ -21,8 +21,11 @@ import com.luc4n3x.levyra.data.ArtworkPaletteCache
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+
+private const val MissingArtworkFallbackGraceMs = 900L
 
 @Composable
 internal fun rememberArtworkPalette(
@@ -51,8 +54,12 @@ internal fun rememberArtworkPalette(
         val loaded = loadArtworkPalette(context, paletteKey, { latestArtworkUrl }, { latestFallback }) {
             paletteState.value = it
         }
-        if (loaded != null) paletteState.value = loaded
-        else if (retainPreviousUntilLoaded) paletteState.value = latestFallback
+        if (loaded != null) {
+            paletteState.value = loaded
+        } else if (retainPreviousUntilLoaded) {
+            if (artworkUrl.isBlank()) delay(MissingArtworkFallbackGraceMs)
+            paletteState.value = latestFallback
+        }
     }
     return paletteState
 }

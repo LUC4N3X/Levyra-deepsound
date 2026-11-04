@@ -45,6 +45,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.domain.Track
@@ -331,9 +332,9 @@ private fun ExpressiveHeadline(
                     text = shown.title,
                     color = ink,
                     fontSize = titleSize,
-                    lineHeight = titleSize * 1.02f,
+                    lineHeight = titleSize * 1.06f,
                     fontWeight = FontWeight.Black,
-                    letterSpacing = (-1.4).sp,
+                    letterSpacing = (-0.025).em,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.semantics { heading() }
