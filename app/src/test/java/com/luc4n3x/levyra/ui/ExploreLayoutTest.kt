@@ -56,16 +56,6 @@ class ExploreLayoutTest {
     }
 
     @Test
-    fun personalFirstLeadsWithMixThenDiscoveryThenJourney() {
-        val rows = buildExploreRows(zones(4), false, true, hasFreshMoment = true, journeyInPlaceOfMoods = true, personalFirst = true)
-
-        assertEquals(listOf(ExploreRow.Shortcuts, ExploreRow.MixTools), rows.take(2))
-        assertEquals(1, rows.count { it == ExploreRow.MixTools })
-        assertTrue(rows.indexOf(ExploreRow.FreshMoment) < rows.indexOf(ExploreRow.MoodJourney))
-        assertEquals(ExploreRow.MoodJourney, rows.last())
-    }
-
-    @Test
     fun mixControlsRemainAvailableWhenDiscoveryIsEmpty() {
         val rows = buildExploreRows(emptyList(), false, false)
 

@@ -118,13 +118,11 @@ internal fun buildExploreRows(
     hasFreshMoment: Boolean = false,
     spotifyStyle: Boolean = false,
     moodsInSearch: Boolean = spotifyStyle,
-    journeyInPlaceOfMoods: Boolean = false,
-    personalFirst: Boolean = false
+    journeyInPlaceOfMoods: Boolean = false
 ): List<ExploreRow> {
     val rows = mutableListOf<ExploreRow>()
     rows += ExploreRow.Shortcuts
     if (spotifyStyle) rows += ExploreRow.Samples
-    if (personalFirst) rows += ExploreRow.MixTools
     rows += ExploreRow.Header(ExploreAnchor.Fresh)
     when {
         hasFreshTracks -> {
@@ -144,7 +142,7 @@ internal fun buildExploreRows(
         rows += ExploreRow.MoodRail(distinctZones)
     }
 
-    if (!personalFirst) rows += ExploreRow.MixTools
+    rows += ExploreRow.MixTools
     return rows
 }
 

@@ -25617,8 +25617,7 @@ private fun ExploreScreen(
         state.isFreshCurrentsLoading,
         freshFeed.spotlight.isNotEmpty(),
         freshScopes.size > 1,
-        momentPages.isNotEmpty(),
-        LevyraIsDefaultSkin
+        momentPages.isNotEmpty()
     ) {
         buildExploreRows(
             zones = zones,
@@ -25628,8 +25627,7 @@ private fun ExploreScreen(
             hasFreshMoment = momentPages.isNotEmpty(),
             spotifyStyle = spotifyExplore,
             moodsInSearch = moodsInSearch,
-            journeyInPlaceOfMoods = true,
-            personalFirst = LevyraIsDefaultSkin
+            journeyInPlaceOfMoods = true
         )
     }
     val availableAnchors = remember(rows) { exploreAvailableAnchors(rows) }
@@ -26319,10 +26317,6 @@ internal fun ExplorePrimaryShortcuts(
         add(ExploreShortcutEntry("podcasts", Icons.Rounded.Podcasts, com.luc4n3x.levyra.ui.i18n.podcastCopy(strings.code).title, MaterialShapes.Puffy, colors.secondary, colors.onSecondary) { onSelect(ExploreShortcut.Podcasts) })
         add(ExploreShortcutEntry("jam", Icons.Rounded.PersonAdd, strings.jamTitle, MaterialShapes.Cookie9Sided, colors.inversePrimary, colors.onPrimaryContainer, onOpenJam))
     }
-    if (LevyraIsDefaultSkin) {
-        ExploreShortcutChipRow(entries, modifier)
-        return
-    }
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -26347,7 +26341,7 @@ internal fun ExplorePrimaryShortcuts(
 }
 
 @Immutable
-internal class ExploreShortcutEntry(
+private class ExploreShortcutEntry(
     val key: String,
     val icon: ImageVector,
     val label: String,
