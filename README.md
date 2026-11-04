@@ -152,25 +152,11 @@ Enhanced Audio is on by default. You can turn it off in Audio Settings, and Tech
 
 Technical notes, platform architecture and build details are in the [documentation](https://levyra.dpdns.org/docs/).
 
-## Under the hood
+## Technology
 
-I wanted the two apps to share as much logic as possible without pushing either one into a web view or a slow cross-platform container. So Levyra is a shared Kotlin core with two native apps on top.
+I kept Android and Windows as two separate apps instead of putting a web interface inside both. Android uses Kotlin, Jetpack Compose and Media3. Windows uses Compose Multiplatform and libVLC for audio.
 
-#### - Android
-
-The Android app is plain native Kotlin. The UI is Jetpack Compose with Material 3. Room stores the library, DataStore keeps preferences, and MediaStore indexes local files. Playback runs on AndroidX Media3 and ExoPlayer, which ties audio focus, Bluetooth controls, the lockscreen media session, Quick Settings and Android Auto directly to Android's system services. Release builds are shrunk with R8 and ship with Baseline Profiles.
-
-#### - Windows
-
-The desktop app runs Compose Multiplatform on JVM 21 and hands audio decoding to libVLC through direct native bindings (`vlcj`). Playback goes straight to system audio, with no Chromium, Electron or WebView bundled. Preferences and library data live in small local JSON files.
-
-#### - Shared core
-
-Stream resolution, YouTube extraction and network retries live in one Kotlin engine, `LevyraExtractor`. It runs on OkHttp with Brotli compression and DNS-over-HTTPS. A fix to extraction or networking lands on Android and Windows in the same change.
-
-#### - Why not a web wrapper
-
-A lot of cross-platform music players are a browser in disguise. They take seconds to open and hold on to memory while they sit in the tray. Levyra skips the web runtime, so it starts fast and stays light.
+They share `LevyraExtractor` for stream resolution and network requests. When something breaks there, I can fix it once for both apps.
 
 ## Built in public · Zero tracking
 
