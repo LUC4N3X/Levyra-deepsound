@@ -15303,11 +15303,11 @@ private fun SearchScreen(
         ) {
             if (queryClean.isEmpty() && LevyraIsSpotify && !spotifySearchFocus.value) {
                 spotifySearchBrowseItem(state, viewModel)
-            } else if (appleLanding && appleCatalog != null) {
+            } else if (appleLanding) {
                 appleMusicSearchLanding(
                     appleCatalog, appleColumns,
                     onOpen = { tile -> appleDestination = tile.destination },
-                    onRequestArtwork = { params -> appleExploreViewModel?.ensureExploreCategoryArtwork(params, false) }
+                    onRequestArtwork = { params -> appleExploreViewModel.ensureExploreCategoryArtwork(params, false) }
                 )
             } else if (queryClean.isEmpty()) {
                 item(key = "search-taste-hints", contentType = "search-taste-hints") {

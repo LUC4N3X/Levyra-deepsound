@@ -23,7 +23,6 @@ import androidx.compose.material.icons.rounded.Waves
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -50,6 +49,7 @@ import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 import kotlin.math.roundToInt
+import com.luc4n3x.levyra.ui.components.LevyraSlider
 
 private const val IntensityMax = 100f
 
@@ -140,7 +140,7 @@ internal fun ReactiveAuraControls(
                     fontWeight = FontWeight.Bold
                 )
             }
-            Slider(
+            LevyraSlider(
                 value = previewIntensity,
                 onValueChange = { previewIntensity = it },
                 onValueChangeFinished = { onIntensity(previewIntensity.roundToInt()) },

@@ -51,7 +51,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -92,6 +91,8 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
+import androidx.compose.material3.rememberBottomSheetState
+import androidx.compose.material3.SheetValue
 
 private val CreditsCardShape = RoundedCornerShape(26.dp)
 private val CreditsRowShape = RoundedCornerShape(18.dp)
@@ -119,7 +120,7 @@ internal fun TrackCreditsSheet(
 ) {
     val copy = LocalLevyraStrings.current.trackCreditsCopy()
     val languageCode = LocalLevyraStrings.current.code
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded))
     val currentLoadCredits by rememberUpdatedState(loadCredits)
     var retryCount by remember(track.id) { mutableIntStateOf(0) }
     var load by remember(track.id) { mutableStateOf<TrackCreditsLoad>(TrackCreditsLoad.Loading) }

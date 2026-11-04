@@ -93,7 +93,7 @@ internal fun spotifyTopChartCountry(market: String, languageCode: String): Strin
     return if (market.equals(GLOBAL_MARKET, ignoreCase = true)) {
         LevyraSpotifyChartStrings.globalName(languageCode)
     } else {
-        Locale("", market).getDisplayCountry(locale).ifBlank { market }
+        Locale.forLanguageTag("und-$market").getDisplayCountry(locale).ifBlank { market }
     }
 }
 

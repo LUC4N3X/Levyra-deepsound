@@ -176,6 +176,7 @@ object LyricsPhraseMatcher {
             Character.UnicodeBlock.BENGALI,
             Character.UnicodeBlock.THAI,
             Character.UnicodeBlock.HANGUL_JAMO -> true
+            null -> false
             else -> false
         }
     }
@@ -186,6 +187,7 @@ object LyricsPhraseMatcher {
         Character.UnicodeBlock.HIRAGANA,
         Character.UnicodeBlock.KATAKANA,
         Character.UnicodeBlock.THAI -> true
+        null -> false
         else -> false
     }
 }

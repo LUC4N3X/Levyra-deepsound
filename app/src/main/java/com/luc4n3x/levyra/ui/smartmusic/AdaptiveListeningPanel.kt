@@ -39,7 +39,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -63,7 +62,6 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
@@ -93,6 +91,8 @@ import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
 import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
 import java.util.Locale
 import kotlinx.coroutines.delay
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.luc4n3x.levyra.ui.components.LevyraSlider
 
 private const val GRAPH_FLOOR_DB = -90f
 private const val GRAPH_CEILING_DB = -10f
@@ -485,7 +485,7 @@ private fun MaxBoostControl(maxBoostDb: Float, copy: SmartMusicCopy, onMaxBoost:
             Text(copy[SmartMusicText.AdaptiveMaxBoost], style = MaterialTheme.typography.bodyMedium, color = scheme.onSurface, modifier = Modifier.weight(1f))
             Text(String.format(Locale.ROOT, "+%.1f dB", value), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = scheme.onSurface)
         }
-        Slider(
+        LevyraSlider(
             value = value,
             onValueChange = { value = it },
             onValueChangeFinished = { onMaxBoost(value) },

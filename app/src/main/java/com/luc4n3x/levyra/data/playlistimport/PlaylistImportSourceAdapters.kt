@@ -230,7 +230,7 @@ class SpotifyPlaylistAdapter(private val fetcher: PlaylistImportFetcher) : Playl
         val tracks = if (usePaged) requireNotNull(paged).tracks else embed.tracks
         val declared = paged?.total ?: page?.declaredTrackCount
         val completeness = when {
-            usePaged && paged?.complete == true -> PlaylistImportCompleteness.Complete
+            usePaged && paged.complete -> PlaylistImportCompleteness.Complete
             usePaged ->
                 PlaylistImportCompleteness.Incomplete(tracks.size, declared, IncompleteReason.PAGINATION_STOPPED)
             declared != null -> completenessOf(tracks.size, declared, IncompleteReason.PROVIDER_PAGE_LIMIT)

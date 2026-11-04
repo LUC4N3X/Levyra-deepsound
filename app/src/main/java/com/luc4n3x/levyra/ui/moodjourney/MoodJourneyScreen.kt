@@ -62,7 +62,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -142,6 +141,7 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
 import kotlin.math.roundToInt
+import com.luc4n3x.levyra.ui.components.LevyraSlider
 
 private val CurveHeight = 248.dp
 private val CurvePadding = 22.dp
@@ -800,7 +800,7 @@ private fun ToneControl(session: MoodJourneySession, selected: Int, copy: MoodSt
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(copy.toneLow, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
-            Slider(
+            LevyraSlider(
                 value = point.valence,
                 onValueChange = { controller.movePoint(selected, MoodPoint(point.energy, it)) },
                 onValueChangeFinished = controller::commitCurve,
