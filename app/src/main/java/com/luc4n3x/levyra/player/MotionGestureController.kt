@@ -163,10 +163,8 @@ internal class MotionGestureController(
         }
 
         val useWakeUp = !screenInteractive && capability.wakeUpSensorSupported
-        val flipTarget = if (settings.flipToPauseEnabled) flipSensorFor(useWakeUp) else null
-        val shakeAllowed = settings.shakeToSkipEnabled &&
-            MotionGestureRegistrationPolicy.shakeAllowed(screenInteractive, settings.allowScreenOffWhenSupported)
-        val shakeTarget = if (shakeAllowed) shakeSensorFor(useWakeUp) else null
+        val flipTarget = flipTargetFor(useWakeUp)
+        val shakeTarget = shakeTargetFor(useWakeUp)
 
         if (sensorsRegistered && flipTarget == requestedFlipSensor && shakeTarget == requestedShakeSensor) {
             retryMissingTargets(manager, flipTarget, shakeTarget, shakeSensorFor(useWakeUp))
@@ -185,10 +183,7 @@ internal class MotionGestureController(
         val (flipSensor, shakeSensor) = registerTargets(manager, flipTarget, shakeTarget, shakeSensorFor(useWakeUp))
         requestedFlipSensor = flipTarget
         requestedShakeSensor = shakeTarget
-        if (flipTarget != null && flipSensor != flipTarget) {
-            Timber.w("MotionGestureController: flip sensor %s unavailable, using %s", flipTarget.name, flipSensor?.name)
-        }
-        if (shakeTarget != null && shakeSensor == null) Timber.w("MotionGestureController: shake sensor unavailable (%s)", shakeTarget.name)
+        logRegistrationGaps(flipTarget, flipSensor, shakeTarget, shakeSensor)
         registeredFlipSensor = flipSensor
         registeredShakeSensor = shakeSensor
         val anyRegistered = flipSensor != null || shakeSensor != null
@@ -199,6 +194,24 @@ internal class MotionGestureController(
             shakeDetector.reset()
         }
         _activeMonitoringFlow.value = anyRegistered
+    }
+
+    private fun flipTargetFor(useWakeUp: Boolean): Sensor? =
+        if (settings.flipToPauseEnabled) flipSensorFor(useWakeUp) else null
+
+    private fun shakeTargetFor(useWakeUp: Boolean): Sensor? {
+        val allowed = settings.shakeToSkipEnabled &&
+            MotionGestureRegistrationPolicy.shakeAllowed(screenInteractive, settings.allowScreenOffWhenSupported)
+        return if (allowed) shakeSensorFor(useWakeUp) else null
+    }
+
+    private fun logRegistrationGaps(flipTarget: Sensor?, flipSensor: Sensor?, shakeTarget: Sensor?, shakeSensor: Sensor?) {
+        if (flipTarget != null && flipSensor != flipTarget) {
+            Timber.w("MotionGestureController: flip sensor %s unavailable, using %s", flipTarget.name, flipSensor?.name)
+        }
+        if (shakeTarget != null && shakeSensor == null) {
+            Timber.w("MotionGestureController: shake sensor unavailable (%s)", shakeTarget.name)
+        }
     }
 
     private fun registerTargets(

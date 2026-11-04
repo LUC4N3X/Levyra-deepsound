@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.data.ArtworkPalette
 import com.luc4n3x.levyra.data.ArtworkPaletteCache
+import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.artwork.rememberArtworkPalette
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
@@ -110,38 +111,9 @@ internal fun MiniPlayer(
     val radioStrings = com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog.forCode(strings.code)
     val miniRightToLeft = LocalLayoutDirection.current == LayoutDirection.Rtl
     val miniHaptics = LocalLevyraHaptics.current
-    val fallbackPalette = remember(track.accentStart, track.accentEnd) {
-        ArtworkPalette(track.accentStart, track.accentEnd)
-    }
-    val paletteKey = remember(track.id, track.thumbnailUrl, track.largeThumbnailUrl) {
-        ArtworkPaletteCache.key(
-            trackId = track.id,
-            thumbnailUrl = track.thumbnailUrl,
-            largeThumbnailUrl = track.largeThumbnailUrl
-        )
-    }
-    val activePalette by rememberArtworkPalette(
-        paletteKey = if (fixedAccents == null) paletteKey else "",
-        artworkUrl = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
-        fallback = fallbackPalette,
-        retainPreviousUntilLoaded = true
-    )
-    val targetAccentStart = Color(activePalette.start)
-    val targetAccentEnd = Color(activePalette.end)
-    val artworkTargets = remember(targetAccentStart, targetAccentEnd) {
-        harmonizePlayerAccents(targetAccentStart, targetAccentEnd)
-    }
-    val harmonizedTargets = fixedAccents ?: artworkTargets
-    val accentStart by animateColorAsState(
-        targetValue = harmonizedTargets.primary,
-        animationSpec = if (animated) LevyraPlayerDesign.paletteTween() else snap(),
-        label = "mini-accent-start"
-    )
-    val accentEnd by animateColorAsState(
-        targetValue = harmonizedTargets.secondary,
-        animationSpec = if (animated) LevyraPlayerDesign.paletteTween() else snap(),
-        label = "mini-accent-end"
-    )
+    val accents = rememberMiniAccents(track, fixedAccents, animated)
+    val accentStart = accents.primary
+    val accentEnd = accents.secondary
     val miniProgressColor = accentStart.playerMix(Color.White, 0.72f)
     val miniPrimaryContent = LevyraPlayerDesign.TextPrimary
     val miniSecondaryContent = LevyraPlayerDesign.TextSecondary
@@ -341,4 +313,41 @@ internal fun MiniPlayer(
             }
         }
     }
+}
+
+@Composable
+private fun rememberMiniAccents(track: Track, fixedAccents: PlayerAccentPair?, animated: Boolean): PlayerAccentPair {
+    val fallbackPalette = remember(track.accentStart, track.accentEnd) {
+        ArtworkPalette(track.accentStart, track.accentEnd)
+    }
+    val paletteKey = remember(track.id, track.thumbnailUrl, track.largeThumbnailUrl) {
+        ArtworkPaletteCache.key(
+            trackId = track.id,
+            thumbnailUrl = track.thumbnailUrl,
+            largeThumbnailUrl = track.largeThumbnailUrl
+        )
+    }
+    val activePalette by rememberArtworkPalette(
+        paletteKey = if (fixedAccents == null) paletteKey else "",
+        artworkUrl = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
+        fallback = fallbackPalette,
+        retainPreviousUntilLoaded = true
+    )
+    val targetAccentStart = Color(activePalette.start)
+    val targetAccentEnd = Color(activePalette.end)
+    val artworkTargets = remember(targetAccentStart, targetAccentEnd) {
+        harmonizePlayerAccents(targetAccentStart, targetAccentEnd)
+    }
+    val harmonizedTargets = fixedAccents ?: artworkTargets
+    val accentStart by animateColorAsState(
+        targetValue = harmonizedTargets.primary,
+        animationSpec = if (animated) LevyraPlayerDesign.paletteTween() else snap(),
+        label = "mini-accent-start"
+    )
+    val accentEnd by animateColorAsState(
+        targetValue = harmonizedTargets.secondary,
+        animationSpec = if (animated) LevyraPlayerDesign.paletteTween() else snap(),
+        label = "mini-accent-end"
+    )
+    return PlayerAccentPair(accentStart, accentEnd)
 }
