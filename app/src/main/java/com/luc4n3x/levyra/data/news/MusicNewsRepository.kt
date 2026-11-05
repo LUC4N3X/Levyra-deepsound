@@ -80,7 +80,7 @@ class MusicNewsRepository private constructor(context: Context) {
         val shared = inFlight.computeIfAbsent(key) {
             scope.async {
                 try {
-                    fetchAll(MusicNewsSources.forLanguage(key))?.also { page ->
+                    fetchAll(MusicNewsSources.forLanguage(key))?.let { fresh -> keepFailedSources(fresh, usable) }?.also { page ->
                         pages[key] = page
                         writeText(key, MusicNewsCodec.encode(page))
                     }
@@ -90,6 +90,12 @@ class MusicNewsRepository private constructor(context: Context) {
             }
         }
         return awaitOrNull(shared)?.stories ?: usable?.stories
+    }
+
+    private fun keepFailedSources(fresh: MusicNewsPage, previous: MusicNewsPage?): MusicNewsPage {
+        val refreshed = fresh.stories.mapTo(HashSet()) { it.source }
+        val kept = previous?.stories.orEmpty().filter { it.source !in refreshed }
+        return if (kept.isEmpty()) fresh else MusicNewsPage(merge(fresh.stories + kept), fresh.fetchedAtMs)
     }
 
     private suspend fun usable(key: String, now: Long): MusicNewsPage? {

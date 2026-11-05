@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Radio
 import androidx.compose.material.icons.outlined.Search
@@ -110,11 +111,24 @@ internal fun LevyraTopBarSearchAction(onClick: () -> Unit) {
 internal fun LevyraTopLevelSearchRow(
     onSearch: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    onJam: (() -> Unit)? = null,
     content: @Composable RowScope.() -> Unit
 ) {
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         content()
+        if (onJam != null) LevyraTopBarJamAction(onJam)
         if (onSearch != null) LevyraTopBarSearchAction(onSearch)
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+internal fun LevyraTopBarJamAction(onClick: () -> Unit) {
+    val label = LocalLevyraStrings.current.jamTitle
+    if (LevyraSkinManagesLayout) {
+        IconButton(onClick = onClick, modifier = Modifier.size(48.dp)) { Icon(Icons.Rounded.Groups, label, tint = LevyraText) }
+    } else {
+        HomeHeaderIconButton(icon = Icons.Rounded.Groups, contentDescription = label, polygon = MaterialShapes.Cookie4Sided, onClick = onClick)
     }
 }
 

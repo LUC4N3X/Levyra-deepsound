@@ -27,7 +27,7 @@ class ExploreLayoutTest {
                 assertEquals(1, rows.count { it == ExploreRow.MoodJourney })
                 assertTrue(rows.none { it is ExploreRow.MoodRail })
                 assertTrue(ExploreAnchor.Moods in exploreAvailableAnchors(rows))
-                assertTrue(rows.indexOf(ExploreRow.MixTools) < rows.indexOf(ExploreRow.MoodJourney))
+                assertTrue(rows.none { it == ExploreRow.MixTools })
             }
         }
     }
@@ -50,15 +50,15 @@ class ExploreLayoutTest {
         assertTrue(rows.none { it is ExploreRow.MoodRail })
         assertFalse(ExploreAnchor.Moods in exploreAvailableAnchors(rows))
         assertTrue(rows.contains(ExploreRow.FreshSpotlight))
-        assertEquals(ExploreRow.MixTools, rows.last())
+        assertTrue(rows.none { it == ExploreRow.MixTools })
     }
 
     @Test
-    fun discoveryContentPrecedesAdvancedMixControls() {
+    fun levyraMixIsNoLongerPartOfExplore() {
         val rows = buildExploreRows(zones(4), false, true)
 
-        assertTrue(rows.indexOf(ExploreRow.FreshSpotlight) < rows.indexOf(ExploreRow.MixTools))
-        assertEquals(ExploreRow.MixTools, rows.last())
+        assertTrue(rows.contains(ExploreRow.FreshSpotlight))
+        assertTrue(rows.none { it == ExploreRow.MixTools })
     }
 
     @Test
@@ -69,19 +69,18 @@ class ExploreLayoutTest {
                     hasFreshScopes = true, hasFreshMoment = true, journeyInPlaceOfMoods = true)
                 val lastFresh = if (hasTracks) ExploreRow.FreshMoment else if (loading) ExploreRow.FreshLoading else ExploreRow.FreshEmpty
 
-                assertEquals(rows.indexOf(lastFresh) + 1, rows.indexOf(ExploreRow.MixTools))
-                assertEquals(rows.indexOf(ExploreRow.MixTools) + 1, rows.indexOf(ExploreRow.MoodJourney))
-                assertEquals(1, rows.count { it == ExploreRow.MixTools })
+                assertEquals(rows.indexOf(lastFresh) + 1, rows.indexOf(ExploreRow.MoodJourney))
+                assertTrue(rows.none { it == ExploreRow.MixTools })
             }
         }
     }
 
     @Test
-    fun mixControlsRemainAvailableWhenDiscoveryIsEmpty() {
+    fun emptyDiscoveryStillShowsTheEmptyState() {
         val rows = buildExploreRows(emptyList(), false, false)
 
         assertTrue(rows.contains(ExploreRow.FreshEmpty))
-        assertEquals(1, rows.count { it == ExploreRow.MixTools })
+        assertTrue(rows.none { it == ExploreRow.MixTools })
     }
 
     @Test
@@ -540,7 +539,7 @@ class ExploreLayoutTest {
 
         assertEquals(ExploreRow.Shortcuts, rows.first())
         assertTrue(rows.none { it == ExploreRow.NewsHero || it == ExploreRow.NewsList || it == ExploreRow.DailyTop100 })
-        assertTrue(ExploreRow.MoodJourney in rows && ExploreRow.MixTools in rows)
+        assertTrue(ExploreRow.MoodJourney in rows && ExploreRow.MixTools !in rows)
     }
 
     @Test

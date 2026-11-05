@@ -128,7 +128,8 @@ internal fun AppleMusicPlayerScene(
     BoxWithConstraints(modifier.fillMaxSize()) {
         val landscape = maxWidth > maxHeight
         val immersive = appleMusicCanvasImmersive(canvas, maxWidth, maxHeight, video)
-        val fullBleed = !landscape && !video && !immersive
+        val realCanvas = canvas?.artwork != null && canvas.enabled
+        val fullBleed = !landscape && !video && !immersive && (!LevyraIsAppleMusic || realCanvas)
         val canvasAlpha by animateFloatAsState(if (immersive) 1f else 0f, label = "apple-player-canvas-alpha")
         val density = LocalDensity.current
         val topInset = with(density) { WindowInsets.statusBars.getTop(density).toDp() }
@@ -154,8 +155,8 @@ internal fun AppleMusicPlayerScene(
         } else {
             AppleMusicCardScene(
                 track, slots, playing, video, immersive, landscape, { canvasAlpha },
-                landscapeArtwork = minOf(maxHeight - 34.dp, artworkCap), portraitWidth = maxWidth,
-                volume = volume.takeIf { maxHeight >= AppleMusicLandscapeVolumeMinHeight },
+                landscapeArtwork = minOf(maxHeight - 34.dp, artworkCap), portraitWidth = if (video) maxWidth else artworkCap,
+                volume = volume.takeIf { maxHeight >= if (landscape) AppleMusicLandscapeVolumeMinHeight else AppleMusicPortraitVolumeMinHeight },
                 metadata = metadata, transport = transport
             )
         }
@@ -174,7 +175,7 @@ private fun AppleMusicCardScene(
     if (landscape) {
         AppleMusicLandscapeDeck(track, slots, landscapeArtwork, artwork, metadata, transport, volume)
     } else {
-        AppleMusicPortraitDeck(track, slots, portraitWidth, immersive, artwork, metadata, transport)
+        AppleMusicPortraitDeck(track, slots, portraitWidth, immersive, artwork, metadata, transport, volume.takeIf { !video })
     }
 }
 
@@ -302,7 +303,7 @@ private fun AppleMusicGrabber() {
 @Composable
 private fun AppleMusicPortraitDeck(
     track: Track, slots: PlayerDeckSlots, artworkCap: Dp, immersive: Boolean, artwork: @Composable (Dp) -> Unit,
-    metadata: @Composable () -> Unit, transport: @Composable () -> Unit
+    metadata: @Composable () -> Unit, transport: @Composable () -> Unit, volume: MusicStreamVolume? = null
 ) {
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
         AppleMusicGrabber()
@@ -317,6 +318,7 @@ private fun AppleMusicPortraitDeck(
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             Box(Modifier.padding(horizontal = 16.dp)) { transport() }
         }
+        if (volume != null) AppleMusicVolumeRow(volume, Modifier.padding(horizontal = AppleMusicDesign.playerSeekbarInset))
         Box(Modifier.fillMaxWidth().padding(bottom = AppleMusicDesign.playerActionBottom)) { AppleMusicDockRow(slots.dockActions(track)) }
     }
 }

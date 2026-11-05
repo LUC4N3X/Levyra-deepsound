@@ -698,7 +698,7 @@ internal fun LevyraLibraryScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             item(key = "library-title") {
-                com.luc4n3x.levyra.ui.LevyraTopLevelSearchRow(viewModel::openSearch.takeIf { libraryRadioSkin && category == LibraryCategory.Overview }) {
+                com.luc4n3x.levyra.ui.LevyraTopLevelSearchRow(viewModel::openSearch.takeIf { libraryRadioSkin && category == LibraryCategory.Overview }, onJam = viewModel::openJam.takeIf { libraryRadioSkin && category == LibraryCategory.Overview }) {
                     Box(Modifier.weight(1f)) {
                         LibraryHero(
                             title = if (category == LibraryCategory.Overview) strings.libraryTitle else category.libraryLabel(strings),

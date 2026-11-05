@@ -9901,6 +9901,9 @@ private fun StudioHomeScreen(
         val composedRequest = composedBlocks?.let { blocks ->
             ComposedHomeRequest(blocks, composedHomeContent(homeContext, skinHomeData, skinHomeActions, composedRadio, composedDiscovery, composedZones))
         }
+        val skinPinnedCards = remember(homeContext.speedDialPins, homeContext.viewModel) {
+            speedDialCards(homeContext.speedDialPins, homeContext.viewModel::openSpeedDialPin)
+        }
         if (LevyraIsAtelier) {
             AtelierHomeEntry(skinHomeData, skinHomeActions, homeContext.viewModel, state, homeListState, homeBottomInset, homeRefreshing, homePullState, onPullRefresh, composedRequest, homeContext.speedDialPins)
         } else if (LevyraIsQobuz) {
@@ -9918,7 +9921,8 @@ private fun StudioHomeScreen(
                 homeRefreshing = homeRefreshing,
                 homePullState = homePullState,
                 onPullRefresh = onPullRefresh,
-                composition = composedRequest
+                composition = composedRequest,
+                pins = skinPinnedCards
             )
         } else {
             AppleMusicHomeContent(
@@ -9929,7 +9933,8 @@ private fun StudioHomeScreen(
                 homeRefreshing = homeRefreshing,
                 homePullState = homePullState,
                 onPullRefresh = onPullRefresh,
-                composition = composedRequest
+                composition = composedRequest,
+                pins = skinPinnedCards
             )
         }
         StudioHomeOverlays(homeContext, homeBottomInset)
@@ -15184,7 +15189,7 @@ private fun SearchScreen(
             userName = state.userName,
             onSettings = viewModel::openSettings,
             spotifyFocus = spotifySearchFocus,
-            onLyrics = (viewModel::openLyricsPhraseSearch).takeIf { LevyraRadioReplacesSearch }
+            onLyrics = viewModel::openLyricsPhraseSearch.takeIf { LevyraRadioReplacesSearch }
         )
         if (queryClean.isEmpty() && !spotifySearchFocus.value && !LevyraIsDefaultSkin && !LevyraRadioReplacesSearch) {
             LyricsSearchEntry(onOpen = viewModel::openLyricsPhraseSearch)
@@ -15357,11 +15362,12 @@ private fun SearchScreen(
                     }
                 }
 
-                if (levyraBrowse != null && state.exploreSamples.isNotEmpty()) {
+                val searchSamples = exploreSampleTracks(state.exploreSamples, ExploreImmersiveSampleLimit)
+                if (levyraBrowse != null && searchSamples.isNotEmpty()) {
                     item(key = "search-samples", contentType = "search-samples") {
                         LevyraSearchSamplesRail(
                             title = strings.exploreSamples,
-                            samples = state.exploreSamples,
+                            samples = searchSamples,
                             previewEnabled = !state.isVideoMode && !state.isResolving
                         ) { index ->
                             focusManager.clearFocus()

@@ -151,8 +151,6 @@ internal fun buildExploreRows(
     if (spotifyStyle) rows += ExploreRow.Samples
     rows += exploreFreshRows(isFreshLoading, hasFreshTracks, hasFreshScopes, hasFreshMoment)
 
-    if (journeyInPlaceOfMoods) rows += ExploreRow.MixTools
-
     val distinctZones = zones.distinctBy { it.id }
     if (journeyInPlaceOfMoods) {
         rows += ExploreRow.MoodJourney
@@ -160,8 +158,6 @@ internal fun buildExploreRows(
         rows += ExploreRow.Header(ExploreAnchor.Moods)
         rows += ExploreRow.MoodRail(distinctZones)
     }
-
-    if (!journeyInPlaceOfMoods) rows += ExploreRow.MixTools
     return rows
 }
 

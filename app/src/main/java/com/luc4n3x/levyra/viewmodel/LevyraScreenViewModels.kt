@@ -461,6 +461,7 @@ class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::li
     fun openMixLab(initialParams: com.luc4n3x.levyra.domain.MixLabParams = com.luc4n3x.levyra.domain.MixLabParams()) = root.openMixLab(initialParams)
     fun openMoodJourney() = root.openMoodJourney()
     fun openMoodJourney(preset: com.luc4n3x.levyra.domain.MoodCurvePreset) = root.openMoodJourney(preset)
+    fun openJam() = root.openJam()
     fun openListeningRecap() = root.openListeningRecap()
     fun openListeningInsights() = root.openListeningInsights()
     fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
