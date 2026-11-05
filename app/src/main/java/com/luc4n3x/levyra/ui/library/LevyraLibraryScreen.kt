@@ -293,6 +293,11 @@ internal fun LevyraLibraryScreen(
     val strings = LocalLevyraStrings.current
     val colors = MaterialTheme.colorScheme
     val deleteOfflineDownloads = rememberOfflineDeleteHandler(viewModel)
+    val libraryRadioSkin = com.luc4n3x.levyra.ui.levyraSearchOwnsBrowse(
+        com.luc4n3x.levyra.ui.theme.LevyraIsSpotify,
+        com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic,
+        com.luc4n3x.levyra.ui.theme.LevyraIsAtelier || com.luc4n3x.levyra.ui.theme.LevyraIsQobuz || com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic
+    )
     val catalog = remember(
         state.favorites,
         state.favoriteTimestamps,
@@ -693,15 +698,19 @@ internal fun LevyraLibraryScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             item(key = "library-title") {
-                LibraryHero(
-                    title = if (category == LibraryCategory.Overview) strings.libraryTitle else category.libraryLabel(strings),
-                    subtitle = when (category) {
-                        LibraryCategory.Overview -> ""
-                        LibraryCategory.Playlists -> "${visiblePlaylists.size} ${strings.playlistsPlain}"
-                        else -> categorySummary(category)
-                    },
-                    onBack = { switchCategory(LibraryCategory.Overview) }.takeIf { category != LibraryCategory.Overview }
-                )
+                com.luc4n3x.levyra.ui.LevyraTopLevelSearchRow(viewModel::openSearch.takeIf { libraryRadioSkin && category == LibraryCategory.Overview }) {
+                    Box(Modifier.weight(1f)) {
+                        LibraryHero(
+                            title = if (category == LibraryCategory.Overview) strings.libraryTitle else category.libraryLabel(strings),
+                            subtitle = when (category) {
+                                LibraryCategory.Overview -> ""
+                                LibraryCategory.Playlists -> "${visiblePlaylists.size} ${strings.playlistsPlain}"
+                                else -> categorySummary(category)
+                            },
+                            onBack = { switchCategory(LibraryCategory.Overview) }.takeIf { category != LibraryCategory.Overview }
+                        )
+                    }
+                }
             }
 
             if (youtubeMusicAccount != null && category == LibraryCategory.Overview) {
@@ -901,6 +910,13 @@ internal fun LevyraLibraryScreen(
                                     selectedKeys = setOf("playlist:${it.id}")
                                 },
                                 onPlay = { viewModel.playPlaylist(it.id) }
+                            )
+                        }
+                    }
+                    if (libraryRadioSkin) {
+                        item(key = "overview-mood-journey") {
+                            com.luc4n3x.levyra.ui.moodjourney.MoodJourneyEntryCard(
+                                onOpen = { preset -> if (preset == null) viewModel.openMoodJourney() else viewModel.openMoodJourney(preset) }
                             )
                         }
                     }

@@ -180,12 +180,14 @@ internal fun NavigationStudioOverlay(
     var workingOrder by remember(style, tuning.order) { mutableStateOf(tuning.order) }
     val rowHeights = remember { mutableStateMapOf<LevyraTab, Int>() }
     val labels = rememberLevyraTabEntries().associate { it.tab to it.label }
+    val radioBar = LevyraRadioReplacesSearch
 
     fun moveBy(tab: LevyraTab, delta: Int): Boolean {
-        val index = workingOrder.indexOf(tab)
+        val rows = navStudioRows(workingOrder, radioBar)
+        val index = rows.indexOf(tab)
         val target = index + delta
-        if (index < 0 || target !in workingOrder.indices) return false
-        val next = workingOrder.toMutableList().apply { add(target, removeAt(index)) }
+        if (index < 0 || target !in rows.indices) return false
+        val next = navStudioOrder(workingOrder, rows.toMutableList().apply { add(target, removeAt(index)) }, radioBar)
         workingOrder = next
         commit(tuning.copy(order = next))
         haptics.perform(LevyraHapticAction.Reorder)
@@ -301,9 +303,10 @@ internal fun NavigationStudioOverlay(
                         Text(copy[NavStudioText.DestinationsHint], style = MaterialTheme.typography.bodySmall, color = LevyraMuted)
                     }
                 }
-                items(workingOrder, key = { "nav-${NavDestinations.storageId(it)}" }, contentType = { "nav-row" }) { tab ->
+                val rows = navStudioRows(workingOrder, radioBar)
+                items(rows, key = { "nav-${NavDestinations.storageId(it)}" }, contentType = { "nav-row" }) { tab ->
                     val isDragging = dragging == tab
-                    val index = workingOrder.indexOf(tab)
+                    val index = rows.indexOf(tab)
                     val title = labels[tab].orEmpty()
                     val finishDrag: () -> Unit = {
                         dragging = null
@@ -322,7 +325,7 @@ internal fun NavigationStudioOverlay(
                             CustomAccessibilityAction(strings.speedDialCopy().moveEarlier) { moveBy(tab, -1) }
                                 .takeIf { index > 0 },
                             CustomAccessibilityAction(strings.speedDialCopy().moveLater) { moveBy(tab, 1) }
-                                .takeIf { index < workingOrder.lastIndex }
+                                .takeIf { index < rows.lastIndex }
                         ),
                         onMeasured = { rowHeights[tab] = it },
                         onDragStart = {
@@ -333,8 +336,8 @@ internal fun NavigationStudioOverlay(
                         onDragEnd = finishDrag,
                         onDrag = { delta ->
                             dragOffset += delta
-                            navReorderStep(workingOrder, tab, dragOffset, rowHeights)?.let { (order, offset) ->
-                                workingOrder = order
+                            navReorderStep(navStudioRows(workingOrder, radioBar), tab, dragOffset, rowHeights)?.let { (order, offset) ->
+                                workingOrder = navStudioOrder(workingOrder, order, radioBar)
                                 dragOffset = offset
                                 haptics.perform(LevyraHapticAction.Reorder)
                             }
@@ -342,6 +345,7 @@ internal fun NavigationStudioOverlay(
                         onVisible = { shown -> commit(tuning.withVisibility(tab, shown)) }
                     )
                 }
+                if (radioBar) item(key = "nav-radio", contentType = "nav-pinned") { NavPinnedDestinationRow(labels[LevyraTab.Radio].orEmpty()) }
                 navOptionItems(tuning, spec, copy, preview, cancelPreview, commit)
                 item(key = "nav-reset-style", contentType = "actions") {
                     OutlinedButton(
@@ -720,6 +724,28 @@ private fun LazyItemScope.NavDestinationRow(
             visible = visible,
             description = "${copy[NavStudioText.Show]}: $title",
             onVisible = onVisible
+        )
+    }
+}
+
+@Composable
+private fun NavPinnedDestinationRow(title: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .padding(start = 4.dp, end = 12.dp, top = 4.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.Lock, contentDescription = null, tint = LevyraMuted)
+        }
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+            color = LevyraText,
+            modifier = Modifier.weight(1f)
         )
     }
 }

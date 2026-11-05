@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -126,7 +127,10 @@ internal fun LiveRadioScreen(
     isPlaying: Boolean,
     backEnabled: Boolean,
     onBack: () -> Unit,
-    onPlay: (RadioStation) -> Unit
+    onPlay: (RadioStation) -> Unit,
+    tabTitle: String? = null,
+    onSearch: (() -> Unit)? = null,
+    leadingItems: (LazyListScope.() -> Unit)? = null
 ) {
     BackHandler(enabled = backEnabled, onBack = onBack)
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -155,6 +159,7 @@ internal fun LiveRadioScreen(
                 bottom = 190.dp
             )
         ) {
+            leadingItems?.invoke(this)
             item(key = "live-radio-intro") {
                 RadioHero(
                     live = radioStrings.live,
@@ -366,10 +371,11 @@ internal fun LiveRadioScreen(
         }
 
         RadioTopBar(
-            title = radioStrings.title,
+            title = tabTitle ?: radioStrings.title,
             live = radioStrings.live,
             backLabel = strings.back,
-            onBack = onBack,
+            onBack = onBack.takeIf { onSearch == null },
+            onSearch = onSearch,
             modifier = Modifier.align(Alignment.TopCenter)
         )
     }
@@ -590,7 +596,8 @@ private fun RadioTopBar(
     title: String,
     live: String,
     backLabel: String,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
+    onSearch: (() -> Unit)?,
     modifier: Modifier = Modifier
 ) {
     val colors = MaterialTheme.colorScheme
@@ -600,11 +607,11 @@ private fun RadioTopBar(
                 .fillMaxWidth()
                 .background(colors.surface)
                 .statusBarsPadding()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+                .padding(start = if (onBack == null) 24.dp else 14.dp, end = 14.dp, top = 10.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            LevyraBackButton(onClick = onBack, contentDescription = backLabel)
+            if (onBack != null) LevyraBackButton(onClick = onBack, contentDescription = backLabel)
             Text(
                 text = title,
                 color = colors.onSurface,
@@ -615,7 +622,7 @@ private fun RadioTopBar(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f).semantics { heading() }
             )
-            RadioLivePill(live = live)
+            if (onSearch != null) LevyraTopBarSearchAction(onSearch) else RadioLivePill(live = live)
         }
         Box(
             modifier = Modifier

@@ -1202,7 +1202,8 @@ internal fun rememberLevyraTabEntries(): List<LevyraTabEntry> {
             LevyraTabEntry(LevyraTab.Home, if (nocturne) Icons.Outlined.Home else Icons.Rounded.Home, Icons.Outlined.Home, strings.home),
             LevyraTabEntry(LevyraTab.Search, if (nocturne) Icons.Outlined.Search else Icons.Rounded.Search, Icons.Outlined.Search, strings.search),
             LevyraTabEntry(LevyraTab.Explore, if (nocturne) Icons.Outlined.Explore else Icons.Rounded.Explore, Icons.Outlined.Explore, strings.explore),
-            LevyraTabEntry(LevyraTab.Library, if (nocturne) Icons.Outlined.LibraryMusic else Icons.Rounded.LibraryMusic, Icons.Outlined.LibraryMusic, strings.library)
+            LevyraTabEntry(LevyraTab.Library, if (nocturne) Icons.Outlined.LibraryMusic else Icons.Rounded.LibraryMusic, Icons.Outlined.LibraryMusic, strings.library),
+            radioTabEntry(strings.code, nocturne)
         )
     }
 }
@@ -2599,6 +2600,7 @@ fun LevyraApp(
                                 atelierShelf = { onOpenCollection -> com.luc4n3x.levyra.ui.atelier.AtelierShelfEntry(viewModel, state, onOpenCollection) }
                             )
                         }
+                        LevyraTab.Radio -> RadioTabScreen(viewModel, state, backEnabled = !rootOverlayOpen && state.selectedTab == LevyraTab.Radio)
                         LevyraTab.Player -> Unit
                     }
                 }
@@ -15294,6 +15296,9 @@ private fun SearchScreen(
                 .weight(1f)
                 .fillMaxWidth()
         ) {
+        val levyraBrowse = if (queryClean.isEmpty() && levyraSearchOwnsBrowse(LevyraIsSpotify, LevyraIsAppleMusic, LevyraIsAtelier || LevyraIsQobuz || LevyraIsYouTubeMusic)) {
+            rememberLevyraSearchBrowse(state, viewModel)
+        } else null
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
@@ -15343,12 +15348,25 @@ private fun SearchScreen(
                             onPlayNext = viewModel::playNext,
                             onAddToQueue = viewModel::addToQueue,
                             onDownload = viewModel::exportTrack,
-                            onArtist = viewModel::openArtist
+                            onArtist = viewModel::openArtist,
+                            refined = levyraBrowse != null
                         )
                     }
                 }
 
-                item(key = "search-artist-suggestions", contentType = "search-artist-suggestions") {
+                if (levyraBrowse != null) levyraSearchBrowseItems(
+                    browse = levyraBrowse,
+                    onOpenZone = { zone ->
+                        focusManager.clearFocus()
+                        keyboardController?.hide()
+                        viewModel.openExploreZone(zone)
+                    },
+                    onOpenCategory = { category ->
+                        focusManager.clearFocus()
+                        keyboardController?.hide()
+                        viewModel.openExploreCategory(category)
+                    }
+                ) else item(key = "search-artist-suggestions", contentType = "search-artist-suggestions") {
                     SearchSectionGap()
                     val fallbackSuggestions = LevyraContentLocales.artistSuggestions(state.languageCode)
                     SearchArtistSuggestions(
@@ -15872,8 +15890,29 @@ private fun RecentSearchesRow(
     onPlayNext: (Track) -> Unit,
     onAddToQueue: (Track) -> Unit,
     onDownload: (Track) -> Unit,
-    onArtist: (Track) -> Unit
+    onArtist: (Track) -> Unit,
+    refined: Boolean = false
 ) {
+    if (refined) {
+        LevyraRecentSearchesRail(title, tracks, onTrackClick) { track, expanded, onDismiss ->
+            SearchTrackActionsMenu(
+                track = track,
+                expanded = expanded,
+                isFavorite = track.id in favoriteIds,
+                isDownloaded = track.id in downloadedTrackIds,
+                allowRemove = allowRemove,
+                onDismiss = onDismiss,
+                onRemove = onRemove,
+                onFavorite = onFavorite,
+                onAddToPlaylist = onAddToPlaylist,
+                onPlayNext = onPlayNext,
+                onAddToQueue = onAddToQueue,
+                onDownload = onDownload,
+                onArtist = onArtist
+            )
+        }
+        return
+    }
     val strings = LocalLevyraStrings.current
     val scheme = MaterialTheme.colorScheme
     val artworkShapes = recentSearchArtworkShapes()
@@ -25563,6 +25602,9 @@ private fun ExploreScreen(
 ) {
     val strings = LocalLevyraStrings.current
     LaunchedEffect(strings.code) { viewModel.ensureExplore(strings) }
+    val editorialExplore = levyraSearchOwnsBrowse(LevyraIsSpotify, LevyraIsAppleMusic, LevyraIsAtelier || LevyraIsQobuz || LevyraIsYouTubeMusic)
+    LaunchedEffect(strings.code, editorialExplore) { if (editorialExplore) viewModel.ensureNews(strings.code) }
+    val news by viewModel.news.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val listState = rememberLazyListState()
     var addToPlaylistTarget by remember { mutableStateOf<Track?>(null) }
@@ -25578,6 +25620,12 @@ private fun ExploreScreen(
             exploreDestination = null
             samplesStartIndex = samplesIndex
             viewModel.beginSamplesPlayback()
+        } else if (exploreCategoryDestinationValue(requestedZoneId) != null) {
+            samplesStartIndex = null
+            exploreDestination = requestedZoneId
+        } else if (editorialExplore && requestedZoneId == ExploreCatalog.NEW_RELEASES_ZONE_ID) {
+            samplesStartIndex = null
+            exploreDestination = ExploreNewReleasesDestination
         } else {
             exploreDestination = exploreMoodDestination(requestedZoneId)
         }
@@ -25617,7 +25665,10 @@ private fun ExploreScreen(
         state.isFreshCurrentsLoading,
         freshFeed.spotlight.isNotEmpty(),
         freshScopes.size > 1,
-        momentPages.isNotEmpty()
+        momentPages.isNotEmpty(),
+        editorialExplore,
+        news.isNotEmpty(),
+        news.size > ExploreNewsFrontSize
     ) {
         buildExploreRows(
             zones = zones,
@@ -25627,7 +25678,10 @@ private fun ExploreScreen(
             hasFreshMoment = momentPages.isNotEmpty(),
             spotifyStyle = spotifyExplore,
             moodsInSearch = moodsInSearch,
-            journeyInPlaceOfMoods = true
+            journeyInPlaceOfMoods = true,
+            editorial = editorialExplore,
+            hasNews = news.isNotEmpty(),
+            hasNewsDesk = news.size > ExploreNewsFrontSize
         )
     }
     val availableAnchors = remember(rows) { exploreAvailableAnchors(rows) }
@@ -25695,6 +25749,16 @@ private fun ExploreScreen(
         miniPlayerVisible = state.currentTrack != null && !state.isSamplesOpen,
         animationsEnabled = state.animationsEnabled
     )
+    val editorialContent = if (editorialExplore) {
+        remember(news) {
+            ExploreEditorialContent(
+                news = news,
+                onOpenNews = viewModel::openNews,
+                onPlayChart = viewModel::playFrom,
+                onTrackMenu = { track -> addToPlaylistTarget = track }
+            )
+        }
+    } else null
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -25719,6 +25783,9 @@ private fun ExploreScreen(
             contentPadding = PaddingValues(top = 14.dp, bottom = exploreBottomInset),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+            if (editorialContent != null) item(key = "explore-editorial-title", contentType = "explore-editorial-title") {
+                LevyraTopLevelSearchRow(viewModel::openSearch, Modifier.padding(horizontal = HomeHorizontalInset)) { ExplorePageHeader(strings.exploreTitle, rememberExploreEditionDate(), Modifier.weight(1f)) }
+            }
             items(
                 items = rows,
                 key = { row -> row.key },
@@ -25728,6 +25795,7 @@ private fun ExploreScreen(
                     row = row,
                     state = state,
                     viewModel = viewModel,
+                    editorial = editorialContent,
                     fresh = freshSection,
                     availableAnchors = availableAnchors,
                     mixAccent = exploreMixAccent,
@@ -25797,6 +25865,7 @@ private fun ExploreContentRow(
     row: ExploreRow,
     state: LevyraUiState,
     viewModel: ExploreViewModel,
+    editorial: ExploreEditorialContent?,
     fresh: ExploreFreshSection,
     availableAnchors: Set<ExploreAnchor>,
     mixAccent: Color,
@@ -25812,6 +25881,8 @@ private fun ExploreContentRow(
 ) {
     val strings = LocalLevyraStrings.current
     when (row) {
+        ExploreRow.NewsHero, ExploreRow.DailyTop100, ExploreRow.NewsList ->
+            editorial?.let { content -> ExploreEditorialRow(row, content) }
         ExploreRow.MoodJourney -> com.luc4n3x.levyra.ui.moodjourney.MoodJourneyEntryCard(
             onOpen = { preset -> if (preset == null) viewModel.openMoodJourney() else viewModel.openMoodJourney(preset) },
             modifier = Modifier.padding(horizontal = HomeHorizontalInset, vertical = 8.dp)
@@ -25856,11 +25927,18 @@ private fun ExploreContentRow(
                 modifier = Modifier.padding(horizontal = HomeHorizontalInset)
             )
         }
-        is ExploreRow.Header -> ExploreAnchorHeader(
-            anchor = row.anchor,
-            onPlayFresh = onPlayFresh,
-            onOpenMoods = onOpenMoods
-        )
+        is ExploreRow.Header -> if (editorial != null && row.anchor == ExploreAnchor.Fresh) {
+            ExploreEditorialHeader(
+                title = com.luc4n3x.levyra.ui.i18n.exploreEditorialCopy(strings.code).releasesTitle,
+                onSeeAll = { onShortcut(ExploreShortcut.NewReleases) }
+            )
+        } else {
+            ExploreAnchorHeader(
+                anchor = row.anchor,
+                onPlayFresh = onPlayFresh,
+                onOpenMoods = onOpenMoods
+            )
+        }
         ExploreRow.FreshLoading -> Box(
             modifier = Modifier.fillMaxWidth().padding(vertical = 28.dp),
             contentAlignment = Alignment.Center
@@ -25870,13 +25948,27 @@ private fun ExploreContentRow(
         ExploreRow.FreshEmpty -> Box(modifier = Modifier.padding(horizontal = HomeHorizontalInset)) {
             EmptyState(strings.exploreEmpty)
         }
-        ExploreRow.FreshScopes -> ExploreFreshScopeRail(
-            scopes = fresh.scopes,
-            selected = fresh.feed.scope,
-            localLabel = fresh.regionLabel,
-            onSelect = onSelectFreshScope
-        )
-        ExploreRow.FreshSpotlight -> ExploreFreshSpotlight(
+        ExploreRow.FreshScopes -> if (editorial != null) {
+            ExploreEditorialScopeChips(fresh.scopes, fresh.feed.scope, fresh.regionLabel, onSelectFreshScope)
+        } else {
+            ExploreFreshScopeRail(
+                scopes = fresh.scopes,
+                selected = fresh.feed.scope,
+                localLabel = fresh.regionLabel,
+                onSelect = onSelectFreshScope
+            )
+        }
+        ExploreRow.FreshSpotlight -> if (editorial != null) {
+            ExploreReleaseShelf(
+                releases = remember(fresh.feed) { exploreReleaseShelf(fresh.feed) },
+                currentTrackId = state.currentTrack?.id,
+                isPlaying = state.isPlaying,
+                isResolving = state.isResolving,
+                onPlay = onPlayTrack,
+                onOpenAlbum = { track -> viewModel.openAlbum(trackAlbumHit(track)) },
+                actions = trackActions
+            )
+        } else ExploreFreshSpotlight(
             tracks = fresh.feed.spotlight,
             currentTrackId = state.currentTrack?.id,
             isPlaying = state.isPlaying,
@@ -26681,12 +26773,15 @@ internal fun BottomTabs(
     compaction: () -> Float,
     onSelect: (LevyraTab) -> Unit
 ) {
-    val entries = rememberLevyraTabEntries()
+    val entries = rememberLevyraBarEntries(com.luc4n3x.levyra.domain.NavDestinations.defaultOrder)
     val animationsEnabled = LocalAnimationsEnabled.current
     val haptics = LocalLevyraHaptics.current
     val isLight = LevyraIsLight
     val selectedTint = LevyraText
-    val selectedIndex = entries.indexOfFirst { it.tab == selected }.coerceAtLeast(0)
+    val activeIndex = entries.indexOfFirst { it.tab == selected }
+    var parkedIndex by remember { mutableIntStateOf(0) }
+    if (activeIndex >= 0) SideEffect { parkedIndex = activeIndex }
+    val selectedIndex = if (activeIndex >= 0) activeIndex else parkedIndex
     val indicatorPosition by animateFloatAsState(
         targetValue = selectedIndex.toFloat(),
         animationSpec = if (animationsEnabled) {
@@ -26723,6 +26818,7 @@ internal fun BottomTabs(
                             )
                         }
                         .size(width = indicatorWidth, height = LevyraTabIndicatorHeight)
+                        .graphicsLayer { alpha = if (activeIndex >= 0) 1f else 0f }
                         .dockMorphAnchorBackground(dockMorph, indicatorColor, LevyraTabIndicatorShape)
                 )
 

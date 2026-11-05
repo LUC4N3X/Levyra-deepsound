@@ -750,10 +750,7 @@ internal fun StyledBottomTabs(
         NocturneBottomTabs(tuning, selected, onSelect, applySystemInset)
         return
     }
-    val allEntries = rememberLevyraTabEntries()
-    val visibleEntries = remember(allEntries, tuning.order, tuning.hidden) {
-        tuning.visibleOrder().mapNotNull { tab -> allEntries.firstOrNull { it.tab == tab } }
-    }
+    val visibleEntries = rememberLevyraBarEntries(tuning.visibleOrder())
     val searchEntry = if (style.separatesSearch) visibleEntries.firstOrNull { it.tab == LevyraTab.Search } else null
     val entries = remember(visibleEntries, searchEntry) {
         if (searchEntry == null) visibleEntries else visibleEntries.filterNot { it.tab == LevyraTab.Search }
