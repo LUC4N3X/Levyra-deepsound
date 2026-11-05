@@ -224,6 +224,8 @@ class HomeViewModel internal constructor(
     fun openYoutubeCommentsFor(track: Track) = root.openYoutubeCommentsFor(track)
     fun playAll(tracks: List<Track>) = root.playAll(tracks)
     fun playLiveRadio(station: RadioStation) = root.playLiveRadio(station)
+    fun playPodcastEpisode(list: List<Track>, track: Track, startPositionMs: Long) =
+        root.playAudioFrom(list, track, startPositionMs = startPositionMs)
     internal val favoriteRadioStations = root.favoriteRadioStations
     fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) {
         val current = root.state.value

@@ -36,6 +36,7 @@ import androidx.compose.material.icons.rounded.HowToReg
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.automirrored.rounded.ViewList
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -74,6 +75,7 @@ import com.luc4n3x.levyra.ui.QobuzArtworkBox
 import com.luc4n3x.levyra.ui.QobuzChip
 import com.luc4n3x.levyra.ui.QobuzExplicitBadge
 import com.luc4n3x.levyra.ui.QobuzText
+import com.luc4n3x.levyra.ui.i18n.playlistImportCopy
 import com.luc4n3x.levyra.ui.i18n.LevyraQobuzSkinStrings
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
@@ -143,7 +145,7 @@ internal fun QobuzLibraryScreen(
             }
         )
         if (searching) QobuzLibrarySearchField(strings, query) { query = it }
-        QobuzLibraryFilterRow(strings, copy, filter, { filterName = it }, onOpenDownloads, onOpenTools)
+        QobuzLibraryFilterRow(strings, copy, filter, { filterName = it }, onOpenDownloads, onOpenTools) { viewModel.openPlaylistImport() }
         Box(Modifier.fillMaxWidth().height(1.dp).background(QobuzDesign.separator))
         QobuzLibraryControls(
             strings = strings,
@@ -218,7 +220,8 @@ private fun QobuzLibraryFilterRow(
     filter: QobuzLibraryFilter?,
     onFilterName: (String?) -> Unit,
     onOpenDownloads: () -> Unit,
-    onOpenTools: () -> Unit
+    onOpenTools: () -> Unit,
+    onImport: () -> Unit
 ) {
     LazyRow(contentPadding = PaddingValues(horizontal = QobuzDesign.gutter, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(QobuzDesign.chipGap)) {
         items(QobuzLibraryFilter.entries, key = { it.name }) { option ->
@@ -231,6 +234,7 @@ private fun QobuzLibraryFilterRow(
             QobuzChip(label, filter == option, { onFilterName(if (filter == option) null else option.name) })
         }
         item(key = "downloads") { QobuzLibraryChip(Icons.Outlined.DownloadForOffline, strings.downloads, onOpenDownloads) }
+        item(key = "import") { QobuzLibraryChip(Icons.AutoMirrored.Rounded.PlaylistAdd, strings.playlistImportCopy().action, onImport) }
         item(key = "tools") { QobuzLibraryChip(Icons.Rounded.Tune, copy.levyraTools, onOpenTools) }
     }
 }

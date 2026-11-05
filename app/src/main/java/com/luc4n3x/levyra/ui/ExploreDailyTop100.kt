@@ -135,6 +135,10 @@ internal fun ExploreDailyTop100(
             ) {
                 itemsIndexed(charts, key = { _, chart -> chart.playlistId }, contentType = { _, _ -> "daily-top-100" }) { index, chart ->
                     val label = chartLabel(chart, copy)
+                    if (com.luc4n3x.levyra.ui.theme.LevyraIsSpotify) {
+                        SpotifyTop100Card(label, copy.title, copy.subtitle, slots[index], chart.global) { viewModel.open(chart) }
+                        return@itemsIndexed
+                    }
                     Top100Cover(
                         label = label,
                         date = date,
@@ -436,3 +440,44 @@ private fun Top100Row(rank: Int, track: Track, optionsLabel: String, onClick: ()
         }
     }
 }
+
+@Composable
+private fun SpotifyTop100Card(label: String, title: String, subtitle: String, slot: Int, global: Boolean, onOpen: () -> Unit) {
+    val colors = SpotifyTop100Gradients[(if (global) 0 else slot + 1) % SpotifyTop100Gradients.size]
+    val badge = title.substringBefore('·').substringBefore(" - ").trim()
+    Column(
+        Modifier.width(SpotifyTop100Size)
+            .semantics(mergeDescendants = true) { contentDescription = "$title, $label" }
+            .levyraPressable(onClick = onOpen, role = Role.Button, pressedScale = LevyraPressScale.Tile)
+    ) {
+        Box(
+            Modifier.size(SpotifyTop100Size).clip(RoundedCornerShape(4.dp))
+                .background(androidx.compose.ui.graphics.Brush.verticalGradient(colors.map(::Color)))
+        ) {
+            Box(Modifier.padding(8.dp).size(10.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Color.White.copy(alpha = 0.7f)))
+            Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(badge, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                Box(Modifier.padding(vertical = 10.dp).width(84.dp).size(width = 84.dp, height = 1.dp).background(Color.White.copy(alpha = 0.45f)))
+                Text(
+                    label.uppercase(), color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.6.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 10.dp)
+                )
+            }
+        }
+        Text(
+            "$badge $label", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1,
+            overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp)
+        )
+        Text("$label: $subtitle", color = com.luc4n3x.levyra.ui.theme.SpotifyDesign.subdued, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+private val SpotifyTop100Size = 150.dp
+private val SpotifyTop100Gradients = listOf(
+    listOf(0xFF0E7C7B, 0xFF1A2F5C),
+    listOf(0xFF1E5A8A, 0xFF1C2A55),
+    listOf(0xFF8C1932, 0xFF3A0C1A),
+    listOf(0xFF148A08, 0xFF0B3D10),
+    listOf(0xFF7358FF, 0xFF2A1F66),
+    listOf(0xFFBA5D07, 0xFF4A2504)
+)
