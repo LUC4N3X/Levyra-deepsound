@@ -203,7 +203,7 @@ internal enum class ExploreNewsAgeUnit {
 
 internal fun exploreNewsAge(nowMs: Long, publishedAtMs: Long): Pair<ExploreNewsAgeUnit, Int>? {
     if (publishedAtMs <= 0L) return null
-    val minutes = ((nowMs - publishedAtMs).coerceAtLeast(0L) / 60_000L)
+    val minutes = (nowMs - publishedAtMs).coerceAtLeast(0L) / 60_000L
     return when {
         minutes < 60L -> ExploreNewsAgeUnit.Minutes to minutes.toInt()
         minutes < 24L * 60L -> ExploreNewsAgeUnit.Hours to (minutes / 60L).toInt()

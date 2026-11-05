@@ -147,23 +147,34 @@ internal fun AppleMusicPlayerScene(
         }
         if (fullBleed) {
             Box(Modifier.padding(top = topInset).fillMaxWidth().height(artworkHeight).graphicsLayer { alpha = 1f - canvasAlpha }) {
-                if (!immersive) slots.stage(track, Modifier.fillMaxSize().verticalFadeEdges(topFade = topInset, bottomFade = bottomFade), 0.dp)
+                slots.stage(track, Modifier.fillMaxSize().verticalFadeEdges(topFade = topInset, bottomFade = bottomFade), 0.dp)
             }
             AppleMusicStatusBarWash(mesh, topInset)
             AppleMusicFullBleedDeck(track, slots, immersive, volume.takeIf { maxHeight >= AppleMusicPortraitVolumeMinHeight }, metadata, transport) { controlsHeight = it }
         } else {
-            val artwork: @Composable (Dp) -> Unit = { size ->
-                if (video) AppleMusicPlayerVideo(track, slots, size) else AppleMusicPlayerArtwork(track, slots, size, playing, { canvasAlpha }, showStage = !immersive)
-            }
-            if (landscape) {
-                AppleMusicLandscapeDeck(
-                    track, slots, minOf(maxHeight - 34.dp, artworkCap), artwork, metadata, transport,
-                    volume.takeIf { maxHeight >= AppleMusicLandscapeVolumeMinHeight }
-                )
-            } else {
-                AppleMusicPortraitDeck(track, slots, maxWidth, immersive, artwork, metadata, transport)
-            }
+            AppleMusicCardScene(
+                track, slots, playing, video, immersive, landscape, { canvasAlpha },
+                landscapeArtwork = minOf(maxHeight - 34.dp, artworkCap), portraitWidth = maxWidth,
+                volume = volume.takeIf { maxHeight >= AppleMusicLandscapeVolumeMinHeight },
+                metadata = metadata, transport = transport
+            )
         }
+    }
+}
+
+@Composable
+private fun AppleMusicCardScene(
+    track: Track, slots: PlayerDeckSlots, playing: Boolean, video: Boolean, immersive: Boolean, landscape: Boolean,
+    canvasAlpha: () -> Float, landscapeArtwork: Dp, portraitWidth: Dp, volume: MusicStreamVolume?,
+    metadata: @Composable () -> Unit, transport: @Composable () -> Unit
+) {
+    val artwork: @Composable (Dp) -> Unit = { size ->
+        if (video) AppleMusicPlayerVideo(track, slots, size) else AppleMusicPlayerArtwork(track, slots, size, playing, canvasAlpha, showStage = !immersive)
+    }
+    if (landscape) {
+        AppleMusicLandscapeDeck(track, slots, landscapeArtwork, artwork, metadata, transport, volume)
+    } else {
+        AppleMusicPortraitDeck(track, slots, portraitWidth, immersive, artwork, metadata, transport)
     }
 }
 

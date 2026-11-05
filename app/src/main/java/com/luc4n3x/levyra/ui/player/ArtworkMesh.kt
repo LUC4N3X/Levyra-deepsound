@@ -27,7 +27,7 @@ internal fun buildArtworkMesh(pixels: IntArray, width: Int, height: Int, seed: I
     val blue = LongArray(cells)
     val count = IntArray(cells)
     for (y in 0 until height) {
-        val rowBase = ((height - 1 - y) * rows / height) * cols
+        val rowBase = (height - 1 - y) * rows / height * cols
         for (x in 0 until width) {
             val cell = rowBase + x * cols / width
             val p = pixels[y * width + x]

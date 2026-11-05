@@ -23,9 +23,13 @@ class ArtworkMeshTest {
         val pixels = IntArray(w * h) { i -> if (i / w >= h - h / 6) 0xFFFF0000.toInt() else 0xFF0000FF.toInt() }
         val mesh = buildArtworkMesh(pixels, w, h, seed = 3)!!
         val seam = mesh.texels[0]
-        assertTrue(((seam shr 16) and 0xFF) > (seam and 0xFF))
+        val seamRed = (seam shr 16) and 0xFF
+        val seamBlue = seam and 0xFF
+        assertTrue(seamRed > seamBlue)
         val top = mesh.topEdge[0]
-        assertTrue((top and 0xFF) > ((top shr 16) and 0xFF))
+        val topBlue = top and 0xFF
+        val topRed = (top shr 16) and 0xFF
+        assertTrue(topBlue > topRed)
     }
 
     @Test
