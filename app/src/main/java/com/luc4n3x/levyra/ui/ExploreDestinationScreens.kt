@@ -1431,7 +1431,7 @@ internal fun ExploreDiscoveryCategoryCard(
         return
     }
     val (accentStart, accentEnd) = accentColors ?: exploreCategoryPalette(identity)
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(if (com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin) 24.dp else 16.dp)
     val metrics = exploreCategoryCardMetrics(prominent)
     val longTitle = title.length >= 14
     val titleSize = if (longTitle) metrics.titleSize * 0.92f else metrics.titleSize

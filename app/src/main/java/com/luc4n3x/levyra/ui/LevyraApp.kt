@@ -15324,6 +15324,9 @@ private fun SearchScreen(
                     onRequestArtwork = { params -> appleExploreViewModel.ensureExploreCategoryArtwork(params, false) }
                 )
             } else if (queryClean.isEmpty()) {
+                if (levyraBrowse != null && LevyraIsDefaultSkin) item(key = "search-lyrics-entry", contentType = "search-lyrics-entry") {
+                    LyricsSearchEntry(onOpen = viewModel::openLyricsPhraseSearch, modifier = Modifier.padding(top = 4.dp, bottom = 6.dp))
+                }
                 if (levyraBrowse == null) item(key = "search-taste-hints", contentType = "search-taste-hints") {
                     SearchTasteHints(
                         suggestions = tasteHintQueries,
@@ -15337,7 +15340,7 @@ private fun SearchScreen(
                     )
                 }
 
-                if (state.recentSearches.isNotEmpty()) {
+                if (state.recentSearches.isNotEmpty() && !(levyraBrowse != null && LevyraIsDefaultSkin)) {
                     item(key = "search-recent", contentType = "search-recent") {
                         SearchSectionGap()
                         RecentSearchesRow(
@@ -15364,22 +15367,28 @@ private fun SearchScreen(
                 }
 
                 val searchSamples = exploreSampleTracks(state.exploreSamples, ExploreImmersiveSampleLimit)
-                if (levyraBrowse != null && searchSamples.isNotEmpty()) {
-                    item(key = "search-samples", contentType = "search-samples") {
-                        LevyraSearchSamplesRail(
-                            title = strings.exploreSamples,
-                            samples = searchSamples,
-                            previewEnabled = !state.isVideoMode && !state.isResolving
-                        ) { index ->
-                            focusManager.clearFocus()
-                            keyboardController?.hide()
-                            viewModel.openExploreSamples(index)
+                val samplesAfterRows = if (LevyraIsDefaultSkin) SearchBrowseLeadRows else 0
+                val samplesItem: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
+                    if (levyraBrowse != null && searchSamples.isNotEmpty()) {
+                        item(key = "search-samples", contentType = "search-samples") {
+                            LevyraSearchSamplesRail(
+                                title = strings.exploreSamples,
+                                samples = searchSamples,
+                                previewEnabled = !state.isVideoMode && !state.isResolving
+                            ) { index ->
+                                focusManager.clearFocus()
+                                keyboardController?.hide()
+                                viewModel.openExploreSamples(index)
+                            }
                         }
                     }
                 }
+                if (samplesAfterRows == 0) samplesItem()
 
                 if (levyraBrowse != null) levyraSearchBrowseItems(
                     browse = levyraBrowse,
+                    interludeAfterRows = samplesAfterRows,
+                    interlude = samplesItem,
                     onOpenZone = { zone ->
                         focusManager.clearFocus()
                         keyboardController?.hide()

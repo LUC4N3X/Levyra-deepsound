@@ -72,6 +72,7 @@ import java.util.Locale
 
 private val SearchBrowseTileHeight = 100.dp
 private val SearchBrowseGap = 10.dp
+internal const val SearchBrowseLeadRows = 2
 private const val SearchBrowseMaxFontGrowth = 1.6f
 private val SearchRecentPreferredWidth = 132.dp
 private val SearchRecentCarouselHeight = 140.dp
@@ -199,14 +200,19 @@ internal fun LazyListScope.levyraSearchBrowseItems(
     onOpenCategory: (ExploreCategory) -> Unit,
     podcastsTitle: String,
     podcastsArtwork: String,
-    onOpenPodcasts: () -> Unit
+    onOpenPodcasts: () -> Unit,
+    interludeAfterRows: Int = 0,
+    interlude: LazyListScope.() -> Unit = {}
 ) {
     val tiles = levyraSearchBrowseTiles(browse.sections).let { all ->
         val featured = all.takeWhile { it is LevyraSearchBrowseTile.Zone }
         featured + LevyraSearchBrowseTile.Podcasts + all.drop(featured.size)
     }
-    if (tiles.isEmpty()) return
-    item(key = "search-browse-header", contentType = "search-browse-header") {
+    if (tiles.isEmpty()) {
+        if (interludeAfterRows > 0) interlude()
+        return
+    }
+    if (interludeAfterRows == 0) item(key = "search-browse-header", contentType = "search-browse-header") {
         LevyraSectionHeader(
             title = browse.copy.browseTitle,
             modifier = Modifier.padding(top = 18.dp, bottom = 6.dp)
@@ -214,7 +220,9 @@ internal fun LazyListScope.levyraSearchBrowseItems(
     }
     val palettes = searchBrowsePaletteIndices(tiles.map(::searchBrowseTileIdentity), ExploreCategoryPalettes.size)
         .let { indices -> tiles.indices.associate { tiles[it].key to ExploreCategoryPalettes[indices[it]] } }
-    tiles.chunked(2).forEach { row ->
+    val rows = tiles.chunked(2)
+    rows.forEachIndexed { rowIndex, row ->
+        if (interludeAfterRows > 0 && rowIndex == interludeAfterRows) interlude()
         item(key = "search-browse-row-${row.first().key}", contentType = "search-browse-row") {
             val fontScale = LocalDensity.current.fontScale.coerceIn(1f, SearchBrowseMaxFontGrowth)
             Row(
@@ -233,6 +241,7 @@ internal fun LazyListScope.levyraSearchBrowseItems(
             }
         }
     }
+    if (interludeAfterRows > 0 && rows.size <= interludeAfterRows) interlude()
 }
 
 internal fun levyraSearchBrowseTiles(sections: List<LevyraSearchBrowseSection>): List<LevyraSearchBrowseTile> {
