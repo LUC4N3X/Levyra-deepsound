@@ -10063,6 +10063,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         selectTab(LevyraTab.Explore)
     }
 
+    fun openExploreCategory(category: ExploreCategory) {
+        if (category.params.isBlank() || category.title.isBlank()) return
+        selectExploreCategory(category)
+        _state.update { current -> current.copy(exploreOpenRequest = com.luc4n3x.levyra.ui.exploreCategoryDestination(category)) }
+        selectTab(LevyraTab.Explore)
+    }
+
     fun openExploreSamples(index: Int) {
         _state.update { current -> current.copy(exploreOpenRequest = "$EXPLORE_SAMPLES_REQUEST${index.coerceAtLeast(0)}") }
         selectTab(LevyraTab.Explore)

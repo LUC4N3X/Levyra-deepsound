@@ -1,11 +1,5 @@
 package com.luc4n3x.levyra.ui.player
 
-import android.content.Context
-import android.database.ContentObserver
-import android.media.AudioManager
-import android.os.Handler
-import android.os.Looper
-import android.provider.Settings
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Canvas
@@ -43,10 +37,8 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.rememberSliderState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -61,7 +53,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -536,23 +527,9 @@ internal fun PlayerOutputVolume(
     modifier: Modifier = Modifier
 ) {
     val label = LocalLevyraStrings.current.volume
-    val context = LocalContext.current
-    val audio = remember(context) { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
-    val max = remember(audio) { audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1) }
-    var level by remember { mutableFloatStateOf(audio.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat() / max) }
-    DisposableEffect(audio) {
-        val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
-            override fun onChange(selfChange: Boolean) {
-                level = audio.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat() / max
-            }
-        }
-        context.contentResolver.registerContentObserver(Settings.System.CONTENT_URI, true, observer)
-        onDispose { context.contentResolver.unregisterContentObserver(observer) }
-    }
-    val apply: (Float) -> Unit = { fraction ->
-        level = fraction
-        audio.setStreamVolume(AudioManager.STREAM_MUSIC, (fraction * max).toInt().coerceIn(0, max), 0)
-    }
+    val volume = rememberMusicStreamVolume() ?: return
+    val level = volume.fraction
+    val apply: (Float) -> Unit = volume::set
     val sliderColors = SliderDefaults.colors(
         thumbColor = activeColor,
         activeTrackColor = activeColor,

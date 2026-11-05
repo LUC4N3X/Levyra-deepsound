@@ -59,6 +59,7 @@ import androidx.core.content.ContextCompat
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.FormatQuote
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -113,7 +114,8 @@ internal fun SearchHeader(
     onBack: () -> Unit,
     userName: String = "",
     onSettings: () -> Unit = {},
-    spotifyFocus: MutableState<Boolean>? = null
+    spotifyFocus: MutableState<Boolean>? = null,
+    onLyrics: (() -> Unit)? = null
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -161,7 +163,7 @@ internal fun SearchHeader(
     }
 
     DefaultSearchHeader(query, placeholder, animatePlaceholder, isSearching, recognitionAvailable, recognitionBusy,
-        onQuery, onClear, onBack, launchVoiceSearch, toggleRecognition)
+        onQuery, onClear, onBack, launchVoiceSearch, toggleRecognition, onLyrics)
 }
 
 internal data class SearchVoiceActions(val voice: () -> Unit, val recognize: () -> Unit)
@@ -220,7 +222,8 @@ internal fun rememberSearchVoiceActions(
 private fun DefaultSearchHeader(
     query: String, placeholder: String, animatePlaceholder: Boolean, isSearching: Boolean,
     recognitionAvailable: Boolean, recognitionBusy: Boolean, onQuery: (String) -> Unit,
-    onClear: () -> Unit, onBack: () -> Unit, launchVoiceSearch: () -> Unit, toggleRecognition: () -> Unit
+    onClear: () -> Unit, onBack: () -> Unit, launchVoiceSearch: () -> Unit, toggleRecognition: () -> Unit,
+    onLyrics: (() -> Unit)? = null
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -278,7 +281,7 @@ private fun DefaultSearchHeader(
 
                 SearchHeaderTextField(query, placeholder, animatePlaceholder, fieldInteraction, onQuery, Modifier.weight(1f).padding(start = 4.dp))
 
-                SearchHeaderActionButtons(query, isSearching, fieldFocused, recognitionAvailable, recognitionBusy, onClear, launchVoiceSearch, toggleRecognition)
+                SearchHeaderActionButtons(query, isSearching, fieldFocused, recognitionAvailable, recognitionBusy, onClear, launchVoiceSearch, toggleRecognition, onLyrics)
             }
         }
     }
@@ -403,7 +406,7 @@ private fun SearchHeaderTextField(query: String, placeholder: String, animatePla
 }
 
 @Composable
-private fun SearchHeaderActionButtons(query: String, isSearching: Boolean, fieldFocused: Boolean, recognitionAvailable: Boolean, recognitionBusy: Boolean, onClear: () -> Unit, launchVoiceSearch: () -> Unit, toggleRecognition: () -> Unit) {
+private fun SearchHeaderActionButtons(query: String, isSearching: Boolean, fieldFocused: Boolean, recognitionAvailable: Boolean, recognitionBusy: Boolean, onClear: () -> Unit, launchVoiceSearch: () -> Unit, toggleRecognition: () -> Unit, onLyrics: (() -> Unit)? = null) {
     val strings = LocalLevyraStrings.current
     val scheme = MaterialTheme.colorScheme
     SearchHeaderClearAction(query, isSearching, onClear)
@@ -414,6 +417,16 @@ private fun SearchHeaderActionButtons(query: String, isSearching: Boolean, field
             .background(scheme.surfaceContainerHighest.copy(alpha = if (fieldFocused) 0.9f else 0.6f)),
         verticalAlignment = Alignment.CenterVertically
     ) {
+    if (onLyrics != null && query.isEmpty()) {
+        IconButton(onClick = onLyrics, modifier = Modifier.size(38.dp)) {
+            Icon(
+                imageVector = Icons.Rounded.FormatQuote,
+                contentDescription = strings.lyrics,
+                tint = scheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
     IconButton(
         onClick = launchVoiceSearch,
         modifier = Modifier.size(38.dp)

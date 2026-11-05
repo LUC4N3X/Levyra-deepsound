@@ -32,6 +32,7 @@ import com.luc4n3x.levyra.domain.YoutubeMusicHomeItem
 import com.luc4n3x.levyra.domain.YoutubeMusicHomeItemKind
 import com.luc4n3x.levyra.domain.YoutubeMusicHomeShelf
 import com.luc4n3x.levyra.domain.YoutubeMusicHomeShelfStyle
+import com.luc4n3x.levyra.ui.i18n.speedDialCopy
 import com.luc4n3x.levyra.ui.i18n.LevyraYouTubeMusicSkinStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.YouTubeMusicSkinCopy
@@ -58,7 +59,8 @@ internal fun YouTubeMusicHomeContent(
     homeRefreshing: Boolean,
     homePullState: PullToRefreshState,
     onPullRefresh: () -> Unit,
-    composition: ComposedHomeRequest? = null
+    composition: ComposedHomeRequest? = null,
+    pins: List<ComposedCard> = emptyList()
 ) {
     val homeRadio = LocalHomeRadio.current
     val strings = LocalLevyraStrings.current
@@ -100,6 +102,7 @@ internal fun YouTubeMusicHomeContent(
                     copy, actions, feed.chips, feed.selectedChip, homeListState, statusBarTop,
                     homeViewModel::selectChip
                 )
+                if (pins.isNotEmpty()) item(key = "ytm-home-pins", contentType = "composed-cards") { composedKit.Cards(strings.speedDialCopy().title, pins) }
                 youTubeMusicHomeContentItems(
                     data, actions, copy, strings.personalOrbitTitle, feed.failed, feed.shelves.isNotEmpty(),
                     allShelves, levyraBlocks, previews, homeViewModel::requestPreview, homeRadio

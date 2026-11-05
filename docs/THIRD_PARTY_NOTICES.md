@@ -142,3 +142,5 @@ The optional Android account integration in `data/youtubemusic`, `viewmodel/yout
 - Upstream licenses: [SimpMusic GPL-3.0](https://github.com/maxrave-dev/SimpMusic/blob/0e08a12633a50f0758e820a35050ac4e9e066c8f/LICENSE), [Core GPL-3.0](https://github.com/maxrave-dev/core/blob/b9f4ceac52e7c25cb059ea78141784dc164e0161/LICENSE).
 
 No upstream auth logging or plaintext cookie-file export is included. Saved albums and artists use additional authenticated library browse collections; the inspected upstream repositories explicitly expose the personal playlist collection, rather than a complete albums/artists library implementation.
+
+The Apple-style player colour mesh (cell averaging, seeded row shift, smoothstep resample, seam-hung backdrop and edge dissolve) is adapted from SimpMusic revision `013db77728e788ae9866d6fa763dfa5aa7025c1e`, `AppleMusicMeshBackdrop.kt` and `NowPlayingContentAppleMusic.kt`, GPL-3.0.

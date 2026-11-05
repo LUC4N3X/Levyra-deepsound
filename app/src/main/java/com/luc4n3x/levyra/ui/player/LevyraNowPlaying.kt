@@ -897,7 +897,7 @@ private fun LevyraNowPlayingContent(
                         track = activeTrack,
                         artworkUrl = artworkUrl,
                         motionArtwork = state.motionArtwork,
-                        livingArtwork = livingArtwork,
+                        livingArtwork = livingArtwork.takeUnless { com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic },
                         animationsEnabled = animated && !state.isVideoMode,
                         motionEnabled = motionEnabled && !lyricsFlip.lyricsSettled,
                         isPlaying = state.isPlaying,

@@ -293,6 +293,11 @@ internal fun LevyraLibraryScreen(
     val strings = LocalLevyraStrings.current
     val colors = MaterialTheme.colorScheme
     val deleteOfflineDownloads = rememberOfflineDeleteHandler(viewModel)
+    val libraryRadioSkin = com.luc4n3x.levyra.ui.levyraSearchOwnsBrowse(
+        com.luc4n3x.levyra.ui.theme.LevyraIsSpotify,
+        com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic,
+        com.luc4n3x.levyra.ui.theme.LevyraIsAtelier || com.luc4n3x.levyra.ui.theme.LevyraIsQobuz || com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic
+    )
     val catalog = remember(
         state.favorites,
         state.favoriteTimestamps,
@@ -693,15 +698,19 @@ internal fun LevyraLibraryScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             item(key = "library-title") {
-                LibraryHero(
-                    title = if (category == LibraryCategory.Overview) strings.libraryTitle else category.libraryLabel(strings),
-                    subtitle = when (category) {
-                        LibraryCategory.Overview -> ""
-                        LibraryCategory.Playlists -> "${visiblePlaylists.size} ${strings.playlistsPlain}"
-                        else -> categorySummary(category)
-                    },
-                    onBack = { switchCategory(LibraryCategory.Overview) }.takeIf { category != LibraryCategory.Overview }
-                )
+                com.luc4n3x.levyra.ui.LevyraTopLevelSearchRow(viewModel::openSearch.takeIf { libraryRadioSkin && category == LibraryCategory.Overview }, onJam = viewModel::openJam.takeIf { libraryRadioSkin && category == LibraryCategory.Overview }) {
+                    Box(Modifier.weight(1f)) {
+                        LibraryHero(
+                            title = if (category == LibraryCategory.Overview) strings.libraryTitle else category.libraryLabel(strings),
+                            subtitle = when (category) {
+                                LibraryCategory.Overview -> ""
+                                LibraryCategory.Playlists -> "${visiblePlaylists.size} ${strings.playlistsPlain}"
+                                else -> categorySummary(category)
+                            },
+                            onBack = { switchCategory(LibraryCategory.Overview) }.takeIf { category != LibraryCategory.Overview }
+                        )
+                    }
+                }
             }
 
             if (youtubeMusicAccount != null && category == LibraryCategory.Overview) {
@@ -710,7 +719,7 @@ internal fun LevyraLibraryScreen(
                 }
             }
 
-            item(key = "library-search") {
+            if (!(com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic && category == LibraryCategory.Overview && query.isEmpty())) item(key = "library-search") {
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
@@ -873,7 +882,30 @@ internal fun LevyraLibraryScreen(
                             )
                         }
                     }
-                    if (LevyraIsDefaultSkin) {
+                    if (com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic) {
+                        sectionsItem()
+                        item(key = "apple-smart-links") {
+                            Column {
+                                AppleLibraryLinkRow(strings.favoritesPlain) { openSmartCollectionName = SMART_COLLECTION_FAVORITES }
+                                AppleLibraryLinkRow(strings.recent) { openSmartCollectionName = SMART_COLLECTION_RECENT }
+                                AppleLibraryLinkRow(strings.pulsePlays) { openSmartCollectionName = SMART_COLLECTION_MOST_PLAYED }
+                            }
+                        }
+                        if (catalog.recent.isNotEmpty()) {
+                            item(key = "apple-recently-added") {
+                                Column {
+                                    AppleLibrarySectionTitle(strings.recent)
+                                    AppleLibraryRecentlyAdded(catalog.recent, onPlay = { track -> viewModel.playFrom(catalog.recent, track) })
+                                }
+                            }
+                        }
+                        item(key = "apple-listening-pulse") {
+                            Column {
+                                AppleLibrarySectionTitle(strings.pulseTitle)
+                                LibraryTasteCard(pulse = state.listeningPulse, onOpenInsights = viewModel::openListeningInsights)
+                            }
+                        }
+                    } else if (LevyraIsDefaultSkin) {
                         smartGridItem()
                         sectionsItem()
                     } else {
@@ -883,7 +915,7 @@ internal fun LevyraLibraryScreen(
                         }
                         smartGridItem()
                     }
-                    if (visiblePlaylists.isNotEmpty() && !LevyraIsDefaultSkin) {
+                    if (visiblePlaylists.isNotEmpty() && !LevyraIsDefaultSkin && !com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic) {
                         item(key = "overview-playlists-title") {
                             LibrarySectionTitle(
                                 title = strings.playlists,
@@ -904,6 +936,13 @@ internal fun LevyraLibraryScreen(
                             )
                         }
                     }
+                    if (libraryRadioSkin) {
+                        item(key = "overview-mood-journey") {
+                            com.luc4n3x.levyra.ui.moodjourney.MoodJourneyEntryCard(
+                                onOpen = { preset -> if (preset == null) viewModel.openMoodJourney() else viewModel.openMoodJourney(preset) }
+                            )
+                        }
+                    }
                     if (LevyraIsDefaultSkin) {
                         item(key = "overview-taste-card") {
                             LibraryTasteCard(
@@ -911,7 +950,7 @@ internal fun LevyraLibraryScreen(
                                 onOpenInsights = viewModel::openListeningInsights
                             )
                         }
-                    } else {
+                    } else if (!com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic) {
                         item(key = "overview-insights-title") {
                             LibrarySectionTitle(
                                 title = strings.pulseTitle,

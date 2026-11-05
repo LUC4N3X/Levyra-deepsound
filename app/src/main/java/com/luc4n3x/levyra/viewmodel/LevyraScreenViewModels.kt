@@ -1,5 +1,9 @@
 package com.luc4n3x.levyra.viewmodel
 
+import android.app.Application
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -12,6 +16,9 @@ import com.luc4n3x.levyra.data.HomeEditorialEngine
 import com.luc4n3x.levyra.data.LevyraStartupCatalog
 import com.luc4n3x.levyra.data.deduplicateHomeAlbums
 import com.luc4n3x.levyra.data.isChartArtworkPlaceholder
+import com.luc4n3x.levyra.data.news.MusicNewsRepository
+import com.luc4n3x.levyra.data.news.MusicNewsSources
+import com.luc4n3x.levyra.data.news.MusicNewsStory
 import com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicHome
 import com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicHomeSource
 import com.luc4n3x.levyra.domain.AlbumHit
@@ -68,6 +75,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -287,10 +295,9 @@ class SearchViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::sea
     fun openExploreSamples(index: Int) = root.openExploreSamples(index)
     fun ensureExploreSamples() = root.ensureExploreSamples()
     fun ensureExplore(strings: com.luc4n3x.levyra.ui.i18n.LevyraStrings) = root.ensureExplore(strings)
-    fun openExploreCategory(category: com.luc4n3x.levyra.domain.ExploreCategory) {
-        root.selectExploreCategory(category)
-        root.selectTab(com.luc4n3x.levyra.domain.LevyraTab.Explore)
-    }
+    fun openExploreCategory(category: com.luc4n3x.levyra.domain.ExploreCategory) = root.openExploreCategory(category)
+    fun playAudioFrom(list: List<Track>, track: Track, startPositionMs: Long) = root.playAudioFrom(list, track, startPositionMs = startPositionMs)
+    fun ensureExploreCategoryArtwork(params: String) = root.ensureExploreCategoryArtwork(params, false)
     fun openSettings() = root.openSettings()
     fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
     fun addTracksToPlaylist(playlistId: String, tracks: List<Track>) = root.addTracksToPlaylist(playlistId, tracks)
@@ -336,6 +343,38 @@ class ExploreViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::ex
     fun playVideoFrom(list: List<Track>, track: Track) = root.playVideoFrom(list, track)
     fun consumeExploreOpenRequest() = root.consumeExploreOpenRequest()
     private var mixPresentationJob: Job? = null
+    private val newsRepository by lazy { MusicNewsRepository.get(root.getApplication<Application>()) }
+    private val _news = MutableStateFlow<List<MusicNewsStory>>(emptyList())
+    val news: StateFlow<List<MusicNewsStory>> = _news.asStateFlow()
+    private var newsLanguage: String? = null
+    private var newsJob: Job? = null
+
+    fun ensureNews(languageCode: String) {
+        val language = MusicNewsSources.key(languageCode)
+        if (language == newsLanguage && newsJob?.isActive == true) return
+        val languageChanged = language != newsLanguage
+        newsLanguage = language
+        newsJob?.cancel()
+        newsJob = viewModelScope.launch {
+            val cached = newsRepository.cached(language)
+            if (newsLanguage != language) return@launch
+            if (cached != null) _news.value = cached else if (languageChanged) _news.value = emptyList()
+            val loaded = newsRepository.load(language) ?: return@launch
+            if (newsLanguage == language) _news.value = loaded
+        }
+    }
+
+    fun openNews(story: MusicNewsStory) {
+        val uri = Uri.parse(story.url)
+        if (!uri.scheme.equals("https", ignoreCase = true) || uri.host.isNullOrBlank()) return
+        val intent = Intent(Intent.ACTION_VIEW, uri)
+            .addCategory(Intent.CATEGORY_BROWSABLE)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        try {
+            root.getApplication<Application>().startActivity(intent)
+        } catch (_: ActivityNotFoundException) {
+        }
+    }
 
     fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
     fun createPlaylist(name: String, firstTrack: Track? = null) = root.createPlaylist(name, firstTrack)
@@ -417,8 +456,12 @@ class ExploreViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::ex
 class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::libraryProjection) {
     val personalCollections: PersonalCollectionsController get() = root.personalCollections
     fun refreshSmartOffline() = root.refreshSmartOffline()
+    fun openSearch() = root.selectTab(LevyraTab.Search)
     fun openYourSound() = root.openYourSound()
     fun openMixLab(initialParams: com.luc4n3x.levyra.domain.MixLabParams = com.luc4n3x.levyra.domain.MixLabParams()) = root.openMixLab(initialParams)
+    fun openMoodJourney() = root.openMoodJourney()
+    fun openMoodJourney(preset: com.luc4n3x.levyra.domain.MoodCurvePreset) = root.openMoodJourney(preset)
+    fun openJam() = root.openJam()
     fun openListeningRecap() = root.openListeningRecap()
     fun openListeningInsights() = root.openListeningInsights()
     fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
@@ -1343,6 +1386,8 @@ internal fun LocalLibraryUiState.completedScanSongs(): List<Track>? =
 
 internal data class SearchProjection(
     val currentTrack: Track?,
+    val exploreFreshTracks: List<Track>,
+    val exploreWorldFreshTracks: List<Track>,
     val isVideoMode: Boolean,
     val userName: String,
     val exploreSamples: List<Track>,
@@ -1380,6 +1425,8 @@ internal data class SearchProjection(
 
 internal fun searchProjection(state: LevyraUiState): SearchProjection = SearchProjection(
     currentTrack = state.currentTrack,
+    exploreFreshTracks = state.exploreFreshTracks,
+    exploreWorldFreshTracks = state.exploreWorldFreshTracks,
     isVideoMode = state.isVideoMode,
     userName = state.userName,
     exploreSamples = state.exploreSamples,

@@ -274,6 +274,7 @@ enum class LevyraTab {
     Search,
     Explore,
     Library,
+    Radio,
     Player
 }
 

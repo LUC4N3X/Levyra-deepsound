@@ -263,7 +263,7 @@ class PlayerDeckTest {
         val italian = LevyraStrings.forCode("it")
         assertEquals("Bloom", visualModeStateDescription(PlayerVisualMode.Expressive, italian))
         assertEquals("Late Night", visualModeStateDescription(PlayerVisualMode.Pulse, italian))
-        assertEquals("Velvet", playerDeckLabel(PlayerVisualMode.CanvasImmersive, italian))
+        assertEquals("Apple", playerDeckLabel(PlayerVisualMode.CanvasImmersive, italian))
         assertEquals("Sleeve", playerDeckLabel(PlayerVisualMode.CanvasCard, italian))
     }
 

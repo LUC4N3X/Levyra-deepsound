@@ -34,6 +34,7 @@ import com.luc4n3x.levyra.domain.HomeBlock
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.HomeSectionId
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.ui.i18n.speedDialCopy
 import com.luc4n3x.levyra.ui.i18n.LevyraAppleMusicStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.AppleMusicDesign
@@ -84,7 +85,8 @@ internal fun AppleMusicHomeContent(
     homeRefreshing: Boolean,
     homePullState: PullToRefreshState,
     onPullRefresh: () -> Unit,
-    composition: ComposedHomeRequest? = null
+    composition: ComposedHomeRequest? = null,
+    pins: List<ComposedCard> = emptyList()
 ) {
     val homeRadio = LocalHomeRadio.current
     val strings = LocalLevyraStrings.current
@@ -123,6 +125,7 @@ internal fun AppleMusicHomeContent(
                 AppleMusicHomeTitle(strings.home, copy.more, countryLabel, actions)
             }
             if (composition == null) {
+                if (pins.isNotEmpty()) item(key = "apple-home-pins", contentType = "composed-cards") { composedKit.Cards(strings.speedDialCopy().title, pins) }
                 appleMusicHomeNotices(editorial, shelves.isEmpty(), copy, reload)
                 favoriteRadioSection(homeRadio)
                 appleMusicHomeSections(plan, feedShelf)

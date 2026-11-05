@@ -48,6 +48,7 @@ internal data class AppleCatalogPath(val segment: String, val cacheName: String)
         val TopCharts = AppleCatalogPath("new/top-charts", "topcharts")
         val Genres = AppleCatalogPath("room/1654814539", "genres")
         val Moods = AppleCatalogPath("room/1654813864", "moods")
+        val DailyTop100 = AppleCatalogPath("room/6504092645", "dailytop100")
     }
 }
 
@@ -147,6 +148,12 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
     private suspend fun curatorPage(curatorId: String, storefront: String, language: String): AppleCatalogPage? =
         page(AppleCatalogPath("curator/levyra/$curatorId", "curator-$curatorId"), storefront, language)?.page
             ?.takeIf { page -> page.shelves.any { shelf -> shelf.items.isNotEmpty() } }
+
+    suspend fun dailyTop100(storefront: String, language: String): List<AppleDailyChart> =
+        AppleDailyTop100.charts(page(AppleCatalogPath.DailyTop100, storefront, language)?.page, storefront)
+
+    suspend fun cachedDailyTop100(storefront: String, language: String): List<AppleDailyChart> =
+        AppleDailyTop100.charts(cachedPage(AppleCatalogPath.DailyTop100, storefront, language)?.page, storefront)
 
     suspend fun cachedNewMusic(storefront: String, language: String): AppleCatalogResult? = cachedPage(AppleCatalogPath.New, storefront, language)
 

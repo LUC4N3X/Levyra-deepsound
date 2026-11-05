@@ -1431,7 +1431,7 @@ internal fun ExploreDiscoveryCategoryCard(
         return
     }
     val (accentStart, accentEnd) = accentColors ?: exploreCategoryPalette(identity)
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(if (com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin) 24.dp else 16.dp)
     val metrics = exploreCategoryCardMetrics(prominent)
     val longTitle = title.length >= 14
     val titleSize = if (longTitle) metrics.titleSize * 0.92f else metrics.titleSize
@@ -1582,8 +1582,13 @@ private fun ExploreDiscoveryCategoryPlaceholder(modifier: Modifier = Modifier) {
 }
 
 @Composable
-internal fun exploreCategoryPalette(identity: String): Pair<Color, Color> {
-    val palette = listOf(
+internal fun exploreCategoryPalette(identity: String): Pair<Color, Color> =
+    ExploreCategoryPalettes[exploreCategoryPaletteIndex(identity)]
+
+internal fun exploreCategoryPaletteIndex(identity: String): Int = (identity.hashCode() and Int.MAX_VALUE) % ExploreCategoryPalettes.size
+
+internal val ExploreCategoryPalettes: List<Pair<Color, Color>> by lazy {
+    listOf(
         Color(0xFF7C3AED) to Color(0xFF4C1D95),
         Color(0xFFD81B60) to Color(0xFF7A1538),
         Color(0xFF0F8A78) to Color(0xFF075E54),
@@ -1593,7 +1598,6 @@ internal fun exploreCategoryPalette(identity: String): Pair<Color, Color> {
         Color(0xFFB335B5) to Color(0xFF64236C),
         Color(0xFFD9571C) to Color(0xFF7B3215)
     )
-    return palette[(identity.hashCode() and Int.MAX_VALUE) % palette.size]
 }
 
 @Composable

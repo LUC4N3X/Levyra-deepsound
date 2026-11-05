@@ -2,7 +2,9 @@ package com.luc4n3x.levyra.ui.player
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,6 +14,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.VolumeDown
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,11 +23,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -55,9 +62,17 @@ import com.luc4n3x.levyra.ui.theme.LevyraIsPrism
 import com.luc4n3x.levyra.ui.theme.LevyraPalette
 import com.luc4n3x.levyra.ui.theme.appleMusicColorScheme
 import com.luc4n3x.levyra.ui.theme.appleMusicPalette
+import kotlin.math.roundToInt
 
 private const val PausedArtworkScale = 0.82f
 private const val ImmersiveCanvasMinAspect = 1.4f
+private const val AppleMusicArtworkHeightFraction = 0.62f
+private const val AppleMusicArtworkFadeFraction = 0.42f
+private const val AppleMusicWashMinAlpha = 0.16f
+private const val AppleMusicWashMaxAlpha = 0.65f
+private const val AppleMusicWashFadeMs = 900
+private val AppleMusicLandscapeVolumeMinHeight = 480.dp
+private val AppleMusicPortraitVolumeMinHeight = 640.dp
 
 internal val LocalAppleMusicPlayerPalette = staticCompositionLocalOf<LevyraPalette?> { null }
 
@@ -108,23 +123,146 @@ internal fun AppleMusicPlayerScene(
     canvas: AppleMusicCanvas? = null, video: Boolean = false
 ) {
     val field by rememberSpotifyCoverTone(track, AppleMusicDesign::playerField)
-    val deep by rememberSpotifyCoverTone(track, AppleMusicDesign::playerFieldDeep)
-    BoxWithConstraints(modifier.fillMaxSize().background(Brush.verticalGradient(0f to field, 0.55f to lerpField(field, deep), 1f to deep))) {
+    val mesh = rememberArtworkMesh(track)
+    val volume = rememberMusicStreamVolume()
+    BoxWithConstraints(modifier.fillMaxSize()) {
         val landscape = maxWidth > maxHeight
         val immersive = appleMusicCanvasImmersive(canvas, maxWidth, maxHeight, video)
+        val fullBleed = appleMusicUsesFullBleed(landscape, video, immersive, canvas, LevyraIsAppleMusic)
         val canvasAlpha by animateFloatAsState(if (immersive) 1f else 0f, label = "apple-player-canvas-alpha")
+        val density = LocalDensity.current
+        val topInset = with(density) { WindowInsets.statusBars.getTop(density).toDp() }
+        var controlsHeight by remember { mutableStateOf(0.dp) }
+        val geometry = appleMusicFullBleedGeometry(maxWidth, maxHeight, topInset, controlsHeight, fullBleed)
+        ArtworkMeshBackdrop(mesh, geometry.seam, geometry.topHold, field)
         if (canvas != null && canvasAlpha > 0f) {
             Box(Modifier.fillMaxSize().graphicsLayer { alpha = canvasAlpha }) {
                 AppleMusicCanvasBackdrop(track, canvas, playing)
             }
         }
-        val artwork: @Composable (Dp) -> Unit = { size ->
-            if (video) AppleMusicPlayerVideo(track, slots, size) else AppleMusicPlayerArtwork(track, slots, size, playing, { canvasAlpha }, showStage = !immersive)
-        }
-        if (landscape) {
-            AppleMusicLandscapeDeck(track, slots, minOf(maxHeight - 34.dp, artworkCap), artwork, metadata, transport)
+        if (fullBleed) {
+            Box(Modifier.padding(top = topInset).fillMaxWidth().height(geometry.artworkHeight).graphicsLayer { alpha = 1f - canvasAlpha }) {
+                slots.stage(track, Modifier.fillMaxSize().verticalFadeEdges(topFade = topInset, bottomFade = geometry.bottomFade), 0.dp)
+            }
+            AppleMusicStatusBarWash(mesh, topInset)
+            AppleMusicFullBleedDeck(track, slots, immersive, volume.takeIf { maxHeight >= AppleMusicPortraitVolumeMinHeight }, metadata, transport) { controlsHeight = it }
         } else {
-            AppleMusicPortraitDeck(track, slots, if (video) maxWidth else artworkCap, immersive, artwork, metadata, transport)
+            AppleMusicCardScene(
+                track, slots, playing, video, immersive, landscape, { canvasAlpha },
+                landscapeArtwork = minOf(maxHeight - 34.dp, artworkCap), portraitWidth = if (video) maxWidth else artworkCap,
+                volume = volume.takeIf { maxHeight >= if (landscape) AppleMusicLandscapeVolumeMinHeight else AppleMusicPortraitVolumeMinHeight },
+                metadata = metadata, transport = transport
+            )
+        }
+    }
+}
+
+internal class AppleMusicFullBleedGeometry(val artworkHeight: Dp, val bottomFade: Dp, val seam: Dp, val topHold: Dp)
+
+internal fun appleMusicUsesFullBleed(landscape: Boolean, video: Boolean, immersive: Boolean, canvas: AppleMusicCanvas?, appleSkin: Boolean): Boolean {
+    if (landscape || video || immersive) return false
+    return !appleSkin || (canvas?.artwork != null && canvas.enabled)
+}
+
+internal fun appleMusicFullBleedGeometry(maxWidth: Dp, maxHeight: Dp, topInset: Dp, controlsHeight: Dp, fullBleed: Boolean): AppleMusicFullBleedGeometry {
+    val opaqueRoom = maxHeight - topInset - controlsHeight
+    val artworkHeight = minOf(maxWidth, maxHeight * AppleMusicArtworkHeightFraction, opaqueRoom / (1f - AppleMusicArtworkFadeFraction)).coerceAtLeast(0.dp)
+    val bottomFade = artworkHeight * AppleMusicArtworkFadeFraction
+    if (!fullBleed) return AppleMusicFullBleedGeometry(artworkHeight, bottomFade, 0.dp, 0.dp)
+    val topHold = topInset + topInset + ((artworkHeight - topInset - bottomFade) / 2).coerceAtLeast(0.dp)
+    return AppleMusicFullBleedGeometry(artworkHeight, bottomFade, topInset + artworkHeight, topHold)
+}
+
+@Composable
+private fun AppleMusicCardScene(
+    track: Track, slots: PlayerDeckSlots, playing: Boolean, video: Boolean, immersive: Boolean, landscape: Boolean,
+    canvasAlpha: () -> Float, landscapeArtwork: Dp, portraitWidth: Dp, volume: MusicStreamVolume?,
+    metadata: @Composable () -> Unit, transport: @Composable () -> Unit
+) {
+    val artwork: @Composable (Dp) -> Unit = { size ->
+        if (video) AppleMusicPlayerVideo(track, slots, size) else AppleMusicPlayerArtwork(track, slots, size, playing, canvasAlpha, showStage = !immersive)
+    }
+    if (landscape) {
+        AppleMusicLandscapeDeck(track, slots, landscapeArtwork, artwork, metadata, transport, volume)
+    } else {
+        AppleMusicPortraitDeck(track, slots, portraitWidth, immersive, artwork, metadata, transport, volume.takeIf { !video })
+    }
+}
+
+@Composable
+private fun AppleMusicStatusBarWash(mesh: ArtworkMesh?, topInset: Dp) {
+    val animations = LocalAnimationsEnabled.current
+    val washAlpha by animateFloatAsState(
+        AppleMusicWashMinAlpha + (AppleMusicWashMaxAlpha - AppleMusicWashMinAlpha) * (mesh?.topLuminance ?: 1f),
+        if (animations) tween(AppleMusicWashFadeMs) else snap(),
+        label = "apple-player-status-wash"
+    )
+    Box(
+        Modifier.fillMaxWidth().height(topInset + 32.dp).drawBehind {
+            drawRect(Brush.verticalGradient(0f to Color.Black.copy(alpha = washAlpha), 1f to Color.Transparent))
+        }
+    )
+}
+
+@Composable
+private fun AppleMusicFullBleedDeck(
+    track: Track, slots: PlayerDeckSlots, immersive: Boolean, volume: MusicStreamVolume?,
+    metadata: @Composable () -> Unit, transport: @Composable () -> Unit, onControlsHeight: (Dp) -> Unit
+) {
+    val density = LocalDensity.current
+    Column(Modifier.fillMaxSize().statusBarsPadding(), verticalArrangement = Arrangement.Bottom) {
+        AppleMusicGrabber()
+        Box(Modifier.padding(horizontal = 4.dp)) { slots.header() }
+        Spacer(Modifier.weight(1f))
+        Column(Modifier.fillMaxWidth().onSizeChanged { onControlsHeight(with(density) { it.height.toDp() }) }.navigationBarsPadding()) {
+            Box(Modifier.padding(horizontal = AppleMusicDesign.playerMetadataInset - 16.dp).clipToBounds()) { metadata() }
+            if (!immersive) Box(Modifier.padding(horizontal = AppleMusicDesign.playerMetadataInset - 16.dp)) { slots.engagement(track) }
+            Box(Modifier.padding(horizontal = AppleMusicDesign.playerSeekbarInset)) { slots.progress(PlayerProgressStyle.Classic) }
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                Box(Modifier.padding(horizontal = 16.dp)) { transport() }
+            }
+            if (volume != null) AppleMusicVolumeRow(volume, Modifier.padding(horizontal = AppleMusicDesign.playerSeekbarInset))
+            Box(Modifier.fillMaxWidth().padding(bottom = AppleMusicDesign.playerActionBottom)) { AppleMusicDockRow(slots.dockActions(track)) }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun AppleMusicVolumeRow(volume: MusicStreamVolume, modifier: Modifier = Modifier) {
+    val label = LocalLevyraStrings.current.volume
+    var dragging by remember { mutableStateOf(false) }
+    val barHeight by animateDpAsState(if (dragging) 11.dp else 7.dp, label = "apple-volume-height")
+    val fraction = volume.fraction.coerceIn(0f, 1f)
+    val percent = "${(fraction * 100).roundToInt()}%"
+    val sliderState = rememberSliderState(value = fraction, trackRange = 0f..1f)
+    SideEffect { if (!dragging) sliderState.value = fraction }
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Icon(Icons.AutoMirrored.Rounded.VolumeDown, null, tint = AppleMusicVibrant.secondary, modifier = Modifier.size(18.dp))
+            Slider(
+                state = sliderState,
+                onValueChange = {
+                    dragging = true
+                    sliderState.value = it
+                    volume.set(it)
+                },
+                onValueChangeFinished = { dragging = false },
+                modifier = Modifier.weight(1f).height(48.dp).semantics {
+                    contentDescription = label
+                    stateDescription = percent
+                },
+                thumb = { Spacer(Modifier.size(1.dp)) },
+                track = { state ->
+                    Box(Modifier.fillMaxWidth().height(barHeight).clip(RoundedCornerShape(barHeight / 2)).background(AppleMusicVibrant.tertiary)) {
+                        Box(
+                            Modifier.fillMaxWidth(state.value.coerceIn(0f, 1f)).fillMaxHeight()
+                                .background(if (dragging) AppleMusicVibrant.primary else AppleMusicVibrant.secondary)
+                        )
+                    }
+                }
+            )
+            Icon(Icons.AutoMirrored.Rounded.VolumeUp, null, tint = AppleMusicVibrant.secondary, modifier = Modifier.size(22.dp))
         }
     }
 }
@@ -175,7 +313,7 @@ private fun AppleMusicGrabber() {
 @Composable
 private fun AppleMusicPortraitDeck(
     track: Track, slots: PlayerDeckSlots, artworkCap: Dp, immersive: Boolean, artwork: @Composable (Dp) -> Unit,
-    metadata: @Composable () -> Unit, transport: @Composable () -> Unit
+    metadata: @Composable () -> Unit, transport: @Composable () -> Unit, volume: MusicStreamVolume? = null
 ) {
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
         AppleMusicGrabber()
@@ -190,6 +328,7 @@ private fun AppleMusicPortraitDeck(
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             Box(Modifier.padding(horizontal = 16.dp)) { transport() }
         }
+        if (volume != null) AppleMusicVolumeRow(volume, Modifier.padding(horizontal = AppleMusicDesign.playerSeekbarInset))
         Box(Modifier.fillMaxWidth().padding(bottom = AppleMusicDesign.playerActionBottom)) { AppleMusicDockRow(slots.dockActions(track)) }
     }
 }
@@ -197,7 +336,7 @@ private fun AppleMusicPortraitDeck(
 @Composable
 private fun AppleMusicLandscapeDeck(
     track: Track, slots: PlayerDeckSlots, artworkSize: Dp, artwork: @Composable (Dp) -> Unit,
-    metadata: @Composable () -> Unit, transport: @Composable () -> Unit
+    metadata: @Composable () -> Unit, transport: @Composable () -> Unit, volume: MusicStreamVolume?
 ) {
     Box(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().displayCutoutPadding()) {
         AppleMusicGrabber()
@@ -214,13 +353,12 @@ private fun AppleMusicLandscapeDeck(
                 metadata()
                 slots.progress(PlayerProgressStyle.Classic)
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) { transport() }
+                if (volume != null) AppleMusicVolumeRow(volume)
                 AppleMusicDockRow(slots.dockActions(track))
             }
         }
     }
 }
-
-private fun lerpField(field: Color, deep: Color): Color = androidx.compose.ui.graphics.lerp(field, deep, 0.5f)
 
 @Composable
 internal fun AppleMusicTransport(

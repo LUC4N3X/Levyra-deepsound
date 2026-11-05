@@ -39,10 +39,7 @@ internal fun NocturneBottomTabs(tuning: NavTuning, selected: LevyraTab, onSelect
     val measuredHeight = LocalNocturneNavigationHeight.current
     val density = LocalDensity.current
     val haptics = LocalLevyraHaptics.current
-    val all = rememberLevyraTabEntries()
-    val entries = remember(all, tuning.order, tuning.hidden) {
-        tuning.visibleOrder().mapNotNull { tab -> all.firstOrNull { it.tab == tab } }
-    }
+    val entries = rememberLevyraBarEntries(tuning.visibleOrder())
     val p = Nocturne78Palette
     Column(Modifier.fillMaxWidth().background(p.panel)) {
         HorizontalDivider(color = p.outline, thickness = 1.dp)

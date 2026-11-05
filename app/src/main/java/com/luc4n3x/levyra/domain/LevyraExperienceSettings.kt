@@ -209,10 +209,14 @@ enum class DockScrollEffect(val storageId: String) {
     }
 }
 
-fun LevyraInterfaceSettings.effectiveDockScrollEffect(): DockScrollEffect =
-    if (skin.supportsDockMorph) dockScrollEffect else DockScrollEffect.Tide
+fun LevyraInterfaceSettings.effectiveDockScrollEffect(navigation: NavStyle = NavStyle.Original): DockScrollEffect = when {
+    !skin.supportsDockMorph -> DockScrollEffect.Tide
+    navigation == NavStyle.LiquidCapsule -> DockScrollEffect.Merge
+    else -> dockScrollEffect
+}
 
-fun LevyraInterfaceSettings.dockMorphActive(): Boolean = effectiveDockScrollEffect() == DockScrollEffect.Merge
+fun LevyraInterfaceSettings.dockMorphActive(navigation: NavStyle = NavStyle.Original): Boolean =
+    effectiveDockScrollEffect(navigation) == DockScrollEffect.Merge
 
 data class LevyraInterfaceSettings(
     val compactHome: Boolean = false,

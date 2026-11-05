@@ -28,10 +28,7 @@ import com.luc4n3x.levyra.ui.theme.*
 
 @Composable
 internal fun PrismBottomTabs(tuning: NavTuning, selected: LevyraTab, onSelect: (LevyraTab) -> Unit, applySystemInset: Boolean) {
-    val all = rememberLevyraTabEntries()
-    val entries = remember(all, tuning.order, tuning.hidden) {
-        tuning.visibleOrder().mapNotNull { tab -> all.firstOrNull { it.tab == tab } }
-    }
+    val entries = rememberLevyraBarEntries(tuning.visibleOrder())
     val haptics = LocalLevyraHaptics.current
     val measuredHeight = LocalNocturneNavigationHeight.current
     val density = LocalDensity.current
