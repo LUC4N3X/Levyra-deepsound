@@ -2600,7 +2600,7 @@ fun LevyraApp(
                                 atelierShelf = { onOpenCollection -> com.luc4n3x.levyra.ui.atelier.AtelierShelfEntry(viewModel, state, onOpenCollection) }
                             )
                         }
-                        LevyraTab.Radio -> RadioTabScreen(viewModel, state, backEnabled = !rootOverlayOpen && state.selectedTab == LevyraTab.Radio)
+                        LevyraTab.Radio -> if (LevyraIsAppleMusic) AppleMusicRadioScreen(viewModel, state, exploreDestinationBottomInset(state)) else RadioTabScreen(viewModel, state, backEnabled = !rootOverlayOpen && state.selectedTab == LevyraTab.Radio)
                         LevyraTab.Player -> Unit
                     }
                 }

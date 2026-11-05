@@ -11,6 +11,7 @@ import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Sensors
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -31,12 +32,13 @@ import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.ui.theme.AppleMusicDesign
 
-private val AppleMusicTabOrder = listOf(LevyraTab.Home, LevyraTab.Explore, LevyraTab.Library, LevyraTab.Search)
+private val AppleMusicTabOrder = listOf(LevyraTab.Home, LevyraTab.Explore, LevyraTab.Radio, LevyraTab.Library, LevyraTab.Search)
 
 private fun appleMusicTabIcon(tab: LevyraTab, fallback: ImageVector): ImageVector = when (tab) {
     LevyraTab.Home -> Icons.Rounded.Home
     LevyraTab.Explore -> Icons.Rounded.GridView
     LevyraTab.Library -> Icons.Rounded.LibraryMusic
+    LevyraTab.Radio -> Icons.Rounded.Sensors
     LevyraTab.Search -> Icons.Rounded.Search
     else -> fallback
 }
@@ -46,8 +48,10 @@ internal fun AppleMusicBottomTabs(
     entries: List<LevyraTabEntry>, selected: LevyraTab, applySystemInset: Boolean, modifier: Modifier,
     onSelect: (LevyraTabEntry, Boolean) -> Unit
 ) {
-    val ordered = remember(entries) {
-        AppleMusicTabOrder.mapNotNull { tab -> entries.firstOrNull { it.tab == tab } } + entries.filter { it.tab !in AppleMusicTabOrder }
+    val allEntries = rememberLevyraTabEntries()
+    val ordered = remember(entries, allEntries) {
+        val available = entries + allEntries.filter { it.tab == LevyraTab.Radio && entries.none { e -> e.tab == LevyraTab.Radio } }
+        AppleMusicTabOrder.mapNotNull { tab -> available.firstOrNull { it.tab == tab } } + available.filter { it.tab !in AppleMusicTabOrder }
     }
     val pill = CircleShape
     Box(
