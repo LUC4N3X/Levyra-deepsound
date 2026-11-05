@@ -747,7 +747,8 @@ class PlaybackService : MediaLibraryService() {
                 pitch = parameters.pitch,
                 skipSilenceEnabled = player.skipSilenceEnabled,
                 aaudioOutputSupported = NativeAudioIntegration.isAaudioOutputSupported(),
-                sleepTimbreSofteningActive = sleepTimbreProcessor.currentTargetSoftness() > 0.001f
+                sleepTimbreSofteningActive = sleepTimbreProcessor.currentTargetSoftness() > 0.001f,
+                trackQueue = !isLiveRadioMediaItem(player.currentMediaItem)
             )
         )
     }
@@ -1143,6 +1144,7 @@ class PlaybackService : MediaLibraryService() {
             }
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                refreshAudioOffloadPolicy()
                 smartResumeTracker.onMediaChanged(mediaItem?.mediaId.orEmpty())
                 if (mediaItem?.mediaId != lastTransitionMediaId) {
                     lastTransitionMediaId = mediaItem?.mediaId

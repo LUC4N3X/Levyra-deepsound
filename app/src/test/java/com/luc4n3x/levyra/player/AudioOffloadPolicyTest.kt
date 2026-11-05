@@ -55,6 +55,15 @@ class AudioOffloadPolicyTest {
     }
 
     @Test
+    fun trackQueue_blocksOffloadWhileContinuousStreamsKeepIt() {
+        val inputs = { trackQueue: Boolean -> AudioOffloadInputs.from(plainSettings, false, false, 1f, 1f, false, true, trackQueue = trackQueue) }
+        assertEquals(setOf(AudioOffloadBlocker.TRACK_QUEUE), AudioOffloadPolicy.decide(inputs(true)).blockers)
+        assertTrue(AudioOffloadPolicy.decide(inputs(false)).allowed)
+        val crossfadeOff = plainSettings.copy(crossfadeSeconds = 0)
+        assertFalse(AudioOffloadPolicy.decide(AudioOffloadInputs.from(crossfadeOff, false, false, 1f, 1f, false, true, trackQueue = true)).allowed)
+    }
+
+    @Test
     fun preferenceOff_blocksOffload() {
         val decision = decide(settings = plainSettings.copy(audioOffloadPreference = AudioOffloadPreference.OFF))
         assertEquals(setOf(AudioOffloadBlocker.PREFERENCE_OFF), decision.blockers)
