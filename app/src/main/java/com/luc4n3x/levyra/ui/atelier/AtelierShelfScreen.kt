@@ -270,7 +270,7 @@ private fun AtelierShelfStage(items: List<AtelierShelfItem>, viewModel: LevyraVi
             Spacer(Modifier.height(10.dp))
             AnimatedContent(
                 targetState = current,
-                transitionSpec = { fadeIn(tween(170, easing = FastOutSlowInEasing)) togetherWith fadeOut(tween(110)) },
+                transitionSpec = { fadeIn(tween(170, delayMillis = 100, easing = FastOutSlowInEasing)) togetherWith fadeOut(tween(90)) },
                 contentKey = { it.key },
                 label = "atelier-shelf-title"
             ) { item ->
