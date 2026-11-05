@@ -15324,8 +15324,8 @@ private fun SearchScreen(
                     onRequestArtwork = { params -> appleExploreViewModel.ensureExploreCategoryArtwork(params, false) }
                 )
             } else if (queryClean.isEmpty()) {
-                if (levyraBrowse != null && LevyraIsDefaultSkin) item(key = "search-lyrics-entry", contentType = "search-lyrics-entry") {
-                    LyricsSearchEntry(onOpen = viewModel::openLyricsPhraseSearch, modifier = Modifier.padding(top = 4.dp, bottom = 6.dp))
+                if (levyraBrowse != null && LevyraIsDefaultSkin) item(key = "search-browse-top", contentType = "search-browse-top") {
+                    Spacer(Modifier.height(10.dp))
                 }
                 if (levyraBrowse == null) item(key = "search-taste-hints", contentType = "search-taste-hints") {
                     SearchTasteHints(

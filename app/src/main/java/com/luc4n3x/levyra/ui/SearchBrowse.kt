@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -64,6 +65,7 @@ import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.SearchBrowseCopy
 import com.luc4n3x.levyra.ui.i18n.searchBrowseCopy
+import com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
@@ -71,13 +73,16 @@ import com.luc4n3x.levyra.viewmodel.SearchViewModel
 import java.util.Locale
 
 private val SearchBrowseTileHeight = 100.dp
+private val SearchBrowseDefaultTileHeight = 88.dp
 private val SearchBrowseGap = 10.dp
+private val SearchBrowseDefaultGap = 12.dp
 internal const val SearchBrowseLeadRows = 2
 private const val SearchBrowseMaxFontGrowth = 1.6f
 private val SearchRecentPreferredWidth = 132.dp
 private val SearchRecentCarouselHeight = 140.dp
 private val SearchSampleWidth = 128.dp
 private val SearchSampleHeight = 196.dp
+private val SearchSampleDefaultHeight = 180.dp
 private val SearchRecentGap = 12.dp
 private const val SearchRecentTextFadeStart = 0.85f
 
@@ -225,11 +230,13 @@ internal fun LazyListScope.levyraSearchBrowseItems(
         if (interludeAfterRows > 0 && rowIndex == interludeAfterRows) interlude()
         item(key = "search-browse-row-${row.first().key}", contentType = "search-browse-row") {
             val fontScale = LocalDensity.current.fontScale.coerceIn(1f, SearchBrowseMaxFontGrowth)
+            val gap = if (LevyraIsDefaultSkin) SearchBrowseDefaultGap else SearchBrowseGap
             Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = SearchBrowseGap - 3.dp),
-                horizontalArrangement = Arrangement.spacedBy(SearchBrowseGap)
+                modifier = Modifier.fillMaxWidth().padding(bottom = gap - 3.dp),
+                horizontalArrangement = Arrangement.spacedBy(gap)
             ) {
-                val tileModifier = Modifier.weight(1f).height(SearchBrowseTileHeight * fontScale)
+                val tileHeight = if (LevyraIsDefaultSkin) SearchBrowseDefaultTileHeight else SearchBrowseTileHeight
+                val tileModifier = Modifier.weight(1f).height(tileHeight * fontScale)
                 row.forEach { tile ->
                     if (tile is LevyraSearchBrowseTile.Podcasts) {
                         ExploreDiscoveryCategoryCard(title = podcastsTitle, identity = "podcasts", artworkUrl = podcastsArtwork, modifier = tileModifier, accentColors = palettes[tile.key], onClick = onOpenPodcasts)
@@ -387,18 +394,19 @@ internal fun LevyraSearchSamplesRail(
     previewEnabled: Boolean,
     onOpen: (Int) -> Unit
 ) {
-    Column {
-        LevyraSectionHeader(title = title, modifier = Modifier.padding(top = 18.dp, bottom = 6.dp))
+    val spacious = LevyraIsDefaultSkin
+    Column(Modifier.padding(bottom = if (spacious) 26.dp else 0.dp)) {
+        LevyraSectionHeader(title = title, modifier = Modifier.padding(top = if (spacious) 12.dp else 18.dp, bottom = if (spacious) 12.dp else 6.dp))
         LazyRow(
             modifier = Modifier.recentSearchesBleed(RecentSearchGutter),
             horizontalArrangement = Arrangement.spacedBy(SearchRecentGap),
             contentPadding = PaddingValues(horizontal = RecentSearchGutter)
         ) {
             itemsIndexed(samples, key = { _, track -> "sample-${track.id}" }, contentType = { _, _ -> "search-sample" }) { index, track ->
-                val shape = MaterialTheme.shapes.extraLarge
+                val shape = if (spacious) RoundedCornerShape(20.dp) else MaterialTheme.shapes.extraLarge
                 Box(
                     Modifier
-                        .size(width = SearchSampleWidth, height = SearchSampleHeight)
+                        .size(width = SearchSampleWidth, height = if (spacious) SearchSampleDefaultHeight else SearchSampleHeight)
                         .clip(shape)
                         .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                         .levyraPressable(onClick = { onOpen(index) }, pressedScale = LevyraPressScale.Tile, role = Role.Button)
