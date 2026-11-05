@@ -75,6 +75,7 @@ import java.util.Locale
 private val SearchBrowseTileHeight = 100.dp
 private val SearchBrowseDefaultTileHeight = 76.dp
 private val SearchTonalCardRadius = 22.dp
+private val SearchTonalCardBase = Color(0xFF2A2A2F)
 private val SearchTonalArtRadius = 14.dp
 private val SearchTonalArtSize = 56.dp
 private val SearchBrowseGap = 10.dp
@@ -333,7 +334,7 @@ private fun SearchBrowseCard(
     Row(
         modifier = modifier
             .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .background(SearchTonalCardBase)
             .background(Brush.linearGradient(listOf(start.copy(alpha = 0.62f), end.copy(alpha = 0.22f))))
             .levyraPressable(onClick = onClick, pressedScale = LevyraPressScale.Tile, role = Role.Button, onClickLabel = title)
             .padding(start = 16.dp, end = 10.dp),
