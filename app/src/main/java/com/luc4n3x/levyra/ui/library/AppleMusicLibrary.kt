@@ -1,6 +1,9 @@
 package com.luc4n3x.levyra.ui.library
 
 import androidx.compose.foundation.background
+import androidx.compose.material.icons.automirrored.rounded.ArrowForwardIos
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -55,5 +58,27 @@ internal fun AppleLibraryRecentlyAdded(tracks: List<Track>, onPlay: (Track) -> U
                 repeat(AppleLibraryRecentColumns - row.size) { Spacer(Modifier.weight(1f)) }
             }
         }
+    }
+}
+
+@Composable
+internal fun AppleLibraryLinkRow(label: String, onClick: () -> Unit) {
+    androidx.compose.foundation.layout.Box(
+        Modifier.fillMaxWidth().heightIn(min = 52.dp)
+            .levyraPressable(onClick = onClick, onClickLabel = label, role = Role.Button, pressedScale = LevyraPressScale.Control)
+    ) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 52.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            Text(
+                label, color = AppleMusicDesign.accent, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Normal),
+                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
+            )
+            androidx.compose.material3.Icon(
+                androidx.compose.material.icons.Icons.AutoMirrored.Rounded.ArrowForwardIos, null,
+                tint = AppleMusicDesign.tertiaryLabel, modifier = Modifier.padding(start = 4.dp).size(16.dp)
+            )
+        }
+        androidx.compose.material3.HorizontalDivider(
+            Modifier.align(androidx.compose.ui.Alignment.BottomEnd), thickness = 0.5.dp, color = AppleMusicDesign.separator
+        )
     }
 }

@@ -94,7 +94,8 @@ class MusicNewsRepository private constructor(context: Context) {
 
     private fun keepFailedSources(fresh: MusicNewsPage, previous: MusicNewsPage?): MusicNewsPage {
         val refreshed = fresh.stories.mapTo(HashSet()) { it.source }
-        val kept = previous?.stories.orEmpty().filter { it.source !in refreshed }
+        val oldest = fresh.fetchedAtMs - MAX_STALE_MS
+        val kept = previous?.stories.orEmpty().filter { it.source !in refreshed && it.publishedAtMs > oldest }
         return if (kept.isEmpty()) fresh else MusicNewsPage(merge(fresh.stories + kept), fresh.fetchedAtMs)
     }
 

@@ -1134,7 +1134,7 @@ private fun RadioEmptyState(title: String, detail: String?, retry: String, onRet
 }
 
 @Composable
-private fun RadioDirectoryDialog(
+internal fun RadioDirectoryDialog(
     title: String,
     entries: List<RadioDirectoryEntry>,
     selected: String?,
@@ -1189,7 +1189,7 @@ private fun mainSectionTitle(state: LiveRadioUiState, strings: LevyraLiveRadioSt
     return strings.popularIn(localizedCountryName(code, state.levyraLanguageCode).ifBlank { code })
 }
 
-private fun localizedCountryName(countryCode: String, languageCode: String): String = runCatching {
+internal fun localizedCountryName(countryCode: String, languageCode: String): String = runCatching {
     Locale.Builder().setRegion(countryCode.uppercase(Locale.ROOT)).build()
         .getDisplayCountry(Locale.forLanguageTag(languageCode))
 }.getOrDefault("")

@@ -1,6 +1,24 @@
 package com.luc4n3x.levyra.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Public
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.Cancel
+import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -74,6 +92,9 @@ internal fun AppleMusicRadioScreen(viewModel: LevyraViewModel, state: LevyraUiSt
     val popular = remember(stations, live, grid) { stations.filterNot { s -> live.any { it.uuid == s.uuid } || grid.any { it.uuid == s.uuid } }.take(AppleRadioRailLimit) }
     val country = stations.firstOrNull()?.country.orEmpty()
     val play: (RadioStation) -> Unit = viewModel::playLiveRadio
+    var countryPickerOpen by remember { mutableStateOf(false) }
+    val searching = radioState.query.isNotBlank()
+    val countryLabel = radioState.selectedCountryCode?.let { code -> localizedCountryName(code, state.languageCode).ifBlank { code } } ?: radioStrings.worldwide
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(AppleMusicDesign.background),
@@ -89,6 +110,35 @@ internal fun AppleMusicRadioScreen(viewModel: LevyraViewModel, state: LevyraUiSt
                 style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
                 modifier = Modifier.padding(horizontal = AppleMusicDesign.gutter).semantics { heading() }
             )
+        }
+        item(key = "apple-radio-search") {
+            AppleRadioSearchBar(radioState.query, radioStrings.searchHint, countryLabel, radio::setQuery) { countryPickerOpen = true }
+        }
+        if (searching) {
+            items(stations, key = { "result-${it.uuid}" }) { station -> AppleRadioResultRow(station) { play(station) } }
+            if (stations.isEmpty() && !radioState.loading) item(key = "apple-radio-empty") {
+                Text(radioStrings.noStations, color = AppleMusicDesign.secondaryLabel, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(horizontal = AppleMusicDesign.gutter))
+            }
+            return@LazyColumn
+        }
+        if (grid.isEmpty() && live.isEmpty() && popular.isEmpty()) item(key = "apple-radio-status") {
+            Column(
+                Modifier.fillMaxWidth().padding(horizontal = AppleMusicDesign.gutter, vertical = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (radioState.loading) {
+                    CircularProgressIndicator(color = AppleMusicDesign.accent)
+                } else {
+                    Text(
+                        radioState.error ?: radioStrings.noStations,
+                        color = AppleMusicDesign.secondaryLabel, style = MaterialTheme.typography.bodyLarge
+                    )
+                    TextButton(onClick = radio::retry) {
+                        Text(com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings.current.exploreSamplesRetry, color = AppleMusicDesign.accent)
+                    }
+                }
+            }
         }
         if (grid.isNotEmpty()) item(key = "apple-radio-grid") {
             Column(Modifier.padding(horizontal = AppleMusicDesign.gutter), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -115,6 +165,82 @@ internal fun AppleMusicRadioScreen(viewModel: LevyraViewModel, state: LevyraUiSt
             AppleRadioRail(libraryCopy.favorites, radioState.favorites.take(AppleRadioRailLimit), play)
         }
     }
+    if (countryPickerOpen) {
+        RadioDirectoryDialog(
+            title = radioStrings.countries,
+            entries = radioState.countries,
+            selected = radioState.selectedCountryCode,
+            allLabel = radioStrings.worldwide,
+            display = { entry -> localizedCountryName(entry.code, state.languageCode).ifBlank { entry.name } },
+            value = com.luc4n3x.levyra.feature.radio.RadioDirectoryEntry::code,
+            onDismiss = { countryPickerOpen = false },
+            onSelect = {
+                radio.selectCountry(it)
+                countryPickerOpen = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun AppleRadioSearchBar(query: String, hint: String, countryLabel: String, onQuery: (String) -> Unit, onPickCountry: () -> Unit) {
+    val shape = RoundedCornerShape(AppleMusicDesign.cornerL)
+    Column(Modifier.padding(horizontal = AppleMusicDesign.gutter), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 44.dp).clip(shape).background(AppleMusicDesign.fill).padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(Icons.Rounded.Search, contentDescription = null, tint = AppleMusicDesign.secondaryLabel, modifier = Modifier.size(20.dp))
+            BasicTextField(
+                value = query,
+                onValueChange = onQuery,
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = AppleMusicDesign.label),
+                cursorBrush = SolidColor(AppleMusicDesign.accent),
+                modifier = Modifier.weight(1f).semantics { contentDescription = hint },
+                decorationBox = { inner ->
+                    if (query.isEmpty()) Text(hint, color = AppleMusicDesign.secondaryLabel, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    inner()
+                }
+            )
+            if (query.isNotEmpty()) {
+                IconButton(onClick = { onQuery("") }, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Rounded.Cancel, contentDescription = null, tint = AppleMusicDesign.secondaryLabel, modifier = Modifier.size(18.dp))
+                }
+            }
+        }
+        Row(
+            Modifier.heightIn(min = 36.dp).clip(RoundedCornerShape(50)).background(AppleMusicDesign.fill)
+                .levyraPressable(onClick = onPickCountry, onClickLabel = countryLabel, role = Role.Button, pressedScale = LevyraPressScale.Control)
+                .padding(horizontal = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(Icons.Rounded.Public, contentDescription = null, tint = AppleMusicDesign.accent, modifier = Modifier.size(18.dp))
+            Text(countryLabel, color = AppleMusicDesign.label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+            Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = null, tint = AppleMusicDesign.secondaryLabel, modifier = Modifier.size(18.dp))
+        }
+    }
+}
+
+@Composable
+private fun AppleRadioResultRow(station: RadioStation, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 64.dp)
+            .levyraPressable(onClick = onClick, onClickLabel = station.name, role = Role.Button, pressedScale = LevyraPressScale.Control)
+            .padding(horizontal = AppleMusicDesign.gutter),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(Modifier.size(52.dp).clip(RoundedCornerShape(AppleMusicDesign.cornerS)).background(AppleMusicDesign.fill), contentAlignment = Alignment.Center) {
+            RadioArtwork(station, 52.dp, RoundedCornerShape(AppleMusicDesign.cornerS))
+        }
+        Column(Modifier.weight(1f)) {
+            Text(station.name, color = AppleMusicDesign.label, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(listOf(station.country, station.tags.firstOrNull().orEmpty()).filter(String::isNotBlank).joinToString(" · "), color = AppleMusicDesign.secondaryLabel, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
 }
 
 @Composable
@@ -132,7 +258,11 @@ private fun AppleRadioLogoTile(station: RadioStation, modifier: Modifier, onClic
     val shape = RoundedCornerShape(AppleMusicDesign.cornerM)
     Box(
         modifier.aspectRatio(1f).clip(shape).background(AppleMusicDesign.fill).border(0.5.dp, AppleMusicDesign.separator, shape)
-            .levyraPressable(onClick = onClick, onClickLabel = station.name, role = Role.Button, pressedScale = LevyraPressScale.Tile),
+            .levyraPressable(onClick = onClick, onClickLabel = station.name, role = Role.Button, pressedScale = LevyraPressScale.Tile)
+            .clearAndSetSemantics {
+                contentDescription = station.name
+                role = Role.Button
+            },
         contentAlignment = Alignment.Center
     ) {
         RadioArtwork(station, AppleRadioRailWidth, shape)

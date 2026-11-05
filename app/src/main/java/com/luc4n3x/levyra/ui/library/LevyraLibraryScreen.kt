@@ -719,7 +719,7 @@ internal fun LevyraLibraryScreen(
                 }
             }
 
-            if (!(com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic && category == LibraryCategory.Overview)) item(key = "library-search") {
+            if (!(com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic && category == LibraryCategory.Overview && query.isEmpty())) item(key = "library-search") {
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
@@ -884,6 +884,13 @@ internal fun LevyraLibraryScreen(
                     }
                     if (com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic) {
                         sectionsItem()
+                        item(key = "apple-smart-links") {
+                            Column {
+                                AppleLibraryLinkRow(strings.favoritesPlain) { openSmartCollectionName = SMART_COLLECTION_FAVORITES }
+                                AppleLibraryLinkRow(strings.recent) { openSmartCollectionName = SMART_COLLECTION_RECENT }
+                                AppleLibraryLinkRow(strings.pulsePlays) { openSmartCollectionName = SMART_COLLECTION_MOST_PLAYED }
+                            }
+                        }
                         if (catalog.recent.isNotEmpty()) {
                             item(key = "apple-recently-added") {
                                 Column {

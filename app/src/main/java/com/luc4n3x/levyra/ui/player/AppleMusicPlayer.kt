@@ -128,27 +128,21 @@ internal fun AppleMusicPlayerScene(
     BoxWithConstraints(modifier.fillMaxSize()) {
         val landscape = maxWidth > maxHeight
         val immersive = appleMusicCanvasImmersive(canvas, maxWidth, maxHeight, video)
-        val realCanvas = canvas?.artwork != null && canvas.enabled
-        val fullBleed = !landscape && !video && !immersive && (!LevyraIsAppleMusic || realCanvas)
+        val fullBleed = appleMusicUsesFullBleed(landscape, video, immersive, canvas, LevyraIsAppleMusic)
         val canvasAlpha by animateFloatAsState(if (immersive) 1f else 0f, label = "apple-player-canvas-alpha")
         val density = LocalDensity.current
         val topInset = with(density) { WindowInsets.statusBars.getTop(density).toDp() }
         var controlsHeight by remember { mutableStateOf(0.dp) }
-        val opaqueRoom = maxHeight - topInset - controlsHeight
-        val artworkHeight = minOf(maxWidth, maxHeight * AppleMusicArtworkHeightFraction, opaqueRoom / (1f - AppleMusicArtworkFadeFraction))
-            .coerceAtLeast(0.dp)
-        val bottomFade = artworkHeight * AppleMusicArtworkFadeFraction
-        val seam = if (fullBleed) topInset + artworkHeight else 0.dp
-        val topHold = if (fullBleed) topInset + topInset + ((artworkHeight - topInset - bottomFade) / 2).coerceAtLeast(0.dp) else 0.dp
-        ArtworkMeshBackdrop(mesh, seam, topHold, field)
+        val geometry = appleMusicFullBleedGeometry(maxWidth, maxHeight, topInset, controlsHeight, fullBleed)
+        ArtworkMeshBackdrop(mesh, geometry.seam, geometry.topHold, field)
         if (canvas != null && canvasAlpha > 0f) {
             Box(Modifier.fillMaxSize().graphicsLayer { alpha = canvasAlpha }) {
                 AppleMusicCanvasBackdrop(track, canvas, playing)
             }
         }
         if (fullBleed) {
-            Box(Modifier.padding(top = topInset).fillMaxWidth().height(artworkHeight).graphicsLayer { alpha = 1f - canvasAlpha }) {
-                slots.stage(track, Modifier.fillMaxSize().verticalFadeEdges(topFade = topInset, bottomFade = bottomFade), 0.dp)
+            Box(Modifier.padding(top = topInset).fillMaxWidth().height(geometry.artworkHeight).graphicsLayer { alpha = 1f - canvasAlpha }) {
+                slots.stage(track, Modifier.fillMaxSize().verticalFadeEdges(topFade = topInset, bottomFade = geometry.bottomFade), 0.dp)
             }
             AppleMusicStatusBarWash(mesh, topInset)
             AppleMusicFullBleedDeck(track, slots, immersive, volume.takeIf { maxHeight >= AppleMusicPortraitVolumeMinHeight }, metadata, transport) { controlsHeight = it }
@@ -161,6 +155,22 @@ internal fun AppleMusicPlayerScene(
             )
         }
     }
+}
+
+internal class AppleMusicFullBleedGeometry(val artworkHeight: Dp, val bottomFade: Dp, val seam: Dp, val topHold: Dp)
+
+internal fun appleMusicUsesFullBleed(landscape: Boolean, video: Boolean, immersive: Boolean, canvas: AppleMusicCanvas?, appleSkin: Boolean): Boolean {
+    if (landscape || video || immersive) return false
+    return !appleSkin || (canvas?.artwork != null && canvas.enabled)
+}
+
+internal fun appleMusicFullBleedGeometry(maxWidth: Dp, maxHeight: Dp, topInset: Dp, controlsHeight: Dp, fullBleed: Boolean): AppleMusicFullBleedGeometry {
+    val opaqueRoom = maxHeight - topInset - controlsHeight
+    val artworkHeight = minOf(maxWidth, maxHeight * AppleMusicArtworkHeightFraction, opaqueRoom / (1f - AppleMusicArtworkFadeFraction)).coerceAtLeast(0.dp)
+    val bottomFade = artworkHeight * AppleMusicArtworkFadeFraction
+    if (!fullBleed) return AppleMusicFullBleedGeometry(artworkHeight, bottomFade, 0.dp, 0.dp)
+    val topHold = topInset + topInset + ((artworkHeight - topInset - bottomFade) / 2).coerceAtLeast(0.dp)
+    return AppleMusicFullBleedGeometry(artworkHeight, bottomFade, topInset + artworkHeight, topHold)
 }
 
 @Composable
