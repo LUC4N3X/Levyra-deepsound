@@ -2269,7 +2269,7 @@ fun LevyraApp(
                     .fillMaxSize()
                     .background(LevyraBlack)
             ) {
-            val dockState = rememberLevyraDockState(enabled = state.interfaceSettings.effectiveDockScrollEffect() != DockScrollEffect.Off)
+            val dockState = rememberLevyraDockState(enabled = state.interfaceSettings.effectiveDockScrollEffect(skinNavigationSettings(navigationStudio.settings).style) != DockScrollEffect.Off)
             val glassBlurAllowed = rememberGlassBlurAllowed()
             val dockGlass = rememberGlassBackdropState(
                 enabled = !LevyraSkinManagesLayout && state.interfaceSettings.liquidGlassEnabled &&
@@ -2452,7 +2452,7 @@ fun LevyraApp(
                 accent = yourSoundAccent
             )
             val homeSaveableState = rememberSaveableStateHolder()
-            val dockMiniMergeable = state.interfaceSettings.dockMorphActive() &&
+            val dockMiniMergeable = state.interfaceSettings.dockMorphActive(skinNavigationSettings(navigationStudio.settings).style) &&
                 skinNavigationSettings(navigationStudio.settings).style.supportsDockMorph &&
                 !dockSideBySide && !state.showSettings
             val dockMiniMerged = remember(dockState, dockMiniMergeable) {
@@ -2631,7 +2631,7 @@ fun LevyraApp(
                     val compactionProvider: () -> Float = { dockCompaction.value }
                     val miniPlayerVisible = state.currentTrack != null && !state.isSamplesOpen
                     val dockMorph = rememberDockMorph(
-                        active = state.interfaceSettings.dockMorphActive() &&
+                        active = state.interfaceSettings.dockMorphActive(skinNavigationSettings(navigationStudio.settings).style) &&
                             skinNavigationSettings(navigationStudio.settings).style.supportsDockMorph &&
                             !dockSideBySide && !state.showSettings,
                         miniVisible = miniPlayerVisible,
@@ -3681,7 +3681,8 @@ fun LevyraApp(
                     animated = state.animationsEnabled,
                     onUpdate = viewModel::setMiniPlayerStudioSettings,
                     onClose = viewModel::closeMiniPlayerStudio,
-                    scrollEffect = state.interfaceSettings.dockScrollEffect,
+                    scrollEffect = state.interfaceSettings.effectiveDockScrollEffect(skinNavigationSettings(navigationStudio.settings).style),
+                    scrollEffectLocked = skinNavigationSettings(navigationStudio.settings).style == NavStyle.LiquidCapsule,
                     onScrollEffect = { viewModel.setInterfaceSettings(state.interfaceSettings.copy(dockScrollEffect = it)) }
                 )
             }

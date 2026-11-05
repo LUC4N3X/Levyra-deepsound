@@ -80,4 +80,14 @@ class DockMorphSettingsTest {
             LevyraInterfaceSettings(dockScrollEffect = DockScrollEffect.Off, skin = LevyraSkin.AppleMusicStyle).effectiveDockScrollEffect()
         )
     }
+
+    @Test
+    fun liquidCapsuleRunsEclipseAndLeavingRestoresTheSavedEffect() {
+        val tide = LevyraInterfaceSettings(dockScrollEffect = DockScrollEffect.Tide)
+
+        assertEquals(DockScrollEffect.Merge, tide.effectiveDockScrollEffect(com.luc4n3x.levyra.domain.NavStyle.LiquidCapsule))
+        assertTrue(tide.dockMorphActive(com.luc4n3x.levyra.domain.NavStyle.LiquidCapsule))
+        assertEquals(DockScrollEffect.Tide, tide.effectiveDockScrollEffect(com.luc4n3x.levyra.domain.NavStyle.FloatingDock))
+        assertEquals(DockScrollEffect.Tide, tide.copy(skin = LevyraSkin.SpotifyStyle).effectiveDockScrollEffect(com.luc4n3x.levyra.domain.NavStyle.LiquidCapsule))
+    }
 }

@@ -751,7 +751,12 @@ internal fun StyledBottomTabs(
         return
     }
     val visibleEntries = rememberLevyraBarEntries(tuning.visibleOrder())
-    val searchEntry = if (style.separatesSearch) visibleEntries.firstOrNull { it.tab == LevyraTab.Search } else null
+    val allEntries = rememberLevyraTabEntries()
+    val searchEntry = if (style.separatesSearch) {
+        visibleEntries.firstOrNull { it.tab == LevyraTab.Search } ?: allEntries.firstOrNull { it.tab == LevyraTab.Search }
+    } else {
+        null
+    }
     val entries = remember(visibleEntries, searchEntry) {
         if (searchEntry == null) visibleEntries else visibleEntries.filterNot { it.tab == LevyraTab.Search }
     }
