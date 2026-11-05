@@ -73,7 +73,10 @@ import com.luc4n3x.levyra.viewmodel.SearchViewModel
 import java.util.Locale
 
 private val SearchBrowseTileHeight = 100.dp
-private val SearchBrowseDefaultTileHeight = 88.dp
+private val SearchBrowseDefaultTileHeight = 76.dp
+private val SearchTonalCardRadius = 22.dp
+private val SearchTonalArtRadius = 14.dp
+private val SearchTonalArtSize = 56.dp
 private val SearchBrowseGap = 10.dp
 private val SearchBrowseDefaultGap = 12.dp
 internal const val SearchBrowseLeadRows = 2
@@ -227,7 +230,12 @@ internal fun LazyListScope.levyraSearchBrowseItems(
         .let { indices -> tiles.indices.associate { tiles[it].key to ExploreCategoryPalettes[indices[it]] } }
     val rows = tiles.chunked(2)
     rows.forEachIndexed { rowIndex, row ->
-        if (interludeAfterRows > 0 && rowIndex == interludeAfterRows) interlude()
+        if (interludeAfterRows > 0 && rowIndex == interludeAfterRows) {
+            interlude()
+            item(key = "search-browse-header", contentType = "search-browse-header") {
+                LevyraSectionHeader(title = browse.copy.browseTitle, modifier = Modifier.padding(bottom = 12.dp))
+            }
+        }
         item(key = "search-browse-row-${row.first().key}", contentType = "search-browse-row") {
             val fontScale = LocalDensity.current.fontScale.coerceIn(1f, SearchBrowseMaxFontGrowth)
             val gap = if (LevyraIsDefaultSkin) SearchBrowseDefaultGap else SearchBrowseGap
@@ -239,7 +247,7 @@ internal fun LazyListScope.levyraSearchBrowseItems(
                 val tileModifier = Modifier.weight(1f).height(tileHeight * fontScale)
                 row.forEach { tile ->
                     if (tile is LevyraSearchBrowseTile.Podcasts) {
-                        ExploreDiscoveryCategoryCard(title = podcastsTitle, identity = "podcasts", artworkUrl = podcastsArtwork, modifier = tileModifier, accentColors = palettes[tile.key], onClick = onOpenPodcasts)
+                        SearchBrowseCard(title = podcastsTitle, identity = "podcasts", artworkUrl = podcastsArtwork, modifier = tileModifier, accent = palettes[tile.key], onClick = onOpenPodcasts)
                     } else {
                         SearchBrowseTileCard(tile, browse, tileModifier, palettes[tile.key], onOpenZone, onOpenCategory)
                     }
@@ -282,12 +290,12 @@ private fun SearchBrowseTileCard(
         is LevyraSearchBrowseTile.Category -> {
             val category = tile.category
             LaunchedEffect(category.params) { browse.requestCategoryArtwork(category.params) }
-            ExploreDiscoveryCategoryCard(
+            SearchBrowseCard(
                 title = category.title,
                 identity = category.params,
                 artworkUrl = browse.categoryArtwork[category.params].orEmpty(),
                 modifier = modifier,
-                accentColors = accent,
+                accent = accent,
                 onClick = { onOpenCategory(category) }
             )
         }
@@ -295,14 +303,63 @@ private fun SearchBrowseTileCard(
         is LevyraSearchBrowseTile.Zone -> {
             val zone = tile.zone
             val cover = browse.zoneCovers[zone.id].orEmpty()
-            ExploreDiscoveryCategoryCard(
+            SearchBrowseCard(
                 title = zone.label,
                 identity = if (zone.id == ExploreCatalog.NEW_RELEASES_ZONE_ID) "new-releases" else zone.id,
                 artworkUrl = cover.ifBlank { rememberExploreMoodArtworkUrl(zone) },
                 modifier = modifier,
-                accentColors = accent,
+                accent = accent,
                 onClick = { onOpenZone(zone) }
             )
+        }
+    }
+}
+
+@Composable
+private fun SearchBrowseCard(
+    title: String,
+    identity: String,
+    artworkUrl: String,
+    modifier: Modifier,
+    accent: Pair<Color, Color>?,
+    onClick: () -> Unit
+) {
+    if (!LevyraIsDefaultSkin) {
+        ExploreDiscoveryCategoryCard(title = title, identity = identity, artworkUrl = artworkUrl, modifier = modifier, accentColors = accent, onClick = onClick)
+        return
+    }
+    val (start, end) = accent ?: exploreCategoryPalette(identity)
+    val shape = RoundedCornerShape(SearchTonalCardRadius)
+    Row(
+        modifier = modifier
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .background(Brush.linearGradient(listOf(start.copy(alpha = 0.62f), end.copy(alpha = 0.22f))))
+            .levyraPressable(onClick = onClick, pressedScale = LevyraPressScale.Tile, role = Role.Button, onClickLabel = title)
+            .padding(start = 16.dp, end = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+            color = Color.White,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f).padding(end = 8.dp)
+        )
+        var failed by remember(artworkUrl) { mutableStateOf(false) }
+        val artShape = RoundedCornerShape(SearchTonalArtRadius)
+        if (artworkUrl.isNotBlank() && !failed) {
+            coil3.compose.AsyncImage(
+                model = artworkUrl,
+                contentDescription = null,
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                onError = { failed = true },
+                modifier = Modifier.size(SearchTonalArtSize).clip(artShape)
+            )
+        } else {
+            Box(Modifier.size(SearchTonalArtSize).clip(artShape).background(start.copy(alpha = 0.5f)))
         }
     }
 }
@@ -395,7 +452,7 @@ internal fun LevyraSearchSamplesRail(
     onOpen: (Int) -> Unit
 ) {
     val spacious = LevyraIsDefaultSkin
-    Column(Modifier.padding(bottom = if (spacious) 26.dp else 0.dp)) {
+    Column(Modifier.padding(bottom = if (spacious) 8.dp else 0.dp)) {
         LevyraSectionHeader(title = title, modifier = Modifier.padding(top = if (spacious) 12.dp else 18.dp, bottom = if (spacious) 12.dp else 6.dp))
         LazyRow(
             modifier = Modifier.recentSearchesBleed(RecentSearchGutter),
