@@ -4470,10 +4470,12 @@ class PlaybackResolver private constructor(private val context: Context) {
                 250 -> 180_000
                 251 -> 80_000
                 141 -> 40_000
+                774 -> 20_000
                 else -> 0
             }
         } else {
             when (itag) {
+                774 -> 820_000
                 251 -> 760_000
                 141 -> 700_000
                 140 -> 560_000
