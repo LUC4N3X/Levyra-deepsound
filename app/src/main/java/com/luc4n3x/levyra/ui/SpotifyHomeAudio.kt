@@ -49,6 +49,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -319,49 +320,19 @@ internal fun SpotifyLiveRadioHome(state: LevyraUiState, viewModel: HomeViewModel
     var editorOpen by remember { mutableStateOf(false) }
     val countryLabel = radioState.selectedCountryCode?.let { localizedCountryName(it, state.languageCode).ifBlank { it } } ?: radioStrings.worldwide
     val play: (RadioStation) -> Unit = viewModel::playLiveRadio
-    val favoriteIds = radioState.favoriteIds
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
         SpotifyPodcastSearch(radioState.query, radioStrings.searchHint, radio::setQuery)
         Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SpotifyRadioPill(Icons.Rounded.Public, countryLabel, radioState.selectedCountryCode != null) { countryOpen = true }
             SpotifyRadioPill(Icons.Rounded.Translate, radioState.selectedLanguage ?: radioStrings.languages, radioState.selectedLanguage != null) { languageOpen = true }
         }
-        androidx.compose.foundation.lazy.LazyRow(
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(RadioCategory.entries, key = { "radio-category-${it.name}" }) { category ->
-                val selected = category == radioState.category
-                Box(
-                    Modifier.height(SpotifyDesign.chipHeight).clip(CircleShape).background(if (selected) SpotifyDesign.green else SpotifyDesign.chip)
-                        .levyraPressable(onClick = { radio.selectCategory(category) }, onClickLabel = radioStrings.category(category), role = Role.Tab, pressedScale = LevyraPressScale.Control)
-                        .padding(horizontal = 14.dp),
-                    contentAlignment = Alignment.Center
-                ) { Text(radioStrings.category(category), color = if (selected) Color.Black else SpotifyDesign.text, fontSize = 14.sp, maxLines = 1) }
-            }
-        }
+        SpotifyRadioCategories(radioState.category, radioStrings, radio::selectCategory)
         if (radioState.query.isBlank()) {
             if (radioState.favorites.isNotEmpty()) SpotifyStationShelf(library.favorites, radioState.favorites, currentId, play)
             SpotifyCustomStationShelf(library.custom, library.add, radioState.customStations, currentId, play) { editorOpen = true }
             if (radioState.recent.isNotEmpty()) SpotifyStationShelf(strings.recent, radioState.recent, currentId, play)
         }
-        Column {
-            SpotifyHomeHeading(
-                if (radioState.query.isNotBlank()) radioStrings.searchHint
-                else if (radioState.category == RadioCategory.Popular) radioStrings.popularIn(countryLabel)
-                else radioStrings.category(radioState.category)
-            )
-            Spacer(Modifier.height(8.dp))
-            radioState.stations.forEach { station ->
-                SpotifyStationRow(station, station.uuid == currentId, station.uuid.lowercase() in favoriteIds, { play(station) }) { radio.toggleFavorite(station) }
-            }
-            when {
-                radioState.loading && radioState.stations.isEmpty() -> SpotifyAudioNotice(strings.searchingYouTubeMusic)
-                radioState.error != null && radioState.stations.isEmpty() -> SpotifyAudioNotice(radioStrings.internetRequired, strings.exploreSamplesRetry, radio::retry)
-                radioState.stations.isEmpty() -> SpotifyAudioNotice(radioStrings.noStations)
-                radioState.canLoadMore && !radioState.loadingMore -> SpotifyAudioNotice("", radioStrings.loadMore, radio::loadMore)
-            }
-        }
+        SpotifyRadioStations(radioState, radioStrings, countryLabel, currentId, play, radio)
     }
     if (countryOpen) RadioDirectoryDialog(
         title = radioStrings.countries,
@@ -394,6 +365,60 @@ internal fun SpotifyLiveRadioHome(state: LevyraUiState, viewModel: HomeViewModel
         onDismiss = { editorOpen = false }, onChanged = radio::clearCustomError,
         onSave = { name, url, image -> radio.saveCustom(name, url, image, null) { editorOpen = false } }
     )
+}
+
+@Composable
+private fun SpotifyRadioCategories(
+    selectedCategory: RadioCategory,
+    radioStrings: com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioStrings,
+    onSelect: (RadioCategory) -> Unit
+) {
+    androidx.compose.foundation.lazy.LazyRow(
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(RadioCategory.entries, key = { "radio-category-${it.name}" }) { category ->
+            val selected = category == selectedCategory
+            Box(
+                Modifier.height(SpotifyDesign.chipHeight).clip(CircleShape).background(if (selected) SpotifyDesign.green else SpotifyDesign.chip)
+                    .semantics { this.selected = selected }
+                    .levyraPressable(onClick = { onSelect(category) }, onClickLabel = radioStrings.category(category), role = Role.Tab, pressedScale = LevyraPressScale.Control)
+                    .padding(horizontal = 14.dp),
+                contentAlignment = Alignment.Center
+            ) { Text(radioStrings.category(category), color = if (selected) Color.Black else SpotifyDesign.text, fontSize = 14.sp, maxLines = 1) }
+        }
+    }
+}
+
+@Composable
+private fun SpotifyRadioStations(
+    radioState: com.luc4n3x.levyra.feature.radio.LiveRadioUiState,
+    radioStrings: com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioStrings,
+    countryLabel: String,
+    currentId: String?,
+    play: (RadioStation) -> Unit,
+    radio: LiveRadioViewModel
+) {
+    val strings = LocalLevyraStrings.current
+    val favoriteIds = radioState.favoriteIds
+    val title = when {
+        radioState.query.isNotBlank() -> radioStrings.searchHint
+        radioState.category == RadioCategory.Popular -> radioStrings.popularIn(countryLabel)
+        else -> radioStrings.category(radioState.category)
+    }
+    Column {
+        SpotifyHomeHeading(title)
+        Spacer(Modifier.height(8.dp))
+        radioState.stations.forEach { station ->
+            SpotifyStationRow(station, station.uuid == currentId, station.uuid.lowercase() in favoriteIds, { play(station) }) { radio.toggleFavorite(station) }
+        }
+        when {
+            radioState.loading && radioState.stations.isEmpty() -> SpotifyAudioNotice(strings.searchingYouTubeMusic)
+            radioState.error != null && radioState.stations.isEmpty() -> SpotifyAudioNotice(radioStrings.internetRequired, strings.exploreSamplesRetry, radio::retry)
+            radioState.stations.isEmpty() -> SpotifyAudioNotice(radioStrings.noStations)
+            radioState.canLoadMore && !radioState.loadingMore -> SpotifyAudioNotice("", radioStrings.loadMore, radio::loadMore)
+        }
+    }
 }
 
 @Composable
