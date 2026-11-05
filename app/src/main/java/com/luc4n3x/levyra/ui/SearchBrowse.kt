@@ -1,6 +1,28 @@
 package com.luc4n3x.levyra.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.rounded.Podcasts
+import androidx.compose.material.icons.rounded.FormatQuote
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.Alignment
+import androidx.compose.material3.toShape
+import androidx.compose.material3.carousel.rememberCarouselState
+import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
+import androidx.compose.material3.carousel.HorizontalUncontainedCarousel
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +47,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
@@ -38,6 +61,7 @@ import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.LevyraSectionHeader
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
+import com.luc4n3x.levyra.ui.i18n.LevyraSpotifySkinStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.SearchBrowseCopy
 import com.luc4n3x.levyra.ui.i18n.searchBrowseCopy
@@ -50,7 +74,10 @@ import java.util.Locale
 private val SearchBrowseTileHeight = 100.dp
 private val SearchBrowseGap = 10.dp
 private const val SearchBrowseMaxFontGrowth = 1.6f
-private val SearchRecentTileWidth = 132.dp
+private val SearchRecentPreferredWidth = 132.dp
+private val SearchRecentCarouselHeight = 140.dp
+private val SearchSampleWidth = 128.dp
+private val SearchSampleHeight = 196.dp
 private val SearchRecentGap = 12.dp
 
 internal sealed interface LevyraSearchBrowseTile {
@@ -58,6 +85,10 @@ internal sealed interface LevyraSearchBrowseTile {
 
     class Zone(val zone: ExploreZone) : LevyraSearchBrowseTile {
         override val key: String = "zone-${zone.id}"
+    }
+
+    data object Podcasts : LevyraSearchBrowseTile {
+        override val key: String = "podcasts"
     }
 
     class Category(val category: ExploreCategory) : LevyraSearchBrowseTile {
@@ -139,7 +170,10 @@ internal class LevyraSearchBrowse(
 @Composable
 internal fun rememberLevyraSearchBrowse(state: LevyraUiState, viewModel: SearchViewModel): LevyraSearchBrowse {
     val strings = LocalLevyraStrings.current
-    LaunchedEffect(strings) { viewModel.ensureExplore(strings) }
+    LaunchedEffect(strings) {
+        viewModel.ensureExplore(strings)
+        viewModel.ensureExploreSamples()
+    }
     val zones = remember(strings) { ExploreCatalog.getZones(strings) }
     val categories = state.exploreCategories
     val sections = remember(zones, categories) { levyraSearchBrowseSections(zones, categories) }
@@ -162,9 +196,15 @@ internal fun rememberLevyraSearchBrowse(state: LevyraUiState, viewModel: SearchV
 internal fun LazyListScope.levyraSearchBrowseItems(
     browse: LevyraSearchBrowse,
     onOpenZone: (ExploreZone) -> Unit,
-    onOpenCategory: (ExploreCategory) -> Unit
+    onOpenCategory: (ExploreCategory) -> Unit,
+    podcastsTitle: String,
+    podcastsArtwork: String,
+    onOpenPodcasts: () -> Unit
 ) {
-    val tiles = levyraSearchBrowseTiles(browse.sections)
+    val tiles = levyraSearchBrowseTiles(browse.sections).let { all ->
+        val featured = all.takeWhile { it is LevyraSearchBrowseTile.Zone }
+        featured + LevyraSearchBrowseTile.Podcasts + all.drop(featured.size)
+    }
     if (tiles.isEmpty()) return
     item(key = "search-browse-header", contentType = "search-browse-header") {
         LevyraSectionHeader(
@@ -180,7 +220,13 @@ internal fun LazyListScope.levyraSearchBrowseItems(
                 horizontalArrangement = Arrangement.spacedBy(SearchBrowseGap)
             ) {
                 val tileModifier = Modifier.weight(1f).height(SearchBrowseTileHeight * fontScale)
-                row.forEach { tile -> SearchBrowseTileCard(tile, browse, tileModifier, onOpenZone, onOpenCategory) }
+                row.forEach { tile ->
+                    if (tile is LevyraSearchBrowseTile.Podcasts) {
+                        ExploreDiscoveryCategoryCard(title = podcastsTitle, identity = "podcasts", artworkUrl = podcastsArtwork, modifier = tileModifier, onClick = onOpenPodcasts)
+                    } else {
+                        SearchBrowseTileCard(tile, browse, tileModifier, onOpenZone, onOpenCategory)
+                    }
+                }
                 if (row.size == 1) Spacer(Modifier.weight(1f))
             }
         }
@@ -225,6 +271,7 @@ private fun SearchBrowseTileCard(
                 onClick = { onOpenCategory(category) }
             )
         }
+        LevyraSearchBrowseTile.Podcasts -> Unit
         is LevyraSearchBrowseTile.Zone -> {
             val zone = tile.zone
             val cover = browse.zoneCovers[zone.id].orEmpty()
@@ -239,6 +286,7 @@ private fun SearchBrowseTileCard(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun LevyraRecentSearchesRail(
     title: String,
@@ -247,23 +295,94 @@ internal fun LevyraRecentSearchesRail(
     menu: @Composable (track: Track, expanded: Boolean, onDismiss: () -> Unit) -> Unit
 ) {
     val actionsLabel = LocalLevyraStrings.current.actions
+    val carouselState = rememberCarouselState { tracks.size }
     Column {
         LevyraSectionHeader(title = title, modifier = Modifier.padding(bottom = 6.dp))
+        HorizontalMultiBrowseCarousel(
+            state = carouselState,
+            preferredItemWidth = SearchRecentPreferredWidth,
+            itemSpacing = SearchRecentGap,
+            contentPadding = PaddingValues(horizontal = RecentSearchGutter),
+            modifier = Modifier.recentSearchesBleed(RecentSearchGutter).fillMaxWidth().height(SearchRecentCarouselHeight)
+        ) { index ->
+            val track = tracks[index]
+            var menuExpanded by remember(track.id) { mutableStateOf(false) }
+            val reveal = carouselItemDrawInfo.let { info ->
+                if (info.maxSize <= info.minSize) 1f else ((info.size - info.minSize) / (info.maxSize - info.minSize)).coerceIn(0f, 1f)
+            }
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .maskClip(MaterialTheme.shapes.extraLarge)
+                    .levyraPressable(
+                        onClick = { onTrackClick(track) },
+                        onLongClick = { menuExpanded = true },
+                        onLongClickLabel = actionsLabel,
+                        pressedScale = LevyraPressScale.Tile,
+                        role = Role.Button
+                    )
+                    .semantics(mergeDescendants = true) { contentDescription = "${track.title}, ${track.artist}" }
+            ) {
+                CoverImage(
+                    track = track,
+                    modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                )
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { alpha = reveal }
+                        .background(Brush.verticalGradient(0.45f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.72f)))
+                )
+                Column(
+                    Modifier.align(Alignment.BottomStart).padding(10.dp).graphicsLayer { alpha = reveal },
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(track.title, style = MaterialTheme.typography.titleSmall, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(track.artist, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.78f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                menu(track, menuExpanded) { menuExpanded = false }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun LevyraSearchSamplesRail(
+    title: String,
+    samples: List<Track>,
+    previewEnabled: Boolean,
+    onOpen: (Int) -> Unit
+) {
+    val code = LocalLevyraStrings.current.code
+    val musicLabel = remember(code) { LevyraSpotifySkinStrings.forCode(code).music }
+    Column {
+        LevyraSectionHeader(title = title, modifier = Modifier.padding(top = 18.dp, bottom = 6.dp))
         LazyRow(
             modifier = Modifier.recentSearchesBleed(RecentSearchGutter),
             horizontalArrangement = Arrangement.spacedBy(SearchRecentGap),
             contentPadding = PaddingValues(horizontal = RecentSearchGutter)
         ) {
-            items(tracks, key = { track -> "recent-${track.id}" }, contentType = { "search-recent-tile" }) { track ->
-                var menuExpanded by remember(track.id) { mutableStateOf(false) }
-                Box(Modifier.width(SearchRecentTileWidth)) {
-                    SearchRecentTile(
-                        track = track,
-                        actionsLabel = actionsLabel,
-                        onClick = { onTrackClick(track) },
-                        onLongClick = { menuExpanded = true }
+            itemsIndexed(samples, key = { _, track -> "sample-${track.id}" }, contentType = { _, _ -> "search-sample" }) { index, track ->
+                val shape = MaterialTheme.shapes.extraLarge
+                Box(
+                    Modifier
+                        .size(width = SearchSampleWidth, height = SearchSampleHeight)
+                        .clip(shape)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                        .levyraPressable(onClick = { onOpen(index) }, pressedScale = LevyraPressScale.Tile, role = Role.Button)
+                        .semantics(mergeDescendants = true) { contentDescription = "${track.title}, ${track.artist}" }
+                ) {
+                    CoverImage(track, Modifier.fillMaxSize(), highRes = true)
+                    if (previewEnabled && index == 0) SpotifySamplePreview(track)
+                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.55f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.62f))))
+                    Text(
+                        spotifyShortTag(track, musicLabel),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.align(Alignment.BottomStart).padding(start = 12.dp, end = 12.dp, bottom = 14.dp)
                     )
-                    menu(track, menuExpanded) { menuExpanded = false }
                 }
             }
         }
@@ -271,49 +390,16 @@ internal fun LevyraRecentSearchesRail(
 }
 
 @Composable
-private fun SearchRecentTile(
-    track: Track,
-    actionsLabel: String,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit
-) {
-    val shape = MaterialTheme.shapes.medium
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(shape)
-            .levyraPressable(
-                onClick = onClick,
-                onLongClick = onLongClick,
-                onLongClickLabel = actionsLabel,
-                pressedScale = LevyraPressScale.Tile,
-                role = Role.Button
-            )
-            .padding(bottom = 6.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp)
-    ) {
-        CoverImage(
-            track = track,
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f)
-                .clip(shape)
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-        )
-        Spacer(Modifier.height(6.dp))
-        Text(
-            text = track.title,
-            style = MaterialTheme.typography.titleSmall,
-            color = LevyraText,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        Text(
-            text = track.artist,
-            style = MaterialTheme.typography.bodySmall,
-            color = LevyraMuted,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+internal fun rememberSearchPodcastsArtwork(languageCode: String): String {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val factory = remember(context.applicationContext) { com.luc4n3x.levyra.feature.podcast.PodcastLibraryViewModel.factory(context.applicationContext) }
+    val podcasts: com.luc4n3x.levyra.feature.podcast.PodcastLibraryViewModel = androidx.lifecycle.viewmodel.compose.viewModel(key = "levyra-podcasts", factory = factory)
+    LaunchedEffect(languageCode) { podcasts.activate(languageCode) }
+    val state by podcasts.state.collectAsStateWithLifecycle()
+    return remember(state.discover) {
+        state.discover.asSequence().flatMap { it.episodes.asSequence() }
+            .map { it.largeThumbnailUrl.ifBlank { it.thumbnailUrl } }
+            .firstOrNull { it.isNotBlank() }
+            .orEmpty()
     }
 }

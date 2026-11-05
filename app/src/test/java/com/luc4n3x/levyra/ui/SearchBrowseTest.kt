@@ -35,6 +35,7 @@ class SearchBrowseTest {
         when (tile) {
             is LevyraSearchBrowseTile.Zone -> tile.zone.label
             is LevyraSearchBrowseTile.Category -> tile.category.title
+            LevyraSearchBrowseTile.Podcasts -> "Podcasts"
         }
     }
 
@@ -54,6 +55,7 @@ class SearchBrowseTest {
             when (tile) {
                 is LevyraSearchBrowseTile.Zone -> tile.zone.label
                 is LevyraSearchBrowseTile.Category -> tile.category.title
+                LevyraSearchBrowseTile.Podcasts -> "Podcasts"
             }
         }
 

@@ -296,6 +296,7 @@ class SearchViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::sea
     fun ensureExploreSamples() = root.ensureExploreSamples()
     fun ensureExplore(strings: com.luc4n3x.levyra.ui.i18n.LevyraStrings) = root.ensureExplore(strings)
     fun openExploreCategory(category: com.luc4n3x.levyra.domain.ExploreCategory) = root.openExploreCategory(category)
+    fun playAudioFrom(list: List<Track>, track: Track, startPositionMs: Long) = root.playAudioFrom(list, track, startPositionMs = startPositionMs)
     fun ensureExploreCategoryArtwork(params: String) = root.ensureExploreCategoryArtwork(params, false)
     fun openSettings() = root.openSettings()
     fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)

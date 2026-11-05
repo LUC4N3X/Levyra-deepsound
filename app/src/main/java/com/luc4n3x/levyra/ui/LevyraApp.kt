@@ -15149,6 +15149,8 @@ private fun SearchScreen(
     val spotifySearchFocus = remember { mutableStateOf(false) }
     val appleCatalog = appleExploreViewModel?.let { rememberAppleMusicSearchCatalog(state, viewModel::ensureExplore) }
     var appleDestination by rememberSaveable { mutableStateOf<String?>(null) }
+    var searchPodcastsOpen by rememberSaveable { mutableStateOf(false) }
+    val searchPodcastsArtwork = if (LevyraRadioReplacesSearch) rememberSearchPodcastsArtwork(state.languageCode) else ""
     val appleLanding = appleCatalog != null && queryClean.isEmpty() && !spotifySearchFocus.value
     val appleColumns = appleMusicSearchColumns()
 
@@ -15181,9 +15183,10 @@ private fun SearchScreen(
             onBack = { viewModel.navigateBack() },
             userName = state.userName,
             onSettings = viewModel::openSettings,
-            spotifyFocus = spotifySearchFocus
+            spotifyFocus = spotifySearchFocus,
+            onLyrics = (viewModel::openLyricsPhraseSearch).takeIf { LevyraRadioReplacesSearch }
         )
-        if (queryClean.isEmpty() && !spotifySearchFocus.value && !LevyraIsDefaultSkin) {
+        if (queryClean.isEmpty() && !spotifySearchFocus.value && !LevyraIsDefaultSkin && !LevyraRadioReplacesSearch) {
             LyricsSearchEntry(onOpen = viewModel::openLyricsPhraseSearch)
         }
 
@@ -15315,7 +15318,7 @@ private fun SearchScreen(
                     onRequestArtwork = { params -> appleExploreViewModel.ensureExploreCategoryArtwork(params, false) }
                 )
             } else if (queryClean.isEmpty()) {
-                item(key = "search-taste-hints", contentType = "search-taste-hints") {
+                if (levyraBrowse == null) item(key = "search-taste-hints", contentType = "search-taste-hints") {
                     SearchTasteHints(
                         suggestions = tasteHintQueries,
                         onOpenLyricsSearch = if (LevyraIsDefaultSkin) viewModel::openLyricsPhraseSearch else null,
@@ -15354,6 +15357,20 @@ private fun SearchScreen(
                     }
                 }
 
+                if (levyraBrowse != null && state.exploreSamples.isNotEmpty()) {
+                    item(key = "search-samples", contentType = "search-samples") {
+                        LevyraSearchSamplesRail(
+                            title = strings.exploreSamples,
+                            samples = state.exploreSamples,
+                            previewEnabled = !state.isVideoMode && !state.isResolving
+                        ) { index ->
+                            focusManager.clearFocus()
+                            keyboardController?.hide()
+                            viewModel.openExploreSamples(index)
+                        }
+                    }
+                }
+
                 if (levyraBrowse != null) levyraSearchBrowseItems(
                     browse = levyraBrowse,
                     onOpenZone = { zone ->
@@ -15365,6 +15382,13 @@ private fun SearchScreen(
                         focusManager.clearFocus()
                         keyboardController?.hide()
                         viewModel.openExploreCategory(category)
+                    },
+                    podcastsTitle = com.luc4n3x.levyra.ui.i18n.podcastCopy(strings.code).title,
+                    podcastsArtwork = searchPodcastsArtwork,
+                    onOpenPodcasts = {
+                        focusManager.clearFocus()
+                        keyboardController?.hide()
+                        searchPodcastsOpen = true
                     }
                 ) else item(key = "search-artist-suggestions", contentType = "search-artist-suggestions") {
                     SearchSectionGap()
@@ -15841,6 +15865,16 @@ private fun SearchScreen(
     appleExploreViewModel?.let { exploreViewModel ->
         AppleMusicSearchDestination(appleDestination, exploreViewModel, backEnabled, onTrackActions) { appleDestination = null }
     }
+    if (searchPodcastsOpen) {
+        PodcastLibraryScreen(
+            languageCode = state.languageCode,
+            playback = PodcastPlayback(state.currentTrack?.id, state.isPlaying),
+            bottomInset = exploreDestinationBottomInset(state),
+            backEnabled = backEnabled,
+            onBack = { searchPodcastsOpen = false },
+            onPlay = { list, track, position -> viewModel.playAudioFrom(list, track, position) }
+        )
+    }
 
     addTarget?.let { track ->
         AddToPlaylistDialog(
@@ -16261,12 +16295,14 @@ private fun SearchTasteHints(
             item(key = "search-lyrics-key", contentType = "search-lyrics-key") {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     LyricsSearchKey(onOpen = onOpenLyricsSearch)
-                    Box(
-                        modifier = Modifier
-                            .padding(start = 8.dp)
-                            .size(width = 1.dp, height = 24.dp)
-                            .background(MaterialTheme.colorScheme.outlineVariant)
-                    )
+                    if (suggestions.isNotEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .padding(start = 8.dp)
+                                .size(width = 1.dp, height = 24.dp)
+                                .background(MaterialTheme.colorScheme.outlineVariant)
+                        )
+                    }
                 }
             }
         }
