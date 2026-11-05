@@ -25654,7 +25654,7 @@ private fun ExploreScreen(
 ) {
     val strings = LocalLevyraStrings.current
     LaunchedEffect(strings.code) { viewModel.ensureExplore(strings) }
-    val editorialExplore = levyraSearchOwnsBrowse(LevyraIsSpotify, LevyraIsAppleMusic, LevyraIsAtelier || LevyraIsQobuz || LevyraIsYouTubeMusic)
+    val editorialExplore = LevyraIsSpotify || levyraSearchOwnsBrowse(false, LevyraIsAppleMusic, LevyraIsAtelier || LevyraIsQobuz || LevyraIsYouTubeMusic)
     LaunchedEffect(strings.code, editorialExplore) { if (editorialExplore) viewModel.ensureNews(strings.code) }
     val news by viewModel.news.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -27473,7 +27473,7 @@ private fun artistBiographyBackground(accentBrush: Brush): Modifier =
         .then(if (LevyraSkinManagesLayout) Modifier else Modifier.background(accentBrush))
 
 private fun LazyListScope.studioHomeFilteredSections(c: StudioHomeContext, flowShortcutTracks: List<Track>, statusBarTop: Dp, homeTopPadding: Dp, spotifyFilter: SpotifyHomeFilter, shownOrder: List<HomeSectionId>, youtubeMusicHome: com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeShelfUi?, homeRadio: HomeRadioState, homeDiscovery: DiscoveryHomeHandle?, spotify: Boolean) {
-    if (spotify && spotifyFilter in setOf(SpotifyHomeFilter.Music, SpotifyHomeFilter.Following, SpotifyHomeFilter.Podcasts)) {
+    if (spotify && spotifyFilter.ownsPage) {
         spotifyHomeFilterItems(spotifyFilter, c.state, c.homeAlbums, c.newReleases?.tracks.orEmpty(), c.viewModel, c.onTrackActions)
         return
     }

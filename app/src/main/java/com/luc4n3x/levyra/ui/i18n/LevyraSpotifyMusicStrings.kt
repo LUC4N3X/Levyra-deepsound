@@ -1,0 +1,50 @@
+package com.luc4n3x.levyra.ui.i18n
+
+private val spotifyNewForYou = mapOf(
+    "en" to "New releases for you",
+    "it" to "Nuove uscite per te",
+    "es" to "Novedades para ti",
+    "fr" to "Nouveautés pour toi",
+    "de" to "Neuerscheinungen für dich",
+    "pt" to "Novos lançamentos para ti",
+    "pt-BR" to "Lançamentos para você",
+    "nl" to "Nieuwe releases voor jou",
+    "pl" to "Nowości dla ciebie",
+    "ro" to "Lansări noi pentru tine",
+    "el" to "Νέες κυκλοφορίες για σένα",
+    "sv" to "Nya släpp för dig",
+    "da" to "Nye udgivelser til dig",
+    "cs" to "Novinky pro tebe",
+    "sk" to "Novinky pre teba",
+    "hr" to "Nova izdanja za tebe",
+    "sr" to "Нова издања за тебе",
+    "sq" to "Publikime të reja për ty",
+    "bg" to "Нови издания за теб",
+    "hu" to "Új megjelenések neked",
+    "fi" to "Uudet julkaisut sinulle",
+    "et" to "Uued väljalasked sulle",
+    "nb" to "Nye utgivelser for deg",
+    "ca" to "Novetats per a tu",
+    "uk" to "Нові релізи для тебе",
+    "ru" to "Новые релизы для вас",
+    "kk" to "Сен үшін жаңа шығарылымдар",
+    "tr" to "Senin için yeni çıkanlar",
+    "ar" to "إصدارات جديدة لك",
+    "fa" to "انتشارهای تازه برای تو",
+    "zh" to "为你推荐的新歌",
+    "zh-Hant" to "為你推薦的新發行",
+    "ja" to "あなたへの新着リリース",
+    "ko" to "회원님을 위한 최신 발매",
+    "hi" to "आपके लिए नई रिलीज़",
+    "bn" to "তোমার জন্য নতুন রিলিজ",
+    "id" to "Rilisan baru untukmu",
+    "ms" to "Keluaran baharu untuk anda",
+    "vi" to "Bản phát hành mới cho bạn",
+    "th" to "เพลงใหม่สำหรับคุณ",
+    "fil" to "Mga bagong release para sa iyo",
+    "he" to "מהדורות חדשות בשבילך"
+)
+
+internal fun spotifyNewReleasesForYou(code: String): String = localizedValueOrEnglish(spotifyNewForYou, code)
+
+internal fun spotifyNewReleasesLocalizationCodes(): Set<String> = spotifyNewForYou.keys

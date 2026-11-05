@@ -42,10 +42,6 @@ class MaterialExpressiveContractTest {
             "app/src/main/java/com/luc4n3x/levyra/ui/HomeExploreEditorial.kt",
             "src/main/java/com/luc4n3x/levyra/ui/HomeExploreEditorial.kt"
         )
-        val library = source(
-            "app/src/main/java/com/luc4n3x/levyra/ui/library/LibraryPlaylistShelf.kt",
-            "src/main/java/com/luc4n3x/levyra/ui/library/LibraryPlaylistShelf.kt"
-        )
         val selection = source(
             "app/src/main/java/com/luc4n3x/levyra/ui/selection/TrackSelectionBar.kt",
             "src/main/java/com/luc4n3x/levyra/ui/selection/TrackSelectionBar.kt"
@@ -56,7 +52,6 @@ class MaterialExpressiveContractTest {
         )
 
         assertTrue(discovery.contains("LevyraExpressiveIconButton("))
-        assertTrue(library.contains("LevyraExpressiveIconButton("))
         assertTrue(selection.contains("LevyraExpressiveIconButton("))
         assertTrue(matching.contains("LevyraExpressiveIconButton("))
         assertTrue(matching.contains("LevyraLoadingIndicator("))

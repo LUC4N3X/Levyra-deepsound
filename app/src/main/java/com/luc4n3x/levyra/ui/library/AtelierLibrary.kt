@@ -36,6 +36,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.QueueMusic
+import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.automirrored.rounded.ViewList
 import androidx.compose.material.icons.outlined.Album
 import androidx.compose.material.icons.outlined.DownloadForOffline
@@ -123,6 +124,7 @@ import com.luc4n3x.levyra.domain.filterByTagIds
 import com.luc4n3x.levyra.domain.hiddenInLibrary
 import com.luc4n3x.levyra.domain.visibleInLibrary
 import com.luc4n3x.levyra.ui.CoverImage
+import com.luc4n3x.levyra.ui.i18n.playlistImportCopy
 import com.luc4n3x.levyra.ui.i18n.AtelierCopy
 import com.luc4n3x.levyra.ui.i18n.LevyraAtelierStrings
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
@@ -371,7 +373,8 @@ internal fun AtelierLibraryScreen(
                 modifier = Modifier.onSizeChanged { collapsiblePx = it.height },
                 onCreate = { creating = true },
                 onOpenShelf = onOpenShelf,
-                onOpenTools = onOpenTools
+                onOpenTools = onOpenTools,
+                onImport = { viewModel.openPlaylistImport() }
             )
             AtelierLibraryTabs(tab, strings, selectTab)
             if (searching) {
@@ -622,7 +625,8 @@ private fun AtelierLibraryMasthead(
     modifier: Modifier,
     onCreate: () -> Unit,
     onOpenShelf: () -> Unit,
-    onOpenTools: () -> Unit
+    onOpenTools: () -> Unit,
+    onImport: () -> Unit
 ) {
     val hour by rememberCurrentGreetingHour()
     val greeting = remember(strings.code, userName, hour) { strings.formatGreeting(userName, hour) }
@@ -639,6 +643,7 @@ private fun AtelierLibraryMasthead(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
+            AtelierLibraryIconTarget(Icons.AutoMirrored.Rounded.PlaylistAdd, strings.playlistImportCopy().action, onImport)
             AtelierLibraryIconTarget(Icons.Outlined.Tune, copy.allTools, onOpenTools)
             AtelierLibraryShelfButton(copy.goToShelf, onOpenShelf)
         }

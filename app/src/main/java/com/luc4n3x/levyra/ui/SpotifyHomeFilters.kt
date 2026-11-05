@@ -43,7 +43,9 @@ import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.SpotifyDesign
 
 internal enum class SpotifyHomeFilter {
-    All, Music, Following, Videos, Podcasts;
+    All, Music, Following, Videos, Podcasts, Radio;
+
+    val ownsPage: Boolean get() = this == Music || this == Following || this == Podcasts || this == Radio
 
     val parent: SpotifyHomeFilter? get() = if (this == Following) Music else null
 
@@ -52,7 +54,7 @@ internal enum class SpotifyHomeFilter {
         Music -> id != HomeSectionId.MusicVideos
         Following -> id == HomeSectionId.ReleaseRadar || id == HomeSectionId.SimilarArtists
         Videos -> id == HomeSectionId.MusicVideos
-        Podcasts -> false
+        Podcasts, Radio -> false
     }
 
     companion object {
@@ -61,6 +63,7 @@ internal enum class SpotifyHomeFilter {
             add(Music)
             if (HomeSectionId.MusicVideos in order) add(Videos)
             add(Podcasts)
+            add(Radio)
         }
 
         fun from(name: String): SpotifyHomeFilter = entries.firstOrNull { it.name == name } ?: All
@@ -100,6 +103,7 @@ internal fun SpotifyHomeFilterBar(
         SpotifyHomeFilter.Following -> copy.following
         SpotifyHomeFilter.Videos -> strings.video
         SpotifyHomeFilter.Podcasts -> LevyraSpotifyChartStrings.forCode(strings.code).podcasts
+        SpotifyHomeFilter.Radio -> com.luc4n3x.levyra.ui.i18n.radioTabCopy(strings.code).tab
     }
     Box(modifier.fillMaxWidth().background(SpotifyDesign.base).statusBarsPadding().height(SpotifyDesign.filterRowHeight)) {
         LazyRow(
