@@ -103,6 +103,8 @@ import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic
 import com.luc4n3x.levyra.ui.theme.LevyraIsAtelier
+import com.luc4n3x.levyra.ui.theme.LevyraIsMono
+import com.luc4n3x.levyra.ui.theme.MonoFont
 import com.luc4n3x.levyra.ui.theme.LevyraIsIvory
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 import com.luc4n3x.levyra.ui.theme.LevyraIsPrism
@@ -117,7 +119,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.ui.theme.SkinChrome
 import java.util.Locale
 
-internal enum class HomePreviewIdiom { Expressive, Nocturne, Prism, Torque, Ivory, Spotify, AppleMusic, YouTubeMusic, Qobuz, Atelier }
+internal enum class HomePreviewIdiom { Expressive, Nocturne, Prism, Torque, Ivory, Spotify, AppleMusic, YouTubeMusic, Qobuz, Atelier, Mono }
 
 @Immutable
 internal class HomeStudioSkinTokens(
@@ -209,6 +211,7 @@ internal class HomeStudioSkinTokens(
             LevyraIsYouTubeMusic -> HomePreviewIdiom.YouTubeMusic
             LevyraIsQobuz -> HomePreviewIdiom.Qobuz
             LevyraIsAtelier -> HomePreviewIdiom.Atelier
+            LevyraIsMono -> HomePreviewIdiom.Mono
             LevyraIsPrism -> HomePreviewIdiom.Prism
             else -> HomePreviewIdiom.Expressive
         }
@@ -216,7 +219,7 @@ internal class HomeStudioSkinTokens(
         private fun previewRadiusFor(idiom: HomePreviewIdiom): Dp = when (idiom) {
             HomePreviewIdiom.Expressive -> 8.dp
             HomePreviewIdiom.Ivory -> 9.dp
-            HomePreviewIdiom.Prism -> 5.dp
+            HomePreviewIdiom.Prism, HomePreviewIdiom.Mono -> 5.dp
             HomePreviewIdiom.AppleMusic -> 4.dp
             HomePreviewIdiom.Nocturne, HomePreviewIdiom.Spotify, HomePreviewIdiom.Qobuz -> 2.dp
             HomePreviewIdiom.YouTubeMusic, HomePreviewIdiom.Atelier -> 1.dp
@@ -230,6 +233,7 @@ internal class HomeStudioSkinTokens(
             HomePreviewIdiom.Ivory -> TextStyle(fontWeight = FontWeight.ExtraBold)
             HomePreviewIdiom.Spotify, HomePreviewIdiom.AppleMusic, HomePreviewIdiom.YouTubeMusic -> TextStyle(fontWeight = FontWeight.Bold)
             HomePreviewIdiom.Qobuz, HomePreviewIdiom.Atelier -> TextStyle(fontWeight = FontWeight.SemiBold)
+            HomePreviewIdiom.Mono -> TextStyle(fontFamily = MonoFont, fontWeight = FontWeight.Bold)
         }
     }
 }

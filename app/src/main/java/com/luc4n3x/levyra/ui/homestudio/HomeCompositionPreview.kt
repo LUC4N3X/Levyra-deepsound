@@ -31,6 +31,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraPalette
 import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.ui.theme.appleMusicPreview
 import com.luc4n3x.levyra.ui.theme.atelierPreview
+import com.luc4n3x.levyra.ui.theme.monoPreview
 import com.luc4n3x.levyra.ui.theme.qobuzPreview
 import com.luc4n3x.levyra.ui.theme.spotifyPreview
 import com.luc4n3x.levyra.ui.theme.youTubeMusicPreview
@@ -399,7 +400,7 @@ private fun DrawScope.drawIdiomBackdrop(idiom: HomePreviewIdiom, tones: HomePrev
             }
             drawPath(band, tones.accent)
         }
-        HomePreviewIdiom.Nocturne, HomePreviewIdiom.Ivory, HomePreviewIdiom.AppleMusic, HomePreviewIdiom.Qobuz, HomePreviewIdiom.Atelier -> Unit
+        HomePreviewIdiom.Nocturne, HomePreviewIdiom.Ivory, HomePreviewIdiom.AppleMusic, HomePreviewIdiom.Qobuz, HomePreviewIdiom.Atelier, HomePreviewIdiom.Mono -> Unit
     }
 }
 
@@ -539,6 +540,7 @@ private fun DrawScope.drawOriginalHome(idiom: HomePreviewIdiom, palette: LevyraP
         HomePreviewIdiom.YouTubeMusic -> youTubeMusicPreview(palette, w, h)
         HomePreviewIdiom.Qobuz -> qobuzPreview(palette, w, h)
         HomePreviewIdiom.Atelier -> atelierPreview(palette, w, h)
+        HomePreviewIdiom.Mono -> monoPreview(palette, w, h)
         HomePreviewIdiom.Nocturne -> nocturneHome(tones)
         HomePreviewIdiom.Prism -> prismHome(tones)
         HomePreviewIdiom.Torque -> torqueHome(tones)

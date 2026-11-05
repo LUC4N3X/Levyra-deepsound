@@ -91,6 +91,7 @@ internal fun LevyraSkin.title(): String = when (this) {
     LevyraSkin.YouTubeMusicStyle -> "YouTube Music Style"
     LevyraSkin.QobuzStyle -> "Qobuz Style"
     LevyraSkin.Atelier -> "Atelier"
+    LevyraSkin.Mono -> "Mono"
 }
 
 @Composable
@@ -108,6 +109,7 @@ internal fun SkinSelector(selected: LevyraSkin, onSelect: (LevyraSkin) -> Unit) 
         LevyraSkin.YouTubeMusicStyle -> LevyraPrismStrings.forCode(code).youTubeMusicBody
         LevyraSkin.QobuzStyle -> com.luc4n3x.levyra.ui.i18n.LevyraQobuzSkinStrings.forCode(code).skinBody
         LevyraSkin.Atelier -> com.luc4n3x.levyra.ui.i18n.LevyraAtelierStrings.forCode(code).skinBody
+        LevyraSkin.Mono -> com.luc4n3x.levyra.ui.i18n.LevyraMonoStrings.forCode(code).skinBody
     }
     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         SkinStage(selected)
@@ -232,6 +234,7 @@ private fun skinStagePolygon(skin: LevyraSkin): RoundedPolygon = when (skin) {
     LevyraSkin.YouTubeMusicStyle -> MaterialShapes.Circle
     LevyraSkin.QobuzStyle -> MaterialShapes.Square
     LevyraSkin.Atelier -> MaterialShapes.Clover4Leaf
+    LevyraSkin.Mono -> MaterialShapes.Slanted
 }
 
 private fun skinAccent(skin: LevyraSkin, primary: Color): Color =
@@ -268,6 +271,7 @@ private fun SkinPhonePreview(skin: LevyraSkin, corner: Dp, modifier: Modifier) {
             LevyraSkin.YouTubeMusicStyle -> youTubeMusicPreview(palette, w, h)
             LevyraSkin.QobuzStyle -> qobuzPreview(palette, w, h)
             LevyraSkin.Atelier -> atelierPreview(palette, w, h)
+            LevyraSkin.Mono -> monoPreview(palette, w, h)
             else -> playerPreview(skin, palette, w, h)
         }
     }
@@ -322,6 +326,7 @@ private fun DrawScope.previewPlayButton(skin: LevyraSkin, palette: LevyraPalette
         LevyraSkin.YouTubeMusicStyle -> drawCircle(YouTubeMusicDesign.red, radius, center)
         LevyraSkin.QobuzStyle -> drawCircle(palette.text, radius, center)
         LevyraSkin.Atelier -> drawCircle(palette.cyan, radius, center)
+        LevyraSkin.Mono -> drawCircle(palette.cyan, radius, center)
     }
     val glyph = Path().apply {
         moveTo(center.x - radius * 0.32f, center.y - radius * 0.45f)
@@ -340,6 +345,7 @@ private fun DrawScope.previewPlayButton(skin: LevyraSkin, palette: LevyraPalette
         LevyraSkin.YouTubeMusicStyle -> Color.White
         LevyraSkin.QobuzStyle -> palette.black
         LevyraSkin.Atelier -> palette.black
+        LevyraSkin.Mono -> MonoDesign.onAccent
     }
     drawPath(glyph, glyphColor, style = if (skin == LevyraSkin.Nocturne78) Stroke(1.2.dp.toPx()) else Fill)
 }
@@ -461,6 +467,27 @@ internal fun DrawScope.atelierPreview(palette: LevyraPalette, w: Float, h: Float
     drawLine(Color(0xFFCFC9BD), Offset(w * 0.82f, h * 0.60f), Offset(w * 0.56f, h * 0.78f), 2.dp.toPx())
 }
 
+internal fun DrawScope.monoPreview(palette: LevyraPalette, w: Float, h: Float) {
+    val pad = w * 0.07f
+    val mid = h * 0.3f
+    val wave = Path()
+    val steps = 64
+    for (i in 0..steps) {
+        val t = i / steps.toFloat()
+        val envelope = 0.35f + 0.65f * kotlin.math.abs(kotlin.math.sin(t * Math.PI.toFloat() * 2f))
+        val y = mid + kotlin.math.sin(t * Math.PI.toFloat() * 18f) * h * 0.11f * envelope
+        if (i == 0) wave.moveTo(pad + t * (w - pad * 2), y) else wave.lineTo(pad + t * (w - pad * 2), y)
+    }
+    drawPath(wave, palette.text, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
+    previewLine(palette.text, pad, h * 0.55f, w * 0.42f, 5.dp.toPx())
+    previewLine(palette.muted, pad, h * 0.61f, w * 0.26f, 3.dp.toPx())
+    drawLine(palette.outline, Offset(pad, h * 0.69f), Offset(w - pad, h * 0.69f), 2.dp.toPx(), StrokeCap.Round)
+    drawLine(palette.text, Offset(pad, h * 0.69f), Offset(w * 0.38f, h * 0.69f), 2.dp.toPx(), StrokeCap.Round)
+    drawRoundRect(palette.panel, Offset(pad, h * 0.78f), Size(w - pad * 2, h * 0.13f), CornerRadius(h * 0.03f))
+    drawRoundRect(palette.panelSoft, Offset(pad * 1.6f, h * 0.805f), Size(h * 0.08f, h * 0.08f), CornerRadius(3.dp.toPx()))
+    drawCircle(palette.cyan, h * 0.04f, Offset(w - pad * 2.2f, h * 0.845f))
+}
+
 internal fun DrawScope.qobuzPreview(palette: LevyraPalette, w: Float, h: Float) {
     val pad = w * 0.06f
     val gap = w * 0.035f
@@ -533,6 +560,7 @@ private fun skinPreviewPalette(skin: LevyraSkin): LevyraPalette = when (skin) {
     LevyraSkin.YouTubeMusicStyle -> youTubeMusicPalette()
     LevyraSkin.QobuzStyle -> qobuzPalette()
     LevyraSkin.Atelier -> atelierPalette()
+    LevyraSkin.Mono -> monoPalette()
     LevyraSkin.Default -> LevyraThemes.levyraAura
 }
 
@@ -547,12 +575,13 @@ private fun skinPreviewArtBrush(skin: LevyraSkin, palette: LevyraPalette): Brush
     LevyraSkin.YouTubeMusicStyle -> Brush.linearGradient(listOf(Color(0xFF7B1F3A), palette.panelSoft))
     LevyraSkin.QobuzStyle -> Brush.linearGradient(listOf(Color(0xFFE0A33A), Color(0xFFD9533B)))
     LevyraSkin.Atelier -> Brush.linearGradient(listOf(Color(0xFF9C94F0), Color(0xFF070708)))
+    LevyraSkin.Mono -> Brush.linearGradient(listOf(MonoDesign.moodFocus, MonoDesign.base))
 }
 
 private fun DrawScope.drawSkinPreviewWash(skin: LevyraSkin, palette: LevyraPalette, frame: CornerRadius) {
     when (skin) {
         LevyraSkin.Prism -> drawRoundRect(Brush.verticalGradient(listOf(palette.blue.copy(alpha = 0.22f), palette.black), endY = size.height * 0.6f), cornerRadius = frame)
         LevyraSkin.Default -> drawRoundRect(Brush.verticalGradient(listOf(palette.violet.copy(alpha = 0.28f), palette.black), endY = size.height * 0.7f), cornerRadius = frame)
-        LevyraSkin.Nocturne78, LevyraSkin.Torque, LevyraSkin.Ivory, LevyraSkin.SpotifyStyle, LevyraSkin.AppleMusicStyle, LevyraSkin.YouTubeMusicStyle, LevyraSkin.QobuzStyle, LevyraSkin.Atelier -> Unit
+        LevyraSkin.Nocturne78, LevyraSkin.Torque, LevyraSkin.Ivory, LevyraSkin.SpotifyStyle, LevyraSkin.AppleMusicStyle, LevyraSkin.YouTubeMusicStyle, LevyraSkin.QobuzStyle, LevyraSkin.Atelier, LevyraSkin.Mono -> Unit
     }
 }

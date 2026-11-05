@@ -335,7 +335,11 @@ internal fun LevyraLibraryScreen(
         QobuzLibraryScreen(viewModel, state, catalog, onOpenDownloads) { qobuzTools = true }
         return
     }
-    BackHandler(enabled = backEnabled && (com.luc4n3x.levyra.ui.theme.LevyraIsQobuz || com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) && qobuzTools) { qobuzTools = false }
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsMono && !qobuzTools) {
+        MonoLibraryScreen(viewModel, state, catalog, onOpenDownloads, { qobuzTools = true }, backEnabled)
+        return
+    }
+    BackHandler(enabled = backEnabled && (com.luc4n3x.levyra.ui.theme.LevyraIsQobuz || com.luc4n3x.levyra.ui.theme.LevyraIsAtelier || com.luc4n3x.levyra.ui.theme.LevyraIsMono) && qobuzTools) { qobuzTools = false }
     var categoryName by rememberSaveable { mutableStateOf(LibraryCategory.Overview.name) }
     val category = LibraryCategory.entries.firstOrNull { it.name == categoryName } ?: LibraryCategory.Overview
     var layoutName by rememberSaveable { mutableStateOf(LibraryLayout.List.name) }

@@ -142,6 +142,7 @@ internal fun PlayerTrackMetadata(
 
 private fun metadataTitleSize(compact: Boolean, appleMusic: Boolean, prism: Boolean): TextUnit = when {
     LevyraIsQobuz -> 18.sp
+    com.luc4n3x.levyra.ui.theme.LevyraIsMono -> 24.sp
     com.luc4n3x.levyra.ui.theme.LevyraIsAtelier -> 20.sp
     LevyraIsYouTubeMusic -> 24.sp
     LevyraIsSpotify -> 22.sp
@@ -154,6 +155,7 @@ private fun metadataTitleSize(compact: Boolean, appleMusic: Boolean, prism: Bool
 
 private fun metadataArtistSize(compact: Boolean, appleMusic: Boolean): TextUnit = when {
     LevyraIsQobuz -> 16.sp
+    com.luc4n3x.levyra.ui.theme.LevyraIsMono -> 15.sp
     com.luc4n3x.levyra.ui.theme.LevyraIsAtelier -> 13.sp
     LevyraIsYouTubeMusic -> 16.sp
     LevyraIsSpotify -> 16.sp
@@ -164,6 +166,7 @@ private fun metadataArtistSize(compact: Boolean, appleMusic: Boolean): TextUnit 
 
 private fun metadataTitleWeight(appleMusic: Boolean, prism: Boolean): FontWeight = when {
     LevyraIsQobuz -> FontWeight.Bold
+    com.luc4n3x.levyra.ui.theme.LevyraIsMono -> FontWeight.Bold
     com.luc4n3x.levyra.ui.theme.LevyraIsAtelier -> FontWeight.Medium
     LevyraIsYouTubeMusic -> FontWeight.Bold
     LevyraIsSpotify -> FontWeight.Bold
@@ -197,6 +200,7 @@ internal fun PlayerFavoriteButton(
         LevyraIsSpotify -> SpotifyPlayerFavoriteButton(isFavorite, label, pop.value, handleToggle)
         LevyraIsYouTubeMusic -> YouTubeMusicPlayerFavoriteButton(isFavorite, label, pop.value, handleToggle)
         LevyraIsQobuz -> QobuzPlayerFavoriteButton(isFavorite, label, handleToggle)
+        com.luc4n3x.levyra.ui.theme.LevyraIsMono -> MonoPlayerFavoriteButton(isFavorite, label, pop.value, handleToggle)
         PlayerAppleMusicStyle -> AppleMusicPlayerFavoriteButton(isFavorite, label, pop.value, handleToggle)
         else -> DefaultPlayerFavoriteButton(isFavorite, surfaces, label, animated, pop.value, handleToggle)
     }

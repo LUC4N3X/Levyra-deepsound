@@ -417,6 +417,7 @@ private data class PodcastSkinCorners(val hero: Dp, val heroPressed: Dp, val car
 private fun podcastSkinCorners(): PodcastSkinCorners = when {
     com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin -> PodcastSkinCorners(28.dp, 44.dp, 18.dp, 32.dp)
     com.luc4n3x.levyra.ui.theme.LevyraIsAtelier -> com.luc4n3x.levyra.ui.theme.AtelierDesign.cardCorner.let { PodcastSkinCorners(it, it, it, it) }
+    com.luc4n3x.levyra.ui.theme.LevyraIsMono -> PodcastSkinCorners(com.luc4n3x.levyra.ui.theme.MonoDesign.cardCorner, com.luc4n3x.levyra.ui.theme.MonoDesign.cardCorner, com.luc4n3x.levyra.ui.theme.MonoDesign.artCorner, com.luc4n3x.levyra.ui.theme.MonoDesign.artCorner)
     com.luc4n3x.levyra.ui.theme.LevyraIsQobuz -> com.luc4n3x.levyra.ui.theme.QobuzDesign.cardCorner.let { PodcastSkinCorners(it, it, it, it) }
     else -> {
         val base = com.luc4n3x.levyra.ui.theme.LevyraHomeDesign.HeroCorner
@@ -552,6 +553,7 @@ private fun PodcastShowRow(index: Int, count: Int, show: PodcastShow, subscribed
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun PodcastShowHeader(show: PodcastShow, description: String, subscribed: Boolean, copy: PodcastCopy, onToggle: () -> Unit) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) return MonoPodcastShowHeader(show, description, subscribed, copy, onToggle)
     val colors = MaterialTheme.colorScheme
     Column(Modifier.fillMaxWidth().padding(horizontal = PodcastGutter, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -605,6 +607,7 @@ private fun PodcastEpisodeRow(
     onSetPlayed: (Boolean) -> Unit,
     onRemove: (() -> Unit)?
 ) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) return MonoPodcastEpisodeRow(episode, progress, copy, playback, onPlay, onSetPlayed, onRemove)
     val colors = MaterialTheme.colorScheme
     var menuOpen by remember { mutableStateOf(false) }
     val playing = playback.currentTrackId == episode.id

@@ -48,6 +48,18 @@ internal val AtelierFont: FontFamily = FontFamily(
     }
 )
 
+internal val MonoFont: FontFamily = FontFamily(
+    listOf(FontWeight.Normal, FontWeight.Medium, FontWeight.SemiBold, FontWeight.Bold).map { weight ->
+        Font(googleFont = GoogleFont("Geist"), fontProvider = googleFontsProvider, weight = weight)
+    }
+)
+
+internal val MonoCodeFont: FontFamily = FontFamily(
+    listOf(FontWeight.Normal, FontWeight.Medium).map { weight ->
+        Font(googleFont = GoogleFont("Geist Mono"), fontProvider = googleFontsProvider, weight = weight)
+    }
+)
+
 internal val QobuzFont: FontFamily = FontFamily(
     listOf(FontWeight.Normal, FontWeight.Medium, FontWeight.SemiBold, FontWeight.Bold).map { weight ->
         Font(googleFont = GoogleFont("Albert Sans"), fontProvider = googleFontsProvider, weight = weight)
