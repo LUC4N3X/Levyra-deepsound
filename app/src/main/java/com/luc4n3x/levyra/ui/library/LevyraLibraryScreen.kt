@@ -689,11 +689,11 @@ internal fun LevyraLibraryScreen(
     val spotifyFilter = SpotifyLibraryFilter.entries.firstOrNull { it.name == spotifyFilterName }
     val spotifySort = SpotifyLibrarySort.entries.firstOrNull { it.name == spotifySortName } ?: SpotifyLibrarySort.Recents
     val spotifyItems = if (spotifyOverview) {
-        remember(state.favorites, state.downloads.size, visiblePlaylists, catalog, state.downloadedTrackIds, state.userName, strings, spotifyFilter, spotifySort) {
+        remember(state.favorites, state.downloads.size, visiblePlaylists, catalog, state.downloadedTrackIds, state.userName, state.recentListens, strings, spotifyFilter, spotifySort) {
             spotifyLibraryArrange(
                 buildSpotifyLibraryItems(
                     state.favorites, state.downloads.size, visiblePlaylists, catalog, state.downloadedTrackIds,
-                    state.userName, strings.favorites, strings.downloads
+                    state.userName, strings.favorites, strings.downloads, state.recentListens
                 ),
                 spotifyFilter,
                 spotifySort

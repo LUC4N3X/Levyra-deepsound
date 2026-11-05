@@ -46,4 +46,14 @@ class SpotifyLibraryOverviewTest {
         assertEquals(selectable, com.luc4n3x.levyra.ui.i18n.spotifyNewReleasesLocalizationCodes())
         assertEquals("Nuove uscite per te", com.luc4n3x.levyra.ui.i18n.spotifyNewReleasesForYou("it"))
     }
+
+    @Test
+    fun recentsFollowListeningHistoryNotSaveTimes() {
+        fun track(id: String) = com.luc4n3x.levyra.domain.Track(id, id, "a", "", 0L, "", "", "", "", "test", emptySet(), 0, 0, 0, 0, 0, 0)
+        val old = com.luc4n3x.levyra.domain.Playlist("old", "Old", "", listOf(track("x")), createdAt = 1L, updatedAt = 1L)
+        val edited = com.luc4n3x.levyra.domain.Playlist("new", "New", "", listOf(track("y")), createdAt = 2L, updatedAt = 999L)
+        val catalog = LibraryCatalog(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList())
+        val items = buildSpotifyLibraryItems(emptyList(), 0, listOf(old, edited), catalog, emptySet(), "", "Liked", "Downloads", listens = listOf(track("x")))
+        assertEquals(listOf("liked", "old", "new"), spotifyLibraryArrange(items, null, SpotifyLibrarySort.Recents).map { it.id })
+    }
 }

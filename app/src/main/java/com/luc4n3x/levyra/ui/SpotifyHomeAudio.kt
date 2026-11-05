@@ -113,7 +113,11 @@ private fun SpotifyPodcastLanding(
         SpotifyPodcastSearch(state.query, copy.searchHint, podcasts::setQuery)
         if (state.query.trim().length >= 2) {
             SpotifyShowList(state.results, podcasts::openShow)
-            if (!state.searching && state.results.isEmpty()) SpotifyAudioNotice(copy.noResults)
+            when {
+                state.searching -> Unit
+                state.searchFailed -> SpotifyAudioNotice(copy.loadFailed, retry) { podcasts.setQuery(state.query) }
+                state.results.isEmpty() -> SpotifyAudioNotice(copy.noResults)
+            }
             return@Column
         }
         if (state.subscriptions.isNotEmpty()) SpotifyShowGrid(state.subscriptions.take(SpotifyShowGridLimit), podcasts::openShow)
@@ -409,6 +413,9 @@ private fun SpotifyRadioStations(
     Column {
         SpotifyHomeHeading(title)
         Spacer(Modifier.height(8.dp))
+        if (radioState.error != null && radioState.stations.isNotEmpty() && !radioState.loading) {
+            SpotifyAudioNotice(radioStrings.internetRequired, strings.exploreSamplesRetry, radio::retry)
+        }
         radioState.stations.forEach { station ->
             SpotifyStationRow(station, station.uuid == currentId, station.uuid.lowercase() in favoriteIds, { play(station) }) { radio.toggleFavorite(station) }
         }

@@ -139,7 +139,7 @@ private fun SpotifyYearTops(state: LevyraUiState, viewModel: HomeViewModel) {
         }
         if (artists.isNotEmpty()) item(key = "year-artists") {
             SpotifyYearCard(
-                "Top Artists\n$region $year", artists.first().thumbnailUrl, Color(0xFF121212),
+                LevyraSpotifyHomeStrings.forCode(LocalLevyraStrings.current.code).popularArtists, artists.first().thumbnailUrl, Color(0xFF121212),
                 artists.take(5).joinToString(", ") { it.name }
             ) { viewModel.openArtistFromHit(artists.first()) }
         }

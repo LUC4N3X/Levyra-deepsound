@@ -120,9 +120,13 @@ internal fun buildSpotifyLibraryItems(
     downloadedIds: Set<String>,
     owner: String,
     likedTitle: String,
-    downloadsTitle: String
+    downloadsTitle: String,
+    listens: List<com.luc4n3x.levyra.domain.Track> = emptyList()
 ): List<SpotifyLibraryItem> {
-    fun played(tracks: List<com.luc4n3x.levyra.domain.Track>): Long = tracks.maxOfOrNull(catalog::recencyOf) ?: 0L
+    val listenRank = HashMap<String, Long>()
+    listens.forEachIndexed { index, track -> if (track.id.isNotBlank()) listenRank.putIfAbsent(track.id, (listens.size - index).toLong()) }
+    fun played(tracks: List<com.luc4n3x.levyra.domain.Track>): Long = tracks.maxOfOrNull { listenRank[it.id] ?: 0L } ?: 0L
+    fun added(tracks: List<com.luc4n3x.levyra.domain.Track>): Long = tracks.maxOfOrNull(catalog::recencyOf) ?: 0L
     fun saved(tracks: List<com.luc4n3x.levyra.domain.Track>): Boolean = tracks.isNotEmpty() && tracks.all { it.id in downloadedIds }
     return buildList {
         add(SpotifyLibraryItem("liked", SpotifyLibraryKind.Liked, likedTitle, "", "", favorites.size, 0L, 0L, saved(favorites)))
@@ -132,19 +136,18 @@ internal fun buildSpotifyLibraryItems(
             add(
                 SpotifyLibraryItem(
                     playlist.id, SpotifyLibraryKind.Playlist, playlist.name, owner, artwork, playlist.size,
-                    maxOf(played(playlist.tracks), playlist.updatedAt), playlist.createdAt, saved(playlist.tracks)
+                    played(playlist.tracks), playlist.createdAt, saved(playlist.tracks)
                 )
             )
         }
         catalog.albums.forEach { album ->
-            val last = played(album.tracks)
-            add(SpotifyLibraryItem(album.key, SpotifyLibraryKind.Album, album.title, album.artist, album.artworkUrl, album.tracks.size, last, last, saved(album.tracks)))
+            add(SpotifyLibraryItem(album.key, SpotifyLibraryKind.Album, album.title, album.artist, album.artworkUrl, album.tracks.size, played(album.tracks), added(album.tracks), saved(album.tracks)))
         }
         catalog.artists.forEach { artist ->
             add(
                 SpotifyLibraryItem(
                     artist.key, SpotifyLibraryKind.Artist, artist.name, artist.name, artist.artworkUrl, artist.tracks.size,
-                    maxOf(played(artist.tracks), artist.followedAt), artist.followedAt.takeIf { it > 0L } ?: played(artist.tracks), false
+                    played(artist.tracks), artist.followedAt.takeIf { it > 0L } ?: added(artist.tracks), false
                 )
             )
         }
