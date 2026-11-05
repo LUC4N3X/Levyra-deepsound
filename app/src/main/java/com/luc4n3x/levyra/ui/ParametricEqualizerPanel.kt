@@ -141,6 +141,7 @@ internal fun EqualizerModeSelector(
                 first = index == 0,
                 last = index == modes.lastIndex,
                 maxLines = 2,
+                showCheck = false,
                 onClick = { onSelect(mode) }
             )
         }
@@ -220,7 +221,7 @@ internal fun ParametricEqualizerCard(
                 description = profileCopy.responseCurve,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(84.dp)
+                    .height(132.dp)
                     .alpha(if (enabled) 1f else 0.45f)
             )
 

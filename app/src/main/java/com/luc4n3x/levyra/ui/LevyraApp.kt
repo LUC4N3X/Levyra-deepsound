@@ -2957,7 +2957,7 @@ fun LevyraApp(
                 )
             }
 
-            AnimatedVisibility(visible = state.showSettings, enter = overlayEnter, exit = overlayExit) {
+            AnimatedVisibility(visible = state.showSettings, enter = panelEnter, exit = panelExit) {
                 SettingsOverlay(
                     onExitApplication = onExitApplication,
                     backEnabled = !playerVisible && !(state.showJam || state.showThemeStudio || state.showLyricsStudio ||
@@ -25836,7 +25836,8 @@ private fun ExploreContentRow(
         ExploreRow.MixTools -> Column(
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            ExploreSectionHeader(title = strings.levyraMix, subtitle = strings.mixCreate)
+            val forYou = if (LevyraIsDefaultSkin) com.luc4n3x.levyra.ui.i18n.exploreForYouCopy(strings.code) else null
+            ExploreSectionHeader(title = forYou?.title ?: strings.levyraMix, subtitle = forYou?.subtitle ?: strings.mixCreate)
             LevyraMixLauncherPanel(
                 familiarity = state.mixFamiliarity,
                 loading = state.mixLoading,

@@ -21,7 +21,7 @@ class ExploreLayoutTest {
                 assertEquals(1, rows.count { it == ExploreRow.MoodJourney })
                 assertTrue(rows.none { it is ExploreRow.MoodRail })
                 assertTrue(ExploreAnchor.Moods in exploreAvailableAnchors(rows))
-                assertTrue(rows.indexOf(ExploreRow.MoodJourney) < rows.indexOf(ExploreRow.MixTools))
+                assertTrue(rows.indexOf(ExploreRow.MixTools) < rows.indexOf(ExploreRow.MoodJourney))
             }
         }
     }
@@ -53,6 +53,21 @@ class ExploreLayoutTest {
 
         assertTrue(rows.indexOf(ExploreRow.FreshSpotlight) < rows.indexOf(ExploreRow.MixTools))
         assertEquals(ExploreRow.MixTools, rows.last())
+    }
+
+    @Test
+    fun forYouFollowsFreshCurrentsBeforeMoodJourneyInEveryFeedState() {
+        listOf(false, true).forEach { loading ->
+            listOf(false, true).forEach { hasTracks ->
+                val rows = buildExploreRows(zones(4), loading, hasTracks,
+                    hasFreshScopes = true, hasFreshMoment = true, journeyInPlaceOfMoods = true)
+                val lastFresh = if (hasTracks) ExploreRow.FreshMoment else if (loading) ExploreRow.FreshLoading else ExploreRow.FreshEmpty
+
+                assertEquals(rows.indexOf(lastFresh) + 1, rows.indexOf(ExploreRow.MixTools))
+                assertEquals(rows.indexOf(ExploreRow.MixTools) + 1, rows.indexOf(ExploreRow.MoodJourney))
+                assertEquals(1, rows.count { it == ExploreRow.MixTools })
+            }
+        }
     }
 
     @Test

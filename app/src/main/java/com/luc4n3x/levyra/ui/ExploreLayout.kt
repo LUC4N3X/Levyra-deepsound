@@ -134,6 +134,8 @@ internal fun buildExploreRows(
         else -> rows += ExploreRow.FreshEmpty
     }
 
+    if (journeyInPlaceOfMoods) rows += ExploreRow.MixTools
+
     val distinctZones = zones.distinctBy { it.id }
     if (journeyInPlaceOfMoods) {
         rows += ExploreRow.MoodJourney
@@ -142,7 +144,7 @@ internal fun buildExploreRows(
         rows += ExploreRow.MoodRail(distinctZones)
     }
 
-    rows += ExploreRow.MixTools
+    if (!journeyInPlaceOfMoods) rows += ExploreRow.MixTools
     return rows
 }
 

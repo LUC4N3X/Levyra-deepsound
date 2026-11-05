@@ -43,6 +43,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.LazyListLayoutInfo
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.LazyListState
@@ -853,25 +854,36 @@ internal fun LevyraLibraryScreen(
                         )
                     }
                 } else {
-                    item(key = "overview-sections") {
-                        LibrarySectionGrid(
-                            entries = librarySections,
-                            onOpen = { switchCategory(it) }
-                        )
+                    val sectionsItem: LazyListScope.() -> Unit = {
+                        item(key = "overview-sections") {
+                            LibrarySectionGrid(
+                                entries = librarySections,
+                                onOpen = { switchCategory(it) }
+                            )
+                        }
                     }
-                    item(key = "overview-smart-title") {
-                        LibrarySectionTitle(strings.quickPicks, "")
+                    val smartGridItem: LazyListScope.() -> Unit = {
+                        item(key = "overview-smart-grid") {
+                            SmartCollectionGrid(
+                                favorites = state.favorites,
+                                recent = catalog.recent,
+                                mostPlayed = catalog.mostPlayed,
+                                onOpenCollection = { openSmartCollectionName = it },
+                                onPlayTracks = { tracks -> tracks.firstOrNull()?.let { viewModel.playFrom(tracks, it) } }
+                            )
+                        }
                     }
-                    item(key = "overview-smart-grid") {
-                        SmartCollectionGrid(
-                            favorites = state.favorites,
-                            recent = catalog.recent,
-                            mostPlayed = catalog.mostPlayed,
-                            onOpenCollection = { openSmartCollectionName = it },
-                            onPlayTracks = { tracks -> tracks.firstOrNull()?.let { viewModel.playFrom(tracks, it) } }
-                        )
+                    if (LevyraIsDefaultSkin) {
+                        smartGridItem()
+                        sectionsItem()
+                    } else {
+                        sectionsItem()
+                        item(key = "overview-smart-title") {
+                            LibrarySectionTitle(strings.quickPicks, "")
+                        }
+                        smartGridItem()
                     }
-                    if (visiblePlaylists.isNotEmpty()) {
+                    if (visiblePlaylists.isNotEmpty() && !LevyraIsDefaultSkin) {
                         item(key = "overview-playlists-title") {
                             LibrarySectionTitle(
                                 title = strings.playlists,
@@ -892,17 +904,26 @@ internal fun LevyraLibraryScreen(
                             )
                         }
                     }
-                    item(key = "overview-insights-title") {
-                        LibrarySectionTitle(
-                            title = strings.pulseTitle,
-                            detail = strings.pulseSubtitle
-                        )
-                    }
-                    item(key = "overview-insights-card") {
-                        LibraryListeningDashboard(
-                            pulse = state.listeningPulse,
-                            onOpenInsights = viewModel::openListeningInsights
-                        )
+                    if (LevyraIsDefaultSkin) {
+                        item(key = "overview-taste-card") {
+                            LibraryTasteCard(
+                                pulse = state.listeningPulse,
+                                onOpenInsights = viewModel::openListeningInsights
+                            )
+                        }
+                    } else {
+                        item(key = "overview-insights-title") {
+                            LibrarySectionTitle(
+                                title = strings.pulseTitle,
+                                detail = strings.pulseSubtitle
+                            )
+                        }
+                        item(key = "overview-insights-card") {
+                            LibraryListeningDashboard(
+                                pulse = state.listeningPulse,
+                                onOpenInsights = viewModel::openListeningInsights
+                            )
+                        }
                     }
                 }
 
