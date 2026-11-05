@@ -61,7 +61,6 @@ import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.LevyraSectionHeader
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
-import com.luc4n3x.levyra.ui.i18n.LevyraSpotifySkinStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.SearchBrowseCopy
 import com.luc4n3x.levyra.ui.i18n.searchBrowseCopy
@@ -79,6 +78,7 @@ private val SearchRecentCarouselHeight = 140.dp
 private val SearchSampleWidth = 128.dp
 private val SearchSampleHeight = 196.dp
 private val SearchRecentGap = 12.dp
+private const val SearchRecentTextFadeStart = 0.85f
 
 internal sealed interface LevyraSearchBrowseTile {
     val key: String
@@ -212,6 +212,8 @@ internal fun LazyListScope.levyraSearchBrowseItems(
             modifier = Modifier.padding(top = 18.dp, bottom = 6.dp)
         )
     }
+    val palettes = searchBrowsePaletteIndices(tiles.map(::searchBrowseTileIdentity), ExploreCategoryPalettes.size)
+        .let { indices -> tiles.indices.associate { tiles[it].key to ExploreCategoryPalettes[indices[it]] } }
     tiles.chunked(2).forEach { row ->
         item(key = "search-browse-row-${row.first().key}", contentType = "search-browse-row") {
             val fontScale = LocalDensity.current.fontScale.coerceIn(1f, SearchBrowseMaxFontGrowth)
@@ -222,9 +224,9 @@ internal fun LazyListScope.levyraSearchBrowseItems(
                 val tileModifier = Modifier.weight(1f).height(SearchBrowseTileHeight * fontScale)
                 row.forEach { tile ->
                     if (tile is LevyraSearchBrowseTile.Podcasts) {
-                        ExploreDiscoveryCategoryCard(title = podcastsTitle, identity = "podcasts", artworkUrl = podcastsArtwork, modifier = tileModifier, onClick = onOpenPodcasts)
+                        ExploreDiscoveryCategoryCard(title = podcastsTitle, identity = "podcasts", artworkUrl = podcastsArtwork, modifier = tileModifier, accentColors = palettes[tile.key], onClick = onOpenPodcasts)
                     } else {
-                        SearchBrowseTileCard(tile, browse, tileModifier, onOpenZone, onOpenCategory)
+                        SearchBrowseTileCard(tile, browse, tileModifier, palettes[tile.key], onOpenZone, onOpenCategory)
                     }
                 }
                 if (row.size == 1) Spacer(Modifier.weight(1f))
@@ -256,6 +258,7 @@ private fun SearchBrowseTileCard(
     tile: LevyraSearchBrowseTile,
     browse: LevyraSearchBrowse,
     modifier: Modifier,
+    accent: Pair<Color, Color>?,
     onOpenZone: (ExploreZone) -> Unit,
     onOpenCategory: (ExploreCategory) -> Unit
 ) {
@@ -268,6 +271,7 @@ private fun SearchBrowseTileCard(
                 identity = category.params,
                 artworkUrl = browse.categoryArtwork[category.params].orEmpty(),
                 modifier = modifier,
+                accentColors = accent,
                 onClick = { onOpenCategory(category) }
             )
         }
@@ -280,10 +284,30 @@ private fun SearchBrowseTileCard(
                 identity = if (zone.id == ExploreCatalog.NEW_RELEASES_ZONE_ID) "new-releases" else zone.id,
                 artworkUrl = cover.ifBlank { rememberExploreMoodArtworkUrl(zone) },
                 modifier = modifier,
+                accentColors = accent,
                 onClick = { onOpenZone(zone) }
             )
         }
     }
+}
+
+internal fun searchBrowseTileIdentity(tile: LevyraSearchBrowseTile): String = when (tile) {
+    is LevyraSearchBrowseTile.Category -> tile.category.params
+    LevyraSearchBrowseTile.Podcasts -> "podcasts"
+    is LevyraSearchBrowseTile.Zone -> if (tile.zone.id == ExploreCatalog.NEW_RELEASES_ZONE_ID) "new-releases" else tile.zone.id
+}
+
+internal fun searchBrowsePaletteIndices(identities: List<String>, paletteSize: Int, columns: Int = 2): List<Int> {
+    val chosen = ArrayList<Int>(identities.size)
+    identities.forEachIndexed { index, identity ->
+        val blocked = buildSet {
+            if (index % columns != 0) add(chosen[index - 1])
+            if (index >= columns) add(chosen[index - columns])
+        }
+        val preferred = (identity.hashCode() and Int.MAX_VALUE) % paletteSize
+        chosen += (0 until paletteSize).map { (preferred + it) % paletteSize }.first { it !in blocked }
+    }
+    return chosen
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -310,6 +334,7 @@ internal fun LevyraRecentSearchesRail(
             val reveal = carouselItemDrawInfo.let { info ->
                 if (info.maxSize <= info.minSize) 1f else ((info.size - info.minSize) / (info.maxSize - info.minSize)).coerceIn(0f, 1f)
             }
+            val textReveal = ((reveal - SearchRecentTextFadeStart) / (1f - SearchRecentTextFadeStart)).coerceIn(0f, 1f)
             Box(
                 Modifier
                     .fillMaxSize()
@@ -334,7 +359,7 @@ internal fun LevyraRecentSearchesRail(
                         .background(Brush.verticalGradient(0.45f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.72f)))
                 )
                 Column(
-                    Modifier.align(Alignment.BottomStart).padding(10.dp).graphicsLayer { alpha = reveal },
+                    Modifier.align(Alignment.BottomStart).padding(10.dp).graphicsLayer { alpha = textReveal },
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text(track.title, style = MaterialTheme.typography.titleSmall, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -353,8 +378,6 @@ internal fun LevyraSearchSamplesRail(
     previewEnabled: Boolean,
     onOpen: (Int) -> Unit
 ) {
-    val code = LocalLevyraStrings.current.code
-    val musicLabel = remember(code) { LevyraSpotifySkinStrings.forCode(code).music }
     Column {
         LevyraSectionHeader(title = title, modifier = Modifier.padding(top = 18.dp, bottom = 6.dp))
         LazyRow(
@@ -376,10 +399,10 @@ internal fun LevyraSearchSamplesRail(
                     if (previewEnabled && index == 0) SpotifySamplePreview(track)
                     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.55f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.62f))))
                     Text(
-                        spotifyShortTag(track, musicLabel),
+                        track.title,
                         style = MaterialTheme.typography.titleMedium,
                         color = Color.White,
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.align(Alignment.BottomStart).padding(start = 12.dp, end = 12.dp, bottom = 14.dp)
                     )
@@ -397,9 +420,18 @@ internal fun rememberSearchPodcastsArtwork(languageCode: String): String {
     LaunchedEffect(languageCode) { podcasts.activate(languageCode) }
     val state by podcasts.state.collectAsStateWithLifecycle()
     return remember(state.discover) {
-        state.discover.asSequence().flatMap { it.episodes.asSequence() }
-            .map { it.largeThumbnailUrl.ifBlank { it.thumbnailUrl } }
-            .firstOrNull { it.isNotBlank() }
-            .orEmpty()
+        searchPodcastsArtwork(state.discover.flatMap { it.episodes })
     }
+}
+
+private val SearchPodcastMusicHints = listOf("music", "musica", "música", "musique", "musik", "музык", "song", "album", "hip hop", "rap", "jazz", "rock", "pop", "dj", "playlist")
+
+internal fun searchPodcastsArtwork(episodes: List<Track>): String {
+    fun art(track: Track) = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }.trim()
+    val withArt = episodes.filter { art(it).isNotEmpty() }
+    val music = withArt.firstOrNull { track ->
+        val text = "${track.title} ${track.artist} ${track.album}".lowercase(Locale.ROOT)
+        SearchPodcastMusicHints.any { hint -> text.contains(hint) }
+    }
+    return (music ?: withArt.firstOrNull())?.let(::art).orEmpty()
 }

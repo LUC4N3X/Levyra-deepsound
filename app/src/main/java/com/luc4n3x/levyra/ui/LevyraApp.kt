@@ -15163,8 +15163,8 @@ private fun SearchScreen(
     ) {
         SearchHeader(
             query = state.query,
-            placeholder = activePlaceholder,
-            animatePlaceholder = state.animationsEnabled,
+            placeholder = if (LevyraRadioReplacesSearch) strings.search else activePlaceholder,
+            animatePlaceholder = state.animationsEnabled && !LevyraRadioReplacesSearch,
             isSearching = state.isSearching,
             recognitionAvailable = state.recognitionAvailable,
             recognitionBusy = state.recognitionState is RecognitionState.Listening ||

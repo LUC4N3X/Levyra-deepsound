@@ -67,6 +67,26 @@ class SearchBrowseTest {
     }
 
     @Test
+    fun neighbouringTilesNeverShareAColour() {
+        val identities = List(40) { "tile-$it" } + List(6) { "same" }
+        val indices = searchBrowsePaletteIndices(identities, 8)
+        indices.forEachIndexed { index, value ->
+            if (index % 2 == 1) assertTrue(value != indices[index - 1])
+            if (index >= 2) assertTrue(value != indices[index - 2])
+        }
+    }
+
+    @Test
+    fun podcastArtworkPrefersMusicEpisodes() {
+        val news = release("n", "World news", "https://img/news.jpg")
+        val music = release("m", "Hip hop weekly", "https://img/music.jpg")
+
+        assertEquals("https://img/music.jpg", searchPodcastsArtwork(listOf(news, music)))
+        assertEquals("https://img/news.jpg", searchPodcastsArtwork(listOf(news)))
+        assertEquals("", searchPodcastsArtwork(emptyList()))
+    }
+
+    @Test
     fun everyProviderCategoryAppearsGroupedInProviderOrder() {
         val sections = levyraSearchBrowseSections(zones, categories)
         val provider = sections.filter { section -> section.kind != LevyraSearchBrowseSectionKind.Picks }
