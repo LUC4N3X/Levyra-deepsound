@@ -170,6 +170,7 @@ private const val PLAYLIST_DRAG_EDGE_FACTOR = 1.35f
 private const val PLAYLIST_DRAG_SCROLL_FACTOR = 0.38f
 private const val DEVICE_LIBRARY_PARENT_LEADING_ITEMS = 4
 internal val LibraryCategoriesGutter = 16.dp
+private val SpotifyLibraryMoreCategories = setOf(LibraryCategory.Songs, LibraryCategory.Device, LibraryCategory.Collections)
 private val LibraryScrollbarTopInset = 72.dp
 private val LibraryBrowseCategories = LibraryCategory.entries.filter { it != LibraryCategory.Overview }
 
@@ -940,7 +941,9 @@ internal fun LevyraLibraryScreen(
                         sort = spotifySort,
                         grid = spotifyGrid,
                         labels = spotifyLabels,
-                        actions = spotifyActions
+                        actions = spotifyActions,
+                        more = librarySections.filter { it.category in SpotifyLibraryMoreCategories },
+                        onOpenSection = { switchCategory(it) }
                     )
                 } else if (com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) {
                     item(key = "ytm-library-chips") {

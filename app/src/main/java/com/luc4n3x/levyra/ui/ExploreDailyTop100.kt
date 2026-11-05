@@ -456,7 +456,10 @@ private fun SpotifyTop100Card(label: String, title: String, subtitle: String, sl
         ) {
             Box(Modifier.padding(8.dp).size(10.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Color.White.copy(alpha = 0.7f)))
             Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(badge, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                Text(
+                    badge, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false,
+                    overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 10.dp)
+                )
                 Box(Modifier.padding(vertical = 10.dp).width(84.dp).size(width = 84.dp, height = 1.dp).background(Color.White.copy(alpha = 0.45f)))
                 Text(
                     label.uppercase(), color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold,

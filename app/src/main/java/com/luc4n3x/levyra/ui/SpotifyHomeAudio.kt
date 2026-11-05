@@ -92,7 +92,7 @@ internal fun SpotifyPodcastsHome(state: LevyraUiState, viewModel: HomeViewModel)
         viewModel.playPodcastEpisode(list, episode, resumePositionMs(podcastState.progressById[episode.id]))
     }
     val open = podcastState.openShow
-    BackHandler(enabled = open != null) { podcasts.closeShow() }
+    BackHandler(enabled = open != null && state.selectedTab == com.luc4n3x.levyra.domain.LevyraTab.Home) { podcasts.closeShow() }
     if (open != null) {
         SpotifyPodcastShowPage(open, podcastState, copy, state.currentTrack?.id, podcasts, play)
     } else {
@@ -357,7 +357,7 @@ internal fun SpotifyLiveRadioHome(state: LevyraUiState, viewModel: HomeViewModel
             }
             when {
                 radioState.loading && radioState.stations.isEmpty() -> SpotifyAudioNotice(strings.searchingYouTubeMusic)
-                radioState.error != null && radioState.stations.isEmpty() -> SpotifyAudioNotice(radioState.error.orEmpty(), strings.exploreSamplesRetry, radio::retry)
+                radioState.error != null && radioState.stations.isEmpty() -> SpotifyAudioNotice(radioStrings.internetRequired, strings.exploreSamplesRetry, radio::retry)
                 radioState.stations.isEmpty() -> SpotifyAudioNotice(radioStrings.noStations)
                 radioState.canLoadMore && !radioState.loadingMore -> SpotifyAudioNotice("", radioStrings.loadMore, radio::loadMore)
             }

@@ -4475,7 +4475,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             }
         } else {
             when (itag) {
-                774 -> 820_000
+                774 -> if (requestedAudioQuality.equals("high", true)) 820_000 else 0
                 251 -> 760_000
                 141 -> 700_000
                 140 -> 560_000

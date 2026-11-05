@@ -126,8 +126,7 @@ private fun SpotifyReleaseCard(kind: String, title: String, artist: String, url:
 
 @Composable
 private fun SpotifyYearTops(state: LevyraUiState, viewModel: HomeViewModel) {
-    val code = LocalLevyraStrings.current.code
-    val region = remember(code) { com.luc4n3x.levyra.domain.ChartsCatalog.defaultRegionForLanguage(code).label }
+    val region = remember(state.selectedChartId) { com.luc4n3x.levyra.domain.ChartsCatalog.region(state.selectedChartId).label }
     val year = remember { java.time.LocalDate.now().year }
     val tracks = state.charts
     val artists = state.homeArtists

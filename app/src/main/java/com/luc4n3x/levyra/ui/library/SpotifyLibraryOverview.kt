@@ -53,12 +53,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.SpotifyLibraryCopy
@@ -182,7 +182,9 @@ internal fun LazyListScope.spotifyLibraryOverview(
     sort: SpotifyLibrarySort,
     grid: Boolean,
     labels: SpotifyLibraryLabels,
-    actions: SpotifyLibraryActions
+    actions: SpotifyLibraryActions,
+    more: List<LibrarySectionEntry> = emptyList(),
+    onOpenSection: (LibraryCategory) -> Unit = {}
 ) {
     item(key = "spotify-library-filters", contentType = "spotify-library-filters") { SpotifyLibraryFilters(filter, labels, actions.onFilter) }
     item(key = "spotify-library-sort", contentType = "spotify-library-sort") { SpotifyLibrarySortRow(sort, grid, labels, actions) }
@@ -199,6 +201,9 @@ internal fun LazyListScope.spotifyLibraryOverview(
         items(items, key = { "spotify-library-${it.key}" }, contentType = { "spotify-library-row" }) { entry ->
             SpotifyLibraryListRow(entry, labels) { actions.onOpen(entry) }
         }
+    }
+    if (filter == null && more.isNotEmpty()) item(key = "spotify-library-more", contentType = "spotify-library-more") {
+        LibrarySectionGrid(entries = more, onOpen = onOpenSection, modifier = Modifier.padding(top = 12.dp))
     }
 }
 
@@ -257,6 +262,7 @@ private fun SpotifyLibraryFilters(
             Box(
                 Modifier.height(SpotifyDesign.chipHeight).clip(CircleShape)
                     .background(if (selected) SpotifyDesign.green else SpotifyDesign.chip)
+                    .semantics { this.selected = selected }
                     .levyraPressable(
                         onClick = { onFilter(if (selected) null else option) },
                         onClickLabel = labels.filterLabel(option), role = Role.Tab, pressedScale = LevyraPressScale.Control
@@ -354,8 +360,8 @@ private fun SpotifyLibraryArtwork(entry: SpotifyLibraryItem, modifier: Modifier)
         SpotifyLibraryKind.Liked -> SpotifyLibraryGlyph(Icons.Rounded.Favorite, SpotifyLikedBrush, shape, modifier)
         SpotifyLibraryKind.Downloads -> SpotifyLibraryGlyph(Icons.Rounded.ArrowCircleDown, SpotifyDownloadsBrush, shape, modifier)
         else -> if (entry.artworkUrl.isNotBlank()) {
-            AsyncImage(
-                model = entry.artworkUrl, contentDescription = null, contentScale = ContentScale.Crop,
+            com.luc4n3x.levyra.ui.StableRemoteArtwork(
+                entry.artworkUrl, contentDescription = null, contentScale = ContentScale.Crop,
                 modifier = modifier.clip(shape).background(SpotifyDesign.placeholder)
             )
         } else {
@@ -397,6 +403,7 @@ internal fun SpotifyLibrarySortSheet(
                 val selected = option == sort
                 Row(
                     Modifier.fillMaxWidth().heightIn(min = 52.dp)
+                        .semantics { this.selected = selected }
                         .levyraPressable(onClick = { onSelect(option) }, onClickLabel = spotifyLibrarySortLabel(option, copy), role = Role.RadioButton, pressedScale = LevyraPressScale.Control)
                         .padding(horizontal = 20.dp),
                     verticalAlignment = Alignment.CenterVertically
