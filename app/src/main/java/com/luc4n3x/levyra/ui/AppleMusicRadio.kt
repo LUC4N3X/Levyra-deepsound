@@ -136,29 +136,7 @@ internal fun AppleMusicRadioScreen(viewModel: LevyraViewModel, state: LevyraUiSt
         if (popular.isNotEmpty()) item(key = "apple-radio-popular") {
             AppleRadioRail(if (country.isBlank()) radioStrings.worldwide else radioStrings.popularIn(country), popular, play)
         }
-        if (radioState.favorites.isNotEmpty()) {
-            val layoutCopy = spotifyLibraryCopy(state.languageCode)
-            val listMode = radioState.stationListMode
-            item(key = "apple-radio-favorites-title") {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.weight(1f)) { AppleRadioSectionTitle(libraryCopy.favorites) }
-                    IconButton(onClick = { radio.setStationListMode(!listMode) }, modifier = Modifier.padding(end = 8.dp)) {
-                        Icon(
-                            if (listMode) Icons.Rounded.GridView else Icons.AutoMirrored.Rounded.ViewList,
-                            contentDescription = if (listMode) layoutCopy.gridView else layoutCopy.listView,
-                            tint = AppleMusicDesign.accent
-                        )
-                    }
-                }
-            }
-            if (listMode) {
-                items(radioState.favorites, key = { "apple-radio-favorite-row-${it.uuid}" }) { station ->
-                    AppleRadioResultRow(station) { play(station) }
-                }
-            } else {
-                item(key = "apple-radio-favorites") { AppleRadioRail(null, radioState.favorites, play) }
-            }
-        }
+        appleRadioFavorites(radioState, libraryCopy.favorites, state.languageCode, radio, play)
     }
     if (countryPickerOpen) {
         RadioDirectoryDialog(
@@ -174,6 +152,37 @@ internal fun AppleMusicRadioScreen(viewModel: LevyraViewModel, state: LevyraUiSt
                 countryPickerOpen = false
             }
         )
+    }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.appleRadioFavorites(
+    radioState: com.luc4n3x.levyra.feature.radio.LiveRadioUiState,
+    title: String,
+    languageCode: String,
+    radio: LiveRadioViewModel,
+    play: (RadioStation) -> Unit
+) {
+    if (radioState.favorites.isEmpty()) return
+    val listMode = radioState.stationListMode
+    item(key = "apple-radio-favorites-title") {
+        val layoutCopy = remember(languageCode) { spotifyLibraryCopy(languageCode) }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f)) { AppleRadioSectionTitle(title) }
+            IconButton(onClick = { radio.setStationListMode(!listMode) }, modifier = Modifier.padding(end = 8.dp)) {
+                Icon(
+                    if (listMode) Icons.Rounded.GridView else Icons.AutoMirrored.Rounded.ViewList,
+                    contentDescription = if (listMode) layoutCopy.gridView else layoutCopy.listView,
+                    tint = AppleMusicDesign.accent
+                )
+            }
+        }
+    }
+    if (listMode) {
+        items(radioState.favorites, key = { "apple-radio-favorite-row-${it.uuid}" }) { station ->
+            AppleRadioResultRow(station) { play(station) }
+        }
+    } else {
+        item(key = "apple-radio-favorites") { AppleRadioRail(null, radioState.favorites, play) }
     }
 }
 
