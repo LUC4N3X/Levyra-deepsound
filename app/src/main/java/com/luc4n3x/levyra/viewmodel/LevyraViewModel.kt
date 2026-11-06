@@ -452,6 +452,14 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 private const val PLAYLIST_ALBUM_RECOVERY_TIMEOUT_MS = 8_000L
+private const val APPLE_NEW_THIS_WEEK_LIMIT = 60
+private const val EXPLORE_VIDEOS_LIMIT = 40
+
+data class AppleNewThisWeek(
+    val key: String = "",
+    val albums: List<com.luc4n3x.levyra.domain.AlbumHit> = emptyList(),
+    val loading: Boolean = false
+)
 private const val ARTIST_PROFILE_UNAVAILABLE_ERROR = "artist_profile_unavailable"
 private const val ARTIST_INITIAL_BIOGRAPHY_WAIT_MS = 250L
 private const val RADIO_TAIL_MAX_APPEND_ROUNDS = 3
@@ -6027,6 +6035,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
 
         ensureMusicVideosLoaded()
+        ensureExploreVideosLoaded()
         val requestGeneration = homeFeedRequestGeneration.incrementAndGet()
         homeFeedJob?.cancel()
         homeFeedJob = viewModelScope.launch {
@@ -11689,6 +11698,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var newReleasesRequestProfileSignature = ""
     private var newReleasesRequestGeneration = 0L
     private var newReleasesJob: Job? = null
+    private val _appleNewThisWeek = MutableStateFlow(AppleNewThisWeek())
+    val appleNewThisWeek: StateFlow<AppleNewThisWeek> = _appleNewThisWeek.asStateFlow()
+    private var appleNewThisWeekJob: Job? = null
+    private var exploreVideosJob: Job? = null
+    private var exploreVideosLanguage = ""
     private var exploreJob: Job? = null
     private var exploreCategoriesLoadedLanguage =
         startupExploreDiscovery?.let { LevyraLanguageCatalog.normalize(startupSettings.languageCode) }.orEmpty()
@@ -12056,6 +12070,28 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             emptyList()
         }
 
+    fun ensureAppleNewThisWeek(force: Boolean = false) {
+        val snapshot = _state.value
+        val language = snapshot.languageCode
+        val storefront = ChartsCatalog.region(snapshot.selectedChartId).country.takeIf { it.equals("it", ignoreCase = true) }
+            ?: ChartsCatalog.defaultRegionForLanguage(language).country
+        val week = java.time.LocalDate.now().let { it.get(java.time.temporal.IsoFields.WEEK_BASED_YEAR) * 100 + it.get(java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR) }
+        val key = "$storefront|${LevyraLanguageCatalog.normalize(language)}|$week"
+        val current = _appleNewThisWeek.value
+        if (!force && current.key == key && (current.albums.isNotEmpty() || appleNewThisWeekJob?.isActive == true)) return
+        appleNewThisWeekJob?.cancel()
+        _appleNewThisWeek.value = AppleNewThisWeek(key, if (current.key == key) current.albums else emptyList(), loading = true)
+        appleNewThisWeekJob = viewModelScope.launch {
+            val albums = newReleaseSource("apple new this week $storefront") {
+                com.luc4n3x.levyra.data.apple.AppleMusicEditorialRepository.get(getApplication<Application>())
+                    .newThisWeekAlbums(storefront, language, limit = APPLE_NEW_THIS_WEEK_LIMIT)
+            }
+            _appleNewThisWeek.update { latest ->
+                if (latest.key != key) latest else AppleNewThisWeek(key, albums.ifEmpty { latest.albums }, loading = false)
+            }
+        }
+    }
+
     private fun ensureOfficialNewReleasesLoaded(force: Boolean = false) {
         val snapshot = _state.value
         val languageCode = snapshot.languageCode
@@ -12155,6 +12191,28 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         ensureFreshCurrentsLoaded()
         ensureOfficialNewReleasesLoaded()
         ensureMusicVideosLoaded()
+        ensureExploreVideosLoaded()
+    }
+
+    private fun ensureExploreVideosLoaded() {
+        val language = _state.value.languageCode
+        if (exploreVideosJob?.isActive == true && exploreVideosLanguage == language) return
+        if (exploreVideosLanguage == language && _state.value.exploreVideos.isNotEmpty()) return
+        exploreVideosJob?.cancel()
+        if (exploreVideosLanguage != language) _state.update { it.copy(exploreVideos = emptyList()) }
+        exploreVideosLanguage = language
+        exploreVideosJob = viewModelScope.launch {
+            val videos = try {
+                repository.newMusicVideos(language, EXPLORE_VIDEOS_LIMIT)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                Timber.w(error, "Explore videos failed")
+                emptyList()
+            }
+            if (videos.isEmpty()) exploreVideosLanguage = ""
+            _state.update { current -> if (current.languageCode != language || videos.isEmpty()) current else current.copy(exploreVideos = videos) }
+        }
     }
 
     fun ensureExploreSamples() {

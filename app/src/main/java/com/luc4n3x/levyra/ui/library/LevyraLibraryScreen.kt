@@ -1029,6 +1029,12 @@ internal fun LevyraLibraryScreen(
                             )
                         }
                         item(key = "glacier-pulse") { MonoPulseCard(state.listeningPulse, viewModel::openListeningInsights) }
+                        item(key = "glacier-journey") {
+                            com.luc4n3x.levyra.ui.moodjourney.MoodJourneyEntryCard(
+                                onOpen = { preset -> if (preset == null) viewModel.openMoodJourney() else viewModel.openMoodJourney(preset) },
+                                modifier = Modifier.padding(top = 20.dp)
+                            )
+                        }
                     } else if (com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic) {
                         sectionsItem()
                         item(key = "apple-smart-links") {

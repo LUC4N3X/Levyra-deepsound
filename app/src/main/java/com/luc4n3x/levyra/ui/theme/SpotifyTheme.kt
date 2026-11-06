@@ -109,7 +109,7 @@ internal val SpotifyTypography: Typography = typographyForFamily(SpotifyFont).le
 }
 
 internal fun spotifyPalette(): LevyraPalette = LevyraThemes.cosmic.copy(
-    id = SpotifyPaletteId, label = "Spotify Style", emoji = "◉", isLight = false,
+    id = SpotifyPaletteId, label = "Spotify", emoji = "◉", isLight = false,
     followsCover = false, followsMood = false,
     black = SpotifyDesign.base,
     ink = SpotifyDesign.card,

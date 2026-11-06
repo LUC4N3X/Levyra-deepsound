@@ -140,7 +140,7 @@ internal fun appleMusicPalette(systemDark: Boolean = false): LevyraPalette {
     fun tone(day: Long, night: Long) = Color(if (light) day else night)
     val accent = tone(0xFFFA233B, 0xFFFC3C44)
     return LevyraThemes.cosmic.copy(
-        id = AppleMusicPaletteId, label = "Apple Music Style", emoji = "♪", isLight = light,
+        id = AppleMusicPaletteId, label = "Apple Music", emoji = "♪", isLight = light,
         followsCover = false, followsMood = false,
         black = tone(0xFFFFFFFF, 0xFF000000),
         ink = tone(0xFFFFFFFF, 0xFF1C1C1E),

@@ -75,6 +75,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -293,15 +296,20 @@ private fun DiscoveryBackdropLayer(look: DiscoveryLook, card: DiscoveryCard?, an
             )
         }
         DiscoveryBackdrop.Flat -> Unit
-        DiscoveryBackdrop.Glacier -> Box(
-            Modifier.fillMaxWidth().height(460.dp).background(
-                Brush.verticalGradient(
-                    0f to com.luc4n3x.levyra.ui.theme.MonoDesign.accent.copy(alpha = 0.16f),
-                    0.5f to com.luc4n3x.levyra.ui.theme.MonoDesign.accent.copy(alpha = 0.05f),
-                    1f to Color.Transparent
+        DiscoveryBackdrop.Glacier -> {
+            if (card != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                Box(Modifier.fillMaxSize().graphicsLayer { alpha = 0.5f }.blur(64.dp)) { DiscoveryArtwork(card, Modifier.fillMaxSize(), highRes = false) }
+            }
+            Box(
+                Modifier.fillMaxSize().background(
+                    Brush.verticalGradient(
+                        0f to com.luc4n3x.levyra.ui.theme.MonoDesign.accent.copy(alpha = 0.18f),
+                        0.35f to com.luc4n3x.levyra.ui.theme.MonoDesign.base.copy(alpha = 0.55f),
+                        1f to com.luc4n3x.levyra.ui.theme.MonoDesign.base
+                    )
                 )
             )
-        )
+        }
         DiscoveryBackdrop.Paper -> Box(Modifier.fillMaxSize().background(scheme.surface))
         DiscoveryBackdrop.Bleed -> if (card != null) {
             Box(Modifier.fillMaxSize().graphicsLayer { alpha = 0.32f }) { DiscoveryArtwork(card, Modifier.fillMaxSize(), highRes = false) }
@@ -407,7 +415,7 @@ private fun DiscoveryCardStack(
         val widthPx = with(density) { maxWidth.toPx() }
         val chrome = DiscoveryCardChrome + if (showsDistance(ui.request)) DiscoveryDistanceChrome else 0.dp
         val artSide = if (look.backdrop == DiscoveryBackdrop.Glacier) {
-            (maxHeight - DiscoveryCardChrome - look.stackGap * 2).coerceAtLeast(96.dp)
+            (maxHeight - DiscoveryCardChrome - GlacierDiscPeek - look.stackGap * 2).coerceAtLeast(96.dp)
         } else {
             minOf(maxWidth - 32.dp, maxHeight - chrome - look.stackGap * 2).coerceAtLeast(96.dp)
         }
@@ -509,6 +517,13 @@ private fun DiscoveryCardFace(
 ) {
     val scheme = MaterialTheme.colorScheme
     val accent = discoveryAccent(card)
+    if (look.backdrop == DiscoveryBackdrop.Glacier) {
+        Box(modifier.fillMaxWidth().height(artSide + DiscoveryCardChrome + GlacierDiscPeek)) {
+            if (onTogglePreview != null) GlacierRecord(card, preview == DiscoveryPreviewStatus.Playing, Modifier.align(Alignment.TopCenter))
+            GlacierSleeve(card, look, copy, music, request, artSide, preview, onTogglePreview, Modifier.align(Alignment.BottomCenter))
+        }
+        return
+    }
     if (look.artworkBleed) {
         Box(modifier.fillMaxWidth().height(artSide + DiscoveryCardChrome).clip(look.cardShape).background(scheme.surfaceContainerHigh)) {
             DiscoveryArtwork(card, Modifier.fillMaxSize(), highRes = true)
@@ -765,5 +780,78 @@ private fun GlacierDiscoveryControls(
             copy.playFull, style = MaterialTheme.typography.labelLarge, color = mono.textSecondary,
             modifier = Modifier.clip(mono.pillShape).clickable(role = Role.Button, onClick = onPlayFull).padding(horizontal = 14.dp, vertical = 10.dp)
         )
+    }
+}
+
+private val GlacierDiscPeek = 64.dp
+
+@Composable
+private fun GlacierRecord(card: DiscoveryCard, spinning: Boolean, modifier: Modifier) {
+    val animated = com.luc4n3x.levyra.ui.LocalAnimationsEnabled.current
+    val angle = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(spinning && animated) {
+        if (!(spinning && animated)) {
+            angle.stop()
+            return@LaunchedEffect
+        }
+        while (true) {
+            angle.animateTo(angle.value + 360f, tween(3200, easing = LinearEasing))
+            angle.snapTo(angle.value % 360f)
+        }
+    }
+    val lift by androidx.compose.animation.core.animateDpAsState(if (spinning) 0.dp else 18.dp, label = "glacier-record-lift")
+    BoxWithConstraints(modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+        val diameter = minOf(maxWidth * 0.78f, maxHeight)
+        Box(
+            Modifier.offset(y = lift).size(diameter).graphicsLayer { rotationZ = angle.value }
+                .drawBehind {
+                    val center = Offset(size.width / 2f, size.height / 2f)
+                    val radius = size.minDimension / 2f
+                    drawCircle(Color(0xFF0B0C0E), radius, center)
+                    var groove = radius * 0.96f
+                    while (groove > radius * 0.4f) {
+                        drawCircle(Color.White.copy(alpha = 0.045f), groove, center, style = androidx.compose.ui.graphics.drawscope.Stroke(1f))
+                        groove -= radius * 0.035f
+                    }
+                    drawArc(
+                        Brush.sweepGradient(listOf(Color.Transparent, Color.White.copy(alpha = 0.10f), Color.Transparent, Color.White.copy(alpha = 0.06f), Color.Transparent), center),
+                        0f, 360f, true
+                    )
+                    drawCircle(com.luc4n3x.levyra.ui.theme.MonoDesign.accent, radius * 0.36f, center)
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            DiscoveryArtwork(card, Modifier.fillMaxSize(0.32f).clip(CircleShape), highRes = false)
+            Box(Modifier.size(8.dp).clip(CircleShape).background(com.luc4n3x.levyra.ui.theme.MonoDesign.base))
+        }
+    }
+}
+
+@Composable
+private fun GlacierSleeve(
+    card: DiscoveryCard,
+    look: DiscoveryLook,
+    copy: DiscoveryCopy,
+    music: SmartMusicCopy,
+    request: DiscoveryRequest,
+    artSide: Dp,
+    preview: DiscoveryPreviewStatus?,
+    onTogglePreview: (() -> Unit)?,
+    modifier: Modifier
+) {
+    Box(
+        modifier.fillMaxWidth().height(artSide + DiscoveryCardChrome).graphicsLayer { shadowElevation = 24.dp.toPx(); shape = look.cardShape; clip = true }
+            .background(com.luc4n3x.levyra.ui.theme.MonoDesign.surface)
+            .border(1.dp, com.luc4n3x.levyra.ui.theme.MonoDesign.hairlineStrong, look.cardShape)
+    ) {
+        DiscoveryArtwork(card, Modifier.fillMaxSize(), highRes = true)
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.45f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.9f))))
+        if (showsDistance(request)) BubbleDistanceBadge(card.distance, music, Color.Black.copy(alpha = 0.45f), Color.White, Modifier.align(Alignment.TopEnd).padding(16.dp))
+        Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(22.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            com.luc4n3x.levyra.ui.MonoOverline(discoveryReasonLabel(card, copy, music), color = com.luc4n3x.levyra.ui.theme.MonoDesign.accent)
+            Text(card.track.title, style = look.titleStyle, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(card.track.artist, style = MaterialTheme.typography.bodyLarge, color = Color.White.copy(alpha = 0.82f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            DiscoveryPreviewBadge(preview, copy, Color.White, onTogglePreview)
+        }
     }
 }

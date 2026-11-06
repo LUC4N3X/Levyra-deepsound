@@ -8855,21 +8855,7 @@ private fun HomeScreen(
         )
     }
     val rawOtherSections = homeDerivedState.otherSections
-    val freshHomeVideoTracks = remember(state.exploreVideos, rawOtherSections, state.charts, strings.exploreNewVideos) {
-        val sectionVideos = rawOtherSections
-            .filter { section -> isMusicVideoSectionTitle(section.title, strings) }
-            .flatMap { section -> section.tracks }
-        val chartVideos = state.charts.filter { track ->
-            track.counterpartVideoId.isNotBlank() || track.videoUrl.isNotBlank()
-        }
-        LevyraPersonalOrbit.distinctRecordings(state.exploreVideos + sectionVideos + chartVideos)
-            .filter { track ->
-                track.counterpartVideoId.isNotBlank() ||
-                    track.videoType.contains("video", ignoreCase = true) ||
-                    track.videoUrl.isNotBlank()
-            }
-            .take(12)
-    }
+    val freshHomeVideoTracks = remember(state.exploreVideos, state.languageCode) { exploreNewMusicVideos(state.exploreVideos, state.languageCode) }
     val lastHomeVideoTracks = remember { mutableStateOf<List<Track>>(emptyList()) }
     val homeVideoTracks = if (freshHomeVideoTracks.isEmpty() && state.isLoadingCharts) {
         lastHomeVideoTracks.value
@@ -10433,23 +10419,14 @@ private fun buildStudioSpotlightHero(
 
 private fun buildStudioHomeVideoTracks(
     state: LevyraUiState,
-    rawOtherSections: List<com.luc4n3x.levyra.domain.HomeSection>,
-    strings: LevyraStrings
-): List<Track> {
-    val sectionVideos = rawOtherSections
-        .filter { section -> isMusicVideoSectionTitle(section.title, strings) }
-        .flatMap { section -> section.tracks }
-    val chartVideos = state.charts.filter { track ->
-        track.counterpartVideoId.isNotBlank() || track.videoUrl.isNotBlank()
-    }
-    return LevyraPersonalOrbit.distinctRecordings(state.exploreVideos + sectionVideos + chartVideos)
-        .filter { track ->
-            track.counterpartVideoId.isNotBlank() ||
-                track.videoType.contains("video", ignoreCase = true) ||
-                track.videoUrl.isNotBlank()
-        }
-        .take(12)
-}
+    @Suppress("UNUSED_PARAMETER") rawOtherSections: List<com.luc4n3x.levyra.domain.HomeSection>,
+    @Suppress("UNUSED_PARAMETER") strings: LevyraStrings
+): List<Track> = exploreNewMusicVideos(state.exploreVideos, state.languageCode)
+
+internal fun exploreNewMusicVideos(videos: List<Track>, languageCode: String): List<Track> =
+    com.luc4n3x.levyra.domain.LocalMusicVideoFilter.localFirst(LevyraPersonalOrbit.distinctRecordings(videos), languageCode).take(HOME_NEW_MUSIC_VIDEOS_LIMIT)
+
+private const val HOME_NEW_MUSIC_VIDEOS_LIMIT = 20
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -19136,7 +19113,7 @@ private fun SettingsOverlay(
     fun categoryTitle(value: String): String = settingsCategoryTitle(value, categoryLocale)
     val categories = remember(strings.code, LevyraActivePalette) {
         listOf(
-            SettingsCategoryMeta("skins", com.luc4n3x.levyra.ui.i18n.LevyraSkinStrings.forCode(strings.code).title, "Levyra Default · Nocturne 78 · Prism · Torque · Ivory · Spotify Style · Apple Music Style · YouTube Music Style", Icons.Rounded.Style, LevyraViolet, SettingsHubGroup.Appearance),
+            SettingsCategoryMeta("skins", com.luc4n3x.levyra.ui.i18n.LevyraSkinStrings.forCode(strings.code).title, "Levyra Default · Nocturne 78 · Prism · Torque · Ivory · Glacier · Atelier · Spotify · Apple Music · YouTube Music · Qobuz", Icons.Rounded.Style, LevyraViolet, SettingsHubGroup.Appearance),
             SettingsCategoryMeta("design", categoryTitle(strings.design), "${strings.theme} · ${strings.animations} · ${strings.dynamicColor}", Icons.Rounded.Palette, LevyraViolet, SettingsHubGroup.Appearance),
             SettingsCategoryMeta("home", categoryTitle(strings.homeInterfaceSection), "${strings.compactHome} · ${strings.newReleases} · ${strings.top50Charts}", Icons.Rounded.Home, LevyraViolet, SettingsHubGroup.Appearance),
             SettingsCategoryMeta("player", categoryTitle(strings.player), "${strings.advancedGestures} · ${strings.sponsorBlock} · ${strings.skipSilence}", Icons.Rounded.PlayArrow, LevyraPink, SettingsHubGroup.Listening),
@@ -25020,7 +24997,7 @@ private fun ExploreScreen(
         if (LevyraIsAtelier) {
             AtelierExploreEntry(state, viewModel, freshTracks, listState, exploreBottomInset, onShortcut, { onLiveRadioOpenChange(true) }, onOpenJam) { addToPlaylistTarget = it }
         } else if (LevyraIsMono) {
-            MonoExploreEntry(state, viewModel, listState, exploreBottomInset, editorialContent, onShortcut, { onLiveRadioOpenChange(true) }, onOpenJam)
+            MonoExploreEntry(state, listState, exploreBottomInset, editorialContent, onShortcut, { onLiveRadioOpenChange(true) }, onOpenJam)
         } else if (LevyraIsQobuz) {
             QobuzMagazineEntry(state, viewModel, freshTracks, listState, exploreBottomInset, onShortcut, { onLiveRadioOpenChange(true) }, onOpenJam) { addToPlaylistTarget = it }
         } else if (LevyraIsYouTubeMusic) {

@@ -194,9 +194,9 @@ object LevyraMotion {
 
     fun panelExit(enabled: Boolean): ExitTransition =
         if (enabled) {
-            slideOutVertically(tween(Durations.Short, easing = Easings.Accelerate)) { it / 16 } +
-                scaleOut(tween(Durations.Short, easing = Easings.Accelerate), targetScale = PanelRestScale) +
-                fadeOut(tween(Durations.Quick + 20, easing = Easings.Standard))
+            slideOutVertically(tween(Durations.Medium, easing = Easings.Accelerate)) { it / 12 } +
+                scaleOut(tween(Durations.Medium, easing = Easings.Accelerate), targetScale = PanelRestScale) +
+                fadeOut(tween(Durations.Medium, easing = Easings.Accelerate))
         } else {
             ExitTransition.None
         }

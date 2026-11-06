@@ -36,6 +36,25 @@ data class AppleCatalogItem(
     )
 }
 
+internal fun appleNewThisWeekShelf(page: AppleCatalogPage?): AppleCatalogShelf? {
+    val shelves = page?.shelves.orEmpty()
+    val newSongsIndex = shelves.indexOfFirst { shelf -> shelf.kind == AppleCatalogShelfKind.Songs }
+    if (newSongsIndex < 0) return null
+    return shelves.getOrNull(newSongsIndex + 1)?.takeIf { shelf ->
+        shelf.kind == AppleCatalogShelfKind.Grid && shelf.items.isNotEmpty() && shelf.items.all { item -> item.kind == AppleCatalogItemKind.Album }
+    }
+}
+
+internal fun appleAlbumHits(items: Sequence<AppleCatalogItem>, limit: Int): List<AlbumHit> = items
+    .filter { item ->
+        item.kind == AppleCatalogItemKind.Album && item.title.isNotBlank() && item.subtitle.isNotBlank() &&
+            AppleCatalogIds.albumFromUrl(item.url) != null
+    }
+    .distinctBy { item -> AppleCatalogIds.albumFromUrl(item.url)?.second }
+    .map(AppleCatalogItem::toAlbumHit)
+    .take(limit.coerceIn(1, 100))
+    .toList()
+
 internal fun appleNewReleaseAlbums(page: AppleCatalogPage?, limit: Int): List<AlbumHit> {
     val shelves = page?.shelves.orEmpty()
     val newSongsIndex = shelves.indexOfFirst { shelf -> shelf.kind == AppleCatalogShelfKind.Songs }
@@ -169,7 +188,8 @@ data class AppleCatalogShelf(
     val title: String,
     val kind: AppleCatalogShelfKind,
     val items: List<AppleCatalogItem>,
-    val rows: Int = 1
+    val rows: Int = 1,
+    val roomId: String = ""
 )
 
 data class AppleCatalogPage(
@@ -249,8 +269,13 @@ object AppleCatalogPageParser {
         val distinct = parsed.distinctBy { "${it.kind}:${it.id}" }
         if (distinct.isEmpty()) return null
         val rows = section.optJSONObject("presentation")?.optJSONObject("layout")?.optInt("numberOfRows", 1) ?: 1
-        return AppleCatalogShelf(section.optString("id"), title, kind, distinct, rows.coerceIn(1, 4))
+        return AppleCatalogShelf(section.optString("id"), title, kind, distinct, rows.coerceIn(1, 4), sectionRoomId(section))
     }
+
+    internal fun sectionRoomId(section: JSONObject): String =
+        section.optJSONObject("header")?.optJSONObject("item")?.optJSONObject("titleLink")
+            ?.optJSONObject("segue")?.optJSONObject("destination")?.optJSONObject("intent")
+            ?.optString("id").orEmpty().takeIf { id -> id.isNotEmpty() && id.all(Char::isDigit) }.orEmpty()
 
     internal fun sectionTitle(section: JSONObject): String =
         section.optJSONObject("header")?.optJSONObject("item")?.let { header ->

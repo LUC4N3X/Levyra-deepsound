@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,6 +44,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -55,6 +57,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
@@ -78,9 +82,7 @@ import com.luc4n3x.levyra.ui.i18n.LevyraMonoHomeStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.MonoHomeCopy
 import com.luc4n3x.levyra.ui.i18n.podcastCopy
-import com.luc4n3x.levyra.ui.moodjourney.MoodJourneyEntryCard
 import com.luc4n3x.levyra.ui.theme.MonoDesign
-import com.luc4n3x.levyra.viewmodel.ExploreViewModel
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 
 private val MonoMoodTileHeight = 108.dp
@@ -260,7 +262,6 @@ internal fun LazyListScope.monoBrowseSections(
 @Composable
 internal fun MonoExploreEntry(
     state: LevyraUiState,
-    viewModel: ExploreViewModel,
     listState: LazyListState,
     bottomInset: Dp,
     editorial: ExploreEditorialContent?,
@@ -301,12 +302,6 @@ internal fun MonoExploreEntry(
         if (editorial != null && editorial.news.size > 1) {
             item(key = "mono-explore-news-desk", contentType = "mono-explore-news") { ExploreEditorialRow(ExploreRow.NewsList, editorial) }
         }
-        item(key = "mono-explore-journey", contentType = "mono-explore-journey") {
-            MoodJourneyEntryCard(
-                onOpen = { preset -> if (preset == null) viewModel.openMoodJourney() else viewModel.openMoodJourney(preset) },
-                modifier = Modifier.padding(horizontal = MonoDesign.gutter).padding(top = MonoDesign.sectionGap)
-            )
-        }
         if (nothingLoaded) {
             item(key = "mono-explore-fallback", contentType = "mono-fallback") {
                 if (stillLoading) {
@@ -333,7 +328,11 @@ internal fun MonoVideoRail(videos: List<YoutubeMusicHomeItem>, onPlay: (YoutubeM
                     .levyraPressable(onClick = { onPlay(item) }, role = Role.Button, pressedScale = LevyraPressScale.Tile, onClickLabel = item.title)
             ) {
                 Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(MonoDesign.cardShape).background(MonoDesign.surface)) {
-                    MonoArtwork(item.thumbnailUrl, Modifier.fillMaxSize())
+                    coil3.compose.AsyncImage(
+                        item.thumbnailUrl, null, contentScale = androidx.compose.ui.layout.ContentScale.Crop, alpha = 0.45f,
+                        modifier = Modifier.fillMaxSize().blur(24.dp)
+                    )
+                    coil3.compose.AsyncImage(item.thumbnailUrl, null, contentScale = androidx.compose.ui.layout.ContentScale.Fit, modifier = Modifier.fillMaxSize())
                     Box(
                         Modifier.align(Alignment.Center).size(44.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.42f)),
                         contentAlignment = Alignment.Center
@@ -403,6 +402,38 @@ private fun monoDiscoverSway(enabled: Boolean): androidx.compose.runtime.State<F
         androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(3200, easing = androidx.compose.animation.core.FastOutSlowInEasing), androidx.compose.animation.core.RepeatMode.Reverse),
         label = "mono-discover-sway"
     )
+}
+
+@Composable
+internal fun MonoBubbleEntry(covers: List<String>, onOpen: () -> Unit) {
+    val strings = LocalLevyraStrings.current
+    val bubble = com.luc4n3x.levyra.ui.i18n.smartMusicCopy(strings.code)
+    val shown = remember(covers) { covers.filter(String::isNotBlank).distinct().take(3) }
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = MonoDesign.gutter).padding(top = MonoDesign.sectionGap)
+            .heightIn(min = 64.dp)
+            .clip(MonoDesign.cardShape)
+            .levyraPressable(onClick = onOpen, role = Role.Button, pressedScale = LevyraPressScale.Row, onClickLabel = bubble[com.luc4n3x.levyra.ui.i18n.SmartMusicText.BubbleTitle])
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Box(Modifier.size(width = 84.dp, height = 44.dp).clearAndSetSemantics { }) {
+            repeat(3) { index ->
+                Box(
+                    Modifier.padding(start = (index * 20).dp).size(44.dp).clip(CircleShape).background(MonoDesign.raised)
+                        .border(1.5.dp, if (index == 2) MonoDesign.accent else MonoDesign.base, CircleShape)
+                ) { shown.getOrNull(index)?.let { MonoArtwork(it, Modifier.fillMaxSize()) } }
+            }
+        }
+        Column(Modifier.weight(1f)) {
+            Text(bubble[com.luc4n3x.levyra.ui.i18n.SmartMusicText.BubbleTitle], style = MaterialTheme.typography.titleSmall, color = MonoDesign.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(bubble[com.luc4n3x.levyra.ui.i18n.SmartMusicText.BubbleEntry], style = MaterialTheme.typography.bodySmall, color = MonoDesign.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        Box(Modifier.size(36.dp).clip(CircleShape).border(1.dp, MonoDesign.hairlineStrong, CircleShape), contentAlignment = Alignment.Center) {
+            Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = MonoDesign.text, modifier = Modifier.size(18.dp))
+        }
+    }
 }
 
 internal fun monoExploreNewVideos(shelves: List<YoutubeMusicHomeShelf>, limit: Int): List<YoutubeMusicHomeItem> =
