@@ -74,14 +74,21 @@ internal data class LibraryCatalog(
 
 internal fun filterSavedPlaylists(
     playlists: List<com.luc4n3x.levyra.domain.SavedPlaylist>,
-    query: String
+    query: String,
+    sort: LibrarySort = LibrarySort.Recent,
+    direction: LibrarySortDirection = sort.defaultDirection
 ): List<com.luc4n3x.levyra.domain.SavedPlaylist> {
     val normalizedQuery = normalizeLibraryText(query)
-    if (normalizedQuery.isBlank()) return playlists
-    return playlists.filter { saved ->
+    val filtered = if (normalizedQuery.isBlank()) playlists else playlists.filter { saved ->
         normalizeLibraryText(saved.hit.title).contains(normalizedQuery) ||
             normalizeLibraryText(saved.hit.author).contains(normalizedQuery)
     }
+    val ascending = when (sort) {
+        LibrarySort.Recent -> filtered.sortedBy { it.savedAt }
+        LibrarySort.Artist -> filtered.sortedWith(compareBy({ normalizeLibraryText(it.hit.author) }, { normalizeLibraryText(it.hit.title) }))
+        else -> filtered.sortedBy { normalizeLibraryText(it.hit.title) }
+    }
+    return if (direction == LibrarySortDirection.Descending) ascending.reversed() else ascending
 }
 
 internal data class LibraryBrowseInput(

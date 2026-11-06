@@ -49,12 +49,26 @@ class LibraryBrowseSnapshotTest {
     @Test
     fun savedPlaylistsFilterByTitleAndCurator() {
         val saved = listOf(
-            SavedPlaylist(PlaylistHit("Rock Classics", "Levyra", "", playlistId = "a")),
-            SavedPlaylist(PlaylistHit("Chill", "Radiohead fans", "", playlistId = "b"))
+            SavedPlaylist(PlaylistHit("Rock Classics", "Levyra", "", playlistId = "a"), savedAt = 2L),
+            SavedPlaylist(PlaylistHit("Chill", "Radiohead fans", "", playlistId = "b"), savedAt = 1L)
         )
 
         assertEquals(saved, filterSavedPlaylists(saved, ""))
         assertEquals(listOf("a"), filterSavedPlaylists(saved, "rock").map { it.hit.playlistId })
         assertEquals(listOf("b"), filterSavedPlaylists(saved, "radiohead").map { it.hit.playlistId })
+    }
+
+    @Test
+    fun savedPlaylistsFollowTheSelectedSort() {
+        val saved = listOf(
+            SavedPlaylist(PlaylistHit("Beta", "Zed", "", playlistId = "b"), savedAt = 3L),
+            SavedPlaylist(PlaylistHit("alpha", "Amy", "", playlistId = "a"), savedAt = 1L),
+            SavedPlaylist(PlaylistHit("Gamma", "Max", "", playlistId = "g"), savedAt = 2L)
+        )
+
+        assertEquals(listOf("b", "g", "a"), filterSavedPlaylists(saved, "", LibrarySort.Recent, LibrarySortDirection.Descending).map { it.hit.playlistId })
+        assertEquals(listOf("a", "b", "g"), filterSavedPlaylists(saved, "", LibrarySort.Title, LibrarySortDirection.Ascending).map { it.hit.playlistId })
+        assertEquals(listOf("g", "b", "a"), filterSavedPlaylists(saved, "", LibrarySort.Title, LibrarySortDirection.Descending).map { it.hit.playlistId })
+        assertEquals(listOf("a", "g", "b"), filterSavedPlaylists(saved, "", LibrarySort.Artist, LibrarySortDirection.Ascending).map { it.hit.playlistId })
     }
 }

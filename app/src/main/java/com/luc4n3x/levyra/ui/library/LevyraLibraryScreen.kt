@@ -421,8 +421,8 @@ internal fun LevyraLibraryScreen(
         filterLibraryPlaylists(scopedPlaylists, query, sort, direction)
     }
     val savedPlaylists by viewModel.savedPlaylists.collectAsStateWithLifecycle()
-    val visibleSavedPlaylists = remember(savedPlaylists, query, showHiddenPlaylists, selectedTagIds) {
-        if (showHiddenPlaylists || selectedTagIds.isNotEmpty()) emptyList() else filterSavedPlaylists(savedPlaylists, query)
+    val visibleSavedPlaylists = remember(savedPlaylists, query, showHiddenPlaylists, selectedTagIds, sort, direction) {
+        if (showHiddenPlaylists || selectedTagIds.isNotEmpty()) emptyList() else filterSavedPlaylists(savedPlaylists, query, sort, direction)
     }
     val savedPlaylistCopy = remember(strings.code) { com.luc4n3x.levyra.ui.i18n.savedPlaylistCopy(strings.code) }
     val presorted = browse.presortedFor(query, sort, direction)
@@ -941,7 +941,14 @@ internal fun LevyraLibraryScreen(
                         albums = visibleAlbums,
                         artists = visibleArtists,
                         strings = strings,
-                        actions = overviewSearchActions
+                        actions = overviewSearchActions,
+                        savedPlaylists = visibleSavedPlaylists,
+                        saved = LibrarySavedPlaylistActions(
+                            section = savedPlaylistCopy.section,
+                            remove = savedPlaylistCopy.remove,
+                            onOpen = viewModel::openSavedPlaylist,
+                            onRemove = { viewModel.removeSavedPlaylist(it.key) }
+                        )
                     )
                 } else if (spotifyOverview) {
                     spotifyLibraryOverview(

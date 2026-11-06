@@ -481,15 +481,24 @@ internal class LibraryOverviewSearchActions(
 private const val OverviewSearchTrackLimit = 5
 private const val OverviewSearchCollectionLimit = 3
 
+internal class LibrarySavedPlaylistActions(
+    val section: String,
+    val remove: String,
+    val onOpen: (com.luc4n3x.levyra.domain.SavedPlaylist) -> Unit,
+    val onRemove: (com.luc4n3x.levyra.domain.SavedPlaylist) -> Unit
+)
+
 internal fun LazyListScope.libraryOverviewSearch(
     tracks: List<Track>,
     playlists: List<Playlist>,
     albums: List<LibraryAlbum>,
     artists: List<LibraryArtist>,
     strings: LevyraStrings,
-    actions: LibraryOverviewSearchActions
+    actions: LibraryOverviewSearchActions,
+    savedPlaylists: List<com.luc4n3x.levyra.domain.SavedPlaylist> = emptyList(),
+    saved: LibrarySavedPlaylistActions = LibrarySavedPlaylistActions("", "", {}, {})
 ) {
-    if (tracks.isEmpty() && playlists.isEmpty() && albums.isEmpty() && artists.isEmpty()) {
+    if (tracks.isEmpty() && playlists.isEmpty() && savedPlaylists.isEmpty() && albums.isEmpty() && artists.isEmpty()) {
         item(key = "overview-search-empty") { LibraryEmpty(Icons.Rounded.Search, strings.emptySearchPrompt) }
         return
     }
@@ -514,6 +523,14 @@ internal fun LazyListScope.libraryOverviewSearch(
                 onLongClick = { actions.onOpenPlaylist(playlist) },
                 onPlay = { actions.onPlayPlaylist(playlist) }
             )
+        }
+    }
+    if (savedPlaylists.isNotEmpty()) {
+        item(key = "overview-search-saved-playlists-title") {
+            LibrarySearchSectionTitle(saved.section, savedPlaylists.size, LibraryCategory.Playlists, OverviewSearchCollectionLimit, actions)
+        }
+        items(savedPlaylists.take(OverviewSearchCollectionLimit), key = { "overview-search-saved-${it.key}" }) { playlist ->
+            LibrarySavedPlaylistRow(playlist, saved.remove, onOpen = { saved.onOpen(playlist) }, onRemove = { saved.onRemove(playlist) })
         }
     }
     if (albums.isNotEmpty()) {

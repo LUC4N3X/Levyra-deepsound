@@ -236,7 +236,7 @@ private fun buildAtelierLibrarySnapshot(
     val entries: List<AtelierLibraryEntry> = when (tab) {
         AtelierLibraryTab.Playlists -> {
             val scoped = if (hiddenOnly) playlists.hiddenInLibrary() else playlists.visibleInLibrary()
-            val saved = if (hiddenOnly || tagIds.isNotEmpty()) emptyList() else filterSavedPlaylists(savedPlaylists, query)
+            val saved = if (hiddenOnly || tagIds.isNotEmpty()) emptyList() else filterSavedPlaylists(savedPlaylists, query, sort, direction)
             filterLibraryPlaylists(scoped.filterByTagIds(tagIds), query, sort, direction)
                 .map { AtelierLibraryEntry.PlaylistEntry(it, strings.formatTrackCount(it.playableTrackCount)) } +
                 saved.map { AtelierLibraryEntry.SavedPlaylistEntry(it) }
