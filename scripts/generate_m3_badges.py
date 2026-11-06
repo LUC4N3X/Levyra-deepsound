@@ -223,18 +223,31 @@ def main():
         with open(os.path.join(assets_dir, f_name), "w", encoding="utf-8", newline="\n") as f:
             f.write(badge_af)
 
-    # 10. Obtainium (Cyan #0284C7)
+    # 10. Obtainium
     obtainium_img = extract_base64_image(os.path.join(assets_dir, "levyra-obtainium-download.svg"))
-    obtainium_icon = f'<image x="17" y="15" width="26" height="26" preserveAspectRatio="xMidYMid meet" href="{obtainium_img}"/>'
-    badge_obtainium = make_secondary_card("INSTALL WITH", "Obtainium", obtainium_icon, "#0284C7", SHAPE_10, brand_size="16")
-    for f_name in [
-        "levyra-obtainium-download.svg",
-        "levyra-obtainium-download-desktop184.svg",
-        "levyra-obtainium-download-light.svg",
-        "levyra-obtainium-download-desktop184-light.svg"
-    ]:
-        with open(os.path.join(assets_dir, f_name), "w", encoding="utf-8", newline="\n") as f:
-            f.write(badge_obtainium)
+    for mobile in (False, True):
+        width, height = (126, 40) if mobile else (185, 56)
+        shape = "M 20 .8 C 9 .8 .8 9 .8 20 V 33 C .8 37 3 39.2 7 39.2 H 105 C 117 39.2 125.2 31 125.2 20 V 8 C 125.2 4 122 .8 118 .8 Z" if mobile else "M 28 .8 C 12 .8 .8 12 .8 28 V 47 C .8 52 4 55.2 9 55.2 H 158 C 173 55.2 184.2 43 184.2 28 V 10 C 184.2 4 181 .8 175 .8 Z"
+        overlap = "M 0 0 H 24 C 44 8 49 20 39 31 C 35 37 24 40 0 40 Z" if mobile else "M 0 0 H 38 C 64 10 68 29 60 47 C 54 54 37 56 0 56 Z"
+        x, y, icon_size = (7, 6, 29) if mobile else (10, 8, 40)
+        text_x, text_y, font_size = (44, 26, 13.9) if mobile else (66, 36, 18.3)
+        for light in (False, True):
+            foreground = "#FFFFFF" if light else "#334466"
+            background = "#505C88" if light else "#D5DAEE"
+            accent = "#7784A8" if light else "#B8C4E4"
+            opacity = ".27" if light else ".55"
+            badge_obtainium = f'''<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img" aria-label="Install and update Levyra with Obtainium">
+<title>Install and update Levyra with Obtainium</title>
+<path d="{shape}" fill="{background}"/>
+<clipPath id="badge"><path d="{shape}"/></clipPath>
+<path d="{overlap}" clip-path="url(#badge)" fill="{accent}" opacity="{opacity}"/>
+<image x="{x}" y="{y}" width="{icon_size}" height="{icon_size}" preserveAspectRatio="xMidYMid meet" href="{obtainium_img}"/>
+<text x="{text_x}" y="{text_y}" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="{font_size}" font-weight="690" letter-spacing="-.35" fill="{foreground}">Obtainium</text>
+</svg>
+'''
+            name = "levyra-obtainium-download" + ("-mobile" if mobile else "") + ("-light" if light else "") + ".svg"
+            with open(os.path.join(assets_dir, name), "w", encoding="utf-8", newline="\\n") as f:
+                f.write(badge_obtainium)
 
     # 11. Appteka (Crimson #E11D48)
     appteka_img = extract_base64_image(os.path.join(assets_dir, "levyra-appteka.svg"))
