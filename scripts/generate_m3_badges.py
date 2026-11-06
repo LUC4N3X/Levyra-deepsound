@@ -246,7 +246,7 @@ def main():
 </svg>
 '''
             name = "levyra-obtainium-download" + ("-mobile" if mobile else "") + ("-light" if light else "") + ".svg"
-            with open(os.path.join(assets_dir, name), "w", encoding="utf-8", newline="\\n") as f:
+            with open(os.path.join(assets_dir, name), "w", encoding="utf-8", newline="\n") as f:
                 f.write(badge_obtainium)
 
     # 11. Appteka (Crimson #E11D48)
