@@ -167,18 +167,31 @@ def main():
         with open(os.path.join(assets_dir, f_name), "w", encoding="utf-8", newline="\n") as f:
             f.write(badge_windows)
 
-    # 5. IzzyOnDroid (Royal Blue #2563EB)
+    # 5. IzzyOnDroid
     izzy_img = extract_base64_image(os.path.join(assets_dir, "levyra-izzyondroid.svg"))
-    izzy_icon = f'<image x="17" y="15" width="26" height="26" preserveAspectRatio="xMidYMid meet" href="{izzy_img}"/>'
-    badge_izzy = make_secondary_card("GET IT ON", "IzzyOnDroid", izzy_icon, "#2563EB", SHAPE_12, brand_size="15")
-    for f_name in [
-        "levyra-izzyondroid.svg",
-        "levyra-izzyondroid-desktop184.svg",
-        "levyra-izzyondroid-light.svg",
-        "levyra-izzyondroid-desktop184-light.svg"
-    ]:
-        with open(os.path.join(assets_dir, f_name), "w", encoding="utf-8", newline="\n") as f:
-            f.write(badge_izzy)
+    for mobile in (False, True):
+        width, height = (126, 40) if mobile else (185, 56)
+        shape = "M 19 .8 C 9 .8 .8 9 .8 19 V 33 C .8 37 3 39.2 7 39.2 H 105 C 117 39.2 125.2 31 125.2 20 V 8 C 125.2 4 122 .8 118 .8 Z" if mobile else "M 26 .8 C 12 .8 .8 12 .8 26 V 46 C .8 51 5 55.2 10 55.2 H 157 C 172 55.2 184.2 43 184.2 28 V 10 C 184.2 4 181 .8 175 .8 Z"
+        overlap = "M 0 0 H 24 C 42 8 48 20 38 31 C 34 37 24 40 0 40 Z" if mobile else "M 0 0 H 38 C 64 10 68 29 60 47 C 54 54 37 56 0 56 Z"
+        x, y, icon_size = (7, 6, 29) if mobile else (9, 8, 40)
+        text_x, text_y, font_size = (43, 26, 12.9) if mobile else (62, 36, 16.3)
+        for light in (False, True):
+            foreground = "#FFFFFF" if light else "#614E2D"
+            background = "#80663D" if light else "#F1E2B8"
+            accent = "#A88C5E" if light else "#DCCB9D"
+            opacity = ".27" if light else ".55"
+            badge_izzy = f'''<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img" aria-label="Get Levyra on IzzyOnDroid">
+<title>Get Levyra on IzzyOnDroid</title>
+<path d="{shape}" fill="{background}"/>
+<clipPath id="badge"><path d="{shape}"/></clipPath>
+<path d="{overlap}" clip-path="url(#badge)" fill="{accent}" opacity="{opacity}"/>
+<image x="{x}" y="{y}" width="{icon_size}" height="{icon_size}" preserveAspectRatio="xMidYMid meet" href="{izzy_img}"/>
+<text x="{text_x}" y="{text_y}" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="{font_size}" font-weight="690" letter-spacing="-.35" fill="{foreground}">IzzyOnDroid</text>
+</svg>
+'''
+            name = "levyra-izzyondroid" + ("-mobile" if mobile else "") + ("-light" if light else "") + ".svg"
+            with open(os.path.join(assets_dir, name), "w", encoding="utf-8", newline="\n") as f:
+                f.write(badge_izzy)
 
     # 6. SourceForge (Flame Orange #EA580C)
     sf_icon = '''<g transform="translate(17.5 16.5) scale(1.05)"><path fill="#FFFFFF" d="M9.998 1.4648c-.088 0-.1761.0395-.2402.1036L.1016 11.2148c-.1361.1281-.1361.3444 0 .4805l9.1523 9.1348c.064.072.1522.1054.2402.1054.0881 0 .1743-.0414.2383-.1054l1.3692-1.3848c.136-.128.136-.3444 0-.4805l-7.172-7.1738a.4682.4682 0 010-.664l9.0782-9.0782c.1201-.12.1123-.2728.0723-.377-.04-.096-.1444-.207-.3125-.207H9.998zm4.5313 1.5918c-.088 0-.1762.0415-.2402.1055l-1.3926 1.3926c-.1361.128-.1361.3444 0 .4805l7.1719 7.1816c.088.088.1367.208.1367.3281 0 .1201-.0487.24-.1367.3281l-9.0782 9.0782c-.12.12-.1123.2728-.0722.377.04.096.1443.207.3125.207v-.0079H14c.088 0 .1762-.0316.2402-.0957l9.6563-9.6543c.072-.064.1035-.1521.1035-.2402 0-.088-.0395-.1762-.1035-.2402l-9.127-9.1348c-.064-.072-.1521-.1055-.2402-.1055zM11.4336 6.213c-.1125.005-.2164.1007-.211.2383.1442 2.2176-2.6425 2.7635-2.6425 6.246v.0235c0 2.1216 1.6026 3.8418 3.58 3.8418 1.9775 0 3.5782-1.7202 3.5782-3.8418v-.0234c0-.9848-.3679-1.9225-.7442-2.627-.072-.136-.2896-.087-.2656.041.6725 2.9943-1.0156 4.8507-1.0156 2.545 0-3.931-1.3943-5.7162-2.1309-6.3887a.2072.2072 0 00-.1484-.0547Z"/></g>'''
