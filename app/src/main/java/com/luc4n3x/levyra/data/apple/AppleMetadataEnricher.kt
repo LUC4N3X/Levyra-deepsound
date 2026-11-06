@@ -310,6 +310,7 @@ class AppleMetadataEnricher(private val context: Context) {
             override fun onResponse(call: Call, response: Response) {
                 response.use {
                     val parsed = if (!response.isSuccessful) {
+                        tokenProvider.reportRejected(request.header("Authorization")?.removePrefix("Bearer "), response.code)
                         null
                     } else {
                         runCatching { JSONObject(response.body.string()) }.getOrNull()

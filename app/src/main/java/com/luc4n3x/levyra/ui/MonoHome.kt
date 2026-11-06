@@ -942,6 +942,17 @@ private fun LazyListScope.monoHomeFeed(
             MonoSection(copy.mixedForYou, copy.rotationOverline) { kit.CardRail(feed.rotation, MonoDesign.cardWide) }
         }
     }
+    if (feed.newAlbums.isNotEmpty()) {
+        item(key = "mono-new-releases", contentType = "mono-rail") {
+            MonoSection(strings.newReleases, copy.freshOverline) { MonoReleaseRail(feed.newAlbums, actions.openAlbum) }
+        }
+    } else if (feed.newTracks.isNotEmpty()) {
+        item(key = "mono-new-release-tracks", contentType = "mono-rail") {
+            MonoSection(strings.newReleases, copy.freshOverline) {
+                MonoTrackRail(feed.newTracks, MonoDesign.card, currentId, strings.songOptions, { actions.playFrom(feed.newTracks, it) }, actions.onTrackActions)
+            }
+        }
+    }
     if (feed.artists.isNotEmpty()) {
         item(key = "mono-artists", contentType = "mono-rail") {
             MonoSection(strings.trendingArtists, copy.trendingOverline) { MonoArtistRail(feed.artists, actions.openArtist) }

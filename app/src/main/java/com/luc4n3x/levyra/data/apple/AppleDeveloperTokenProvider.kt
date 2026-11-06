@@ -42,8 +42,19 @@ class AppleDeveloperTokenProvider private constructor(context: Context) {
         .build()
 
     private val tokenMutex = Mutex()
-    private var cachedToken: String? = null
-    private var tokenExpiresAt: Long = 0L
+    @Volatile private var cachedToken: String? = null
+    @Volatile private var tokenExpiresAt: Long = 0L
+    @Volatile private var lastMintedToken: String? = null
+    @Volatile private var mintBlockedUntil: Long = 0L
+
+    fun reportRejected(token: String?, httpCode: Int) {
+        if (token.isNullOrBlank() || httpCode !in TOKEN_REJECTED_CODES) return
+        if (cachedToken == token) {
+            cachedToken = null
+            tokenExpiresAt = 0L
+        }
+        if (lastMintedToken == token) mintBlockedUntil = System.currentTimeMillis() + MINTED_TOKEN_CACHE_MS
+    }
 
     suspend fun getDeveloperToken(): String? = tokenMutex.withLock {
         val now = System.currentTimeMillis()
@@ -69,7 +80,10 @@ class AppleDeveloperTokenProvider private constructor(context: Context) {
     }
 
     private suspend fun discoverDeveloperToken(now: Long): Pair<String, Long>? {
-        mintedDeveloperToken(now)?.let { return it }
+        if (now >= mintBlockedUntil) mintedDeveloperToken(now)?.let { minted ->
+            lastMintedToken = minted.first
+            return minted
+        }
         val html = requestText(APPLE_BROWSE_URL) ?: return null
         val scripts = extractScriptUrls(html).take(MAX_TOKEN_SCRIPT_CANDIDATES)
         for (script in scripts) {
@@ -232,6 +246,7 @@ class AppleDeveloperTokenProvider private constructor(context: Context) {
         private const val APPLE_BROWSE_URL = "https://music.apple.com/us/browse"
         private const val TOKEN_MINT_URL = "https://am-mint.binimum.org/token"
         private const val MINTED_TOKEN_CACHE_MS = 30L * 60L * 1000L
+        private val TOKEN_REJECTED_CODES = setOf(401, 403)
         private val MINTED_TOKEN_REGEX = Regex(""""(?:dev_token|token)"\s*:\s*"(ey[a-zA-Z0-9_-]+\.ey[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+)"""")
 
         internal fun mintedTokenFrom(body: String): String? = MINTED_TOKEN_REGEX.find(body)?.groupValues?.get(1)

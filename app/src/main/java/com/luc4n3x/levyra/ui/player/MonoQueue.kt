@@ -252,6 +252,7 @@ private fun MonoNowPlayingCard(track: Track, playing: Boolean, onActions: () -> 
     val strings = LocalLevyraStrings.current
     val animated = LocalAnimationsEnabled.current
     val clock = rememberMonoClock(playing && animated)
+    val wavePath = remember { androidx.compose.ui.graphics.Path() }
     val amplitude = animateFloatAsState(if (playing) 1f else 0.08f, if (animated) tween(520) else snap(), label = "mono-queue-wave")
     Column(
         Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(top = 8.dp).monoPanel(MonoDesign.panelShape, MonoDesign.raised)
@@ -270,7 +271,7 @@ private fun MonoNowPlayingCard(track: Track, playing: Boolean, onActions: () -> 
             MonoIconTarget(Icons.Rounded.MoreVert, strings.more, MonoDesign.textSecondary, onActions)
         }
         Canvas(Modifier.fillMaxWidth().padding(top = 10.dp, end = 12.dp).height(22.dp)) {
-            drawMonoWave(MonoDesign.text, clock.floatValue * 2f * PI.toFloat() / 2.4f, amplitude.value, cycles = 7f, strokeWidth = 1.6.dp)
+            drawMonoWave(MonoDesign.text, clock.floatValue * 2f * PI.toFloat() / 2.4f, amplitude.value, cycles = 7f, strokeWidth = 1.6.dp, path = wavePath)
         }
     }
 }

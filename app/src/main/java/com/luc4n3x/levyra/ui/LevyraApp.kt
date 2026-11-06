@@ -7622,12 +7622,6 @@ private fun LyricsOverlay(
                 { showLyricsOptions = true }, onClose, selectionMode, selectedRange, ::onLyricLineLongClick,
                 if (canShareLyrics) ::toggleShareMode else null
             )
-        } else if (com.luc4n3x.levyra.ui.theme.LevyraIsMono && track != null) {
-            MonoLyricsScreen(
-                state, track, visibleLyrics, lyricsPositionProvider, lyricsAnimationsEnabled, ::onLyricLineClick, onTogglePlay,
-                { showLyricsOptions = true }, onClose, selectionMode, selectedRange, ::onLyricLineLongClick,
-                if (canShareLyrics) ::toggleShareMode else null
-            )
         } else if (LevyraIsQobuz && track != null) {
             QobuzLyricsScreen(state, track, visibleLyrics, lyricsPositionProvider, lyricsAnimationsEnabled, ::onLyricLineClick, onTogglePlay, onClose)
         } else if (LevyraIsSpotify && studioSettings.spotifyLyricsApplies() && track != null) {
