@@ -126,6 +126,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
 import com.luc4n3x.levyra.viewmodel.LibraryViewModel
+import com.luc4n3x.levyra.viewmodel.libraryBrowseInput
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
@@ -300,25 +301,21 @@ internal fun LevyraLibraryScreen(
         com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic,
         com.luc4n3x.levyra.ui.theme.LevyraIsAtelier || com.luc4n3x.levyra.ui.theme.LevyraIsQobuz || com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic
     )
-    val catalog = remember(
+    val preparedBrowse by viewModel.browse.collectAsStateWithLifecycle()
+    val browse = preparedBrowse ?: remember(
         state.favorites,
         state.favoriteTimestamps,
         state.playlists,
         state.downloads,
         state.recentListens,
         state.mostPlayedTracks,
-        state.followedArtists
+        state.followedArtists,
+        state.interfaceSettings.librarySort,
+        state.interfaceSettings.librarySortDirection
     ) {
-        buildLibraryCatalog(
-            favorites = state.favorites,
-            playlists = state.playlists,
-            downloads = state.downloads,
-            recentListens = state.recentListens,
-            followedArtists = state.followedArtists,
-            mostPlayedTracks = state.mostPlayedTracks,
-            favoriteTimestamps = state.favoriteTimestamps
-        )
+        libraryBrowseInput(state).buildSnapshot()
     }
+    val catalog = browse.catalog
 
     var qobuzTools by rememberSaveable { mutableStateOf(false) }
     var atelierOnShelf by rememberSaveable { mutableStateOf(true) }
@@ -423,20 +420,30 @@ internal fun LevyraLibraryScreen(
     val visiblePlaylists = remember(scopedPlaylists, query, sort, direction) {
         filterLibraryPlaylists(scopedPlaylists, query, sort, direction)
     }
-    val visibleAlbums = remember(catalog.albums, query, sort, direction) {
-        filterLibraryAlbums(catalog.albums, query, sort, direction)
+    val savedPlaylists by viewModel.savedPlaylists.collectAsStateWithLifecycle()
+    val visibleSavedPlaylists = remember(savedPlaylists, query, showHiddenPlaylists, selectedTagIds, sort, direction) {
+        if (showHiddenPlaylists || selectedTagIds.isNotEmpty()) emptyList() else filterSavedPlaylists(savedPlaylists, query, sort, direction)
     }
-    val visibleArtists = remember(catalog.artists, query, sort, direction) {
-        filterLibraryArtists(catalog.artists, query, sort, direction)
+    val savedPlaylistCopy = remember(strings.code) { com.luc4n3x.levyra.ui.i18n.savedPlaylistCopy(strings.code) }
+    val presorted = browse.presortedFor(query, sort, direction)
+    val visibleAlbums = remember(browse, query, sort, direction) {
+        if (presorted) browse.albums else filterLibraryAlbums(catalog.albums, query, sort, direction)
     }
-    val visibleTracks = remember(catalog.tracks, query, sort, direction, catalog.trackRecency) {
-        filterLibraryTracks(
-            tracks = catalog.tracks,
-            query = query,
-            sort = sort,
-            direction = direction,
-            recencyProvider = catalog::recencyOf
-        )
+    val visibleArtists = remember(browse, query, sort, direction) {
+        if (presorted) browse.artists else filterLibraryArtists(catalog.artists, query, sort, direction)
+    }
+    val visibleTracks = remember(browse, query, sort, direction) {
+        if (presorted) {
+            browse.tracks
+        } else {
+            filterLibraryTracks(
+                tracks = catalog.tracks,
+                query = query,
+                sort = sort,
+                direction = direction,
+                recencyProvider = catalog::recencyOf
+            )
+        }
     }
     var localTabName by rememberSaveable { mutableStateOf(LocalLibraryTab.Songs.name) }
     val localTab = LocalLibraryTab.entries.firstOrNull { it.name == localTabName } ?: LocalLibraryTab.Songs
@@ -598,8 +605,8 @@ internal fun LevyraLibraryScreen(
         }
     }
 
-    val visibleOffline = remember(catalog.offlineItems, query, sort, direction) {
-        filterLibraryOfflineItems(catalog.offlineItems, query, sort, direction)
+    val visibleOffline = remember(browse, query, sort, direction) {
+        if (presorted) browse.offlineItems else filterLibraryOfflineItems(catalog.offlineItems, query, sort, direction)
     }
 
     val selectedTracks = remember(category, selectedKeys, catalog, state.playlists) {
@@ -689,11 +696,11 @@ internal fun LevyraLibraryScreen(
     val spotifyFilter = SpotifyLibraryFilter.entries.firstOrNull { it.name == spotifyFilterName }
     val spotifySort = SpotifyLibrarySort.entries.firstOrNull { it.name == spotifySortName } ?: SpotifyLibrarySort.Recents
     val spotifyItems = if (spotifyOverview) {
-        remember(state.favorites, state.downloads.size, visiblePlaylists, catalog, state.downloadedTrackIds, state.userName, state.recentListens, strings, spotifyFilter, spotifySort) {
+        remember(state.favorites, state.downloads.size, visiblePlaylists, visibleSavedPlaylists, catalog, state.downloadedTrackIds, state.userName, state.recentListens, strings, spotifyFilter, spotifySort) {
             spotifyLibraryArrange(
                 buildSpotifyLibraryItems(
                     state.favorites, state.downloads.size, visiblePlaylists, catalog, state.downloadedTrackIds,
-                    state.userName, strings.favorites, strings.downloads, state.recentListens
+                    state.userName, strings.favorites, strings.downloads, state.recentListens, visibleSavedPlaylists
                 ),
                 spotifyFilter,
                 spotifySort
@@ -718,6 +725,7 @@ internal fun LevyraLibraryScreen(
                     SpotifyLibraryKind.Liked -> "${spotifyCopy.playlist} • ${strings.formatTrackCount(entry.count)}"
                     SpotifyLibraryKind.Downloads -> strings.formatTrackCount(entry.count)
                     SpotifyLibraryKind.Playlist -> "${spotifyCopy.playlist} • ${entry.creator.ifBlank { strings.formatTrackCount(entry.count) }}"
+                    SpotifyLibraryKind.SavedPlaylist -> listOf(spotifyCopy.playlist, entry.creator).filter(String::isNotBlank).joinToString(" • ")
                     SpotifyLibraryKind.Album -> "${strings.albumPlain} • ${entry.creator}"
                     SpotifyLibraryKind.Artist -> strings.artistLabel
                 }
@@ -744,6 +752,7 @@ internal fun LevyraLibraryScreen(
                 SpotifyLibraryKind.Liked -> openSmartCollectionName = SMART_COLLECTION_FAVORITES
                 SpotifyLibraryKind.Downloads -> switchCategory(LibraryCategory.Offline)
                 SpotifyLibraryKind.Playlist -> viewModel.openPlaylist(entry.id)
+                SpotifyLibraryKind.SavedPlaylist -> savedPlaylists.firstOrNull { it.key == entry.id }?.let(viewModel::openSavedPlaylist)
                 SpotifyLibraryKind.Album -> catalog.albums.firstOrNull { it.key == entry.id }?.let { viewModel.openAlbum(it.toAlbumHit()) }
                 SpotifyLibraryKind.Artist -> catalog.artists.firstOrNull { it.key == entry.id }?.let { viewModel.openArtistReference(it.name, it.browseId, it.artworkUrl) }
             }
@@ -932,7 +941,14 @@ internal fun LevyraLibraryScreen(
                         albums = visibleAlbums,
                         artists = visibleArtists,
                         strings = strings,
-                        actions = overviewSearchActions
+                        actions = overviewSearchActions,
+                        savedPlaylists = visibleSavedPlaylists,
+                        saved = LibrarySavedPlaylistActions(
+                            section = savedPlaylistCopy.section,
+                            remove = savedPlaylistCopy.remove,
+                            onOpen = viewModel::openSavedPlaylist,
+                            onRemove = { viewModel.removeSavedPlaylist(it.key) }
+                        )
                     )
                 } else if (spotifyOverview) {
                     spotifyLibraryOverview(
@@ -973,7 +989,9 @@ internal fun LevyraLibraryScreen(
                                 onPlaylistMore = { viewModel.openPlaylistStudio(it.id) },
                                 onOpenAlbum = { viewModel.openAlbum(it.toAlbumHit()) },
                                 onOpenArtist = { viewModel.openArtistReference(it.name, it.browseId, it.artworkUrl) }
-                            )
+                            ),
+                            savedPlaylists = visibleSavedPlaylists,
+                            onOpenSavedPlaylist = viewModel::openSavedPlaylist
                         )
                     }
                 } else {
@@ -1101,7 +1119,7 @@ internal fun LevyraLibraryScreen(
                             }
                         }
                     }
-                    if (visiblePlaylists.isEmpty()) {
+                    if (visiblePlaylists.isEmpty() && visibleSavedPlaylists.isEmpty()) {
                         item {
                             when {
                                 query.isNotBlank() -> LibraryEmpty(Icons.Rounded.Search, strings.emptySearchPrompt)
@@ -1146,6 +1164,19 @@ internal fun LevyraLibraryScreen(
                                     else viewModel.openPlaylist(playlist.id)
                                 },
                                 onSelect = { playlist -> selectedKeys = selectedKeys.toggle("playlist:${playlist.id}") }
+                            )
+                        }
+                    }
+                    if (visibleSavedPlaylists.isNotEmpty() && !selectionActive) {
+                        item(key = "saved-playlists-title") {
+                            LibrarySectionTitle(savedPlaylistCopy.section, "${visibleSavedPlaylists.size} ${strings.playlistsPlain}")
+                        }
+                        items(visibleSavedPlaylists, key = { "saved-playlist-${it.key}" }) { saved ->
+                            LibrarySavedPlaylistRow(
+                                saved = saved,
+                                removeLabel = savedPlaylistCopy.remove,
+                                onOpen = { viewModel.openSavedPlaylist(saved) },
+                                onRemove = { viewModel.removeSavedPlaylist(saved.key) }
                             )
                         }
                     }

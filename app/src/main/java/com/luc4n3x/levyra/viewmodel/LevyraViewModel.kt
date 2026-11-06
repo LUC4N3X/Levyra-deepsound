@@ -142,6 +142,8 @@ import com.luc4n3x.levyra.domain.BatchDownload
 import com.luc4n3x.levyra.domain.BatchDownloadKind
 import com.luc4n3x.levyra.domain.PlaylistHit
 import com.luc4n3x.levyra.domain.PlaylistHitPreview
+import com.luc4n3x.levyra.domain.canBeSaved
+import com.luc4n3x.levyra.domain.savedPlaylistKey
 import com.luc4n3x.levyra.domain.resolvedWith
 import com.luc4n3x.levyra.domain.nextInCycle
 import com.luc4n3x.levyra.domain.batchDownloadKey
@@ -412,7 +414,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
@@ -1133,6 +1138,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val recommendationFeedbackStore =
         com.luc4n3x.levyra.data.RecommendationFeedbackStore(application.applicationContext)
     private val playlistStore = com.luc4n3x.levyra.data.PlaylistStore(application.applicationContext)
+    private val savedPlaylistsStore = com.luc4n3x.levyra.data.SavedPlaylistsStore(database.savedPlaylistsDao())
+    val savedPlaylists: StateFlow<List<com.luc4n3x.levyra.domain.SavedPlaylist>> = savedPlaylistsStore.observe()
+        .catch { error -> Timber.w(error, "Saved playlists load failed"); emit(emptyList()) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val personalCollections = PersonalCollectionsController(application.applicationContext, viewModelScope)
     val playlistStudio = PlaylistStudioController(
         scope = viewModelScope,
@@ -8804,6 +8813,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun openAlbumFromPlayer(album: AlbumHit) {
+        restorePlayerReturnDetail()
+        openAlbum(album)
+        if (_state.value.selectedTab == LevyraTab.Player) {
+            moveToTab(previousTab(LevyraTab.Player), rememberCurrent = false)
+        }
+    }
+
     fun openArtistFromAlbum() {
         val album = _state.value.albumDetail?.album ?: return
         openArtistReference(name = album.artist, browseId = album.artistBrowseId)
@@ -9390,7 +9407,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         playerReturnDetail = null
         val playlistId = playlist.playlistId.ifBlank { return }
         playlistHitJob?.cancel()
-        _state.update { it.copy(playlistHitPreview = PlaylistHitPreview(hit = playlist)) }
+        _state.update { it.copy(playlistHitPreview = PlaylistHitPreview(hit = playlist, appleStorefront = storefront)) }
         playlistHitJob = viewModelScope.launch {
             val collection = runCatchingPreservingCancellation {
                 com.luc4n3x.levyra.data.apple.AppleMusicEditorialRepository.get(getApplication<Application>())
@@ -9406,6 +9423,29 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 if (resolved == null) current else current.copy(playlistHitPreview = resolved)
             }
         }
+    }
+
+    fun toggleSaveOpenPlaylistHit() {
+        val preview = _state.value.playlistHitPreview ?: return
+        val key = preview.savedPlaylistKey
+        val alreadySaved = savedPlaylists.value.any { it.key == key }
+        if (!alreadySaved && !preview.canBeSaved) return
+        viewModelScope.launch {
+            runCatchingPreservingCancellation {
+                savedPlaylistsStore.toggle(com.luc4n3x.levyra.domain.SavedPlaylist(preview.hit, preview.appleStorefront))
+            }.onFailure { Timber.w(it, "Saved playlist toggle failed") }
+        }
+    }
+
+    fun removeSavedPlaylist(key: String) {
+        viewModelScope.launch {
+            runCatchingPreservingCancellation { savedPlaylistsStore.remove(key) }
+                .onFailure { Timber.w(it, "Saved playlist removal failed") }
+        }
+    }
+
+    fun openSavedPlaylist(saved: com.luc4n3x.levyra.domain.SavedPlaylist) {
+        if (saved.appleStorefront.isBlank()) openPlaylistHit(saved.hit) else openApplePlaylist(saved.hit, saved.appleStorefront)
     }
 
     fun closePlaylistHit() {

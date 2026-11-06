@@ -63,6 +63,9 @@ import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog
 import com.luc4n3x.levyra.ui.i18n.radioLibraryCopy
+import com.luc4n3x.levyra.ui.i18n.spotifyLibraryCopy
+import androidx.compose.material.icons.automirrored.rounded.ViewList
+import androidx.compose.material.icons.rounded.GridView
 import com.luc4n3x.levyra.ui.theme.AppleMusicDesign
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
@@ -133,9 +136,7 @@ internal fun AppleMusicRadioScreen(viewModel: LevyraViewModel, state: LevyraUiSt
         if (popular.isNotEmpty()) item(key = "apple-radio-popular") {
             AppleRadioRail(if (country.isBlank()) radioStrings.worldwide else radioStrings.popularIn(country), popular, play)
         }
-        if (radioState.favorites.isNotEmpty()) item(key = "apple-radio-favorites") {
-            AppleRadioRail(libraryCopy.favorites, radioState.favorites.take(AppleRadioRailLimit), play)
-        }
+        appleRadioFavorites(radioState, libraryCopy.favorites, state.languageCode, radio, play)
     }
     if (countryPickerOpen) {
         RadioDirectoryDialog(
@@ -151,6 +152,37 @@ internal fun AppleMusicRadioScreen(viewModel: LevyraViewModel, state: LevyraUiSt
                 countryPickerOpen = false
             }
         )
+    }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.appleRadioFavorites(
+    radioState: com.luc4n3x.levyra.feature.radio.LiveRadioUiState,
+    title: String,
+    languageCode: String,
+    radio: LiveRadioViewModel,
+    play: (RadioStation) -> Unit
+) {
+    if (radioState.favorites.isEmpty()) return
+    val listMode = radioState.stationListMode
+    item(key = "apple-radio-favorites-title") {
+        val layoutCopy = remember(languageCode) { spotifyLibraryCopy(languageCode) }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f)) { AppleRadioSectionTitle(title) }
+            IconButton(onClick = { radio.setStationListMode(!listMode) }, modifier = Modifier.padding(end = 8.dp)) {
+                Icon(
+                    if (listMode) Icons.Rounded.GridView else Icons.AutoMirrored.Rounded.ViewList,
+                    contentDescription = if (listMode) layoutCopy.gridView else layoutCopy.listView,
+                    tint = AppleMusicDesign.accent
+                )
+            }
+        }
+    }
+    if (listMode) {
+        items(radioState.favorites, key = { "apple-radio-favorite-row-${it.uuid}" }) { station ->
+            AppleRadioResultRow(station) { play(station) }
+        }
+    } else {
+        item(key = "apple-radio-favorites") { AppleRadioRail(null, radioState.favorites, play) }
     }
 }
 
@@ -258,7 +290,7 @@ private fun AppleRadioResultRow(station: RadioStation, onClick: () -> Unit) {
             RadioArtwork(station, 52.dp, RoundedCornerShape(AppleMusicDesign.cornerS))
         }
         Column(Modifier.weight(1f)) {
-            Text(station.name, color = AppleMusicDesign.label, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(station.name, color = AppleMusicDesign.label, style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(listOf(station.country, station.tags.firstOrNull().orEmpty()).filter(String::isNotBlank).joinToString(" · "), color = AppleMusicDesign.secondaryLabel, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
@@ -312,14 +344,14 @@ private fun AppleRadioLiveCard(station: RadioStation, liveLabel: String, onClick
 }
 
 @Composable
-private fun AppleRadioRail(title: String, stations: List<RadioStation>, onPlay: (RadioStation) -> Unit) {
+private fun AppleRadioRail(title: String?, stations: List<RadioStation>, onPlay: (RadioStation) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        AppleRadioSectionTitle(title)
+        title?.let { AppleRadioSectionTitle(it) }
         LazyRow(contentPadding = PaddingValues(horizontal = AppleMusicDesign.gutter), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             items(stations, key = { "rail-$title-${it.uuid}" }) { station ->
                 Column(Modifier.width(AppleRadioRailWidth), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     AppleRadioLogoTile(station, Modifier.fillMaxWidth()) { onPlay(station) }
-                    Text(station.name, color = AppleMusicDesign.label, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(station.name, color = AppleMusicDesign.label, style = MaterialTheme.typography.bodyMedium, maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis)
                     Text(station.country, color = AppleMusicDesign.secondaryLabel, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }

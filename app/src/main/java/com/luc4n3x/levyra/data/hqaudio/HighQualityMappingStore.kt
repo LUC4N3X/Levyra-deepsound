@@ -166,7 +166,7 @@ internal object AlternativeTrackFingerprint {
         val title = AlternativeTrackText.title(query.title)
         return sha256(
             listOf(
-                "query-v1",
+                "query-v2",
                 title.core,
                 title.versionSignature.sorted().joinToString(","),
                 AlternativeTrackText.artistCredit(query.artist).primary,

@@ -72,6 +72,69 @@ internal data class LibraryCatalog(
     }
 }
 
+internal fun filterSavedPlaylists(
+    playlists: List<com.luc4n3x.levyra.domain.SavedPlaylist>,
+    query: String,
+    sort: LibrarySort = LibrarySort.Recent,
+    direction: LibrarySortDirection = sort.defaultDirection
+): List<com.luc4n3x.levyra.domain.SavedPlaylist> {
+    val normalizedQuery = normalizeLibraryText(query)
+    val filtered = if (normalizedQuery.isBlank()) playlists else playlists.filter { saved ->
+        normalizeLibraryText(saved.hit.title).contains(normalizedQuery) ||
+            normalizeLibraryText(saved.hit.author).contains(normalizedQuery)
+    }
+    val ascending = when (sort) {
+        LibrarySort.Recent -> filtered.sortedBy { it.savedAt }
+        LibrarySort.Artist -> filtered.sortedWith(compareBy({ normalizeLibraryText(it.hit.author) }, { normalizeLibraryText(it.hit.title) }))
+        else -> filtered.sortedBy { normalizeLibraryText(it.hit.title) }
+    }
+    return if (direction == LibrarySortDirection.Descending) ascending.reversed() else ascending
+}
+
+internal data class LibraryBrowseInput(
+    val favorites: List<Track>,
+    val favoriteTimestamps: Map<String, Long>,
+    val playlists: List<Playlist>,
+    val downloads: List<DownloadedTrack>,
+    val recentListens: List<Track>,
+    val mostPlayedTracks: List<Track>,
+    val followedArtists: List<FollowedArtist>,
+    val sort: LibrarySort,
+    val direction: LibrarySortDirection
+)
+
+internal class LibraryBrowseSnapshot(
+    val input: LibraryBrowseInput,
+    val catalog: LibraryCatalog,
+    val tracks: List<Track>,
+    val albums: List<LibraryAlbum>,
+    val artists: List<LibraryArtist>,
+    val offlineItems: List<LibraryOfflineItem>
+) {
+    fun presortedFor(query: String, sort: LibrarySort, direction: LibrarySortDirection): Boolean =
+        query.isBlank() && input.sort == sort && input.direction == direction
+}
+
+internal fun LibraryBrowseInput.buildSnapshot(): LibraryBrowseSnapshot {
+    val catalog = buildLibraryCatalog(
+        favorites = favorites,
+        playlists = playlists,
+        downloads = downloads,
+        recentListens = recentListens,
+        followedArtists = followedArtists,
+        mostPlayedTracks = mostPlayedTracks,
+        favoriteTimestamps = favoriteTimestamps
+    )
+    return LibraryBrowseSnapshot(
+        input = this,
+        catalog = catalog,
+        tracks = filterLibraryTracks(catalog.tracks, "", sort, direction, catalog::recencyOf),
+        albums = filterLibraryAlbums(catalog.albums, "", sort, direction),
+        artists = filterLibraryArtists(catalog.artists, "", sort, direction),
+        offlineItems = filterLibraryOfflineItems(catalog.offlineItems, "", sort, direction)
+    )
+}
+
 internal fun buildLibraryCatalog(
     favorites: List<Track>,
     playlists: List<Playlist>,

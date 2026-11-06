@@ -672,6 +672,7 @@ import com.luc4n3x.levyra.domain.DownloadOwnership
 import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.PlaylistHit
+import com.luc4n3x.levyra.domain.savedPlaylistKey
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SearchAlbumKind
 import com.luc4n3x.levyra.domain.SearchResults
@@ -1934,6 +1935,8 @@ fun LevyraApp(
     val screenViewModelFactory = remember(viewModel, youtubeMusicViewModel) {
         LevyraScreenViewModelFactory(viewModel, youtubeMusicViewModel.homeSource)
     }
+    val libraryViewModel: LibraryViewModel = composeViewModel(key = "levyra-library", factory = screenViewModelFactory)
+    val savedPlaylists by viewModel.savedPlaylists.collectAsStateWithLifecycle()
     val youtubeMusicState by youtubeMusicViewModel.state.collectAsStateWithLifecycle()
     var showYoutubeMusic by rememberSaveable { mutableStateOf(false) }
 
@@ -2598,7 +2601,6 @@ fun LevyraApp(
                             )
                         }
                         LevyraTab.Library -> {
-                            val libraryViewModel: LibraryViewModel = composeViewModel(key = "levyra-library", factory = screenViewModelFactory)
                             val screenState by libraryViewModel.state.collectAsStateWithLifecycle()
                             LevyraLibraryScreen(
                                 libraryViewModel, screenState, onOpenDownloads = { showDownloadsFolder = true },
@@ -3497,7 +3499,9 @@ fun LevyraApp(
                         onCreatePlaylistWithTracks = viewModel::createPlaylistWithTracks,
                         onDownloadTracks = { tracks -> viewModel.exportTracks(tracks, currentStrings.offline) },
                         onDislikeTracks = viewModel::dislikeTracks,
-                        onTrackActions = { trackActionTarget = it }
+                        onTrackActions = { trackActionTarget = it },
+                        isSaved = savedPlaylists.any { it.key == preview.savedPlaylistKey },
+                        onToggleSave = viewModel::toggleSaveOpenPlaylistHit
                     )
                 }
             }
@@ -16718,30 +16722,34 @@ private fun AddToPlaylistDialog(
                         )
                     )
                 } else {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable { creating = true }
-                            .padding(vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Icon(Icons.Rounded.Add, null, tint = LevyraCyan)
-                        Text(LocalLevyraStrings.current.createNewPlaylist, color = LevyraCyan, fontWeight = FontWeight.Bold)
-                    }
-                    playlists.forEach { pl ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { onAddTo(pl.id) }
-                                .padding(vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Icon(Icons.AutoMirrored.Rounded.QueueMusic, null, tint = LevyraMuted)
-                            Text(pl.name, color = LevyraText, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                        item(key = "create") {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { creating = true }
+                                    .padding(vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Icon(Icons.Rounded.Add, null, tint = LevyraCyan)
+                                Text(LocalLevyraStrings.current.createNewPlaylist, color = LevyraCyan, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        items(playlists, key = { "playlist-${it.id}" }) { pl ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { onAddTo(pl.id) }
+                                    .padding(vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Icon(Icons.AutoMirrored.Rounded.QueueMusic, null, tint = LevyraMuted)
+                                Text(pl.name, color = LevyraText, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
                         }
                     }
                 }

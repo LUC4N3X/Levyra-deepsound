@@ -193,7 +193,14 @@ internal fun MonoRadioRow(
             }
         }
         Column(Modifier.weight(1f).padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(station.name, style = MaterialTheme.typography.titleSmall, color = if (playing) MonoDesign.accent else MonoDesign.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            RadioStationName(
+                name = station.name,
+                playing = playing,
+                color = if (playing) MonoDesign.accent else MonoDesign.text,
+                fontSize = MaterialTheme.typography.titleSmall.fontSize,
+                style = MaterialTheme.typography.titleSmall,
+                minLines = 1
+            )
             val detail = if (playing) live else monoRadioDetail(station)
             if (detail.isNotBlank()) Text(detail, style = MaterialTheme.typography.bodySmall, color = MonoDesign.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
@@ -208,7 +215,7 @@ internal fun MonoRadioRail(
     playLabel: String, onPlay: (RadioStation) -> Unit
 ) {
     LazyRow(contentPadding = PaddingValues(horizontal = MonoDesign.gutter), horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap)) {
-        items(stations.take(12), key = { "mono-rail-${it.uuid}" }) { station ->
+        items(stations, key = { "mono-rail-${it.uuid}" }) { station ->
             val playing = currentStationId == station.uuid && isPlaying
             val favorite = station.uuid.lowercase(Locale.ROOT) in favoriteIds
             Column(
@@ -224,7 +231,14 @@ internal fun MonoRadioRail(
                         MonoWaveLine(true, Modifier.align(Alignment.BottomCenter).padding(8.dp).fillMaxWidth().height(14.dp), color = MonoDesign.accent, cycles = 5f, strokeWidth = 1.5.dp)
                     }
                 }
-                Text(station.name, style = MaterialTheme.typography.titleSmall, color = MonoDesign.text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
+                RadioStationName(
+                    name = station.name,
+                    playing = playing,
+                    color = MonoDesign.text,
+                    fontSize = MaterialTheme.typography.titleSmall.fontSize,
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
                 val detail = monoRadioDetail(station)
                 if (detail.isNotBlank()) Text(detail, style = MaterialTheme.typography.bodySmall, color = MonoDesign.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }

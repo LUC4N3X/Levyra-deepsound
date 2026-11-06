@@ -63,6 +63,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -170,6 +171,13 @@ private sealed interface AtelierLibraryEntry {
         override val imageUrl = playlist.coverUrl.ifBlank { playlist.tracks.firstOrNull()?.thumbnailUrl.orEmpty() }
     }
 
+    class SavedPlaylistEntry(val saved: com.luc4n3x.levyra.domain.SavedPlaylist) : AtelierLibraryEntry {
+        override val key = "saved-${saved.key}"
+        override val title = saved.hit.title
+        override val subtitle = saved.hit.author
+        override val imageUrl = saved.hit.thumbnailUrl
+    }
+
     class AlbumEntry(val album: LibraryAlbum) : AtelierLibraryEntry {
         override val key = "album-${album.key}"
         override val title = album.title
@@ -217,7 +225,8 @@ private fun buildAtelierLibrarySnapshot(
     query: String,
     sort: LibrarySort,
     direction: LibrarySortDirection,
-    strings: LevyraStrings
+    strings: LevyraStrings,
+    savedPlaylists: List<com.luc4n3x.levyra.domain.SavedPlaylist>
 ): AtelierLibrarySnapshot {
     val songs = when (tab) {
         AtelierLibraryTab.Songs -> filterLibraryTracks(catalog.tracks, query, sort, direction, catalog::recencyOf)
@@ -227,8 +236,10 @@ private fun buildAtelierLibrarySnapshot(
     val entries: List<AtelierLibraryEntry> = when (tab) {
         AtelierLibraryTab.Playlists -> {
             val scoped = if (hiddenOnly) playlists.hiddenInLibrary() else playlists.visibleInLibrary()
+            val saved = if (hiddenOnly || tagIds.isNotEmpty()) emptyList() else filterSavedPlaylists(savedPlaylists, query, sort, direction)
             filterLibraryPlaylists(scoped.filterByTagIds(tagIds), query, sort, direction)
-                .map { AtelierLibraryEntry.PlaylistEntry(it, strings.formatTrackCount(it.playableTrackCount)) }
+                .map { AtelierLibraryEntry.PlaylistEntry(it, strings.formatTrackCount(it.playableTrackCount)) } +
+                saved.map { AtelierLibraryEntry.SavedPlaylistEntry(it) }
         }
         AtelierLibraryTab.Albums -> filterLibraryAlbums(catalog.albums, query, sort, direction).map { AtelierLibraryEntry.AlbumEntry(it) }
         AtelierLibraryTab.Artists -> filterLibraryArtists(catalog.artists, query, sort, direction).map { artist ->
@@ -279,11 +290,12 @@ internal fun AtelierLibraryScreen(
         val known = state.playlistTags.mapTo(hashSetOf()) { it.id }
         selectedTagIds.filterTo(hashSetOf()) { it in known }.toSet()
     }
+    val savedPlaylists by viewModel.savedPlaylists.collectAsStateWithLifecycle()
     val snapshot by produceState<AtelierLibrarySnapshot?>(
-        null, tab, catalog, favorites, playlists, activeTagIds, hiddenOnly, query, sort, direction, strings.code
+        null, tab, catalog, favorites, playlists, savedPlaylists, activeTagIds, hiddenOnly, query, sort, direction, strings.code
     ) {
         value = withContext(Dispatchers.Default) {
-            buildAtelierLibrarySnapshot(tab, catalog, favorites, playlists, activeTagIds, hiddenOnly, query, sort, direction, strings)
+            buildAtelierLibrarySnapshot(tab, catalog, favorites, playlists, activeTagIds, hiddenOnly, query, sort, direction, strings, savedPlaylists)
         }
     }
     val latestState by rememberUpdatedState(state)
@@ -428,6 +440,7 @@ internal fun AtelierLibraryScreen(
 private fun openAtelierLibraryEntry(viewModel: LibraryViewModel, entry: AtelierLibraryEntry, snapshot: AtelierLibrarySnapshot?) {
     when (entry) {
         is AtelierLibraryEntry.PlaylistEntry -> viewModel.openPlaylist(entry.playlist.id)
+        is AtelierLibraryEntry.SavedPlaylistEntry -> viewModel.openSavedPlaylist(entry.saved)
         is AtelierLibraryEntry.AlbumEntry -> viewModel.openAlbum(entry.album.toAlbumHit())
         is AtelierLibraryEntry.ArtistEntry -> viewModel.openArtistReference(entry.artist.name, entry.artist.browseId, entry.artist.artworkUrl)
         is AtelierLibraryEntry.SongEntry -> viewModel.playFrom(snapshot?.songs.orEmpty().ifEmpty { listOf(entry.track) }, entry.track)
@@ -565,6 +578,11 @@ private fun atelierLibraryMenu(
             }
             add(AtelierLibraryMenuItem(strings.playlistStudioEdit) { viewModel.openPlaylistStudio(playlist.id) })
             add(AtelierLibraryMenuItem(strings.delete) { onDeletePlaylist(playlist) })
+        }
+        is AtelierLibraryEntry.SavedPlaylistEntry -> {
+            add(AtelierLibraryMenuItem(com.luc4n3x.levyra.ui.i18n.savedPlaylistCopy(strings.code).remove) {
+                viewModel.removeSavedPlaylist(entry.saved.key)
+            })
         }
         is AtelierLibraryEntry.AlbumEntry -> {
             val album = entry.album

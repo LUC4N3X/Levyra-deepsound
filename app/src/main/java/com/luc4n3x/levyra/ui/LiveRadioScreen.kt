@@ -28,6 +28,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.basicMarquee
+import androidx.compose.material.icons.automirrored.rounded.ViewList
+import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -238,43 +241,47 @@ internal fun LiveRadioScreen(
                 }
             }
 
-            if (state.favorites.isNotEmpty() && state.query.isBlank()) {
-                item(key = "live-radio-favorites-title") { RadioSectionTitle(strings.favoritesPlain) }
-                item(key = "live-radio-favorites") {
-                    RadioStationRail(
-                        stations = state.favorites,
-                        favoriteIds = favoriteIds,
-                        currentStationId = currentStationId,
-                        isPlaying = isPlaying,
-                        live = radioStrings.live,
-                        playLabel = strings.play,
-                        addFavoriteLabel = strings.addToFavorites,
-                        removeFavoriteLabel = strings.removeFromFavorites,
-                        onPlay = { station ->
-                            onPlay(station)
-                        },
-                        onFavorite = viewModel::toggleFavorite
-                    )
-                }
-            }
-
-            if (state.recent.isNotEmpty() && state.query.isBlank()) {
-                item(key = "live-radio-recent-title") { RadioSectionTitle(strings.recent) }
-                item(key = "live-radio-recent") {
-                    RadioStationRail(
-                        stations = state.recent,
-                        favoriteIds = favoriteIds,
-                        currentStationId = currentStationId,
-                        isPlaying = isPlaying,
-                        live = radioStrings.live,
-                        playLabel = strings.play,
-                        addFavoriteLabel = strings.addToFavorites,
-                        removeFavoriteLabel = strings.removeFromFavorites,
-                        onPlay = { station ->
-                            onPlay(station)
-                        },
-                        onFavorite = viewModel::toggleFavorite
-                    )
+            if (state.query.isBlank()) {
+                listOf(
+                    "favorites" to (strings.favoritesPlain to state.favorites),
+                    "recent" to (strings.recent to state.recent)
+                ).forEach { (section, content) ->
+                    val (title, stations) = content
+                    if (stations.isEmpty()) return@forEach
+                    item(key = "live-radio-$section-title") {
+                        RadioSectionTitle(title) {
+                            RadioLayoutToggle(
+                                listMode = state.stationListMode,
+                                code = languageCode,
+                                onToggle = { viewModel.setStationListMode(!state.stationListMode) }
+                            )
+                        }
+                    }
+                    if (state.stationListMode) {
+                        itemsIndexed(stations, key = { _, station -> "live-radio-$section-row-${station.uuid}" }) { index, station ->
+                            RadioStationRow(
+                                index, stations.size, station, station.uuid.lowercase(Locale.ROOT) in favoriteIds,
+                                currentStationId == station.uuid && isPlaying,
+                                radioStrings.live, strings.play, strings.addToFavorites, strings.removeFromFavorites,
+                                onPlay = { onPlay(station) }, onFavorite = { viewModel.toggleFavorite(station) }
+                            )
+                        }
+                    } else {
+                        item(key = "live-radio-$section") {
+                            RadioStationRail(
+                                stations = stations,
+                                favoriteIds = favoriteIds,
+                                currentStationId = currentStationId,
+                                isPlaying = isPlaying,
+                                live = radioStrings.live,
+                                playLabel = strings.play,
+                                addFavoriteLabel = strings.addToFavorites,
+                                removeFavoriteLabel = strings.removeFromFavorites,
+                                onPlay = onPlay,
+                                onFavorite = viewModel::toggleFavorite
+                            )
+                        }
+                    }
                 }
             }
 
@@ -430,6 +437,26 @@ internal fun LiveRadioScreen(
                 viewModel.selectLanguage(it)
                 languagePickerOpen = false
             }
+        )
+    }
+}
+
+@Composable
+private fun RadioSectionTitle(title: String, trailing: @Composable () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.weight(1f)) { RadioSectionTitle(title) }
+        Box(Modifier.padding(end = 12.dp)) { trailing() }
+    }
+}
+
+@Composable
+private fun RadioLayoutToggle(listMode: Boolean, code: String, onToggle: () -> Unit) {
+    val copy = remember(code) { com.luc4n3x.levyra.ui.i18n.spotifyLibraryCopy(code) }
+    IconButton(onClick = onToggle) {
+        Icon(
+            if (listMode) Icons.Rounded.GridView else Icons.AutoMirrored.Rounded.ViewList,
+            contentDescription = if (listMode) copy.gridView else copy.listView,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -943,14 +970,7 @@ private fun RadioStationRow(
 private fun RadioStationRowInfo(station: RadioStation, playing: Boolean, live: String, modifier: Modifier = Modifier) {
     val colors = MaterialTheme.colorScheme
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(
-            station.name,
-            color = colors.onSurface,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+        RadioStationName(name = station.name, playing = playing, color = colors.onSurface, fontSize = 15.sp, minLines = 1)
         if (playing) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 RadioEqualizer(color = colors.primary)
@@ -960,6 +980,30 @@ private fun RadioStationRowInfo(station: RadioStation, playing: Boolean, live: S
             RadioStationDetail(station)
         }
     }
+}
+
+@Composable
+internal fun RadioStationName(
+    name: String,
+    playing: Boolean,
+    color: Color,
+    fontSize: androidx.compose.ui.unit.TextUnit,
+    modifier: Modifier = Modifier,
+    style: androidx.compose.ui.text.TextStyle = androidx.compose.ui.text.TextStyle.Default,
+    minLines: Int = 2
+) {
+    val marquee = playing && LocalAnimationsEnabled.current
+    Text(
+        name,
+        color = color,
+        fontSize = fontSize,
+        fontWeight = FontWeight.Bold,
+        style = style,
+        maxLines = if (marquee) 1 else 2,
+        minLines = if (marquee) 1 else minLines,
+        overflow = if (marquee) TextOverflow.Clip else TextOverflow.Ellipsis,
+        modifier = modifier.then(if (marquee) Modifier.basicMarquee(iterations = Int.MAX_VALUE) else Modifier)
+    )
 }
 
 @Composable
@@ -1027,7 +1071,7 @@ private fun RadioStationRail(
         MaterialShapes.SoftBurst.toShape()
     )
     LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        itemsIndexed(stations.take(12), key = { _, station -> "rail-${station.uuid}" }) { index, station ->
+        itemsIndexed(stations, key = { _, station -> "rail-${station.uuid}" }) { index, station ->
             val favorite = station.uuid.lowercase(Locale.ROOT) in favoriteIds
             val playing = currentStationId == station.uuid && isPlaying
             val place = remember(station.countryCode, station.country, languageCode) {
@@ -1071,13 +1115,11 @@ private fun RadioStationRail(
                         }
                     }
                 }
-                Text(
-                    station.name,
+                RadioStationName(
+                    name = station.name,
+                    playing = playing,
                     color = colors.onSurface,
                     fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(horizontal = 4.dp)
                 )
                 Text(

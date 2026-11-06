@@ -38,7 +38,8 @@ internal data class LiveRadioUiState(
     val loadingMore: Boolean = false,
     val canLoadMore: Boolean = true,
     val showingCachedCatalog: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val stationListMode: Boolean = false
 ) {
     val favoriteIds: Set<String> get() = favorites.mapTo(hashSetOf()) { it.uuid.lowercase(Locale.ROOT) }
 }
@@ -238,6 +239,10 @@ internal class LiveRadioViewModel(
                 _state.update { it.copy(favorites = favorites) }
             }
         }
+    }
+
+    fun setStationListMode(enabled: Boolean) {
+        _state.update { it.copy(stationListMode = enabled) }
     }
 
     fun toggleFavorite(station: RadioStation) {
