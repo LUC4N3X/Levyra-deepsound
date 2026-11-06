@@ -22,11 +22,10 @@ internal object LosslessRecordingFallback {
     ): HighQualityResolution {
         var resolution = resolveStream(selection.evaluation)
         if (!resolution.isUnavailableStream()) return resolution
-        val explicitKnown = query.explicit != null || AlternativeTrackText.title(query.title).explicitHint != null
         val alternatives = selection.evaluations
             .filter {
                 it.accepted && it.candidate.providerTrackId != selection.evaluation.candidate.providerTrackId &&
-                    sameRecording(selection.evaluation, it, explicitKnown)
+                    sameRecording(selection.evaluation, it)
             }
             .sortedByDescending { it.confidence }
             .take(MAX_STREAM_CANDIDATES - 1)
@@ -40,8 +39,7 @@ internal object LosslessRecordingFallback {
 
     private fun sameRecording(
         selected: AlternativeMatchEvaluation,
-        alternative: AlternativeMatchEvaluation,
-        explicitKnown: Boolean
+        alternative: AlternativeMatchEvaluation
     ): Boolean {
         val a = selected.candidate
         val b = alternative.candidate
@@ -62,7 +60,7 @@ internal object LosslessRecordingFallback {
             aPrimary.isNotEmpty() && aPrimary == bPrimary &&
             (aFeatured.isEmpty() || bFeatured.isEmpty() || aFeatured == bFeatured) &&
             abs(a.durationSeconds - b.durationSeconds) <= AlternativeTrackMatcher.SAME_RECORDING_DURATION_SECONDS &&
-            (!explicitKnown || aExplicit == null || bExplicit == null || aExplicit == bExplicit) &&
+            (aExplicit == null || bExplicit == null || aExplicit == bExplicit) &&
             (a.language.isBlank() || b.language.isBlank() || a.language == b.language)
     }
 

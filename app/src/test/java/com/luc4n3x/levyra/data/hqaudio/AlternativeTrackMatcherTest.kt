@@ -579,7 +579,7 @@ class AlternativeTrackMatcherTest {
     }
 
     @Test
-    fun cleanAndExplicitEditionsOfOneRecordingAreNotAmbiguousWhenExplicitIsUnknown() {
+    fun cleanAndExplicitEditionsFallBackWhenOriginalExplicitStateIsUnknown() {
         val query = query(title = "hate that i made you love me", artist = "Ariana Grande", album = "YouTube Music", durationMs = 198_000L)
         val selection = matcher.select(
             query,
@@ -590,8 +590,52 @@ class AlternativeTrackMatcherTest {
                 candidate(id = "album-explicit", title = "hate that i made you love me", primary = listOf("Ariana Grande"), album = "petal", duration = 197, explicit = true)
             )
         )
-        assertTrue(selection is AlternativeMatchSelection.Accepted)
-        assertEquals(false, (selection as AlternativeMatchSelection.Accepted).evaluation.candidate.explicit)
+        assertEquals(MatchRejection.AMBIGUOUS, (selection as AlternativeMatchSelection.Rejected).reason)
+    }
+
+    @Test
+    fun rejectedExplicitEditionStillBlocksUnverifiedCleanEdition() {
+        val query = query(title = "Without Me", artist = "Eminem", album = "The Eminem Show", durationMs = 290_000L)
+        val selection = matcher.select(
+            query,
+            listOf(
+                candidate(id = "clean", title = "Without Me", primary = listOf("Eminem"), album = "The Eminem Show", duration = 290, explicit = false),
+                candidate(id = "explicit-compilation", title = "Without Me", primary = listOf("Eminem"), album = "Curtain Call", duration = 290, explicit = true)
+            )
+        )
+        assertEquals(MatchRejection.AMBIGUOUS, (selection as AlternativeMatchSelection.Rejected).reason)
+    }
+
+    @Test
+    fun cleanTitleHintCountsAsCleanEdition() {
+        val query = query(title = "Without Me", artist = "Eminem", album = "The Eminem Show", durationMs = 290_000L)
+        val selection = matcher.select(
+            query,
+            listOf(
+                candidate(id = "explicit", title = "Without Me", primary = listOf("Eminem"), album = "The Eminem Show", duration = 290, explicit = true),
+                candidate(id = "clean", title = "Without Me (Clean)", primary = listOf("Eminem"), album = "The Eminem Show", duration = 290, explicit = null)
+            )
+        )
+        assertTrue(selection is AlternativeMatchSelection.Rejected)
+    }
+
+    @Test
+    fun knownCleanOriginalKeepsTheCleanEdition() {
+        val query = query(title = "hate that i made you love me", artist = "Ariana Grande", album = "petal", durationMs = 197_000L, explicit = false)
+        val selection = matcher.select(
+            query,
+            listOf(
+                candidate(id = "clean", title = "hate that i made you love me", primary = listOf("Ariana Grande"), album = "petal", duration = 197, explicit = false),
+                candidate(id = "explicit", title = "hate that i made you love me", primary = listOf("Ariana Grande"), album = "petal", duration = 197, explicit = true)
+            )
+        )
+        assertEquals("clean", (selection as AlternativeMatchSelection.Accepted).evaluation.candidate.providerTrackId)
+    }
+
+    @Test
+    fun singleEditionWithUnknownOriginalStateIsStillAccepted() {
+        val selection = matcher.select(query(explicit = null), listOf(candidate(id = "only", explicit = false)))
+        assertEquals("only", (selection as AlternativeMatchSelection.Accepted).evaluation.candidate.providerTrackId)
     }
 
     @Test
@@ -613,7 +657,7 @@ class AlternativeTrackMatcherTest {
         val selection = matcher.select(
             query,
             listOf(
-                candidate(id = "single", title = "Levitating (feat. DaBaby)", primary = listOf("Dua Lipa"), featured = listOf("DaBaby"), album = "Levitating (feat. DaBaby)", duration = 203, explicit = false),
+                candidate(id = "single", title = "Levitating (feat. DaBaby)", primary = listOf("Dua Lipa"), featured = listOf("DaBaby"), album = "Levitating (feat. DaBaby)", duration = 203, explicit = true),
                 candidate(id = "album", title = "Levitating (feat. DaBaby)", primary = listOf("Dua Lipa"), featured = listOf("DaBaby"), album = "Future Nostalgia", duration = 203, explicit = true)
             )
         )

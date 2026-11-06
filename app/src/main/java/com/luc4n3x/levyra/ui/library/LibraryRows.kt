@@ -24,6 +24,8 @@ import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.LibraryAddCheck
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.Download
@@ -357,6 +359,48 @@ internal fun LibraryPlaylistRow(
                         tint = if (playlist.tracks.isNotEmpty()) LevyraCyan else LevyraMuted.copy(alpha = 0.35f)
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun LibrarySavedPlaylistRow(
+    saved: com.luc4n3x.levyra.domain.SavedPlaylist,
+    removeLabel: String,
+    onOpen: () -> Unit,
+    onRemove: () -> Unit
+) {
+    val subtitle = listOf(saved.hit.author, saved.hit.trackCountLabel).filter(String::isNotBlank).joinToString(" · ")
+    Surface(
+        color = Color.Transparent,
+        shape = LibraryRowShape,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(LibraryRowShape)
+            .clickable(onClickLabel = saved.hit.title, onClick = onOpen)
+    ) {
+        Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            LibraryArtwork(saved.hit.thumbnailUrl, saved.hit.title, Modifier.size(64.dp), LibraryArtworkShape, false)
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    saved.hit.title,
+                    color = LevyraText,
+                    style = LevyraType.contentTitle,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (subtitle.isNotBlank()) {
+                    Text(subtitle, color = LevyraMuted, style = LevyraType.caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            IconButton(onClick = onRemove) {
+                Icon(
+                    Icons.Rounded.LibraryAddCheck,
+                    contentDescription = "$removeLabel, ${saved.hit.title}",
+                    tint = LevyraCyan
+                )
             }
         }
     }

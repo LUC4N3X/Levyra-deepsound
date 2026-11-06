@@ -3,6 +3,8 @@ package com.luc4n3x.levyra.ui
 import com.luc4n3x.levyra.ui.i18n.likeAllCopy
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.LibraryAdd
+import androidx.compose.material.icons.rounded.LibraryAddCheck
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -60,14 +62,33 @@ import com.luc4n3x.levyra.ui.theme.MonoCodeFont
 import com.luc4n3x.levyra.ui.theme.MonoDesign
 
 @Composable
-private fun GlacierRoundKey(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, enabled: Boolean, onClick: () -> Unit) {
+private fun GlacierRoundKey(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    active: Boolean = false
+) {
     Box(
         Modifier.size(48.dp).clip(CircleShape).background(MonoDesign.raised)
             .clickable(enabled = enabled, role = Role.Button, onClickLabel = label, onClick = onClick)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center
-    ) { Icon(icon, null, tint = if (enabled) MonoDesign.text else MonoDesign.textFaint, modifier = Modifier.size(21.dp)) }
+    ) {
+        Icon(
+            icon,
+            null,
+            tint = when {
+                !enabled -> MonoDesign.textFaint
+                active -> MonoDesign.accent
+                else -> MonoDesign.text
+            },
+            modifier = Modifier.size(21.dp)
+        )
+    }
 }
+
+internal data class GlacierSaveAction(val saved: Boolean, val label: String, val enabled: Boolean, val onToggle: () -> Unit)
 
 @Composable
 internal fun GlacierCollectionScreen(
@@ -91,7 +112,8 @@ internal fun GlacierCollectionScreen(
     onRetry: () -> Unit = {},
     cover: (@Composable () -> Unit)? = null,
     onDownloadAll: (() -> Unit)? = null,
-    onLikeAll: (() -> Unit)? = null
+    onLikeAll: (() -> Unit)? = null,
+    saveAction: GlacierSaveAction? = null
 ) {
     BackHandler(onBack = onDismiss)
     val strings = LocalLevyraStrings.current
@@ -155,6 +177,15 @@ internal fun GlacierCollectionScreen(
                     horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    saveAction?.let { save ->
+                        GlacierRoundKey(
+                            if (save.saved) Icons.Rounded.LibraryAddCheck else Icons.Rounded.LibraryAdd,
+                            save.label,
+                            save.enabled,
+                            save.onToggle,
+                            active = save.saved
+                        )
+                    }
                     onDownloadAll?.let { GlacierRoundKey(Icons.Rounded.Download, strings.downloadPlaylist, tracks.isNotEmpty(), it) }
                     onLikeAll?.let { GlacierRoundKey(Icons.Rounded.FavoriteBorder, strings.likeAllCopy().action, tracks.isNotEmpty(), it) }
                     Box(

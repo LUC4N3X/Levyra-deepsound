@@ -8,6 +8,7 @@ import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.recognition.RecognitionState
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Test
 
@@ -112,6 +113,23 @@ class ScreenProjectionCoverageTest {
             playerProjection(base),
             playerProjection(base.copy(radioEnabled = !base.radioEnabled))
         )
+    }
+
+    @Test
+    fun `player projection reacts to every new playlist while paused`() {
+        val playlists = (1..40).map { index ->
+            com.luc4n3x.levyra.domain.Playlist("p$index", "Mix $index", "", emptyList(), index.toLong(), index.toLong())
+        }
+        val paused = base.copy(isPlaying = false, playlists = playlists.take(3))
+
+        assertNotEquals(playerProjection(paused), playerProjection(paused.copy(playlists = playlists)))
+        assertEquals(40, playerProjection(paused.copy(playlists = playlists)).playlists.size)
+    }
+
+    @Test
+    fun `library projection reacts to most played and favorite timestamps`() {
+        assertNotEquals(libraryProjection(base), libraryProjection(base.copy(mostPlayedTracks = listOf(similarTrack()))))
+        assertNotEquals(libraryProjection(base), libraryProjection(base.copy(favoriteTimestamps = mapOf("a" to 1L))))
     }
 
     private fun similarTrack() = Track(

@@ -119,6 +119,7 @@ class LevyraBackupManager(private val context: Context) {
     private val database = LevyraDatabase.get(appContext)
     private val preferences = LevyraPreferences(appContext)
     private val followedArtistsStore = FollowedArtistsStore(appContext)
+    private val savedPlaylistsStore = SavedPlaylistsStore(database.savedPlaylistsDao())
     private val excludedArtistsStore = ExcludedArtistsStore(appContext)
     private val playlistCoverStore = PlaylistCoverStore(appContext)
     private val tagsDao get() = database.playlistTagsDao()
@@ -361,6 +362,9 @@ class LevyraBackupManager(private val context: Context) {
             sections[FOLLOWED_ARTISTS_ENTRY] = writeJsonSection(zip, FOLLOWED_ARTISTS_ENTRY) { writer ->
                 writeJsonArray(writer, followedArtistsStore.load()) { followedArtistToJson(it).toString() }
             }
+            sections[SAVED_PLAYLISTS_ENTRY] = writeJsonSection(zip, SAVED_PLAYLISTS_ENTRY) { writer ->
+                writeJsonArray(writer, savedPlaylistsStore.load()) { savedPlaylistToJson(it).toString() }
+            }
             sections[PLAYLISTS_ENTRY] = writeJsonSection(zip, PLAYLISTS_ENTRY) { writer ->
                 writer.write("[")
                 playlistEntities.forEachIndexed { index, playlist ->
@@ -548,6 +552,7 @@ class LevyraBackupManager(private val context: Context) {
             settings = parseSettings(settingsJson),
             favorites = entries[FAVORITES_ENTRY].toJsonArray().toTrackList(),
             followedArtists = parseFollowedArtists(entries[FOLLOWED_ARTISTS_ENTRY].toJsonArray()),
+            savedPlaylists = entries[SAVED_PLAYLISTS_ENTRY]?.let { parseSavedPlaylists(it.toJsonArray()) },
             excludedArtists = parseExcludedArtists(entries[ORGANIZATION_ENTRY].toJsonObject()),
             playlistTags = parsePlaylistTags(entries[ORGANIZATION_ENTRY].toJsonObject()),
             playlists = parsePlaylists(entries[PLAYLISTS_ENTRY].toJsonArray(), entries),
@@ -574,6 +579,7 @@ class LevyraBackupManager(private val context: Context) {
             settings = parseSettings(root.optJSONObject("settings") ?: JSONObject()),
             favorites = root.optJSONArray("favorites").toTrackList(),
             followedArtists = parseFollowedArtists(root.optJSONArray("followedArtists")),
+            savedPlaylists = null,
             excludedArtists = emptyList(),
             playlistTags = emptyList(),
             playlists = parsePlaylists(root.optJSONArray("playlists") ?: JSONArray()),
@@ -637,6 +643,7 @@ class LevyraBackupManager(private val context: Context) {
             settings = snapshot,
             favorites = database.favoriteTracksDao().all().map { it.toTrack() },
             followedArtists = followedArtistsStore.load(),
+            savedPlaylists = savedPlaylistsStore.load(),
             excludedArtists = excludedArtistsStore.load(),
             playlistTags = tagsDao.allTags().map(::toPlaylistTag),
             playlists = playlists,
@@ -656,6 +663,7 @@ class LevyraBackupManager(private val context: Context) {
         )
         preferences.restoreSnapshot(restoredSettings)
         followedArtistsStore.saveDurable(payload.followedArtists)
+        payload.savedPlaylists?.let { savedPlaylistsStore.replaceAll(it) }
         excludedArtistsStore.replaceAll(payload.excludedArtists)
         val now = System.currentTimeMillis()
         val restoredCoverReferences = hashSetOf<String>()
@@ -1456,6 +1464,16 @@ class LevyraBackupManager(private val context: Context) {
         }
     }
 
+    private fun savedPlaylistToJson(value: com.luc4n3x.levyra.domain.SavedPlaylist): JSONObject = JSONObject()
+        .put("playlistId", value.hit.playlistId)
+        .put("browseId", value.hit.browseId)
+        .put("appleStorefront", value.appleStorefront)
+        .put("title", value.hit.title)
+        .put("author", value.hit.author)
+        .put("thumbnailUrl", value.hit.thumbnailUrl)
+        .put("trackCountLabel", value.hit.trackCountLabel)
+        .put("savedAt", value.savedAt)
+
     private fun listenEventToJson(value: ListenEventEntity): JSONObject = JSONObject()
         .put("trackId", value.trackId)
         .put("title", value.title)
@@ -1616,6 +1634,7 @@ class LevyraBackupManager(private val context: Context) {
         val settings: LevyraPreferencesSnapshot,
         val favorites: List<Track>,
         val followedArtists: List<FollowedArtist>,
+        val savedPlaylists: List<com.luc4n3x.levyra.domain.SavedPlaylist>?,
         val excludedArtists: List<ExcludedArtist>,
         val playlistTags: List<PlaylistTag>,
         val playlists: List<PlaylistBackup>,
@@ -1662,6 +1681,7 @@ class LevyraBackupManager(private val context: Context) {
         const val SETTINGS_ENTRY = "data/settings.json"
         const val FAVORITES_ENTRY = "data/favorites.json"
         const val FOLLOWED_ARTISTS_ENTRY = "data/followed_artists.json"
+        const val SAVED_PLAYLISTS_ENTRY = "data/saved_playlists.json"
         const val PLAYLISTS_ENTRY = "data/playlists.json"
         const val HISTORY_ENTRY = "data/history.json"
         const val DOWNLOADS_ENTRY = "data/downloads.json"
@@ -1681,6 +1701,7 @@ class LevyraBackupManager(private val context: Context) {
             SETTINGS_ENTRY,
             FAVORITES_ENTRY,
             FOLLOWED_ARTISTS_ENTRY,
+            SAVED_PLAYLISTS_ENTRY,
             PLAYLISTS_ENTRY,
             ORGANIZATION_ENTRY,
             HISTORY_ENTRY,

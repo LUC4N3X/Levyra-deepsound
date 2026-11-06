@@ -220,20 +220,20 @@ class AlternativeTrackMatcher {
         val top = accepted.firstOrNull()
             ?: return AlternativeMatchSelection.Rejected(dominantRejection(evaluations), evaluations)
         val expectedExplicit = query.explicit ?: AlternativeTrackText.title(query.title).explicitHint
-        val explicitKnown = expectedExplicit != null
+        if (expectedExplicit == null && explicitEditionsConflict(top, evaluations)) {
+            return AlternativeMatchSelection.Rejected(MatchRejection.AMBIGUOUS, evaluations)
+        }
         val nearTop = accepted.filter { it.verdict == top.verdict && top.confidence - it.confidence < AMBIGUITY_MARGIN }
         val ambiguous = nearTop.withIndex().any { (index, left) ->
-            nearTop.drop(index + 1).any { right -> !sameRecording(left, right, explicitKnown) }
+            nearTop.drop(index + 1).any { right -> !sameRecording(left, right) }
         }
         if (ambiguous) return AlternativeMatchSelection.Rejected(MatchRejection.AMBIGUOUS, evaluations)
         val chosen = accepted
-            .filter { it.verdict == top.verdict && sameRecording(it, top, explicitKnown) }
+            .filter { it.verdict == top.verdict && sameRecording(it, top) }
             .maxWith(
                 compareBy<AlternativeMatchEvaluation> {
-                    expectedExplicit != null &&
-                        (it.candidate.explicit ?: AlternativeTrackText.title(it.candidate.title).explicitHint) == expectedExplicit
+                    expectedExplicit != null && candidateExplicit(it.candidate) == expectedExplicit
                 }
-                    .thenBy { it.candidate.explicit != true }
                     .thenBy { it.candidate.offers320 == true }
                     .thenBy { it.confidence }
                     .thenByDescending { it.candidate.releaseYear.takeIf { year -> year > 0 } ?: Int.MAX_VALUE }
@@ -242,27 +242,55 @@ class AlternativeTrackMatcher {
         return AlternativeMatchSelection.Accepted(chosen, evaluations)
     }
 
-    private fun sameRecording(
-        left: AlternativeMatchEvaluation,
-        right: AlternativeMatchEvaluation,
-        explicitKnown: Boolean
-    ): Boolean {
+    private fun sameRecording(left: AlternativeMatchEvaluation, right: AlternativeMatchEvaluation): Boolean {
         val a = left.candidate
         val b = right.candidate
         if (a.providerId == b.providerId && a.providerTrackId == b.providerTrackId) return true
         val aTitle = AlternativeTrackText.title(a.title)
         val bTitle = AlternativeTrackText.title(b.title)
+        val aExplicit = candidateExplicit(a)
+        val bExplicit = candidateExplicit(b)
+        return sameSong(a, aTitle, b, bTitle) &&
+            aTitle.versionSignature == bTitle.versionSignature &&
+            sameFeaturedCredits(featuredSet(a, aTitle), featuredSet(b, bTitle)) &&
+            abs(a.durationSeconds - b.durationSeconds) <= SAME_RECORDING_DURATION_SECONDS &&
+            (aExplicit == null || bExplicit == null || aExplicit == bExplicit) &&
+            (a.language.isBlank() || b.language.isBlank() || a.language == b.language)
+    }
+
+    private fun sameSong(
+        a: AlternativeTrackCandidate,
+        aTitle: TitleIdentity,
+        b: AlternativeTrackCandidate,
+        bTitle: TitleIdentity
+    ): Boolean {
         val sameTitle = aTitle.core == bTitle.core || (
             isIndianRelease(a.language) && isIndianRelease(b.language) && romanizationKey(aTitle.core) == romanizationKey(bTitle.core)
             )
-        return sameTitle &&
-            aTitle.versionSignature == bTitle.versionSignature &&
-            sameFeaturedCredits(featuredSet(a, aTitle), featuredSet(b, bTitle)) &&
-            samePrimaryCredits(a, b) &&
-            abs(a.durationSeconds - b.durationSeconds) <= SAME_RECORDING_DURATION_SECONDS &&
-            (!explicitKnown || a.explicit == null || b.explicit == null || a.explicit == b.explicit) &&
-            (a.language.isBlank() || b.language.isBlank() || a.language == b.language)
+        return sameTitle && samePrimaryCredits(a, b)
     }
+
+    private fun explicitEditionsConflict(
+        top: AlternativeMatchEvaluation,
+        evaluations: List<AlternativeMatchEvaluation>
+    ): Boolean {
+        val topTitle = AlternativeTrackText.title(top.candidate.title)
+        return evaluations
+            .filter {
+                val title = AlternativeTrackText.title(it.candidate.title)
+                it.candidate == top.candidate || (
+                    title.versionSignature == topTitle.versionSignature &&
+                        abs(it.candidate.durationSeconds - top.candidate.durationSeconds) <= SAME_RECORDING_DURATION_SECONDS &&
+                        sameSong(top.candidate, topTitle, it.candidate, title)
+                    )
+            }
+            .mapNotNull { candidateExplicit(it.candidate) }
+            .toSet()
+            .size > 1
+    }
+
+    private fun candidateExplicit(candidate: AlternativeTrackCandidate): Boolean? =
+        candidate.explicit ?: AlternativeTrackText.title(candidate.title).explicitHint
 
     private fun featuredSet(candidate: AlternativeTrackCandidate, title: TitleIdentity): Set<String> =
         candidate.featuredArtists.flatMap(AlternativeTrackText::artistNames).toSet() + title.featuredArtists

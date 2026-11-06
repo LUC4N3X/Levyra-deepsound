@@ -543,8 +543,28 @@ data class PlaylistHitPreview(
     val hit: PlaylistHit,
     val tracks: List<Track> = emptyList(),
     val loading: Boolean = true,
-    val failed: Boolean = false
+    val failed: Boolean = false,
+    val appleStorefront: String = ""
 )
+
+data class SavedPlaylist(
+    val hit: PlaylistHit,
+    val appleStorefront: String = "",
+    val savedAt: Long = 0L
+) {
+    val key: String get() = savedPlaylistKey(hit.playlistId, appleStorefront)
+}
+
+fun savedPlaylistKey(playlistId: String, appleStorefront: String): String {
+    val id = playlistId.trim()
+    val storefront = appleStorefront.trim().lowercase()
+    return if (storefront.isBlank()) "youtube:$id" else "apple:$storefront:$id"
+}
+
+val PlaylistHitPreview.savedPlaylistKey: String get() = savedPlaylistKey(hit.playlistId, appleStorefront)
+
+val PlaylistHitPreview.canBeSaved: Boolean
+    get() = hit.playlistId.isNotBlank() && !loading && !failed && tracks.isNotEmpty()
 
 fun PlaylistHitPreview.nextTrackAfter(currentTrackId: String?): Track? {
     if (tracks.isEmpty()) return null

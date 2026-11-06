@@ -61,6 +61,9 @@ import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.Album
+import com.luc4n3x.levyra.data.hqaudio.AlternativeTrackMatcher
+import com.luc4n3x.levyra.ui.trackAlbumHit
+import java.util.Locale
 import androidx.compose.material.icons.rounded.BlurOn
 import androidx.compose.material.icons.rounded.Fullscreen
 import androidx.compose.material.icons.rounded.GraphicEq
@@ -1896,6 +1899,7 @@ private fun LevyraNowPlayingContent(
                     hapticFeedback.perform(LevyraHapticAction.Confirm)
                 },
                 onAmbient = viewModel::openAmbient,
+                onOpenAlbum = { viewModel.openAlbum(trackAlbumHit(track)) },
                 onOpenArtist = {
                     if (playerArtistHits.size > 1) {
                         openArtistPickerAfterActions = true
@@ -2321,6 +2325,7 @@ private fun playerSheetActions(
     onTrackCredits: () -> Unit,
     onRefreshMotionArtwork: () -> Unit,
     onAmbient: () -> Unit,
+    onOpenAlbum: () -> Unit,
     onOpenArtist: () -> Unit,
     hasMixChapters: Boolean,
     onMixChapters: () -> Unit,
@@ -2493,6 +2498,16 @@ private fun playerSheetActions(
         technicalAudioAction,
         refreshMotionArtworkAction,
         ambientAction,
+        if (track.hasOpenableAlbum()) {
+            PlayerSheetAction(
+                key = "album",
+                icon = Icons.Rounded.Album,
+                label = strings.openAlbum,
+                onClick = onOpenAlbum
+            )
+        } else {
+            null
+        },
         PlayerSheetAction(
             key = "artist",
             icon = Icons.Rounded.Person,
@@ -2501,6 +2516,10 @@ private fun playerSheetActions(
         )
     )
 }
+
+internal fun Track.hasOpenableAlbum(): Boolean =
+    albumBrowseId.isNotBlank() ||
+        (album.isNotBlank() && album.trim().lowercase(Locale.ROOT) !in AlternativeTrackMatcher.untrustedAlbumNames)
 
 internal fun formatPlaybackSpeed(speed: Float): String =
     if (speed % 1f == 0f) speed.toInt().toString() else speed.toString().trimEnd('0').trimEnd('.')

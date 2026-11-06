@@ -69,7 +69,7 @@ internal enum class SpotifyLibraryFilter { Playlists, Artists, Albums, Downloade
 
 internal enum class SpotifyLibrarySort { Recents, RecentlyAdded, Alphabetical, Creator }
 
-internal enum class SpotifyLibraryKind { Liked, Downloads, Playlist, Album, Artist }
+internal enum class SpotifyLibraryKind { Liked, Downloads, Playlist, SavedPlaylist, Album, Artist }
 
 @Immutable
 internal data class SpotifyLibraryItem(
@@ -95,7 +95,9 @@ internal fun spotifyLibraryArrange(
     val filtered = items.filter { item ->
         when (filter) {
             null -> true
-            SpotifyLibraryFilter.Playlists -> item.kind == SpotifyLibraryKind.Liked || item.kind == SpotifyLibraryKind.Playlist
+            SpotifyLibraryFilter.Playlists -> item.kind == SpotifyLibraryKind.Liked ||
+                item.kind == SpotifyLibraryKind.Playlist ||
+                item.kind == SpotifyLibraryKind.SavedPlaylist
             SpotifyLibraryFilter.Artists -> item.kind == SpotifyLibraryKind.Artist
             SpotifyLibraryFilter.Albums -> item.kind == SpotifyLibraryKind.Album
             SpotifyLibraryFilter.Downloaded -> item.downloaded
@@ -121,7 +123,8 @@ internal fun buildSpotifyLibraryItems(
     owner: String,
     likedTitle: String,
     downloadsTitle: String,
-    listens: List<com.luc4n3x.levyra.domain.Track> = emptyList()
+    listens: List<com.luc4n3x.levyra.domain.Track> = emptyList(),
+    savedPlaylists: List<com.luc4n3x.levyra.domain.SavedPlaylist> = emptyList()
 ): List<SpotifyLibraryItem> {
     val listenRank = HashMap<String, Long>()
     listens.forEachIndexed { index, track -> if (track.id.isNotBlank()) listenRank.putIfAbsent(track.id, (listens.size - index).toLong()) }
@@ -137,6 +140,14 @@ internal fun buildSpotifyLibraryItems(
                 SpotifyLibraryItem(
                     playlist.id, SpotifyLibraryKind.Playlist, playlist.name, owner, artwork, playlist.size,
                     played(playlist.tracks), playlist.createdAt, saved(playlist.tracks)
+                )
+            )
+        }
+        savedPlaylists.forEach { saved ->
+            add(
+                SpotifyLibraryItem(
+                    saved.key, SpotifyLibraryKind.SavedPlaylist, saved.hit.title, saved.hit.author, saved.hit.thumbnailUrl,
+                    0, 0L, saved.savedAt, false
                 )
             )
         }
