@@ -104,36 +104,41 @@ internal fun SkinSelector(selected: LevyraSkin, onSelect: (LevyraSkin) -> Unit) 
     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
         SkinDeck(pager, selected, style) { skin -> if (skin == SkinOrder[pager.currentPage]) onSelect(skin) else scope.launch { pager.animateScrollToPage(SkinOrder.indexOf(skin)) } }
         SkinGems(focused, selected, style) { skin -> scope.launch { pager.animateScrollToPage(SkinOrder.indexOf(skin)) } }
-        AnimatedContent(targetState = focused, label = "skin-copy") { shown ->
-            Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    shown.title(),
-                    style = MaterialTheme.typography.headlineMedium.let { base -> style.labelFont?.let { base.copy(fontFamily = it) } ?: base },
-                    fontWeight = style.titleWeight, color = style.text, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.semantics { heading() }
-                )
-                Text(skinBody(shown, code), style = MaterialTheme.typography.bodyLarge, color = style.muted)
-            }
-        }
-        val inUse = focused == selected
-        Box(
-            Modifier.fillMaxWidth().height(56.dp).clip(if (style.cutCorners) CutCornerShape(topEnd = 18.dp, bottomStart = 6.dp) else RoundedCornerShape(28.dp))
-                .background(if (inUse) style.stageColor else style.accent)
-                .border(1.dp, if (inUse) style.accent.copy(alpha = 0.5f) else Color.Transparent, if (style.cutCorners) CutCornerShape(topEnd = 18.dp, bottomStart = 6.dp) else RoundedCornerShape(28.dp))
-                .selectable(selected = inUse, enabled = !inUse, role = Role.Button) { onSelect(focused) },
-            contentAlignment = Alignment.Center
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (inUse) Icon(Icons.Rounded.Check, null, tint = style.accent, modifier = Modifier.size(20.dp))
-                Text(
-                    if (inUse) studio.inUse else studio.apply,
-                    style = MaterialTheme.typography.titleMedium.let { base -> style.labelFont?.let { base.copy(fontFamily = it) } ?: base },
-                    fontWeight = FontWeight.Bold, color = if (inUse) style.accent else style.onAccent
-                )
-            }
-        }
+        AnimatedContent(targetState = focused, label = "skin-copy") { shown -> SkinCopyBlock(shown, code, style) }
+        SkinApplyButton(focused == selected, style, if (focused == selected) studio.inUse else studio.apply) { onSelect(focused) }
         if (selected != LevyraSkin.Default) {
             SkinManagedNotice { onSelect(LevyraSkin.Default) }
+        }
+    }
+}
+
+private fun SkinSelectorStyle.font(base: androidx.compose.ui.text.TextStyle) = labelFont?.let { base.copy(fontFamily = it) } ?: base
+
+@Composable
+private fun SkinCopyBlock(shown: LevyraSkin, code: String, style: SkinSelectorStyle) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            shown.title(), style = style.font(MaterialTheme.typography.headlineMedium),
+            fontWeight = style.titleWeight, color = style.text, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.semantics { heading() }
+        )
+        Text(skinBody(shown, code), style = MaterialTheme.typography.bodyLarge, color = style.muted)
+    }
+}
+
+@Composable
+private fun SkinApplyButton(inUse: Boolean, style: SkinSelectorStyle, label: String, onApply: () -> Unit) {
+    val shape = if (style.cutCorners) CutCornerShape(topEnd = 18.dp, bottomStart = 6.dp) else RoundedCornerShape(28.dp)
+    Box(
+        Modifier.fillMaxWidth().height(56.dp).clip(shape)
+            .background(if (inUse) style.stageColor else style.accent)
+            .border(1.dp, if (inUse) style.accent.copy(alpha = 0.5f) else Color.Transparent, shape)
+            .selectable(selected = inUse, enabled = !inUse, role = Role.Button, onClick = onApply),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (inUse) Icon(Icons.Rounded.Check, null, tint = style.accent, modifier = Modifier.size(20.dp))
+            Text(label, style = style.font(MaterialTheme.typography.titleMedium), fontWeight = FontWeight.Bold, color = if (inUse) style.accent else style.onAccent)
         }
     }
 }
