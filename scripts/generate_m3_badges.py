@@ -173,19 +173,22 @@ def main():
         width, height = (126, 40) if mobile else (185, 56)
         shape = "M 19 .8 C 9 .8 .8 9 .8 19 V 33 C .8 37 3 39.2 7 39.2 H 105 C 117 39.2 125.2 31 125.2 20 V 8 C 125.2 4 122 .8 118 .8 Z" if mobile else "M 26 .8 C 12 .8 .8 12 .8 26 V 46 C .8 51 5 55.2 10 55.2 H 157 C 172 55.2 184.2 43 184.2 28 V 10 C 184.2 4 181 .8 175 .8 Z"
         overlap = "M 0 0 H 24 C 42 8 48 20 38 31 C 34 37 24 40 0 40 Z" if mobile else "M 0 0 H 38 C 64 10 68 29 60 47 C 54 54 37 56 0 56 Z"
-        x, y, icon_size = (7, 6, 29) if mobile else (9, 8, 40)
-        text_x, text_y, font_size = (43, 26, 12.9) if mobile else (62, 36, 16.3)
+        cx, cy, radius = (20, 20, 16) if mobile else (29, 28, 21)
+        x, y, icon_size = (8, 8, 24) if mobile else (13, 12, 32)
+        text_x, text_y, font_size = (42, 26, 11.9) if mobile else (62, 36, 17)
         for light in (False, True):
-            foreground = "#FFFFFF" if light else "#614E2D"
-            background = "#80663D" if light else "#F1E2B8"
-            accent = "#A88C5E" if light else "#DCCB9D"
-            opacity = ".27" if light else ".55"
+            foreground = "#FFFFFF" if light else "#51483E"
+            background = "#5E584F" if light else "#E0DAD0"
+            accent = "#81786C" if light else "#CCC3B5"
+            disc = "#E9E3D9" if light else "#F2EEE7"
+            opacity = ".32" if light else ".65"
             badge_izzy = f'''<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img" aria-label="Get Levyra on IzzyOnDroid">
 <title>Get Levyra on IzzyOnDroid</title>
 <path d="{shape}" fill="{background}"/>
 <clipPath id="badge"><path d="{shape}"/></clipPath>
 <path d="{overlap}" clip-path="url(#badge)" fill="{accent}" opacity="{opacity}"/>
-<image x="{x}" y="{y}" width="{icon_size}" height="{icon_size}" preserveAspectRatio="xMidYMid meet" href="{izzy_img}"/>
+<circle cx="{cx}" cy="{cy}" r="{radius}" fill="{disc}"/>
+<image x="{x}" y="{y}" width="{icon_size}" height="{icon_size}" preserveAspectRatio="xMidYMid meet" opacity=".92" href="{izzy_img}"/>
 <text x="{text_x}" y="{text_y}" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="{font_size}" font-weight="690" letter-spacing="-.35" fill="{foreground}">IzzyOnDroid</text>
 </svg>
 '''
