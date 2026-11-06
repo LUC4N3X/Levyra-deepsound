@@ -219,7 +219,7 @@ private fun journeyCoverStyle(): JourneyCoverStyle {
             corner = MonoDesign.cardCorner,
             playShape = CircleShape,
             base = MonoDesign.surface,
-            vividness = 0.56f,
+            vividness = 0.8f,
             muted = false,
             labelColor = MonoDesign.text,
             uppercaseLabel = false,
@@ -280,11 +280,18 @@ private fun JourneyCoverRail(copy: SmartMusicCopy, style: JourneyCoverStyle, ope
     }
 }
 
-private fun journeyHues(preset: MoodCurvePreset): Pair<Color, Color> = when (preset) {
+private fun journeyHues(preset: MoodCurvePreset): Pair<Color, Color> = if (LevyraIsMono) glacierJourneyHues(preset) else when (preset) {
     MoodCurvePreset.Sunrise -> Color(0xFFFFB36B) to Color(0xFFE2557C)
     MoodCurvePreset.WindDown -> Color(0xFF8C7BFF) to Color(0xFF283A8F)
     MoodCurvePreset.Summit -> Color(0xFF45D6B5) to Color(0xFF1C6488)
     else -> Color(0xFFC77DFF) to Color(0xFF3B6FE8)
+}
+
+private fun glacierJourneyHues(preset: MoodCurvePreset): Pair<Color, Color> = when (preset) {
+    MoodCurvePreset.Sunrise -> Color(0xFFF4CDB0) to Color(0xFF5E93B8)
+    MoodCurvePreset.WindDown -> Color(0xFFAEB9F2) to Color(0xFF1B2850)
+    MoodCurvePreset.Summit -> Color(0xFF8ED6F4) to Color(0xFF1D566F)
+    else -> Color(0xFFB6F0E4) to Color(0xFF3A5A98)
 }
 
 private fun Color.mutedTowardGray(): Color {

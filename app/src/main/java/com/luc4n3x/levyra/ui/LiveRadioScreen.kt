@@ -154,8 +154,13 @@ internal fun LiveRadioScreen(
 
     LaunchedEffect(languageCode) { viewModel.activate(languageCode) }
 
-    Box(modifier = Modifier.fillMaxSize().background(LevyraBlack)) {
+    val radioListState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val radioScrolled by remember(radioListState) { androidx.compose.runtime.derivedStateOf { radioListState.firstVisibleItemIndex > 0 || radioListState.firstVisibleItemScrollOffset > 0 } }
+    val glacier = com.luc4n3x.levyra.ui.theme.LevyraIsMono
+    Box(modifier = Modifier.fillMaxSize().background(if (glacier) com.luc4n3x.levyra.ui.theme.MonoDesign.base else LevyraBlack)) {
+        if (glacier) MonoRadioGlow()
         LazyColumn(
+            state = radioListState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
                 top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 82.dp,
@@ -394,6 +399,7 @@ internal fun LiveRadioScreen(
             backLabel = strings.back,
             onBack = onBack.takeIf { onSearch == null },
             onSearch = onSearch,
+            scrolled = { radioScrolled },
             modifier = Modifier.align(Alignment.TopCenter)
         )
     }
@@ -652,14 +658,21 @@ private fun RadioTopBar(
     backLabel: String,
     onBack: (() -> Unit)?,
     onSearch: (() -> Unit)?,
+    scrolled: () -> Boolean = { true },
     modifier: Modifier = Modifier
 ) {
     val colors = MaterialTheme.colorScheme
+    val glacierScrim by androidx.compose.animation.core.animateFloatAsState(
+        if (com.luc4n3x.levyra.ui.theme.LevyraIsMono && scrolled()) 1f else 0f, label = "radio-glacier-scrim"
+    )
     Column(modifier = modifier.fillMaxWidth()) {
+        val glacier = com.luc4n3x.levyra.ui.theme.LevyraIsMono
+        val barTop = if (glacier) com.luc4n3x.levyra.ui.theme.MonoDesign.base.copy(alpha = 0.92f * glacierScrim) else colors.surface
+        val barBottom = if (glacier) com.luc4n3x.levyra.ui.theme.MonoDesign.base.copy(alpha = 0.8f * glacierScrim) else colors.surface
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(colors.surface)
+                .background(Brush.verticalGradient(listOf(barTop, barBottom)))
                 .statusBarsPadding()
                 .padding(start = if (onBack == null) 24.dp else 14.dp, end = 14.dp, top = 10.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -682,7 +695,7 @@ private fun RadioTopBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(18.dp)
-                .background(Brush.verticalGradient(listOf(colors.surface, Color.Transparent)))
+                .background(Brush.verticalGradient(listOf(barBottom, Color.Transparent)))
         )
     }
 }
@@ -1135,6 +1148,8 @@ private fun RadioStationRail(
     }
 }
 
+private const val RADIO_FAVICON_GRACE_MS = 1_500L
+
 @Composable
 internal fun RadioArtwork(station: RadioStation, size: androidx.compose.ui.unit.Dp, shape: Shape) {
     val colors = MaterialTheme.colorScheme
@@ -1146,9 +1161,15 @@ internal fun RadioArtwork(station: RadioStation, size: androidx.compose.ui.unit.
     val needsFallback = safeFavicon.isBlank() || faviconFailed
     var fallbackArtwork by remember(artworkHomepage) { mutableStateOf<String?>(null) }
     var fallbackFailed by remember(fallbackArtwork) { mutableStateOf(false) }
+    var faviconLoaded by remember(safeFavicon) { mutableStateOf(false) }
     LaunchedEffect(needsFallback, artworkHomepage) {
-        if (needsFallback) fallbackArtwork = LiveRadioArtworkResolver.resolve(artworkHomepage)
+        if (!needsFallback) {
+            kotlinx.coroutines.delay(RADIO_FAVICON_GRACE_MS)
+            if (faviconLoaded) return@LaunchedEffect
+        }
+        fallbackArtwork = LiveRadioArtworkResolver.resolve(artworkHomepage)
     }
+    val pixels = with(androidx.compose.ui.platform.LocalDensity.current) { size.roundToPx() }
     val artwork = when {
         !needsFallback -> safeFavicon
         !fallbackFailed -> fallbackArtwork
@@ -1175,10 +1196,11 @@ internal fun RadioArtwork(station: RadioStation, size: androidx.compose.ui.unit.
         )
         if (artwork != null) {
             AsyncImage(
-                model = artwork,
+                model = remember(artwork, pixels) { coil3.request.ImageRequest.Builder(context).data(artwork).size(pixels).build() },
                 imageLoader = imageLoader,
                 contentDescription = null,
                 contentScale = ContentScale.Fit,
+                onSuccess = { if (!needsFallback) faviconLoaded = true },
                 onError = { if (needsFallback) fallbackFailed = true else faviconFailed = true },
                 modifier = Modifier.fillMaxSize().padding(size * 0.12f)
             )

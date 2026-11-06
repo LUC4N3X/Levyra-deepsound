@@ -19,8 +19,8 @@ class LevyraHomeVideoStringsTest {
 
     @Test
     fun `english and italian describe the shelf plainly`() {
-        assertEquals("Music videos", LevyraStrings.forCode("en").homeVideoShelfTitle)
-        assertEquals("Videoclip musicali", LevyraStrings.forCode("it").homeVideoShelfTitle)
+        assertEquals("New music videos", LevyraStrings.forCode("en").homeVideoShelfTitle)
+        assertEquals("Nuovi video musicali", LevyraStrings.forCode("it").homeVideoShelfTitle)
     }
 
     private val sharedWithEnglish = emptySet<String>()

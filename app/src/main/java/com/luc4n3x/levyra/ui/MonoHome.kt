@@ -136,6 +136,7 @@ import com.luc4n3x.levyra.domain.artistAudienceWeight
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LevyraMonoHomeStrings
+import com.luc4n3x.levyra.ui.i18n.homeVideoShelfTitle
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.MonoHomeCopy
@@ -148,7 +149,6 @@ import com.luc4n3x.levyra.viewmodel.LevyraUiState
 internal val MonoRailPadding = PaddingValues(horizontal = MonoDesign.gutter)
 private val MonoCurrentScrim = Color.Black.copy(alpha = 0.55f)
 private val MonoRankWidth = 40.dp
-private val MonoListenTile = 132.dp
 private val MonoAlbumTile = 140.dp
 private const val MonoQuickRows = 4
 private const val MonoQuickColumns = 5
@@ -401,11 +401,6 @@ private fun MonoReleaseRail(releases: List<AlbumHit>, onOpen: (AlbumHit) -> Unit
         }
     }
 }
-
-internal fun monoAlbumShelf(shelves: List<YoutubeMusicHomeShelf>): YoutubeMusicHomeShelf? =
-    shelves.firstOrNull { shelf ->
-        shelf.items.size >= 3 && shelf.items.all { it.kind == YoutubeMusicHomeItemKind.Album && it.album != null }
-    }
 
 internal fun monoWithoutYoutube(text: String): String =
     text.split(" • ", " · ").map(String::trim).filter { it.isNotBlank() && !it.contains("youtube", ignoreCase = true) }.joinToString(" • ")
@@ -706,7 +701,6 @@ private class MonoHomeFeed(
     val picksTitle: String,
     val charts: List<Track>,
     val rotation: List<ComposedCard>,
-    val recents: List<Track>,
     val albums: List<AlbumHit>,
     val newTracks: List<Track>,
     val newAlbums: List<AlbumHit>,
@@ -714,7 +708,7 @@ private class MonoHomeFeed(
     val forgotten: List<Track>
 ) {
     val isEmpty: Boolean
-        get() = picks.isEmpty() && charts.isEmpty() && rotation.isEmpty() && recents.isEmpty() && albums.isEmpty() &&
+        get() = picks.isEmpty() && charts.isEmpty() && rotation.isEmpty() && albums.isEmpty() &&
             newTracks.isEmpty() && newAlbums.isEmpty() && artists.isEmpty() && forgotten.isEmpty()
 }
 
@@ -723,7 +717,6 @@ private fun rememberMonoHomeFeed(model: MonoHomeModel, copy: MonoHomeCopy, onOpe
     val strings = LocalLevyraStrings.current
     val data = model.data
     val actions = model.actions
-    val recordings = remember(model.state.recentListens) { LevyraPersonalOrbit.distinctRecordings(model.state.recentListens) }
     val orbit = remember(data.personalTracks, data.showPersonal) {
         if (data.showPersonal) data.personalTracks.distinctBy(Track::id).take(MonoRailMax) else emptyList()
     }
@@ -743,7 +736,6 @@ private fun rememberMonoHomeFeed(model: MonoHomeModel, copy: MonoHomeCopy, onOpe
         picksTitle = if (orbit.isNotEmpty()) strings.personalOrbitTitle else data.quickPicks?.title?.ifBlank { null } ?: strings.quickPicks,
         charts = remember(data.charts) { data.charts.distinctBy(Track::id).take(MonoChartMax) },
         rotation = rotation,
-        recents = remember(recordings) { recordings.distinctBy(Track::id).take(MonoRailMax) },
         albums = remember(data.albums, data.showAlbums) { if (data.showAlbums) data.albums.distinctBy(::atelierAlbumKey).take(MonoRailMax) else emptyList() },
         newTracks = remember(model.releaseTracks) { model.releaseTracks.distinctBy(Track::id).take(MonoRailMax) },
         newAlbums = remember(model.releaseAlbums) { model.releaseAlbums.distinctBy(::atelierAlbumKey).take(MonoRailMax) },
@@ -796,11 +788,17 @@ private fun MonoHomeContent(
     val playlistShelves = remember(mixedState.allShelves, featuredShelves, ytHomeState.allShelves) {
         monoPlaylistShelves(mixedState.allShelves).ifEmpty { featuredShelves }.ifEmpty { monoPlaylistShelves(ytHomeState.allShelves) }
     }
-    val albumShelf = remember(ytHomeState.allShelves) { monoAlbumShelf(ytHomeState.allShelves) }
+    val newThisWeek by viewModel.appleNewThisWeek.collectAsStateWithLifecycle()
+    LaunchedEffect(state.selectedChartId, strings.code) { viewModel.ensureAppleNewThisWeek() }
+    val albumShelf = newThisWeek.albums
     val videosHome = viewModel<YouTubeMusicHomeViewModel>(key = "mono-new-videos")
     val videosState by videosHome.state.collectAsStateWithLifecycle()
     LaunchedEffect(strings.code) { videosHome.load(strings.code, browseId = EXPLORE_BROWSE_ID) }
-    val newVideos = remember(videosState.shelves) { monoExploreNewVideos(videosState.shelves, MonoRailMax) }
+    val newVideos = remember(videosState.shelves, strings.code) {
+        val items = monoExploreNewVideos(videosState.shelves, Int.MAX_VALUE)
+        val byTrack = items.associateBy { it.track?.id }
+        com.luc4n3x.levyra.domain.LocalMusicVideoFilter.localFirst(items.mapNotNull { it.track }, strings.code).mapNotNull { byTrack[it.id] }.take(MonoRailMax)
+    }
     val glowColor = MonoDesign.accent
     val revealed = remember { mutableSetOf<String>() }
     CompositionLocalProvider(LocalMonoRevealed provides revealed) {
@@ -899,7 +897,7 @@ private fun LazyListScope.monoHomeFeed(
     heroCard: Dp,
     releaseCard: Dp,
     playlistShelves: List<YoutubeMusicHomeShelf>,
-    albumShelf: YoutubeMusicHomeShelf?,
+    albumShelf: List<AlbumHit>,
     newVideos: List<YoutubeMusicHomeItem>
 ) {
     val state = model.state
@@ -926,6 +924,14 @@ private fun LazyListScope.monoHomeFeed(
     item(key = "mono-discover", contentType = "mono-discover") {
         MonoDiscoverTeaser(state.recentListens.ifEmpty { feed.picks }.map { it.thumbnailUrl }) { MonoExploreBridge.discoverRequested = true }
     }
+    item(key = "mono-bubble", contentType = "mono-bubble") {
+        val bubble = com.luc4n3x.levyra.ui.discovery.LocalHomeDiscovery.current
+        if (bubble != null) {
+            MonoBubbleEntry(feed.picks.ifEmpty { state.recentListens }.map { it.thumbnailUrl }) {
+                bubble.onOpenBubble(com.luc4n3x.levyra.feature.discovery.BubbleLevel.Adventurous)
+            }
+        }
+    }
     if (model.pinnedCards.isNotEmpty()) {
         item(key = "mono-pinned", contentType = "mono-cards") { kit.Cards(strings.speedDialCopy().title, model.pinnedCards) }
     }
@@ -949,23 +955,10 @@ private fun LazyListScope.monoHomeFeed(
     } else if (data.showArtists && state.homeArtistsLoading) {
         monoSkeletonSection("mono-artists-skeleton", strings.trendingArtists, copy.trendingOverline, MonoDesign.artistCircle, 3)
     }
-    if (feed.recents.isNotEmpty()) {
-        item(key = "mono-again", contentType = "mono-rail") {
-            MonoSection(copy.listenAgain, copy.againOverline) {
-                MonoTrackRail(feed.recents, MonoListenTile, currentId, strings.songOptions, { track ->
-                    if (track.id == state.currentTrack?.id) {
-                        if (!state.isResolving) model.viewModel.togglePlay()
-                    } else {
-                        actions.playFrom(feed.recents, track)
-                    }
-                }, actions.onTrackActions)
-            }
-        }
-    }
-    if (albumShelf != null && data.showAlbums) {
-        item(key = "mono-albums-yt", contentType = "mono-rail") {
-            MonoSection(albumShelf.title, copy.forYouOverline) {
-                MonoReleaseRail(albumShelf.items.mapNotNull { it.album }, actions.openAlbum)
+    if (albumShelf.isNotEmpty() && data.showAlbums) {
+        item(key = "mono-albums-apple", contentType = "mono-rail") {
+            MonoSection(copy.newAlbums, copy.forYouOverline) {
+                MonoReleaseRail(albumShelf, actions.openAlbum)
             }
         }
     } else if (feed.albums.isNotEmpty()) {
@@ -977,7 +970,7 @@ private fun LazyListScope.monoHomeFeed(
     }
     if (newVideos.isNotEmpty()) {
         item(key = "mono-new-videos", contentType = "mono-rail") {
-            MonoSection(copy.newVideos, copy.freshOverline) {
+            MonoSection(strings.homeVideoShelfTitle, copy.freshOverline) {
                 MonoVideoRail(newVideos) { item ->
                     val track = item.track
                     if (track != null) actions.playFrom(newVideos.mapNotNull { it.track }, track)

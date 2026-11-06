@@ -14,6 +14,8 @@ internal object LiveRadioArtworkLoader {
 
     val client: OkHttpClient by lazy {
         LevyraHttpClientFactory.externalIntegrations().newBuilder()
+            .connectTimeout(3, java.util.concurrent.TimeUnit.SECONDS)
+            .callTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
             .dns(RadioUrlPolicy.publicDns)
             .followRedirects(false)
             .followSslRedirects(false)

@@ -100,6 +100,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ExploreCatalog
+import com.luc4n3x.levyra.data.deduplicateSearchSongs
+import com.luc4n3x.levyra.data.filterSearchSongsExcludingTopResult
+import com.luc4n3x.levyra.data.findVerifiedTopResultArtist
+import com.luc4n3x.levyra.data.selectSearchTopResultTracks
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.PlaylistHit
 import com.luc4n3x.levyra.domain.SearchArtistDiscography
@@ -126,7 +130,7 @@ private val MonoSearchScopes = listOf(
     SearchFilter.Playlists,
     SearchFilter.Videos
 )
-private const val MonoSearchSongPreview = 4
+private const val MonoSearchGridColumns = 2
 private const val MonoSearchVideoPreview = 3
 private const val MonoSearchSuggestionLimit = 6
 private const val MonoSearchIdleRecent = 6
@@ -169,6 +173,9 @@ private fun monoSearchContent(data: SearchResults): MonoSearchContent = MonoSear
     playlists = data.playlists.distinctBy(::monoSearchPlaylistKey),
     videos = data.videos.distinctBy { it.id }
 )
+
+internal fun monoSearchPlays(track: Track, strings: LevyraStrings): String =
+    formatSearchViewCount(track.youtubeViewCount, strings.code).takeIf(String::isNotBlank)?.let { "$it ${strings.pulsePlays}" }.orEmpty()
 
 private class MonoSearchMenuItem(val label: String, val action: () -> Unit)
 
@@ -478,6 +485,9 @@ private fun MonoSearchResults(
         (hit.browseId.isNotBlank() && hit.browseId in state.followedArtistKeys) || hit.name.trim().lowercase() in state.followedArtistKeys
     }
     val actions = MonoSearchActions(viewModel, leaveField, onTrackActions)
+    val topTracks = remember(data.topTrack, data.songs) { selectSearchTopResultTracks(data.topTrack, data.songs) }
+    val topArtist = remember(data.artists, topTracks, query) { findVerifiedTopResultArtist(data.artists, topTracks.firstOrNull(), query.trim()) }
+    val top = MonoSearchTop(topTracks, topArtist, remember(data.songs, topTracks) { filterSearchSongsExcludingTopResult(data.songs, topTracks).distinctBy { it.id } })
     Column(Modifier.fillMaxSize()) {
         LazyRow(
             modifier = Modifier.fillMaxWidth().selectableGroup(),
@@ -521,7 +531,7 @@ private fun MonoSearchResults(
                     MonoSearchStatus(state, strings, filter) { viewModel.searchNow(query) }
                 }
             } else {
-                monoSearchBody(filter, content, discography, currentId, strings, copy, actions, followed)
+                monoSearchBody(filter, content, top, discography, currentId, strings, copy, actions, followed)
             }
             if (filter != SearchFilter.All && filter in state.searchSectionLoading) {
                 item(key = "section-loading", contentType = "status") {
@@ -533,6 +543,8 @@ private fun MonoSearchResults(
         }
     }
 }
+
+private class MonoSearchTop(val tracks: List<Track>, val artist: ArtistHit?, val restSongs: List<Track>)
 
 private class MonoSearchActions(
     val viewModel: SearchViewModel,
@@ -557,6 +569,28 @@ private class MonoSearchActions(
     fun openArtist(artist: ArtistHit) {
         leaveField()
         viewModel.openArtistFromHit(artist)
+    }
+
+    fun openTop(top: MonoSearchTop) {
+        leaveField()
+        val artist = top.artist
+        val hero = top.tracks.firstOrNull()
+        if (artist != null) viewModel.openArtistFromHit(artist) else if (hero != null) viewModel.openArtist(hero)
+    }
+
+    fun shuffleTop(top: MonoSearchTop, songs: List<Track>) {
+        leaveField()
+        val name = top.artist?.name ?: top.tracks.firstOrNull()?.artist
+        val pool = deduplicateSearchSongs(top.tracks + songs)
+            .filter { name.isNullOrBlank() || it.artist.contains(name, ignoreCase = true) }
+            .ifEmpty { top.tracks }
+            .shuffled()
+        pool.firstOrNull()?.let { viewModel.playFrom(pool, it) }
+    }
+
+    fun mixTop(top: MonoSearchTop) {
+        leaveField()
+        top.tracks.firstOrNull()?.let(viewModel::startSongRadioFrom)
     }
 }
 
@@ -591,6 +625,7 @@ private fun MonoSearchFetchEffects(
 private fun LazyListScope.monoSearchBody(
     filter: SearchFilter,
     content: MonoSearchContent,
+    top: MonoSearchTop,
     discography: SearchArtistDiscography?,
     currentId: String?,
     strings: LevyraStrings,
@@ -599,9 +634,9 @@ private fun LazyListScope.monoSearchBody(
     followed: (ArtistHit) -> Boolean
 ) {
     when (filter) {
-        SearchFilter.All -> monoSearchAll(content, discography, currentId, strings, copy, actions)
+        SearchFilter.All -> monoSearchAll(content, top, discography, currentId, strings, copy, actions)
         SearchFilter.Songs -> items(content.songs, key = { "song-${it.id}" }, contentType = { "track" }) { track ->
-            MonoSearchTrackRow(track, monoSearchMeta(track.artist, track.album), track.id == currentId, copy, { actions.play(content.songs, track) }) { actions.onTrackActions(track) }
+            MonoSearchTrackRow(track, monoSearchMeta(track.artist, track.album, monoSearchPlays(track, strings)), track.id == currentId, copy, { actions.play(content.songs, track) }) { actions.onTrackActions(track) }
         }
         SearchFilter.Videos -> items(content.videos, key = { "video-${it.id}" }, contentType = { "video" }) { track ->
             MonoSearchTrackRow(track, monoSearchMeta(strings.video, track.artist), track.id == currentId, copy, { actions.play(content.videos, track) }, MonoSearchWideArtwork) { actions.onTrackActions(track) }
@@ -623,57 +658,65 @@ private fun LazyListScope.monoSearchBody(
                 ) { actions.viewModel.toggleFollowArtist(artist) }
             }
         }
-        SearchFilter.Albums -> items(content.albums, key = { "album-${monoSearchAlbumKey(it)}" }, contentType = { "item-row" }) { album ->
-            MonoSearchItemRow(
-                title = album.title,
-                meta = monoSearchMeta(album.artist, album.year),
-                explicit = album.explicit,
-                copy = copy,
-                artwork = { LibraryArtwork(album.thumbnailUrl, album.title, Modifier.size(MonoDesign.rowArtwork), MonoDesign.artShape, false) },
-                onClick = { actions.openAlbum(album) }
-            ) {
-                MonoSearchMoreTarget(strings.more) { monoSearchAlbumMenu(album, strings, actions.viewModel) }
-            }
+        SearchFilter.Albums -> monoSearchGrid("album", content.albums, ::monoSearchAlbumKey) { album, modifier ->
+            GlacierGridCard(album.title, monoSearchMeta(album.artist, album.year), album.thumbnailUrl, modifier, { MonoSearchMoreTarget(strings.more) { monoSearchAlbumMenu(album, strings, actions.viewModel) } }) { actions.openAlbum(album) }
         }
-        SearchFilter.Playlists -> items(content.playlists, key = { "playlist-${monoSearchPlaylistKey(it)}" }, contentType = { "item-row" }) { playlist ->
-            MonoSearchItemRow(
-                title = playlist.title,
-                meta = monoSearchMeta(playlist.author, playlist.trackCountLabel),
-                explicit = false,
-                copy = copy,
-                artwork = { LibraryArtwork(playlist.thumbnailUrl, playlist.title, Modifier.size(MonoDesign.rowArtwork), MonoDesign.artShape, false) },
-                onClick = { actions.openPlaylist(playlist) }
-            ) {
-                MonoSearchMoreTarget(strings.more) { monoSearchPlaylistMenu(playlist, strings, actions.viewModel) }
-            }
+        SearchFilter.Playlists -> monoSearchGrid("playlist", content.playlists, ::monoSearchPlaylistKey) { playlist, modifier ->
+            GlacierGridCard(playlist.title, monoSearchMeta(playlist.author, playlist.trackCountLabel), playlist.thumbnailUrl, modifier, { MonoSearchMoreTarget(strings.more) { monoSearchPlaylistMenu(playlist, strings, actions.viewModel) } }) { actions.openPlaylist(playlist) }
+        }
+    }
+}
+
+private fun <T> LazyListScope.monoSearchGrid(prefix: String, entries: List<T>, key: (T) -> String, card: @Composable (T, Modifier) -> Unit) {
+    items(entries.chunked(MonoSearchGridColumns), key = { row -> "$prefix-row-${key(row.first())}" }, contentType = { "grid-row" }) { row ->
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = MonoDesign.gutter, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap)
+        ) {
+            row.forEach { entry -> card(entry, Modifier.weight(1f)) }
+            repeat(MonoSearchGridColumns - row.size) { Spacer(Modifier.weight(1f)) }
         }
     }
 }
 
 private fun LazyListScope.monoSearchAll(
     content: MonoSearchContent,
+    top: MonoSearchTop,
     discography: SearchArtistDiscography?,
     currentId: String?,
     strings: LevyraStrings,
     copy: MonoSearchCopy,
     actions: MonoSearchActions
 ) {
-    val top = content.songs.firstOrNull()
-    val previewSongs = content.songs.drop(1).take(MonoSearchSongPreview)
+    val songs = if (top.tracks.isEmpty()) content.songs else top.restSongs
     val header: @Composable (String, String?, (() -> Unit)?) -> Unit = { title, action, onAction ->
         MonoSectionHeader(title, Modifier.padding(top = 28.dp, bottom = 6.dp), action = action, onAction = onAction)
     }
-    if (top != null) {
+    if (top.tracks.isNotEmpty()) {
         item(key = "top-result", contentType = "top-result") {
-            MonoSearchTopResult(top, top.id == currentId, strings, copy, { actions.play(content.songs, top) }) { actions.onTrackActions(top) }
+            GlacierTopResultCard(
+                tracks = top.tracks,
+                artist = top.artist,
+                currentId = currentId,
+                strings = strings,
+                onPlay = { track -> actions.play(deduplicateSearchSongs(listOf(track) + content.songs), track) },
+                onArtist = { actions.openTop(top) },
+                onShuffle = { actions.shuffleTop(top, content.songs) },
+                onMix = { actions.mixTop(top) },
+                onMore = actions.onTrackActions
+            )
         }
     }
-    if (previewSongs.isNotEmpty()) {
-        item(key = "songs-header", contentType = "header") {
-            header(strings.songsPlain, strings.more.takeIf { content.songs.size > MonoSearchSongPreview + 1 }) { actions.viewModel.setSearchFilter(SearchFilter.Songs) }
-        }
-        items(previewSongs, key = { "song-${it.id}" }, contentType = { "track" }) { track ->
-            MonoSearchTrackRow(track, monoSearchMeta(track.artist, track.album), track.id == currentId, copy, { actions.play(content.songs, track) }) { actions.onTrackActions(track) }
+    if (discography != null) {
+        item(key = "discography", contentType = "discography") {
+            Box(Modifier.padding(start = MonoDesign.gutter, end = MonoDesign.gutter, top = MonoDesign.sectionGap)) {
+                SearchDiscographySection(
+                    discography = discography,
+                    onOpenRelease = actions::openAlbum,
+                    onOpenPlaylist = actions::openPlaylist,
+                    onOpenArtist = actions::openArtist
+                )
+            }
         }
     }
     if (content.artists.isNotEmpty()) {
@@ -688,18 +731,7 @@ private fun LazyListScope.monoSearchAll(
             }
         }
     }
-    if (discography != null) {
-        item(key = "discography", contentType = "discography") {
-            Box(Modifier.padding(start = MonoDesign.gutter, end = MonoDesign.gutter, top = MonoDesign.sectionGap)) {
-                SearchDiscographySection(
-                    discography = discography,
-                    onOpenRelease = actions::openAlbum,
-                    onOpenPlaylist = actions::openPlaylist,
-                    onOpenArtist = actions::openArtist
-                )
-            }
-        }
-    } else if (content.albums.isNotEmpty()) {
+    if (discography == null && content.albums.isNotEmpty()) {
         item(key = "albums-header", contentType = "header") {
             header(strings.albumsPlain, strings.more) { actions.viewModel.setSearchFilter(SearchFilter.Albums) }
         }
@@ -729,6 +761,14 @@ private fun LazyListScope.monoSearchAll(
         }
         items(content.videos.take(MonoSearchVideoPreview), key = { "video-${it.id}" }, contentType = { "video" }) { track ->
             MonoSearchTrackRow(track, monoSearchMeta(strings.video, track.artist), track.id == currentId, copy, { actions.play(content.videos, track) }, MonoSearchWideArtwork) { actions.onTrackActions(track) }
+        }
+    }
+    if (songs.isNotEmpty()) {
+        item(key = "songs-header", contentType = "header") {
+            header(strings.songsPlain, strings.more) { actions.viewModel.setSearchFilter(SearchFilter.Songs) }
+        }
+        items(songs, key = { "song-${it.id}" }, contentType = { "track" }) { track ->
+            MonoSearchTrackRow(track, monoSearchMeta(track.artist, track.album, monoSearchPlays(track, strings)), track.id == currentId, copy, { actions.play(content.songs, track) }) { actions.onTrackActions(track) }
         }
     }
 }

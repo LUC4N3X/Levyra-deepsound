@@ -8,22 +8,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.draw.shadow
-import androidx.compose.material3.carousel.rememberCarouselState
-import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
 import androidx.compose.material3.toShape
 import androidx.compose.material3.MaterialShapes
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.togetherWith
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.fadeIn
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
@@ -33,6 +24,14 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.semantics.contentDescription
+import com.luc4n3x.levyra.ui.i18n.homeStudioCopy
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.shape.CutCornerShape
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -86,10 +85,10 @@ internal fun LevyraSkin.title(): String = when (this) {
     LevyraSkin.Prism -> "Prism"
     LevyraSkin.Torque -> "Torque"
     LevyraSkin.Ivory -> "Ivory"
-    LevyraSkin.SpotifyStyle -> "Spotify Style"
-    LevyraSkin.AppleMusicStyle -> "Apple Music Style"
-    LevyraSkin.YouTubeMusicStyle -> "YouTube Music Style"
-    LevyraSkin.QobuzStyle -> "Qobuz Style"
+    LevyraSkin.SpotifyStyle -> "Spotify"
+    LevyraSkin.AppleMusicStyle -> "Apple Music"
+    LevyraSkin.YouTubeMusicStyle -> "YouTube Music"
+    LevyraSkin.QobuzStyle -> "Qobuz"
     LevyraSkin.Atelier -> "Atelier"
     LevyraSkin.Mono -> "Glacier"
 }
@@ -97,125 +96,248 @@ internal fun LevyraSkin.title(): String = when (this) {
 @Composable
 internal fun SkinSelector(selected: LevyraSkin, onSelect: (LevyraSkin) -> Unit) {
     val code = LocalLevyraStrings.current.code
-    val copy = LevyraSkinStrings.forCode(code)
-    val body = when (selected) {
-        LevyraSkin.Default -> copy.defaultBody
-        LevyraSkin.Nocturne78 -> copy.nocturneBody
-        LevyraSkin.Prism -> LevyraPrismStrings.forCode(code).body
-        LevyraSkin.Torque -> LevyraPrismStrings.forCode(code).torqueBody
-        LevyraSkin.Ivory -> LevyraPrismStrings.forCode(code).ivoryBody
-        LevyraSkin.SpotifyStyle -> LevyraPrismStrings.forCode(code).spotifyBody
-        LevyraSkin.AppleMusicStyle -> LevyraPrismStrings.forCode(code).appleMusicBody
-        LevyraSkin.YouTubeMusicStyle -> LevyraPrismStrings.forCode(code).youTubeMusicBody
-        LevyraSkin.QobuzStyle -> com.luc4n3x.levyra.ui.i18n.LevyraQobuzSkinStrings.forCode(code).skinBody
-        LevyraSkin.Atelier -> com.luc4n3x.levyra.ui.i18n.LevyraAtelierStrings.forCode(code).skinBody
-        LevyraSkin.Mono -> com.luc4n3x.levyra.ui.i18n.LevyraMonoStrings.forCode(code).skinBody
-    }
-    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        SkinStage(selected)
-        Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(
-                selected.title(), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black,
-                color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.semantics { heading() }
-            )
-            Text(body, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    val studio = LocalLevyraStrings.current.homeStudioCopy
+    val style = skinSelectorStyle(selected)
+    val pager = androidx.compose.foundation.pager.rememberPagerState(initialPage = SkinOrder.indexOf(selected).coerceAtLeast(0)) { SkinOrder.size }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val focused = SkinOrder[pager.currentPage]
+    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        SkinDeck(pager, selected, style) { skin -> if (skin == SkinOrder[pager.currentPage]) onSelect(skin) else scope.launch { pager.animateScrollToPage(SkinOrder.indexOf(skin)) } }
+        SkinGems(focused, selected, style) { skin -> scope.launch { pager.animateScrollToPage(SkinOrder.indexOf(skin)) } }
+        AnimatedContent(targetState = focused, label = "skin-copy") { shown ->
+            Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    shown.title(),
+                    style = MaterialTheme.typography.headlineMedium.let { base -> style.labelFont?.let { base.copy(fontFamily = it) } ?: base },
+                    fontWeight = style.titleWeight, color = style.text, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.semantics { heading() }
+                )
+                Text(skinBody(shown, code), style = MaterialTheme.typography.bodyLarge, color = style.muted)
+            }
         }
-        SkinCarousel(selected, onSelect)
+        val inUse = focused == selected
+        Box(
+            Modifier.fillMaxWidth().height(56.dp).clip(if (style.cutCorners) CutCornerShape(topEnd = 18.dp, bottomStart = 6.dp) else RoundedCornerShape(28.dp))
+                .background(if (inUse) style.stageColor else style.accent)
+                .border(1.dp, if (inUse) style.accent.copy(alpha = 0.5f) else Color.Transparent, if (style.cutCorners) CutCornerShape(topEnd = 18.dp, bottomStart = 6.dp) else RoundedCornerShape(28.dp))
+                .selectable(selected = inUse, enabled = !inUse, role = Role.Button) { onSelect(focused) },
+            contentAlignment = Alignment.Center
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (inUse) Icon(Icons.Rounded.Check, null, tint = style.accent, modifier = Modifier.size(20.dp))
+                Text(
+                    if (inUse) studio.inUse else studio.apply,
+                    style = MaterialTheme.typography.titleMedium.let { base -> style.labelFont?.let { base.copy(fontFamily = it) } ?: base },
+                    fontWeight = FontWeight.Bold, color = if (inUse) style.accent else style.onAccent
+                )
+            }
+        }
         if (selected != LevyraSkin.Default) {
             SkinManagedNotice { onSelect(LevyraSkin.Default) }
         }
     }
 }
 
+private fun skinBody(skin: LevyraSkin, code: String): String = when (skin) {
+    LevyraSkin.Default -> LevyraSkinStrings.forCode(code).defaultBody
+    LevyraSkin.Nocturne78 -> LevyraSkinStrings.forCode(code).nocturneBody
+    LevyraSkin.Prism -> LevyraPrismStrings.forCode(code).body
+    LevyraSkin.Torque -> LevyraPrismStrings.forCode(code).torqueBody
+    LevyraSkin.Ivory -> LevyraPrismStrings.forCode(code).ivoryBody
+    LevyraSkin.SpotifyStyle -> LevyraPrismStrings.forCode(code).spotifyBody
+    LevyraSkin.AppleMusicStyle -> LevyraPrismStrings.forCode(code).appleMusicBody
+    LevyraSkin.YouTubeMusicStyle -> LevyraPrismStrings.forCode(code).youTubeMusicBody
+    LevyraSkin.QobuzStyle -> com.luc4n3x.levyra.ui.i18n.LevyraQobuzSkinStrings.forCode(code).skinBody
+    LevyraSkin.Atelier -> com.luc4n3x.levyra.ui.i18n.LevyraAtelierStrings.forCode(code).skinBody
+    LevyraSkin.Mono -> com.luc4n3x.levyra.ui.i18n.LevyraMonoStrings.forCode(code).skinBody
+}
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun SkinStage(skin: LevyraSkin) {
-    val scheme = MaterialTheme.colorScheme
-    val motion = MaterialTheme.motionScheme
+private fun SkinDeck(
+    pager: androidx.compose.foundation.pager.PagerState,
+    selected: LevyraSkin,
+    style: SkinSelectorStyle,
+    onTap: (LevyraSkin) -> Unit
+) {
     val animations = LocalAnimationsEnabled.current
     val spin = if (animations) {
-        rememberInfiniteTransition(label = "skin-stage-spin").animateFloat(
+        rememberInfiniteTransition(label = "skin-deck-spin").animateFloat(
             initialValue = 0f, targetValue = 360f,
             animationSpec = infiniteRepeatable(tween(SKIN_STAGE_SPIN_MS, easing = LinearEasing)),
-            label = "skin-stage-rotation"
+            label = "skin-deck-rotation"
         )
     } else {
         remember { mutableFloatStateOf(0f) }
     }
-    Box(
-        Modifier.fillMaxWidth().height(340.dp).clip(RoundedCornerShape(40.dp)).background(scheme.surfaceContainerHigh),
-        contentAlignment = Alignment.Center
+    val focused = SkinOrder[pager.currentPage]
+    val glow by animateColorAsState(skinAccent(focused, style.accent), label = "skin-deck-glow")
+    androidx.compose.foundation.layout.BoxWithConstraints(
+        Modifier.fillMaxWidth().height(380.dp).clip(style.stageShape).background(style.stageColor)
+            .border(1.dp, style.stageBorder, style.stageShape)
     ) {
-        AnimatedContent(
-            targetState = skin,
-            transitionSpec = {
-                fadeIn(motion.defaultEffectsSpec()) + scaleIn(motion.defaultSpatialSpec(), initialScale = 0.72f) togetherWith
-                    fadeOut(motion.fastEffectsSpec()) + scaleOut(motion.fastSpatialSpec(), targetScale = 1.12f)
-            },
-            label = "skin-stage"
-        ) { shown ->
-            val accent = skinAccent(shown, scheme.primary)
+        Box(
+            Modifier.fillMaxSize().drawBehind {
+                drawRect(Brush.radialGradient(listOf(glow.copy(alpha = 0.55f), glow.copy(alpha = 0.12f), Color.Transparent), center = Offset(size.width / 2f, size.height * 0.46f), radius = size.width * 0.75f))
+                if (style.cutCorners) {
+                    val step = 18.dp.toPx()
+                    var x = -size.height
+                    while (x < size.width) {
+                        drawLine(Color.White.copy(alpha = 0.035f), Offset(x, size.height), Offset(x + size.height, 0f), 1.dp.toPx())
+                        x += step
+                    }
+                }
+            }
+        )
+        if (!style.cutCorners) {
+            AnimatedContent(targetState = focused, label = "skin-deck-shape", modifier = Modifier.align(Alignment.Center)) { shown ->
+                Box(
+                    Modifier.size(270.dp).graphicsLayer { rotationZ = spin.value; alpha = 0.55f }
+                        .background(skinAccent(shown, style.accent), skinStagePolygon(shown).toShape())
+                )
+            }
+        }
+        val phoneWidth = 150.dp
+        val side = (maxWidth - phoneWidth) / 2
+        androidx.compose.foundation.pager.HorizontalPager(
+            state = pager,
+            contentPadding = PaddingValues(horizontal = side),
+            pageSpacing = (-22).dp,
+            beyondViewportPageCount = 2,
+            modifier = Modifier.fillMaxSize()
+        ) { page ->
+            val skin = SkinOrder[page]
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Box(
-                    Modifier.size(300.dp)
-                        .graphicsLayer { rotationZ = spin.value }
-                        .background(accent.copy(alpha = 0.92f), skinStagePolygon(shown).toShape())
-                )
+                    Modifier.width(phoneWidth).aspectRatio(0.56f)
+                        .graphicsLayer {
+                            val offset = (pager.currentPage - page + pager.currentPageOffsetFraction).coerceIn(-2f, 2f)
+                            val distance = kotlin.math.abs(offset)
+                            rotationZ = offset * 9f
+                            translationY = distance * distance * 26.dp.toPx()
+                            translationX = offset * 18.dp.toPx()
+                            scaleX = 1f - 0.16f * distance.coerceAtMost(1.5f)
+                            scaleY = scaleX
+                            alpha = 1f - 0.38f * distance.coerceAtMost(1.6f)
+                            shadowElevation = (1f - distance.coerceAtMost(1f)) * 30.dp.toPx()
+                            shape = RoundedCornerShape(20.dp)
+                            clip = true
+                        }
+                        .selectable(selected = skin == selected, role = Role.RadioButton) { onTap(skin) }
+                        .semantics { contentDescription = skin.title() }
+                ) {
+                    SkinPhonePreview(skin, 20.dp, Modifier.fillMaxSize())
+                    if (skin == selected) {
+                        Box(
+                            Modifier.align(Alignment.TopEnd).padding(8.dp).size(28.dp).background(style.accent, style.badgeShape),
+                            contentAlignment = Alignment.Center
+                        ) { Icon(Icons.Rounded.Check, null, tint = style.onAccent, modifier = Modifier.size(17.dp)) }
+                    }
+                }
+            }
+        }
+        if (style.numbered) {
+            Text(
+                "${(pager.currentPage + 1).toString().padStart(2, '0')} / ${SkinOrder.size.toString().padStart(2, '0')}",
+                style = MaterialTheme.typography.labelMedium.copy(fontFamily = MonoCodeFont), color = style.accent,
+                modifier = Modifier.align(Alignment.TopStart).padding(18.dp)
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun SkinGems(focused: LevyraSkin, selected: LevyraSkin, style: SkinSelectorStyle, onJump: (LevyraSkin) -> Unit) {
+    androidx.compose.foundation.lazy.LazyRow(
+        Modifier.fillMaxWidth().selectableGroup(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(horizontal = 4.dp)
+    ) {
+        items(SkinOrder.size) { index ->
+            val skin = SkinOrder[index]
+            val active = skin == focused
+            val size by animateDpAsState(if (active) 44.dp else 34.dp, label = "skin-gem-size")
+            val gemShape = when {
+                style.cutCorners -> CutCornerShape(topEnd = size / 3, bottomStart = size / 8)
+                style.expressive -> skinStagePolygon(skin).toShape()
+                else -> style.badgeShape
+            }
+            Box(
+                Modifier.size(48.dp).selectable(selected = active, role = Role.Tab, onClick = { onJump(skin) })
+                    .semantics { contentDescription = skin.title() },
+                contentAlignment = Alignment.Center
+            ) {
                 Box(
-                    Modifier.align(Alignment.TopStart).padding(22.dp).size(44.dp)
-                        .graphicsLayer { rotationZ = -spin.value * 2f }
-                        .background(scheme.tertiaryContainer, MaterialShapes.Clover4Leaf.toShape())
-                )
-                Box(
-                    Modifier.align(Alignment.BottomEnd).padding(26.dp).size(30.dp)
-                        .background(scheme.secondaryContainer, MaterialShapes.Cookie4Sided.toShape())
-                )
-                SkinPhonePreview(
-                    shown, 20.dp,
-                    Modifier.width(150.dp).aspectRatio(0.56f)
-                        .graphicsLayer { rotationZ = -6f }
-                        .shadow(28.dp, RoundedCornerShape(20.dp), clip = false)
-                )
+                    Modifier.size(size).clip(gemShape)
+                        .background(Brush.linearGradient(listOf(skinAccent(skin, style.accent), skinPreviewPalette(skin).black)))
+                        .border(if (active) 2.dp else 1.dp, if (active) style.text else style.muted.copy(alpha = 0.3f), gemShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (skin == selected) Icon(Icons.Rounded.Check, null, tint = Color.White, modifier = Modifier.size(14.dp))
+                }
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+private val SkinOrder = listOf(
+    LevyraSkin.Default, LevyraSkin.Mono, LevyraSkin.Atelier, LevyraSkin.Prism, LevyraSkin.Nocturne78, LevyraSkin.Torque,
+    LevyraSkin.Ivory, LevyraSkin.SpotifyStyle, LevyraSkin.AppleMusicStyle, LevyraSkin.YouTubeMusicStyle, LevyraSkin.QobuzStyle
+)
+private const val SKIN_GRID_COLUMNS = 3
+
+private class SkinSelectorStyle(
+    val stageColor: Color,
+    val stageShape: Shape,
+    val stageBorder: Color,
+    val accent: Color,
+    val onAccent: Color,
+    val text: Color,
+    val muted: Color,
+    val cardCorner: Dp,
+    val selectedCorner: Dp,
+    val badgeShape: Shape,
+    val cutCorners: Boolean,
+    val labelFont: FontFamily?,
+    val numbered: Boolean,
+    val titleWeight: FontWeight,
+    val expressive: Boolean = false
+)
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun SkinCarousel(selected: LevyraSkin, onSelect: (LevyraSkin) -> Unit) {
-    val skins = LevyraSkin.entries
+private fun skinSelectorStyle(active: LevyraSkin): SkinSelectorStyle {
     val scheme = MaterialTheme.colorScheme
-    val state = rememberCarouselState(initialItem = skins.indexOf(selected).coerceAtLeast(0)) { skins.size }
-    HorizontalMultiBrowseCarousel(
-        state = state,
-        preferredItemWidth = 136.dp,
-        itemSpacing = 8.dp,
-        modifier = Modifier.fillMaxWidth().height(210.dp).selectableGroup()
-    ) { index ->
-        val skin = skins[index]
-        val active = skin == selected
-        Box(
-            Modifier.fillMaxSize().maskClip(MaterialTheme.shapes.extraLarge)
-                .selectable(selected = active, role = Role.RadioButton, onClick = { onSelect(skin) })
-        ) {
-            SkinPhonePreview(skin, 0.dp, Modifier.fillMaxSize())
-            Box(
-                Modifier.align(Alignment.BottomStart).fillMaxWidth()
-                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.78f))))
-                    .padding(start = 14.dp, end = 14.dp, top = 28.dp, bottom = 14.dp)
-            ) {
-                Text(skin.title(), style = MaterialTheme.typography.titleSmall, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    return when (active) {
+        LevyraSkin.Default -> SkinSelectorStyle(
+            stageColor = scheme.surfaceContainerHigh, stageShape = RoundedCornerShape(40.dp), stageBorder = Color.Transparent,
+            accent = scheme.primary, onAccent = scheme.onPrimary, text = scheme.onSurface, muted = scheme.onSurfaceVariant,
+            cardCorner = 22.dp, selectedCorner = 34.dp, badgeShape = MaterialShapes.Cookie9Sided.toShape(),
+            cutCorners = false, labelFont = null, numbered = false, titleWeight = FontWeight.Black, expressive = true
+        )
+        LevyraSkin.Mono -> SkinSelectorStyle(
+            stageColor = MonoDesign.surface, stageShape = CutCornerShape(topEnd = 36.dp, bottomStart = 10.dp), stageBorder = MonoDesign.hairlineStrong,
+            accent = MonoDesign.accent, onAccent = MonoDesign.onAccent, text = MonoDesign.text, muted = MonoDesign.textSecondary,
+            cardCorner = 18.dp, selectedCorner = 18.dp, badgeShape = CircleShape,
+            cutCorners = true, labelFont = MonoCodeFont, numbered = true, titleWeight = FontWeight.Medium
+        )
+        else -> {
+            val palette = skinPreviewPalette(active)
+            val corner = when (active) {
+                LevyraSkin.Nocturne78 -> 2.dp
+                LevyraSkin.QobuzStyle -> 4.dp
+                LevyraSkin.Atelier -> 6.dp
+                LevyraSkin.Torque -> 10.dp
+                else -> 18.dp
             }
-            if (active) {
-                Box(
-                    Modifier.align(Alignment.TopEnd).padding(10.dp).size(32.dp).background(scheme.primary, MaterialShapes.Cookie9Sided.toShape()),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Rounded.Check, null, tint = scheme.onPrimary, modifier = Modifier.size(18.dp))
-                }
-            }
+            SkinSelectorStyle(
+                stageColor = palette.panel, stageShape = RoundedCornerShape(corner * 2), stageBorder = palette.outline,
+                accent = palette.cyan, onAccent = palette.black, text = palette.text, muted = palette.muted,
+                cardCorner = corner, selectedCorner = corner, badgeShape = if (corner < 8.dp) RoundedCornerShape(corner) else CircleShape,
+                cutCorners = false, labelFont = null, numbered = false,
+                titleWeight = if (active == LevyraSkin.Atelier || active == LevyraSkin.Nocturne78) FontWeight.Medium else FontWeight.Bold
+            )
         }
     }
 }

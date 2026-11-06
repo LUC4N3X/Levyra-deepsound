@@ -336,29 +336,34 @@ internal fun GlacierMiniBackdrop(artworkColor: Color, progress: () -> Float, sho
 
 @Composable
 internal fun MonoMiniArtwork(track: Track, playing: Boolean, animated: Boolean, modifier: Modifier) {
-    val breath = remember { Animatable(1f) }
-    val breathing = playing && animated
-    LaunchedEffect(breathing) {
-        if (!breathing) {
-            if (animated) breath.animateTo(1f, spring(stiffness = 300f)) else breath.snapTo(1f)
+    val angle = remember { Animatable(0f) }
+    val spinning = playing && animated
+    LaunchedEffect(spinning) {
+        if (!spinning) {
+            angle.stop()
             return@LaunchedEffect
         }
         while (true) {
-            breath.animateTo(0.955f, tween(1700, easing = FastOutSlowInEasing))
-            breath.animateTo(1f, tween(1700, easing = FastOutSlowInEasing))
+            angle.animateTo(angle.value + 360f, tween(MonoMiniSpinMs, easing = LinearEasing))
+            angle.snapTo(angle.value % 360f)
         }
     }
-    Box(modifier) {
+    Box(
+        modifier.drawBehind {
+            drawCircle(MonoDesign.accent.copy(alpha = if (playing) 0.55f else 0.2f), size.minDimension / 2f, style = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx()))
+        }.padding(2.dp)
+    ) {
         Box(
             Modifier.matchParentSize()
-                .graphicsLayer {
-                    scaleX = breath.value
-                    scaleY = breath.value
-                }
-                .clip(MonoDesign.artShape)
+                .graphicsLayer { rotationZ = angle.value }
+                .clip(CircleShape)
                 .background(MonoDesign.raised)
         ) {
             CoverImage(track, Modifier.fillMaxSize())
+            Box(
+                Modifier.align(Alignment.Center).fillMaxSize(0.22f).clip(CircleShape).background(MonoDesign.base)
+                    .border(1.dp, MonoDesign.hairlineStrong, CircleShape)
+            )
         }
     }
 }
@@ -461,3 +466,5 @@ internal fun MonoMiniWaveProgress(progress: () -> Float, waving: Boolean, modifi
         }
     }
 }
+
+private const val MonoMiniSpinMs = 9000

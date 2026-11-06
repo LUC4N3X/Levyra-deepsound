@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Replay
@@ -148,57 +149,115 @@ internal fun GlacierFavoritesHero(favorites: List<Track>, onOpen: () -> Unit, on
 internal fun GlacierSmartRow(recent: List<Track>, mostPlayed: List<Track>, onOpenRecent: () -> Unit, onOpenMostPlayed: () -> Unit) {
     val strings = LocalLevyraStrings.current
     Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        GlacierSmartCard(Icons.Rounded.History, strings.recent, strings.formatTrackCount(recent.size), recent, onOpenRecent, Modifier.weight(1f))
-        GlacierSmartCard(Icons.Rounded.Replay, strings.pulsePlays, strings.formatTrackCount(mostPlayed.size), mostPlayed, onOpenMostPlayed, Modifier.weight(1f))
+        GlacierSlab(Icons.Rounded.History, strings.recent, strings.formatTrackCount(recent.size), recent, onOpenRecent, Modifier.weight(1f))
+        GlacierSlab(Icons.Rounded.Replay, strings.pulsePlays, strings.formatTrackCount(mostPlayed.size), mostPlayed, onOpenMostPlayed, Modifier.weight(1f))
     }
 }
 
 @Composable
-private fun GlacierSmartCard(icon: ImageVector, title: String, detail: String, tracks: List<Track>, onClick: () -> Unit, modifier: Modifier) {
-    Row(
-        modifier.height(76.dp).clip(MonoDesign.cardShape).background(MonoDesign.surface)
-            .border(1.dp, MonoDesign.hairline, MonoDesign.cardShape)
+private fun GlacierSlab(icon: ImageVector, title: String, detail: String, tracks: List<Track>, onClick: () -> Unit, modifier: Modifier) {
+    val covers = remember(tracks) { tracks.distinctBy { it.thumbnailUrl }.filter { it.thumbnailUrl.isNotBlank() }.take(4) }
+    Box(
+        modifier.height(GlacierSlabHeight).clip(MonoDesign.panelShape).background(MonoDesign.surface)
             .levyraPressable(onClick = onClick, role = Role.Button, pressedScale = LevyraPressScale.Tile, onClickLabel = title)
-            .padding(horizontal = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        val cover = tracks.firstOrNull()
-        Box(Modifier.size(48.dp).clip(MonoDesign.artShape).background(MonoDesign.raised), contentAlignment = Alignment.Center) {
-            if (cover != null) CoverImage(cover, Modifier.fillMaxSize()) else Icon(icon, null, tint = MonoDesign.accent, modifier = Modifier.size(20.dp))
+        if (covers.isNotEmpty()) {
+            Column(Modifier.fillMaxSize().graphicsLayer { alpha = 0.55f }) {
+                covers.chunked(2).let { rows -> if (rows.size == 1) rows + listOf(rows[0].reversed()) else rows }.forEach { row ->
+                    Row(Modifier.weight(1f).fillMaxWidth()) {
+                        (if (row.size == 1) row + row else row).forEach { track -> CoverImage(track, Modifier.weight(1f).fillMaxSize()) }
+                    }
+                }
+            }
         }
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, color = MonoDesign.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(detail, style = MaterialTheme.typography.bodySmall.copy(fontFamily = MonoCodeFont), color = MonoDesign.textSecondary, maxLines = 1)
+        Box(
+            Modifier.fillMaxSize().drawBehind {
+                drawRect(Brush.verticalGradient(0f to MonoDesign.base.copy(alpha = 0.15f), 0.55f to MonoDesign.base.copy(alpha = 0.78f), 1f to MonoDesign.base.copy(alpha = 0.96f)))
+                drawRect(Brush.radialGradient(listOf(MonoDesign.accent.copy(alpha = 0.22f), Color.Transparent), center = Offset(size.width, 0f), radius = size.width))
+                val step = 14.dp.toPx()
+                var x = -size.height
+                while (x < size.width) {
+                    drawLine(Color.White.copy(alpha = 0.035f), Offset(x, size.height), Offset(x + size.height, 0f), 1.dp.toPx())
+                    x += step
+                }
+                drawRect(Brush.horizontalGradient(0f to Color.Transparent, 0.5f to Color.White.copy(alpha = 0.16f), 1f to Color.Transparent), size = androidx.compose.ui.geometry.Size(size.width, 1.dp.toPx()))
+            }.border(1.dp, MonoDesign.hairlineStrong, MonoDesign.panelShape)
+        )
+        Box(
+            Modifier.padding(12.dp).size(34.dp).clip(CircleShape).background(MonoDesign.base.copy(alpha = 0.7f)).border(1.dp, MonoDesign.hairlineStrong, CircleShape),
+            contentAlignment = Alignment.Center
+        ) { Icon(icon, null, tint = MonoDesign.accent, modifier = Modifier.size(18.dp)) }
+        Column(Modifier.align(Alignment.BottomStart).padding(14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = MonoDesign.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(detail, style = MaterialTheme.typography.labelMedium.copy(fontFamily = MonoCodeFont), color = MonoDesign.accent, maxLines = 1)
         }
     }
+}
+
+private val GlacierSlabHeight = 132.dp
+private val GlacierLeadingCount = Regex("""^\s*([0-9][0-9.,   ]*)\s*(.*)$""")
+
+private class GlacierStratum(val entry: LibrarySectionEntry, val count: String, val unit: String, val value: Long)
+
+private fun glacierStratum(entry: LibrarySectionEntry): GlacierStratum {
+    val match = GlacierLeadingCount.find(entry.summary) ?: return GlacierStratum(entry, "", entry.summary, -1L)
+    val number = match.groupValues[1].trim()
+    return GlacierStratum(entry, number, match.groupValues[2].trim(), number.filter(Char::isDigit).toLongOrNull() ?: 0L)
 }
 
 @Composable
 internal fun GlacierSectionGrid(entries: List<LibrarySectionEntry>, onOpen: (LibraryCategory) -> Unit) {
     val strings = LocalLevyraStrings.current
-    Column(Modifier.fillMaxWidth().padding(top = 18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        entries.chunked(2).forEachIndexed { rowIndex, row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                row.forEachIndexed { columnIndex, entry ->
-                    val label = entry.category.libraryLabel(strings)
-                    val wide = row.size == 1
-                    Column(
-                        Modifier.weight(1f).heightIn(min = 104.dp).clip(MonoDesign.cardShape).background(MonoDesign.surface)
-                            .border(1.dp, MonoDesign.hairline, MonoDesign.cardShape)
-                            .levyraPressable(onClick = { onOpen(entry.category) }, role = Role.Button, pressedScale = LevyraPressScale.Tile, onClickLabel = label)
-                            .padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Box(
-                            Modifier.size(36.dp).clip(MonoDesign.cardShape).background(MonoDesign.raised),
-                            contentAlignment = Alignment.Center
-                        ) { Icon(entry.category.sectionIcon(), null, tint = MonoDesign.accent, modifier = Modifier.size(18.dp)) }
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(label, style = MaterialTheme.typography.titleSmall, color = MonoDesign.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            Text(entry.summary, style = MaterialTheme.typography.bodySmall.copy(fontFamily = MonoCodeFont), color = MonoDesign.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    val strata = remember(entries) { entries.map(::glacierStratum) }
+    val peak = remember(strata) { strata.maxOfOrNull { it.value }?.coerceAtLeast(1L) ?: 1L }
+    val animated = LocalAnimationsEnabled.current
+    val grow = remember { androidx.compose.animation.core.Animatable(if (animated) 0f else 1f) }
+    androidx.compose.runtime.LaunchedEffect(animated) { if (animated) grow.animateTo(1f, tween(900, easing = FastOutSlowInEasing)) else grow.snapTo(1f) }
+    Column(
+        Modifier.fillMaxWidth().padding(top = 18.dp).clip(MonoDesign.panelShape)
+            .drawBehind {
+                drawRect(Brush.verticalGradient(listOf(MonoDesign.raised, MonoDesign.surface)))
+                drawRect(Brush.radialGradient(listOf(MonoDesign.accent.copy(alpha = 0.10f), Color.Transparent), center = Offset(0f, 0f), radius = size.width))
+            }
+            .border(1.dp, MonoDesign.hairline, MonoDesign.panelShape)
+            .padding(vertical = 6.dp)
+    ) {
+        strata.forEachIndexed { index, stratum ->
+            val label = stratum.entry.category.libraryLabel(strings)
+            if (index > 0) Box(Modifier.padding(start = 70.dp).fillMaxWidth().height(1.dp).background(MonoDesign.hairline))
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 68.dp)
+                    .levyraPressable(onClick = { onOpen(stratum.entry.category) }, role = Role.Button, pressedScale = LevyraPressScale.Row, onClickLabel = label)
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    Modifier.size(40.dp).clip(CircleShape)
+                        .background(Brush.linearGradient(listOf(MonoDesign.accent.copy(alpha = 0.22f), MonoDesign.raisedHigh)))
+                        .border(1.dp, MonoDesign.accent.copy(alpha = 0.35f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) { Icon(stratum.entry.category.sectionIcon(), null, tint = MonoDesign.accent, modifier = Modifier.size(20.dp)) }
+                Column(Modifier.weight(1f).padding(start = 14.dp, end = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(label, style = MaterialTheme.typography.titleMedium, color = MonoDesign.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (stratum.value >= 0) {
+                        val share = (stratum.value.toFloat() / peak).coerceIn(0f, 1f)
+                        Box(Modifier.fillMaxWidth().height(3.dp).clip(MonoDesign.pillShape).background(MonoDesign.hairline)) {
+                            Box(
+                                Modifier.fillMaxWidth((0.04f + 0.96f * share) * grow.value).height(3.dp).clip(MonoDesign.pillShape)
+                                    .background(Brush.horizontalGradient(listOf(MonoDesign.accentDim, MonoDesign.accent, Color.White.copy(alpha = 0.9f))))
+                            )
                         }
+                    } else {
+                        Text(stratum.unit, style = MaterialTheme.typography.bodySmall, color = MonoDesign.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
+                }
+                if (stratum.count.isNotEmpty()) {
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(stratum.count, style = MaterialTheme.typography.titleLarge.copy(fontFamily = MonoCodeFont), color = if (stratum.value > 0) MonoDesign.text else MonoDesign.textFaint, maxLines = 1)
+                        Text(stratum.unit, style = MaterialTheme.typography.labelSmall, color = MonoDesign.textFaint, maxLines = 1)
+                    }
+                } else {
+                    Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = MonoDesign.textSecondary, modifier = Modifier.size(22.dp))
                 }
             }
         }

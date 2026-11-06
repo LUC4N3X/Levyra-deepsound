@@ -97,6 +97,15 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
     suspend fun newReleaseAlbums(storefront: String, language: String, limit: Int): List<AlbumHit> =
         appleNewReleaseAlbums(newMusic(storefront, language)?.page, limit)
 
+    suspend fun newThisWeekAlbums(storefront: String, language: String, limit: Int): List<AlbumHit> {
+        val shelf = appleNewThisWeekShelf(newMusic(storefront, language)?.page) ?: return emptyList()
+        val room = shelf.roomId.takeIf(String::isNotEmpty)?.let { id ->
+            page(AppleCatalogPath("room/$id", "room-$id"), storefront, language)?.page
+        }
+        val roomAlbums = appleAlbumHits(room?.shelves.orEmpty().asSequence().flatMap { it.items.asSequence() }, limit)
+        return roomAlbums.ifEmpty { appleAlbumHits(shelf.items.asSequence(), limit) }
+    }
+
     suspend fun recentChartAlbums(storefront: String, language: String, limit: Int): List<AlbumHit> {
         val front = AppleStorefronts.normalize(storefront)
         val lang = AppleStorefronts.language(language)
@@ -568,6 +577,7 @@ internal object AppleCatalogPageCodec {
                     .put("title", shelf.title)
                     .put("kind", shelf.kind.name)
                     .put("rows", shelf.rows)
+                    .put("roomId", shelf.roomId)
                     .put("items", JSONArray().apply { shelf.items.forEach { put(encodeItem(it)) } }))
             }
         })
@@ -581,7 +591,7 @@ internal object AppleCatalogPageCodec {
             val kind = runCatching { AppleCatalogShelfKind.valueOf(shelf.optString("kind")) }.getOrNull() ?: return@mapNotNull null
             val itemsJson = shelf.optJSONArray("items") ?: return@mapNotNull null
             val items = (0 until itemsJson.length()).mapNotNull { itemsJson.optJSONObject(it)?.let(::decodeItem) }
-            if (items.isEmpty()) null else AppleCatalogShelf(shelf.optString("id"), shelf.optString("title"), kind, items, shelf.optInt("rows", 1).coerceIn(1, 4))
+            if (items.isEmpty()) null else AppleCatalogShelf(shelf.optString("id"), shelf.optString("title"), kind, items, shelf.optInt("rows", 1).coerceIn(1, 4), shelf.optString("roomId"))
         }
         if (shelves.isEmpty()) return null
         return AppleCatalogPage(storefront, shelves, root.optLong("fetchedAtMs"))

@@ -143,7 +143,7 @@ internal fun qobuzPalette(systemDark: Boolean = false): LevyraPalette {
     fun tone(day: Long, night: Long) = Color(if (light) day else night)
     val accent = tone(0xFF9E6301, 0xFFFFCB74)
     return LevyraThemes.cosmic.copy(
-        id = QobuzPaletteId, label = "Qobuz Style", emoji = "♫", isLight = light,
+        id = QobuzPaletteId, label = "Qobuz", emoji = "♫", isLight = light,
         followsCover = false, followsMood = false,
         black = tone(0xFFFFFFFF, 0xFF121212),
         ink = tone(0xFFFFFFFF, 0xFF181818),

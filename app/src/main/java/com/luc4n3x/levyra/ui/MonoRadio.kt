@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.getValue
@@ -180,6 +181,12 @@ internal fun MonoRadioRow(
 ) {
     Row(
         Modifier.fillMaxWidth().heightIn(min = 68.dp)
+            .drawBehind {
+                if (playing) {
+                    drawRect(Brush.horizontalGradient(listOf(MonoDesign.accent.copy(alpha = 0.14f), Color.Transparent)))
+                    drawRect(MonoDesign.accent, size = androidx.compose.ui.geometry.Size(3.dp.toPx(), size.height))
+                }
+            }
             .levyraPressable(onClick = onPlay, role = Role.Button, pressedScale = LevyraPressScale.Row, onClickLabel = playLabel)
             .padding(start = MonoDesign.gutter, end = 8.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -271,14 +278,19 @@ internal fun MonoRadioTuner(
     val station = stations[tunedIndex.coerceIn(0, stations.lastIndex)]
     val playing = currentStationId == station.uuid && isPlaying
     val favorite = station.uuid.lowercase(Locale.ROOT) in favoriteIds
-    Column(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 12.dp)) {
+    Column(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 16.dp)) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = MonoDesign.gutter),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            RadioArtwork(station, 76.dp, MonoDesign.artShape)
-            Column(Modifier.weight(1f).padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                MonoOverline("${monoFrequency(tunedIndex)} FM \u00B7 $live", color = MonoDesign.accent)
+            Box(Modifier.padding(10.dp)) {
+                GlacierSignal(playing) { RadioArtwork(station, 84.dp, CircleShape) }
+            }
+            Column(Modifier.weight(1f).padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(monoFrequency(tunedIndex), style = MaterialTheme.typography.headlineMedium.copy(fontFamily = com.luc4n3x.levyra.ui.theme.MonoCodeFont), color = MonoDesign.accent, maxLines = 1)
+                    MonoOverline("FM", Modifier.padding(bottom = 4.dp), color = MonoDesign.textSecondary)
+                }
                 Text(station.name, style = MaterialTheme.typography.titleLarge, color = MonoDesign.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 val detail = monoRadioDetail(station)
                 if (detail.isNotBlank()) Text(detail, style = MaterialTheme.typography.bodySmall, color = MonoDesign.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -328,10 +340,48 @@ internal fun MonoRadioTuner(
                     .clip(MonoDesign.pillShape).background(MonoDesign.accent)
             )
             Box(Modifier.matchParentSize().drawBehind {
-                drawRect(Brush.horizontalGradient(0f to MonoDesign.base, 0.18f to Color.Transparent, 0.82f to Color.Transparent, 1f to MonoDesign.base))
+                drawRect(Brush.horizontalGradient(0f to MonoDesign.base, 0.2f to Color.Transparent, 0.8f to Color.Transparent, 1f to MonoDesign.base))
             })
         }
     }
 }
 
 private val MonoTunerSlot = 88.dp
+
+@Composable
+private fun GlacierSignal(playing: Boolean, content: @Composable () -> Unit) {
+    val active = playing && LocalAnimationsEnabled.current
+    val wave = if (active) {
+        androidx.compose.animation.core.rememberInfiniteTransition(label = "glacier-signal").animateFloat(
+            0f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(2400, easing = androidx.compose.animation.core.LinearEasing)),
+            label = "glacier-signal-wave"
+        )
+    } else null
+    Box(
+        Modifier.drawBehind {
+            val base = size.minDimension / 2f
+            val center = Offset(size.width / 2f, size.height / 2f)
+            if (wave != null) {
+                for (ring in 0 until 3) {
+                    val t = (wave.value + ring / 3f) % 1f
+                    drawCircle(MonoDesign.accent.copy(alpha = 0.45f * (1f - t)), base * (1.05f + 0.55f * t), center, style = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx()))
+                }
+            } else {
+                drawCircle(MonoDesign.hairlineStrong, base * 1.12f, center, style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
+            }
+        },
+        contentAlignment = Alignment.Center
+    ) { content() }
+}
+
+@Composable
+internal fun MonoRadioGlow() {
+    Box(
+        Modifier.fillMaxWidth().height(MonoRadioGlowHeight)
+            .drawBehind {
+                drawRect(Brush.verticalGradient(0f to MonoDesign.accent.copy(alpha = 0.24f), 0.45f to MonoDesign.accent.copy(alpha = 0.08f), 1f to Color.Transparent))
+            }
+    )
+}
+
+private val MonoRadioGlowHeight = 520.dp
