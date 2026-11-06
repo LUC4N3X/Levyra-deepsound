@@ -1,5 +1,12 @@
 package com.luc4n3x.levyra.ui.library
 
+import androidx.compose.material.icons.outlined.PersonOutline
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.Dp
+import com.luc4n3x.levyra.ui.MonoArtwork
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
@@ -92,7 +99,6 @@ import com.luc4n3x.levyra.ui.MonoPill
 import com.luc4n3x.levyra.ui.MonoScreenTitle
 import com.luc4n3x.levyra.ui.MonoSectionHeader
 import com.luc4n3x.levyra.ui.MonoWaveLine
-import com.luc4n3x.levyra.ui.drawMonoDiamond
 import com.luc4n3x.levyra.ui.i18n.LevyraMonoLibraryStrings
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
@@ -330,17 +336,34 @@ internal fun MonoLibraryScreen(
             if (showTiles) {
                 item(key = "tiles", contentType = "tiles") {
                     val visiblePlaylists = remember(playlists) { playlists.count { !it.hidden } }
+                    val followed = state.followedArtists
+                    Column {
                     MonoLibraryTiles(
-                        strings = strings,
-                        copy = copy,
-                        favoritesLabel = strings.formatTrackCount(favorites.size),
-                        playlistsLabel = copy.collections(visiblePlaylists, numbers.format(visiblePlaylists)),
-                        offlineLabel = strings.formatTrackCount(catalog.offlineItems.size),
-                        onFavorites = { smartCollection = SMART_COLLECTION_FAVORITES },
-                        onPlaylists = { selectFilter(MonoLibraryFilter.Playlists) },
-                        onRecent = { smartCollection = SMART_COLLECTION_RECENT },
-                        onOffline = { selectFilter(MonoLibraryFilter.Downloads) }
+                        hero = MonoShelfTile(
+                                Icons.Outlined.FavoriteBorder, strings.favorites, strings.formatTrackCount(favorites.size),
+                                favorites.take(6).map { it.thumbnailUrl }, false
+                            ) { smartCollection = SMART_COLLECTION_FAVORITES },
+                        tiles = listOf(
+                            MonoShelfTile(
+                                Icons.AutoMirrored.Outlined.QueueMusic, strings.playlistsPlain, copy.collections(visiblePlaylists, numbers.format(visiblePlaylists)),
+                                playlists.filterNot { it.hidden }.map { it.coverUrl.ifBlank { it.tracks.firstOrNull()?.thumbnailUrl.orEmpty() } }, false
+                            ) { selectFilter(MonoLibraryFilter.Playlists) },
+                            MonoShelfTile(
+                                Icons.Outlined.PersonOutline, strings.artists, numbers.format(followed.size),
+                                followed.map { it.thumbnailUrl }, true
+                            ) { selectFilter(MonoLibraryFilter.Artists) },
+                            MonoShelfTile(
+                                Icons.Outlined.History, strings.recent, copy.recentSubtitle,
+                                state.recentListens.take(6).map { it.thumbnailUrl }, false
+                            ) { smartCollection = SMART_COLLECTION_RECENT },
+                            MonoShelfTile(
+                                Icons.Outlined.FileDownload, strings.offline, strings.formatTrackCount(catalog.offlineItems.size),
+                                catalog.offlineItems.take(6).map { it.track.thumbnailUrl }, false
+                            ) { selectFilter(MonoLibraryFilter.Downloads) }
+                        )
                     )
+                    MonoPulseCard(state.listeningPulse, viewModel::openListeningInsights)
+                    }
                 }
             }
             if (filter != MonoLibraryFilter.Downloads) {
@@ -654,49 +677,100 @@ private fun MonoLibraryPills(selected: MonoLibraryFilter, strings: LevyraStrings
     }
 }
 
+internal class MonoShelfTile(
+    val icon: ImageVector,
+    val title: String,
+    val detail: String,
+    val covers: List<String>,
+    val round: Boolean,
+    val onClick: () -> Unit
+)
+
 @Composable
-private fun MonoLibraryTiles(
-    strings: LevyraStrings,
-    copy: MonoLibraryCopy,
-    favoritesLabel: String,
-    playlistsLabel: String,
-    offlineLabel: String,
-    onFavorites: () -> Unit,
-    onPlaylists: () -> Unit,
-    onRecent: () -> Unit,
-    onOffline: () -> Unit
-) {
+private fun MonoLibraryTiles(hero: MonoShelfTile, tiles: List<MonoShelfTile>) {
     Column(
-        Modifier.fillMaxWidth().padding(start = MonoDesign.gutter, end = MonoDesign.gutter, top = 10.dp),
+        Modifier.fillMaxWidth().padding(start = MonoDesign.gutter, end = MonoDesign.gutter, top = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            MonoLibraryTile(Icons.Outlined.FavoriteBorder, strings.favorites, favoritesLabel, onFavorites, Modifier.weight(1f))
-            MonoLibraryTile(Icons.AutoMirrored.Outlined.QueueMusic, strings.playlistsPlain, playlistsLabel, onPlaylists, Modifier.weight(1f))
+        MonoShelfHero(hero)
+        tiles.chunked(2).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                row.forEach { tile -> MonoShelfCard(tile, Modifier.weight(1f)) }
+                if (row.size == 1) Spacer(Modifier.weight(1f))
+            }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            MonoLibraryTile(Icons.Outlined.History, strings.recent, copy.recentSubtitle, onRecent, Modifier.weight(1f))
-            MonoLibraryTile(Icons.Outlined.FileDownload, strings.offline, offlineLabel, onOffline, Modifier.weight(1f))
+    }
+}
+
+private fun Modifier.monoShelfSurface(glow: Boolean): Modifier = drawBehind {
+    drawRect(Brush.linearGradient(listOf(MonoDesign.raised, MonoDesign.surface), Offset.Zero, Offset(size.width, size.height)))
+    if (glow) drawRect(Brush.radialGradient(listOf(MonoDesign.accent.copy(alpha = 0.16f), Color.Transparent), center = Offset(0f, 0f), radius = size.width * 0.8f))
+}
+
+@Composable
+private fun MonoShelfHero(tile: MonoShelfTile) {
+    Row(
+        Modifier.fillMaxWidth().height(132.dp)
+            .clip(MonoDesign.panelShape)
+            .monoShelfSurface(glow = true)
+            .border(1.dp, MonoDesign.hairline, MonoDesign.panelShape)
+            .clickable(role = Role.Button, onClickLabel = tile.title, onClick = tile.onClick)
+            .padding(start = 18.dp, end = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Icon(tile.icon, null, tint = MonoDesign.accent, modifier = Modifier.size(22.dp))
+            Text(tile.title, style = MaterialTheme.typography.titleLarge, color = MonoDesign.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            MonoOverline(tile.detail)
+        }
+        MonoCoverFan(tile.covers, 76.dp, tile.round, Modifier.width(150.dp).fillMaxHeight())
+    }
+}
+
+@Composable
+private fun MonoShelfCard(tile: MonoShelfTile, modifier: Modifier) {
+    Box(
+        modifier.height(118.dp)
+            .clip(MonoDesign.cardShape)
+            .monoShelfSurface(glow = false)
+            .border(1.dp, MonoDesign.hairline, MonoDesign.cardShape)
+            .clickable(role = Role.Button, onClickLabel = tile.title, onClick = tile.onClick)
+    ) {
+        MonoCoverFan(tile.covers, 46.dp, tile.round, Modifier.align(Alignment.TopEnd).padding(top = 10.dp, end = 8.dp).width(86.dp).height(58.dp))
+        Column(Modifier.align(Alignment.BottomStart).padding(14.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Icon(tile.icon, null, tint = MonoDesign.accent, modifier = Modifier.size(16.dp))
+            Text(tile.title, style = MaterialTheme.typography.titleMedium, color = MonoDesign.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(tile.detail, style = MaterialTheme.typography.bodySmall, color = MonoDesign.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
 
 @Composable
-private fun MonoLibraryTile(icon: ImageVector, title: String, detail: String, onClick: () -> Unit, modifier: Modifier) {
-    Column(
-        modifier.height(104.dp)
-            .monoPanel(MonoDesign.cardShape, MonoDesign.surface)
-            .drawBehind { drawMonoDiamond(MonoDesign.hairlineStrong) }
-            .clickable(role = Role.Button, onClick = onClick)
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, null, tint = MonoDesign.text, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(title, style = MaterialTheme.typography.titleMedium, color = MonoDesign.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+private fun MonoCoverFan(covers: List<String>, size: Dp, round: Boolean, modifier: Modifier) {
+    val shown = covers.filter(String::isNotBlank).distinct().take(3)
+    val shape = if (round) CircleShape else MonoDesign.artShape
+    Box(modifier.clearAndSetSemantics { }, contentAlignment = Alignment.Center) {
+        if (shown.isEmpty()) {
+            repeat(3) { index ->
+                Box(
+                    Modifier.size(size).graphicsLayer { rotationZ = (index - 1) * 10f; translationX = (index - 1) * size.toPx() * 0.42f }
+                        .border(1.dp, MonoDesign.hairlineStrong, shape)
+                )
+            }
+        } else {
+            shown.forEachIndexed { index, url ->
+                val offset = index - (shown.size - 1) / 2f
+                Box(
+                    Modifier.size(size).graphicsLayer {
+                        rotationZ = offset * 9f
+                        translationX = offset * size.toPx() * 0.46f
+                        shadowElevation = 6.dp.toPx()
+                        this.shape = shape
+                        clip = true
+                    }.background(MonoDesign.raised)
+                ) { MonoArtwork(url, Modifier.fillMaxSize()) }
+            }
         }
-        MonoOverline(detail)
     }
 }
 

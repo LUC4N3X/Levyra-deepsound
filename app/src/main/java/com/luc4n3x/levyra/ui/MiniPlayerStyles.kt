@@ -381,7 +381,7 @@ private fun rememberMiniContainerShape(
     return if (style == MiniPlayerStyle.SuperExpressive) {
         RoundedCornerShape(expressiveCorner)
     } else {
-        if (LevyraIsAtelier) RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp) else RoundedCornerShape(skinMiniPlayerCorner(tuning))
+        if (LevyraIsAtelier) RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp) else if (LevyraIsMono) GlacierSlabShape else RoundedCornerShape(skinMiniPlayerCorner(tuning))
     }
 }
 
@@ -479,7 +479,12 @@ internal fun StyledMiniPlayer(
                 .miniOutline(style, palette, containerShape)
                 .then(interaction)
         ) {
-            MiniBackdropLayers(style, tuning, track, palette, progress, liveRadio)
+            if (LevyraIsMono) {
+                val artwork = rememberMiniArtworkPalette(track)
+                GlacierMiniBackdrop(Color(artwork.start), progress, !liveRadio, model.isPlaying)
+            } else {
+                MiniBackdropLayers(style, tuning, track, palette, progress, liveRadio)
+            }
             Row(
                 modifier = Modifier
                     .fillMaxSize()
@@ -775,10 +780,7 @@ private fun BoxScope.MiniBottomProgress(
     height: Dp,
     waving: Boolean
 ) {
-    if (LevyraIsMono) {
-        MonoMiniWaveProgress(progress, waving, Modifier.align(Alignment.BottomCenter))
-        return
-    }
+    if (LevyraIsMono) return
     when (tuning.progress) {
         MiniProgressStyle.Line -> when (style) {
             MiniPlayerStyle.YtMusic -> MiniEdgeProgress(
@@ -1271,7 +1273,7 @@ private fun MiniStyledControls(
         return
     }
     if (LevyraIsMono) {
-        MonoMiniControls(isPlaying, isResolving, isFavorite, !liveRadio, animated, playbackActions.favorite, onToggle)
+        MonoMiniControls(isPlaying, isResolving, isFavorite, !liveRadio, animated, playbackActions.favorite, onToggle, playbackActions.close)
         return
     }
     if (LevyraIsQobuz && !liveRadio) {

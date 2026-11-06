@@ -51,7 +51,7 @@ internal fun tastePersona(peakHour: Int): TastePersona? = when (peakHour) {
 internal fun isExplorer(period: PulsePeriod): Boolean =
     period.plays > 0 && period.distinctArtists * 10 >= period.plays * 4
 
-private fun TasteCardCopy.title(persona: TastePersona): String = when (persona) {
+internal fun TasteCardCopy.title(persona: TastePersona): String = when (persona) {
     TastePersona.NIGHT -> nightOwl
     TastePersona.MORNING -> earlyRiser
     TastePersona.DAY -> daytime

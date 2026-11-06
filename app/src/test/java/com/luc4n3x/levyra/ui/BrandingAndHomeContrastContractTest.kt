@@ -39,7 +39,7 @@ class BrandingAndHomeContrastContractTest {
     fun `home header keeps greeting readable over bright artwork in dark theme`() {
         val dayPart = functionBlock("private fun HomeGreetingDayPart(")
         val name = functionBlock("private fun HomeGreetingName(")
-        val headerScrim = functionBlock("private fun Modifier.homeHeroHeaderScrim(")
+        val headerScrim = functionBlock("fun Modifier.homeHeroHeaderScrim(")
 
         assertTrue(dayPart.contains("else -> Color.White.copy(alpha = 0.72f)"))
         assertTrue(name.contains("color = if (LevyraIsLight) LevyraText else Color.White"))

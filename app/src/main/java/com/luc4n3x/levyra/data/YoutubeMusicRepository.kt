@@ -2388,6 +2388,9 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         val strapline = header?.optJSONObject("strapline")?.optJSONArray("runs")?.joinText().orEmpty().trim()
         val headerThumbnail = header?.optJSONObject("thumbnail")?.let { findBestThumbnail(it) }.orEmpty()
         val contents = shelf.optJSONArray("contents") ?: return null
+        val headerBrowseId = header?.optJSONObject("title")?.optJSONArray("runs")?.optJSONObject(0)
+            ?.optJSONObject("navigationEndpoint")?.optJSONObject("browseEndpoint")?.optString("browseId").orEmpty()
+        val newVideosShelf = headerBrowseId == "FEmusic_new_releases_videos"
         val items = LinkedHashMap<String, YoutubeMusicHomeItem>()
         val buttons = mutableListOf<YoutubeMusicHomeButton>()
         var listRows = 0
@@ -2397,6 +2400,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
                 parseHomeButton(button)?.let(buttons::add)
                 continue
             }
+            if (newVideosShelf && isNonMusicAudioCard(content)) continue
             if (content.has("musicResponsiveListItemRenderer")) listRows++
             val item = parseHomeItem(content) ?: continue
             items.putIfAbsent(item.key, item)
@@ -2417,8 +2421,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             thumbnailUrl = headerThumbnail.takeIf { it.isNotBlank() }?.let(::upgradeThumbnail).orEmpty(),
             style = style,
             items = values,
-            headerBrowseId = header?.optJSONObject("title")?.optJSONArray("runs")?.optJSONObject(0)
-                ?.optJSONObject("navigationEndpoint")?.optJSONObject("browseEndpoint")?.optString("browseId").orEmpty(),
+            headerBrowseId = headerBrowseId,
             buttons = buttons.take(MAX_HOME_SHELF_ITEMS * 2)
         )
     }
@@ -2431,6 +2434,11 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         val stripe = button.optJSONObject("solid")?.optLong("leftStripeColor") ?: 0L
         return YoutubeMusicHomeButton(title, stripe, endpoint.optString("browseId"), params)
     }
+
+    private fun isNonMusicAudioCard(content: JSONObject): Boolean =
+        content.optJSONObject("musicTwoRowItemRenderer")?.optJSONObject("navigationEndpoint")?.optJSONObject("browseEndpoint")
+            ?.optJSONObject("browseEndpointContextSupportedConfigs")?.optJSONObject("browseEndpointContextMusicConfig")
+            ?.optString("pageType") == "MUSIC_PAGE_TYPE_NON_MUSIC_AUDIO_TRACK_PAGE"
 
     private fun parseHomeItem(content: JSONObject): YoutubeMusicHomeItem? {
         content.optJSONObject("musicResponsiveListItemRenderer")?.let { renderer ->

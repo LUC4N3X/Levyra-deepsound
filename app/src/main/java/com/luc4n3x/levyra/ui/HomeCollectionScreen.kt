@@ -112,6 +112,10 @@ internal fun HomeCollectionScreen(
         )
         return
     }
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+        GlacierCollectionScreen(title, tracks, currentId, isPlaying, onDismiss, onPlay, onPlayAll, onShuffle, onTrackActions, bottomInset)
+        return
+    }
     if (LevyraIsSpotify) {
         SpotifyRadioPage(
             title, tracks, accentStart, currentId, isPlaying, bottomInset,

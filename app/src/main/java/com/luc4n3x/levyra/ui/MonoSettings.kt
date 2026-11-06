@@ -1,12 +1,15 @@
 package com.luc4n3x.levyra.ui
 
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,8 +24,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -47,36 +48,35 @@ import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.MonoDesign
 
-private val MonoSettingsRowHeight: Dp = 56.dp
+private val MonoSettingsRowHeight: Dp = 72.dp
 private val MonoSettingsTile: Dp = 36.dp
-private val MonoSettingsTileShape = RoundedCornerShape(10.dp)
-private val MonoSettingsInset: Dp = 14.dp
+private val MonoSettingsInset: Dp = 20.dp
 
 @Composable
 internal fun MonoSettingsHeader(onClose: () -> Unit) {
     val strings = LocalLevyraStrings.current
-    Column(Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-            Column(Modifier.weight(1f).padding(top = 6.dp)) {
-                Text(
-                    strings.settings, style = MaterialTheme.typography.headlineLarge, color = MonoDesign.text,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() }
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(strings.settingsSubtitle, style = MaterialTheme.typography.bodyMedium, color = MonoDesign.textSecondary)
-            }
-            Box(
-                Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(MonoDesign.surface)
-                    .border(1.dp, MonoDesign.hairline, CircleShape)
-                    .clickable(role = Role.Button, onClickLabel = strings.close, onClick = onClose),
-                contentAlignment = Alignment.Center
-            ) { Icon(Icons.Rounded.Close, strings.close, tint = MonoDesign.text, modifier = Modifier.size(22.dp)) }
+    Column(
+        Modifier.fillMaxWidth().drawBehind {
+            drawCircle(
+                Brush.radialGradient(listOf(MonoDesign.accent.copy(alpha = 0.22f), Color.Transparent), center = Offset(size.width * 0.1f, -size.height * 0.4f), radius = size.width * 1.1f),
+                radius = size.width * 1.1f, center = Offset(size.width * 0.1f, -size.height * 0.4f)
+            )
         }
-        Spacer(Modifier.height(18.dp))
-        Box(Modifier.width(28.dp).height(2.dp).background(MonoDesign.accent, MonoDesign.pillShape))
+    ) {
+        Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier.size(48.dp).clip(CircleShape).clickable(role = Role.Button, onClickLabel = strings.close, onClick = onClose),
+                contentAlignment = Alignment.Center
+            ) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, strings.close, tint = MonoDesign.text, modifier = Modifier.size(24.dp)) }
+            Text(
+                strings.settings, style = MaterialTheme.typography.headlineLarge, color = MonoDesign.text,
+                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 8.dp).semantics { heading() }
+            )
+        }
+        Text(
+            strings.settingsSubtitle, style = MaterialTheme.typography.bodyMedium, color = MonoDesign.textSecondary,
+            modifier = Modifier.padding(start = 4.dp, top = 10.dp)
+        )
     }
 }
 
@@ -84,7 +84,7 @@ internal fun MonoSettingsHeader(onClose: () -> Unit) {
 internal fun MonoSettingsGroupLabel(text: String) {
     MonoOverline(
         text,
-        modifier = Modifier.padding(start = 4.dp, top = 28.dp, bottom = 10.dp).semantics { heading() }
+        modifier = Modifier.padding(start = 20.dp, top = 32.dp, bottom = 12.dp).semantics { heading() }
     )
 }
 
@@ -96,7 +96,7 @@ private fun Modifier.monoPanelSegment(top: Boolean, bottom: Boolean): Modifier =
     val y = if (top) 0f else -reach
     val height = (if (bottom) size.height else size.height + reach) - y
     clipRect {
-        drawRoundRect(MonoDesign.surface, Offset(0f, y), Size(size.width, height), CornerRadius(radius))
+        drawRoundRect(MonoDesign.surface.copy(alpha = 0.78f), Offset(0f, y), Size(size.width, height), CornerRadius(radius))
         drawRoundRect(
             MonoDesign.hairline, Offset(half, y + half), Size(size.width - stroke, height - stroke),
             CornerRadius(radius - half), style = Stroke(stroke)
@@ -118,30 +118,21 @@ internal fun MonoSettingsRow(title: String, summary: String, icon: ImageVector, 
                 .clip(shape)
                 .clickable(role = Role.Button, onClick = onClick)
                 .heightIn(min = MonoSettingsRowHeight)
-                .padding(horizontal = MonoSettingsInset, vertical = 8.dp),
+                .padding(horizontal = MonoSettingsInset, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                Modifier
-                    .size(MonoSettingsTile)
-                    .clip(MonoSettingsTileShape)
-                    .background(MonoDesign.raised)
-                    .border(1.dp, MonoDesign.hairline, MonoSettingsTileShape),
-                contentAlignment = Alignment.Center
-            ) { Icon(icon, null, tint = MonoDesign.text, modifier = Modifier.size(19.dp)) }
-            Spacer(Modifier.width(14.dp))
-            Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleSmall, color = MonoDesign.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Icon(icon, null, tint = MonoDesign.textSecondary, modifier = Modifier.size(MonoSettingsTile / 1.6f))
+            Spacer(Modifier.width(18.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(title, style = MaterialTheme.typography.titleMedium, color = MonoDesign.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (summary.isNotBlank()) {
-                    Text(summary, style = MaterialTheme.typography.bodySmall, color = MonoDesign.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(summary, style = MaterialTheme.typography.bodyMedium, color = MonoDesign.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
             }
-            Spacer(Modifier.width(10.dp))
-            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = MonoDesign.textFaint, modifier = Modifier.size(20.dp))
         }
         if (!last) {
             Box(
-                Modifier.padding(start = MonoSettingsInset + MonoSettingsTile + 14.dp, end = MonoSettingsInset)
+                Modifier.padding(start = MonoSettingsInset + MonoSettingsTile / 1.6f + 18.dp)
                     .fillMaxWidth().height(1.dp).background(MonoDesign.hairline)
             )
         }

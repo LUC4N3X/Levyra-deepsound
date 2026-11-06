@@ -74,7 +74,13 @@ class HomePremiumLayoutContractTest {
 
     @Test
     fun `home soundtrack keeps an artist portrait fallback when companions are absent`() {
-        val hero = functionBlock("private fun HomeEditorialSpotlight(")
+        val editorial = Files.readString(
+            sequenceOf(
+                Path.of("app/src/main/java/com/luc4n3x/levyra/ui/HomeEditorialSections.kt"),
+                Path.of("src/main/java/com/luc4n3x/levyra/ui/HomeEditorialSections.kt")
+            ).first(Files::exists)
+        )
+        val hero = functionBlock(editorial, "fun HomeEditorialSpotlight(")
 
         assertTrue(hero.contains("companionArtworkUrls.ifEmpty {"))
         assertTrue(hero.contains("resolvedArtistArtworkUrl.takeIf(String::isNotBlank)"))

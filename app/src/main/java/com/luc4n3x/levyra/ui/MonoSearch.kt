@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import androidx.compose.material.icons.rounded.FormatQuote
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -220,7 +221,8 @@ internal fun MonoSearchEntry(viewModel: SearchViewModel, state: LevyraUiState, o
             onClear = { viewModel.setQuery("") },
             onFocused = { focused = it },
             onVoice = voice.voice,
-            onRecognize = voice.recognize
+            onRecognize = voice.recognize,
+            onLyrics = viewModel::openLyricsPhraseSearch
         )
         AnimatedContent(
             targetState = pane,
@@ -255,7 +257,8 @@ private fun MonoSearchField(
     onClear: () -> Unit,
     onFocused: (Boolean) -> Unit,
     onVoice: () -> Unit,
-    onRecognize: () -> Unit
+    onRecognize: () -> Unit,
+    onLyrics: () -> Unit
 ) {
     val focusRequester = remember { FocusRequester() }
     val fieldStyle = MaterialTheme.typography.bodyLarge.copy(color = MonoDesign.text)
@@ -302,8 +305,11 @@ private fun MonoSearchField(
                 }
                 if (query.isNotEmpty()) {
                     MonoSearchIconTarget(Icons.Rounded.Close, strings.clear, MonoDesign.textSecondary, onClear)
-                } else if (recognitionAvailable) {
-                    MonoSearchIconTarget(Icons.Rounded.GraphicEq, strings.recognizeMusic, if (recognitionBusy) MonoDesign.accent else MonoDesign.textSecondary, onRecognize)
+                } else {
+                    MonoSearchIconTarget(Icons.Rounded.FormatQuote, copy.lyricsSearch, MonoDesign.textSecondary, onLyrics)
+                    if (recognitionAvailable) {
+                        MonoSearchIconTarget(Icons.Rounded.GraphicEq, strings.recognizeMusic, if (recognitionBusy) MonoDesign.accent else MonoDesign.textSecondary, onRecognize)
+                    }
                 }
             }
             if (busy) {
@@ -359,9 +365,6 @@ private fun MonoSearchIdle(
         modifier = Modifier.fillMaxSize().imePadding(),
         contentPadding = PaddingValues(top = 4.dp, bottom = levyraTabContentBottomPadding(state.currentTrack != null) + 16.dp)
     ) {
-        item(key = "lyrics-entry", contentType = "entry") {
-            LyricsSearchEntry(onOpen = viewModel::openLyricsPhraseSearch, modifier = Modifier.padding(horizontal = MonoDesign.gutter, vertical = 4.dp))
-        }
         if (lastPlayed.isNotEmpty()) {
             item(key = "last-header", contentType = "header") {
                 MonoSectionHeader(copy.lastPlayed, Modifier.padding(top = 20.dp, bottom = MonoDesign.headerToContent), overline = copy.lastPlayedOverline)

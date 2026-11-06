@@ -104,7 +104,7 @@ internal val MonoTypography: Typography = typographyForFamily(MonoFont).let { ba
 }
 
 internal fun monoPalette(): LevyraPalette = LevyraThemes.cosmic.copy(
-    id = MonoPaletteId, label = "Mono", emoji = "●", isLight = false,
+    id = MonoPaletteId, label = "Glacier", emoji = "●", isLight = false,
     followsCover = false, followsMood = false,
     black = MonoDesign.base,
     ink = MonoDesign.void,

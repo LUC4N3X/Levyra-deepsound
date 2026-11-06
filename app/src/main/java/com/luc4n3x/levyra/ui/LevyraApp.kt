@@ -2302,6 +2302,13 @@ fun LevyraApp(
                 if (backgroundTab != LevyraTab.Explore) liveRadioOpen = false
                 if (backgroundTab != LevyraTab.Home) discoveryOpen = false
             }
+            LaunchedEffect(MonoExploreBridge.discoverRequested, backgroundTab) {
+                if (!MonoExploreBridge.discoverRequested) return@LaunchedEffect
+                if (backgroundTab != LevyraTab.Home) viewModel.selectTab(LevyraTab.Home) else {
+                    discoveryOpen = true
+                    MonoExploreBridge.discoverRequested = false
+                }
+            }
             LaunchedEffect(state.selectedTab, state.animationsEnabled) {
                 val target = if (state.selectedTab == LevyraTab.Player) 1f else 0f
                 if (playerExpansion.value == target) return@LaunchedEffect
@@ -3489,7 +3496,8 @@ fun LevyraApp(
                         onAddTracksToPlaylist = viewModel::addTracksToPlaylist,
                         onCreatePlaylistWithTracks = viewModel::createPlaylistWithTracks,
                         onDownloadTracks = { tracks -> viewModel.exportTracks(tracks, currentStrings.offline) },
-                        onDislikeTracks = viewModel::dislikeTracks
+                        onDislikeTracks = viewModel::dislikeTracks,
+                        onTrackActions = { trackActionTarget = it }
                     )
                 }
             }
@@ -4130,11 +4138,12 @@ private fun tabBarBottomContentInset(miniPlayerVisible: Boolean, animationsEnabl
     val navigationBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val navigationHeight = when {
         LevyraIsNocturne -> (LocalNocturneNavigationHeight.current?.value ?: 64.dp) + 1.dp
+        LevyraIsMono -> MonoDesign.navHeight + 8.dp
         LevyraIsPrism -> LocalNocturneNavigationHeight.current?.value ?: 80.dp
         else -> LevyraTabBarCompactHeight
     }
     val collapsed = navigationHeight + navigationBarInset + LevyraBottomContentGap + LocalNavDockExtraClearance.current
-    val miniPlayerExtra = if (LevyraIsPrism) {
+    val miniPlayerExtra = if (LevyraIsPrism && !LevyraIsMono) {
         84.dp
     } else if (LocalDockMiniMerged.current()) {
         0.dp
@@ -7245,7 +7254,7 @@ private fun LyricsOverlay(
 ) {
     val strings = LocalLevyraStrings.current
     val track = state.currentTrack
-    val appleLyrics = state.lyricsStudioSettings.usesAppleMusicLyrics(LevyraIsAppleMusic)
+    val appleLyrics = state.lyricsStudioSettings.usesAppleMusicLyrics(LevyraIsAppleMusic || com.luc4n3x.levyra.ui.theme.LevyraIsMono)
     val overlayConfiguration = LocalConfiguration.current
     val landscapeLayout = !appleLyrics && lyricsLandscapeLayoutActive(overlayConfiguration)
     val landscapeMetrics = if (landscapeLayout) {
@@ -25009,7 +25018,7 @@ private fun ExploreScreen(
         if (LevyraIsAtelier) {
             AtelierExploreEntry(state, viewModel, freshTracks, listState, exploreBottomInset, onShortcut, { onLiveRadioOpenChange(true) }, onOpenJam) { addToPlaylistTarget = it }
         } else if (LevyraIsMono) {
-            MonoExploreEntry(state, viewModel, freshTracks, listState, exploreBottomInset, editorialContent, onShortcut, { onLiveRadioOpenChange(true) }, onOpenJam) { addToPlaylistTarget = it }
+            MonoExploreEntry(state, viewModel, listState, exploreBottomInset, editorialContent, onShortcut, { onLiveRadioOpenChange(true) }, onOpenJam)
         } else if (LevyraIsQobuz) {
             QobuzMagazineEntry(state, viewModel, freshTracks, listState, exploreBottomInset, onShortcut, { onLiveRadioOpenChange(true) }, onOpenJam) { addToPlaylistTarget = it }
         } else if (LevyraIsYouTubeMusic) {

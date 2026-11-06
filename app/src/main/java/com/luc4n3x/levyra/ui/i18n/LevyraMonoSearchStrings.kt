@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.ui.i18n
 
 internal data class MonoSearchCopy(
     val voiceSearch: String,
+    val lyricsSearch: String,
     val lastPlayed: String,
     val lastPlayedOverline: String,
     val recentOverline: String,
@@ -26,6 +27,7 @@ internal object LevyraMonoSearchStrings {
     private val copies = mapOf(
         "en" to MonoSearchCopy(
             voiceSearch = "Voice search",
+            lyricsSearch = "Search by lyrics",
             lastPlayed = "Last played",
             lastPlayedOverline = "Pick up again",
             recentOverline = "History",
@@ -47,6 +49,7 @@ internal object LevyraMonoSearchStrings {
         ),
         "it" to MonoSearchCopy(
             voiceSearch = "Ricerca vocale",
+            lyricsSearch = "Cerca per testo",
             lastPlayed = "Ultimi ascolti",
             lastPlayedOverline = "Riprendi da qui",
             recentOverline = "Cronologia",

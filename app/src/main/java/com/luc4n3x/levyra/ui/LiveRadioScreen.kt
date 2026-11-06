@@ -168,10 +168,14 @@ internal fun LiveRadioScreen(
                     searchHint = radioStrings.searchHint,
                     onQueryChange = viewModel::setQuery
                 )
-                FilledTonalButton(
-                    onClick = { editingId = null; viewModel.clearCustomError(); editorOpen = true },
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp).fillMaxWidth().heightIn(min = 56.dp)
-                ) { Icon(Icons.Rounded.Add, null); Text(libraryCopy.add, modifier = Modifier.padding(start = 8.dp)) }
+                if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+                    MonoRadioAddAction(libraryCopy.add) { editingId = null; viewModel.clearCustomError(); editorOpen = true }
+                } else {
+                    FilledTonalButton(
+                        onClick = { editingId = null; viewModel.clearCustomError(); editorOpen = true },
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp).fillMaxWidth().heightIn(min = 56.dp)
+                    ) { Icon(Icons.Rounded.Add, null); Text(libraryCopy.add, modifier = Modifier.padding(start = 8.dp)) }
+                }
             }
 
             if (!editorOpen) state.customError?.let { reason ->
@@ -285,7 +289,14 @@ internal fun LiveRadioScreen(
             }
 
             val featured = state.stations.firstOrNull()
-            if (featured != null) {
+            if (featured != null && com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+                item(key = "live-radio-mono-tuner") {
+                    MonoRadioTuner(
+                        state.stations.take(40), favoriteIds, currentStationId, isPlaying, radioStrings.live, strings.play,
+                        strings.addToFavorites, strings.removeFromFavorites, onPlay
+                    ) { viewModel.toggleFavorite(it) }
+                }
+            } else if (featured != null) {
                 item(key = "live-radio-featured-${featured.uuid}") {
                     FeaturedRadioStation(
                         station = featured,
@@ -303,7 +314,7 @@ internal fun LiveRadioScreen(
                 }
             }
 
-            val listedStations = state.stations.drop(1)
+            val listedStations = if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) state.stations else state.stations.drop(1)
             itemsIndexed(
                 items = listedStations,
                 key = { _, station -> "live-radio-station-${station.uuid}" },
@@ -425,6 +436,10 @@ internal fun LiveRadioScreen(
 
 @Composable
 private fun RadioSectionTitle(title: String) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+        MonoRadioSectionTitle(title)
+        return
+    }
     Text(
         text = title,
         color = LevyraText,
@@ -445,6 +460,10 @@ private fun RadioHero(
     searchHint: String,
     onQueryChange: (String) -> Unit
 ) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+        MonoRadioHero(live, subtitle, query, searchHint, onQueryChange)
+        return
+    }
     val colors = MaterialTheme.colorScheme
     val heroShape = RoundedCornerShape(32.dp)
     Column(
@@ -515,6 +534,10 @@ private val RadioLiveRed = Color(0xFFE53935)
 
 @Composable
 private fun RadioChoiceChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+        MonoPill(label, selected, onClick)
+        return
+    }
     val colors = MaterialTheme.colorScheme
     val interaction = remember { MutableInteractionSource() }
     val rest = levyraExpressiveToggleCorner(
@@ -561,6 +584,10 @@ private fun RadioDirectoryButton(
     icon: (@Composable () -> Unit)?,
     onClick: () -> Unit
 ) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+        MonoRadioDirectoryButton(modifier, label, icon, onClick = onClick)
+        return
+    }
     val colors = MaterialTheme.colorScheme
     val interaction = remember { MutableInteractionSource() }
     val corner = levyraExpressiveCorner(
@@ -715,6 +742,10 @@ private fun FeaturedRadioStation(
     onPlay: () -> Unit,
     onFavorite: () -> Unit
 ) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+        MonoRadioFeatured(station, favorite, playing, live, playLabel, addFavoriteLabel, removeFavoriteLabel, onPlay, onFavorite)
+        return
+    }
     val colors = MaterialTheme.colorScheme
     val container = lerp(colors.surfaceContainerHigh, colors.primaryContainer, if (playing) 0.62f else 0.38f)
     Column(
@@ -875,6 +906,10 @@ private fun RadioStationRow(
     onFavorite: () -> Unit,
     actions: (@Composable () -> Unit)? = null
 ) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+        MonoRadioRow(station, favorite, playing, live, playLabel, addFavoriteLabel, removeFavoriteLabel, onPlay, onFavorite, actions)
+        return
+    }
     val colors = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
@@ -979,6 +1014,10 @@ private fun RadioStationRail(
     onPlay: (RadioStation) -> Unit,
     onFavorite: (RadioStation) -> Unit
 ) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+        MonoRadioRail(stations, favoriteIds, currentStationId, isPlaying, playLabel, onPlay)
+        return
+    }
     val colors = MaterialTheme.colorScheme
     val languageCode = LocalLevyraStrings.current.code
     val railShapes = listOf(

@@ -1,5 +1,51 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.levyraMarquee
+import com.luc4n3x.levyra.ui.experiences.LocalMusicExperiences
+import androidx.compose.material.icons.rounded.Replay
+import com.luc4n3x.levyra.viewmodel.EXPLORE_BROWSE_ID
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.snap
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.material.icons.rounded.Podcasts
+import androidx.compose.material.icons.rounded.SlowMotionVideo
+import androidx.compose.material.icons.rounded.Radio
+import androidx.compose.material.icons.rounded.Groups
+import com.luc4n3x.levyra.ui.i18n.podcastCopy
+import com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.CompositionLocalProvider
+import com.luc4n3x.levyra.domain.ReleaseType
+import com.luc4n3x.levyra.ui.i18n.searchDiscographyCopy
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.BiasAlignment
+import androidx.compose.foundation.layout.fillMaxHeight
+import com.luc4n3x.levyra.ui.components.rememberLevyraPlayMorphShape
+import androidx.compose.ui.semantics.heading
+import com.luc4n3x.levyra.data.ArtworkPalette
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.luc4n3x.levyra.viewmodel.YouTubeMusicHomeViewModel
+import com.luc4n3x.levyra.domain.YoutubeMusicHomeShelf
+import com.luc4n3x.levyra.domain.YoutubeMusicHomeItem
+import com.luc4n3x.levyra.domain.YoutubeMusicHomeItemKind
+import com.luc4n3x.levyra.domain.PlaylistHit
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -105,10 +151,18 @@ private val MonoRankWidth = 40.dp
 private val MonoListenTile = 132.dp
 private val MonoAlbumTile = 140.dp
 private const val MonoQuickRows = 4
+private const val MonoQuickColumns = 5
+private val MonoSegmentWidth = 76.dp
+private const val MonoChartRows = 5
+private const val MonoChartMax = 50
+private const val MonoMixedForYouBrowseId = "FEmusic_mixed_for_you"
+private const val MonoFeaturedPlaylistsBrowseId = "FEmusic_moods_and_genres"
+private const val MonoFeaturedPageLimit = 3
+private const val MonoPlaylistShelves = 4
+private val MonoGlowHeight = 460.dp
+private val MonoSoundtrackHeight = 400.dp
+private const val MonoSoundtrackPortraitShare = 0.86f
 private const val MonoRailMax = 20
-private const val MonoArtistRanks = 10
-private const val MonoRankStagger = 0.06f
-private const val MonoRankSpan = 0.46f
 private const val MonoPageAll = 0
 private const val MonoPageMood = 1
 
@@ -202,7 +256,8 @@ internal fun MonoCompactRow(
         Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
             Text(
                 track.title, style = MaterialTheme.typography.titleSmall,
-                color = if (isCurrent) MonoDesign.accent else MonoDesign.text, maxLines = 1, overflow = TextOverflow.Ellipsis
+                color = if (isCurrent) MonoDesign.accent else MonoDesign.text, maxLines = 1, overflow = TextOverflow.Clip,
+                modifier = Modifier.levyraMarquee(enabled = LocalAnimationsEnabled.current, repeatDelayMillis = 2_400)
             )
             Text(
                 track.artist, style = MaterialTheme.typography.bodySmall, color = MonoDesign.textSecondary,
@@ -222,6 +277,8 @@ internal fun MonoCompactRow(
 internal fun MonoCard(
     title: String,
     subtitle: String,
+    subtitleLines: Int = 1,
+    titleLines: Int = 1,
     width: Dp,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -257,10 +314,12 @@ internal fun MonoCard(
         Spacer(Modifier.height(8.dp))
         Text(
             title, style = MaterialTheme.typography.titleSmall,
-            color = if (highlighted) MonoDesign.accent else MonoDesign.text, maxLines = 1, overflow = TextOverflow.Ellipsis
+            color = if (highlighted) MonoDesign.accent else MonoDesign.text, maxLines = titleLines,
+            overflow = if (titleLines > 1) TextOverflow.Ellipsis else TextOverflow.Clip,
+            modifier = if (titleLines > 1) Modifier else Modifier.levyraMarquee(enabled = LocalAnimationsEnabled.current, repeatDelayMillis = 2_400)
         )
         if (subtitle.isNotBlank()) {
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MonoDesign.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MonoDesign.textSecondary, maxLines = subtitleLines, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -306,6 +365,73 @@ internal fun MonoAlbumRail(albums: List<AlbumHit>, width: Dp, onOpen: (AlbumHit)
 }
 
 @Composable
+private fun MonoArtistRail(artists: List<ArtistHit>, onOpen: (ArtistHit) -> Unit) {
+    LazyRow(contentPadding = MonoRailPadding, horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap)) {
+        items(artists, key = { it.browseId.ifBlank { it.name } }, contentType = { "mono-artist-card" }) { artist ->
+            MonoCard(
+                title = artist.name,
+                subtitle = artist.subscribers.substringAfterLast("•").trim(),
+                subtitleLines = 2,
+                width = MonoDesign.artistCircle,
+                onClick = { onOpen(artist) },
+                circular = true
+            ) { MonoArtwork(artist.thumbnailUrl, it) }
+        }
+    }
+}
+
+@Composable
+private fun MonoReleaseRail(releases: List<AlbumHit>, onOpen: (AlbumHit) -> Unit) {
+    val albums = remember(releases) { releases.distinctBy(::atelierAlbumKey) }
+    val labels = searchDiscographyCopy(LocalLevyraStrings.current.code)
+    LazyRow(contentPadding = MonoRailPadding, horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap)) {
+        items(albums, key = { atelierAlbumKey(it) }, contentType = { "mono-release-card" }) { album ->
+            val badge = when (album.releaseType) {
+                ReleaseType.Album, ReleaseType.Compilation -> labels.album
+                ReleaseType.Single -> labels.single
+                ReleaseType.Ep -> "EP"
+                ReleaseType.Unknown -> ""
+            }
+            MonoCard(
+                title = album.title,
+                subtitle = listOf(badge, album.artist).filter(String::isNotBlank).joinToString(" · "),
+                width = MonoDesign.cardWide,
+                onClick = { onOpen(album) }
+            ) { MonoArtwork(album.thumbnailUrl, it) }
+        }
+    }
+}
+
+internal fun monoAlbumShelf(shelves: List<YoutubeMusicHomeShelf>): YoutubeMusicHomeShelf? =
+    shelves.firstOrNull { shelf ->
+        shelf.items.size >= 3 && shelf.items.all { it.kind == YoutubeMusicHomeItemKind.Album && it.album != null }
+    }
+
+internal fun monoWithoutYoutube(text: String): String =
+    text.split(" • ", " · ").map(String::trim).filter { it.isNotBlank() && !it.contains("youtube", ignoreCase = true) }.joinToString(" • ")
+
+internal fun monoPlaylistShelves(shelves: List<YoutubeMusicHomeShelf>): List<YoutubeMusicHomeShelf> =
+    shelves.filter { shelf ->
+        shelf.items.isNotEmpty() && shelf.items.all { it.kind == YoutubeMusicHomeItemKind.Playlist && it.playlist != null }
+    }.take(MonoPlaylistShelves)
+
+@Composable
+private fun MonoPlaylistRail(shelfItems: List<YoutubeMusicHomeItem>, onOpen: (PlaylistHit) -> Unit) {
+    val items = remember(shelfItems) { shelfItems.distinctBy { it.key } }
+    LazyRow(contentPadding = MonoRailPadding, horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap)) {
+        items(items, key = { it.key }, contentType = { "mono-playlist-card" }) { item ->
+            MonoCard(
+                title = item.title,
+                subtitle = monoWithoutYoutube(item.subtitle),
+                titleLines = 2,
+                width = MonoDesign.cardWide,
+                onClick = { item.playlist?.let(onOpen) }
+            ) { MonoArtwork(item.thumbnailUrl, it) }
+        }
+    }
+}
+
+@Composable
 internal fun MonoWaveSkeleton(modifier: Modifier = Modifier, tile: Dp = MonoDesign.card, tiles: Int = 3) {
     Column(modifier.fillMaxWidth().clearAndSetSemantics {}) {
         MonoWaveLine(
@@ -331,6 +457,32 @@ internal fun MonoWaveSkeleton(modifier: Modifier = Modifier, tile: Dp = MonoDesi
 }
 
 @Composable
+private fun monoDriftState(enabled: Boolean): State<Float> {
+    if (!enabled) return remember { mutableFloatStateOf(0f) }
+    val transition = rememberInfiniteTransition(label = "mono-drift")
+    return transition.animateFloat(0f, 1f, infiniteRepeatable(tween(18000, easing = LinearOutSlowInEasing), RepeatMode.Reverse), label = "mono-drift-value")
+}
+
+internal val LocalMonoRevealed = staticCompositionLocalOf<MutableSet<String>?> { null }
+
+@Composable
+internal fun Modifier.monoReveal(key: String): Modifier {
+    val seen = LocalMonoRevealed.current
+    val animated = LocalAnimationsEnabled.current
+    val start = !animated || seen == null || key in seen
+    val progress = remember(key) { Animatable(if (start) 1f else 0f) }
+    LaunchedEffect(key) {
+        seen?.add(key)
+        if (progress.value < 1f) progress.animateTo(1f, tween(560, easing = FastOutSlowInEasing))
+    }
+    return graphicsLayer {
+        val p = progress.value
+        alpha = p
+        translationY = (1f - p) * 18.dp.toPx()
+    }
+}
+
+@Composable
 internal fun MonoSection(
     title: String,
     overline: String? = null,
@@ -338,7 +490,7 @@ internal fun MonoSection(
     onAction: (() -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
-    Column(Modifier.fillMaxWidth().padding(top = MonoDesign.sectionGap)) {
+    Column(Modifier.fillMaxWidth().monoReveal(title).padding(top = MonoDesign.sectionGap)) {
         MonoSectionHeader(title, overline = overline, action = action, onAction = onAction)
         Spacer(Modifier.height(MonoDesign.headerToContent))
         content()
@@ -357,79 +509,129 @@ private fun MonoHomeAvatar(listener: HomeListener) {
     }
 }
 
+internal enum class MonoShortcut { Podcasts, Samples, Radio, Jam }
+
 @Composable
-private fun MonoHomeTopBar(listener: HomeListener, page: Int, copy: MonoHomeCopy, onPage: (Int) -> Unit, onOpenSettings: () -> Unit) {
-    val strings = LocalLevyraStrings.current
-    val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    Row(
-        Modifier.fillMaxWidth().padding(top = statusTop + 8.dp, start = MonoDesign.gutter, end = MonoDesign.gutter - 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+private fun MonoPageSegment(labels: List<String>, page: Int, onPage: (Int) -> Unit) {
+    val animated = LocalAnimationsEnabled.current
+    val position by animateFloatAsState(page.toFloat(), if (animated) spring(dampingRatio = 0.78f, stiffness = 420f) else snap(), label = "mono-segment")
+    Box(
+        Modifier.clip(MonoDesign.pillShape).background(MonoDesign.surface).border(1.dp, MonoDesign.hairline, MonoDesign.pillShape).padding(3.dp)
     ) {
-        MonoHomeAvatar(listener)
-        MonoPill(copy.all, page == MonoPageAll, { onPage(MonoPageAll) }, Modifier.semantics { selected = page == MonoPageAll })
-        MonoPill(copy.mood, page == MonoPageMood, { onPage(MonoPageMood) }, Modifier.semantics { selected = page == MonoPageMood })
-        Spacer(Modifier.weight(1f))
-        MonoIconKey(Icons.Rounded.Settings, strings.settings, onOpenSettings)
-    }
-}
-
-private fun Modifier.monoEntrance(progress: () -> Float, index: Int, lift: Float): Modifier = graphicsLayer {
-    val p = monoStagger(progress(), index)
-    alpha = p
-    translationY = (1f - p) * lift
-}
-
-private fun monoStagger(value: Float, index: Int): Float =
-    ((value - index * MonoRankStagger) / MonoRankSpan).coerceIn(0f, 1f)
-
-@Composable
-private fun MonoArtistChart(artists: List<ArtistHit>, copy: MonoHomeCopy, onOpen: (ArtistHit) -> Unit) {
-    val ranked = remember(artists) { artists.take(MonoArtistRanks) }
-    val animations = LocalAnimationsEnabled.current
-    val entrance = remember(ranked) { Animatable(if (animations) 0f else 1f) }
-    LaunchedEffect(ranked, animations) {
-        if (animations) entrance.animateTo(1f, tween(900, easing = FastOutSlowInEasing)) else entrance.snapTo(1f)
-    }
-    val progress = { entrance.value }
-    Column(Modifier.fillMaxWidth()) {
-        ranked.forEachIndexed { index, artist ->
-            key(artist.browseId.ifBlank { artist.name }) {
-                MonoArtistRankRow(index + 1, artist, progress, index, copy) { onOpen(artist) }
+        Box(
+            Modifier.width(MonoSegmentWidth).height(34.dp)
+                .graphicsLayer { translationX = position * MonoSegmentWidth.toPx() }
+                .clip(MonoDesign.pillShape).background(MonoDesign.accent)
+        )
+        Row(Modifier.selectableGroup()) {
+            labels.forEachIndexed { index, label ->
+                val active = index == page
+                Box(
+                    Modifier.width(MonoSegmentWidth).height(34.dp).clip(MonoDesign.pillShape)
+                        .selectable(active, role = Role.Tab, onClick = { onPage(index) }),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        label, style = MaterialTheme.typography.labelLarge, maxLines = 1,
+                        color = lerp(MonoDesign.text, MonoDesign.onAccent, (1f - kotlin.math.abs(position - index)).coerceIn(0f, 1f))
+                    )
+                }
             }
         }
     }
 }
 
+internal object MonoExploreBridge {
+    var pending by mutableStateOf<MonoShortcut?>(null)
+    var discoverRequested by mutableStateOf(false)
+}
+
 @Composable
-private fun MonoArtistRankRow(
-    rank: Int,
-    artist: ArtistHit,
-    progress: () -> Float,
-    index: Int,
-    copy: MonoHomeCopy,
-    onOpen: () -> Unit
-) {
-    Row(
-        Modifier.fillMaxWidth().heightIn(min = 80.dp)
-            .monoEntrance(progress, index, 28f)
-            .levyraPressable(onClick = onOpen, role = Role.Button, pressedScale = LevyraPressScale.Row, onClickLabel = artist.name)
-            .padding(horizontal = MonoDesign.gutter, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            rank.toString(),
-            style = monoRankStyle(28),
-            color = if (rank <= 3) MonoDesign.text else MonoDesign.textSecondary,
-            modifier = Modifier.width(44.dp).semantics { contentDescription = copy.rankLabel.format(rank) }
+private fun MonoHomeTopBar(listener: HomeListener, page: Int, copy: MonoHomeCopy, onPage: (Int) -> Unit, onOpenSettings: () -> Unit, onShortcut: (MonoShortcut) -> Unit) {
+    val strings = LocalLevyraStrings.current
+    val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val shortcuts = remember(strings) {
+        listOf(
+            Triple(MonoShortcut.Podcasts, Icons.Rounded.Podcasts, podcastCopy(strings.code).title),
+            Triple(MonoShortcut.Samples, Icons.Rounded.SlowMotionVideo, strings.exploreSamples),
+            Triple(MonoShortcut.Radio, Icons.Rounded.Radio, LevyraLiveRadioCatalog.forCode(strings.code).title),
+            Triple(MonoShortcut.Jam, Icons.Rounded.Groups, strings.jamTitle)
         )
-        Box(Modifier.size(64.dp).clip(CircleShape).background(MonoDesign.surface)) {
-            MonoArtwork(artist.thumbnailUrl, Modifier.fillMaxSize())
+    }
+    Column(Modifier.fillMaxWidth().padding(top = statusTop + 8.dp)) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = MonoDesign.gutter, end = MonoDesign.gutter - 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            MonoHomeAvatar(listener)
+            Spacer(Modifier.weight(1f))
+            MonoIconKey(Icons.Rounded.Replay, "Levyra Rewind", LocalMusicExperiences.current.rewind)
+            MonoIconKey(Icons.Rounded.Settings, strings.settings, onOpenSettings)
         }
-        Column(Modifier.weight(1f).padding(start = 18.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(artist.name, style = MaterialTheme.typography.titleMedium, color = MonoDesign.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (artist.subscribers.isNotBlank()) {
-                Text(artist.subscribers, style = MaterialTheme.typography.bodyMedium, color = MonoDesign.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        LazyRow(
+            Modifier.fillMaxWidth().padding(top = 12.dp),
+            contentPadding = PaddingValues(horizontal = MonoDesign.gutter),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            item(key = "segment") { MonoPageSegment(listOf(copy.all, copy.mood), page, onPage) }
+            item(key = "divider") { Box(Modifier.padding(horizontal = 4.dp).width(1.dp).height(22.dp).background(MonoDesign.hairlineStrong)) }
+            items(shortcuts, key = { it.first.name }) { (shortcut, icon, label) ->
+                Row(
+                    Modifier.clip(MonoDesign.pillShape)
+                        .background(MonoDesign.surface)
+                        .levyraPressable(onClick = { onShortcut(shortcut) }, role = Role.Button, pressedScale = LevyraPressScale.Row)
+                        .heightIn(min = 36.dp)
+                        .padding(start = 12.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(icon, null, tint = MonoDesign.accent, modifier = Modifier.size(18.dp))
+                    Text(label, style = MaterialTheme.typography.labelLarge, color = MonoDesign.text, maxLines = 1)
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+internal fun MonoTrackColumns(
+    picks: List<Track>,
+    rows: Int,
+    limit: Int,
+    ranked: Boolean,
+    currentId: String?,
+    isPlaying: Boolean,
+    actionsLabel: String,
+    onPlay: (List<Track>, Track) -> Unit,
+    onActions: (Track) -> Unit
+) {
+    val columns = remember(picks, rows, limit) { picks.take(limit).withIndex().chunked(rows) }
+    val listState = rememberLazyListState()
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val columnWidth = if (columns.size > 1) maxWidth * 0.86f else maxWidth
+        LazyRow(
+            state = listState,
+            flingBehavior = rememberSnapFlingBehavior(listState),
+            contentPadding = PaddingValues(end = MonoDesign.gutter / 2)
+        ) {
+            items(columns, key = { column -> "mono-col-${column.first().value.id}" }, contentType = { "mono-track-column" }) { column ->
+                Column(Modifier.width(columnWidth)) {
+                    column.forEach { (index, track) ->
+                        key(track.id) {
+                            MonoCompactRow(
+                                track = track,
+                                isCurrent = track.id == currentId,
+                                isPlaying = isPlaying,
+                                actionsLabel = actionsLabel,
+                                onPlay = { onPlay(picks, track) },
+                                onActions = { onActions(track) },
+                                rank = if (ranked) index + 1 else null
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -517,7 +719,7 @@ private class MonoHomeFeed(
 }
 
 @Composable
-private fun rememberMonoHomeFeed(model: MonoHomeModel, copy: MonoHomeCopy): MonoHomeFeed {
+private fun rememberMonoHomeFeed(model: MonoHomeModel, copy: MonoHomeCopy, onOpenOrbit: () -> Unit): MonoHomeFeed {
     val strings = LocalLevyraStrings.current
     val data = model.data
     val actions = model.actions
@@ -528,7 +730,7 @@ private fun rememberMonoHomeFeed(model: MonoHomeModel, copy: MonoHomeCopy): Mono
     val rotation = remember(orbit, data.collections, actions, copy, strings.personalOrbitTitle) {
         buildList {
             orbit.firstOrNull()?.let { lead ->
-                add(ComposedCard("mono-orbit", strings.personalOrbitTitle, copy.tracksCount.format(orbit.size), lead.largeThumbnailUrl.ifBlank { lead.thumbnailUrl }, track = lead) { actions.playAll(orbit) })
+                add(ComposedCard("mono-orbit", strings.personalOrbitTitle, copy.tracksCount.format(orbit.size), lead.largeThumbnailUrl.ifBlank { lead.thumbnailUrl }, track = lead, onClick = onOpenOrbit))
             }
             data.collections.distinctBy { it.id }.filter { it.tracks.isNotEmpty() }.forEach { collection ->
                 val lead = collection.tracks.first()
@@ -537,9 +739,9 @@ private fun rememberMonoHomeFeed(model: MonoHomeModel, copy: MonoHomeCopy): Mono
         }
     }
     return MonoHomeFeed(
-        picks = remember(data.quickPicks) { data.quickPicks?.tracks.orEmpty().distinctBy(Track::id) },
-        picksTitle = data.quickPicks?.title?.ifBlank { null } ?: strings.quickPicks,
-        charts = remember(data.charts) { data.charts.distinctBy(Track::id).take(MonoRailMax) },
+        picks = remember(orbit, data.quickPicks) { orbit.ifEmpty { data.quickPicks?.tracks.orEmpty().distinctBy(Track::id) } },
+        picksTitle = if (orbit.isNotEmpty()) strings.personalOrbitTitle else data.quickPicks?.title?.ifBlank { null } ?: strings.quickPicks,
+        charts = remember(data.charts) { data.charts.distinctBy(Track::id).take(MonoChartMax) },
         rotation = rotation,
         recents = remember(recordings) { recordings.distinctBy(Track::id).take(MonoRailMax) },
         albums = remember(data.albums, data.showAlbums) { if (data.showAlbums) data.albums.distinctBy(::atelierAlbumKey).take(MonoRailMax) else emptyList() },
@@ -568,7 +770,8 @@ private fun MonoHomeContent(
     val copy = remember(strings.code) { LevyraMonoHomeStrings.forCode(strings.code) }
     val homeRadio = LocalHomeRadio.current
     val state = model.state
-    val feed = rememberMonoHomeFeed(model, copy)
+    var orbitOpen by rememberSaveable { mutableStateOf(false) }
+    val feed = rememberMonoHomeFeed(model, copy) { orbitOpen = true }
     val zones = remember(strings) { ExploreCatalog.getZones(strings) }
     val browse = remember(state.exploreCategories, zones) { monoBrowseTiles(state.exploreCategories, zones) }
     val viewModel = model.viewModel
@@ -578,18 +781,58 @@ private fun MonoHomeContent(
     }
     val isPlaying = rememberUpdatedState(state.isPlaying)
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val mixedHome = viewModel<YouTubeMusicHomeViewModel>(key = "mono-mixed-for-you")
+    val mixedState by mixedHome.state.collectAsStateWithLifecycle()
+    LaunchedEffect(strings.code) { mixedHome.load(strings.code, browseId = MonoMixedForYouBrowseId) }
+    val ytHome = viewModel<YouTubeMusicHomeViewModel>(key = "mono-yt-home")
+    val ytHomeState by ytHome.state.collectAsStateWithLifecycle()
+    LaunchedEffect(strings.code) { ytHome.load(strings.code) }
+    val featuredShelves = remember(ytHomeState.allShelves) {
+        monoPlaylistShelves(ytHomeState.allShelves.filter { it.headerBrowseId == MonoFeaturedPlaylistsBrowseId })
+    }
+    LaunchedEffect(featuredShelves.isEmpty(), ytHomeState.pages, ytHomeState.loading, ytHomeState.loadingMore) {
+        if (featuredShelves.isEmpty() && ytHomeState.canLoadMore && ytHomeState.pages < MonoFeaturedPageLimit) ytHome.loadMore()
+    }
+    val playlistShelves = remember(mixedState.allShelves, featuredShelves, ytHomeState.allShelves) {
+        monoPlaylistShelves(mixedState.allShelves).ifEmpty { featuredShelves }.ifEmpty { monoPlaylistShelves(ytHomeState.allShelves) }
+    }
+    val albumShelf = remember(ytHomeState.allShelves) { monoAlbumShelf(ytHomeState.allShelves) }
+    val videosHome = viewModel<YouTubeMusicHomeViewModel>(key = "mono-new-videos")
+    val videosState by videosHome.state.collectAsStateWithLifecycle()
+    LaunchedEffect(strings.code) { videosHome.load(strings.code, browseId = EXPLORE_BROWSE_ID) }
+    val newVideos = remember(videosState.shelves) { monoExploreNewVideos(videosState.shelves, MonoRailMax) }
+    val glowColor = MonoDesign.accent
+    val revealed = remember { mutableSetOf<String>() }
+    CompositionLocalProvider(LocalMonoRevealed provides revealed) {
     BoxWithConstraints(Modifier.fillMaxSize().background(MonoDesign.base)) {
+        Box(
+            Modifier.fillMaxWidth().height(MonoGlowHeight)
+                .graphicsLayer {
+                    val first = homeListState.firstVisibleItemIndex == 0
+                    translationY = if (first) -homeListState.firstVisibleItemScrollOffset.toFloat() else -size.height
+                    alpha = if (first) 1f else 0f
+                }
+                .drawBehind {
+                    drawRect(Brush.verticalGradient(0f to glowColor.copy(alpha = 0.20f), 0.45f to glowColor.copy(alpha = 0.07f), 1f to Color.Transparent))
+                    drawRect(Brush.radialGradient(listOf(glowColor.copy(alpha = 0.16f), Color.Transparent), center = Offset(size.width * 0.15f, 0f), radius = size.width))
+                }
+        )
         val heroCard = (maxWidth * 0.56f).coerceIn(180.dp, 260.dp)
         val releaseCard = (maxWidth * 0.62f).coerceIn(200.dp, 300.dp)
         val kit = remember(model.data) { MonoHomeKit(model.data, isPlaying) }
         LazyColumn(
             state = homeListState,
             modifier = Modifier.fillMaxSize()
-                .pullToRefresh(isRefreshing = homeRefreshing, state = homePullState, onRefresh = onPullRefresh),
+                .pullToRefresh(isRefreshing = homeRefreshing, state = homePullState, onRefresh = {
+                    onPullRefresh()
+                    mixedHome.load(strings.code, force = true, browseId = MonoMixedForYouBrowseId)
+                    ytHome.load(strings.code, force = true)
+                    videosHome.load(strings.code, force = true, browseId = EXPLORE_BROWSE_ID)
+                }),
             contentPadding = PaddingValues(bottom = homeBottomInset + MonoDesign.sectionGap)
         ) {
             item(key = "mono-home-top", contentType = "mono-home-top") {
-                MonoHomeTopBar(model.data.listener, page, copy, onPage, model.actions.openSettings)
+                MonoHomeTopBar(model.data.listener, page, copy, onPage, model.actions.openSettings) { MonoExploreBridge.pending = it; viewModel.openExploreTab() }
             }
             if (page == MonoPageMood) {
                 monoBrowseSections("mono-home", moodEntries, categoriesLoading, copy)
@@ -598,13 +841,13 @@ private fun MonoHomeContent(
             val composition = model.composition
             if (composition != null) {
                 composedHomeSections(composition, kit) {
-                    monoHomeFeed(model, feed, copy, strings, kit, heroCard, releaseCard)
+                    monoHomeFeed(model, feed, copy, strings, kit, heroCard, releaseCard, playlistShelves, albumShelf, newVideos)
                 }
                 monoHomeFallback(feed.isEmpty && monoComposedSectionsEmpty(composition.content), state, copy, viewModel)
                 return@LazyColumn
             }
             monoHomeFallback(feed.isEmpty && model.pinnedCards.isEmpty() && !(homeRadio.visible && homeRadio.stations.isNotEmpty()), state, copy, viewModel)
-            monoHomeFeed(model, feed, copy, strings, kit, heroCard, releaseCard)
+            monoHomeFeed(model, feed, copy, strings, kit, heroCard, releaseCard, playlistShelves, albumShelf, newVideos)
             favoriteRadioSection(homeRadio)
         }
         PullToRefreshDefaults.LoadingIndicator(
@@ -612,6 +855,18 @@ private fun MonoHomeContent(
             isRefreshing = homeRefreshing,
             modifier = Modifier.align(Alignment.TopCenter).padding(top = statusTop + 16.dp)
         )
+        if (orbitOpen) {
+            val orbitTracks = feed.picks
+            GlacierCollectionScreen(
+                title = strings.personalOrbitTitle, tracks = orbitTracks, currentId = state.currentTrack?.id, isPlaying = state.isPlaying,
+                onDismiss = { orbitOpen = false },
+                onPlay = { track -> model.actions.playFrom(orbitTracks, track) },
+                onPlayAll = { model.actions.playAll(orbitTracks) },
+                onShuffle = { orbitTracks.shuffled().let { shuffled -> shuffled.firstOrNull()?.let { model.actions.playFrom(shuffled, it) } } },
+                onTrackActions = model.actions.onTrackActions, bottomInset = homeBottomInset
+            )
+        }
+    }
     }
 }
 
@@ -641,13 +896,19 @@ private fun LazyListScope.monoHomeFeed(
     strings: LevyraStrings,
     kit: MonoHomeKit,
     heroCard: Dp,
-    releaseCard: Dp
+    releaseCard: Dp,
+    playlistShelves: List<YoutubeMusicHomeShelf>,
+    albumShelf: YoutubeMusicHomeShelf?,
+    newVideos: List<YoutubeMusicHomeItem>
 ) {
     val state = model.state
     val data = model.data
     val actions = model.actions
     val currentId = data.currentId
     val settings = state.interfaceSettings
+    data.soundtrack?.let { hero ->
+        item(key = "mono-soundtrack", contentType = "mono-hero") { kit.Hero(hero) }
+    }
     if (feed.picks.isNotEmpty()) {
         item(key = "mono-picks-header", contentType = "mono-header") {
             Column(Modifier.padding(top = 20.dp)) {
@@ -655,38 +916,37 @@ private fun LazyListScope.monoHomeFeed(
                 Spacer(Modifier.height(6.dp))
             }
         }
-        items(feed.picks.take(MonoQuickRows), key = { "mono-pick-${it.id}" }, contentType = { "mono-compact-row" }) { track ->
-            MonoCompactRow(
-                track = track,
-                isCurrent = track.id == currentId,
-                isPlaying = state.isPlaying,
-                actionsLabel = strings.songOptions,
-                onPlay = { actions.playFrom(feed.picks, track) },
-                onActions = { actions.onTrackActions(track) }
-            )
+        item(key = "mono-picks-grid", contentType = "mono-picks-grid") {
+            MonoTrackColumns(feed.picks, MonoQuickRows, MonoQuickRows * MonoQuickColumns, ranked = false, currentId, state.isPlaying, strings.songOptions, actions.playFrom, actions.onTrackActions)
         }
     } else if (state.isLoadingHome) {
         monoSkeletonSection("mono-picks-skeleton", feed.picksTitle, copy.startHere, MonoDesign.card, 3)
     }
+    item(key = "mono-discover", contentType = "mono-discover") {
+        MonoDiscoverTeaser(state.recentListens.ifEmpty { feed.picks }.map { it.thumbnailUrl }) { MonoExploreBridge.discoverRequested = true }
+    }
     if (model.pinnedCards.isNotEmpty()) {
         item(key = "mono-pinned", contentType = "mono-cards") { kit.Cards(strings.speedDialCopy().title, model.pinnedCards) }
     }
-    data.soundtrack?.let { hero ->
-        item(key = "mono-soundtrack", contentType = "mono-hero") { kit.Hero(hero) }
-    }
-    if (feed.charts.isNotEmpty()) {
-        item(key = "mono-popular", contentType = "mono-popular") {
-            MonoSection(copy.popularNow, copy.trendingOverline, data.countryLabel.ifBlank { null }, actions.pickCountry.takeIf { data.countryLabel.isNotBlank() }) {
-                MonoPopularRail(feed.charts, heroCard, currentId, actions)
+    if (playlistShelves.isNotEmpty()) {
+        playlistShelves.forEachIndexed { index, shelf ->
+            item(key = "mono-mixed-${shelf.key}", contentType = "mono-rail") {
+                MonoSection(if (index == 0) copy.mixedForYou else shelf.title, if (index == 0) copy.rotationOverline else shelf.strapline.ifBlank { null }) {
+                    MonoPlaylistRail(shelf.items, model.viewModel::openPlaylistHit)
+                }
             }
         }
-    } else if (settings.showCharts && state.isLoadingCharts) {
-        monoSkeletonSection("mono-popular-skeleton", copy.popularNow, copy.trendingOverline, MonoDesign.cardWide, 2)
-    }
-    if (feed.rotation.isNotEmpty()) {
-        item(key = "mono-rotation", contentType = "mono-cards") {
-            MonoSection(copy.rotation, copy.rotationOverline) { kit.CardRail(feed.rotation, MonoDesign.card) }
+    } else if (feed.rotation.isNotEmpty()) {
+        item(key = "mono-mixed-local", contentType = "mono-cards") {
+            MonoSection(copy.mixedForYou, copy.rotationOverline) { kit.CardRail(feed.rotation, MonoDesign.cardWide) }
         }
+    }
+    if (feed.artists.isNotEmpty()) {
+        item(key = "mono-artists", contentType = "mono-rail") {
+            MonoSection(strings.trendingArtists, copy.trendingOverline) { MonoArtistRail(feed.artists, actions.openArtist) }
+        }
+    } else if (data.showArtists && state.homeArtistsLoading) {
+        monoSkeletonSection("mono-artists-skeleton", strings.trendingArtists, copy.trendingOverline, MonoDesign.artistCircle, 3)
     }
     if (feed.recents.isNotEmpty()) {
         item(key = "mono-again", contentType = "mono-rail") {
@@ -701,61 +961,46 @@ private fun LazyListScope.monoHomeFeed(
             }
         }
     }
-    if (feed.newAlbums.isNotEmpty() || feed.newTracks.isNotEmpty()) {
-        item(key = "mono-new", contentType = "mono-rail") {
-            MonoSection(copy.newAlbums, copy.freshOverline) {
-                if (feed.newAlbums.isNotEmpty()) {
-                    MonoAlbumRail(feed.newAlbums, releaseCard, actions.openAlbum)
-                } else {
-                    MonoTrackRail(feed.newTracks, releaseCard, currentId, strings.songOptions, { actions.playFrom(feed.newTracks, it) }, actions.onTrackActions)
-                }
+    if (albumShelf != null && data.showAlbums) {
+        item(key = "mono-albums-yt", contentType = "mono-rail") {
+            MonoSection(albumShelf.title, copy.forYouOverline) {
+                MonoReleaseRail(albumShelf.items.mapNotNull { it.album }, actions.openAlbum)
             }
         }
-    } else if (settings.showNewReleases && state.isNewReleasesLoading) {
-        monoSkeletonSection("mono-new-skeleton", copy.newAlbums, copy.freshOverline, MonoDesign.cardWide, 2)
-    }
-    if (feed.albums.isNotEmpty()) {
+    } else if (feed.albums.isNotEmpty()) {
         item(key = "mono-albums", contentType = "mono-rail") {
             MonoSection(strings.albumsForYou, copy.forYouOverline) { MonoAlbumRail(feed.albums, MonoAlbumTile, actions.openAlbum) }
         }
     } else if (data.showAlbums && state.homeAlbumsLoading) {
         monoSkeletonSection("mono-albums-skeleton", strings.albumsForYou, copy.forYouOverline, MonoAlbumTile, 3)
     }
-    if (feed.artists.isNotEmpty()) {
-        item(key = "mono-artists", contentType = "mono-artists") {
-            MonoSection(copy.topArtists, copy.artistChartOverline) { MonoArtistChart(feed.artists, copy, actions.openArtist) }
+    if (newVideos.isNotEmpty()) {
+        item(key = "mono-new-videos", contentType = "mono-rail") {
+            MonoSection(copy.newVideos, copy.freshOverline) {
+                MonoVideoRail(newVideos) { item ->
+                    val track = item.track
+                    if (track != null) actions.playFrom(newVideos.mapNotNull { it.track }, track)
+                }
+            }
         }
-    } else if (data.showArtists && state.homeArtistsLoading) {
-        monoSkeletonSection("mono-artists-skeleton", copy.topArtists, copy.artistChartOverline, MonoDesign.rowArtwork, 5)
+    }
+    if (feed.charts.isNotEmpty()) {
+        item(key = "mono-top-chart", contentType = "mono-top-chart") {
+            MonoSection(
+                "Top ${feed.charts.size}", copy.trendingOverline,
+                data.countryLabel.ifBlank { null }, actions.pickCountry.takeIf { data.countryLabel.isNotBlank() }
+            ) {
+                MonoTrackColumns(feed.charts, MonoChartRows, feed.charts.size, ranked = true, currentId, state.isPlaying, strings.songOptions, actions.playFrom, actions.onTrackActions)
+            }
+        }
+    } else if (settings.showCharts && state.isLoadingCharts) {
+        monoSkeletonSection("mono-top-chart-skeleton", "Top 50", copy.trendingOverline, MonoDesign.rowArtwork, 5)
     }
     if (feed.forgotten.isNotEmpty()) {
         item(key = "mono-forgotten", contentType = "mono-rail") {
             MonoSection(strings.forgottenFavorites) {
                 MonoTrackRail(feed.forgotten, MonoDesign.card, currentId, strings.songOptions, { actions.playFrom(feed.forgotten, it) }, actions.onTrackActions)
             }
-        }
-    }
-}
-
-@Composable
-private fun MonoPopularRail(charts: List<Track>, heroCard: Dp, currentId: String?, actions: AppleMusicHomeActions) {
-    val strings = LocalLevyraStrings.current
-    LazyRow(
-        contentPadding = MonoRailPadding,
-        horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap),
-        verticalAlignment = Alignment.Top
-    ) {
-        itemsIndexed(charts, key = { _, track -> track.id }, contentType = { index, _ -> if (index == 0) "mono-popular-lead" else "mono-popular-card" }) { index, track ->
-            MonoCard(
-                title = track.title,
-                subtitle = track.artist,
-                width = if (index == 0) heroCard else MonoDesign.cardWide,
-                onClick = { actions.playFrom(charts, track) },
-                onLongClick = { actions.onTrackActions(track) },
-                longClickLabel = strings.songOptions,
-                highlighted = track.id == currentId,
-                badge = monoRank(index + 1)
-            ) { CoverImage(track, it.clearAndSetSemantics {}, highRes = index == 0) }
         }
     }
 }
@@ -814,7 +1059,10 @@ internal class MonoHomeKit(
     @Composable
     fun CardRail(cards: List<ComposedCard>, width: Dp) {
         val strings = LocalLevyraStrings.current
-        LazyRow(contentPadding = MonoRailPadding, horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap), verticalAlignment = Alignment.Top) {
+        val railState = rememberLazyListState()
+        val leadKey = cards.firstOrNull()?.key
+        LaunchedEffect(leadKey) { if (railState.firstVisibleItemIndex != 0) railState.scrollToItem(0) }
+        LazyRow(state = railState, contentPadding = MonoRailPadding, horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap), verticalAlignment = Alignment.Top) {
             items(cards, key = { it.key }, contentType = { if (it.circular) "mono-card-round" else "mono-card" }) { card ->
                 MonoCard(
                     title = card.title,
@@ -857,25 +1105,86 @@ internal class MonoHomeKit(
         val strings = LocalLevyraStrings.current
         val track = hero.track
         val active = hero.isCurrent && hero.isPlaying
-        Column(
-            Modifier.fillMaxWidth().padding(top = MonoDesign.sectionGap).padding(horizontal = MonoDesign.gutter)
-                .monoPanel(MonoDesign.panelShape)
+        val portrait = hero.artistArtworkUrl
+        val blur = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
+        val drift = monoDriftState(LocalAnimationsEnabled.current)
+        Box(
+            Modifier.fillMaxWidth().height(MonoSoundtrackHeight)
                 .levyraPressable(onClick = hero.onOpen, role = Role.Button, pressedScale = LevyraPressScale.Surface, onClickLabel = strings.play)
-                .padding(16.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(96.dp).clip(MonoDesign.artShape)) { CoverImage(track, Modifier.fillMaxSize().clearAndSetSemantics {}, highRes = true) }
-                Column(Modifier.weight(1f).padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    if (hero.label.isNotBlank()) MonoOverline(hero.label, color = MonoDesign.accent)
-                    Text(track.title, style = MaterialTheme.typography.titleLarge, color = MonoDesign.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Text(track.artist, style = MaterialTheme.typography.bodySmall, color = MonoDesign.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Box(
+                Modifier.matchParentSize()
+                    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                    .drawWithContent {
+                        drawContent()
+                        drawRect(Brush.verticalGradient(0f to Color.Transparent, 0.2f to Color.Black, 0.6f to Color.Black, 1f to Color.Transparent), blendMode = BlendMode.DstIn)
+                    }
+            ) {
+                if (blur) {
+                    Box(Modifier.matchParentSize().graphicsLayer { alpha = 0.42f }.blur(60.dp, BlurredEdgeTreatment.Rectangle)) {
+                        if (portrait.isNotBlank()) {
+                            StableRemoteArtwork(portrait, null, Modifier.fillMaxSize(), ContentScale.Crop)
+                        } else {
+                            CoverImage(track, Modifier.fillMaxSize().clearAndSetSemantics {})
+                        }
+                    }
                 }
-                MonoIconKey(if (active) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (active) strings.pause else strings.play, hero.onOpen, filled = true)
+                Box(
+                    Modifier.align(Alignment.TopEnd).fillMaxHeight().fillMaxWidth(MonoSoundtrackPortraitShare)
+                        .graphicsLayer {
+                            compositingStrategy = CompositingStrategy.Offscreen
+                            val zoom = 1f + 0.06f * drift.value
+                            scaleX = zoom
+                            scaleY = zoom
+                            transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.6f, 0.35f)
+                        }
+                        .drawWithContent {
+                            drawContent()
+                            drawRect(Brush.horizontalGradient(0f to Color.Transparent, 0.34f to Color.Black.copy(alpha = 0.6f), 0.6f to Color.Black), blendMode = BlendMode.DstIn)
+                        }
+                ) {
+                    if (portrait.isNotBlank()) {
+                        StableRemoteArtwork(portrait, null, Modifier.fillMaxSize(), ContentScale.Crop, highRes = true, alignment = BiasAlignment(0f, -0.3f))
+                    } else {
+                        CoverImage(track, Modifier.fillMaxSize().clearAndSetSemantics {}, highRes = true)
+                    }
+                }
+                Box(Modifier.matchParentSize().drawBehind {
+                    drawRect(Brush.horizontalGradient(0f to MonoDesign.base.copy(alpha = 0.7f), 0.5f to Color.Transparent))
+                    drawRect(Brush.radialGradient(listOf(MonoDesign.accent.copy(alpha = 0.12f), Color.Transparent), center = Offset(size.width * 0.85f, size.height * 0.35f), radius = size.width))
+                })
             }
-            if (hero.lead.isNotBlank()) {
-                Text(hero.lead, style = MaterialTheme.typography.bodyMedium, color = MonoDesign.textSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 12.dp))
+            Column(
+                Modifier.align(Alignment.BottomStart).fillMaxWidth(0.7f).padding(start = MonoDesign.gutter, end = 8.dp, bottom = 26.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (hero.label.isNotBlank()) MonoOverline(hero.label, color = MonoDesign.accent)
+                Text(
+                    track.title, style = MaterialTheme.typography.headlineLarge, color = MonoDesign.text, maxLines = 3,
+                    overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() }
+                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (hero.companionArtworkUrls.isNotEmpty()) {
+                        HomeSoundtrackCompanionStack(hero.companionArtworkUrls, MonoDesign.base, MonoDesign.accent)
+                    }
+                    Text(
+                        hero.lead.ifBlank { track.artist }, style = MaterialTheme.typography.bodyMedium, color = MonoDesign.text.copy(alpha = 0.82f),
+                        maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false)
+                    )
+                }
+                MonoWaveLine(active, Modifier.padding(top = 4.dp).width(120.dp).height(14.dp), color = MonoDesign.accent, cycles = 5f, strokeWidth = 1.5.dp)
             }
-            MonoWaveLine(active, Modifier.fillMaxWidth().padding(top = 12.dp).height(22.dp), color = MonoDesign.accent, cycles = 8f, strokeWidth = 1.5.dp)
+            Box(
+                Modifier.align(Alignment.BottomEnd).padding(end = MonoDesign.gutter, bottom = 30.dp).size(64.dp)
+                    .clip(rememberLevyraPlayMorphShape(playing = active, animated = LocalAnimationsEnabled.current, spinWhilePlaying = !hero.isResolving))
+                    .background(MonoDesign.accent),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    if (active) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (active) strings.pause else strings.play,
+                    tint = MonoDesign.onAccent, modifier = Modifier.size(26.dp)
+                )
+            }
         }
     }
 

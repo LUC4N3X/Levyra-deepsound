@@ -91,7 +91,7 @@ internal fun LevyraSkin.title(): String = when (this) {
     LevyraSkin.YouTubeMusicStyle -> "YouTube Music Style"
     LevyraSkin.QobuzStyle -> "Qobuz Style"
     LevyraSkin.Atelier -> "Atelier"
-    LevyraSkin.Mono -> "Mono"
+    LevyraSkin.Mono -> "Glacier"
 }
 
 @Composable

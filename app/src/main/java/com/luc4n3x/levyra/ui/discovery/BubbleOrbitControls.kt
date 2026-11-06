@@ -152,6 +152,22 @@ internal fun BubbleOrbitSelector(
 ) {
     val scheme = MaterialTheme.colorScheme
     val haptics = LocalLevyraHaptics.current
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+        Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.padding(horizontal = 20.dp).selectableGroup(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                BubbleLevel.entries.forEach { level ->
+                    val checked = level == request.level
+                    com.luc4n3x.levyra.ui.MonoPill(
+                        copy[bubbleLevelName(level)], checked,
+                        { if (!checked) { haptics.perform(LevyraHapticAction.Confirm); onLevel(level) } },
+                        Modifier.semantics { role = Role.RadioButton }
+                    )
+                }
+            }
+            LensRow(request.lens, scenes, animated, copy, onLens, onLoadScenes)
+        }
+        return
+    }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
             Modifier.padding(horizontal = 20.dp).fillMaxWidth(),

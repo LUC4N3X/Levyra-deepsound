@@ -1,5 +1,17 @@
 package com.luc4n3x.levyra.ui
 
+import androidx.compose.animation.core.animateFloat
+import com.luc4n3x.levyra.ui.i18n.discoveryCopy
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.luc4n3x.levyra.viewmodel.YouTubeMusicHomeViewModel
+import com.luc4n3x.levyra.viewmodel.EXPLORE_BROWSE_ID
+import com.luc4n3x.levyra.viewmodel.NEW_VIDEOS_BROWSE_ID
+import com.luc4n3x.levyra.domain.YoutubeMusicHomeItem
+import com.luc4n3x.levyra.domain.YoutubeMusicHomeShelf
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.runtime.LaunchedEffect
@@ -78,6 +90,7 @@ private const val MonoExploreMoods = 6
 private const val MonoExploreGenres = 8
 private const val MonoExploreCharts = 10
 private const val MonoExploreRail = 20
+private val MonoVideoWidth = 260.dp
 
 internal class MonoBrowseSource(val moods: List<ExploreCategory>, val genres: List<ExploreCategory>, val fallbackGenres: List<ExploreZone>)
 
@@ -245,55 +258,31 @@ internal fun LazyListScope.monoBrowseSections(
 }
 
 @Composable
-private fun MonoExploreShortcuts(onShortcut: (ExploreShortcut) -> Unit, onOpenRadio: () -> Unit, onOpenJam: () -> Unit) {
-    val strings = LocalLevyraStrings.current
-    val shortcuts = listOf(
-        strings.exploreSamples to { onShortcut(ExploreShortcut.Samples) },
-        podcastCopy(strings.code).title to { onShortcut(ExploreShortcut.Podcasts) },
-        LevyraLiveRadioCatalog.forCode(strings.code).title to onOpenRadio,
-        strings.jamTitle to onOpenJam
-    )
-    LazyRow(contentPadding = MonoRailPadding, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(shortcuts, key = { it.first }, contentType = { "mono-shortcut" }) { (label, action) ->
-            MonoPill(label, selected = false, onClick = action)
-        }
-    }
-}
-
-@Composable
 internal fun MonoExploreEntry(
     state: LevyraUiState,
     viewModel: ExploreViewModel,
-    freshTracks: List<Track>,
     listState: LazyListState,
     bottomInset: Dp,
     editorial: ExploreEditorialContent?,
     onShortcut: (ExploreShortcut) -> Unit,
     onOpenRadio: () -> Unit,
-    onOpenJam: () -> Unit,
-    onTrackActions: (Track) -> Unit
+    onOpenJam: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { LevyraMonoHomeStrings.forCode(strings.code) }
-    val currentId = state.currentTrack?.id
-    val releases = remember(state.exploreNewReleases) { state.exploreNewReleases.distinctBy(::atelierAlbumKey).take(MonoExploreRail) }
-    val fresh = remember(freshTracks) { freshTracks.distinctBy(Track::id).take(MonoExploreRail) }
-    val showCharts = state.interfaceSettings.showCharts
-    val charts = remember(state.charts, showCharts) { if (showCharts) state.charts.distinctBy(Track::id).take(50) else emptyList() }
-    val chartsTitle = remember(strings, charts.size, state.chartRegions, state.selectedChartId, state.languageCode) {
-        val market = state.chartRegions.firstOrNull { it.id == state.selectedChartId }
-            ?.let { ChartMarketDirectory.displayName(it, state.languageCode) }.orEmpty()
-        strings.chartMarketTitle(charts.size, market)
-    }
-    var chartsExpanded by rememberSaveable { mutableStateOf(false) }
-    val play: (List<Track>, Track) -> Unit = { list, track ->
-        when {
-            track.id != currentId -> viewModel.playFrom(list, track)
-            !state.isResolving -> viewModel.togglePlay()
+    val pending = MonoExploreBridge.pending
+    LaunchedEffect(pending) {
+        when (pending) {
+            MonoShortcut.Podcasts -> onShortcut(ExploreShortcut.Podcasts)
+            MonoShortcut.Samples -> onShortcut(ExploreShortcut.Samples)
+            MonoShortcut.Radio -> onOpenRadio()
+            MonoShortcut.Jam -> onOpenJam()
+            null -> Unit
         }
+        MonoExploreBridge.pending = null
     }
-    val nothingLoaded = releases.isEmpty() && fresh.isEmpty() && charts.isEmpty() && editorial?.news.isNullOrEmpty()
-    val stillLoading = state.isFreshCurrentsLoading || state.isNewReleasesLoading
+    val nothingLoaded = editorial?.news.isNullOrEmpty()
+    val stillLoading = state.isNewReleasesLoading
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     LazyColumn(
         state = listState,
@@ -301,63 +290,13 @@ internal fun MonoExploreEntry(
         contentPadding = PaddingValues(bottom = bottomInset + MonoDesign.sectionGap)
     ) {
         item(key = "mono-explore-top", contentType = "mono-explore-top") {
-            Column(Modifier.padding(top = statusTop + 18.dp)) {
-                MonoScreenTitle(strings.exploreTitle)
-                Spacer(Modifier.height(16.dp))
-                MonoExploreShortcuts(onShortcut, onOpenRadio, onOpenJam)
-            }
+            Column(Modifier.padding(top = statusTop + 18.dp)) { MonoScreenTitle(strings.exploreTitle) }
         }
         if (editorial != null && editorial.news.isNotEmpty()) {
             item(key = "mono-explore-news-hero", contentType = "mono-explore-news") { ExploreEditorialRow(ExploreRow.NewsHero, editorial) }
         }
         if (editorial != null) {
             item(key = "mono-explore-top100", contentType = "mono-explore-top100") { ExploreEditorialRow(ExploreRow.DailyTop100, editorial) }
-        }
-        if (releases.isNotEmpty()) {
-            item(key = "mono-explore-releases", contentType = "mono-rail") {
-                MonoSection(strings.exploreNewReleases, copy.freshOverline, strings.showAll, { onShortcut(ExploreShortcut.NewReleases) }) {
-                    MonoAlbumRail(releases, MonoReleaseCard, viewModel::openAlbum)
-                }
-            }
-        }
-        if (fresh.isNotEmpty()) {
-            item(key = "mono-explore-fresh", contentType = "mono-rail") {
-                MonoSection(strings.exploreFresh, copy.trendingOverline) {
-                    MonoTrackRail(fresh, MonoDesign.cardWide, currentId, strings.addToPlaylist, { play(fresh, it) }, onTrackActions)
-                }
-            }
-        }
-        if (charts.isNotEmpty()) {
-            item(key = "mono-explore-charts-header", contentType = "mono-header") {
-                Column(Modifier.padding(top = MonoDesign.sectionGap, bottom = 6.dp)) {
-                    MonoSectionHeader(chartsTitle, overline = copy.chartsOverline, action = strings.playAll) { viewModel.playAll(charts) }
-                }
-            }
-            itemsIndexed(
-                if (chartsExpanded) charts else charts.take(MonoExploreCharts),
-                key = { _, track -> "mono-explore-chart-${track.id}" },
-                contentType = { _, _ -> "mono-compact-row" }
-            ) { index, track ->
-                MonoCompactRow(
-                    track = track,
-                    isCurrent = track.id == currentId,
-                    isPlaying = state.isPlaying,
-                    actionsLabel = strings.addToPlaylist,
-                    onPlay = { play(charts, track) },
-                    onActions = { onTrackActions(track) },
-                    rank = index + 1
-                )
-            }
-            if (charts.size > MonoExploreCharts) {
-                item(key = "mono-explore-charts-toggle", contentType = "mono-toggle") {
-                    MonoPill(
-                        if (chartsExpanded) strings.showLess else strings.showMore,
-                        selected = false,
-                        onClick = { chartsExpanded = !chartsExpanded },
-                        modifier = Modifier.padding(horizontal = MonoDesign.gutter, vertical = 8.dp)
-                    )
-                }
-            }
         }
         if (editorial != null && editorial.news.size > 1) {
             item(key = "mono-explore-news-desk", contentType = "mono-explore-news") { ExploreEditorialRow(ExploreRow.NewsList, editorial) }
@@ -384,3 +323,91 @@ internal fun MonoExploreEntry(
         }
     }
 }
+
+@Composable
+internal fun MonoVideoRail(videos: List<YoutubeMusicHomeItem>, onPlay: (YoutubeMusicHomeItem) -> Unit) {
+    LazyRow(contentPadding = MonoRailPadding, horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap)) {
+        items(videos, key = { it.key }, contentType = { "mono-video-card" }) { item ->
+            Column(
+                Modifier.width(MonoVideoWidth)
+                    .levyraPressable(onClick = { onPlay(item) }, role = Role.Button, pressedScale = LevyraPressScale.Tile, onClickLabel = item.title)
+            ) {
+                Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(MonoDesign.cardShape).background(MonoDesign.surface)) {
+                    MonoArtwork(item.thumbnailUrl, Modifier.fillMaxSize())
+                    Box(
+                        Modifier.align(Alignment.Center).size(44.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.42f)),
+                        contentAlignment = Alignment.Center
+                    ) { Icon(Icons.Rounded.PlayArrow, null, tint = Color.White, modifier = Modifier.size(24.dp)) }
+                }
+                Text(item.title, style = MaterialTheme.typography.titleSmall, color = MonoDesign.text, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.dp))
+                Text(item.subtitle, style = MaterialTheme.typography.bodySmall, color = MonoDesign.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
+            }
+        }
+    }
+}
+
+@Composable
+internal fun MonoDiscoverTeaser(covers: List<String>, onOpen: () -> Unit) {
+    val strings = LocalLevyraStrings.current
+    val copy = remember(strings.code) { discoveryCopy(strings.code) }
+    val shown = remember(covers) { covers.filter(String::isNotBlank).distinct().take(3) }
+    Column(Modifier.fillMaxWidth().padding(top = MonoDesign.sectionGap)) {
+        MonoSectionHeader(copy.title, overline = LevyraMonoHomeStrings.forCode(strings.code).forYouOverline)
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = MonoDesign.gutter).padding(top = MonoDesign.headerToContent)
+                .height(168.dp)
+                .monoPanel(MonoDesign.panelShape, MonoDesign.surface)
+                .levyraPressable(onClick = onOpen, role = Role.Button, pressedScale = LevyraPressScale.Surface, onClickLabel = copy.start)
+                .padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(copy.lead, style = MaterialTheme.typography.titleMedium, color = MonoDesign.text, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                Row(
+                    Modifier.clip(MonoDesign.pillShape).background(MonoDesign.accent).padding(horizontal = 14.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(Icons.Rounded.PlayArrow, null, tint = MonoDesign.onAccent, modifier = Modifier.size(16.dp))
+                    Text(copy.start, style = MaterialTheme.typography.labelLarge, color = MonoDesign.onAccent, maxLines = 1)
+                }
+            }
+            val sway = monoDiscoverSway(LocalAnimationsEnabled.current)
+            Box(Modifier.width(120.dp).height(132.dp).clearAndSetSemantics { }, contentAlignment = Alignment.Center) {
+                val slots = if (shown.isEmpty()) listOf("", "", "") else shown
+                slots.forEachIndexed { index, url ->
+                    val offset = index - (slots.size - 1) / 2f
+                    Box(
+                        Modifier.size(width = 82.dp, height = 104.dp).graphicsLayer {
+                            val swing = sway.value
+                            rotationZ = offset * (8f + 4f * swing)
+                            translationX = offset * (18f + 8f * swing).dp.toPx()
+                            translationY = kotlin.math.abs(offset) * 6.dp.toPx()
+                            shadowElevation = 8.dp.toPx()
+                            shape = MonoDesign.cardShape
+                            clip = true
+                        }.background(MonoDesign.raised).border(1.dp, MonoDesign.hairlineStrong, MonoDesign.cardShape)
+                    ) { if (url.isNotBlank()) MonoArtwork(url, Modifier.fillMaxSize()) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun monoDiscoverSway(enabled: Boolean): androidx.compose.runtime.State<Float> {
+    if (!enabled) return remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    val transition = androidx.compose.animation.core.rememberInfiniteTransition(label = "mono-discover")
+    return transition.animateFloat(
+        0f, 1f,
+        androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(3200, easing = androidx.compose.animation.core.FastOutSlowInEasing), androidx.compose.animation.core.RepeatMode.Reverse),
+        label = "mono-discover-sway"
+    )
+}
+
+internal fun monoExploreNewVideos(shelves: List<YoutubeMusicHomeShelf>, limit: Int): List<YoutubeMusicHomeItem> =
+    shelves.filter { it.headerBrowseId == NEW_VIDEOS_BROWSE_ID }
+        .flatMap { it.items }
+        .filter { it.track != null }
+        .distinctBy { it.key }
+        .take(limit)

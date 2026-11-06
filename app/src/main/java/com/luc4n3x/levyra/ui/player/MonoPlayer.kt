@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.player
 
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
@@ -206,6 +207,19 @@ private fun MonoHero(track: Track, slots: PlayerDeckSlots, size: Dp, playing: Bo
                 spotShadowColor = Color.Black
             }
         )
+        Box(
+            Modifier.fillMaxSize().drawBehind {
+                val halo = 0.10f + 0.16f * lift
+                drawOval(
+                    Brush.radialGradient(
+                        listOf(MonoDesign.accent.copy(alpha = halo), Color.Transparent),
+                        center = Offset(this.size.width / 2f, this.size.height * 1.02f), radius = this.size.width * 0.62f
+                    ),
+                    topLeft = Offset(-this.size.width * 0.12f, this.size.height * 0.72f),
+                    size = androidx.compose.ui.geometry.Size(this.size.width * 1.24f, this.size.height * 0.6f)
+                )
+            }
+        )
         slots.stage(track, Modifier.fillMaxSize(), MonoHeroCorner)
     }
 }
@@ -262,6 +276,11 @@ private fun MonoPlayerBackdrop(track: Track, playing: Boolean) {
                     0.82f to MonoDesign.base.copy(alpha = 0.9f),
                     1f to MonoDesign.base
                 )
+            )
+        )
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.verticalGradient(0.55f to Color.Transparent, 1f to MonoDesign.accent.copy(alpha = 0.07f))
             )
         )
     }

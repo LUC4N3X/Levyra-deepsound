@@ -1,5 +1,12 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.domain.LevyraTab
+import com.luc4n3x.levyra.ui.theme.MonoCodeFont
+import com.luc4n3x.levyra.ui.i18n.LevyraYouTubeMusicSkinStrings
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Share
+import androidx.compose.ui.platform.LocalContext
+import android.content.Intent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -100,13 +107,14 @@ import com.luc4n3x.levyra.ui.theme.MonoDesign
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
 
-private const val MonoArtistPreviewSongs = 5
+private const val MonoArtistSongRows = 4
+private const val MonoArtistSongLimit = 20
 private const val MonoArtistRailLimit = 24
 private const val MonoArtistParallax = 0.5f
-private const val MonoArtistPortraitRatio = 1.08f
-private val MonoArtistPortraitMax = 480.dp
+private const val MonoArtistPortraitRatio = 1.18f
+private val MonoArtistPortraitMax = 560.dp
 private val MonoArtistBarHeight = 56.dp
-private val MonoArtistPlaySize = 56.dp
+private val MonoArtistPlaySize = 64.dp
 private val MonoArtistRelease = 140.dp
 private val MonoArtistVideoWidth = 224.dp
 private val MonoArtistPulseBrush = Brush.horizontalGradient(listOf(MonoDesign.accent.copy(alpha = 0.85f), MonoDesign.accent.copy(alpha = 0.08f)))
@@ -119,6 +127,11 @@ internal fun MonoArtistScreen(state: LevyraUiState, viewModel: LevyraViewModel, 
     val listState = rememberSaveable(state.artistListStateKey, saver = LazyListState.Saver) { LazyListState() }
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     var showAllSongs by rememberSaveable(profile?.browseId) { mutableStateOf(false) }
+    val appleStorefront = remember(state.selectedChartId) { com.luc4n3x.levyra.domain.ChartsCatalog.region(state.selectedChartId).country }
+    val appleArtist = rememberAppleArtistPage(
+        state.artistRequestName.ifBlank { profile?.name.orEmpty() }.ifBlank { null }, appleStorefront, LocalLevyraStrings.current.code
+    )
+    val heroMotion = remember(appleArtist) { appleArtist?.heroMotion() } ?: state.artistMotionArtwork
     val portrait = remember(profile?.thumbnailUrl, profile?.bannerUrl) {
         profile?.let { fullResolutionArtworkUrl(it.thumbnailUrl.ifBlank { it.bannerUrl }) }.orEmpty()
     }
@@ -152,7 +165,7 @@ internal fun MonoArtistScreen(state: LevyraUiState, viewModel: LevyraViewModel, 
                 }
                 else -> {
                     item(key = "mono-artist-header", contentType = "mono-artist-header") {
-                        MonoArtistHeader(profile, copy, portrait, portraitHeight, scrolled)
+                        MonoArtistHeader(profile, copy, portrait, portraitHeight, scrolled, heroMotion, state.animationsEnabled && state.motionArtworkEnabled)
                     }
                     item(key = "mono-artist-actions", contentType = "mono-artist-actions") {
                         MonoArtistActions(profile, state, viewModel)
@@ -181,6 +194,7 @@ internal fun MonoArtistScreen(state: LevyraUiState, viewModel: LevyraViewModel, 
                     modifier = Modifier.weight(1f).padding(horizontal = 8.dp).graphicsLayer { alpha = barAlpha }
                         .then(if (collapsed) Modifier else Modifier.clearAndSetSemantics { })
                 )
+                if (profile != null) MonoArtistBarActions(profile, state, viewModel)
             }
             Box(Modifier.fillMaxWidth().height(1.dp).graphicsLayer { alpha = barAlpha }.background(MonoDesign.hairline))
         }
@@ -193,10 +207,12 @@ private fun MonoArtistHeader(
     copy: MonoSearchCopy,
     portrait: String,
     portraitHeight: Dp,
-    scrolled: () -> Float
+    scrolled: () -> Float,
+    motion: com.luc4n3x.levyra.feature.motion.MotionArtwork?,
+    motionEnabled: Boolean
 ) {
     val animated = LocalAnimationsEnabled.current
-    val overline = profile.monthlyListeners.ifBlank { profile.subscribers }.ifBlank { copy.artistOverline }
+    val audience = profile.monthlyListeners.ifBlank { profile.subscribers }
     Box(Modifier.fillMaxWidth().height(portraitHeight).clipToBounds()) {
         Box(
             Modifier.fillMaxSize().graphicsLayer {
@@ -208,7 +224,14 @@ private fun MonoArtistHeader(
             }
         ) {
             if (portrait.isNotBlank()) {
-                AsyncImage(portrait, null, contentScale = ContentScale.Crop, alignment = Alignment.TopCenter, modifier = Modifier.fillMaxSize())
+                if (motion != null && motionEnabled) {
+                    MotionArtworkLayer(
+                        artwork = motion, enabled = true, isPlaying = true, cornerRadius = 0.dp,
+                        modifier = Modifier.fillMaxSize(), presentation = MotionArtworkPresentation.Immersive
+                    ) { AsyncImage(portrait, null, contentScale = ContentScale.Crop, alignment = Alignment.TopCenter, modifier = Modifier.fillMaxSize()) }
+                } else {
+                    AsyncImage(portrait, null, contentScale = ContentScale.Crop, alignment = Alignment.TopCenter, modifier = Modifier.fillMaxSize())
+                }
             } else {
                 Box(Modifier.fillMaxSize().background(MonoDesign.surface), contentAlignment = Alignment.Center) {
                     Icon(Icons.Rounded.Person, null, tint = MonoDesign.textFaint, modifier = Modifier.size(72.dp))
@@ -231,11 +254,64 @@ private fun MonoArtistHeader(
             Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(horizontal = MonoDesign.gutter),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            MonoOverline(overline, color = MonoDesign.accent)
             Text(
-                profile.name, style = MaterialTheme.typography.displaySmall, color = MonoDesign.text,
+                profile.name, style = MaterialTheme.typography.displayMedium, color = MonoDesign.text,
                 maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() }
             )
+            if (audience.isNotBlank()) {
+                Text(audience, style = MaterialTheme.typography.bodyLarge, color = MonoDesign.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+
+@Composable
+private fun MonoArtistBarActions(profile: ArtistProfile, state: LevyraUiState, viewModel: LevyraViewModel) {
+    val strings = LocalLevyraStrings.current
+    val context = LocalContext.current
+    val ytm = remember(strings.code) { LevyraYouTubeMusicSkinStrings.forCode(strings.code) }
+    val songs = profile.topSongs
+    val excluded = state.artistExclusions.excludesBrowseId(profile.browseId) || state.artistExclusions.excludesArtistName(profile.name)
+    val pinned = SpeedDial.artistKey(profile.name, profile.browseId)?.let { key -> state.speedDialPins.any { it.key == key } } == true
+    var menuOpen by rememberSaveable(profile.browseId) { mutableStateOf(false) }
+    if (songs.size > 1) {
+        MonoSearchIconTarget(Icons.Rounded.Shuffle, strings.shuffle, MonoDesign.text) {
+            val shuffled = songs.shuffled()
+            shuffled.firstOrNull()?.let { first -> viewModel.playFrom(shuffled, first) }
+        }
+    }
+    if (profile.browseId.isNotBlank()) {
+        MonoSearchIconTarget(Icons.Rounded.Share, ytm.share, MonoDesign.text) {
+            runCatching {
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_SUBJECT, profile.name)
+                    putExtra(Intent.EXTRA_TEXT, "https://music.youtube.com/channel/${profile.browseId}")
+                }
+                context.startActivity(Intent.createChooser(intent, ytm.share).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            }
+        }
+    }
+    MonoSearchIconTarget(Icons.Rounded.Search, ytm.search, MonoDesign.text) {
+        viewModel.closeArtist()
+        viewModel.selectTab(LevyraTab.Search)
+    }
+    Box {
+        MonoSearchIconTarget(Icons.Rounded.MoreVert, strings.more, MonoDesign.text) { menuOpen = true }
+        val speedDial = remember(strings) { strings.speedDialCopy() }
+        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }, containerColor = MonoDesign.raised) {
+            MonoArtistMenuItem(strings.addToQueue, Icons.AutoMirrored.Rounded.QueueMusic, songs.isNotEmpty()) {
+                menuOpen = false
+                viewModel.addTracksToQueue(songs)
+            }
+            MonoArtistMenuItem(if (excluded) strings.includeArtist else strings.excludeArtist, if (excluded) Icons.Rounded.Recommend else Icons.Rounded.DoNotDisturbOn, true) {
+                menuOpen = false
+                viewModel.toggleExcludeArtist(profile.browseId, profile.name)
+            }
+            MonoArtistMenuItem(if (pinned) speedDial.removeFromHome else speedDial.addToHome, Icons.Rounded.PushPin, true) {
+                menuOpen = false
+                viewModel.toggleSpeedDialArtist(profile.name, profile.browseId, profile.thumbnailUrl)
+            }
         }
     }
 }
@@ -245,14 +321,42 @@ private fun MonoArtistActions(profile: ArtistProfile, state: LevyraUiState, view
     val strings = LocalLevyraStrings.current
     val songs = profile.topSongs
     val followed = (profile.browseId.isNotBlank() && profile.browseId in state.followedArtistKeys) || profile.name.trim().lowercase() in state.followedArtistKeys
-    val excluded = state.artistExclusions.excludesBrowseId(profile.browseId) || state.artistExclusions.excludesArtistName(profile.name)
-    val pinned = SpeedDial.artistKey(profile.name, profile.browseId)?.let { key -> state.speedDialPins.any { it.key == key } } == true
-    var menuOpen by rememberSaveable(profile.browseId) { mutableStateOf(false) }
     Row(
-        Modifier.fillMaxWidth().padding(start = MonoDesign.gutter, end = 8.dp, top = 18.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        Modifier.fillMaxWidth().padding(horizontal = MonoDesign.gutter).padding(top = 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        val followLabel = if (followed) strings.followingArtist else strings.followArtist
+        Row(
+            Modifier.weight(1f, fill = false).heightIn(min = 48.dp).clip(MonoDesign.pillShape)
+                .background(if (followed) Color.Transparent else MonoDesign.text)
+                .border(1.dp, if (followed) MonoDesign.accent else MonoDesign.text, MonoDesign.pillShape)
+                .clickable(role = Role.Button, onClick = viewModel::toggleFollowArtist)
+                .semantics { selected = followed }
+                .padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val ink = if (followed) MonoDesign.accent else MonoDesign.base
+            Text(followLabel, style = MaterialTheme.typography.titleSmall, color = ink, maxLines = 1)
+            if (profile.subscribers.isNotBlank()) {
+                Text(
+                    profile.subscribers.substringBeforeLast(' ').ifBlank { profile.subscribers },
+                    style = MaterialTheme.typography.titleSmall.copy(fontFamily = MonoCodeFont), color = ink.copy(alpha = 0.72f),
+                    maxLines = 1, overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        Spacer(Modifier.weight(1f))
+        val radioEnabled = songs.isNotEmpty()
+        Box(
+            Modifier.size(48.dp).clip(CircleShape).background(MonoDesign.raised)
+                .clickable(enabled = radioEnabled, role = Role.Button, onClickLabel = strings.continuousRadio) {
+                    songs.firstOrNull()?.let(viewModel::startSongRadioFrom)
+                }
+                .semantics { contentDescription = strings.continuousRadio },
+            contentAlignment = Alignment.Center
+        ) { Icon(Icons.Rounded.Sensors, null, tint = if (radioEnabled) MonoDesign.text else MonoDesign.textFaint, modifier = Modifier.size(22.dp)) }
         val playEnabled = songs.isNotEmpty()
         Box(
             Modifier.size(MonoArtistPlaySize).clip(CircleShape)
@@ -261,40 +365,7 @@ private fun MonoArtistActions(profile: ArtistProfile, state: LevyraUiState, view
                 .semantics { contentDescription = strings.play },
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Rounded.PlayArrow, null, tint = if (playEnabled) MonoDesign.onAccent else MonoDesign.textFaint, modifier = Modifier.size(30.dp))
-        }
-        MonoArtistPill(
-            if (followed) Icons.Rounded.HowToReg else Icons.Rounded.PersonAdd,
-            if (followed) strings.followingArtist else strings.followArtist,
-            selected = followed,
-            enabled = true
-        ) { viewModel.toggleFollowArtist() }
-        MonoArtistPill(Icons.Rounded.Shuffle, strings.shuffle, selected = false, enabled = songs.size > 1) {
-            val shuffled = songs.shuffled()
-            shuffled.firstOrNull()?.let { first -> viewModel.playFrom(shuffled, first) }
-        }
-        Spacer(Modifier.weight(1f))
-        Box {
-            MonoSearchIconTarget(Icons.Rounded.MoreVert, strings.more, MonoDesign.textSecondary) { menuOpen = true }
-            val speedDial = remember(strings) { strings.speedDialCopy() }
-            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }, containerColor = MonoDesign.raised) {
-                MonoArtistMenuItem(strings.continuousRadio, Icons.Rounded.Sensors, songs.isNotEmpty()) {
-                    menuOpen = false
-                    songs.firstOrNull()?.let(viewModel::startSongRadioFrom)
-                }
-                MonoArtistMenuItem(strings.addToQueue, Icons.AutoMirrored.Rounded.QueueMusic, songs.isNotEmpty()) {
-                    menuOpen = false
-                    viewModel.addTracksToQueue(songs)
-                }
-                MonoArtistMenuItem(if (excluded) strings.includeArtist else strings.excludeArtist, if (excluded) Icons.Rounded.Recommend else Icons.Rounded.DoNotDisturbOn, true) {
-                    menuOpen = false
-                    viewModel.toggleExcludeArtist(profile.browseId, profile.name)
-                }
-                MonoArtistMenuItem(if (pinned) speedDial.removeFromHome else speedDial.addToHome, Icons.Rounded.PushPin, true) {
-                    menuOpen = false
-                    viewModel.toggleSpeedDialArtist(profile.name, profile.browseId, profile.thumbnailUrl)
-                }
-            }
+            Icon(Icons.Rounded.PlayArrow, null, tint = if (playEnabled) MonoDesign.onAccent else MonoDesign.textFaint, modifier = Modifier.size(32.dp))
         }
     }
 }
@@ -342,24 +413,19 @@ private fun LazyListScope.monoArtistSections(
     val currentId = state.currentTrack?.id
     val topSongs = profile.topSongs.distinctBy(Track::id)
     if (topSongs.isNotEmpty()) {
-        item(key = "mono-artist-popular-title", contentType = "mono-artist-header") {
+        item(key = "mono-artist-popular", contentType = "mono-artist-rail") {
             val strings = LocalLevyraStrings.current
-            MonoSectionHeader(
-                copy.popular, Modifier.padding(top = MonoDesign.sectionGap, bottom = 6.dp), overline = copy.popularOverline,
-                action = if (showAllSongs) strings.showLess else strings.showMore,
-                onAction = onToggleSongs.takeIf { topSongs.size > MonoArtistPreviewSongs }
-            )
-        }
-        itemsIndexed(
-            if (showAllSongs) topSongs else topSongs.take(MonoArtistPreviewSongs),
-            key = { _, track -> "mono-top-${track.id}" },
-            contentType = { _, _ -> "mono-artist-track" }
-        ) { index, track ->
-            val current = track.id == currentId
-            MonoArtistTrackRow(
-                index + 1, track, current, current && state.isPlaying, copy,
-                { viewModel.playFrom(profile.topSongs, track) }, { onTrackActions(track) }
-            )
+            Column {
+                MonoSectionHeader(
+                    copy.popular, Modifier.padding(top = MonoDesign.sectionGap, bottom = MonoDesign.headerToContent), overline = copy.popularOverline,
+                    action = strings.playAll, onAction = { viewModel.playAll(topSongs) }
+                )
+                MonoTrackColumns(
+                    topSongs, rows = MonoArtistSongRows, limit = MonoArtistSongLimit, ranked = true,
+                    currentId = currentId, isPlaying = state.isPlaying, actionsLabel = strings.songOptions,
+                    onPlay = { _, track -> viewModel.playFrom(profile.topSongs, track) }, onActions = onTrackActions
+                )
+            }
         }
     }
     monoReleaseRail("albums", profile.albums + profile.compilations, profile, viewModel, copy.discographyOverline) { LocalLevyraStrings.current.albumsPlain }
@@ -377,19 +443,6 @@ private fun LazyListScope.monoArtistSections(
             }
         }
     }
-    if (profile.relatedArtists.isNotEmpty()) {
-        item(key = "mono-artist-related", contentType = "mono-artist-rail") {
-            val related = remember(profile.relatedArtists) { profile.relatedArtists.distinctBy { it.browseId.ifBlank { it.name } }.take(MonoArtistRailLimit) }
-            Column {
-                MonoArtistRailHeader(copy.fansAlsoLike, copy.fansOverline)
-                LazyRow(contentPadding = PaddingValues(horizontal = MonoDesign.gutter), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    items(related, key = { "mono-related-${it.browseId.ifBlank { it.name }}" }) { hit ->
-                        MonoArtistAvatar(hit.name, hit.thumbnailUrl) { viewModel.openArtistFromHit(hit) }
-                    }
-                }
-            }
-        }
-    }
     if (profile.featuredPlaylists.isNotEmpty()) {
         item(key = "mono-artist-featured", contentType = "mono-artist-rail") {
             val strings = LocalLevyraStrings.current
@@ -400,6 +453,34 @@ private fun LazyListScope.monoArtistSections(
                 LazyRow(contentPadding = PaddingValues(horizontal = MonoDesign.gutter), horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap)) {
                     items(playlists, key = { "mono-featured-${it.playlistId.ifBlank { it.browseId.ifBlank { it.title } }}" }) { playlist ->
                         MonoArtistCard(playlist.title, playlist.author, playlist.thumbnailUrl, MonoDesign.artShape) { viewModel.openPlaylistHit(playlist) }
+                    }
+                }
+            }
+        }
+    }
+    if (profile.artistPlaylists.isNotEmpty()) {
+        item(key = "mono-artist-playlists", contentType = "mono-artist-rail") {
+            val strings = LocalLevyraStrings.current
+            val title = remember(strings.code, profile.name) { LevyraYouTubeMusicSkinStrings.forCode(strings.code).playlistsBy(profile.name) }
+            val playlists = remember(profile.artistPlaylists) { profile.artistPlaylists.distinctBy { it.playlistId.ifBlank { it.browseId.ifBlank { it.title } } } }
+            Column {
+                MonoArtistRailHeader(title, null)
+                LazyRow(contentPadding = PaddingValues(horizontal = MonoDesign.gutter), horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap)) {
+                    items(playlists, key = { "mono-own-${it.playlistId.ifBlank { it.browseId.ifBlank { it.title } }}" }) { playlist ->
+                        MonoArtistCard(playlist.title, playlist.author, playlist.thumbnailUrl, MonoDesign.artShape) { viewModel.openPlaylistHit(playlist) }
+                    }
+                }
+            }
+        }
+    }
+    if (profile.relatedArtists.isNotEmpty()) {
+        item(key = "mono-artist-related", contentType = "mono-artist-rail") {
+            val related = remember(profile.relatedArtists) { profile.relatedArtists.distinctBy { it.browseId.ifBlank { it.name } }.take(MonoArtistRailLimit) }
+            Column {
+                MonoArtistRailHeader(copy.fansAlsoLike, copy.fansOverline)
+                LazyRow(contentPadding = PaddingValues(horizontal = MonoDesign.gutter), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    items(related, key = { "mono-related-${it.browseId.ifBlank { it.name }}" }) { hit ->
+                        MonoArtistAvatar(hit.name, hit.thumbnailUrl) { viewModel.openArtistFromHit(hit) }
                     }
                 }
             }

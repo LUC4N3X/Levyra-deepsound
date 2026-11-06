@@ -335,11 +335,7 @@ internal fun LevyraLibraryScreen(
         QobuzLibraryScreen(viewModel, state, catalog, onOpenDownloads) { qobuzTools = true }
         return
     }
-    if (com.luc4n3x.levyra.ui.theme.LevyraIsMono && !qobuzTools) {
-        MonoLibraryScreen(viewModel, state, catalog, onOpenDownloads, { qobuzTools = true }, backEnabled)
-        return
-    }
-    BackHandler(enabled = backEnabled && (com.luc4n3x.levyra.ui.theme.LevyraIsQobuz || com.luc4n3x.levyra.ui.theme.LevyraIsAtelier || com.luc4n3x.levyra.ui.theme.LevyraIsMono) && qobuzTools) { qobuzTools = false }
+    BackHandler(enabled = backEnabled && (com.luc4n3x.levyra.ui.theme.LevyraIsQobuz || com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) && qobuzTools) { qobuzTools = false }
     var categoryName by rememberSaveable { mutableStateOf(LibraryCategory.Overview.name) }
     val category = LibraryCategory.entries.firstOrNull { it.name == categoryName } ?: LibraryCategory.Overview
     var layoutName by rememberSaveable { mutableStateOf(LibraryLayout.List.name) }
@@ -1000,7 +996,22 @@ internal fun LevyraLibraryScreen(
                             )
                         }
                     }
-                    if (com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic) {
+                    if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+                        item(key = "glacier-overview") {
+                            GlacierLibraryOverview(
+                                favorites = state.favorites,
+                                recent = catalog.recent,
+                                mostPlayed = catalog.mostPlayed,
+                                entries = librarySections,
+                                pulse = state.listeningPulse,
+                                onOpenCollection = { openSmartCollectionName = it },
+                                onPlayTracks = { tracks -> tracks.firstOrNull()?.let { viewModel.playFrom(tracks, it) } },
+                                onOpenCategory = { switchCategory(it) },
+                                onOpenInsights = viewModel::openListeningInsights
+                            )
+                        }
+                        item(key = "glacier-pulse") { MonoPulseCard(state.listeningPulse, viewModel::openListeningInsights) }
+                    } else if (com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic) {
                         sectionsItem()
                         item(key = "apple-smart-links") {
                             Column {
@@ -1033,7 +1044,7 @@ internal fun LevyraLibraryScreen(
                         }
                         smartGridItem()
                     }
-                    if (libraryRadioSkin) {
+                    if (libraryRadioSkin && !com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
                         item(key = "overview-mood-journey") {
                             com.luc4n3x.levyra.ui.moodjourney.MoodJourneyEntryCard(
                                 onOpen = { preset -> if (preset == null) viewModel.openMoodJourney() else viewModel.openMoodJourney(preset) }
@@ -1047,7 +1058,7 @@ internal fun LevyraLibraryScreen(
                                 onOpenInsights = viewModel::openListeningInsights
                             )
                         }
-                    } else if (!com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic) {
+                    } else if (!com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic && !com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
                         item(key = "overview-insights-title") {
                             LibrarySectionTitle(
                                 title = strings.pulseTitle,

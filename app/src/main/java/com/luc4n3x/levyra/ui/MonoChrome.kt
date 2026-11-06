@@ -1,5 +1,10 @@
 package com.luc4n3x.levyra.ui
 
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.ui.semantics.selected
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
@@ -105,11 +110,7 @@ internal object MonoChromeState {
 }
 
 private val MonoNavPadding = 6.dp
-private val MonoNavSpacing = 2.dp
-private val MonoNavPillInset = 4.dp
 private val MonoNavBottom = 8.dp
-private val MonoNavKeyGap = 8.dp
-private const val MonoNavSelectedWeight = 2.4f
 private val MonoEdgeFast: AnimationSpec<Float> = spring(dampingRatio = 0.62f, stiffness = 620f)
 private val MonoEdgeSlow: AnimationSpec<Float> = spring(dampingRatio = 0.74f, stiffness = 180f)
 
@@ -173,67 +174,48 @@ internal fun MonoBottomTabs(
     val morph = LocalDockMorph.current
     val frame = remember { DockMorphFrame() }
     val allEntries = rememberLevyraTabEntries()
-    val searchEntry = remember(entries, allEntries) {
-        entries.firstOrNull { it.tab == LevyraTab.Search } ?: allEntries.firstOrNull { it.tab == LevyraTab.Search }
+    val tabs = remember(entries, allEntries) {
+        if (entries.any { it.tab == LevyraTab.Search }) entries
+        else entries + listOfNotNull(allEntries.firstOrNull { it.tab == LevyraTab.Search })
     }
-    val tabs = remember(entries) { entries.filterNot { it.tab == LevyraTab.Search } }
-    val selectedIndex = tabs.indexOfFirst { it.tab == selected }.coerceAtLeast(0)
+    val selectedIndex = tabs.indexOfFirst { it.tab == selected }
     val shape = MonoDesign.pillShape
     Column(
         modifier.fillMaxWidth().padding(start = MonoDesign.miniMargin, end = MonoDesign.miniMargin, bottom = MonoNavBottom)
     ) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Box(
-            Modifier.weight(1f)
+            Modifier.fillMaxWidth()
                 .dockMorphFrame(morph, frame, MonoDesign.navHeight)
                 .height(MonoDesign.navHeight)
                 .clip(shape)
-                .background(MonoDesign.surface)
-                .border(1.dp, MonoDesign.hairlineStrong, shape)
+                .glacierSlab()
+                .border(1.dp, MonoDesign.hairline, shape)
                 .dockMorphReveal(
                     morph = morph,
-                    slots = DockMorphSlots(tabs.size, selectedIndex, MonoNavPadding, MonoNavSpacing, MonoNavSelectedWeight),
+                    slots = DockMorphSlots(tabs.size, selectedIndex.coerceAtLeast(0), MonoNavPadding, 0.dp, 1f),
                     row = DockMorphRow(
                         leading = MonoDesign.miniMargin, trailing = MonoDesign.miniMargin,
-                        height = MonoDesign.navHeight, bottom = MonoNavBottom, gap = MonoNavKeyGap
+                        height = MonoDesign.navHeight, bottom = MonoNavBottom, gap = 0.dp
                     ),
                     frame = frame
                 )
         ) {
             MonoTabRow(tabs, selectedIndex, morph, onSelect)
         }
-        if (searchEntry != null) MonoSearchKey(searchEntry, selected == LevyraTab.Search, { morph?.fraction ?: 0f }, onSelect)
-        }
         if (applySystemInset) Spacer(Modifier.navigationBarsPadding())
     }
 }
 
-@Composable
-private fun MonoSearchKey(entry: LevyraTabEntry, active: Boolean, collapse: () -> Float, onSelect: (LevyraTabEntry, Boolean) -> Unit) {
-    val lit by animateFloatAsState(if (active) 1f else 0f, if (LocalAnimationsEnabled.current) spring(stiffness = 420f) else snap(), label = "mono-search-key")
-    val painter = rememberVectorPainter(entry.selectedIcon)
-    val shape = CircleShape
-    Box(
-        Modifier
-            .layout { measurable, constraints ->
-                val shown = (1f - collapse()).coerceIn(0f, 1f)
-                val gap = MonoNavKeyGap.roundToPx()
-                val key = MonoDesign.navHeight.roundToPx()
-                val placeable = measurable.measure(Constraints.fixed(key, key))
-                layout(((key + gap) * shown).roundToInt(), key) {
-                    placeable.placeRelativeWithLayer(gap, 0) { alpha = shown; scaleX = 0.6f + 0.4f * shown; scaleY = 0.6f + 0.4f * shown }
-                }
-            }
-            .clip(shape)
-            .drawBehind { drawRect(lerp(MonoDesign.surface, MonoDesign.accent, lit)) }
-            .border(1.dp, MonoDesign.hairlineStrong, shape)
-            .selectable(active, role = Role.Tab, onClick = { onSelect(entry, active) })
-            .clearAndSetSemantics { contentDescription = entry.label; selected = active },
-        contentAlignment = Alignment.Center
-    ) {
-        Box(Modifier.size(24.dp).drawBehind {
-            with(painter) { draw(size, colorFilter = ColorFilter.tint(lerp(MonoDesign.text, MonoDesign.onAccent, lit))) }
-        })
+internal val GlacierSlabShape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp)
+
+internal fun Modifier.glacierSlab(): Modifier = drawWithCache {
+    val body = Brush.verticalGradient(listOf(MonoDesign.raised, MonoDesign.surface))
+    val sheen = Brush.horizontalGradient(
+        0f to Color.Transparent, 0.5f to Color.White.copy(alpha = 0.10f), 1f to Color.Transparent
+    )
+    onDrawBehind {
+        drawRect(body)
+        drawRect(sheen, size = androidx.compose.ui.geometry.Size(size.width, 1.dp.toPx()))
     }
 }
 
@@ -244,9 +226,11 @@ private fun MonoTabRow(
 ) {
     val animated = LocalAnimationsEnabled.current
     val collapse: () -> Float = { morph?.fraction ?: 0f }
-    val startEdge = remember { Animatable(selectedIndex.toFloat()) }
-    val endEdge = remember { Animatable(selectedIndex.toFloat()) }
+    val startEdge = remember { Animatable(selectedIndex.coerceAtLeast(0).toFloat()) }
+    val endEdge = remember { Animatable(selectedIndex.coerceAtLeast(0).toFloat()) }
+    val bladeShown by animateFloatAsState(if (selectedIndex >= 0) 1f else 0f, if (animated) tween(220) else snap(), label = "glacier-blade-shown")
     LaunchedEffect(selectedIndex, animated) {
+        if (selectedIndex < 0) return@LaunchedEffect
         val target = selectedIndex.toFloat()
         if (!animated) {
             startEdge.snapTo(target)
@@ -259,112 +243,116 @@ private fun MonoTabRow(
     }
     val revealSpec: AnimationSpec<Float> = if (animated) spring(dampingRatio = 0.82f, stiffness = 380f) else snap()
     val reveals = entries.mapIndexed { index, entry ->
-        key(entry.tab) {
-            animateFloatAsState(if (index == selectedIndex) 1f else 0f, revealSpec, label = "mono-tab-reveal")
-        }
+        key(entry.tab) { animateFloatAsState(if (index == selectedIndex) 1f else 0f, revealSpec, label = "glacier-tab-reveal") }
     }
-    val geometry = remember { MonoTabGeometry() }
-    Layout(
-        content = {
-            Box(Modifier.graphicsLayer { alpha = 1f - collapse() }.clip(MonoDesign.pillShape).background(MonoDesign.accent))
+    val breath = rememberGlacierBreath(MonoChromeState.playing && animated)
+    val padding = MonoNavPadding
+    Box(
+        Modifier.fillMaxSize().selectableGroup().drawBehind {
+            if (entries.isEmpty()) return@drawBehind
+            val pad = padding.toPx()
+            val slot = (size.width - pad * 2f) / entries.size
+            val left = pad + slot * startEdge.value + slot * 0.5f
+            val right = pad + slot * endEdge.value + slot * 0.5f
+            val shown = bladeShown * (1f - collapse()).coerceIn(0f, 1f)
+            if (shown <= 0.01f) return@drawBehind
+            val centre = (left + right) / 2f
+            val stretch = right - left
+            val pool = 26.dp.toPx() + stretch * 0.5f
+            drawOval(
+                Brush.radialGradient(
+                    listOf(MonoDesign.accent.copy(alpha = (0.20f + 0.06f * breath.value) * shown), Color.Transparent),
+                    center = Offset(centre, size.height / 2f), radius = pool
+                ),
+                topLeft = Offset(centre - pool, size.height / 2f - pool),
+                size = androidx.compose.ui.geometry.Size(pool * 2f, pool * 2f)
+            )
+            val bladeHeight = 3.dp.toPx()
+            val half = 8.dp.toPx()
+            drawRoundRect(
+                MonoDesign.accent.copy(alpha = shown),
+                topLeft = Offset(left - half, size.height - 9.dp.toPx()),
+                size = androidx.compose.ui.geometry.Size(stretch + half * 2f, bladeHeight),
+                cornerRadius = CornerRadius(bladeHeight)
+            )
+        }.padding(horizontal = padding)
+    ) {
+        Row(Modifier.fillMaxSize()) {
             entries.forEachIndexed { index, entry ->
-                key(entry.tab) { MonoTab(entry, index == selectedIndex, reveals[index], collapse, onSelect) }
+                key(entry.tab) { MonoTab(entry, index == selectedIndex, reveals[index], collapse, onSelect, Modifier.weight(1f)) }
             }
-        },
-        modifier = Modifier.fillMaxSize().selectableGroup()
-    ) { measurables, constraints ->
-        val width = constraints.maxWidth
-        val height = constraints.maxHeight
-        val count = measurables.size - 1
-        val padding = MonoNavPadding.toPx()
-        val spacing = MonoNavSpacing.toPx()
-        var total = 0f
-        for (i in 0 until count) total += 1f + (MonoNavSelectedWeight - 1f) * reveals[i].value
-        val unit = (width - padding * 2f - spacing * (count - 1).coerceAtLeast(0)).coerceAtLeast(0f) / total.coerceAtLeast(1f)
-        geometry.ensure(count)
-        var x = padding
-        for (i in 0 until count) {
-            val slot = unit * (1f + (MonoNavSelectedWeight - 1f) * reveals[i].value)
-            geometry.starts[i] = x
-            geometry.ends[i] = x + slot
-            x += slot + spacing
-        }
-        val inner = (height - padding * 2f).roundToInt().coerceAtLeast(0)
-        val tabs = List(count) { i ->
-            val slot = (geometry.ends[i] - geometry.starts[i]).roundToInt().coerceAtLeast(0)
-            measurables[i + 1].measure(Constraints.fixed(slot, inner))
-        }
-        val inset = MonoNavPillInset.roundToPx()
-        val left = geometry.at(geometry.starts, startEdge.value)
-        val right = geometry.at(geometry.ends, endEdge.value).coerceAtLeast(left)
-        val pill = measurables[0].measure(Constraints.fixed((right - left).roundToInt(), (inner - inset * 2).coerceAtLeast(0)))
-        val top = padding.roundToInt()
-        layout(width, height) {
-            if (count > 0) pill.placeRelative(left.roundToInt(), top + inset)
-            tabs.forEachIndexed { i, tab -> tab.placeRelative(geometry.starts[i].roundToInt(), top) }
         }
     }
+}
+
+@Composable
+private fun rememberGlacierBreath(active: Boolean): State<Float> {
+    if (!active) return MonoStillClock
+    val transition = rememberInfiniteTransition(label = "glacier-breath")
+    return transition.animateFloat(0f, 1f, infiniteRepeatable(tween(2600, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "glacier-breath-value")
 }
 
 @Composable
 private fun MonoTab(
     entry: LevyraTabEntry, active: Boolean, reveal: State<Float>, collapse: () -> Float,
-    onSelect: (LevyraTabEntry, Boolean) -> Unit
+    onSelect: (LevyraTabEntry, Boolean) -> Unit, modifier: Modifier
 ) {
     val painter = rememberVectorPainter(if (active) entry.selectedIcon else entry.unselectedIcon)
-    Box(
-        Modifier.clip(MonoDesign.pillShape)
+    Column(
+        modifier.fillMaxSize()
             .selectable(active, role = Role.Tab, onClick = { onSelect(entry, active) })
-            .clearAndSetSemantics { contentDescription = entry.label },
-        contentAlignment = Alignment.Center
+            .clearAndSetSemantics { contentDescription = entry.label; selected = active },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Row(Modifier.padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier.size(24.dp).graphicsLayer { translationY = -2.dp.toPx() * reveal.value * (1f - collapse()) },
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    Modifier.size(22.dp).drawBehind {
-                        val lit = reveal.value.coerceIn(0f, 1f)
-                        val tint = lerp(lerp(MonoDesign.textSecondary, MonoDesign.onAccent, lit), MonoDesign.accent, collapse() * lit)
-                        with(painter) { draw(size, colorFilter = ColorFilter.tint(tint)) }
-                    }
-                )
-                if (active) {
-                    MonoNavWave(
-                        MonoChromeState.playing, reveal, collapse,
-                        Modifier.align(Alignment.BottomCenter).offset(y = 8.dp).size(width = 18.dp, height = 5.dp)
-                    )
+        Box(
+            Modifier.size(26.dp)
+                .graphicsLayer {
+                    val lift = reveal.value * (1f - collapse())
+                    translationY = -2.dp.toPx() * lift
+                    scaleX = 1f + 0.08f * lift
+                    scaleY = 1f + 0.08f * lift
                 }
-            }
-            Text(
-                entry.label, color = MonoDesign.onAccent, style = MaterialTheme.typography.labelLarge,
-                maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.clipToBounds().layout { measurable, constraints ->
-                    val shown = (reveal.value * (1f - collapse())).coerceIn(0f, 1f)
-                    if (shown <= 0.001f) return@layout layout(0, 0) {}
-                    val gap = 7.dp.roundToPx()
-                    val placeable = measurable.measure(Constraints(maxWidth = (constraints.maxWidth - gap).coerceAtLeast(0)))
-                    layout(((placeable.width + gap) * shown).roundToInt(), placeable.height) {
-                        placeable.placeRelativeWithLayer(gap, 0) { alpha = shown * shown }
-                    }
+                .drawBehind {
+                    val tint = lerp(MonoDesign.textSecondary, MonoDesign.accent, reveal.value.coerceIn(0f, 1f))
+                    with(painter) { draw(size, colorFilter = ColorFilter.tint(tint)) }
                 }
-            )
-        }
+        )
     }
 }
 
 @Composable
-private fun MonoNavWave(playing: Boolean, reveal: State<Float>, collapse: () -> Float, modifier: Modifier) {
-    val clock = rememberMonoWaveClock(playing)
-    val presence = animateFloatAsState(if (playing) 1f else 0f, tween(320), label = "mono-nav-wave")
-    val path = remember { Path() }
-    Canvas(modifier) {
-        val shown = presence.value * reveal.value.coerceIn(0f, 1f)
-        if (shown <= 0.01f) return@Canvas
-        val color = lerp(MonoDesign.onAccent, MonoDesign.accent, collapse())
-        drawMonoChromeWave(path, color.copy(alpha = shown), clock.value, shown, 2.5f, 1.5.dp)
-    }
+internal fun GlacierMiniBackdrop(artworkColor: Color, progress: () -> Float, showProgress: Boolean, playing: Boolean) {
+    val breath = rememberGlacierBreath(playing && LocalAnimationsEnabled.current)
+    Spacer(
+        Modifier.fillMaxSize().drawWithCache {
+            val body = Brush.verticalGradient(listOf(MonoDesign.raised, MonoDesign.surface))
+            val tint = Brush.radialGradient(
+                0f to artworkColor.copy(alpha = 0.30f), 1f to Color.Transparent,
+                center = Offset(size.height * 0.6f, size.height / 2f), radius = size.width * 0.55f
+            )
+            val track = 2.dp.toPx()
+            onDrawBehind {
+                drawRect(body)
+                drawRect(tint)
+                drawRect(Brush.horizontalGradient(0f to Color.Transparent, 0.5f to Color.White.copy(alpha = 0.08f), 1f to Color.Transparent), size = androidx.compose.ui.geometry.Size(size.width, 1.dp.toPx()))
+                if (!showProgress) return@onDrawBehind
+                val p = progress().coerceIn(0f, 1f)
+                val inset = 18.dp.toPx()
+                val span = size.width - inset * 2f
+                val y = track / 2f + 1.dp.toPx()
+                drawLine(MonoDesign.accent.copy(alpha = 0.14f), Offset(inset, y), Offset(inset + span, y), track, StrokeCap.Round)
+                if (p <= 0f) return@onDrawBehind
+                val head = inset + span * p
+                drawLine(
+                    Brush.horizontalGradient(listOf(MonoDesign.accent.copy(alpha = 0.25f), MonoDesign.accent), startX = inset, endX = head),
+                    Offset(inset, y), Offset(head, y), track, StrokeCap.Round
+                )
+                drawCircle(MonoDesign.accent.copy(alpha = 0.22f + 0.12f * breath.value), 7.dp.toPx(), Offset(head, y))
+                drawCircle(MonoDesign.accent, 2.5.dp.toPx(), Offset(head, y))
+            }
+        }
+    )
 }
 
 @Composable
@@ -399,7 +387,7 @@ internal fun MonoMiniArtwork(track: Track, playing: Boolean, animated: Boolean, 
 @Composable
 internal fun MonoMiniControls(
     playing: Boolean, resolving: Boolean, favorite: Boolean, showFavorite: Boolean, animated: Boolean,
-    onFavorite: () -> Unit, onToggle: () -> Unit
+    onFavorite: () -> Unit, onToggle: () -> Unit, onClose: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     SideEffect { MonoChromeState.playing = playing }
@@ -431,6 +419,12 @@ internal fun MonoMiniControls(
                 }
             }
         }
+        Box(
+            Modifier.size(48.dp).clip(CircleShape)
+                .levyraPressable(onClick = onClose, onClickLabel = strings.close, role = Role.Button)
+                .semantics { contentDescription = strings.close },
+            contentAlignment = Alignment.Center
+        ) { Icon(Icons.Rounded.Close, null, tint = MonoDesign.textSecondary, modifier = Modifier.size(18.dp)) }
     }
 }
 
