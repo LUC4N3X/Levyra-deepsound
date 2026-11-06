@@ -6035,6 +6035,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
 
         ensureMusicVideosLoaded()
+        ensureExploreVideosLoaded()
         val requestGeneration = homeFeedRequestGeneration.incrementAndGet()
         homeFeedJob?.cancel()
         homeFeedJob = viewModelScope.launch {

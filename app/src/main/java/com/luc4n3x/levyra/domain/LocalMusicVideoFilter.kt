@@ -24,7 +24,7 @@ object LocalMusicVideoFilter {
         "fr" to listOf("je", "les", "moi", "pas", "toujours", "chanson"),
         "de" to listOf("und", "ich", "nicht", "deutschrap", "schlager"),
         "tr" to listOf("aşk", "sevgilim", "türkçe"),
-        "id" to listOf("dangdut", "lagu"),
+        "id" to listOf("dangdut"),
         "fil" to listOf("pinoy", "tagalog", "opm")
     )
 

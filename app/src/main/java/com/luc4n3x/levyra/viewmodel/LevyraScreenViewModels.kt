@@ -162,7 +162,7 @@ class HomeViewModel internal constructor(
     fun openExploreZone(zone: ExploreZone) = root.openExploreZone(zone)
     fun selectTab(tab: com.luc4n3x.levyra.domain.LevyraTab) = root.selectTab(tab)
     val appleNewThisWeek: StateFlow<AppleNewThisWeek> get() = root.appleNewThisWeek
-    fun ensureAppleNewThisWeek() = root.ensureAppleNewThisWeek()
+    fun ensureAppleNewThisWeek(force: Boolean = false) = root.ensureAppleNewThisWeek(force)
 
     private val freezeHomeContent = MutableStateFlow(false)
     private val explicitMoodSelection = MutableStateFlow<Mood?>(null)

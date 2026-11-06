@@ -28,6 +28,13 @@ class LocalMusicVideoFilterTest {
     }
 
     @Test
+    fun `a malay listener keeps videos that say lagu`() {
+        val kept = LocalMusicVideoFilter.localFirst(listOf(video("Lagu Malaysia 2026", "Siti Nurhaliza")), "ms")
+
+        assertEquals(1, kept.size)
+    }
+
+    @Test
     fun `a japanese listener keeps japanese script`() {
         val kept = LocalMusicVideoFilter.localFirst(listOf(video("メタセコイア - Metasequoia", "blend house e sucola")), "ja")
 

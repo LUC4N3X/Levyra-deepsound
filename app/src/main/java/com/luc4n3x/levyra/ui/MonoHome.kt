@@ -789,7 +789,10 @@ private fun MonoHomeContent(
         monoPlaylistShelves(mixedState.allShelves).ifEmpty { featuredShelves }.ifEmpty { monoPlaylistShelves(ytHomeState.allShelves) }
     }
     val newThisWeek by viewModel.appleNewThisWeek.collectAsStateWithLifecycle()
-    LaunchedEffect(state.selectedChartId, strings.code) { viewModel.ensureAppleNewThisWeek() }
+    androidx.lifecycle.compose.LifecycleResumeEffect(state.selectedChartId, strings.code) {
+        viewModel.ensureAppleNewThisWeek()
+        onPauseOrDispose { }
+    }
     val albumShelf = newThisWeek.albums
     val videosHome = viewModel<YouTubeMusicHomeViewModel>(key = "mono-new-videos")
     val videosState by videosHome.state.collectAsStateWithLifecycle()
@@ -823,6 +826,7 @@ private fun MonoHomeContent(
             modifier = Modifier.fillMaxSize()
                 .pullToRefresh(isRefreshing = homeRefreshing, state = homePullState, onRefresh = {
                     onPullRefresh()
+                    viewModel.ensureAppleNewThisWeek(force = true)
                     mixedHome.load(strings.code, force = true, browseId = MonoMixedForYouBrowseId)
                     ytHome.load(strings.code, force = true)
                     videosHome.load(strings.code, force = true, browseId = EXPLORE_BROWSE_ID)

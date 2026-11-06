@@ -109,8 +109,8 @@ internal fun GlacierTopResultCard(
                 ) {
                     Icon(Icons.Rounded.PlayArrow, strings.play, tint = MonoDesign.onAccent, modifier = Modifier.size(30.dp))
                 }
-                GlacierTopAction(Icons.Rounded.Shuffle, strings.shuffle, onShuffle)
-                GlacierTopAction(Icons.Rounded.Radio, strings.mix, onMix)
+                GlacierTopAction(Icons.Rounded.Shuffle, strings.shuffle, onShuffle, Modifier.weight(1f))
+                GlacierTopAction(Icons.Rounded.Radio, strings.mix, onMix, Modifier.weight(1f))
             }
             tracks.take(GlacierTopTracks).forEachIndexed { index, track ->
                 val current = track.id == currentId
@@ -144,18 +144,18 @@ internal fun GlacierTopResultCard(
 }
 
 @Composable
-private fun GlacierTopAction(icon: ImageVector, label: String, onClick: () -> Unit) {
+private fun GlacierTopAction(icon: ImageVector, label: String, onClick: () -> Unit, modifier: Modifier) {
     Row(
-        Modifier.heightIn(min = 48.dp).clip(MonoDesign.pillShape)
+        modifier.heightIn(min = 48.dp).clip(MonoDesign.pillShape)
             .border(1.dp, MonoDesign.hairlineStrong, MonoDesign.pillShape)
             .background(MonoDesign.raised.copy(alpha = 0.6f))
             .clickable(role = Role.Button, onClickLabel = label, onClick = onClick)
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
     ) {
         Icon(icon, null, tint = MonoDesign.accent, modifier = Modifier.size(20.dp))
-        Text(label, style = MaterialTheme.typography.labelLarge, color = MonoDesign.text, maxLines = 1)
+        Text(label, style = MaterialTheme.typography.labelLarge, color = MonoDesign.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 
