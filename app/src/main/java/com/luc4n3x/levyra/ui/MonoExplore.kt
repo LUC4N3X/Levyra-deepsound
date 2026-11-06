@@ -135,8 +135,8 @@ private fun monoTileSeed(title: String): Int = title.lowercase().fold(7) { acc, 
 internal fun MonoBrowseTile(entry: MonoTileEntry, index: Int, height: Dp, modifier: Modifier = Modifier) {
     val seed = remember(entry.title) { monoTileSeed(entry.title) }
     val hue = MonoTileHues[seed % MonoTileHues.size]
-    val cycles = 1.4f + (seed % 5) * 0.35f
-    val phase = (seed % 360) / 57.3f
+    val cycles = 1.4f + seed % 5 * 0.35f
+    val phase = seed % 360 / 57.3f
     val path = remember { Path() }
     Box(
         modifier.height(height)

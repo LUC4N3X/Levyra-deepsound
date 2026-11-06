@@ -408,6 +408,7 @@ private fun MiniFillProgress(progress: () -> Float, palette: MiniPlayerPalette) 
     )
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun StyledMiniPlayer(

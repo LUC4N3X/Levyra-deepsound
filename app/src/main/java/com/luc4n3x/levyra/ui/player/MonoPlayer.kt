@@ -286,6 +286,7 @@ private fun MonoPlayerBackdrop(track: Track, playing: Boolean) {
     }
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 internal fun MonoSeekbar(positionMs: Long, durationMs: Long, onSeek: (Float) -> Unit, modifier: Modifier = Modifier, playing: Boolean = true) {
     var dragging by remember(durationMs) { mutableStateOf<Float?>(null) }

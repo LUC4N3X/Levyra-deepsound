@@ -208,6 +208,7 @@ internal fun MonoLibraryMoreKey(items: () -> List<MonoLibraryMenuItem>) {
     }
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 internal fun MonoAlphaScrubber(
     available: BooleanArray,

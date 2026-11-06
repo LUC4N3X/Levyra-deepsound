@@ -200,6 +200,7 @@ private fun MonoJamTag(label: String, accent: Boolean = false, icon: ImageVector
     }
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 private fun MonoJamRadar(participants: List<JamParticipant>, live: Boolean, description: String, modifier: Modifier = Modifier) {
     val host = remember(participants) { participants.firstOrNull { it.isHost } }

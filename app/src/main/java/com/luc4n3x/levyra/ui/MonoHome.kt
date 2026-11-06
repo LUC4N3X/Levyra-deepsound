@@ -889,6 +889,7 @@ private fun LazyListScope.monoSkeletonSection(key: String, title: String, overli
     }
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 private fun LazyListScope.monoHomeFeed(
     model: MonoHomeModel,
     feed: MonoHomeFeed,

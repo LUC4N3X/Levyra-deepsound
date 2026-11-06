@@ -910,6 +910,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraType
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun HomeEditorialSpotlight(

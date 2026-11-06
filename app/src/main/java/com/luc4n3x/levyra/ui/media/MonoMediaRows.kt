@@ -161,6 +161,7 @@ internal fun MonoAlbumTrackRow(
     }
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 internal fun MonoLibraryTrackRow(
     track: Track,

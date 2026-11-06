@@ -243,6 +243,7 @@ private fun monoRecentAdditions(
     return stamped.sortedByDescending { it.first }.asSequence().map { it.second }.distinctBy { it.key }.take(MonoRecentLimit).toList()
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 internal fun MonoLibraryScreen(
     viewModel: LibraryViewModel,

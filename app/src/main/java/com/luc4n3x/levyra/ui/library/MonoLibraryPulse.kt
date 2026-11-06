@@ -63,6 +63,7 @@ import com.luc4n3x.levyra.ui.theme.MonoDesign
 import java.time.format.TextStyle
 import java.util.Locale
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 internal fun MonoPulseCard(pulse: ListeningPulse, onOpen: () -> Unit) {
     val strings = LocalLevyraStrings.current

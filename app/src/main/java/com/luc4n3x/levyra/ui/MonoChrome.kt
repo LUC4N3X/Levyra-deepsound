@@ -100,7 +100,6 @@ import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
 import com.luc4n3x.levyra.ui.theme.MonoDesign
 import kotlin.math.PI
 import kotlin.math.abs
-import kotlin.math.floor
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlinx.coroutines.launch
@@ -143,27 +142,6 @@ private fun DrawScope.drawMonoChromeWave(
         if (i == 0) path.moveTo(0f, y) else path.lineTo(t * size.width, y)
     }
     drawPath(path, color, style = Stroke(stroke, cap = StrokeCap.Round))
-}
-
-private class MonoTabGeometry {
-    var starts = FloatArray(0)
-    var ends = FloatArray(0)
-
-    fun ensure(count: Int) {
-        if (starts.size != count) {
-            starts = FloatArray(count)
-            ends = FloatArray(count)
-        }
-    }
-
-    fun at(edges: FloatArray, position: Float): Float {
-        if (edges.isEmpty()) return 0f
-        val clamped = position.coerceIn(0f, (edges.size - 1).toFloat())
-        val low = floor(clamped).toInt()
-        val high = (low + 1).coerceAtMost(edges.size - 1)
-        val fraction = clamped - low
-        return edges[low] + (edges[high] - edges[low]) * fraction
-    }
 }
 
 @Composable
@@ -219,6 +197,7 @@ internal fun Modifier.glacierSlab(): Modifier = drawWithCache {
     }
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 private fun MonoTabRow(
     entries: List<LevyraTabEntry>, selectedIndex: Int, morph: DockMorph?,

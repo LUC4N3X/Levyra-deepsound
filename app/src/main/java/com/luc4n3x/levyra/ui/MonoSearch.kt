@@ -242,6 +242,7 @@ internal fun MonoSearchEntry(viewModel: SearchViewModel, state: LevyraUiState, o
     }
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 private fun MonoSearchField(
     query: String,

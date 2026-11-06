@@ -386,6 +386,7 @@ internal class DiscoveryStackController {
     }
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 private fun DiscoveryCardStack(
     ui: DiscoveryUiState,

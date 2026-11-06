@@ -316,6 +316,7 @@ private fun MonoArtistBarActions(profile: ArtistProfile, state: LevyraUiState, v
     }
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 private fun MonoArtistActions(profile: ArtistProfile, state: LevyraUiState, viewModel: LevyraViewModel) {
     val strings = LocalLevyraStrings.current

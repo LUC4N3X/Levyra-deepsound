@@ -118,6 +118,7 @@ private fun monoEpisodeParts(episode: Track): Pair<String, String> {
     return parts.firstOrNull().orEmpty() to parts.drop(1).joinToString(" · ")
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 internal fun MonoPodcastEpisodeRow(
     episode: Track,
