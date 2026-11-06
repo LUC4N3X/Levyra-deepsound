@@ -18,6 +18,7 @@ import com.luc4n3x.levyra.ui.AtelierCabinetKnob
 import com.luc4n3x.levyra.ui.atelierUppercase
 import com.luc4n3x.levyra.ui.theme.AtelierDesign
 import com.luc4n3x.levyra.ui.theme.LevyraIsAtelier
+import com.luc4n3x.levyra.ui.theme.LevyraIsMono
 import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
@@ -444,6 +445,10 @@ private fun JamHeader(title: String, subtitle: String, onClose: () -> Unit) {
         AtelierJamHeader(title, subtitle, onClose)
         return
     }
+    if (LevyraIsMono) {
+        MonoJamHeader(title, subtitle, onClose)
+        return
+    }
     val look = LocalJamLook.current
     if (look.skinned) {
         Column(Modifier.fillMaxWidth().padding(bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
@@ -552,6 +557,13 @@ private fun SkinnedJamSessionHero(jam: JamUiState, strings: LevyraStrings, onSha
 
 @Composable
 private fun JamSessionHero(jam: JamUiState, strings: LevyraStrings, onShare: () -> Unit) {
+    if (LevyraIsMono) {
+        MonoJamSessionHero(
+            jam.session?.participants.orEmpty(), jam.isHost, jam.connection == JamConnectionState.Connected,
+            jamConnectionText(jam.connection, strings), jam.isHost && jam.locked, jam.code, onShare
+        )
+        return
+    }
     if (LocalJamLook.current.skinned) {
         SkinnedJamSessionHero(jam, strings, onShare)
         return
@@ -947,6 +959,10 @@ private fun JamPermissionPicker(
 ) {
     if (LevyraIsAtelier) {
         AtelierJamPermissionPicker(selected, strings, onSelect)
+        return
+    }
+    if (LevyraIsMono) {
+        MonoJamPermissionPicker(JamPermissionOptions, selected, { jamPermissionLabel(it, strings) }, onSelect)
         return
     }
     val look = LocalJamLook.current

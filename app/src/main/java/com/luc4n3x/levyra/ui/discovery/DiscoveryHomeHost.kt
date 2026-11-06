@@ -24,7 +24,7 @@ internal fun DiscoveryHomeHost(
     bottomInset: Dp,
     content: @Composable () -> Unit
 ) {
-    if (LevyraSkinManagesLayout && !skinComposesDiscovery) {
+    if (LevyraSkinManagesLayout && !skinComposesDiscovery && !com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
         content()
         return
     }

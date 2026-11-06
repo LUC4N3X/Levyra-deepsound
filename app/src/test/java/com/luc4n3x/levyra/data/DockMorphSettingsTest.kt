@@ -56,11 +56,11 @@ class DockMorphSettingsTest {
     }
 
     @Test
-    fun onlyDefaultNocturnePrismTorqueAndIvorySupportDockEffects() {
+    fun onlyDefaultNocturnePrismTorqueIvoryAndMonoSupportDockEffects() {
         val supported = LevyraSkin.entries.filter { it.supportsDockMorph }.toSet()
 
         assertEquals(
-            setOf(LevyraSkin.Default, LevyraSkin.Nocturne78, LevyraSkin.Prism, LevyraSkin.Torque, LevyraSkin.Ivory),
+            setOf(LevyraSkin.Default, LevyraSkin.Nocturne78, LevyraSkin.Prism, LevyraSkin.Torque, LevyraSkin.Ivory, LevyraSkin.Mono),
             supported
         )
     }
@@ -89,5 +89,6 @@ class DockMorphSettingsTest {
         assertTrue(tide.dockMorphActive(com.luc4n3x.levyra.domain.NavStyle.LiquidCapsule))
         assertEquals(DockScrollEffect.Tide, tide.effectiveDockScrollEffect(com.luc4n3x.levyra.domain.NavStyle.FloatingDock))
         assertEquals(DockScrollEffect.Tide, tide.copy(skin = LevyraSkin.SpotifyStyle).effectiveDockScrollEffect(com.luc4n3x.levyra.domain.NavStyle.LiquidCapsule))
+        assertTrue(tide.copy(skin = LevyraSkin.Mono).dockMorphActive(com.luc4n3x.levyra.domain.NavStyle.LiquidCapsule))
     }
 }

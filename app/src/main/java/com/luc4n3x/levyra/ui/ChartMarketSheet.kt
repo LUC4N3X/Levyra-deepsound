@@ -79,6 +79,10 @@ internal fun ChartMarketSheet(
     title: String? = null,
     automaticLabel: String? = null
 ) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+        MonoChartMarketSheet(regions, selectedId, languageCode, onSelect, onDismiss, title, automaticLabel)
+        return
+    }
     val strings = LocalLevyraStrings.current
     val focusManager = LocalFocusManager.current
     val sheetState = rememberBottomSheetState(

@@ -70,15 +70,15 @@ class HomeCollectionsLayoutContractTest {
 
     @Test
     fun `soundtrack hero uses expressive tonal colour and companion artists`() {
-        val app = source("LevyraApp.kt")
-        val hero = functionBlock(app, "private fun HomeEditorialSpotlight(")
+        val app = source("LevyraApp.kt") + source("HomeEditorialSections.kt")
+        val hero = functionBlock(app, "fun HomeEditorialSpotlight(")
         assertTrue(hero.contains("homeSoundtrackHeroTones(heroSeed, isLight)"))
         assertTrue(hero.contains("rememberArtworkPalette("))
         assertTrue(hero.contains("HomeSoundtrackCompanionStack("))
         assertTrue(hero.indexOf("HomeSoundtrackCompanionStack(") > hero.indexOf("text = soundtrackTitle"))
         assertTrue(hero.indexOf("HomeSoundtrackCompanionStack(") < hero.indexOf("text = soundtrackLead"))
         assertFalse(hero.contains("lerp(accentStart, Color.White"))
-        val stack = functionBlock(app, "private fun HomeSoundtrackCompanionStack(")
+        val stack = functionBlock(app, "fun HomeSoundtrackCompanionStack(")
         assertTrue(stack.contains("Spring.DampingRatioMediumBouncy"))
         assertTrue(stack.contains("if (!animate)"))
         assertTrue(stack.contains("clip(CircleShape)"))

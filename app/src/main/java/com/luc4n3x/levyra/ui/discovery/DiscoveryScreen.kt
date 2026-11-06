@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui.discovery
 
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.clickable
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.core.Animatable
@@ -126,7 +128,7 @@ import kotlin.math.absoluteValue
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-private enum class DiscoveryBackdrop { Wash, Burst, Flat, Paper, Bleed, Tonal }
+private enum class DiscoveryBackdrop { Wash, Burst, Flat, Paper, Bleed, Tonal, Glacier }
 
 private class DiscoveryLook(
     val cardShape: Shape,
@@ -146,7 +148,12 @@ private fun rememberDiscoveryLook(style: HomeStyle): DiscoveryLook {
     val type = MaterialTheme.typography
     val cookie = MaterialShapes.Cookie12Sided.toShape()
     val square = MaterialShapes.Cookie4Sided.toShape()
-    return remember(style, type, cookie, square) {
+    val glacier = com.luc4n3x.levyra.ui.theme.LevyraIsMono
+    return remember(style, type, cookie, square, glacier) {
+        if (glacier) return@remember DiscoveryLook(
+            com.luc4n3x.levyra.ui.theme.MonoDesign.panelShape, com.luc4n3x.levyra.ui.theme.MonoDesign.cardShape, 12f,
+            type.headlineMedium, type.headlineMedium, false, DiscoveryBackdrop.Glacier, true, 12.dp
+        )
         when (style) {
             HomeStyle.Original -> DiscoveryLook(
                 RoundedCornerShape(topStart = 36.dp, topEnd = 20.dp, bottomEnd = 36.dp, bottomStart = 20.dp),
@@ -286,6 +293,15 @@ private fun DiscoveryBackdropLayer(look: DiscoveryLook, card: DiscoveryCard?, an
             )
         }
         DiscoveryBackdrop.Flat -> Unit
+        DiscoveryBackdrop.Glacier -> Box(
+            Modifier.fillMaxWidth().height(460.dp).background(
+                Brush.verticalGradient(
+                    0f to com.luc4n3x.levyra.ui.theme.MonoDesign.accent.copy(alpha = 0.16f),
+                    0.5f to com.luc4n3x.levyra.ui.theme.MonoDesign.accent.copy(alpha = 0.05f),
+                    1f to Color.Transparent
+                )
+            )
+        )
         DiscoveryBackdrop.Paper -> Box(Modifier.fillMaxSize().background(scheme.surface))
         DiscoveryBackdrop.Bleed -> if (card != null) {
             Box(Modifier.fillMaxSize().graphicsLayer { alpha = 0.32f }) { DiscoveryArtwork(card, Modifier.fillMaxSize(), highRes = false) }
@@ -370,6 +386,7 @@ internal class DiscoveryStackController {
     }
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 private fun DiscoveryCardStack(
     ui: DiscoveryUiState,
@@ -389,7 +406,11 @@ private fun DiscoveryCardStack(
     BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         val widthPx = with(density) { maxWidth.toPx() }
         val chrome = DiscoveryCardChrome + if (showsDistance(ui.request)) DiscoveryDistanceChrome else 0.dp
-        val artSide = minOf(maxWidth - 32.dp, maxHeight - chrome - look.stackGap * 2).coerceAtLeast(96.dp)
+        val artSide = if (look.backdrop == DiscoveryBackdrop.Glacier) {
+            (maxHeight - DiscoveryCardChrome - look.stackGap * 2).coerceAtLeast(96.dp)
+        } else {
+            minOf(maxWidth - 32.dp, maxHeight - chrome - look.stackGap * 2).coerceAtLeast(96.dp)
+        }
         controller.width = widthPx
         val threshold = widthPx * 0.3f
         LaunchedEffect(controller, animationsEnabled) {
@@ -411,7 +432,7 @@ private fun DiscoveryCardStack(
                         scaleX = scale
                         scaleY = scale
                         translationY = with(density) { (look.stackGap * depth * 1.6f).toPx() } * (1f - progress * 0.6f)
-                        rotationZ = if (animationsEnabled) (if (depth == 1) 3f else -3f) * (1f - progress) else 0f
+                        rotationZ = if (animationsEnabled && look.backdrop != DiscoveryBackdrop.Glacier) (if (depth == 1) 3f else -3f) * (1f - progress) else 0f
                         alpha = 0.6f + 0.4f * (1f - depth * 0.25f) + 0.2f * progress
                     }
             )
@@ -492,9 +513,12 @@ private fun DiscoveryCardFace(
         Box(modifier.fillMaxWidth().height(artSide + DiscoveryCardChrome).clip(look.cardShape).background(scheme.surfaceContainerHigh)) {
             DiscoveryArtwork(card, Modifier.fillMaxSize(), highRes = true)
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.4f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.86f))))
-            DiscoveryReasonChip(card, copy, music, Color.Black.copy(alpha = 0.45f), Color.White, Modifier.align(Alignment.TopStart).padding(16.dp))
+            if (look.backdrop != DiscoveryBackdrop.Glacier) DiscoveryReasonChip(card, copy, music, Color.Black.copy(alpha = 0.45f), Color.White, Modifier.align(Alignment.TopStart).padding(16.dp))
             if (showsDistance(request)) BubbleDistanceBadge(card.distance, music, Color.Black.copy(alpha = 0.45f), Color.White, Modifier.align(Alignment.TopEnd).padding(16.dp))
             Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(22.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (look.backdrop == DiscoveryBackdrop.Glacier) {
+                    com.luc4n3x.levyra.ui.MonoOverline(discoveryReasonLabel(card, copy, music), color = com.luc4n3x.levyra.ui.theme.MonoDesign.accent)
+                }
                 Text(card.track.title, style = look.titleStyle, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(card.track.artist, style = MaterialTheme.typography.bodyLarge, color = Color.White.copy(alpha = 0.82f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 DiscoveryPreviewBadge(preview, copy, Color.White, onTogglePreview)
@@ -505,7 +529,7 @@ private fun DiscoveryCardFace(
     val container = when (look.backdrop) {
         DiscoveryBackdrop.Paper -> scheme.surfaceContainerLow
         DiscoveryBackdrop.Tonal -> lerp(scheme.surfaceContainerHigh, scheme.primaryContainer, 0.35f)
-        DiscoveryBackdrop.Flat -> scheme.surfaceContainer
+        DiscoveryBackdrop.Flat, DiscoveryBackdrop.Glacier -> scheme.surfaceContainer
         else -> lerp(scheme.surfaceContainer, accent, 0.14f)
     }
     Column(
@@ -588,6 +612,10 @@ private fun DiscoveryControls(
     val playing = previewStatus == DiscoveryPreviewStatus.Playing
     val loading = previewStatus == DiscoveryPreviewStatus.Loading
     val morph = rememberLevyraPlayMorphShape(playing = playing, animated = animationsEnabled)
+    if (look.backdrop == DiscoveryBackdrop.Glacier) {
+        GlacierDiscoveryControls(ui.deck.canUndo, playing, loading, copy, morph, onDecide, onUndo, onTogglePreview, onPlayFull)
+        return
+    }
     Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         DiscoverySwipeGuide(copy, look)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
@@ -694,3 +722,48 @@ private fun DiscoveryMessageHost(ui: DiscoveryUiState, copy: DiscoveryCopy, bott
 }
 
 private fun discoveryTitleKey(value: String): String = com.luc4n3x.levyra.viewmodel.playbackTitleKey(value)
+
+@Composable
+private fun GlacierDiscoveryControls(
+    canUndo: Boolean,
+    playing: Boolean,
+    loading: Boolean,
+    copy: DiscoveryCopy,
+    morph: Shape,
+    onDecide: (DiscoveryDecision) -> Unit,
+    onUndo: () -> Unit,
+    onTogglePreview: () -> Unit,
+    onPlayFull: () -> Unit
+) {
+    val mono = com.luc4n3x.levyra.ui.theme.MonoDesign
+    @Composable
+    fun ring(size: Dp, label: String, onClick: () -> Unit, enabled: Boolean = true, content: @Composable () -> Unit) {
+        Box(
+            Modifier.size(size).clip(CircleShape).border(1.dp, if (enabled) mono.hairlineStrong else mono.hairline, CircleShape)
+                .clickable(enabled = enabled, role = Role.Button, onClickLabel = label, onClick = onClick),
+            contentAlignment = Alignment.Center
+        ) { content() }
+    }
+    Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+            ring(44.dp, copy.undo, onUndo, canUndo) { Icon(Icons.AutoMirrored.Rounded.Undo, copy.undo, tint = if (canUndo) mono.textSecondary else mono.textFaint, modifier = Modifier.size(18.dp)) }
+            ring(62.dp, copy.skip, { onDecide(DiscoveryDecision.Dismissed) }) { Icon(Icons.Rounded.Close, copy.skip, tint = mono.text, modifier = Modifier.size(26.dp)) }
+            Box(
+                Modifier.size(72.dp).clip(morph).background(mono.accent).clickable(role = Role.Button, onClick = onTogglePreview),
+                contentAlignment = Alignment.Center
+            ) {
+                when {
+                    loading -> LevyraLoadingIndicator(Modifier.size(28.dp).semantics { contentDescription = copy.previewLoading }, mono.onAccent)
+                    playing -> Icon(Icons.Rounded.Pause, copy.pausePreview, tint = mono.onAccent, modifier = Modifier.size(32.dp))
+                    else -> Icon(Icons.Rounded.PlayArrow, copy.playPreview, tint = mono.onAccent, modifier = Modifier.size(32.dp))
+                }
+            }
+            ring(62.dp, copy.save, { onDecide(DiscoveryDecision.Saved) }) { Icon(Icons.Rounded.Favorite, copy.save, tint = mono.accent, modifier = Modifier.size(26.dp)) }
+            Box(Modifier.size(44.dp))
+        }
+        Text(
+            copy.playFull, style = MaterialTheme.typography.labelLarge, color = mono.textSecondary,
+            modifier = Modifier.clip(mono.pillShape).clickable(role = Role.Button, onClick = onPlayFull).padding(horizontal = 14.dp, vertical = 10.dp)
+        )
+    }
+}

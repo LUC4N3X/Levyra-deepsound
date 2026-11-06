@@ -93,7 +93,6 @@ data class AppleDailyChart(val playlistId: String, val label: String, val global
 
 internal object AppleDailyTop100 {
     const val GLOBAL_PLAYLIST_ID = "pl.d25f5d1181894928af76c85c967f8f31"
-    private const val MAX_CHARTS = 8
     private val leadingMarkets = listOf("us", "gb")
     private val countryCharts = mapOf(
         "it" to "pl.737e067787df485a8062e2c4927d94db",
@@ -156,7 +155,7 @@ internal object AppleDailyTop100 {
         val local = countryCharts[AppleStorefronts.normalize(storefront)]?.let(byId::get) ?: countries.firstOrNull()
         val leading = leadingMarkets.mapNotNull { countryCharts[it]?.let(byId::get) }
         val (known, other) = countries.partition { it.playlistId in knownCharts }
-        return (listOfNotNull(local, all.firstOrNull { it.global }) + leading + known + other).distinct().take(MAX_CHARTS)
+        return (listOfNotNull(local, all.firstOrNull { it.global }) + leading + known + other).distinct()
     }
 
     fun label(title: String): String {

@@ -36,7 +36,8 @@ object LevyraHomeCatalog {
         LevyraSkin.AppleMusicStyle,
         LevyraSkin.YouTubeMusicStyle,
         LevyraSkin.QobuzStyle,
-        LevyraSkin.Atelier
+        LevyraSkin.Atelier,
+        LevyraSkin.Mono
     )
 
     fun hasOwnFeed(skin: LevyraSkin): Boolean = skin in SkinsWithOwnFeed

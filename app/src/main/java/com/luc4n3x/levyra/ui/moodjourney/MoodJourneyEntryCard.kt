@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.ui.moodjourney
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -59,6 +60,8 @@ import com.luc4n3x.levyra.ui.theme.AtelierDesign
 import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
 import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
 import com.luc4n3x.levyra.ui.theme.LevyraIsAtelier
+import com.luc4n3x.levyra.ui.theme.LevyraIsMono
+import com.luc4n3x.levyra.ui.theme.MonoDesign
 import com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin
 import com.luc4n3x.levyra.ui.theme.LevyraIsQobuz
 import com.luc4n3x.levyra.ui.theme.LevyraSkinManagesLayout
@@ -84,6 +87,7 @@ internal fun MoodJourneyEntryCard(onOpen: (MoodCurvePreset?) -> Unit, modifier: 
     }
     when {
         LevyraIsAtelier -> AtelierMoodJourneyEntry(copy, open, modifier)
+        LevyraIsMono -> MonoMoodJourneyEntry(copy, open, modifier)
         LevyraIsDefaultSkin -> DefaultMoodJourneyEntry(copy, open, modifier)
         else -> SkinMoodJourneyEntry(copy, open, modifier)
     }
@@ -168,6 +172,33 @@ private fun AtelierMoodJourneyEntry(copy: SmartMusicCopy, open: (MoodCurvePreset
     }
 }
 
+@Composable
+private fun MonoMoodJourneyEntry(copy: SmartMusicCopy, open: (MoodCurvePreset?) -> Unit, modifier: Modifier) {
+    Column(modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button) { open(null) },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    copy[SmartMusicText.MoodTitle],
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MonoDesign.text,
+                    modifier = Modifier.semantics { heading() }
+                )
+                Text(copy[SmartMusicText.MoodSubtitle], style = MaterialTheme.typography.bodySmall, color = MonoDesign.textSecondary)
+            }
+            Box(
+                Modifier.size(40.dp).clip(CircleShape).background(MonoDesign.raised).border(1.dp, MonoDesign.hairline, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null, tint = MonoDesign.text, modifier = Modifier.size(18.dp))
+            }
+        }
+        JourneyCoverRail(copy, journeyCoverStyle(), open)
+    }
+}
+
 private data class JourneyCoverStyle(
     val corner: Dp,
     val playShape: Shape?,
@@ -184,6 +215,16 @@ private data class JourneyCoverStyle(
 private fun journeyCoverStyle(): JourneyCoverStyle {
     val scheme = MaterialTheme.colorScheme
     return when {
+        LevyraIsMono -> JourneyCoverStyle(
+            corner = MonoDesign.cardCorner,
+            playShape = CircleShape,
+            base = MonoDesign.surface,
+            vividness = 0.56f,
+            muted = false,
+            labelColor = MonoDesign.text,
+            uppercaseLabel = false,
+            gutter = MonoDesign.gutter
+        )
         LevyraIsAtelier -> JourneyCoverStyle(
             corner = AtelierDesign.cardCorner,
             playShape = null,

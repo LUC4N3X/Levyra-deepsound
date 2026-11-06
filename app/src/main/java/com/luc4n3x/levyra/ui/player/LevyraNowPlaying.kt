@@ -388,9 +388,9 @@ private fun LevyraNowPlayingContent(
         if (playerArtistHits.size < 2) showArtistPicker = false
     }
     var spotifyArtistProfile by remember(track?.id) { mutableStateOf<com.luc4n3x.levyra.domain.ArtistProfile?>(null) }
-    LaunchedEffect(track?.id, LevyraIsSpotify) {
+    LaunchedEffect(track?.id, LevyraIsSpotify, com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
         val activeTrack = track
-        if (LevyraIsSpotify && activeTrack != null && !activeTrack.isLiveRadio()) {
+        if ((LevyraIsSpotify || com.luc4n3x.levyra.ui.theme.LevyraIsMono) && activeTrack != null && !activeTrack.isLiveRadio()) {
             spotifyArtistProfile = viewModel.playerArtistProfile(activeTrack)
         }
     }
@@ -428,7 +428,7 @@ private fun LevyraNowPlayingContent(
         }
     }
 
-    val artworkRestsFullBleed = nocturne || velvetAppleMusic || LevyraIsSpotify || state.isPlaying ||
+    val artworkRestsFullBleed = if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) state.isPlaying else nocturne || velvetAppleMusic || LevyraIsSpotify || state.isPlaying ||
         state.interfaceSettings.playerVisualMode == PlayerVisualMode.Artwork ||
         state.interfaceSettings.playerVisualMode == PlayerVisualMode.Folio ||
         state.interfaceSettings.playerVisualMode == PlayerVisualMode.Flow ||
@@ -465,6 +465,7 @@ private fun LevyraNowPlayingContent(
         val showTopArtistCluster = playerArtistHits.size > 1 &&
             !LevyraIsQobuz &&
             !com.luc4n3x.levyra.ui.theme.LevyraIsAtelier &&
+            !com.luc4n3x.levyra.ui.theme.LevyraIsMono &&
             !appleMusicImmersive &&
             !liveRadio &&
             !state.isVideoMode &&
@@ -1251,10 +1252,10 @@ private fun LevyraNowPlayingContent(
                     onClick = { showTrackCredits = true }
                 )
             },
-            lyricsPreview = track?.takeIf { LevyraIsSpotify && state.lyrics.isNotEmpty() }?.let { current ->
+            lyricsPreview = track?.takeIf { (LevyraIsSpotify || com.luc4n3x.levyra.ui.theme.LevyraIsMono) && state.lyrics.isNotEmpty() }?.let { current ->
                 PlayerLyricsPreview(current.id, state.lyrics, state.lyricsSynced, state.positionMs, viewModel::openLyrics)
             },
-            artistPanel = track?.takeIf { (LevyraIsSpotify || LevyraIsQobuz) && !it.isLiveRadio() }?.let { current ->
+            artistPanel = track?.takeIf { (LevyraIsSpotify || LevyraIsQobuz || com.luc4n3x.levyra.ui.theme.LevyraIsMono) && !it.isLiveRadio() }?.let { current ->
                 PlayerArtistPanel(
                     trackId = current.id,
                     trackTitle = current.title,
@@ -1274,7 +1275,22 @@ private fun LevyraNowPlayingContent(
             .align(Alignment.TopCenter)
 
         if ((LevyraIsPrism || velvetAppleMusic) && track != null && (!state.isVideoMode || appleMusicPlayer) && !liveRadio && (playerPane != LevyraPlayerPane.SideBySide || appleMusicPlayer)) {
-            if (LevyraIsYouTubeMusic) {
+            if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+                MonoPlayerScene(
+                    track, deckSlots, artworkCap, state.isPlaying,
+                    metadata = { metadataBlock(track) }, transport = transportBlock,
+                    actions = MonoPlayerActions(
+                        sleepActive = state.sleepTimerMinutes > 0 || state.sleepTimerEndOfTrack,
+                        onOutput = { showAudioRouteCenter = true },
+                        onSleepTimer = viewModel::openSleepTimer,
+                        onShare = { shareTrack(playerContext, track, strings) },
+                        onQueue = viewModel::openQueue,
+                        onLyrics = viewModel::openLyrics,
+                        similar = similarSongsContent
+                    ),
+                    modifier = deckModifier
+                )
+            } else if (LevyraIsYouTubeMusic) {
                 YouTubeMusicPlayerScene(
                     track, deckSlots, artworkCap, state.isPlaying,
                     metadata = { metadataBlock(track) }, transport = transportBlock, modifier = deckModifier,
@@ -1765,7 +1781,7 @@ private fun LevyraNowPlayingContent(
 
         val captionWriters = creditWriters?.takeIf { it.first == track?.id }?.second.orEmpty()
         AnimatedVisibility(
-            visible = captionWriters.isNotEmpty() && !liveRadio && !appleMusicImmersive && !LevyraIsSpotify && !com.luc4n3x.levyra.ui.theme.LevyraIsAtelier &&
+            visible = captionWriters.isNotEmpty() && !liveRadio && !appleMusicImmersive && !LevyraIsSpotify && !com.luc4n3x.levyra.ui.theme.LevyraIsAtelier && !com.luc4n3x.levyra.ui.theme.LevyraIsMono &&
                 !state.isVideoMode && playerPane != LevyraPlayerPane.SideBySide &&
                 deckLayout != PlayerDeckLayout.Aura && deckLayout != PlayerDeckLayout.Pulse,
             enter = fadeIn(tween(if (animated) CreditsCaptionRevealMs else 0)),

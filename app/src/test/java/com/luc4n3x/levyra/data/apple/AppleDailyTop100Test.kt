@@ -50,14 +50,14 @@ class AppleDailyTop100Test {
     }
 
     @Test
-    fun skipsNonChartsInvalidIdsAndDuplicatesAndCapsTheRail() {
+    fun skipsNonChartsInvalidIdsAndDuplicatesAndKeepsEveryChart() {
         val city = playlist("pl.c16207854c324cd1822c2632215c1fb3", "Top 25: Milan")
         val album = AppleCatalogItem(id = "123456", kind = AppleCatalogItemKind.Album, title = "Top 100 Hits", subtitle = "")
         val invalid = playlist("not-a-playlist", "Top 100: Nowhere")
         val fromUrl = playlist("", "Top 100: Spagna", "https://music.apple.com/it/playlist/top-100-spagna/pl.0d656d7feae64198bc5fb1b02786ed75")
         val extra = (1..10).map { playlist("pl.%032d".format(it), "Top 100: Country $it") }
         val charts = AppleDailyTop100.charts(page(*(listOf(global, italy, italy, city, album, invalid, fromUrl) + extra).toTypedArray()), "it")
-        assertEquals(8, charts.size)
+        assertEquals(13, charts.size)
         assertEquals(charts.map { it.playlistId }.distinct(), charts.map { it.playlistId })
         assertTrue(charts.any { it.playlistId == "pl.0d656d7feae64198bc5fb1b02786ed75" && it.label == "Spagna" })
         assertTrue(charts.none { it.label.contains("Milan") || it.label.contains("Nowhere") || it.label.contains("Hits") })

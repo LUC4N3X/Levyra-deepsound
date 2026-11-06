@@ -262,7 +262,7 @@ private fun LibraryCategory.sectionBadgePolygon(): RoundedPolygon = when (this) 
     LibraryCategory.Collections, LibraryCategory.Overview -> MaterialShapes.SoftBurst
 }
 
-private fun LibraryCategory.sectionIcon(): ImageVector = when (this) {
+internal fun LibraryCategory.sectionIcon(): ImageVector = when (this) {
     LibraryCategory.Playlists -> Icons.AutoMirrored.Rounded.QueueMusic
     LibraryCategory.Songs -> Icons.Rounded.MusicNote
     LibraryCategory.Albums -> Icons.Rounded.Album

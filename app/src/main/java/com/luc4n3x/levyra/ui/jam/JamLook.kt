@@ -17,6 +17,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraGlassBorder
 import com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic
 import com.luc4n3x.levyra.ui.theme.LevyraIsAtelier
 import com.luc4n3x.levyra.ui.theme.LevyraIsIvory
+import com.luc4n3x.levyra.ui.theme.LevyraIsMono
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 import com.luc4n3x.levyra.ui.theme.LevyraIsPrism
 import com.luc4n3x.levyra.ui.theme.LevyraIsQobuz
@@ -28,6 +29,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraOnAccent
 import com.luc4n3x.levyra.ui.theme.LevyraPanel
 import com.luc4n3x.levyra.ui.theme.LevyraPanelSoft
 import com.luc4n3x.levyra.ui.theme.LevyraText
+import com.luc4n3x.levyra.ui.theme.MonoDesign
 import com.luc4n3x.levyra.ui.theme.Nocturne78Design
 import com.luc4n3x.levyra.ui.theme.PrismDesign
 import com.luc4n3x.levyra.ui.theme.QobuzDesign
@@ -72,6 +74,13 @@ internal fun jamLookForActiveSkin(): JamLook = when {
         accent = AtelierDesign.accent, onAccent = AtelierDesign.onAccent, mark = AtelierDesign.accentBright,
         text = AtelierDesign.text, textSecondary = AtelierDesign.textSecondary, buttonShape = AtelierDesign.capsuleShape,
         avatarShape = CircleShape, titleWeight = FontWeight.Medium, displayWeight = FontWeight.Light, uppercaseLabels = true
+    )
+    LevyraIsMono -> JamLook(
+        skinned = true, background = MonoDesign.base, card = MonoDesign.surface, border = MonoDesign.hairline,
+        cardShape = MonoDesign.panelShape, rowShape = MonoDesign.cardShape, selectedRow = MonoDesign.raised,
+        accent = MonoDesign.accent, onAccent = MonoDesign.onAccent, mark = MonoDesign.accent,
+        text = MonoDesign.text, textSecondary = MonoDesign.textSecondary, buttonShape = MonoDesign.pillShape,
+        avatarShape = CircleShape, titleWeight = FontWeight.SemiBold, displayWeight = FontWeight.Bold, uppercaseLabels = true
     )
     LevyraIsAppleMusic -> JamLook(
         skinned = true, background = AppleMusicDesign.background, card = AppleMusicDesign.groupedBackground, border = Color.Transparent,

@@ -462,6 +462,7 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
                         safePath,
                         response.code
                     )
+                    tokenProvider.reportRejected(request.header("Authorization")?.removePrefix("Bearer "), response.code)
                     throw MotionProviderException("Apple Music HTTP ${response.code}")
                 }
                 response.body.string().takeIf { it.isNotBlank() }

@@ -124,17 +124,29 @@ internal fun ExploreDailyTop100(
     val slots = remember(charts) { dailyTop100HueSlots(charts.map { it.playlistId }) }
     if (charts.isNotEmpty()) {
         Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            LevyraSectionHeader(
-                title = copy.title,
-                subtitle = copy.subtitle,
-                modifier = Modifier.padding(horizontal = LevyraHomeDesign.HorizontalInset)
-            )
+            if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+                MonoSectionHeader(copy.title, overline = com.luc4n3x.levyra.ui.i18n.LevyraMonoHomeStrings.forCode(strings.code).chartsOverline)
+            } else {
+                LevyraSectionHeader(
+                    title = copy.title,
+                    subtitle = copy.subtitle,
+                    modifier = Modifier.padding(horizontal = LevyraHomeDesign.HorizontalInset)
+                )
+            }
             LazyRow(
                 contentPadding = PaddingValues(horizontal = LevyraHomeDesign.HorizontalInset),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 itemsIndexed(charts, key = { _, chart -> chart.playlistId }, contentType = { _, _ -> "daily-top-100" }) { index, chart ->
                     val label = chartLabel(chart, copy)
+                    if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+                        MonoTop100Cover(
+                            label, date, slots[index], chart.global, Top100CoverSize,
+                            Modifier.semantics(mergeDescendants = true) { contentDescription = "${copy.title}, $label" }
+                                .levyraPressable(onClick = { viewModel.open(chart) }, role = Role.Button, pressedScale = LevyraPressScale.Tile)
+                        )
+                        return@itemsIndexed
+                    }
                     if (com.luc4n3x.levyra.ui.theme.LevyraIsSpotify) {
                         SpotifyTop100Card(label, copy.title, copy.subtitle, slots[index], chart.global) { viewModel.open(chart) }
                         return@itemsIndexed
@@ -161,6 +173,13 @@ internal fun ExploreDailyTop100(
             onDismissRequest = viewModel::close,
             properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
         ) {
+            if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+                MonoTop100ChartScreen(open, chartLabel(open.chart, copy), date, slot, copy.failed, copy.retry, viewModel::close, viewModel::retry, onPlay) { track ->
+                    viewModel.close()
+                    onTrackActions(track)
+                }
+                return@Dialog
+            }
             Top100ChartScreen(
                 open = open,
                 label = chartLabel(open.chart, copy),

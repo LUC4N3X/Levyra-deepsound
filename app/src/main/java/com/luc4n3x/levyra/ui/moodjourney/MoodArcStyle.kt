@@ -28,6 +28,9 @@ import com.luc4n3x.levyra.ui.theme.IvoryDesign
 import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
 import com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic
 import com.luc4n3x.levyra.ui.theme.LevyraIsAtelier
+import com.luc4n3x.levyra.ui.theme.LevyraIsMono
+import com.luc4n3x.levyra.ui.theme.MonoCodeFont
+import com.luc4n3x.levyra.ui.theme.MonoDesign
 import com.luc4n3x.levyra.ui.theme.LevyraIsIvory
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 import com.luc4n3x.levyra.ui.theme.LevyraIsPrism
@@ -43,7 +46,7 @@ import com.luc4n3x.levyra.ui.theme.YouTubeMusicDesign
 import com.materialkolor.blend.Blend
 import com.materialkolor.hct.Hct
 
-internal enum class MoodArcSkin { Expressive, Nocturne, Prism, Torque, Ivory, Spotify, Apple, YouTube, Qobuz, Atelier }
+internal enum class MoodArcSkin { Expressive, Nocturne, Prism, Torque, Ivory, Spotify, Apple, YouTube, Qobuz, Atelier, Mono }
 
 internal fun activeMoodArcSkin(): MoodArcSkin = when {
     LevyraIsTorque -> MoodArcSkin.Torque
@@ -53,6 +56,7 @@ internal fun activeMoodArcSkin(): MoodArcSkin = when {
     LevyraIsYouTubeMusic -> MoodArcSkin.YouTube
     LevyraIsQobuz -> MoodArcSkin.Qobuz
     LevyraIsAtelier -> MoodArcSkin.Atelier
+    LevyraIsMono -> MoodArcSkin.Mono
     LevyraIsPrism -> MoodArcSkin.Prism
     LevyraIsNocturne -> MoodArcSkin.Nocturne
     else -> MoodArcSkin.Expressive
@@ -235,6 +239,18 @@ internal fun rememberMoodArcStyle(): MoodArcStyle {
                 uppercase = true,
                 numerals = FontFamily.Monospace,
                 ramp = accentRamp(atelierAccent, AtelierDesign.textFaint)
+            )
+            MoodArcSkin.Mono -> MoodArcStyle(
+                skin = skin,
+                panelShape = MonoDesign.panelShape,
+                rowShapes = MonoDesign.cardShape.let { it to it },
+                coverShape = MonoDesign.artShape,
+                stroke = 2.dp,
+                dot = 3.5.dp,
+                squareDots = false,
+                uppercase = true,
+                numerals = MonoCodeFont,
+                ramp = accentRamp(MonoDesign.accent, MonoDesign.textFaint)
             )
         }
     }

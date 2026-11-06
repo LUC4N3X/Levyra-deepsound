@@ -239,6 +239,7 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
         val body = catalogApiClient.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
                 Timber.w("%s HTTP %d", label, response.code)
+                tokenProvider.reportRejected(developerToken, response.code)
                 return null
             }
             response.body.string()
