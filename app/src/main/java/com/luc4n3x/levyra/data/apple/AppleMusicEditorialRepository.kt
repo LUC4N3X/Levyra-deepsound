@@ -99,7 +99,7 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
 
     suspend fun newThisWeekAlbums(storefront: String, language: String, limit: Int): List<AlbumHit> {
         val shelf = appleNewThisWeekShelf(newMusic(storefront, language)?.page) ?: return emptyList()
-        val room = shelf.roomId.takeIf(String::isNotEmpty)?.let { id ->
+        val room = shelf.roomId.takeIf { id -> id.isNotEmpty() && id.all(Char::isDigit) }?.let { id ->
             page(AppleCatalogPath("room/$id", "room-$id"), storefront, language)?.page
         }
         val roomAlbums = appleAlbumHits(room?.shelves.orEmpty().asSequence().flatMap { it.items.asSequence() }, limit)

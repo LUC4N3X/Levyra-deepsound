@@ -297,7 +297,7 @@ private fun DiscoveryBackdropLayer(look: DiscoveryLook, card: DiscoveryCard?, an
         }
         DiscoveryBackdrop.Flat -> Unit
         DiscoveryBackdrop.Glacier -> {
-            if (card != null) {
+            if (card != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                 Box(Modifier.fillMaxSize().graphicsLayer { alpha = 0.5f }.blur(64.dp)) { DiscoveryArtwork(card, Modifier.fillMaxSize(), highRes = false) }
             }
             Box(
@@ -801,7 +801,7 @@ private fun GlacierRecord(card: DiscoveryCard, spinning: Boolean, modifier: Modi
     }
     val lift by androidx.compose.animation.core.animateDpAsState(if (spinning) 0.dp else 18.dp, label = "glacier-record-lift")
     BoxWithConstraints(modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-        val diameter = maxWidth * 0.78f
+        val diameter = minOf(maxWidth * 0.78f, maxHeight)
         Box(
             Modifier.offset(y = lift).size(diameter).graphicsLayer { rotationZ = angle.value }
                 .drawBehind {
