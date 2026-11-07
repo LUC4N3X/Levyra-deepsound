@@ -155,7 +155,11 @@ class AlternativeTrackMatcher {
         ) {
             return rejected(MatchRejection.VERSION_MISMATCH, relation)
         }
-        if (!isrcConfirmed && (relation == AlbumRelation.REMASTER_CONFLICT || relation == AlbumRelation.MISMATCH)) {
+        val sameMarkedRecording = expectedTitle.versionSignature.isNotEmpty() && delta <= 1
+        if (!isrcConfirmed && (
+                relation == AlbumRelation.REMASTER_CONFLICT || (relation == AlbumRelation.MISMATCH && !sameMarkedRecording)
+                )
+        ) {
             return rejected(MatchRejection.ALBUM_MISMATCH, relation)
         }
         if (delta > MAXIMUM_DURATION_DELTA_SECONDS) return rejected(MatchRejection.DURATION_OUT_OF_RANGE, relation)
@@ -207,6 +211,21 @@ class AlternativeTrackMatcher {
     }
 
     fun select(query: AlternativeTrackQuery, candidates: List<AlternativeTrackCandidate>): AlternativeMatchSelection {
+        val selection = selectWithRating(query, candidates)
+        if (selection is AlternativeMatchSelection.Accepted || query.explicit != false) return selection
+        return selectWithRating(withoutRating(query), candidates) as? AlternativeMatchSelection.Accepted ?: selection
+    }
+
+    fun evaluateSelected(query: AlternativeTrackQuery, candidate: AlternativeTrackCandidate): AlternativeMatchEvaluation {
+        val evaluation = evaluateReadings(query, candidate)
+        if (evaluation.accepted || evaluation.rejection != MatchRejection.EXPLICIT_MISMATCH || query.explicit != false) return evaluation
+        return evaluateReadings(withoutRating(query), candidate)
+    }
+
+    private fun withoutRating(query: AlternativeTrackQuery): AlternativeTrackQuery =
+        query.copy(explicit = null, alternateReading = query.alternateReading?.copy(explicit = null))
+
+    private fun selectWithRating(query: AlternativeTrackQuery, candidates: List<AlternativeTrackCandidate>): AlternativeMatchSelection {
         val evaluations = candidates
             .distinctBy { it.providerId to it.providerTrackId }
             .map { evaluateReadings(query, it) }
@@ -220,16 +239,13 @@ class AlternativeTrackMatcher {
         val top = accepted.firstOrNull()
             ?: return AlternativeMatchSelection.Rejected(dominantRejection(evaluations), evaluations)
         val expectedExplicit = query.explicit ?: AlternativeTrackText.title(query.title).explicitHint
-        if (expectedExplicit == null && explicitEditionsConflict(top, evaluations)) {
-            return AlternativeMatchSelection.Rejected(MatchRejection.AMBIGUOUS, evaluations)
-        }
         val nearTop = accepted.filter { it.verdict == top.verdict && top.confidence - it.confidence < AMBIGUITY_MARGIN }
         val ambiguous = nearTop.withIndex().any { (index, left) ->
-            nearTop.drop(index + 1).any { right -> !sameRecording(left, right) }
+            nearTop.drop(index + 1).any { right -> !sameRecording(left, right, expectedExplicit != null) }
         }
         if (ambiguous) return AlternativeMatchSelection.Rejected(MatchRejection.AMBIGUOUS, evaluations)
         val chosen = accepted
-            .filter { it.verdict == top.verdict && sameRecording(it, top) }
+            .filter { it.verdict == top.verdict && sameRecording(it, top, expectedExplicit != null) }
             .maxWith(
                 compareBy<AlternativeMatchEvaluation> {
                     expectedExplicit != null && candidateExplicit(it.candidate) == expectedExplicit
@@ -242,7 +258,7 @@ class AlternativeTrackMatcher {
         return AlternativeMatchSelection.Accepted(chosen, evaluations)
     }
 
-    private fun sameRecording(left: AlternativeMatchEvaluation, right: AlternativeMatchEvaluation): Boolean {
+    private fun sameRecording(left: AlternativeMatchEvaluation, right: AlternativeMatchEvaluation, explicitRequired: Boolean): Boolean {
         val a = left.candidate
         val b = right.candidate
         if (a.providerId == b.providerId && a.providerTrackId == b.providerTrackId) return true
@@ -254,8 +270,9 @@ class AlternativeTrackMatcher {
             aTitle.versionSignature == bTitle.versionSignature &&
             sameFeaturedCredits(featuredSet(a, aTitle), featuredSet(b, bTitle)) &&
             abs(a.durationSeconds - b.durationSeconds) <= SAME_RECORDING_DURATION_SECONDS &&
-            (aExplicit == null || bExplicit == null || aExplicit == bExplicit) &&
-            (a.language.isBlank() || b.language.isBlank() || a.language == b.language)
+            (!explicitRequired || aExplicit == null || bExplicit == null || aExplicit == bExplicit) &&
+            (a.language.isBlank() || b.language.isBlank() || a.language == b.language ||
+                !(isIndianRelease(a.language) || isIndianRelease(b.language)))
     }
 
     private fun sameSong(
@@ -268,25 +285,6 @@ class AlternativeTrackMatcher {
             isIndianRelease(a.language) && isIndianRelease(b.language) && romanizationKey(aTitle.core) == romanizationKey(bTitle.core)
             )
         return sameTitle && samePrimaryCredits(a, b)
-    }
-
-    private fun explicitEditionsConflict(
-        top: AlternativeMatchEvaluation,
-        evaluations: List<AlternativeMatchEvaluation>
-    ): Boolean {
-        val topTitle = AlternativeTrackText.title(top.candidate.title)
-        return evaluations
-            .filter {
-                val title = AlternativeTrackText.title(it.candidate.title)
-                it.candidate == top.candidate || (
-                    title.versionSignature == topTitle.versionSignature &&
-                        abs(it.candidate.durationSeconds - top.candidate.durationSeconds) <= SAME_RECORDING_DURATION_SECONDS &&
-                        sameSong(top.candidate, topTitle, it.candidate, title)
-                    )
-            }
-            .mapNotNull { candidateExplicit(it.candidate) }
-            .toSet()
-            .size > 1
     }
 
     private fun candidateExplicit(candidate: AlternativeTrackCandidate): Boolean? =
@@ -384,13 +382,15 @@ class AlternativeTrackMatcher {
             return AlbumRelation.MISMATCH
         }
         if (candidate.isBlank) return AlbumRelation.UNVERIFIED
-        if (expected.core == candidate.core) {
+        val continuesExpectedAlbum = candidateTrack.album.contains(" - ") &&
+            AlternativeTrackText.album(candidateTrack.album.substringBefore(" - ")).core == expected.core
+        if (expected.core == candidate.core || continuesExpectedAlbum) {
             val expectedRemaster = AlbumEdition.REMASTERED in expected.editions
             val candidateRemaster = AlbumEdition.REMASTERED in candidate.editions
             if (expectedRemaster != candidateRemaster) return AlbumRelation.REMASTER_CONFLICT
             val sameEdition = expected.editions == candidate.editions &&
                 expected.language == (candidate.language ?: candidateLanguage.takeIf { expected.language != null })
-            return if (sameEdition) AlbumRelation.SAME else AlbumRelation.EDITION_VARIANT
+            return if (sameEdition && !continuesExpectedAlbum) AlbumRelation.SAME else AlbumRelation.EDITION_VARIANT
         }
         val expectedSingle = expected.core == expectedTitle.core || expected.editions.any(singleEditions::contains)
         val candidateSingle = candidate.core == candidateTitle.core || candidate.editions.any(singleEditions::contains)

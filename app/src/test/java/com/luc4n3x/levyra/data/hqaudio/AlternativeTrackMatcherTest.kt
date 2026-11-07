@@ -34,6 +34,17 @@ class AlternativeTrackMatcherTest {
     }
 
     @Test
+    fun uncensoredEditionIsTakenButCensoredOneNeverReplacesTheExplicitRequest() {
+        val selection = matcher.select(query(explicit = false), listOf(candidate(id = "rated-explicit", explicit = true)))
+        assertEquals("rated-explicit", (selection as AlternativeMatchSelection.Accepted).evaluation.candidate.providerTrackId)
+        val preferred = matcher.select(query(explicit = false), listOf(candidate(id = "clean", explicit = false), candidate(id = "explicit", explicit = true)))
+        assertEquals("clean", (preferred as AlternativeMatchSelection.Accepted).evaluation.candidate.providerTrackId)
+        assertTrue(matcher.evaluateSelected(query(explicit = false), candidate(explicit = true)).accepted)
+        assertTrue(matcher.select(query(explicit = true), listOf(candidate(explicit = false))) is AlternativeMatchSelection.Rejected)
+        assertTrue(!matcher.evaluateSelected(query(explicit = true), candidate(explicit = false)).accepted)
+    }
+
+    @Test
     fun confirmedExplicitStatusWinsOverUnknownStatusWithHigherBitrate() {
         listOf(false, true).forEach { explicit ->
             val selection = matcher.select(query(explicit = explicit), listOf(
@@ -489,6 +500,57 @@ class AlternativeTrackMatcherTest {
     }
 
     @Test
+    fun inconsistentNonIndianLanguageLabelsDoNotSplitTheSameRecording() {
+        val query = query(title = "Kelma", artist = "Ramy Sabry", album = "Ghammadt Einy", durationMs = 250_320L)
+        val selection = matcher.select(
+            query,
+            listOf(
+                candidate(id = "arabic", title = "Kelma", primary = listOf("Ramy Sabry"), album = "Ghammadt Einy", duration = 250).copy(language = "arabic"),
+                candidate(id = "english", title = "Kelma", primary = listOf("Ramy Sabry"), album = "Ghammadt Einy", duration = 249).copy(language = "english")
+            )
+        )
+        assertTrue(selection is AlternativeMatchSelection.Accepted)
+    }
+
+    @Test
+    fun albumContinuationIsAnEditionOfTheRequestedAlbum() {
+        val query = query(title = "CANZONE D'AMORE", artist = "Geolier", album = "TUTTO È POSSIBILE", durationMs = 180_000L)
+        val evaluation = verdict(
+            query,
+            candidate(title = "CANZONE D'AMORE", primary = listOf("Geôlier"), album = "TUTTO È POSSIBILE - ATTO II", duration = 180)
+        )
+        assertTrue(evaluation.accepted)
+        assertEquals(AlbumRelation.EDITION_VARIANT, evaluation.albumRelation)
+        assertRejected(
+            MatchRejection.ALBUM_MISMATCH,
+            query,
+            candidate(title = "CANZONE D'AMORE", primary = listOf("Geôlier"), album = "TUTTO", duration = 180)
+        )
+    }
+
+    @Test
+    fun markedLiveRecordingOnCompilationIsAccepted() {
+        val query = query(
+            title = "Cadeira Cativa - Ao Vivo",
+            artist = "Zé Neto & Cristiano",
+            album = "Vocês & Deus, Vol. 1 (Ao Vivo no Rio de Janeiro)",
+            durationMs = 160_613L
+        )
+        val compilation = "Zé Neto & Cristiano - Hits 2026 (Ao Vivo)"
+        assertTrue(verdict(query, candidate(title = "Cadeira Cativa (Ao Vivo)", primary = listOf("Zé Neto & Cristiano"), album = compilation, duration = 160)).accepted)
+        assertRejected(
+            MatchRejection.ALBUM_MISMATCH,
+            query,
+            candidate(title = "Cadeira Cativa (Ao Vivo)", primary = listOf("Zé Neto & Cristiano"), album = compilation, duration = 163)
+        )
+        assertRejected(
+            MatchRejection.VERSION_MISMATCH,
+            query.copy(title = "Cadeira Cativa"),
+            candidate(title = "Cadeira Cativa (Ao Vivo)", primary = listOf("Zé Neto & Cristiano"), album = compilation, duration = 160)
+        )
+    }
+
+    @Test
     fun metadataOnlyFeaturedArtistsKeepDifferentRecordingsApart() {
         val selection = matcher.select(
             query(album = "YouTube Music"),
@@ -579,7 +641,7 @@ class AlternativeTrackMatcherTest {
     }
 
     @Test
-    fun cleanAndExplicitEditionsFallBackWhenOriginalExplicitStateIsUnknown() {
+    fun missingExplicitMetadataDoesNotBlockAnOtherwiseVerifiedRecording() {
         val query = query(title = "hate that i made you love me", artist = "Ariana Grande", album = "YouTube Music", durationMs = 198_000L)
         val selection = matcher.select(
             query,
@@ -590,11 +652,11 @@ class AlternativeTrackMatcherTest {
                 candidate(id = "album-explicit", title = "hate that i made you love me", primary = listOf("Ariana Grande"), album = "petal", duration = 197, explicit = true)
             )
         )
-        assertEquals(MatchRejection.AMBIGUOUS, (selection as AlternativeMatchSelection.Rejected).reason)
+        assertTrue(selection is AlternativeMatchSelection.Accepted)
     }
 
     @Test
-    fun rejectedExplicitEditionStillBlocksUnverifiedCleanEdition() {
+    fun anotherAlbumsRatingDoesNotBlockTheRequestedAlbum() {
         val query = query(title = "Without Me", artist = "Eminem", album = "The Eminem Show", durationMs = 290_000L)
         val selection = matcher.select(
             query,
@@ -603,11 +665,11 @@ class AlternativeTrackMatcherTest {
                 candidate(id = "explicit-compilation", title = "Without Me", primary = listOf("Eminem"), album = "Curtain Call", duration = 290, explicit = true)
             )
         )
-        assertEquals(MatchRejection.AMBIGUOUS, (selection as AlternativeMatchSelection.Rejected).reason)
+        assertEquals("clean", (selection as AlternativeMatchSelection.Accepted).evaluation.candidate.providerTrackId)
     }
 
     @Test
-    fun cleanTitleHintCountsAsCleanEdition() {
+    fun unspecifiedEditionCanUseTheMatchingRecordingWithATitleRatingHint() {
         val query = query(title = "Without Me", artist = "Eminem", album = "The Eminem Show", durationMs = 290_000L)
         val selection = matcher.select(
             query,
@@ -616,7 +678,7 @@ class AlternativeTrackMatcherTest {
                 candidate(id = "clean", title = "Without Me (Clean)", primary = listOf("Eminem"), album = "The Eminem Show", duration = 290, explicit = null)
             )
         )
-        assertTrue(selection is AlternativeMatchSelection.Rejected)
+        assertTrue(selection is AlternativeMatchSelection.Accepted)
     }
 
     @Test
