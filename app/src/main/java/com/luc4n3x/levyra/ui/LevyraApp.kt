@@ -10607,7 +10607,7 @@ private fun LazyListScope.studioHomeSections(
                     if (prismHomeOnly()) item(key = "prism-discover", contentType = "prism-discover") {
                         PrismDiscoverTeaser(Modifier.padding(horizontal = styleSpec.inset, vertical = 12.dp))
                     }
-                    if (!studioLayout.isHidden(HomeSectionId.Discovery) && stagedSpotlight == null) skinDiscoveryItems(c)
+                    skinDiscoveryAfterOrbit(c, stagedSpotlight != null)
                 }
                 HomeSectionId.FavoriteRadio -> favoriteRadioSection(homeRadio)
                 HomeSectionId.EditorialCollections -> homeStudioSectionEditorialCollections(c)
@@ -10783,6 +10783,10 @@ private fun LazyListScope.homeStudioSectionSpotlight(c: StudioHomeContext) {
                 }
             }
     }
+}
+
+private fun LazyListScope.skinDiscoveryAfterOrbit(c: StudioHomeContext, spotlightStaged: Boolean) {
+    if (skinOwnsDiscoveryEntry() && !spotlightStaged && !c.studioLayout.isHidden(HomeSectionId.Discovery)) skinDiscoveryItems(c)
 }
 
 private fun LazyListScope.skinDiscoveryItems(c: StudioHomeContext) {

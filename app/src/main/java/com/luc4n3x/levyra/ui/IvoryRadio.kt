@@ -374,6 +374,8 @@ private fun IvoryOnAir(
     onPlay: () -> Unit,
     onFavorite: () -> Unit
 ) {
+    val fadeInMs = radioFadeMillis(220)
+    val fadeOutMs = radioFadeMillis(120)
     val strings = LocalLevyraStrings.current
     val accent = IvoryDesign.ink
     Box(Modifier.fillMaxWidth().padding(horizontal = IvoryRadioGutter).height(268.dp).clip(RoundedCornerShape(IvoryDesign.surfaceCorner)).background(LevyraPanel)) {
@@ -403,7 +405,7 @@ private fun IvoryOnAir(
         Row(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(start = 20.dp, end = 18.dp, bottom = 18.dp), verticalAlignment = Alignment.Bottom) {
             Column(Modifier.weight(1f)) {
                 if (playing) IvoryMeter(true, Color.White, Modifier.width(22.dp).height(14.dp))
-                AnimatedContent(targetState = station, transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(120)) }, contentKey = { it.uuid }, label = "ivory-onair") { value ->
+                AnimatedContent(targetState = station, transitionSpec = { fadeIn(tween(fadeInMs)) togetherWith fadeOut(tween(fadeOutMs)) }, contentKey = { it.uuid }, label = "ivory-onair") { value ->
                     Column {
                         Text(
                             value.name, color = Color.White, fontSize = 22.sp, lineHeight = 26.sp, fontWeight = FontWeight.Medium,

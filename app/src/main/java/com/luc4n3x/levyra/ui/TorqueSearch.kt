@@ -96,7 +96,11 @@ internal fun TorquePlaylistHitRow(
     onDownload: (com.luc4n3x.levyra.domain.PlaylistHit) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    androidx.compose.foundation.lazy.LazyRow(
+        modifier = Modifier.recentSearchesBleed(RecentSearchGutter),
+        contentPadding = PaddingValues(horizontal = RecentSearchGutter),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
         itemsIndexed(
             playlists,
             key = { index, playlist -> "torque-playlist-hit-$index-${playlist.playlistId.ifBlank { playlist.title }}" },

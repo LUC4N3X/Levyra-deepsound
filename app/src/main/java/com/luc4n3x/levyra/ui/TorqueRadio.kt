@@ -373,6 +373,8 @@ private fun TorqueOnAir(
     onPlay: () -> Unit,
     onFavorite: () -> Unit
 ) {
+    val fadeInMs = radioFadeMillis(220)
+    val fadeOutMs = radioFadeMillis(120)
     val strings = LocalLevyraStrings.current
     val accent = LevyraActivePalette.blue
     Box(Modifier.fillMaxWidth().padding(horizontal = TorqueRadioGutter).height(268.dp).background(LevyraPanel)) {
@@ -403,7 +405,7 @@ private fun TorqueOnAir(
         Row(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(start = 20.dp, end = 18.dp, bottom = 18.dp), verticalAlignment = Alignment.Bottom) {
             Column(Modifier.weight(1f)) {
                 if (playing) TorqueMeter(true, Color.White, Modifier.width(22.dp).height(14.dp))
-                AnimatedContent(targetState = station, transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(120)) }, contentKey = { it.uuid }, label = "torque-onair") { value ->
+                AnimatedContent(targetState = station, transitionSpec = { fadeIn(tween(fadeInMs)) togetherWith fadeOut(tween(fadeOutMs)) }, contentKey = { it.uuid }, label = "torque-onair") { value ->
                     Column {
                         Text(
                             value.name.uppercase(), color = Color.White, fontSize = 22.sp, lineHeight = 26.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.6.sp,
@@ -596,3 +598,6 @@ private fun TorqueStationRow(
 private fun TorqueRadioNote(text: String) {
     Text(text, color = LevyraMuted, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.fillMaxWidth().padding(horizontal = TorqueRadioGutter, vertical = 10.dp))
 }
+
+@Composable
+internal fun radioFadeMillis(millis: Int): Int = if (LocalAnimationsEnabled.current) millis else 0
