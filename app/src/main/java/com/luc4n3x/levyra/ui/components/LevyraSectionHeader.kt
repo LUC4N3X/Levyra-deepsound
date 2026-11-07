@@ -81,10 +81,17 @@ internal fun LevyraSectionHeader(
             verticalArrangement = Arrangement.spacedBy(LevyraCardDesign.CaptionLineGap, Alignment.CenterVertically)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                val torque = com.luc4n3x.levyra.ui.theme.LevyraIsTorque
+                if (torque) {
+                    androidx.compose.foundation.layout.Box(
+                        Modifier.size(width = 4.dp, height = 22.dp).background(com.luc4n3x.levyra.ui.theme.LevyraActivePalette.blue)
+                    )
+                    androidx.compose.foundation.layout.Spacer(Modifier.size(10.dp))
+                }
                 Text(
-                    text = title,
+                    text = if (torque) title.uppercase() else title,
                     color = titleColor,
-                    style = LevyraType.sectionTitle,
+                    style = if (torque) LevyraType.sectionTitle.copy(fontSize = 18.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, letterSpacing = 2.sp) else LevyraType.sectionTitle,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier

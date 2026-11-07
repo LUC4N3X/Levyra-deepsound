@@ -62,6 +62,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic
 import com.luc4n3x.levyra.ui.theme.LevyraIsAtelier
 import com.luc4n3x.levyra.ui.theme.LevyraIsQobuz
 import com.luc4n3x.levyra.ui.theme.LevyraIsSpotify
+import com.luc4n3x.levyra.ui.theme.LevyraIsTorque
 import com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic
 import com.luc4n3x.levyra.ui.theme.LevyraSkinManagesLayout
 import com.luc4n3x.levyra.ui.theme.LevyraText
@@ -138,6 +139,28 @@ internal fun RadioTabScreen(viewModel: LevyraViewModel, state: LevyraUiState, ba
     val copy = remember(code) { radioTabCopy(code) }
     if (com.luc4n3x.levyra.ui.theme.LevyraActivePalette.id == com.luc4n3x.levyra.ui.theme.PrismPaletteId) {
         PrismRadioScreen(
+            languageCode = state.languageCode,
+            currentStationId = state.currentTrack?.takeIf { it.isLiveRadio() }?.id?.removePrefix("live-radio:"),
+            isPlaying = state.isPlaying,
+            title = copy.tab,
+            onPlay = { station -> if (state.isPlaying && state.liveRadioStation?.uuid == station.uuid) viewModel.togglePlay() else viewModel.playLiveRadio(station) },
+            onSearch = { viewModel.selectTab(LevyraTab.Search) }
+        )
+        return
+    }
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsIvory) {
+        IvoryRadioScreen(
+            languageCode = state.languageCode,
+            currentStationId = state.currentTrack?.takeIf { it.isLiveRadio() }?.id?.removePrefix("live-radio:"),
+            isPlaying = state.isPlaying,
+            title = copy.tab,
+            onPlay = { station -> if (state.isPlaying && state.liveRadioStation?.uuid == station.uuid) viewModel.togglePlay() else viewModel.playLiveRadio(station) },
+            onSearch = { viewModel.selectTab(LevyraTab.Search) }
+        )
+        return
+    }
+    if (LevyraIsTorque) {
+        TorqueRadioScreen(
             languageCode = state.languageCode,
             currentStationId = state.currentTrack?.takeIf { it.isLiveRadio() }?.id?.removePrefix("live-radio:"),
             isPlaying = state.isPlaying,

@@ -129,6 +129,8 @@ internal fun ExploreDailyTop100(
         Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
                 MonoSectionHeader(copy.title, overline = com.luc4n3x.levyra.ui.i18n.LevyraMonoHomeStrings.forCode(strings.code).chartsOverline)
+            } else if (com.luc4n3x.levyra.ui.theme.LevyraIsTorque) {
+                SkinSectionTitle(copy.title, TorqueGutter)
             } else {
                 LevyraSectionHeader(
                     title = copy.title,
@@ -146,6 +148,24 @@ internal fun ExploreDailyTop100(
                         MonoTop100Cover(
                             label, date, slots[index], chart.global, Top100CoverSize,
                             Modifier.semantics(mergeDescendants = true) { contentDescription = "${copy.title}, $label" }
+                                .levyraPressable(onClick = { viewModel.open(chart) }, role = Role.Button, pressedScale = LevyraPressScale.Tile)
+                        )
+                        return@itemsIndexed
+                    }
+                    if (com.luc4n3x.levyra.ui.theme.LevyraIsIvory) {
+                        IvoryTop100Card(
+                            label, date, chart.global,
+                            Modifier.size(TorqueTop100Size)
+                                .semantics(mergeDescendants = true) { contentDescription = "${copy.title}, $label" }
+                                .levyraPressable(onClick = { viewModel.open(chart) }, role = Role.Button, pressedScale = LevyraPressScale.Tile)
+                        )
+                        return@itemsIndexed
+                    }
+                    if (com.luc4n3x.levyra.ui.theme.LevyraIsTorque) {
+                        TorqueTop100Card(
+                            label, date, chart.global,
+                            Modifier.size(TorqueTop100Size)
+                                .semantics(mergeDescendants = true) { contentDescription = "${copy.title}, $label" }
                                 .levyraPressable(onClick = { viewModel.open(chart) }, role = Role.Button, pressedScale = LevyraPressScale.Tile)
                         )
                         return@itemsIndexed
@@ -187,6 +207,13 @@ internal fun ExploreDailyTop100(
         ) {
             if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
                 MonoTop100ChartScreen(open, chartLabel(open.chart, copy), date, slot, copy.failed, copy.retry, viewModel::close, viewModel::retry, onPlay) { track ->
+                    viewModel.close()
+                    onTrackActions(track)
+                }
+                return@Dialog
+            }
+            if (com.luc4n3x.levyra.ui.theme.LevyraIsTorque) {
+                TorqueTop100ChartScreen(open, chartLabel(open.chart, copy), date, copy, viewModel::close, viewModel::retry, onPlay) { track ->
                     viewModel.close()
                     onTrackActions(track)
                 }

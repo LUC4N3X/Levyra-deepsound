@@ -408,7 +408,7 @@ private fun PrismOnAir(
     }
 }
 
-private fun prismStationDetail(station: RadioStation): String =
+internal fun prismStationDetail(station: RadioStation): String =
     listOfNotNull(station.country.takeIf(String::isNotBlank), station.tags.firstOrNull()?.takeIf(String::isNotBlank), station.qualityLabel.takeIf(String::isNotBlank))
         .joinToString(" · ")
 
