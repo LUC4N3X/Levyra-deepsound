@@ -165,7 +165,7 @@ private fun atelierSearchContent(data: SearchResults): AtelierSearchContent = At
 private class AtelierSearchMenuItem(val label: String, val action: () -> Unit)
 
 @Composable
-internal fun AtelierSearchEntry(viewModel: SearchViewModel, state: LevyraUiState, onTrackActions: (Track) -> Unit) {
+internal fun AtelierSearchEntry(viewModel: SearchViewModel, state: LevyraUiState, backEnabled: Boolean, onTrackActions: (Track) -> Unit) {
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { LevyraAtelierStrings.forCode(strings.code) }
     val focusManager = LocalFocusManager.current
@@ -183,7 +183,7 @@ internal fun AtelierSearchEntry(viewModel: SearchViewModel, state: LevyraUiState
             languageCode = state.languageCode,
             playback = PodcastPlayback(state.currentTrack?.id, state.isPlaying),
             bottomInset = exploreDestinationBottomInset(state),
-            backEnabled = true,
+            backEnabled = backEnabled,
             onBack = { podcastsOpen = false },
             onPlay = { list, track, position -> viewModel.playAudioFrom(list, track, position) }
         )

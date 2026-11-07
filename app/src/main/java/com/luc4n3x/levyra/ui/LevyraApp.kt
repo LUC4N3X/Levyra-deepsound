@@ -14489,7 +14489,7 @@ private fun SearchScreen(
     onTrackActions: (Track) -> Unit = {}
 ) {
     if (LevyraIsAtelier) {
-        AtelierSearchEntry(viewModel, state, onTrackActions)
+        AtelierSearchEntry(viewModel, state, backEnabled, onTrackActions)
         return
     }
     if (LevyraIsMono) {
