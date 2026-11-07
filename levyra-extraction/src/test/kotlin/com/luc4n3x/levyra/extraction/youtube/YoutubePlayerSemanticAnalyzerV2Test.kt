@@ -1,4 +1,4 @@
-package com.luc4n3x.levyra.data
+package com.luc4n3x.levyra.extraction.youtube
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -326,7 +326,7 @@ class YoutubePlayerSemanticAnalyzerV2Test {
             var cfg={signatureTimestamp:20644};
         """.trimIndent()
 
-        val candidates = YoutubePlayerJsAnalyzer.analyzeCandidates("2182a2cc", javascript)
+        val candidates = (YoutubePlayerAnalyzer.analyze(javascript) as YoutubePlayerAnalysis.Candidates).transforms
 
         assertEquals(6, candidates.size)
         assertEquals(
@@ -354,7 +354,7 @@ class YoutubePlayerSemanticAnalyzerV2Test {
             var cfg={signatureTimestamp:20644};
         """.trimIndent()
 
-        val candidates = YoutubePlayerJsAnalyzer.analyzeCandidates("2182a2cc", javascript)
+        val candidates = (YoutubePlayerAnalyzer.analyze(javascript) as YoutubePlayerAnalysis.Candidates).transforms
 
         assertTrue(candidates.isNotEmpty())
         assertTrue(candidates.all { it.signatureExpression == "LegacySig(4,INPUT)" })
@@ -373,7 +373,7 @@ class YoutubePlayerSemanticAnalyzerV2Test {
             var cfg={signatureTimestamp:20644};
         """.trimIndent()
 
-        val candidates = YoutubePlayerJsAnalyzer.analyzeCandidates("2182a2cc", javascript)
+        val candidates = (YoutubePlayerAnalyzer.analyze(javascript) as YoutubePlayerAnalysis.Candidates).transforms
 
         assertTrue(candidates.isNotEmpty())
         assertEquals("SemanticSig(INPUT)", candidates.first().signatureExpression)

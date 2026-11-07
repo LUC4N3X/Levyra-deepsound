@@ -1,4 +1,4 @@
-package com.luc4n3x.levyra.data
+package com.luc4n3x.levyra.extraction.youtube
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

@@ -162,7 +162,7 @@ def classify_changes(paths: Iterable[str]) -> ChangeKinds:
     )
     return ChangeKinds(
         android=root_gradle_changed
-        or any(path.startswith("app/") for path in normalized),
+        or any(path.startswith(("app/", "levyra-extraction/")) for path in normalized),
         desktop=any(path.startswith("desktop/") for path in normalized),
         extractor=root_gradle_changed
         or any(path.startswith("third_party/LevyraExtractor/") for path in normalized),
@@ -398,6 +398,11 @@ def build_commands(
             wrapper = gradle_wrapper()
             commands.extend(
                 (
+                    GateCommand(
+                        "Run extraction core tests",
+                        (wrapper, "-p", "levyra-extraction", "--no-daemon", "test"),
+                        timeout_seconds=600,
+                    ),
                     GateCommand(
                         "Check Android runtime compatibility",
                         (python, "scripts/check_android_regex_compatibility.py"),
