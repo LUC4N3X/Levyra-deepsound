@@ -36,6 +36,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.QueueMusic
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.automirrored.rounded.ViewList
 import androidx.compose.material.icons.outlined.Album
@@ -386,7 +387,9 @@ internal fun AtelierLibraryScreen(
                 onCreate = { creating = true },
                 onOpenShelf = onOpenShelf,
                 onOpenTools = onOpenTools,
-                onImport = { viewModel.openPlaylistImport() }
+                onImport = { viewModel.openPlaylistImport() },
+                onOpenSearch = viewModel::openSearch,
+                onOpenJam = viewModel::openJam
             )
             AtelierLibraryTabs(tab, strings, selectTab)
             if (searching) {
@@ -644,7 +647,9 @@ private fun AtelierLibraryMasthead(
     onCreate: () -> Unit,
     onOpenShelf: () -> Unit,
     onOpenTools: () -> Unit,
-    onImport: () -> Unit
+    onImport: () -> Unit,
+    onOpenSearch: () -> Unit,
+    onOpenJam: () -> Unit
 ) {
     val hour by rememberCurrentGreetingHour()
     val greeting = remember(strings.code, userName, hour) { strings.formatGreeting(userName, hour) }
@@ -661,6 +666,7 @@ private fun AtelierLibraryMasthead(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
+            AtelierLibraryIconTarget(Icons.Rounded.Search, strings.search, onOpenSearch)
             AtelierLibraryIconTarget(Icons.AutoMirrored.Rounded.PlaylistAdd, strings.playlistImportCopy().action, onImport)
             AtelierLibraryIconTarget(Icons.Outlined.Tune, copy.allTools, onOpenTools)
             AtelierLibraryShelfButton(copy.goToShelf, onOpenShelf)
@@ -677,7 +683,35 @@ private fun AtelierLibraryMasthead(
             )
             AtelierLibraryIconTarget(Icons.Rounded.Add, strings.newPlaylist, onCreate)
         }
-        AtelierLibraryRack(rack, strings.code, Modifier.padding(start = AtelierDesign.gutter, end = AtelierDesign.gutter, top = 14.dp, bottom = 10.dp))
+        AtelierLibraryRack(rack, strings.code, Modifier.padding(start = AtelierDesign.gutter, end = AtelierDesign.gutter, top = 14.dp))
+        AtelierLibraryJamStrip(strings.jamTitle, onOpenJam)
+    }
+}
+
+@Composable
+private fun AtelierLibraryJamStrip(label: String, onOpen: () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = AtelierDesign.gutter).padding(bottom = 10.dp)) {
+        Box(Modifier.fillMaxWidth().height(1.dp).background(AtelierDesign.hairline))
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 60.dp)
+                .clickable(role = Role.Button, onClick = onOpen)
+                .semantics(mergeDescendants = true) { contentDescription = label }
+                .padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            com.luc4n3x.levyra.ui.AtelierCabinetKnob(-48f, Modifier.size(28.dp))
+            Spacer(Modifier.width(14.dp))
+            Text(
+                atelierLibraryCaps(label, LocalLevyraStrings.current.code),
+                style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 2.2.sp),
+                color = AtelierDesign.text,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f).clearAndSetSemantics { }
+            )
+            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = AtelierDesign.accent, modifier = Modifier.size(22.dp))
+        }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(AtelierDesign.hairline))
     }
 }
 

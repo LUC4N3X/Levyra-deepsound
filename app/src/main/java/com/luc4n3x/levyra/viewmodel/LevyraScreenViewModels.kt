@@ -354,6 +354,7 @@ class ExploreViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::ex
     fun openExploreSamples(index: Int) = root.openExploreSamples(index)
     fun playVideoFrom(list: List<Track>, track: Track) = root.playVideoFrom(list, track)
     fun consumeExploreOpenRequest() = root.consumeExploreOpenRequest()
+    fun navigateBack() = root.navigateBack()
     private var mixPresentationJob: Job? = null
     private val newsRepository by lazy { MusicNewsRepository.get(root.getApplication<Application>()) }
     private val _news = MutableStateFlow<List<MusicNewsStory>>(emptyList())

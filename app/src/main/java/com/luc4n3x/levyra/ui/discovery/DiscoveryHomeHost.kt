@@ -24,7 +24,7 @@ internal fun DiscoveryHomeHost(
     bottomInset: Dp,
     content: @Composable () -> Unit
 ) {
-    if (LevyraSkinManagesLayout && !skinComposesDiscovery && !com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+    if (LevyraSkinManagesLayout && !skinComposesDiscovery && !com.luc4n3x.levyra.ui.theme.LevyraIsMono && !com.luc4n3x.levyra.ui.theme.LevyraIsAtelier && com.luc4n3x.levyra.ui.theme.LevyraActivePalette.id != com.luc4n3x.levyra.ui.theme.PrismPaletteId) {
         content()
         return
     }

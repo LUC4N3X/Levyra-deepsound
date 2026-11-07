@@ -70,7 +70,7 @@ import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
 
 internal val LevyraRadioReplacesSearch: Boolean
-    get() = levyraSearchOwnsBrowse(LevyraIsSpotify, LevyraIsAppleMusic, LevyraIsAtelier || LevyraIsQobuz || LevyraIsYouTubeMusic)
+    get() = LevyraIsAtelier || levyraSearchOwnsBrowse(LevyraIsSpotify, LevyraIsAppleMusic, LevyraIsQobuz || LevyraIsYouTubeMusic)
 
 internal fun levyraBarTabs(order: List<LevyraTab>, radioReplacesSearch: Boolean): List<LevyraTab> =
     if (radioReplacesSearch) order.filterNot { it == LevyraTab.Search || it == LevyraTab.Radio } + LevyraTab.Radio else order
@@ -136,6 +136,28 @@ internal fun LevyraTopBarJamAction(onClick: () -> Unit) {
 internal fun RadioTabScreen(viewModel: LevyraViewModel, state: LevyraUiState, backEnabled: Boolean) {
     val code = LocalLevyraStrings.current.code
     val copy = remember(code) { radioTabCopy(code) }
+    if (com.luc4n3x.levyra.ui.theme.LevyraActivePalette.id == com.luc4n3x.levyra.ui.theme.PrismPaletteId) {
+        PrismRadioScreen(
+            languageCode = state.languageCode,
+            currentStationId = state.currentTrack?.takeIf { it.isLiveRadio() }?.id?.removePrefix("live-radio:"),
+            isPlaying = state.isPlaying,
+            title = copy.tab,
+            onPlay = { station -> if (state.isPlaying && state.liveRadioStation?.uuid == station.uuid) viewModel.togglePlay() else viewModel.playLiveRadio(station) },
+            onSearch = { viewModel.selectTab(LevyraTab.Search) }
+        )
+        return
+    }
+    if (LevyraIsAtelier) {
+        AtelierRadioScreen(
+            languageCode = state.languageCode,
+            currentStationId = state.currentTrack?.takeIf { it.isLiveRadio() }?.id?.removePrefix("live-radio:"),
+            isPlaying = state.isPlaying,
+            title = copy.tab,
+            onPlay = { station -> if (state.isPlaying && state.liveRadioStation?.uuid == station.uuid) viewModel.togglePlay() else viewModel.playLiveRadio(station) },
+            onSearch = { viewModel.selectTab(LevyraTab.Search) }
+        )
+        return
+    }
     Box(Modifier.fillMaxSize()) {
         LiveRadioScreen(
             languageCode = state.languageCode,

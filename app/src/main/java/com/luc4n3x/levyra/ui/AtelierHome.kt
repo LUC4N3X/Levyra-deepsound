@@ -12,6 +12,7 @@ import androidx.compose.ui.geometry.center
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
@@ -56,9 +57,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -73,6 +77,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -116,7 +121,6 @@ import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.HomeBlock
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
-import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.atelier.AtelierAmbientBackdrop
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
@@ -125,6 +129,7 @@ import com.luc4n3x.levyra.ui.i18n.AtelierCopy
 import com.luc4n3x.levyra.ui.i18n.LevyraAtelierStrings
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.homeVideoShelfTitle
 import com.luc4n3x.levyra.ui.i18n.speedDialCopy
 import com.luc4n3x.levyra.ui.theme.AtelierDesign
 import com.luc4n3x.levyra.viewmodel.HomeViewModel
@@ -586,17 +591,7 @@ internal fun AtelierShelfSkeleton() {
 }
 
 @Composable
-private fun AtelierStack(layers: Int, size: Dp, layer: @Composable (Int, Modifier) -> Unit) {
-    val step = 12.dp
-    Box(Modifier.size(width = size + step * (layers - 1), height = size)) {
-        for (index in layers - 1 downTo 0) {
-            layer(index, Modifier.offset(x = step * index).size(size).graphicsLayer { alpha = 1f - index * 0.3f })
-        }
-    }
-}
-
-@Composable
-private fun AtelierHomeMasthead(name: String, onOpenSettings: () -> Unit) {
+private fun AtelierHomeMasthead(name: String, onOpenSettings: () -> Unit, onOpenSearch: () -> Unit) {
     val strings = LocalLevyraStrings.current
     val title = name.ifBlank { strings.home }
     Row(
@@ -614,12 +609,13 @@ private fun AtelierHomeMasthead(name: String, onOpenSettings: () -> Unit) {
                 contentDescription = title
             }
         )
+        AtelierIconAction(Icons.Rounded.Search, strings.search, onOpenSearch, AtelierDesign.text)
         AtelierIconAction(Icons.Rounded.Settings, strings.settings, onOpenSettings, AtelierDesign.text)
     }
 }
 
 @Composable
-private fun AtelierComposedPageTitle(statusTop: Dp, onOpenSettings: () -> Unit) {
+private fun AtelierComposedPageTitle(statusTop: Dp, onOpenSettings: () -> Unit, onOpenSearch: () -> Unit) {
     val strings = LocalLevyraStrings.current
     Row(
         Modifier.fillMaxWidth().padding(top = statusTop + 8.dp).padding(start = AtelierDesign.gutter, end = 8.dp),
@@ -637,6 +633,7 @@ private fun AtelierComposedPageTitle(statusTop: Dp, onOpenSettings: () -> Unit) 
                 modifier = Modifier.semantics { heading() }
             )
         }
+        AtelierIconAction(Icons.Rounded.Search, strings.search, onOpenSearch, AtelierDesign.text)
         AtelierIconAction(Icons.Rounded.Settings, strings.settings, onOpenSettings, AtelierDesign.text)
     }
 }
@@ -651,6 +648,7 @@ private fun AtelierHomeHero(
     showMasthead: Boolean,
     listenerName: String,
     onOpenSettings: () -> Unit,
+    onOpenSearch: () -> Unit,
     onOpen: () -> Unit,
     onPlay: () -> Unit
 ) {
@@ -686,7 +684,7 @@ private fun AtelierHomeHero(
             }
         )
         Column(Modifier.fillMaxWidth().padding(top = statusTop)) {
-            if (showMasthead) AtelierHomeMasthead(listenerName, onOpenSettings)
+            if (showMasthead) AtelierHomeMasthead(listenerName, onOpenSettings, onOpenSearch)
             AtelierHomeHeroLabel(isCurrent, copy)
             AtelierHomeHeroSleeve(track, slide, direction, hasAlbum, onOpen)
             AtelierHomeHeroDetails(track, active, isCurrent, isResolving, hasAlbum, onOpen, onPlay)
@@ -827,10 +825,7 @@ private fun atelierFeatures(
         val artist = atelierArtistKey(track)
         artist.isNotEmpty() && artist !in used
     }
-    soundtrack?.let { hero ->
-        used += atelierArtistKey(hero.track)
-        cards += AtelierFeature("feature-soundtrack", hero.label, hero.lead, hero.track.title, hero.track, listOf(hero.track), hero.onOpen)
-    }
+    soundtrack?.let { hero -> used += atelierArtistKey(hero.track) }
     leadOf(orbit)?.let { lead ->
         used += atelierArtistKey(lead)
         cards += AtelierFeature("feature-orbit", orbitTitle, lead.artist, copy.tracksCount.format(orbit.size), lead, orbit, null)
@@ -1081,82 +1076,122 @@ private fun AtelierWallRow(albums: List<Track>, onOpen: (Track) -> Unit) {
     }
 }
 
+private const val AtelierDeckMax = 6
+private val AtelierDeckSlotsX = floatArrayOf(-96f, -50f, 0f, 50f, 96f)
+
 @Composable
-private fun AtelierSleeveFan(sleeves: List<Track>) {
+private fun AtelierDiscoverDeck(deck: List<Track>) {
+    val animated = LocalAnimationsEnabled.current
     val direction = if (LocalLayoutDirection.current == LayoutDirection.Rtl) -1f else 1f
-    Box(Modifier.fillMaxWidth().height(136.dp), contentAlignment = Alignment.BottomCenter) {
-        if (sleeves.isEmpty()) {
-            AtelierVinyl(null, Modifier.size(118.dp))
+    val turning = animated && deck.size >= 3
+    val turn = remember { Animatable(0f) }
+    LaunchedEffect(turning, deck) {
+        turn.snapTo(0f)
+        if (!turning) return@LaunchedEffect
+        while (true) {
+            delay(2600)
+            turn.animateTo(kotlin.math.round(turn.value) + 1f, spring(dampingRatio = 0.72f, stiffness = 140f))
         }
-        val middle = (sleeves.size - 1) / 2f
-        sleeves.forEachIndexed { index, track ->
-            val position = index - middle
-            Box(
-                Modifier.size(100.dp).zIndex(-abs(position))
-                    .graphicsLayer {
-                        translationX = position * 46.dp.toPx() * direction
-                        translationY = abs(position) * 7.dp.toPx()
-                        rotationZ = position * 7f * direction
-                        transformOrigin = TransformOrigin(0.5f, 1f)
-                        shadowElevation = 12.dp.toPx()
-                        shape = AtelierDesign.sleeveShape
-                        clip = true
-                        ambientShadowColor = Color.Black
-                        spotShadowColor = Color.Black
-                    }
-                    .background(AtelierDesign.panel)
-            ) {
-                CoverImage(track, Modifier.fillMaxSize().clearAndSetSemantics {})
+    }
+    val spin = if (animated) {
+        androidx.compose.animation.core.rememberInfiniteTransition(label = "atelier-discover-vinyl").animateFloat(
+            0f, 360f,
+            androidx.compose.animation.core.infiniteRepeatable(tween(14000, easing = androidx.compose.animation.core.LinearEasing)),
+            label = "atelier-discover-spin"
+        )
+    } else {
+        null
+    }
+    Box(Modifier.fillMaxWidth().height(150.dp).clearAndSetSemantics { }, contentAlignment = Alignment.BottomCenter) {
+        AtelierVinyl(deck.firstOrNull(), Modifier.padding(bottom = 30.dp).size(132.dp).graphicsLayer { rotationZ = spin?.value ?: -20f })
+        if (deck.isEmpty()) return@Box
+        val base = kotlin.math.floor(turn.value).toInt()
+        for (index in (base - 2)..(base + 3)) {
+            val track = deck[index.mod(deck.size)]
+            key(index) {
+                Box(
+                    Modifier.size(100.dp)
+                        .zIndex(10f - abs(index - turn.value))
+                        .graphicsLayer {
+                            val position = (index - turn.value).coerceIn(-2.5f, 2.5f)
+                            val slot = (position + 2f).coerceIn(0f, 4f)
+                            val lower = kotlin.math.floor(slot).toInt().coerceAtMost(3)
+                            val fraction = slot - lower
+                            val x = AtelierDeckSlotsX[lower] + (AtelierDeckSlotsX[lower + 1] - AtelierDeckSlotsX[lower]) * fraction
+                            val distance = abs(position)
+                            translationX = x.dp.toPx() * direction
+                            translationY = (distance * 8f).dp.toPx() - (1f - distance.coerceAtMost(1f)) * 10.dp.toPx()
+                            rotationZ = position * 8f * direction
+                            val scale = 1f - distance.coerceAtMost(2f) * 0.1f
+                            scaleX = scale
+                            scaleY = scale
+                            alpha = (2.5f - distance).coerceIn(0f, 1f)
+                            transformOrigin = TransformOrigin(0.5f, 1f)
+                            shadowElevation = (14f - distance * 4f).coerceAtLeast(2f).dp.toPx()
+                            shape = AtelierDesign.sleeveShape
+                            clip = true
+                        }
+                        .background(AtelierPaper)
+                        .padding(4.dp)
+                ) {
+                    CoverImage(track, Modifier.fillMaxSize())
+                }
             }
         }
     }
 }
 
 @Composable
-private fun AtelierShelfTeaser(sleeves: List<Track>, onOpen: () -> Unit) {
+private fun AtelierDiscoverTeaser(sleeves: List<Track>, fallbackOpen: () -> Unit) {
     val strings = LocalLevyraStrings.current
-    val copy = remember(strings.code) { LevyraAtelierStrings.forCode(strings.code) }
+    val copy = remember(strings.code) { com.luc4n3x.levyra.ui.i18n.discoveryCopy(strings.code) }
+    val handle = com.luc4n3x.levyra.ui.discovery.LocalHomeDiscovery.current
+    val picks = if (handle != null) {
+        val ui by handle.state.collectAsStateWithLifecycle()
+        LaunchedEffect(handle) { handle.onWarm() }
+        remember(ui.deck) { ui.deck.cards.map { it.track }.filterNot(com.luc4n3x.levyra.feature.discovery.DiscoveryFilmScores::matches).distinctBy(Track::id) }
+    } else {
+        emptyList()
+    }
+    val deck = remember(picks, sleeves) { picks.ifEmpty { sleeves }.take(AtelierDeckMax) }
+    val onOpen = handle?.onOpen ?: fallbackOpen
     Column(
         Modifier.fillMaxWidth().padding(top = AtelierDesign.sectionGap).padding(horizontal = AtelierDesign.gutter)
-            .levyraPressable(onClick = onOpen, role = Role.Button, pressedScale = LevyraPressScale.Surface)
+            .levyraPressable(onClick = onOpen, role = Role.Button, onClickLabel = copy.start, pressedScale = LevyraPressScale.Surface)
             .clip(AtelierDesign.panelShape)
             .background(Brush.verticalGradient(listOf(AtelierDesign.panelRaised, AtelierDesign.cabinet)))
             .border(1.dp, AtelierDesign.hairline, AtelierDesign.panelShape)
-            .padding(top = 22.dp, bottom = 20.dp),
+            .padding(top = 22.dp, bottom = 22.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        AtelierSleeveFan(sleeves)
-        Box(
-            Modifier.fillMaxWidth(0.82f).height(3.dp).clip(RoundedCornerShape(2.dp))
-                .background(Brush.horizontalGradient(listOf(Color.Transparent, AtelierDesign.accent.copy(alpha = 0.55f), Color.Transparent)))
-        )
-        Spacer(Modifier.height(16.dp))
+        AtelierDiscoverDeck(deck)
+        Spacer(Modifier.height(18.dp))
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clearAndSetSemantics { }) {
+            Icon(Icons.Rounded.Close, null, tint = AtelierDesign.textFaint, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(10.dp))
+            Box(Modifier.width(48.dp).height(1.dp).background(AtelierDesign.hairlineStrong))
+            Spacer(Modifier.width(10.dp))
+            Icon(Icons.Rounded.Favorite, null, tint = AtelierDesign.accent, modifier = Modifier.size(16.dp))
+        }
+        Spacer(Modifier.height(12.dp))
         Text(
-            text = atelierUppercase(copy.shelf),
-            style = MaterialTheme.typography.labelMedium,
-            color = AtelierDesign.accent,
-            maxLines = 1,
-            modifier = Modifier.clearAndSetSemantics {}
+            copy.title, fontFamily = AtelierSerif, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 34.sp,
+            color = AtelierDesign.text, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 20.dp)
         )
+        Text(
+            copy.lead, fontFamily = AtelierSerif, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontSize = 15.sp,
+            color = AtelierDesign.textSecondary, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp)
+        )
+        Spacer(Modifier.height(10.dp))
         Row(
-            Modifier.padding(horizontal = 16.dp).padding(top = 4.dp),
+            Modifier.clip(AtelierDesign.capsuleShape).background(AtelierPaper).padding(horizontal = 20.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = copy.goToShelf,
-                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Light),
-                color = AtelierDesign.text,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = false)
-            )
-            Icon(
-                Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                null,
-                tint = AtelierDesign.accent,
-                modifier = Modifier.size(26.dp)
-            )
+            Text(atelierUppercase(copy.start), style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 1.6.sp), color = AtelierInk, maxLines = 1)
+            Spacer(Modifier.width(6.dp))
+            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = AtelierInk, modifier = Modifier.size(20.dp))
         }
     }
 }
@@ -1275,32 +1310,17 @@ private fun AtelierArtistTile(artist: ArtistHit, portrait: Dp, onOpen: () -> Uni
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
-    }
-}
-
-@Composable
-private fun AtelierCollectionTile(collection: AppleMusicHomeCollection, onOpen: () -> Unit, onPlay: () -> Unit) {
-    val strings = LocalLevyraStrings.current
-    val copy = remember(strings.code) { LevyraAtelierStrings.forCode(strings.code) }
-    val covers = remember(collection.tracks) { collection.tracks.distinctBy(Track::id).take(3) }
-    Column(
-        Modifier.width(AtelierDesign.albumCard + 24.dp).levyraPressable(
-            onClick = onOpen,
-            role = Role.Button,
-            onClickLabel = copy.openDetails,
-            pressedScale = LevyraPressScale.Tile,
-            onLongClick = onPlay,
-            onLongClickLabel = copy.playCollection
-        )
-    ) {
-        AtelierStack(covers.size.coerceAtLeast(1), AtelierDesign.albumCard) { index, modifier ->
-            AtelierSleeveFrame(modifier) {
-                covers.getOrNull(index)?.let { track ->
-                    CoverImage(track, Modifier.fillMaxSize().clearAndSetSemantics {})
-                } ?: AtelierArtwork("")
-            }
+        val views = artist.subscribers.substringAfterLast("•").trim()
+        if (views.isNotBlank()) {
+            Text(
+                text = views,
+                style = MaterialTheme.typography.bodySmall,
+                color = AtelierDesign.textSecondary,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
         }
-        AtelierTileText(collection.title, copy.tracksCount.format(collection.tracks.size), highlighted = false)
     }
 }
 
@@ -1396,6 +1416,9 @@ private fun AtelierHomeContent(
     val artists = remember(data.artists, data.showArtists) { atelierHomeArtists(data) }
     val charts = remember(data.charts) { data.charts.distinctBy(Track::id).take(50) }
     val collections = remember(data.collections) { data.collections.distinctBy { it.id } }
+    val curatedShelves = rememberCuratedPlaylistShelves(strings.code)
+    val newVideos = rememberNewMusicVideos(strings.code)
+    val curatedTitle = remember(strings.code) { com.luc4n3x.levyra.ui.i18n.LevyraMonoHomeStrings.forCode(strings.code).mixedForYou }
     val forgotten = remember(data.forgottenFavorites) { data.forgottenFavorites.distinctBy(Track::id).take(20) }
     val fanSleeves = remember(orbit, recents) { (orbit + recents).distinctBy(Track::id).take(AtelierFanMax) }
     val features = remember(data.soundtrack, orbit, picks, picksTitle, collections, strings.code) {
@@ -1449,11 +1472,11 @@ private fun AtelierHomeContent(
                 val feedLeadsPage = composition.blocks.firstOrNull() == HomeBlock.SkinFeed && composition.content.offlineMessage == null
                 if (!feedLeadsPage) {
                     item(key = "atelier-page-title", contentType = "atelier-page-title") {
-                        AtelierComposedPageTitle(statusTop, actions.openSettings)
+                        AtelierComposedPageTitle(statusTop, actions.openSettings, viewModel::openSearch)
                     }
                 }
                 composedHomeSections(composition, composedKit) {
-                    atelierHomeLead(heroTrack, state, if (feedLeadsPage) statusTop else 0.dp, data, actions, heroPlay, showMasthead = feedLeadsPage)
+                    atelierHomeLead(heroTrack, state, if (feedLeadsPage) statusTop else 0.dp, data, actions, heroPlay, viewModel::openSearch, showMasthead = feedLeadsPage)
                     atelierHomeFeatureRow(features, featureWidth, currentId, state, playFeature)
                     atelierHomeOrbitAndWall(orbit, wallRows, currentId, trackOptions, strings, copy, actions)
                     atelierHomeTeaserAndRecents(fanSleeves, shelfRecents, currentId, trackOptions, state, strings, viewModel, actions, playRecent)
@@ -1461,7 +1484,7 @@ private fun AtelierHomeContent(
                 atelierHomeFallback(nothingToShow && atelierComposedSectionsEmpty(composition.content), stillLoading, state, copy, viewModel)
                 return@LazyColumn
             }
-            atelierHomeLead(heroTrack, state, statusTop, data, actions, heroPlay)
+            atelierHomeLead(heroTrack, state, statusTop, data, actions, heroPlay, viewModel::openSearch)
             atelierHomeFallback(nothingToShow && pinnedCards.isEmpty() && !(homeRadio.visible && homeRadio.stations.isNotEmpty()), stillLoading, state, copy, viewModel)
             if (pinnedCards.isNotEmpty()) {
                 item(key = "atelier-home-pinned", contentType = "atelier-home-pinned") { composedKit.Cards(strings.speedDialCopy().title, pinnedCards) }
@@ -1475,11 +1498,12 @@ private fun AtelierHomeContent(
             favoriteRadioSection(homeRadio)
             atelierHomeAlbumGrid(albumRows, columns, strings, actions)
             atelierHomeReleases(newTracks, newAlbums, releaseTitle, currentId, trackOptions, actions)
+            atelierHomeVideos(strings.homeVideoShelfTitle, newVideos, currentId) { track -> actions.playFrom(newVideos.mapNotNull { it.track }, track) }
             atelierHomeTrendingArtists(artists, strings, actions)
             atelierHomeCharts(charts, chartsExpanded, data, strings, actions, trackLine) {
                 chartsExpanded = !chartsExpanded
             }
-            atelierHomeCollections(collections, strings, actions)
+            atelierHomeCurated(curatedShelves, curatedTitle, viewModel::openPlaylistHit)
             atelierHomeForgotten(forgotten, currentId, trackOptions, strings, actions)
         }
         PullToRefreshDefaults.LoadingIndicator(
@@ -1505,7 +1529,7 @@ private fun atelierRecentAlbums(recordings: List<Track>): List<Track> {
 }
 
 private fun atelierHomeHeroTrack(state: LevyraUiState, recents: List<Track>, data: AppleMusicHomeData): Track? =
-    state.currentTrack ?: recents.firstOrNull() ?: data.soundtrack?.track
+    state.currentTrack ?: recents.firstOrNull()
 
 private fun atelierHomeOrbit(data: AppleMusicHomeData): List<Track> =
     if (data.showPersonal) data.personalTracks.distinctBy(Track::id).take(20) else emptyList()
@@ -1593,8 +1617,18 @@ private fun LazyListScope.atelierHomeLead(
     data: AppleMusicHomeData,
     actions: AppleMusicHomeActions,
     heroPlay: () -> Unit,
+    openSearch: () -> Unit,
     showMasthead: Boolean = true
 ) {
+    val soundtrack = data.soundtrack
+    if (soundtrack != null) {
+        item(key = "atelier-soundtrack", contentType = "atelier-soundtrack") {
+            Column(Modifier.fillMaxWidth().padding(top = statusTop)) {
+                if (showMasthead) AtelierHomeMasthead(data.listener.name, actions.openSettings, openSearch)
+                AtelierSoundtrackPoster(soundtrack)
+            }
+        }
+    }
     if (heroTrack != null) {
         item(key = "atelier-hero", contentType = "atelier-hero") {
             AtelierHomeHero(
@@ -1602,20 +1636,21 @@ private fun LazyListScope.atelierHomeLead(
                 isCurrent = heroTrack.id == state.currentTrack?.id,
                 isPlaying = state.isPlaying,
                 isResolving = state.isResolving,
-                statusTop = statusTop,
-                showMasthead = showMasthead,
+                statusTop = if (soundtrack != null) 0.dp else statusTop,
+                showMasthead = showMasthead && soundtrack == null,
                 listenerName = data.listener.name,
                 onOpenSettings = actions.openSettings,
+                onOpenSearch = openSearch,
                 onOpen = {
                     if (heroTrack.album.isNotBlank()) actions.openAlbum(trackAlbumHit(heroTrack)) else heroPlay()
                 },
                 onPlay = heroPlay
             )
         }
-    } else if (showMasthead) {
+    } else if (showMasthead && soundtrack == null) {
         item(key = "atelier-masthead", contentType = "atelier-masthead") {
             Box(Modifier.padding(top = statusTop)) {
-                AtelierHomeMasthead(data.listener.name, actions.openSettings)
+                AtelierHomeMasthead(data.listener.name, actions.openSettings, openSearch)
             }
         }
     }
@@ -1743,7 +1778,7 @@ private fun LazyListScope.atelierHomeTeaserAndRecents(
     playRecent: (Track) -> Unit
 ) {
     item(key = "atelier-shelf-teaser", contentType = "atelier-shelf-teaser") {
-        AtelierShelfTeaser(fanSleeves) { viewModel.selectTab(LevyraTab.Library) }
+        AtelierDiscoverTeaser(fanSleeves) { MonoExploreBridge.discoverRequested = true }
     }
     if (shelfRecents.isNotEmpty()) {
         item(key = "atelier-recents", contentType = "atelier-continue") {
@@ -1868,29 +1903,6 @@ private fun LazyListScope.atelierHomeCharts(
             ranked = true
         ) { track, rank -> trackLine(charts, track, rank) }
         atelierExpandToggle("atelier-charts", charts.size, AtelierCollapsedCharts, chartsExpanded, onToggleCharts)
-    }
-}
-
-private fun LazyListScope.atelierHomeCollections(
-    collections: List<AppleMusicHomeCollection>,
-    strings: LevyraStrings,
-    actions: AppleMusicHomeActions
-) {
-    if (collections.isNotEmpty()) {
-        item(key = "atelier-collections", contentType = "atelier-collections") {
-            Column {
-                AtelierSectionLabel(strings.collectionsTitle)
-                LazyRow(contentPadding = AtelierRowPadding, horizontalArrangement = Arrangement.spacedBy(AtelierDesign.itemGap)) {
-                    items(collections, key = { it.id }, contentType = { "atelier-collection" }) { collection ->
-                        AtelierCollectionTile(
-                            collection = collection,
-                            onOpen = { actions.openCollection(collection.id) },
-                            onPlay = { actions.playAll(collection.tracks) }
-                        )
-                    }
-                }
-            }
-        }
     }
 }
 

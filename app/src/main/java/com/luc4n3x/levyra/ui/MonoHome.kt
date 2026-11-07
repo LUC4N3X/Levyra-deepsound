@@ -405,6 +405,37 @@ private fun MonoReleaseRail(releases: List<AlbumHit>, onOpen: (AlbumHit) -> Unit
 internal fun monoWithoutYoutube(text: String): String =
     text.split(" • ", " · ").map(String::trim).filter { it.isNotBlank() && !it.contains("youtube", ignoreCase = true) }.joinToString(" • ")
 
+@Composable
+internal fun rememberNewMusicVideos(code: String): List<YoutubeMusicHomeItem> {
+    val videosHome = viewModel<YouTubeMusicHomeViewModel>(key = "mono-new-videos")
+    val videosState by videosHome.state.collectAsStateWithLifecycle()
+    LaunchedEffect(code) { videosHome.load(code, browseId = EXPLORE_BROWSE_ID) }
+    return remember(videosState.shelves, code) {
+        val items = monoExploreNewVideos(videosState.shelves, Int.MAX_VALUE)
+        val byTrack = items.associateBy { it.track?.id }
+        com.luc4n3x.levyra.domain.LocalMusicVideoFilter.localFirst(items.mapNotNull { it.track }, code).mapNotNull { byTrack[it.id] }.take(MonoRailMax)
+    }
+}
+
+@Composable
+internal fun rememberCuratedPlaylistShelves(code: String): List<YoutubeMusicHomeShelf> {
+    val mixedHome = viewModel<YouTubeMusicHomeViewModel>(key = "mono-mixed-for-you")
+    val mixedState by mixedHome.state.collectAsStateWithLifecycle()
+    LaunchedEffect(code) { mixedHome.load(code, browseId = MonoMixedForYouBrowseId) }
+    val ytHome = viewModel<YouTubeMusicHomeViewModel>(key = "mono-yt-home")
+    val ytHomeState by ytHome.state.collectAsStateWithLifecycle()
+    LaunchedEffect(code) { ytHome.load(code) }
+    val featuredShelves = remember(ytHomeState.allShelves) {
+        monoPlaylistShelves(ytHomeState.allShelves.filter { it.headerBrowseId == MonoFeaturedPlaylistsBrowseId })
+    }
+    LaunchedEffect(featuredShelves.isEmpty(), ytHomeState.pages, ytHomeState.loading, ytHomeState.loadingMore) {
+        if (featuredShelves.isEmpty() && ytHomeState.canLoadMore && ytHomeState.pages < MonoFeaturedPageLimit) ytHome.loadMore()
+    }
+    return remember(mixedState.allShelves, featuredShelves, ytHomeState.allShelves) {
+        monoPlaylistShelves(mixedState.allShelves).ifEmpty { featuredShelves }.ifEmpty { monoPlaylistShelves(ytHomeState.allShelves) }
+    }
+}
+
 internal fun monoPlaylistShelves(shelves: List<YoutubeMusicHomeShelf>): List<YoutubeMusicHomeShelf> =
     shelves.filter { shelf ->
         shelf.items.isNotEmpty() && shelf.items.all { it.kind == YoutubeMusicHomeItemKind.Playlist && it.playlist != null }
@@ -773,35 +804,17 @@ private fun MonoHomeContent(
     }
     val isPlaying = rememberUpdatedState(state.isPlaying)
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val playlistShelves = rememberCuratedPlaylistShelves(strings.code)
     val mixedHome = viewModel<YouTubeMusicHomeViewModel>(key = "mono-mixed-for-you")
-    val mixedState by mixedHome.state.collectAsStateWithLifecycle()
-    LaunchedEffect(strings.code) { mixedHome.load(strings.code, browseId = MonoMixedForYouBrowseId) }
     val ytHome = viewModel<YouTubeMusicHomeViewModel>(key = "mono-yt-home")
-    val ytHomeState by ytHome.state.collectAsStateWithLifecycle()
-    LaunchedEffect(strings.code) { ytHome.load(strings.code) }
-    val featuredShelves = remember(ytHomeState.allShelves) {
-        monoPlaylistShelves(ytHomeState.allShelves.filter { it.headerBrowseId == MonoFeaturedPlaylistsBrowseId })
-    }
-    LaunchedEffect(featuredShelves.isEmpty(), ytHomeState.pages, ytHomeState.loading, ytHomeState.loadingMore) {
-        if (featuredShelves.isEmpty() && ytHomeState.canLoadMore && ytHomeState.pages < MonoFeaturedPageLimit) ytHome.loadMore()
-    }
-    val playlistShelves = remember(mixedState.allShelves, featuredShelves, ytHomeState.allShelves) {
-        monoPlaylistShelves(mixedState.allShelves).ifEmpty { featuredShelves }.ifEmpty { monoPlaylistShelves(ytHomeState.allShelves) }
-    }
     val newThisWeek by viewModel.appleNewThisWeek.collectAsStateWithLifecycle()
     androidx.lifecycle.compose.LifecycleResumeEffect(state.selectedChartId, strings.code) {
         viewModel.ensureAppleNewThisWeek()
         onPauseOrDispose { }
     }
     val albumShelf = newThisWeek.albums
+    val newVideos = rememberNewMusicVideos(strings.code)
     val videosHome = viewModel<YouTubeMusicHomeViewModel>(key = "mono-new-videos")
-    val videosState by videosHome.state.collectAsStateWithLifecycle()
-    LaunchedEffect(strings.code) { videosHome.load(strings.code, browseId = EXPLORE_BROWSE_ID) }
-    val newVideos = remember(videosState.shelves, strings.code) {
-        val items = monoExploreNewVideos(videosState.shelves, Int.MAX_VALUE)
-        val byTrack = items.associateBy { it.track?.id }
-        com.luc4n3x.levyra.domain.LocalMusicVideoFilter.localFirst(items.mapNotNull { it.track }, strings.code).mapNotNull { byTrack[it.id] }.take(MonoRailMax)
-    }
     val glowColor = MonoDesign.accent
     val revealed = remember { mutableSetOf<String>() }
     CompositionLocalProvider(LocalMonoRevealed provides revealed) {
