@@ -7,7 +7,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
@@ -286,7 +285,7 @@ internal fun AtelierExploreEntry(
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val play: (List<Track>, Track) -> Unit = { list, track -> atelierExplorePlay(list, track, currentId, state, viewModel) }
     val openCrate: (AtelierCrateItem) -> Unit = { item -> atelierExploreOpenCrate(item, crateTracks, viewModel, play) }
-    BoxWithConstraints(Modifier.fillMaxSize().background(AtelierDesign.room)) {
+    Box(Modifier.fillMaxSize().background(AtelierDesign.room)) {
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
