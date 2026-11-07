@@ -26,6 +26,34 @@ class HomeRefreshStabilityTest {
     }
 
     @Test
+    fun sectionTitleIdentityFoldsStackedAndDecomposedLatinMarks() {
+        assertEquals("pho-viet-nam", HomeRefreshStability.sectionTitleIdentity("Phở Việt Nam"))
+        assertEquals("nandu-angstrom", HomeRefreshStability.sectionTitleIdentity("Ñandú Ångström"))
+        assertEquals("cafe", HomeRefreshStability.sectionTitleIdentity("Café"))
+        assertEquals("cafe-東京", HomeRefreshStability.sectionTitleIdentity("Café 東京"))
+    }
+
+    @Test
+    fun sectionTitleIdentityKeepsMarksOfNonLatinScripts() {
+        assertNotEquals(
+            HomeRefreshStability.sectionTitleIdentity("مُوسِيقَى"),
+            HomeRefreshStability.sectionTitleIdentity("موسيقى")
+        )
+        assertNotEquals(
+            HomeRefreshStability.sectionTitleIdentity("ガイド"),
+            HomeRefreshStability.sectionTitleIdentity("カイド")
+        )
+        assertEquals("हिंदी-गाने", HomeRefreshStability.sectionTitleIdentity("हिंदी गाने"))
+        assertEquals("เพลงใหม่", HomeRefreshStability.sectionTitleIdentity("เพลงใหม่"))
+        assertEquals("인기-음악", HomeRefreshStability.sectionTitleIdentity("인기 음악"))
+    }
+
+    @Test
+    fun sectionTitleIdentityKeepsLeadingMarkWithoutLatinBase() {
+        assertEquals("́a", HomeRefreshStability.sectionTitleIdentity("́a"))
+    }
+
+    @Test
     fun sectionIdentityIgnoresLocalizedDisplayTitle() {
         val english = section("Made for you", "stable")
         val italian = english.copy(title = "Creato per te")
