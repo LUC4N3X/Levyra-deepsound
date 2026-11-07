@@ -105,6 +105,7 @@ private val AtelierCabinetShape = RoundedCornerShape(30.dp)
 private val AtelierDialShape = RoundedCornerShape(12.dp)
 private const val AtelierDialStations = 40
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 internal fun AtelierRadioScreen(
     languageCode: String,
@@ -333,7 +334,7 @@ private fun Modifier.atelierWalnut(): Modifier = drawWithCache {
             moveTo(0f, y)
             var x = 0f
             while (x <= size.width + step) {
-                lineTo(x, y + sin((x / size.width) * 12.57f + row * 0.9f) * amplitude)
+                lineTo(x, y + sin(x / size.width * 12.57f + row * 0.9f) * amplitude)
                 x += step
             }
         }
@@ -374,6 +375,7 @@ private fun Modifier.atelierGrilleCloth(): Modifier = drawWithCache {
     }
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 private fun AtelierReceiver(
     stations: List<RadioStation>,
@@ -489,6 +491,7 @@ private fun AtelierMagicEye(active: Boolean, modifier: Modifier) {
     }
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 private fun AtelierTuningDial(
     stations: List<RadioStation>,

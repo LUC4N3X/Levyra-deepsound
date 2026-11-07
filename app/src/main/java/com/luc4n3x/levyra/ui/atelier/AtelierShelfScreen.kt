@@ -274,9 +274,10 @@ private fun AtelierShelfStage(items: List<AtelierShelfItem>, viewModel: LevyraVi
                 targetState = current,
                 transitionSpec = {
                     val direction = if (items.indexOf(targetState) >= items.indexOf(initialState)) 1 else -1
-                    (fadeIn(tween(220, delayMillis = 60, easing = FastOutSlowInEasing)) +
-                        slideInHorizontally(tween(320, easing = FastOutSlowInEasing)) { width -> direction * width / 6 }) togetherWith
-                        (fadeOut(tween(120)) + slideOutHorizontally(tween(220, easing = FastOutSlowInEasing)) { width -> -direction * width / 8 })
+                    val enter = fadeIn(tween(220, delayMillis = 60, easing = FastOutSlowInEasing)) +
+                        slideInHorizontally(tween(320, easing = FastOutSlowInEasing)) { width -> direction * width / 6 }
+                    val exit = fadeOut(tween(120)) + slideOutHorizontally(tween(220, easing = FastOutSlowInEasing)) { width -> -direction * width / 8 }
+                    enter togetherWith exit
                 },
                 contentKey = { it.key },
                 label = "atelier-shelf-title"
@@ -428,7 +429,7 @@ private fun drawAtelierShelfSleeves(
     while (outward >= 0) {
         val sides = if (outward == 0) 0..0 else 0..1
         for (side in sides) {
-            val index = if ((side == 0) == (pos >= nearest)) nearest - outward else nearest + outward
+            val index = if (side == 0 == pos >= nearest) nearest - outward else nearest + outward
             if (index !in low..high) continue
             val depth = index - pos
             AtelierSlot.fill(depth, entered, r.slot)

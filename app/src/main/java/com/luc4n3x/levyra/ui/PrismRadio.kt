@@ -97,6 +97,7 @@ private val PrismRadioHairline = Color.White.copy(alpha = 0.08f)
 private val PrismRadioPanel = Color(0xFF0D0B10)
 private val PrismRadioEdge = Brush.linearGradient(listOf(Color(0xFFF03A62), Color(0xFFD13FC0)))
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 internal fun PrismRadioScreen(
     languageCode: String,
@@ -337,6 +338,7 @@ private fun PrismEqualizer(active: Boolean, modifier: Modifier) {
     }
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 private fun PrismOnAir(
     station: RadioStation?,

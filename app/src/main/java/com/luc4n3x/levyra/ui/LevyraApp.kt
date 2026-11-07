@@ -10571,6 +10571,7 @@ private fun LazyListScope.studioHomeHeaderItems(
     }
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 private fun LazyListScope.studioHomeSections(
     c: StudioHomeContext,
     homeRenderOrder: List<HomeSectionId>,

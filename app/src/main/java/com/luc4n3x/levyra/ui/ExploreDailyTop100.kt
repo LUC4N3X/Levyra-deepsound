@@ -103,6 +103,7 @@ internal fun dailyTop100HueSlots(ids: List<String>): List<Int> {
     }
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 internal fun ExploreDailyTop100(
     onPlay: (List<Track>, Track) -> Unit,

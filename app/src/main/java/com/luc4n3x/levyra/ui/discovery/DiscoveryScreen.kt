@@ -670,6 +670,7 @@ private fun DiscoveryPreviewBadge(status: DiscoveryPreviewStatus?, copy: Discove
     }
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun DiscoveryControls(

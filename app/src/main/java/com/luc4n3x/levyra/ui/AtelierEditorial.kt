@@ -597,6 +597,7 @@ private fun atelierBrowseOrder(kind: LevyraSearchBrowseSectionKind): Int = when 
     LevyraSearchBrowseSectionKind.Picks -> 3
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 internal fun LazyListScope.atelierSearchBrowseSections(
     browse: LevyraSearchBrowse,
     samples: List<Track>,
