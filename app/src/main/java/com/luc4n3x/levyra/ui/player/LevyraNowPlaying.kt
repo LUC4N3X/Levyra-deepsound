@@ -590,6 +590,7 @@ private fun LevyraNowPlayingContent(
         )
 
         val headerButtonFill = surfaces.controlQuiet
+        val headerTint = if (com.luc4n3x.levyra.ui.LevyraIsPrismOnly && com.luc4n3x.levyra.ui.theme.LevyraActivePalette.isLight) Color(0xFF17121A) else LevyraPlayerDesign.TextPrimary
         val headerButtonBorder = if (surfaces.amoled) surfaces.outline else Color.Transparent
         val headerButtonSize = if (compactPlayer) LevyraPlayerDesign.HeaderButtonCompact else LevyraPlayerDesign.HeaderButton
         val headerSlotWidth = maxOf(headerButtonSize, HeaderButtonMinimumWidth)
@@ -612,6 +613,7 @@ private fun LevyraNowPlayingContent(
                 size = headerButtonSize,
                 iconSize = 24.dp,
                 fill = headerButtonFill,
+                tint = headerTint,
                 borderTop = headerButtonBorder,
                 borderBottom = headerButtonBorder,
                 onClick = collapseActions.collapse
@@ -728,6 +730,7 @@ private fun LevyraNowPlayingContent(
                     size = headerButtonSize,
                     iconSize = 19.dp,
                     fill = headerButtonFill,
+                tint = headerTint,
                     borderTop = headerButtonBorder,
                     borderBottom = headerButtonBorder,
                     onClick = { LevyraPipBridge.enter() }
@@ -742,6 +745,7 @@ private fun LevyraNowPlayingContent(
                     size = headerButtonSize,
                     iconSize = 22.dp,
                     fill = headerButtonFill,
+                tint = headerTint,
                     borderTop = headerButtonBorder,
                     borderBottom = headerButtonBorder,
                     onClick = { showActions = true }

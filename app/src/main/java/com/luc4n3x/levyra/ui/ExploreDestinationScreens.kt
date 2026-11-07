@@ -182,6 +182,20 @@ internal fun ExploreCollectionDestinationScreen(
     val editorial = remember(editorialStructure, tracks) {
         refreshExploreGenreEditorialMetadata(editorialStructure, tracks)
     }
+    if (LevyraIsPrismOnly) {
+        PrismCollectionDestination(
+            title, subtitle, tracks, editorial, isLoading, currentTrackId, strings, bottomInset,
+            onBack, onPlayAll, onPlayTrack, onRequestTrackArtwork
+        )
+        return
+    }
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) {
+        AtelierCollectionDestination(
+            title, subtitle, tracks, editorial, isLoading, currentTrackId, strings, bottomInset,
+            onBack, onPlayAll, onPlayTrack, onRequestTrackArtwork
+        )
+        return
+    }
     val categoryPalette = exploreCategoryPalette(identity)
     val accent = zone?.let { value -> Color(value.accentStart) } ?: categoryPalette.first
     val headerColor = remember(accent) { lerp(accent, LevyraBlack, ExploreCollectionHeaderShade) }
@@ -883,6 +897,10 @@ internal fun ExploreNewReleasesDestinationScreen(
     bottomInset: Dp = ExploreDestinationBottomInset
 ) {
     BackHandler(enabled = backEnabled, onBack = onBack)
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) {
+        AtelierNewReleasesDestination(releases, isLoading, strings, bottomInset, onBack, onOpenRelease)
+        return
+    }
     ExploreDestinationSurface(
         title = strings.exploreNewReleases,
         subtitle = null,

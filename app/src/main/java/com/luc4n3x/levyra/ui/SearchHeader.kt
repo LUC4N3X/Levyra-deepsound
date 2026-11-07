@@ -147,6 +147,10 @@ internal fun SearchHeader(
         )
         return
     }
+    if (LevyraIsPrismOnly) {
+        PrismSearchHeader(query, isSearching, recognitionAvailable, recognitionBusy, onQuery, onSearch, onClear, onBack, launchVoiceSearch, toggleRecognition, onLyrics)
+        return
+    }
     if (LevyraIsAppleMusic) {
         AppleMusicSearchHeader(
             query, recognitionAvailable, recognitionBusy, onQuery, onSearch, onClear,

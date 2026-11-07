@@ -122,7 +122,9 @@ internal fun ExploreDailyTop100(
     }
     val charts = state.charts
     val slots = remember(charts) { dailyTop100HueSlots(charts.map { it.playlistId }) }
-    if (charts.isNotEmpty()) {
+    if (charts.isNotEmpty() && com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) {
+        AtelierTop100Shelf(charts, slots, copy, date, viewModel::open)
+    } else if (charts.isNotEmpty()) {
         Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
                 MonoSectionHeader(copy.title, overline = com.luc4n3x.levyra.ui.i18n.LevyraMonoHomeStrings.forCode(strings.code).chartsOverline)
@@ -143,6 +145,15 @@ internal fun ExploreDailyTop100(
                         MonoTop100Cover(
                             label, date, slots[index], chart.global, Top100CoverSize,
                             Modifier.semantics(mergeDescendants = true) { contentDescription = "${copy.title}, $label" }
+                                .levyraPressable(onClick = { viewModel.open(chart) }, role = Role.Button, pressedScale = LevyraPressScale.Tile)
+                        )
+                        return@itemsIndexed
+                    }
+                    if (LevyraIsPrismOnly) {
+                        PrismTop100Card(
+                            label, date, slots[index], chart.global,
+                            Modifier.size(Top100CoverSize)
+                                .semantics(mergeDescendants = true) { contentDescription = "${copy.title}, $label" }
                                 .levyraPressable(onClick = { viewModel.open(chart) }, role = Role.Button, pressedScale = LevyraPressScale.Tile)
                         )
                         return@itemsIndexed
@@ -175,6 +186,20 @@ internal fun ExploreDailyTop100(
         ) {
             if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
                 MonoTop100ChartScreen(open, chartLabel(open.chart, copy), date, slot, copy.failed, copy.retry, viewModel::close, viewModel::retry, onPlay) { track ->
+                    viewModel.close()
+                    onTrackActions(track)
+                }
+                return@Dialog
+            }
+            if (LevyraIsPrismOnly) {
+                PrismTop100ChartScreen(open, chartLabel(open.chart, copy), date, slot, copy, viewModel::close, viewModel::retry, onPlay) { track ->
+                    viewModel.close()
+                    onTrackActions(track)
+                }
+                return@Dialog
+            }
+            if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) {
+                AtelierTop100ChartScreen(open, chartLabel(open.chart, copy), date, slot, copy, viewModel::close, viewModel::retry, onPlay) { track ->
                     viewModel.close()
                     onTrackActions(track)
                 }

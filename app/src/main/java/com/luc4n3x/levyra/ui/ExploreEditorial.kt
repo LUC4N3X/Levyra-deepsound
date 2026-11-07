@@ -91,8 +91,8 @@ internal class ExploreEditorialContent(
 @Composable
 internal fun ExploreEditorialRow(row: ExploreRow, content: ExploreEditorialContent) {
     when (row) {
-        ExploreRow.NewsHero -> ExploreNewsFrontPage(content.news, content.onOpenNews)
-        ExploreRow.NewsList -> ExploreNewsDesk(content.news, content.onOpenNews)
+        ExploreRow.NewsHero -> if (LevyraIsPrismOnly) PrismNewsFront(content.news, content.onOpenNews) else ExploreNewsFrontPage(content.news, content.onOpenNews)
+        ExploreRow.NewsList -> if (LevyraIsPrismOnly) PrismNewsDesk(content.news, content.onOpenNews) else ExploreNewsDesk(content.news, content.onOpenNews)
         ExploreRow.DailyTop100 -> ExploreDailyTop100(
             onPlay = content.onPlayChart,
             onTrackActions = content.onTrackMenu,
@@ -160,7 +160,7 @@ private fun rememberEditorialLocale(): Locale {
     return remember(code) { Locale.forLanguageTag(code) }
 }
 
-private fun exploreNewsAgeLabel(copy: ExploreEditorialCopy, nowMs: Long, publishedAtMs: Long): String? =
+internal fun exploreNewsAgeLabel(copy: ExploreEditorialCopy, nowMs: Long, publishedAtMs: Long): String? =
     exploreNewsAge(nowMs, publishedAtMs)?.let { (unit, value) ->
         when (unit) {
             ExploreNewsAgeUnit.Minutes -> if (value == 0) copy.justNow else copy.minutesAgo.replace("{count}", value.toString())

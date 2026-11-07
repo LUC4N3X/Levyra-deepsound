@@ -54,6 +54,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import com.luc4n3x.levyra.domain.ExploreCatalog
 import com.luc4n3x.levyra.domain.ExploreCategory
 import com.luc4n3x.levyra.domain.ExploreZone
@@ -325,6 +328,10 @@ private fun SearchBrowseCard(
     accent: Pair<Color, Color>?,
     onClick: () -> Unit
 ) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraActivePalette.id == com.luc4n3x.levyra.ui.theme.PrismPaletteId) {
+        PrismBrowseCard(title, artworkUrl, modifier, onClick)
+        return
+    }
     if (!LevyraIsDefaultSkin) {
         ExploreDiscoveryCategoryCard(title = title, identity = identity, artworkUrl = artworkUrl, modifier = modifier, accentColors = accent, onClick = onClick)
         return
@@ -509,4 +516,40 @@ internal fun searchPodcastsArtwork(episodes: List<Track>): String {
         SearchPodcastMusicHints.any { hint -> text.contains(hint) }
     }
     return (music ?: withArt.firstOrNull())?.let(::art).orEmpty()
+}
+
+@Composable
+private fun PrismBrowseCard(title: String, artworkUrl: String, modifier: Modifier, onClick: () -> Unit) {
+    val shape = com.luc4n3x.levyra.ui.theme.PrismDesign.cut(18.dp)
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .background(Color(0xFF0E0C10))
+            .levyraPressable(onClick = onClick, pressedScale = LevyraPressScale.Tile, role = Role.Button)
+            .semantics(mergeDescendants = true) { contentDescription = title }
+    ) {
+        if (artworkUrl.isNotBlank()) {
+            coil3.compose.AsyncImage(
+                artworkUrl, null, contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().clearAndSetSemantics { }
+            )
+        }
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.horizontalGradient(0f to Color.Black.copy(alpha = 0.86f), 0.55f to Color.Black.copy(alpha = 0.45f), 1f to Color.Transparent)
+            )
+        )
+        Box(
+            Modifier.align(Alignment.BottomStart).padding(start = 14.dp, bottom = 12.dp).width(18.dp).height(3.dp)
+                .clip(androidx.compose.foundation.shape.CircleShape).background(com.luc4n3x.levyra.ui.theme.PrismAccent.gradient(false))
+        )
+        Text(
+            title,
+            color = Color.White,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold, letterSpacing = (-0.2).sp),
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.align(Alignment.CenterStart).padding(start = 14.dp, end = 56.dp).clearAndSetSemantics { }
+        )
+    }
 }
