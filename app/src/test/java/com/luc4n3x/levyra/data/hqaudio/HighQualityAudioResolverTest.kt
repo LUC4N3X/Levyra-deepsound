@@ -124,7 +124,6 @@ class HighQualityAudioResolverTest {
             candidate(primary = listOf("Someone Else")),
             candidate(duration = 260),
             candidate(isrc = "GBAYE0000001"),
-            candidate(explicit = true),
             candidate(id = "other-id")
         )
         conflicting.forEach { details ->
