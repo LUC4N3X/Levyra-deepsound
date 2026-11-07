@@ -91,13 +91,35 @@ internal object HomeRefreshStability {
 
     fun sectionTitleIdentity(title: String): String {
         val compatibilityNormalized = Normalizer.normalize(title.trim(), Normalizer.Form.NFKC)
-        val latinFolded = Normalizer.normalize(compatibilityNormalized, Normalizer.Form.NFD)
-            .replace(Regex("(\\p{IsLatin})\\p{M}+")) { match -> match.groupValues[1] }
+        val latinFolded = stripLatinCombiningMarks(
+            Normalizer.normalize(compatibilityNormalized, Normalizer.Form.NFD)
+        )
         val normalized = Normalizer.normalize(latinFolded, Normalizer.Form.NFC)
             .lowercase(Locale.ROOT)
             .replace(Regex("[^\\p{L}\\p{M}\\p{N}]+"), "-")
             .trim('-')
         return normalized.ifBlank { "section" }
+    }
+
+    private fun stripLatinCombiningMarks(decomposed: String): String {
+        val folded = StringBuilder(decomposed.length)
+        var followsLatinBase = false
+        var index = 0
+        while (index < decomposed.length) {
+            val codePoint = decomposed.codePointAt(index)
+            val isMark = when (Character.getType(codePoint)) {
+                Character.NON_SPACING_MARK.toInt(),
+                Character.ENCLOSING_MARK.toInt(),
+                Character.COMBINING_SPACING_MARK.toInt() -> true
+                else -> false
+            }
+            if (!isMark) {
+                followsLatinBase = Character.UnicodeScript.of(codePoint) == Character.UnicodeScript.LATIN
+            }
+            if (!isMark || !followsLatinBase) folded.appendCodePoint(codePoint)
+            index += Character.charCount(codePoint)
+        }
+        return folded.toString()
     }
 
     fun sectionIdentity(section: HomeSection): String {
