@@ -96,7 +96,6 @@ import kotlin.random.Random
 private const val AtelierExploreCollapsedCharts = 10
 private const val AtelierCrateSize = 4
 private const val AtelierCratePoolMax = 48
-private const val AtelierShufflePoolMax = 60
 private val AtelierCrateLean = floatArrayOf(-2.5f, 1.5f, -1f, 2.5f)
 
 @Immutable
@@ -132,130 +131,6 @@ private fun AtelierExploreMasthead(statusTop: Dp, onOpenSearch: () -> Unit) {
             color = AtelierDesign.textSecondary,
             modifier = Modifier.padding(horizontal = AtelierDesign.gutter).padding(top = 4.dp, bottom = 12.dp)
         )
-    }
-}
-
-@Composable
-private fun AtelierExploreHero(
-    album: AlbumHit?,
-    track: Track?,
-    overline: String,
-    statusTop: Dp,
-    minHeight: Dp,
-    listState: LazyListState,
-    onOpen: () -> Unit,
-    onShuffle: () -> Unit,
-    onOpenSearch: () -> Unit
-) {
-    val strings = LocalLevyraStrings.current
-    val title = album?.title ?: track?.title.orEmpty()
-    val subtitle = album?.artist ?: track?.artist.orEmpty()
-    val albumUrl = remember(album?.thumbnailUrl) { album?.thumbnailUrl?.let(::fullResolutionArtworkUrl).orEmpty() }
-    Box(Modifier.fillMaxWidth().heightIn(min = minHeight).clipToBounds()) {
-        Box(
-            Modifier.matchParentSize()
-                .graphicsLayer {
-                    if (listState.firstVisibleItemIndex == 0) {
-                        translationY = listState.firstVisibleItemScrollOffset * 0.45f
-                    }
-                }
-                .levyraPressable(
-                    onClick = onOpen,
-                    role = Role.Button,
-                    onClickLabel = if (album != null) strings.openAlbum else strings.play,
-                    pressedScale = 1f
-                )
-        ) {
-            if (album != null) {
-                AsyncImage(albumUrl, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().clearAndSetSemantics {})
-            } else if (track != null) {
-                CoverImage(track, Modifier.fillMaxSize().clearAndSetSemantics {}, highRes = true)
-            }
-        }
-        Box(
-            Modifier.matchParentSize().drawWithCache {
-                val fade = Brush.verticalGradient(
-                    0f to Color.Black.copy(alpha = 0.6f),
-                    0.2f to Color.Transparent,
-                    0.42f to Color.Transparent,
-                    0.78f to AtelierDesign.room.copy(alpha = 0.9f),
-                    1f to AtelierDesign.room
-                )
-                onDrawBehind { drawRect(fade) }
-            }
-        )
-        Row(
-            Modifier.align(Alignment.TopStart).fillMaxWidth().padding(top = statusTop).padding(start = AtelierDesign.gutter, end = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = atelierUppercase(strings.exploreTitle),
-                style = MaterialTheme.typography.labelMedium,
-                color = AtelierDesign.text,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f).clearAndSetSemantics {
-                    heading()
-                    contentDescription = strings.exploreTitle
-                }
-            )
-            AtelierIconAction(Icons.Rounded.Search, strings.search, onOpenSearch, AtelierDesign.text)
-        }
-        Column(
-            Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-                .padding(top = statusTop + 64.dp)
-                .padding(horizontal = AtelierDesign.gutter),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = atelierUppercase(overline),
-                style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 3.sp),
-                color = AtelierDesign.accentBright,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = title,
-                style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Light),
-                color = AtelierDesign.text,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 10.dp)
-            )
-            if (subtitle.isNotBlank()) {
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = AtelierDesign.textSecondary,
-                    textAlign = TextAlign.Center,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 2.dp)
-                )
-            }
-            Spacer(Modifier.height(20.dp))
-            AtelierHardwareKey(
-                label = strings.shuffle,
-                lit = false,
-                onClick = onShuffle,
-                modifier = Modifier.heightIn(min = 54.dp),
-                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
-            ) {
-                Icon(Icons.Rounded.Shuffle, null, tint = AtelierDesign.accentBright, modifier = Modifier.size(22.dp))
-                Spacer(Modifier.width(10.dp))
-                Text(
-                    text = strings.shuffle,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = AtelierDesign.text,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.clearAndSetSemantics {}
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-        }
     }
 }
 
@@ -388,96 +263,13 @@ internal fun AtelierCabinetKnob(angle: Float, modifier: Modifier) {
 }
 
 @Composable
-private fun AtelierCabinetCell(label: String, angle: Float, modifier: Modifier, onClick: () -> Unit) {
-    Row(
-        modifier.heightIn(min = 76.dp)
-            .levyraPressable(onClick = onClick, role = Role.Button, pressedScale = LevyraPressScale.Row)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        AtelierCabinetKnob(angle, Modifier.size(26.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.titleMedium,
-            color = AtelierDesign.text,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f).padding(horizontal = 12.dp)
-        )
-    }
-}
-
-@Composable
-private fun AtelierCabinet(artTrack: Track?, artAlbum: AlbumHit?, onShortcut: (ExploreShortcut) -> Unit, onOpenRadio: () -> Unit, onOpenJam: () -> Unit) {
-    val strings = LocalLevyraStrings.current
-    Column(
-        Modifier.fillMaxWidth().padding(top = AtelierDesign.sectionGap).padding(horizontal = AtelierDesign.gutter)
-            .clip(AtelierDesign.panelShape)
-            .background(AtelierDesign.cabinet)
-            .border(1.dp, AtelierDesign.hairlineStrong, AtelierDesign.panelShape)
-    ) {
-        Box(
-            Modifier.fillMaxWidth().aspectRatio(1.9f)
-                .levyraPressable(onClick = { onShortcut(ExploreShortcut.NewReleases) }, role = Role.Button, pressedScale = LevyraPressScale.Surface)
-        ) {
-            when {
-                artAlbum != null -> AtelierArtwork(artAlbum.thumbnailUrl, Modifier.clearAndSetSemantics {})
-                artTrack != null -> CoverImage(artTrack, Modifier.fillMaxSize().clearAndSetSemantics {})
-            }
-            Box(
-                Modifier.matchParentSize().drawWithCache {
-                    val solid = AtelierDesign.cabinet.copy(alpha = 0.94f)
-                    val colors = listOf(solid, solid.copy(alpha = 0.55f), Color.Transparent)
-                    val shade = Brush.horizontalGradient(if (layoutDirection == LayoutDirection.Rtl) colors.reversed() else colors)
-                    onDrawBehind { drawRect(shade) }
-                }
-            )
-            Column(Modifier.align(Alignment.CenterStart).fillMaxWidth(0.66f).padding(20.dp)) {
-                Text(
-                    text = strings.exploreNewReleases,
-                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Light),
-                    color = AtelierDesign.text,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Icon(
-                    Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                    null,
-                    tint = AtelierDesign.accent,
-                    modifier = Modifier.padding(top = 6.dp).size(28.dp)
-                )
-            }
-        }
-        Box(Modifier.fillMaxWidth().height(1.dp).background(AtelierDesign.hairlineStrong))
-        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-            AtelierCabinetCell(strings.exploreMoods, -140f, Modifier.weight(1f)) { onShortcut(ExploreShortcut.Moods) }
-            Box(Modifier.width(1.dp).fillMaxHeight().background(AtelierDesign.hairlineStrong))
-            AtelierCabinetCell(strings.exploreSamples, -40f, Modifier.weight(1f)) { onShortcut(ExploreShortcut.Samples) }
-        }
-        Box(Modifier.fillMaxWidth().height(1.dp).background(AtelierDesign.hairlineStrong))
-        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-            AtelierCabinetCell(com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog.forCode(strings.code).title, 160f, Modifier.weight(1f), onOpenRadio)
-            Box(Modifier.width(1.dp).fillMaxHeight().background(AtelierDesign.hairlineStrong))
-            AtelierCabinetCell(com.luc4n3x.levyra.ui.i18n.podcastCopy(strings.code).title, 60f, Modifier.weight(1f)) {
-                onShortcut(ExploreShortcut.Podcasts)
-            }
-        }
-        Box(Modifier.fillMaxWidth().height(1.dp).background(AtelierDesign.hairlineStrong))
-        AtelierCabinetCell(strings.jamTitle, -90f, Modifier.fillMaxWidth(), onOpenJam)
-    }
-}
-
-@Composable
 internal fun AtelierExploreEntry(
     state: LevyraUiState,
     viewModel: ExploreViewModel,
     freshTracks: List<Track>,
     listState: LazyListState,
     bottomInset: Dp,
-    onShortcut: (ExploreShortcut) -> Unit,
-    onOpenRadio: () -> Unit,
-    onOpenJam: () -> Unit,
-    onTrackActions: (Track) -> Unit
+    editorial: ExploreEditorialContent?
 ) {
     val strings = LocalLevyraStrings.current
     val currentId = state.currentTrack?.id
@@ -485,39 +277,36 @@ internal fun AtelierExploreEntry(
     val fresh = remember(freshTracks) { freshTracks.distinctBy(Track::id).take(20) }
     val showCharts = state.interfaceSettings.showCharts
     val charts = remember(state.charts, showCharts) { atelierExploreChartTracks(state.charts, showCharts) }
-    val chartsTitle = remember(strings, charts.size, state.chartRegions, state.selectedChartId, state.languageCode) {
-        atelierExploreChartsTitle(strings, charts.size, state)
-    }
-    val heroAlbum = releases.firstOrNull()
-    val heroTrack = atelierExploreHeroTrack(heroAlbum, fresh, charts)
-    val shufflePool = remember(fresh, charts) { (fresh + charts).distinctBy(Track::id).take(AtelierShufflePoolMax) }
     val cratePool = remember(releases, fresh, charts) { atelierExploreCratePool(releases, fresh, charts) }
     val crateTracks = remember(cratePool) { cratePool.mapNotNull { it.track } }
     var crateRoll by rememberSaveable { mutableIntStateOf(0) }
     val crate = remember(cratePool, crateRoll) { atelierExploreCrateSelection(cratePool, crateRoll) }
-    val cabinetAlbum = releases.getOrNull(1) ?: heroAlbum
-    val cabinetTrack = atelierExploreCabinetTrack(cabinetAlbum, fresh)
-    val nothingLoaded = releases.isEmpty() && fresh.isEmpty() && charts.isEmpty()
+    val nothingLoaded = releases.isEmpty() && fresh.isEmpty() && charts.isEmpty() && editorial?.news.isNullOrEmpty()
     val stillLoading = state.isExploreCategoriesLoading || state.isFreshCurrentsLoading || state.isNewReleasesLoading
-    var chartsExpanded by rememberSaveable { mutableStateOf(false) }
-    val trackAction = strings.addToPlaylist
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val play: (List<Track>, Track) -> Unit = { list, track -> atelierExplorePlay(list, track, currentId, state, viewModel) }
-    val shuffle: () -> Unit = { atelierExploreShuffle(shufflePool, heroAlbum, viewModel) }
     val openCrate: (AtelierCrateItem) -> Unit = { item -> atelierExploreOpenCrate(item, crateTracks, viewModel, play) }
     BoxWithConstraints(Modifier.fillMaxSize().background(AtelierDesign.room)) {
-        val heroHeight = (maxWidth * 1.12f).coerceIn(380.dp, 580.dp)
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = bottomInset + AtelierDesign.sectionGap)
         ) {
-            atelierExploreLead(heroAlbum, heroTrack, fresh, charts, strings, statusTop, heroHeight, listState, viewModel, play, shuffle)
-            atelierExploreCrateAndCabinet(crate, crateRoll, { crateRoll += 1 }, openCrate, cabinetTrack, cabinetAlbum, onShortcut, onOpenRadio, onOpenJam)
-            atelierExploreReleases(releases, strings, viewModel, onShortcut)
-            atelierExploreFresh(fresh, currentId, trackAction, strings, play, onTrackActions)
-            atelierExploreChartRows(charts, chartsTitle, chartsExpanded, currentId, trackAction, play, onTrackActions) {
-                chartsExpanded = !chartsExpanded
+            if (editorial != null && editorial.news.isNotEmpty()) {
+                item(key = "atelier-explore-gazette", contentType = "atelier-gazette") {
+                    AtelierGazette(editorial.news, statusTop, viewModel::openSearch, editorial.onOpenNews)
+                }
+            } else {
+                item(key = "atelier-explore-masthead", contentType = "atelier-masthead") { AtelierExploreMasthead(statusTop, viewModel::openSearch) }
+            }
+            if (editorial != null) {
+                item(key = "atelier-explore-top100", contentType = "atelier-top100") {
+                    ExploreDailyTop100(onPlay = editorial.onPlayChart, onTrackActions = editorial.onTrackMenu)
+                }
+            }
+            atelierExploreCrateAndCabinet(crate, crateRoll, { crateRoll += 1 }, openCrate)
+            if (editorial != null && editorial.news.size > ExploreNewsFrontSize) {
+                item(key = "atelier-explore-news-desk", contentType = "atelier-news-desk") { AtelierNewsDesk(editorial.news, editorial.onOpenNews) }
             }
             item(key = "atelier-explore-journey", contentType = "atelier-explore-journey") {
                 com.luc4n3x.levyra.ui.moodjourney.MoodJourneyEntryCard(
@@ -532,18 +321,6 @@ internal fun AtelierExploreEntry(
 
 private fun atelierExploreChartTracks(charts: List<Track>, showCharts: Boolean): List<Track> =
     if (showCharts) charts.distinctBy(Track::id).take(50) else emptyList()
-
-private fun atelierExploreChartsTitle(strings: LevyraStrings, chartCount: Int, state: LevyraUiState): String {
-    val market = state.chartRegions.firstOrNull { it.id == state.selectedChartId }
-        ?.let { ChartMarketDirectory.displayName(it, state.languageCode) }.orEmpty()
-    return strings.chartMarketTitle(chartCount, market)
-}
-
-private fun atelierExploreHeroTrack(heroAlbum: AlbumHit?, fresh: List<Track>, charts: List<Track>): Track? =
-    if (heroAlbum == null) fresh.firstOrNull() ?: charts.firstOrNull() else null
-
-private fun atelierExploreCabinetTrack(cabinetAlbum: AlbumHit?, fresh: List<Track>): Track? =
-    if (cabinetAlbum == null) fresh.getOrNull(1) ?: fresh.firstOrNull() else null
 
 private fun atelierExploreCratePool(releases: List<AlbumHit>, fresh: List<Track>, charts: List<Track>): List<AtelierCrateItem> =
     buildList {
@@ -570,15 +347,6 @@ private fun atelierExplorePlay(
     }
 }
 
-private fun atelierExploreShuffle(shufflePool: List<Track>, heroAlbum: AlbumHit?, viewModel: ExploreViewModel) {
-    if (shufflePool.isNotEmpty()) {
-        val order = shufflePool.shuffled()
-        viewModel.playFrom(order, order.first())
-    } else {
-        heroAlbum?.let(viewModel::openAlbum)
-    }
-}
-
 private fun atelierExploreOpenCrate(
     item: AtelierCrateItem,
     crateTracks: List<Track>,
@@ -591,148 +359,16 @@ private fun atelierExploreOpenCrate(
     }
 }
 
-private fun LazyListScope.atelierExploreLead(
-    heroAlbum: AlbumHit?,
-    heroTrack: Track?,
-    fresh: List<Track>,
-    charts: List<Track>,
-    strings: LevyraStrings,
-    statusTop: Dp,
-    heroHeight: Dp,
-    listState: LazyListState,
-    viewModel: ExploreViewModel,
-    play: (List<Track>, Track) -> Unit,
-    shuffle: () -> Unit
-) {
-    if (heroAlbum != null || heroTrack != null) {
-        item(key = "atelier-explore-hero", contentType = "atelier-explore-hero") {
-            AtelierExploreHero(
-                album = heroAlbum,
-                track = heroTrack,
-                overline = if (heroAlbum != null) strings.exploreNewReleases else strings.exploreFresh,
-                statusTop = statusTop,
-                minHeight = heroHeight,
-                listState = listState,
-                onOpen = {
-                    when {
-                        heroAlbum != null -> viewModel.openAlbum(heroAlbum)
-                        heroTrack != null -> play(if (fresh.isNotEmpty()) fresh else charts, heroTrack)
-                    }
-                },
-                onShuffle = shuffle,
-                onOpenSearch = viewModel::openSearch
-            )
-        }
-    } else {
-        item(key = "atelier-explore-masthead", contentType = "atelier-masthead") {
-            AtelierExploreMasthead(statusTop, viewModel::openSearch)
-        }
-    }
-}
-
 private fun LazyListScope.atelierExploreCrateAndCabinet(
     crate: List<AtelierCrateItem>,
     crateRoll: Int,
     onRollCrate: () -> Unit,
-    openCrate: (AtelierCrateItem) -> Unit,
-    cabinetTrack: Track?,
-    cabinetAlbum: AlbumHit?,
-    onShortcut: (ExploreShortcut) -> Unit,
-    onOpenRadio: () -> Unit,
-    onOpenJam: () -> Unit
+    openCrate: (AtelierCrateItem) -> Unit
 ) {
     if (crate.isNotEmpty()) {
         item(key = "atelier-explore-crate", contentType = "atelier-crate") {
             AtelierCrate(crate, crateRoll, onRollCrate, openCrate)
         }
-    }
-    item(key = "atelier-explore-cabinet", contentType = "atelier-cabinet") {
-        AtelierCabinet(cabinetTrack, cabinetAlbum, onShortcut, onOpenRadio, onOpenJam)
-    }
-}
-
-private fun LazyListScope.atelierExploreReleases(
-    releases: List<AlbumHit>,
-    strings: LevyraStrings,
-    viewModel: ExploreViewModel,
-    onShortcut: (ExploreShortcut) -> Unit
-) {
-    if (releases.isNotEmpty()) {
-        item(key = "atelier-explore-releases", contentType = "atelier-album-strip") {
-            Column {
-                AtelierSectionLabel(strings.exploreNewReleases) {
-                    AtelierTextAction(strings.showAll, { onShortcut(ExploreShortcut.NewReleases) })
-                }
-                LazyRow(contentPadding = AtelierRowPadding, horizontalArrangement = Arrangement.spacedBy(AtelierDesign.itemGap)) {
-                    items(releases, key = { atelierAlbumKey(it) }, contentType = { "atelier-album-tile" }) { album ->
-                        AtelierAlbumTile(album, Modifier.width(AtelierDesign.albumCard)) { viewModel.openAlbum(album) }
-                    }
-                }
-            }
-        }
-    }
-}
-
-private fun LazyListScope.atelierExploreFresh(
-    fresh: List<Track>,
-    currentId: String?,
-    trackAction: String,
-    strings: LevyraStrings,
-    play: (List<Track>, Track) -> Unit,
-    onTrackActions: (Track) -> Unit
-) {
-    if (fresh.isNotEmpty()) {
-        item(key = "atelier-explore-fresh", contentType = "atelier-strip") {
-            Column {
-                AtelierSectionLabel(strings.exploreFresh)
-                LazyRow(contentPadding = AtelierRowPadding, horizontalArrangement = Arrangement.spacedBy(AtelierDesign.itemGap)) {
-                    items(fresh, key = { it.id }, contentType = { "atelier-track-tile" }) { track ->
-                        AtelierTrackTile(
-                            track = track,
-                            width = AtelierDesign.albumCard,
-                            isCurrent = track.id == currentId,
-                            actionsLabel = trackAction,
-                            onPlay = { play(fresh, track) },
-                            onActions = { onTrackActions(track) }
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-private fun LazyListScope.atelierExploreChartRows(
-    charts: List<Track>,
-    chartsTitle: String,
-    chartsExpanded: Boolean,
-    currentId: String?,
-    trackAction: String,
-    play: (List<Track>, Track) -> Unit,
-    onTrackActions: (Track) -> Unit,
-    onToggleCharts: () -> Unit
-) {
-    if (charts.isNotEmpty()) {
-        item(key = "atelier-explore-charts-label", contentType = "atelier-label") {
-            AtelierSectionLabel(chartsTitle)
-        }
-        atelierTrackRows(
-            key = "atelier-explore-charts",
-            tracks = charts,
-            visible = if (chartsExpanded) charts.size else AtelierExploreCollapsedCharts,
-            ranked = true
-        ) { track, rank ->
-            AtelierTrackLine(
-                track = track,
-                rank = rank,
-                isCurrent = track.id == currentId,
-                actionIcon = Icons.AutoMirrored.Rounded.PlaylistAdd,
-                actionLabel = trackAction,
-                onPlay = { play(charts, track) },
-                onAction = { onTrackActions(track) }
-            )
-        }
-        atelierExpandToggle("atelier-explore-charts", charts.size, AtelierExploreCollapsedCharts, chartsExpanded, onToggleCharts)
     }
 }
 

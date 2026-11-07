@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.ui
 
 import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.material.icons.rounded.FormatQuote
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,7 +15,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -91,7 +92,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
-import com.luc4n3x.levyra.domain.ExploreCatalog
 import com.luc4n3x.levyra.domain.PlaylistHit
 import com.luc4n3x.levyra.domain.SearchArtistDiscography
 import com.luc4n3x.levyra.domain.SearchFilter
@@ -164,9 +164,6 @@ private fun atelierSearchContent(data: SearchResults): AtelierSearchContent = At
 
 private class AtelierSearchMenuItem(val label: String, val action: () -> Unit)
 
-@Immutable
-private class AtelierSearchBrowseEntry(val key: String, val title: String, val onClick: () -> Unit)
-
 @Composable
 internal fun AtelierSearchEntry(viewModel: SearchViewModel, state: LevyraUiState, onTrackActions: (Track) -> Unit) {
     val strings = LocalLevyraStrings.current
@@ -183,15 +180,17 @@ internal fun AtelierSearchEntry(viewModel: SearchViewModel, state: LevyraUiState
     LaunchedEffect(blank, strings.code) { if (blank) viewModel.ensureExplore(strings) }
     val recognitionBusy = state.recognitionState is com.luc4n3x.levyra.feature.recognition.RecognitionState.Listening ||
         state.recognitionState is com.luc4n3x.levyra.feature.recognition.RecognitionState.Identifying
-    val toggleRecognition = rememberSearchVoiceActions(
+    val (launchVoice, toggleRecognition) = rememberSearchVoiceActions(
         recognitionBusy, viewModel::startMusicRecognition, viewModel::cancelMusicRecognition, viewModel::setQuery, viewModel::searchNow
-    ).component2()
+    )
     Column(Modifier.fillMaxSize().background(AtelierDesign.room).statusBarsPadding()) {
         AtelierSearchField(
             query = query,
             recognitionAvailable = state.recognitionAvailable,
             recognitionBusy = recognitionBusy,
             onRecognize = toggleRecognition,
+            onVoice = launchVoice,
+            onLyrics = viewModel::openLyricsPhraseSearch,
             busy = !blank && (state.isSearching || state.searchPending),
             focused = focused,
             strings = strings,
@@ -205,7 +204,6 @@ internal fun AtelierSearchEntry(viewModel: SearchViewModel, state: LevyraUiState
         )
         AtelierSearchScope(state.searchFilter, strings, viewModel::setSearchFilter)
         if (blank) {
-            com.luc4n3x.levyra.ui.smartaudio.LyricsSearchEntry(onOpen = viewModel::openLyricsPhraseSearch, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
             AtelierSearchLanding(viewModel, state, strings, copy, leaveField, onTrackActions)
         } else {
             AtelierSearchResults(viewModel, state, strings, copy, focused, leaveField, onTrackActions)
@@ -219,6 +217,8 @@ private fun AtelierSearchField(
     recognitionAvailable: Boolean,
     recognitionBusy: Boolean,
     onRecognize: () -> Unit,
+    onVoice: () -> Unit,
+    onLyrics: () -> Unit,
     busy: Boolean,
     focused: Boolean,
     strings: LevyraStrings,
@@ -280,10 +280,12 @@ private fun AtelierSearchField(
                             .semantics { contentDescription = strings.searchPlaceholder }
                     )
                 }
-                Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                    if (query.isNotEmpty()) {
-                        AtelierSearchIconTarget(Icons.Rounded.Close, strings.clear, onClear)
-                    } else if (recognitionAvailable) {
+                if (query.isNotEmpty()) {
+                    AtelierSearchIconTarget(Icons.Rounded.Close, strings.clear, onClear)
+                } else {
+                    AtelierSearchIconTarget(Icons.Rounded.FormatQuote, strings.lyrics, AtelierDesign.accent, onLyrics)
+                    AtelierSearchIconTarget(Icons.Rounded.Mic, strings.voice, AtelierDesign.textSecondary, onVoice)
+                    if (recognitionAvailable) {
                         AtelierSearchIconTarget(Icons.Rounded.GraphicEq, strings.recognizeMusic, if (recognitionBusy) AtelierDesign.accent else AtelierDesign.textSecondary, onRecognize)
                     }
                 }
@@ -329,14 +331,7 @@ private fun AtelierSearchLanding(
     val leadingRecent = remember(recent) { recent.take(AtelierSearchRecentSleeves) }
     val remainingRecent = remember(recent) { recent.drop(AtelierSearchRecentSleeves) }
     val currentId = state.currentTrack?.id
-    val categories = state.exploreCategories
-    val zones = remember(strings.code) { ExploreCatalog.getZones(strings) }
-    val browseRows = remember(categories, zones) {
-        val entries = categories.filter { it.params.isNotBlank() }.distinctBy { it.params }
-            .map { category -> AtelierSearchBrowseEntry("category-${category.params}", category.title) { viewModel.openExploreCategory(category) } }
-            .ifEmpty { zones.map { zone -> AtelierSearchBrowseEntry("zone-${zone.id}", zone.label) { viewModel.openExploreZone(zone) } } }
-        entries.chunked(2)
-    }
+    val browse = rememberLevyraSearchBrowse(state, viewModel)
     LazyColumn(
         state = rememberLazyListState(),
         modifier = Modifier.fillMaxSize().imePadding(),
@@ -399,30 +394,24 @@ private fun AtelierSearchLanding(
                 }
             }
         }
-        if (browseRows.isNotEmpty()) {
-            item(key = "browse-header", contentType = "header") { AtelierSearchSectionHeader(strings.explore) }
-            items(browseRows, key = { row -> row.joinToString("+") { it.key } }, contentType = { "browse" }) { row ->
-                Row(
-                    Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(horizontal = AtelierDesign.gutter, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    row.forEach { entry -> AtelierSearchBrowseTile(entry, Modifier.weight(1f)) }
-                    if (row.size == 1) Spacer(Modifier.weight(1f))
-                }
+        atelierSearchBrowseSections(
+            browse = browse,
+            samples = exploreSampleTracks(state.exploreSamples, ExploreImmersiveSampleLimit),
+            samplesTitle = strings.exploreSamples,
+            samplePreview = !state.isVideoMode && !state.isResolving,
+            onOpenSample = { index ->
+                leaveField()
+                viewModel.openExploreSamples(index)
+            },
+            onOpenZone = { zone ->
+                leaveField()
+                viewModel.openExploreZone(zone)
+            },
+            onOpenCategory = { category ->
+                leaveField()
+                viewModel.openExploreCategory(category)
             }
-        }
-    }
-}
-
-@Composable
-private fun AtelierSearchBrowseTile(entry: AtelierSearchBrowseEntry, modifier: Modifier) {
-    Box(
-        modifier.fillMaxHeight().heightIn(min = 72.dp).clip(AtelierDesign.cardShape).background(AtelierDesign.cabinet)
-            .border(1.dp, AtelierDesign.hairline, AtelierDesign.cardShape)
-            .clickable(role = Role.Button, onClick = entry.onClick).padding(14.dp),
-        contentAlignment = Alignment.BottomStart
-    ) {
-        Text(entry.title, style = MaterialTheme.typography.titleSmall, color = AtelierDesign.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        )
     }
 }
 

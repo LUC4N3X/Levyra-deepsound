@@ -275,6 +275,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
@@ -8855,7 +8856,8 @@ private fun HomeScreen(
         )
     }
     val rawOtherSections = homeDerivedState.otherSections
-    val freshHomeVideoTracks = remember(state.exploreVideos, state.languageCode) { exploreNewMusicVideos(state.exploreVideos, state.languageCode) }
+    val officialHomeVideos = rememberNewMusicVideos(strings.code)
+    val freshHomeVideoTracks = remember(officialHomeVideos) { officialHomeVideos.mapNotNull { it.track } }
     val lastHomeVideoTracks = remember { mutableStateOf<List<Track>>(emptyList()) }
     val homeVideoTracks = if (freshHomeVideoTracks.isEmpty() && state.isLoadingCharts) {
         lastHomeVideoTracks.value
@@ -10020,9 +10022,8 @@ private fun rememberStudioHomeVideo(
     rawOtherSections: List<com.luc4n3x.levyra.domain.HomeSection>,
     strings: LevyraStrings
 ): Pair<List<Track>, List<IndexedValue<com.luc4n3x.levyra.domain.HomeSection>>> {
-    val freshHomeVideoTracks = remember(state.exploreVideos, rawOtherSections, state.charts, strings.exploreNewVideos) {
-        buildStudioHomeVideoTracks(state, rawOtherSections, strings)
-    }
+    val officialHomeVideos = rememberNewMusicVideos(strings.code)
+    val freshHomeVideoTracks = remember(officialHomeVideos) { officialHomeVideos.mapNotNull { it.track } }
     val lastHomeVideoTracks = remember { mutableStateOf<List<Track>>(emptyList()) }
     val homeVideoTracks = if (freshHomeVideoTracks.isEmpty() && state.isLoadingCharts) {
         lastHomeVideoTracks.value
@@ -10417,17 +10418,6 @@ private fun buildStudioSpotlightHero(
     return HomeSpotlightHero(candidate, heroArtistArtworkUrl, soundtrackArtists, companions)
 }
 
-private fun buildStudioHomeVideoTracks(
-    state: LevyraUiState,
-    @Suppress("UNUSED_PARAMETER") rawOtherSections: List<com.luc4n3x.levyra.domain.HomeSection>,
-    @Suppress("UNUSED_PARAMETER") strings: LevyraStrings
-): List<Track> = exploreNewMusicVideos(state.exploreVideos, state.languageCode)
-
-internal fun exploreNewMusicVideos(videos: List<Track>, languageCode: String): List<Track> =
-    com.luc4n3x.levyra.domain.LocalMusicVideoFilter.localFirst(LevyraPersonalOrbit.distinctRecordings(videos), languageCode).take(HOME_NEW_MUSIC_VIDEOS_LIMIT)
-
-private const val HOME_NEW_MUSIC_VIDEOS_LIMIT = 20
-
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun StudioHomeContent(
@@ -10605,8 +10595,15 @@ private fun LazyListScope.studioHomeSections(
                 HomeSectionId.GenreChips -> homeStudioSectionGenreChips(c)
                 HomeSectionId.SpeedDial -> homeStudioSectionSpeedDial(c)
                 HomeSectionId.Spotlight -> homeStudioSectionSpotlight(c)
-                HomeSectionId.Discovery -> if (stagedSpotlight == null) discoverySection(homeDiscovery, homeStyle, styleSpec, homeAnimationsEnabled)
-                HomeSectionId.PersonalOrbit -> homeStudioSectionPersonalOrbit(c)
+                HomeSectionId.Discovery -> if (stagedSpotlight == null) {
+                    if (prismHomeOnly()) prismBubbleSection(c) else discoverySection(homeDiscovery, homeStyle, styleSpec, homeAnimationsEnabled)
+                }
+                HomeSectionId.PersonalOrbit -> {
+                    homeStudioSectionPersonalOrbit(c)
+                    if (prismHomeOnly()) item(key = "prism-discover", contentType = "prism-discover") {
+                        PrismDiscoverTeaser(Modifier.padding(horizontal = styleSpec.inset, vertical = 12.dp))
+                    }
+                }
                 HomeSectionId.FavoriteRadio -> favoriteRadioSection(homeRadio)
                 HomeSectionId.EditorialCollections -> homeStudioSectionEditorialCollections(c)
                 HomeSectionId.QuickPicks -> homeStudioSectionQuickPicks(c)
@@ -10783,6 +10780,26 @@ private fun LazyListScope.homeStudioSectionSpotlight(c: StudioHomeContext) {
     }
 }
 
+private fun prismHomeOnly(): Boolean = com.luc4n3x.levyra.ui.theme.LevyraActivePalette.id == com.luc4n3x.levyra.ui.theme.PrismPaletteId
+
+private fun LazyListScope.prismBubbleSection(c: StudioHomeContext) {
+    item(key = "prism-bubble", contentType = "prism-bubble") {
+        val handle = LocalHomeDiscovery.current ?: return@item
+        val strings = LocalLevyraStrings.current
+        val artworks = remember(c.state.recentListens) {
+            c.state.recentListens.mapNotNull { track -> track.thumbnailUrl.ifBlank { track.largeThumbnailUrl }.takeIf(String::isNotBlank) }.distinct().take(3)
+        }
+        Box(Modifier.padding(horizontal = c.styleSpec.inset, vertical = 8.dp)) {
+            com.luc4n3x.levyra.ui.discovery.BubbleOrbitEntry(
+                copy = com.luc4n3x.levyra.ui.i18n.smartMusicCopy(strings.code),
+                animated = LocalAnimationsEnabled.current,
+                artworks = artworks,
+                onOpen = { handle.onOpenBubble(com.luc4n3x.levyra.feature.discovery.BubbleLevel.Adventurous) }
+            )
+        }
+    }
+}
+
 private fun LazyListScope.homeStudioSectionPersonalOrbit(c: StudioHomeContext) {
     with(c) {
             if (state.interfaceSettings.showPersonalOrbit && visiblePersonalTracks.isEmpty() && renderSnapshot.orbitPending) {
@@ -10823,7 +10840,11 @@ private fun LazyListScope.homeStudioSectionPersonalOrbit(c: StudioHomeContext) {
 
 private fun LazyListScope.homeStudioSectionEditorialCollections(c: StudioHomeContext) {
     with(c) {
-            if (showDeferredHomeSections && visibleEditorialCollections.isNotEmpty()) {
+            if (showDeferredHomeSections && prismHomeOnly()) {
+                item(key = "prism-curated-releases", contentType = "prism-curated-releases") {
+                    PrismCuratedAndReleases(viewModel, styleSpec.inset)
+                }
+            } else if (showDeferredHomeSections && visibleEditorialCollections.isNotEmpty()) {
                 item(key = "home-editorial-collections", contentType = "home-collections") {
                     HomeSectionLead(compactHome) {
                         if (homeStyle == HomeStyle.MaterialExpressive || LevyraIsPrism) {
@@ -19184,7 +19205,9 @@ private fun SettingsOverlay(
                         SettingsHubHeader(onClose)
                         Spacer(modifier = Modifier.height(14.dp))
                     }
-                    item {
+                    if (LevyraIsAtelier) item {
+                        AtelierSettingsSearchField(settingsQuery, strings.settingsSearchPlaceholder, strings.clear) { settingsQuery = it }
+                    } else item {
                         BasicTextField(
                             value = settingsQuery,
                             onValueChange = { settingsQuery = it },
@@ -20834,7 +20857,7 @@ private fun settingsHubGroupTitle(group: SettingsHubGroup, strings: LevyraString
     }
 ]
 
-private class SettingsStudioEntry(
+internal class SettingsStudioEntry(
     val id: String,
     val title: String,
     val icon: ImageVector,
@@ -20864,6 +20887,7 @@ private fun SettingsHubGroupLabel(text: String) {
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SettingsStudioShelf(title: String, subtitle: String, entries: List<SettingsStudioEntry>) {
+    if (LevyraIsAtelier) return AtelierStudioShelf(title, subtitle, entries)
     Column(modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
         Text(
             title,
@@ -20968,7 +20992,7 @@ internal fun SettingsTile(
     enabled: Boolean = true,
     groupIndex: Int? = null,
     groupCount: Int? = null,
-    color: Color = if (LevyraIsSpotify || LevyraIsYouTubeMusic) Color.Transparent else if (LevyraIsAppleMusic) AppleMusicDesign.groupedBackground else LevyraAdaptiveCard,
+    color: Color = if (LevyraIsSpotify || LevyraIsYouTubeMusic) Color.Transparent else if (LevyraIsAppleMusic) AppleMusicDesign.groupedBackground else if (LevyraIsAtelier) AtelierSettingsPanelFill else LevyraAdaptiveCard,
     content: @Composable () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -20979,6 +21003,7 @@ internal fun SettingsTile(
     val last = index == count - 1
     val shape = settingsTileShape(interactionSource, first, last)
     val tileModifier = modifier.fillMaxWidth().then(if (SkinChrome.active) Modifier.padding(vertical = 1.dp) else Modifier)
+        .then(if (LevyraIsAtelier) Modifier.border(1.dp, AtelierBrass.copy(alpha = 0.28f), shape) else Modifier)
     when {
         checked != null && onCheckedChange != null -> Surface(
             checked = checked,
@@ -21006,6 +21031,7 @@ internal fun SettingsTile(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun SettingsTileIcon(icon: ImageVector, accent: Color, shape: Shape = MaterialShapes.Cookie4Sided.toShape()) {
+    if (LevyraIsAtelier) return AtelierSettingsKey(icon)
     Box(
         modifier = Modifier
             .size(if (LevyraIsAppleMusic) 30.dp else 44.dp)
@@ -21029,7 +21055,8 @@ internal fun SettingsTileText(
         Text(
             title,
             color = LevyraText,
-            fontSize = if (LevyraIsAppleMusic) 17.sp else 16.sp,
+            fontFamily = if (LevyraIsAtelier) AtelierSerif else null,
+            fontSize = if (LevyraIsAppleMusic || LevyraIsAtelier) 17.sp else 16.sp,
             fontWeight = if (LevyraIsAppleMusic) FontWeight.Normal else if (SkinChrome.active) FontWeight.Medium else FontWeight.Bold,
             maxLines = maxTitleLines,
             overflow = TextOverflow.Ellipsis
@@ -21038,6 +21065,8 @@ internal fun SettingsTileText(
             Text(
                 subtitle,
                 color = LevyraMuted,
+                fontFamily = if (LevyraIsAtelier) AtelierSerif else null,
+                fontStyle = if (LevyraIsAtelier) FontStyle.Italic else null,
                 fontSize = 13.sp,
                 lineHeight = 18.sp,
                 fontWeight = FontWeight.Medium,
@@ -21051,6 +21080,7 @@ internal fun SettingsTileText(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SettingsDetailHeader(title: String, summary: String, icon: ImageVector, accent: Color, onBack: () -> Unit) {
+    if (LevyraIsAtelier) return AtelierSettingsDetailHeader(title, summary, onBack)
     if (SkinChrome.active) {
         Column {
             LevyraBackButton(onClick = onBack, contentDescription = LocalLevyraStrings.current.back)
@@ -21575,6 +21605,7 @@ private fun PlayerColorModePreview(mode: PlayerColorMode, customAccent: Int) {
 
 @Composable
 private fun SettingsChoiceChip(label: String, active: Boolean, onClick: () -> Unit) {
+    if (LevyraIsAtelier) return AtelierSettingsChip(label, active, onClick)
     val corner = levyraExpressiveToggleCorner(active, unchecked = 12.dp, checkedCorner = 22.dp, label = "settingsChoiceCorner")
     val skinned = SkinChrome.active
     val selectedBorder = if (LevyraIsTorque || LevyraIsIvory) LevyraActivePalette.blue else SkinChrome.chipSelectedContent
@@ -21665,6 +21696,10 @@ private fun SettingsSectionLabel(text: String) {
     }
     if (LevyraIsSpotify) {
         SpotifySettingsHeading(title)
+        return
+    }
+    if (LevyraIsAtelier) {
+        AtelierSettingsSectionLabel(title, Modifier.padding(top = 18.dp, bottom = 8.dp))
         return
     }
     if (LevyraIsAppleMusic) {
@@ -23312,6 +23347,10 @@ private fun SearchFilterChips(
         if (hasPlaylists) add(SearchFilter.Playlists to strings.playlistsPlain)
         if (hasVideos) add(SearchFilter.Videos to strings.video)
     }
+    if (LevyraIsPrismOnly) {
+        PrismSearchFilters(chips, selected, onSelect)
+        return
+    }
     Row(
         modifier = Modifier
             .recentSearchesBleed(RecentSearchGutter)
@@ -24832,7 +24871,7 @@ private fun ExploreScreen(
 ) {
     val strings = LocalLevyraStrings.current
     LaunchedEffect(strings.code) { viewModel.ensureExplore(strings) }
-    val editorialExplore = LevyraIsSpotify || LevyraIsMono || levyraSearchOwnsBrowse(false, LevyraIsAppleMusic, LevyraIsAtelier || LevyraIsQobuz || LevyraIsYouTubeMusic)
+    val editorialExplore = LevyraIsSpotify || LevyraIsMono || LevyraIsAtelier || levyraSearchOwnsBrowse(false, LevyraIsAppleMusic, LevyraIsAtelier || LevyraIsQobuz || LevyraIsYouTubeMusic)
     LaunchedEffect(strings.code, editorialExplore) { if (editorialExplore) viewModel.ensureNews(strings.code) }
     val news by viewModel.news.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -24842,9 +24881,12 @@ private fun ExploreScreen(
     var samplesStartIndex by rememberSaveable { mutableStateOf<Int?>(null) }
     var exploreDestination by rememberSaveable { mutableStateOf<String?>(null) }
     var exploreMoodReturn by rememberSaveable { mutableStateOf<String?>(null) }
+    var exploreOpenedFromRequest by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(state.selectedTab) { if (state.selectedTab != LevyraTab.Explore) exploreOpenedFromRequest = false }
     LaunchedEffect(state.exploreOpenRequest) {
         val requestedZoneId = state.exploreOpenRequest ?: return@LaunchedEffect
         exploreMoodReturn = null
+        exploreOpenedFromRequest = true
         val samplesIndex = exploreSamplesRequestIndex(requestedZoneId)
         if (samplesIndex != null) {
             exploreDestination = null
@@ -24995,7 +25037,7 @@ private fun ExploreScreen(
             .background(Color.Transparent)
     ) {
         if (LevyraIsAtelier) {
-            AtelierExploreEntry(state, viewModel, freshTracks, listState, exploreBottomInset, onShortcut, { onLiveRadioOpenChange(true) }, onOpenJam) { addToPlaylistTarget = it }
+            AtelierExploreEntry(state, viewModel, freshTracks, listState, exploreBottomInset, editorialContent)
         } else if (LevyraIsMono) {
             MonoExploreEntry(state, listState, exploreBottomInset, editorialContent, onShortcut, { onLiveRadioOpenChange(true) }, onOpenJam)
         } else if (LevyraIsQobuz) {
@@ -25065,8 +25107,20 @@ private fun ExploreScreen(
             exploreDestination = exploreDestination,
             exploreMoodReturn = exploreMoodReturn,
             onAddToPlaylistTargetChange = { addToPlaylistTarget = it },
-            onSamplesStartIndexChange = { samplesStartIndex = it },
-            onDestinationChange = { exploreDestination = it },
+            onSamplesStartIndexChange = { index ->
+                samplesStartIndex = index
+                if (index == null && exploreOpenedFromRequest) {
+                    exploreOpenedFromRequest = false
+                    viewModel.navigateBack()
+                }
+            },
+            onDestinationChange = { destination ->
+                exploreDestination = destination
+                if (destination == null && exploreOpenedFromRequest) {
+                    exploreOpenedFromRequest = false
+                    viewModel.navigateBack()
+                }
+            },
             onMoodReturnChange = { exploreMoodReturn = it },
             onLiveRadioOpenChange = onLiveRadioOpenChange
         )

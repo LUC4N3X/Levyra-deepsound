@@ -51,6 +51,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Radio
 import androidx.compose.material.icons.outlined.LibraryMusic
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Icon
@@ -70,13 +71,14 @@ import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.ui.theme.AtelierDesign
 
-private val AtelierTabOrder = listOf(LevyraTab.Home, LevyraTab.Explore, LevyraTab.Library, LevyraTab.Search)
+private val AtelierTabOrder = listOf(LevyraTab.Home, LevyraTab.Explore, LevyraTab.Library, LevyraTab.Radio)
 
 private fun atelierTabIcon(tab: LevyraTab, entry: LevyraTabEntry): ImageVector = when (tab) {
     LevyraTab.Home -> Icons.Outlined.Home
     LevyraTab.Search -> Icons.Outlined.Search
     LevyraTab.Explore -> Icons.Outlined.Explore
     LevyraTab.Library -> Icons.Outlined.LibraryMusic
+    LevyraTab.Radio -> Icons.Outlined.Radio
     else -> entry.unselectedIcon
 }
 

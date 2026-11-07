@@ -1280,12 +1280,12 @@ private fun RadioDirectoryDialogRow(label: String, selected: Boolean, onClick: (
     }
 }
 
-private fun selectedCountryLabel(state: LiveRadioUiState, strings: LevyraLiveRadioStrings): String {
+internal fun selectedCountryLabel(state: LiveRadioUiState, strings: LevyraLiveRadioStrings): String {
     val code = state.selectedCountryCode ?: return strings.worldwide
     return localizedCountryName(code, state.levyraLanguageCode).ifBlank { strings.countries }
 }
 
-private fun mainSectionTitle(state: LiveRadioUiState, strings: LevyraLiveRadioStrings): String {
+internal fun mainSectionTitle(state: LiveRadioUiState, strings: LevyraLiveRadioStrings): String {
     if (state.query.isNotBlank()) return state.query.trim()
     state.selectedLanguage?.let { return it }
     val code = state.selectedCountryCode ?: return strings.worldwide
