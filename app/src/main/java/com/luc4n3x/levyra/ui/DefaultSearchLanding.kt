@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.ui
 
 import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
+import com.luc4n3x.levyra.ui.components.trackContentDescription
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -63,13 +64,14 @@ internal fun DefaultRecentSearchesRail(
         ) {
             itemsIndexed(tracks, key = { _, track -> "default-recent-${track.id}" }) { _, track ->
                 var menuExpanded by remember(track.id) { mutableStateOf(false) }
+                val description = trackContentDescription(track)
                 Row(
                     Modifier.width(248.dp).height(76.dp).clip(DefaultRecentShape).background(scheme.surfaceContainerHigh)
                         .levyraPressable(
                             onClick = { onTrackClick(track) }, onLongClick = { menuExpanded = true }, onLongClickLabel = actionsLabel,
                             pressedScale = LevyraPressScale.Row, role = Role.Button
                         )
-                        .semantics(mergeDescendants = true) { contentDescription = "${track.title}, ${track.artist}" }
+                        .semantics(mergeDescendants = true) { contentDescription = description }
                         .padding(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -97,10 +99,11 @@ internal fun DefaultSearchSamplesRail(title: String, samples: List<Track>, previ
             contentPadding = PaddingValues(horizontal = RecentSearchGutter)
         ) {
             itemsIndexed(samples, key = { _, track -> "default-sample-${track.id}" }) { index, track ->
+                val description = trackContentDescription(track)
                 Box(
                     Modifier.size(width = 152.dp, height = 212.dp).clip(DefaultSampleShape).background(scheme.surfaceContainerHighest)
                         .levyraPressable(onClick = { onOpen(index) }, pressedScale = LevyraPressScale.Tile, role = Role.Button)
-                        .semantics(mergeDescendants = true) { contentDescription = "${track.title}, ${track.artist}" }
+                        .semantics(mergeDescendants = true) { contentDescription = description }
                 ) {
                     CoverImage(track, Modifier.fillMaxSize(), highRes = true)
                     if (previewEnabled && index == 0) SpotifySamplePreview(track)

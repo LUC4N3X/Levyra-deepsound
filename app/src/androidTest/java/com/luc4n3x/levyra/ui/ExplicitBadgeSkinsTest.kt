@@ -7,12 +7,19 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.background
 import androidx.compose.material3.Text
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -21,6 +28,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.luc4n3x.levyra.MainActivity
 import com.luc4n3x.levyra.domain.LevyraSkin
+import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import com.luc4n3x.levyra.ui.components.LevyraRowText
 import com.luc4n3x.levyra.ui.theme.LevyraTheme
@@ -28,11 +36,60 @@ import com.luc4n3x.levyra.ui.theme.LevyraThemeController
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertArrayEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class ExplicitBadgeSkinsTest {
+    @Test
+    fun searchRailsAnnounceExplicitAlongWithTitleAndArtist() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val track = Track(
+            id = "explicit-test", title = "Rated song", artist = "Artist", album = "", durationMs = 180_000,
+            streamUrl = "", videoUrl = "", thumbnailUrl = "", largeThumbnailUrl = "", source = "youtube",
+            moodTags = emptySet(), energy = 0, vocal = 0, replayScore = 0, cacheScore = 0, accentStart = 0, accentEnd = 0,
+            explicit = true
+        )
+        var rail by mutableStateOf(0)
+        var rated by mutableStateOf(true)
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.onActivity { activity ->
+                activity.setContent {
+                    LevyraTheme {
+                        Surface {
+                            Column(Modifier.padding(top = 64.dp)) {
+                                Text("Rail $rail $rated")
+                                val tracks = listOf(track.copy(explicit = rated))
+                                when (rail) {
+                                    0 -> DefaultRecentSearchesRail("Recent", tracks, {}) { _, _, _ -> }
+                                    1 -> DefaultSearchSamplesRail("Samples", tracks, false) {}
+                                    2 -> IvoryRecentSearchesRail("Recent", tracks, {}) { _, _, _ -> }
+                                    3 -> IvorySearchSamplesRail("Samples", tracks, false) {}
+                                    4 -> TorqueRecentSearchesRail("Recent", tracks, {}) { _, _, _ -> }
+                                    else -> TorqueSearchSamplesRail("Samples", tracks, false) {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            for (candidate in 0..5) for (explicit in listOf(true, false)) {
+                scenario.onActivity { rail = candidate; rated = explicit }
+                val expected = "Rated song, Artist" + if (explicit) ", Explicit" else ""
+                val deadline = SystemClock.uptimeMillis() + 5_000
+                var found = false
+                do {
+                    instrumentation.waitForIdleSync()
+                    val root = instrumentation.uiAutomation.rootInActiveWindow
+                    found = root != null && hasText(root, "Rail $candidate $explicit") && hasDescription(root, expected)
+                    if (!found) SystemClock.sleep(50)
+                } while (!found && SystemClock.uptimeMillis() < deadline)
+                assertTrue("Rail $candidate must announce $expected", found)
+            }
+        }
+    }
+
     @Test
     fun explicitBadgesStayVisibleAcrossEverySkinAndLongTitles() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
@@ -45,7 +102,13 @@ class ExplicitBadgeSkinsTest {
                       Surface {
                         Column(Modifier.width(220.dp).padding(top = 64.dp, start = 16.dp)) {
                             Text(skin.name)
-                            LevyraMediaTitle(longTitle, explicit = true, modifier = Modifier.semantics { heading() })
+                            CompositionLocalProvider(LocalAnimationsEnabled provides true, LocalLayoutDirection provides LayoutDirection.Ltr) {
+                                LevyraMediaTitle(
+                                    longTitle, explicit = true, color = Color.White, fontFamily = FontFamily.Monospace,
+                                    fontSize = 20.sp, repeatDelayMillis = 100,
+                                    modifier = Modifier.background(Color.Black).semantics { heading() }
+                                )
+                            }
                             LevyraRowText("Another long explicit song title in the library", "Artist", explicit = true)
                             LevyraMediaTitle("A song without an explicit badge", explicit = false)
                         }
@@ -79,16 +142,39 @@ class ExplicitBadgeSkinsTest {
                 assertTrue("Title keeps its heading semantics; matches=${titleNodes.size}; $headingEvidence", titleNodes.any { node ->
                     generateSequence(node) { it.parent }.any { it.isHeading }
                 })
-                val before = Rect().also { badges.first().getBoundsInScreen(it) }
-                assertTrue(before.width() > 0 && before.height() > 0)
-                if (candidate == LevyraSkin.Default) {
-                    SystemClock.sleep(4_500)
-                    val after = Rect().also {
-                        explicitNodes(requireNotNull(instrumentation.uiAutomation.rootInActiveWindow)).first().getBoundsInScreen(it)
-                    }
-                    assertEquals("Badge must stay fixed while the title scrolls", before, after)
-                }
+                assertFixedBadgeAndMovingTitle(titleNodes.single())
             }
+        }
+    }
+
+    private fun assertFixedBadgeAndMovingTitle(node: AccessibilityNodeInfo) {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val density = instrumentation.targetContext.resources.displayMetrics.density
+        val row = Rect().also(node::getBoundsInScreen)
+        val badgeSize = (14 * density).toInt()
+        val badge = Rect(row.left, row.centerY() - badgeSize / 2, row.left + badgeSize, row.centerY() - badgeSize / 2 + badgeSize)
+        val title = Rect(row.left + (20 * density).toInt(), row.top, row.right, row.bottom)
+        val badgeBefore = screenshotPixels(badge)
+        val titleBefore = screenshotPixels(title)
+        assertTrue("The explicit glyph must contain visible pixels", badgeBefore.any { android.graphics.Color.red(it) > 128 })
+        val deadline = SystemClock.uptimeMillis() + 3_000
+        var moved = false
+        do {
+            SystemClock.sleep(100)
+            assertArrayEquals("The explicit glyph pixels must stay fixed", badgeBefore, screenshotPixels(badge))
+            moved = !titleBefore.contentEquals(screenshotPixels(title))
+        } while (!moved && SystemClock.uptimeMillis() < deadline)
+        assertTrue("The overflowing title pixels must move", moved)
+    }
+
+    private fun screenshotPixels(bounds: Rect): IntArray {
+        val bitmap = requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
+        return try {
+            IntArray(bounds.width() * bounds.height()).also {
+                bitmap.getPixels(it, 0, bounds.width(), bounds.left, bounds.top, bounds.width(), bounds.height())
+            }
+        } finally {
+            bitmap.recycle()
         }
     }
 
@@ -100,5 +186,10 @@ class ExplicitBadgeSkinsTest {
     private fun hasText(node: AccessibilityNodeInfo, text: String): Boolean =
         node.text?.toString() == text || (0 until node.childCount).any { index ->
             node.getChild(index)?.let { hasText(it, text) } == true
+        }
+
+    private fun hasDescription(node: AccessibilityNodeInfo, text: String): Boolean =
+        node.contentDescription?.toString() == text || (0 until node.childCount).any { index ->
+            node.getChild(index)?.let { hasDescription(it, text) } == true
         }
 }

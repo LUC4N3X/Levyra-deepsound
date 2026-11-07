@@ -26,8 +26,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
+import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LevyraAppleMusicStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+
+@Composable
+internal fun trackContentDescription(track: Track): String {
+    val explicitLabel = LevyraAppleMusicStrings.forCode(LocalLevyraStrings.current.code).explicit
+    return "${track.title}, ${track.artist}" + if (track.explicit) ", $explicitLabel" else ""
+}
 
 @Composable
 internal fun LevyraMediaTitle(

@@ -7,6 +7,26 @@ import org.junit.Assert.assertSame
 import org.junit.Test
 
 class SpotifyMetadataIndexTest {
+    @Test
+    fun explicitRatingSeparatesOtherwiseIdenticalRecordingsEvenWithSameIsrc() {
+        for (explicit in listOf(false, true)) {
+            val youtube = track().copy(explicit = explicit, isrc = "SAME-ISRC")
+            val spotify = track("spotify:other-edition").copy(explicit = !explicit, isrc = youtube.isrc)
+            assertNull(SpotifyMetadataIndex(listOf(spotify)).match(youtube))
+            assertSame(youtube, withSpotifyMetadata(youtube, spotify))
+        }
+    }
+
+    @Test
+    fun spotifyRatingIsAuthoritativeForTheSameConcretePlaybackResource() {
+        for (explicit in listOf(false, true)) {
+            val youtube = track().copy(explicit = !explicit)
+            val spotify = track("spotify:same-resource").copy(explicit = explicit, audioVideoId = youtube.id)
+            assertEquals(spotify, SpotifyMetadataIndex(listOf(spotify)).match(youtube))
+            assertEquals(explicit, withSpotifyMetadata(youtube, spotify).explicit)
+        }
+    }
+
     private fun track(id: String = "abcdefghijk", title: String = "Numb", artist: String = "Linkin Park") = Track(
         id = id, title = title, artist = artist, album = "Meteora", durationMs = 187_000L,
         streamUrl = "https://audio.example.test/song", videoUrl = "https://www.youtube.com/watch?v=$id",

@@ -204,7 +204,7 @@ internal fun mergeSpotifyAndYoutubeSongs(existing: List<Track>, incoming: List<T
         }
 
         val candidates = availableYoutubeIndices.map { ordered[it] }.filter {
-            compatibleMetadataAlbum(spotifyTrack, it)
+            compatibleMetadataAlbum(spotifyTrack, it) && compatibleExplicitEdition(spotifyTrack, it)
         }
         val matched = SpotifyYouTubeMatcher.findBestMatch(spotifyTrack, candidates)?.candidate
         val cachedVideoId = spotifyTrack.id
@@ -217,6 +217,7 @@ internal fun mergeSpotifyAndYoutubeSongs(existing: List<Track>, incoming: List<T
             ?.let { match -> availableYoutubeIndices.firstOrNull { ordered[it].id == match.id } }
             ?: youtubeIndexById[cachedVideoId]?.takeIf { index ->
                 index in availableYoutubeIndices && compatibleMetadataAlbum(spotifyTrack, ordered[index]) &&
+                    compatibleExplicitEdition(spotifyTrack, ordered[index]) &&
                     SpotifyYouTubeMatcher.scoreMatch(spotifyTrack, ordered[index]) >= SpotifyYouTubeMatcher.DEFAULT_CONFIDENCE_THRESHOLD
             }
 
@@ -269,7 +270,7 @@ internal fun mergeSpotifyAndYoutubeSongs(existing: List<Track>, incoming: List<T
             track.audioVideoId.isBlank()
         ) {
             val cached = matchCache.get(track.id)
-            if (cached != null) {
+            if (cached != null && cached.explicit == track.explicit) {
                 result.add(enrichWithCachedData(track, cached))
                 continue
             }
@@ -299,7 +300,7 @@ private fun absorbMusicVideo(entry: Track, video: Track): Track {
     return entry.copy(
         audioVideoId = audioId,
         counterpartVideoId = if (officialVideo && !hasVideoCounterpart) video.id.trim() else entry.counterpartVideoId,
-        explicit = entry.explicit || video.explicit,
+        explicit = if (isSpotifySearchTrack(entry)) entry.explicit else entry.explicit || video.explicit,
         youtubeViewCount = maxOf(entry.youtubeViewCount, video.youtubeViewCount)
     )
 }
@@ -313,6 +314,7 @@ private fun absorbMatchedMusicVideos(tracks: List<Track>): List<Track> {
         val video = tracks[videoIndex]
         if (!isSearchMusicVideo(video)) continue
         val entryIndex = entryIndices
+            .filter { compatibleExplicitEdition(tracks[it], video) }
             .map { it to SpotifyYouTubeMatcher.scoreMatch(tracks[it], video) }
             .filter { (_, score) -> score >= RECORDING_VIDEO_CONFIDENCE }
             .maxByOrNull { (_, score) -> score }
@@ -395,6 +397,12 @@ private fun hasSharedYoutubeIdentity(first: Track, second: Track): Boolean {
     return sequenceOf(second.id, second.counterpartVideoId, second.audioVideoId)
         .filter(::isPlayableYoutubeId)
         .any(firstIds::contains)
+}
+
+internal fun compatibleExplicitEdition(first: Track, second: Track): Boolean {
+    if (first.explicit == second.explicit) return true
+    val identity = searchSongIdentityKey(first)
+    return (identity.isNotBlank() && identity == searchSongIdentityKey(second)) || hasSharedYoutubeIdentity(first, second)
 }
 
 private fun sameSearchRecording(first: Track, second: Track): Boolean {
@@ -656,6 +664,7 @@ private fun compatibleMetadataAlbum(first: Track, second: Track): Boolean =
 internal fun richerSong(current: Track, candidate: Track): Track {
     if (preservesPersonalMetadata(current)) return current
     if (preservesPersonalMetadata(candidate)) return candidate
+    if (!compatibleExplicitEdition(current, candidate)) return current
     val isAnySpotify = isSpotifySearchTrack(current) || isSpotifySearchTrack(candidate)
     if (isAnySpotify && !compatibleMetadataAlbum(current, candidate)) return current
     val metadataDonor = selectSongMetadataDonor(current, candidate)
@@ -713,7 +722,7 @@ internal fun richerSong(current: Track, candidate: Track): Track {
         discTotal = metadataDonor.discTotal.takeIf { it > 0 } ?: current.discTotal.takeIf { it > 0 } ?: candidate.discTotal,
         albumArtist = metadataDonor.albumArtist.ifBlank { current.albumArtist.ifBlank { candidate.albumArtist } },
         canonicalAlbumUrl = metadataDonor.canonicalAlbumUrl.ifBlank { current.canonicalAlbumUrl.ifBlank { candidate.canonicalAlbumUrl } },
-        explicit = current.explicit || candidate.explicit,
+        explicit = if (isAnySpotify) metadataDonor.explicit else current.explicit || candidate.explicit,
         source = when {
             isLocalSearchTrack(playbackDonor) -> playbackDonor.source
             isAnySpotify && videoId.isNotBlank() -> "spotify_youtube"

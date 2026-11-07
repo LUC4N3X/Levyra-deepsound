@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.data.spotify
 
 import com.luc4n3x.levyra.data.mergeSpotifyAndYoutubeSongs
+import com.luc4n3x.levyra.data.mergeSearchSongs
+import com.luc4n3x.levyra.data.richerSong
 import com.luc4n3x.levyra.domain.Track
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -8,6 +10,49 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SpotifyYouTubeMatcherTest {
+
+    @Test
+    fun searchKeepsDifferentExplicitEditionsSeparateInEitherDirection() {
+        for (explicit in listOf(false, true)) {
+            val spotify = sampleTrack("spotify:edition-$explicit", "Song", "Artist")
+                .copy(source = "spotify", metadataProvider = "spotify", explicit = explicit, isrc = "SAME-ISRC")
+            val youtube = sampleTrack("editionyt01", "Song", "Artist")
+                .copy(explicit = !explicit, isrc = spotify.isrc)
+            assertEquals(listOf(spotify, youtube), mergeSpotifyAndYoutubeSongs(listOf(spotify), listOf(youtube)))
+            assertEquals(spotify, richerSong(spotify, youtube))
+            val video = youtube.copy(id = "editionmv01", videoType = "MUSIC_VIDEO_TYPE_OMV")
+            assertEquals(2, mergeSearchSongs(listOf(spotify), listOf(video)).size)
+        }
+    }
+
+    @Test
+    fun searchRejectsCachedPlaybackFromAnotherExplicitEdition() {
+        val spotify = sampleTrack("spotify:cached-edition", "Song", "Artist")
+            .copy(source = "spotify", metadataProvider = "spotify", explicit = true)
+        val youtube = sampleTrack("cachedyt001", "Song", "Artist")
+        val cache = SpotifyYouTubeMatchCache.get()
+        cache.put(spotify.id, youtube)
+        assertEquals(false, cache.get(spotify.id)?.explicit)
+        assertEquals(listOf(spotify), mergeSpotifyAndYoutubeSongs(emptyList(), listOf(spotify)))
+        assertEquals(2, mergeSpotifyAndYoutubeSongs(listOf(spotify), listOf(youtube)).size)
+        cache.put(spotify.id, youtube.copy(explicit = true))
+        val result = mergeSpotifyAndYoutubeSongs(emptyList(), listOf(spotify)).single()
+        assertEquals(youtube.id, result.id)
+        assertTrue(result.explicit)
+    }
+
+    @Test
+    fun spotifyRatingWinsWhenConcretePlaybackIdentityIsShared() {
+        for (explicit in listOf(false, true)) {
+            val youtube = sampleTrack("sharedyt001", "Song", "Artist").copy(explicit = !explicit)
+            val spotify = sampleTrack("spotify:shared-$explicit", "Song", "Artist")
+                .copy(source = "spotify", metadataProvider = "spotify", explicit = explicit, audioVideoId = youtube.id)
+            val result = mergeSearchSongs(listOf(spotify), listOf(youtube)).single()
+            assertEquals(youtube.id, result.id)
+            assertEquals(explicit, result.explicit)
+            assertEquals(explicit, richerSong(youtube, spotify).explicit)
+        }
+    }
 
     private fun sampleTrack(
         id: String,
