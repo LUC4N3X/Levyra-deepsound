@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.library
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.foundation.background
 import androidx.compose.material.icons.automirrored.rounded.ArrowForwardIos
 import androidx.compose.foundation.layout.size
@@ -51,7 +52,7 @@ internal fun AppleLibraryRecentlyAdded(tracks: List<Track>, onPlay: (Track) -> U
                     ) {
                         CoverImage(track, Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(AppleMusicDesign.cornerM)).background(AppleMusicDesign.fill))
                         Spacer(Modifier.padding(top = 4.dp))
-                        Text(track.title, color = AppleMusicDesign.label, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        LevyraMediaTitle(track.title, explicit = track.explicit,  color = AppleMusicDesign.label, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(track.artist, color = AppleMusicDesign.secondaryLabel, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }

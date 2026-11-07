@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -73,7 +75,7 @@ internal fun DefaultRecentSearchesRail(
                 ) {
                     Box(Modifier.size(60.dp).clip(artShape)) { CoverImage(track, Modifier.fillMaxSize()) }
                     Column(Modifier.weight(1f).padding(horizontal = 12.dp).clearAndSetSemantics { }) {
-                        Text(track.title, color = scheme.onSurface, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        LevyraMediaTitle(track.title, explicit = track.explicit,  color = scheme.onSurface, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(track.artist, color = scheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     menu(track, menuExpanded) { menuExpanded = false }
@@ -103,9 +105,9 @@ internal fun DefaultSearchSamplesRail(title: String, samples: List<Track>, previ
                     CoverImage(track, Modifier.fillMaxSize(), highRes = true)
                     if (previewEnabled && index == 0) SpotifySamplePreview(track)
                     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.5f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.78f))))
-                    Text(
-                        track.title, color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold,
-                        maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    LevyraMediaTitle(
+                        track.title, explicit = track.explicit,  color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.align(Alignment.BottomStart).padding(start = 14.dp, end = 14.dp, bottom = 16.dp).clearAndSetSemantics { }
                     )
                 }

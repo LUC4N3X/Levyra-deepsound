@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.player
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -298,8 +299,8 @@ private fun AtelierQueueRow(
             }
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
-                Text(
-                    track.title, style = MaterialTheme.typography.titleMedium,
+                LevyraMediaTitle(
+                    track.title,  style = MaterialTheme.typography.titleMedium,
                     color = if (highlighted) AtelierDesign.accentBright else AtelierDesign.text,
                     maxLines = 1, overflow = TextOverflow.Ellipsis
                 )

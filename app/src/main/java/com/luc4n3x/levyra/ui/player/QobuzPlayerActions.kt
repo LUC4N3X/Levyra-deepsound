@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.player
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -93,13 +94,13 @@ private fun QobuzPlayerActionsHeader(track: Track, artworkUrl: String) {
             InstantArtworkPlaceholder(modifier = Modifier.fillMaxSize())
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = track.title,
+            LevyraMediaTitle(
+                text = track.title, explicit = track.explicit,
                 color = QobuzDesign.textPrimary,
                 fontSize = 17.sp,
                 lineHeight = LevyraTypeRhythm.lineHeight(17.sp),
                 fontWeight = FontWeight.Medium,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.semantics { heading() }
             )

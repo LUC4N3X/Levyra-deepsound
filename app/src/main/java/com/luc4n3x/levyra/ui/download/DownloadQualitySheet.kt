@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.download
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import android.text.format.Formatter
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
@@ -527,12 +528,12 @@ private fun HeaderTitles(
             modifier = Modifier.semantics { heading() }
         )
         Spacer(Modifier.height(4.dp))
-        Text(
-            text = track.title,
+        LevyraMediaTitle(
+            text = track.title, explicit = track.explicit,
             color = style.content,
             style = if (expressive) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleLarge,
             fontWeight = if (expressive) FontWeight.ExtraBold else FontWeight.Bold,
-            maxLines = 2,
+            maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
         Text(

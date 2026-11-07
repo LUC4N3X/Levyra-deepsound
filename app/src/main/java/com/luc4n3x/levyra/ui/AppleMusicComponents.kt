@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -157,8 +158,8 @@ internal fun AppleMusicHeroCard(hero: AppleMusicHeroModel, modifier: Modifier = 
                 maxLines = 1, overflow = TextOverflow.Ellipsis
             )
         }
-        Text(
-            hero.title, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Normal),
+        LevyraMediaTitle(
+            hero.title,  style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Normal),
             color = AppleMusicDesign.label, maxLines = 1, overflow = TextOverflow.Ellipsis
         )
         Text(
@@ -256,8 +257,8 @@ internal fun AppleMusicSongRow(
             Spacer(Modifier.width(AppleMusicDesign.itemGap))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        track.title, style = MaterialTheme.typography.bodyLarge.copy(fontSize = 16.sp, lineHeight = 20.sp),
+                    LevyraMediaTitle(
+                        track.title,  style = MaterialTheme.typography.bodyLarge.copy(fontSize = 16.sp, lineHeight = 20.sp),
                         color = if (current) AppleMusicDesign.accent else AppleMusicDesign.label,
                         maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false)
                     )
@@ -326,7 +327,7 @@ internal fun AppleMusicSquareCard(card: AppleMusicCardModel, explicitLabel: Stri
         }
         Spacer(Modifier.height(5.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
+            LevyraMediaTitle(
                 card.title, style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp, lineHeight = 16.sp),
                 color = AppleMusicDesign.label, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f, fill = false)
@@ -473,7 +474,7 @@ internal fun AppleMusicAlbumTrackRow(
             )
             Column(Modifier.weight(1f).padding(start = 8.dp, top = 6.dp, bottom = 6.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
+                    LevyraMediaTitle(
                         title, style = MaterialTheme.typography.bodyLarge, color = if (current) AppleMusicDesign.accent else AppleMusicDesign.label,
                         maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false)
                     )

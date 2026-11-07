@@ -105,6 +105,7 @@ internal fun PlaylistAlbumRow(
         Spacer(Modifier.width(LevyraCardDesign.RowTextGap))
         LevyraRowText(
             title = entry.album.title,
+            explicit = entry.album.explicit,
             subtitle = subtitle,
             titleColor = if (isCurrent) LevyraCyan else LevyraText,
             modifier = Modifier.weight(1f)

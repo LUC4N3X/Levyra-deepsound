@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -124,7 +126,7 @@ private fun TorqueReleaseLead(album: AlbumHit, badge: String, strings: LevyraStr
         Row(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.Bottom) {
             Column(Modifier.weight(1f).clearAndSetSemantics { }, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Box(Modifier.width(36.dp).height(4.dp).background(LevyraActivePalette.blue))
-                Text(album.title.uppercase(), color = Color.White, fontSize = 26.sp, lineHeight = 29.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                LevyraMediaTitle(album.title.uppercase(), explicit = album.explicit, color = Color.White, fontSize = 26.sp, lineHeight = 29.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp)
                 Text(listOf(album.artist, album.year).filter(String::isNotBlank).joinToString(" · "), color = Color.White.copy(alpha = 0.85f), fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Box(
@@ -151,7 +153,7 @@ private fun TorqueReleaseGridCard(rank: Int, album: AlbumHit, badge: String, mod
             )
         }
         Column(Modifier.padding(start = 10.dp, end = 10.dp, top = 10.dp, bottom = 12.dp).clearAndSetSemantics { }, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(album.title.uppercase(), color = LevyraText, fontSize = 13.sp, lineHeight = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.6.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            LevyraMediaTitle(album.title.uppercase(), explicit = album.explicit, color = LevyraText, fontSize = 13.sp, lineHeight = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.6.sp)
             Text(album.artist, color = LevyraMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }

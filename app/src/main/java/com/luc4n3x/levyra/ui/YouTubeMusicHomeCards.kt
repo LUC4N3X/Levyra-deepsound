@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -309,8 +310,8 @@ private fun YouTubeMusicSpeedTile(track: Track, current: Boolean, onClick: () ->
             )
         )
         if (current) YouTubeMusicNowPlayingBars(Modifier.align(Alignment.Center))
-        Text(
-            track.title, color = Color.White, fontSize = 17.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium,
+        LevyraMediaTitle(
+            track.title, explicit = track.explicit,  color = Color.White, fontSize = 17.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium,
             maxLines = 1, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.align(Alignment.BottomStart).padding(start = 12.dp, end = 10.dp, bottom = 8.dp)
         )

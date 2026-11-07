@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -67,7 +69,7 @@ internal fun IvoryRecentSearchesRail(
                 ) {
                     Box(Modifier.size(60.dp).clip(IvoryDesign.coverShape)) { CoverImage(track, Modifier.fillMaxSize()) }
                     Column(Modifier.weight(1f).padding(horizontal = 12.dp).clearAndSetSemantics { }) {
-                        Text(track.title, color = LevyraText, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        LevyraMediaTitle(track.title, explicit = track.explicit,  color = LevyraText, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(track.artist, color = LevyraMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     menu(track, menuExpanded) { menuExpanded = false }
@@ -95,8 +97,8 @@ internal fun IvorySearchSamplesRail(title: String, samples: List<Track>, preview
                     CoverImage(track, Modifier.fillMaxSize(), highRes = true)
                     if (previewEnabled && index == 0) SpotifySamplePreview(track)
                     IvoryInkTab(start = true, Modifier.align(Alignment.BottomStart).padding(bottom = 12.dp).fillMaxWidth(0.88f).height(44.dp)) {
-                        Text(
-                            track.title, color = IvoryDesign.onInk, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        LevyraMediaTitle(
+                            track.title, explicit = track.explicit,  color = IvoryDesign.onInk, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.fillMaxWidth().padding(start = 14.dp, end = 18.dp).clearAndSetSemantics { }
                         )
                     }

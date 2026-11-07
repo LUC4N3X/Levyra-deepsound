@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.library
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -892,8 +893,8 @@ private fun LazyItemScope.StudioTrackRow(
             )
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = track.title,
+                LevyraMediaTitle(
+                    text = track.title, explicit = track.explicit,
                     color = LevyraText,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,

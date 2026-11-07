@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -274,7 +276,7 @@ private fun TorqueReleaseCard(
         Row(Modifier.fillMaxWidth().padding(start = 12.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f).clearAndSetSemantics { }, verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(eyebrow, color = LevyraActivePalette.blue, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.6.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(card.title.uppercase(), color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                LevyraMediaTitle(card.title.uppercase(), explicit = track.explicit, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
                 Text(card.subtitle, color = LevyraMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             actions()
@@ -365,7 +367,7 @@ internal fun TorqueChartRow(index: Int, track: Track, optionsLabel: String, onPl
         TorqueRank(index + 1, index < 3)
         Box(Modifier.size(56.dp)) { CoverImage(track, Modifier.fillMaxSize()) }
         Column(Modifier.weight(1f)) {
-            Text(track.title, color = LevyraText, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            LevyraMediaTitle(track.title, explicit = track.explicit,  color = LevyraText, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(track.artist, color = LevyraMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         IconButton(onClick = onActions) { Icon(Icons.Rounded.MoreVert, optionsLabel, tint = LevyraMuted) }

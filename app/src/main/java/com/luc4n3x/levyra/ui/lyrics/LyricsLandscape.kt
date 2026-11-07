@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.lyrics
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import android.content.res.Configuration
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -274,13 +275,13 @@ internal fun LyricsLandscapeArtworkPane(
             modifier = Modifier.width(artworkSize),
             horizontalAlignment = Alignment.Start
         ) {
-            Text(
-                text = track?.title ?: fallbackTitle,
+            LevyraMediaTitle(
+                text = track?.title ?: fallbackTitle, explicit = track?.explicit == true,
                 color = Color.White,
                 fontSize = 20.sp,
                 lineHeight = 25.sp,
                 fontWeight = FontWeight.Black,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.semantics { heading() }
             )

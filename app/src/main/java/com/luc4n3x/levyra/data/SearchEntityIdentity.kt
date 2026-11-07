@@ -24,14 +24,14 @@ internal fun searchSongMetadataKey(track: Track): String {
     val artist = artistIdentityKey(primaryArtistSegment(track.artist))
     val durationSeconds = track.durationMs / 1_000L
     if (title.isBlank() || artist.isBlank() || durationSeconds <= 0L) return ""
-    return "recording:$title|$artist|$durationSeconds"
+    return "recording:$title|$artist|$durationSeconds|${track.explicit}"
 }
 
 private fun searchSongLooseMetadataKey(track: Track): String {
     val title = albumRecommendationTextKey(track.title)
     val artist = artistIdentityKey(primaryArtistSegment(track.artist))
     if (title.isBlank() || artist.isBlank()) return ""
-    return "recording:$title|$artist"
+    return "recording:$title|$artist|${track.explicit}"
 }
 
 internal fun searchAlbumCanonicalKey(album: AlbumHit): String {
@@ -404,6 +404,7 @@ private fun sameSearchRecording(first: Track, second: Track): Boolean {
     val firstIdentity = searchSongIdentityKey(first)
     if (firstIdentity.isNotBlank() && firstIdentity == searchSongIdentityKey(second)) return true
     if (hasSharedYoutubeIdentity(first, second)) return true
+    if (first.explicit != second.explicit) return false
 
     if ((isSpotifySearchTrack(first) || isSpotifySearchTrack(second)) &&
         SpotifyYouTubeMatcher.scoreMatch(first, second) < SpotifyYouTubeMatcher.DEFAULT_CONFIDENCE_THRESHOLD

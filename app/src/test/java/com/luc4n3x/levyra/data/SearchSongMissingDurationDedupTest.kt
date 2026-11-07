@@ -7,6 +7,41 @@ import org.junit.Test
 class SearchSongMissingDurationDedupTest {
 
     @Test
+    fun `explicit and unbadged editions with matching metadata stay separate`() {
+        val clean = track("clean", "Song", "Artist", 180_000L)
+        val explicit = clean.copy(id = "explicit", explicit = true)
+
+        val songs = deduplicateSearchSongs(listOf(clean, explicit))
+
+        assertEquals(listOf("clean", "explicit"), songs.map { it.id })
+        assertEquals(listOf(false, true), songs.map { it.explicit })
+    }
+
+    @Test
+    fun `missing duration does not merge explicit and unbadged editions`() {
+        val clean = track("clean", "Song", "Artist", 180_000L)
+        val explicit = clean.copy(id = "explicit", explicit = true, durationMs = 0L)
+
+        assertEquals(2, deduplicateSearchSongs(listOf(clean, explicit)).size)
+    }
+
+    @Test
+    fun `explicit top result does not hide an unbadged edition with the same isrc`() {
+        val clean = track("clean", "Song", "Artist", 180_000L).copy(isrc = "US1234567890")
+        val explicit = clean.copy(id = "explicit", explicit = true)
+
+        assertEquals(listOf(clean), filterSearchSongsExcludingTopResult(listOf(clean), listOf(explicit)))
+    }
+
+    @Test
+    fun `the same video still merges when only one copy has the explicit badge`() {
+        val clean = track("same-video", "Song", "Artist", 180_000L)
+        val explicit = clean.copy(explicit = true)
+
+        assertEquals(listOf(explicit), deduplicateSearchSongs(listOf(clean, explicit)))
+    }
+
+    @Test
     fun `same song merges when one result has duration and the other has views`() {
         val durationResult = track(
             id = "duration-result",

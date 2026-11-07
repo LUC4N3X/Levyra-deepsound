@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -197,7 +199,7 @@ private fun LazyListScope.torqueCoverRail(
                             Box(Modifier.align(Alignment.TopStart).padding(8.dp)) { TorqueRank(index + 1, false) }
                         }
                         Column(Modifier.padding(10.dp).clearAndSetSemantics { }) {
-                            Text(name, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            LevyraMediaTitle(name, explicit = track.explicit, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                             Text(artist, color = LevyraMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
@@ -219,7 +221,7 @@ private fun TorqueEssentialRow(index: Int, track: Track, current: Boolean, onPla
         TorqueRank(index + 1, index < 3)
         Box(Modifier.size(52.dp)) { CoverImage(track, Modifier.fillMaxSize()) }
         Column(Modifier.weight(1f)) {
-            Text(track.title, color = LevyraText, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            LevyraMediaTitle(track.title, explicit = track.explicit,  color = LevyraText, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(track.artist, color = LevyraMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }

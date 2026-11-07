@@ -3362,6 +3362,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             videoUrl = "https://www.youtube.com/watch?v=$videoId",
             query = "home",
             source = "YouTube Music",
+            explicit = two.toString().contains("MUSIC_ITEM_BADGE_EXPLICIT"),
             artistBrowseIds = artistReferences.map { it.browseId },
             youtubeViewCount = tokens.asSequence()
                 .filterNot { token ->
@@ -3531,6 +3532,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             query = query,
             source = "YouTube Music",
             albumBrowseId = albumReference.second,
+            explicit = allText.contains("MUSIC_ITEM_BADGE_EXPLICIT"),
             artistBrowseIds = artistReferences.map { it.browseId },
             videoType = findStringUnderKey(renderer, "musicVideoType").orEmpty(),
             youtubeViewCount = tokens.asSequence()

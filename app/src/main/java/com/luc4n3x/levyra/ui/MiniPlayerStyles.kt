@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import com.luc4n3x.levyra.ui.theme.*
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 
@@ -1123,13 +1124,13 @@ private fun MiniStyledMetadata(
                         .size(12.dp)
                 )
             }
-            Text(
-                text = track.title,
+            LevyraMediaTitle(
+                text = track.title, explicit = track.explicit, marqueeEnabled = animated, repeatDelayMillis = 3_200,
                 color = palette.content,
                 style = miniStyledTitleTextStyle(tuning.typography, compact),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.levyraMarquee(enabled = animated, repeatDelayMillis = 3_200)
+                modifier = Modifier
             )
         }
         Text(

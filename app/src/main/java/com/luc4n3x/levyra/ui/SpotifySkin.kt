@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -272,7 +273,7 @@ internal fun SpotifyTrackCarousel(
                     }
                 }
                 Spacer(Modifier.height(10.dp))
-                Text(track.title, color = if (current) SpotifyDesign.greenText else SpotifyDesign.text, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                LevyraMediaTitle(track.title, explicit = track.explicit,  color = if (current) SpotifyDesign.greenText else SpotifyDesign.text, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Spacer(Modifier.height(4.dp))
                 Text(track.artist, color = SpotifyDesign.subdued, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
@@ -329,7 +330,7 @@ internal fun SpotifyNowPlayingBar(
         Row(Modifier.fillMaxSize().padding(start = 8.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(40.dp).clip(SpotifyDesign.coverShape).background(SpotifyDesign.placeholder)) { CoverImage(track, Modifier.fillMaxSize()) }
             Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
-                Text(track.title, color = SpotifyDesign.text, style = MaterialTheme.typography.labelLarge, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                LevyraMediaTitle(track.title, explicit = track.explicit,  color = SpotifyDesign.text, style = MaterialTheme.typography.labelLarge, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(track.artist, color = SpotifyDesign.subdued, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             IconButton(onClick = onToggle, enabled = !isResolving) {

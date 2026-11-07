@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.FormatQuote
@@ -962,11 +963,11 @@ private fun AtelierSearchRecentSleeve(
         }
         Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
             Column(Modifier.weight(1f).padding(top = 2.dp)) {
-                Text(
+                LevyraMediaTitle(
                     track.title,
                     style = MaterialTheme.typography.titleSmall,
                     color = if (current) AtelierDesign.accentBright else AtelierDesign.text,
-                    maxLines = 2,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1020,11 +1021,11 @@ private fun AtelierSearchTopResult(
             Spacer(Modifier.height(16.dp))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(
+                    LevyraMediaTitle(
                         track.title,
                         style = MaterialTheme.typography.headlineSmall,
                         color = if (current) AtelierDesign.accentBright else AtelierDesign.text,
-                        maxLines = 2,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {

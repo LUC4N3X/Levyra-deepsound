@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -127,8 +128,8 @@ internal fun GlacierTopResultCard(
                     Box(Modifier.size(44.dp).clip(MonoDesign.artShape).background(MonoDesign.raised)) { CoverImage(track, Modifier.matchParentSize()) }
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(
-                            track.title, style = if (index == 0) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleSmall,
+                        LevyraMediaTitle(
+                            track.title, explicit = track.explicit,  style = if (index == 0) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleSmall,
                             color = if (current) MonoDesign.accent else MonoDesign.text, maxLines = 1, overflow = TextOverflow.Ellipsis
                         )
                         Text(

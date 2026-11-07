@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -651,8 +652,8 @@ private fun AtelierArtistTrackRow(
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(
-                track.title, style = MaterialTheme.typography.titleSmall, color = if (current) AtelierDesign.accentBright else AtelierDesign.text,
+            LevyraMediaTitle(
+                track.title,  style = MaterialTheme.typography.titleSmall, color = if (current) AtelierDesign.accentBright else AtelierDesign.text,
                 maxLines = 1, overflow = TextOverflow.Ellipsis
             )
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {

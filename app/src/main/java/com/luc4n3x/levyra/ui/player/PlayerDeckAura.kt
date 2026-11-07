@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui.player
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Canvas
@@ -289,17 +291,17 @@ private fun AuraHeadline(
             label = "player-aura-headline"
         ) { shown ->
             Column {
-                Text(
+                LevyraMediaTitle(
                     text = shown.title,
+                    explicit = shown.explicit,
                     color = AuraInk,
                     fontSize = 17.sp,
                     lineHeight = 22.sp,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .levyraMarquee(enabled = animated, repeatDelayMillis = 3_200)
-                        .semantics { heading() }
+                    marqueeEnabled = animated,
+                    modifier = Modifier.semantics { heading() }
                 )
                 PlayerArtistText(
                     track = shown,

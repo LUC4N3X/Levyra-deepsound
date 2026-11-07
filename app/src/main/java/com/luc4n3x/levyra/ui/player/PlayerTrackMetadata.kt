@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui.player
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
+
 import com.luc4n3x.levyra.ui.theme.*
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 
@@ -98,8 +100,9 @@ internal fun PlayerTrackMetadata(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) Alignment.CenterHorizontally else Alignment.Start
             ) {
-                Text(
+                LevyraMediaTitle(
                     text = shown.title,
+                    explicit = shown.explicit,
                     color = if (LevyraIsQobuz) QobuzDesign.playerContent else surfaces.content,
                     fontSize = titleSize,
                     lineHeight = LevyraTypeRhythm.lineHeight(titleSize),
@@ -107,10 +110,8 @@ internal fun PlayerTrackMetadata(
                     letterSpacing = metadataTitleLetterSpacing(appleMusic),
                     maxLines = if (animationsEnabled) 1 else 2,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.levyraMarquee(
-                        enabled = animationsEnabled,
-                        repeatDelayMillis = TitleMarqueeDelayMs
-                    )
+                    marqueeEnabled = animationsEnabled,
+                    repeatDelayMillis = TitleMarqueeDelayMs
                 )
                 PlayerArtistText(
                     track = shown,

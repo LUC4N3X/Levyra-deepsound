@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import com.luc4n3x.levyra.ui.theme.*
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 import com.luc4n3x.levyra.ui.theme.Nocturne78Design
@@ -204,7 +205,8 @@ internal class StudioShelfItem(
     val round: Boolean,
     val artwork: @Composable (Modifier, Boolean) -> Unit,
     val onClick: () -> Unit,
-    val onLongClick: (() -> Unit)?
+    val onLongClick: (() -> Unit)?,
+    val explicit: Boolean = false
 )
 
 @Composable
@@ -222,6 +224,7 @@ internal fun rememberTrackShelfItems(
             StudioShelfItem(
                 key = "$index-${track.id}",
                 title = track.title,
+                explicit = track.explicit,
                 subtitle = track.artist,
                 current = track.id == currentId,
                 round = false,
@@ -241,6 +244,7 @@ internal fun rememberAlbumShelfItems(albums: List<AlbumHit>, onOpen: (AlbumHit) 
             StudioShelfItem(
                 key = "$index-${album.browseId.ifBlank { album.title + "|" + album.artist }}",
                 title = album.title,
+                explicit = album.explicit,
                 subtitle = album.artist,
                 current = false,
                 round = false,
@@ -565,11 +569,12 @@ private fun StudioCarousel(
                 }
                 LevyraCardCaption(
                     title = item.title,
+                    explicit = item.explicit,
                     subtitle = if (item.round) "" else item.subtitle,
                     titleColor = studioTitleColor(item),
                     titleLines = if (style == HomeStyle.Flow || item.round) 1 else 2,
                     reserveTitleLines = !item.round,
-                    marqueeTitle = style == HomeStyle.ExpressiveMax
+                    marqueeTitle = true
                 )
             }
         }
@@ -616,13 +621,14 @@ private fun StudioExpressiveCarousel(
                     }
                     .padding(16.dp)
             ) {
-                Text(
+                LevyraMediaTitle(
                     text = item.title,
+                    explicit = item.explicit,
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
                     color = Color.White,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.levyraMarquee()
+                    modifier = Modifier
                 )
                 if (item.subtitle.isNotBlank()) {
                     Text(
@@ -665,13 +671,13 @@ private fun StudioExpressiveMosaic(
                     hero.artwork(Modifier.fillMaxSize(), true)
                     Box(modifier = Modifier.fillMaxSize().background(StudioCaptionScrim))
                     Column(modifier = Modifier.align(Alignment.BottomStart).padding(14.dp)) {
-                        Text(
-                            text = hero.title,
+                        LevyraMediaTitle(
+                            text = hero.title, explicit = hero.explicit,
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
                             color = Color.White,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.levyraMarquee()
+                            modifier = Modifier
                         )
                         Text(
                             text = hero.subtitle,
@@ -1447,13 +1453,13 @@ private fun ExpressiveSpotlight(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
-                    Text(
-                        text = track.title,
+                    LevyraMediaTitle(
+                        text = track.title, explicit = track.explicit,
                         style = MaterialTheme.typography.titleMediumEmphasized.copy(fontWeight = FontWeight.ExtraBold),
                         color = if (isLight) LevyraText else Color.White,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.levyraMarquee()
+                        modifier = Modifier
                     )
                     Text(
                         text = lead.ifBlank { track.artist },
@@ -1594,14 +1600,14 @@ private fun EditorialSpotlight(
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = track.title,
+                LevyraMediaTitle(
+                    text = track.title, explicit = track.explicit,
                     style = MaterialTheme.typography.displaySmall.copy(
                         fontFamily = FontFamily.Serif,
                         fontWeight = FontWeight.Bold
                     ),
                     color = Color.White,
-                    maxLines = 3,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
@@ -1709,15 +1715,15 @@ private fun CinematicSpotlight(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Text(
-                text = track.title,
+            LevyraMediaTitle(
+                text = track.title, explicit = track.explicit,
                 style = if (immersive) {
                     MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Black)
                 } else {
                     MaterialTheme.typography.headlineMedium.copy(fontFamily = FontFamily.Serif)
                 },
                 color = Color.White,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
@@ -1824,8 +1830,8 @@ private fun CompactSpotlight(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Text(
-                text = track.title,
+            LevyraMediaTitle(
+                text = track.title, explicit = track.explicit,
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = if (minimal) FontWeight.Medium else FontWeight.Bold
                 ),
@@ -2556,7 +2562,7 @@ private fun StudioFlowChart(
                         }
                     }
                 }
-                LevyraCardCaption(track.title, track.artist, titleLines = 1, reserveTitleLines = false)
+                LevyraCardCaption(track.title, track.artist, titleLines = 1, reserveTitleLines = false, explicit = track.explicit)
             }
         }
         }
@@ -2600,7 +2606,7 @@ private fun StudioEditorialChart(
                     CoverImage(track = track, modifier = Modifier.fillMaxSize())
                 }
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(track.title, style = if (index == 0) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium, color = LevyraText, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    LevyraMediaTitle(track.title, explicit = track.explicit,  style = if (index == 0) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium, color = LevyraText, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(track.artist, style = MaterialTheme.typography.bodyMedium, color = LevyraMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 if (track.id == currentId) {
@@ -2642,7 +2648,7 @@ private fun StudioMinimalChart(
                 Text((index + 1).toString(), style = MaterialTheme.typography.labelLarge, color = LevyraMuted, modifier = Modifier.width(20.dp))
                 Box(modifier = Modifier.size(44.dp).clip(RoundedCornerShape(6.dp))) { CoverImage(track, Modifier.fillMaxSize()) }
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(track.title, style = MaterialTheme.typography.titleSmall, color = LevyraText, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    LevyraMediaTitle(track.title, explicit = track.explicit,  style = MaterialTheme.typography.titleSmall, color = LevyraText, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(track.artist, style = MaterialTheme.typography.bodySmall, color = LevyraMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 if (track.id == currentId) {
@@ -2698,7 +2704,7 @@ private fun StudioImmersiveChart(
                 )
                 Column(modifier = Modifier.align(Alignment.BottomStart).padding(if (leader) 26.dp else 18.dp)) {
                     if (leader) Text("CHART PREMIERE", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.64f), letterSpacing = 1.6.sp)
-                    Text(track.title, style = if (leader) MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black) else MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    LevyraMediaTitle(track.title, explicit = track.explicit,  style = if (leader) MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black) else MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(track.artist, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.76f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     if (track.id == currentId) {
                         LevyraPlayingIndicator(playing = isPlaying, color = Color.White, size = 14.dp)
@@ -2820,12 +2826,12 @@ internal fun MxChartSection(
                                 )
                             }
                         }
-                        Text(
-                            text = track.title,
+                        LevyraMediaTitle(
+                            text = track.title, explicit = track.explicit,
                             style = MaterialTheme.typography.labelLargeEmphasized,
                             color = if (track.id == currentId) scheme.primary else LevyraText,
                             maxLines = 1,
-                            modifier = Modifier.basicMarquee()
+                            modifier = Modifier
                         )
                     }
                 }
@@ -2919,11 +2925,11 @@ private fun RowScope.MxWaveText(track: Track, alignEnd: Boolean, current: Boolea
         modifier = Modifier.weight(1f),
         horizontalAlignment = if (alignEnd) Alignment.End else Alignment.Start
     ) {
-        Text(
-            text = track.title,
+        LevyraMediaTitle(
+            text = track.title, explicit = track.explicit,
             style = if (podium) MaterialTheme.typography.titleLargeEmphasized else MaterialTheme.typography.titleMediumEmphasized,
             color = if (current) scheme.primary else LevyraText,
-            maxLines = 2,
+            maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = if (alignEnd) TextAlign.End else TextAlign.Start
         )
@@ -3083,12 +3089,12 @@ internal fun MxCommentBubbles(
                             CoverImage(track = track, modifier = Modifier.fillMaxSize())
                         }
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = track.title,
+                            LevyraMediaTitle(
+                                text = track.title, explicit = track.explicit,
                                 style = MaterialTheme.typography.titleSmallEmphasized,
                                 color = if (track.id == currentId) scheme.primary else LevyraText,
                                 maxLines = 1,
-                                modifier = Modifier.basicMarquee()
+                                modifier = Modifier
                             )
                             Text(
                                 text = track.artist,

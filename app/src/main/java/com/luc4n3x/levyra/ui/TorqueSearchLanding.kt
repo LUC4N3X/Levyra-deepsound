@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -65,7 +67,7 @@ internal fun TorqueRecentSearchesRail(
                 ) {
                     Box(Modifier.size(72.dp)) { CoverImage(track, Modifier.fillMaxSize()) }
                     Column(Modifier.weight(1f).padding(horizontal = 12.dp).clearAndSetSemantics { }) {
-                        Text(track.title, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        LevyraMediaTitle(track.title, explicit = track.explicit,  color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(track.artist, color = LevyraMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     Text(
@@ -103,9 +105,9 @@ internal fun TorqueSearchSamplesRail(title: String, samples: List<Track>, previe
                     )
                     Column(Modifier.align(Alignment.BottomStart).padding(12.dp).clearAndSetSemantics { }) {
                         Box(Modifier.width(22.dp).height(3.dp).background(LevyraActivePalette.blue))
-                        Text(
-                            track.title.uppercase(), color = Color.White, fontSize = 14.sp, lineHeight = 17.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp,
-                            maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp)
+                        LevyraMediaTitle(
+                            track.title.uppercase(), explicit = track.explicit,  color = Color.White, fontSize = 14.sp, lineHeight = 17.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp)
                         )
                     }
                 }

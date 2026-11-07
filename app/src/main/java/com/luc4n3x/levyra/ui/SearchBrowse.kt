@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material.icons.rounded.Podcasts
@@ -412,7 +413,7 @@ internal fun LevyraRecentSearchesRail(
                     Modifier.align(Alignment.BottomStart).padding(10.dp).graphicsLayer { alpha = textReveal },
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    Text(track.title, style = MaterialTheme.typography.titleSmall, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    LevyraMediaTitle(track.title, explicit = track.explicit,  style = MaterialTheme.typography.titleSmall, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(track.artist, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.78f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 menu(track, menuExpanded) { menuExpanded = false }
@@ -460,11 +461,11 @@ internal fun LevyraSearchSamplesRail(
                     CoverImage(track, Modifier.fillMaxSize(), highRes = true)
                     if (previewEnabled && index == 0) SpotifySamplePreview(track)
                     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.55f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.62f))))
-                    Text(
-                        track.title,
+                    LevyraMediaTitle(
+                        track.title, explicit = track.explicit,
                         style = MaterialTheme.typography.titleMedium,
                         color = Color.White,
-                        maxLines = 2,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.align(Alignment.BottomStart).padding(start = 12.dp, end = 12.dp, bottom = 14.dp)
                     )

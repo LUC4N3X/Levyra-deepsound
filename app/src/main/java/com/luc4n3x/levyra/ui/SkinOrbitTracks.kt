@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -69,8 +70,8 @@ internal fun SkinOrbitTracks(
                     }
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text(track.title, color = if (current) LevyraCyan else LevyraText,
-                        style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    LevyraMediaTitle(track.title, explicit = track.explicit,  color = if (current) LevyraCyan else LevyraText,
+                        style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(track.artist, color = LevyraMuted, style = MaterialTheme.typography.bodySmall,
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
@@ -117,8 +118,8 @@ private fun TorqueOrbitRow(
             if (current) Box(Modifier.matchParentSize().clip(TorqueStripShape).background(LevyraActivePalette.blue))
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(track.title, color = LevyraText, style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            LevyraMediaTitle(track.title, explicit = track.explicit,  color = LevyraText, style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(track.artist, color = LevyraMuted, style = MaterialTheme.typography.bodySmall,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }

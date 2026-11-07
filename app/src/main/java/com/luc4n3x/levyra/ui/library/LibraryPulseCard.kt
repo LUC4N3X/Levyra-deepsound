@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.library
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import android.text.format.DateFormat
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
@@ -440,7 +441,7 @@ private fun PulseTopTracks(tracks: List<PulseTrack>) {
                 )
                 PulseTrackCover(track.thumbnailUrl)
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                    Text(track.title, color = colors.onSurface, style = LevyraType.cardTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    LevyraMediaTitle(track.title,  color = colors.onSurface, style = LevyraType.cardTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     if (track.artist.isNotBlank()) {
                         Text(track.artist, color = colors.onSurfaceVariant, style = LevyraType.caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }

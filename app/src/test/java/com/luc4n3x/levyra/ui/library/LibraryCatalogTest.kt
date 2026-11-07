@@ -12,6 +12,28 @@ import org.junit.Test
 
 class LibraryCatalogTest {
     @Test
+    fun artistAliasesWithTheSameBrowseIdHaveOneKeyAndKeepAllTracks() {
+        val first = track(id = "first", artist = "Artist").copy(artistBrowseIds = listOf("UC_SHARED"))
+        val alias = track(id = "alias", artist = "Artist alias").copy(artistBrowseIds = listOf("UC_SHARED"))
+        val catalog = buildLibraryCatalog(
+            favorites = listOf(first, alias),
+            playlists = emptyList(),
+            downloads = emptyList(),
+            recentListens = emptyList(),
+            followedArtists = listOf(
+                com.luc4n3x.levyra.domain.FollowedArtist("UC_SHARED", "Followed name", "cover", 10L)
+            )
+        )
+
+        val artist = catalog.artists.single()
+        assertEquals("browse:UC_SHARED", artist.key)
+        assertEquals("Followed name", artist.name)
+        assertEquals("cover", artist.artworkUrl)
+        assertEquals(10L, artist.followedAt)
+        assertEquals(setOf("first", "alias"), artist.tracks.map { it.id }.toSet())
+    }
+
+    @Test
     fun searchIsAccentInsensitiveAcrossTitleArtistAndAlbum() {
         val tracks = listOf(
             track(id = "1", title = "Però", artist = "Lazza", album = "Sirio"),
