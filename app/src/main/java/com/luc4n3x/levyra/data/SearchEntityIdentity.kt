@@ -203,23 +203,12 @@ internal fun mergeSpotifyAndYoutubeSongs(existing: List<Track>, incoming: List<T
             }
         }
 
-        val candidates = availableYoutubeIndices.map { ordered[it] }.filter {
-            compatibleMetadataAlbum(spotifyTrack, it) && compatibleExplicitEdition(spotifyTrack, it)
-        }
+        val candidates = availableYoutubeIndices.map { ordered[it] }.filter { compatibleSearchEdition(spotifyTrack, it) }
         val matched = SpotifyYouTubeMatcher.findBestMatch(spotifyTrack, candidates)?.candidate
-        val cachedVideoId = spotifyTrack.id
-            .takeIf { it.startsWith("spotify:", ignoreCase = true) }
-            ?.let(matchCache::get)
-            ?.videoId
-            .orEmpty()
 
         val youtubeIndex = matched
             ?.let { match -> availableYoutubeIndices.firstOrNull { ordered[it].id == match.id } }
-            ?: youtubeIndexById[cachedVideoId]?.takeIf { index ->
-                index in availableYoutubeIndices && compatibleMetadataAlbum(spotifyTrack, ordered[index]) &&
-                    compatibleExplicitEdition(spotifyTrack, ordered[index]) &&
-                    SpotifyYouTubeMatcher.scoreMatch(spotifyTrack, ordered[index]) >= SpotifyYouTubeMatcher.DEFAULT_CONFIDENCE_THRESHOLD
-            }
+            ?: cachedYoutubeIndex(spotifyTrack, ordered, availableYoutubeIndices, youtubeIndexById, matchCache)
 
         if (youtubeIndex != null) {
             youtubeBySpotifyIndex[spotifyIndex] = youtubeIndex
@@ -262,23 +251,38 @@ internal fun mergeSpotifyAndYoutubeSongs(existing: List<Track>, incoming: List<T
             continue
         }
 
-        val track = ordered[index]
-        if (
-            searchTrackKind(track) == SearchTrackKind.Spotify &&
-            track.id.startsWith("spotify:", ignoreCase = true) &&
-            track.counterpartVideoId.isBlank() &&
-            track.audioVideoId.isBlank()
-        ) {
-            val cached = matchCache.get(track.id)
-            if (cached != null && cached.explicit == track.explicit) {
-                result.add(enrichWithCachedData(track, cached))
-                continue
-            }
-        }
-        result.add(track)
+        result.add(withCachedCounterpart(ordered[index], matchCache))
     }
 
     return result
+}
+
+private fun compatibleSearchEdition(spotifyTrack: Track, candidate: Track): Boolean =
+    compatibleMetadataAlbum(spotifyTrack, candidate) && compatibleExplicitEdition(spotifyTrack, candidate)
+
+private fun cachedYoutubeIndex(
+    spotifyTrack: Track,
+    ordered: List<Track>,
+    availableYoutubeIndices: Set<Int>,
+    youtubeIndexById: Map<String, Int>,
+    matchCache: SpotifyYouTubeMatchCache
+): Int? {
+    if (!spotifyTrack.id.startsWith("spotify:", ignoreCase = true)) return null
+    val cachedVideoId = matchCache.get(spotifyTrack.id)?.videoId.orEmpty()
+    return youtubeIndexById[cachedVideoId]?.takeIf { index ->
+        index in availableYoutubeIndices && compatibleSearchEdition(spotifyTrack, ordered[index]) &&
+            SpotifyYouTubeMatcher.scoreMatch(spotifyTrack, ordered[index]) >= SpotifyYouTubeMatcher.DEFAULT_CONFIDENCE_THRESHOLD
+    }
+}
+
+private fun withCachedCounterpart(track: Track, matchCache: SpotifyYouTubeMatchCache): Track {
+    val eligible = searchTrackKind(track) == SearchTrackKind.Spotify &&
+        track.id.startsWith("spotify:", ignoreCase = true) &&
+        track.counterpartVideoId.isBlank() &&
+        track.audioVideoId.isBlank()
+    if (!eligible) return track
+    val cached = matchCache.get(track.id) ?: return track
+    return if (cached.explicit == track.explicit) enrichWithCachedData(track, cached) else track
 }
 
 private fun isSearchMusicVideo(track: Track): Boolean =

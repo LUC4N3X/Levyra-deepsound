@@ -382,19 +382,30 @@ class AlternativeTrackMatcher {
             return AlbumRelation.MISMATCH
         }
         if (candidate.isBlank) return AlbumRelation.UNVERIFIED
-        val continuesExpectedAlbum = candidateTrack.album.contains(" - ") &&
-            AlternativeTrackText.album(candidateTrack.album.substringBefore(" - ")).core == expected.core
-        if (expected.core == candidate.core || continuesExpectedAlbum) {
-            val expectedRemaster = AlbumEdition.REMASTERED in expected.editions
-            val candidateRemaster = AlbumEdition.REMASTERED in candidate.editions
-            if (expectedRemaster != candidateRemaster) return AlbumRelation.REMASTER_CONFLICT
-            val sameEdition = expected.editions == candidate.editions &&
-                expected.language == (candidate.language ?: candidateLanguage.takeIf { expected.language != null })
-            return if (sameEdition && !continuesExpectedAlbum) AlbumRelation.SAME else AlbumRelation.EDITION_VARIANT
+        if (expected.core == candidate.core) return sameCoreRelation(expected, candidate, candidateLanguage, continuation = false)
+        if (continuesAlbum(candidateTrack.album, expected.core)) {
+            return sameCoreRelation(expected, candidate, candidateLanguage, continuation = true)
         }
         val expectedSingle = expected.core == expectedTitle.core || expected.editions.any(singleEditions::contains)
         val candidateSingle = candidate.core == candidateTitle.core || candidate.editions.any(singleEditions::contains)
         return if (expectedSingle || candidateSingle) AlbumRelation.SINGLE_RELEASE else AlbumRelation.MISMATCH
+    }
+
+    private fun continuesAlbum(candidateRaw: String, expectedCore: String): Boolean =
+        candidateRaw.contains(" - ") && AlternativeTrackText.album(candidateRaw.substringBefore(" - ")).core == expectedCore
+
+    private fun sameCoreRelation(
+        expected: AlbumIdentity,
+        candidate: AlbumIdentity,
+        candidateLanguage: String?,
+        continuation: Boolean
+    ): AlbumRelation {
+        val expectedRemaster = AlbumEdition.REMASTERED in expected.editions
+        val candidateRemaster = AlbumEdition.REMASTERED in candidate.editions
+        if (expectedRemaster != candidateRemaster) return AlbumRelation.REMASTER_CONFLICT
+        val sameEdition = expected.editions == candidate.editions &&
+            expected.language == (candidate.language ?: candidateLanguage.takeIf { expected.language != null })
+        return if (sameEdition && !continuation) AlbumRelation.SAME else AlbumRelation.EDITION_VARIANT
     }
 
     private fun confidence(
