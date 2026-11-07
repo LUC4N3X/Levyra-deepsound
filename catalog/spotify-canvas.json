@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-06T19:28:31Z",
+  "generatedAt": "2026-11-07T06:04:29Z",
   "items": [
     {
       "song": "Sentire La Musica",
@@ -383,7 +383,7 @@
     {
       "song": "Iris",
       "artist": "The Goo Goo Dolls",
-      "album": "Stay with You",
+      "album": "Dizzy up the Girl",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/4ab38c8ea56645c5ab7d8ebfb5e4edc2.cnvs.mp4",
       "scope": "track"
     },
@@ -1204,13 +1204,6 @@
       "artist": "Linkin Park",
       "album": "Hybrid Theory (Bonus Edition)",
       "url": "https://canvaz.scdn.co/upload/artist/6XyY86QOPPrYVGvF9ch6wz/video/2f7e86b6a70d48c684c056a0556d78bf.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Iris",
-      "artist": "The Goo Goo Dolls",
-      "album": "Dizzy up the Girl",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/4ab38c8ea56645c5ab7d8ebfb5e4edc2.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3464,7 +3457,7 @@
       "song": "That's!Chojo",
       "artist": "M!LK",
       "album": "That's!Chojo",
-      "url": "https://canvaz.scdn.co/upload/licensor/6StexzHSVhYiYwq2ck61PI/video/26c33c2c53534ba3b57617ff2fe08b0a.cnvs.mp4",
+      "url": "https://canvaz.scdn.co/upload/licensor/6StexzHSVhYiYwq2ck61PI/video/07943816a23a49ab98b3bb61574a1b35.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3513,7 +3506,7 @@
       "song": "NOW U KNOW",
       "artist": "BE:FIRST",
       "album": "BE:4U",
-      "url": "https://canvaz.scdn.co/upload/artist/4wCW8kZ8LL7QIdcE8EOKPP/video/abef8c21d8d04567aaa2613a940942c8.cnvs.mp4",
+      "url": "https://canvaz.scdn.co/upload/artist/4wCW8kZ8LL7QIdcE8EOKPP/video/081ff821d1a4445784abc588649e486d.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4137,13 +4130,6 @@
       "artist": "Sal Priadi",
       "album": "MARKERS AND SUCH PENS FLASHDISKS",
       "url": "https://canvaz.scdn.co/upload/artist/1NjxFrpEGZTV2Ny0OJxeWu/video/7e50d831823e4a3886d8907a4b01cf5d.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "The One That Got Away",
-      "artist": "Katy Perry",
-      "album": "Teenage Dream",
-      "url": "https://canvaz.scdn.co/upload/artist/6jJ0s89eD6GaHleKKya26X/video/f374d8ce515d475489868ec09202c9a1.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -6464,10 +6450,24 @@
       "scope": "track"
     },
     {
+      "song": "GRAVE DIGGER",
+      "artist": "Summer Cem",
+      "album": "DUMAN",
+      "url": "https://canvaz.scdn.co/upload/artist/3drqpTL4sQOckmAfF9i1wg/video/bf7e387d612a4a76b210879b0566171f.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Heiser",
       "artist": "LUNA",
       "album": "Allein auf dieser Welt",
       "url": "https://canvaz.scdn.co/upload/artist/2RrkjxcwXz281MxRs8Oqp7/video/61e7fa23d08c488d9cf2639123d14256.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Disappear (feat. Sissa)",
+      "artist": "Adriatique, Sissa",
+      "album": "Disappear (feat. Sissa)",
+      "url": "https://canvaz.scdn.co/upload/artist/02DWGcShQivFepRvGJ7xhB/video/05b71aa97ba5494dbf623f589125f612.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -6856,20 +6856,6 @@
       "scope": "track"
     },
     {
-      "song": "My Voice, My Life",
-      "artist": "milet",
-      "album": "milet×Toru",
-      "url": "https://canvaz.scdn.co/upload/artist/45ft4DyTCEJfQwTBHXpdhM/video/69d33a053eb84eaf9b8f7135abcdfeb0.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Morning Shall Come",
-      "artist": "AURORA, Bear McCreary",
-      "album": "Morning Shall Come",
-      "url": "https://canvaz.scdn.co/upload/artist/1WgXqy2Dd70QQOU7Ay074N/video/6d7b0d49d95f4eb6a120b1ff3b0dd3ee.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Call My Name",
       "artist": "TWS",
       "album": "TO US",
@@ -6881,6 +6867,13 @@
       "artist": "TREASURE",
       "album": "SHOCK",
       "url": "https://canvaz.scdn.co/upload/artist/3KonOYiLsU53m4yT7gNotP/video/57c414c3ebbc458d987856198579464d.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Morning Shall Come",
+      "artist": "AURORA, Bear McCreary",
+      "album": "Morning Shall Come",
+      "url": "https://canvaz.scdn.co/upload/artist/1WgXqy2Dd70QQOU7Ay074N/video/6d7b0d49d95f4eb6a120b1ff3b0dd3ee.cnvs.mp4",
       "scope": "track"
     },
     {
