@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.feature.radio.RadioStation
 import com.luc4n3x.levyra.feature.radio.isLiveRadio
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
@@ -137,60 +138,28 @@ internal fun LevyraTopBarJamAction(onClick: () -> Unit) {
 internal fun RadioTabScreen(viewModel: LevyraViewModel, state: LevyraUiState, backEnabled: Boolean) {
     val code = LocalLevyraStrings.current.code
     val copy = remember(code) { radioTabCopy(code) }
-    if (com.luc4n3x.levyra.ui.theme.LevyraActivePalette.id == com.luc4n3x.levyra.ui.theme.PrismPaletteId) {
-        PrismRadioScreen(
-            languageCode = state.languageCode,
-            currentStationId = state.currentTrack?.takeIf { it.isLiveRadio() }?.id?.removePrefix("live-radio:"),
-            isPlaying = state.isPlaying,
-            title = copy.tab,
-            onPlay = { station -> if (state.isPlaying && state.liveRadioStation?.uuid == station.uuid) viewModel.togglePlay() else viewModel.playLiveRadio(station) },
-            onSearch = { viewModel.selectTab(LevyraTab.Search) }
-        )
-        return
+    val currentStationId = state.currentTrack?.takeIf { it.isLiveRadio() }?.id?.removePrefix("live-radio:")
+    val onSearch = { viewModel.selectTab(LevyraTab.Search) }
+    val togglePlay: (RadioStation) -> Unit = { station ->
+        if (state.isPlaying && state.liveRadioStation?.uuid == station.uuid) viewModel.togglePlay() else viewModel.playLiveRadio(station)
     }
-    if (com.luc4n3x.levyra.ui.theme.LevyraIsIvory) {
-        IvoryRadioScreen(
-            languageCode = state.languageCode,
-            currentStationId = state.currentTrack?.takeIf { it.isLiveRadio() }?.id?.removePrefix("live-radio:"),
-            isPlaying = state.isPlaying,
-            title = copy.tab,
-            onPlay = { station -> if (state.isPlaying && state.liveRadioStation?.uuid == station.uuid) viewModel.togglePlay() else viewModel.playLiveRadio(station) },
-            onSearch = { viewModel.selectTab(LevyraTab.Search) }
-        )
-        return
-    }
-    if (LevyraIsTorque) {
-        TorqueRadioScreen(
-            languageCode = state.languageCode,
-            currentStationId = state.currentTrack?.takeIf { it.isLiveRadio() }?.id?.removePrefix("live-radio:"),
-            isPlaying = state.isPlaying,
-            title = copy.tab,
-            onPlay = { station -> if (state.isPlaying && state.liveRadioStation?.uuid == station.uuid) viewModel.togglePlay() else viewModel.playLiveRadio(station) },
-            onSearch = { viewModel.selectTab(LevyraTab.Search) }
-        )
-        return
-    }
-    if (LevyraIsAtelier) {
-        AtelierRadioScreen(
-            languageCode = state.languageCode,
-            currentStationId = state.currentTrack?.takeIf { it.isLiveRadio() }?.id?.removePrefix("live-radio:"),
-            isPlaying = state.isPlaying,
-            title = copy.tab,
-            onPlay = { station -> if (state.isPlaying && state.liveRadioStation?.uuid == station.uuid) viewModel.togglePlay() else viewModel.playLiveRadio(station) },
-            onSearch = { viewModel.selectTab(LevyraTab.Search) }
-        )
-        return
-    }
-    Box(Modifier.fillMaxSize()) {
-        LiveRadioScreen(
-            languageCode = state.languageCode,
-            currentStationId = state.currentTrack?.takeIf { it.isLiveRadio() }?.id?.removePrefix("live-radio:"),
-            isPlaying = state.isPlaying,
-            backEnabled = false,
-            onBack = {},
-            onPlay = viewModel::playLiveRadio,
-            tabTitle = copy.tab,
-            onSearch = { viewModel.selectTab(LevyraTab.Search) }
-        )
+    when {
+        com.luc4n3x.levyra.ui.theme.LevyraActivePalette.id == com.luc4n3x.levyra.ui.theme.PrismPaletteId ->
+            PrismRadioScreen(state.languageCode, currentStationId, state.isPlaying, copy.tab, togglePlay, onSearch)
+        com.luc4n3x.levyra.ui.theme.LevyraIsIvory -> IvoryRadioScreen(state.languageCode, currentStationId, state.isPlaying, copy.tab, togglePlay, onSearch)
+        LevyraIsTorque -> TorqueRadioScreen(state.languageCode, currentStationId, state.isPlaying, copy.tab, togglePlay, onSearch)
+        LevyraIsAtelier -> AtelierRadioScreen(state.languageCode, currentStationId, state.isPlaying, copy.tab, togglePlay, onSearch)
+        else -> Box(Modifier.fillMaxSize()) {
+            LiveRadioScreen(
+                languageCode = state.languageCode,
+                currentStationId = currentStationId,
+                isPlaying = state.isPlaying,
+                backEnabled = false,
+                onBack = {},
+                onPlay = viewModel::playLiveRadio,
+                tabTitle = copy.tab,
+                onSearch = onSearch
+            )
+        }
     }
 }
