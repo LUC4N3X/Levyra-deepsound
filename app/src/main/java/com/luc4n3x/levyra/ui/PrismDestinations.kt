@@ -114,7 +114,7 @@ private fun PrismDestinationHeader(title: String) {
 }
 
 @Composable
-private fun PrismTrackRow(rank: Int, track: Track, current: Boolean, actionLabel: String, onPlay: () -> Unit, onAction: () -> Unit) {
+private fun PrismTrackRow(rank: Int, track: Track, current: Boolean, actionLabel: String, onPlay: () -> Unit, onAction: (() -> Unit)? = null) {
     Row(
         Modifier.fillMaxWidth().heightIn(min = 68.dp)
             .levyraPressable(onClick = onPlay, role = Role.Button, pressedScale = LevyraPressScale.Row)
@@ -133,7 +133,7 @@ private fun PrismTrackRow(rank: Int, track: Track, current: Boolean, actionLabel
             Text(track.title, color = if (current) LevyraPink else LevyraText, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(track.artist, color = LevyraMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        IconButton(onClick = onAction) { Icon(Icons.Rounded.MoreVert, actionLabel, tint = LevyraMuted) }
+        if (onAction != null) IconButton(onClick = onAction) { Icon(Icons.Rounded.MoreVert, actionLabel, tint = LevyraMuted) }
     }
 }
 
@@ -209,7 +209,7 @@ internal fun PrismCollectionDestination(
                     item(key = "prism-destination-essentials") { PrismDestinationHeader(strings.songsPlain) }
                     itemsIndexed(editorial.essentials, key = { _, t -> "essential-${t.id}" }) { index, track ->
                         LaunchedEffect(track.id) { onRequestTrackArtwork(track) }
-                        PrismTrackRow(index + 1, track, track.id == currentTrackId, strings.songOptions, { onPlayTrack(track) }, { onPlayTrack(track) })
+                        PrismTrackRow(index + 1, track, track.id == currentTrackId, strings.songOptions, { onPlayTrack(track) })
                     }
                 }
             }

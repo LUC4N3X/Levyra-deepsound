@@ -132,7 +132,10 @@ internal fun AtelierRadioScreen(
     LaunchedEffect(languageCode) { viewModel.activate(languageCode) }
     val dial = remember(state.stations) { state.stations.take(AtelierDialStations) }
     val tunedIndex = dial.indexOfFirst { it.uuid == (tunedId ?: currentStationId) }.coerceAtLeast(0)
-    val tuned = dial.getOrNull(tunedIndex)
+    val tuned = remember(state.stations, state.favorites, state.customStations, state.recent, tunedId, currentStationId) {
+        val id = tunedId ?: currentStationId
+        sequenceOf(state.stations, state.favorites, state.customStations, state.recent).flatten().firstOrNull { it.uuid == id }
+    } ?: dial.getOrNull(tunedIndex)
     val tunedPlaying = tuned != null && currentStationId == tuned.uuid && isPlaying
     val isFavorite: (RadioStation) -> Boolean = { it.uuid.lowercase(Locale.ROOT) in favoriteIds }
     val tuneAndPlay: (RadioStation) -> Unit = { station ->

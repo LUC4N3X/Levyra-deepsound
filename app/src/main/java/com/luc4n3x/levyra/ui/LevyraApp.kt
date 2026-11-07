@@ -10843,7 +10843,7 @@ private fun LazyListScope.homeStudioSectionEditorialCollections(c: StudioHomeCon
     with(c) {
             if (showDeferredHomeSections && prismHomeOnly()) {
                 item(key = "prism-curated-releases", contentType = "prism-curated-releases") {
-                    PrismCuratedAndReleases(viewModel, styleSpec.inset)
+                    PrismCuratedAndReleases(viewModel, styleSpec.inset, state.interfaceSettings.showNewReleases)
                 }
             } else if (showDeferredHomeSections && visibleEditorialCollections.isNotEmpty()) {
                 item(key = "home-editorial-collections", contentType = "home-collections") {

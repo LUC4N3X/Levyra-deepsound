@@ -123,7 +123,10 @@ internal fun PrismRadioScreen(
     var tunedId by rememberSaveable { mutableStateOf<String?>(null) }
     LaunchedEffect(languageCode) { viewModel.activate(languageCode) }
     val dial = remember(state.stations) { state.stations.take(24) }
-    val tuned = dial.firstOrNull { it.uuid == (tunedId ?: currentStationId) } ?: dial.firstOrNull()
+    val tuned = remember(state.stations, state.favorites, state.customStations, state.recent, tunedId, currentStationId) {
+        val id = tunedId ?: currentStationId
+        sequenceOf(state.stations, state.favorites, state.customStations, state.recent).flatten().firstOrNull { it.uuid == id }
+    } ?: dial.firstOrNull()
     val tunedPlaying = tuned != null && currentStationId == tuned.uuid && isPlaying
     val isFavorite: (RadioStation) -> Boolean = { it.uuid.lowercase(Locale.ROOT) in favoriteIds }
     val tuneAndPlay: (RadioStation) -> Unit = { station ->
@@ -464,14 +467,14 @@ private fun PrismRadioField(query: String, hint: String, clearLabel: String, onQ
         Icon(Icons.Rounded.Search, null, tint = LevyraPink, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(12.dp))
         Box(Modifier.weight(1f)) {
-            if (query.isEmpty()) Text(hint, color = LevyraMuted, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.clearAndSetSemantics { })
+            if (query.isEmpty()) Text(hint, color = Color.White.copy(alpha = 0.6f), style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.clearAndSetSemantics { })
             BasicTextField(
                 value = query, onValueChange = onQuery, singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge.copy(color = LevyraText), cursorBrush = SolidColor(LevyraPink),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = Color.White), cursorBrush = SolidColor(LevyraPink),
                 modifier = Modifier.fillMaxWidth().semantics { contentDescription = hint }
             )
         }
-        if (query.isNotEmpty()) IconButton(onClick = { onQuery("") }) { Icon(Icons.Rounded.Close, clearLabel, tint = LevyraMuted) }
+        if (query.isNotEmpty()) IconButton(onClick = { onQuery("") }) { Icon(Icons.Rounded.Close, clearLabel, tint = Color.White.copy(alpha = 0.7f)) }
     }
 }
 

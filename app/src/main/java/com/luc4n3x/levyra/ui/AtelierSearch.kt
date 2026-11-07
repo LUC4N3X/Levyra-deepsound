@@ -173,9 +173,21 @@ internal fun AtelierSearchEntry(viewModel: SearchViewModel, state: LevyraUiState
     val query = state.query
     val blank = query.isBlank()
     var focused by remember { mutableStateOf(false) }
+    var podcastsOpen by rememberSaveable { mutableStateOf(false) }
     val leaveField: () -> Unit = {
         focusManager.clearFocus()
         keyboard?.hide()
+    }
+    if (podcastsOpen) {
+        PodcastLibraryScreen(
+            languageCode = state.languageCode,
+            playback = PodcastPlayback(state.currentTrack?.id, state.isPlaying),
+            bottomInset = exploreDestinationBottomInset(state),
+            backEnabled = true,
+            onBack = { podcastsOpen = false },
+            onPlay = { list, track, position -> viewModel.playAudioFrom(list, track, position) }
+        )
+        return
     }
     LaunchedEffect(blank, strings.code) { if (blank) viewModel.ensureExplore(strings) }
     val recognitionBusy = state.recognitionState is com.luc4n3x.levyra.feature.recognition.RecognitionState.Listening ||
@@ -204,7 +216,10 @@ internal fun AtelierSearchEntry(viewModel: SearchViewModel, state: LevyraUiState
         )
         AtelierSearchScope(state.searchFilter, strings, viewModel::setSearchFilter)
         if (blank) {
-            AtelierSearchLanding(viewModel, state, strings, copy, leaveField, onTrackActions)
+            AtelierSearchLanding(viewModel, state, strings, copy, leaveField, onTrackActions) {
+                leaveField()
+                podcastsOpen = true
+            }
         } else {
             AtelierSearchResults(viewModel, state, strings, copy, focused, leaveField, onTrackActions)
         }
@@ -325,9 +340,12 @@ private fun AtelierSearchLanding(
     strings: LevyraStrings,
     copy: AtelierCopy,
     leaveField: () -> Unit,
-    onTrackActions: (Track) -> Unit
+    onTrackActions: (Track) -> Unit,
+    onOpenPodcasts: () -> Unit
 ) {
     val recent = state.recentSearches
+    val podcastsTitle = remember(strings.code) { com.luc4n3x.levyra.ui.i18n.podcastCopy(strings.code).title }
+    val podcastsArtwork = rememberSearchPodcastsArtwork(state.languageCode)
     val leadingRecent = remember(recent) { recent.take(AtelierSearchRecentSleeves) }
     val remainingRecent = remember(recent) { recent.drop(AtelierSearchRecentSleeves) }
     val currentId = state.currentTrack?.id
@@ -410,7 +428,8 @@ private fun AtelierSearchLanding(
             onOpenCategory = { category ->
                 leaveField()
                 viewModel.openExploreCategory(category)
-            }
+            },
+            podcastsTile = { modifier -> AtelierCrateDivider(podcastsTitle, podcastsArtwork, modifier, onOpenPodcasts) }
         )
     }
 }

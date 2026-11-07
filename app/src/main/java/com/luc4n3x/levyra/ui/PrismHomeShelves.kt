@@ -87,7 +87,7 @@ internal fun PrismSplitArtwork(url: String, modifier: Modifier) {
 }
 
 @Composable
-internal fun PrismCuratedAndReleases(viewModel: HomeViewModel, inset: Dp) {
+internal fun PrismCuratedAndReleases(viewModel: HomeViewModel, inset: Dp, showReleases: Boolean) {
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { LevyraMonoHomeStrings.forCode(strings.code) }
     val shelves = rememberCuratedPlaylistShelves(strings.code)
@@ -130,7 +130,7 @@ internal fun PrismCuratedAndReleases(viewModel: HomeViewModel, inset: Dp) {
                 }
             }
         }
-        if (releases.isNotEmpty()) {
+        if (showReleases && releases.isNotEmpty()) {
             val labels = searchDiscographyCopy(strings.code)
             PrismShelfHeader(copy.newAlbums, inset)
             LazyRow(contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(14.dp)) {

@@ -142,7 +142,7 @@ internal fun RadioTabScreen(viewModel: LevyraViewModel, state: LevyraUiState, ba
             currentStationId = state.currentTrack?.takeIf { it.isLiveRadio() }?.id?.removePrefix("live-radio:"),
             isPlaying = state.isPlaying,
             title = copy.tab,
-            onPlay = viewModel::playLiveRadio,
+            onPlay = { station -> if (state.isPlaying && state.liveRadioStation?.uuid == station.uuid) viewModel.togglePlay() else viewModel.playLiveRadio(station) },
             onSearch = { viewModel.selectTab(LevyraTab.Search) }
         )
         return
@@ -153,7 +153,7 @@ internal fun RadioTabScreen(viewModel: LevyraViewModel, state: LevyraUiState, ba
             currentStationId = state.currentTrack?.takeIf { it.isLiveRadio() }?.id?.removePrefix("live-radio:"),
             isPlaying = state.isPlaying,
             title = copy.tab,
-            onPlay = viewModel::playLiveRadio,
+            onPlay = { station -> if (state.isPlaying && state.liveRadioStation?.uuid == station.uuid) viewModel.togglePlay() else viewModel.playLiveRadio(station) },
             onSearch = { viewModel.selectTab(LevyraTab.Search) }
         )
         return

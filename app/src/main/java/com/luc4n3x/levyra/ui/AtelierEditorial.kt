@@ -605,7 +605,8 @@ internal fun LazyListScope.atelierSearchBrowseSections(
     samplePreview: Boolean,
     onOpenSample: (Int) -> Unit,
     onOpenZone: (ExploreZone) -> Unit,
-    onOpenCategory: (ExploreCategory) -> Unit
+    onOpenCategory: (ExploreCategory) -> Unit,
+    podcastsTile: @Composable (Modifier) -> Unit
 ) {
     val leadZones = browse.sections.firstOrNull()?.tiles.orEmpty()
         .takeWhile { it is LevyraSearchBrowseTile.Zone }
@@ -632,7 +633,7 @@ internal fun LazyListScope.atelierSearchBrowseSections(
         val grid = section.kind != LevyraSearchBrowseSectionKind.Moods && section.kind != LevyraSearchBrowseSectionKind.Picks
         val gridTiles: List<LevyraSearchBrowseTile> = if (grid && !leadPlaced) {
             leadPlaced = true
-            leadZones + categories
+            leadZones + LevyraSearchBrowseTile.Podcasts + categories
         } else {
             categories
         }
@@ -661,21 +662,21 @@ internal fun LazyListScope.atelierSearchBrowseSections(
                         Modifier.fillMaxWidth().padding(horizontal = AtelierDesign.gutter, vertical = 6.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        row.forEach { tile -> AtelierBrowseDivider(tile, browse, Modifier.weight(1f), onOpenZone, onOpenCategory) }
+                        row.forEach { tile -> AtelierBrowseDivider(tile, browse, Modifier.weight(1f), onOpenZone, onOpenCategory, podcastsTile) }
                         if (row.size == 1) Spacer(Modifier.weight(1f))
                     }
                 }
             }
         }
     }
-    if (!leadPlaced && leadZones.isNotEmpty()) {
-        leadZones.chunked(2).forEach { row ->
+    if (!leadPlaced) {
+        (leadZones + LevyraSearchBrowseTile.Podcasts).chunked(2).forEach { row ->
             item(key = "atelier-browse-lead-${row.first().key}", contentType = "atelier-browse-row") {
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = AtelierDesign.gutter, vertical = 6.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    row.forEach { tile -> AtelierBrowseDivider(tile, browse, Modifier.weight(1f), onOpenZone, onOpenCategory) }
+                    row.forEach { tile -> AtelierBrowseDivider(tile, browse, Modifier.weight(1f), onOpenZone, onOpenCategory, podcastsTile) }
                     if (row.size == 1) Spacer(Modifier.weight(1f))
                 }
             }
@@ -689,7 +690,8 @@ private fun AtelierBrowseDivider(
     browse: LevyraSearchBrowse,
     modifier: Modifier,
     onOpenZone: (ExploreZone) -> Unit,
-    onOpenCategory: (ExploreCategory) -> Unit
+    onOpenCategory: (ExploreCategory) -> Unit,
+    podcastsTile: @Composable (Modifier) -> Unit
 ) {
     when (tile) {
         is LevyraSearchBrowseTile.Category -> {
@@ -702,7 +704,7 @@ private fun AtelierBrowseDivider(
             val cover = browse.zoneCovers[zone.id].orEmpty().ifBlank { rememberExploreMoodArtworkUrl(zone) }
             AtelierCrateDivider(zone.label, cover, modifier) { onOpenZone(zone) }
         }
-        LevyraSearchBrowseTile.Podcasts -> Unit
+        LevyraSearchBrowseTile.Podcasts -> podcastsTile(modifier)
     }
 }
 
@@ -768,7 +770,7 @@ private fun AtelierMoodSleeve(title: String, artwork: String, onClick: () -> Uni
 }
 
 @Composable
-private fun AtelierCrateDivider(title: String, artwork: String, modifier: Modifier, onClick: () -> Unit) {
+internal fun AtelierCrateDivider(title: String, artwork: String, modifier: Modifier, onClick: () -> Unit) {
     Box(
         modifier.height(96.dp)
             .levyraPressable(onClick = onClick, role = Role.Button, pressedScale = LevyraPressScale.Tile)

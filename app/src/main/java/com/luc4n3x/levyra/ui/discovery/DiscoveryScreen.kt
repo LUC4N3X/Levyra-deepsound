@@ -1062,11 +1062,12 @@ private fun PrismDiscoveryControls(
     val edge = Brush.linearGradient(
         listOf(com.luc4n3x.levyra.ui.theme.LevyraPink.copy(alpha = 0.8f), com.luc4n3x.levyra.ui.theme.LevyraViolet.copy(alpha = 0.5f))
     )
+    val glyph = if (LevyraIsLight) LevyraText else Color.White
     @Composable
     fun key(size: Dp, label: String, onClick: () -> Unit, enabled: Boolean = true, content: @Composable () -> Unit) {
         val shape = com.luc4n3x.levyra.ui.theme.PrismDesign.cut(14.dp)
         Box(
-            Modifier.size(size).clip(shape).background(Color.White.copy(alpha = 0.06f)).border(1.dp, edge, shape)
+            Modifier.size(size).clip(shape).background(glyph.copy(alpha = 0.06f)).border(1.dp, edge, shape)
                 .clickable(enabled = enabled, role = Role.Button, onClickLabel = label, onClick = onClick),
             contentAlignment = Alignment.Center
         ) { content() }
@@ -1078,10 +1079,10 @@ private fun PrismDiscoveryControls(
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
             key(46.dp, copy.undo, onUndo, canUndo) {
-                Icon(Icons.AutoMirrored.Rounded.Undo, copy.undo, tint = Color.White.copy(alpha = if (canUndo) 0.8f else 0.3f), modifier = Modifier.size(20.dp))
+                Icon(Icons.AutoMirrored.Rounded.Undo, copy.undo, tint = glyph.copy(alpha = if (canUndo) 0.8f else 0.3f), modifier = Modifier.size(20.dp))
             }
             key(64.dp, copy.skip, { onDecide(DiscoveryDecision.Dismissed) }) {
-                Icon(Icons.Rounded.Close, copy.skip, tint = Color.White, modifier = Modifier.size(28.dp))
+                Icon(Icons.Rounded.Close, copy.skip, tint = glyph, modifier = Modifier.size(28.dp))
             }
             Box(
                 Modifier.clip(CircleShape).clickable(role = Role.Button, onClickLabel = if (playing) copy.pausePreview else copy.playPreview, onClick = onTogglePreview)
@@ -1094,7 +1095,7 @@ private fun PrismDiscoveryControls(
             Box(Modifier.size(46.dp))
         }
         Text(
-            copy.playFull, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold), color = Color.White.copy(alpha = 0.85f),
+            copy.playFull, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold), color = glyph.copy(alpha = 0.85f),
             modifier = Modifier.clip(CircleShape).border(1.dp, edge, CircleShape).clickable(role = Role.Button, onClick = onPlayFull)
                 .padding(horizontal = 18.dp, vertical = 10.dp)
         )
