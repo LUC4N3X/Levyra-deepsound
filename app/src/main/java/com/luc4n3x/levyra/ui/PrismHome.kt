@@ -39,7 +39,12 @@ internal fun PrismPageHeader(title: String, subtitle: String = "", actions: @Com
     Column(Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                title, color = LevyraText, style = if (LevyraIsSpotify) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineLarge.copy(fontSize = 32.sp, lineHeight = 38.sp),
+                if (LevyraIsTorque) title.uppercase() else title, color = LevyraText,
+                style = when {
+                    LevyraIsSpotify -> MaterialTheme.typography.headlineMedium
+                    LevyraIsTorque -> MaterialTheme.typography.headlineLarge.copy(fontSize = 30.sp, lineHeight = 34.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, letterSpacing = 3.sp)
+                    else -> MaterialTheme.typography.headlineLarge.copy(fontSize = 32.sp, lineHeight = 38.sp)
+                },
                 maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).semantics { heading() }
             )
             actions()

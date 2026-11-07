@@ -8867,11 +8867,12 @@ private fun HomeScreen(
     SideEffect {
         if (freshHomeVideoTracks.isNotEmpty()) lastHomeVideoTracks.value = freshHomeVideoTracks
     }
-    val otherSections = remember(rawOtherSections, homeVideoTracks, strings.exploreNewVideos) {
+    val plainOtherSections = remember(rawOtherSections, homeVideoTracks, strings.exploreNewVideos) {
         rawOtherSections.withIndex().filterNot { (_, section) ->
             homeVideoTracks.isNotEmpty() && isMusicVideoSectionTitle(section.title, strings)
         }
     }
+    val otherSections = rememberSkinHomeSections(plainOtherSections)
     val spotlightCandidates = homeDerivedState.spotlightCandidates
     val editorialCollections = homeDerivedState.editorialCollections
     val spotlightDayKey = HomeEditorialEngine.localDayKey()
@@ -9806,7 +9807,8 @@ private fun StudioHomeScreen(
         )
     }
     val rawOtherSections = homeDerivedState.otherSections
-    val (homeVideoTracks, otherSections) = rememberStudioHomeVideo(state, rawOtherSections, strings)
+    val (homeVideoTracks, plainOtherSections) = rememberStudioHomeVideo(state, rawOtherSections, strings)
+    val otherSections = rememberSkinHomeSections(plainOtherSections)
     val spotlightDayKey = HomeEditorialEngine.localDayKey()
     val stableSpotlightIdState = rememberSaveable(spotlightDayKey) { mutableStateOf<String?>(null) }
     val spotlight = rememberStudioSpotlight(state, homeDerivedState, spotlightDayKey, stableSpotlightIdState)
@@ -10597,19 +10599,21 @@ private fun LazyListScope.studioHomeSections(
                 HomeSectionId.SpeedDial -> homeStudioSectionSpeedDial(c)
                 HomeSectionId.Spotlight -> homeStudioSectionSpotlight(c)
                 HomeSectionId.Discovery -> if (stagedSpotlight == null) {
-                    if (prismHomeOnly()) prismBubbleSection(c) else discoverySection(homeDiscovery, homeStyle, styleSpec, homeAnimationsEnabled)
+                    if (prismHomeOnly()) prismBubbleSection(c) else if (!skinOwnsDiscoveryEntry()) discoverySection(homeDiscovery, homeStyle, styleSpec, homeAnimationsEnabled)
+                    else if (studioLayout.isHidden(HomeSectionId.PersonalOrbit)) skinDiscoveryItems(c)
                 }
                 HomeSectionId.PersonalOrbit -> {
                     homeStudioSectionPersonalOrbit(c)
                     if (prismHomeOnly()) item(key = "prism-discover", contentType = "prism-discover") {
                         PrismDiscoverTeaser(Modifier.padding(horizontal = styleSpec.inset, vertical = 12.dp))
                     }
+                    skinDiscoveryAfterOrbit(c, stagedSpotlight != null)
                 }
                 HomeSectionId.FavoriteRadio -> favoriteRadioSection(homeRadio)
                 HomeSectionId.EditorialCollections -> homeStudioSectionEditorialCollections(c)
                 HomeSectionId.QuickPicks -> homeStudioSectionQuickPicks(c)
                 HomeSectionId.ForgottenFavorites -> homeStudioSectionForgottenFavorites(c)
-                HomeSectionId.AlbumsForYou -> homeStudioSectionAlbumsForYou(c)
+                HomeSectionId.AlbumsForYou -> homeStudioSectionAlbums(c)
                 HomeSectionId.TrendingArtists -> homeStudioSectionTrendingArtists(c)
                 HomeSectionId.NewReleases -> homeStudioSectionNewReleases(c)
                 HomeSectionId.MusicVideos -> homeStudioSectionMusicVideos(c)
@@ -10781,6 +10785,25 @@ private fun LazyListScope.homeStudioSectionSpotlight(c: StudioHomeContext) {
     }
 }
 
+private fun LazyListScope.skinDiscoveryAfterOrbit(c: StudioHomeContext, spotlightStaged: Boolean) {
+    if (skinOwnsDiscoveryEntry() && !spotlightStaged && !c.studioLayout.isHidden(HomeSectionId.Discovery)) skinDiscoveryItems(c)
+}
+
+private fun LazyListScope.skinDiscoveryItems(c: StudioHomeContext) {
+    val torque = LevyraIsTorque
+    item(key = "skin-bubble", contentType = "skin-bubble") {
+        val covers = remember(c.state.recentListens, c.visiblePersonalTracks) {
+            (c.state.recentListens + c.visiblePersonalTracks).filterNot { it.isLiveRadio() }.map { it.thumbnailUrl }
+        }
+        val modifier = Modifier.padding(horizontal = c.styleSpec.inset).padding(top = 4.dp)
+        if (torque) TorqueBubbleEntry(covers, modifier) else IvoryBubbleEntry(covers, modifier)
+    }
+    item(key = "skin-discover", contentType = "skin-discover") {
+        val modifier = Modifier.padding(horizontal = c.styleSpec.inset).padding(top = if (torque) 28.dp else 24.dp, bottom = 4.dp)
+        if (torque) TorqueDiscoverTeaser(modifier) else IvoryDiscoverTeaser(modifier)
+    }
+}
+
 private fun prismHomeOnly(): Boolean = com.luc4n3x.levyra.ui.theme.LevyraActivePalette.id == com.luc4n3x.levyra.ui.theme.PrismPaletteId
 
 private fun LazyListScope.prismBubbleSection(c: StudioHomeContext) {
@@ -10845,7 +10868,7 @@ private fun LazyListScope.homeStudioSectionEditorialCollections(c: StudioHomeCon
                 item(key = "prism-curated-releases", contentType = "prism-curated-releases") {
                     PrismCuratedAndReleases(viewModel, styleSpec.inset, state.interfaceSettings.showNewReleases)
                 }
-            } else if (showDeferredHomeSections && visibleEditorialCollections.isNotEmpty()) {
+            } else if (showDeferredHomeSections && (visibleEditorialCollections.isNotEmpty() || skinOwnsCuratedShelf())) {
                 item(key = "home-editorial-collections", contentType = "home-collections") {
                     HomeSectionLead(compactHome) {
                         if (homeStyle == HomeStyle.MaterialExpressive || LevyraIsPrism) {
@@ -10861,7 +10884,7 @@ private fun LazyListScope.homeStudioSectionEditorialCollections(c: StudioHomeCon
                                     )
                                 }
                             }
-                            if (LevyraIsPrism) SkinCollectionsShelf(strings.collectionsTitle, fans, styleSpec.inset) { id -> selectedHomeCollectionId = id }
+                            if (LevyraIsPrism) SkinCuratedShelf(viewModel, strings.collectionsTitle, fans, styleSpec.inset) { id -> selectedHomeCollectionId = id }
                             else MxCollectionFan(
                                 title = strings.collectionsTitle,
                                 collections = fans,
@@ -10990,6 +11013,13 @@ private fun LazyListScope.homeStudioSectionYourMusic(
                 com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeFooter(yourMusic, styleSpec.inset)
             }
         }
+    }
+}
+
+private fun LazyListScope.homeStudioSectionAlbums(c: StudioHomeContext) {
+    with(c) {
+        val settings = state.interfaceSettings
+        if (!skinNewReleasesShelf(showDeferredHomeSections, settings.showNewReleases, settings.showAlbumsForYou, viewModel, styleSpec.inset, homeAlbums, strings.albumsForYou)) homeStudioSectionAlbumsForYou(c)
     }
 }
 
@@ -14753,7 +14783,7 @@ private fun SearchScreen(
                     )
                 }
 
-                if (state.recentSearches.isNotEmpty() && !(levyraBrowse != null && LevyraIsDefaultSkin)) {
+                if (state.recentSearches.isNotEmpty()) {
                     item(key = "search-recent", contentType = "search-recent") {
                         SearchSectionGap()
                         RecentSearchesRow(
@@ -14780,9 +14810,7 @@ private fun SearchScreen(
                 }
 
                 val searchSamples = exploreSampleTracks(state.exploreSamples, ExploreImmersiveSampleLimit)
-                val samplesAfterRows = if (LevyraIsDefaultSkin) SearchBrowseLeadRows else 0
-                val samplesItem: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
-                    if (levyraBrowse != null && searchSamples.isNotEmpty()) {
+                if (levyraBrowse != null && searchSamples.isNotEmpty()) {
                         item(key = "search-samples", contentType = "search-samples") {
                             LevyraSearchSamplesRail(
                                 title = strings.exploreSamples,
@@ -14794,14 +14822,10 @@ private fun SearchScreen(
                                 viewModel.openExploreSamples(index)
                             }
                         }
-                    }
                 }
-                if (samplesAfterRows == 0) samplesItem()
 
                 if (levyraBrowse != null) levyraSearchBrowseItems(
                     browse = levyraBrowse,
-                    interludeAfterRows = samplesAfterRows,
-                    interlude = samplesItem,
                     onOpenZone = { zone ->
                         focusManager.clearFocus()
                         keyboardController?.hide()
@@ -23348,10 +23372,7 @@ private fun SearchFilterChips(
         if (hasPlaylists) add(SearchFilter.Playlists to strings.playlistsPlain)
         if (hasVideos) add(SearchFilter.Videos to strings.video)
     }
-    if (LevyraIsPrismOnly) {
-        PrismSearchFilters(chips, selected, onSelect)
-        return
-    }
+    if (SkinSearchFilters(chips, selected, onSelect)) return
     Row(
         modifier = Modifier
             .recentSearchesBleed(RecentSearchGutter)
@@ -23393,6 +23414,13 @@ private fun TopResultCard(
     val strings = LocalLevyraStrings.current
     val cardBg = MaterialTheme.colorScheme.surfaceContainer
     val heroArtwork = hero.largeThumbnailUrl.ifBlank { hero.thumbnailUrl }
+    val rows: @Composable () -> Unit = {
+        TopResultRows(tracks, currentTrackId, isPlaying, isResolving, favoriteIds, selection, onPlay, onFavorite, onAddToPlaylist, onPlayNext, onAddToQueue, onArtist)
+    }
+    if (LevyraIsTorque) {
+        TorqueTopResultCard(hero, artist, !selection.isActive, onArtist, { onPlay(hero) }, onShuffle, onMix, rows)
+        return
+    }
 
     Box(
         modifier = Modifier
@@ -23454,6 +23482,26 @@ private fun TopResultCard(
                 onMix = onMix
             )
 
+            rows()
+        }
+    }
+}
+
+@Composable
+private fun TopResultRows(
+    tracks: List<Track>,
+    currentTrackId: String?,
+    isPlaying: Boolean,
+    isResolving: Boolean,
+    favoriteIds: Set<String>,
+    selection: TrackSelectionState,
+    onPlay: (Track) -> Unit,
+    onFavorite: (Track) -> Unit,
+    onAddToPlaylist: (Track) -> Unit,
+    onPlayNext: (Track) -> Unit,
+    onAddToQueue: (Track) -> Unit,
+    onArtist: () -> Unit
+) {
             tracks.take(3).forEachIndexed { index, track ->
                 val selectionKey = trackSelectionKey(track)
                 TopResultTrackRow(
@@ -23476,8 +23524,6 @@ private fun TopResultCard(
                     onArtist = onArtist
                 )
             }
-        }
-    }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -24048,6 +24094,10 @@ private fun PlaylistHitRow(
     onPlay: (PlaylistHit) -> Unit,
     onDownload: (PlaylistHit) -> Unit
 ) {
+    if (LevyraIsTorque) {
+        TorquePlaylistHitRow(playlists, onOpen, onPlay, onDownload)
+        return
+    }
     val context = LocalContext.current
     val strings = LocalLevyraStrings.current
     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -24262,6 +24312,7 @@ private fun SearchSectionHeader(title: String, showAll: Boolean, onShowAll: () -
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        if (LevyraIsTorque) Box(Modifier.width(4.dp).height(22.dp).background(LevyraActivePalette.blue))
         Text(
             text = if (LevyraIsTorque || LevyraIsNocturne) title.uppercase() else title,
             color = LevyraText,
@@ -24275,7 +24326,7 @@ private fun SearchSectionHeader(title: String, showAll: Boolean, onShowAll: () -
                 .weight(1f)
                 .semantics { heading() }
         )
-        if (showAll) LevyraSectionShowAll(onClick = onShowAll)
+        if (showAll) { if (LevyraIsTorque) TorqueShowAll(onShowAll) else LevyraSectionShowAll(onClick = onShowAll) }
     }
 }
 
@@ -25140,7 +25191,7 @@ private fun ExploreScreen(
 }
 
 @Immutable
-private class ExploreFreshSection(
+internal class ExploreFreshSection(
     val scopes: List<ExploreFreshScope>,
     val feed: ExploreFreshFeed,
     val momentPages: List<List<Track>>,
@@ -25149,6 +25200,29 @@ private class ExploreFreshSection(
 
 @Composable
 private fun ExploreContentRow(
+    row: ExploreRow,
+    state: LevyraUiState,
+    viewModel: ExploreViewModel,
+    editorial: ExploreEditorialContent?,
+    fresh: ExploreFreshSection,
+    availableAnchors: Set<ExploreAnchor>,
+    mixAccent: Color,
+    onShortcut: (ExploreShortcut) -> Unit,
+    onPlayFresh: (() -> Unit)?,
+    onSelectFreshScope: (ExploreFreshScope) -> Unit,
+    onOpenJam: () -> Unit,
+    onOpenRadio: () -> Unit,
+    onOpenMoods: () -> Unit,
+    onOpenZone: (ExploreZone) -> Unit,
+    onPlayTrack: (Track) -> Unit,
+    trackActions: @Composable (Track) -> Unit
+) {
+    if (TorqueExploreRow(row, state, viewModel, editorial, fresh, onShortcut, onSelectFreshScope, onPlayTrack, trackActions)) return
+    ExploreContentRowDefault(row = row, state = state, viewModel = viewModel, editorial = editorial, fresh = fresh, availableAnchors = availableAnchors, mixAccent = mixAccent, onShortcut = onShortcut, onPlayFresh = onPlayFresh, onSelectFreshScope = onSelectFreshScope, onOpenJam = onOpenJam, onOpenRadio = onOpenRadio, onOpenMoods = onOpenMoods, onOpenZone = onOpenZone, onPlayTrack = onPlayTrack, trackActions = trackActions)
+}
+
+@Composable
+private fun ExploreContentRowDefault(
     row: ExploreRow,
     state: LevyraUiState,
     viewModel: ExploreViewModel,

@@ -182,6 +182,20 @@ internal fun ExploreCollectionDestinationScreen(
     val editorial = remember(editorialStructure, tracks) {
         refreshExploreGenreEditorialMetadata(editorialStructure, tracks)
     }
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsIvory) {
+        IvoryCollectionDestination(
+            title, subtitle, tracks, editorial, isLoading, currentTrackId, strings, bottomInset,
+            onBack, onPlayAll, onPlayTrack, onRequestTrackArtwork
+        )
+        return
+    }
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsTorque) {
+        TorqueCollectionDestination(
+            title, subtitle, tracks, editorial, isLoading, currentTrackId, strings, bottomInset,
+            onBack, onPlayAll, onPlayTrack, onRequestTrackArtwork
+        )
+        return
+    }
     if (LevyraIsPrismOnly) {
         PrismCollectionDestination(
             title, subtitle, tracks, editorial, isLoading, currentTrackId, strings, bottomInset,
@@ -897,8 +911,17 @@ internal fun ExploreNewReleasesDestinationScreen(
     bottomInset: Dp = ExploreDestinationBottomInset
 ) {
     BackHandler(enabled = backEnabled, onBack = onBack)
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsTorque) {
+        TorqueNewReleasesDestination(releases, isLoading, strings, bottomInset, onBack, onOpenRelease)
+        return
+    }
     if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) {
         AtelierNewReleasesDestination(releases, isLoading, strings, bottomInset, onBack, onOpenRelease)
+        return
+    }
+    val releaseLook = rememberReleaseLook()
+    if (releaseLook != null) {
+        SkinNewReleasesDestination(releaseLook, releases, isLoading, strings, bottomInset, onBack, onOpenRelease)
         return
     }
     ExploreDestinationSurface(

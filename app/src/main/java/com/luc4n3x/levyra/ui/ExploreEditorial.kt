@@ -91,8 +91,17 @@ internal class ExploreEditorialContent(
 @Composable
 internal fun ExploreEditorialRow(row: ExploreRow, content: ExploreEditorialContent) {
     when (row) {
-        ExploreRow.NewsHero -> if (LevyraIsPrismOnly) PrismNewsFront(content.news, content.onOpenNews) else ExploreNewsFrontPage(content.news, content.onOpenNews)
-        ExploreRow.NewsList -> if (LevyraIsPrismOnly) PrismNewsDesk(content.news, content.onOpenNews) else ExploreNewsDesk(content.news, content.onOpenNews)
+        ExploreRow.NewsHero -> when {
+            com.luc4n3x.levyra.ui.theme.LevyraIsTorque -> TorqueNewsFront(content.news, content.onOpenNews)
+            com.luc4n3x.levyra.ui.theme.LevyraIsIvory -> IvoryNewsFront(content.news, content.onOpenNews)
+            LevyraIsPrismOnly -> PrismNewsFront(content.news, content.onOpenNews)
+            else -> ExploreNewsFrontPage(content.news, content.onOpenNews)
+        }
+        ExploreRow.NewsList -> when {
+            com.luc4n3x.levyra.ui.theme.LevyraIsTorque -> TorqueNewsDesk(content.news, content.onOpenNews)
+            LevyraIsPrismOnly -> PrismNewsDesk(content.news, content.onOpenNews)
+            else -> ExploreNewsDesk(content.news, content.onOpenNews)
+        }
         ExploreRow.DailyTop100 -> ExploreDailyTop100(
             onPlay = content.onPlayChart,
             onTrackActions = content.onTrackMenu,
