@@ -26,8 +26,8 @@ import com.luc4n3x.levyra.data.hqaudio.OkHttpProviderExchange
 import com.luc4n3x.levyra.data.hqaudio.ProviderHttpExchange
 import com.luc4n3x.levyra.data.hqaudio.SharedPreferencesMappingStorage
 import com.luc4n3x.levyra.data.hqaudio.jiosaavn.JioSaavnAudioProvider
-import com.luc4n3x.levyra.data.hqaudio.lossless.ArcodAudioProvider
-import com.luc4n3x.levyra.data.hqaudio.lossless.MonochromeAudioProvider
+import com.luc4n3x.levyra.data.hqaudio.lossless.KuwoAudioProvider
+import com.luc4n3x.levyra.data.hqaudio.tidal.TidalAudioProvider
 import com.luc4n3x.levyra.domain.DownloadQualitySource
 import com.luc4n3x.levyra.domain.DownloadQualityUnavailableException
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
@@ -411,7 +411,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val highQualityDownloadDelegate = lazy {
         HighQualityPlaybackCoordinator(HighQualityAudioResolver(
             providers = highQualityProviders(OkHttpProviderExchange(HighQualityProviderHttpClient::downloadClient)).filter {
-                it.lossless && it.id != RetiredAudioProviders.TIDAL_ID && it.id != RetiredAudioProviders.QOBUZ_ID
+                it.lossless && it.id != RetiredAudioProviders.QOBUZ_ID
             },
             mappingStore = HighQualityMappingStore(SharedPreferencesMappingStorage(context)),
             scope = resolveScope,
@@ -423,9 +423,8 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private fun highQualityProviders(exchange: ProviderHttpExchange): List<HighQualityAudioProvider> = buildList {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            // Only community lossless sources are registered; shared account credentials are disabled.
-            add(MonochromeAudioProvider(exchange))
-            add(ArcodAudioProvider(exchange))
+            add(TidalAudioProvider(java.io.File(context.cacheDir, "tidal-manifests")))
+            add(KuwoAudioProvider(exchange))
         }
         add(JioSaavnAudioProvider(exchange))
     }

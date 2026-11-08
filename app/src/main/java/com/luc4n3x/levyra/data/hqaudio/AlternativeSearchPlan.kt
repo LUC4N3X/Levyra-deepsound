@@ -31,6 +31,14 @@ internal object AlternativeSearchPlan {
             .take(MAX_PASSES)
     }
 
+    fun titleOnly(query: AlternativeTrackQuery): String? {
+        val identity = AlternativeTrackText.title(query.title)
+        val text = (if (identity.versionSignature.isEmpty()) identity.core else identity.fullNormalized).trim()
+        return text.takeIf { it.length >= MIN_TITLE_ONLY_LENGTH && queries(query).none { AlternativeTrackText.normalize(it) == AlternativeTrackText.normalize(text) } }
+    }
+
+    private const val MIN_TITLE_ONLY_LENGTH = 4
+
     private fun clean(value: String): String =
         AlternativeTrackText.decodeHtmlEntities(value).replace(whitespace, " ").trim()
 }

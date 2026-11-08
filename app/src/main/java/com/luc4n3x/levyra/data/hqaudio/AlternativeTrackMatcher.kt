@@ -12,7 +12,8 @@ data class AlternativeTrackQuery(
     val durationMs: Long,
     val explicit: Boolean?,
     val isrc: String = "",
-    val alternateReading: AlternativeTrackQuery? = null
+    val alternateReading: AlternativeTrackQuery? = null,
+    val musicVideo: Boolean = false
 )
 
 data class AlternativeTrackCandidate(
@@ -30,6 +31,7 @@ data class AlternativeTrackCandidate(
     val language: String = "",
     val nonPerformingArtists: Set<String> = emptySet(),
     val creatorArtists: Set<String> = emptySet(),
+    val artistRolesUnknown: Boolean = false,
     val releaseYear: Int = 0
 )
 
@@ -89,8 +91,56 @@ class AlternativeTrackMatcher {
     fun evaluateReadings(query: AlternativeTrackQuery, candidate: AlternativeTrackCandidate): AlternativeMatchEvaluation {
         val primary = evaluate(query, candidate)
         if (primary.accepted) return primary
-        val alternate = query.alternateReading ?: return primary
-        return evaluate(alternate, candidate).takeIf { it.accepted } ?: primary
+        val alternate = query.alternateReading
+        alternate?.let { evaluate(it, candidate) }?.takeIf { it.accepted }?.let { return it }
+        return misspelledArtistReading(query, candidate, primary) ?: primary
+    }
+
+    private fun misspelledArtistReading(
+        query: AlternativeTrackQuery,
+        candidate: AlternativeTrackCandidate,
+        rejected: AlternativeMatchEvaluation
+    ): AlternativeMatchEvaluation? {
+        if (rejected.rejection != MatchRejection.PRIMARY_ARTIST_MISMATCH) return null
+        val expected = AlternativeTrackText.artistCredit(query.artist)
+        if (expected.names.size != 1) return null
+        val expectedName = expected.primary
+        if (expectedName.length < MISSPELLING_MIN_NAME_LENGTH) return null
+        val delta = durationDeltaSeconds(query.durationMs, candidate.durationSeconds)
+        if (delta !in 0..MAXIMUM_DURATION_DELTA_SECONDS) return null
+        val expectedTitle = AlternativeTrackText.title(query.title)
+        val candidateTitle = AlternativeTrackText.title(candidate.title)
+        if (expectedTitle.core != candidateTitle.core || expectedTitle.versionSignature != candidateTitle.versionSignature) return null
+        val corrected = candidate.primaryArtists.firstOrNull { raw ->
+            AlternativeTrackText.artistNames(raw).any { it != expectedName && editDistanceAtMostOne(it, expectedName) }
+        } ?: return null
+        val evaluation = evaluate(query.copy(artist = corrected, alternateReading = null), candidate)
+        if (!evaluation.accepted) return null
+        return evaluation.copy(
+            verdict = AlternativeMatchVerdict.HIGH,
+            confidence = (evaluation.confidence - MISSPELLING_PENALTY).coerceAtLeast(MINIMUM_ACCEPTED_CONFIDENCE)
+        )
+    }
+
+    private fun editDistanceAtMostOne(a: String, b: String): Boolean {
+        if (kotlin.math.abs(a.length - b.length) > 1) return false
+        var i = 0
+        var j = 0
+        var edits = 0
+        while (i < a.length && j < b.length) {
+            if (a[i] == b[j]) {
+                i++
+                j++
+                continue
+            }
+            if (++edits > 1) return false
+            when {
+                a.length > b.length -> i++
+                a.length < b.length -> j++
+                else -> { i++; j++ }
+            }
+        }
+        return edits + (a.length - i) + (b.length - j) <= 1
     }
 
     fun evaluate(query: AlternativeTrackQuery, candidate: AlternativeTrackCandidate): AlternativeMatchEvaluation {
@@ -102,7 +152,10 @@ class AlternativeTrackMatcher {
         val performingPrimary = performers(candidate, candidatePrimary)
         val candidateFeatured = candidate.featuredArtists.flatMap(AlternativeTrackText::artistNames).toSet() +
             candidateTitle.featuredArtists
-        val delta = durationDeltaSeconds(query.durationMs, candidate.durationSeconds)
+        val measuredDelta = durationDeltaSeconds(query.durationMs, candidate.durationSeconds)
+        val videoPadding = query.musicVideo && measuredDelta > MAXIMUM_DURATION_DELTA_SECONDS &&
+            measuredDelta <= MAXIMUM_MUSIC_VIDEO_PADDING_SECONDS && candidate.durationSeconds * 1_000L < query.durationMs
+        val delta = if (videoPadding) 0 else measuredDelta
 
         fun rejected(reason: MatchRejection, relation: AlbumRelation? = null) = AlternativeMatchEvaluation(
             candidate = candidate,
@@ -182,12 +235,29 @@ class AlternativeTrackMatcher {
         if (remasterOfUnmarkedTitle && !isrcConfirmed && !artistsExact) {
             return rejected(MatchRejection.VERSION_MISMATCH, relation)
         }
-        val titleExact = expectedTitle.fullNormalized == candidateTitle.fullNormalized
+        val titleExact = expectedTitle.fullNormalized == candidateTitle.fullNormalized || (
+            expectedTitle.core == candidateTitle.core &&
+                expectedTitle.versionSignature == candidateTitle.versionSignature &&
+                expectedTitle.featuredArtists.isNotEmpty() &&
+                candidateArtists.containsAll(expectedTitle.featuredArtists) &&
+                candidateTitle.featuredArtists.all { it in expectedTitle.featuredArtists }
+            )
+        if (videoPadding && !(titleExact && artistsExact && candidateTitle.versionSignature.isEmpty() &&
+                (relation == AlbumRelation.SAME || isrcConfirmed || query.album.isBlank()))
+        ) {
+            return rejected(MatchRejection.DURATION_OUT_OF_RANGE, relation)
+        }
+        val unrequestedArtists = candidateArtists - expectedArtists.toSet()
+        if (candidate.artistRolesUnknown && unrequestedArtists.isNotEmpty() && relation != AlbumRelation.SAME && !isrcConfirmed) {
+            return rejected(MatchRejection.PRIMARY_ARTIST_MISMATCH, relation)
+        }
         val albumAllowsDrift = relation == AlbumRelation.SAME || (relation == AlbumRelation.UNVERIFIED && titleExact)
         if (delta > EXCELLENT_DURATION_DELTA_SECONDS && !(albumAllowsDrift && artistsExact)) {
             return rejected(MatchRejection.DURATION_OUT_OF_RANGE, relation)
         }
-        val confidence = confidence(titleExact, artistsExact, relation, delta, isrcConfirmed)
+        val unrequestedFeatured = candidateFeatured - expectedArtists.toSet()
+        val confidence = confidence(titleExact, artistsExact, relation, delta, isrcConfirmed) -
+            if (unrequestedFeatured.isNotEmpty() && !isrcConfirmed) AMBIGUITY_MARGIN else 0
         val verdict = when {
             titleExact && artistsExact && relation == AlbumRelation.SAME && delta <= EXCELLENT_DURATION_DELTA_SECONDS ->
                 AlternativeMatchVerdict.EXACT
@@ -263,6 +333,11 @@ class AlternativeTrackMatcher {
         val a = left.candidate
         val b = right.candidate
         if (a.providerId == b.providerId && a.providerTrackId == b.providerTrackId) return true
+        if (left.verdict == AlternativeMatchVerdict.EXACT && right.verdict == AlternativeMatchVerdict.EXACT &&
+            left.albumRelation == AlbumRelation.SAME && right.albumRelation == AlbumRelation.SAME &&
+            left.versionSignature == right.versionSignature && abs(a.durationSeconds - b.durationSeconds) <= 1 &&
+            (!explicitRequired || candidateExplicit(a) == null || candidateExplicit(b) == null || candidateExplicit(a) == candidateExplicit(b))
+        ) return true
         val aTitle = AlternativeTrackText.title(a.title)
         val bTitle = AlternativeTrackText.title(b.title)
         val aExplicit = candidateExplicit(a)
@@ -449,6 +524,9 @@ class AlternativeTrackMatcher {
     companion object {
         const val EXCELLENT_DURATION_DELTA_SECONDS = 2
         const val MAXIMUM_DURATION_DELTA_SECONDS = 5
+        const val MAXIMUM_MUSIC_VIDEO_PADDING_SECONDS = 150
+        private const val MISSPELLING_MIN_NAME_LENGTH = 6
+        private const val MISSPELLING_PENALTY = 8
         const val MINIMUM_ACCEPTED_CONFIDENCE = 75
         const val PERSISTABLE_CONFIDENCE = 85
         const val AMBIGUITY_MARGIN = 8

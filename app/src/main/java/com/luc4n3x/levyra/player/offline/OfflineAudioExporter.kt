@@ -66,7 +66,11 @@ import okhttp3.Callback
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Response
+import okhttp3.HttpUrl
 import okhttp3.Request
+import com.luc4n3x.levyra.data.hqaudio.tidal.TidalDashManifest
+import com.luc4n3x.levyra.data.hqaudio.tidal.TidalNetwork
+import java.io.DataInputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -384,13 +388,16 @@ internal fun isSupportedOfflineSource(contentType: String, url: String): Boolean
     return isMp4AudioSource(contentType, url) || isMuxedMp4Source(contentType, url)
 }
 
+private const val TIDAL_VERIFICATION_FAILURE = "TIDAL FLAC download failed verification"
+
 internal fun isUnsupportedOfflineAudioSource(error: Throwable): Boolean {
     var current: Throwable? = error
     while (current != null) {
         val message = current.message.orEmpty()
         if (
             message.contains("Offline export requires an M4A audio source", ignoreCase = true) ||
-            message.contains("Offline export received a non-audio MP4 source", ignoreCase = true)
+            message.contains("Offline export received a non-audio MP4 source", ignoreCase = true) ||
+            message.contains(TIDAL_VERIFICATION_FAILURE, ignoreCase = true)
         ) {
             return true
         }
@@ -822,6 +829,7 @@ class OfflineAudioExporter(
 
     private suspend fun downloadAudioAttempt(track: Track, workspace: File, useRange: Boolean): DownloadedAudio {
         reportProgress(12)
+        if (track.hasVerifiedTidalDashSource()) return downloadTidalDash(track, workspace)
         val sourceUrl = stripAudioRangeParameters(track.streamUrl)
         val probe = probeAudio(sourceUrl)
         val expectedLength = probe.contentLength
@@ -1843,6 +1851,51 @@ class OfflineAudioExporter(
         }
     }
 
+    private suspend fun downloadTidalDash(track: Track, workspace: File): DownloadedAudio {
+        val manifestPath = Uri.parse(track.streamUrl).path ?: throw IOException("TIDAL manifest unavailable")
+        val manifest = withContext(Dispatchers.IO) { TidalDashManifest.parse(File(manifestPath).readBytes()) }
+        val container = AudioContainer("flac", "audio/flac", false)
+        val partial = resumablePartialFile(workspace, container)
+        discardPartial(partial, resumeIdentitySidecar(partial))
+        ensureStorageAvailable(workspace, manifest.bandwidth.toLong() * manifest.durationMs / 8_000L, 0L, requiresAudioExtraction = false)
+        val segments = manifest.segmentUrls()
+        try {
+            withContext(Dispatchers.IO) {
+                partial.outputStream().buffered().use { output ->
+                    val header = TidalDashFlac.header(fetchDashPart(manifest.initialization))
+                    output.write(header)
+                    var written = header.size.toLong()
+                    segments.forEachIndexed { index, url ->
+                        val part = fetchDashPart(url)
+                        if (written + part.size > MAX_AUDIO_BYTES) throw IOException("TIDAL download exceeds the size limit")
+                        written += TidalDashFlac.writeFrames(part, output)
+                        reportProgress(12 + 70 * (index + 1) / segments.size)
+                    }
+                }
+            }
+        } catch (error: Throwable) {
+            discardPartial(partial, resumeIdentitySidecar(partial))
+            throw error
+        }
+        val header = ByteArray(FLAC_STREAMINFO_HEADER_BYTES)
+        withContext(Dispatchers.IO) { DataInputStream(partial.inputStream()).use { it.readFully(header) } }
+        val info = FlacStreamInfo.parse(header)
+        val expectedSeconds = (track.durationMs / 1_000L).toInt().takeIf { it > 0 } ?: (manifest.durationMs / 1_000L).toInt()
+        if (info == null || !info.durationMatches(expectedSeconds)) {
+            discardPartial(partial, resumeIdentitySidecar(partial))
+            throw IOException(TIDAL_VERIFICATION_FAILURE)
+        }
+        return DownloadedAudio(partial, container, requiresAudioExtraction = false)
+    }
+
+    private suspend fun fetchDashPart(url: HttpUrl): ByteArray {
+        val response = TidalNetwork.execute(Request.Builder().url(url).build(), TidalNetwork.MAX_RESPONSE_BYTES)
+        if (!response.isSuccessful) throw IOException("TIDAL segment HTTP ${response.code}")
+        if (response.body.size >= TidalNetwork.MAX_RESPONSE_BYTES) throw IOException("TIDAL segment too large")
+        rateLimiter.consume(response.body.size)
+        return response.body
+    }
+
     private suspend fun <T> executeCancellable(
         request: Request,
         timeoutMs: Long = 0L,
@@ -2007,6 +2060,7 @@ class OfflineAudioExporter(
         }
 
         private const val MAX_AUDIO_BYTES = 2L * 1024L * 1024L * 1024L
+        private const val FLAC_STREAMINFO_HEADER_BYTES = 42
         private const val MIN_PARTIAL_CACHE_REUSE_BYTES = 512L * 1024L
         private const val MIN_RETRY_RANGE_BYTES = 512L * 1024L
         private const val MIN_FREE_STORAGE_RESERVE_BYTES = 128L * 1024L * 1024L

@@ -1870,7 +1870,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             query = "${headerAlbum.title} $finalArtist".trim(),
             browseId = headerAlbum.browseId.ifBlank { resolved.browseId },
             audioPlaylistId = canonicalAudioPlaylistId,
-            explicit = root?.toString()?.contains("MUSIC_ITEM_BADGE_EXPLICIT") == true || headerAlbum.explicit
+            explicit = root?.toString()?.hasExplicitBadge() == true || headerAlbum.explicit
         )
         val enrichedTracks = finalTracks.map { track ->
             track.copy(
@@ -2217,7 +2217,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             browseId = browseId,
             artistBrowseId = artistReferences.firstOrNull()?.browseId.orEmpty(),
             audioPlaylistId = audioPlaylistId,
-            explicit = card.toString().contains("MUSIC_ITEM_BADGE_EXPLICIT"),
+            explicit = card.toString().hasExplicitBadge(),
             releaseType = releaseType
         )
     }
@@ -2237,7 +2237,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
                 albumBrowseId = albumReference.second,
                 artistBrowseIds = artistReferences.map { it.browseId },
                 trackNumber = trackNumber,
-                explicit = renderer.toString().contains("MUSIC_ITEM_BADGE_EXPLICIT")
+                explicit = renderer.toString().hasExplicitBadge()
             )
         }.distinctBy { it.id }
     }
@@ -2928,7 +2928,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             query = album.query.ifBlank { "${album.title} ${album.artist}" },
             source = "YouTube Music Album",
             year = album.year,
-            explicit = renderer.toString().contains("MUSIC_ITEM_BADGE_EXPLICIT"),
+            explicit = renderer.toString().hasExplicitBadge(),
             albumBrowseId = album.browseId,
             artistBrowseIds = artistReferences.map { it.browseId },
             videoType = findStringUnderKey(renderer, "musicVideoType").orEmpty(),
@@ -3362,7 +3362,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             videoUrl = "https://www.youtube.com/watch?v=$videoId",
             query = "home",
             source = "YouTube Music",
-            explicit = two.toString().contains("MUSIC_ITEM_BADGE_EXPLICIT"),
+            explicit = two.toString().hasExplicitBadge(),
             artistBrowseIds = artistReferences.map { it.browseId },
             youtubeViewCount = tokens.asSequence()
                 .filterNot { token ->
@@ -3532,7 +3532,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             query = query,
             source = "YouTube Music",
             albumBrowseId = albumReference.second,
-            explicit = allText.contains("MUSIC_ITEM_BADGE_EXPLICIT"),
+            explicit = allText.hasExplicitBadge(),
             artistBrowseIds = artistReferences.map { it.browseId },
             videoType = findStringUnderKey(renderer, "musicVideoType").orEmpty(),
             youtubeViewCount = tokens.asSequence()

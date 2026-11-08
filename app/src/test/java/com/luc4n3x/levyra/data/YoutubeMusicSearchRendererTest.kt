@@ -37,6 +37,14 @@ class YoutubeMusicSearchRendererTest {
 
         assertEquals(false, requireNotNull(repository.parseMusicRenderer(cleanRenderer, "Song")).explicit)
         assertEquals(true, requireNotNull(repository.parseMusicRenderer(explicitRenderer, "Song")).explicit)
+        val currentBadgeRenderer = JSONObject(cleanRenderer.toString()).put(
+            "badges",
+            JSONArray().put(JSONObject().put(
+                "musicInlineBadgeRenderer",
+                JSONObject().put("icon", JSONObject().put("iconType", "MUSIC_EXPLICIT_BADGE"))
+            ))
+        )
+        assertEquals(true, requireNotNull(repository.parseMusicRenderer(currentBadgeRenderer, "Song")).explicit)
     }
 
     @Test

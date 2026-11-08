@@ -1040,7 +1040,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
                     year = year,
                     params = params,
                     playlistId = playlistId,
-                    explicit = card.toString().contains("MUSIC_ITEM_BADGE_EXPLICIT"),
+                    explicit = card.toString().hasExplicitBadge(),
                     releaseType = releaseType
                 )
             }
