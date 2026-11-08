@@ -69,6 +69,8 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -357,7 +359,12 @@ private fun MonoSearchIdle(
     onTrackActions: (Track) -> Unit
 ) {
     val currentId = state.currentTrack?.id
-    val lastPlayed = remember(state.recentListens) { state.recentListens.distinctBy { it.id }.take(MonoSearchRailLimit) }
+    val hiddenListens by viewModel.searchHiddenListens.collectAsStateWithLifecycle()
+    val lastPlayed = remember(state.recentListens, hiddenListens) {
+        state.recentListens.distinctBy { it.id }
+            .filterNot { LevyraPersonalOrbit.identityKey(it) in hiddenListens }
+            .take(MonoSearchRailLimit)
+    }
     val similar = remember(state.personalOrbitTracks, lastPlayed) {
         val shown = lastPlayed.mapTo(HashSet()) { it.id }
         state.personalOrbitTracks.distinctBy { it.id }.filterNot { it.id in shown }.take(MonoSearchRailLimit)

@@ -12,8 +12,8 @@ import kotlin.math.abs
 
 private const val RailEdgeScale = 0.06f
 private const val RailEdgeFade = 0.3f
-private const val GlacierEdgeScale = 0.03f
-private const val GlacierEdgeFade = 0.25f
+private const val GlacierEdgeScale = 0.05f
+private const val GlacierEdgeFade = 0.32f
 private const val PagerScale = 0.05f
 private const val PagerFade = 0.25f
 private const val ParallaxZoom = 1.06f

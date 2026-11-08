@@ -341,7 +341,7 @@ internal fun MonoVideoRail(videos: List<YoutubeMusicHomeItem>, onPlay: (YoutubeM
                         contentAlignment = Alignment.Center
                     ) { Icon(Icons.Rounded.PlayArrow, null, tint = Color.White, modifier = Modifier.size(24.dp)) }
                 }
-                Text(item.title, style = MaterialTheme.typography.titleSmall, color = MonoDesign.text, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.dp))
+                Text(item.title, style = MaterialTheme.typography.titleSmall, color = MonoDesign.text, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.dp))
                 Text(item.subtitle, style = MaterialTheme.typography.bodySmall, color = MonoDesign.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
             }
         }

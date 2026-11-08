@@ -737,6 +737,12 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
 
     fun loadRecentSearches(): List<Track> = snapshot().recentSearches
 
+    fun searchHiddenListens(): Set<String> = read { it[KEY_SEARCH_HIDDEN_LISTENS].orEmpty() }
+
+    fun saveSearchHiddenListens(keys: Set<String>) {
+        write { it[KEY_SEARCH_HIDDEN_LISTENS] = keys }
+    }
+
     fun saveRecentSearches(tracks: List<Track>) {
         val array = JSONArray()
         tracks.forEach { array.put(TrackJson.toJson(it)) }
@@ -1601,6 +1607,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_ONBOARDED = booleanPreferencesKey("onboarded")
         val KEY_YOUTUBE_MUSIC_INTRO_SEEN = booleanPreferencesKey("youtube_music_intro_seen")
         val KEY_TASTES = stringSetPreferencesKey("tastes")
+        val KEY_SEARCH_HIDDEN_LISTENS = stringSetPreferencesKey("search_hidden_listens")
         val KEY_LAST_TRACK = stringPreferencesKey("last_track")
         val KEY_LAST_POSITION = longPreferencesKey("last_position")
         val KEY_ANIMATIONS = booleanPreferencesKey("animations_enabled")

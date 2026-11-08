@@ -461,6 +461,7 @@ data class AppleNewThisWeek(
     val loading: Boolean = false
 )
 private const val ARTIST_PROFILE_UNAVAILABLE_ERROR = "artist_profile_unavailable"
+private const val SEARCH_HIDDEN_LISTENS_LIMIT = 200
 private const val ARTIST_INITIAL_BIOGRAPHY_WAIT_MS = 250L
 private const val RADIO_TAIL_MAX_APPEND_ROUNDS = 3
 private const val RADIO_MIX_LIMIT = 15
@@ -8479,8 +8480,22 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         return entry.id to enriched
     }
 
+    private val _searchHiddenListens = MutableStateFlow<Set<String>>(emptySet())
+    val searchHiddenListens: StateFlow<Set<String>> = _searchHiddenListens.asStateFlow()
+
+    init {
+        viewModelScope.launch(Dispatchers.IO) {
+            val saved = preferences.searchHiddenListens()
+            _searchHiddenListens.update { saved + it }
+        }
+    }
+
     fun removeRecentSearch(track: Track) {
         val identity = LevyraPersonalOrbit.identityKey(track)
+        val hidden = _searchHiddenListens.updateAndGet { (it + identity).toList().takeLast(SEARCH_HIDDEN_LISTENS_LIMIT).toSet() }
+        viewModelScope.launch(Dispatchers.IO) {
+            preferences.saveSearchHiddenListens((preferences.searchHiddenListens() + hidden).toList().takeLast(SEARCH_HIDDEN_LISTENS_LIMIT).toSet())
+        }
         val matches: (Track) -> Boolean = { candidate ->
             candidate.id == track.id || LevyraPersonalOrbit.identityKey(candidate) == identity
         }
