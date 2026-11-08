@@ -1711,12 +1711,6 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
                 break
             }
         }
-        if (cleanPlaylistId.startsWith("RD") && tracks.size < MIX_PAGE_MIN_TRACKS) {
-            val queue = runCatching {
-                watchRepository.getWatchPlaylistAdvanced(playlistId = cleanPlaylistId, languageCode = languageCode, limit = boundedLimit)
-            }.getOrNull()
-            queue?.let { watchPlaylistTracks(it.tracks, cleanPlaylistId) }.orEmpty().forEach { tracks.putIfAbsent(it.id, it) }
-        }
         val header = parsePlaylistHeader(initial, cleanPlaylistId)
         val result = header.copy(tracks = tracks.values.take(boundedLimit), continuation = continuation)
         result.tracks.forEach { memory[it.id] = it }
@@ -1752,8 +1746,24 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         parsePlaylistHeader(initial, cleanPlaylistId).copy(tracks = tracks.take(maxTracks), continuation = continuation)
     }
 
-    private fun watchPlaylistTracks(items: List<YoutubeMusicWatchTrack>, cleanPlaylistId: String): List<Track> =
-        items.map { item ->
+    suspend fun playlistRadio(
+        playlistId: String,
+        languageCode: String = LevyraLanguageCatalog.deviceDefault(),
+        limit: Int = 50,
+        shuffle: Boolean = false
+    ): List<Track> = withContext(Dispatchers.IO) {
+        val cleanPlaylistId = playlistId.trim().removePrefix("VL")
+        if (cleanPlaylistId.isBlank()) return@withContext emptyList()
+        val watch = runCatching {
+            watchRepository.getWatchPlaylistAdvanced(
+                playlistId = cleanPlaylistId,
+                languageCode = languageCode,
+                limit = limit,
+                radio = !shuffle,
+                shuffle = shuffle
+            )
+        }.getOrNull() ?: return@withContext emptyList()
+        watch.tracks.map { item ->
             watchTrackToTrack(
                 item = item,
                 seed = Track(
@@ -1778,25 +1788,6 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
                 query = "playlist $cleanPlaylistId"
             )
         }.distinctBy { it.id }
-
-    suspend fun playlistRadio(
-        playlistId: String,
-        languageCode: String = LevyraLanguageCatalog.deviceDefault(),
-        limit: Int = 50,
-        shuffle: Boolean = false
-    ): List<Track> = withContext(Dispatchers.IO) {
-        val cleanPlaylistId = playlistId.trim().removePrefix("VL")
-        if (cleanPlaylistId.isBlank()) return@withContext emptyList()
-        val watch = runCatching {
-            watchRepository.getWatchPlaylistAdvanced(
-                playlistId = cleanPlaylistId,
-                languageCode = languageCode,
-                limit = limit,
-                radio = !shuffle,
-                shuffle = shuffle
-            )
-        }.getOrNull() ?: return@withContext emptyList()
-        watchPlaylistTracks(watch.tracks, cleanPlaylistId)
     }
 
     suspend fun albumDetail(
@@ -2536,7 +2527,6 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
 
     private companion object {
         const val MAX_BROWSE_CONTINUATIONS = 8
-        const val MIX_PAGE_MIN_TRACKS = 10
         const val MAX_HOME_SHELF_ITEMS = 24
         val MOOD_SECTION_RENDERERS = setOf("gridRenderer", "musicCarouselShelfRenderer")
         val MOOD_SECTION_HEADERS = listOf("gridHeaderRenderer", "musicCarouselShelfBasicHeaderRenderer")

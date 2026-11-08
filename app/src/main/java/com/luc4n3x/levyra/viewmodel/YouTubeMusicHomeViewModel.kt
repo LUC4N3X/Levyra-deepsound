@@ -12,9 +12,6 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.YoutubeMusicHomeChip
 import com.luc4n3x.levyra.domain.YoutubeMusicHomeFeed
 import com.luc4n3x.levyra.domain.YoutubeMusicHomeShelf
-import com.luc4n3x.levyra.domain.YoutubeMusicHomeItem
-import com.luc4n3x.levyra.domain.YoutubeMusicHomeItemKind
-import com.luc4n3x.levyra.domain.PlaylistHit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -55,8 +52,6 @@ internal const val NEW_VIDEOS_BROWSE_ID = "FEmusic_new_releases_videos"
 private const val PREVIEW_TRACK_LIMIT = 25
 private const val MAX_CACHED_PREVIEWS = 24
 
-internal fun featuredPlaylistKey(playlistId: String, language: String): String = "$language|$playlistId"
-
 class YouTubeMusicHomeViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = YoutubeMusicRepository(application)
     private val account = YoutubeMusicAccountRepository(application)
@@ -65,9 +60,6 @@ class YouTubeMusicHomeViewModel(application: Application) : AndroidViewModel(app
     private val _previews = MutableStateFlow<Map<String, List<Track>>>(emptyMap())
     val previews: StateFlow<Map<String, List<Track>>> = _previews.asStateFlow()
     private val previewRequests = HashSet<String>()
-    private val _featuredPlaylists = MutableStateFlow<Map<String, YoutubeMusicHomeItem>>(emptyMap())
-    val featuredPlaylists: StateFlow<Map<String, YoutubeMusicHomeItem>> = _featuredPlaylists.asStateFlow()
-    private val featuredRequests = HashSet<String>()
     private var job: Job? = null
     private var generation = 0L
 
@@ -76,34 +68,6 @@ class YouTubeMusicHomeViewModel(application: Application) : AndroidViewModel(app
         val same = current.language == language && current.browseId == browseId
         if (!force && same && (current.loading || current.shelves.isNotEmpty())) return
         fetch(language, current.selectedChip.takeIf { same }.orEmpty(), keepChips = same, browseId = browseId)
-    }
-
-    fun requestFeaturedPlaylist(playlistId: String, language: String) {
-        val cacheKey = featuredPlaylistKey(playlistId, language)
-        if (playlistId.isBlank() || _featuredPlaylists.value.containsKey(cacheKey) || !featuredRequests.add(cacheKey)) return
-        viewModelScope.launch {
-            val detail = try {
-                repository.playlist(playlistId, language, 1)
-            } catch (error: CancellationException) {
-                featuredRequests.remove(cacheKey)
-                throw error
-            } catch (error: Exception) {
-                Timber.w(error, "Featured curated playlist lookup failed")
-                null
-            }
-            featuredRequests.remove(cacheKey)
-            if (detail == null || detail.title.isBlank()) return@launch
-            val hit = PlaylistHit(title = detail.title, author = detail.author, thumbnailUrl = detail.thumbnailUrl, playlistId = playlistId)
-            val item = YoutubeMusicHomeItem(
-                key = "featured-$playlistId",
-                kind = YoutubeMusicHomeItemKind.Playlist,
-                title = detail.title,
-                subtitle = detail.author,
-                thumbnailUrl = detail.thumbnailUrl,
-                playlist = hit
-            )
-            _featuredPlaylists.update { it + (cacheKey to item) }
-        }
     }
 
     fun requestPreview(playlistId: String) {
