@@ -957,6 +957,27 @@ New features should preserve these invariants:
 
 `DownloadHealthViewModel` owns cancellable, sequential scans through `DownloadHealthRepository` on the I/O dispatcher. The scan opens saved URIs and inspects audio tracks without changing files. Repairs use `OfflineExportWorker` with an explicit repair target, bypassing the ordinary skip-existing shortcut. The original record is removed only after a replacement is saved successfully; the original file is retained. The durable task payload preserves the repair target through pause, resume and WorkManager pruning. Separate saved copies use separate repair task keys. Scanning verifies container readability and duration plausibility, not a full decode or a stored checksum.
 
+## Player Focus and private crash recovery
+
+`PlayerFocus` is selected at the shared `LevyraNowPlaying` entry point before
+skin-specific scenes. Its persisted interface preference changes presentation
+only; transport, seeking, native video and queue operations retain their existing
+owners. The minimal presentation reuses the shared artwork and player controls.
+
+`CrashReporting` captures fatal Java/Kotlin exceptions into bounded private
+storage before the default uncaught handler terminates the process. The launcher
+and report activity use a lightweight `:diagnostics` process so recovery does
+not depend on media/network startup succeeding. Pending reports are claimed once
+before display. `PlaybackDiagnosticHistory` extends the existing diagnostic
+owner with a bounded, privacy-filtered snapshot rather than another log recorder.
+Presentation metadata is carried with reports or an explicit settings launch;
+the diagnostic process does not open the main process's single-process DataStore.
+
+The existing share FileProvider runs in that lightweight process and grants
+read access only to prepared cache exports. No report is transmitted without a
+user action. See [crash-reporting.md](crash-reporting.md) for capture limits,
+retention, redaction and GitHub form handling.
+
 ## Optional YouTube Music Account Library
 
 `YoutubeMusicAccountViewModel` owns an isolated state flow for the optional account overlay. It coordinates `YoutubeMusicAccountRepository` and the existing playlist/favorite stores; the root ViewModel refreshes its local playlist projection after an import. Settings launches the account screen, and a connected account exposes a Library shortcut.

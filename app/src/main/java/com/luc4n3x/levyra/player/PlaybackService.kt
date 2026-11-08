@@ -1233,6 +1233,7 @@ class PlaybackService : MediaLibraryService() {
             }
 
             override fun onPlayerError(error: PlaybackException) {
+                PlaybackDiagnosticHistory.recordError(error.errorCodeName)
                 if (VideoDecoderFallback.Shared.redirect(error)) {
                     Timber.w("Video decoder failed; retrying with the next available decoder")
                     player.prepare()
@@ -1309,6 +1310,7 @@ class PlaybackService : MediaLibraryService() {
             }
 
             override fun onEvents(player: Player, events: Player.Events) {
+                PlaybackDiagnosticHistory.update(player)
                 updatePlaybackProtection(player)
                 deviceIntegration?.onPlayerEvents(events)
             }

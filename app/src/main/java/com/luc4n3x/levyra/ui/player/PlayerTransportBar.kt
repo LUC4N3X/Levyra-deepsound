@@ -229,7 +229,7 @@ private fun RowScope.PlayerModeSlot(weight: Float, content: @Composable () -> Un
 }
 
 @Composable
-private fun RowScope.PlayerPlaySegment(
+internal fun RowScope.PlayerPlaySegment(
     isPlaying: Boolean,
     isResolving: Boolean,
     surfaces: PlayerSurfaceTokens,

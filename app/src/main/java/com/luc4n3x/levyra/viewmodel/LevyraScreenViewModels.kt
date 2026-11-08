@@ -578,6 +578,7 @@ class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::li
 }
 
 class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::playerProjection) {
+    fun setPlayerFocus(enabled: Boolean) = root.setInterfaceSettings(root.state.value.interfaceSettings.copy(playerFocusEnabled = enabled))
     val mixChapters get() = root.mixChapters
     val sectionLoop get() = root.sectionLoop
     fun openAlbum(album: AlbumHit) = root.openAlbumFromPlayer(album)

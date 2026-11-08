@@ -34,6 +34,8 @@ class LevyraApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        com.luc4n3x.levyra.diagnostics.CrashReporting.install(this)
+        if (com.luc4n3x.levyra.diagnostics.CrashReporting.isDiagnosticsProcess(this)) return
         CastRuntimeInitializer.initialize(this)
         RuntimeHooks.start(this)
         if (BuildConfig.DEBUG) Timber.plant(Timber.DebugTree())

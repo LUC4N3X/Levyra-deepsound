@@ -1971,6 +1971,7 @@ fun LevyraApp(
         return
     }
     val toastContext = LocalContext.current
+    com.luc4n3x.levyra.diagnostics.DiagnosticContextEffect(state)
     val downloadLocationScope = rememberCoroutineScope()
     LaunchedEffect(viewModel) {
         viewModel.integrationAuthorizationUrls.collect { url ->
@@ -20553,6 +20554,7 @@ private fun SettingsOverlay(
                                     onClick = onShareDiagnostics
                                 )
                             }
+                            item { com.luc4n3x.levyra.diagnostics.CrashReportsSettingsEntry() }
                             standaloneItem { SettingsSectionLabel(strings.preferences) }
                             item {
                                 SettingsButton(
@@ -21761,7 +21763,7 @@ internal fun SettingsToggle(icon: ImageVector, title: String, subtitle: String, 
 }
 
 @Composable
-private fun SettingsButton(icon: ImageVector, title: String, subtitle: String, enabled: Boolean = true, onClick: () -> Unit) {
+internal fun SettingsButton(icon: ImageVector, title: String, subtitle: String, enabled: Boolean = true, onClick: () -> Unit) {
     SettingsTile(onClick = onClick, enabled = enabled) {
         Row(
             modifier = Modifier
