@@ -57,6 +57,11 @@ private const val MAX_CACHED_PREVIEWS = 24
 
 internal fun featuredPlaylistKey(playlistId: String, language: String): String = "$language|$playlistId"
 
+internal object CuratedFeaturedPlaylist {
+    const val YOUTUBE_ID = "RDTMAK5uy_lr0LWzGrq6FU9GIxWvFHTRPQD2LHMqlFA"
+    const val SPOTIFY_ID = "37i9dQZF1DX4JAvHpjipBk"
+}
+
 class YouTubeMusicHomeViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = YoutubeMusicRepository(application)
     private val account = YoutubeMusicAccountRepository(application)

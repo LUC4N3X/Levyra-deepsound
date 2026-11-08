@@ -41,6 +41,7 @@ import com.luc4n3x.levyra.data.ArtworkPalette
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.luc4n3x.levyra.viewmodel.YouTubeMusicHomeViewModel
 import com.luc4n3x.levyra.viewmodel.featuredPlaylistKey
+import com.luc4n3x.levyra.viewmodel.CuratedFeaturedPlaylist
 import com.luc4n3x.levyra.domain.YoutubeMusicHomeShelf
 import com.luc4n3x.levyra.domain.YoutubeMusicHomeItem
 import com.luc4n3x.levyra.domain.YoutubeMusicHomeItemKind
@@ -448,9 +449,11 @@ internal fun rememberCuratedPlaylistShelves(code: String): List<YoutubeMusicHome
     LaunchedEffect(featuredShelves.isEmpty(), ytHomeState.pages, ytHomeState.loading, ytHomeState.loadingMore) {
         if (featuredShelves.isEmpty() && ytHomeState.canLoadMore && ytHomeState.pages < MonoFeaturedPageLimit) ytHome.loadMore()
     }
-    LaunchedEffect(code) { mixedHome.requestFeaturedPlaylist(CuratedFeaturedPlaylistId, code) }
+    LaunchedEffect(code) { mixedHome.requestFeaturedPlaylist(CuratedFeaturedPlaylist.YOUTUBE_ID, code) }
     val featuredPlaylists by mixedHome.featuredPlaylists.collectAsStateWithLifecycle()
-    val featuredItem = featuredPlaylists[featuredPlaylistKey(CuratedFeaturedPlaylistId, code)]
+    val mixLabel = LocalLevyraStrings.current.mix
+    val featuredItem = featuredPlaylists[featuredPlaylistKey(CuratedFeaturedPlaylist.YOUTUBE_ID, code)]
+        ?.let { item -> if (item.subtitle.isBlank()) item.copy(subtitle = mixLabel) else item }
     return remember(mixedState.allShelves, featuredShelves, ytHomeState.allShelves, featuredItem) {
         withFeaturedCuratedPlaylist(
             monoPlaylistShelves(mixedState.allShelves).ifEmpty { featuredShelves }.ifEmpty { monoPlaylistShelves(ytHomeState.allShelves) },
@@ -458,8 +461,6 @@ internal fun rememberCuratedPlaylistShelves(code: String): List<YoutubeMusicHome
         )
     }
 }
-
-private const val CuratedFeaturedPlaylistId = "RDTMAK5uy_lr0LWzGrq6FU9GIxWvFHTRPQD2LHMqlFA"
 
 internal fun withFeaturedCuratedPlaylist(shelves: List<YoutubeMusicHomeShelf>, featured: YoutubeMusicHomeItem?): List<YoutubeMusicHomeShelf> {
     val first = shelves.firstOrNull() ?: return shelves
