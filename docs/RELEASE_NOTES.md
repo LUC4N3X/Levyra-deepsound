@@ -1,41 +1,44 @@
-# Levyra 3.0.7
+# Levyra 3.1.0
 
 ## Highlights
 
-A small fix release. A few of you reported things that were broken or missing, so this one is mostly about sorting those out.
+This one took longer than a point release usually does, so I bumped the minor version. I went through every skin and fixed the small things one by one, with most of the work going into Default and Glacier, a cleaner Search screen, and a home feed that feels less like a list of boxes.
 
-- Smart resume now shows how far it rewinds. The amount used to get cut off on smaller screens and in some languages, and now it uses your language's own unit for seconds.
-- In the Qobuz skin, the Home and Our picks tabs actually change what's on screen, even when you've already scrolled down.
-- Pinned items and favourite radio stations show up on the Qobuz and Atelier home screens again.
-- Live Radio and Levyra Jam can be opened from Explore in the Qobuz and Atelier skins. Before, there was no way to reach them there.
-- Favourite station artwork no longer goes missing on custom home layouts.
-- In Mood Journey, tapping a song in the list plays from that song, and Play opens the player instead of seemingly doing nothing.
-- The Mood Journey slider that used to say Brightness is now called Tone, with a short line explaining what it changes. It only picks songs; it never changes speed or pitch.
-- Levyra Jam now follows the look of whatever skin you're using.
+- Lossless FLAC streaming and downloads. I tightened the matching for music videos, misspelled titles and featured artists, and every FLAC download is now checked against the recording it was matched to.
+- Explicit badges are back where they belong, and the explicit and clean editions of a song no longer get mixed up.
+- Player focus mode hides everything except the cover, the title and the controls. If the app crashes, it now keeps a local report you can read and share yourself. Nothing is sent anywhere.
+- Levyra Jam sessions can be shared and joined by scanning a QR code.
+- The Default skin got curated playlists in place of the old collections, a New albums and singles shelf, trending artists with their monthly listeners, and a light scroll motion on every horizontal row. Cards near the edge settle back a little and the artwork drifts a few pixels as you scroll. It turns itself off when animations are off or the phone is in a low-power mode.
+- Glacier gained Most discussed tracks on Home, This week's releases in Explore, the same row motion tuned to its quieter style, and a touch of its blue in Search and Settings.
+- Trending artists in every skin now follow the official music charts for your language, in chart order, with real monthly listeners shown in your language.
+- Curated playlists include a New Release Mix. It opens with the first tracks right away and stays cached for a few hours, so reopening it is instant.
+- Search is tidier. Sample cards show the full cover instead of a stretched crop, recent searches look cleaner, and removing a track from recent searches makes it disappear straight away.
+- Trending songs for you is gone from Home in every skin.
+- Closing the mini player now sticks. It no longer flashes back for a moment when you reopen the app.
 
 ## Validation
 
-These notes cover the fixes in this version. They describe the code; they don't mean the 3.0.7 APK has already passed release testing.
+These notes describe the code that went into 3.1.0. They don't mean the APK has already passed release testing.
 
-I checked the Smart resume labels, the Qobuz tabs, pinned items and favourite radio on both skins, and the Live Radio and Jam entry points on an emulator. The new and existing unit tests for these areas pass. I didn't test on a physical phone, in right-to-left languages, with very large fonts or on Android Auto. Those are unverified, not passed.
+I tested the Default and Glacier home screens, Search, Explore, the comment cards and the row motion on an emulator and on a phone. The new unit tests for comment counts, artist audience parsing and curated playlist ordering pass, along with the existing localization tests. I didn't measure frame timing with real profiling, and I haven't checked the Prism, Torque, Ivory and Atelier skins on a real device. I also haven't tested right-to-left languages, very large fonts or Android Auto. Those are unverified, not passed.
 
-The GitHub release workflow still has to pass the release-note checks and Android lint, build and sign the APK, verify the version and signing certificate, generate the SHA-256 checksum and publish the files. Treat the GitHub release and the downloadable APK as available only once that workflow succeeds.
+The GitHub release workflow still has to pass the release-note checks and Android lint, build and sign the APK, verify the version and signing certificate, generate the SHA-256 checksum and publish the files. Treat the GitHub release and the APK as available only once that workflow succeeds.
 
 ## Versioning
 
-- Version name: `3.0.7`
-- Version code: `3000700`
+- Version name: `3.1.0`
+- Version code: `3010000`
 
-This is an Android release. Levyra Desktop is versioned and released separately; this update doesn't change the Windows app.
+This is an Android release. Levyra Desktop is versioned and released separately, and this update doesn't touch the Windows app.
 
 ## Upgrade notes
 
-No manual migration is expected. Your library, playlists, favorites, downloads, listening history, settings, skin and player style stay as they are. A saved Mood Journey keeps its curve and length.
+No manual migration is needed. Your library, playlists, favorites, downloads, listening history, settings, skin and player style stay as they are.
 
-Catalogs, regional releases, lyrics, search, video, podcasts and lossless sources depend in part on external services: results and availability can vary by region and over time.
+The trending artists shelf and the curated playlists refresh on their own the first time you open Home after updating, so give them a moment. Charts, playlists, lyrics, comments and lossless audio depend partly on external services, so what you see can vary by region and over time.
 
-Once the publishing workflow finishes successfully, the signed Android APK and its checksum will be on the GitHub release page. F-Droid and other channels may update later.
+Once the publishing workflow finishes, the signed APK and its checksum will be on the GitHub release page. F-Droid and other channels may take a little longer.
 
 ## Final note
 
-Thanks to everyone who took the time to write down what wasn't working. Keep it coming, it's how these get fixed.
+A lot of this release came from screenshots you sent me with a circle around something that looked wrong. Keep sending them. They're the fastest way for me to see what you see.
