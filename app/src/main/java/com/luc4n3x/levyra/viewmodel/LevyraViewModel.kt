@@ -14730,7 +14730,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         lastPlaybackSaveJob?.cancel()
         lastPlaybackSaveJob = viewModelScope.launch(Dispatchers.IO) {
-            preferences.saveLastPlayback(null, 0L)
+            preferences.clearLastPlayback()
             queueEngine.flush()
         }
         updateWidget()

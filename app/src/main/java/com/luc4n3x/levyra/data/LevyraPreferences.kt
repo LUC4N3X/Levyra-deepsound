@@ -717,6 +717,13 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         }
     }
 
+    suspend fun clearLastPlayback() {
+        store.commit {
+            it.remove(KEY_LAST_TRACK)
+            it.remove(KEY_LAST_POSITION)
+        }
+    }
+
     fun lastTrack(): Track? = snapshot().lastTrack
 
     fun lastPositionMs(): Long = read { it[KEY_LAST_POSITION] ?: 0L }
