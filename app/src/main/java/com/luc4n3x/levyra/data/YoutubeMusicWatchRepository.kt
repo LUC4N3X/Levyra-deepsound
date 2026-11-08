@@ -621,7 +621,7 @@ internal object YoutubeMusicWatchParser {
             thumbnailUrl = renderer.findBestThumbnail(),
             description = subtitle,
             year = year,
-            explicit = renderer.toString().contains("MUSIC_ITEM_BADGE_EXPLICIT"),
+            explicit = renderer.toString().hasExplicitBadge(),
             videoType = musicVideoType
         )
     }
@@ -680,7 +680,7 @@ internal object YoutubeMusicWatchParser {
             durationMs = length.durationToMs(),
             thumbnailUrl = renderer.optJSONObject("thumbnail")?.optJSONArray("thumbnails").bestThumbnail(),
             videoType = videoType,
-            explicit = textBlob.contains("MUSIC_ITEM_BADGE_EXPLICIT"),
+            explicit = textBlob.hasExplicitBadge(),
             year = year,
             likeStatus = menuData.likeStatus,
             inLibrary = menuData.inLibrary,

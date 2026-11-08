@@ -30,7 +30,9 @@ internal class LosslessProviderSupport(
 
     private val apiPacer = ProviderRequestPacer(API_SPACING_MS, API_MAX_CONCURRENT, clock)
 
-    suspend fun api(url: String): Fetch = when (val fetch = apiPacer.paced { fetch(url, JSON_HEADERS, MAX_API_BODY_BYTES) }) {
+    suspend fun api(url: String, form: Map<String, String>? = null, headers: Map<String, String> = JSON_HEADERS): Fetch = when (
+        val fetch = apiPacer.paced { fetch(url, headers, MAX_API_BODY_BYTES, form) }
+    ) {
         is Fetch.Failed -> fetch
         is Fetch.Received -> if (fetch.response.isSuccessful) fetch else Fetch.Failed(failureFor(fetch.response.code))
     }
@@ -88,14 +90,14 @@ internal class LosslessProviderSupport(
 
     fun health() = circuitBreaker.snapshot(providerId)
 
-    private suspend fun fetch(url: String, headers: Map<String, String>, maxBytes: Int): Fetch {
+    private suspend fun fetch(url: String, headers: Map<String, String>, maxBytes: Int, form: Map<String, String>? = null): Fetch {
         val permit = circuitBreaker.acquire()
         if (permit == ProviderCircuitBreaker.Permit.REJECTED) return Fetch.Failed(ProviderFailure.CIRCUIT_OPEN)
         var settled = false
         try {
             val startedAt = clock()
             val fetch = try {
-                Fetch.Received(exchange.execute(ProviderHttpRequest(url, headers, maxBytes)))
+                Fetch.Received(exchange.execute(ProviderHttpRequest(url, headers, maxBytes, form)))
             } catch (error: InterruptedIOException) {
                 Fetch.Failed(ProviderFailure.TIMEOUT)
             } catch (error: IOException) {

@@ -45,6 +45,7 @@ class HighQualityPlaybackCoordinator(
             durationMs = track.durationMs.coerceAtLeast(0L),
             explicit = track.explicit.takeIf { it || track.metadataProvider.equals("spotify", ignoreCase = true) },
             isrc = track.isrc,
+            musicVideo = !track.videoType.equals(AUDIO_TRACK_VIDEO, ignoreCase = true),
             alternateReading = recording.alternate?.let { alternate ->
                 AlternativeTrackQuery(
                     title = alternate.title,
@@ -52,7 +53,8 @@ class HighQualityPlaybackCoordinator(
                     album = track.album,
                     durationMs = track.durationMs.coerceAtLeast(0L),
                     explicit = track.explicit.takeIf { it || track.metadataProvider.equals("spotify", ignoreCase = true) },
-                    isrc = track.isrc
+                    isrc = track.isrc,
+                    musicVideo = !track.videoType.equals(AUDIO_TRACK_VIDEO, ignoreCase = true)
                 )
             }
         )
@@ -202,7 +204,7 @@ class HighQualityPlaybackCoordinator(
         return !resolver.mode.lossless || manifest.streams.any {
             it.selected && it.url == manifest.selectedAudioUrl &&
                 (it.mimeType == ProviderStreamValidator.FLAC_MIME_TYPE ||
-                    (it.codec == "flac" && it.deliveryMethod == PlaybackDeliveryMethod.DASH))
+                    (it.codec == "flac" && it.deliveryMethod == PlaybackDeliveryMethod.DASH && it.isFresh(clock(), 0L)))
         }
     }
 
@@ -310,6 +312,7 @@ class HighQualityPlaybackCoordinator(
 
     companion object {
         const val DOWNLOAD_LOOKUP_BUDGET_MS = 35_000L
+        private const val AUDIO_TRACK_VIDEO = "MUSIC_VIDEO_TYPE_ATV"
         const val DOWNLOAD_LANE_BUDGET_MS = 30_000L
         const val AUTOMATIC_WAIT_MS = 2_500L
         const val AUTOMATIC_GRACE_MS = 1_200L

@@ -80,6 +80,14 @@ internal class HighQualityProviderLane(
             selection = matcher.select(query, search.candidates())
             if (isDecisive(selection, index)) break
         }
+        val noAcceptableCandidate = selection is AlternativeMatchSelection.Rejected &&
+            (selection as AlternativeMatchSelection.Rejected).reason != MatchRejection.AMBIGUOUS
+        if (noAcceptableCandidate) {
+            AlternativeSearchPlan.titleOnly(query)?.let { text ->
+                val page = search.fetch(AlternativeSearchPlan.MAX_PASSES + 1, text, FIRST_PAGE)
+                if (page is SearchPage.Loaded) selection = matcher.select(query, search.candidates())
+            }
+        }
         if (needsDeeperPages(selection)) {
             when (val deeperSearch = searchDeeperPages(query, search, deeper, startedAt)) {
                 is DeeperSearch.Failed -> return deeperSearch.fallback

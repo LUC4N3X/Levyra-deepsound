@@ -289,7 +289,7 @@ class HighQualityAudioResolverTest {
         )
         val result = resolver(provider).resolveNow()
         assertEquals(HighQualityFallbackReason.NO_MATCH, (result as HighQualityResolution.Fallback).reason)
-        assertEquals(AlternativeSearchPlan.queries(query()).size, provider.searches.size)
+        assertEquals(AlternativeSearchPlan.queries(query()).size + listOfNotNull(AlternativeSearchPlan.titleOnly(query())).size, provider.searches.size)
     }
 
     @Test

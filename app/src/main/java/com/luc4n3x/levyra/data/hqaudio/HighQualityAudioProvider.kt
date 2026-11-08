@@ -127,6 +127,8 @@ interface HighQualityAudioProvider {
 
     fun reportLookupTimeout() = Unit
 
+    suspend fun prewarm() = Unit
+
     fun health(): List<ProviderBackendHealth> = emptyList()
 }
 

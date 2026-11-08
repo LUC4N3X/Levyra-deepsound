@@ -1,15 +1,30 @@
 package com.luc4n3x.levyra.player.offline
 
+import com.luc4n3x.levyra.data.hqaudio.RetiredAudioProviders
 import com.luc4n3x.levyra.data.hqaudio.jiosaavn.JIOSAAVN_PROVIDER_ID
+import com.luc4n3x.levyra.data.hqaudio.lossless.KuwoAudioProvider
+import com.luc4n3x.levyra.data.hqaudio.tidal.TidalAudioProvider
+import com.luc4n3x.levyra.domain.PlaybackDeliveryMethod
 import com.luc4n3x.levyra.domain.Track
 import java.util.Locale
 
-internal fun Track.hasVerifiedLosslessSource(): Boolean {
+internal fun Track.hasVerifiedLosslessSource(): Boolean = hasVerifiedProgressiveFlacSource() || hasVerifiedTidalDashSource()
+
+internal fun Track.hasVerifiedProgressiveFlacSource(): Boolean {
     val manifest = playbackManifest ?: return false
-    if (manifest.alternativeSource?.providerId !in setOf("monochrome", "arcod")) return false
+    if (manifest.alternativeSource?.providerId !in setOf("monochrome", "arcod", KuwoAudioProvider.KUWO_PROVIDER_ID)) return false
     return manifest.streams.any {
         it.selected && it.url == streamUrl && it.url == manifest.selectedAudioUrl &&
             it.codec == "flac" && it.mimeType == "audio/flac" && it.container == "flac"
+    }
+}
+
+internal fun Track.hasVerifiedTidalDashSource(): Boolean {
+    val manifest = playbackManifest ?: return false
+    if (manifest.alternativeSource?.providerId != TidalAudioProvider.PROVIDER_ID) return false
+    return RetiredAudioProviders.isTidalManifestUri(streamUrl) && manifest.streams.any {
+        it.selected && it.url == streamUrl && it.url == manifest.selectedAudioUrl && it.codec == "flac" &&
+            it.mimeType == TidalAudioProvider.MIME_TYPE && it.deliveryMethod == PlaybackDeliveryMethod.DASH
     }
 }
 
@@ -23,7 +38,7 @@ internal fun Track.hasVerifiedHighBitrateSource(): Boolean {
 }
 
 internal fun allowsVerifiedFlacDownload(track: Track, contentType: String): Boolean {
-    if (!track.hasVerifiedLosslessSource()) return false
+    if (!track.hasVerifiedProgressiveFlacSource()) return false
     return contentType.substringBefore(';').trim().lowercase(Locale.ROOT) in
         setOf("audio/flac", "audio/x-flac", "application/octet-stream", "binary/octet-stream")
 }
