@@ -40,6 +40,7 @@ import androidx.compose.ui.semantics.heading
 import com.luc4n3x.levyra.data.ArtworkPalette
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.luc4n3x.levyra.viewmodel.YouTubeMusicHomeViewModel
+import com.luc4n3x.levyra.viewmodel.featuredPlaylistKey
 import com.luc4n3x.levyra.domain.YoutubeMusicHomeShelf
 import com.luc4n3x.levyra.domain.YoutubeMusicHomeItem
 import com.luc4n3x.levyra.domain.YoutubeMusicHomeItemKind
@@ -447,9 +448,24 @@ internal fun rememberCuratedPlaylistShelves(code: String): List<YoutubeMusicHome
     LaunchedEffect(featuredShelves.isEmpty(), ytHomeState.pages, ytHomeState.loading, ytHomeState.loadingMore) {
         if (featuredShelves.isEmpty() && ytHomeState.canLoadMore && ytHomeState.pages < MonoFeaturedPageLimit) ytHome.loadMore()
     }
-    return remember(mixedState.allShelves, featuredShelves, ytHomeState.allShelves) {
-        monoPlaylistShelves(mixedState.allShelves).ifEmpty { featuredShelves }.ifEmpty { monoPlaylistShelves(ytHomeState.allShelves) }
+    LaunchedEffect(code) { mixedHome.requestFeaturedPlaylist(CuratedFeaturedPlaylistId, code) }
+    val featuredPlaylists by mixedHome.featuredPlaylists.collectAsStateWithLifecycle()
+    val featuredItem = featuredPlaylists[featuredPlaylistKey(CuratedFeaturedPlaylistId, code)]
+    return remember(mixedState.allShelves, featuredShelves, ytHomeState.allShelves, featuredItem) {
+        withFeaturedCuratedPlaylist(
+            monoPlaylistShelves(mixedState.allShelves).ifEmpty { featuredShelves }.ifEmpty { monoPlaylistShelves(ytHomeState.allShelves) },
+            featuredItem
+        )
     }
+}
+
+private const val CuratedFeaturedPlaylistId = "RDTMAK5uy_lr0LWzGrq6FU9GIxWvFHTRPQD2LHMqlFA"
+
+internal fun withFeaturedCuratedPlaylist(shelves: List<YoutubeMusicHomeShelf>, featured: YoutubeMusicHomeItem?): List<YoutubeMusicHomeShelf> {
+    val first = shelves.firstOrNull() ?: return shelves
+    if (featured == null || first.items.any { it.playlist?.playlistId == featured.playlist?.playlistId }) return shelves
+    val items = first.items.toMutableList().apply { add(minOf(1, size), featured) }
+    return listOf(first.copy(items = items)) + shelves.drop(1)
 }
 
 internal fun monoPlaylistShelves(shelves: List<YoutubeMusicHomeShelf>): List<YoutubeMusicHomeShelf> =
