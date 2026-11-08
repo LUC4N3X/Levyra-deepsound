@@ -1880,7 +1880,7 @@ class OfflineAudioExporter(
         val header = ByteArray(FLAC_STREAMINFO_HEADER_BYTES)
         withContext(Dispatchers.IO) { DataInputStream(partial.inputStream()).use { it.readFully(header) } }
         val info = FlacStreamInfo.parse(header)
-        val expectedSeconds = (track.durationMs / 1_000L).toInt().takeIf { it > 0 } ?: (manifest.durationMs / 1_000L).toInt()
+        val expectedSeconds = (manifest.durationMs / 1_000L).toInt()
         if (info == null || !info.durationMatches(expectedSeconds)) {
             discardPartial(partial, resumeIdentitySidecar(partial))
             throw IOException(TIDAL_VERIFICATION_FAILURE)

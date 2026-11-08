@@ -204,7 +204,7 @@ class HighQualityPlaybackCoordinator(
         return !resolver.mode.lossless || manifest.streams.any {
             it.selected && it.url == manifest.selectedAudioUrl &&
                 (it.mimeType == ProviderStreamValidator.FLAC_MIME_TYPE ||
-                    (it.codec == "flac" && it.deliveryMethod == PlaybackDeliveryMethod.DASH))
+                    (it.codec == "flac" && it.deliveryMethod == PlaybackDeliveryMethod.DASH && it.isFresh(clock(), 0L)))
         }
     }
 

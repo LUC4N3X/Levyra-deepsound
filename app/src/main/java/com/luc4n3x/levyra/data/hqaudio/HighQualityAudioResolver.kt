@@ -146,7 +146,7 @@ class HighQualityAudioResolver(
             (mode.lossless || !cached.stream.tier.lossless) &&
             !isQuarantined(quarantinedProviderTracks, trackKey(cached.stream.providerId, cached.stream.providerTrackId))
         if (!usable) {
-            streams.remove(identityKey, cached)
+            if (streams.remove(identityKey, cached)) losslessRetryAfter.remove(identityKey)
             return null
         }
         return cached
@@ -246,6 +246,7 @@ class HighQualityAudioResolver(
     ) {
         val until = clock() + FAILURE_QUARANTINE_MS
         streams.remove(identityKey)
+        losslessRetryAfter.remove(identityKey)
         val failedLossless = providers.firstOrNull { it.id == providerId }?.lossless == true
         if (!failedLossless || providerTrackId.isBlank()) quarantine(quarantinedIdentities, identityKey, until)
         if (providerTrackId.isNotBlank()) quarantine(quarantinedProviderTracks, trackKey(providerId, providerTrackId), until)

@@ -111,6 +111,8 @@ class TidalDashManifestTest {
         assertTrue(info.durationMatches(369))
         assertTrue(bytes.copyOfRange(bytes.size - frames.size, bytes.size).contentEquals(frames))
         assertThrows(IOException::class.java) { TidalDashFlac.writeFrames(box("moof", ByteArray(16)), ByteArrayOutputStream()) }
+        assertThrows(IOException::class.java) { TidalDashFlac.writeFrames(box("mdat", byteArrayOf(0, 0, 1, 2)), ByteArrayOutputStream()) }
+        assertThrows(IOException::class.java) { TidalDashFlac.writeFrames(box("mdat", byteArrayOf(0xFF.toByte())), ByteArrayOutputStream()) }
         assertThrows(IOException::class.java) { TidalDashFlac.header(box("moov", ByteArray(4))) }
     }
 }

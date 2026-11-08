@@ -20,12 +20,16 @@ internal object TidalDashFlac {
     fun writeFrames(segment: ByteArray, output: OutputStream): Long {
         var written = 0L
         boxes(segment, 0, segment.size).filter { it.type == "mdat" }.forEach {
+            if (it.end - it.body < 2 || !isFrameSync(segment, it.body)) throw IOException("DASH segment does not start with a FLAC frame")
             output.write(segment, it.body, it.end - it.body)
             written += it.end - it.body
         }
         if (written == 0L) throw IOException("DASH segment has no audio")
         return written
     }
+
+    private fun isFrameSync(data: ByteArray, offset: Int): Boolean =
+        data[offset] == 0xFF.toByte() && (data[offset + 1].toInt() and 0xFE) == 0xF8
 
     private class Box(val type: String, val body: Int, val end: Int)
 

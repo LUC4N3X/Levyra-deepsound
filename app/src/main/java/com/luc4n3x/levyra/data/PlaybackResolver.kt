@@ -515,7 +515,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private fun isDisabledPremiumSource(track: Track): Boolean =
         track.playbackManifest?.alternativeSource?.providerId in
-            setOf(RetiredAudioProviders.QOBUZ_ID, RetiredAudioProviders.TIDAL_ID)
+            setOf(RetiredAudioProviders.QOBUZ_ID)
 
     private fun canReuseProvidedPlayback(track: Track): Boolean {
         if (isDisabledPremiumSource(track)) return false

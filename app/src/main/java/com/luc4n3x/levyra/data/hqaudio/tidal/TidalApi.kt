@@ -4,6 +4,7 @@ import com.luc4n3x.levyra.data.hqaudio.ProviderFailure
 import com.luc4n3x.levyra.data.hqaudio.ProviderHttpResponse
 import com.luc4n3x.levyra.data.runCatchingPreservingCancellation
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
+import com.luc4n3x.levyra.data.network.LevyraNetworkConfiguration
 import com.luc4n3x.levyra.data.security.SafeImageUrlPolicy
 import java.io.IOException
 import java.util.concurrent.TimeUnit
@@ -148,9 +149,20 @@ internal object TidalNetwork : TidalExchange {
     const val MAX_RESPONSE_BYTES = 33_554_432
     private val workerHosts = setOf("auth.odskyler.workers.dev", "proxy.odskyler.workers.dev")
 
-    private val client: OkHttpClient by lazy {
+    private val lock = Any()
+    @Volatile private var cached: Pair<Long, OkHttpClient>? = null
+
+    private fun client(): OkHttpClient {
+        val generation = LevyraNetworkConfiguration.generation
+        cached?.takeIf { it.first == generation }?.let { return it.second }
+        return synchronized(lock) {
+            cached?.takeIf { it.first == generation }?.second ?: buildClient().also { cached = generation to it }
+        }
+    }
+
+    private fun buildClient(): OkHttpClient {
         val base = LevyraHttpClientFactory.externalIntegrations()
-        base.newBuilder().connectTimeout(3, TimeUnit.SECONDS).readTimeout(5, TimeUnit.SECONDS)
+        return base.newBuilder().connectTimeout(3, TimeUnit.SECONDS).readTimeout(5, TimeUnit.SECONDS)
             .callTimeout(30, TimeUnit.SECONDS).followRedirects(false).followSslRedirects(false)
             .retryOnConnectionFailure(false)
             .dns(Dns { host -> base.dns.lookup(host).also { addresses ->
@@ -174,7 +186,7 @@ internal object TidalNetwork : TidalExchange {
             continuation.resumeWithException(IOException("Blocked TIDAL request"))
             return@suspendCancellableCoroutine
         }
-        val call = client.newCall(request)
+        val call = client().newCall(request)
         continuation.invokeOnCancellation { call.cancel() }
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
