@@ -544,6 +544,17 @@ class AlternativeTrackMatcherTest {
             candidate(title = "Cadeira Cativa (Ao Vivo)", primary = listOf("Zé Neto & Cristiano"), album = compilation, duration = 163)
         )
         assertRejected(
+            MatchRejection.ALBUM_MISMATCH,
+            query,
+            candidate(title = "Cadeira Cativa (Ao Vivo)", primary = listOf("Zé Neto & Cristiano"), album = "Ao Vivo em Goiânia", duration = 160)
+        )
+        val wembley = query(title = "Song (Live)", artist = "Artist", album = "Live at Wembley", durationMs = 240_000L)
+        assertRejected(
+            MatchRejection.ALBUM_MISMATCH,
+            wembley,
+            candidate(title = "Song (Live)", primary = listOf("Artist"), album = "Live at Madison Square Garden", duration = 240)
+        )
+        assertRejected(
             MatchRejection.VERSION_MISMATCH,
             query.copy(title = "Cadeira Cativa"),
             candidate(title = "Cadeira Cativa (Ao Vivo)", primary = listOf("Zé Neto & Cristiano"), album = compilation, duration = 160)

@@ -155,7 +155,8 @@ class AlternativeTrackMatcher {
         ) {
             return rejected(MatchRejection.VERSION_MISMATCH, relation)
         }
-        val sameMarkedRecording = expectedTitle.versionSignature.isNotEmpty() && delta <= 1
+        val sameMarkedRecording = expectedTitle.versionSignature.isNotEmpty() && delta <= 1 &&
+            !namesAnotherPerformance(candidate.album)
         if (!isrcConfirmed && (
                 relation == AlbumRelation.REMASTER_CONFLICT || (relation == AlbumRelation.MISMATCH && !sameMarkedRecording)
                 )
@@ -391,6 +392,9 @@ class AlternativeTrackMatcher {
         return if (expectedSingle || candidateSingle) AlbumRelation.SINGLE_RELEASE else AlbumRelation.MISMATCH
     }
 
+    private fun namesAnotherPerformance(album: String): Boolean =
+        venueLivePhrase.containsMatchIn(AlternativeTrackText.normalize(album))
+
     private fun continuesAlbum(candidateRaw: String, expectedCore: String): Boolean =
         candidateRaw.contains(" - ") && AlternativeTrackText.album(candidateRaw.substringBefore(" - ")).core == expectedCore
 
@@ -450,6 +454,8 @@ class AlternativeTrackMatcher {
         const val AMBIGUITY_MARGIN = 8
         const val SAME_RECORDING_DURATION_SECONDS = 4
 
+        private val venueLivePhrase =
+            Regex("""(?:^|\s)(?:live|ao vivo|en vivo|en directo|dal vivo)\s+(?:at|from|in|on|no|na|em|en|desde|da|dal|del)\s""")
         private val singleEditions = setOf(AlbumEdition.SINGLE, AlbumEdition.EP)
         private val lengthenedVowel = Regex("([aeiou])\\1+")
         private val indianReleaseLanguages = setOf(
