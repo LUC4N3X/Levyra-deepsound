@@ -180,10 +180,12 @@ Levyra stands on work from these open-source projects:
 - [PipePipeExtractor](https://github.com/InfinityLoop1308/PipePipeExtractor): the starting architecture for LevyraExtractor, later adapted with Levyra's own stream resolution and retry handling.
 - [NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor): upstream extractor concepts and service foundations.
 - [zemer-cipher](https://github.com/ZemerTeam/zemer-cipher): open-source work used for YouTube cipher deobfuscation and PoToken generation.
+- [faraday](https://github.com/MetrolistGroup/faraday): secondary source of YouTube player configurations, checked alongside zemer-cipher.
 - [LRCLIB](https://lrclib.net/): provides the synchronized lyrics database and API.
 - [ByeDPI](https://github.com/hufrea/byedpi): local network compatibility tool used by the optional YouTube connection mode.
 - [ByeDPIAndroid](https://github.com/dovecoteescapee/ByeDPIAndroid): Android wrapper for the ByeDPI integration.
 - [SponsorBlock](https://github.com/ajayyy/SponsorBlock): community timestamps used to skip sponsored and other marked video segments.
+- [AutoEq](https://github.com/jaakkopasanen/AutoEq): headphone measurements and GraphicEQ profiles used by the AutoEQ catalog.
 
 FLAC playback on Android depends on independent third-party sources. Their inclusion does not imply a partnership or endorsement.
 
