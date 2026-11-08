@@ -29,7 +29,7 @@ internal object TidalDashFlac {
     }
 
     private fun isFrameSync(data: ByteArray, offset: Int): Boolean =
-        data[offset] == 0xFF.toByte() && (data[offset + 1].toInt() and 0xFE) == 0xF8
+        data[offset] == 0xFF.toByte() && data[offset + 1].toInt() and 0xFE == 0xF8
 
     private class Box(val type: String, val body: Int, val end: Int)
 
