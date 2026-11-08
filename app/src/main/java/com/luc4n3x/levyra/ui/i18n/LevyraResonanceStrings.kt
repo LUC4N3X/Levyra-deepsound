@@ -7,7 +7,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "Tap to view comments",
         "noCommentsAvailable" to "No comments yet",
         "commentsDisabled" to "Comments disabled",
-        "monthlyListeners" to "listeners"
+        "monthlyListeners" to "listeners",
+        "commentsOverline" to "Buzzing"
     ),
     "it" to mapOf(
         "commentsLabel" to "Commenti",
@@ -15,7 +16,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "Tocca per vedere i commenti",
         "noCommentsAvailable" to "Nessun commento ancora",
         "commentsDisabled" to "Commenti disattivati",
-        "monthlyListeners" to "ascoltatori"
+        "monthlyListeners" to "ascoltatori",
+        "commentsOverline" to "Se ne parla"
     ),
     "es" to mapOf(
         "commentsLabel" to "Comentarios",
@@ -23,7 +25,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "Toca para ver los comentarios",
         "noCommentsAvailable" to "Aún no hay comentarios",
         "commentsDisabled" to "Comentarios desactivados",
-        "monthlyListeners" to "oyentes"
+        "monthlyListeners" to "oyentes",
+        "commentsOverline" to "En boca de todos"
     ),
     "fr" to mapOf(
         "commentsLabel" to "Commentaires",
@@ -31,7 +34,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "Appuyez pour voir les commentaires",
         "noCommentsAvailable" to "Aucun commentaire pour l'instant",
         "commentsDisabled" to "Commentaires désactivés",
-        "monthlyListeners" to "auditeurs"
+        "monthlyListeners" to "auditeurs",
+        "commentsOverline" to "On en parle"
     ),
     "de" to mapOf(
         "commentsLabel" to "Kommentare",
@@ -39,7 +43,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "Tippen, um Kommentare zu sehen",
         "noCommentsAvailable" to "Noch keine Kommentare",
         "commentsDisabled" to "Kommentare deaktiviert",
-        "monthlyListeners" to "Hörer"
+        "monthlyListeners" to "Hörer",
+        "commentsOverline" to "Im Gespräch"
     ),
     "pt" to mapOf(
         "commentsLabel" to "Comentários",
@@ -47,7 +52,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "Toque para ver os comentários",
         "noCommentsAvailable" to "Ainda sem comentários",
         "commentsDisabled" to "Comentários desativados",
-        "monthlyListeners" to "ouvintes"
+        "monthlyListeners" to "ouvintes",
+        "commentsOverline" to "Dá que falar"
     ),
     "nl" to mapOf(
         "commentsLabel" to "Reacties",
@@ -55,7 +61,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "Tik om reacties te bekijken",
         "noCommentsAvailable" to "Nog geen reacties",
         "commentsDisabled" to "Reacties uitgeschakeld",
-        "monthlyListeners" to "luisteraars"
+        "monthlyListeners" to "luisteraars",
+        "commentsOverline" to "Veel besproken"
     ),
     "pl" to mapOf(
         "commentsLabel" to "Komentarze",
@@ -63,7 +70,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "Dotknij, aby zobaczyć komentarze",
         "noCommentsAvailable" to "Brak komentarzy",
         "commentsDisabled" to "Komentarze wyłączone",
-        "monthlyListeners" to "słuchaczy"
+        "monthlyListeners" to "słuchaczy",
+        "commentsOverline" to "Na językach"
     ),
     "ro" to mapOf(
         "commentsLabel" to "Comentarii",
@@ -71,7 +79,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "Apasă pentru a vedea comentariile",
         "noCommentsAvailable" to "Încă nu există comentarii",
         "commentsDisabled" to "Comentarii dezactivate",
-        "monthlyListeners" to "ascultători"
+        "monthlyListeners" to "ascultători",
+        "commentsOverline" to "Se vorbește"
     ),
     "el" to mapOf(
         "commentsLabel" to "Σχόλια",
@@ -79,7 +88,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "Πατήστε για να δείτε τα σχόλια",
         "noCommentsAvailable" to "Δεν υπάρχουν σχόλια ακόμα",
         "commentsDisabled" to "Τα σχόλια είναι απενεργοποιημένα",
-        "monthlyListeners" to "ακροατές"
+        "monthlyListeners" to "ακροατές",
+        "commentsOverline" to "Συζητιέται"
     ),
     "sv" to mapOf(
         "commentsLabel" to "Kommentarer",
@@ -87,7 +97,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "Tryck för att se kommentarer",
         "noCommentsAvailable" to "Inga kommentarer än",
         "commentsDisabled" to "Kommentarer inaktiverade",
-        "monthlyListeners" to "lyssnare"
+        "monthlyListeners" to "lyssnare",
+        "commentsOverline" to "Snackas om"
     ),
     "da" to mapOf(
         "commentsLabel" to "Kommentarer",
@@ -95,7 +106,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "Tryk for at se kommentarer",
         "noCommentsAvailable" to "Ingen kommentarer endnu",
         "commentsDisabled" to "Kommentarer deaktiveret",
-        "monthlyListeners" to "lyttere"
+        "monthlyListeners" to "lyttere",
+        "commentsOverline" to "Alle taler om"
     ),
     "cs" to mapOf(
         "commentsLabel" to "Komentáře",
@@ -103,7 +115,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "Klepnutím zobrazíte komentáře",
         "noCommentsAvailable" to "Zatím žádné komentáře",
         "commentsDisabled" to "Komentáře jsou vypnuté",
-        "monthlyListeners" to "posluchačů"
+        "monthlyListeners" to "posluchačů",
+        "commentsOverline" to "Hodně se řeší"
     ),
     "uk" to mapOf(
         "commentsLabel" to "Коментарі",
@@ -111,7 +124,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "Торкніться, щоб переглянути коментарі",
         "noCommentsAvailable" to "Коментарів поки немає",
         "commentsDisabled" to "Коментарі вимкнено",
-        "monthlyListeners" to "слухачів"
+        "monthlyListeners" to "слухачів",
+        "commentsOverline" to "Усі обговорюють"
     ),
     "ru" to mapOf(
         "commentsLabel" to "Комментарии",
@@ -119,7 +133,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "Нажмите, чтобы посмотреть комментарии",
         "noCommentsAvailable" to "Комментариев пока нет",
         "commentsDisabled" to "Комментарии отключены",
-        "monthlyListeners" to "слушателей"
+        "monthlyListeners" to "слушателей",
+        "commentsOverline" to "Все обсуждают"
     ),
     "tr" to mapOf(
         "commentsLabel" to "Yorumlar",
@@ -127,7 +142,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "Yorumları görmek için dokunun",
         "noCommentsAvailable" to "Henüz yorum yok",
         "commentsDisabled" to "Yorumlar kapalı",
-        "monthlyListeners" to "dinleyici"
+        "monthlyListeners" to "dinleyici",
+        "commentsOverline" to "Gündemde"
     ),
     "ar" to mapOf(
         "commentsLabel" to "التعليقات",
@@ -135,7 +151,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "اضغط لعرض التعليقات",
         "noCommentsAvailable" to "لا توجد تعليقات بعد",
         "commentsDisabled" to "التعليقات متوقفة",
-        "monthlyListeners" to "مستمع"
+        "monthlyListeners" to "مستمع",
+        "commentsOverline" to "حديث الجميع"
     ),
     "zh" to mapOf(
         "commentsLabel" to "评论",
@@ -143,7 +160,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "点击查看评论"
         ,"noCommentsAvailable" to "暂无评论",
         "commentsDisabled" to "评论已关闭",
-        "monthlyListeners" to "听众"
+        "monthlyListeners" to "听众",
+        "commentsOverline" to "热议中"
     ),
     "ja" to mapOf(
         "commentsLabel" to "コメント",
@@ -151,7 +169,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "タップしてコメントを表示",
         "noCommentsAvailable" to "まだコメントはありません",
         "commentsDisabled" to "コメントはオフです",
-        "monthlyListeners" to "リスナー"
+        "monthlyListeners" to "リスナー",
+        "commentsOverline" to "話題沸騰"
     ),
     "ko" to mapOf(
         "commentsLabel" to "댓글",
@@ -159,7 +178,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "댓글을 보려면 탭하세요",
         "noCommentsAvailable" to "아직 댓글이 없습니다",
         "commentsDisabled" to "댓글이 사용 중지됨",
-        "monthlyListeners" to "청취자"
+        "monthlyListeners" to "청취자",
+        "commentsOverline" to "화제의 댓글"
     ),
     "hi" to mapOf(
         "commentsLabel" to "टिप्पणियाँ",
@@ -167,7 +187,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "टिप्पणियाँ देखने के लिए टैप करें",
         "noCommentsAvailable" to "अभी कोई टिप्पणी नहीं है",
         "commentsDisabled" to "टिप्पणियाँ अक्षम हैं",
-        "monthlyListeners" to "श्रोता"
+        "monthlyListeners" to "श्रोता",
+        "commentsOverline" to "चर्चा में"
     ),
     "id" to mapOf(
         "commentsLabel" to "Komentar",
@@ -175,7 +196,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "Ketuk untuk melihat komentar",
         "noCommentsAvailable" to "Belum ada komentar",
         "commentsDisabled" to "Komentar dinonaktifkan",
-        "monthlyListeners" to "pendengar"
+        "monthlyListeners" to "pendengar",
+        "commentsOverline" to "Lagi ramai"
     ),
     "vi" to mapOf(
         "commentsLabel" to "Bình luận",
@@ -183,7 +205,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "Nhấn để xem bình luận",
         "noCommentsAvailable" to "Chưa có bình luận nào",
         "commentsDisabled" to "Bình luận đã tắt",
-        "monthlyListeners" to "người nghe"
+        "monthlyListeners" to "người nghe",
+        "commentsOverline" to "Đang bàn tán"
     ),
     "th" to mapOf(
         "commentsLabel" to "ความคิดเห็น",
@@ -191,7 +214,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "แตะเพื่อดูความคิดเห็น",
         "noCommentsAvailable" to "ยังไม่มีความคิดเห็น",
         "commentsDisabled" to "ปิดความคิดเห็นแล้ว",
-        "monthlyListeners" to "ผู้ฟัง"
+        "monthlyListeners" to "ผู้ฟัง",
+        "commentsOverline" to "กำลังพูดถึง"
     ),
     "fil" to mapOf(
         "commentsLabel" to "Mga komento",
@@ -199,7 +223,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "I-tap para makita ang mga komento",
         "noCommentsAvailable" to "Wala pang komento",
         "commentsDisabled" to "Naka-off ang mga komento",
-        "monthlyListeners" to "tagapakinig"
+        "monthlyListeners" to "tagapakinig",
+        "commentsOverline" to "Pinag-uusapan"
     ),
     "he" to mapOf(
         "commentsLabel" to "תגובות",
@@ -207,7 +232,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "הקש לצפייה בתגובות",
         "noCommentsAvailable" to "אין עדיין תגובות",
         "commentsDisabled" to "התגובות מושבתות",
-        "monthlyListeners" to "מאזינים"
+        "monthlyListeners" to "מאזינים",
+        "commentsOverline" to "כולם מדברים"
     ),
     "fi" to mapOf(
         "commentsLabel" to "Kommentit",
@@ -215,7 +241,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "Napauta nähdäksesi kommentit",
         "noCommentsAvailable" to "Ei vielä kommentteja",
         "commentsDisabled" to "Kommentit pois käytöstä",
-        "monthlyListeners" to "kuuntelijaa"
+        "monthlyListeners" to "kuuntelijaa",
+        "commentsOverline" to "Puheenaihe"
     ),
     "et" to mapOf(
         "commentsLabel" to "Kommentaarid",
@@ -223,7 +250,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "Puuduta kommentaaride vaatamiseks",
         "noCommentsAvailable" to "Kommentaare veel pole",
         "commentsDisabled" to "Kommentaarid on keelatud",
-        "monthlyListeners" to "kuulajat"
+        "monthlyListeners" to "kuulajat",
+        "commentsOverline" to "Jutuaine"
     ),
     "sk" to mapOf(
         "commentsLabel" to "Komentáre",
@@ -231,7 +259,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "Ťuknutím zobrazíte komentáre",
         "noCommentsAvailable" to "Zatiaľ žiadne komentáre",
         "commentsDisabled" to "Komentáre sú vypnuté",
-        "monthlyListeners" to "poslucháčov"
+        "monthlyListeners" to "poslucháčov",
+        "commentsOverline" to "Hovorí sa o tom"
     ),
     "hr" to mapOf(
         "commentsLabel" to "Komentari",
@@ -239,7 +268,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "Dodirnite za prikaz komentara",
         "noCommentsAvailable" to "Još nema komentara",
         "commentsDisabled" to "Komentari su isključeni",
-        "monthlyListeners" to "slušatelja"
+        "monthlyListeners" to "slušatelja",
+        "commentsOverline" to "Svi pričaju"
     ),
     "sr" to mapOf(
         "commentsLabel" to "Коментари",
@@ -247,7 +277,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "Додирните за приказ коментара",
         "noCommentsAvailable" to "Још нема коментара",
         "commentsDisabled" to "Коментари су искључени",
-        "monthlyListeners" to "слушалаца"
+        "monthlyListeners" to "слушалаца",
+        "commentsOverline" to "Сви причају"
     ),
     "sq" to mapOf(
         "commentsLabel" to "Komente",
@@ -255,7 +286,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "Prek për të parë komentet",
         "noCommentsAvailable" to "Ende pa komente",
         "commentsDisabled" to "Komentet janë çaktivizuar",
-        "monthlyListeners" to "dëgjues"
+        "monthlyListeners" to "dëgjues",
+        "commentsOverline" to "Flitet shumë"
     ),
     "bg" to mapOf(
         "commentsLabel" to "Коментари",
@@ -263,7 +295,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "Докоснете, за да видите коментарите",
         "noCommentsAvailable" to "Все още няма коментари",
         "commentsDisabled" to "Коментарите са изключени",
-        "monthlyListeners" to "слушатели"
+        "monthlyListeners" to "слушатели",
+        "commentsOverline" to "Всички говорят"
     ),
     "hu" to mapOf(
         "commentsLabel" to "Hozzászólások",
@@ -271,7 +304,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "Koppints a hozzászólásokért",
         "noCommentsAvailable" to "Még nincsenek hozzászólások",
         "commentsDisabled" to "A hozzászólások ki vannak kapcsolva",
-        "monthlyListeners" to "hallgató"
+        "monthlyListeners" to "hallgató",
+        "commentsOverline" to "Szóbeszéd"
     ),
     "nb" to mapOf(
         "commentsLabel" to "Kommentarer",
@@ -279,7 +313,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "Trykk for å se kommentarer",
         "noCommentsAvailable" to "Ingen kommentarer ennå",
         "commentsDisabled" to "Kommentarer er slått av",
-        "monthlyListeners" to "lyttere"
+        "monthlyListeners" to "lyttere",
+        "commentsOverline" to "Alle snakker om"
     ),
     "ca" to mapOf(
         "commentsLabel" to "Comentaris",
@@ -287,7 +322,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "Toca per veure els comentaris",
         "noCommentsAvailable" to "Encara no hi ha comentaris",
         "commentsDisabled" to "Comentaris desactivats",
-        "monthlyListeners" to "oients"
+        "monthlyListeners" to "oients",
+        "commentsOverline" to "Se'n parla"
     ),
     "kk" to mapOf(
         "commentsLabel" to "Пікірлер",
@@ -295,7 +331,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "Пікірлерді көру үшін түртіңіз",
         "noCommentsAvailable" to "Әзірге пікір жоқ",
         "commentsDisabled" to "Пікірлер өшірілген",
-        "monthlyListeners" to "тыңдарман"
+        "monthlyListeners" to "тыңдарман",
+        "commentsOverline" to "Талқыда"
     ),
     "fa" to mapOf(
         "commentsLabel" to "نظرها",
@@ -303,7 +340,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "برای دیدن نظرها ضربه بزنید",
         "noCommentsAvailable" to "هنوز نظری نیست",
         "commentsDisabled" to "نظرها غیرفعال است",
-        "monthlyListeners" to "شنونده"
+        "monthlyListeners" to "شنونده",
+        "commentsOverline" to "سر زبان‌ها"
     ),
     "zh-Hant" to mapOf(
         "commentsLabel" to "留言",
@@ -311,7 +349,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "輕觸以查看留言",
         "noCommentsAvailable" to "尚無留言",
         "commentsDisabled" to "留言已停用",
-        "monthlyListeners" to "聽眾"
+        "monthlyListeners" to "聽眾",
+        "commentsOverline" to "熱議中"
     ),
     "bn" to mapOf(
         "commentsLabel" to "মন্তব্য",
@@ -319,7 +358,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "মন্তব্য দেখতে ট্যাপ করুন",
         "noCommentsAvailable" to "এখনও কোনো মন্তব্য নেই",
         "commentsDisabled" to "মন্তব্য বন্ধ",
-        "monthlyListeners" to "শ্রোতা"
+        "monthlyListeners" to "শ্রোতা",
+        "commentsOverline" to "আলোচনায়"
     ),
     "ms" to mapOf(
         "commentsLabel" to "Komen",
@@ -327,7 +367,8 @@ private val resonanceBundles: Map<String, Map<String, String>> = mapOf(
         "tapToOpenComments" to "Ketik untuk melihat komen",
         "noCommentsAvailable" to "Belum ada komen",
         "commentsDisabled" to "Komen dimatikan",
-        "monthlyListeners" to "pendengar"
+        "monthlyListeners" to "pendengar",
+        "commentsOverline" to "Hangat dibincang"
     )
 )
 
@@ -337,7 +378,8 @@ internal val resonanceKeys: Set<String> = setOf(
     "tapToOpenComments",
     "noCommentsAvailable",
     "commentsDisabled",
-    "monthlyListeners"
+    "monthlyListeners",
+    "commentsOverline"
 )
 
 internal fun resonanceLocalizationCodes(): Set<String> = supportedLocalizationCodes()

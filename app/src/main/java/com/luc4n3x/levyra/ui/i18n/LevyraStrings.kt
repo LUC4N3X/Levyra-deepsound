@@ -590,6 +590,7 @@ class LevyraStrings private constructor(
     val commentsLabel: String get() = value("commentsLabel")
     val mostCommentedTracks: String get() = value("mostCommentedTracks")
     val monthlyListeners: String get() = value("monthlyListeners")
+    val commentsOverline: String get() = value("commentsOverline")
     val tapToOpenComments: String get() = value("tapToOpenComments")
     val noCommentsAvailable: String get() = value("noCommentsAvailable")
     val commentsDisabledLabel: String get() = value("commentsDisabled")

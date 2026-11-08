@@ -1308,7 +1308,7 @@ internal class MonoHomeKit(
         val unique = remember(quotes) { quotes.distinctBy(ComposedQuote::key) }
         if (unique.isEmpty()) return
         val strings = LocalLevyraStrings.current
-        MonoSection(title, strings.tapToOpenComments) {
+        MonoSection(title, strings.commentsOverline) {
             val railState = rememberLazyListState()
             val railMotion = glacierRailMotionEnabled()
             LazyRow(state = railState, contentPadding = MonoRailPadding, horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap)) {
