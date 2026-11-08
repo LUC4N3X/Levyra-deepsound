@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.domain.PlaylistHit
 import com.luc4n3x.levyra.domain.YoutubeMusicHomeItem
+import com.luc4n3x.levyra.domain.YoutubeMusicHomeShelf
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.LevyraSectionHeader
 import com.luc4n3x.levyra.ui.components.levyraPressable
@@ -50,40 +51,33 @@ private val CuratedCardWidth = 164.dp
 internal fun defaultHomeOwnsCuratedPlaylists(): Boolean = defaultHomeUsesNewReleases(true)
 
 @Composable
-internal fun DefaultCuratedPlaylistShelves(onOpen: (PlaylistHit) -> Unit, fallback: @Composable () -> Unit) {
-    if (!defaultHomeOwnsCuratedPlaylists()) {
-        fallback()
-        return
-    }
+internal fun rememberDefaultCuratedShelves(): List<YoutubeMusicHomeShelf> {
+    if (!defaultHomeOwnsCuratedPlaylists()) return emptyList()
+    val shelves = rememberCuratedPlaylistShelves(LocalLevyraStrings.current.code)
+    return remember(shelves) { shelves.filter { shelf -> shelf.items.any { it.playlist != null } } }
+}
+
+@Composable
+internal fun DefaultCuratedPlaylistShelf(index: Int, shelf: YoutubeMusicHomeShelf, onOpen: (PlaylistHit) -> Unit) {
     val code = LocalLevyraStrings.current.code
-    val shelves = rememberCuratedPlaylistShelves(code)
-    if (shelves.isEmpty()) {
-        fallback()
-        return
-    }
     val copy = remember(code) { LevyraMonoHomeStrings.forCode(code) }
     val railMotion = defaultRailMotionEnabled()
-    Column(verticalArrangement = Arrangement.spacedBy(28.dp)) {
-        shelves.forEachIndexed { index, shelf ->
-            val items = remember(shelf.items) { shelf.items.filter { it.playlist != null }.distinctBy { it.key } }
-            if (items.isEmpty()) return@forEachIndexed
-            Column {
-                LevyraSectionHeader(
-                    title = if (index == 0) copy.mixedForYou else shelf.title,
-                    subtitle = if (index == 0) copy.rotationOverline else shelf.strapline.ifBlank { null },
-                    modifier = Modifier.padding(horizontal = LevyraHomeDesign.HorizontalInset).padding(bottom = 12.dp)
-                )
-                val rowState = rememberLazyListState()
-                LazyRow(
-                    state = rowState,
-                    contentPadding = PaddingValues(horizontal = LevyraHomeDesign.HorizontalInset),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(items, key = { it.key }, contentType = { "default-curated-playlist" }) { item ->
-                        Box(Modifier.defaultRailItemMotion(railMotion, rowState, item.key)) {
-                            DefaultCuratedPlaylistCard(item, Modifier.defaultRailParallax(railMotion, rowState, item.key)) { item.playlist?.let(onOpen) }
-                        }
-                    }
+    val items = remember(shelf.items) { shelf.items.filter { it.playlist != null }.distinctBy { it.key } }
+    Column {
+        LevyraSectionHeader(
+            title = if (index == 0) copy.mixedForYou else shelf.title,
+            subtitle = if (index == 0) copy.rotationOverline else shelf.strapline.ifBlank { null },
+            modifier = Modifier.padding(horizontal = LevyraHomeDesign.HorizontalInset).padding(bottom = 12.dp)
+        )
+        val rowState = rememberLazyListState()
+        LazyRow(
+            state = rowState,
+            contentPadding = PaddingValues(horizontal = LevyraHomeDesign.HorizontalInset),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(items, key = { it.key }, contentType = { "default-curated-playlist" }) { item ->
+                Box(Modifier.defaultRailItemMotion(railMotion, rowState, item.key)) {
+                    DefaultCuratedPlaylistCard(item, Modifier.defaultRailParallax(railMotion, rowState, item.key)) { item.playlist?.let(onOpen) }
                 }
             }
         }
