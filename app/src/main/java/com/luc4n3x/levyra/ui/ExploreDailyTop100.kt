@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import android.text.format.DateFormat
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -504,7 +505,7 @@ private fun Top100Row(rank: Int, track: Track, optionsLabel: String, onClick: ()
             modifier = Modifier.size(52.dp).clip(RoundedCornerShape(12.dp)).background(scheme.surfaceContainerHigh)
         )
         Column(Modifier.weight(1f).padding(horizontal = 14.dp)) {
-            Text(track.title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = scheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            LevyraMediaTitle(track.title, explicit = track.explicit,  style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = scheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(track.artist, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         IconButton(onClick = onActions) {

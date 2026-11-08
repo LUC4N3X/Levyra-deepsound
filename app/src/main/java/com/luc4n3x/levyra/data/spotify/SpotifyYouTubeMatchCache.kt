@@ -11,7 +11,8 @@ internal data class MatchedYouTubeData(
     val videoUrl: String,
     val audioVideoId: String,
     val videoType: String,
-    val timestampMs: Long
+    val timestampMs: Long,
+    val explicit: Boolean? = null
 )
 
 private class SimpleLruCache<K, V>(private val maxSize: Int) {
@@ -83,7 +84,8 @@ internal class SpotifyYouTubeMatchCache private constructor(context: Context? = 
             videoUrl = youtubeTrack.videoUrl.ifBlank { "https://www.youtube.com/watch?v=$videoId" },
             audioVideoId = audioVideoId,
             videoType = youtubeTrack.videoType,
-            timestampMs = System.currentTimeMillis()
+            timestampMs = System.currentTimeMillis(),
+            explicit = youtubeTrack.explicit
         )
 
         memoryCache.put(key, data)
@@ -132,7 +134,8 @@ internal class SpotifyYouTubeMatchCache private constructor(context: Context? = 
             videoUrl = json.optString("videoUrl"),
             audioVideoId = json.optString("audioVideoId").trim(),
             videoType = json.optString("videoType"),
-            timestampMs = json.optLong("timestamp", 0L)
+            timestampMs = json.optLong("timestamp", 0L),
+            explicit = json.opt("explicit") as? Boolean
         )
     }
 
@@ -144,6 +147,7 @@ internal class SpotifyYouTubeMatchCache private constructor(context: Context? = 
             .put("audioVideoId", data.audioVideoId)
             .put("videoType", data.videoType)
             .put("timestamp", data.timestampMs)
+            .put("explicit", data.explicit)
             .toString()
 
     private fun isFresh(data: MatchedYouTubeData, now: Long): Boolean {

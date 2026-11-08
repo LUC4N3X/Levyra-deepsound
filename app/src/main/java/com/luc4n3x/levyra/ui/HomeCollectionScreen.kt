@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 import com.luc4n3x.levyra.ui.theme.LevyraIsSpotify
 import com.luc4n3x.levyra.ui.theme.Nocturne78Design
@@ -518,8 +519,8 @@ private fun CollectionTrackRow(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(LevyraCardDesign.RowLineGap)
         ) {
-            Text(
-                text = track.title,
+            LevyraMediaTitle(
+                text = track.title, explicit = track.explicit,
                 color = LevyraText,
                 style = LevyraType.contentTitle.copy(fontWeight = if (active) FontWeight.Bold else FontWeight.SemiBold),
                 maxLines = 1,

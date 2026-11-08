@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.insights
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import com.luc4n3x.levyra.ui.overlayScreenBottomPadding
 import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import androidx.activity.compose.BackHandler
@@ -1336,7 +1337,7 @@ private fun TopTrackRow(
                 .padding(start = 12.dp, end = 8.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            Text(
+            LevyraMediaTitle(
                 track.title,
                 color = LevyraText,
                 fontSize = 13.5.sp,
@@ -1490,7 +1491,7 @@ private fun HistoryTrackRow(
                     .padding(start = 12.dp, end = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                Text(
+                LevyraMediaTitle(
                     item.track.title,
                     color = LevyraText,
                     fontSize = 13.5.sp,

@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -420,7 +421,7 @@ private fun SkinChartRow(index: Int, track: Track, currentId: String?, isPlaying
         )
         Box(Modifier.size(52.dp).clip(RoundedCornerShape(PrismDesign.tileCorner))) { CoverImage(track, Modifier.fillMaxSize()) }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(track.title, color = if (current) LevyraCyan else LevyraText, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            LevyraMediaTitle(track.title, explicit = track.explicit,  color = if (current) LevyraCyan else LevyraText, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(track.artist, color = LevyraMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         if (current) LevyraPlayingIndicator(playing = isPlaying, color = LevyraCyan, size = 12.dp)
@@ -459,8 +460,8 @@ private fun PrismChartTrack(index: Int, track: Track, current: Boolean, playing:
             CoverImage(track, Modifier.fillMaxSize(), highRes = first)
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(track.title, color = if (current) LevyraCyan else LevyraText,
-                style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            LevyraMediaTitle(track.title, explicit = track.explicit,  color = if (current) LevyraCyan else LevyraText,
+                style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(track.artist, color = LevyraMuted, style = MaterialTheme.typography.bodySmall,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }

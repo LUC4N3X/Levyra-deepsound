@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
@@ -223,7 +224,7 @@ private fun AtelierLyricsTransport(isPlaying: Boolean, track: Track, onTogglePla
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(track.title, style = MaterialTheme.typography.titleMedium, color = AtelierDesign.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            LevyraMediaTitle(track.title, explicit = track.explicit,  style = MaterialTheme.typography.titleMedium, color = AtelierDesign.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(track.artist, style = MaterialTheme.typography.bodyMedium, color = AtelierDesign.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         AtelierIconTarget(

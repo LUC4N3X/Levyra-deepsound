@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.ui.theme.MonoCodeFont
 import com.luc4n3x.levyra.ui.i18n.LevyraYouTubeMusicSkinStrings
@@ -652,8 +653,8 @@ private fun MonoArtistTrackRow(
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(
-                track.title, style = MaterialTheme.typography.titleSmall, color = if (current) MonoDesign.accent else MonoDesign.text,
+            LevyraMediaTitle(
+                track.title,  style = MaterialTheme.typography.titleSmall, color = if (current) MonoDesign.accent else MonoDesign.text,
                 maxLines = 1, overflow = TextOverflow.Ellipsis
             )
             Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {

@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -272,7 +273,7 @@ internal fun QobuzTrackRow(track: Track, current: Boolean, copy: QobuzSkinCopy, 
         Box(Modifier.size(QobuzDesign.listArtwork).clip(QobuzDesign.artworkShape).background(QobuzDesign.placeholder)) { CoverImage(track, Modifier.fillMaxSize()) }
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
-            Text(track.title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Medium),
+            LevyraMediaTitle(track.title,  style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Medium),
                 color = if (current) QobuzDesign.textAccent else QobuzDesign.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (track.explicit) {

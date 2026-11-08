@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.player
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import com.luc4n3x.levyra.ui.theme.*
 import com.luc4n3x.levyra.ui.PlayerAccentPair
 import com.luc4n3x.levyra.ui.theme.Nocturne78Palette
@@ -2097,13 +2098,13 @@ private fun PlayerLiveRadioMetadata(
         verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceXs)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = track.title,
+            LevyraMediaTitle(
+                text = track.title, explicit = track.explicit,
                 color = surfaces.content,
                 fontSize = titleSize,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = (-0.6).sp,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )

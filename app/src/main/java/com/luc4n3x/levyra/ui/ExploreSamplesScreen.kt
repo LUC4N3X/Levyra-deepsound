@@ -1,6 +1,8 @@
 @file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import android.content.Intent
 import android.view.LayoutInflater
 import androidx.activity.compose.BackHandler
@@ -466,13 +468,13 @@ private fun ExploreSamplePage(
                 )
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(
-                    text = track.title,
+                LevyraMediaTitle(
+                    text = track.title, explicit = track.explicit,
                     color = Color.White,
                     fontSize = 20.sp,
                     lineHeight = LevyraTypeRhythm.lineHeight(20.sp),
                     fontWeight = FontWeight.Black,
-                    maxLines = 2,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(

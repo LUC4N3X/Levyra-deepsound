@@ -1,6 +1,7 @@
 @file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import com.luc4n3x.levyra.ui.theme.*
 import com.luc4n3x.levyra.domain.playableTrackCount
 import com.luc4n3x.levyra.domain.exploreSamplesRequestIndex
@@ -1708,8 +1709,7 @@ private fun HomeTrackRow(
             titleColor = if (isCurrent) LevyraCyan else LevyraText,
             modifier = Modifier
                 .weight(1f)
-                .padding(start = 12.dp, end = 8.dp)
-        )
+                .padding(start = 12.dp, end = 8.dp), explicit = track.explicit)
         when {
             trailingContent != null -> trailingContent()
             onActions != null -> {
@@ -1765,8 +1765,8 @@ private fun HomeArtworkCard(
             }
         }
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = track.title,
+            LevyraMediaTitle(
+                text = track.title, explicit = track.explicit,
                 color = if (isCurrent) LevyraCyan else LevyraText,
                 fontSize = LevyraHomeDesign.CardTitleSize,
                 lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.CardTitleSize),
@@ -5300,8 +5300,8 @@ private fun AlbumTrackRow(
             stage = stage
         )
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(LevyraCardDesign.RowLineGap)) {
-            Text(
-                text = track.title,
+            LevyraMediaTitle(
+                text = track.title, explicit = track.explicit,
                 color = if (presentation.isCurrent) stage.accent else stage.content,
                 style = LevyraType.contentTitle,
                 maxLines = 1,
@@ -6311,8 +6311,7 @@ private fun ArtistPopularTrackRow(
             title = track.title,
             subtitle = subtitle,
             titleColor = if (isCurrent) LevyraCyan else LevyraText,
-            modifier = Modifier.weight(1f)
-        )
+            modifier = Modifier.weight(1f), explicit = track.explicit)
 
         Box(
             modifier = Modifier.size(32.dp),
@@ -7840,8 +7839,8 @@ private fun LyricsOverlay(
                             )
                         }
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = track?.title ?: strings.lyrics,
+                            LevyraMediaTitle(
+                                text = track?.title ?: strings.lyrics, explicit = track?.explicit == true,
                                 color = Color.White,
                                 fontSize = when (viewMode) {
                                     LyricsViewMode.CINEMA -> 23.sp
@@ -7849,7 +7848,7 @@ private fun LyricsOverlay(
                                     LyricsViewMode.COMPACT -> 18.sp
                                 },
                                 fontWeight = FontWeight.Black,
-                                maxLines = if (viewMode == LyricsViewMode.COMPACT) 1 else 2,
+                                maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                             Text(
@@ -12042,8 +12041,8 @@ private fun PersonalOrbitTile(
                     )
                 )
         )
-        Text(
-            text = track.title,
+        LevyraMediaTitle(
+            text = track.title, explicit = track.explicit, marqueeEnabled = !LevyraIsDefaultSkin,
             color = if (isCurrent && !(LevyraIsPrism && LevyraIsLight)) LevyraCyan else Color.White,
             fontSize = LevyraHomeDesign.OrbitTileTitleSize,
             lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitTileTitleSize),
@@ -12657,8 +12656,8 @@ private fun HomeQuickPickRow(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(LevyraCardDesign.CaptionLineGap)
         ) {
-            Text(
-                text = track.title,
+            LevyraMediaTitle(
+                text = track.title, explicit = track.explicit,
                 color = if (isCurrent) LevyraCyan else LevyraText,
                 style = LevyraType.cardTitle,
                 maxLines = 1,
@@ -13015,8 +13014,8 @@ private fun ResonanceFeaturedCard(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(LevyraCardDesign.CaptionLineGap)
             ) {
-                Text(
-                    text = track.title,
+                LevyraMediaTitle(
+                    text = track.title, explicit = track.explicit,
                     color = if (active) LevyraCyan else LevyraText,
                     style = LevyraType.contentTitle,
                     maxLines = 1,
@@ -13395,8 +13394,8 @@ private fun HomeMusicVideoCaption(track: Track, active: Boolean) {
             .joinToString(" • ")
     }
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(
-            text = track.title,
+        LevyraMediaTitle(
+            text = track.title, explicit = track.explicit,
             color = if (active) LevyraCyan else LevyraText,
             fontSize = 16.sp,
             lineHeight = LevyraTypeRhythm.lineHeight(16.sp),
@@ -13887,8 +13886,8 @@ private fun StudioPersonalOrbitTile(
                 titleInside = false,
                 modifier = Modifier.fillMaxWidth()
             )
-            Text(
-                text = track.title,
+            LevyraMediaTitle(
+                text = track.title, explicit = track.explicit, marqueeEnabled = !LevyraIsDefaultSkin,
                 color = if (isCurrent) MaterialTheme.colorScheme.primary else LevyraText,
                 fontSize = LevyraHomeDesign.OrbitTileTitleSize,
                 lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitTileTitleSize),
@@ -13896,7 +13895,7 @@ private fun StudioPersonalOrbitTile(
                 textAlign = TextAlign.Center,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp).levyraMarquee()
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
             )
         }
     } else {
@@ -13980,8 +13979,8 @@ private fun BoxScope.StudioPersonalOrbitOverlayTitle(track: Track, isCurrent: Bo
                 )
             )
     )
-    Text(
-        text = track.title,
+    LevyraMediaTitle(
+        text = track.title, explicit = track.explicit, marqueeEnabled = !LevyraIsDefaultSkin,
         color = if (isCurrent && !(LevyraIsPrism && LevyraIsLight)) LevyraCyan else Color.White,
         fontSize = LevyraHomeDesign.OrbitTileTitleSize,
         lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitTileTitleSize),
@@ -14387,8 +14386,8 @@ private fun QuickSongRow(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.Center
         ) {
-            Text(
-                text = track.title,
+            LevyraMediaTitle(
+                text = track.title, explicit = track.explicit,
                 color = if (isCurrent) LevyraCyan else LevyraText,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Black,
@@ -15467,8 +15466,8 @@ private fun RecentSearchesRow(
                             modifier = Modifier.padding(start = 4.dp, end = 4.dp, bottom = 4.dp),
                             verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
-                            Text(
-                                text = track.title,
+                            LevyraMediaTitle(
+                                text = track.title, explicit = track.explicit,
                                 color = LevyraText,
                                 fontSize = 14.sp,
                                 lineHeight = LevyraTypeRhythm.lineHeight(14.sp),
@@ -18178,8 +18177,8 @@ private fun PlayerSimilarSongCard(
             }
         }
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = track.title,
+            LevyraMediaTitle(
+                text = track.title, explicit = track.explicit,
                 color = LevyraPlayerDesign.TextPrimary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
@@ -22408,7 +22407,7 @@ private fun MetroHeroDeck(
                         }
                     }
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(hero.title, color = LevyraText, fontSize = 24.sp, lineHeight = LevyraTypeRhythm.lineHeight(24.sp), fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        LevyraMediaTitle(hero.title, explicit = hero.explicit,  color = LevyraText, fontSize = 24.sp, lineHeight = LevyraTypeRhythm.lineHeight(24.sp), fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(hero.artist, color = LevyraText.copy(alpha = 0.78f), fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             MetroStatPill(Icons.AutoMirrored.Rounded.QueueMusic, queueCount.coerceAtLeast(tracks.size).toString(), LocalLevyraStrings.current.queue)
@@ -22530,7 +22529,7 @@ private fun QuickStart(
                         CoverImage(track, Modifier.size(54.dp).clip(RoundedCornerShape(10.dp)))
                         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(LocalLevyraStrings.current.continueListening, color = LevyraCyan, fontSize = 11.sp, fontWeight = FontWeight.Black)
-                            Text(track.title, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            LevyraMediaTitle(track.title, explicit = track.explicit,  color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         if (isResolving) {
                             CircularProgressIndicator(modifier = Modifier.size(20.dp).padding(end = 8.dp), strokeWidth = 2.dp, color = LevyraCyan)
@@ -22748,6 +22747,7 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
                     }
                     LevyraCardCaption(
                         title = album.title,
+                        explicit = album.explicit,
                         subtitle = album.artist
                     )
                 }
@@ -22884,8 +22884,7 @@ private fun AlbumArtworkCard(
         LevyraCardCaption(
             title = track.title,
             subtitle = track.artist,
-            titleColor = if (isCurrent) LevyraCyan else LevyraText
-        )
+            titleColor = if (isCurrent) LevyraCyan else LevyraText, explicit = track.explicit)
     }
 }
 
@@ -22968,8 +22967,7 @@ private fun CompactRow(
             title = track.title,
             subtitle = track.artist,
             titleColor = if (isCurrent) LevyraCyan else LevyraText,
-            modifier = Modifier.weight(1f)
-        )
+            modifier = Modifier.weight(1f), explicit = track.explicit)
         Box {
             IconButton(onClick = { expanded = true }) {
                 Icon(
@@ -23158,7 +23156,7 @@ private fun FeaturedTrackCard(
                 }
             }
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(track.title, color = LevyraText, fontSize = 24.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                LevyraMediaTitle(track.title, explicit = track.explicit,  color = LevyraText, fontSize = 24.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(track.artist, color = LevyraMuted, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Surface(
@@ -23304,8 +23302,8 @@ private fun SearchSuggestionTrackCard(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Text(
-                    text = track.title,
+                LevyraMediaTitle(
+                    text = track.title, explicit = track.explicit,
                     color = if (isCurrent) LevyraCyan else LevyraText,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Black,
@@ -23754,7 +23752,7 @@ private fun TopResultTrackRow(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            Text(
+            LevyraMediaTitle(
                 text = track.title,
                 color = if (isCurrent) LevyraCyan else LevyraText,
                 fontSize = if (emphasized) 17.sp else 15.sp,
@@ -23995,8 +23993,8 @@ private fun SearchTrackCard(
             }
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(LevyraCardDesign.RowLineGap)) {
-            Text(
-                track.title,
+            LevyraMediaTitle(
+                track.title, explicit = track.explicit,
                 color = if (isCurrent) rowAccent else LevyraText,
                 style = LevyraType.contentTitle.copy(fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.SemiBold),
                 maxLines = 1,
@@ -24482,8 +24480,8 @@ private fun TrackRow(
             }
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                track.title,
+            LevyraMediaTitle(
+                track.title, explicit = track.explicit,
                 color = if (isCurrent) rowAccent else LevyraText,
                 style = LevyraType.contentTitle.copy(fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.SemiBold),
                 maxLines = 1,
@@ -25980,13 +25978,13 @@ private fun TrackGlassCard(
             }
         }
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                track.title,
+            LevyraMediaTitle(
+                track.title, explicit = track.explicit,
                 color = Color.White,
                 fontSize = 14.sp,
                 lineHeight = LevyraTypeRhythm.lineHeight(14.sp),
                 fontWeight = FontWeight.SemiBold,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
@@ -26087,8 +26085,8 @@ private fun VideoGlassCard(
                 }
             }
         }
-        Text(
-            text = track.title,
+        LevyraMediaTitle(
+            text = track.title, explicit = track.explicit,
             color = LevyraText,
             fontSize = 14.5.sp,
             lineHeight = LevyraTypeRhythm.lineHeight(14.5.sp),

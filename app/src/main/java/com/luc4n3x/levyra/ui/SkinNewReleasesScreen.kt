@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -203,7 +205,7 @@ private fun SkinReleaseLead(look: ReleaseLook, album: AlbumHit, badge: String, c
         )
         Row(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.Bottom) {
             Column(Modifier.weight(1f).clearAndSetSemantics { }, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(cased(album.title), color = Color.White, fontSize = 26.sp, lineHeight = 30.sp, fontWeight = look.titleWeight, letterSpacing = look.spacing, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                LevyraMediaTitle(cased(album.title), explicit = album.explicit, color = Color.White, fontSize = 26.sp, lineHeight = 30.sp, fontWeight = look.titleWeight, letterSpacing = look.spacing)
                 Text(listOf(album.artist, album.year).filter(String::isNotBlank).joinToString(" · "), color = Color.White.copy(alpha = 0.82f), fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Box(
@@ -229,7 +231,7 @@ private fun SkinReleaseCard(look: ReleaseLook, album: AlbumHit, badge: String, c
             )
         }
         Column(Modifier.padding(start = 4.dp, end = 4.dp, top = 10.dp).clearAndSetSemantics { }, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(cased(album.title), color = look.text, fontSize = 14.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold, letterSpacing = if (look.uppercase) 0.8.sp else 0.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            LevyraMediaTitle(cased(album.title), explicit = album.explicit, color = look.text, fontSize = 14.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold, letterSpacing = if (look.uppercase) 0.8.sp else 0.sp)
             Text(album.artist, color = look.muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }

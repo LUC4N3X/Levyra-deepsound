@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.animation.togetherWith
@@ -443,10 +444,11 @@ internal fun AtelierVinyl(track: Track?, modifier: Modifier) {
 }
 
 @Composable
-internal fun AtelierTileText(title: String, subtitle: String, highlighted: Boolean) {
+internal fun AtelierTileText(title: String, subtitle: String, highlighted: Boolean, explicit: Boolean = false) {
     Spacer(Modifier.height(8.dp))
-    Text(
+    LevyraMediaTitle(
         text = title,
+        explicit = explicit,
         style = MaterialTheme.typography.titleSmall,
         color = if (highlighted) AtelierDesign.accentBright else AtelierDesign.text,
         maxLines = 1,
@@ -484,7 +486,7 @@ internal fun AtelierTrackTile(
         AtelierSleeveFrame(Modifier.size(width)) {
             CoverImage(track, Modifier.fillMaxSize().clearAndSetSemantics {})
         }
-        AtelierTileText(track.title, track.artist, isCurrent)
+        AtelierTileText(track.title, track.artist, isCurrent, explicit = track.explicit)
     }
 }
 
@@ -492,7 +494,7 @@ internal fun AtelierTrackTile(
 internal fun AtelierAlbumTile(album: AlbumHit, modifier: Modifier, onOpen: () -> Unit) {
     Column(modifier.levyraPressable(onClick = onOpen, role = Role.Button, pressedScale = LevyraPressScale.Tile)) {
         AtelierSleeveFrame(Modifier.fillMaxWidth().aspectRatio(1f)) { AtelierArtwork(album.thumbnailUrl) }
-        AtelierTileText(album.title, album.artist, highlighted = false)
+        AtelierTileText(album.title, album.artist, highlighted = false, explicit = album.explicit)
     }
 }
 
@@ -527,8 +529,8 @@ internal fun AtelierTrackLine(
             CoverImage(track, Modifier.fillMaxSize().clearAndSetSemantics {})
         }
         Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
-            Text(
-                text = track.title,
+            LevyraMediaTitle(
+                text = track.title, explicit = track.explicit,
                 style = MaterialTheme.typography.titleSmall,
                 color = if (isCurrent) AtelierDesign.accentBright else AtelierDesign.text,
                 maxLines = 1,
@@ -952,8 +954,8 @@ private fun AtelierFeatureRow(
                                 "${'A'}${index + 1}", style = MaterialTheme.typography.labelSmall,
                                 color = AtelierDesign.accent, modifier = Modifier.width(32.dp)
                             )
-                            Text(
-                                track.title, style = MaterialTheme.typography.bodyMedium, color = AtelierDesign.text,
+                            LevyraMediaTitle(
+                                track.title, explicit = track.explicit,  style = MaterialTheme.typography.bodyMedium, color = AtelierDesign.text,
                                 maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
                             )
                             Text(
@@ -990,11 +992,11 @@ internal fun AtelierPickSleeve(track: Track, width: Dp, isCurrent: Boolean, acti
         ) {
             CoverImage(track, Modifier.fillMaxSize().clearAndSetSemantics {})
         }
-        Text(
-            text = track.title,
+        LevyraMediaTitle(
+            text = track.title, explicit = track.explicit,
             style = MaterialTheme.typography.titleMedium,
             color = if (isCurrent) AtelierDesign.accentBright else AtelierDesign.text,
-            maxLines = 2,
+            maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = 8.dp)
         )
@@ -1029,8 +1031,8 @@ internal fun AtelierCompactRow(track: Track, isCurrent: Boolean, actionsLabel: S
             CoverImage(track, Modifier.fillMaxSize().clearAndSetSemantics {})
         }
         Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
-            Text(
-                text = track.title,
+            LevyraMediaTitle(
+                text = track.title, explicit = track.explicit,
                 style = MaterialTheme.typography.titleSmall,
                 color = if (isCurrent) AtelierDesign.accentBright else AtelierDesign.text,
                 maxLines = 1,
@@ -1222,7 +1224,7 @@ private fun AtelierContinueAlbumTile(
             AtelierSleeveFrame(Modifier.size(AtelierContinueTile)) {
                 CoverImage(track, Modifier.fillMaxSize().clearAndSetSemantics {})
             }
-            AtelierTileText(track.album.ifBlank { track.title }, track.artist, isCurrent)
+            AtelierTileText(track.album.ifBlank { track.title }, track.artist, isCurrent, explicit = track.explicit)
         }
         AtelierHardwareKey(
             label = if (active) strings.pause else strings.play,
@@ -1262,7 +1264,7 @@ internal fun AtelierStandingShelf(
                         CoverImage(track, Modifier.fillMaxSize().clearAndSetSemantics {})
                     }
                 }
-                AtelierTileText(track.title, track.artist, track.id == currentId)
+                AtelierTileText(track.title, track.artist, track.id == currentId, explicit = track.explicit)
             }
         }
     }

@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.player
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateFloatAsState
@@ -515,8 +516,8 @@ private fun MonoSimilarSheet(track: Track, copy: MonoPlayerCopy, content: @Compo
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
             Column(Modifier.padding(horizontal = MonoDesign.gutter), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 MonoOverline(copy.similar)
-                Text(
-                    track.title, style = MaterialTheme.typography.titleLarge, color = MonoDesign.text, maxLines = 1,
+                LevyraMediaTitle(
+                    track.title, explicit = track.explicit,  style = MaterialTheme.typography.titleLarge, color = MonoDesign.text, maxLines = 1,
                     overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() }
                 )
             }

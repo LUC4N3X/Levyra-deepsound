@@ -288,6 +288,14 @@ internal fun buildLibraryCatalog(
             followedAt = followed?.followedAt ?: 0L,
             tracks = tracks
         )
+    }.groupBy { it.key }.values.map { aliases ->
+        val preferred = aliases.maxBy { it.followedAt }
+        preferred.copy(
+            artworkUrl = preferred.artworkUrl.ifBlank {
+                aliases.firstNotNullOfOrNull { it.artworkUrl.takeIf(String::isNotBlank) }.orEmpty()
+            },
+            tracks = aliases.flatMap { it.tracks }.distinctBy(::libraryTrackKey)
+        )
     }.sortedWith(
         compareByDescending<LibraryArtist> { it.followedAt }
             .thenBy { normalizeLibraryText(it.name) }

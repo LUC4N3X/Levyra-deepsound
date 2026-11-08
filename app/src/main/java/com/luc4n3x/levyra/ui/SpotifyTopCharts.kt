@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -389,7 +390,7 @@ private fun SpotifyPlaylistTrackRow(
         }
         Box(Modifier.size(48.dp).background(SpotifyDesign.placeholder)) { CoverImage(track, Modifier.fillMaxSize()) }
         Column(Modifier.weight(1f).padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(track.title, color = if (active) SpotifyDesign.greenText else SpotifyDesign.text, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            LevyraMediaTitle(track.title, explicit = track.explicit,  color = if (active) SpotifyDesign.greenText else SpotifyDesign.text, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(track.artist, color = SpotifyDesign.subdued, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Box(

@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -731,9 +732,9 @@ private fun AtelierSampleCard(track: Track, preview: Boolean, onOpen: () -> Unit
             contentAlignment = Alignment.Center
         ) { AtelierPlayGlyph(false, 18.dp) }
         Column(Modifier.align(Alignment.BottomStart).padding(10.dp)) {
-            Text(
-                track.title, fontFamily = AtelierSerif, fontWeight = FontWeight.Bold, fontSize = 15.sp, lineHeight = 18.sp,
-                color = AtelierPaper, maxLines = 2, overflow = TextOverflow.Ellipsis
+            LevyraMediaTitle(
+                track.title, explicit = track.explicit,  fontFamily = AtelierSerif, fontWeight = FontWeight.Bold, fontSize = 15.sp, lineHeight = 18.sp,
+                color = AtelierPaper, maxLines = 1, overflow = TextOverflow.Ellipsis
             )
             Text(track.artist, style = MaterialTheme.typography.bodySmall, color = AtelierPaper.copy(alpha = 0.8f), maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
@@ -899,9 +900,9 @@ private fun AtelierFilmFrame(thumbnail: String, track: Track, current: Boolean, 
                 ) { AtelierPlayGlyph(current, 24.dp) }
             }
         }
-        Text(
-            track.title, fontFamily = AtelierSerif, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, lineHeight = 19.sp,
-            color = if (current) AtelierDesign.accentBright else AtelierDesign.text, maxLines = 2, overflow = TextOverflow.Ellipsis,
+        LevyraMediaTitle(
+            track.title, explicit = track.explicit,  fontFamily = AtelierSerif, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, lineHeight = 19.sp,
+            color = if (current) AtelierDesign.accentBright else AtelierDesign.text, maxLines = 1, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = 10.dp, start = 2.dp, end = 2.dp)
         )
         Text(

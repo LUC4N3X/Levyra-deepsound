@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -286,8 +287,8 @@ private fun YouTubeMusicSongArtwork(
 @Composable
 private fun YouTubeMusicSongTexts(track: Track, subtitle: String, explicitLabel: String, modifier: Modifier) {
     Column(modifier) {
-        Text(
-            track.title, color = YouTubeMusicDesign.text, style = MaterialTheme.typography.titleMedium,
+        LevyraMediaTitle(
+            track.title,  color = YouTubeMusicDesign.text, style = MaterialTheme.typography.titleMedium,
             maxLines = 1, overflow = TextOverflow.Ellipsis
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -498,8 +499,8 @@ internal fun SkinAlbumTrackRow(
             else Text((index + 1).toString(), color = YouTubeMusicDesign.text, style = MaterialTheme.typography.bodyLarge)
         }
         Column(Modifier.weight(1f).padding(start = 8.dp)) {
-            Text(track.title, color = YouTubeMusicDesign.text, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (detail.isNotBlank()) {
+            LevyraMediaTitle(track.title,  color = YouTubeMusicDesign.text, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (detail.isNotBlank() || track.explicit) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (track.explicit) YouTubeMusicExplicitBadge("E", Modifier.padding(end = 6.dp))
                     Text(detail, color = YouTubeMusicDesign.textSecondary, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)

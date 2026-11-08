@@ -1,5 +1,8 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
+import com.luc4n3x.levyra.ui.components.trackContentDescription
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -54,18 +57,19 @@ internal fun TorqueRecentSearchesRail(
         ) {
             itemsIndexed(tracks, key = { _, track -> "torque-recent-${track.id}" }) { index, track ->
                 var menuExpanded by remember(track.id) { mutableStateOf(false) }
+                val description = trackContentDescription(track)
                 Row(
                     Modifier.width(236.dp).height(72.dp).background(LevyraPanel)
                         .levyraPressable(
                             onClick = { onTrackClick(track) }, onLongClick = { menuExpanded = true }, onLongClickLabel = actionsLabel,
                             pressedScale = LevyraPressScale.Row, role = Role.Button
                         )
-                        .semantics(mergeDescendants = true) { contentDescription = "${track.title}, ${track.artist}" },
+                        .semantics(mergeDescendants = true) { contentDescription = description },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(Modifier.size(72.dp)) { CoverImage(track, Modifier.fillMaxSize()) }
                     Column(Modifier.weight(1f).padding(horizontal = 12.dp).clearAndSetSemantics { }) {
-                        Text(track.title, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        LevyraMediaTitle(track.title, explicit = track.explicit,  color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(track.artist, color = LevyraMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     Text(
@@ -89,10 +93,11 @@ internal fun TorqueSearchSamplesRail(title: String, samples: List<Track>, previe
             contentPadding = PaddingValues(horizontal = RecentSearchGutter)
         ) {
             itemsIndexed(samples, key = { _, track -> "torque-sample-${track.id}" }) { index, track ->
+                val description = trackContentDescription(track)
                 Box(
                     Modifier.size(width = 148.dp, height = 208.dp).clipToBounds().background(LevyraPanel)
                         .levyraPressable(onClick = { onOpen(index) }, pressedScale = LevyraPressScale.Tile, role = Role.Button)
-                        .semantics(mergeDescendants = true) { contentDescription = "${track.title}, ${track.artist}" }
+                        .semantics(mergeDescendants = true) { contentDescription = description }
                 ) {
                     CoverImage(track, Modifier.fillMaxSize(), highRes = true)
                     if (previewEnabled && index == 0) SpotifySamplePreview(track)
@@ -103,9 +108,9 @@ internal fun TorqueSearchSamplesRail(title: String, samples: List<Track>, previe
                     )
                     Column(Modifier.align(Alignment.BottomStart).padding(12.dp).clearAndSetSemantics { }) {
                         Box(Modifier.width(22.dp).height(3.dp).background(LevyraActivePalette.blue))
-                        Text(
-                            track.title.uppercase(), color = Color.White, fontSize = 14.sp, lineHeight = 17.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp,
-                            maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp)
+                        LevyraMediaTitle(
+                            track.title.uppercase(), explicit = track.explicit,  color = Color.White, fontSize = 14.sp, lineHeight = 17.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp)
                         )
                     }
                 }

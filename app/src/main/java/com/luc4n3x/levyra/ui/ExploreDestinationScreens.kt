@@ -1,7 +1,7 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
-
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import com.luc4n3x.levyra.ui.components.LevyraSectionHeader
 import com.luc4n3x.levyra.ui.components.LevyraPlayAllIconButton
@@ -639,13 +639,13 @@ private fun ExploreGenreTrackCard(
                 )
             }
         }
-        Text(
-            text = track.title,
+        LevyraMediaTitle(
+            text = track.title, explicit = track.explicit,
             color = LevyraText,
             fontSize = 13.5.sp,
             lineHeight = LevyraTypeRhythm.lineHeight(13.5.sp),
             fontWeight = FontWeight.Bold,
-            maxLines = 2,
+            maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
         Text(
@@ -1737,13 +1737,13 @@ private fun ExploreDestinationTrackRow(
                 .clip(if (isCurrent) MaterialShapes.Cookie9Sided.toShape() else RoundedCornerShape(14.dp))
         )
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(
-                text = track.title,
+            LevyraMediaTitle(
+                text = track.title, explicit = track.explicit,
                 color = LevyraText,
                 fontSize = 14.5.sp,
                 lineHeight = LevyraTypeRhythm.lineHeight(14.5.sp),
                 fontWeight = FontWeight.Bold,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(

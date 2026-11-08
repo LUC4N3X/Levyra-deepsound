@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.material.icons.rounded.FormatQuote
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -837,7 +838,7 @@ private fun MonoSearchCover(track: Track, current: Boolean, onClick: () -> Unit,
             CoverImage(track, Modifier.fillMaxSize())
         }
         Spacer(Modifier.height(8.dp))
-        Text(track.title, style = MaterialTheme.typography.titleSmall, color = if (current) MonoDesign.accent else MonoDesign.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        LevyraMediaTitle(track.title, explicit = track.explicit,  style = MaterialTheme.typography.titleSmall, color = if (current) MonoDesign.accent else MonoDesign.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(track.artist, style = MaterialTheme.typography.bodySmall, color = MonoDesign.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
@@ -929,9 +930,9 @@ private fun MonoSearchTopResult(
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             MonoOverline(copy.topResultOverline, color = MonoDesign.accent)
-            Text(
-                track.title, style = MaterialTheme.typography.headlineSmall,
-                color = if (current) MonoDesign.accent else MonoDesign.text, maxLines = 2, overflow = TextOverflow.Ellipsis
+            LevyraMediaTitle(
+                track.title,  style = MaterialTheme.typography.headlineSmall,
+                color = if (current) MonoDesign.accent else MonoDesign.text, maxLines = 1, overflow = TextOverflow.Ellipsis
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (track.explicit) {

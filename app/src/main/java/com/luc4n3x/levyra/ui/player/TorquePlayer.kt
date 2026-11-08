@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.player
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -93,8 +94,8 @@ private fun TorqueBand(track: Track, height: Dp, transport: @Composable () -> Un
             Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 22.dp),
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Text(
-                track.title.uppercase(), color = onBand, fontSize = 24.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold,
+            LevyraMediaTitle(
+                track.title.uppercase(), explicit = track.explicit,  color = onBand, fontSize = 24.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold,
                 letterSpacing = 2.5.sp, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis
             )
             Text(

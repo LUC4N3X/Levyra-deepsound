@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -226,7 +227,7 @@ internal class AtelierComposedKit(
             AtelierSleeveFrame(Modifier.fillMaxWidth().aspectRatio(if (card.wide) 16f / 9f else 1f)) {
                 AtelierComposedArtwork(card)
             }
-            AtelierTileText(card.title, card.subtitle, highlighted = false)
+            AtelierTileText(card.title, card.subtitle, highlighted = false, explicit = card.explicit)
         }
     }
 
@@ -246,12 +247,13 @@ internal class AtelierComposedKit(
                     .border(1.dp, AtelierDesign.hairlineStrong, CircleShape)
             ) { AtelierComposedArtwork(card) }
             Spacer(Modifier.height(8.dp))
-            Text(
+            LevyraMediaTitle(
                 text = card.title,
+                explicit = card.explicit,
                 style = MaterialTheme.typography.titleSmall,
                 color = AtelierDesign.text,
                 textAlign = TextAlign.Center,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
         }
@@ -354,11 +356,11 @@ internal class AtelierComposedKit(
                     }
                 }
                 Column(Modifier.fillMaxWidth().padding(horizontal = AtelierDesign.gutter).padding(top = 18.dp)) {
-                    Text(
-                        text = track.title,
+                    LevyraMediaTitle(
+                        text = track.title, explicit = track.explicit,
                         style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Light),
                         color = if (hero.isCurrent) AtelierDesign.accentBright else AtelierDesign.text,
-                        maxLines = 2,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(

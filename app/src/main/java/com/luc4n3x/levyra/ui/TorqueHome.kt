@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
+
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -177,8 +179,9 @@ internal fun TorqueDiscoverTeaser(modifier: Modifier = Modifier) {
                         (card?.let { discoveryReasonLabel(it, copy, music) } ?: copy.lead).uppercase(), color = accent,
                         fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp, maxLines = 1, overflow = TextOverflow.Ellipsis
                     )
-                    Text(
+                    LevyraMediaTitle(
                         card?.track?.let { "${it.title} · ${it.artist}" } ?: copy.lead, color = LevyraMuted, fontSize = 13.sp,
+                        explicit = card?.track?.explicit == true,
                         maxLines = 1, overflow = TextOverflow.Ellipsis
                     )
                 }

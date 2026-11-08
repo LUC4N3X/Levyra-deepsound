@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -130,7 +131,7 @@ private fun PrismTrackRow(rank: Int, track: Track, current: Boolean, actionLabel
         Box(Modifier.size(52.dp).clip(PrismDesign.cut(12.dp))) { CoverImage(track, Modifier.fillMaxSize()) }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(track.title, color = if (current) LevyraPink else LevyraText, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            LevyraMediaTitle(track.title, explicit = track.explicit,  color = if (current) LevyraPink else LevyraText, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(track.artist, color = LevyraMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         if (onAction != null) IconButton(onClick = onAction) { Icon(Icons.Rounded.MoreVert, actionLabel, tint = LevyraMuted) }

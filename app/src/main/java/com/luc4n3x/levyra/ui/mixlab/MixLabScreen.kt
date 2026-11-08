@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.mixlab
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -883,8 +884,8 @@ private fun MixLabTrackRow(
                 .background(LevyraInk)
         )
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = track.title,
+            LevyraMediaTitle(
+                text = track.title, explicit = track.explicit,
                 color = LevyraText,
                 fontSize = 13.5.sp,
                 fontWeight = FontWeight.SemiBold,

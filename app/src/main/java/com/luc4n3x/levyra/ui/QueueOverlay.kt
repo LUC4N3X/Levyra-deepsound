@@ -1,4 +1,6 @@
 package com.luc4n3x.levyra.ui
+
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import com.luc4n3x.levyra.ui.theme.*
 import com.luc4n3x.levyra.domain.exploreSamplesRequestIndex
 import com.luc4n3x.levyra.ui.theme.nocturneMiniSettings
@@ -1203,8 +1205,8 @@ internal fun QueueOverlay(
                                         .alpha(if (wasPlayed && !isCurrent) 0.5f else 1f)
                                 )
                                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    Text(
-                                        track.title,
+                                    LevyraMediaTitle(
+                                        track.title, explicit = track.explicit,
                                         color = when {
                                             isCurrent -> queueAccent
                                             wasPlayed -> LevyraMuted

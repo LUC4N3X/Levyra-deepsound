@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.library
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.IconButtonDefaults
@@ -1249,8 +1250,7 @@ internal fun LibraryNowPlayingDock(
         LevyraRowText(
             title = track.title,
             subtitle = track.artist,
-            modifier = Modifier.weight(1f)
-        )
+            modifier = Modifier.weight(1f), explicit = track.explicit)
         IconButton(onClick = onToggle) {
             Icon(
                 if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,

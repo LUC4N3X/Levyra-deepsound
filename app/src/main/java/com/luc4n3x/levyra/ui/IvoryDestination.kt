@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -199,7 +201,7 @@ private fun LazyListScope.ivoryCoverRail(
                             IvoryCornerBadge(46.dp, Modifier.align(Alignment.BottomEnd)) { Icon(Icons.Rounded.PlayArrow, null, tint = IvoryDesign.onInk, modifier = Modifier.size(18.dp)) }
                         }
                         Column(Modifier.padding(top = 10.dp, start = 2.dp).clearAndSetSemantics { }) {
-                            Text(name, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            LevyraMediaTitle(name, explicit = track.explicit, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                             Text(artist, color = LevyraMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
@@ -221,7 +223,7 @@ private fun IvoryEssentialRow(index: Int, track: Track, current: Boolean, onPlay
         Text((index + 1).toString(), color = if (index < 3) IvoryDesign.ink else LevyraMuted, style = MaterialTheme.typography.titleMedium, modifier = Modifier.width(28.dp))
         Box(Modifier.size(52.dp).clip(RoundedCornerShape(IvoryDesign.tileCorner))) { CoverImage(track, Modifier.fillMaxSize()) }
         Column(Modifier.weight(1f)) {
-            Text(track.title, color = LevyraText, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            LevyraMediaTitle(track.title, explicit = track.explicit,  color = LevyraText, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(track.artist, color = LevyraMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }

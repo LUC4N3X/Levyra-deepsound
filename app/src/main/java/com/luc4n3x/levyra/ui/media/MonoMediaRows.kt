@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.media
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -140,8 +141,8 @@ internal fun MonoAlbumTrackRow(
             }
         }
         Column(Modifier.weight(1f).padding(end = 12.dp)) {
-            Text(
-                track.title, color = if (current) MonoDesign.accent else MonoDesign.text,
+            LevyraMediaTitle(
+                track.title,  color = if (current) MonoDesign.accent else MonoDesign.text,
                 style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis
             )
             if (subtitle.isNotBlank() || downloaded || track.explicit) {
@@ -214,8 +215,8 @@ internal fun MonoLibraryTrackRow(
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f).padding(end = 8.dp)) {
-            Text(
-                track.title, color = if (isCurrent) MonoDesign.accent else MonoDesign.text,
+            LevyraMediaTitle(
+                track.title, explicit = track.explicit,  color = if (isCurrent) MonoDesign.accent else MonoDesign.text,
                 style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis
             )
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {

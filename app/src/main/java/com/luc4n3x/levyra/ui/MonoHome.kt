@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import com.luc4n3x.levyra.ui.components.levyraMarquee
 import com.luc4n3x.levyra.ui.experiences.LocalMusicExperiences
 import androidx.compose.material.icons.rounded.Replay
@@ -254,10 +255,10 @@ internal fun MonoCompactRow(
             }
         }
         Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
-            Text(
-                track.title, style = MaterialTheme.typography.titleSmall,
+            LevyraMediaTitle(
+                track.title, explicit = track.explicit, marqueeEnabled = LocalAnimationsEnabled.current, repeatDelayMillis = 2_400,  style = MaterialTheme.typography.titleSmall,
                 color = if (isCurrent) MonoDesign.accent else MonoDesign.text, maxLines = 1, overflow = TextOverflow.Clip,
-                modifier = Modifier.levyraMarquee(enabled = LocalAnimationsEnabled.current, repeatDelayMillis = 2_400)
+                modifier = Modifier
             )
             Text(
                 track.artist, style = MaterialTheme.typography.bodySmall, color = MonoDesign.textSecondary,
@@ -1170,8 +1171,8 @@ internal class MonoHomeKit(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (hero.label.isNotBlank()) MonoOverline(hero.label, color = MonoDesign.accent)
-                Text(
-                    track.title, style = MaterialTheme.typography.headlineLarge, color = MonoDesign.text, maxLines = 3,
+                LevyraMediaTitle(
+                    track.title, explicit = track.explicit,  style = MaterialTheme.typography.headlineLarge, color = MonoDesign.text, maxLines = 1,
                     overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() }
                 )
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {

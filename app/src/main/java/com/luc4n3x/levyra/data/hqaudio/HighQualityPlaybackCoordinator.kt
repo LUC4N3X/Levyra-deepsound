@@ -43,7 +43,7 @@ class HighQualityPlaybackCoordinator(
             artist = recording.artist,
             album = track.album,
             durationMs = track.durationMs.coerceAtLeast(0L),
-            explicit = if (track.explicit) true else null,
+            explicit = track.explicit.takeIf { it || track.metadataProvider.equals("spotify", ignoreCase = true) },
             isrc = track.isrc,
             alternateReading = recording.alternate?.let { alternate ->
                 AlternativeTrackQuery(
@@ -51,7 +51,7 @@ class HighQualityPlaybackCoordinator(
                     artist = alternate.artist,
                     album = track.album,
                     durationMs = track.durationMs.coerceAtLeast(0L),
-                    explicit = if (track.explicit) true else null,
+                    explicit = track.explicit.takeIf { it || track.metadataProvider.equals("spotify", ignoreCase = true) },
                     isrc = track.isrc
                 )
             }

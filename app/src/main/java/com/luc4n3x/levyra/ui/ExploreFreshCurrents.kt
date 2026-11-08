@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import com.luc4n3x.levyra.ui.components.levyraGroupedListShape
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
@@ -575,8 +576,8 @@ private fun ExploreFreshMomentDetails(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(LevyraCardDesign.CaptionLineGap)
     ) {
-        Text(
-            text = track.title,
+        LevyraMediaTitle(
+            text = track.title, explicit = track.explicit,
             style = LevyraType.contentTitle.copy(
                 fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.SemiBold
             ),

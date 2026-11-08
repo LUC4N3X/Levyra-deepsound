@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
+
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -142,7 +144,7 @@ internal fun IvoryDiscoverTeaser(modifier: Modifier = Modifier) {
                 Crossfade(targetState = lead, animationSpec = tween(400), label = "ivory-discover-reason") { card ->
                     Column {
                         Text(card?.let { discoveryReasonLabel(it, copy, music) } ?: copy.lead, color = IvoryDesign.ink, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(card?.track?.let { "${it.title} · ${it.artist}" } ?: copy.lead, color = LevyraMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        LevyraMediaTitle(card?.track?.let { "${it.title} · ${it.artist}" } ?: copy.lead, explicit = card?.track?.explicit == true, color = LevyraMuted, style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }

@@ -25,6 +25,15 @@ import org.junit.Assert.fail
 import org.junit.Test
 
 class HighQualityPlaybackCoordinatorTest {
+    @Test
+    fun catalogCleanRatingIsKnownWhileUnmarkedYoutubeRatingRemainsUnknown() {
+        val coordinator = coordinator(exactProvider())
+        val clean = playbackTrack().copy(explicit = false, metadataProvider = "spotify")
+        assertEquals(false, coordinator.queryFor(clean, false, "Auto")!!.explicit)
+        assertNull(coordinator.queryFor(clean.copy(metadataProvider = "youtube"), false, "Auto")!!.explicit)
+        assertEquals(true, coordinator.queryFor(clean.copy(explicit = true), false, "Auto")!!.explicit)
+    }
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val provenance = { PlaybackStreamProvenance(networkRoute = "streaming-direct") }
 

@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui.library
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -378,7 +380,15 @@ private fun QobuzLibraryCard(row: QobuzLibraryRow, onClick: () -> Unit) {
     Column(Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onClick), horizontalAlignment = if (row.circle) Alignment.CenterHorizontally else Alignment.Start) {
         QobuzLibraryArtwork(row, Modifier.fillMaxWidth().aspectRatio(1f))
         Spacer(Modifier.height(8.dp))
-        Text(row.title, style = QobuzText.cardTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        LevyraMediaTitle(
+            row.title,
+            explicit = when (row) {
+                is QobuzLibraryRow.Song -> row.track.explicit
+                is QobuzLibraryRow.Album -> row.album.explicit
+                else -> false
+            },
+            style = QobuzText.cardTitle
+        )
         Text(row.subtitle, style = QobuzText.cardSubtitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }

@@ -1,5 +1,8 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
+import com.luc4n3x.levyra.ui.components.trackContentDescription
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -55,19 +58,20 @@ internal fun IvoryRecentSearchesRail(
         ) {
             itemsIndexed(tracks, key = { _, track -> "ivory-recent-${track.id}" }) { _, track ->
                 var menuExpanded by remember(track.id) { mutableStateOf(false) }
+                val description = trackContentDescription(track)
                 Row(
                     Modifier.width(244.dp).height(76.dp).clip(RoundedCornerShape(IvoryDesign.surfaceCorner)).background(LevyraPanel)
                         .levyraPressable(
                             onClick = { onTrackClick(track) }, onLongClick = { menuExpanded = true }, onLongClickLabel = actionsLabel,
                             pressedScale = LevyraPressScale.Row, role = Role.Button
                         )
-                        .semantics(mergeDescendants = true) { contentDescription = "${track.title}, ${track.artist}" }
+                        .semantics(mergeDescendants = true) { contentDescription = description }
                         .padding(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(Modifier.size(60.dp).clip(IvoryDesign.coverShape)) { CoverImage(track, Modifier.fillMaxSize()) }
                     Column(Modifier.weight(1f).padding(horizontal = 12.dp).clearAndSetSemantics { }) {
-                        Text(track.title, color = LevyraText, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        LevyraMediaTitle(track.title, explicit = track.explicit,  color = LevyraText, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(track.artist, color = LevyraMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     menu(track, menuExpanded) { menuExpanded = false }
@@ -87,16 +91,17 @@ internal fun IvorySearchSamplesRail(title: String, samples: List<Track>, preview
             contentPadding = PaddingValues(horizontal = RecentSearchGutter)
         ) {
             itemsIndexed(samples, key = { _, track -> "ivory-sample-${track.id}" }) { index, track ->
+                val description = trackContentDescription(track)
                 Box(
                     Modifier.size(width = 152.dp, height = 212.dp).clip(RoundedCornerShape(IvoryDesign.coverCorner)).clipToBounds().background(LevyraPanel)
                         .levyraPressable(onClick = { onOpen(index) }, pressedScale = LevyraPressScale.Tile, role = Role.Button)
-                        .semantics(mergeDescendants = true) { contentDescription = "${track.title}, ${track.artist}" }
+                        .semantics(mergeDescendants = true) { contentDescription = description }
                 ) {
                     CoverImage(track, Modifier.fillMaxSize(), highRes = true)
                     if (previewEnabled && index == 0) SpotifySamplePreview(track)
                     IvoryInkTab(start = true, Modifier.align(Alignment.BottomStart).padding(bottom = 12.dp).fillMaxWidth(0.88f).height(44.dp)) {
-                        Text(
-                            track.title, color = IvoryDesign.onInk, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        LevyraMediaTitle(
+                            track.title, explicit = track.explicit,  color = IvoryDesign.onInk, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.fillMaxWidth().padding(start = 14.dp, end = 18.dp).clearAndSetSemantics { }
                         )
                     }

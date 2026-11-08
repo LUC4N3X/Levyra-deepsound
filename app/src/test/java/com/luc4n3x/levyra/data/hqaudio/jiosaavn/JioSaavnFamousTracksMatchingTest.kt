@@ -38,8 +38,8 @@ class JioSaavnFamousTracksMatchingTest {
     }
 
     @Test
-    fun unknownExplicitStateFallsBackWhenCleanAndExplicitStarboyExist() {
-        assertRejected(MatchRejection.AMBIGUOUS, select(starboy(), starboyCandidates()))
+    fun unknownExplicitStateStillFindsTheOfficialStarboyRecording() {
+        assertEquals("Starboy", accepted(select(starboy(), starboyCandidates()), "unmarked Starboy").title)
     }
 
     @Test
@@ -145,10 +145,10 @@ class JioSaavnFamousTracksMatchingTest {
         )
         assertEquals("Save Your Tears", unknownAlbum.title)
         assertEquals(true, unknownAlbum.explicit)
-        assertRejected(
-            MatchRejection.AMBIGUOUS,
-            select(AlternativeTrackQuery("Save Your Tears", "The Weeknd", "YouTube Music", 216_000, null), candidates)
-        )
+        assertEquals("Save Your Tears", accepted(
+            select(AlternativeTrackQuery("Save Your Tears", "The Weeknd", "YouTube Music", 216_000, null), candidates),
+            "unmarked Save Your Tears"
+        ).title)
         assertEquals(
             MatchRejection.VERSION_MISMATCH,
             selection.evaluations.single { it.candidate.providerTrackId == "tlMMxTHp" }.rejection

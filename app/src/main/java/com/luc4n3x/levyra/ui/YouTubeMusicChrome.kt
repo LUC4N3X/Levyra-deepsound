@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -113,7 +114,7 @@ internal fun YouTubeMusicDetailDock(
                 CoverImage(track, Modifier.fillMaxSize())
             }
             Column(Modifier.weight(1f).padding(horizontal = 16.dp)) {
-                Text(track.title, color = YouTubeMusicDesign.text, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                LevyraMediaTitle(track.title, explicit = track.explicit,  color = YouTubeMusicDesign.text, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(track.artist, color = YouTubeMusicDesign.textSecondary, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Box(Modifier.size(56.dp).clickable(onClick = onToggle), contentAlignment = Alignment.Center) {

@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.lyrics.apple
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import android.os.Build
 import android.os.SystemClock
 import androidx.compose.animation.core.Animatable
@@ -589,8 +590,8 @@ private fun AppleLyricsHeader(track: Track?, labels: AppleLyricsLabels, actions:
             }
         }
         Column(Modifier.weight(1f).padding(start = AppleLyricsTokens.thumbnailGap)) {
-            Text(
-                track?.title.orEmpty(), color = AppleLyricsTokens.primary, fontSize = AppleLyricsTokens.headerTextSize,
+            LevyraMediaTitle(
+                track?.title.orEmpty(), explicit = track?.explicit == true,  color = AppleLyricsTokens.primary, fontSize = AppleLyricsTokens.headerTextSize,
                 fontFamily = fontFamily, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis
             )
             Text(

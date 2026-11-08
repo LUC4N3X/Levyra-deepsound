@@ -155,6 +155,7 @@ internal fun LibraryTrackRow(
         Column(modifier = Modifier.weight(1f)) {
             LevyraRowText(
                 title = track.title,
+                explicit = track.explicit,
                 subtitle = libraryTrackSubtitle(track, metadata),
                 titleColor = if (isCurrent) LevyraCyan else LevyraText,
                 downloaded = isDownloaded,

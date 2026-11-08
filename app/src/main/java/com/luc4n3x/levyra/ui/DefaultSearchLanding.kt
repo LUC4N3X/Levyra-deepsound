@@ -1,5 +1,8 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
+import com.luc4n3x.levyra.ui.components.trackContentDescription
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -61,19 +64,20 @@ internal fun DefaultRecentSearchesRail(
         ) {
             itemsIndexed(tracks, key = { _, track -> "default-recent-${track.id}" }) { _, track ->
                 var menuExpanded by remember(track.id) { mutableStateOf(false) }
+                val description = trackContentDescription(track)
                 Row(
                     Modifier.width(248.dp).height(76.dp).clip(DefaultRecentShape).background(scheme.surfaceContainerHigh)
                         .levyraPressable(
                             onClick = { onTrackClick(track) }, onLongClick = { menuExpanded = true }, onLongClickLabel = actionsLabel,
                             pressedScale = LevyraPressScale.Row, role = Role.Button
                         )
-                        .semantics(mergeDescendants = true) { contentDescription = "${track.title}, ${track.artist}" }
+                        .semantics(mergeDescendants = true) { contentDescription = description }
                         .padding(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(Modifier.size(60.dp).clip(artShape)) { CoverImage(track, Modifier.fillMaxSize()) }
                     Column(Modifier.weight(1f).padding(horizontal = 12.dp).clearAndSetSemantics { }) {
-                        Text(track.title, color = scheme.onSurface, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        LevyraMediaTitle(track.title, explicit = track.explicit,  color = scheme.onSurface, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(track.artist, color = scheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     menu(track, menuExpanded) { menuExpanded = false }
@@ -95,17 +99,18 @@ internal fun DefaultSearchSamplesRail(title: String, samples: List<Track>, previ
             contentPadding = PaddingValues(horizontal = RecentSearchGutter)
         ) {
             itemsIndexed(samples, key = { _, track -> "default-sample-${track.id}" }) { index, track ->
+                val description = trackContentDescription(track)
                 Box(
                     Modifier.size(width = 152.dp, height = 212.dp).clip(DefaultSampleShape).background(scheme.surfaceContainerHighest)
                         .levyraPressable(onClick = { onOpen(index) }, pressedScale = LevyraPressScale.Tile, role = Role.Button)
-                        .semantics(mergeDescendants = true) { contentDescription = "${track.title}, ${track.artist}" }
+                        .semantics(mergeDescendants = true) { contentDescription = description }
                 ) {
                     CoverImage(track, Modifier.fillMaxSize(), highRes = true)
                     if (previewEnabled && index == 0) SpotifySamplePreview(track)
                     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.5f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.78f))))
-                    Text(
-                        track.title, color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold,
-                        maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    LevyraMediaTitle(
+                        track.title, explicit = track.explicit,  color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.align(Alignment.BottomStart).padding(start = 14.dp, end = 14.dp, bottom = 16.dp).clearAndSetSemantics { }
                     )
                 }

@@ -114,7 +114,7 @@ object MusicIdentityText {
     )
 
     private val descriptorMarkerRules = standaloneMarkerRules + listOf(
-        MarkerRule("live|live at|live from|in concert|live session|session|sessions|концерт|концертная версия|живой звук", setOf(TrackVersionMarker.LIVE)),
+        MarkerRule("live|live at|live from|ao vivo|en vivo|en directo|dal vivo|in concert|live session|session|sessions|концерт|концертная версия|живой звук", setOf(TrackVersionMarker.LIVE)),
         MarkerRule("unplugged", setOf(TrackVersionMarker.LIVE, TrackVersionMarker.ACOUSTIC)),
         MarkerRule("acoustic", setOf(TrackVersionMarker.ACOUSTIC)),
         MarkerRule("cover|tribute|кавер", setOf(TrackVersionMarker.COVER)),
