@@ -69,6 +69,8 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -79,6 +81,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -204,7 +207,11 @@ internal fun MonoSearchEntry(viewModel: SearchViewModel, state: LevyraUiState, o
         focused -> MonoSearchPane.Recall
         else -> MonoSearchPane.Idle
     }
-    Column(Modifier.fillMaxSize().background(MonoDesign.base).statusBarsPadding()) {
+    Column(
+        Modifier.fillMaxSize().background(MonoDesign.base)
+            .background(Brush.verticalGradient(0f to MonoDesign.accent.copy(alpha = 0.09f), 0.18f to MonoDesign.moodNight.copy(alpha = 0.06f), 0.34f to Color.Transparent))
+            .statusBarsPadding()
+    ) {
         AnimatedVisibility(
             visible = !focused,
             enter = if (animated) expandVertically() + fadeIn() else EnterTransition.None,
@@ -271,7 +278,7 @@ private fun MonoSearchField(
 ) {
     val focusRequester = remember { FocusRequester() }
     val fieldStyle = MaterialTheme.typography.bodyLarge.copy(color = MonoDesign.text)
-    val border by animateColorAsState(if (focused) MonoDesign.accent else MonoDesign.hairline, tween(if (animated) 220 else 0), label = "mono-search-border")
+    val border by animateColorAsState(if (focused) MonoDesign.accent else MonoDesign.accent.copy(alpha = 0.28f), tween(if (animated) 220 else 0), label = "mono-search-border")
     val fill by animateColorAsState(if (focused) MonoDesign.raised else MonoDesign.surface, tween(if (animated) 220 else 0), label = "mono-search-fill")
     Row(
         Modifier.fillMaxWidth().padding(horizontal = MonoDesign.gutter, vertical = 10.dp),
@@ -286,7 +293,7 @@ private fun MonoSearchField(
         ) {
             Row(Modifier.fillMaxWidth().heightIn(min = MonoSearchFieldHeight), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Rounded.Search, null, tint = if (focused) MonoDesign.accent else MonoDesign.textSecondary, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Rounded.Search, null, tint = if (focused) MonoDesign.accent else MonoDesign.accentDim, modifier = Modifier.size(20.dp))
                 }
                 Box(Modifier.weight(1f).padding(vertical = 8.dp), contentAlignment = Alignment.CenterStart) {
                     if (query.isEmpty()) {
@@ -352,7 +359,12 @@ private fun MonoSearchIdle(
     onTrackActions: (Track) -> Unit
 ) {
     val currentId = state.currentTrack?.id
-    val lastPlayed = remember(state.recentListens) { state.recentListens.distinctBy { it.id }.take(MonoSearchRailLimit) }
+    val hiddenListens by viewModel.searchHiddenListens.collectAsStateWithLifecycle()
+    val lastPlayed = remember(state.recentListens, hiddenListens) {
+        state.recentListens.distinctBy { it.id }
+            .filterNot { LevyraPersonalOrbit.identityKey(it) in hiddenListens }
+            .take(MonoSearchRailLimit)
+    }
     val similar = remember(state.personalOrbitTracks, lastPlayed) {
         val shown = lastPlayed.mapTo(HashSet()) { it.id }
         state.personalOrbitTracks.distinctBy { it.id }.filterNot { it.id in shown }.take(MonoSearchRailLimit)
@@ -376,7 +388,7 @@ private fun MonoSearchIdle(
     ) {
         if (lastPlayed.isNotEmpty()) {
             item(key = "last-header", contentType = "header") {
-                MonoSectionHeader(copy.lastPlayed, Modifier.padding(top = 20.dp, bottom = MonoDesign.headerToContent), overline = copy.lastPlayedOverline)
+                MonoSectionHeader(copy.lastPlayed, Modifier.padding(top = 20.dp, bottom = MonoDesign.headerToContent), overline = copy.lastPlayedOverline, overlineColor = MonoDesign.accent)
             }
             item(key = "last-rail", contentType = "rail") {
                 MonoSearchTrackRail(lastPlayed, currentId, { viewModel.playFrom(lastPlayed, it) }, onTrackActions)
@@ -389,7 +401,8 @@ private fun MonoSearchIdle(
                     Modifier.padding(top = MonoDesign.sectionGap, bottom = 4.dp),
                     overline = copy.recentOverline,
                     action = strings.clear,
-                    onAction = { recent.forEach(viewModel::removeRecentSearch) }
+                    onAction = { recent.forEach(viewModel::removeRecentSearch) },
+                    overlineColor = MonoDesign.accent
                 )
             }
             items(recentPreview, key = { "recent-${it.id}" }, contentType = { "recent" }) { track ->
@@ -398,7 +411,7 @@ private fun MonoSearchIdle(
         }
         if (similar.isNotEmpty()) {
             item(key = "similar-header", contentType = "header") {
-                MonoSectionHeader(copy.similarToTaste, Modifier.padding(top = MonoDesign.sectionGap, bottom = MonoDesign.headerToContent), overline = copy.similarOverline)
+                MonoSectionHeader(copy.similarToTaste, Modifier.padding(top = MonoDesign.sectionGap, bottom = MonoDesign.headerToContent), overline = copy.similarOverline, overlineColor = MonoDesign.accent)
             }
             item(key = "similar-rail", contentType = "rail") {
                 MonoSearchTrackRail(similar, currentId, { viewModel.playFrom(similar, it) }, onTrackActions)
@@ -434,7 +447,8 @@ private fun MonoSearchRecall(
                     Modifier.padding(top = 8.dp, bottom = 4.dp),
                     overline = copy.recentOverline,
                     action = strings.clear,
-                    onAction = { recent.forEach(viewModel::removeRecentSearch) }
+                    onAction = { recent.forEach(viewModel::removeRecentSearch) },
+                    overlineColor = MonoDesign.accent
                 )
             }
             items(recent, key = { "recall-${it.id}" }, contentType = { "recent" }) { track ->

@@ -218,7 +218,7 @@ class LevyraHomeSnapshotCache(context: Context) {
             val videoId = item.optString("videoId", key)
             map[key] = ResonanceCommentSnippet(
                 videoId = videoId,
-                countText = item.optString("countText"),
+                countText = commentCountNumber(item.optString("countText")),
                 author = item.optString("author"),
                 authorAvatarUrl = item.optString("authorAvatarUrl"),
                 text = item.optString("text"),

@@ -1312,7 +1312,8 @@ private fun AtelierArtistTile(artist: ArtistHit, portrait: Dp, onOpen: () -> Uni
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
-        val views = artist.subscribers.substringAfterLast("•").trim()
+        val audienceStrings = LocalLevyraStrings.current
+        val views = artistAudienceLabel(artist.subscribers, audienceStrings.code, audienceStrings.monthlyListeners)
         if (views.isNotBlank()) {
             Text(
                 text = views,

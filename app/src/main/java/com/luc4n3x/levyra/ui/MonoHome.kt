@@ -4,6 +4,7 @@ import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import com.luc4n3x.levyra.ui.components.levyraMarquee
 import com.luc4n3x.levyra.ui.experiences.LocalMusicExperiences
 import androidx.compose.material.icons.rounded.Replay
+import androidx.compose.material.icons.rounded.FormatQuote
 import com.luc4n3x.levyra.viewmodel.EXPLORE_BROWSE_ID
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -39,6 +40,8 @@ import androidx.compose.ui.semantics.heading
 import com.luc4n3x.levyra.data.ArtworkPalette
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.luc4n3x.levyra.viewmodel.YouTubeMusicHomeViewModel
+import com.luc4n3x.levyra.viewmodel.featuredPlaylistKey
+import com.luc4n3x.levyra.viewmodel.CuratedFeaturedPlaylist
 import com.luc4n3x.levyra.domain.YoutubeMusicHomeShelf
 import com.luc4n3x.levyra.domain.YoutubeMusicHomeItem
 import com.luc4n3x.levyra.domain.YoutubeMusicHomeItemKind
@@ -54,6 +57,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -335,9 +339,12 @@ internal fun MonoTrackRail(
     onActions: (Track) -> Unit,
     ranked: Boolean = false
 ) {
-    LazyRow(contentPadding = MonoRailPadding, horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap)) {
+    val railState = rememberLazyListState()
+    val railMotion = glacierRailMotionEnabled()
+    LazyRow(state = railState, contentPadding = MonoRailPadding, horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap)) {
         itemsIndexed(tracks, key = { _, track -> track.id }, contentType = { _, _ -> "mono-track-card" }) { index, track ->
             MonoCard(
+                modifier = Modifier.glacierRailItemMotion(railMotion, railState, track.id),
                 title = track.title,
                 subtitle = track.artist,
                 width = width,
@@ -353,9 +360,12 @@ internal fun MonoTrackRail(
 
 @Composable
 internal fun MonoAlbumRail(albums: List<AlbumHit>, width: Dp, onOpen: (AlbumHit) -> Unit) {
-    LazyRow(contentPadding = MonoRailPadding, horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap)) {
+    val railState = rememberLazyListState()
+    val railMotion = glacierRailMotionEnabled()
+    LazyRow(state = railState, contentPadding = MonoRailPadding, horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap)) {
         items(albums, key = { atelierAlbumKey(it) }, contentType = { "mono-album-card" }) { album ->
             MonoCard(
+                modifier = Modifier.glacierRailItemMotion(railMotion, railState, atelierAlbumKey(album)),
                 title = album.title,
                 subtitle = listOf(album.artist, album.year).filter(String::isNotBlank).joinToString(" · "),
                 width = width,
@@ -367,11 +377,15 @@ internal fun MonoAlbumRail(albums: List<AlbumHit>, width: Dp, onOpen: (AlbumHit)
 
 @Composable
 private fun MonoArtistRail(artists: List<ArtistHit>, onOpen: (ArtistHit) -> Unit) {
-    LazyRow(contentPadding = MonoRailPadding, horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap)) {
+    val strings = LocalLevyraStrings.current
+    val railState = rememberLazyListState()
+    val railMotion = glacierRailMotionEnabled()
+    LazyRow(state = railState, contentPadding = MonoRailPadding, horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap)) {
         items(artists, key = { it.browseId.ifBlank { it.name } }, contentType = { "mono-artist-card" }) { artist ->
             MonoCard(
+                modifier = Modifier.glacierRailItemMotion(railMotion, railState, artist.browseId.ifBlank { artist.name }),
                 title = artist.name,
-                subtitle = artist.subscribers.substringAfterLast("•").trim(),
+                subtitle = artistAudienceLabel(artist.subscribers, strings.code, strings.monthlyListeners),
                 subtitleLines = 2,
                 width = MonoDesign.artistCircle,
                 onClick = { onOpen(artist) },
@@ -385,7 +399,9 @@ private fun MonoArtistRail(artists: List<ArtistHit>, onOpen: (ArtistHit) -> Unit
 private fun MonoReleaseRail(releases: List<AlbumHit>, onOpen: (AlbumHit) -> Unit) {
     val albums = remember(releases) { releases.distinctBy(::atelierAlbumKey) }
     val labels = searchDiscographyCopy(LocalLevyraStrings.current.code)
-    LazyRow(contentPadding = MonoRailPadding, horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap)) {
+    val railState = rememberLazyListState()
+    val railMotion = glacierRailMotionEnabled()
+    LazyRow(state = railState, contentPadding = MonoRailPadding, horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap)) {
         items(albums, key = { atelierAlbumKey(it) }, contentType = { "mono-release-card" }) { album ->
             val badge = when (album.releaseType) {
                 ReleaseType.Album, ReleaseType.Compilation -> labels.album
@@ -394,6 +410,7 @@ private fun MonoReleaseRail(releases: List<AlbumHit>, onOpen: (AlbumHit) -> Unit
                 ReleaseType.Unknown -> ""
             }
             MonoCard(
+                modifier = Modifier.glacierRailItemMotion(railMotion, railState, atelierAlbumKey(album)),
                 title = album.title,
                 subtitle = listOf(badge, album.artist).filter(String::isNotBlank).joinToString(" · "),
                 width = MonoDesign.cardWide,
@@ -432,9 +449,24 @@ internal fun rememberCuratedPlaylistShelves(code: String): List<YoutubeMusicHome
     LaunchedEffect(featuredShelves.isEmpty(), ytHomeState.pages, ytHomeState.loading, ytHomeState.loadingMore) {
         if (featuredShelves.isEmpty() && ytHomeState.canLoadMore && ytHomeState.pages < MonoFeaturedPageLimit) ytHome.loadMore()
     }
-    return remember(mixedState.allShelves, featuredShelves, ytHomeState.allShelves) {
-        monoPlaylistShelves(mixedState.allShelves).ifEmpty { featuredShelves }.ifEmpty { monoPlaylistShelves(ytHomeState.allShelves) }
+    LaunchedEffect(code) { mixedHome.requestFeaturedPlaylist(CuratedFeaturedPlaylist.YOUTUBE_ID, code) }
+    val featuredPlaylists by mixedHome.featuredPlaylists.collectAsStateWithLifecycle()
+    val mixLabel = LocalLevyraStrings.current.mix
+    val featuredItem = featuredPlaylists[featuredPlaylistKey(CuratedFeaturedPlaylist.YOUTUBE_ID, code)]
+        ?.let { item -> if (item.subtitle.isBlank()) item.copy(subtitle = mixLabel) else item }
+    return remember(mixedState.allShelves, featuredShelves, ytHomeState.allShelves, featuredItem) {
+        withFeaturedCuratedPlaylist(
+            monoPlaylistShelves(mixedState.allShelves).ifEmpty { featuredShelves }.ifEmpty { monoPlaylistShelves(ytHomeState.allShelves) },
+            featuredItem
+        )
     }
+}
+
+internal fun withFeaturedCuratedPlaylist(shelves: List<YoutubeMusicHomeShelf>, featured: YoutubeMusicHomeItem?): List<YoutubeMusicHomeShelf> {
+    val first = shelves.firstOrNull() ?: return shelves
+    if (featured == null || first.items.any { it.playlist?.playlistId == featured.playlist?.playlistId }) return shelves
+    val items = first.items.toMutableList().apply { add(minOf(1, size), featured) }
+    return listOf(first.copy(items = items)) + shelves.drop(1)
 }
 
 internal fun monoPlaylistShelves(shelves: List<YoutubeMusicHomeShelf>): List<YoutubeMusicHomeShelf> =
@@ -445,9 +477,12 @@ internal fun monoPlaylistShelves(shelves: List<YoutubeMusicHomeShelf>): List<You
 @Composable
 private fun MonoPlaylistRail(shelfItems: List<YoutubeMusicHomeItem>, onOpen: (PlaylistHit) -> Unit) {
     val items = remember(shelfItems) { shelfItems.distinctBy { it.key } }
-    LazyRow(contentPadding = MonoRailPadding, horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap)) {
+    val railState = rememberLazyListState()
+    val railMotion = glacierRailMotionEnabled()
+    LazyRow(state = railState, contentPadding = MonoRailPadding, horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap)) {
         items(items, key = { it.key }, contentType = { "mono-playlist-card" }) { item ->
             MonoCard(
+                modifier = Modifier.glacierRailItemMotion(railMotion, railState, item.key),
                 title = item.title,
                 subtitle = monoWithoutYoutube(item.subtitle),
                 titleLines = 2,
@@ -705,7 +740,8 @@ internal fun MonoHomeEntry(
             releaseTracks = if (showReleases) releaseSection?.tracks.orEmpty() else emptyList(),
             releaseAlbums = if (showReleases) state.exploreNewReleases else emptyList(),
             pinnedCards = remember(speedDialPins, viewModel) { speedDialCards(speedDialPins, viewModel::openSpeedDialPin) },
-            composition = composition
+            composition = composition,
+            resonanceTracks = if (composition == null && state.interfaceSettings.showResonance) render.derived.resonanceTracks else emptyList()
         ),
         page = page,
         onPage = { page = it },
@@ -717,6 +753,61 @@ internal fun MonoHomeEntry(
     )
 }
 
+private val MonoQuoteWidth = 296.dp
+private val MonoQuoteHeight = 232.dp
+
+@Composable
+private fun MonoQuoteCard(quote: ComposedQuote, playLabel: String, modifier: Modifier) {
+    Box(
+        modifier.width(MonoQuoteWidth).height(MonoQuoteHeight).monoPanel()
+            .background(Brush.verticalGradient(0f to MonoDesign.accentGlow, 0.55f to Color.Transparent))
+            .levyraPressable(onClick = quote.onOpen, role = Role.Button, pressedScale = LevyraPressScale.Surface, onClickLabel = quote.track.title)
+    ) {
+        Column(Modifier.fillMaxSize().padding(18.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(28.dp).clip(CircleShape).background(MonoDesign.raisedHigh), contentAlignment = Alignment.Center) {
+                    if (quote.authorAvatarUrl.isNotBlank()) {
+                        AsyncImage(quote.authorAvatarUrl, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                    } else {
+                        Text(quote.author.trimStart('@').take(1).uppercase(), style = MaterialTheme.typography.labelMedium, color = MonoDesign.textSecondary)
+                    }
+                }
+                Text(
+                    quote.author, style = MaterialTheme.typography.labelLarge, color = MonoDesign.textSecondary,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(horizontal = 10.dp)
+                )
+                if (quote.count.isNotBlank()) {
+                    Row(
+                        Modifier.clip(CircleShape).background(MonoDesign.accent.copy(alpha = 0.14f)).padding(horizontal = 10.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Rounded.FormatQuote, null, tint = MonoDesign.accent, modifier = Modifier.size(14.dp))
+                        Text(quote.count, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = MonoDesign.accent, maxLines = 1, modifier = Modifier.padding(start = 4.dp))
+                    }
+                }
+            }
+            Box(Modifier.weight(1f).fillMaxWidth().padding(vertical = 12.dp), contentAlignment = Alignment.CenterStart) {
+                when {
+                    quote.loading -> MonoWaveLine(playing = true, color = MonoDesign.accentDim, modifier = Modifier.width(96.dp).height(20.dp))
+                    quote.quote != quote.track.artist -> Text(
+                        quote.quote, style = MaterialTheme.typography.titleMedium, color = MonoDesign.text,
+                        maxLines = 3, overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            Box(Modifier.fillMaxWidth().height(1.dp).background(MonoDesign.hairline))
+            Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(40.dp).clip(MonoDesign.artShape)) { CoverImage(quote.track, Modifier.fillMaxSize().clearAndSetSemantics {}) }
+                Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                    Text(quote.track.title, style = MaterialTheme.typography.titleSmall, color = MonoDesign.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(quote.track.artist, style = MaterialTheme.typography.bodySmall, color = MonoDesign.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                MonoIconKey(Icons.Rounded.PlayArrow, playLabel, quote.onPlay)
+            }
+        }
+    }
+}
+
 private class MonoHomeModel(
     val data: AppleMusicHomeData,
     val actions: AppleMusicHomeActions,
@@ -725,7 +816,8 @@ private class MonoHomeModel(
     val releaseTracks: List<Track>,
     val releaseAlbums: List<AlbumHit>,
     val pinnedCards: List<ComposedCard>,
-    val composition: ComposedHomeRequest?
+    val composition: ComposedHomeRequest?,
+    val resonanceTracks: List<Track>
 )
 
 private class MonoHomeFeed(
@@ -996,6 +1088,16 @@ private fun LazyListScope.monoHomeFeed(
             }
         }
     }
+    if (model.resonanceTracks.isNotEmpty()) {
+        item(key = "mono-resonance", contentType = "mono-quotes") {
+            val tracks = model.resonanceTracks
+            val comments = state.homeResonanceComments
+            val quotes = remember(tracks, comments) {
+                tracks.map { track -> resonanceQuote(track, tracks, comments, model.viewModel::openYoutubeCommentsFor, actions.playFrom) }
+            }
+            kit.Quotes(strings.mostCommentedTracks, quotes)
+        }
+    }
     if (feed.charts.isNotEmpty()) {
         item(key = "mono-top-chart", contentType = "mono-top-chart") {
             MonoSection(
@@ -1077,6 +1179,7 @@ internal class MonoHomeKit(
         LazyRow(state = railState, contentPadding = MonoRailPadding, horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap), verticalAlignment = Alignment.Top) {
             items(cards, key = { it.key }, contentType = { if (it.circular) "mono-card-round" else "mono-card" }) { card ->
                 MonoCard(
+                    modifier = Modifier.glacierRailItemMotion(glacierRailMotionEnabled(), railState, card.key),
                     title = card.title,
                     subtitle = card.subtitle,
                     width = if (card.wide) width * 1.6f else width,
@@ -1205,27 +1308,12 @@ internal class MonoHomeKit(
         val unique = remember(quotes) { quotes.distinctBy(ComposedQuote::key) }
         if (unique.isEmpty()) return
         val strings = LocalLevyraStrings.current
-        MonoSection(title) {
-            LazyRow(contentPadding = MonoRailPadding, horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap)) {
+        MonoSection(title, strings.commentsOverline) {
+            val railState = rememberLazyListState()
+            val railMotion = glacierRailMotionEnabled()
+            LazyRow(state = railState, contentPadding = MonoRailPadding, horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap)) {
                 items(unique, key = { it.key }, contentType = { "mono-quote" }) { quote ->
-                    Column(
-                        Modifier.width(280.dp).monoPanel()
-                            .levyraPressable(onClick = quote.onOpen, role = Role.Button, pressedScale = LevyraPressScale.Surface)
-                            .padding(16.dp)
-                    ) {
-                        if (quote.meta.isNotBlank()) MonoOverline(quote.meta)
-                        if (quote.quote != quote.track.artist) {
-                            Text(quote.quote, style = MaterialTheme.typography.titleMedium, color = MonoDesign.text, maxLines = 4, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
-                        }
-                        Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.size(40.dp).clip(MonoDesign.artShape)) { CoverImage(quote.track, Modifier.fillMaxSize().clearAndSetSemantics {}) }
-                            Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
-                                Text(quote.track.title, style = MaterialTheme.typography.titleSmall, color = MonoDesign.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text(quote.track.artist, style = MaterialTheme.typography.bodySmall, color = MonoDesign.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            }
-                            MonoIconKey(Icons.Rounded.PlayArrow, strings.play, quote.onPlay)
-                        }
-                    }
+                    MonoQuoteCard(quote, strings.play, Modifier.glacierRailItemMotion(railMotion, railState, quote.key))
                 }
             }
         }

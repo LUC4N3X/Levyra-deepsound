@@ -38,6 +38,11 @@ internal sealed interface YoutubeCommentsResult {
     data class Failed(val cause: Throwable? = null) : YoutubeCommentsResult
 }
 
+internal fun commentCountNumber(text: String): String =
+    COMMENT_COUNT_NUMBER.find(text)?.value?.trim().orEmpty()
+
+private val COMMENT_COUNT_NUMBER = Regex("""\d[\d.,\u00A0\u202F ]*[KMBkmb]?""")
+
 /** Read-only YouTube comments integration backed by LevyraExtractor/NewPipeExtractor. */
 internal class YoutubeCommentsRepository {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -59,7 +64,7 @@ internal class YoutubeCommentsRepository {
             } else {
                 val initialPage = YoutubeCommentsPage(
                     videoId = normalized,
-                    countText = info.commentsCountText.orEmpty().trim().take(MAX_COUNT_TEXT_LENGTH),
+                    countText = commentCountNumber(info.commentsCountText.orEmpty()).take(MAX_COUNT_TEXT_LENGTH),
                     commentsDisabled = false,
                     liveChat = info.isLiveChat,
                     items = info.relatedItems.orEmpty().mapNotNull(::toComment),
