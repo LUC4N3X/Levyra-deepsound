@@ -1712,7 +1712,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             }
         }
         if (cleanPlaylistId.startsWith("RD") && tracks.size < MIX_PAGE_MIN_TRACKS) {
-            val queue = runCatching {
+            val queue = runCatchingPreservingCancellation {
                 watchRepository.getWatchPlaylistAdvanced(playlistId = cleanPlaylistId, languageCode = languageCode, limit = boundedLimit)
             }.getOrNull()
             queue?.let { watchPlaylistTracks(it.tracks, cleanPlaylistId) }.orEmpty().forEach { tracks.putIfAbsent(it.id, it) }
