@@ -172,7 +172,14 @@ private fun JamOverlayContent(
     val session = jam.session
     var sharing by rememberSaveable(jam.code) { mutableStateOf(false) }
     val listState = rememberLazyListState()
-    LaunchedEffect(jam.role, session?.sessionId) { listState.scrollToItem(0) }
+    val sessionIdentity = "${jam.role?.name.orEmpty()}:${session?.sessionId.orEmpty()}"
+    var displayedSessionIdentity by rememberSaveable { mutableStateOf(sessionIdentity) }
+    LaunchedEffect(sessionIdentity) {
+        if (displayedSessionIdentity != sessionIdentity) {
+            listState.scrollToItem(0)
+            displayedSessionIdentity = sessionIdentity
+        }
+    }
     val scope = rememberCoroutineScope()
     val canJoin = !jam.isActive && jam.connection != JamConnectionState.Connecting
     val invitation = remember(jam.deepLink, jam.code) {
