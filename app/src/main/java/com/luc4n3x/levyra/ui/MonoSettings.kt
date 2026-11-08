@@ -57,9 +57,14 @@ internal fun MonoSettingsHeader(onClose: () -> Unit) {
     val strings = LocalLevyraStrings.current
     Column(
         Modifier.fillMaxWidth().drawBehind {
-            drawCircle(
-                Brush.radialGradient(listOf(MonoDesign.accent.copy(alpha = 0.22f), Color.Transparent), center = Offset(size.width * 0.1f, -size.height * 0.4f), radius = size.width * 1.1f),
-                radius = size.width * 1.1f, center = Offset(size.width * 0.1f, -size.height * 0.4f)
+            drawRect(
+                Brush.radialGradient(
+                    0f to MonoDesign.accent.copy(alpha = 0.15f),
+                    0.45f to MonoDesign.moodNight.copy(alpha = 0.12f),
+                    1f to Color.Transparent,
+                    center = Offset(size.width * 0.92f, -size.width * 0.08f),
+                    radius = size.width * 1.05f
+                )
             )
         }
     ) {
