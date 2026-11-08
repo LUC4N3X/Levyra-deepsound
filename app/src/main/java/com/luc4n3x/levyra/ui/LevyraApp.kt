@@ -9280,14 +9280,18 @@ private fun HomeScreen(
                 }
             }
 
-            if (showDeferredHomeSections && visibleEditorialCollections.isNotEmpty()) {
+            if (showDeferredHomeSections && (visibleEditorialCollections.isNotEmpty() || defaultHomeOwnsCuratedPlaylists())) {
                 item(key = "home-editorial-collections", contentType = "home-collections") {
                     HomeSectionLead(compactHome) {
-                        HomeEditorialCollectionsShelf(
-                            collections = visibleEditorialCollections,
-                            accents = homeCollectionAccents,
-                            onOpen = { collection -> selectedHomeCollectionId = collection.id }
-                        )
+                        DefaultCuratedPlaylistShelves(viewModel::openPlaylistHit) {
+                            if (visibleEditorialCollections.isNotEmpty()) {
+                                HomeEditorialCollectionsShelf(
+                                    collections = visibleEditorialCollections,
+                                    accents = homeCollectionAccents,
+                                    onOpen = { collection -> selectedHomeCollectionId = collection.id }
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -10876,33 +10880,37 @@ private fun LazyListScope.homeStudioSectionEditorialCollections(c: StudioHomeCon
                 item(key = "prism-curated-releases", contentType = "prism-curated-releases") {
                     PrismCuratedAndReleases(viewModel, styleSpec.inset, state.interfaceSettings.showNewReleases)
                 }
-            } else if (showDeferredHomeSections && (visibleEditorialCollections.isNotEmpty() || skinOwnsCuratedShelf())) {
+            } else if (showDeferredHomeSections && (visibleEditorialCollections.isNotEmpty() || skinOwnsCuratedShelf() || defaultHomeOwnsCuratedPlaylists())) {
                 item(key = "home-editorial-collections", contentType = "home-collections") {
                     HomeSectionLead(compactHome) {
-                        if (homeStyle == HomeStyle.MaterialExpressive || LevyraIsPrism) {
-                            val fans = remember(visibleEditorialCollections, homeCollectionAccents, strings) {
-                                visibleEditorialCollections.map { collection ->
-                                    StudioCollection(
-                                        id = collection.id,
-                                        title = homeCollectionTitle(strings, collection),
-                                        subtitle = collection.tracks.map { it.artist }.distinct().take(2).joinToString(" · "),
-                                        tracks = collection.tracks.take(3),
-                                        accent = homeCollectionAccents[collection.id]?.first
-                                            ?: exploreEditorialPalette(collection.id).first
+                        DefaultCuratedPlaylistShelves(viewModel::openPlaylistHit) {
+                            if (visibleEditorialCollections.isNotEmpty() || skinOwnsCuratedShelf()) {
+                                if (homeStyle == HomeStyle.MaterialExpressive || LevyraIsPrism) {
+                                    val fans = remember(visibleEditorialCollections, homeCollectionAccents, strings) {
+                                        visibleEditorialCollections.map { collection ->
+                                            StudioCollection(
+                                                id = collection.id,
+                                                title = homeCollectionTitle(strings, collection),
+                                                subtitle = collection.tracks.map { it.artist }.distinct().take(2).joinToString(" · "),
+                                                tracks = collection.tracks.take(3),
+                                                accent = homeCollectionAccents[collection.id]?.first
+                                                    ?: exploreEditorialPalette(collection.id).first
+                                            )
+                                        }
+                                    }
+                                    if (LevyraIsPrism) SkinCuratedShelf(viewModel, strings.collectionsTitle, fans, styleSpec.inset) { id -> selectedHomeCollectionId = id }
+                                    else MxCollectionFan(
+                                        title = strings.collectionsTitle,
+                                        collections = fans,
+                                        onOpen = { id -> selectedHomeCollectionId = id }
                                     )
-                                }
+                                } else HomeEditorialCollectionsShelf(
+                                    collections = visibleEditorialCollections,
+                                    accents = homeCollectionAccents,
+                                    onOpen = { collection -> selectedHomeCollectionId = collection.id }
+                                )
                             }
-                            if (LevyraIsPrism) SkinCuratedShelf(viewModel, strings.collectionsTitle, fans, styleSpec.inset) { id -> selectedHomeCollectionId = id }
-                            else MxCollectionFan(
-                                title = strings.collectionsTitle,
-                                collections = fans,
-                                onOpen = { id -> selectedHomeCollectionId = id }
-                            )
-                        } else HomeEditorialCollectionsShelf(
-                            collections = visibleEditorialCollections,
-                            accents = homeCollectionAccents,
-                            onOpen = { collection -> selectedHomeCollectionId = collection.id }
-                        )
+                        }
                     }
                 }
             }
@@ -11849,7 +11857,7 @@ private fun PersonalListeningShelf(
                         modifier = Modifier.fillMaxWidth(),
                         key = pageKey
                     ) { pageIndex ->
-                        orbitPage(pageIndex, Modifier.fillMaxWidth())
+                        orbitPage(pageIndex, Modifier.fillMaxWidth().defaultPagerPageMotion(defaultRailMotionEnabled(), pagerState, pageIndex))
                     }
                     if (pages.size > 1) {
                         Row(
@@ -12785,7 +12793,10 @@ private fun TrendingArtistsShelf(
             title = strings.artists,
             modifier = Modifier.padding(horizontal = HomeHorizontalInset)
         )
+        val artistRowState = rememberLazyListState()
+        val railMotion = defaultRailMotionEnabled()
         LazyRow(
+            state = artistRowState,
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(LevyraArtistShelfSpacing),
             contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
@@ -12794,11 +12805,14 @@ private fun TrendingArtistsShelf(
                 items = artists,
                 key = { index, artist -> "trending-artist-$index-${artist.browseId.ifBlank { artist.name.trim().lowercase(Locale.ROOT) }}" },
                 contentType = { _, _ -> "trending-artist" }
-            ) { _, artist ->
-                ArtistHitShelfItem(
-                    artist = artist,
-                    onClick = { onArtistClick(artist) }
-                )
+            ) { index, artist ->
+                val motionKey = "trending-artist-$index-${artist.browseId.ifBlank { artist.name.trim().lowercase(Locale.ROOT) }}"
+                Box(Modifier.defaultRailItemMotion(railMotion, artistRowState, motionKey)) {
+                    ArtistHitShelfItem(
+                        artist = artist,
+                        onClick = { onArtistClick(artist) }
+                    )
+                }
             }
             items(
                 count = loadingSlots,
@@ -13229,6 +13243,7 @@ private fun HomeMusicVideoShelf(
                 (maxWidth * HOME_VIDEO_CARD_WIDTH_FRACTION).coerceAtMost(HOME_VIDEO_CARD_MAX_WIDTH)
             }
             val rowState = rememberLazyListState()
+            val railMotion = defaultRailMotionEnabled()
             LazyRow(
                 state = rowState,
                 modifier = Modifier.fillMaxWidth(),
@@ -13240,22 +13255,25 @@ private fun HomeMusicVideoShelf(
                     items = videos,
                     key = { index, item -> "home-video-$index-${LevyraPersonalOrbit.identityKey(item.track)}" },
                     contentType = { _, _ -> "home-video-card" }
-                ) { _, item ->
+                ) { index, item ->
+                    val motionKey = "home-video-$index-${LevyraPersonalOrbit.identityKey(item.track)}"
                     val track = item.track
                     val active = currentId != null && track.id == currentId
                     val activeResolving = active && playback.isResolving
-                    HomeMusicVideoCard(
-                        item = item,
-                        width = videoCardWidth,
-                        playback = HomeVideoCardPlayback(
-                            active = active,
-                            isPlaying = active && playback.isPlaying,
-                            isResolving = activeResolving
-                        ),
-                        onClick = {
-                            if (active && !activeResolving) actions.onToggleCurrent() else actions.onPlay(track)
-                        }
-                    )
+                    Box(Modifier.defaultRailItemMotion(railMotion, rowState, motionKey)) {
+                        HomeMusicVideoCard(
+                            item = item,
+                            width = videoCardWidth,
+                            playback = HomeVideoCardPlayback(
+                                active = active,
+                                isPlaying = active && playback.isPlaying,
+                                isResolving = activeResolving
+                            ),
+                            onClick = {
+                                if (active && !activeResolving) actions.onToggleCurrent() else actions.onPlay(track)
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -13825,7 +13843,7 @@ private fun StudioPersonalListeningShelf(
                         modifier = Modifier.fillMaxWidth(),
                         key = pageKey
                     ) { pageIndex ->
-                        orbitPage(pageIndex, Modifier.fillMaxWidth())
+                        orbitPage(pageIndex, Modifier.fillMaxWidth().defaultPagerPageMotion(defaultRailMotionEnabled(), pagerState, pageIndex))
                     }
                     if (pages.size > 1) {
                         Row(
