@@ -9,10 +9,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -20,7 +18,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -39,8 +42,10 @@ import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.LevyraSectionHeader
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
 
-private val DefaultRecentShape = RoundedCornerShape(22.dp)
+private val DefaultRecentShape = RoundedCornerShape(20.dp)
+private val DefaultRecentArtShape = RoundedCornerShape(14.dp)
 private val DefaultSampleShape = RoundedCornerShape(28.dp)
 private val DefaultBrowseShape = RoundedCornerShape(24.dp)
 
@@ -54,7 +59,6 @@ internal fun DefaultRecentSearchesRail(
 ) {
     val scheme = MaterialTheme.colorScheme
     val actionsLabel = LocalLevyraStrings.current.actions
-    val artShape = MaterialShapes.Cookie9Sided.toShape()
     Column {
         LevyraSectionHeader(title = title, modifier = Modifier.padding(bottom = 8.dp))
         LazyRow(
@@ -66,7 +70,7 @@ internal fun DefaultRecentSearchesRail(
                 var menuExpanded by remember(track.id) { mutableStateOf(false) }
                 val description = trackContentDescription(track)
                 Row(
-                    Modifier.width(248.dp).height(76.dp).clip(DefaultRecentShape).background(scheme.surfaceContainerHigh)
+                    Modifier.width(240.dp).height(72.dp).clip(DefaultRecentShape).background(scheme.surfaceContainer)
                         .levyraPressable(
                             onClick = { onTrackClick(track) }, onLongClick = { menuExpanded = true }, onLongClickLabel = actionsLabel,
                             pressedScale = LevyraPressScale.Row, role = Role.Button
@@ -75,8 +79,8 @@ internal fun DefaultRecentSearchesRail(
                         .padding(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(Modifier.size(60.dp).clip(artShape)) { CoverImage(track, Modifier.fillMaxSize()) }
-                    Column(Modifier.weight(1f).padding(horizontal = 12.dp).clearAndSetSemantics { }) {
+                    Box(Modifier.size(56.dp).clip(DefaultRecentArtShape).background(scheme.surfaceContainerHighest)) { CoverImage(track, Modifier.fillMaxSize()) }
+                    Column(Modifier.weight(1f).padding(start = 14.dp, end = 8.dp).clearAndSetSemantics { }, verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         LevyraMediaTitle(track.title, explicit = track.explicit,  color = scheme.onSurface, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(track.artist, color = scheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
@@ -91,6 +95,7 @@ internal fun DefaultRecentSearchesRail(
 @Composable
 internal fun DefaultSearchSamplesRail(title: String, samples: List<Track>, previewEnabled: Boolean, onOpen: (Int) -> Unit) {
     val scheme = MaterialTheme.colorScheme
+    val heavyBlur = LocalLevyraVisualCapabilities.current.heavyBlur
     Column {
         LevyraSectionHeader(title = title, modifier = Modifier.padding(top = 18.dp, bottom = 8.dp))
         LazyRow(
@@ -101,23 +106,37 @@ internal fun DefaultSearchSamplesRail(title: String, samples: List<Track>, previ
             itemsIndexed(samples, key = { _, track -> "default-sample-${track.id}" }) { index, track ->
                 val description = trackContentDescription(track)
                 Box(
-                    Modifier.size(width = 152.dp, height = 212.dp).clip(DefaultSampleShape).background(scheme.surfaceContainerHighest)
+                    Modifier.size(width = 152.dp, height = 224.dp).clip(DefaultSampleShape).background(scheme.surfaceContainerHighest)
                         .levyraPressable(onClick = { onOpen(index) }, pressedScale = LevyraPressScale.Tile, role = Role.Button)
                         .semantics(mergeDescendants = true) { contentDescription = description }
                 ) {
-                    CoverImage(track, Modifier.fillMaxSize(), highRes = true)
+                    if (heavyBlur) {
+                        CoverImage(track, Modifier.fillMaxSize().blur(40.dp, BlurredEdgeTreatment.Rectangle))
+                        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.22f)))
+                    } else {
+                        CoverImage(track, Modifier.fillMaxSize())
+                        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)))
+                    }
+                    CoverImage(track, Modifier.fillMaxWidth().aspectRatio(1f).align(Alignment.TopCenter).sampleArtworkFade(), highRes = true)
                     if (previewEnabled && index == 0) SpotifySamplePreview(track)
-                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.5f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.78f))))
+                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.6f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.45f))))
                     LevyraMediaTitle(
                         track.title, explicit = track.explicit,  color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.align(Alignment.BottomStart).padding(start = 14.dp, end = 14.dp, bottom = 16.dp).clearAndSetSemantics { }
+                        maxLines = 2, overflow = TextOverflow.Ellipsis, marqueeEnabled = false,
+                        modifier = Modifier.align(Alignment.BottomStart).padding(start = 14.dp, end = 14.dp, bottom = 14.dp).clearAndSetSemantics { }
                     )
                 }
             }
         }
     }
 }
+
+private fun Modifier.sampleArtworkFade(): Modifier =
+    graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+        .drawWithContent {
+            drawContent()
+            drawRect(Brush.verticalGradient(0.72f to Color.Black, 1f to Color.Transparent), blendMode = BlendMode.DstIn)
+        }
 
 @Composable
 internal fun DefaultBrowseCard(title: String, artworkUrl: String, accent: Pair<Color, Color>, modifier: Modifier, onClick: () -> Unit) {
@@ -140,7 +159,7 @@ internal fun DefaultBrowseCard(title: String, artworkUrl: String, accent: Pair<C
         Text(
             title, color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
             maxLines = 2, overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.align(Alignment.TopStart).fillMaxWidth(0.72f).padding(start = 16.dp, top = 14.dp).clearAndSetSemantics { }
+            modifier = Modifier.align(Alignment.TopStart).fillMaxWidth(0.68f).padding(start = 16.dp, top = 14.dp).clearAndSetSemantics { }
         )
     }
 }
