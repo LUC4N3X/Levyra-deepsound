@@ -2762,6 +2762,35 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val startupSnapshot = _state.value
         homeArtistsJob?.cancel()
         homeArtistsJob = viewModelScope.launch(Dispatchers.IO) {
+            val chartLanguage = LevyraLanguageCatalog.normalize(startupSnapshot.languageCode)
+            val chartCountry = LevyraContentLocales.forLanguage(chartLanguage).chartCountry.uppercase(java.util.Locale.ROOT)
+            val chartArtists = runCatchingPreservingCancellation {
+                com.luc4n3x.levyra.data.YoutubeMusicChartsRepository(getApplication<Application>()).topArtists(chartCountry, chartLanguage)
+            }.getOrNull().orEmpty().take(HOME_ARTIST_SHELF_SIZE)
+            if (chartArtists.size >= HOME_CHART_ARTIST_MIN) {
+                homeArtistsFingerprint = "chart|$chartLanguage|$chartCountry"
+                val audienceGate = Semaphore(HOME_ARTIST_RESOLUTION_CONCURRENCY)
+                val withListeners = coroutineScope {
+                    chartArtists.map { artist ->
+                        async {
+                            val profile = audienceGate.withPermit {
+                                withTimeoutOrNull(HOME_ARTIST_FAST_TIMEOUT_MS) {
+                                    runCatchingPreservingCancellation { artistRepository.artistHit(artist.browseId, artist.name) }.getOrNull()
+                                }
+                            }
+                            artist.copy(
+                                subscribers = profile?.subscribers.orEmpty(),
+                                thumbnailUrl = artist.thumbnailUrl.ifBlank { profile?.thumbnailUrl.orEmpty() }
+                            )
+                        }
+                    }.awaitAll()
+                }
+                _state.update { current ->
+                    if (current.languageCode == startupSnapshot.languageCode) current.copy(homeArtists = withListeners, homeArtistsLoading = false) else current
+                }
+                persistHomeSnapshotSync(chartLanguage)
+                return@launch
+            }
             val plan = buildHomeArtistPlan(startupSnapshot)
             val visibleArtists = visibleHomeArtists(startupSnapshot, plan)
             val fingerprint = homeArtistFingerprint(plan.languageCode, plan.orderedCandidates)
@@ -15492,6 +15521,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         private const val CHART_PRIME_REGION_COUNT = 28
         private const val CHART_ARTWORK_BATCH_SIZE = 10
         private const val HOME_ARTIST_SHELF_SIZE = 20
+        private const val HOME_CHART_ARTIST_MIN = 8
         private const val HOME_ARTIST_HISTORY_LIMIT = 72
         private const val HOME_ARTIST_CANDIDATE_LIMIT = 72
         private const val HOME_ARTIST_RESOLUTION_CONCURRENCY = 4
