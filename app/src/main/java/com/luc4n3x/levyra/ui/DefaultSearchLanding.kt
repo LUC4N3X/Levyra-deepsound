@@ -42,6 +42,7 @@ import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.LevyraSectionHeader
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
 
 private val DefaultRecentShape = RoundedCornerShape(20.dp)
 private val DefaultRecentArtShape = RoundedCornerShape(14.dp)
@@ -94,6 +95,7 @@ internal fun DefaultRecentSearchesRail(
 @Composable
 internal fun DefaultSearchSamplesRail(title: String, samples: List<Track>, previewEnabled: Boolean, onOpen: (Int) -> Unit) {
     val scheme = MaterialTheme.colorScheme
+    val heavyBlur = LocalLevyraVisualCapabilities.current.heavyBlur
     Column {
         LevyraSectionHeader(title = title, modifier = Modifier.padding(top = 18.dp, bottom = 8.dp))
         LazyRow(
@@ -104,19 +106,21 @@ internal fun DefaultSearchSamplesRail(title: String, samples: List<Track>, previ
             itemsIndexed(samples, key = { _, track -> "default-sample-${track.id}" }) { index, track ->
                 val description = trackContentDescription(track)
                 Box(
-                    Modifier.size(width = 152.dp, height = 212.dp).clip(DefaultSampleShape).background(scheme.surfaceContainerHighest)
+                    Modifier.size(width = 152.dp, height = 224.dp).clip(DefaultSampleShape).background(scheme.surfaceContainerHighest)
                         .levyraPressable(onClick = { onOpen(index) }, pressedScale = LevyraPressScale.Tile, role = Role.Button)
                         .semantics(mergeDescendants = true) { contentDescription = description }
                 ) {
-                    CoverImage(track, Modifier.fillMaxSize().blur(40.dp, BlurredEdgeTreatment.Rectangle))
-                    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.22f)))
+                    if (heavyBlur) {
+                        CoverImage(track, Modifier.fillMaxSize().blur(40.dp, BlurredEdgeTreatment.Rectangle))
+                        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.22f)))
+                    }
                     CoverImage(track, Modifier.fillMaxWidth().aspectRatio(1f).align(Alignment.TopCenter).sampleArtworkFade(), highRes = true)
                     if (previewEnabled && index == 0) SpotifySamplePreview(track)
-                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.55f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.62f))))
+                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.6f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.45f))))
                     LevyraMediaTitle(
                         track.title, explicit = track.explicit,  color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold,
                         maxLines = 2, overflow = TextOverflow.Ellipsis, marqueeEnabled = false,
-                        modifier = Modifier.align(Alignment.BottomStart).padding(start = 14.dp, end = 14.dp, bottom = 16.dp).clearAndSetSemantics { }
+                        modifier = Modifier.align(Alignment.BottomStart).padding(start = 14.dp, end = 14.dp, bottom = 14.dp).clearAndSetSemantics { }
                     )
                 }
             }
@@ -128,7 +132,7 @@ private fun Modifier.sampleArtworkFade(): Modifier =
     graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
         .drawWithContent {
             drawContent()
-            drawRect(Brush.verticalGradient(0.62f to Color.Black, 1f to Color.Transparent), blendMode = BlendMode.DstIn)
+            drawRect(Brush.verticalGradient(0.72f to Color.Black, 1f to Color.Transparent), blendMode = BlendMode.DstIn)
         }
 
 @Composable
@@ -152,7 +156,7 @@ internal fun DefaultBrowseCard(title: String, artworkUrl: String, accent: Pair<C
         Text(
             title, color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
             maxLines = 2, overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.align(Alignment.TopStart).fillMaxWidth(0.6f).padding(start = 16.dp, top = 14.dp).clearAndSetSemantics { }
+            modifier = Modifier.align(Alignment.TopStart).fillMaxWidth(0.68f).padding(start = 16.dp, top = 14.dp).clearAndSetSemantics { }
         )
     }
 }

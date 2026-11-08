@@ -11705,6 +11705,7 @@ private fun HomeStudioHost(
         ?: !homeStudio.activeLayout().isHidden(HomeSectionId.FavoriteRadio)
     val homeRadio = HomeRadioState(radioStations, renderSnapshot.state.liveRadioStation?.uuid, renderSnapshot.state.isPlaying,
         radioVisible, viewModel::playLiveRadio)
+    val homePullRefresh = rememberDefaultHomePullRefresh(viewModel, renderSnapshot.state.interfaceSettings.showAlbumsForYou, onPullRefresh)
     CompositionLocalProvider(LocalHomeRadio provides homeRadio) {
         val effectiveStudio = remember(composedBlocks, composition, skin, homeStudio) {
             composedStudioSettings(skin, composedBlocks, composition.modeFor(skin), homeStudio)
@@ -11717,7 +11718,7 @@ private fun HomeStudioHost(
                 deferredSectionsRevealed = deferredSectionsRevealed,
                 accountAvatarUrl = accountAvatarUrl,
                 youtubeMusicHome = youtubeMusicHome,
-                onPullRefresh = onPullRefresh,
+                onPullRefresh = homePullRefresh,
                 onTrackActions = onTrackActions
             )
         } else {
@@ -11730,7 +11731,7 @@ private fun HomeStudioHost(
                 youtubeMusicHome = youtubeMusicHome,
                 homeStudio = effectiveStudio,
                 composedBlocks = composedBlocks,
-                onPullRefresh = onPullRefresh,
+                onPullRefresh = homePullRefresh,
                 onTrackActions = onTrackActions
             )
         }
@@ -14776,7 +14777,7 @@ private fun SearchScreen(
                 )
             } else if (queryClean.isEmpty()) {
                 if (levyraBrowse != null && LevyraIsDefaultSkin) item(key = "search-browse-top", contentType = "search-browse-top") {
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(2.dp))
                 }
                 if (levyraBrowse == null) item(key = "search-taste-hints", contentType = "search-taste-hints") {
                     SearchTasteHints(
@@ -14793,7 +14794,7 @@ private fun SearchScreen(
 
                 if (state.recentSearches.isNotEmpty()) {
                     item(key = "search-recent", contentType = "search-recent") {
-                        SearchSectionGap()
+                        if (levyraBrowse == null || !LevyraIsDefaultSkin) SearchSectionGap()
                         RecentSearchesRow(
                             title = strings.recentSearches,
                             tracks = state.recentSearches,
