@@ -147,7 +147,8 @@ object MusicIdentityText {
         TrackVersionMarker.SPED_UP,
         TrackVersionMarker.SLOWED,
         TrackVersionMarker.REVERB,
-        TrackVersionMarker.DEMO
+        TrackVersionMarker.DEMO,
+        TrackVersionMarker.VERSION
     )
 
     private val neutralDescriptorPhrases = setOf(
@@ -418,16 +419,15 @@ object MusicIdentityText {
     private fun albumDescriptorEditions(text: String): Set<AlbumEdition>? {
         val normalized = normalize(text)
         if (normalized.isBlank()) return emptySet()
+        val reduced = normalized.replace(yearToken, " ").replace(whitespace, " ").trim()
+        val matched = editionRules.filter { it.phrase.containsMatchIn(reduced) }.map { it.edition }
+        val specific = matched.filter { it != AlbumEdition.OTHER_EDITION }
+        if (specific.isNotEmpty()) return specific.toSet()
         val descriptor = classifyTitleDescriptor(text)
         if (descriptor is Descriptor.Version && (descriptor.markers intersect nonEditionVersionMarkers).isNotEmpty()) {
             return null
         }
-        val reduced = normalized.replace(yearToken, " ").replace(whitespace, " ").trim()
-        val matched = editionRules.filter { it.phrase.containsMatchIn(reduced) }.map { it.edition }
-        if (matched.isNotEmpty()) {
-            val specific = matched.filter { it != AlbumEdition.OTHER_EDITION }
-            return specific.ifEmpty { matched }.toSet()
-        }
+        if (matched.isNotEmpty()) return matched.toSet()
         if (featuringPrefixes.any(normalized::startsWith) || neutralPrefixes.any(normalized::startsWith)) return emptySet()
         return null
     }

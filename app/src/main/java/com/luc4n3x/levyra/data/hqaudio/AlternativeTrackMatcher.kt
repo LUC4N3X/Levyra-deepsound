@@ -152,7 +152,10 @@ class AlternativeTrackMatcher {
     }
 
     private fun singleLetterTypo(a: String, b: String): Boolean =
-        a != b && !a.last().isDigit() && !b.last().isDigit() && editDistanceAtMostOne(a, b)
+        a != b && numberTokens(a) == numberTokens(b) && editDistanceAtMostOne(a, b)
+
+    private fun numberTokens(text: String): List<String> =
+        numberToken.findAll(text).map { it.value.trim() }.toList()
 
     private fun editDistanceAtMostOne(a: String, b: String): Boolean {
         if (kotlin.math.abs(a.length - b.length) > 1) return false
@@ -827,6 +830,7 @@ class AlternativeTrackMatcher {
         const val SAME_RECORDING_DURATION_SECONDS = 4
 
         private val conflictingAlbumVersionMarkers = setOf(
+            TrackVersionMarker.LIVE,
             TrackVersionMarker.KARAOKE,
             TrackVersionMarker.INSTRUMENTAL,
             TrackVersionMarker.COVER,
@@ -835,8 +839,10 @@ class AlternativeTrackMatcher {
             TrackVersionMarker.REVERB,
             TrackVersionMarker.REMIX,
             TrackVersionMarker.ACOUSTIC,
-            TrackVersionMarker.DEMO
+            TrackVersionMarker.DEMO,
+            TrackVersionMarker.VERSION
         )
+        private val numberToken = Regex("\\d+|(?:^|\\s)(?:i|ii|iii|iv|v|vi|vii|viii|ix|x)(?=\\s|$)")
         private val compilationAlbumPhrase = Regex(
             "(?:^|\\s)(?:best of|greatest hits|all time hits|superhits|super hits|top hits|mega hits|hit songs|love songs|trending|heartbeats|valentine|valentines special|master class|essentials|anthology|collection|compilations?|the highlights|papercuts|chartbusters|blockbusters|non stop|party hits|romantic hits|sad songs|bollywood hits)(?:\\s|$)"
         )

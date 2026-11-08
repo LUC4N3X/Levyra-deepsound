@@ -54,6 +54,25 @@ class JioSaavnFamousTracksMatchingTest {
             ),
             AlternativeSearchPlan.queries(multiArtist)
         )
+
+        val withAlbumAndAlternate = multiArtist.copy(
+            album = "Brahmastra",
+            alternateReading = AlternativeTrackQuery(
+                title = "Kesariyaa",
+                artist = "Arijit Singh",
+                album = "Brahmastra",
+                durationMs = 268_000,
+                explicit = false
+            )
+        )
+        assertEquals(
+            listOf(
+                "Kesariya (From \"Brahmastra\") Pritam Brahmastra",
+                "kesariya pritam",
+                "Kesariyaa Arijit Singh"
+            ),
+            AlternativeSearchPlan.queries(withAlbumAndAlternate)
+        )
     }
 
     @Test

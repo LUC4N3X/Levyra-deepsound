@@ -900,6 +900,29 @@ class AlternativeTrackMatcherTest {
                 duration = 170
             )
         )
+        val kesariyaSingle = query(title = "Kesariya", artist = "Arijit Singh", album = "Kesariya", durationMs = 268_000L)
+        assertRejected(
+            MatchRejection.VERSION_MISMATCH,
+            kesariyaSingle,
+            candidate(
+                id = "album-reprise",
+                title = "Kesariya",
+                primary = listOf("Arijit Singh"),
+                album = "Kesariya (Reprise)",
+                duration = 268
+            )
+        )
+        assertRejected(
+            MatchRejection.VERSION_MISMATCH,
+            kesariyaSingle,
+            candidate(
+                id = "album-live",
+                title = "Kesariya",
+                primary = listOf("Arijit Singh"),
+                album = "Kesariya (Live)",
+                duration = 268
+            )
+        )
     }
 
     @Test
@@ -956,6 +979,13 @@ class AlternativeTrackMatcherTest {
         )
         assertEquals(AlternativeMatchVerdict.REJECTED, sequelNumber.verdict)
         assertEquals(MatchRejection.TITLE_MISMATCH, sequelNumber.rejection)
+
+        val internalNumber = matcher.evaluateReadings(
+            query(title = "Symphony 1 Allegro", artist = "Composer", album = "Symphonies", durationMs = 200_000L),
+            candidate(title = "Symphony 2 Allegro", primary = listOf("Composer"), album = "Symphonies", duration = 200)
+        )
+        assertEquals(AlternativeMatchVerdict.REJECTED, internalNumber.verdict)
+        assertEquals(MatchRejection.TITLE_MISMATCH, internalNumber.rejection)
     }
 
 }
