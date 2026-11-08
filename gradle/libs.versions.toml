@@ -1,4 +1,5 @@
 [versions]
+zxingEmbedded = "4.3.0"
 agp = "9.5.0"
 kotlin = "2.4.21"
 composeBom = "2026.09.00"
@@ -38,6 +39,7 @@ uiautomator = "2.4.0"
 materialKolor = "6.0.0"
 
 [libraries]
+zxing-embedded = { module = "com.journeyapps:zxing-android-embedded", version.ref = "zxingEmbedded" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-fragment-ktx = { group = "androidx.fragment", name = "fragment-ktx", version.ref = "fragment" }

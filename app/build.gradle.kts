@@ -303,6 +303,7 @@ configurations.configureEach {
 }
 
 dependencies {
+    implementation(libs.zxing.embedded)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     if (!isFdroidBuild) implementation(libs.androidx.fragment.ktx)
