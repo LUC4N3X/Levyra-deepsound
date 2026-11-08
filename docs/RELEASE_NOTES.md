@@ -41,4 +41,4 @@ Once the publishing workflow finishes, the signed APK and its checksum will be o
 
 ## Final note
 
-A lot of this release came from screenshots you sent me with a circle around something that looked wrong. Keep sending them. They're the fastest way for me to see what you see.
+The thread running through 3.1.0 is consistency. The same song, the same artist and the same scroll should behave the same way whichever skin you pick, and in whatever language you use the app. If something still feels off in yours, open an issue with the skin name, your language and a screenshot. That's usually enough for me to find the exact line of code behind it.
