@@ -79,6 +79,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -204,7 +205,11 @@ internal fun MonoSearchEntry(viewModel: SearchViewModel, state: LevyraUiState, o
         focused -> MonoSearchPane.Recall
         else -> MonoSearchPane.Idle
     }
-    Column(Modifier.fillMaxSize().background(MonoDesign.base).statusBarsPadding()) {
+    Column(
+        Modifier.fillMaxSize().background(MonoDesign.base)
+            .background(Brush.verticalGradient(0f to MonoDesign.accent.copy(alpha = 0.10f), 0.32f to Color.Transparent))
+            .statusBarsPadding()
+    ) {
         AnimatedVisibility(
             visible = !focused,
             enter = if (animated) expandVertically() + fadeIn() else EnterTransition.None,

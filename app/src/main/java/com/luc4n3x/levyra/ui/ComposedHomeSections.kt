@@ -41,7 +41,11 @@ internal class ComposedQuote(
     val quote: String,
     val meta: String,
     val onOpen: () -> Unit,
-    val onPlay: () -> Unit
+    val onPlay: () -> Unit,
+    val count: String = "",
+    val author: String = "",
+    val authorAvatarUrl: String = "",
+    val loading: Boolean = false
 )
 
 internal class ComposedDiscovery(
@@ -358,7 +362,11 @@ internal fun resonanceQuote(
         snippet?.text?.takeIf { it.isNotBlank() } ?: track.artist,
         listOfNotNull(snippet?.countText?.takeIf { it.isNotBlank() }, snippet?.author?.takeIf { it.isNotBlank() }).joinToString(" · "),
         onOpen = { onOpenComments(track) },
-        onPlay = { playFrom(tracks, track) }
+        onPlay = { playFrom(tracks, track) },
+        count = snippet?.countText?.trim().orEmpty(),
+        author = snippet?.author?.trim().orEmpty(),
+        authorAvatarUrl = snippet?.authorAvatarUrl.orEmpty(),
+        loading = snippet == null || snippet.isLoading
     )
 }
 

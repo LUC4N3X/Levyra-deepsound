@@ -407,7 +407,7 @@ private fun youTubeMusicLevyraBlocks(
         YouTubeMusicCardModel("album-${album.browseId.ifBlank { album.title + album.artist }}", album.title, album.artist, album.thumbnailUrl, onClick = { actions.openAlbum(album) })
     }),
     cardsBlock("levyra-artists", strings.trendingArtists, data.artists.takeIf { data.showArtists }.orEmpty().map { artist ->
-        YouTubeMusicCardModel("artist-${artist.browseId.ifBlank { artist.name }}", artist.name, artist.subscribers, artist.thumbnailUrl, circular = true, onClick = { actions.openArtist(artist) })
+        YouTubeMusicCardModel("artist-${artist.browseId.ifBlank { artist.name }}", artist.name, artistAudienceLabel(artist.subscribers, strings.code, strings.monthlyListeners), artist.thumbnailUrl, circular = true, onClick = { actions.openArtist(artist) })
     }),
     songColumnsBlock("levyra-forgotten", strings.forgottenFavorites, data.forgottenFavorites, data.currentId, copy, actions)
 )

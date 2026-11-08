@@ -40,6 +40,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -321,10 +322,12 @@ internal fun MonoExploreEntry(
 
 @Composable
 internal fun MonoVideoRail(videos: List<YoutubeMusicHomeItem>, onPlay: (YoutubeMusicHomeItem) -> Unit) {
-    LazyRow(contentPadding = MonoRailPadding, horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap)) {
+    val railState = rememberLazyListState()
+    val railMotion = glacierRailMotionEnabled()
+    LazyRow(state = railState, contentPadding = MonoRailPadding, horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap)) {
         items(videos, key = { it.key }, contentType = { "mono-video-card" }) { item ->
             Column(
-                Modifier.width(MonoVideoWidth)
+                Modifier.glacierRailItemMotion(railMotion, railState, item.key).width(MonoVideoWidth)
                     .levyraPressable(onClick = { onPlay(item) }, role = Role.Button, pressedScale = LevyraPressScale.Tile, onClickLabel = item.title)
             ) {
                 Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(MonoDesign.cardShape).background(MonoDesign.surface)) {

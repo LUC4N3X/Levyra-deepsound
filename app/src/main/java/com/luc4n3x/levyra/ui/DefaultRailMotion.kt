@@ -6,11 +6,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import com.luc4n3x.levyra.ui.theme.LevyraIsMono
 import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
 import kotlin.math.abs
 
 private const val RailEdgeScale = 0.06f
 private const val RailEdgeFade = 0.3f
+private const val GlacierEdgeScale = 0.03f
+private const val GlacierEdgeFade = 0.25f
 private const val PagerScale = 0.05f
 private const val PagerFade = 0.25f
 private const val ParallaxZoom = 1.06f
@@ -20,6 +23,16 @@ internal fun defaultRailMotionEnabled(): Boolean =
     defaultHomeOwnsCuratedPlaylists() && LocalAnimationsEnabled.current && LocalLevyraVisualCapabilities.current.decorativeMotion
 
 internal fun Modifier.defaultRailItemMotion(enabled: Boolean, state: LazyListState, key: Any): Modifier =
+    railEdgeMotion(enabled, state, key, RailEdgeScale, RailEdgeFade)
+
+@Composable
+internal fun glacierRailMotionEnabled(): Boolean =
+    LevyraIsMono && LocalAnimationsEnabled.current && LocalLevyraVisualCapabilities.current.decorativeMotion
+
+internal fun Modifier.glacierRailItemMotion(enabled: Boolean, state: LazyListState, key: Any): Modifier =
+    railEdgeMotion(enabled, state, key, GlacierEdgeScale, GlacierEdgeFade)
+
+private fun Modifier.railEdgeMotion(enabled: Boolean, state: LazyListState, key: Any, edgeScale: Float, edgeFade: Float): Modifier =
     if (!enabled) this else graphicsLayer {
         val info = state.layoutInfo
         val item = info.visibleItemsInfo.firstOrNull { it.key == key } ?: return@graphicsLayer
@@ -30,10 +43,10 @@ internal fun Modifier.defaultRailItemMotion(enabled: Boolean, state: LazyListSta
         val visibleEnd = minOf(item.offset + item.size, end)
         val visible = ((visibleEnd - visibleStart).toFloat() / item.size).coerceIn(0f, 1f)
         val hidden = 1f - visible
-        val scale = 1f - RailEdgeScale * hidden
+        val scale = 1f - edgeScale * hidden
         scaleX = scale
         scaleY = scale
-        alpha = 1f - RailEdgeFade * hidden
+        alpha = 1f - edgeFade * hidden
         transformOrigin = if (item.offset < start) TransformOrigin(1f, 0.5f) else TransformOrigin(0f, 0.5f)
     }
 
