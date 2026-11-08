@@ -113,6 +113,9 @@ internal fun DefaultSearchSamplesRail(title: String, samples: List<Track>, previ
                     if (heavyBlur) {
                         CoverImage(track, Modifier.fillMaxSize().blur(40.dp, BlurredEdgeTreatment.Rectangle))
                         Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.22f)))
+                    } else {
+                        CoverImage(track, Modifier.fillMaxSize())
+                        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)))
                     }
                     CoverImage(track, Modifier.fillMaxWidth().aspectRatio(1f).align(Alignment.TopCenter).sampleArtworkFade(), highRes = true)
                     if (previewEnabled && index == 0) SpotifySamplePreview(track)
