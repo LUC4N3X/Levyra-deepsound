@@ -8833,7 +8833,7 @@ private fun HomeScreen(
     val quickPicks = homeDerivedState.quickPicks
     val newReleases = homeDerivedState.newReleases
     val forgottenFavorites = state.forgottenFavorites
-    val homeAlbums = remember(
+    val personalHomeAlbums = remember(
         state.homeAlbums,
         state.personalOrbitTracks,
         state.recentListens,
@@ -8998,6 +8998,8 @@ private fun HomeScreen(
         delay(HOME_DEFERRED_SECTION_REVEAL_MS)
         deferredSectionsRevealed.value = true
     }
+    val homeAlbumShelf = rememberDefaultHomeAlbumShelf(viewModel, state.interfaceSettings.showAlbumsForYou, state.selectedChartId, strings.code, personalHomeAlbums, strings.albumsForYou)
+    val homeAlbums = homeAlbumShelf.albums
     val showHomeAlbumShimmer = HomeLoadingPolicy.showAlbumShimmer(homeContent, state.homeAlbumsLoading)
     val showChartShimmer = HomeLoadingPolicy.showChartShimmer(homeContent, state.isLoadingCharts)
     LaunchedEffect(homeFingerprint) {
@@ -9331,7 +9333,7 @@ private fun HomeScreen(
                 item(key = "sec-home-albums-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
                     HomeSectionLead(compactHome) {
                         HomeSectionInset {
-                            HomeSectionHeader(strings.albumsForYou)
+                            HomeSectionHeader(homeAlbumShelf.title)
                         }
                     }
                 }
@@ -9784,7 +9786,7 @@ private fun StudioHomeScreen(
     val quickPicks = homeDerivedState.quickPicks
     val newReleases = homeDerivedState.newReleases
     val forgottenFavorites = state.forgottenFavorites
-    val homeAlbums = remember(
+    val personalHomeAlbums = remember(
         state.homeAlbums,
         state.personalOrbitTracks,
         state.recentListens,
@@ -9826,6 +9828,8 @@ private fun StudioHomeScreen(
         delay(HOME_DEFERRED_SECTION_REVEAL_MS)
         deferredSectionsRevealed.value = true
     }
+    val homeAlbumShelf = rememberDefaultHomeAlbumShelf(viewModel, state.interfaceSettings.showAlbumsForYou, state.selectedChartId, strings.code, personalHomeAlbums, strings.albumsForYou)
+    val homeAlbums = homeAlbumShelf.albums
     val showHomeAlbumShimmer = HomeLoadingPolicy.showAlbumShimmer(homeContent, state.homeAlbumsLoading)
     val showChartShimmer = HomeLoadingPolicy.showChartShimmer(homeContent, state.isLoadingCharts)
     StudioHomeEffects(viewModel, homeListState, homeFingerprint, homeContent, showHomeAlbumShimmer, showChartShimmer)
@@ -9852,6 +9856,7 @@ private fun StudioHomeScreen(
         newReleases = newReleases,
         forgottenFavorites = forgottenFavorites,
         homeAlbums = homeAlbums,
+        homeAlbumsTitle = homeAlbumShelf.title,
         showHomeAlbumShimmer = showHomeAlbumShimmer,
         homeVideoTracks = homeVideoTracks,
         otherSections = otherSections,
@@ -10237,6 +10242,7 @@ private class StudioHomeContext(
     val newReleases: com.luc4n3x.levyra.domain.HomeSection?,
     val forgottenFavorites: List<Track>,
     val homeAlbums: List<AlbumHit>,
+    val homeAlbumsTitle: String,
     val showHomeAlbumShimmer: Boolean,
     val homeVideoTracks: List<Track>,
     val otherSections: List<IndexedValue<com.luc4n3x.levyra.domain.HomeSection>>,
@@ -11034,7 +11040,7 @@ private fun LazyListScope.homeStudioSectionAlbumsForYou(c: StudioHomeContext) {
                             style = homeStyle,
                             spec = styleSpec,
                             layout = studioLayoutOf(HomeSectionId.AlbumsForYou),
-                            title = strings.albumsForYou,
+                            title = homeAlbumsTitle,
                             featured = HomeSectionId.AlbumsForYou in studioLayout.featured,
                             albums = homeAlbums,
                             onOpen = viewModel::openAlbum,
@@ -11054,7 +11060,7 @@ private fun LazyListScope.homeStudioSectionAlbumsForYou(c: StudioHomeContext) {
                     item(key = "sec-home-albums-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
                         HomeSectionLead(compactHome) {
                             HomeSectionInset {
-                                HomeSectionHeader(strings.albumsForYou)
+                                HomeSectionHeader(homeAlbumsTitle)
                             }
                         }
                     }
