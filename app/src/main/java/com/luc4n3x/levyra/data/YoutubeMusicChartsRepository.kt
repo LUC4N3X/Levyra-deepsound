@@ -326,6 +326,8 @@ internal object YoutubeMusicChartPageParser {
 }
 
 internal object YoutubeMusicChartArtistsParser {
+    private val ThumbnailSize = Regex("""=w\d+-h\d+""")
+
     fun parse(root: JSONObject): List<com.luc4n3x.levyra.domain.ArtistHit> {
         val shelves = mutableListOf<JSONObject>()
         collect(root, shelves)
@@ -377,6 +379,6 @@ internal object YoutubeMusicChartArtistsParser {
         val thumbs = item.optJSONObject("thumbnail")?.optJSONObject("musicThumbnailRenderer")
             ?.optJSONObject("thumbnail")?.optJSONArray("thumbnails") ?: return ""
         val url = thumbs.optJSONObject(thumbs.length() - 1)?.optString("url").orEmpty()
-        return url.replace(Regex("""=w\d+-h\d+"""), "=w544-h544")
+        return url.replace(ThumbnailSize, "=w544-h544")
     }
 }

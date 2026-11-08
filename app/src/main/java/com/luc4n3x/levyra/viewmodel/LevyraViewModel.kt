@@ -2773,15 +2773,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 val withListeners = coroutineScope {
                     chartArtists.map { artist ->
                         async {
-                            val profile = audienceGate.withPermit {
+                            val listeners = audienceGate.withPermit {
                                 withTimeoutOrNull(HOME_ARTIST_FAST_TIMEOUT_MS) {
-                                    runCatchingPreservingCancellation { artistRepository.artistHit(artist.browseId, artist.name) }.getOrNull()
+                                    runCatchingPreservingCancellation { artistRepository.monthlyListeners(artist.browseId) }.getOrNull()
                                 }
                             }
-                            artist.copy(
-                                subscribers = profile?.subscribers.orEmpty(),
-                                thumbnailUrl = artist.thumbnailUrl.ifBlank { profile?.thumbnailUrl.orEmpty() }
-                            )
+                            artist.copy(subscribers = listeners.orEmpty(), officialArtwork = artist.thumbnailUrl.isNotBlank())
                         }
                     }.awaitAll()
                 }
@@ -8513,6 +8510,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _searchHiddenListens = MutableStateFlow<Set<String>>(emptySet())
     val searchHiddenListens: StateFlow<Set<String>> = _searchHiddenListens.asStateFlow()
+    private val searchHiddenListensWrite = kotlinx.coroutines.sync.Mutex()
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
@@ -8525,7 +8523,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val identity = LevyraPersonalOrbit.identityKey(track)
         val hidden = _searchHiddenListens.updateAndGet { (it + identity).toList().takeLast(SEARCH_HIDDEN_LISTENS_LIMIT).toSet() }
         viewModelScope.launch(Dispatchers.IO) {
-            preferences.saveSearchHiddenListens((preferences.searchHiddenListens() + hidden).toList().takeLast(SEARCH_HIDDEN_LISTENS_LIMIT).toSet())
+            searchHiddenListensWrite.withLock {
+                val merged = preferences.searchHiddenListens() + _searchHiddenListens.value + hidden
+                preferences.saveSearchHiddenListens(merged.toList().takeLast(SEARCH_HIDDEN_LISTENS_LIMIT).toSet())
+            }
         }
         val matches: (Track) -> Boolean = { candidate ->
             candidate.id == track.id || LevyraPersonalOrbit.identityKey(candidate) == identity
@@ -9481,28 +9482,33 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         playlistHitJob = viewModelScope.launch {
             val cached = withContext(Dispatchers.IO) { readSpotifySourcedCache(spotifyPlaylistId) }
             if (cached.isNotEmpty()) publish(cached)
-            runCatchingPreservingCancellation { streamSpotifyPlaylistTracks(spotifyPlaylistId, publish) }
+            val fresh = runCatchingPreservingCancellation { streamSpotifyPlaylistTracks(spotifyPlaylistId, publish) }
                 .onFailure { Timber.w(it, "Spotify-sourced playlist lookup failed") }
+                .getOrNull().orEmpty()
+            if (fresh.isNotEmpty() || cached.isEmpty()) publish(fresh)
         }
     }
 
-    private suspend fun streamSpotifyPlaylistTracks(spotifyPlaylistId: String, publish: (List<Track>) -> Unit) = coroutineScope {
+    private suspend fun streamSpotifyPlaylistTracks(spotifyPlaylistId: String, publish: (List<Track>) -> Unit): List<Track> = coroutineScope {
         val fetcher = com.luc4n3x.levyra.data.playlistimport.PlaylistImportFetcher(
             com.luc4n3x.levyra.data.network.LevyraHttpClientFactory.media(getApplication<Application>().applicationContext)
         )
         val url = "https://open.spotify.com/playlist/$spotifyPlaylistId"
-        val entries = com.luc4n3x.levyra.data.playlistimport.SpotifyPlaylistAdapter(fetcher).read(
-            com.luc4n3x.levyra.data.playlistimport.PlaylistImportInput(url),
-            com.luc4n3x.levyra.nexus.playlistimport.DetectedPlaylistInput.RemotePlaylist(
-                com.luc4n3x.levyra.nexus.playlistimport.PlaylistImportSource.SPOTIFY, spotifyPlaylistId, url
-            )
-        ) { _, _ -> }.playlist.tracks
-        if (entries.isEmpty()) return@coroutineScope
+        val entries = withContext(Dispatchers.IO) {
+            com.luc4n3x.levyra.data.playlistimport.SpotifyPlaylistAdapter(fetcher).read(
+                com.luc4n3x.levyra.data.playlistimport.PlaylistImportInput(url),
+                com.luc4n3x.levyra.nexus.playlistimport.DetectedPlaylistInput.RemotePlaylist(
+                    com.luc4n3x.levyra.nexus.playlistimport.PlaylistImportSource.SPOTIFY, spotifyPlaylistId, url
+                )
+            ) { _, _ -> }.playlist.tracks
+        }
+        if (entries.isEmpty()) return@coroutineScope emptyList()
         val languageCode = _state.value.languageCode
         val slots = arrayOfNulls<Track>(entries.size)
         val keys = entries.map { "${it.title.trim().lowercase()}|${it.artists.joinToString(",").trim().lowercase()}" }
         keys.forEachIndexed { index, key -> slots[index] = spotifyTrackMatches[key] }
-        publish(slots.filterNotNull())
+        spotifyTrackMatches.keys.retainAll(keys.toSet())
+        slots.filterNotNull().takeIf { it.isNotEmpty() }?.let(publish)
         val lowRam = (getApplication<Application>().getSystemService(android.content.Context.ACTIVITY_SERVICE) as? android.app.ActivityManager)?.isLowRamDevice == true
         val gate = kotlinx.coroutines.sync.Semaphore(if (lowRam) SPOTIFY_MATCH_CONCURRENCY / 2 else SPOTIFY_MATCH_CONCURRENCY)
         val publishLock = kotlinx.coroutines.sync.Mutex()
@@ -9524,6 +9530,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
         }.awaitAll()
         withContext(Dispatchers.IO) { writeSpotifySourcedCache(spotifyPlaylistId, keys, slots.toList()) }
+        slots.filterNotNull()
     }
 
     private fun spotifySourcedCacheFile(spotifyPlaylistId: String): java.io.File =
