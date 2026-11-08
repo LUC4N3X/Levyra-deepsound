@@ -305,6 +305,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_UI_IMMERSIVE_EVERYWHERE] = normalizedInterface.immersive.everywhere
             mutable[KEY_UI_MUSIC_VIDEO_PREFERENCE] = normalizedInterface.musicVideoPreference.storageValue
             mutable[KEY_UI_LAST_MUSIC_VIDEO_MODE] = normalizedInterface.lastMusicVideoMode
+            mutable[KEY_UI_PLAYER_FOCUS] = normalizedInterface.playerFocusEnabled
             mutable[KEY_UI_PLAYER_VISUAL_MODE] = normalizedInterface.playerVisualMode.name
             mutable[KEY_UI_PLAYER_BACKGROUND] = normalizedInterface.playerBackground.name
             mutable[KEY_UI_REACTIVE_AURA_PRESET] = normalizedInterface.reactiveAuraPreset.name
@@ -496,6 +497,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             it[KEY_UI_IMMERSIVE_EVERYWHERE] = normalized.immersive.everywhere
             it[KEY_UI_MUSIC_VIDEO_PREFERENCE] = normalized.musicVideoPreference.storageValue
             it[KEY_UI_LAST_MUSIC_VIDEO_MODE] = normalized.lastMusicVideoMode
+            it[KEY_UI_PLAYER_FOCUS] = normalized.playerFocusEnabled
             it[KEY_UI_PLAYER_VISUAL_MODE] = normalized.playerVisualMode.name
             it[KEY_UI_PLAYER_BACKGROUND] = normalized.playerBackground.name
             it[KEY_UI_REACTIVE_AURA_PRESET] = normalized.reactiveAuraPreset.name
@@ -994,6 +996,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
                 preferences[KEY_UI_MUSIC_VIDEO_PREFERENCE]
             ),
             lastMusicVideoMode = preferences[KEY_UI_LAST_MUSIC_VIDEO_MODE] ?: false,
+            playerFocusEnabled = preferences[KEY_UI_PLAYER_FOCUS] ?: false,
             playerVisualMode = visualMode,
             playerBackground = background,
             reactiveAuraPreset = ReactiveAuraPreset.from(preferences[KEY_UI_REACTIVE_AURA_PRESET].orEmpty()),
@@ -1715,6 +1718,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_UI_IMMERSIVE_EVERYWHERE = booleanPreferencesKey("ui_immersive_everywhere")
         val KEY_UI_MUSIC_VIDEO_PREFERENCE = stringPreferencesKey("ui_music_video_preference")
         val KEY_UI_LAST_MUSIC_VIDEO_MODE = booleanPreferencesKey("ui_last_music_video_mode")
+        val KEY_UI_PLAYER_FOCUS = booleanPreferencesKey("ui_player_focus")
         val KEY_UI_DOUBLE_TAP_SECONDS = intPreferencesKey("ui_double_tap_seconds")
         val KEY_UI_LONG_PRESS_ACTION = stringPreferencesKey("ui_long_press_action")
         val KEY_UI_LONG_PRESS_SPEED = floatPreferencesKey("ui_long_press_speed")

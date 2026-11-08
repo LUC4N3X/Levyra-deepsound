@@ -4,6 +4,7 @@
         <include domain="sharedpref" path="." />
     </cloud-backup>
     <device-transfer>
+        <exclude domain="file" path="crash-reports/" />
         <exclude domain="file" path="offline_audio/" />
         <exclude domain="file" path="offline_audio_staging/" />
     </device-transfer>

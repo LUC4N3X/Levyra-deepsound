@@ -67,6 +67,7 @@
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.share-files"
+            android:process=":diagnostics"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data
@@ -95,12 +96,9 @@
             android:name="androidx.car.app.minCarApiLevel"
             android:value="8" />
         <activity
-            android:name=".MainActivity"
+            android:name=".diagnostics.LevyraLauncherActivity"
+            android:process=":diagnostics"
             android:exported="true"
-            android:resizeableActivity="true"
-            android:supportsPictureInPicture="true"
-            android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
-            android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.Levyra">
             <meta-data
                 android:name="android.app.shortcuts"
@@ -109,6 +107,20 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
+        <activity
+            android:name=".diagnostics.CrashReportsActivity"
+            android:process=":diagnostics"
+            android:exported="false"
+            android:theme="@style/Theme.Levyra" />
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:resizeableActivity="true"
+            android:supportsPictureInPicture="true"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.Levyra">
             <intent-filter>
                 <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
                 <category android:name="android.intent.category.DEFAULT" />

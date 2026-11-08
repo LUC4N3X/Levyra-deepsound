@@ -225,6 +225,10 @@ fun LevyraNowPlaying(
     playlistDialogContent: (@Composable () -> Unit)? = null,
     onOpenPlaylistDialog: ((Track) -> Unit)? = null
 ) {
+    if (state.interfaceSettings.playerFocusEnabled) {
+        PlayerFocus(viewModel, state, modifier, videoSurfaceContent, errorContent)
+        return
+    }
     val velvet = !LevyraSkinManagesLayout && state.interfaceSettings.playerVisualMode == PlayerVisualMode.CanvasImmersive
     AppleMusicPlayerStyleScope(velvet) {
         LevyraNowPlayingContent(
@@ -1918,7 +1922,13 @@ private fun LevyraNowPlayingContent(
                 artworkUrl = artworkUrl,
                 surfaces = surfaces,
                 animated = animated,
-                actions = sheetActions,
+                actions = listOf(
+                    PlayerSheetAction(
+                        key = "player_focus", icon = Icons.Rounded.Fullscreen,
+                        label = com.luc4n3x.levyra.ui.i18n.supportCopy(strings.code).focus,
+                        onClick = { showActions = false; viewModel.setPlayerFocus(true) }
+                    )
+                ) + sheetActions,
                 onDismiss = {
                     showActions = false
                     if (openArtistPickerAfterActions) {

@@ -2080,6 +2080,7 @@ internal fun backupInterfaceSettingsToJson(value: LevyraInterfaceSettings): JSON
     .put("immersiveEverywhere", value.immersive.everywhere)
     .put("musicVideoPreference", value.musicVideoPreference.storageValue)
     .put("lastMusicVideoMode", value.lastMusicVideoMode)
+    .put("playerFocusEnabled", value.playerFocusEnabled)
     .put("playerVisualMode", value.playerVisualMode.name)
     .put("playerBackground", value.playerBackground.name)
     .put("reactiveAuraPreset", value.reactiveAuraPreset.name)
@@ -2153,6 +2154,7 @@ internal fun backupInterfaceSettingsFromJson(
             json.optString("musicVideoPreference")
         ),
         lastMusicVideoMode = json.optBoolean("lastMusicVideoMode", false),
+        playerFocusEnabled = json.optBoolean("playerFocusEnabled", false),
         playerVisualMode = visualMode,
         playerBackground = backgroundMode,
         reactiveAuraPreset = ReactiveAuraPreset.from(json.optString("reactiveAuraPreset")),

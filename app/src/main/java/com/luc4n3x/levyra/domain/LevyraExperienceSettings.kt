@@ -253,6 +253,7 @@ data class LevyraInterfaceSettings(
     val immersive: LevyraImmersiveSettings = LevyraImmersiveSettings(),
     val musicVideoPreference: MusicVideoPlaybackPreference = MusicVideoPlaybackPreference.Automatic,
     val lastMusicVideoMode: Boolean = false,
+    val playerFocusEnabled: Boolean = false,
     val playerVisualMode: PlayerVisualMode = PlayerVisualMode.Flow,
     val playerBackground: PlayerBackgroundMode = PlayerBackgroundMode.Dynamic,
     val reactiveAuraPreset: ReactiveAuraPreset = ReactiveAuraPreset.Recommended,
