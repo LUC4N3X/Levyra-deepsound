@@ -74,7 +74,6 @@ internal fun JamQrShare(invitation: String, sessionName: String, hostName: Strin
     val secondary = if (look.skinned) look.textSecondary else scheme.onSurfaceVariant
     val accent = if (look.skinned) look.accent else scheme.primary
     val onAccent = if (look.skinned) look.onAccent else scheme.onPrimary
-    val shape = if (look.skinned) look.cardShape else MaterialTheme.shapes.extraLarge
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
     var copied by remember(invitation) { mutableStateOf(false) }
@@ -99,23 +98,7 @@ internal fun JamQrShare(invitation: String, sessionName: String, hostName: Strin
                 textAlign = TextAlign.Center, modifier = Modifier.semantics { heading() })
             if (hostName.isNotBlank()) Text(hostName, color = secondary, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
         }
-        Surface(shape = shape, color = if (look.skinned) look.card else scheme.surfaceContainerLow,
-            border = BorderStroke(1.dp, accent.copy(alpha = 0.2f)), modifier = Modifier.widthIn(max = 400.dp).fillMaxWidth()) {
-            Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                Surface(shape = MaterialTheme.shapes.large, color = Color.White) {
-                    Box(Modifier.fillMaxWidth().aspectRatio(1f).padding(8.dp), contentAlignment = Alignment.Center) {
-                        val matrix = qr?.getOrNull()
-                        when {
-                            matrix != null -> JamQrImage(matrix, strings.jamScanToJoin)
-                            qr == null -> CircularProgressIndicator(color = Color.Black)
-                            else -> Text(strings.jamQrUnavailable, color = Color.Black, textAlign = TextAlign.Center, modifier = Modifier.padding(16.dp))
-                        }
-                    }
-                }
-                Text(strings.jamScanToJoin, color = foreground, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
-                Text(strings.jamLocalNetworkOnly, color = secondary, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
-            }
-        }
+        JamQrCard(qr, foreground, secondary, accent)
         Column(Modifier.widthIn(max = 400.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Button(onClick = { onShare(invitation) }, shape = look.buttonShape,
                 colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = onAccent),
@@ -132,6 +115,31 @@ internal fun JamQrShare(invitation: String, sessionName: String, hostName: Strin
                 Icon(Icons.Rounded.ContentCopy, null, Modifier.padding(end = 12.dp), tint = foreground)
                 Text(if (copied) strings.jamInviteCopied else strings.jamCopyInvite, color = foreground)
             }
+        }
+    }
+}
+
+@Composable
+private fun JamQrCard(qr: Result<BitMatrix>?, foreground: Color, secondary: Color, accent: Color) {
+    val strings = LocalLevyraStrings.current
+    val look = LocalJamLook.current
+    val scheme = MaterialTheme.colorScheme
+    val shape = if (look.skinned) look.cardShape else MaterialTheme.shapes.extraLarge
+    Surface(shape = shape, color = if (look.skinned) look.card else scheme.surfaceContainerLow,
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.2f)), modifier = Modifier.widthIn(max = 400.dp).fillMaxWidth()) {
+        Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.dp)) {
+            Surface(shape = MaterialTheme.shapes.large, color = Color.White) {
+                Box(Modifier.fillMaxWidth().aspectRatio(1f).padding(8.dp), contentAlignment = Alignment.Center) {
+                    val matrix = qr?.getOrNull()
+                    when {
+                        matrix != null -> JamQrImage(matrix, strings.jamScanToJoin)
+                        qr == null -> CircularProgressIndicator(color = Color.Black)
+                        else -> Text(strings.jamQrUnavailable, color = Color.Black, textAlign = TextAlign.Center, modifier = Modifier.padding(16.dp))
+                    }
+                }
+            }
+            Text(strings.jamScanToJoin, color = foreground, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
+            Text(strings.jamLocalNetworkOnly, color = secondary, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
         }
     }
 }
