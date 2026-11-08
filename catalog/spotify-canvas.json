@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-07T21:55:18Z",
+  "generatedAt": "2026-11-08T06:08:45Z",
   "items": [
     {
       "song": "Sentire La Musica",
@@ -348,7 +348,7 @@
     {
       "song": "Man I Need",
       "artist": "Olivia Dean",
-      "album": "The Art of Loving",
+      "album": "Man I Need",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
@@ -446,7 +446,7 @@
     {
       "song": "Dreams - 2004 Remaster",
       "artist": "Fleetwood Mac",
-      "album": "Rumours",
+      "album": "Rumours (Super Deluxe)",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/2ebfebea50ed443bbaee780cb22cfea8.cnvs.mp4",
       "scope": "track"
     },
@@ -535,13 +535,6 @@
       "scope": "track"
     },
     {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "Man I Need",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Great Expectation",
       "artist": "SIENNA SPIRO",
       "album": "Visitor",
@@ -616,13 +609,6 @@
       "artist": "Skepta",
       "album": "The Fork and Knife",
       "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/eda818509908471f8b0f82060bb999b3.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Dreams - 2004 Remaster",
-      "artist": "Fleetwood Mac",
-      "album": "Rumours (Super Deluxe)",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/2ebfebea50ed443bbaee780cb22cfea8.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -2404,6 +2390,13 @@
       "scope": "track"
     },
     {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "The Art of Loving",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Vem e som oss",
       "artist": "Anis Don Demina",
       "album": "Vem e som oss",
@@ -3461,10 +3454,17 @@
       "scope": "track"
     },
     {
+      "song": "You’re Under Arrest",
+      "artist": "ILLIT",
+      "album": "BREAK EVEN",
+      "url": "https://canvaz.scdn.co/upload/artist/36cgvBn0aadzOijnjjwqMN/video/687a9a8485fc46f78f6cb45c71e86422.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "That's!Chojo",
       "artist": "M!LK",
       "album": "That's!Chojo",
-      "url": "https://canvaz.scdn.co/upload/licensor/6StexzHSVhYiYwq2ck61PI/video/07943816a23a49ab98b3bb61574a1b35.cnvs.mp4",
+      "url": "https://canvaz.scdn.co/upload/licensor/6StexzHSVhYiYwq2ck61PI/video/8a585c258c41491e9a363433f9b0939c.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -3520,7 +3520,7 @@
       "song": "NOW U KNOW",
       "artist": "BE:FIRST",
       "album": "BE:4U",
-      "url": "https://canvaz.scdn.co/upload/artist/4wCW8kZ8LL7QIdcE8EOKPP/video/081ff821d1a4445784abc588649e486d.cnvs.mp4",
+      "url": "https://canvaz.scdn.co/upload/artist/4wCW8kZ8LL7QIdcE8EOKPP/video/1811e2eae4a04b319cc923a006e9cc91.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4984,13 +4984,6 @@
       "artist": "Disco Lines, Tinashe",
       "album": "No Broke Boys",
       "url": "https://canvaz.scdn.co/upload/artist/5Kmr0b3ip8g9P2i0dLTC3Z/video/30c98b7be77748d9b69f8cafb5a8dc99.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Nice To Each Other",
-      "artist": "Olivia Dean",
-      "album": "The Art of Loving",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/aca2daddec534de8a3bcc1de7200d256.cnvs.mp4",
       "scope": "track"
     },
     {
