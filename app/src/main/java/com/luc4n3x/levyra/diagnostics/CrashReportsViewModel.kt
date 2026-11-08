@@ -62,12 +62,9 @@ internal class CrashReportsViewModel(application: Application) : AndroidViewMode
     }
 
     fun select(id: String) {
-        mutableState.value = mutableState.value.copy(selectedId = id)
-        viewModelScope.launch {
-            val selected = mutableState.value.reports.firstOrNull { it.id == id } ?: return@launch
-            val preview = withContext(Dispatchers.Default) { selected.body.chunked(4_000) }
-            if (mutableState.value.selectedId == id) mutableState.value = mutableState.value.copy(preview = preview)
-        }
+        val current = mutableState.value
+        val selected = current.reports.firstOrNull { it.id == id } ?: return
+        mutableState.value = current.copy(selectedId = id, preview = selected.body.chunked(4_000))
     }
 
     fun delete(id: String) {

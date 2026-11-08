@@ -99,6 +99,7 @@
             android:name=".diagnostics.LevyraLauncherActivity"
             android:process=":diagnostics"
             android:exported="true"
+            android:configChanges="density|fontScale|keyboard|keyboardHidden|layoutDirection|locale|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
             android:theme="@style/Theme.Levyra">
             <meta-data
                 android:name="android.app.shortcuts"
