@@ -271,7 +271,7 @@ private fun MonoSearchField(
 ) {
     val focusRequester = remember { FocusRequester() }
     val fieldStyle = MaterialTheme.typography.bodyLarge.copy(color = MonoDesign.text)
-    val border by animateColorAsState(if (focused) MonoDesign.accent else MonoDesign.hairline, tween(if (animated) 220 else 0), label = "mono-search-border")
+    val border by animateColorAsState(if (focused) MonoDesign.accent else MonoDesign.accent.copy(alpha = 0.28f), tween(if (animated) 220 else 0), label = "mono-search-border")
     val fill by animateColorAsState(if (focused) MonoDesign.raised else MonoDesign.surface, tween(if (animated) 220 else 0), label = "mono-search-fill")
     Row(
         Modifier.fillMaxWidth().padding(horizontal = MonoDesign.gutter, vertical = 10.dp),
@@ -286,7 +286,7 @@ private fun MonoSearchField(
         ) {
             Row(Modifier.fillMaxWidth().heightIn(min = MonoSearchFieldHeight), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Rounded.Search, null, tint = if (focused) MonoDesign.accent else MonoDesign.textSecondary, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Rounded.Search, null, tint = if (focused) MonoDesign.accent else MonoDesign.accentDim, modifier = Modifier.size(20.dp))
                 }
                 Box(Modifier.weight(1f).padding(vertical = 8.dp), contentAlignment = Alignment.CenterStart) {
                     if (query.isEmpty()) {
@@ -376,7 +376,7 @@ private fun MonoSearchIdle(
     ) {
         if (lastPlayed.isNotEmpty()) {
             item(key = "last-header", contentType = "header") {
-                MonoSectionHeader(copy.lastPlayed, Modifier.padding(top = 20.dp, bottom = MonoDesign.headerToContent), overline = copy.lastPlayedOverline)
+                MonoSectionHeader(copy.lastPlayed, Modifier.padding(top = 20.dp, bottom = MonoDesign.headerToContent), overline = copy.lastPlayedOverline, overlineColor = MonoDesign.accent)
             }
             item(key = "last-rail", contentType = "rail") {
                 MonoSearchTrackRail(lastPlayed, currentId, { viewModel.playFrom(lastPlayed, it) }, onTrackActions)
@@ -389,7 +389,8 @@ private fun MonoSearchIdle(
                     Modifier.padding(top = MonoDesign.sectionGap, bottom = 4.dp),
                     overline = copy.recentOverline,
                     action = strings.clear,
-                    onAction = { recent.forEach(viewModel::removeRecentSearch) }
+                    onAction = { recent.forEach(viewModel::removeRecentSearch) },
+                    overlineColor = MonoDesign.accent
                 )
             }
             items(recentPreview, key = { "recent-${it.id}" }, contentType = { "recent" }) { track ->
@@ -398,7 +399,7 @@ private fun MonoSearchIdle(
         }
         if (similar.isNotEmpty()) {
             item(key = "similar-header", contentType = "header") {
-                MonoSectionHeader(copy.similarToTaste, Modifier.padding(top = MonoDesign.sectionGap, bottom = MonoDesign.headerToContent), overline = copy.similarOverline)
+                MonoSectionHeader(copy.similarToTaste, Modifier.padding(top = MonoDesign.sectionGap, bottom = MonoDesign.headerToContent), overline = copy.similarOverline, overlineColor = MonoDesign.accent)
             }
             item(key = "similar-rail", contentType = "rail") {
                 MonoSearchTrackRail(similar, currentId, { viewModel.playFrom(similar, it) }, onTrackActions)
@@ -434,7 +435,8 @@ private fun MonoSearchRecall(
                     Modifier.padding(top = 8.dp, bottom = 4.dp),
                     overline = copy.recentOverline,
                     action = strings.clear,
-                    onAction = { recent.forEach(viewModel::removeRecentSearch) }
+                    onAction = { recent.forEach(viewModel::removeRecentSearch) },
+                    overlineColor = MonoDesign.accent
                 )
             }
             items(recent, key = { "recall-${it.id}" }, contentType = { "recent" }) { track ->

@@ -107,6 +107,7 @@ internal fun MonoSectionHeader(
     modifier: Modifier = Modifier,
     overline: String? = null,
     action: String? = null,
+    overlineColor: Color = MonoDesign.textSecondary,
     onAction: (() -> Unit)? = null
 ) {
     Row(
@@ -115,7 +116,7 @@ internal fun MonoSectionHeader(
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            if (overline != null) MonoOverline(overline)
+            if (overline != null) MonoOverline(overline, color = overlineColor)
             Text(
                 title, style = MaterialTheme.typography.titleLarge, color = MonoDesign.text, maxLines = 1,
                 overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() }

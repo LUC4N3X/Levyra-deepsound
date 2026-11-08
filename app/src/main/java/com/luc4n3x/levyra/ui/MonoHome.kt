@@ -4,6 +4,7 @@ import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import com.luc4n3x.levyra.ui.components.levyraMarquee
 import com.luc4n3x.levyra.ui.experiences.LocalMusicExperiences
 import androidx.compose.material.icons.rounded.Replay
+import androidx.compose.material.icons.rounded.FormatQuote
 import com.luc4n3x.levyra.viewmodel.EXPLORE_BROWSE_ID
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -705,7 +706,8 @@ internal fun MonoHomeEntry(
             releaseTracks = if (showReleases) releaseSection?.tracks.orEmpty() else emptyList(),
             releaseAlbums = if (showReleases) state.exploreNewReleases else emptyList(),
             pinnedCards = remember(speedDialPins, viewModel) { speedDialCards(speedDialPins, viewModel::openSpeedDialPin) },
-            composition = composition
+            composition = composition,
+            resonanceTracks = if (composition == null && state.interfaceSettings.showResonance) render.derived.resonanceTracks else emptyList()
         ),
         page = page,
         onPage = { page = it },
@@ -717,6 +719,8 @@ internal fun MonoHomeEntry(
     )
 }
 
+private val MonoQuoteWidth = 288.dp
+
 private class MonoHomeModel(
     val data: AppleMusicHomeData,
     val actions: AppleMusicHomeActions,
@@ -725,7 +729,8 @@ private class MonoHomeModel(
     val releaseTracks: List<Track>,
     val releaseAlbums: List<AlbumHit>,
     val pinnedCards: List<ComposedCard>,
-    val composition: ComposedHomeRequest?
+    val composition: ComposedHomeRequest?,
+    val resonanceTracks: List<Track>
 )
 
 private class MonoHomeFeed(
@@ -996,6 +1001,16 @@ private fun LazyListScope.monoHomeFeed(
             }
         }
     }
+    if (model.resonanceTracks.isNotEmpty()) {
+        item(key = "mono-resonance", contentType = "mono-quotes") {
+            val tracks = model.resonanceTracks
+            val comments = state.homeResonanceComments
+            val quotes = remember(tracks, comments) {
+                tracks.map { track -> resonanceQuote(track, tracks, comments, model.viewModel::openYoutubeCommentsFor, actions.playFrom) }
+            }
+            kit.Quotes(strings.mostCommentedTracks, quotes)
+        }
+    }
     if (feed.charts.isNotEmpty()) {
         item(key = "mono-top-chart", contentType = "mono-top-chart") {
             MonoSection(
@@ -1209,17 +1224,24 @@ internal class MonoHomeKit(
             LazyRow(contentPadding = MonoRailPadding, horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap)) {
                 items(unique, key = { it.key }, contentType = { "mono-quote" }) { quote ->
                     Column(
-                        Modifier.width(280.dp).monoPanel()
+                        Modifier.width(MonoQuoteWidth).monoPanel()
                             .levyraPressable(onClick = quote.onOpen, role = Role.Button, pressedScale = LevyraPressScale.Surface)
-                            .padding(16.dp)
+                            .padding(18.dp)
                     ) {
-                        if (quote.meta.isNotBlank()) MonoOverline(quote.meta)
-                        if (quote.quote != quote.track.artist) {
-                            Text(quote.quote, style = MaterialTheme.typography.titleMedium, color = MonoDesign.text, maxLines = 4, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Rounded.FormatQuote, null, tint = MonoDesign.accent, modifier = Modifier.size(22.dp))
+                            if (quote.meta.isNotBlank()) MonoOverline(quote.meta, Modifier.padding(start = 8.dp).weight(1f), color = MonoDesign.accent)
                         }
+                        Text(
+                            if (quote.quote != quote.track.artist) quote.quote else "",
+                            style = MaterialTheme.typography.titleMedium, color = MonoDesign.text,
+                            minLines = 3, maxLines = 3, overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(top = 10.dp)
+                        )
+                        Box(Modifier.padding(top = 14.dp).fillMaxWidth().height(1.dp).background(MonoDesign.hairline))
                         Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.size(40.dp).clip(MonoDesign.artShape)) { CoverImage(quote.track, Modifier.fillMaxSize().clearAndSetSemantics {}) }
-                            Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
+                            Box(Modifier.size(44.dp).clip(MonoDesign.artShape)) { CoverImage(quote.track, Modifier.fillMaxSize().clearAndSetSemantics {}) }
+                            Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                                 Text(quote.track.title, style = MaterialTheme.typography.titleSmall, color = MonoDesign.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 Text(quote.track.artist, style = MaterialTheme.typography.bodySmall, color = MonoDesign.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }

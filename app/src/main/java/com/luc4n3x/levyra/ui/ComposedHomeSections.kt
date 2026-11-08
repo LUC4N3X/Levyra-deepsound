@@ -339,20 +339,26 @@ private fun LazyListScope.composedResonance(content: ComposedHomeContent, kit: S
     item(key = "composed-resonance", contentType = "composed-quotes") {
         val tracks = content.resonanceTracks
         val quotes = remember(tracks, content.resonanceComments) {
-            tracks.map { track -> composedQuote(track, tracks, content) }
+            tracks.map { track -> resonanceQuote(track, tracks, content.resonanceComments, content.onOpenComments, content.actions.playFrom) }
         }
         kit.Quotes(LocalLevyraStrings.current.mostCommentedTracks, quotes)
     }
 }
 
-private fun composedQuote(track: Track, tracks: List<Track>, content: ComposedHomeContent): ComposedQuote {
-    val snippet = content.resonanceComments[track.id]
+internal fun resonanceQuote(
+    track: Track,
+    tracks: List<Track>,
+    comments: Map<String, ResonanceCommentSnippet>,
+    onOpenComments: (Track) -> Unit,
+    playFrom: (List<Track>, Track) -> Unit
+): ComposedQuote {
+    val snippet = comments[track.id]
     return ComposedQuote(
         "quote-${track.id}", track,
         snippet?.text?.takeIf { it.isNotBlank() } ?: track.artist,
         listOfNotNull(snippet?.countText?.takeIf { it.isNotBlank() }, snippet?.author?.takeIf { it.isNotBlank() }).joinToString(" · "),
-        onOpen = { content.onOpenComments(track) },
-        onPlay = { content.actions.playFrom(tracks, track) }
+        onOpen = { onOpenComments(track) },
+        onPlay = { playFrom(tracks, track) }
     )
 }
 
