@@ -12788,9 +12788,10 @@ private fun TrendingArtistsShelf(
     onArtistClick: (ArtistHit) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    val plainDefault = defaultHomeOwnsCuratedPlaylists()
     Column(verticalArrangement = Arrangement.spacedBy(homeHeaderContentGap())) {
         HomeSectionHeader(
-            title = strings.artists,
+            title = if (plainDefault) strings.trendingArtists else strings.artists,
             modifier = Modifier.padding(horizontal = HomeHorizontalInset)
         )
         val artistRowState = rememberLazyListState()
@@ -12811,6 +12812,7 @@ private fun TrendingArtistsShelf(
                     ArtistHitShelfItem(
                         artist = artist,
                         onClick = { onArtistClick(artist) },
+                        audience = if (plainDefault) artistAudienceLabel(artist.subscribers, strings.code, strings.monthlyListeners) else "",
                         artworkMotion = Modifier.defaultRailParallax(railMotion, artistRowState, motionKey)
                     )
                 }
@@ -12830,6 +12832,7 @@ private fun TrendingArtistsShelf(
 private fun ArtistHitShelfItem(
     artist: ArtistHit,
     onClick: () -> Unit,
+    audience: String = "",
     artworkMotion: Modifier = Modifier
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -12860,6 +12863,17 @@ private fun ArtistHitShelfItem(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.fillMaxWidth()
         )
+        if (audience.isNotBlank()) {
+            Text(
+                text = audience,
+                color = LevyraMuted,
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth().offset(y = (-5).dp)
+            )
+        }
     }
 }
 
@@ -25124,7 +25138,7 @@ private fun ExploreScreen(
         if (LevyraIsAtelier) {
             AtelierExploreEntry(state, viewModel, freshTracks, listState, exploreBottomInset, editorialContent)
         } else if (LevyraIsMono) {
-            MonoExploreEntry(state, listState, exploreBottomInset, editorialContent, onShortcut, { onLiveRadioOpenChange(true) }, onOpenJam)
+            MonoExploreEntry(state, listState, exploreBottomInset, editorialContent, onShortcut, { onLiveRadioOpenChange(true) }, onOpenJam, freshTracks, onPlayFreshTrack)
         } else if (LevyraIsQobuz) {
             QobuzMagazineEntry(state, viewModel, freshTracks, listState, exploreBottomInset, onShortcut, { onLiveRadioOpenChange(true) }, onOpenJam) { addToPlaylistTarget = it }
         } else if (LevyraIsYouTubeMusic) {

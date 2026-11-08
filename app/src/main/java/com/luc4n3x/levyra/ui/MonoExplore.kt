@@ -268,7 +268,9 @@ internal fun MonoExploreEntry(
     editorial: ExploreEditorialContent?,
     onShortcut: (ExploreShortcut) -> Unit,
     onOpenRadio: () -> Unit,
-    onOpenJam: () -> Unit
+    onOpenJam: () -> Unit,
+    freshTracks: List<Track> = emptyList(),
+    onPlayFresh: (Track) -> Unit = {}
 ) {
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { LevyraMonoHomeStrings.forCode(strings.code) }
@@ -299,6 +301,16 @@ internal fun MonoExploreEntry(
         }
         if (editorial != null) {
             item(key = "mono-explore-top100", contentType = "mono-explore-top100") { ExploreEditorialRow(ExploreRow.DailyTop100, editorial) }
+        }
+        if (freshTracks.isNotEmpty()) {
+            item(key = "mono-explore-week-releases", contentType = "mono-rail") {
+                MonoSection(
+                    com.luc4n3x.levyra.ui.i18n.exploreEditorialCopy(strings.code).releasesTitle, copy.freshOverline,
+                    strings.showAll, { onShortcut(ExploreShortcut.NewReleases) }
+                ) {
+                    MonoTrackRail(freshTracks, MonoDesign.card, state.currentTrack?.id, strings.songOptions, onPlayFresh, {})
+                }
+            }
         }
         if (editorial != null && editorial.news.size > 1) {
             item(key = "mono-explore-news-desk", contentType = "mono-explore-news") { ExploreEditorialRow(ExploreRow.NewsList, editorial) }
