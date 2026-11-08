@@ -82,8 +82,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -211,18 +209,7 @@ internal fun MonoSearchEntry(viewModel: SearchViewModel, state: LevyraUiState, o
     }
     Column(
         Modifier.fillMaxSize().background(MonoDesign.base)
-            .drawBehind {
-                drawRect(
-                    Brush.radialGradient(
-                        0f to MonoDesign.accent.copy(alpha = 0.13f),
-                        0.45f to MonoDesign.moodNight.copy(alpha = 0.10f),
-                        1f to Color.Transparent,
-                        center = Offset(size.width * 0.92f, -size.width * 0.08f),
-                        radius = size.width * 1.05f
-                    )
-                )
-                drawRect(Brush.verticalGradient(0f to Color.Transparent, 0.2f to MonoDesign.accent.copy(alpha = 0.035f), 0.36f to Color.Transparent))
-            }
+            .background(Brush.verticalGradient(0f to MonoDesign.accent.copy(alpha = 0.09f), 0.18f to MonoDesign.moodNight.copy(alpha = 0.06f), 0.34f to Color.Transparent))
             .statusBarsPadding()
     ) {
         AnimatedVisibility(
