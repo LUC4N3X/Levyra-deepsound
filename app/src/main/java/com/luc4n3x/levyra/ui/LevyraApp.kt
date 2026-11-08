@@ -1957,6 +1957,7 @@ fun LevyraApp(
         if (!state.isDeviceOffline) youtubeMusicViewModel.onNetworkRestored(state.languageCode)
     }
     val currentStrings = LevyraStrings.forCode(state.languageCode)
+    val jamQrScanner = com.luc4n3x.levyra.ui.jam.rememberJamQrScanAction(state.jam, currentStrings, viewModel::openJam, viewModel::joinJam)
     val layoutDirection = if (LevyraLanguageCatalog.isRtl(currentStrings.code)) LayoutDirection.Rtl else LayoutDirection.Ltr
     LaunchedEffect(state.isVideoMode, state.isPlaying) {
         val currentPipState = LevyraPipBridge.current()
@@ -3605,6 +3606,7 @@ fun LevyraApp(
             AnimatedVisibility(visible = state.showJam, enter = overlayEnter, exit = overlayExit) {
                 LevyraJamOverlay(
                     jam = state.jam,
+                    qrScanner = jamQrScanner,
                     displayName = state.jamDisplayName,
                     onDisplayNameChange = viewModel::setJamDisplayName,
                     onCreate = viewModel::createJam,

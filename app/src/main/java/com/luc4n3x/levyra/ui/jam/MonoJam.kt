@@ -313,27 +313,7 @@ private fun MonoJamInvitePanel(code: String, title: String, hint: String, onShar
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         MonoOverline(title, color = MonoDesign.accent, modifier = Modifier.semantics { heading() })
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .clip(MonoDesign.cardShape)
-                .background(MonoDesign.base)
-                .border(1.dp, MonoDesign.hairlineStrong, MonoDesign.cardShape)
-                .drawBehind { drawMonoViewfinder(MonoDesign.accent) }
-                .padding(horizontal = 16.dp, vertical = 26.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            MonoOverline(strings.jamSessionCode)
-            Text(
-                code,
-                color = MonoDesign.text,
-                style = MaterialTheme.typography.displaySmall.copy(fontFamily = MaterialTheme.typography.labelMedium.fontFamily),
-                letterSpacing = 6.sp,
-                maxLines = 1,
-                textAlign = TextAlign.Center
-            )
-        }
+        JamInvitationCode(code)
         Text(hint, color = MonoDesign.textSecondary, style = MaterialTheme.typography.bodySmall)
         Row(
             Modifier

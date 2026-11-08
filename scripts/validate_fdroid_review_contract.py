@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # The coordinate is pinned here as a review contract as well as the Gradle alias:
 # adding a dependency or repointing an existing alias must be reviewed explicitly.
 FDROID_RUNTIME_DEPENDENCIES = {
+    "zxing.embedded": "com.journeyapps:zxing-android-embedded",
     "androidx.core.ktx": "androidx.core:core-ktx",
     "androidx.activity.compose": "androidx.activity:activity-compose",
     "androidx.lifecycle.runtime.ktx": "androidx.lifecycle:lifecycle-runtime-ktx",
