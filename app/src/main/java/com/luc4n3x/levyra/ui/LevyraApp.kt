@@ -8930,6 +8930,7 @@ private fun HomeScreen(
     }
     val spotlightTracks = remember(spotlightCandidates) { spotlightCandidates.map { it.track } }
     val visiblePersonalTracks = homeDerivedState.personalOrbitDisplayTracks
+    val curatedShelves = rememberDefaultCuratedShelves()
     val visibleEditorialCollections = remember(editorialCollections, spotlightCandidate?.track?.id) {
         editorialCollections
             .map { collection ->
@@ -9280,18 +9281,22 @@ private fun HomeScreen(
                 }
             }
 
-            if (showDeferredHomeSections && (visibleEditorialCollections.isNotEmpty() || defaultHomeOwnsCuratedPlaylists())) {
+            if (showDeferredHomeSections && curatedShelves.isNotEmpty()) {
+                curatedShelves.forEachIndexed { index, shelf ->
+                    item(key = "default-curated-${shelf.key}", contentType = "default-curated") {
+                        HomeSectionLead(compactHome) {
+                            DefaultCuratedPlaylistShelf(index, shelf, viewModel::openPlaylistHit)
+                        }
+                    }
+                }
+            } else if (showDeferredHomeSections && visibleEditorialCollections.isNotEmpty()) {
                 item(key = "home-editorial-collections", contentType = "home-collections") {
                     HomeSectionLead(compactHome) {
-                        DefaultCuratedPlaylistShelves(viewModel::openPlaylistHit) {
-                            if (visibleEditorialCollections.isNotEmpty()) {
-                                HomeEditorialCollectionsShelf(
-                                    collections = visibleEditorialCollections,
-                                    accents = homeCollectionAccents,
-                                    onOpen = { collection -> selectedHomeCollectionId = collection.id }
-                                )
-                            }
-                        }
+                        HomeEditorialCollectionsShelf(
+                            collections = visibleEditorialCollections,
+                            accents = homeCollectionAccents,
+                            onOpen = { collection -> selectedHomeCollectionId = collection.id }
+                        )
                     }
                 }
             }
@@ -9866,6 +9871,7 @@ private fun StudioHomeScreen(
         otherSections = otherSections,
         visiblePersonalTracks = visiblePersonalTracks,
         visibleEditorialCollections = spotlight.visibleEditorialCollections,
+        curatedShelves = rememberDefaultCuratedShelves(),
         homeCollectionAccents = spotlight.homeCollectionAccents,
         spotlightHeroData = spotlight.heroData,
         homeRenderOrder = look.homeRenderOrder,
@@ -10252,6 +10258,7 @@ private class StudioHomeContext(
     val otherSections: List<IndexedValue<com.luc4n3x.levyra.domain.HomeSection>>,
     val visiblePersonalTracks: List<Track>,
     val visibleEditorialCollections: List<HomeEditorialCollection>,
+    val curatedShelves: List<com.luc4n3x.levyra.domain.YoutubeMusicHomeShelf>,
     val homeCollectionAccents: Map<String, Pair<Color, Color>>,
     val spotlightHeroData: HomeSpotlightHero?,
     private val homeRenderOrder: List<HomeSectionId>,
@@ -10880,37 +10887,41 @@ private fun LazyListScope.homeStudioSectionEditorialCollections(c: StudioHomeCon
                 item(key = "prism-curated-releases", contentType = "prism-curated-releases") {
                     PrismCuratedAndReleases(viewModel, styleSpec.inset, state.interfaceSettings.showNewReleases)
                 }
-            } else if (showDeferredHomeSections && (visibleEditorialCollections.isNotEmpty() || skinOwnsCuratedShelf() || defaultHomeOwnsCuratedPlaylists())) {
+            } else if (showDeferredHomeSections && curatedShelves.isNotEmpty()) {
+                curatedShelves.forEachIndexed { index, shelf ->
+                    item(key = "default-curated-${shelf.key}", contentType = "default-curated") {
+                        HomeSectionLead(compactHome) {
+                            DefaultCuratedPlaylistShelf(index, shelf, viewModel::openPlaylistHit)
+                        }
+                    }
+                }
+            } else if (showDeferredHomeSections && (visibleEditorialCollections.isNotEmpty() || skinOwnsCuratedShelf())) {
                 item(key = "home-editorial-collections", contentType = "home-collections") {
                     HomeSectionLead(compactHome) {
-                        DefaultCuratedPlaylistShelves(viewModel::openPlaylistHit) {
-                            if (visibleEditorialCollections.isNotEmpty() || skinOwnsCuratedShelf()) {
-                                if (homeStyle == HomeStyle.MaterialExpressive || LevyraIsPrism) {
-                                    val fans = remember(visibleEditorialCollections, homeCollectionAccents, strings) {
-                                        visibleEditorialCollections.map { collection ->
-                                            StudioCollection(
-                                                id = collection.id,
-                                                title = homeCollectionTitle(strings, collection),
-                                                subtitle = collection.tracks.map { it.artist }.distinct().take(2).joinToString(" · "),
-                                                tracks = collection.tracks.take(3),
-                                                accent = homeCollectionAccents[collection.id]?.first
-                                                    ?: exploreEditorialPalette(collection.id).first
-                                            )
-                                        }
-                                    }
-                                    if (LevyraIsPrism) SkinCuratedShelf(viewModel, strings.collectionsTitle, fans, styleSpec.inset) { id -> selectedHomeCollectionId = id }
-                                    else MxCollectionFan(
-                                        title = strings.collectionsTitle,
-                                        collections = fans,
-                                        onOpen = { id -> selectedHomeCollectionId = id }
+                        if (homeStyle == HomeStyle.MaterialExpressive || LevyraIsPrism) {
+                            val fans = remember(visibleEditorialCollections, homeCollectionAccents, strings) {
+                                visibleEditorialCollections.map { collection ->
+                                    StudioCollection(
+                                        id = collection.id,
+                                        title = homeCollectionTitle(strings, collection),
+                                        subtitle = collection.tracks.map { it.artist }.distinct().take(2).joinToString(" · "),
+                                        tracks = collection.tracks.take(3),
+                                        accent = homeCollectionAccents[collection.id]?.first
+                                            ?: exploreEditorialPalette(collection.id).first
                                     )
-                                } else HomeEditorialCollectionsShelf(
-                                    collections = visibleEditorialCollections,
-                                    accents = homeCollectionAccents,
-                                    onOpen = { collection -> selectedHomeCollectionId = collection.id }
-                                )
+                                }
                             }
-                        }
+                            if (LevyraIsPrism) SkinCuratedShelf(viewModel, strings.collectionsTitle, fans, styleSpec.inset) { id -> selectedHomeCollectionId = id }
+                            else MxCollectionFan(
+                                title = strings.collectionsTitle,
+                                collections = fans,
+                                onOpen = { id -> selectedHomeCollectionId = id }
+                            )
+                        } else HomeEditorialCollectionsShelf(
+                            collections = visibleEditorialCollections,
+                            accents = homeCollectionAccents,
+                            onOpen = { collection -> selectedHomeCollectionId = collection.id }
+                        )
                     }
                 }
             }
