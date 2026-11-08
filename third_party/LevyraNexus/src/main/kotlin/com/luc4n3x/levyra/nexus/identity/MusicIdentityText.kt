@@ -40,7 +40,8 @@ data class TitleIdentity(
     val markers: Set<TrackVersionMarker>,
     val versionLabels: Set<String>,
     val featuredArtists: Set<String>,
-    val explicitHint: Boolean?
+    val explicitHint: Boolean?,
+    val baseCore: String = core
 ) {
     val versionSignature: Set<String>
         get() = markers.map { it.name }.toSet() + versionLabels.map { "label:$it" }
@@ -82,6 +83,10 @@ object MusicIdentityText {
     private val leadingArticle = Regex("^(?:the|группа)\\s+")
     private val yearToken = Regex("\\b(?:19|20)\\d{2}\\b")
     private val versionWord = Regex("(?:^|\\s)version(?:\\s|$)")
+    private val trailingBracketed = Regex("(?:\\s*[(\\[{]([^)\\]}]*)[)\\]}])+\\s*$")
+    private val workPartToken = Regex(
+        "(?:^|\\s)(?:part|pt|vol|volume|chapter|act|scene|interlude|intro|outro|skit|commentary|medley|\\d+|ii|iii|iv|v|vi)(?:\\s|$)"
+    )
 
     private val namedEntities = mapOf(
         "amp" to "&",
@@ -107,10 +112,13 @@ object MusicIdentityText {
         MarkerRule("sped up|speed up|spedup|nightcore", setOf(TrackVersionMarker.SPED_UP)),
         MarkerRule("slowed|slowed down", setOf(TrackVersionMarker.SLOWED)),
         MarkerRule("reverb|reverbed", setOf(TrackVersionMarker.REVERB)),
-        MarkerRule("karaoke|караоке|in the style of|originally performed by", setOf(TrackVersionMarker.KARAOKE)),
+        MarkerRule("karaoke|караоке|in the style of|originally performed by|made famous by", setOf(TrackVersionMarker.KARAOKE)),
         MarkerRule("instrumental|backing track", setOf(TrackVersionMarker.INSTRUMENTAL)),
-        MarkerRule("remix|remixed|mashup|bootleg|rework|lofi|lo fi", setOf(TrackVersionMarker.REMIX)),
-        MarkerRule("8d|8d audio", setOf(TrackVersionMarker.VERSION))
+        MarkerRule(
+            "remix|remixed|rmix|mashup|bootleg|rework|lofi|lo fi|lofi flip|chill trap|stutter techno|acid techno|bass boosted",
+            setOf(TrackVersionMarker.REMIX)
+        ),
+        MarkerRule("8d|8d audio|3d audio|spatial audio|reprise", setOf(TrackVersionMarker.VERSION))
     )
 
     private val descriptorMarkerRules = standaloneMarkerRules + listOf(
@@ -125,7 +133,21 @@ object MusicIdentityText {
         MarkerRule("remaster|remastered|remastering|re master|re mastered|re mastering", setOf(TrackVersionMarker.REMASTER)),
         MarkerRule("mono", setOf(TrackVersionMarker.MONO)),
         MarkerRule("stereo", setOf(TrackVersionMarker.STEREO)),
-        MarkerRule("mix|dub|vip", setOf(TrackVersionMarker.REMIX))
+        MarkerRule("mix|dub|vip|flip|techno", setOf(TrackVersionMarker.REMIX)),
+        MarkerRule("reloaded|bgm|ringtone|dialogue", setOf(TrackVersionMarker.VERSION))
+    )
+
+    private val nonEditionVersionMarkers = setOf(
+        TrackVersionMarker.LIVE,
+        TrackVersionMarker.REMIX,
+        TrackVersionMarker.ACOUSTIC,
+        TrackVersionMarker.INSTRUMENTAL,
+        TrackVersionMarker.KARAOKE,
+        TrackVersionMarker.COVER,
+        TrackVersionMarker.SPED_UP,
+        TrackVersionMarker.SLOWED,
+        TrackVersionMarker.REVERB,
+        TrackVersionMarker.DEMO
     )
 
     private val neutralDescriptorPhrases = setOf(
@@ -137,12 +159,19 @@ object MusicIdentityText {
         "official audio",
         "official video",
         "official music video",
+        "full audio",
+        "full song",
         "audio",
         "video",
         "lyrics",
         "lyric video",
+        "lyrical",
+        "lyrical video",
         "visualizer",
         "visualiser",
+        "original motion picture soundtrack",
+        "motion picture soundtrack",
+        "ost",
         "explicit",
         "explicit version",
         "clean",
@@ -295,6 +324,7 @@ object MusicIdentityText {
             coreText = coreText.substring(0, match.range.first)
         }
         val core = normalize(coreText)
+        val baseCore = extractBaseCore(remaining, core)
         standaloneMarkerRules.forEach { rule ->
             if (rule.phrase.containsMatchIn(core)) markers += rule.markers
         }
@@ -304,8 +334,23 @@ object MusicIdentityText {
             markers = markers,
             versionLabels = labels,
             featuredArtists = featured,
-            explicitHint = explicitHint
+            explicitHint = explicitHint,
+            baseCore = baseCore
         )
+    }
+
+    private fun extractBaseCore(remaining: String, fallbackCore: String): String {
+        val match = trailingBracketed.find(remaining) ?: return fallbackCore
+        val prefix = remaining.substring(0, match.range.first)
+        val base = normalize(
+            prefix.split(dashSeparator).first().let { text ->
+                inlineFeaturing.find(text)?.let { text.substring(0, it.range.first) } ?: text
+            }
+        )
+        if (base.isBlank() || base == fallbackCore) return fallbackCore
+        val trailingText = normalize(match.value)
+        if (trailingText.split(' ').size < 2 || workPartToken.containsMatchIn(trailingText)) return fallbackCore
+        return base
     }
 
     private fun classifyTitleDescriptor(text: String): Descriptor {
@@ -323,7 +368,8 @@ object MusicIdentityText {
         }
         if (markers.isNotEmpty()) {
             val label = reduced.takeIf {
-                TrackVersionMarker.REMIX in markers && it !in setOf("remix", "mix", "remixed")
+                (TrackVersionMarker.REMIX in markers && it !in setOf("remix", "mix", "remixed", "rmix")) ||
+                    TrackVersionMarker.VERSION in markers
             }
             return Descriptor.Version(markers, label)
         }
@@ -372,6 +418,10 @@ object MusicIdentityText {
     private fun albumDescriptorEditions(text: String): Set<AlbumEdition>? {
         val normalized = normalize(text)
         if (normalized.isBlank()) return emptySet()
+        val descriptor = classifyTitleDescriptor(text)
+        if (descriptor is Descriptor.Version && (descriptor.markers intersect nonEditionVersionMarkers).isNotEmpty()) {
+            return null
+        }
         val reduced = normalized.replace(yearToken, " ").replace(whitespace, " ").trim()
         val matched = editionRules.filter { it.phrase.containsMatchIn(reduced) }.map { it.edition }
         if (matched.isNotEmpty()) {

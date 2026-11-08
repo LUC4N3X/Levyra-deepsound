@@ -18,12 +18,17 @@ internal object AlternativeSearchPlan {
             albumIdentity.core != titleIdentity.core &&
             albumIdentity.core !in AlternativeTrackMatcher.untrustedAlbumNames
         val searchableTitle = if (titleIdentity.versionSignature.isEmpty()) titleIdentity.core else titleIdentity.fullNormalized
-        val canonical = (listOf(searchableTitle) + AlternativeTrackText.artistNames(query.artist))
-            .joinToString(" ")
+        val artistNames = AlternativeTrackText.artistNames(query.artist)
+        val canonical = (listOf(searchableTitle) + artistNames).joinToString(" ")
         return buildList {
             if (includeAlbum) add("$title $primaryArtist ${clean(query.album)}")
             add("$title $primaryArtist")
             add(canonical)
+            if (artistNames.size > 1) add("$searchableTitle ${artistNames.first()}")
+            query.alternateReading?.let { alt ->
+                val altPrimary = clean(alt.artist).split(rawArtistSeparators).firstOrNull().orEmpty()
+                add("${clean(alt.title)} $altPrimary")
+            }
         }
             .map { it.replace(whitespace, " ").trim() }
             .filter { it.isNotBlank() }

@@ -201,4 +201,43 @@ class JioSaavnPayloadParserTest {
     fun errorEnvelopeIsNotASearchPage() {
         assertNull(JioSaavnPayloadParser.searchPage("{\"error\":{\"code\":\"INPUT_INVALID\"}}", 10))
     }
+
+    @Test
+    fun fallsBackToReleaseDateYearSingersAndExtendedCreatorRoles() {
+        val song = JSONObject()
+            .put("id", "rel1")
+            .put("type", "song")
+            .put("title", "Kesariya")
+            .put("year", "")
+            .put("language", "hindi")
+            .put(
+                "more_info",
+                JSONObject()
+                    .put("album", "Brahmastra")
+                    .put("duration", "268")
+                    .put("320kbps", "true")
+                    .put("encrypted_media_url", "token123")
+                    .put("release_date", "2022-07-17")
+                    .put("singers", "Arijit Singh, Shilpa Rao")
+                    .put("featured_artists", " Nikhita Gandhi ")
+                    .put(
+                        "artistMap",
+                        JSONObject().put(
+                            "artists",
+                            JSONArray()
+                                .put(JSONObject().put("name", "Pritam").put("role", "music director"))
+                                .put(JSONObject().put("name", "Amitabh Bhattacharya").put("role", "writer"))
+                                .put(JSONObject().put("name", "Ranbir Kapoor").put("role", "actor"))
+                                .put(JSONObject().put("name", "Arijit Singh").put("role", "singer"))
+                        )
+                    )
+            )
+        val page = JioSaavnPayloadParser.searchPage(searchBody(song), 10)!!
+        val parsed = page.candidates.single()
+        assertEquals(2022, parsed.releaseYear)
+        assertEquals(listOf("Arijit Singh", "Shilpa Rao"), parsed.primaryArtists)
+        assertEquals(listOf("Nikhita Gandhi"), parsed.featuredArtists)
+        assertEquals(setOf("Pritam", "Amitabh Bhattacharya", "Ranbir Kapoor"), parsed.nonPerformingArtists)
+        assertEquals(setOf("Pritam", "Amitabh Bhattacharya", "Ranbir Kapoor"), parsed.creatorArtists)
+    }
 }

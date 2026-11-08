@@ -795,4 +795,167 @@ class AlternativeTrackMatcherTest {
         assertEquals("wbTqLnmA", (selection as AlternativeMatchSelection.Accepted).evaluation.candidate.providerTrackId)
     }
 
+    @Test
+    fun indianTrackWithPromotionalLyricHookParentheticalMatchesVerifiedAlbumRecording() {
+        val query = query(
+            title = "Kesariya",
+            artist = "Pritam, Arijit Singh, Amitabh Bhattacharya",
+            album = "Brahmastra (Original Motion Picture Soundtrack)",
+            durationMs = 268_000L,
+            explicit = false
+        )
+        val selection = matcher.select(
+            query,
+            listOf(
+                candidate(
+                    id = "EbFWakDs",
+                    title = "Kesariya (From \"Brahmastra\") (Tu Fuljhadiyo Wale Tyohaaro Jesi - Happy Diwali)",
+                    primary = listOf("Pritam", "Arijit Singh", "Amitabh Bhattacharya"),
+                    album = "Kesariya (From \"Brahmastra\") (Tu Fuljhadiyo Wale Tyohaaro Jesi - Happy Diwali)",
+                    duration = 268,
+                    explicit = false
+                ).copy(language = "hindi", releaseYear = 2022),
+                candidate(
+                    id = "rjkrTnma",
+                    title = "Kesariya (Tu Fuljhadiyo Wale Tyohaaro Jesi - Happy Diwali)",
+                    primary = listOf("Pritam", "Arijit Singh", "Amitabh Bhattacharya"),
+                    album = "Brahmastra",
+                    duration = 268,
+                    explicit = false
+                ).copy(language = "hindi", releaseYear = 2022),
+                candidate(
+                    id = "lofi",
+                    title = "Kesariya (Lofi Flip)",
+                    primary = listOf("Pritam", "Arijit Singh", "Amitabh Bhattacharya"),
+                    album = "Brahmastra",
+                    duration = 268,
+                    explicit = false
+                ).copy(language = "hindi", releaseYear = 2022),
+                candidate(
+                    id = "reprise",
+                    title = "Kesariya (Reprise)",
+                    primary = listOf("Pritam", "Arijit Singh", "Amitabh Bhattacharya"),
+                    album = "Brahmastra",
+                    duration = 268,
+                    explicit = false
+                ).copy(language = "hindi", releaseYear = 2022)
+            )
+        )
+        val accepted = selection as AlternativeMatchSelection.Accepted
+        assertEquals("rjkrTnma", accepted.evaluation.candidate.providerTrackId)
+        assertEquals(
+            MatchRejection.VERSION_MISMATCH,
+            accepted.evaluations.single { it.candidate.providerTrackId == "lofi" }.rejection
+        )
+        assertEquals(
+            MatchRejection.VERSION_MISMATCH,
+            accepted.evaluations.single { it.candidate.providerTrackId == "reprise" }.rejection
+        )
+    }
+
+    @Test
+    fun albumLevelCoverAndKaraokeAndGluedRemixMarkersAreRejected() {
+        val oneKiss = query(title = "One Kiss", artist = "Calvin Harris, Dua Lipa", album = "One Kiss", durationMs = 214_000L)
+        assertRejected(
+            MatchRejection.VERSION_MISMATCH,
+            oneKiss,
+            candidate(
+                id = "D0bh9_V2",
+                title = "One Kiss",
+                primary = listOf("Calvin Harris", "Dua Lipa"),
+                album = "One Kiss (Calvin Harris, Dua Lipa Cover Mix)",
+                duration = 214
+            )
+        )
+        assertRejected(
+            MatchRejection.VERSION_MISMATCH,
+            oneKiss,
+            candidate(
+                id = "cover-version",
+                title = "One Kiss",
+                primary = listOf("Calvin Harris", "Dua Lipa"),
+                album = "One Kiss (Cover Version)",
+                duration = 214
+            )
+        )
+        assertRejected(
+            MatchRejection.VERSION_MISMATCH,
+            query(title = "Die With A Smile", artist = "Lady Gaga, Bruno Mars", album = "YouTube Music", durationMs = 251_000L),
+            candidate(
+                id = "karaoke",
+                title = "Die With A Smile",
+                primary = listOf("Lady Gaga", "Bruno Mars"),
+                album = "Pristine Karaoke, Vol. 66",
+                duration = 251
+            )
+        )
+        assertRejected(
+            MatchRejection.VERSION_MISMATCH,
+            query(title = "APT.", artist = "ROSÉ, Bruno Mars", album = "APT.", durationMs = 170_000L),
+            candidate(
+                id = "AU2KcAhH",
+                title = "APT(Dance Rmix)",
+                primary = listOf("ROSÉ", "Bruno Mars"),
+                album = "APT.",
+                duration = 170
+            )
+        )
+    }
+
+    @Test
+    fun studioAlbumOutranksCompilationWithSameYearAndBogusFeaturedCredits() {
+        val selection = matcher.select(
+            query(title = "Tum Hi Ho", artist = "Arijit Singh", album = "YouTube Music", durationMs = 262_000L),
+            listOf(
+                candidate(
+                    id = "compilation",
+                    title = "Tum Hi Ho",
+                    primary = listOf("Arijit Singh"),
+                    album = "Heartbeats - Bollywood Love Songs",
+                    duration = 262
+                ).copy(releaseYear = 2013, language = "hindi"),
+                candidate(
+                    id = "studio",
+                    title = "Tum Hi Ho",
+                    primary = listOf("Arijit Singh"),
+                    album = "Aashiqui 2",
+                    duration = 262
+                ).copy(releaseYear = 2013, language = "hindi")
+            )
+        )
+        assertEquals("studio", (selection as AlternativeMatchSelection.Accepted).evaluation.candidate.providerTrackId)
+
+        val blindingLights = matcher.select(
+            query(album = "YouTube Music"),
+            listOf(
+                candidate(id = "highlights", album = "The Highlights", featured = listOf("Daft Punk")).copy(releaseYear = 2021),
+                candidate(id = "deluxe", album = "After Hours (Deluxe)", featured = listOf("Chromatics")).copy(releaseYear = 2020),
+                candidate(id = "after-hours", album = "After Hours").copy(releaseYear = 2020)
+            )
+        )
+        assertEquals("after-hours", (blindingLights as AlternativeMatchSelection.Accepted).evaluation.candidate.providerTrackId)
+    }
+
+    @Test
+    fun singleCharacterTitleAndMultiArtistTyposMatchOnlyWhenConfirmed() {
+        val titleTypo = matcher.evaluateReadings(
+            query(title = "Kesarya", artist = "Pritam, Arijit Singh", album = "Brahmastra", durationMs = 268_000L),
+            candidate(title = "Kesariya", primary = listOf("Pritam", "Arijit Singh"), album = "Brahmastra", duration = 268)
+        )
+        assertEquals(AlternativeMatchVerdict.HIGH, titleTypo.verdict)
+
+        val multiArtistTypo = matcher.evaluateReadings(
+            query(title = "One Kiss", artist = "Calvn Harris, Dua Lipa", album = "One Kiss", durationMs = 214_000L),
+            candidate(title = "One Kiss", primary = listOf("Calvin Harris", "Dua Lipa"), album = "One Kiss", duration = 214)
+        )
+        assertEquals(AlternativeMatchVerdict.HIGH, multiArtistTypo.verdict)
+
+        val sequelNumber = matcher.evaluateReadings(
+            query(title = "Symphony 1", artist = "Composer", album = "Symphonies", durationMs = 200_000L),
+            candidate(title = "Symphony 2", primary = listOf("Composer"), album = "Symphonies", duration = 200)
+        )
+        assertEquals(AlternativeMatchVerdict.REJECTED, sequelNumber.verdict)
+        assertEquals(MatchRejection.TITLE_MISMATCH, sequelNumber.rejection)
+    }
+
 }
