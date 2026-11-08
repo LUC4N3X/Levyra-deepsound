@@ -12810,7 +12810,8 @@ private fun TrendingArtistsShelf(
                 Box(Modifier.defaultRailItemMotion(railMotion, artistRowState, motionKey)) {
                     ArtistHitShelfItem(
                         artist = artist,
-                        onClick = { onArtistClick(artist) }
+                        onClick = { onArtistClick(artist) },
+                        artworkMotion = Modifier.defaultRailParallax(railMotion, artistRowState, motionKey)
                     )
                 }
             }
@@ -12828,7 +12829,8 @@ private fun TrendingArtistsShelf(
 @Composable
 private fun ArtistHitShelfItem(
     artist: ArtistHit,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    artworkMotion: Modifier = Modifier
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
@@ -12840,13 +12842,15 @@ private fun ArtistHitShelfItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
-        StableRemoteArtwork(
-            url = artist.thumbnailUrl,
-            contentDescription = artist.name,
-            modifier = Modifier.size(HOME_ARTIST_ARTWORK_SIZE).clip(avatarShape),
-            contentScale = ContentScale.Crop,
-            highRes = true
-        )
+        Box(Modifier.size(HOME_ARTIST_ARTWORK_SIZE).clip(avatarShape)) {
+            StableRemoteArtwork(
+                url = artist.thumbnailUrl,
+                contentDescription = artist.name,
+                modifier = Modifier.fillMaxSize().then(artworkMotion),
+                contentScale = ContentScale.Crop,
+                highRes = true
+            )
+        }
         Text(
             text = artist.name,
             color = LevyraText,
@@ -13271,7 +13275,8 @@ private fun HomeMusicVideoShelf(
                             ),
                             onClick = {
                                 if (active && !activeResolving) actions.onToggleCurrent() else actions.onPlay(track)
-                            }
+                            },
+                            artworkMotion = Modifier.defaultRailParallax(railMotion, rowState, motionKey)
                         )
                     }
                 }
@@ -13302,7 +13307,8 @@ private fun HomeMusicVideoCard(
     item: HomeVideoCardItem,
     width: Dp,
     playback: HomeVideoCardPlayback,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    artworkMotion: Modifier = Modifier
 ) {
     Column(
         modifier = Modifier
@@ -13325,7 +13331,7 @@ private fun HomeMusicVideoCard(
                     }
                 )
         ) {
-            HomeMusicVideoArtwork(item)
+            Box(Modifier.fillMaxSize().then(artworkMotion)) { HomeMusicVideoArtwork(item) }
             HomeMusicVideoBadge(
                 durationMs = item.track.durationMs,
                 playback = playback,

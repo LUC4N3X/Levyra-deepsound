@@ -81,7 +81,7 @@ internal fun DefaultCuratedPlaylistShelves(onOpen: (PlaylistHit) -> Unit, fallba
                 ) {
                     items(items, key = { it.key }, contentType = { "default-curated-playlist" }) { item ->
                         Box(Modifier.defaultRailItemMotion(railMotion, rowState, item.key)) {
-                            DefaultCuratedPlaylistCard(item) { item.playlist?.let(onOpen) }
+                            DefaultCuratedPlaylistCard(item, Modifier.defaultRailParallax(railMotion, rowState, item.key)) { item.playlist?.let(onOpen) }
                         }
                     }
                 }
@@ -91,7 +91,7 @@ internal fun DefaultCuratedPlaylistShelves(onOpen: (PlaylistHit) -> Unit, fallba
 }
 
 @Composable
-private fun DefaultCuratedPlaylistCard(item: YoutubeMusicHomeItem, onClick: () -> Unit) {
+private fun DefaultCuratedPlaylistCard(item: YoutubeMusicHomeItem, artworkMotion: Modifier, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     val subtitle = remember(item.subtitle) { monoWithoutYoutube(item.subtitle) }
     var failed by remember(item.thumbnailUrl) { mutableStateOf(false) }
@@ -103,7 +103,7 @@ private fun DefaultCuratedPlaylistCard(item: YoutubeMusicHomeItem, onClick: () -
     ) {
         Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(CuratedArtShape).background(scheme.surfaceContainerHighest)) {
             if (item.thumbnailUrl.isNotBlank() && !failed) {
-                AsyncImage(item.thumbnailUrl, null, contentScale = ContentScale.Crop, onError = { failed = true }, modifier = Modifier.fillMaxSize())
+                AsyncImage(item.thumbnailUrl, null, contentScale = ContentScale.Crop, onError = { failed = true }, modifier = Modifier.fillMaxSize().then(artworkMotion))
             }
         }
         Column(Modifier.padding(start = 6.dp, end = 6.dp, top = 10.dp, bottom = 6.dp).clearAndSetSemantics { }) {

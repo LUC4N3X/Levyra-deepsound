@@ -13,6 +13,7 @@ private const val RailEdgeScale = 0.06f
 private const val RailEdgeFade = 0.3f
 private const val PagerScale = 0.05f
 private const val PagerFade = 0.25f
+private const val ParallaxZoom = 1.06f
 
 @Composable
 internal fun defaultRailMotionEnabled(): Boolean =
@@ -43,4 +44,15 @@ internal fun Modifier.defaultPagerPageMotion(enabled: Boolean, state: PagerState
         scaleX = scale
         scaleY = scale
         alpha = 1f - PagerFade * distance
+    }
+
+internal fun Modifier.defaultRailParallax(enabled: Boolean, state: LazyListState, key: Any): Modifier =
+    if (!enabled) this else graphicsLayer {
+        val info = state.layoutInfo
+        val item = info.visibleItemsInfo.firstOrNull { it.key == key } ?: return@graphicsLayer
+        if (item.size <= 0) return@graphicsLayer
+        val travel = (item.offset.toFloat() / item.size).coerceIn(-1f, 1f)
+        scaleX = ParallaxZoom
+        scaleY = ParallaxZoom
+        translationX = -travel * size.width * (ParallaxZoom - 1f) / 2f
     }
