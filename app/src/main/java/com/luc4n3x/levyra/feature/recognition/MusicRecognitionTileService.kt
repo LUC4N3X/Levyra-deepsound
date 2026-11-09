@@ -77,8 +77,6 @@ class MusicRecognitionTileService : TileService() {
     }
 
     private fun cancelRecognition() {
-        runCatching { ContextCompat.startForegroundService(this, MusicRecognitionService.cancelIntent(this)) }
-            .onFailure { Timber.w(it, "Recognition cancel could not be delivered") }
         LevyraRecognitionCenter.cancel(this)
     }
 
