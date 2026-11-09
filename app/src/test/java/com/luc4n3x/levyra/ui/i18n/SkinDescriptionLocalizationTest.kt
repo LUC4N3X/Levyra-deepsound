@@ -28,6 +28,13 @@ class SkinDescriptionLocalizationTest {
     }
 
     @Test
+    fun traditionalChineseDoesNotFallBackToSimplified() {
+        val sameAsSimplified = skinBodies.filter { it.first in setOf("Qobuz", "Atelier", "Glacier") }
+            .filter { (_, body) -> body("zh-Hant") == body("zh") }.map { it.first }
+        assertTrue("zh-Hant falls back to zh: $sameAsSimplified", sameAsSimplified.isEmpty())
+    }
+
+    @Test
     fun atelierKeepsItsItalianCopyAndLocalizesRussianDescription() {
         assertTrue(LevyraAtelierStrings.forCode("it").shelf.isNotBlank())
         assertTrue(LevyraAtelierStrings.forCode("ru").skinBody.startsWith("Тёмная комната"))

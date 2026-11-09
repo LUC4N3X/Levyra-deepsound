@@ -2884,7 +2884,7 @@ internal object LevyraQobuzSkinStrings {
     )
 
     fun forCode(code: String): QobuzSkinCopy =
-        (copies[code.substringBefore('-').substringBefore('_').lowercase()] ?: en).forBrazil(code) { brazilian() }
+        (copies[translationKey(code)] ?: copies[code.substringBefore('-').substringBefore('_').lowercase()] ?: en).forBrazil(code) { brazilian() }
 }
 
 private fun QobuzSkinCopy.brazilian(): QobuzSkinCopy = copy(
