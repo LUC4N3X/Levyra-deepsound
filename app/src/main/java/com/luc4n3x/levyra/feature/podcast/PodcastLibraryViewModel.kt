@@ -51,6 +51,7 @@ internal data class PodcastShowState(
 
 internal data class PodcastLibraryUiState(
     val languageCode: String = "",
+    val contentScope: String = "",
     val query: String = "",
     val searching: Boolean = false,
     val searchFailed: Boolean = false,
@@ -95,8 +96,10 @@ internal class PodcastLibraryViewModel(
     }
 
     fun activate(languageCode: String) {
-        if (_state.value.languageCode == languageCode && (_state.value.discover.isNotEmpty() || discoverJob?.isActive == true)) return
-        _state.update { it.copy(languageCode = languageCode) }
+        val scope = repository.contentScope(languageCode)
+        val current = _state.value
+        if (current.languageCode == languageCode && current.contentScope == scope && (current.discover.isNotEmpty() || discoverJob?.isActive == true)) return
+        _state.update { it.copy(languageCode = languageCode, contentScope = scope, discover = if (it.contentScope == scope) it.discover else emptyList()) }
         loadDiscover()
     }
 

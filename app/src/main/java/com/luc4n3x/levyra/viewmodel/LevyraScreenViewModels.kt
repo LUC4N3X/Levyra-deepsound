@@ -302,6 +302,7 @@ class HomeViewModel internal constructor(
 }
 
 class SearchViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::searchProjection) {
+    val searchHiddenListens: StateFlow<Set<String>> get() = root.searchHiddenListens
     fun openLyricsPhraseSearch() = root.openLyricsPhraseSearch()
     fun openExploreZone(zone: com.luc4n3x.levyra.domain.ExploreZone) = root.openExploreZone(zone)
     fun openExploreSamples(index: Int) = root.openExploreSamples(index)

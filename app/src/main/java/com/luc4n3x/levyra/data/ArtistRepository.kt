@@ -465,6 +465,12 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             header.optJSONObject("musicHeaderRenderer") != null
     }
 
+    suspend fun monthlyListeners(browseId: String): String = withContext(Dispatchers.IO) {
+        val cleanBrowseId = browseId.trim().ifBlank { return@withContext "" }
+        val root = runCatching { postBrowseFast(cleanBrowseId) }.getOrNull() ?: return@withContext ""
+        extractOfficialMonthlyListeners(root.optJSONObject("header"))
+    }
+
     suspend fun artistHit(browseId: String, fallbackName: String): ArtistHit? = withContext(Dispatchers.IO) {
         val cleanBrowseId = browseId.trim()
         val requestedName = fallbackName.trim().cleanAlbumArtistLabel()

@@ -283,7 +283,7 @@ private fun SmartListeningMotionSection(
             MotionGestureIllustrationCard(
                 modifier = Modifier.weight(1f),
                 title = copy.flipToPauseTitle,
-                active = motionSettings.enabled && motionSettings.flipToPauseEnabled,
+                active = motionSettings.flipToPauseActive,
                 accent = LevyraCyan,
                 isFlip = true,
                 animationsEnabled = animationsEnabled
@@ -291,7 +291,7 @@ private fun SmartListeningMotionSection(
             MotionGestureIllustrationCard(
                 modifier = Modifier.weight(1f),
                 title = copy.shakeToSkipTitle,
-                active = motionSettings.enabled && motionSettings.shakeToSkipEnabled,
+                active = motionSettings.shakeToSkipActive,
                 accent = LevyraViolet,
                 isFlip = false,
                 animationsEnabled = animationsEnabled
@@ -301,27 +301,27 @@ private fun SmartListeningMotionSection(
         SmartListeningSwitchRow(
             title = copy.flipToPauseTitle,
             subtitle = copy.flipToPauseSubtitle,
-            checked = motionSettings.flipToPauseEnabled,
-            enabled = motionSettings.enabled && motionCapability.canDetectFlip,
+            checked = motionSettings.flipToPauseActive,
+            enabled = motionCapability.canDetectFlip,
             accent = LevyraCyan,
             onCheckedChange = { flip ->
-                onMotionSettingsChange(motionSettings.copy(flipToPauseEnabled = flip))
+                onMotionSettingsChange(motionSettings.withFlipToPause(flip))
             }
         )
 
         SmartListeningSwitchRow(
             title = copy.shakeToSkipTitle,
             subtitle = copy.shakeToSkipSubtitle,
-            checked = motionSettings.shakeToSkipEnabled,
-            enabled = motionSettings.enabled && motionCapability.canDetectShake,
+            checked = motionSettings.shakeToSkipActive,
+            enabled = motionCapability.canDetectShake,
             accent = LevyraViolet,
             onCheckedChange = { shake ->
-                onMotionSettingsChange(motionSettings.copy(shakeToSkipEnabled = shake))
+                onMotionSettingsChange(motionSettings.withShakeToSkip(shake))
             }
         )
 
         AnimatedVisibility(
-            visible = motionSettings.enabled && motionSettings.shakeToSkipEnabled,
+            visible = motionSettings.shakeToSkipActive,
             enter = fadeIn() + expandVertically(),
             exit = fadeOut() + shrinkVertically()
         ) {

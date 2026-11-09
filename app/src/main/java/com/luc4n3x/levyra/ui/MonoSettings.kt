@@ -58,8 +58,14 @@ internal fun MonoSettingsHeader(onClose: () -> Unit) {
     Column(
         Modifier.fillMaxWidth().drawBehind {
             drawCircle(
-                Brush.radialGradient(listOf(MonoDesign.accent.copy(alpha = 0.22f), Color.Transparent), center = Offset(size.width * 0.1f, -size.height * 0.4f), radius = size.width * 1.1f),
-                radius = size.width * 1.1f, center = Offset(size.width * 0.1f, -size.height * 0.4f)
+                Brush.radialGradient(
+                    0f to MonoDesign.accent.copy(alpha = 0.19f),
+                    0.55f to MonoDesign.moodNight.copy(alpha = 0.08f),
+                    1f to Color.Transparent,
+                    center = Offset(size.width * 0.16f, -size.height * 0.45f),
+                    radius = size.width * 1.1f
+                ),
+                radius = size.width * 1.1f, center = Offset(size.width * 0.16f, -size.height * 0.45f)
             )
         }
     ) {

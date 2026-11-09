@@ -29,6 +29,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -45,6 +49,7 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.CoverImage
 import com.luc4n3x.levyra.ui.MotionArtworkLayer
 import com.luc4n3x.levyra.ui.MotionArtworkPresentation
+import com.luc4n3x.levyra.ui.MotionBackdropPalette
 import com.luc4n3x.levyra.ui.preferredPlayerArtworkUrl
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -63,6 +68,7 @@ private const val CanvasBlackScrim = 0x59000000
 private const val CanvasWhiteScrim = 0x0AFFFFFF
 private const val CanvasStripBlurRadius = 25
 private const val CanvasSaturation = 1.4f
+private const val CanvasMaxToneLuminance = 0.22f
 
 internal class AppleCanvasReflection(val strip: Bitmap, val averageColor: Int)
 
@@ -74,7 +80,11 @@ internal fun AppleMusicCanvasBackdrop(track: Track, canvas: AppleMusicCanvas, pl
         val barrierTop = (videoHeight - CanvasBarrierOverlap).coerceAtLeast(0.dp)
         val widthPx = with(density) { maxWidth.roundToPx() }
         val videoHeightPx = with(density) { videoHeight.roundToPx() }
-        val reflection = rememberAppleCanvasReflection(track, widthPx, videoHeightPx)
+        var canvasPalette by remember(track.id) { mutableStateOf<MotionBackdropPalette?>(null) }
+        val livePalette = canvasPalette?.takeIf { it.identityKey == canvas.artwork?.identityKey }
+        val canvasReflection = rememberCanvasPaletteReflection(livePalette, widthPx, videoHeightPx)
+        val coverReflection = rememberAppleCanvasReflection(track, widthPx, videoHeightPx)
+        val reflection = canvasReflection ?: coverReflection
         Box(Modifier.fillMaxWidth().height(videoHeight)) {
             key(track.id) {
                 MotionArtworkLayer(
@@ -85,6 +95,8 @@ internal fun AppleMusicCanvasBackdrop(track: Track, canvas: AppleMusicCanvas, pl
                     presentation = MotionArtworkPresentation.Immersive,
                     quality = canvas.quality,
                     livingArtwork = canvas.livingArtwork,
+                    dynamicBackdropEnabled = canvas.enabled,
+                    onDynamicBackdropPalette = { palette -> canvasPalette = palette },
                     modifier = Modifier.fillMaxSize()
                 ) {
                     CoverImage(track, Modifier.fillMaxSize(), highRes = true)
@@ -111,6 +123,35 @@ internal fun AppleMusicCanvasBackdrop(track: Track, canvas: AppleMusicCanvas, pl
             )
         }
     }
+}
+
+@Composable
+private fun rememberCanvasPaletteReflection(palette: MotionBackdropPalette?, widthPx: Int, videoHeightPx: Int): AppleCanvasReflection? {
+    var reflection by remember(widthPx, videoHeightPx) { mutableStateOf<AppleCanvasReflection?>(null) }
+    LaunchedEffect(palette, widthPx, videoHeightPx) {
+        if (palette == null || widthPx <= 0 || videoHeightPx <= 0) {
+            reflection = null
+            return@LaunchedEffect
+        }
+        reflection = withContext(Dispatchers.Default) {
+            val source = Bitmap.createBitmap(1, 2, Bitmap.Config.ARGB_8888).apply {
+                setPixel(0, 0, legibleCanvasTone(palette.primary).toArgb())
+                setPixel(0, 1, legibleCanvasTone(palette.secondary).toArgb())
+            }
+            AppleCanvasReflections.build(source, widthPx, videoHeightPx)
+        }
+    }
+    return reflection
+}
+
+internal fun legibleCanvasTone(color: Color): Color {
+    var tone = color.copy(alpha = 1f)
+    var steps = 0
+    while (tone.luminance() > CanvasMaxToneLuminance && steps < 10) {
+        tone = lerp(tone, Color.Black, 0.12f)
+        steps++
+    }
+    return tone
 }
 
 @Composable

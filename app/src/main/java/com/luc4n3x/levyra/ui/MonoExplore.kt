@@ -40,6 +40,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -267,7 +268,9 @@ internal fun MonoExploreEntry(
     editorial: ExploreEditorialContent?,
     onShortcut: (ExploreShortcut) -> Unit,
     onOpenRadio: () -> Unit,
-    onOpenJam: () -> Unit
+    onOpenJam: () -> Unit,
+    freshTracks: List<Track> = emptyList(),
+    onPlayFresh: (Track) -> Unit = {}
 ) {
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { LevyraMonoHomeStrings.forCode(strings.code) }
@@ -299,6 +302,16 @@ internal fun MonoExploreEntry(
         if (editorial != null) {
             item(key = "mono-explore-top100", contentType = "mono-explore-top100") { ExploreEditorialRow(ExploreRow.DailyTop100, editorial) }
         }
+        if (freshTracks.isNotEmpty()) {
+            item(key = "mono-explore-week-releases", contentType = "mono-rail") {
+                MonoSection(
+                    com.luc4n3x.levyra.ui.i18n.exploreEditorialCopy(strings.code).releasesTitle, copy.freshOverline,
+                    strings.showAll, { onShortcut(ExploreShortcut.NewReleases) }
+                ) {
+                    MonoTrackRail(freshTracks, MonoDesign.card, state.currentTrack?.id, strings.songOptions, onPlayFresh, {})
+                }
+            }
+        }
         if (editorial != null && editorial.news.size > 1) {
             item(key = "mono-explore-news-desk", contentType = "mono-explore-news") { ExploreEditorialRow(ExploreRow.NewsList, editorial) }
         }
@@ -321,10 +334,12 @@ internal fun MonoExploreEntry(
 
 @Composable
 internal fun MonoVideoRail(videos: List<YoutubeMusicHomeItem>, onPlay: (YoutubeMusicHomeItem) -> Unit) {
-    LazyRow(contentPadding = MonoRailPadding, horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap)) {
+    val railState = rememberLazyListState()
+    val railMotion = glacierRailMotionEnabled()
+    LazyRow(state = railState, contentPadding = MonoRailPadding, horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap)) {
         items(videos, key = { it.key }, contentType = { "mono-video-card" }) { item ->
             Column(
-                Modifier.width(MonoVideoWidth)
+                Modifier.glacierRailItemMotion(railMotion, railState, item.key).width(MonoVideoWidth)
                     .levyraPressable(onClick = { onPlay(item) }, role = Role.Button, pressedScale = LevyraPressScale.Tile, onClickLabel = item.title)
             ) {
                 Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(MonoDesign.cardShape).background(MonoDesign.surface)) {
@@ -338,7 +353,7 @@ internal fun MonoVideoRail(videos: List<YoutubeMusicHomeItem>, onPlay: (YoutubeM
                         contentAlignment = Alignment.Center
                     ) { Icon(Icons.Rounded.PlayArrow, null, tint = Color.White, modifier = Modifier.size(24.dp)) }
                 }
-                Text(item.title, style = MaterialTheme.typography.titleSmall, color = MonoDesign.text, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.dp))
+                Text(item.title, style = MaterialTheme.typography.titleSmall, color = MonoDesign.text, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.dp))
                 Text(item.subtitle, style = MaterialTheme.typography.bodySmall, color = MonoDesign.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
             }
         }

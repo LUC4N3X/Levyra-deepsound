@@ -163,6 +163,15 @@ internal class YoutubeMusicChartsRepository(context: Context) {
             }
     }
 
+    suspend fun topArtists(country: String, languageCode: String): List<com.luc4n3x.levyra.domain.ArtistHit> = withContext(Dispatchers.IO) {
+        val payload = JSONObject()
+            .put("context", clientContext(languageCode, country))
+            .put("browseId", "FEmusic_charts")
+            .put("formData", JSONObject().put("selectedValues", JSONArray().put(country)))
+        val body = postBrowse(payload, "https://music.youtube.com/charts") ?: return@withContext emptyList()
+        runCatching { YoutubeMusicChartArtistsParser.parse(JSONObject(body)) }.getOrDefault(emptyList())
+    }
+
     private suspend fun discoverPlaylistId(country: String, languageCode: String): String {
         val payload = JSONObject()
             .put("context", clientContext(languageCode, country))
@@ -313,5 +322,63 @@ internal object YoutubeMusicChartPageParser {
                 }
             }
         }
+    }
+}
+
+internal object YoutubeMusicChartArtistsParser {
+    private val ThumbnailSize = Regex("""=w\d+-h\d+""")
+
+    fun parse(root: JSONObject): List<com.luc4n3x.levyra.domain.ArtistHit> {
+        val shelves = mutableListOf<JSONObject>()
+        collect(root, shelves)
+        val items = shelves.asSequence()
+            .map { it.optJSONArray("contents") }
+            .firstOrNull { contents -> contents != null && contents.length() > 0 && artistBrowseId(contents.optJSONObject(0)) != null }
+            ?: return emptyList()
+        return (0 until items.length()).mapNotNull { index ->
+            val item = items.optJSONObject(index)?.optJSONObject("musicResponsiveListItemRenderer") ?: return@mapNotNull null
+            val browseId = artistBrowseId(items.optJSONObject(index)) ?: return@mapNotNull null
+            val columns = item.optJSONArray("flexColumns")
+            val name = columnText(columns, 0).ifBlank { return@mapNotNull null }
+            com.luc4n3x.levyra.domain.ArtistHit(
+                name = name,
+                subscribers = columnText(columns, 1),
+                thumbnailUrl = largeThumbnail(item),
+                accentStart = 0xFF20E7FF.toInt(),
+                accentEnd = 0xFF8E57FF.toInt(),
+                browseId = browseId
+            )
+        }.distinctBy { it.browseId }
+    }
+
+    private fun collect(node: Any?, out: MutableList<JSONObject>) {
+        when (node) {
+            is JSONObject -> {
+                node.optJSONObject("musicCarouselShelfRenderer")?.let(out::add)
+                node.keys().forEach { collect(node.opt(it), out) }
+            }
+            is JSONArray -> for (index in 0 until node.length()) collect(node.opt(index), out)
+        }
+    }
+
+    private fun artistBrowseId(wrapper: JSONObject?): String? {
+        val endpoint = wrapper?.optJSONObject("musicResponsiveListItemRenderer")?.optJSONObject("navigationEndpoint")?.optJSONObject("browseEndpoint") ?: return null
+        val pageType = endpoint.optJSONObject("browseEndpointContextSupportedConfigs")
+            ?.optJSONObject("browseEndpointContextMusicConfig")?.optString("pageType")
+        return endpoint.optString("browseId").takeIf { pageType == "MUSIC_PAGE_TYPE_ARTIST" && it.isNotBlank() }
+    }
+
+    private fun columnText(columns: JSONArray?, index: Int): String {
+        val runs = columns?.optJSONObject(index)?.optJSONObject("musicResponsiveListItemFlexColumnRenderer")
+            ?.optJSONObject("text")?.optJSONArray("runs") ?: return ""
+        return (0 until runs.length()).joinToString("") { runs.optJSONObject(it)?.optString("text").orEmpty() }
+            .replace('\u00A0', ' ').trim()
+    }
+
+    private fun largeThumbnail(item: JSONObject): String {
+        val thumbs = item.optJSONObject("thumbnail")?.optJSONObject("musicThumbnailRenderer")
+            ?.optJSONObject("thumbnail")?.optJSONArray("thumbnails") ?: return ""
+        val url = thumbs.optJSONObject(thumbs.length() - 1)?.optString("url").orEmpty()
+        return url.replace(ThumbnailSize, "=w544-h544")
     }
 }

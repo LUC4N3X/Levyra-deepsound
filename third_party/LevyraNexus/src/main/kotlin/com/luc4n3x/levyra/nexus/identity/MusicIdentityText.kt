@@ -83,6 +83,7 @@ object MusicIdentityText {
     private val leadingArticle = Regex("^(?:the|группа)\\s+")
     private val yearToken = Regex("\\b(?:19|20)\\d{2}\\b")
     private val versionWord = Regex("(?:^|\\s)version(?:\\s|$)")
+    private val albumEditionWord = Regex("(?:^|\\s)(?:edition|version)(?:\\s|$)")
     private val trailingBracketed = Regex("(?:\\s*[(\\[{]([^)\\]}]*)[)\\]}])+\\s*$")
     private val workPartToken = Regex(
         "(?:^|\\s)(?:part|pt|vol|volume|chapter|act|scene|interlude|intro|outro|skit|commentary|medley|\\d+|ii|iii|iv|v|vi)(?:\\s|$)"
@@ -199,6 +200,8 @@ object MusicIdentityText {
     private class EditionRule(pattern: String, val edition: AlbumEdition) {
         val phrase = Regex("(?:^|\\s)(?:$pattern)(?:\\s|$)")
     }
+
+    private data class AlbumDescriptor(val editions: Set<AlbumEdition>, val retainedText: String = "")
 
     private val editionRules = listOf(
         EditionRule("super deluxe|deluxe", AlbumEdition.DELUXE),
@@ -389,23 +392,23 @@ object MusicIdentityText {
         val editions = linkedSetOf<AlbumEdition>()
         var language: String? = null
 
-        fun absorb(text: String): Boolean {
+        fun absorb(text: String): String? {
             normalize(text).takeIf { it in releaseLanguages }?.let {
                 language = it
-                return true
+                return ""
             }
-            val found = albumDescriptorEditions(text) ?: return false
-            editions += found
-            return true
+            val found = albumDescriptor(text) ?: return null
+            editions += found.editions
+            return found.retainedText
         }
 
         var remaining = decoded
         bracketed.findAll(decoded).forEach { match ->
-            if (absorb(match.groupValues[1])) remaining = remaining.replaceFirst(match.value, " ")
+            absorb(match.groupValues[1])?.let { remaining = remaining.replaceFirst(match.value, " $it ") }
         }
         val segments = remaining.split(dashSeparator)
         val kept = mutableListOf(segments.first())
-        segments.drop(1).forEach { segment -> if (!absorb(segment)) kept += segment }
+        segments.drop(1).forEach { segment -> kept += absorb(segment) ?: segment }
         var core = normalize(kept.joinToString(" "))
         listOf(" ep" to AlbumEdition.EP, " single" to AlbumEdition.SINGLE).forEach { (suffix, edition) ->
             if (core.endsWith(suffix)) {
@@ -416,19 +419,29 @@ object MusicIdentityText {
         return AlbumIdentity(core = core, editions = editions, language = language)
     }
 
-    private fun albumDescriptorEditions(text: String): Set<AlbumEdition>? {
+    private fun albumDescriptor(text: String): AlbumDescriptor? {
         val normalized = normalize(text)
-        if (normalized.isBlank()) return emptySet()
+        if (normalized.isBlank()) return AlbumDescriptor(emptySet())
         val reduced = normalized.replace(yearToken, " ").replace(whitespace, " ").trim()
         val matched = editionRules.filter { it.phrase.containsMatchIn(reduced) }.map { it.edition }
         val specific = matched.filter { it != AlbumEdition.OTHER_EDITION }
-        if (specific.isNotEmpty()) return specific.toSet()
-        val descriptor = classifyTitleDescriptor(text)
-        if (descriptor is Descriptor.Version && (descriptor.markers intersect nonEditionVersionMarkers).isNotEmpty()) {
-            return null
+        val performanceText = editionRules.filter { it.edition != AlbumEdition.OTHER_EDITION }
+            .fold(normalized) { remaining, rule -> remaining.replace(rule.phrase, " ").trim() }
+        val descriptor = classifyTitleDescriptor(performanceText)
+        if (descriptor is Descriptor.Version && descriptor.markers.any(nonEditionVersionMarkers::contains)) {
+            if (hasNonEditionMarker(performanceText)) {
+                return AlbumDescriptor(specific.toSet(), normalize(performanceText.replace(albumEditionWord, " ")))
+            }
+            if (specific.isEmpty()) return null
         }
-        if (matched.isNotEmpty()) return matched.toSet()
-        if (featuringPrefixes.any(normalized::startsWith) || neutralPrefixes.any(normalized::startsWith)) return emptySet()
+        if (specific.isNotEmpty()) return AlbumDescriptor(specific.toSet())
+        if (matched.isNotEmpty()) return AlbumDescriptor(matched.toSet())
+        if (featuringPrefixes.any(normalized::startsWith) || neutralPrefixes.any(normalized::startsWith)) return AlbumDescriptor(emptySet())
         return null
     }
+
+    private fun hasNonEditionMarker(text: String): Boolean =
+        descriptorMarkerRules.any { rule ->
+            rule.markers.any(nonEditionVersionMarkers::contains) && rule.phrase.containsMatchIn(text)
+        }
 }

@@ -2340,7 +2340,8 @@ fun LevyraApp(
             val chromeVisible by remember { derivedStateOf { playerExpansion.value < 1f } }
             val playerVisible by remember { derivedStateOf { playerExpansion.value > 0f } }
             HideSystemBars(state.interfaceSettings.immersive.hiddenBars(fullPlayerVisible = !chromeVisible && !rootOverlayOpen))
-            val morphAllowed = state.animationsEnabled && !state.isVideoMode && !LevyraIsAtelier
+            val canvasShowing = state.motionArtworkEnabled && state.motionArtwork != null
+            val morphAllowed = state.animationsEnabled && !state.isVideoMode && !LevyraIsAtelier && !canvasShowing
             val atelierContext = LocalContext.current
             val atelierWindowWidth = androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.width
             LaunchedEffect(LevyraIsAtelier, atelierWindowWidth) {
@@ -8930,6 +8931,7 @@ private fun HomeScreen(
     }
     val spotlightTracks = remember(spotlightCandidates) { spotlightCandidates.map { it.track } }
     val visiblePersonalTracks = homeDerivedState.personalOrbitDisplayTracks
+    val curatedShelves = rememberDefaultCuratedShelves()
     val visibleEditorialCollections = remember(editorialCollections, spotlightCandidate?.track?.id) {
         editorialCollections
             .map { collection ->
@@ -9280,7 +9282,15 @@ private fun HomeScreen(
                 }
             }
 
-            if (showDeferredHomeSections && visibleEditorialCollections.isNotEmpty()) {
+            if (showDeferredHomeSections && curatedShelves.isNotEmpty()) {
+                curatedShelves.forEachIndexed { index, shelf ->
+                    item(key = "default-curated-${shelf.key}", contentType = "default-curated") {
+                        HomeSectionLead(compactHome) {
+                            DefaultCuratedPlaylistShelf(index, shelf, viewModel::openPlaylistHit)
+                        }
+                    }
+                }
+            } else if (showDeferredHomeSections && visibleEditorialCollections.isNotEmpty()) {
                 item(key = "home-editorial-collections", contentType = "home-collections") {
                     HomeSectionLead(compactHome) {
                         HomeEditorialCollectionsShelf(
@@ -9862,6 +9872,7 @@ private fun StudioHomeScreen(
         otherSections = otherSections,
         visiblePersonalTracks = visiblePersonalTracks,
         visibleEditorialCollections = spotlight.visibleEditorialCollections,
+        curatedShelves = rememberDefaultCuratedShelves(),
         homeCollectionAccents = spotlight.homeCollectionAccents,
         spotlightHeroData = spotlight.heroData,
         homeRenderOrder = look.homeRenderOrder,
@@ -10248,6 +10259,7 @@ private class StudioHomeContext(
     val otherSections: List<IndexedValue<com.luc4n3x.levyra.domain.HomeSection>>,
     val visiblePersonalTracks: List<Track>,
     val visibleEditorialCollections: List<HomeEditorialCollection>,
+    val curatedShelves: List<com.luc4n3x.levyra.domain.YoutubeMusicHomeShelf>,
     val homeCollectionAccents: Map<String, Pair<Color, Color>>,
     val spotlightHeroData: HomeSpotlightHero?,
     private val homeRenderOrder: List<HomeSectionId>,
@@ -10875,6 +10887,14 @@ private fun LazyListScope.homeStudioSectionEditorialCollections(c: StudioHomeCon
             if (showDeferredHomeSections && prismHomeOnly()) {
                 item(key = "prism-curated-releases", contentType = "prism-curated-releases") {
                     PrismCuratedAndReleases(viewModel, styleSpec.inset, state.interfaceSettings.showNewReleases)
+                }
+            } else if (showDeferredHomeSections && curatedShelves.isNotEmpty()) {
+                curatedShelves.forEachIndexed { index, shelf ->
+                    item(key = "default-curated-${shelf.key}", contentType = "default-curated") {
+                        HomeSectionLead(compactHome) {
+                            DefaultCuratedPlaylistShelf(index, shelf, viewModel::openPlaylistHit)
+                        }
+                    }
                 }
             } else if (showDeferredHomeSections && (visibleEditorialCollections.isNotEmpty() || skinOwnsCuratedShelf())) {
                 item(key = "home-editorial-collections", contentType = "home-collections") {
@@ -11849,7 +11869,7 @@ private fun PersonalListeningShelf(
                         modifier = Modifier.fillMaxWidth(),
                         key = pageKey
                     ) { pageIndex ->
-                        orbitPage(pageIndex, Modifier.fillMaxWidth())
+                        orbitPage(pageIndex, Modifier.fillMaxWidth().defaultPagerPageMotion(defaultRailMotionEnabled(), pagerState, pageIndex))
                     }
                     if (pages.size > 1) {
                         Row(
@@ -12780,12 +12800,16 @@ private fun TrendingArtistsShelf(
     onArtistClick: (ArtistHit) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    val plainDefault = defaultHomeOwnsCuratedPlaylists()
     Column(verticalArrangement = Arrangement.spacedBy(homeHeaderContentGap())) {
         HomeSectionHeader(
-            title = strings.artists,
+            title = if (plainDefault) strings.trendingArtists else strings.artists,
             modifier = Modifier.padding(horizontal = HomeHorizontalInset)
         )
+        val artistRowState = rememberLazyListState()
+        val railMotion = defaultRailMotionEnabled()
         LazyRow(
+            state = artistRowState,
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(LevyraArtistShelfSpacing),
             contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
@@ -12794,11 +12818,16 @@ private fun TrendingArtistsShelf(
                 items = artists,
                 key = { index, artist -> "trending-artist-$index-${artist.browseId.ifBlank { artist.name.trim().lowercase(Locale.ROOT) }}" },
                 contentType = { _, _ -> "trending-artist" }
-            ) { _, artist ->
-                ArtistHitShelfItem(
-                    artist = artist,
-                    onClick = { onArtistClick(artist) }
-                )
+            ) { index, artist ->
+                val motionKey = "trending-artist-$index-${artist.browseId.ifBlank { artist.name.trim().lowercase(Locale.ROOT) }}"
+                Box(Modifier.defaultRailItemMotion(railMotion, artistRowState, motionKey)) {
+                    ArtistHitShelfItem(
+                        artist = artist,
+                        onClick = { onArtistClick(artist) },
+                        audience = if (plainDefault) artistAudienceLabel(artist.subscribers, strings.code, strings.monthlyListeners) else "",
+                        artworkMotion = Modifier.defaultRailParallax(railMotion, artistRowState, motionKey)
+                    )
+                }
             }
             items(
                 count = loadingSlots,
@@ -12814,7 +12843,9 @@ private fun TrendingArtistsShelf(
 @Composable
 private fun ArtistHitShelfItem(
     artist: ArtistHit,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    audience: String = "",
+    artworkMotion: Modifier = Modifier
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
@@ -12826,13 +12857,15 @@ private fun ArtistHitShelfItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
-        StableRemoteArtwork(
-            url = artist.thumbnailUrl,
-            contentDescription = artist.name,
-            modifier = Modifier.size(HOME_ARTIST_ARTWORK_SIZE).clip(avatarShape),
-            contentScale = ContentScale.Crop,
-            highRes = true
-        )
+        Box(Modifier.size(HOME_ARTIST_ARTWORK_SIZE).clip(avatarShape)) {
+            StableRemoteArtwork(
+                url = artist.thumbnailUrl,
+                contentDescription = artist.name,
+                modifier = Modifier.fillMaxSize().then(artworkMotion),
+                contentScale = ContentScale.Crop,
+                highRes = true
+            )
+        }
         Text(
             text = artist.name,
             color = LevyraText,
@@ -12842,6 +12875,17 @@ private fun ArtistHitShelfItem(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.fillMaxWidth()
         )
+        if (audience.isNotBlank()) {
+            Text(
+                text = audience,
+                color = LevyraMuted,
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth().offset(y = (-5).dp)
+            )
+        }
     }
 }
 
@@ -13229,6 +13273,7 @@ private fun HomeMusicVideoShelf(
                 (maxWidth * HOME_VIDEO_CARD_WIDTH_FRACTION).coerceAtMost(HOME_VIDEO_CARD_MAX_WIDTH)
             }
             val rowState = rememberLazyListState()
+            val railMotion = defaultRailMotionEnabled()
             LazyRow(
                 state = rowState,
                 modifier = Modifier.fillMaxWidth(),
@@ -13240,22 +13285,26 @@ private fun HomeMusicVideoShelf(
                     items = videos,
                     key = { index, item -> "home-video-$index-${LevyraPersonalOrbit.identityKey(item.track)}" },
                     contentType = { _, _ -> "home-video-card" }
-                ) { _, item ->
+                ) { index, item ->
+                    val motionKey = "home-video-$index-${LevyraPersonalOrbit.identityKey(item.track)}"
                     val track = item.track
                     val active = currentId != null && track.id == currentId
                     val activeResolving = active && playback.isResolving
-                    HomeMusicVideoCard(
-                        item = item,
-                        width = videoCardWidth,
-                        playback = HomeVideoCardPlayback(
-                            active = active,
-                            isPlaying = active && playback.isPlaying,
-                            isResolving = activeResolving
-                        ),
-                        onClick = {
-                            if (active && !activeResolving) actions.onToggleCurrent() else actions.onPlay(track)
-                        }
-                    )
+                    Box(Modifier.defaultVideoRailMotion(railMotion, rowState, motionKey)) {
+                        HomeMusicVideoCard(
+                            item = item,
+                            width = videoCardWidth,
+                            playback = HomeVideoCardPlayback(
+                                active = active,
+                                isPlaying = active && playback.isPlaying,
+                                isResolving = activeResolving
+                            ),
+                            onClick = {
+                                if (active && !activeResolving) actions.onToggleCurrent() else actions.onPlay(track)
+                            },
+                            artworkMotion = Modifier.defaultRailParallax(railMotion, rowState, motionKey)
+                        )
+                    }
                 }
             }
         }
@@ -13284,7 +13333,8 @@ private fun HomeMusicVideoCard(
     item: HomeVideoCardItem,
     width: Dp,
     playback: HomeVideoCardPlayback,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    artworkMotion: Modifier = Modifier
 ) {
     Column(
         modifier = Modifier
@@ -13307,7 +13357,7 @@ private fun HomeMusicVideoCard(
                     }
                 )
         ) {
-            HomeMusicVideoArtwork(item)
+            Box(Modifier.fillMaxSize().then(artworkMotion)) { HomeMusicVideoArtwork(item) }
             HomeMusicVideoBadge(
                 durationMs = item.track.durationMs,
                 playback = playback,
@@ -13403,9 +13453,11 @@ private fun HomeMusicVideoCaption(track: Track, active: Boolean) {
             .filter(String::isNotBlank)
             .joinToString(" • ")
     }
+    val titleHeight = with(LocalDensity.current) { LevyraTypeRhythm.lineHeight(16.sp).toDp() }
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         LevyraMediaTitle(
             text = track.title, explicit = track.explicit,
+            modifier = Modifier.heightIn(min = titleHeight),
             color = if (active) LevyraCyan else LevyraText,
             fontSize = 16.sp,
             lineHeight = LevyraTypeRhythm.lineHeight(16.sp),
@@ -13415,7 +13467,7 @@ private fun HomeMusicVideoCaption(track: Track, active: Boolean) {
             overflow = TextOverflow.Ellipsis
         )
         Text(
-            text = metadata,
+            text = metadata.ifBlank { " " },
             color = LevyraMuted,
             fontSize = 13.5.sp,
             lineHeight = LevyraTypeRhythm.lineHeight(13.5.sp),
@@ -13825,7 +13877,7 @@ private fun StudioPersonalListeningShelf(
                         modifier = Modifier.fillMaxWidth(),
                         key = pageKey
                     ) { pageIndex ->
-                        orbitPage(pageIndex, Modifier.fillMaxWidth())
+                        orbitPage(pageIndex, Modifier.fillMaxWidth().defaultPagerPageMotion(defaultRailMotionEnabled(), pagerState, pageIndex))
                     }
                     if (pages.size > 1) {
                         Row(
@@ -14621,8 +14673,8 @@ private fun SearchScreen(
     ) {
         SearchHeader(
             query = state.query,
-            placeholder = if (LevyraRadioReplacesSearch) strings.search else activePlaceholder,
-            animatePlaceholder = state.animationsEnabled && !LevyraRadioReplacesSearch,
+            placeholder = if (LevyraRadioReplacesSearch && !LevyraIsDefaultSkin) strings.search else activePlaceholder,
+            animatePlaceholder = state.animationsEnabled && (!LevyraRadioReplacesSearch || LevyraIsDefaultSkin),
             isSearching = state.isSearching,
             recognitionAvailable = state.recognitionAvailable,
             recognitionBusy = state.recognitionState is RecognitionState.Listening ||
@@ -25100,7 +25152,7 @@ private fun ExploreScreen(
         if (LevyraIsAtelier) {
             AtelierExploreEntry(state, viewModel, freshTracks, listState, exploreBottomInset, editorialContent)
         } else if (LevyraIsMono) {
-            MonoExploreEntry(state, listState, exploreBottomInset, editorialContent, onShortcut, { onLiveRadioOpenChange(true) }, onOpenJam)
+            MonoExploreEntry(state, listState, exploreBottomInset, editorialContent, onShortcut, { onLiveRadioOpenChange(true) }, onOpenJam, freshTracks, onPlayFreshTrack)
         } else if (LevyraIsQobuz) {
             QobuzMagazineEntry(state, viewModel, freshTracks, listState, exploreBottomInset, onShortcut, { onLiveRadioOpenChange(true) }, onOpenJam) { addToPlaylistTarget = it }
         } else if (LevyraIsYouTubeMusic) {

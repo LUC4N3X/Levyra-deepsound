@@ -58,6 +58,22 @@ data class MotionControlSettings(
     val hasActiveGesture: Boolean
         get() = enabled && (flipToPauseEnabled || shakeToSkipEnabled)
 
+    val flipToPauseActive: Boolean
+        get() = enabled && flipToPauseEnabled
+
+    val shakeToSkipActive: Boolean
+        get() = enabled && shakeToSkipEnabled
+
+    fun withFlipToPause(on: Boolean): MotionControlSettings = when {
+        enabled || !on -> copy(flipToPauseEnabled = on)
+        else -> copy(enabled = true, flipToPauseEnabled = true, shakeToSkipEnabled = false)
+    }
+
+    fun withShakeToSkip(on: Boolean): MotionControlSettings = when {
+        enabled || !on -> copy(shakeToSkipEnabled = on)
+        else -> copy(enabled = true, shakeToSkipEnabled = true, flipToPauseEnabled = false)
+    }
+
     companion object {
         const val DEFAULT_FLIP_CONFIRMATION_DELAY_MS: Long = 800L
         const val DEFAULT_SHAKE_COOLDOWN_MS: Long = 2_500L

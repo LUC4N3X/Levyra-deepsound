@@ -259,12 +259,13 @@ internal fun rememberAlbumShelfItems(albums: List<AlbumHit>, onOpen: (AlbumHit) 
 @Composable
 internal fun rememberArtistShelfItems(artists: List<ArtistHit>, onOpen: (ArtistHit) -> Unit): List<StudioShelfItem> {
     val open by rememberUpdatedState(onOpen)
-    return remember(artists) {
+    val strings = LocalLevyraStrings.current
+    return remember(artists, strings) {
         artists.mapIndexed { index, artist ->
             StudioShelfItem(
                 key = "$index-${artist.browseId.ifBlank { artist.name }}",
                 title = artist.name,
-                subtitle = artist.subscribers,
+                subtitle = artistAudienceLabel(artist.subscribers, strings.code, strings.monthlyListeners),
                 current = false,
                 round = true,
                 artwork = { modifier, highRes -> StudioRemoteArtwork(artist.thumbnailUrl, artist.name, modifier, highRes) },

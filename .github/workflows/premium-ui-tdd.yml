@@ -35,7 +35,6 @@ jobs:
           SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
           yes | "${SDKMANAGER}" --licenses >/dev/null || true
           "${SDKMANAGER}" --channel=3 \
-            "platform-tools" \
             "platforms;android-37.0" \
             "build-tools;36.0.0" \
             "ndk;28.2.13676358" \

@@ -404,4 +404,31 @@ class SmartListeningTest {
         assertEquals(80_000, MotionGestureRegistrationPolicy.reportLatencyUs(fifoMaxEventCount = 300, requestedLatencyUs = 80_000))
         assertEquals(0, MotionGestureRegistrationPolicy.reportLatencyUs(fifoMaxEventCount = 300, requestedLatencyUs = -1))
     }
+
+    @Test
+    fun gestureToggleWhileMotionOffEnablesOnlyThatGesture() {
+        val defaults = MotionControlSettings()
+        assertFalse(defaults.flipToPauseActive)
+        assertFalse(defaults.shakeToSkipActive)
+
+        val flipOnly = defaults.withFlipToPause(true)
+        assertTrue(flipOnly.enabled)
+        assertTrue(flipOnly.flipToPauseActive)
+        assertFalse(flipOnly.shakeToSkipActive)
+
+        val shakeOnly = defaults.withShakeToSkip(true)
+        assertTrue(shakeOnly.shakeToSkipActive)
+        assertFalse(shakeOnly.flipToPauseActive)
+    }
+
+    @Test
+    fun gestureToggleWhileMotionOnKeepsOtherGesture() {
+        val both = MotionControlSettings(enabled = true)
+        val withoutFlip = both.withFlipToPause(false)
+        assertTrue(withoutFlip.enabled)
+        assertFalse(withoutFlip.flipToPauseActive)
+        assertTrue(withoutFlip.shakeToSkipActive)
+        assertEquals(both, withoutFlip.withFlipToPause(true))
+        assertEquals(MotionControlSettings(shakeToSkipEnabled = false), MotionControlSettings().withShakeToSkip(false))
+    }
 }

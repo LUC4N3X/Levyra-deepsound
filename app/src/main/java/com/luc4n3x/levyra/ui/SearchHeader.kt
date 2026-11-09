@@ -166,6 +166,11 @@ internal fun SearchHeader(
         return
     }
 
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin) {
+        DefaultSkinSearchHeader(query, placeholder, animatePlaceholder, isSearching, recognitionAvailable, recognitionBusy,
+            onQuery, onClear, onBack, launchVoiceSearch, toggleRecognition, onLyrics)
+        return
+    }
     DefaultSearchHeader(query, placeholder, animatePlaceholder, isSearching, recognitionAvailable, recognitionBusy,
         onQuery, onClear, onBack, launchVoiceSearch, toggleRecognition, onLyrics)
 }
@@ -368,7 +373,7 @@ private fun rememberSearchHeaderAppearance(fieldFocused: Boolean, query: String,
 }
 
 @Composable
-private fun SearchHeaderTextField(query: String, placeholder: String, animatePlaceholder: Boolean, fieldInteraction: MutableInteractionSource, onQuery: (String) -> Unit, modifier: Modifier) {
+internal fun SearchHeaderTextField(query: String, placeholder: String, animatePlaceholder: Boolean, fieldInteraction: MutableInteractionSource, onQuery: (String) -> Unit, modifier: Modifier, placeholderContent: (@Composable (String) -> Unit)? = null) {
     BasicTextField(
         value = query,
         onValueChange = onQuery,
@@ -384,7 +389,9 @@ private fun SearchHeaderTextField(query: String, placeholder: String, animatePla
         cursorBrush = SolidColor(if (LevyraIsTorque) LevyraActivePalette.blue else if (LevyraIsSpotify) SpotifyDesign.greenPress else LevyraCyan),
         decorationBox = { innerTextField ->
             Box(contentAlignment = Alignment.CenterStart) {
-                if (query.isEmpty()) {
+                if (query.isEmpty() && placeholderContent != null) {
+                    placeholderContent(placeholder)
+                } else if (query.isEmpty()) {
                     Crossfade(
                         targetState = placeholder,
                         animationSpec = if (animatePlaceholder) tween(360) else snap(),
@@ -448,7 +455,7 @@ private fun SearchHeaderActionButtons(query: String, isSearching: Boolean, field
 }
 
 @Composable
-private fun SearchHeaderClearAction(query: String, isSearching: Boolean, onClear: () -> Unit) {
+internal fun SearchHeaderClearAction(query: String, isSearching: Boolean, onClear: () -> Unit) {
     val animationsEnabled = LocalAnimationsEnabled.current
     val strings = LocalLevyraStrings.current
     if (isSearching) {
@@ -479,7 +486,7 @@ private fun SearchHeaderClearAction(query: String, isSearching: Boolean, onClear
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun SearchHeaderRecognitionButton(recognitionBusy: Boolean, toggleRecognition: () -> Unit) {
+internal fun SearchHeaderRecognitionButton(recognitionBusy: Boolean, toggleRecognition: () -> Unit) {
     val animationsEnabled = LocalAnimationsEnabled.current
     val strings = LocalLevyraStrings.current
     val scheme = MaterialTheme.colorScheme

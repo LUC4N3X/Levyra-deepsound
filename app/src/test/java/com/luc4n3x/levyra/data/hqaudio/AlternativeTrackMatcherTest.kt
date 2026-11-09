@@ -926,6 +926,76 @@ class AlternativeTrackMatcherTest {
     }
 
     @Test
+    fun albumEditionsCannotHideConflictingPerformanceVersions() {
+        val versions = listOf("Karaoke", "Cover", "Live", "Acoustic", "Instrumental", "Remix", "Demo", "Reprise", "Reloaded", "3D Audio", "Sped Up", "Slowed", "Reverb")
+        val editions = listOf("Deluxe", "Expanded", "Anniversary", "Remastered", "Single", "EP", "Soundtrack")
+        versions.forEach { version ->
+            editions.forEach { edition ->
+                listOf("$version $edition", "$edition $version").forEach { descriptor ->
+                    listOf("After Hours ($descriptor)", "After Hours - $descriptor").forEach { album ->
+                        val evaluation = verdict(query(album = "After Hours ($edition)"), candidate(album = album))
+                        assertEquals(album, AlternativeMatchVerdict.REJECTED, evaluation.verdict)
+                        assertEquals(album, MatchRejection.VERSION_MISMATCH, evaluation.rejection)
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun editionVersionLabelsStillMatchTheSameRelease() {
+        listOf("Deluxe", "Expanded", "Anniversary", "Remastered", "Single", "EP", "Soundtrack").forEach { edition ->
+            val evaluation = verdict(
+                query(album = "After Hours ($edition)"),
+                candidate(album = "After Hours ($edition Version)")
+            )
+            assertEquals(edition, AlternativeMatchVerdict.EXACT, evaluation.verdict)
+            assertEquals(edition, AlbumRelation.SAME, evaluation.albumRelation)
+        }
+    }
+
+    @Test
+    fun explicitlyRequestedPerformanceEditionsRemainAccepted() {
+        listOf("Karaoke", "Cover", "Live", "Acoustic", "Remix", "Reprise").forEach { version ->
+            val title = "Blinding Lights ($version)"
+            val album = "After Hours ($version Deluxe)"
+            val evaluation = verdict(query(title = title, album = album), candidate(title = title, album = album))
+            assertEquals(version, AlternativeMatchVerdict.EXACT, evaluation.verdict)
+        }
+    }
+
+    @Test
+    fun requestedLiveRecordingStillMatchesAcrossEditionLabels() {
+        val expected = query(title = "Blinding Lights (Live)", album = "After Hours (Live Deluxe)")
+        listOf("Live Deluxe Version", "Live Deluxe Edition", "Deluxe Live", "Live Expanded").forEach { descriptor ->
+            val evaluation = verdict(expected, candidate(title = expected.title, album = "After Hours ($descriptor)", duration = 202))
+            assertTrue(descriptor, evaluation.accepted)
+        }
+        assertRejected(
+            MatchRejection.ALBUM_MISMATCH,
+            expected,
+            candidate(title = expected.title, album = "After Hours (Live Deluxe Remastered)")
+        )
+        assertEquals(
+            AlternativeMatchVerdict.EXACT,
+            verdict(query(album = "After Hours (Deluxe)"), candidate(album = "After Hours (Original Mix Deluxe)")).verdict
+        )
+    }
+
+    @Test
+    fun higherBitratePerformanceEditionCannotDisplaceTheOriginalRecording() {
+        val selection = matcher.select(
+            query(album = "After Hours (Deluxe)"),
+            listOf(
+                candidate(id = "karaoke", album = "After Hours (Karaoke Deluxe)", offers320 = true),
+                candidate(id = "studio", album = "After Hours (Deluxe)", offers320 = false)
+            )
+        ) as AlternativeMatchSelection.Accepted
+        assertEquals("studio", selection.evaluation.candidate.providerTrackId)
+        assertEquals(MatchRejection.VERSION_MISMATCH, selection.evaluations.single { it.candidate.providerTrackId == "karaoke" }.rejection)
+    }
+
+    @Test
     fun studioAlbumOutranksCompilationWithSameYearAndBogusFeaturedCredits() {
         val selection = matcher.select(
             query(title = "Tum Hi Ho", artist = "Arijit Singh", album = "YouTube Music", durationMs = 262_000L),

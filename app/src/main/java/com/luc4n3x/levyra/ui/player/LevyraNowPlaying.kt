@@ -325,7 +325,10 @@ private fun LevyraNowPlayingContent(
     val artworkTargets = remember(rawPrimaryTarget, rawSecondaryTarget) {
         harmonizePlayerAccents(rawPrimaryTarget, rawSecondaryTarget)
     }
-    val harmonizedTargets = fixedAccents ?: artworkTargets
+    val canvasTargets = canvasBackdropPalette
+        ?.takeIf { palette -> motionEnabled && palette.identityKey == state.motionArtwork?.identityKey }
+        ?.let { palette -> remember(palette) { harmonizePlayerAccents(palette.primary, palette.secondary) } }
+    val harmonizedTargets = fixedAccents ?: canvasTargets ?: artworkTargets
     val primaryTarget = harmonizedTargets.primary
     val secondaryTarget = harmonizedTargets.secondary
     val primary by animateColorAsState(
@@ -512,7 +515,6 @@ private fun LevyraNowPlayingContent(
         LaunchedEffect(
             motionEnabled,
             motionBackdropVisible,
-            backgroundMode,
             state.motionArtwork?.identityKey
         ) {
             val activeIdentity = state.motionArtwork?.identityKey
@@ -521,29 +523,14 @@ private fun LevyraNowPlayingContent(
                     palette = canvasBackdropPalette,
                     motionEnabled = motionEnabled,
                     motionBackdropVisible = motionBackdropVisible,
-                    backgroundMode = backgroundMode,
                     activeIdentity = activeIdentity
                 )
             ) {
                 canvasBackdropPalette = null
             }
         }
-        val canvasBackdropTargets = canvasBackdropPalette
-            ?.takeIf { fixedAccents == null }
-            ?.takeIf { palette ->
-                canvasBackdropPaletteMatches(
-                    palette = palette,
-                    motionEnabled = motionEnabled,
-                    motionBackdropVisible = motionBackdropVisible,
-                    backgroundMode = backgroundMode,
-                    activeIdentity = state.motionArtwork?.identityKey
-                )
-            }
-            ?.let { palette -> harmonizePlayerAccents(palette.primary, palette.secondary) }
-        val backdropPrimaryTarget = canvasBackdropTargets?.primary ?: primaryTarget
-        val backdropSecondaryTarget = canvasBackdropTargets?.secondary ?: secondaryTarget
-        val backdropAmbience = remember(backdropPrimaryTarget, backdropSecondaryTarget) {
-            playerAmbienceOf(backdropPrimaryTarget, backdropSecondaryTarget)
+        val backdropAmbience = remember(primaryTarget, secondaryTarget) {
+            playerAmbienceOf(primaryTarget, secondaryTarget)
         }
         val acceptDynamicBackdropPalette: (MotionBackdropPalette?) -> Unit = { palette ->
             val activeIdentity = state.motionArtwork?.identityKey
@@ -930,8 +917,7 @@ private fun LevyraNowPlayingContent(
                                 depth = lyricsFlipDepth,
                                 rightToLeft = rightToLeft
                             ),
-                        dynamicBackdropEnabled = backgroundMode == PlayerBackgroundMode.Dynamic &&
-                            motionBackdropVisible,
+                        dynamicBackdropEnabled = motionBackdropVisible && fixedAccents == null,
                         onDynamicBackdropPalette = acceptDynamicBackdropPalette,
                         staticPresentation = LevyraIsSpotify,
                         staticArtworkMotion = deckLayout != PlayerDeckLayout.Ember
@@ -2285,13 +2271,11 @@ private fun canvasBackdropPaletteMatches(
     palette: MotionBackdropPalette?,
     motionEnabled: Boolean,
     motionBackdropVisible: Boolean,
-    backgroundMode: PlayerBackgroundMode,
     activeIdentity: String?
 ): Boolean {
     val presentationActive = motionEnabled && motionBackdropVisible
-    val dynamicBackground = backgroundMode == PlayerBackgroundMode.Dynamic
     val identityMatches = activeIdentity != null && palette?.identityKey == activeIdentity
-    return presentationActive && dynamicBackground && identityMatches
+    return presentationActive && identityMatches
 }
 
 private fun Track.isLocalMotionArtworkTrack(): Boolean {
