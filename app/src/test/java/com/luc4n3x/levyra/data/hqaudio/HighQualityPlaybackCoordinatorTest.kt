@@ -109,7 +109,7 @@ class HighQualityPlaybackCoordinatorTest {
         val streamOnly = candidate(id = "stream-only").copy(offlineAllowed = false)
         val offline = candidate(id = "offline", album = "After Hours (Deluxe)")
         val provider = exactProvider().apply {
-            searchOutcome = { ProviderSearchOutcome.Found(listOf(streamOnly, offline)) }
+            pageOutcome = { _, _ -> ProviderSearchOutcome.Found(listOf(streamOnly, offline)) }
             lookupOutcome = { id -> ProviderLookupOutcome.Found(if (id == streamOnly.providerTrackId) streamOnly else offline) }
         }
         val coordinator = coordinator(provider)
