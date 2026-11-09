@@ -49,49 +49,20 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
-import androidx.compose.material.icons.automirrored.rounded.QueueMusic
-import androidx.compose.material.icons.automirrored.rounded.Subject
-import androidx.compose.material.icons.automirrored.rounded.VolumeUp
-import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.Interests
-import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CloseFullscreen
 import androidx.compose.material.icons.rounded.DeleteOutline
-import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.DownloadDone
-import androidx.compose.material.icons.rounded.Album
 import com.luc4n3x.levyra.data.hqaudio.AlternativeTrackMatcher
 import com.luc4n3x.levyra.ui.trackAlbumHit
 import java.util.Locale
-import androidx.compose.material.icons.rounded.BlurOn
 import androidx.compose.material.icons.rounded.Fullscreen
-import androidx.compose.material.icons.rounded.GraphicEq
-import androidx.compose.material.icons.rounded.Groups
-import androidx.compose.material.icons.rounded.Image
-import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.MoreHoriz
-import androidx.compose.material.icons.rounded.Newspaper
-import androidx.compose.material.icons.rounded.Waves
-import androidx.compose.material.icons.rounded.LocalFireDepartment
-import androidx.compose.material.icons.rounded.Nightlight
 import androidx.compose.material.icons.rounded.Pause
-import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PictureInPictureAlt
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Radio
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Share
-import androidx.compose.material.icons.rounded.Loop
-import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Stop
-import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material.icons.rounded.HighQuality
 import androidx.compose.material.icons.rounded.Subtitles
-import androidx.compose.material.icons.rounded.Tune
-import androidx.compose.material.icons.rounded.ThumbDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -135,8 +106,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel as composeViewModel
-import androidx.compose.material.icons.automirrored.rounded.ListAlt
-import androidx.compose.material.icons.rounded.Bedtime
 import com.luc4n3x.levyra.ui.i18n.SmartAudioText
 import com.luc4n3x.levyra.ui.i18n.smartAudioCopy
 import com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin
@@ -732,7 +701,7 @@ private fun LevyraNowPlayingContent(
                 QobuzPlayerMoreButton(strings.more) { showActions = true }
             } else if (track != null) {
                 PlayerGlassIconButton(
-                    icon = Icons.Rounded.MoreHoriz,
+                    icon = PlayerIcons.more,
                     contentDescription = strings.more,
                     size = headerButtonSize,
                     iconSize = 22.dp,
@@ -1144,7 +1113,9 @@ private fun LevyraNowPlayingContent(
 
         val dockActionsFor: @Composable (Track) -> List<PlayerDockAction> = { activeTrack ->
             val isDownloaded = activeTrack.id in state.downloadedTrackIds
+            val playerIcons = PlayerIcons
             remember(
+                playerIcons,
                 activeTrack.id,
                 state.showLyrics,
                 state.isVideoMode,
@@ -1160,6 +1131,7 @@ private fun LevyraNowPlayingContent(
                 hapticFeedback
             ) {
                 playerDockActions(
+                    icons = playerIcons,
                     strings = strings,
                     visualMode = selectedVisualMode,
                     presentedMode = visualMode,
@@ -1844,6 +1816,7 @@ private fun LevyraNowPlayingContent(
         if (showActions && track != null) {
             val sectionLoop by viewModel.sectionLoop.collectAsStateWithLifecycle()
             val sheetActions = playerSheetActions(
+                icons = PlayerIcons,
                 track = track,
                 state = state,
                 sectionLoop = sectionLoop,
@@ -2186,6 +2159,7 @@ private fun PlayerLiveRadioTransport(
 }
 
 private fun playerDockActions(
+    icons: PlayerActionIcons,
     strings: LevyraStrings,
     visualMode: PlayerVisualMode,
     presentedMode: PlayerVisualMode,
@@ -2202,7 +2176,7 @@ private fun playerDockActions(
         add(
             PlayerDockAction(
                 key = "lyrics",
-                icon = Icons.AutoMirrored.Rounded.Subject,
+                icon = icons.lyrics,
                 label = strings.lyrics,
                 active = showLyrics,
                 onClick = onLyrics
@@ -2211,7 +2185,7 @@ private fun playerDockActions(
         add(
             PlayerDockAction(
                 key = "queue",
-                icon = Icons.AutoMirrored.Rounded.QueueMusic,
+                icon = icons.queue,
                 label = strings.queue,
                 onClick = onQueue
             )
@@ -2220,7 +2194,7 @@ private fun playerDockActions(
             add(
                 PlayerDockAction(
                     key = "visual-mode",
-                    icon = visualModeIcon(presentedMode),
+                    icon = icons.playerStyle,
                     label = if (LevyraSkinManagesLayout) LevyraSkinLabel else visualModeLabel(strings),
                     stateDescription = if (LevyraSkinManagesLayout) LevyraSkinLabel else visualModeStateDescription(visualMode, strings),
                     active = presentedMode != PlayerVisualMode.Artwork,
@@ -2232,7 +2206,7 @@ private fun playerDockActions(
         add(
             PlayerDockAction(
                 key = "download",
-                icon = if (isDownloaded) Icons.Rounded.DownloadDone else Icons.Rounded.Download,
+                icon = icons.download(isDownloaded),
                 label = when {
                     isExporting -> strings.downloadInProgress
                     isDownloaded -> strings.downloaded
@@ -2286,6 +2260,7 @@ private fun Track.isLocalMotionArtworkTrack(): Boolean {
 }
 
 private fun playerDislikeAction(
+    icons: PlayerActionIcons,
     track: Track,
     state: LevyraUiState,
     strings: LevyraStrings,
@@ -2295,7 +2270,7 @@ private fun playerDislikeAction(
     val copy = trackDislikeCopy(strings.code)
     return PlayerSheetAction(
         key = "dislike",
-        icon = Icons.Rounded.ThumbDown,
+        icon = icons.dislike,
         label = if (disliked) copy.removeDislike else copy.dislike,
         value = copy.skipped.takeIf { disliked },
         active = disliked,
@@ -2305,6 +2280,7 @@ private fun playerDislikeAction(
 }
 
 private fun playerSheetActions(
+    icons: PlayerActionIcons,
     track: Track,
     state: LevyraUiState,
     sectionLoop: SectionLoopState,
@@ -2333,7 +2309,7 @@ private fun playerSheetActions(
     val sleepActive = state.sleepTimerMinutes > 0 || state.sleepTimerEndOfTrack
     val sleepAction = PlayerSheetAction(
         key = "sleep",
-        icon = Icons.Rounded.Bedtime,
+        icon = icons.sleepTimer,
         label = strings.sleepTimer,
         value = when {
             state.sleepTimerEndOfTrack -> strings.sleepTimerEndOfTrack
@@ -2351,7 +2327,7 @@ private fun playerSheetActions(
     ) {
         PlayerSheetAction(
             key = "audio-output",
-            icon = Icons.AutoMirrored.Rounded.VolumeUp,
+            icon = icons.output,
             label = strings.systemPlayerCopy().outputTitle,
             onClick = onAudioOutput
         )
@@ -2360,19 +2336,19 @@ private fun playerSheetActions(
     }
     val audioAction = PlayerSheetAction(
         key = "audio",
-        icon = Icons.Rounded.Tune,
+        icon = icons.audioQuality,
         label = strings.audioQuality,
         onClick = onAudioSettings
     )
     val technicalAudioAction = PlayerSheetAction(
         key = "technical-audio-info",
-        icon = Icons.Rounded.Info,
+        icon = icons.technicalAudio,
         label = strings.technicalAudioInfoCopy().title,
         onClick = onTechnicalAudioInfo
     )
     val ambientAction = PlayerSheetAction(
         key = "ambient",
-        icon = Icons.Rounded.Nightlight,
+        icon = icons.ambient,
         label = strings.ambientMode,
         onClick = onAmbient
     )
@@ -2384,7 +2360,7 @@ private fun playerSheetActions(
     ) {
         PlayerSheetAction(
             key = "refresh-motion-artwork",
-            icon = Icons.Rounded.Refresh,
+            icon = icons.refreshArtwork,
             label = strings.motionArtwork,
             value = strings.exploreSamplesRetry,
             onClick = onRefreshMotionArtwork
@@ -2406,24 +2382,24 @@ private fun playerSheetActions(
     return listOfNotNull(
         PlayerSheetAction(
             key = "playlist",
-            icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
+            icon = icons.addToPlaylist,
             label = strings.addToPlaylist,
             onClick = onAddToPlaylist
         ),
         PlayerSheetAction(
             key = "radio",
-            icon = Icons.Rounded.Radio,
+            icon = icons.startRadio,
             label = strings.startRadio,
             enabled = canStartRadio,
             onClick = onStartRadio
         ),
         PlayerSheetAction(
             key = "share",
-            icon = Icons.Rounded.Share,
+            icon = icons.share,
             label = strings.share,
             onClick = onShare
         ),
-        playerDislikeAction(track, state, strings, onToggleDislike),
+        playerDislikeAction(icons, track, state, strings, onToggleDislike),
         shareMomentSeconds(state.positionMs, state.durationMs)
             ?.takeIf {
                 !state.isResolving &&
@@ -2433,7 +2409,7 @@ private fun playerSheetActions(
             ?.let { seconds ->
                 PlayerSheetAction(
                     key = "share-moment",
-                    icon = Icons.Rounded.AccessTime,
+                    icon = icons.shareMoment,
                     label = strings.shareMomentCopy().action,
                     value = formatShareMomentTimestamp(seconds),
                     onClick = { onShareMoment(seconds) }
@@ -2442,7 +2418,7 @@ private fun playerSheetActions(
         sleepAction,
         PlayerSheetAction(
             key = "speed",
-            icon = Icons.Rounded.Speed,
+            icon = icons.speed,
             label = strings.tempo,
             value = "${formatPlaybackSpeed(state.playbackSpeed)}x",
             active = state.playbackSpeed != 1f,
@@ -2451,7 +2427,7 @@ private fun playerSheetActions(
         ),
         PlayerSheetAction(
             key = "section-loop",
-            icon = Icons.Rounded.Loop,
+            icon = icons.sectionLoop,
             label = strings.sectionLoopCopy().action,
             value = sectionLoopValue(sectionLoop, strings.sectionLoopCopy().setEnd),
             active = sectionLoop !is SectionLoopState.Off,
@@ -2460,7 +2436,7 @@ private fun playerSheetActions(
         ),
         PlayerSheetAction(
             key = "normalization",
-            icon = Icons.AutoMirrored.Rounded.VolumeUp,
+            icon = icons.normalization,
             label = strings.normalizationShort,
             active = state.audioNormalization,
             toggle = true,
@@ -2471,7 +2447,7 @@ private fun playerSheetActions(
         audioAction,
         PlayerSheetAction(
             key = "night-listening",
-            icon = Icons.Rounded.Bedtime,
+            icon = icons.nightListening,
             label = smartAudioCopy(strings.code)[SmartAudioText.NightTitle],
             onClick = onNightListening,
             active = state.audioSettings.nightListeningEnabled,
@@ -2481,7 +2457,7 @@ private fun playerSheetActions(
         if (hasMixChapters) {
             PlayerSheetAction(
                 key = "mix-chapters",
-                icon = Icons.AutoMirrored.Rounded.ListAlt,
+                icon = icons.mixChapters,
                 label = smartAudioCopy(strings.code)[SmartAudioText.ChaptersTitle],
                 onClick = onMixChapters
             )
@@ -2490,7 +2466,7 @@ private fun playerSheetActions(
         },
         PlayerSheetAction(
             key = "track-credits",
-            icon = Icons.Rounded.Groups,
+            icon = icons.credits,
             label = strings.trackCreditsCopy().title,
             onClick = onTrackCredits
         ),
@@ -2500,7 +2476,7 @@ private fun playerSheetActions(
         if (track.hasOpenableAlbum()) {
             PlayerSheetAction(
                 key = "album",
-                icon = Icons.Rounded.Album,
+                icon = icons.album,
                 label = strings.openAlbum,
                 onClick = onOpenAlbum
             )
@@ -2509,7 +2485,7 @@ private fun playerSheetActions(
         },
         PlayerSheetAction(
             key = "artist",
-            icon = Icons.Rounded.Person,
+            icon = icons.artist,
             label = strings.openArtist,
             onClick = onOpenArtist
         )
@@ -2568,18 +2544,6 @@ internal fun visualModeStateDescription(
     PlayerVisualMode.Folio -> strings.playerDeckFolio
     PlayerVisualMode.Flow -> strings.playerDeckFlow
     PlayerVisualMode.Ember -> strings.playerDeckEmber
-}
-
-internal fun visualModeIcon(mode: PlayerVisualMode): ImageVector = when (mode) {
-    PlayerVisualMode.Artwork -> Icons.Rounded.Image
-    PlayerVisualMode.CanvasCard -> Icons.Rounded.AutoAwesome
-    PlayerVisualMode.CanvasImmersive -> Icons.Rounded.BlurOn
-    PlayerVisualMode.Expressive -> Icons.Rounded.Interests
-    PlayerVisualMode.Pulse -> Icons.Rounded.GraphicEq
-    PlayerVisualMode.Halo -> Icons.Rounded.Album
-    PlayerVisualMode.Folio -> Icons.Rounded.Newspaper
-    PlayerVisualMode.Flow -> Icons.Rounded.Waves
-    PlayerVisualMode.Ember -> Icons.Rounded.LocalFireDepartment
 }
 
 @Composable

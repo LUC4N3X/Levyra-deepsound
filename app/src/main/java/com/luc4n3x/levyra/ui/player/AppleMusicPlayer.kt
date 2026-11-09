@@ -372,7 +372,7 @@ internal fun AppleMusicTransport(
         val gap = if (compactWidth) AppleMusicDesign.playerTransportGap / 2 else AppleMusicDesign.playerTransportGap
         Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(gap, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onPrevious, modifier = Modifier.size(AppleMusicDesign.playerSkipIcon + AppleMusicDesign.playerControlPadding * 2)) {
-                Icon(Icons.Rounded.FastRewind, labels.previous, tint = AppleMusicVibrant.primary, modifier = Modifier.size(AppleMusicDesign.playerSkipIcon))
+                Icon(PlayerIcons.previous, labels.previous, tint = AppleMusicVibrant.primary, modifier = Modifier.size(AppleMusicDesign.playerSkipIcon))
             }
             Box(
                 Modifier.size(AppleMusicDesign.playerPlayIcon + AppleMusicDesign.playerControlPadding * 2).clip(CircleShape).clickable(role = Role.Button, onClick = onToggle)
@@ -383,7 +383,7 @@ internal fun AppleMusicTransport(
                 else Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = AppleMusicVibrant.primary, modifier = Modifier.size(AppleMusicDesign.playerPlayIcon + 10.dp))
             }
             IconButton(onClick = onNext, modifier = Modifier.size(AppleMusicDesign.playerSkipIcon + AppleMusicDesign.playerControlPadding * 2)) {
-                Icon(Icons.Rounded.FastForward, labels.next, tint = AppleMusicVibrant.primary, modifier = Modifier.size(AppleMusicDesign.playerSkipIcon))
+                Icon(PlayerIcons.next, labels.next, tint = AppleMusicVibrant.primary, modifier = Modifier.size(AppleMusicDesign.playerSkipIcon))
             }
         }
         AppleMusicModeToggle(

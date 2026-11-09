@@ -24,14 +24,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
-import androidx.compose.material.icons.rounded.AddCircleOutline
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.FastForward
-import androidx.compose.material.icons.rounded.FastRewind
 import androidx.compose.material.icons.rounded.GraphicEq
-import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.Star
-import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Slider
@@ -314,18 +307,18 @@ private fun AuraHeadline(
             }
         }
         AuraIconButton(
-            icon = if (isDownloaded) Icons.Rounded.CheckCircle else Icons.Rounded.AddCircleOutline,
+            icon = PlayerIcons.download(isDownloaded),
             label = if (isDownloaded) strings.downloaded else strings.download,
             size = 24.dp,
             onClick = onDownload
         )
         AuraIconButton(
-            icon = if (isFavorite) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+            icon = PlayerIcons.favorite(isFavorite),
             label = strings.favoritesPlain,
             size = 26.dp,
             onClick = onToggleFavorite
         )
-        AuraIconButton(icon = Icons.Rounded.MoreVert, label = strings.more, size = 22.dp, onClick = onMore)
+        AuraIconButton(icon = PlayerIcons.more, label = strings.more, size = 22.dp, onClick = onMore)
     }
 }
 
@@ -454,7 +447,7 @@ private fun AuraTransport(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        AuraTransportButton(Icons.Rounded.FastRewind, labels.previous, 38.dp) {
+        AuraTransportButton(PlayerIcons.previous, labels.previous, 38.dp) {
             haptics.perform(LevyraHapticAction.Transport)
             onPrevious()
         }
@@ -464,7 +457,7 @@ private fun AuraTransport(
             labels = labels,
             onTogglePlay = onTogglePlay
         )
-        AuraTransportButton(Icons.Rounded.FastForward, labels.next, 38.dp) {
+        AuraTransportButton(PlayerIcons.next, labels.next, 38.dp) {
             haptics.perform(LevyraHapticAction.Transport)
             onNext()
         }

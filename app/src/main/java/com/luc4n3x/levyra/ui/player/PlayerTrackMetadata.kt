@@ -16,12 +16,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.AddCircleOutline
 import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.Star
-import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material.icons.rounded.ThumbUp
 import androidx.compose.material.icons.outlined.ThumbUp as OutlinedThumbUp
 import androidx.compose.foundation.background
@@ -41,7 +37,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
@@ -263,7 +258,7 @@ private fun AppleMusicPlayerFavoriteButton(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                if (isFavorite) Icons.Rounded.Star else Icons.Rounded.StarBorder, label,
+                PlayerIcons.favorite(isFavorite), label,
                 tint = if (isFavorite) Color.Black.copy(alpha = 0.78f) else AppleMusicVibrant.primary, modifier = Modifier.size(19.dp)
             )
         }
@@ -291,7 +286,7 @@ private fun DefaultPlayerFavoriteButton(
     )
     val outline = surfaces.segmentOutline
     PlayerGlassIconButton(
-        icon = favoriteIcon(isFavorite),
+        icon = PlayerIcons.favorite(isFavorite),
         contentDescription = label,
         size = 44.dp,
         iconSize = 23.dp,
@@ -348,6 +343,3 @@ internal fun rememberFavoritePop(
     }
     return pop
 }
-
-private fun favoriteIcon(isFavorite: Boolean): ImageVector =
-    if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder

@@ -36,8 +36,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.FastForward
 import androidx.compose.material.icons.rounded.FastRewind
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Forward10
 import androidx.compose.material.icons.rounded.Forward30
 import androidx.compose.material.icons.rounded.Forward5
@@ -636,7 +634,7 @@ private fun NightFavoriteButton(
             contentAlignment = Alignment.Center
         ) {
             PlayerIcon(
-                if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                PlayerIcons.favorite(isFavorite),
                 tint,
                 Modifier.size(18.dp)
             )
