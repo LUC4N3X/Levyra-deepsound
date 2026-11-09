@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.theme.LevyraIsIvory
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.pager.PagerState
@@ -16,6 +17,8 @@ private const val RailEdgeScale = 0.06f
 private const val RailEdgeFade = 0.3f
 private const val GlacierEdgeScale = 0.05f
 private const val GlacierEdgeFade = 0.32f
+private const val IvoryEdgeScale = 0.08f
+private const val IvoryEdgeFade = 0.34f
 private const val PagerScale = 0.05f
 private const val PagerFade = 0.25f
 private const val ParallaxZoom = 1.06f
@@ -39,6 +42,13 @@ internal fun glacierRailMotionEnabled(): Boolean =
 
 internal fun Modifier.glacierRailItemMotion(enabled: Boolean, state: LazyListState, key: Any): Modifier =
     railEdgeMotion(enabled, state, key, GlacierEdgeScale, GlacierEdgeFade)
+
+@Composable
+internal fun ivoryRailMotionEnabled(): Boolean =
+    LevyraIsIvory && LocalAnimationsEnabled.current && LocalLevyraVisualCapabilities.current.decorativeMotion
+
+internal fun Modifier.ivoryRailItemMotion(enabled: Boolean, state: LazyListState, key: Any): Modifier =
+    railEdgeMotion(enabled, state, key, IvoryEdgeScale, IvoryEdgeFade)
 
 private fun Modifier.railEdgeMotion(enabled: Boolean, state: LazyListState, key: Any, edgeScale: Float, edgeFade: Float): Modifier =
     if (!enabled) this else graphicsLayer {

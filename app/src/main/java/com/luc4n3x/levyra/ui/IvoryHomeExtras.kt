@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.lazy.rememberLazyListState
 import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 
 import androidx.compose.animation.Crossfade
@@ -72,9 +74,13 @@ internal fun IvoryCuratedPlaylists(viewModel: HomeViewModel, inset: Dp, fallback
             val tiles = remember(shelf.items) { shelf.items.distinctBy { it.key }.filter { it.playlist != null } }
             if (tiles.isEmpty()) return@forEachIndexed
             SkinSectionTitle(if (index == 0) copy.mixedForYou else shelf.title, inset)
-            LazyRow(contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            val rowState = rememberLazyListState()
+            val motion = ivoryRailMotionEnabled()
+            LazyRow(state = rowState, contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 itemsIndexed(tiles, key = { _, tile -> tile.key }, contentType = { _, _ -> "ivory-curated" }) { _, tile ->
-                    IvoryArtworkCard(tile.title, monoWithoutYoutube(tile.subtitle), tile.thumbnailUrl, 188.dp) { tile.playlist?.let(viewModel::openPlaylistHit) }
+                    Box(Modifier.ivoryRailItemMotion(motion, rowState, tile.key)) {
+                        IvoryArtworkCard(tile.title, monoWithoutYoutube(tile.subtitle), tile.thumbnailUrl, 188.dp) { tile.playlist?.let(viewModel::openPlaylistHit) }
+                    }
                 }
             }
         }
@@ -208,7 +214,9 @@ internal fun IvoryNewReleases(viewModel: HomeViewModel, inset: Dp, showFresh: Bo
     if (albums.isEmpty()) return
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SkinSectionTitle(if (fresh.isNotEmpty()) copy.newAlbums else fallbackTitle, inset)
-        LazyRow(contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        val rowState = rememberLazyListState()
+        val motion = ivoryRailMotionEnabled()
+        LazyRow(state = rowState, contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             itemsIndexed(albums, key = { _, album -> atelierAlbumKey(album) }, contentType = { _, _ -> "ivory-new-release" }) { _, album ->
                 val badge = when (album.releaseType) {
                     ReleaseType.Album, ReleaseType.Compilation -> labels.album
@@ -216,7 +224,9 @@ internal fun IvoryNewReleases(viewModel: HomeViewModel, inset: Dp, showFresh: Bo
                     ReleaseType.Ep -> "EP"
                     ReleaseType.Unknown -> ""
                 }
-                IvoryArtworkCard(album.title, album.artist, album.thumbnailUrl, 164.dp, badge) { viewModel.openAlbum(album) }
+                Box(Modifier.ivoryRailItemMotion(motion, rowState, atelierAlbumKey(album))) {
+                    IvoryArtworkCard(album.title, album.artist, album.thumbnailUrl, 164.dp, badge) { viewModel.openAlbum(album) }
+                }
             }
         }
     }

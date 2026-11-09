@@ -13,8 +13,16 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import androidx.compose.ui.unit.dp
 
 class PlayerDeckTest {
+    @Test
+    fun flowToolbarKeepsFullTouchTargetsOnlyWhenWidthAllows() {
+        assertTrue(flowToolbarFits(372.dp, 7))
+        assertFalse(flowToolbarFits(328.dp, 7))
+        assertTrue(flowToolbarFits(328.dp, 6))
+    }
+
 
     @Test
     fun `deck order lists every visual mode exactly once`() {

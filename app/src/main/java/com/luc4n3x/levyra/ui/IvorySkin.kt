@@ -1,5 +1,8 @@
 package com.luc4n3x.levyra.ui
 
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.lazy.rememberLazyListState
 import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -255,9 +258,13 @@ internal fun IvoryArtistCard(item: StudioShelfItem) {
 
 @Composable
 internal fun IvoryShowcaseShelf(items: List<StudioShelfItem>, isPlaying: Boolean, inset: Dp, modifier: Modifier) {
-    LazyRow(modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+    val rowState = rememberLazyListState()
+    val motion = ivoryRailMotionEnabled()
+    LazyRow(modifier.fillMaxWidth(), state = rowState, contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         itemsIndexed(items, key = { _, item -> item.key }) { _, item ->
-            if (item.round) IvoryArtistCard(item) else IvoryAlbumCard(item, isPlaying)
+            Box(Modifier.ivoryRailItemMotion(motion, rowState, item.key)) {
+                if (item.round) IvoryArtistCard(item) else IvoryAlbumCard(item, isPlaying)
+            }
         }
     }
 }
@@ -418,10 +425,18 @@ internal fun IvoryOrbitShelf(
     onPlay: (Track) -> Unit, onActions: (Track) -> Unit
 ) {
     val animate = LocalAnimationsEnabled.current
-    LazyRow(Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        itemsIndexed(tracks, key = { index, track -> "$index-${LevyraPersonalOrbit.identityKey(track)}" }) { _, track ->
+    val rowState = rememberLazyListState()
+    val motion = ivoryRailMotionEnabled()
+    LazyRow(Modifier.fillMaxWidth(), state = rowState, contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        itemsIndexed(tracks, key = { index, track -> "$index-${LevyraPersonalOrbit.identityKey(track)}" }) { index, track ->
             val current = track.id == currentId
-            IvorySleeveCard(track, current, playing, current && playing && animate, current && resolving, onPlay, onActions)
+            val key = "$index-${LevyraPersonalOrbit.identityKey(track)}"
+            Box(Modifier.ivoryRailItemMotion(motion, rowState, key)) {
+                IvorySleeveCard(
+                    track, current, playing, current && playing && animate, current && resolving, onPlay, onActions,
+                    recordMotion = Modifier.ivoryRecordScrollMotion(motion, rowState, key)
+                )
+            }
         }
     }
 }
@@ -429,7 +444,7 @@ internal fun IvoryOrbitShelf(
 @Composable
 private fun IvorySleeveCard(
     track: Track, current: Boolean, playing: Boolean, spinning: Boolean, resolving: Boolean,
-    onPlay: (Track) -> Unit, onActions: (Track) -> Unit
+    onPlay: (Track) -> Unit, onActions: (Track) -> Unit, recordMotion: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
     val slide by androidx.compose.animation.core.animateDpAsState(if (current) 36.dp else 18.dp, label = "ivory-sleeve-record")
@@ -441,7 +456,7 @@ private fun IvorySleeveCard(
         verticalArrangement = Arrangement.spacedBy(3.dp)
     ) {
         Box(Modifier.fillMaxWidth().height(150.dp)) {
-            IvoryRecord(track, spinning, Modifier.align(Alignment.CenterStart).offset(x = slide).size(140.dp))
+            IvoryRecord(track, spinning, Modifier.align(Alignment.CenterStart).offset(x = slide).then(recordMotion).size(140.dp))
             Box(Modifier.align(Alignment.CenterStart).size(150.dp).clip(RoundedCornerShape(26.dp)).background(LevyraPanel)) {
                 CoverImage(track, Modifier.fillMaxSize(), highRes = true)
                 if (current) Box(
@@ -458,6 +473,21 @@ private fun IvorySleeveCard(
         Text(track.artist, color = LevyraMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.width(150.dp))
     }
 }
+
+private fun Modifier.ivoryRecordScrollMotion(enabled: Boolean, state: LazyListState, key: Any): Modifier =
+    if (!enabled) this else graphicsLayer {
+        val info = state.layoutInfo
+        val item = info.visibleItemsInfo.firstOrNull { it.key == key } ?: return@graphicsLayer
+        val half = ((info.viewportEndOffset - info.viewportStartOffset) / 2f).coerceAtLeast(1f)
+        val center = (info.viewportStartOffset + info.viewportEndOffset) / 2f
+        val offset = ((item.offset + item.size / 2f - center) / half).coerceIn(-1f, 1f)
+        val focus = 1f - kotlin.math.abs(offset)
+        translationX = IvoryRecordPeek.toPx() * focus * focus
+        rotationZ = item.offset * IvoryRecordRollPerPx
+    }
+
+private val IvoryRecordPeek = 26.dp
+private const val IvoryRecordRollPerPx = 0.32f
 
 @Composable
 private fun IvoryRecord(track: Track, spinning: Boolean, modifier: Modifier) {
