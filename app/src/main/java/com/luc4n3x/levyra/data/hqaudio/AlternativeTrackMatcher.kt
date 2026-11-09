@@ -312,7 +312,7 @@ class AlternativeTrackMatcher {
         isrcConfirmed: Boolean
     ): MatchRejection? = when {
         isrcConfirmed -> null
-        relation != AlbumRelation.SAME && albumHasConflictingVersion(query, candidate, expectedTitle) ->
+        albumHasConflictingVersion(query, candidate, expectedTitle) ->
             MatchRejection.VERSION_MISMATCH
         isRemasterOfUnmarkedTitle(expectedTitle, candidateTitle) && !allowsUnmarkedRemasterAlbum(relation, delta) ->
             MatchRejection.VERSION_MISMATCH
@@ -687,9 +687,9 @@ class AlternativeTrackMatcher {
         expectedTitle: TitleIdentity
     ): Boolean {
         if (candidate.album.isBlank()) return false
-        val candidateAlbumMarkers = AlternativeTrackText.title(candidate.album).markers intersect conflictingAlbumVersionMarkers
+        val candidateAlbumMarkers = AlternativeTrackText.album(candidate.album).versionMarkers intersect conflictingAlbumVersionMarkers
         if (candidateAlbumMarkers.isEmpty()) return false
-        val expectedMarkers = (expectedTitle.markers + AlternativeTrackText.title(query.album).markers) intersect conflictingAlbumVersionMarkers
+        val expectedMarkers = (expectedTitle.markers + AlternativeTrackText.album(query.album).versionMarkers) intersect conflictingAlbumVersionMarkers
         return !expectedMarkers.containsAll(candidateAlbumMarkers)
     }
 

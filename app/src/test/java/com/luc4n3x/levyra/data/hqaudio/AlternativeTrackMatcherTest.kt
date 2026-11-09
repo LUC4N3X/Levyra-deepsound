@@ -983,6 +983,30 @@ class AlternativeTrackMatcherTest {
     }
 
     @Test
+    fun ordinaryEditionsRemainAcceptedWithMissingOrDifferentEditionMetadata() {
+        listOf("", "YouTube Music", "After Hours", "After Hours (Expanded)").forEach { album ->
+            val expected = query(album = album)
+            assertTrue(album, verdict(expected, candidate(album = "After Hours (Deluxe Version)")).accepted)
+            listOf("Karaoke", "Cover", "Live", "Reprise").forEach { version ->
+                assertRejected(MatchRejection.VERSION_MISMATCH, expected, candidate(album = "After Hours ($version Deluxe Version)"))
+            }
+            listOf("Festival Version Deluxe", "Deluxe Festival Version").forEach { descriptor ->
+                assertRejected(MatchRejection.VERSION_MISMATCH, expected, candidate(album = "After Hours ($descriptor)"))
+            }
+        }
+    }
+
+    @Test
+    fun requestedLiveRecordingMatchesAnniversaryEditions() {
+        val expected = query(title = "Blinding Lights (Live)", album = "After Hours (Live Deluxe)")
+        listOf("After Hours (Live 25th Anniversary Edition)", "After Hours (Live) (25th Anniversary Edition)").forEach { album ->
+            val evaluation = verdict(expected, candidate(title = expected.title, album = album, duration = 202))
+            assertTrue(album, evaluation.accepted)
+            assertEquals(album, AlbumRelation.EDITION_VARIANT, evaluation.albumRelation)
+        }
+    }
+
+    @Test
     fun higherBitratePerformanceEditionCannotDisplaceTheOriginalRecording() {
         val selection = matcher.select(
             query(album = "After Hours (Deluxe)"),
