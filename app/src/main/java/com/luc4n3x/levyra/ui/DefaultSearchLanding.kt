@@ -162,7 +162,7 @@ private fun DefaultSearchPlaceholder(text: String, animate: Boolean) {
         targetState = text,
         transitionSpec = {
             if (animate) {
-                (slideInVertically(tween(420)) { it / 2 } + fadeIn(tween(420))) togetherWith (slideOutVertically(tween(320)) { -it / 2 } + fadeOut(tween(240)))
+                slideInVertically(tween(420)) { it / 2 } + fadeIn(tween(420)) togetherWith slideOutVertically(tween(320)) { -it / 2 } + fadeOut(tween(240))
             } else {
                 fadeIn(snap()) togetherWith fadeOut(snap())
             }
