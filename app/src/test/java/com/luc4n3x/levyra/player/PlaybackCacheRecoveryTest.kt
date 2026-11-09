@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.player
 
+import com.luc4n3x.levyra.data.PlaybackBlockedException
 import com.luc4n3x.levyra.data.PlaybackFailureKind
 import com.luc4n3x.levyra.data.classifyPlaybackFailureReason
 import android.net.Uri
@@ -145,6 +146,10 @@ class PlaybackCacheRecoveryTest {
             )
         )
         assertTrue(isTransientNetworkFailure(IOException("isConnected failed: ECONNREFUSED (Connection refused)")))
+        assertTrue(
+            isTransientNetworkFailure(PlaybackBlockedException("Connessione Internet non disponibile", transientNetwork = true))
+        )
+        assertFalse(isTransientNetworkFailure(PlaybackBlockedException("Video unavailable")))
         assertFalse(isTransientNetworkFailure(SocketException("Socket closed")))
         assertFalse(isTransientNetworkFailure(IOException("Canceled", SocketException("Connection reset"))))
         assertFalse(isTransientNetworkFailure(IllegalStateException("Sign in to confirm you're not a bot")))

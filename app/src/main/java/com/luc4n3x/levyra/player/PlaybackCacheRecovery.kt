@@ -4,6 +4,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.cache.Cache
 import androidx.media3.datasource.cache.ContentMetadata
+import com.luc4n3x.levyra.data.PlaybackBlockedException
 import com.luc4n3x.levyra.domain.Track
 import java.io.EOFException
 import java.io.FileNotFoundException
@@ -67,6 +68,7 @@ internal fun isTransientNetworkFailure(error: Throwable): Boolean {
     var depth = 0
     while (current != null && depth < MAX_CAUSE_DEPTH) {
         if (current is HttpDataSource.InvalidResponseCodeException) return false
+        if (current is PlaybackBlockedException) return current.transientNetwork
         val message = current.message.orEmpty().lowercase(Locale.ROOT)
         if (message.contains("canceled") || message.contains("socket closed")) return false
         if (current is SocketException || current is SocketTimeoutException || current is UnknownHostException) return true

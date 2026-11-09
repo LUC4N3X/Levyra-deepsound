@@ -1345,7 +1345,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 }
             }
             restored?.let { return@coroutineScope it }
-            throw PlaybackBlockedException("Connessione Internet non disponibile")
+            throw PlaybackBlockedException("Connessione Internet non disponibile", transientNetwork = true)
         }
 
         val key = "${cacheKey(track, isVideoMode, audioQuality)}_${requestKind}_$expectedGeneration"
@@ -4652,7 +4652,10 @@ private fun Throwable.playbackDiagnostic(): String {
     return messages.joinToString(" → ").ifBlank { this::class.java.simpleName.ifBlank { "errore sconosciuto" } }
 }
 
-class PlaybackBlockedException(message: String) : IllegalStateException(message)
+class PlaybackBlockedException(
+    message: String,
+    val transientNetwork: Boolean = false
+) : IllegalStateException(message)
 
 private const val ANDROID_REEL_CLIENT_NAME = "ANDROID"
 
