@@ -419,7 +419,7 @@ private fun PlayerSheetHeader(
     artworkUrl: String,
     surfaces: PlayerSurfaceTokens
 ) {
-    val artworkShape = MaterialShapes.Cookie9Sided.toShape()
+    val artworkShape = if (com.luc4n3x.levyra.ui.theme.LevyraIsIvory) com.luc4n3x.levyra.ui.theme.IvoryDesign.coverShape else MaterialShapes.Cookie9Sided.toShape()
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -555,6 +555,10 @@ private fun PlayerSheetGrid(
 ) {
     if (PlayerAppleMusicStyle) {
         AppleMusicPlayerMenu(actions, onPerform)
+        return
+    }
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsIvory) {
+        IvorySheetGrid(actions, animated, onPerform)
         return
     }
     val outline = if (surfaces.amoled) surfaces.outline else Color.Transparent

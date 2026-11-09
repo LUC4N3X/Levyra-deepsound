@@ -17697,174 +17697,6 @@ private fun compactYoutubeCount(value: Long): String {
 }
 
 @OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun PlayerYoutubeEngagementRow(
-    track: Track,
-    engagement: YoutubeEngagementState,
-    compact: Boolean,
-    onComments: () -> Unit
-) {
-    val strings = LocalLevyraStrings.current
-    val hasLikes = track.youtubeLikeCount >= 0L
-    val hasDislikeEstimate = engagement.dislikeEstimateAvailable && engagement.estimatedDislikeCount >= 0L
-    val comments = engagement.comments
-    val commentBadge = youtubeCommentCountBadge(comments.countText)
-    val canOpenComments = engagement.videoId.isNotBlank()
-    val visible = hasLikes || hasDislikeEstimate || engagement.dislikeEstimateLoading || canOpenComments
-    val appleMusic = LevyraIsAppleMusic
-    val baseContent = if (LevyraIsLight && !appleMusic) Color(0xFF1A1B20) else Color.White
-    val accent = if (appleMusic) Color.White else if (LevyraSkinManagesLayout) LevyraCyan else Color(track.accentStart).playerMix(baseContent, if (LevyraIsLight) 0.34f else 0.26f)
-    val quietContent = baseContent.copy(alpha = if (appleMusic) 0.6f else 0.66f)
-    val strongContent = baseContent.copy(alpha = 0.90f)
-    val surface = if (appleMusic) {
-        AppleMusicVibrant.quaternary
-    } else if (LevyraIsLight) {
-        LevyraAdaptiveChip
-    } else {
-        Color.White.copy(alpha = 0.10f)
-    }
-    val rowHeight = if (appleMusic) 32.dp else if (compact) 36.dp else 40.dp
-
-    AnimatedVisibility(
-        visible = visible,
-        enter = fadeIn(animationSpec = tween(220)) + slideInVertically(initialOffsetY = { it / 3 }),
-        exit = fadeOut(animationSpec = tween(140))
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
-                .pointerInput(Unit) { detectTapGestures { } },
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(EngagementSegmentGap, Alignment.Start)
-        ) {
-            EngagementSegment(index = 0, count = 3, height = rowHeight, fill = surface) {
-                Icon(
-                    imageVector = Icons.Rounded.ThumbUp,
-                    contentDescription = null,
-                    tint = if (hasLikes) accent else quietContent,
-                    modifier = Modifier.size(16.dp)
-                )
-                if (hasLikes) {
-                    Text(
-                        text = compactYoutubeCount(track.youtubeLikeCount),
-                        color = strongContent,
-                        fontSize = 12.5.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1
-                    )
-                }
-            }
-            EngagementSegment(index = 1, count = 3, height = rowHeight, fill = surface) {
-                Icon(
-                    imageVector = Icons.Rounded.ThumbDown,
-                    contentDescription = null,
-                    tint = if (hasDislikeEstimate) quietContent else quietContent.copy(alpha = 0.68f),
-                    modifier = Modifier.size(16.dp)
-                )
-                when {
-                    engagement.dislikeEstimateLoading -> CircularProgressIndicator(
-                        modifier = Modifier.size(11.dp),
-                        strokeWidth = 1.4.dp,
-                        color = quietContent
-                    )
-                    hasDislikeEstimate -> Text(
-                        text = "~${compactYoutubeCount(engagement.estimatedDislikeCount)}",
-                        color = quietContent.copy(alpha = 0.92f),
-                        fontSize = 12.5.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1
-                    )
-                }
-            }
-            EngagementSegment(
-                index = 2,
-                count = 3,
-                height = rowHeight,
-                fill = if (comments.visible) accent.copy(alpha = 0.26f) else surface,
-                onClick = onComments.takeIf { canOpenComments },
-                clickLabel = strings.tapToOpenComments
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.ChatBubbleOutline,
-                    contentDescription = null,
-                    tint = when {
-                        comments.visible -> accent
-                        canOpenComments -> strongContent.copy(alpha = 0.82f)
-                        else -> quietContent.copy(alpha = 0.62f)
-                    },
-                    modifier = Modifier.size(16.dp)
-                )
-                when {
-                    comments.loading && !comments.loaded -> CircularProgressIndicator(
-                        modifier = Modifier.size(11.dp),
-                        strokeWidth = 1.4.dp,
-                        color = quietContent
-                    )
-                    commentBadge.isNotBlank() -> Text(
-                        text = commentBadge,
-                        color = if (comments.visible) accent else strongContent,
-                        fontSize = 12.5.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1
-                    )
-                }
-            }
-        }
-    }
-}
-
-private val EngagementSegmentGap = 3.dp
-
-@Composable
-private fun EngagementSegment(
-    index: Int,
-    count: Int,
-    height: Dp,
-    fill: Color,
-    onClick: (() -> Unit)? = null,
-    clickLabel: String? = null,
-    content: @Composable RowScope.() -> Unit
-) {
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val inner by animateDpAsState(
-        targetValue = if (pressed) height / 2 else 6.dp,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-        label = "engagement-segment-corner"
-    )
-    val outer = height / 2
-    val shape = RoundedCornerShape(
-        topStart = if (index == 0) outer else inner,
-        bottomStart = if (index == 0) outer else inner,
-        topEnd = if (index == count - 1) outer else inner,
-        bottomEnd = if (index == count - 1) outer else inner
-    )
-    Row(
-        modifier = Modifier
-            .height(height)
-            .clip(shape)
-            .background(fill)
-            .then(
-                if (onClick != null) {
-                    Modifier.clickable(
-                        interactionSource = interaction,
-                        indication = LocalIndication.current,
-                        onClickLabel = clickLabel,
-                        role = Role.Button,
-                        onClick = onClick
-                    )
-                } else {
-                    Modifier.pointerInput(Unit) { detectTapGestures { } }
-                }
-            )
-            .padding(horizontal = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        content = content
-    )
-}
-
 internal fun youtubeCommentCountBadge(value: String): String {
     val normalized = value.replace('\u00A0', ' ').trim()
     if (normalized.isBlank()) return ""
@@ -17947,6 +17779,12 @@ private fun PlayerAdvancedControlsPanel(
     }
 }
 
+private val similarSongsInk: Color
+    get() = if (LevyraIsIvory) LevyraActivePalette.text else LevyraPlayerDesign.TextPrimary
+
+private val similarSongsMuted: Color
+    get() = if (LevyraIsIvory) LevyraActivePalette.muted else LevyraPlayerDesign.TextTertiary
+
 @Composable
 private fun PlayerSimilarSongsSection(
     similarSongs: List<Track>,
@@ -18001,7 +17839,7 @@ private fun PlayerSimilarSongsSection(
             ) {
                 Text(
                     text = strings.youMightAlsoLike,
-                    color = LevyraPlayerDesign.TextPrimary,
+                    color = similarSongsInk,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = (-0.2).sp,
@@ -18035,7 +17873,7 @@ private fun PlayerSimilarSongsSection(
             Icon(
                 Icons.Rounded.KeyboardArrowDown,
                 null,
-                tint = LevyraPlayerDesign.TextTertiary,
+                tint = similarSongsMuted,
                 modifier = Modifier
                     .size(20.dp)
                     .graphicsLayer { rotationZ = chevronRotation }
@@ -18104,7 +17942,7 @@ private fun PlayerSimilarSongsPeek(similarSongs: List<Track>) {
                     .background(LevyraPanelSoft)
                     .border(
                         LevyraPlayerDesign.Hairline,
-                        Color.White.copy(alpha = 0.22f),
+                        similarSongsInk.copy(alpha = 0.22f),
                         LevyraPlayerDesign.ShapeXxs
                     )
             ) {
@@ -18142,7 +17980,7 @@ private fun PlayerSimilarSongsRadioTile(
                     Brush.linearGradient(
                         listOf(
                             accent.copy(alpha = if (active) 0.42f else 0.24f),
-                            Color.White.copy(alpha = 0.06f)
+                            similarSongsInk.copy(alpha = 0.06f)
                         )
                     )
                 )
@@ -18156,13 +17994,13 @@ private fun PlayerSimilarSongsRadioTile(
             Icon(
                 Icons.Rounded.Radio,
                 null,
-                tint = LevyraPlayerDesign.TextPrimary,
+                tint = similarSongsInk,
                 modifier = Modifier.size(28.dp)
             )
         }
         Text(
             text = label,
-            color = LevyraPlayerDesign.TextPrimary,
+            color = similarSongsInk,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 2,
@@ -18241,7 +18079,7 @@ private fun PlayerSimilarSongCard(
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             LevyraMediaTitle(
                 text = track.title, explicit = track.explicit,
-                color = LevyraPlayerDesign.TextPrimary,
+                color = similarSongsInk,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
@@ -18249,7 +18087,7 @@ private fun PlayerSimilarSongCard(
             )
             Text(
                 text = track.artist,
-                color = LevyraPlayerDesign.TextTertiary,
+                color = similarSongsMuted,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
@@ -18521,14 +18359,7 @@ private fun PlayerScreen(
                 modifier = modifier
             )
         },
-        engagementContent = { activeTrack ->
-            PlayerYoutubeEngagementRow(
-                track = activeTrack,
-                engagement = state.youtubeEngagement,
-                compact = true,
-                onComments = viewModel::openYoutubeComments
-            )
-        },
+        commentsEnabled = true,
         similarSongsContent = { activeTrack ->
             PlayerSimilarSongsSection(
                 similarSongs = visibleSimilarSongs,

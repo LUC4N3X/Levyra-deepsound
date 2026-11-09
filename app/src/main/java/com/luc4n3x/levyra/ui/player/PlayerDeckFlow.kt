@@ -1,5 +1,16 @@
 package com.luc4n3x.levyra.ui.player
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.key
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
+import com.luc4n3x.levyra.ui.components.levyraExpressiveToggleCorner
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
@@ -37,10 +48,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -104,14 +113,10 @@ private const val FlowAmbientPaused = 0.12f
 private const val FlowAmbientCenter = 0.3f
 private const val FlowAmbientReach = 0.95f
 private const val FlowTrackShiftScale = 0.045f
-private val FlowSideNudge = 5.dp
 
 internal const val FlowLeafMajor = 0.34f
 internal const val FlowLeafMinor = 0.09f
 internal const val FlowRestCorner = 0.19f
-private const val FlowSideMajor = 0.42f
-private const val FlowSideMinor = 0.16f
-private const val FlowPressedCorner = 0.5f
 
 internal data class FlowLeafShape(
     val major: Float,
@@ -380,10 +385,10 @@ private val FlowRegularMetrics = FlowDeckMetrics(
     playSize = 88.dp,
     sideSize = 64.dp,
     bottom = LevyraPlayerDesign.SpaceMd,
-    stagePadding = LevyraPlayerDesign.SpaceLg,
+    stagePadding = LevyraPlayerDesign.SpaceMd,
     headlineGap = LevyraPlayerDesign.SpaceMd,
     progressGap = LevyraPlayerDesign.SpaceSm,
-    actionGap = LevyraPlayerDesign.SpaceMd
+    actionGap = LevyraPlayerDesign.SpaceLg
 )
 
 private val FlowCompactMetrics = FlowDeckMetrics(
@@ -508,44 +513,145 @@ private fun FlowTransport(
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.paletteTween()),
         label = "player-flow-hero-content"
     )
+    val previousInteraction = remember { MutableInteractionSource() }
+    val playInteraction = remember { MutableInteractionSource() }
+    val nextInteraction = remember { MutableInteractionSource() }
+    val previousPress = flowPressProgress(previousInteraction, animated)
+    val playPress = flowPressProgress(playInteraction, animated)
+    val nextPress = flowPressProgress(nextInteraction, animated)
+    val height = metrics.playSize
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceLg, Alignment.CenterHorizontally),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(height),
+        horizontalArrangement = Arrangement.spacedBy(FlowTransportGap),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        FlowSideButton(
-            icon = Icons.Rounded.SkipPrevious,
+        FlowTransportSegment(
+            weight = flowSegmentWeight(FlowSideWeight, previousPress.value, playPress.value + nextPress.value),
+            press = previousPress,
+            interaction = previousInteraction,
+            container = surfaces.control,
             label = labels.previous,
-            size = metrics.sideSize,
-            mirrored = true,
-            container = surfaces.control,
-            content = surfaces.content,
-            animated = animated,
-            onClick = onPrevious
-        )
-        FlowPlayButton(
-            isPlaying = isPlaying,
-            isResolving = isResolving,
-            playProgress = playProgress,
-            labels = labels,
-            size = metrics.playSize,
+            onClick = onPrevious,
+            shape = { pressed, half ->
+                FlowSegmentShape(start = half, end = lerp(FlowInnerCorner.toPx(), half, pressed * FlowPressedRound))
+            }
+        ) {
+            PlayerIcon(Icons.Rounded.SkipPrevious, surfaces.content, Modifier.size(height * FlowSideGlyph))
+        }
+        FlowTransportSegment(
+            weight = flowSegmentWeight(FlowPlayWeight, playPress.value, previousPress.value + nextPress.value),
+            press = playPress,
+            interaction = playInteraction,
             container = hero,
-            content = heroContent,
-            animated = animated,
-            onClick = onTogglePlay
-        )
-        FlowSideButton(
-            icon = Icons.Rounded.SkipNext,
-            label = labels.next,
-            size = metrics.sideSize,
-            mirrored = false,
+            label = if (isPlaying) labels.pause else labels.play,
+            onClick = onTogglePlay,
+            shape = { pressed, half ->
+                val rest = lerp(half, FlowPlayingCorner.toPx(), playProgress.value)
+                val corner = lerp(rest, half, pressed * FlowPressedRound)
+                FlowSegmentShape(start = corner, end = corner)
+            }
+        ) {
+            if (isResolving) {
+                LevyraLoadingIndicator(color = heroContent, modifier = Modifier.size(height * 0.44f))
+            } else {
+                LevyraPlayPauseGlyph(
+                    playing = isPlaying,
+                    color = heroContent,
+                    modifier = Modifier.size(height * FlowPlayGlyph),
+                    animateMorph = animated
+                )
+            }
+        }
+        FlowTransportSegment(
+            weight = flowSegmentWeight(FlowSideWeight, nextPress.value, playPress.value + previousPress.value),
+            press = nextPress,
+            interaction = nextInteraction,
             container = surfaces.control,
-            content = surfaces.content,
-            animated = animated,
-            onClick = onNext
+            label = labels.next,
+            onClick = onNext,
+            shape = { pressed, half ->
+                FlowSegmentShape(start = lerp(FlowInnerCorner.toPx(), half, pressed * FlowPressedRound), end = half)
+            }
+        ) {
+            PlayerIcon(Icons.Rounded.SkipNext, surfaces.content, Modifier.size(height * FlowSideGlyph))
+        }
+    }
+}
+
+private fun flowSegmentWeight(base: Float, ownPress: Float, otherPress: Float): Float =
+    base * (1f + FlowPressGrow * ownPress - FlowPressShrink * otherPress.coerceIn(0f, 1f))
+
+@Composable
+private fun RowScope.FlowTransportSegment(
+    weight: Float,
+    press: State<Float>,
+    interaction: MutableInteractionSource,
+    container: Color,
+    label: String,
+    onClick: () -> Unit,
+    shape: Density.(pressed: Float, half: Float) -> Shape,
+    content: @Composable () -> Unit
+) {
+    val haptics = LocalLevyraHaptics.current
+    Box(
+        modifier = Modifier
+            .weight(weight)
+            .fillMaxHeight()
+            .graphicsLayer {
+                this.shape = shape(press.value, size.height / 2)
+                clip = true
+            }
+            .background(container)
+            .levyraPressable(
+                onClick = {
+                    haptics.perform(LevyraHapticAction.Transport)
+                    onClick()
+                },
+                interactionSource = interaction,
+                pressedScale = LevyraPressScale.Control,
+                role = Role.Button
+            )
+            .semantics { contentDescription = label },
+        contentAlignment = Alignment.Center
+    ) {
+        content()
+    }
+}
+
+private class FlowSegmentShape(private val start: Float, private val end: Float) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        val half = size.height / 2
+        val leading = start.coerceIn(0f, half)
+        val trailing = end.coerceIn(0f, half)
+        val left = if (layoutDirection == LayoutDirection.Ltr) leading else trailing
+        val right = if (layoutDirection == LayoutDirection.Ltr) trailing else leading
+        return Outline.Rounded(
+            RoundRect(
+                left = 0f,
+                top = 0f,
+                right = size.width,
+                bottom = size.height,
+                topLeftCornerRadius = CornerRadius(left),
+                bottomLeftCornerRadius = CornerRadius(left),
+                topRightCornerRadius = CornerRadius(right),
+                bottomRightCornerRadius = CornerRadius(right)
+            )
         )
     }
 }
+
+private val FlowTransportGap = 6.dp
+private val FlowInnerCorner = 14.dp
+private val FlowPlayingCorner = 30.dp
+private const val FlowSideWeight = 1f
+private const val FlowPlayWeight = 1.55f
+private const val FlowPressGrow = 0.16f
+private const val FlowPressShrink = 0.06f
+private const val FlowPressedRound = 0.35f
+private const val FlowSideGlyph = 0.36f
+private const val FlowPlayGlyph = 0.42f
 
 @Composable
 private fun flowPressProgress(interaction: MutableInteractionSource, animated: Boolean): State<Float> {
@@ -559,106 +665,6 @@ private fun flowPressProgress(interaction: MutableInteractionSource, animated: B
         },
         label = "player-flow-control-press"
     )
-}
-
-@Composable
-private fun FlowPlayButton(
-    isPlaying: Boolean,
-    isResolving: Boolean,
-    playProgress: State<Float>,
-    labels: PlayerControlLabels,
-    size: Dp,
-    container: Color,
-    content: Color,
-    animated: Boolean,
-    onClick: () -> Unit
-) {
-    val haptics = LocalLevyraHaptics.current
-    val interaction = remember { MutableInteractionSource() }
-    val press = flowPressProgress(interaction, animated)
-    val label = if (isPlaying) labels.pause else labels.play
-    Box(
-        modifier = Modifier
-            .size(size)
-            .graphicsLayer {
-                val progress = playProgress.value
-                val pressed = press.value
-                shape = FlowLeafShape(
-                    major = lerp(lerp(FlowRestCorner * 1.6f, FlowLeafMajor, progress), FlowPressedCorner, pressed),
-                    minor = lerp(lerp(FlowRestCorner * 1.6f, FlowLeafMinor * 1.4f, progress), FlowPressedCorner, pressed)
-                )
-                clip = true
-            }
-            .background(container)
-            .levyraPressable(
-                onClick = {
-                    haptics.perform(LevyraHapticAction.Transport)
-                    onClick()
-                },
-                interactionSource = interaction,
-                pressedScale = LevyraPressScale.Control,
-                role = Role.Button
-            )
-            .semantics { contentDescription = label },
-        contentAlignment = Alignment.Center
-    ) {
-        if (isResolving) {
-            LevyraLoadingIndicator(color = content, modifier = Modifier.size(size * 0.46f))
-        } else {
-            LevyraPlayPauseGlyph(
-                playing = isPlaying,
-                color = content,
-                modifier = Modifier.size(size * 0.4f),
-                animateMorph = animated
-            )
-        }
-    }
-}
-
-@Composable
-private fun FlowSideButton(
-    icon: ImageVector,
-    label: String,
-    size: Dp,
-    mirrored: Boolean,
-    container: Color,
-    content: Color,
-    animated: Boolean,
-    onClick: () -> Unit
-) {
-    val haptics = LocalLevyraHaptics.current
-    val interaction = remember { MutableInteractionSource() }
-    val press = flowPressProgress(interaction, animated)
-    val rightToLeft = LocalLayoutDirection.current == LayoutDirection.Rtl
-    val nudgeSign = if (rightToLeft == mirrored) 1f else -1f
-    Box(
-        modifier = Modifier
-            .size(size)
-            .graphicsLayer {
-                val pressed = press.value
-                translationX = pressed * nudgeSign * FlowSideNudge.toPx()
-                shape = FlowLeafShape(
-                    major = lerp(FlowSideMajor, FlowPressedCorner, pressed),
-                    minor = lerp(FlowSideMinor, FlowPressedCorner, pressed),
-                    mirrored = mirrored
-                )
-                clip = true
-            }
-            .background(container)
-            .levyraPressable(
-                onClick = {
-                    haptics.perform(LevyraHapticAction.Transport)
-                    onClick()
-                },
-                interactionSource = interaction,
-                pressedScale = LevyraPressScale.Control,
-                role = Role.Button
-            )
-            .semantics { contentDescription = label },
-        contentAlignment = Alignment.Center
-    ) {
-        PlayerIcon(icon, content, Modifier.size(size * 0.44f))
-    }
 }
 
 @Composable
@@ -718,40 +724,97 @@ private fun FlowActionRow(
         queue + playlist + dockActions.filter { it.key != FlowQueueKey }
             .map { if (it.key == FlowVisualModeKey) it.copy(active = false) else it }
     }
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-        val segments = modeActions.size + collectionActions.size
-        val singleRow = maxWidth >= LevyraPlayerDesign.MinimumTouchTarget * segments + FlowGroupGap
-        if (singleRow) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(FlowGroupGap),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                PlayerActionDock(
-                    actions = modeActions,
-                    surfaces = surfaces,
-                    compact = true,
-                    animated = animated,
-                    modifier = Modifier.weight(modeActions.size.toFloat())
-                )
-                PlayerActionDock(
-                    actions = collectionActions,
-                    surfaces = surfaces,
-                    compact = true,
-                    animated = animated,
-                    modifier = Modifier.weight(collectionActions.size.toFloat())
-                )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(FlowToolbarHeight)
+            .clip(RoundedCornerShape(FlowToolbarHeight / 2))
+            .background(surfaces.tonal)
+            .padding(horizontal = FlowToolbarInset),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        modeActions.forEach { action ->
+            key(action.key) {
+                FlowToolbarItem(action, surfaces, animated)
             }
-        } else {
-            Column(verticalArrangement = Arrangement.spacedBy(FlowGroupGap)) {
-                PlayerActionDock(modeActions + collectionActions.take(FlowStackedLeadCount), surfaces, compact = true, animated = animated)
-                PlayerActionDock(collectionActions.drop(FlowStackedLeadCount), surfaces, compact = true, animated = animated)
+        }
+        if (collectionActions.isNotEmpty()) {
+            Box(
+                Modifier
+                    .padding(horizontal = FlowToolbarInset)
+                    .size(width = 1.dp, height = FlowToolbarDivider)
+                    .background(surfaces.content.copy(alpha = FlowToolbarDividerAlpha))
+            )
+        }
+        collectionActions.forEach { action ->
+            key(action.key) {
+                FlowToolbarItem(action, surfaces, animated)
             }
+        }
+    }
+}
+
+@Composable
+private fun RowScope.FlowToolbarItem(
+    action: PlayerDockAction,
+    surfaces: PlayerSurfaceTokens,
+    animated: Boolean
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val fill by animateColorAsState(
+        targetValue = if (action.active) surfaces.hero else Color.Transparent,
+        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(220)),
+        label = "player-flow-toolbar-fill"
+    )
+    val tint by animateColorAsState(
+        targetValue = if (action.active) surfaces.heroContent else surfaces.content,
+        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(220)),
+        label = "player-flow-toolbar-tint"
+    )
+    val corner = levyraExpressiveToggleCorner(
+        checked = action.active,
+        unchecked = FlowToolbarIndicator / 2,
+        checkedCorner = FlowToolbarActiveCorner,
+        label = "player-flow-toolbar-corner"
+    )
+    Box(
+        modifier = Modifier
+            .weight(1f)
+            .fillMaxHeight()
+            .graphicsLayer { alpha = if (action.enabled) 1f else FlowToolbarDisabledAlpha }
+            .levyraPressable(
+                onClick = { if (!action.busy) action.onClick() },
+                enabled = action.enabled,
+                interactionSource = interaction,
+                pressedScale = LevyraPressScale.Control,
+                role = Role.Button,
+                haptic = action.haptic
+            )
+            .semantics {
+                contentDescription = action.label
+                if (action.toggle) toggleableState = ToggleableState(action.active)
+                action.stateDescription?.let { stateDescription = it }
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(FlowToolbarIndicator)
+                .clip(RoundedCornerShape(corner))
+                .background(fill),
+            contentAlignment = Alignment.Center
+        ) {
+            PlayerSegmentGlyph(action.icon, tint, action.busy, LevyraPlayerDesign.DockGlyph)
         }
     }
 }
 
 private const val FlowQueueKey = "queue"
 private const val FlowVisualModeKey = "visual-mode"
-private const val FlowStackedLeadCount = 2
-private val FlowGroupGap = 10.dp
+private val FlowToolbarHeight = 56.dp
+private val FlowToolbarInset = 6.dp
+private val FlowToolbarIndicator = 46.dp
+private val FlowToolbarActiveCorner = 14.dp
+private const val FlowToolbarDisabledAlpha = 0.42f
+private val FlowToolbarDivider = 22.dp
+private const val FlowToolbarDividerAlpha = 0.16f

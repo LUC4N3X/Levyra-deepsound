@@ -575,24 +575,28 @@ private fun FlowPreview(track: Track, artworkUrl: String, accent: Color) {
             Spacer(modifier = Modifier.height(1.dp))
             PreviewWave(accent = hero)
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(18.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Box(
                     modifier = Modifier
-                        .size(14.dp)
-                        .background(Color.White.copy(alpha = 0.16f), FlowLeafShape(0.42f, 0.16f, mirrored = true))
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .background(Color.White.copy(alpha = 0.16f), RoundedCornerShape(topStart = 9.dp, bottomStart = 9.dp, topEnd = 3.dp, bottomEnd = 3.dp))
                 )
                 Box(
                     modifier = Modifier
-                        .size(20.dp)
-                        .background(hero, FlowLeafShape(FlowLeafMajor, FlowLeafMinor * 1.4f))
+                        .weight(1.55f)
+                        .fillMaxHeight()
+                        .background(hero, RoundedCornerShape(6.dp))
                 )
                 Box(
                     modifier = Modifier
-                        .size(14.dp)
-                        .background(Color.White.copy(alpha = 0.16f), FlowLeafShape(0.42f, 0.16f))
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .background(Color.White.copy(alpha = 0.16f), RoundedCornerShape(topStart = 3.dp, bottomStart = 3.dp, topEnd = 9.dp, bottomEnd = 9.dp))
                 )
             }
         }

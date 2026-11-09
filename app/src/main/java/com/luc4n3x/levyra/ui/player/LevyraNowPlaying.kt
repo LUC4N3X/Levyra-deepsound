@@ -1,9 +1,14 @@
 package com.luc4n3x.levyra.ui.player
 
-import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import com.luc4n3x.levyra.ui.theme.*
-import com.luc4n3x.levyra.ui.PlayerAccentPair
 import com.luc4n3x.levyra.ui.theme.Nocturne78Palette
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
+import com.luc4n3x.levyra.ui.PlayerAccentPair
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 
 import android.app.Activity
@@ -29,7 +34,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -40,7 +44,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -75,21 +78,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
@@ -168,7 +168,6 @@ import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
 private const val CreditsPrefetchDelayMs = 1_200L
-private const val CreditsCaptionRevealMs = 360
 private val MinimumFittedPlayerHeight = 600.dp
 private val ScrollingArtworkMax = 260.dp
 private val HeaderSideReserve = 108.dp
@@ -188,7 +187,7 @@ fun LevyraNowPlaying(
     modeSwitchContent: (@Composable () -> Unit)? = null,
     videoSurfaceContent: (@Composable (Track, Modifier) -> Unit)? = null,
     gestureLayerContent: (@Composable (Track, PlayerGestureConfig, PlayerGestureMediaActions, PlayerGestureUiActions, androidx.compose.runtime.MutableState<PlayerVideoTransform>?, Modifier) -> Unit)? = null,
-    engagementContent: (@Composable (Track) -> Unit)? = null,
+    commentsEnabled: Boolean = false,
     similarSongsContent: (@Composable (Track) -> Unit)? = null,
     errorContent: (@Composable () -> Unit)? = null,
     playlistDialogContent: (@Composable () -> Unit)? = null,
@@ -202,7 +201,7 @@ fun LevyraNowPlaying(
     AppleMusicPlayerStyleScope(velvet) {
         LevyraNowPlayingContent(
             viewModel, state, morphAnchors, morphActive, collapseActions, modifier, motionSuspended,
-            modeSwitchContent, videoSurfaceContent, gestureLayerContent, engagementContent,
+            modeSwitchContent, videoSurfaceContent, gestureLayerContent, commentsEnabled,
             similarSongsContent, errorContent, playlistDialogContent, onOpenPlaylistDialog
         )
     }
@@ -220,7 +219,7 @@ private fun LevyraNowPlayingContent(
     modeSwitchContent: (@Composable () -> Unit)?,
     videoSurfaceContent: (@Composable (Track, Modifier) -> Unit)?,
     gestureLayerContent: (@Composable (Track, PlayerGestureConfig, PlayerGestureMediaActions, PlayerGestureUiActions, androidx.compose.runtime.MutableState<PlayerVideoTransform>?, Modifier) -> Unit)?,
-    engagementContent: (@Composable (Track) -> Unit)?,
+    commentsEnabled: Boolean,
     similarSongsContent: (@Composable (Track) -> Unit)?,
     errorContent: (@Composable () -> Unit)?,
     playlistDialogContent: (@Composable () -> Unit)?,
@@ -1160,6 +1159,22 @@ private fun LevyraNowPlayingContent(
             )
         }
 
+        val commentsTeaser = track?.takeIf { commentsEnabled && !it.isLiveRadio() }?.let { current ->
+            val engagement = state.youtubeEngagement
+            val comments = engagement.comments
+            PlayerCommentsTeaser(
+                trackId = current.id,
+                countBadge = com.luc4n3x.levyra.ui.youtubeCommentCountBadge(comments.countText),
+                topComments = if (comments.videoId == engagement.videoId) comments.items.take(3) else emptyList(),
+                loading = comments.loading,
+                fallbackText = strings.tapToOpenComments,
+                onOpen = viewModel::openYoutubeComments
+            ).takeIf { engagement.videoId.isNotBlank() && !comments.disabled }
+        }
+        val engagementContent: (@Composable (Track) -> Unit)? = commentsTeaser?.let { teaser ->
+            { activeTrack -> if (activeTrack.id == teaser.trackId) PlayerCommentsTeaserCard(teaser, surfaces) }
+        }
+
         val controlsTailBlock: @Composable ColumnScope.(Track) -> Unit = { activeTrack ->
             if (!activeTrack.isLiveRadio()) {
                 engagementContent?.invoke(activeTrack)
@@ -1212,15 +1227,6 @@ private fun LevyraNowPlayingContent(
             headerTrailing = headerTrailing,
             modeSwitch = {
                 if (track != null && (track.videoUrl.isNotBlank() || track.counterpartVideoId.isNotBlank())) modeSwitchContent?.invoke()
-            },
-            creditsEyebrow = creditWriters?.takeIf { it.second.isNotEmpty() && !LevyraIsSpotify }?.let { (id, writers) ->
-                PlayerCreditsEyebrow(
-                    trackId = id,
-                    heading = strings.trackCreditsCopy().writtenBy,
-                    names = writers,
-                    contentDescription = strings.trackCreditsCopy().title,
-                    onClick = { showTrackCredits = true }
-                )
             },
             lyricsPreview = track?.takeIf { (LevyraIsSpotify || com.luc4n3x.levyra.ui.theme.LevyraIsMono) && state.lyrics.isNotEmpty() }?.let { current ->
                 PlayerLyricsPreview(current.id, state.lyrics, state.lyricsSynced, state.positionMs, viewModel::openLyrics)
@@ -1747,31 +1753,6 @@ private fun LevyraNowPlayingContent(
                     onClick = { videoFullscreen = false }
                 )
             }
-        }
-
-        val captionWriters = creditWriters?.takeIf { it.first == track?.id }?.second.orEmpty()
-        AnimatedVisibility(
-            visible = captionWriters.isNotEmpty() && !liveRadio && !appleMusicImmersive && !LevyraIsSpotify && !com.luc4n3x.levyra.ui.theme.LevyraIsAtelier && !com.luc4n3x.levyra.ui.theme.LevyraIsMono &&
-                !state.isVideoMode && playerPane != LevyraPlayerPane.SideBySide &&
-                deckLayout != PlayerDeckLayout.Aura && deckLayout != PlayerDeckLayout.Pulse,
-            enter = fadeIn(tween(if (animated) CreditsCaptionRevealMs else 0)),
-            exit = fadeOut(tween(if (animated) CreditsCaptionRevealMs / 2 else 0)),
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .statusBarsPadding()
-                .padding(
-                    end = gutter,
-                    top = LevyraPlayerDesign.MinimumTouchTarget + LevyraPlayerDesign.SpaceLg
-                )
-                .zIndex(24f)
-        ) {
-            PlayerCreditsCaption(
-                heading = strings.trackCreditsCopy().writtenBy,
-                names = captionWriters,
-                contentDescription = strings.trackCreditsCopy().title,
-                surfaces = surfaces,
-                onClick = { showTrackCredits = true }
-            )
         }
 
         if (showTopArtistCluster) {
