@@ -312,7 +312,7 @@ class AlternativeTrackMatcher {
         isrcConfirmed: Boolean
     ): MatchRejection? = when {
         isrcConfirmed -> null
-        albumHasConflictingVersion(query, candidate, expectedTitle) ->
+        relation != AlbumRelation.SAME && albumHasConflictingVersion(query, candidate, expectedTitle) ->
             MatchRejection.VERSION_MISMATCH
         isRemasterOfUnmarkedTitle(expectedTitle, candidateTitle) && !allowsUnmarkedRemasterAlbum(relation, delta) ->
             MatchRejection.VERSION_MISMATCH

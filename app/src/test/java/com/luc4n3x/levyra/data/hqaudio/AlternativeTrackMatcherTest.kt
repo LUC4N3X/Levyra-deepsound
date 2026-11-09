@@ -1007,6 +1007,15 @@ class AlternativeTrackMatcherTest {
     }
 
     @Test
+    fun equivalentParenthesizedAlbumPerformancesRemainTheSameRecording() {
+        listOf("Unplugged", "Live", "Acoustic", "Festival Version").forEach { version ->
+            val evaluation = verdict(query(album = "MTV $version"), candidate(album = "MTV ($version)"))
+            assertEquals(version, AlbumRelation.SAME, evaluation.albumRelation)
+            assertEquals(version, AlternativeMatchVerdict.EXACT, evaluation.verdict)
+        }
+    }
+
+    @Test
     fun higherBitratePerformanceEditionCannotDisplaceTheOriginalRecording() {
         val selection = matcher.select(
             query(album = "After Hours (Deluxe)"),
