@@ -102,6 +102,20 @@ class HighQualityPlaybackCoordinatorTest {
     }
 
     @Test
+    fun downloadKeepsTheOfflineCopyWhenPlaybackPrefersAStreamOnlyRelease() = runBlocking {
+        val streamOnly = candidate(id = "stream-only").copy(offlineAllowed = false)
+        val offline = candidate(id = "offline", album = "After Hours (Deluxe)")
+        val provider = exactProvider().apply {
+            searchOutcome = { ProviderSearchOutcome.Found(listOf(streamOnly, offline)) }
+            lookupOutcome = { id -> ProviderLookupOutcome.Found(if (id == streamOnly.providerTrackId) streamOnly else offline) }
+        }
+        val coordinator = coordinator(provider)
+        assertEquals("stream-only", coordinator.play().playbackManifest!!.alternativeSource!!.providerTrackId)
+        val download = coordinator.resolveLossyDownload(playbackTrack(), "High", provenance)!!
+        assertEquals("offline", download.playbackManifest!!.alternativeSource!!.providerTrackId)
+    }
+
+    @Test
     fun downloadResolutionRejectsLossyFallbackAndDataSaver() = runBlocking {
         val coordinator = coordinator(exactProvider(), HighQualityAudioMode.PREFER_LOSSLESS)
         assertNull(coordinator.resolveLosslessDownload(playbackTrack(), "Auto", provenance))

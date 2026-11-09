@@ -12,6 +12,7 @@ internal class HighQualityProviderLane(
     private val mappingStore: HighQualityMappingStore,
     private val matcher: AlternativeTrackMatcher,
     private val clock: () -> Long,
+    private val admits: (AlternativeTrackCandidate) -> Boolean = { true },
     private val isTrackQuarantined: (providerTrackId: String) -> Boolean
 ) {
     suspend fun resolve(identityKey: String, query: AlternativeTrackQuery): HighQualityResolution = try {
@@ -36,6 +37,7 @@ internal class HighQualityProviderLane(
         }
         return when (val outcome = provider.lookup(mapping.providerTrackId)) {
             is ProviderLookupOutcome.Found -> {
+                if (!admits(outcome.candidate)) return null
                 val evaluation = matcher.evaluateSelected(query, outcome.candidate)
                 val unchanged = AlternativeTrackFingerprint.of(outcome.candidate) == mapping.candidateFingerprint
                 if (!unchanged || !evaluation.accepted) {
@@ -135,7 +137,9 @@ internal class HighQualityProviderLane(
             null -> keepSearched(selected, "TIMEOUT", "${HYDRATION_TIMEOUT_MS}ms")
             is ProviderLookupOutcome.Failed -> keepSearched(selected, "UNAVAILABLE", outcome.failure.name)
             ProviderLookupOutcome.Missing -> refuse(searched, "MISSING", "details missing or restricted")
-            is ProviderLookupOutcome.Found -> {
+            is ProviderLookupOutcome.Found -> if (!admits(outcome.candidate)) {
+                refuse(searched, "MISSING", "details missing or restricted")
+            } else {
                 val details = outcome.candidate
                 val evaluation = matcher.evaluateSelected(query, details)
                 val sameTrack = details.providerId == searched.providerId &&
@@ -228,7 +232,7 @@ internal class HighQualityProviderLane(
                     val seen = seenTrackIdsByQuery.getOrPut(text) { HashSet() }
                     val unseen = outcome.candidates.count { seen.add(it.providerTrackId) }
                     outcome.candidates
-                        .filterNot { isTrackQuarantined(it.providerTrackId) }
+                        .filter { admits(it) && !isTrackQuarantined(it.providerTrackId) }
                         .forEach { collected.putIfAbsent(it.providerTrackId, it) }
                     val repeated = outcome.candidates.isNotEmpty() && unseen == 0
                     val relevant = outcome.candidates.isEmpty() ||
