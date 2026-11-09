@@ -31,4 +31,14 @@ class FeaturedCuratedPlaylistTest {
         assertEquals(shelves, withFeaturedCuratedPlaylist(shelves, null))
         assertEquals(emptyList<YoutubeMusicHomeShelf>(), withFeaturedCuratedPlaylist(emptyList(), item("f")))
     }
+
+    @Test
+    fun existingPlaylistTakesTheLiveCoverInPlace() {
+        val live = item("f").copy(thumbnailUrl = "https://music.youtube.com/image/mixart?r=new")
+        val result = withFeaturedCuratedPlaylist(listOf(shelf("a"), shelf("b", "f")), live)
+        assertEquals(listOf("b", "f"), result[1].items.map { it.key })
+        assertEquals(live.thumbnailUrl, result[1].items[1].thumbnailUrl)
+        assertEquals(live.thumbnailUrl, result[1].items[1].playlist?.thumbnailUrl)
+        assertEquals("", result[0].items[0].thumbnailUrl)
+    }
 }

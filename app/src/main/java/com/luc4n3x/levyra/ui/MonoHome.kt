@@ -464,7 +464,14 @@ internal fun rememberCuratedPlaylistShelves(code: String): List<YoutubeMusicHome
 
 internal fun withFeaturedCuratedPlaylist(shelves: List<YoutubeMusicHomeShelf>, featured: YoutubeMusicHomeItem?): List<YoutubeMusicHomeShelf> {
     val first = shelves.firstOrNull() ?: return shelves
-    if (featured == null || first.items.any { it.playlist?.playlistId == featured.playlist?.playlistId }) return shelves
+    if (featured == null) return shelves
+    val featuredId = featured.playlist?.playlistId
+    if (shelves.any { shelf -> shelf.items.any { it.playlist?.playlistId == featuredId } }) {
+        if (featured.thumbnailUrl.isBlank()) return shelves
+        return shelves.map { shelf ->
+            shelf.copy(items = shelf.items.map { item -> if (item.playlist?.playlistId == featuredId) item.copy(thumbnailUrl = featured.thumbnailUrl, playlist = item.playlist?.copy(thumbnailUrl = featured.thumbnailUrl)) else item })
+        }
+    }
     val items = first.items.toMutableList().apply { add(minOf(1, size), featured) }
     return listOf(first.copy(items = items)) + shelves.drop(1)
 }

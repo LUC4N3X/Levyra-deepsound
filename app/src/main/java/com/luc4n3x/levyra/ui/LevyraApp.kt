@@ -2340,7 +2340,8 @@ fun LevyraApp(
             val chromeVisible by remember { derivedStateOf { playerExpansion.value < 1f } }
             val playerVisible by remember { derivedStateOf { playerExpansion.value > 0f } }
             HideSystemBars(state.interfaceSettings.immersive.hiddenBars(fullPlayerVisible = !chromeVisible && !rootOverlayOpen))
-            val morphAllowed = state.animationsEnabled && !state.isVideoMode && !LevyraIsAtelier
+            val canvasShowing = state.motionArtworkEnabled && state.motionArtwork != null
+            val morphAllowed = state.animationsEnabled && !state.isVideoMode && !LevyraIsAtelier && !canvasShowing
             val atelierContext = LocalContext.current
             val atelierWindowWidth = androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.width
             LaunchedEffect(LevyraIsAtelier, atelierWindowWidth) {
@@ -13289,7 +13290,7 @@ private fun HomeMusicVideoShelf(
                     val track = item.track
                     val active = currentId != null && track.id == currentId
                     val activeResolving = active && playback.isResolving
-                    Box(Modifier.defaultRailItemMotion(railMotion, rowState, motionKey)) {
+                    Box(Modifier.defaultVideoRailMotion(railMotion, rowState, motionKey)) {
                         HomeMusicVideoCard(
                             item = item,
                             width = videoCardWidth,
@@ -13452,9 +13453,11 @@ private fun HomeMusicVideoCaption(track: Track, active: Boolean) {
             .filter(String::isNotBlank)
             .joinToString(" • ")
     }
+    val titleHeight = with(LocalDensity.current) { LevyraTypeRhythm.lineHeight(16.sp).toDp() }
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         LevyraMediaTitle(
             text = track.title, explicit = track.explicit,
+            modifier = Modifier.heightIn(min = titleHeight),
             color = if (active) LevyraCyan else LevyraText,
             fontSize = 16.sp,
             lineHeight = LevyraTypeRhythm.lineHeight(16.sp),
@@ -13464,7 +13467,7 @@ private fun HomeMusicVideoCaption(track: Track, active: Boolean) {
             overflow = TextOverflow.Ellipsis
         )
         Text(
-            text = metadata,
+            text = metadata.ifBlank { " " },
             color = LevyraMuted,
             fontSize = 13.5.sp,
             lineHeight = LevyraTypeRhythm.lineHeight(13.5.sp),
@@ -14670,8 +14673,8 @@ private fun SearchScreen(
     ) {
         SearchHeader(
             query = state.query,
-            placeholder = if (LevyraRadioReplacesSearch) strings.search else activePlaceholder,
-            animatePlaceholder = state.animationsEnabled && !LevyraRadioReplacesSearch,
+            placeholder = if (LevyraRadioReplacesSearch && !LevyraIsDefaultSkin) strings.search else activePlaceholder,
+            animatePlaceholder = state.animationsEnabled && (!LevyraRadioReplacesSearch || LevyraIsDefaultSkin),
             isSearching = state.isSearching,
             recognitionAvailable = state.recognitionAvailable,
             recognitionBusy = state.recognitionState is RecognitionState.Listening ||
