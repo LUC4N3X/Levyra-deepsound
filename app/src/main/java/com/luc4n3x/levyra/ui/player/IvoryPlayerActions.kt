@@ -104,9 +104,9 @@ private fun androidx.compose.foundation.layout.RowScope.IvorySheetTile(
         pressed = IvoryPressedCorner,
         label = "ivory-sheet-tile-corner"
     )
-    val fill by animateColorAsState(if (action.active) IvoryDesign.ink else palette.ink, label = "ivory-sheet-tile-fill")
-    val ink by animateColorAsState(if (action.active) IvoryDesign.onInk else IvoryDesign.ink, label = "ivory-sheet-tile-ink")
-    val badge by animateColorAsState(if (action.active) IvoryDesign.rose else palette.panelSoft, label = "ivory-sheet-tile-badge")
+    val fill by animateColorAsState(if (action.active) IvoryDesign.ink else palette.ink, animationSpec = ivoryColorSpec(animated), label = "ivory-sheet-tile-fill")
+    val ink by animateColorAsState(if (action.active) IvoryDesign.onInk else IvoryDesign.ink, animationSpec = ivoryColorSpec(animated), label = "ivory-sheet-tile-ink")
+    val badge by animateColorAsState(if (action.active) IvoryDesign.rose else palette.panelSoft, animationSpec = ivoryColorSpec(animated), label = "ivory-sheet-tile-badge")
     Column(
         modifier = Modifier
             .weight(1f)
@@ -164,7 +164,7 @@ private fun androidx.compose.foundation.layout.RowScope.IvorySheetTile(
         action.value?.let { value ->
             Text(
                 text = value,
-                color = if (action.active) IvoryDesign.rose else palette.muted,
+                color = if (action.active) IvoryDesign.onInk.copy(alpha = IvoryActiveValueAlpha) else palette.muted,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
@@ -174,7 +174,11 @@ private fun androidx.compose.foundation.layout.RowScope.IvorySheetTile(
     }
 }
 
+private fun ivoryColorSpec(animated: Boolean): androidx.compose.animation.core.AnimationSpec<androidx.compose.ui.graphics.Color> =
+    if (animated) spring(stiffness = Spring.StiffnessMediumLow) else androidx.compose.animation.core.snap()
+
 private const val IvorySheetColumns = 3
+private const val IvoryActiveValueAlpha = 0.86f
 private val IvorySheetGap = 8.dp
 private val IvoryTileHeight = 92.dp
 private val IvoryPressedCorner = 28.dp

@@ -711,7 +711,7 @@ private fun FlowActionRow(
         val playlist = if (addToPlaylist != null && !track.isLiveRadio()) {
             listOf(
                 PlayerDockAction(
-                    key = "playlist",
+                    key = FlowPlaylistKey,
                     icon = playlistIcon,
                     label = playlistLabel,
                     haptic = LevyraHapticAction.Confirm,
@@ -724,35 +724,42 @@ private fun FlowActionRow(
         queue + playlist + dockActions.filter { it.key != FlowQueueKey }
             .map { if (it.key == FlowVisualModeKey) it.copy(active = false) else it }
     }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(FlowToolbarHeight)
-            .clip(RoundedCornerShape(FlowToolbarHeight / 2))
-            .background(surfaces.tonal)
-            .padding(horizontal = FlowToolbarInset),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        modeActions.forEach { action ->
-            key(action.key) {
-                FlowToolbarItem(action, surfaces, animated)
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val roomy = flowToolbarFits(maxWidth, modeActions.size + collectionActions.size)
+        val shownCollection = if (roomy) collectionActions else collectionActions.filter { it.key != FlowPlaylistKey }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(FlowToolbarHeight)
+                .clip(RoundedCornerShape(FlowToolbarHeight / 2))
+                .background(surfaces.tonal)
+                .padding(horizontal = FlowToolbarInset),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            modeActions.forEach { action ->
+                key(action.key) {
+                    FlowToolbarItem(action, surfaces, animated)
+                }
             }
-        }
-        if (collectionActions.isNotEmpty()) {
-            Box(
-                Modifier
-                    .padding(horizontal = FlowToolbarInset)
-                    .size(width = 1.dp, height = FlowToolbarDivider)
-                    .background(surfaces.content.copy(alpha = FlowToolbarDividerAlpha))
-            )
-        }
-        collectionActions.forEach { action ->
-            key(action.key) {
-                FlowToolbarItem(action, surfaces, animated)
+            if (shownCollection.isNotEmpty()) {
+                Box(
+                    Modifier
+                        .padding(horizontal = FlowToolbarInset)
+                        .size(width = 1.dp, height = FlowToolbarDivider)
+                        .background(surfaces.content.copy(alpha = FlowToolbarDividerAlpha))
+                )
+            }
+            shownCollection.forEach { action ->
+                key(action.key) {
+                    FlowToolbarItem(action, surfaces, animated)
+                }
             }
         }
     }
 }
+
+internal fun flowToolbarFits(width: Dp, actions: Int): Boolean =
+    width - FlowToolbarChrome >= LevyraPlayerDesign.MinimumTouchTarget * actions
 
 @Composable
 private fun RowScope.FlowToolbarItem(
@@ -811,6 +818,7 @@ private fun RowScope.FlowToolbarItem(
 
 private const val FlowQueueKey = "queue"
 private const val FlowVisualModeKey = "visual-mode"
+private const val FlowPlaylistKey = "playlist"
 private val FlowToolbarHeight = 56.dp
 private val FlowToolbarInset = 6.dp
 private val FlowToolbarIndicator = 46.dp
@@ -818,3 +826,4 @@ private val FlowToolbarActiveCorner = 14.dp
 private const val FlowToolbarDisabledAlpha = 0.42f
 private val FlowToolbarDivider = 22.dp
 private const val FlowToolbarDividerAlpha = 0.16f
+private val FlowToolbarChrome = FlowToolbarInset * 4 + 1.dp

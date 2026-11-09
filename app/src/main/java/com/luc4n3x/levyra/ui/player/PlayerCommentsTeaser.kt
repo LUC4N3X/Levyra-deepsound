@@ -10,6 +10,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import com.luc4n3x.levyra.ui.components.levyraExpressiveCorner
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -75,8 +77,10 @@ internal fun PlayerCommentsTeaserCard(
         pressed = TeaserPressedCorner,
         label = "player-comments-teaser-corner"
     )
+    val animated = com.luc4n3x.levyra.ui.LocalAnimationsEnabled.current
     val wash by animateColorAsState(
         targetValue = if (pressed) surfaces.tonal else Color.Transparent,
+        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(160)),
         label = "player-comments-teaser-wash"
     )
     Row(
@@ -101,7 +105,7 @@ internal fun PlayerCommentsTeaserCard(
         AnimatedContent(
             targetState = lead,
             modifier = Modifier.weight(1f),
-            transitionSpec = { fadeIn() togetherWith fadeOut() },
+            transitionSpec = { if (animated) fadeIn() togetherWith fadeOut() else EnterTransition.None togetherWith ExitTransition.None },
             contentKey = { it?.id },
             label = "player-comments-teaser-text"
         ) { comment ->
