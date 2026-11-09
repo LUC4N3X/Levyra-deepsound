@@ -57,11 +57,25 @@ class HomeOfflineRenderTest {
     }
 
     @Test
-    fun frozenHomeStructureKeepsTheOfflineStatusStable() {
+    fun frozenHomeRecoversWhenTheNetworkReturns() {
         val previous = buildHomeRenderSnapshot(offlineState())
 
         val frozen = buildStableHomeRenderSnapshot(
             state = offlineState().copy(isDeviceOffline = false),
+            previous = previous,
+            freezeContent = true
+        )
+
+        assertFalse(frozen.state.isDeviceOffline)
+        assertTrue(frozen.derived.offlineContent.isEmpty)
+    }
+
+    @Test
+    fun frozenHomeShowsOfflineContentWhenTheNetworkDrops() {
+        val previous = buildHomeRenderSnapshot(offlineState().copy(isDeviceOffline = false))
+
+        val frozen = buildStableHomeRenderSnapshot(
+            state = offlineState(),
             previous = previous,
             freezeContent = true
         )

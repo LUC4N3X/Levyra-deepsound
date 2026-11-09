@@ -760,7 +760,6 @@ private fun LevyraUiState.withFrozenHomeContent(previous: LevyraUiState): Levyra
         homeAlbumsLoading = keepWhen(keepAlbums, previous.homeAlbumsLoading, homeAlbumsLoading),
         isLoadingHome = keepWhen(keepSections, previous.isLoadingHome, isLoadingHome),
         homeError = keepWhen(keepSections, previous.homeError, homeError),
-        isDeviceOffline = previous.isDeviceOffline,
         downloads = previous.downloads,
         releaseRadar = previous.releaseRadar.ifEmpty { releaseRadar },
         similarArtists = previous.similarArtists.ifEmpty { similarArtists }

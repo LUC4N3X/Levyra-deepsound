@@ -75,7 +75,7 @@ internal fun IvoryTransport(
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             IconButton(onClick = onPrevious, modifier = Modifier.size(56.dp)) {
-                Icon(Icons.Rounded.KeyboardDoubleArrowLeft, labels.previous, tint = onInk, modifier = Modifier.size(34.dp))
+                Icon(PlayerIcons.previous, labels.previous, tint = onInk, modifier = Modifier.size(34.dp))
             }
             Box(
                 Modifier.size(60.dp).clip(CircleShape).clickable(role = Role.Button, onClick = onToggle)
@@ -86,7 +86,7 @@ internal fun IvoryTransport(
                 else Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.ChevronRight, null, tint = onInk, modifier = Modifier.size(if (playing) 34.dp else 44.dp))
             }
             IconButton(onClick = onNext, modifier = Modifier.size(56.dp)) {
-                Icon(Icons.Rounded.KeyboardDoubleArrowRight, labels.next, tint = onInk, modifier = Modifier.size(34.dp))
+                Icon(PlayerIcons.next, labels.next, tint = onInk, modifier = Modifier.size(34.dp))
             }
         }
         IvoryModeTab(false, Icons.Rounded.Shuffle, labels.shuffle, shuffle, onShuffle)

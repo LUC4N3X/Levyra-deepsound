@@ -28,7 +28,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.Shuffle
@@ -677,6 +676,7 @@ private fun FlowActionRow(
     val dockActions = slots.dockActions(track)
     val addToPlaylist = slots.addToPlaylist
     val playlistLabel = LocalLevyraStrings.current.addToPlaylist
+    val playlistIcon = PlayerIcons.addToPlaylist
     val modeActions = remember(shuffleOn, repeatMode, labels, onShuffle, onRepeat) {
         listOf(
             PlayerDockAction(
@@ -699,14 +699,14 @@ private fun FlowActionRow(
             )
         )
     }
-    val collectionActions = remember(dockActions, track.id, addToPlaylist, playlistLabel) {
+    val collectionActions = remember(dockActions, track.id, addToPlaylist, playlistLabel, playlistIcon) {
         val queue = dockActions.filter { it.key == FlowQueueKey }
             .map { it.copy(haptic = LevyraHapticAction.Transport) }
         val playlist = if (addToPlaylist != null && !track.isLiveRadio()) {
             listOf(
                 PlayerDockAction(
                     key = "playlist",
-                    icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
+                    icon = playlistIcon,
                     label = playlistLabel,
                     haptic = LevyraHapticAction.Confirm,
                     onClick = { addToPlaylist(track) }

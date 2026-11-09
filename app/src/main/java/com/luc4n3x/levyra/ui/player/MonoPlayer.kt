@@ -37,17 +37,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.QueueMusic
-import androidx.compose.material.icons.rounded.Bedtime
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.RepeatOne
-import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Shuffle
-import androidx.compose.material.icons.rounded.SkipNext
-import androidx.compose.material.icons.rounded.SkipPrevious
-import androidx.compose.material.icons.rounded.Speaker
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -357,11 +349,11 @@ internal fun MonoTransport(
     Row(modifier.fillMaxWidth().heightIn(min = 92.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
         MonoModeToggle(Icons.Rounded.Shuffle, labels.shuffle, shuffle, onShuffle)
         IconButton(onClick = onPrevious, modifier = Modifier.size(56.dp)) {
-            Icon(Icons.Rounded.SkipPrevious, labels.previous, tint = MonoDesign.text, modifier = Modifier.size(34.dp))
+            Icon(PlayerIcons.previous, labels.previous, tint = MonoDesign.text, modifier = Modifier.size(34.dp))
         }
         MonoPlayDisc(playing, resolving, if (playing) labels.pause else labels.play, onToggle)
         IconButton(onClick = onNext, modifier = Modifier.size(56.dp)) {
-            Icon(Icons.Rounded.SkipNext, labels.next, tint = MonoDesign.text, modifier = Modifier.size(34.dp))
+            Icon(PlayerIcons.next, labels.next, tint = MonoDesign.text, modifier = Modifier.size(34.dp))
         }
         MonoModeToggle(
             if (repeat == RepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat, labels.repeat, repeat != RepeatMode.Off, onRepeat,
@@ -442,10 +434,10 @@ private fun MonoModeToggle(icon: ImageVector, label: String, active: Boolean, on
 private fun MonoSecondaryRow(actions: MonoPlayerActions, modifier: Modifier = Modifier) {
     val strings = LocalLevyraStrings.current
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        MonoQuietKey(Icons.Rounded.Speaker, strings.systemPlayerCopy().outputTitle, false, actions.onOutput)
-        MonoQuietKey(Icons.Rounded.Bedtime, strings.sleepTimer, actions.sleepActive, actions.onSleepTimer)
-        MonoQuietKey(Icons.Rounded.Share, strings.share, false, actions.onShare)
-        MonoQuietKey(Icons.AutoMirrored.Rounded.QueueMusic, strings.queue, false, actions.onQueue)
+        MonoQuietKey(PlayerIcons.output, strings.systemPlayerCopy().outputTitle, false, actions.onOutput)
+        MonoQuietKey(PlayerIcons.sleepTimer, strings.sleepTimer, actions.sleepActive, actions.onSleepTimer)
+        MonoQuietKey(PlayerIcons.share, strings.share, false, actions.onShare)
+        MonoQuietKey(PlayerIcons.queue, strings.queue, false, actions.onQueue)
     }
 }
 
@@ -645,7 +637,7 @@ internal fun MonoPlayerFavoriteButton(isFavorite: Boolean, label: String, scale:
             .semantics { toggleableState = ToggleableState(isFavorite) }
     ) {
         Icon(
-            if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, label,
+            PlayerIcons.favorite(isFavorite), label,
             tint = if (isFavorite) MonoDesign.accent else MonoDesign.text, modifier = Modifier.size(26.dp)
         )
     }
