@@ -868,16 +868,6 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/c235ae094c8f54c91f24e1f68c13ed83e0992bab"
   },
   {
-   "id": "levyra-932f3bbf987a271def9f",
-   "genre": "dance-party",
-   "title": "Loco Loco",
-   "artist": "Gordo, Reinier Zonneveld",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273dfb479c38656c105a1580655",
-   "canvasUrl": "https://canvaz.scdn.co/upload/artist/4Ge9GwmWnOQsohwPTrXyHc/video/a2ac6b3aa5654ed68fce51419dd230fa.cnvs.mp4",
-   "spotifyTrackId": "1mZnxNzp17JrPyzDzkoiiC",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/9c5fc4fab1e2518e2c8048abc9c094bbcff0971b"
-  },
-  {
    "id": "levyra-9828b5bdff66418cf9a6",
    "genre": "dance-party",
    "title": "Talk To You (ft. 54 Ultra)",
@@ -888,14 +878,24 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/b55c8fa4e31192a3e35ad53d3e889733f9cd9da1"
   },
   {
-   "id": "levyra-8fd31c8881546d288f6a",
+   "id": "levyra-932f3bbf987a271def9f",
    "genre": "dance-party",
-   "title": "It's That Time - FISHER Remix",
-   "artist": "Marlon Hoffstadt, FISHER",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27331f60a0ce2b1c6588d80877d",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/4KFyoGtEAQX4JJ5ZnYBnBH/video/e91a023216b7480084c92611f0f1d78f.cnvs.mp4",
-   "spotifyTrackId": "3GiORO0zRwRT3g9CCklzkQ",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/791d1ff94d9b84e471e144f53fca4a23244fede9"
+   "title": "Loco Loco",
+   "artist": "Gordo, Reinier Zonneveld",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273dfb479c38656c105a1580655",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/4Ge9GwmWnOQsohwPTrXyHc/video/a2ac6b3aa5654ed68fce51419dd230fa.cnvs.mp4",
+   "spotifyTrackId": "1mZnxNzp17JrPyzDzkoiiC",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/9c5fc4fab1e2518e2c8048abc9c094bbcff0971b"
+  },
+  {
+   "id": "levyra-483d685fc62b1d271bd8",
+   "genre": "dance-party",
+   "title": "Free Your Mind",
+   "artist": "Prospa, Cloonee, Sybil",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27338974737cba5770d9dba1cd6",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/e07f69c4bd75473ca14eed883a200495.cnvs.mp4",
+   "spotifyTrackId": "6TWbY1dq8eYtFiMiGdBlOa",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/2d5304a8589bc85716b2ebe0a3ba177d2434d3bb"
   },
   {
    "id": "levyra-f7576d5b255e0312ee0d",
@@ -918,14 +918,14 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/2d8b05fad932d5512a4c88cd4b84e47eb1218fbe"
   },
   {
-   "id": "levyra-483d685fc62b1d271bd8",
+   "id": "levyra-8fd31c8881546d288f6a",
    "genre": "dance-party",
-   "title": "Free Your Mind",
-   "artist": "Prospa, Cloonee, Sybil",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27338974737cba5770d9dba1cd6",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/e07f69c4bd75473ca14eed883a200495.cnvs.mp4",
-   "spotifyTrackId": "6TWbY1dq8eYtFiMiGdBlOa",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/2d5304a8589bc85716b2ebe0a3ba177d2434d3bb"
+   "title": "It's That Time - FISHER Remix",
+   "artist": "Marlon Hoffstadt, FISHER",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27331f60a0ce2b1c6588d80877d",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/4KFyoGtEAQX4JJ5ZnYBnBH/video/e91a023216b7480084c92611f0f1d78f.cnvs.mp4",
+   "spotifyTrackId": "3GiORO0zRwRT3g9CCklzkQ",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/791d1ff94d9b84e471e144f53fca4a23244fede9"
   },
   {
    "id": "levyra-dc57d4ccf5149d1a9167",
@@ -968,6 +968,16 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/f842f4032e4b7aa6d88e8b877d4216f8ddb8381f"
   },
   {
+   "id": "levyra-d0c6a3df6261d6950c9d",
+   "genre": "dance-party",
+   "title": "Pump It Up",
+   "artist": "Endor",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27378d4155e29b25c36a3d5a470",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/0sACyypRn7jYbvuybT4flG/video/3283102a172b4c00a1f33209c3e87506.cnvs.mp4",
+   "spotifyTrackId": "6e2OwnkapOwUDfhz6AP9iC",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/fbba6422f5d54ca1c3fab33ae59bbd4e842acddb"
+  },
+  {
    "id": "levyra-7e8226d7a02f6f0a7d93",
    "genre": "dance-party",
    "title": "Set Me Free",
@@ -988,14 +998,14 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/099eb86040fe00c6e7f14328f5cec483542728a5"
   },
   {
-   "id": "levyra-d0c6a3df6261d6950c9d",
+   "id": "levyra-046114c2c1e1bb7281bc",
    "genre": "dance-party",
-   "title": "Pump It Up",
-   "artist": "Endor",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27378d4155e29b25c36a3d5a470",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/0sACyypRn7jYbvuybT4flG/video/3283102a172b4c00a1f33209c3e87506.cnvs.mp4",
-   "spotifyTrackId": "6e2OwnkapOwUDfhz6AP9iC",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/fbba6422f5d54ca1c3fab33ae59bbd4e842acddb"
+   "title": "Give It To Me - Full Vocal Mix",
+   "artist": "Matt Sassari",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2736a1e9d7201b74142e2d47b69",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/741fb252d45c4856b3d63edfe826c7db.cnvs.mp4",
+   "spotifyTrackId": "5ZduaRci3iNUiDfJbBfAaf",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/50081928cfabde0d63a4d78f893542711259652d"
   },
   {
    "id": "levyra-eb856260d385e91e9a37",
@@ -1008,14 +1018,14 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/c9ba41fd56c50e4af303216b3a76bb1372ef1e00"
   },
   {
-   "id": "levyra-046114c2c1e1bb7281bc",
+   "id": "levyra-abcefdcdd14811510835",
    "genre": "dance-party",
-   "title": "Give It To Me - Full Vocal Mix",
-   "artist": "Matt Sassari",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2736a1e9d7201b74142e2d47b69",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/741fb252d45c4856b3d63edfe826c7db.cnvs.mp4",
-   "spotifyTrackId": "5ZduaRci3iNUiDfJbBfAaf",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/50081928cfabde0d63a4d78f893542711259652d"
+   "title": "Friday (feat. Mufasa & Hypeman) - Dopamine Re-Edit",
+   "artist": "Riton, Nightcrawlers, Mufasa & Hypeman, Mufasa, Dopamine",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273815cb538fd7821595b2bc8c5",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/617e7b002d6f4df8a703a096dfcc7efb.cnvs.mp4",
+   "spotifyTrackId": "4cG7HUWYHBV6R6tHn1gxrl",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/0a9ed687dddcd95c83e37099958bdc6d54430e4d"
   },
   {
    "id": "levyra-032fa13818ecee393548",
@@ -1028,24 +1038,14 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/adae361145c433bcc47279b57374767940b96957"
   },
   {
-   "id": "levyra-abcefdcdd14811510835",
+   "id": "levyra-9a72aa8d0bf7874d8d34",
    "genre": "dance-party",
-   "title": "Friday (feat. Mufasa & Hypeman) - Dopamine Re-Edit",
-   "artist": "Riton, Nightcrawlers, Mufasa & Hypeman, Mufasa, Dopamine",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273815cb538fd7821595b2bc8c5",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/617e7b002d6f4df8a703a096dfcc7efb.cnvs.mp4",
-   "spotifyTrackId": "4cG7HUWYHBV6R6tHn1gxrl",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/0a9ed687dddcd95c83e37099958bdc6d54430e4d"
-  },
-  {
-   "id": "levyra-7889f970e52cfa44e03a",
-   "genre": "dance-party",
-   "title": "WHERE IS MY HUSBAND! - Remix",
-   "artist": "RAYE, David Guetta, Hypaton",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2732baa745a54eb2b504f782b3d",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/c70e8f241f3d441d98d13de41ee0ccdd.cnvs.mp4",
-   "spotifyTrackId": "0vYSTV1Lye2Z2zktF6P39C",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/e10dac73398cf6dcf6d3f90925bb35fe7330190b"
+   "title": "HIGHJACK (right back)",
+   "artist": "Alok, Łaszewo, A$AP Rocky",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273056ceb58d08145d9435d357e",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/0NGAZxHanS9e0iNHpR8f2W/video/b3b635eacbb94393b15a16821a62342d.cnvs.mp4",
+   "spotifyTrackId": "1Eqdkt6DfGNWElHpeujHGJ",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/ec2aa978d0aa75eb24054af59554e0e63d44537e"
   },
   {
    "id": "levyra-8739c72808e270fed5b2",
@@ -1068,14 +1068,14 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/9029ddfed3e4a7c48767ab7c08f0e60631461cbb"
   },
   {
-   "id": "levyra-9a72aa8d0bf7874d8d34",
+   "id": "levyra-7889f970e52cfa44e03a",
    "genre": "dance-party",
-   "title": "HIGHJACK (right back)",
-   "artist": "Alok, Łaszewo, A$AP Rocky",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273056ceb58d08145d9435d357e",
-   "canvasUrl": "https://canvaz.scdn.co/upload/artist/0NGAZxHanS9e0iNHpR8f2W/video/b3b635eacbb94393b15a16821a62342d.cnvs.mp4",
-   "spotifyTrackId": "1Eqdkt6DfGNWElHpeujHGJ",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/ec2aa978d0aa75eb24054af59554e0e63d44537e"
+   "title": "WHERE IS MY HUSBAND! - Remix",
+   "artist": "RAYE, David Guetta, Hypaton",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2732baa745a54eb2b504f782b3d",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/c70e8f241f3d441d98d13de41ee0ccdd.cnvs.mp4",
+   "spotifyTrackId": "0vYSTV1Lye2Z2zktF6P39C",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/e10dac73398cf6dcf6d3f90925bb35fe7330190b"
   },
   {
    "id": "levyra-26c5b7268c0b366bd4b0",
@@ -1096,6 +1096,16 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/4oLeXFyACqeem2VImYeBFe/video/9c078aa3c74646069b43d64e4db84b9d.cnvs.mp4",
    "spotifyTrackId": "1lbNgoJ5iMrMluCyhI4OQP",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/7a52939c36a748786e19a2a4d640c5852d4ae55b"
+  },
+  {
+   "id": "levyra-9d56e3e0f3dc837e4cdb",
+   "genre": "dance-party",
+   "title": "It Feels So Good",
+   "artist": "Matt Sassari, HUGEL, Sonique",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273aa7df9183be7f3bb8c8ad4bc",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/0cd04165587c44579abc80d19cf1aae7.cnvs.mp4",
+   "spotifyTrackId": "7xFy1kfgGWJWTpx1vSHBLi",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/12e395c89aee9215ecbca73c8aa3bc4513a07a2a"
   },
   {
    "id": "levyra-2f21990911f610c6f250",
@@ -2148,13 +2158,13 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/a1ba4f80628534be193aa4afcbf8900a29c4891c"
   },
   {
-   "id": "levyra-1fe7311147a101d5d29e",
+   "id": "levyra-c0c72ad28f64bdc3501f",
    "genre": "k-pop",
-   "title": "You’re Under Arrest",
+   "title": "You're Under Arrest",
    "artist": "ILLIT",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273df9518845a9897da168eb9df",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27399a7ddb5c0a4f976b81b481b",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/36cgvBn0aadzOijnjjwqMN/video/687a9a8485fc46f78f6cb45c71e86422.cnvs.mp4",
-   "spotifyTrackId": "0pMoUGdpD8nupNP1mSdZUn",
+   "spotifyTrackId": "7IY0j2xsQqaWtVqb17xpJG",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/289c7ac42f3858a230fd02012aba74feb32db777"
   },
   {
@@ -2378,6 +2388,16 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/43a641625cd2b53e88916367523cc1243fc2ba36"
   },
   {
+   "id": "levyra-cba8b2c8483c9195aff6",
+   "genre": "fr-rap",
+   "title": "Toupou",
+   "artist": "Moha MMZ, So La Lune, Uggy",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2739d98937025fe38cc3b5140dc",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/13fQpdj4xMKM4gbQUcB00T/video/434dc0245a9d4ea69e8c4ddb0927fb68.cnvs.mp4",
+   "spotifyTrackId": "0wHAi2hqo68yhB1zRbB8Oo",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/817f0cc3637417c914a184f0a177d2e6915442c1"
+  },
+  {
    "id": "levyra-c0c9a970c01fc8842bf0",
    "genre": "fr-rap",
    "title": "XXX",
@@ -2445,7 +2465,7 @@
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2737e05c263b0e4b7c57a28822a",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/3gYoYSbWPhxA0zY9lZ4Ldv/video/0b07009500714c19b41e52080ca9e8b5.cnvs.mp4",
    "spotifyTrackId": "1mCWUxMiLd9bWmoV4zISy8",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/bb766eb67dfaa9fd839f7b7be31d46e922ac29c2"
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/7bf7b40add3d9c91c0b0b1ef40aba32ce43ea56f"
   },
   {
    "id": "levyra-eec9ee55e28cfe77fda4",
@@ -2576,6 +2596,16 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/6WOkXoxrbPnZXLHVcNqJCT/video/9ee488abeb9d42f2b7df166514b91305.cnvs.mp4",
    "spotifyTrackId": "0isP3ADL2MgYcBAdNoS6UM",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/10614d212ad947db9ad2afad4fe22271b2c3862a"
+  },
+  {
+   "id": "levyra-4402cc68f52d1c81ad91",
+   "genre": "de-rap",
+   "title": "Pflaster",
+   "artist": "Big Toe",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27339f15a3602c67369f0daa99e",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/18Zq5h68TQ6kurXzRNHJDo/video/f5d552386b484f328e3eface07f94486.cnvs.mp4",
+   "spotifyTrackId": "20HBfz5yN7jMzBMk8wBKa7",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/d82f36a571358489d3115d3d9b1081f951e1ca06"
   },
   {
    "id": "levyra-3958ff3548fd030c06d2",
