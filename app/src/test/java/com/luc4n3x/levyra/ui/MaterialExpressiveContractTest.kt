@@ -109,13 +109,13 @@ class MaterialExpressiveContractTest {
     }
 
     @Test
-    fun `material3 expressive uses the current beta api surface`() {
+    fun `material3 expressive uses the current rc api surface`() {
         val versions = source(
             "gradle/libs.versions.toml",
             "../gradle/libs.versions.toml"
         )
 
-        assertTrue(versions.contains("material3Expressive = \"1.5.0-beta02\""))
+        assertTrue(versions.contains("material3Expressive = \"1.5.0-rc01\""))
     }
 
     private fun source(vararg candidates: String): String {
