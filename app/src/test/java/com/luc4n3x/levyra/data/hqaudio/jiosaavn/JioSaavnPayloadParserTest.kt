@@ -182,13 +182,33 @@ class JioSaavnPayloadParserTest {
     @Test
     fun restrictedRowsAreReportedOnlyAsUnplayableTitles() {
         val restricted = saavnSong("r1", "Despacito", listOf("Luis Fonsi"), "Despacito", 228).apply {
-            getJSONObject("more_info").put("rights", JSONObject().put("code", "0").put("cacheable", "false").put("delete_cached_object", "true"))
+            getJSONObject("more_info").put("rights", JSONObject().put("code", "1").put("reason", "Pro Only"))
             put("language", "spanish")
         }
         val playable = saavnSong("p1", "Despacito", listOf("Luis Fonsi"), "VIDA", 228)
         val page = JioSaavnPayloadParser.searchPage(searchBody(restricted, playable), 10)!!
         assertEquals(listOf("p1"), page.candidates.map { it.providerTrackId })
         assertEquals(listOf(UnplayableSearchRow("Despacito", "spanish")), page.unplayableRows)
+    }
+
+    @Test
+    fun nonCacheableRowsStreamButAreNotOfferedOffline() {
+        val streamOnly = saavnSong("s1", "Despacito", listOf("Luis Fonsi"), "Despacito", 228).apply {
+            getJSONObject("more_info").put("rights", JSONObject().put("code", "0").put("cacheable", "false").put("delete_cached_object", "true"))
+        }
+        val deleteOnly = saavnSong("s2", "Despacito", listOf("Luis Fonsi"), "VIDA", 228).apply {
+            getJSONObject("more_info").put("rights", JSONObject().put("code", "0").put("cacheable", "true").put("delete_cached_object", "true"))
+        }
+        val offline = saavnSong("o1", "Despacito", listOf("Luis Fonsi"), "VIDA", 228).apply {
+            getJSONObject("more_info").put("rights", JSONObject().put("code", "0").put("cacheable", "true").put("delete_cached_object", "false"))
+        }
+        val unmarked = saavnSong("u1", "Despacito", listOf("Luis Fonsi"), "VIDA", 228)
+        val page = JioSaavnPayloadParser.searchPage(searchBody(streamOnly, deleteOnly, offline, unmarked), 10)!!
+        assertEquals(
+            listOf("s1" to false, "s2" to false, "o1" to true, "u1" to true),
+            page.candidates.map { it.providerTrackId to it.offlineAllowed }
+        )
+        assertTrue(page.unplayableRows.isEmpty())
     }
 
     @Test
@@ -200,5 +220,46 @@ class JioSaavnPayloadParserTest {
     @Test
     fun errorEnvelopeIsNotASearchPage() {
         assertNull(JioSaavnPayloadParser.searchPage("{\"error\":{\"code\":\"INPUT_INVALID\"}}", 10))
+    }
+
+    @Test
+    fun fallsBackToReleaseDateYearSingersAndExtendedCreatorRoles() {
+        val song = JSONObject()
+            .put("id", "rel1")
+            .put("type", "song")
+            .put("title", "Kesariya")
+            .put("year", "")
+            .put("language", "hindi")
+            .put(
+                "more_info",
+                JSONObject()
+                    .put("album", "Brahmastra")
+                    .put("duration", "268")
+                    .put("320kbps", "true")
+                    .put("encrypted_media_url", "token123")
+                    .put("release_date", "2022-07-17")
+                    .put("singers", "Arijit Singh, Shilpa Rao")
+                    .put("featured_artists", " Nikhita Gandhi ")
+                    .put(
+                        "artistMap",
+                        JSONObject().put(
+                            "artists",
+                            JSONArray()
+                                .put(JSONObject().put("name", "Pritam").put("role", "music director"))
+                                .put(JSONObject().put("name", "Amitabh Bhattacharya").put("role", "writer"))
+                                .put(JSONObject().put("name", "Ranbir Kapoor").put("role", "actor"))
+                                .put(JSONObject().put("name", "Arijit Singh").put("role", "singer"))
+                                .put(JSONObject().put("name", "Martin Garrix").put("role", "producer"))
+                                .put(JSONObject().put("name", "Hans Zimmer").put("role", "arranger"))
+                        )
+                    )
+            )
+        val page = JioSaavnPayloadParser.searchPage(searchBody(song), 10)!!
+        val parsed = page.candidates.single()
+        assertEquals(2022, parsed.releaseYear)
+        assertEquals(listOf("Arijit Singh", "Shilpa Rao"), parsed.primaryArtists)
+        assertEquals(listOf("Nikhita Gandhi"), parsed.featuredArtists)
+        assertEquals(setOf("Pritam", "Amitabh Bhattacharya", "Ranbir Kapoor"), parsed.nonPerformingArtists)
+        assertEquals(setOf("Pritam", "Amitabh Bhattacharya", "Ranbir Kapoor"), parsed.creatorArtists)
     }
 }

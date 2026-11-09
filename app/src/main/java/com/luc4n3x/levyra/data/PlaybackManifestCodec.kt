@@ -156,6 +156,7 @@ private fun AlternativeAudioSource.toJson(): JSONObject = JSONObject()
     .put("bitrateKbps", bitrateKbps)
     .put("verdict", verdict.name)
     .put("confidence", confidence)
+    .put("offlineAllowed", offlineAllowed)
 
 private fun JSONObject.toAlternativeAudioSource(): AlternativeAudioSource? {
     val providerId = optString("providerId")
@@ -167,7 +168,8 @@ private fun JSONObject.toAlternativeAudioSource(): AlternativeAudioSource? {
         providerTrackId = providerTrackId,
         bitrateKbps = optInt("bitrateKbps", 0),
         verdict = verdict,
-        confidence = optInt("confidence", 0)
+        confidence = optInt("confidence", 0),
+        offlineAllowed = optBoolean("offlineAllowed", true)
     )
 }
 

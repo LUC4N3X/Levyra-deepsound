@@ -65,7 +65,8 @@ data class ResolvedHighQualityStream(
     val expiresAtMs: Long,
     val bitDepth: Int = 0,
     val sampleRateHz: Int = 0,
-    val deliveryMethod: PlaybackDeliveryMethod = PlaybackDeliveryMethod.PROGRESSIVE
+    val deliveryMethod: PlaybackDeliveryMethod = PlaybackDeliveryMethod.PROGRESSIVE,
+    val offlineAllowed: Boolean = true
 ) {
     val host: String
         get() = url.substringAfter("://", "").substringBefore('/').substringBefore('?')

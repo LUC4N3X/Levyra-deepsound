@@ -170,7 +170,8 @@ internal class JioSaavnAudioProvider(
                                 codec = validation.codec,
                                 contentLength = validation.contentLength,
                                 estimatedKbps = validation.estimatedKbps,
-                                expiresAtMs = expiresAtFor(location, url)
+                                expiresAtMs = expiresAtFor(location, url),
+                                offlineAllowed = candidate.offlineAllowed
                             )
                         )
                     }

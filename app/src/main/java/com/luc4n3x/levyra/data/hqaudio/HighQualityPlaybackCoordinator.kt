@@ -188,6 +188,7 @@ class HighQualityPlaybackCoordinator(
         if (query.durationMs <= 0L) return null
         val result = resolver.resolveLossy(identityKey(track), query)
         if (result !is HighQualityResolution.Selected || result.stream.tier.lossless) return null
+        if (!result.stream.offlineAllowed) return null
         if (result.stream.codec != MP4_AAC_CODEC || result.stream.mimeType != MP4_AUDIO_MIME_TYPE) return null
         return applyStream(track, null, result, provenance())
     }
@@ -264,7 +265,8 @@ class HighQualityPlaybackCoordinator(
                 providerTrackId = stream.providerTrackId,
                 bitrateKbps = stream.displayKbps,
                 verdict = selection.evaluation.verdict,
-                confidence = selection.evaluation.confidence
+                confidence = selection.evaluation.confidence,
+                offlineAllowed = stream.offlineAllowed
             )
         )
         return base.copy(

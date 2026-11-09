@@ -63,7 +63,8 @@ internal fun resolvedStream(
     codec = "mp4a",
     contentLength = bytesFor(estimatedKbps, candidate.durationSeconds),
     estimatedKbps = estimatedKbps,
-    expiresAtMs = expiresAtMs
+    expiresAtMs = expiresAtMs,
+    offlineAllowed = candidate.offlineAllowed
 )
 
 internal fun bytesFor(kbps: Int, seconds: Int): Long = kbps * 1_000L * seconds / 8L

@@ -40,7 +40,8 @@ data class TitleIdentity(
     val markers: Set<TrackVersionMarker>,
     val versionLabels: Set<String>,
     val featuredArtists: Set<String>,
-    val explicitHint: Boolean?
+    val explicitHint: Boolean?,
+    val baseCore: String = core
 ) {
     val versionSignature: Set<String>
         get() = markers.map { it.name }.toSet() + versionLabels.map { "label:$it" }
@@ -54,7 +55,8 @@ data class ArtistCredit(
 data class AlbumIdentity(
     val core: String,
     val editions: Set<AlbumEdition>,
-    val language: String? = null
+    val language: String? = null,
+    val versionMarkers: Set<TrackVersionMarker> = emptySet()
 ) {
     val isBlank: Boolean
         get() = core.isBlank()
@@ -82,6 +84,11 @@ object MusicIdentityText {
     private val leadingArticle = Regex("^(?:the|группа)\\s+")
     private val yearToken = Regex("\\b(?:19|20)\\d{2}\\b")
     private val versionWord = Regex("(?:^|\\s)version(?:\\s|$)")
+    private val albumEditionWord = Regex("(?:^|\\s)(?:edition|version)(?:\\s|$)")
+    private val trailingBracketed = Regex("(?:\\s*[(\\[{]([^)\\]}]*)[)\\]}])+\\s*$")
+    private val workPartToken = Regex(
+        "(?:^|\\s)(?:part|pt|vol|volume|chapter|act|scene|interlude|intro|outro|skit|commentary|medley|\\d+|ii|iii|iv|v|vi)(?:\\s|$)"
+    )
 
     private val namedEntities = mapOf(
         "amp" to "&",
@@ -107,10 +114,13 @@ object MusicIdentityText {
         MarkerRule("sped up|speed up|spedup|nightcore", setOf(TrackVersionMarker.SPED_UP)),
         MarkerRule("slowed|slowed down", setOf(TrackVersionMarker.SLOWED)),
         MarkerRule("reverb|reverbed", setOf(TrackVersionMarker.REVERB)),
-        MarkerRule("karaoke|караоке|in the style of|originally performed by", setOf(TrackVersionMarker.KARAOKE)),
+        MarkerRule("karaoke|караоке|in the style of|originally performed by|made famous by", setOf(TrackVersionMarker.KARAOKE)),
         MarkerRule("instrumental|backing track", setOf(TrackVersionMarker.INSTRUMENTAL)),
-        MarkerRule("remix|remixed|mashup|bootleg|rework|lofi|lo fi", setOf(TrackVersionMarker.REMIX)),
-        MarkerRule("8d|8d audio", setOf(TrackVersionMarker.VERSION))
+        MarkerRule(
+            "remix|remixed|rmix|mashup|bootleg|rework|lofi|lo fi|lofi flip|chill trap|stutter techno|acid techno|bass boosted",
+            setOf(TrackVersionMarker.REMIX)
+        ),
+        MarkerRule("8d|8d audio|3d audio|spatial audio|reprise", setOf(TrackVersionMarker.VERSION))
     )
 
     private val descriptorMarkerRules = standaloneMarkerRules + listOf(
@@ -125,7 +135,22 @@ object MusicIdentityText {
         MarkerRule("remaster|remastered|remastering|re master|re mastered|re mastering", setOf(TrackVersionMarker.REMASTER)),
         MarkerRule("mono", setOf(TrackVersionMarker.MONO)),
         MarkerRule("stereo", setOf(TrackVersionMarker.STEREO)),
-        MarkerRule("mix|dub|vip", setOf(TrackVersionMarker.REMIX))
+        MarkerRule("mix|dub|vip|flip|techno", setOf(TrackVersionMarker.REMIX)),
+        MarkerRule("reloaded|bgm|ringtone|dialogue", setOf(TrackVersionMarker.VERSION))
+    )
+
+    private val nonEditionVersionMarkers = setOf(
+        TrackVersionMarker.LIVE,
+        TrackVersionMarker.REMIX,
+        TrackVersionMarker.ACOUSTIC,
+        TrackVersionMarker.INSTRUMENTAL,
+        TrackVersionMarker.KARAOKE,
+        TrackVersionMarker.COVER,
+        TrackVersionMarker.SPED_UP,
+        TrackVersionMarker.SLOWED,
+        TrackVersionMarker.REVERB,
+        TrackVersionMarker.DEMO,
+        TrackVersionMarker.VERSION
     )
 
     private val neutralDescriptorPhrases = setOf(
@@ -137,12 +162,19 @@ object MusicIdentityText {
         "official audio",
         "official video",
         "official music video",
+        "full audio",
+        "full song",
         "audio",
         "video",
         "lyrics",
         "lyric video",
+        "lyrical",
+        "lyrical video",
         "visualizer",
         "visualiser",
+        "original motion picture soundtrack",
+        "motion picture soundtrack",
+        "ost",
         "explicit",
         "explicit version",
         "clean",
@@ -170,10 +202,16 @@ object MusicIdentityText {
         val phrase = Regex("(?:^|\\s)(?:$pattern)(?:\\s|$)")
     }
 
+    private data class AlbumDescriptor(
+        val editions: Set<AlbumEdition>,
+        val retainedText: String = "",
+        val versionMarkers: Set<TrackVersionMarker> = emptySet()
+    )
+
     private val editionRules = listOf(
         EditionRule("super deluxe|deluxe", AlbumEdition.DELUXE),
         EditionRule("expanded|bonus track version|bonus tracks", AlbumEdition.EXPANDED),
-        EditionRule("anniversary", AlbumEdition.ANNIVERSARY),
+        EditionRule("(?:\\d+(?:st|nd|rd|th)\\s+)?anniversary", AlbumEdition.ANNIVERSARY),
         EditionRule("remaster|remastered", AlbumEdition.REMASTERED),
         EditionRule("single", AlbumEdition.SINGLE),
         EditionRule("ep", AlbumEdition.EP),
@@ -295,6 +333,7 @@ object MusicIdentityText {
             coreText = coreText.substring(0, match.range.first)
         }
         val core = normalize(coreText)
+        val baseCore = extractBaseCore(remaining, core)
         standaloneMarkerRules.forEach { rule ->
             if (rule.phrase.containsMatchIn(core)) markers += rule.markers
         }
@@ -304,8 +343,23 @@ object MusicIdentityText {
             markers = markers,
             versionLabels = labels,
             featuredArtists = featured,
-            explicitHint = explicitHint
+            explicitHint = explicitHint,
+            baseCore = baseCore
         )
+    }
+
+    private fun extractBaseCore(remaining: String, fallbackCore: String): String {
+        val match = trailingBracketed.find(remaining) ?: return fallbackCore
+        val prefix = remaining.substring(0, match.range.first)
+        val base = normalize(
+            prefix.split(dashSeparator).first().let { text ->
+                inlineFeaturing.find(text)?.let { text.substring(0, it.range.first) } ?: text
+            }
+        )
+        if (base.isBlank() || base == fallbackCore) return fallbackCore
+        val trailingText = normalize(match.value)
+        if (trailingText.split(' ').size < 2 || workPartToken.containsMatchIn(trailingText)) return fallbackCore
+        return base
     }
 
     private fun classifyTitleDescriptor(text: String): Descriptor {
@@ -323,7 +377,8 @@ object MusicIdentityText {
         }
         if (markers.isNotEmpty()) {
             val label = reduced.takeIf {
-                TrackVersionMarker.REMIX in markers && it !in setOf("remix", "mix", "remixed")
+                (TrackVersionMarker.REMIX in markers && it !in setOf("remix", "mix", "remixed", "rmix")) ||
+                    TrackVersionMarker.VERSION in markers
             }
             return Descriptor.Version(markers, label)
         }
@@ -340,25 +395,27 @@ object MusicIdentityText {
     fun album(raw: String): AlbumIdentity {
         val decoded = prepare(raw)
         val editions = linkedSetOf<AlbumEdition>()
+        val versionMarkers = linkedSetOf<TrackVersionMarker>()
         var language: String? = null
 
-        fun absorb(text: String): Boolean {
+        fun absorb(text: String): String? {
             normalize(text).takeIf { it in releaseLanguages }?.let {
                 language = it
-                return true
+                return ""
             }
-            val found = albumDescriptorEditions(text) ?: return false
-            editions += found
-            return true
+            val found = albumDescriptor(text) ?: return null
+            editions += found.editions
+            versionMarkers += found.versionMarkers
+            return found.retainedText
         }
 
         var remaining = decoded
         bracketed.findAll(decoded).forEach { match ->
-            if (absorb(match.groupValues[1])) remaining = remaining.replaceFirst(match.value, " ")
+            absorb(match.groupValues[1])?.let { remaining = remaining.replaceFirst(match.value, " $it ") }
         }
         val segments = remaining.split(dashSeparator)
         val kept = mutableListOf(segments.first())
-        segments.drop(1).forEach { segment -> if (!absorb(segment)) kept += segment }
+        segments.drop(1).forEach { segment -> kept += absorb(segment) ?: segment }
         var core = normalize(kept.joinToString(" "))
         listOf(" ep" to AlbumEdition.EP, " single" to AlbumEdition.SINGLE).forEach { (suffix, edition) ->
             if (core.endsWith(suffix)) {
@@ -366,19 +423,40 @@ object MusicIdentityText {
                 core = core.removeSuffix(suffix).trim()
             }
         }
-        return AlbumIdentity(core = core, editions = editions, language = language)
+        standaloneMarkerRules.forEach { rule ->
+            if (rule.phrase.containsMatchIn(core)) versionMarkers += rule.markers
+        }
+        return AlbumIdentity(core = core, editions = editions, language = language, versionMarkers = versionMarkers)
     }
 
-    private fun albumDescriptorEditions(text: String): Set<AlbumEdition>? {
+    private fun albumDescriptor(text: String): AlbumDescriptor? {
         val normalized = normalize(text)
-        if (normalized.isBlank()) return emptySet()
+        if (normalized.isBlank()) return AlbumDescriptor(emptySet())
         val reduced = normalized.replace(yearToken, " ").replace(whitespace, " ").trim()
         val matched = editionRules.filter { it.phrase.containsMatchIn(reduced) }.map { it.edition }
-        if (matched.isNotEmpty()) {
-            val specific = matched.filter { it != AlbumEdition.OTHER_EDITION }
-            return specific.ifEmpty { matched }.toSet()
+        val specific = matched.filter { it != AlbumEdition.OTHER_EDITION }
+        val performanceText = editionRules.filter { it.edition != AlbumEdition.OTHER_EDITION }
+            .fold(normalized) { remaining, rule -> remaining.replace(rule.phrase, " ").trim() }
+        val descriptor = classifyTitleDescriptor(performanceText)
+        if (descriptor is Descriptor.Version && descriptor.markers.any(nonEditionVersionMarkers::contains)) {
+            if (hasNonEditionMarker(performanceText)) {
+                return AlbumDescriptor(specific.toSet(), normalize(performanceText.replace(albumEditionWord, " ")), descriptor.markers)
+            }
+            if (specific.isEmpty() || hasVersionLabel(performanceText)) {
+                return AlbumDescriptor(specific.toSet(), performanceText, descriptor.markers)
+            }
         }
-        if (featuringPrefixes.any(normalized::startsWith) || neutralPrefixes.any(normalized::startsWith)) return emptySet()
+        if (specific.isNotEmpty()) return AlbumDescriptor(specific.toSet())
+        if (matched.isNotEmpty()) return AlbumDescriptor(matched.toSet())
+        if (featuringPrefixes.any(normalized::startsWith) || neutralPrefixes.any(normalized::startsWith)) return AlbumDescriptor(emptySet())
         return null
     }
+
+    private fun hasNonEditionMarker(text: String): Boolean =
+        descriptorMarkerRules.any { rule ->
+            rule.markers.any(nonEditionVersionMarkers::contains) && rule.phrase.containsMatchIn(text)
+        }
+
+    private fun hasVersionLabel(text: String): Boolean =
+        normalize(text.replace(albumEditionWord, " ").replace(yearToken, " ")).isNotBlank()
 }

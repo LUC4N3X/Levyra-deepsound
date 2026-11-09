@@ -58,7 +58,7 @@ class PlaybackWarmup(context: Context) {
     private val primeLocks = ConcurrentHashMap<String, Mutex>()
 
     suspend fun prime(track: Track, bytes: Long = DEFAULT_PRIME_BYTES): Boolean = primeUrl(
-        url = track.streamUrl.takeIf(::isWarmableMediaUrl).orEmpty(),
+        url = track.streamUrl.takeIf { isWarmableMediaUrl(it) && track.allowsPlaybackDiskCache() }.orEmpty(),
         cacheKey = LevyraPlaybackCacheKey.stream(track),
         bytes = bytes
     )
@@ -79,7 +79,7 @@ class PlaybackWarmup(context: Context) {
     internal suspend fun cacheCompletely(track: Track, maxBytes: Long): FullCacheOutcome? = withContext(Dispatchers.IO) {
         val url = track.streamUrl.trim()
         val mimeType = LevyraMediaItemFactory.mimeTypeFor(url, false)
-        if (!isWarmableMediaUrl(url) || !isProgressiveMediaMimeType(mimeType)) {
+        if (!isWarmableMediaUrl(url) || !isProgressiveMediaMimeType(mimeType) || !track.allowsPlaybackDiskCache()) {
             Timber.d("advanced prefetch ineligible mime=%s scheme=%s", mimeType, url.substringBefore(':'))
             return@withContext null
         }

@@ -38,6 +38,44 @@ class JioSaavnFamousTracksMatchingTest {
     }
 
     @Test
+    fun multiArtistAndAlternateReadingPlanConciseFallbackQueries() {
+        val multiArtist = AlternativeTrackQuery(
+            title = "Kesariya (From \"Brahmastra\")",
+            artist = "Pritam, Arijit Singh, Amitabh Bhattacharya",
+            album = "YouTube Music",
+            durationMs = 268_000,
+            explicit = false
+        )
+        assertEquals(
+            listOf(
+                "Kesariya (From \"Brahmastra\") Pritam",
+                "kesariya pritam arijit singh amitabh bhattacharya",
+                "kesariya pritam"
+            ),
+            AlternativeSearchPlan.queries(multiArtist)
+        )
+
+        val withAlbumAndAlternate = multiArtist.copy(
+            album = "Brahmastra",
+            alternateReading = AlternativeTrackQuery(
+                title = "Kesariyaa",
+                artist = "Arijit Singh",
+                album = "Brahmastra",
+                durationMs = 268_000,
+                explicit = false
+            )
+        )
+        assertEquals(
+            listOf(
+                "Kesariya (From \"Brahmastra\") Pritam Brahmastra",
+                "kesariya pritam",
+                "Kesariyaa Arijit Singh"
+            ),
+            AlternativeSearchPlan.queries(withAlbumAndAlternate)
+        )
+    }
+
+    @Test
     fun unknownExplicitStateStillFindsTheOfficialStarboyRecording() {
         assertEquals("Starboy", accepted(select(starboy(), starboyCandidates()), "unmarked Starboy").title)
     }

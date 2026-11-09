@@ -795,4 +795,310 @@ class AlternativeTrackMatcherTest {
         assertEquals("wbTqLnmA", (selection as AlternativeMatchSelection.Accepted).evaluation.candidate.providerTrackId)
     }
 
+    @Test
+    fun indianTrackWithPromotionalLyricHookParentheticalMatchesVerifiedAlbumRecording() {
+        val query = query(
+            title = "Kesariya",
+            artist = "Pritam, Arijit Singh, Amitabh Bhattacharya",
+            album = "Brahmastra (Original Motion Picture Soundtrack)",
+            durationMs = 268_000L,
+            explicit = false
+        )
+        val selection = matcher.select(
+            query,
+            listOf(
+                candidate(
+                    id = "EbFWakDs",
+                    title = "Kesariya (From \"Brahmastra\") (Tu Fuljhadiyo Wale Tyohaaro Jesi - Happy Diwali)",
+                    primary = listOf("Pritam", "Arijit Singh", "Amitabh Bhattacharya"),
+                    album = "Kesariya (From \"Brahmastra\") (Tu Fuljhadiyo Wale Tyohaaro Jesi - Happy Diwali)",
+                    duration = 268,
+                    explicit = false
+                ).copy(language = "hindi", releaseYear = 2022),
+                candidate(
+                    id = "rjkrTnma",
+                    title = "Kesariya (Tu Fuljhadiyo Wale Tyohaaro Jesi - Happy Diwali)",
+                    primary = listOf("Pritam", "Arijit Singh", "Amitabh Bhattacharya"),
+                    album = "Brahmastra",
+                    duration = 268,
+                    explicit = false
+                ).copy(language = "hindi", releaseYear = 2022),
+                candidate(
+                    id = "lofi",
+                    title = "Kesariya (Lofi Flip)",
+                    primary = listOf("Pritam", "Arijit Singh", "Amitabh Bhattacharya"),
+                    album = "Brahmastra",
+                    duration = 268,
+                    explicit = false
+                ).copy(language = "hindi", releaseYear = 2022),
+                candidate(
+                    id = "reprise",
+                    title = "Kesariya (Reprise)",
+                    primary = listOf("Pritam", "Arijit Singh", "Amitabh Bhattacharya"),
+                    album = "Brahmastra",
+                    duration = 268,
+                    explicit = false
+                ).copy(language = "hindi", releaseYear = 2022)
+            )
+        )
+        val accepted = selection as AlternativeMatchSelection.Accepted
+        assertEquals("rjkrTnma", accepted.evaluation.candidate.providerTrackId)
+        assertEquals(
+            MatchRejection.VERSION_MISMATCH,
+            accepted.evaluations.single { it.candidate.providerTrackId == "lofi" }.rejection
+        )
+        assertEquals(
+            MatchRejection.VERSION_MISMATCH,
+            accepted.evaluations.single { it.candidate.providerTrackId == "reprise" }.rejection
+        )
+    }
+
+    @Test
+    fun albumLevelCoverAndKaraokeAndGluedRemixMarkersAreRejected() {
+        val oneKiss = query(title = "One Kiss", artist = "Calvin Harris, Dua Lipa", album = "One Kiss", durationMs = 214_000L)
+        assertRejected(
+            MatchRejection.VERSION_MISMATCH,
+            oneKiss,
+            candidate(
+                id = "D0bh9_V2",
+                title = "One Kiss",
+                primary = listOf("Calvin Harris", "Dua Lipa"),
+                album = "One Kiss (Calvin Harris, Dua Lipa Cover Mix)",
+                duration = 214
+            )
+        )
+        assertRejected(
+            MatchRejection.VERSION_MISMATCH,
+            oneKiss,
+            candidate(
+                id = "cover-version",
+                title = "One Kiss",
+                primary = listOf("Calvin Harris", "Dua Lipa"),
+                album = "One Kiss (Cover Version)",
+                duration = 214
+            )
+        )
+        assertRejected(
+            MatchRejection.VERSION_MISMATCH,
+            query(title = "Die With A Smile", artist = "Lady Gaga, Bruno Mars", album = "YouTube Music", durationMs = 251_000L),
+            candidate(
+                id = "karaoke",
+                title = "Die With A Smile",
+                primary = listOf("Lady Gaga", "Bruno Mars"),
+                album = "Pristine Karaoke, Vol. 66",
+                duration = 251
+            )
+        )
+        assertRejected(
+            MatchRejection.VERSION_MISMATCH,
+            query(title = "APT.", artist = "ROSÉ, Bruno Mars", album = "APT.", durationMs = 170_000L),
+            candidate(
+                id = "AU2KcAhH",
+                title = "APT(Dance Rmix)",
+                primary = listOf("ROSÉ", "Bruno Mars"),
+                album = "APT.",
+                duration = 170
+            )
+        )
+        val kesariyaSingle = query(title = "Kesariya", artist = "Arijit Singh", album = "Kesariya", durationMs = 268_000L)
+        assertRejected(
+            MatchRejection.VERSION_MISMATCH,
+            kesariyaSingle,
+            candidate(
+                id = "album-reprise",
+                title = "Kesariya",
+                primary = listOf("Arijit Singh"),
+                album = "Kesariya (Reprise)",
+                duration = 268
+            )
+        )
+        assertRejected(
+            MatchRejection.VERSION_MISMATCH,
+            kesariyaSingle,
+            candidate(
+                id = "album-live",
+                title = "Kesariya",
+                primary = listOf("Arijit Singh"),
+                album = "Kesariya (Live)",
+                duration = 268
+            )
+        )
+    }
+
+    @Test
+    fun albumEditionsCannotHideConflictingPerformanceVersions() {
+        val versions = listOf("Karaoke", "Cover", "Live", "Acoustic", "Instrumental", "Remix", "Demo", "Reprise", "Reloaded", "3D Audio", "Sped Up", "Slowed", "Reverb")
+        val editions = listOf("Deluxe", "Expanded", "Anniversary", "Remastered", "Single", "EP", "Soundtrack")
+        versions.forEach { version ->
+            editions.forEach { edition ->
+                listOf("$version $edition", "$edition $version").forEach { descriptor ->
+                    listOf("After Hours ($descriptor)", "After Hours - $descriptor").forEach { album ->
+                        val evaluation = verdict(query(album = "After Hours ($edition)"), candidate(album = album))
+                        assertEquals(album, AlternativeMatchVerdict.REJECTED, evaluation.verdict)
+                        assertEquals(album, MatchRejection.VERSION_MISMATCH, evaluation.rejection)
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun editionVersionLabelsStillMatchTheSameRelease() {
+        listOf("Deluxe", "Expanded", "Anniversary", "Remastered", "Single", "EP", "Soundtrack").forEach { edition ->
+            val evaluation = verdict(
+                query(album = "After Hours ($edition)"),
+                candidate(album = "After Hours ($edition Version)")
+            )
+            assertEquals(edition, AlternativeMatchVerdict.EXACT, evaluation.verdict)
+            assertEquals(edition, AlbumRelation.SAME, evaluation.albumRelation)
+        }
+    }
+
+    @Test
+    fun explicitlyRequestedPerformanceEditionsRemainAccepted() {
+        listOf("Karaoke", "Cover", "Live", "Acoustic", "Remix", "Reprise").forEach { version ->
+            val title = "Blinding Lights ($version)"
+            val album = "After Hours ($version Deluxe)"
+            val evaluation = verdict(query(title = title, album = album), candidate(title = title, album = album))
+            assertEquals(version, AlternativeMatchVerdict.EXACT, evaluation.verdict)
+        }
+    }
+
+    @Test
+    fun requestedLiveRecordingStillMatchesAcrossEditionLabels() {
+        val expected = query(title = "Blinding Lights (Live)", album = "After Hours (Live Deluxe)")
+        listOf("Live Deluxe Version", "Live Deluxe Edition", "Deluxe Live", "Live Expanded").forEach { descriptor ->
+            val evaluation = verdict(expected, candidate(title = expected.title, album = "After Hours ($descriptor)", duration = 202))
+            assertTrue(descriptor, evaluation.accepted)
+        }
+        assertRejected(
+            MatchRejection.ALBUM_MISMATCH,
+            expected,
+            candidate(title = expected.title, album = "After Hours (Live Deluxe Remastered)")
+        )
+        assertEquals(
+            AlternativeMatchVerdict.EXACT,
+            verdict(query(album = "After Hours (Deluxe)"), candidate(album = "After Hours (Original Mix Deluxe)")).verdict
+        )
+    }
+
+    @Test
+    fun ordinaryEditionsRemainAcceptedWithMissingOrDifferentEditionMetadata() {
+        listOf("", "YouTube Music", "After Hours", "After Hours (Expanded)").forEach { album ->
+            val expected = query(album = album)
+            assertTrue(album, verdict(expected, candidate(album = "After Hours (Deluxe Version)")).accepted)
+            listOf("Karaoke", "Cover", "Live", "Reprise").forEach { version ->
+                assertRejected(MatchRejection.VERSION_MISMATCH, expected, candidate(album = "After Hours ($version Deluxe Version)"))
+            }
+            listOf("Festival Version Deluxe", "Deluxe Festival Version").forEach { descriptor ->
+                assertRejected(MatchRejection.VERSION_MISMATCH, expected, candidate(album = "After Hours ($descriptor)"))
+            }
+        }
+    }
+
+    @Test
+    fun requestedLiveRecordingMatchesAnniversaryEditions() {
+        val expected = query(title = "Blinding Lights (Live)", album = "After Hours (Live Deluxe)")
+        listOf("After Hours (Live 25th Anniversary Edition)", "After Hours (Live) (25th Anniversary Edition)").forEach { album ->
+            val evaluation = verdict(expected, candidate(title = expected.title, album = album, duration = 202))
+            assertTrue(album, evaluation.accepted)
+            assertEquals(album, AlbumRelation.EDITION_VARIANT, evaluation.albumRelation)
+        }
+    }
+
+    @Test
+    fun equivalentParenthesizedAlbumPerformancesRemainTheSameRecording() {
+        listOf("Unplugged", "Live", "Acoustic", "Festival Version").forEach { version ->
+            val evaluation = verdict(query(album = "MTV $version"), candidate(album = "MTV ($version)"))
+            assertEquals(version, AlbumRelation.SAME, evaluation.albumRelation)
+            assertEquals(version, AlternativeMatchVerdict.EXACT, evaluation.verdict)
+        }
+    }
+
+    @Test
+    fun samePerformanceAlbumMatchesAcrossEditionFormatting() {
+        listOf("Live", "Unplugged", "Acoustic").forEach { version ->
+            val evaluation = verdict(query(album = "MTV $version"), candidate(album = "MTV ($version Deluxe)"))
+            assertTrue(version, evaluation.accepted)
+            assertEquals(version, AlbumRelation.EDITION_VARIANT, evaluation.albumRelation)
+        }
+        assertRejected(MatchRejection.VERSION_MISMATCH, query(album = "MTV"), candidate(album = "MTV (Live Deluxe)"))
+    }
+
+    @Test
+    fun higherBitratePerformanceEditionCannotDisplaceTheOriginalRecording() {
+        val selection = matcher.select(
+            query(album = "After Hours (Deluxe)"),
+            listOf(
+                candidate(id = "karaoke", album = "After Hours (Karaoke Deluxe)", offers320 = true),
+                candidate(id = "studio", album = "After Hours (Deluxe)", offers320 = false)
+            )
+        ) as AlternativeMatchSelection.Accepted
+        assertEquals("studio", selection.evaluation.candidate.providerTrackId)
+        assertEquals(MatchRejection.VERSION_MISMATCH, selection.evaluations.single { it.candidate.providerTrackId == "karaoke" }.rejection)
+    }
+
+    @Test
+    fun studioAlbumOutranksCompilationWithSameYearAndBogusFeaturedCredits() {
+        val selection = matcher.select(
+            query(title = "Tum Hi Ho", artist = "Arijit Singh", album = "YouTube Music", durationMs = 262_000L),
+            listOf(
+                candidate(
+                    id = "compilation",
+                    title = "Tum Hi Ho",
+                    primary = listOf("Arijit Singh"),
+                    album = "Heartbeats - Bollywood Love Songs",
+                    duration = 262
+                ).copy(releaseYear = 2013, language = "hindi"),
+                candidate(
+                    id = "studio",
+                    title = "Tum Hi Ho",
+                    primary = listOf("Arijit Singh"),
+                    album = "Aashiqui 2",
+                    duration = 262
+                ).copy(releaseYear = 2013, language = "hindi")
+            )
+        )
+        assertEquals("studio", (selection as AlternativeMatchSelection.Accepted).evaluation.candidate.providerTrackId)
+
+        val blindingLights = matcher.select(
+            query(album = "YouTube Music"),
+            listOf(
+                candidate(id = "highlights", album = "The Highlights", featured = listOf("Daft Punk")).copy(releaseYear = 2021),
+                candidate(id = "deluxe", album = "After Hours (Deluxe)", featured = listOf("Chromatics")).copy(releaseYear = 2020),
+                candidate(id = "after-hours", album = "After Hours").copy(releaseYear = 2020)
+            )
+        )
+        assertEquals("after-hours", (blindingLights as AlternativeMatchSelection.Accepted).evaluation.candidate.providerTrackId)
+    }
+
+    @Test
+    fun singleCharacterTitleAndMultiArtistTyposMatchOnlyWhenConfirmed() {
+        val titleTypo = matcher.evaluateReadings(
+            query(title = "Kesarya", artist = "Pritam, Arijit Singh", album = "Brahmastra", durationMs = 268_000L),
+            candidate(title = "Kesariya", primary = listOf("Pritam", "Arijit Singh"), album = "Brahmastra", duration = 268)
+        )
+        assertEquals(AlternativeMatchVerdict.HIGH, titleTypo.verdict)
+
+        val multiArtistTypo = matcher.evaluateReadings(
+            query(title = "One Kiss", artist = "Calvn Harris, Dua Lipa", album = "One Kiss", durationMs = 214_000L),
+            candidate(title = "One Kiss", primary = listOf("Calvin Harris", "Dua Lipa"), album = "One Kiss", duration = 214)
+        )
+        assertEquals(AlternativeMatchVerdict.HIGH, multiArtistTypo.verdict)
+
+        val sequelNumber = matcher.evaluateReadings(
+            query(title = "Symphony 1", artist = "Composer", album = "Symphonies", durationMs = 200_000L),
+            candidate(title = "Symphony 2", primary = listOf("Composer"), album = "Symphonies", duration = 200)
+        )
+        assertEquals(AlternativeMatchVerdict.REJECTED, sequelNumber.verdict)
+        assertEquals(MatchRejection.TITLE_MISMATCH, sequelNumber.rejection)
+
+        val internalNumber = matcher.evaluateReadings(
+            query(title = "Symphony 1 Allegro", artist = "Composer", album = "Symphonies", durationMs = 200_000L),
+            candidate(title = "Symphony 2 Allegro", primary = listOf("Composer"), album = "Symphonies", duration = 200)
+        )
+        assertEquals(AlternativeMatchVerdict.REJECTED, internalNumber.verdict)
+        assertEquals(MatchRejection.TITLE_MISMATCH, internalNumber.rejection)
+    }
+
 }

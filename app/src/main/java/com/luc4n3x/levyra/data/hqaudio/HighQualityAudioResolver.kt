@@ -77,6 +77,11 @@ class HighQualityAudioResolver(
             isQuarantined(quarantinedProviderTracks, trackKey(provider.id, providerTrackId))
         }
     }
+    private val offlineLanes = providers.map { provider ->
+        HighQualityProviderLane(provider, mappingStore, matcher, clock, { it.offlineAllowed }) { providerTrackId ->
+            isQuarantined(quarantinedProviderTracks, trackKey(provider.id, providerTrackId))
+        }
+    }
     private val streams = ConcurrentHashMap<String, HighQualityResolution.Selected>()
     private val losslessRetryAfter = ConcurrentHashMap<String, Long>()
     private val quarantinedIdentities = ConcurrentHashMap<String, Long>()
@@ -231,8 +236,8 @@ class HighQualityAudioResolver(
     suspend fun resolveLossy(identityKey: String, query: AlternativeTrackQuery): HighQualityResolution {
         if (!mode.enabled) return HighQualityResolution.Fallback(HighQualityFallbackReason.DISABLED)
         if (isQuarantined(quarantinedIdentities, identityKey)) return HighQualityResolution.Fallback(HighQualityFallbackReason.QUARANTINED)
-        cachedSelection(identityKey)?.takeIf { !it.stream.tier.lossless }?.let { return it }
-        val lossy = lanes.filter { !it.provider.lossless }
+        cachedSelection(identityKey)?.takeIf { !it.stream.tier.lossless && it.stream.offlineAllowed }?.let { return it }
+        val lossy = offlineLanes.filter { !it.provider.lossless }
         if (lossy.isEmpty()) return HighQualityResolution.Fallback(HighQualityFallbackReason.DISABLED)
         return withTimeoutOrNull(lookupBudgetMs) { resolveByPriority(identityKey, query, lossy) }
             ?: HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "lossy lookup budget")

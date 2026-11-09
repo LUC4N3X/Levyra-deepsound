@@ -18,18 +18,34 @@ internal object AlternativeSearchPlan {
             albumIdentity.core != titleIdentity.core &&
             albumIdentity.core !in AlternativeTrackMatcher.untrustedAlbumNames
         val searchableTitle = if (titleIdentity.versionSignature.isEmpty()) titleIdentity.core else titleIdentity.fullNormalized
-        val canonical = (listOf(searchableTitle) + AlternativeTrackText.artistNames(query.artist))
-            .joinToString(" ")
-        return buildList {
-            if (includeAlbum) add("$title $primaryArtist ${clean(query.album)}")
-            add("$title $primaryArtist")
-            add(canonical)
-        }
-            .map { it.replace(whitespace, " ").trim() }
+        val artistNames = AlternativeTrackText.artistNames(query.artist)
+        val canonical = (listOf(searchableTitle) + artistNames).joinToString(" ")
+        val base = cleanDistinct(
+            buildList {
+                if (includeAlbum) add("$title $primaryArtist ${clean(query.album)}")
+                add("$title $primaryArtist")
+                add(canonical)
+            }
+        )
+        val seen = base.mapTo(hashSetOf(), AlternativeTrackText::normalize)
+        val fallbacks = cleanDistinct(
+            buildList {
+                if (artistNames.size > 1) add("$searchableTitle ${artistNames.first()}")
+                query.alternateReading?.let { alt ->
+                    val altPrimary = clean(alt.artist).split(rawArtistSeparators).firstOrNull().orEmpty()
+                    add("${clean(alt.title)} $altPrimary")
+                }
+            }
+        )
+            .filterNot { AlternativeTrackText.normalize(it) in seen }
+            .take(MAX_PASSES - 1)
+        return base.take((MAX_PASSES - fallbacks.size).coerceAtLeast(1)) + fallbacks
+    }
+
+    private fun cleanDistinct(raw: List<String>): List<String> =
+        raw.map { it.replace(whitespace, " ").trim() }
             .filter { it.isNotBlank() }
             .distinctBy(AlternativeTrackText::normalize)
-            .take(MAX_PASSES)
-    }
 
     fun titleOnly(query: AlternativeTrackQuery): String? {
         val identity = AlternativeTrackText.title(query.title)
