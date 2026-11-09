@@ -43,8 +43,10 @@ private val podcastShelvesCache = ConcurrentHashMap<String, List<PodcastShelf>>(
 internal class YoutubePodcastsRepository(private val context: Context) {
     private val cache = podcastShelvesCache
 
+    fun contentScope(languageCode: String): String = YoutubeRegionProfile.cacheScope(languageCode)
+
     suspend fun shelves(languageCode: String): List<PodcastShelf> = withContext(Dispatchers.IO) {
-        val cacheKey = YoutubeRegionProfile.cacheScope(languageCode)
+        val cacheKey = contentScope(languageCode)
         cache[cacheKey]?.let { return@withContext it }
         val root = post(PODCASTS_ENDPOINT, languageCode) {
             put("browseId", "FEmusic_home").put("params", PODCASTS_CHIP_PARAMS)

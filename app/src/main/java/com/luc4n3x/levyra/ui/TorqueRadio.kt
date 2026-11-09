@@ -303,7 +303,7 @@ internal fun TorqueRadioScreen(
     }
     if (countryPickerOpen) {
         RadioDirectoryDialog(
-            title = radioStrings.countries, entries = state.countries, selected = state.selectedCountryCode, allLabel = radioStrings.worldwide,
+            title = radioStrings.countries, entries = state.countries, selected = state.selectedCountryCode, allLabel = radioStrings.worldwide, alphabeticalLanguageCode = languageCode,
             display = { entry -> localizedCountryName(entry.code, languageCode).ifBlank { entry.name } }, value = RadioDirectoryEntry::code,
             onDismiss = { countryPickerOpen = false },
             onSelect = {
