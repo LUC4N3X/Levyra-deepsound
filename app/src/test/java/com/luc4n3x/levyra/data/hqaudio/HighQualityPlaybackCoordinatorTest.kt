@@ -90,6 +90,18 @@ class HighQualityPlaybackCoordinatorTest {
     }
 
     @Test
+    fun streamOnlyRightsPlayButNeverBecomeAHighBitrateDownload() = runBlocking {
+        val streamOnly = exactProvider().apply {
+            searchOutcome = { ProviderSearchOutcome.Found(listOf(candidate().copy(offlineAllowed = false))) }
+            lookupOutcome = { ProviderLookupOutcome.Found(candidate().copy(offlineAllowed = false)) }
+        }
+        val played = coordinator(streamOnly).play()
+        assertNotNull(played.playbackManifest!!.alternativeSource)
+        assertNull(coordinator(streamOnly).resolveLossyDownload(playbackTrack(), "High", provenance))
+        assertNotNull(coordinator(exactProvider()).resolveLossyDownload(playbackTrack(), "High", provenance))
+    }
+
+    @Test
     fun downloadResolutionRejectsLossyFallbackAndDataSaver() = runBlocking {
         val coordinator = coordinator(exactProvider(), HighQualityAudioMode.PREFER_LOSSLESS)
         assertNull(coordinator.resolveLosslessDownload(playbackTrack(), "Auto", provenance))

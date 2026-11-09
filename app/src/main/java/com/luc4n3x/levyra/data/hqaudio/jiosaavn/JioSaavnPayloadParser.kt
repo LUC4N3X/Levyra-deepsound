@@ -105,8 +105,15 @@ internal object JioSaavnPayloadParser {
             language = json.optString("language").trim().lowercase().takeUnless { it == "unknown" }.orEmpty(),
             nonPerformingArtists = creditRoles.filterValues { roles -> roles.all { it in NON_PERFORMING_ROLES } }.keys,
             creatorArtists = creditRoles.filterValues { roles -> roles.any { it in NON_PERFORMING_ROLES } }.keys,
-            releaseYear = releaseYear(json, info)
+            releaseYear = releaseYear(json, info),
+            offlineAllowed = offlineAllowed(json, info)
         )
+    }
+
+    private fun offlineAllowed(json: JSONObject, info: JSONObject): Boolean {
+        val rights = info.optJSONObject("rights") ?: json.optJSONObject("rights") ?: return true
+        return !rights.optString("cacheable").equals("false", ignoreCase = true) &&
+            !rights.optString("delete_cached_object").equals("true", ignoreCase = true)
     }
 
     private fun primaryArtists(json: JSONObject, info: JSONObject, artistMap: JSONObject?): List<String> =
@@ -155,8 +162,6 @@ internal object JioSaavnPayloadParser {
             val reason = rights.optString("reason").trim()
             if (reason.isNotEmpty() && !reason.equals("none", ignoreCase = true)) return true
             if (isProFlag(rights.opt("is_pro_only"))) return true
-            if (rights.optString("cacheable").equals("false", ignoreCase = true)) return true
-            if (rights.optString("delete_cached_object").equals("true", ignoreCase = true)) return true
         }
         return false
     }

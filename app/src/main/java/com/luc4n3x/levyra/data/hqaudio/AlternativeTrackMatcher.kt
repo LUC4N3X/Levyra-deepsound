@@ -32,7 +32,8 @@ data class AlternativeTrackCandidate(
     val nonPerformingArtists: Set<String> = emptySet(),
     val creatorArtists: Set<String> = emptySet(),
     val artistRolesUnknown: Boolean = false,
-    val releaseYear: Int = 0
+    val releaseYear: Int = 0,
+    val offlineAllowed: Boolean = true
 )
 
 enum class MatchRejection {
