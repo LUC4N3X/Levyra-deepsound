@@ -186,6 +186,20 @@ class HighQualityProviderLaneTest {
     }
 
     @Test
+    fun providerFailureOnStreamOnlyReleaseDoesNotRetryAnotherCopy() = runBlocking {
+        val streamOnly = candidate(id = "stream-only").copy(offlineAllowed = false)
+        val offline = candidate(id = "offline", album = "After Hours (Deluxe)")
+        val provider = provider(listOf(streamOnly, offline), lossless = false) {
+            ProviderStreamOutcome.Failed(ProviderFailure.RATE_LIMITED)
+        }
+
+        val result = lane(provider).resolve("identity", query()) as HighQualityResolution.Fallback
+
+        assertEquals(HighQualityFallbackReason.PROVIDER_UNAVAILABLE, result.reason)
+        assertEquals(listOf("stream-only"), provider.streamRequests.toList())
+    }
+
+    @Test
     fun cancellationDuringFirstStreamPreventsFurtherAttempts() = runBlocking {
         val provider = provider(listOf(candidate(id = "first"), candidate(id = "second"))) { awaitCancellation() }
 

@@ -118,11 +118,10 @@ internal class HighQualityProviderLane(
         }
         is AlternativeMatchSelection.Accepted -> {
             val resolved = resolveAccepted(identityKey, query, selection, queryFingerprint)
-            val retry = if (resolved is HighQualityResolution.Selected || selection.evaluation.candidate.offlineAllowed) {
-                null
-            } else {
-                offlineOnlySelection(query, search)
-            }
+            val anotherReleaseMayPlay = resolved is HighQualityResolution.Fallback &&
+                resolved.reason in RELEASE_SPECIFIC_FAILURES &&
+                !selection.evaluation.candidate.offlineAllowed
+            val retry = if (anotherReleaseMayPlay) offlineOnlySelection(query, search) else null
             retry?.let { resolveAccepted(identityKey, query, it, queryFingerprint) } ?: resolved
         }
     }
@@ -330,5 +329,9 @@ internal class HighQualityProviderLane(
         const val MAX_SEARCH_PAGE = 3
         const val MAX_EXTRA_PAGES = 3
         const val DEEPER_PAGE_WINDOW_MS = 3_000L
+        private val RELEASE_SPECIFIC_FAILURES = setOf(
+            HighQualityFallbackReason.STREAM_UNAVAILABLE,
+            HighQualityFallbackReason.NO_MATCH
+        )
     }
 }

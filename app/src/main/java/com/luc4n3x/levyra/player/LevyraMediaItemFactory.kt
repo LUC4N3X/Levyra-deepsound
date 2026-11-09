@@ -179,6 +179,7 @@ object LevyraMediaItemFactory {
             putBoolean(PlaybackService.EXTRA_VIDEO_MODE, videoMode)
             putBoolean(PlaybackService.EXTRA_LIVE_RADIO, track.isLiveRadio())
             putBoolean(PlaybackService.EXTRA_PERSONAL_COLLECTION, isPersonalCollectionStream(track))
+            putBoolean(PlaybackService.EXTRA_STREAM_ONLY, !track.allowsPlaybackDiskCache())
             track.youtubeLoudnessDb?.let { putFloat(PlaybackService.EXTRA_YOUTUBE_LOUDNESS_DB, it) }
             track.youtubePerceptualLoudnessDb?.let { putFloat(PlaybackService.EXTRA_YOUTUBE_PERCEPTUAL_LOUDNESS_DB, it) }
             track.replayGainTrackDb?.let { putFloat(PlaybackService.EXTRA_REPLAY_GAIN_TRACK_DB, it) }

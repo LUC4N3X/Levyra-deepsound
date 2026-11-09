@@ -305,6 +305,7 @@ class PlaybackService : MediaLibraryService() {
         const val EXTRA_VIDEO_MODE = "levyra.videoMode"
         const val EXTRA_LIVE_RADIO = "levyra.liveRadio"
         const val EXTRA_PERSONAL_COLLECTION = "levyra.personalCollection"
+        const val EXTRA_STREAM_ONLY = "levyra.streamOnly"
         const val EXTRA_YOUTUBE_LOUDNESS_DB = "levyra.youtubeLoudnessDb"
         const val EXTRA_YOUTUBE_PERCEPTUAL_LOUDNESS_DB = "levyra.youtubePerceptualLoudnessDb"
         const val EXTRA_REPLAY_GAIN_TRACK_DB = "levyra.replayGain.trackDb"
@@ -1043,6 +1044,7 @@ class PlaybackService : MediaLibraryService() {
         val mergingFactory = LevyraMediaSourceFactory(
             defaultFactory,
             cacheDataSourceFactory,
+            upstreamFactory,
             localDataSourceFactory,
             SabrDataSource.Factory(baseHttpFactory),
             liveRadioDataSourceFactory,
@@ -4196,6 +4198,11 @@ internal fun isPersonalCollectionMediaItem(mediaItem: MediaItem?): Boolean {
     return scheme == "https" || scheme == "http"
 }
 
+internal fun isStreamOnlyMediaItem(mediaItem: MediaItem): Boolean {
+    val extras = mediaItem.mediaMetadata.extras ?: mediaItem.requestMetadata.extras
+    return extras?.getBoolean(PlaybackService.EXTRA_STREAM_ONLY, false) == true
+}
+
 internal fun isLiveRadioMediaItem(mediaItem: MediaItem?): Boolean {
     if (mediaItem == null) return false
     if (mediaItem.mediaId.startsWith("live-radio:")) return true
@@ -4209,6 +4216,7 @@ internal fun isLiveRadioMediaItem(mediaItem: MediaItem?): Boolean {
 private class LevyraMediaSourceFactory(
     private val delegate: DefaultMediaSourceFactory,
     private val dataSourceFactory: DataSource.Factory,
+    private val uncachedDataSourceFactory: DataSource.Factory,
     private val localDataSourceFactory: DataSource.Factory,
     private val sabrDataSourceFactory: DataSource.Factory,
     private val liveRadioDataSourceFactory: DataSource.Factory,
@@ -4286,7 +4294,7 @@ private class LevyraMediaSourceFactory(
             liveRadio && inferredManifestMimeType == null -> LiveRadioPlaylistDataSource.Factory(liveRadioDataSourceFactory)
             liveRadio -> liveRadioDataSourceFactory
             else -> LevyraRoutingDataSourceFactory(
-                dataSourceFactory = dataSourceFactory,
+                dataSourceFactory = if (isStreamOnlyMediaItem(mediaItem)) uncachedDataSourceFactory else dataSourceFactory,
                 localDataSourceFactory = localDataSourceFactory,
                 sabrDataSourceFactory = sabrDataSourceFactory,
                 subtitleDataSourceFactory = subtitleDataSourceFactory,

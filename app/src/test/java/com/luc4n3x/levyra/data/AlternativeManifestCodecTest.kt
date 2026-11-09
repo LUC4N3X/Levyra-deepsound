@@ -54,6 +54,16 @@ class AlternativeManifestCodecTest {
     }
 
     @Test
+    fun streamOnlyRestrictionSurvivesRoundTripAndLegacyManifestsStayCacheable() {
+        val streamOnly = AlternativeAudioSource("jiosaavn", "pW-kkdqr", 320, AlternativeMatchVerdict.EXACT, 100, offlineAllowed = false)
+        assertEquals(streamOnly, PlaybackManifestCodec.decode(PlaybackManifestCodec.encode(manifest(streamOnly)))!!.alternativeSource)
+        val legacy = org.json.JSONObject(PlaybackManifestCodec.encode(manifest(streamOnly.copy(offlineAllowed = true)))).apply {
+            getJSONObject("alternativeSource").remove("offlineAllowed")
+        }.toString()
+        assertTrue(PlaybackManifestCodec.decode(legacy)!!.alternativeSource!!.offlineAllowed)
+    }
+
+    @Test
     fun ordinaryManifestHasNoAlternativeSource() {
         val decoded = PlaybackManifestCodec.decode(PlaybackManifestCodec.encode(manifest(null)))!!
         assertNull(decoded.alternativeSource)

@@ -33,5 +33,6 @@ data class AlternativeAudioSource(
     val providerTrackId: String,
     val bitrateKbps: Int,
     val verdict: AlternativeMatchVerdict,
-    val confidence: Int
+    val confidence: Int,
+    val offlineAllowed: Boolean = true
 )

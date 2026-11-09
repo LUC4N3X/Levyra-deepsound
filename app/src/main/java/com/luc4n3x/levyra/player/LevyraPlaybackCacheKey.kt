@@ -5,6 +5,8 @@ import com.luc4n3x.levyra.domain.Track
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 
+internal fun Track.allowsPlaybackDiskCache(): Boolean = playbackManifest?.alternativeSource?.offlineAllowed != false
+
 object LevyraPlaybackCacheKey {
     private val itagPattern = Regex("(?:[?&]|%26)itag(?:=|%3D)(\\d+)", RegexOption.IGNORE_CASE)
 

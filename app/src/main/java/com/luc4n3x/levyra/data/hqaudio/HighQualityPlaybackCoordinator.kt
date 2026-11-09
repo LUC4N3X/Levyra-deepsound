@@ -265,7 +265,8 @@ class HighQualityPlaybackCoordinator(
                 providerTrackId = stream.providerTrackId,
                 bitrateKbps = stream.displayKbps,
                 verdict = selection.evaluation.verdict,
-                confidence = selection.evaluation.confidence
+                confidence = selection.evaluation.confidence,
+                offlineAllowed = stream.offlineAllowed
             )
         )
         return base.copy(

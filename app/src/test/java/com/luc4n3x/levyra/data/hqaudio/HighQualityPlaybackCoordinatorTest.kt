@@ -5,6 +5,7 @@ import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.PlaybackStreamProvenance
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.player.LevyraPlaybackCacheKey
+import com.luc4n3x.levyra.player.allowsPlaybackDiskCache
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -96,7 +97,9 @@ class HighQualityPlaybackCoordinatorTest {
             lookupOutcome = { ProviderLookupOutcome.Found(candidate().copy(offlineAllowed = false)) }
         }
         val played = coordinator(streamOnly).play()
-        assertNotNull(played.playbackManifest!!.alternativeSource)
+        assertFalse(played.playbackManifest!!.alternativeSource!!.offlineAllowed)
+        assertFalse(played.allowsPlaybackDiskCache())
+        assertTrue(coordinator(exactProvider()).play().allowsPlaybackDiskCache())
         assertNull(coordinator(streamOnly).resolveLossyDownload(playbackTrack(), "High", provenance))
         assertNotNull(coordinator(exactProvider()).resolveLossyDownload(playbackTrack(), "High", provenance))
     }
