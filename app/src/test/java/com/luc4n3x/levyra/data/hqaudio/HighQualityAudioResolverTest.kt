@@ -124,7 +124,6 @@ class HighQualityAudioResolverTest {
             candidate(primary = listOf("Someone Else")),
             candidate(duration = 260),
             candidate(isrc = "GBAYE0000001"),
-            candidate(explicit = true),
             candidate(id = "other-id")
         )
         conflicting.forEach { details ->
@@ -290,7 +289,7 @@ class HighQualityAudioResolverTest {
         )
         val result = resolver(provider).resolveNow()
         assertEquals(HighQualityFallbackReason.NO_MATCH, (result as HighQualityResolution.Fallback).reason)
-        assertEquals(AlternativeSearchPlan.queries(query()).size, provider.searches.size)
+        assertEquals(AlternativeSearchPlan.queries(query()).size + listOfNotNull(AlternativeSearchPlan.titleOnly(query())).size, provider.searches.size)
     }
 
     @Test

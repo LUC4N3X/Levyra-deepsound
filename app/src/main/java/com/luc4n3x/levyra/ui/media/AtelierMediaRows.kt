@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.media
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.ui.geometry.center
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -195,8 +196,8 @@ internal fun AtelierAlbumTrackRow(
                 }
             }
             Column(Modifier.weight(1f).padding(end = 12.dp)) {
-                Text(
-                    track.title, color = if (current) AtelierDesign.accentBright else AtelierDesign.text,
+                LevyraMediaTitle(
+                    track.title,  color = if (current) AtelierDesign.accentBright else AtelierDesign.text,
                     style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis
                 )
                 if (subtitle.isNotBlank() || downloaded || track.explicit) {
@@ -319,8 +320,8 @@ private fun AtelierLibraryTrackText(
     modifier: Modifier
 ) {
     Column(modifier) {
-        Text(
-            track.title, color = if (isCurrent) AtelierDesign.accentBright else AtelierDesign.text,
+        LevyraMediaTitle(
+            track.title, explicit = track.explicit,  color = if (isCurrent) AtelierDesign.accentBright else AtelierDesign.text,
             style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis
         )
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {

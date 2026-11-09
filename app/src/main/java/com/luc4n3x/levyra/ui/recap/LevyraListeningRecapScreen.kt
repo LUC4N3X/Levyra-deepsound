@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.recap
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import com.luc4n3x.levyra.ui.overlayScreenBottomPadding
 import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -721,7 +722,7 @@ private fun TopTrackRow(
         }
 
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
+            LevyraMediaTitle(
                 text = track.title,
                 color = LevyraText,
                 fontSize = 14.sp,

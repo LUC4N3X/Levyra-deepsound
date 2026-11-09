@@ -1,53 +1,56 @@
 package com.luc4n3x.levyra.ui.moodjourney
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.State
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.takeOrElse
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.domain.MoodCurve
 import com.luc4n3x.levyra.domain.MoodCurvePreset
-import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
 import com.luc4n3x.levyra.ui.atelierUppercase
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.SmartMusicCopy
@@ -57,126 +60,88 @@ import com.luc4n3x.levyra.ui.theme.AtelierDesign
 import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
 import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
 import com.luc4n3x.levyra.ui.theme.LevyraIsAtelier
+import com.luc4n3x.levyra.ui.theme.LevyraIsMono
+import com.luc4n3x.levyra.ui.theme.MonoDesign
+import com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin
 import com.luc4n3x.levyra.ui.theme.LevyraIsQobuz
 import com.luc4n3x.levyra.ui.theme.LevyraSkinManagesLayout
 import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
 import com.luc4n3x.levyra.ui.theme.QobuzDesign
+import com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic
+import com.luc4n3x.levyra.ui.theme.YouTubeMusicDesign
+import com.luc4n3x.levyra.ui.recentSearchesBleed
+import androidx.compose.foundation.layout.PaddingValues
+
+private val JourneyCoverSize = 148.dp
+private const val JourneySamples = 33
 
 private val JourneyPresets = listOf(MoodCurvePreset.Sunrise, MoodCurvePreset.WindDown, MoodCurvePreset.Summit, MoodCurvePreset.Wave)
 
 @Composable
 internal fun MoodJourneyEntryCard(onOpen: (MoodCurvePreset?) -> Unit, modifier: Modifier = Modifier) {
-    val scheme = MaterialTheme.colorScheme
     val copy = smartMusicCopy(LocalLevyraStrings.current.code)
     val haptics = LocalLevyraHaptics.current
     val open: (MoodCurvePreset?) -> Unit = { preset ->
         haptics.perform(LevyraHapticAction.Confirm)
         onOpen(preset)
     }
-    if (LevyraIsAtelier) {
-        AtelierMoodJourneyEntry(copy, open, modifier)
-        return
+    when {
+        LevyraIsAtelier -> AtelierMoodJourneyEntry(copy, open, modifier)
+        LevyraIsMono -> MonoMoodJourneyEntry(copy, open, modifier)
+        LevyraIsDefaultSkin -> DefaultMoodJourneyEntry(copy, open, modifier)
+        else -> SkinMoodJourneyEntry(copy, open, modifier)
     }
-    Column(modifier.fillMaxWidth().padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun DefaultMoodJourneyEntry(copy: SmartMusicCopy, open: (MoodCurvePreset?) -> Unit, modifier: Modifier) {
+    val scheme = MaterialTheme.colorScheme
+    Column(modifier.fillMaxWidth().padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            JourneyHeading(copy, Modifier.weight(1f))
+            Box(
+                Modifier.size(48.dp).clip(MaterialShapes.Cookie9Sided.toShape()).background(scheme.surfaceContainerHigh)
+                    .clickable(role = Role.Button, onClickLabel = copy[SmartMusicText.MoodTitle]) { open(null) },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.Add, contentDescription = copy[SmartMusicText.MoodTitle], tint = scheme.onSurface, modifier = Modifier.size(24.dp))
+            }
+        }
+        JourneyCoverRail(copy, journeyCoverStyle(), open)
+    }
+}
+
+@Composable
+private fun SkinMoodJourneyEntry(copy: SmartMusicCopy, open: (MoodCurvePreset?) -> Unit, modifier: Modifier) {
+    val scheme = MaterialTheme.colorScheme
+    Column(modifier.fillMaxWidth().padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(
             Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button) { open(null) },
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(copy[SmartMusicText.MoodTitle], style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold, color = scheme.onSurface, modifier = Modifier.semantics { heading() })
-                Text(copy[SmartMusicText.MoodSubtitle], style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
-            }
+            JourneyHeading(copy, Modifier.weight(1f))
             Box(Modifier.size(48.dp).clip(LevyraHomeDesign.HeroShape).background(scheme.surfaceContainerHigh), contentAlignment = Alignment.Center) {
                 Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null, tint = scheme.onSurface, modifier = Modifier.size(22.dp))
             }
         }
-        JourneyCurve()
-        JourneyPresetControls(open)
+        JourneyCoverRail(copy, journeyCoverStyle(), open)
     }
 }
 
 @Composable
-private fun JourneyPresetControls(onOpen: (MoodCurvePreset) -> Unit) {
+private fun JourneyHeading(copy: SmartMusicCopy, modifier: Modifier) {
     val scheme = MaterialTheme.colorScheme
-    val copy = smartMusicCopy(LocalLevyraStrings.current.code)
-    val corner = when {
-        LevyraIsAtelier -> AtelierDesign.cardCorner
-        LevyraIsQobuz -> QobuzDesign.cardCorner
-        LevyraSkinManagesLayout -> LevyraHomeDesign.HeroCorner.coerceAtMost(16.dp)
-        else -> 20.dp
-    }
-    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        JourneyPresets.forEachIndexed { index, preset ->
-            val shape = RoundedCornerShape(
-                topStart = if (index == 0) corner else 4.dp,
-                bottomStart = if (index == 0) corner else 4.dp,
-                topEnd = if (index == JourneyPresets.lastIndex) corner else 4.dp,
-                bottomEnd = if (index == JourneyPresets.lastIndex) corner else 4.dp
-            )
-            Column(
-                Modifier.weight(1f).fillMaxHeight().heightIn(min = 64.dp).clip(shape).background(scheme.surfaceContainerLow)
-                    .clickable(role = Role.Button) { onOpen(preset) }.padding(horizontal = 4.dp, vertical = 10.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)
-            ) {
-                JourneyPresetGlyph(preset)
-                Text(copy[presetLabel(preset)], style = MaterialTheme.typography.labelMedium, color = scheme.onSurface, textAlign = TextAlign.Center)
-            }
-        }
-    }
-}
-
-@Composable
-private fun JourneyCurve() {
-    val scheme = MaterialTheme.colorScheme
-    val energies = remember { val curve = MoodCurve.preset(MoodCurvePreset.Wave); List(65) { curve.sample(it / 64f).energy } }
-    val travel: State<Float>? = if (LocalAnimationsEnabled.current) {
-        rememberInfiniteTransition(label = "mood-entry-travel").animateFloat(
-            0f, 1f, infiniteRepeatable(tween(6_400, easing = LinearEasing)), label = "mood-entry-playhead"
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            copy[SmartMusicText.MoodTitle],
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = scheme.onSurface,
+            modifier = Modifier.semantics { heading() }
         )
-    } else null
-    Box(Modifier.fillMaxWidth().height(64.dp).drawWithCache {
-        val inset = 8.dp.toPx()
-        val width = size.width - inset * 2
-        fun point(index: Int) = Offset(inset + index / 64f * width, inset + (1f - energies[index]) * (size.height - inset * 2))
-        val line = Path()
-        val bars = Path()
-        energies.indices.forEach { index ->
-            val p = point(index)
-            if (index == 0) line.moveTo(p.x, p.y) else line.lineTo(p.x, p.y)
-            if (index % 2 == 0) {
-                bars.moveTo(p.x, p.y + 7.dp.toPx())
-                bars.lineTo(p.x, size.height - 2.dp.toPx())
-            }
-        }
-        val lineStyle = Stroke(2.dp.toPx(), cap = StrokeCap.Round)
-        val barStyle = Stroke(1.dp.toPx(), cap = StrokeCap.Round)
-        onDrawBehind {
-            drawPath(bars, scheme.onSurface.copy(alpha = 0.06f), style = barStyle)
-            drawPath(line, scheme.primary, style = lineStyle)
-            val position = (travel?.value ?: 0.5f) * 64f
-            val index = position.toInt().coerceIn(0, 63)
-            val head = point(index) + (point(index + 1) - point(index)) * (position - index)
-            drawCircle(scheme.surface, 6.dp.toPx(), head)
-            drawCircle(scheme.primary, 3.5.dp.toPx(), head)
-        }
-    })
-}
-
-@Composable
-private fun JourneyPresetGlyph(preset: MoodCurvePreset, tint: Color = Color.Unspecified) {
-    val color = tint.takeOrElse { MaterialTheme.colorScheme.onSurfaceVariant }
-    val energies = remember(preset) { val curve = MoodCurve.preset(preset); List(17) { curve.sample(it / 16f).energy } }
-    Canvas(Modifier.size(width = 28.dp, height = 12.dp)) {
-        val path = Path()
-        energies.forEachIndexed { index, energy ->
-            val x = index / 16f * size.width
-            val y = (1f - energy) * size.height
-            if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
-        }
-        drawPath(path, color, style = Stroke(1.5.dp.toPx(), cap = StrokeCap.Round))
+        Text(copy[SmartMusicText.MoodSubtitle], style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
     }
 }
 
@@ -202,55 +167,206 @@ private fun AtelierMoodJourneyEntry(copy: SmartMusicCopy, open: (MoodCurvePreset
             color = AtelierDesign.text,
             modifier = Modifier.fillMaxWidth().clickable(role = Role.Button) { open(null) }.padding(bottom = 18.dp)
         )
-        AtelierJourneyTimeline(Modifier.fillMaxWidth().height(72.dp).clickable(role = Role.Button) { open(null) })
+        JourneyCoverRail(copy, journeyCoverStyle(), open)
         Box(Modifier.padding(top = 18.dp).fillMaxWidth().height(1.dp).background(AtelierDesign.hairline))
-        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-            JourneyPresets.forEachIndexed { index, preset ->
-                if (index > 0) Box(Modifier.padding(vertical = 14.dp).width(1.dp).fillMaxHeight().background(AtelierDesign.hairline))
-                Column(
-                    Modifier.weight(1f).heightIn(min = 56.dp).clickable(role = Role.Button) { open(preset) }.padding(vertical = 12.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically)
-                ) {
-                    JourneyPresetGlyph(preset, AtelierDesign.textSecondary)
-                    Text(copy[presetLabel(preset)], style = MaterialTheme.typography.labelLarge, color = AtelierDesign.text, textAlign = TextAlign.Center, maxLines = 1)
-                }
-            }
-        }
-        Box(Modifier.fillMaxWidth().height(1.dp).background(AtelierDesign.hairline))
     }
 }
 
 @Composable
-private fun AtelierJourneyTimeline(modifier: Modifier) {
-    val line = AtelierDesign.text
-    val tick = AtelierDesign.hairlineStrong
-    val accent = AtelierDesign.accent
-    val energies = remember { val curve = MoodCurve.preset(MoodCurvePreset.Wave); List(65) { curve.sample(it / 64f).energy } }
-    val travel: State<Float>? = if (LocalAnimationsEnabled.current) {
-        rememberInfiniteTransition(label = "atelier-journey").animateFloat(
-            0f, 1f, infiniteRepeatable(tween(9_000, easing = LinearEasing)), label = "atelier-journey-head"
-        )
-    } else null
-    Box(modifier.drawWithCache {
-        val baseline = size.height - 1.dp.toPx()
-        val usable = size.height - 14.dp.toPx()
-        fun point(index: Int) = Offset(index / 64f * size.width, baseline - 8.dp.toPx() - energies[index] * (usable - 8.dp.toPx()))
-        val trace = Path().apply { energies.indices.forEach { index -> point(index).let { if (index == 0) moveTo(it.x, it.y) else lineTo(it.x, it.y) } } }
-        val stroke = Stroke(1.25.dp.toPx(), cap = StrokeCap.Round)
-        onDrawBehind {
-            drawLine(tick, Offset(0f, baseline), Offset(size.width, baseline), 1.dp.toPx())
-            for (index in 0..32) {
-                val x = index / 32f * size.width
-                val height = if (index % 8 == 0) 7.dp.toPx() else 3.dp.toPx()
-                drawLine(tick, Offset(x, baseline), Offset(x, baseline - height), 1.dp.toPx())
+private fun MonoMoodJourneyEntry(copy: SmartMusicCopy, open: (MoodCurvePreset?) -> Unit, modifier: Modifier) {
+    Column(modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button) { open(null) },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    copy[SmartMusicText.MoodTitle],
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MonoDesign.text,
+                    modifier = Modifier.semantics { heading() }
+                )
+                Text(copy[SmartMusicText.MoodSubtitle], style = MaterialTheme.typography.bodySmall, color = MonoDesign.textSecondary)
             }
-            drawPath(trace, line.copy(alpha = 0.9f), style = stroke)
-            val position = (travel?.value ?: 0.5f) * 64f
-            val index = position.toInt().coerceIn(0, 63)
-            val head = point(index) + (point(index + 1) - point(index)) * (position - index)
-            drawLine(accent.copy(alpha = 0.5f), Offset(head.x, head.y), Offset(head.x, baseline), 1.dp.toPx())
-            drawCircle(accent, 3.dp.toPx(), head)
+            Box(
+                Modifier.size(40.dp).clip(CircleShape).background(MonoDesign.raised).border(1.dp, MonoDesign.hairline, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null, tint = MonoDesign.text, modifier = Modifier.size(18.dp))
+            }
         }
-    })
+        JourneyCoverRail(copy, journeyCoverStyle(), open)
+    }
+}
+
+private data class JourneyCoverStyle(
+    val corner: Dp,
+    val playShape: Shape?,
+    val base: Color,
+    val vividness: Float,
+    val muted: Boolean,
+    val labelColor: Color,
+    val uppercaseLabel: Boolean,
+    val gutter: Dp
+)
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun journeyCoverStyle(): JourneyCoverStyle {
+    val scheme = MaterialTheme.colorScheme
+    return when {
+        LevyraIsMono -> JourneyCoverStyle(
+            corner = MonoDesign.cardCorner,
+            playShape = CircleShape,
+            base = MonoDesign.surface,
+            vividness = 0.8f,
+            muted = false,
+            labelColor = MonoDesign.text,
+            uppercaseLabel = false,
+            gutter = MonoDesign.gutter
+        )
+        LevyraIsAtelier -> JourneyCoverStyle(
+            corner = AtelierDesign.cardCorner,
+            playShape = null,
+            base = scheme.surface,
+            vividness = 0.6f,
+            muted = true,
+            labelColor = AtelierDesign.text,
+            uppercaseLabel = true,
+            gutter = AtelierDesign.gutter
+        )
+        LevyraIsDefaultSkin -> JourneyCoverStyle(
+            corner = 20.dp,
+            playShape = MaterialShapes.Cookie9Sided.toShape(),
+            base = scheme.surfaceContainer,
+            vividness = 0.74f,
+            muted = false,
+            labelColor = scheme.onSurface,
+            uppercaseLabel = false,
+            gutter = LevyraHomeDesign.HorizontalInset
+        )
+        else -> JourneyCoverStyle(
+            corner = when {
+                LevyraIsQobuz -> QobuzDesign.cardCorner
+                LevyraSkinManagesLayout -> LevyraHomeDesign.HeroCorner.coerceAtMost(16.dp)
+                else -> 20.dp
+            },
+            playShape = CircleShape,
+            base = scheme.surfaceContainer,
+            vividness = 0.68f,
+            muted = false,
+            labelColor = scheme.onSurface,
+            uppercaseLabel = false,
+            gutter = when {
+                LevyraIsQobuz -> QobuzDesign.gutter
+                LevyraIsYouTubeMusic -> YouTubeMusicDesign.gutter
+                else -> LevyraHomeDesign.HorizontalInset
+            }
+        )
+    }
+}
+
+@Composable
+private fun JourneyCoverRail(copy: SmartMusicCopy, style: JourneyCoverStyle, open: (MoodCurvePreset?) -> Unit) {
+    LazyRow(
+        modifier = Modifier.recentSearchesBleed(style.gutter),
+        contentPadding = PaddingValues(horizontal = style.gutter),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        items(JourneyPresets, key = { it.name }) { preset ->
+            val label = copy[presetLabel(preset)]
+            JourneyCoverCard(preset, if (style.uppercaseLabel) atelierUppercase(label) else label, style) { open(preset) }
+        }
+    }
+}
+
+private fun journeyHues(preset: MoodCurvePreset): Pair<Color, Color> = if (LevyraIsMono) glacierJourneyHues(preset) else when (preset) {
+    MoodCurvePreset.Sunrise -> Color(0xFFFFB36B) to Color(0xFFE2557C)
+    MoodCurvePreset.WindDown -> Color(0xFF8C7BFF) to Color(0xFF283A8F)
+    MoodCurvePreset.Summit -> Color(0xFF45D6B5) to Color(0xFF1C6488)
+    else -> Color(0xFFC77DFF) to Color(0xFF3B6FE8)
+}
+
+private fun glacierJourneyHues(preset: MoodCurvePreset): Pair<Color, Color> = when (preset) {
+    MoodCurvePreset.Sunrise -> Color(0xFFF4CDB0) to Color(0xFF5E93B8)
+    MoodCurvePreset.WindDown -> Color(0xFFAEB9F2) to Color(0xFF1B2850)
+    MoodCurvePreset.Summit -> Color(0xFF8ED6F4) to Color(0xFF1D566F)
+    else -> Color(0xFFB6F0E4) to Color(0xFF3A5A98)
+}
+
+private fun Color.mutedTowardGray(): Color {
+    val gray = luminance().let { Color(it, it, it) }
+    return lerp(gray, this, 0.35f)
+}
+
+@Composable
+private fun JourneyCoverCard(preset: MoodCurvePreset, label: String, style: JourneyCoverStyle, onClick: () -> Unit) {
+    val energies = remember(preset) {
+        val curve = MoodCurve.preset(preset)
+        FloatArray(JourneySamples) { curve.sample(it / (JourneySamples - 1f)).energy }
+    }
+    val (hueTop, hueBottom) = journeyHues(preset).let { (top, bottom) ->
+        if (style.muted) top.mutedTowardGray() to bottom.mutedTowardGray() else top to bottom
+    }
+    val skyTop = lerp(style.base, hueTop, style.vividness)
+    val skyBottom = lerp(style.base, hueBottom, style.vividness)
+    val shape = RoundedCornerShape(style.corner)
+    Column(
+        Modifier.width(JourneyCoverSize).clickable(role = Role.Button, onClickLabel = label, onClick = onClick),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Box(
+            Modifier.size(JourneyCoverSize).clip(shape)
+                .drawWithCache {
+                    val last = JourneySamples - 1
+                    val horizon = size.height * 0.40f
+                    val relief = size.height - horizon
+                    fun front(i: Int) = Offset(i / last.toFloat() * size.width, horizon + (1f - energies[i]) * relief * 0.72f)
+                    val frontEdge = Path().apply {
+                        for (i in 0..last) front(i).let { if (i == 0) moveTo(it.x, it.y) else lineTo(it.x, it.y) }
+                    }
+                    val frontLand = Path().apply { addPath(frontEdge); lineTo(size.width, size.height); lineTo(0f, size.height); close() }
+                    val sky = Brush.verticalGradient(listOf(skyTop, skyBottom))
+                    val shade = Brush.verticalGradient(
+                        listOf(Color.Black.copy(alpha = 0.20f), Color.Black.copy(alpha = 0.42f)),
+                        startY = horizon,
+                        endY = size.height
+                    )
+                    val peak = energies.indices.maxBy { energies[it] }
+                    val sunRadius = size.width * 0.052f
+                    val sunCenter = front(peak).let { Offset(it.x.coerceIn(sunRadius * 2.5f, size.width - sunRadius * 2.5f), (it.y - sunRadius * 3f).coerceAtLeast(sunRadius * 2.5f)) }
+                    val glow = Brush.radialGradient(
+                        listOf(Color.White.copy(alpha = 0.26f), Color.Transparent),
+                        center = sunCenter,
+                        radius = sunRadius * 3.6f
+                    )
+                    val stroke = Stroke(1.6.dp.toPx(), cap = StrokeCap.Round)
+                    onDrawBehind {
+                        drawRect(sky)
+                        drawCircle(glow, sunRadius * 3.6f, sunCenter)
+                        drawCircle(Color.White.copy(alpha = 0.78f), sunRadius, sunCenter)
+                        drawPath(frontLand, shade)
+                        drawPath(frontEdge, Color.White.copy(alpha = 0.88f), style = stroke)
+                    }
+                }
+        ) {
+            if (style.playShape != null) {
+                Box(
+                    Modifier.align(Alignment.BottomEnd).padding(10.dp).size(40.dp)
+                        .clip(style.playShape).background(Color.White.copy(alpha = 0.92f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = lerp(skyBottom, Color.Black, 0.35f), modifier = Modifier.size(22.dp))
+                }
+            }
+        }
+        Text(
+            label,
+            style = if (style.uppercaseLabel) MaterialTheme.typography.labelLarge else MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = style.labelColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
 }

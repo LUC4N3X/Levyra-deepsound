@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -64,8 +65,7 @@ internal fun AlbumNowPlayingDock(
             LevyraRowText(
                 title = track.title,
                 subtitle = track.artist,
-                modifier = Modifier.weight(1f)
-            )
+                modifier = Modifier.weight(1f), explicit = track.explicit)
             MiniPlayerToggleButton(
                 isPlaying = isPlaying,
                 isResolving = isResolving,

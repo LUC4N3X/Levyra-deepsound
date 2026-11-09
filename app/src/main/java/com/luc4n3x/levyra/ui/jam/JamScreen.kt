@@ -3,6 +3,11 @@
 package com.luc4n3x.levyra.ui.jam
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.luc4n3x.levyra.feature.jam.JamSessionCode
+import com.luc4n3x.levyra.ui.i18n.jamScanQr
+import com.luc4n3x.levyra.ui.i18n.jamScannerUnavailable
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.selection.selectable
@@ -18,6 +23,7 @@ import com.luc4n3x.levyra.ui.AtelierCabinetKnob
 import com.luc4n3x.levyra.ui.atelierUppercase
 import com.luc4n3x.levyra.ui.theme.AtelierDesign
 import com.luc4n3x.levyra.ui.theme.LevyraIsAtelier
+import com.luc4n3x.levyra.ui.theme.LevyraIsMono
 import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
@@ -37,6 +43,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
@@ -64,6 +71,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -94,6 +103,7 @@ import com.luc4n3x.levyra.feature.jam.JamTrack
 import com.luc4n3x.levyra.feature.jam.JamUiState
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import kotlinx.coroutines.launch
 
 private val JamPermissionOptions = listOf(
     JamGuestPermission.HostOnly,
@@ -119,13 +129,14 @@ internal fun LevyraJamOverlay(
     onClearBans: () -> Unit,
     onShare: (String) -> Unit,
     onDismissFailure: () -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    qrScanner: JamQrScanAction
 ) {
     CompositionLocalProvider(LocalJamLook provides jamLookForActiveSkin()) {
         JamOverlayContent(
             jam, displayName, onDisplayNameChange, onCreate, onJoin, onLeave, onEnd, onPermissionChange,
             onApprovalRequiredChange, onLockedChange, onApproveParticipant, onRejectParticipant, onRemoveParticipant,
-            onClearBans, onShare, onDismissFailure, onClose
+            onClearBans, onShare, onDismissFailure, onClose, qrScanner
         )
     }
 }
@@ -149,7 +160,8 @@ private fun JamOverlayContent(
     onClearBans: () -> Unit,
     onShare: (String) -> Unit,
     onDismissFailure: () -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    qrScanner: JamQrScanAction
 ) {
     val look = LocalJamLook.current
     val strings = LocalLevyraStrings.current
@@ -158,6 +170,21 @@ private fun JamOverlayContent(
     var pendingApproval by rememberSaveable { mutableStateOf(true) }
     val selectedPermission = JamGuestPermission.fromId(pendingPermissionId)
     val session = jam.session
+    var sharing by rememberSaveable(jam.code) { mutableStateOf(false) }
+    val listState = rememberLazyListState()
+    val sessionIdentity = "${jam.role?.name.orEmpty()}:${session?.sessionId.orEmpty()}"
+    var displayedSessionIdentity by rememberSaveable { mutableStateOf(sessionIdentity) }
+    LaunchedEffect(sessionIdentity) {
+        if (displayedSessionIdentity != sessionIdentity) {
+            listState.scrollToItem(0)
+            displayedSessionIdentity = sessionIdentity
+        }
+    }
+    val scope = rememberCoroutineScope()
+    val canJoin = !jam.isActive && jam.connection != JamConnectionState.Connecting
+    val invitation = remember(jam.deepLink, jam.code) {
+        JamSessionCode.parse(jam.deepLink.ifBlank { jam.code })?.deepLink()
+    }
     val participants = session?.participants.orEmpty()
     val contributions = remember(session?.queue, participants) {
         jamContributions(session?.queue.orEmpty(), participants)
@@ -182,6 +209,7 @@ private fun JamOverlayContent(
     ) {
         if (LevyraIsAtelier) AtelierJamBackdrop() else if (!look.skinned) JamAmbientBackdrop()
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize().statusBarsPadding(),
             contentPadding = PaddingValues(
                 start = 20.dp,
@@ -202,6 +230,12 @@ private fun JamOverlayContent(
                         dismissLabel = strings.close,
                         onDismiss = onDismissFailure
                     )
+                }
+            }
+
+            if (qrScanner.unavailable) {
+                item(contentType = "jam-scanner-failure") {
+                    JamFailureBanner(strings.jamScannerUnavailable, strings.close, qrScanner.dismissFailure)
                 }
             }
 
@@ -243,6 +277,10 @@ private fun JamOverlayContent(
                 item(contentType = "jam-join") {
                     JamCard {
                         JamCardTitle(strings.jamJoin)
+                        JamSecondaryButton(
+                            label = strings.jamScanQr,
+                            onClick = { scope.launch { listState.scrollToItem(0); qrScanner.scan() } }
+                        )
                         OutlinedTextField(
                             value = joinCode,
                             onValueChange = { joinCode = it.take(JamSessionState.MAX_TEXT_LENGTH) },
@@ -254,7 +292,7 @@ private fun JamOverlayContent(
                         )
                         JamPrimaryButton(
                             label = strings.jamJoin,
-                            enabled = joinCode.isNotBlank(),
+                            enabled = joinCode.isNotBlank() && canJoin,
                             onClick = { onJoin(joinCode) }
                         )
                         Text(
@@ -269,7 +307,7 @@ private fun JamOverlayContent(
                     JamSessionHero(
                         jam = jam,
                         strings = strings,
-                        onShare = { onShare(jam.deepLink.ifBlank { jam.code }) }
+                        onShare = { sharing = true }
                     )
                 }
 
@@ -365,6 +403,17 @@ private fun JamOverlayContent(
                 }
             }
         }
+        if (sharing && jam.isHost && invitation != null) {
+            Dialog(onDismissRequest = { sharing = false }, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+                JamQrShare(
+                    invitation = invitation,
+                    sessionName = strings.jamTitle,
+                    hostName = session?.participants?.firstOrNull { it.isHost }?.name.orEmpty(),
+                    onShare = onShare,
+                    onClose = { sharing = false }
+                )
+            }
+        }
     }
 }
 
@@ -442,6 +491,10 @@ private fun AtelierJamHeader(title: String, subtitle: String, onClose: () -> Uni
 private fun JamHeader(title: String, subtitle: String, onClose: () -> Unit) {
     if (LevyraIsAtelier) {
         AtelierJamHeader(title, subtitle, onClose)
+        return
+    }
+    if (LevyraIsMono) {
+        MonoJamHeader(title, subtitle, onClose)
         return
     }
     val look = LocalJamLook.current
@@ -528,14 +581,7 @@ private fun SkinnedJamSessionHero(jam: JamUiState, strings: LevyraStrings, onSha
         }
         Box(Modifier.fillMaxWidth().height(1.dp).background(look.border))
         if (jam.isHost && jam.code.isNotBlank()) {
-            Column(
-                Modifier.fillMaxWidth().background(look.background.copy(alpha = 0.6f)).padding(horizontal = 20.dp, vertical = 26.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Text(jamLabel(look, strings.jamSessionCode), color = look.textSecondary, style = MaterialTheme.typography.labelSmall)
-                Text(jam.code, color = look.text, style = MaterialTheme.typography.displayMedium.copy(fontWeight = look.displayWeight), letterSpacing = 6.sp, maxLines = 1)
-            }
+            JamInvitationCode(jam.code, Modifier.padding(horizontal = 20.dp, vertical = 16.dp))
             Box(Modifier.fillMaxWidth().height(1.dp).background(look.border))
         }
         Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -552,6 +598,13 @@ private fun SkinnedJamSessionHero(jam: JamUiState, strings: LevyraStrings, onSha
 
 @Composable
 private fun JamSessionHero(jam: JamUiState, strings: LevyraStrings, onShare: () -> Unit) {
+    if (LevyraIsMono) {
+        MonoJamSessionHero(
+            jam.session?.participants.orEmpty(), jam.isHost, jam.connection == JamConnectionState.Connected,
+            jamConnectionText(jam.connection, strings), jam.isHost && jam.locked, jam.code, onShare
+        )
+        return
+    }
     if (LocalJamLook.current.skinned) {
         SkinnedJamSessionHero(jam, strings, onShare)
         return
@@ -627,25 +680,7 @@ private fun JamSessionHero(jam: JamUiState, strings: LevyraStrings, onShare: () 
             }
 
             if (jam.isHost && jam.code.isNotBlank()) {
-                Surface(
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.46f),
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    shape = MaterialShapes.Cookie4Sided.toShape()
-                ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(strings.jamSessionCode, style = MaterialTheme.typography.labelMedium)
-                        Text(
-                            jam.code,
-                            style = MaterialTheme.typography.headlineLarge,
-                            letterSpacing = 2.sp,
-                            fontWeight = FontWeight.Black
-                        )
-                    }
-                }
+                JamInvitationCode(jam.code)
                 JamPrimaryButton(
                     label = strings.jamShareInvite,
                     icon = Icons.Rounded.IosShare,
@@ -947,6 +982,10 @@ private fun JamPermissionPicker(
 ) {
     if (LevyraIsAtelier) {
         AtelierJamPermissionPicker(selected, strings, onSelect)
+        return
+    }
+    if (LevyraIsMono) {
+        MonoJamPermissionPicker(JamPermissionOptions, selected, { jamPermissionLabel(it, strings) }, onSelect)
         return
     }
     val look = LocalJamLook.current

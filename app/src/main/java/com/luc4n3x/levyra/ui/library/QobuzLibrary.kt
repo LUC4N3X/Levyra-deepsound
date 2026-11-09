@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui.library
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -36,6 +38,7 @@ import androidx.compose.material.icons.rounded.HowToReg
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.automirrored.rounded.ViewList
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -47,6 +50,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -74,6 +78,7 @@ import com.luc4n3x.levyra.ui.QobuzArtworkBox
 import com.luc4n3x.levyra.ui.QobuzChip
 import com.luc4n3x.levyra.ui.QobuzExplicitBadge
 import com.luc4n3x.levyra.ui.QobuzText
+import com.luc4n3x.levyra.ui.i18n.playlistImportCopy
 import com.luc4n3x.levyra.ui.i18n.LevyraQobuzSkinStrings
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
@@ -98,6 +103,10 @@ private sealed interface QobuzLibraryRow {
         override val key = "playlist-${playlist.id}"; override val title = playlist.name
         override val image = playlist.coverUrl.ifBlank { playlist.tracks.firstOrNull()?.thumbnailUrl.orEmpty() }
         override val circle = false; override val stamp = playlist.updatedAt
+    }
+    data class Saved(val saved: com.luc4n3x.levyra.domain.SavedPlaylist, override val subtitle: String) : QobuzLibraryRow {
+        override val key = "saved-${saved.key}"; override val title = saved.hit.title; override val image = saved.hit.thumbnailUrl
+        override val circle = false; override val stamp = saved.savedAt
     }
     data class Album(val album: LibraryAlbum, override val subtitle: String) : QobuzLibraryRow {
         override val key = "album-${album.key}"; override val title = album.title; override val image = album.artworkUrl
@@ -129,8 +138,9 @@ internal fun QobuzLibraryScreen(
     var sortOpen by remember { mutableStateOf(false) }
     var creating by remember { mutableStateOf(false) }
     val sort = state.interfaceSettings.librarySort
-    val rows = remember(catalog, state.playlists, filter, sort, query, strings.code) {
-        buildQobuzLibraryRows(catalog, state.playlists, filter, sort, query, strings, copy)
+    val savedPlaylists by viewModel.savedPlaylists.collectAsStateWithLifecycle()
+    val rows = remember(catalog, state.playlists, savedPlaylists, filter, sort, query, strings.code) {
+        buildQobuzLibraryRows(catalog, state.playlists, filter, sort, query, strings, copy, savedPlaylists)
     }
     Column(Modifier.fillMaxSize().background(QobuzDesign.surfacePrimary).statusBarsPadding()) {
         QobuzLibraryHeader(
@@ -143,7 +153,7 @@ internal fun QobuzLibraryScreen(
             }
         )
         if (searching) QobuzLibrarySearchField(strings, query) { query = it }
-        QobuzLibraryFilterRow(strings, copy, filter, { filterName = it }, onOpenDownloads, onOpenTools)
+        QobuzLibraryFilterRow(strings, copy, filter, { filterName = it }, onOpenDownloads, onOpenTools) { viewModel.openPlaylistImport() }
         Box(Modifier.fillMaxWidth().height(1.dp).background(QobuzDesign.separator))
         QobuzLibraryControls(
             strings = strings,
@@ -167,13 +177,17 @@ private fun buildQobuzLibraryRows(
     sort: LibrarySort,
     query: String,
     strings: LevyraStrings,
-    copy: QobuzSkinCopy
+    copy: QobuzSkinCopy,
+    savedPlaylists: List<com.luc4n3x.levyra.domain.SavedPlaylist>
 ): List<QobuzLibraryRow> {
     val artistLabel = copy.artist
     val all = buildList {
         if (filter == null || filter == QobuzLibraryFilter.Artists) catalog.artists.forEach { add(QobuzLibraryRow.Artist(it, artistLabel)) }
         if (filter == null || filter == QobuzLibraryFilter.Playlists) playlists.filterNot { it.hidden }.forEach {
             add(QobuzLibraryRow.Playlist(it, listOf(strings.playlistsPlain, it.playableTrackCount.takeIf { size -> size > 0 }?.toString().orEmpty()).filter(String::isNotBlank).joinToString(" • ")))
+        }
+        if (filter == null || filter == QobuzLibraryFilter.Playlists) savedPlaylists.forEach {
+            add(QobuzLibraryRow.Saved(it, listOf(strings.playlistsPlain, it.hit.author).filter(String::isNotBlank).joinToString(" • ")))
         }
         if (filter == null || filter == QobuzLibraryFilter.Albums) catalog.albums.forEach { add(QobuzLibraryRow.Album(it, listOf(strings.albumPlain, it.artist).filter(String::isNotBlank).joinToString(" • "))) }
         if (filter == QobuzLibraryFilter.Songs) catalog.tracks.forEach {
@@ -218,7 +232,8 @@ private fun QobuzLibraryFilterRow(
     filter: QobuzLibraryFilter?,
     onFilterName: (String?) -> Unit,
     onOpenDownloads: () -> Unit,
-    onOpenTools: () -> Unit
+    onOpenTools: () -> Unit,
+    onImport: () -> Unit
 ) {
     LazyRow(contentPadding = PaddingValues(horizontal = QobuzDesign.gutter, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(QobuzDesign.chipGap)) {
         items(QobuzLibraryFilter.entries, key = { it.name }) { option ->
@@ -231,6 +246,7 @@ private fun QobuzLibraryFilterRow(
             QobuzChip(label, filter == option, { onFilterName(if (filter == option) null else option.name) })
         }
         item(key = "downloads") { QobuzLibraryChip(Icons.Outlined.DownloadForOffline, strings.downloads, onOpenDownloads) }
+        item(key = "import") { QobuzLibraryChip(Icons.AutoMirrored.Rounded.PlaylistAdd, strings.playlistImportCopy().action, onImport) }
         item(key = "tools") { QobuzLibraryChip(Icons.Rounded.Tune, copy.levyraTools, onOpenTools) }
     }
 }
@@ -322,6 +338,7 @@ private fun openRow(row: QobuzLibraryRow, viewModel: LibraryViewModel, catalog: 
     when (row) {
         is QobuzLibraryRow.Artist -> viewModel.openArtistReference(row.artist.name, row.artist.browseId, row.artist.artworkUrl)
         is QobuzLibraryRow.Playlist -> viewModel.openPlaylist(row.playlist.id)
+        is QobuzLibraryRow.Saved -> viewModel.openSavedPlaylist(row.saved)
         is QobuzLibraryRow.Album -> viewModel.openAlbum(
             AlbumHit(row.album.title, row.album.artist, row.album.year, row.album.artworkUrl, "${row.album.title} ${row.album.artist}".trim(),
                 browseId = row.album.browseId, explicit = row.album.explicit)
@@ -363,7 +380,15 @@ private fun QobuzLibraryCard(row: QobuzLibraryRow, onClick: () -> Unit) {
     Column(Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onClick), horizontalAlignment = if (row.circle) Alignment.CenterHorizontally else Alignment.Start) {
         QobuzLibraryArtwork(row, Modifier.fillMaxWidth().aspectRatio(1f))
         Spacer(Modifier.height(8.dp))
-        Text(row.title, style = QobuzText.cardTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        LevyraMediaTitle(
+            row.title,
+            explicit = when (row) {
+                is QobuzLibraryRow.Song -> row.track.explicit
+                is QobuzLibraryRow.Album -> row.album.explicit
+                else -> false
+            },
+            style = QobuzText.cardTitle
+        )
         Text(row.subtitle, style = QobuzText.cardSubtitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }

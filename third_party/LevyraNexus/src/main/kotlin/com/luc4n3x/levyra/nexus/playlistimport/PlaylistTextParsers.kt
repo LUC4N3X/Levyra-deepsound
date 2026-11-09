@@ -157,6 +157,7 @@ object PlaylistTextParsers {
         var pendingDuration = 0L
         var pendingDisplay = ""
         var pendingArtist = ""
+        var pendingArtistDeclared = false
         var pendingAlbum = ""
         var skipped = 0
         text.lineSequence().map(String::trim).filter(String::isNotEmpty).forEach { line ->
@@ -170,15 +171,22 @@ object PlaylistTextParsers {
                     pendingDisplay = if (comma >= 0) body.substring(comma + 1).trim() else ""
                 }
                 line.startsWith("#PLAYLIST:", ignoreCase = true) -> title = line.substringAfter(':').trim().ifBlank { title }
-                line.startsWith("#EXTART:", ignoreCase = true) -> pendingArtist = line.substringAfter(':').trim()
+                line.startsWith("#EXTART:", ignoreCase = true) -> {
+                    pendingArtist = line.substringAfter(':').trim()
+                    pendingArtistDeclared = true
+                }
                 line.startsWith("#EXTALB:", ignoreCase = true) -> pendingAlbum = line.substringAfter(':').trim()
                 line.startsWith("#") -> Unit
                 else -> {
-                    val identity = locationEntry(tracks.size, line, pendingDisplay, pendingArtist, pendingAlbum, pendingDuration)
+                    val identity = locationEntry(
+                        tracks.size, line, pendingDisplay, pendingArtist, pendingAlbum, pendingDuration,
+                        artistDeclared = pendingArtistDeclared
+                    )
                     if (identity == null) skipped++ else tracks += identity
                     pendingDuration = 0L
                     pendingDisplay = ""
                     pendingArtist = ""
+                    pendingArtistDeclared = false
                     pendingAlbum = ""
                 }
             }
@@ -206,7 +214,8 @@ object PlaylistTextParsers {
         display: String,
         artistHint: String,
         album: String,
-        durationMs: Long
+        durationMs: Long,
+        artistDeclared: Boolean = false
     ): ImportedTrackIdentity? {
         val videoId = youtubeUrlId.find(location)?.groupValues?.get(1).orEmpty()
         val isRemote = location.startsWith("http://", true) || location.startsWith("https://", true)
@@ -216,7 +225,11 @@ object PlaylistTextParsers {
             .replace(fileTrackNumber, "")
             .trim()
         val labelSource = display.ifBlank { if (isRemote) "" else fileStem }
-        val (artist, title) = splitArtistTitle(labelSource, artistHint)
+        val (artist, title) = if (artistDeclared && artistHint.isBlank()) {
+            "" to labelSource.trim()
+        } else {
+            splitArtistTitle(labelSource, artistHint)
+        }
         if (title.isBlank() && videoId.isBlank()) return null
         return ImportedTrackIdentity(
             position = position,

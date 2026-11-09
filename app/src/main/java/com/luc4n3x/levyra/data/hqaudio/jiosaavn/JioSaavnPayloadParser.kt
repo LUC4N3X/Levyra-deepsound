@@ -82,9 +82,8 @@ internal object JioSaavnPayloadParser {
         val artistMap = info.optJSONObject("artistMap")
         val providerTrackId = json.optString("id").trim()
         val title = decode(json.optString("title").ifBlank { json.optString("song") })
-        val primaryArtists = names(artistMap?.optJSONArray("primary_artists"))
-            .ifEmpty { splitNames(info.optString("primary_artists").ifBlank { json.optString("primary_artists") }) }
-        val featuredArtists = names(artistMap?.optJSONArray("featured_artists"))
+        val primaryArtists = primaryArtists(json, info, artistMap)
+        val featuredArtists = featuredArtists(json, info, artistMap)
         val album = decode(info.optString("album").ifBlank { json.optString("album") })
         val durationSeconds = (info.opt("duration") ?: json.opt("duration"))?.toString()?.trim()?.toIntOrNull() ?: 0
         val explicit = flag(json.optString("explicit_content"))
@@ -106,9 +105,25 @@ internal object JioSaavnPayloadParser {
             language = json.optString("language").trim().lowercase().takeUnless { it == "unknown" }.orEmpty(),
             nonPerformingArtists = creditRoles.filterValues { roles -> roles.all { it in NON_PERFORMING_ROLES } }.keys,
             creatorArtists = creditRoles.filterValues { roles -> roles.any { it in NON_PERFORMING_ROLES } }.keys,
-            releaseYear = json.optString("year").trim().toIntOrNull()?.takeIf { it in 1900..2100 } ?: 0
+            releaseYear = releaseYear(json, info),
+            offlineAllowed = offlineAllowed(json, info)
         )
     }
+
+    private fun offlineAllowed(json: JSONObject, info: JSONObject): Boolean {
+        val rights = info.optJSONObject("rights") ?: json.optJSONObject("rights") ?: return true
+        return !rights.optString("cacheable").equals("false", ignoreCase = true) &&
+            !rights.optString("delete_cached_object").equals("true", ignoreCase = true)
+    }
+
+    private fun primaryArtists(json: JSONObject, info: JSONObject, artistMap: JSONObject?): List<String> =
+        names(artistMap?.optJSONArray("primary_artists"))
+            .ifEmpty { splitNames(info.optString("primary_artists").ifBlank { json.optString("primary_artists") }) }
+            .ifEmpty { splitNames(info.optString("singers").ifBlank { json.optString("singers") }) }
+
+    private fun featuredArtists(json: JSONObject, info: JSONObject, artistMap: JSONObject?): List<String> =
+        names(artistMap?.optJSONArray("featured_artists"))
+            .ifEmpty { splitNames(info.optString("featured_artists").ifBlank { json.optString("featured_artists") }) }
 
     private fun creditRoles(credits: JSONArray?): Map<String, List<String>> =
         credits?.let(::objects).orEmpty()
@@ -147,8 +162,6 @@ internal object JioSaavnPayloadParser {
             val reason = rights.optString("reason").trim()
             if (reason.isNotEmpty() && !reason.equals("none", ignoreCase = true)) return true
             if (isProFlag(rights.opt("is_pro_only"))) return true
-            if (rights.optString("cacheable").equals("false", ignoreCase = true)) return true
-            if (rights.optString("delete_cached_object").equals("true", ignoreCase = true)) return true
         }
         return false
     }
@@ -161,5 +174,20 @@ internal object JioSaavnPayloadParser {
 
     private fun parseObject(body: String): JSONObject? = runCatching { JSONObject(body.trim()) }.getOrNull()
 
-    private val NON_PERFORMING_ROLES = setOf("music", "lyricist", "starring", "composer")
+    private val NON_PERFORMING_ROLES = setOf(
+        "music",
+        "music director",
+        "director",
+        "lyricist",
+        "writer",
+        "starring",
+        "actor",
+        "composer"
+    )
+
+    private fun releaseYear(json: JSONObject, info: JSONObject): Int {
+        json.optString("year").trim().toIntOrNull()?.takeIf { it in 1900..2100 }?.let { return it }
+        val releaseDate = info.optString("release_date").ifBlank { json.optString("release_date") }.trim()
+        return releaseDate.take(4).toIntOrNull()?.takeIf { it in 1900..2100 } ?: 0
+    }
 }

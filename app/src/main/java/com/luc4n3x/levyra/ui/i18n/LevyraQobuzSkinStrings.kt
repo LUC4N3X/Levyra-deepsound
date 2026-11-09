@@ -153,8 +153,9 @@ internal object LevyraQobuzSkinStrings {
         releaseType = "Type"
     )
 
-    private val copies = mapOf(
+    private val baseCopies = mapOf(
         "en" to en,
+        "fil" to en.copy(skinBody = "Hindi opisyal na tema. Maliwanag at madilim na editorial na surface, gintong accent, mga Discover chip, lumulutang na mini player at player na kakulay ng cover. Galing ang mga editorial na pili sa mga pampublikong pahina ng qobuz.com; laging Levyra providers ang gamit sa pag-playback. Hindi kaugnay o inendorso ng Qobuz."),
         "it" to en.copy(
             skinBody = "Tema non ufficiale. Superfici editoriali chiare e scure, accenti oro, chip di Scopri, mini player flottante e player tinto dalla copertina. Le selezioni editoriali arrivano dalle pagine pubbliche di qobuz.com; la riproduzione usa sempre i provider di Levyra. Non affiliato né approvato da Qobuz.",
             discover = "Scopri",
@@ -2881,8 +2882,10 @@ internal object LevyraQobuzSkinStrings {
         )
     )
 
+    private val copies = baseCopies + ("zh-Hant" to baseCopies.getValue("zh").copy(skinBody = "非官方主題。明暗兩種編輯風格介面、金色點綴、探索頁標籤、懸浮迷你播放器以及隨封面變色的播放器。編輯精選來自 qobuz.com 公開頁面；播放始終使用 Levyra。與 Qobuz 無關，也未獲其認可。"))
+
     fun forCode(code: String): QobuzSkinCopy =
-        (copies[code.substringBefore('-').substringBefore('_').lowercase()] ?: en).forBrazil(code) { brazilian() }
+        (copies[translationKey(code)] ?: copies[code.substringBefore('-').substringBefore('_').lowercase()] ?: en).forBrazil(code) { brazilian() }
 }
 
 private fun QobuzSkinCopy.brazilian(): QobuzSkinCopy = copy(

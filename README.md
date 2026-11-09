@@ -60,7 +60,7 @@ Streamed tracks and local files share one library. You can save music for offlin
 >
 > External audio integrations do not supply third-party accounts or credentials or authorize access to them. Availability through an external source is not permission to stream, download, or redistribute music. Users must obtain the necessary permissions and respect artists' rights.
 >
-> Third-party artwork, visuals, and editorial content belong to their respective owners. Levyra does not claim ownership or grant rights to use them. For any concerns, rights holders can contact us through GitHub.
+> Third-party artwork, visuals, and editorial content shown in Levyra come from publicly accessible sources, including the providers' own websites and services. Levyra does not host a separate catalog of this material or claim ownership of it. All rights remain with the respective owners.
 >
 > For details about third-party services, lawful use, downloads, and user responsibilities, please review the complete [Legal Notice](docs/legal/LEGAL.md). It applies to Levyra alongside this README.
 >
@@ -80,27 +80,19 @@ Some features need outside services for music, lyrics, artwork and metadata. The
 
 ## High-quality audio · JioSaavn & FLAC
 
-Turn on high-quality audio and Levyra can play the same track from JioSaavn. Nothing about the track in your library changes.
+With high-quality audio on, Levyra plays a track from JioSaavn when it finds the same recording there. The track in your library doesn't change.
 
-Before it switches, Levyra makes sure it found the same recording. A title match is not enough. It compares performers and their roles, album and release details, duration, explicit status, language, featured artists and version markers. When a search result is ambiguous, it opens JioSaavn's track details to tell an original release from a compilation, a reissue or an alternate version.
+A matching title isn't enough to switch. Levyra compares the performers and their roles, the album and release details, duration, the explicit flag, language, featured artists and version markers. If the search results are ambiguous, it opens the JioSaavn track page to tell the original release apart from a compilation, a reissue or an alternate version.
 
-Then it checks the stream itself. Levyra tries the 320, 160 and 96 kbps versions, and a stream labeled 320 kbps that measures well below that is not shown as 320 kbps. A good match plays straight from JioSaavn's CDN and is remembered, so the next play skips the lookup. If JioSaavn is down, or the match can't be verified, playback stays on the normal source. Artwork, lyrics, queue position, history and recommendations always stay tied to the original track.
+Levyra also checks the stream. It tries the 320, 160 and 96 kbps versions and measures what it gets. A stream labeled 320 kbps that measures well below that doesn't get shown as 320 kbps. A verified match plays straight from JioSaavn's CDN, and Levyra saves the match so the next play skips the lookup. If JioSaavn is down or Levyra can't verify the match, the track plays from its normal source. Artwork, lyrics, queue position, history and recommendations stay attached to the original track either way.
 
-FLAC on Android works the same way, with stricter checks. Levyra looks for a lossless copy of the same recording through independent third-party sources and reads the audio headers to confirm the format, bit depth and sample rate. With no verified lossless match, the usual fallbacks take over. FLAC support is still experimental, and what you get depends on the track, your region and your access rights.
+FLAC on Android goes through the same steps with stricter checks. Levyra looks for a lossless copy of the same recording through independent third-party sources, then reads the audio headers to confirm the format, bit depth and sample rate. If no lossless copy passes, playback falls back the same way as above. FLAC support is experimental. Whether you get it depends on the track, your region and your access rights.
 
-External sources and their content remain subject to each provider's terms and access rules. See [Third-party services and rights](docs/legal/LEGAL.md#3-third-party-services-and-rights).
-
-### Levyra Enhanced Audio
-
-JioSaavn's 320 kbps streams already reach about 20 kHz, so Levyra leaves them alone. Enhanced Audio is for sources that lost more in encoding, like a 128 kbps fallback with everything above 17 kHz cut off.
-
-When Levyra finds a cut like that, it rebuilds the missing top end from the band just below it, similar to the SBR technique some codecs use. It acts only when the drop is steep and the band above is empty, and it keeps the rebuilt highs slightly quieter than the original recording would have had them. FLAC and other lossless files are never touched.
-
-Enhanced Audio is on by default. You can turn it off in Audio Settings, and Technical Audio Info tells you whether it is running on the current track or why it skipped it. A lossy stream is still lossy with Enhanced Audio on, and Levyra labels it that way.
+Each provider's terms and access rules apply to its sources and content. See [Third-party services and rights](docs/legal/LEGAL.md#3-third-party-services-and-rights).
 
 <div align="center">
   <p><code>OFF</code> &nbsp;·&nbsp; <code>AUTOMATIC</code> &nbsp;·&nbsp; <code>PREFER&nbsp;320&nbsp;KBPS</code></p>
-  <sub>Levyra measures the stream before using it and falls back on its own when JioSaavn is not a safe match.</sub>
+  <sub>Levyra measures each stream before using it and goes back to the normal source when JioSaavn isn't a safe match.</sub>
 </div>
 
 ---
@@ -150,8 +142,6 @@ Enhanced Audio is on by default. You can turn it off in Audio Settings, and Tech
 - **Levyra Vault.** Back up and restore playlists, favorites, history and preferences in one local file.
 - **Private stats.** Play counts and listening hours computed on your device, with optional Last.fm and ListenBrainz scrobbling.
 
-Technical notes, platform architecture and build details are in the [documentation](https://levyra.dpdns.org/docs/).
-
 ## Technology
 
 I kept Android and Windows as two separate apps instead of putting a web interface inside both. Android uses Kotlin, Jetpack Compose and Media3. Windows uses Compose Multiplatform and libVLC for audio.
@@ -190,11 +180,14 @@ Levyra stands on work from these open-source projects:
 - [PipePipeExtractor](https://github.com/InfinityLoop1308/PipePipeExtractor): the starting architecture for LevyraExtractor, later adapted with Levyra's own stream resolution and retry handling.
 - [NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor): upstream extractor concepts and service foundations.
 - [zemer-cipher](https://github.com/ZemerTeam/zemer-cipher): open-source work used for YouTube cipher deobfuscation and PoToken generation.
+- [faraday](https://github.com/MetrolistGroup/faraday): secondary source of YouTube player configurations, checked alongside zemer-cipher.
 - [LRCLIB](https://lrclib.net/): provides the synchronized lyrics database and API.
+- [ByeDPI](https://github.com/hufrea/byedpi): local network compatibility tool used by the optional YouTube connection mode.
+- [ByeDPIAndroid](https://github.com/dovecoteescapee/ByeDPIAndroid): Android wrapper for the ByeDPI integration.
+- [SponsorBlock](https://github.com/ajayyy/SponsorBlock): community timestamps used to skip sponsored and other marked video segments.
+- [AutoEq](https://github.com/jaakkopasanen/AutoEq): headphone measurements and GraphicEQ profiles used by the AutoEQ catalog.
 
 FLAC playback on Android depends on independent third-party sources. Their inclusion does not imply a partnership or endorsement.
-
-Previous Levyra app logo designed by [@gauravbhindwar](https://github.com/gauravbhindwar) in [#525](https://github.com/LUC4N3X/Levyra-deepsound/issues/525). The current logo and visual identity are by [@LUC4N3X](https://github.com/LUC4N3X).
 
 Bug reports and pull requests are welcome. For questions and ideas, use [GitHub Discussions](https://github.com/LUC4N3X/Levyra-deepsound/discussions). Architecture notes and technical docs are in the [project documentation](https://levyra.dpdns.org/docs/).
 

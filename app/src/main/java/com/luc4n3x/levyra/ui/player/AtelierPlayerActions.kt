@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.player
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -115,9 +116,9 @@ private fun AtelierPlayerActionsHeader(track: Track, artworkUrl: String) {
             InstantArtworkPlaceholder(modifier = Modifier.fillMaxSize())
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                track.title, style = MaterialTheme.typography.titleLarge, color = AtelierDesign.text,
-                maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() }
+            LevyraMediaTitle(
+                track.title, explicit = track.explicit,  style = MaterialTheme.typography.titleLarge, color = AtelierDesign.text,
+                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() }
             )
             if (track.artist.isNotBlank()) {
                 Text(track.artist, style = MaterialTheme.typography.bodyMedium, color = AtelierDesign.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -201,7 +202,7 @@ internal fun AtelierTrackCreditsSheet(
                 modifier = Modifier.semantics { heading() }
             )
             Spacer(Modifier.height(6.dp))
-            Text(track.title, style = MaterialTheme.typography.headlineSmall, color = AtelierDesign.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            LevyraMediaTitle(track.title, explicit = track.explicit,  style = MaterialTheme.typography.headlineSmall, color = AtelierDesign.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (track.artist.isNotBlank()) {
                 Text(track.artist, style = MaterialTheme.typography.bodyMedium, color = AtelierDesign.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }

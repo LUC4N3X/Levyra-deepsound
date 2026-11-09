@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.lyrics.apple
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import android.os.Build
 import android.os.SystemClock
 import androidx.compose.animation.core.Animatable
@@ -384,6 +385,17 @@ internal fun AppleMusicLyricsScreen(
             artworkUrl = track?.let { it.largeThumbnailUrl.ifBlank { it.thumbnailUrl } },
             animate = animations && playing
         )
+        if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+            androidx.compose.foundation.layout.Spacer(
+                Modifier.fillMaxSize().background(
+                    androidx.compose.ui.graphics.Brush.verticalGradient(
+                        0f to com.luc4n3x.levyra.ui.theme.MonoDesign.base.copy(alpha = 0.55f),
+                        0.5f to com.luc4n3x.levyra.ui.theme.MonoDesign.accent.copy(alpha = 0.08f),
+                        1f to com.luc4n3x.levyra.ui.theme.MonoDesign.base.copy(alpha = 0.7f)
+                    )
+                )
+            )
+        }
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
             AppleLyricsHeader(track, labels, actions, kit.fontFamily)
             BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
@@ -578,8 +590,8 @@ private fun AppleLyricsHeader(track: Track?, labels: AppleLyricsLabels, actions:
             }
         }
         Column(Modifier.weight(1f).padding(start = AppleLyricsTokens.thumbnailGap)) {
-            Text(
-                track?.title.orEmpty(), color = AppleLyricsTokens.primary, fontSize = AppleLyricsTokens.headerTextSize,
+            LevyraMediaTitle(
+                track?.title.orEmpty(), explicit = track?.explicit == true,  color = AppleLyricsTokens.primary, fontSize = AppleLyricsTokens.headerTextSize,
                 fontFamily = fontFamily, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis
             )
             Text(

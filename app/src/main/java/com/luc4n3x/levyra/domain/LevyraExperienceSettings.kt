@@ -186,7 +186,8 @@ enum class LevyraSkin {
     AppleMusicStyle,
     YouTubeMusicStyle,
     QobuzStyle,
-    Atelier;
+    Atelier,
+    Mono;
 
     companion object {
         fun from(value: String): LevyraSkin = entries.firstOrNull { it.name == value } ?: Default
@@ -195,7 +196,7 @@ enum class LevyraSkin {
 
 val LevyraSkin.supportsDockMorph: Boolean
     get() = when (this) {
-        LevyraSkin.Default, LevyraSkin.Nocturne78, LevyraSkin.Prism, LevyraSkin.Torque, LevyraSkin.Ivory -> true
+        LevyraSkin.Default, LevyraSkin.Nocturne78, LevyraSkin.Prism, LevyraSkin.Torque, LevyraSkin.Ivory, LevyraSkin.Mono -> true
         LevyraSkin.SpotifyStyle, LevyraSkin.AppleMusicStyle, LevyraSkin.YouTubeMusicStyle, LevyraSkin.QobuzStyle, LevyraSkin.Atelier -> false
     }
 
@@ -209,10 +210,14 @@ enum class DockScrollEffect(val storageId: String) {
     }
 }
 
-fun LevyraInterfaceSettings.effectiveDockScrollEffect(): DockScrollEffect =
-    if (skin.supportsDockMorph) dockScrollEffect else DockScrollEffect.Tide
+fun LevyraInterfaceSettings.effectiveDockScrollEffect(navigation: NavStyle = NavStyle.Original): DockScrollEffect = when {
+    !skin.supportsDockMorph -> DockScrollEffect.Tide
+    navigation == NavStyle.LiquidCapsule -> DockScrollEffect.Merge
+    else -> dockScrollEffect
+}
 
-fun LevyraInterfaceSettings.dockMorphActive(): Boolean = effectiveDockScrollEffect() == DockScrollEffect.Merge
+fun LevyraInterfaceSettings.dockMorphActive(navigation: NavStyle = NavStyle.Original): Boolean =
+    effectiveDockScrollEffect(navigation) == DockScrollEffect.Merge
 
 data class LevyraInterfaceSettings(
     val compactHome: Boolean = false,
@@ -248,6 +253,7 @@ data class LevyraInterfaceSettings(
     val immersive: LevyraImmersiveSettings = LevyraImmersiveSettings(),
     val musicVideoPreference: MusicVideoPlaybackPreference = MusicVideoPlaybackPreference.Automatic,
     val lastMusicVideoMode: Boolean = false,
+    val playerFocusEnabled: Boolean = false,
     val playerVisualMode: PlayerVisualMode = PlayerVisualMode.Flow,
     val playerBackground: PlayerBackgroundMode = PlayerBackgroundMode.Dynamic,
     val reactiveAuraPreset: ReactiveAuraPreset = ReactiveAuraPreset.Recommended,

@@ -9,6 +9,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -32,6 +33,22 @@ internal class YoutubeMusicAccountClient {
         if (continuation.isNotBlank()) body.put("continuation", continuation) else body.put("browseId", browseId)
         if (continuation.isBlank() && params.isNotBlank()) body.put("params", params)
         return request(session, "youtubei/v1/browse", body)
+    }
+
+    suspend fun createPlaylist(session: YoutubeMusicSession, title: String): String {
+        val body = payload("en").put("title", title).put("description", "").put("privacyStatus", "PRIVATE")
+        return request(session, "youtubei/v1/playlist/create", body).optString("playlistId")
+            .takeIf(String::isNotBlank) ?: throw YoutubeMusicProtocolException()
+    }
+
+    suspend fun addToPlaylist(session: YoutubeMusicSession, playlistId: String, videoIds: List<String>) {
+        val actions = JSONArray()
+        videoIds.forEach { videoId ->
+            actions.put(JSONObject().put("action", "ACTION_ADD_VIDEO").put("addedVideoId", videoId).put("dedupeOption", "DEDUPE_OPTION_SKIP"))
+        }
+        val body = payload("en").put("playlistId", playlistId.removePrefix("VL")).put("actions", actions)
+        val status = request(session, "youtubei/v1/browse/edit_playlist", body).optString("status")
+        if (!status.contains("SUCCEEDED")) throw YoutubeMusicProtocolException()
     }
 
     suspend fun registerPlayback(session: YoutubeMusicSession, videoId: String) {

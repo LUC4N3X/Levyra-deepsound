@@ -80,6 +80,10 @@ internal fun LevyraMixLauncherPanel(
         SkinMixPanel(familiarity, loading, accent, modifier, onFamiliarityChange, onStartMix, onOpenYourSound, onOpenMixLab)
         return
     }
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin) {
+        ForYouMixPanel(familiarity, loading, accent, coverSources, modifier, onFamiliarityChange, onStartMix, onOpenYourSound, onOpenMixLab)
+        return
+    }
     val colors = MaterialTheme.colorScheme
     val nocturne = LevyraIsNocturne
     val panelShape = RoundedCornerShape(if (nocturne) Nocturne78Design.panelCorner else 28.dp)

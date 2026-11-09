@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.player
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.foundation.layout.RowScope
 import androidx.activity.compose.BackHandler
@@ -418,7 +419,7 @@ private fun PlayerSheetHeader(
     artworkUrl: String,
     surfaces: PlayerSurfaceTokens
 ) {
-    val artworkShape = MaterialShapes.Cookie9Sided.toShape()
+    val artworkShape = if (com.luc4n3x.levyra.ui.theme.LevyraIsIvory) com.luc4n3x.levyra.ui.theme.IvoryDesign.coverShape else MaterialShapes.Cookie9Sided.toShape()
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -433,14 +434,14 @@ private fun PlayerSheetHeader(
             InstantArtworkPlaceholder(modifier = Modifier.fillMaxSize())
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = track.title,
+            LevyraMediaTitle(
+                text = track.title, explicit = track.explicit,
                 color = surfaces.content,
                 fontSize = 17.sp,
                 lineHeight = LevyraTypeRhythm.lineHeight(17.sp),
                 fontWeight = FontWeight.SemiBold,
                 letterSpacing = (-0.2).sp,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.semantics { heading() }
             )
@@ -554,6 +555,10 @@ private fun PlayerSheetGrid(
 ) {
     if (PlayerAppleMusicStyle) {
         AppleMusicPlayerMenu(actions, onPerform)
+        return
+    }
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsIvory) {
+        IvorySheetGrid(actions, animated, onPerform)
         return
     }
     val outline = if (surfaces.amoled) surfaces.outline else Color.Transparent

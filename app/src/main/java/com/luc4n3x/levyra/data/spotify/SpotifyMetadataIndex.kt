@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.data.spotify
 
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.data.compatibleExplicitEdition
 import com.luc4n3x.levyra.nexus.identity.MusicIdentityText
 import java.util.Locale
 
@@ -14,6 +15,7 @@ internal class SpotifyMetadataIndex(tracks: List<Track>) {
         if (preservesPersonalMetadata(track)) return null
         val candidates = byIsrc[track.isrc.uppercase(Locale.ROOT)].orEmpty()
             .ifEmpty { byRecording[recordingKey(track)].orEmpty() }
+            .filter { compatibleExplicitEdition(track, it) }
         val sameAlbum = candidates.filter {
             sameSpotifyAlbum(track.album, it.album)
         }
@@ -49,6 +51,7 @@ internal fun preservesPersonalMetadata(track: Track): Boolean =
 
 internal fun withSpotifyMetadata(track: Track, spotify: Track): Track {
     if (preservesPersonalMetadata(track)) return track
+    if (!compatibleExplicitEdition(track, spotify)) return track
     if (SpotifyYouTubeMatcher.scoreMatch(track, spotify) < 0.94) return track
     if (track.album.isNotBlank() && spotify.album.isNotBlank() && !sameSpotifyAlbum(track.album, spotify.album)) return track
     return track.copy(
@@ -69,7 +72,7 @@ internal fun withSpotifyMetadata(track: Track, spotify: Track): Track {
         composer = spotify.composer.ifBlank { track.composer },
         copyright = spotify.copyright.ifBlank { track.copyright },
         canonicalAlbumUrl = spotify.canonicalAlbumUrl.ifBlank { track.canonicalAlbumUrl },
-        explicit = spotify.explicit || track.explicit,
+        explicit = spotify.explicit,
         metadataProvider = "spotify",
         metadataConfidence = maxOf(track.metadataConfidence, 94)
     )

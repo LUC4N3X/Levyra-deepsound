@@ -89,13 +89,14 @@ internal fun LevyraCardCaption(
     subtitleColor: Color = LevyraMuted,
     titleLines: Int = 2,
     reserveTitleLines: Boolean = true,
-    marqueeTitle: Boolean = false
+    marqueeTitle: Boolean = true,
+    explicit: Boolean = false
 ) {
     val effectiveLines = if (marqueeTitle) 1 else titleLines
     val titleStyle = LevyraType.cardTitle
     val subtitleStyle = LevyraType.caption
     val minHeight = if (reserveTitleLines) {
-        levyraCaptionHeight(effectiveLines)
+        levyraCaptionHeight(titleLines)
     } else {
         0.dp
     }
@@ -103,13 +104,14 @@ internal fun LevyraCardCaption(
         modifier = modifier.heightIn(min = minHeight),
         verticalArrangement = Arrangement.spacedBy(LevyraCardDesign.CaptionLineGap)
     ) {
-        Text(
+        LevyraMediaTitle(
             text = title,
+            explicit = explicit,
             color = titleColor,
             style = titleStyle,
             maxLines = effectiveLines,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.levyraMarquee(enabled = marqueeTitle)
+            marqueeEnabled = marqueeTitle
         )
         if (subtitle.isNotBlank()) {
             Text(
@@ -144,14 +146,16 @@ internal fun LevyraRowText(
     favorite: Boolean = false,
     statusTint: Color = LevyraCyan,
     downloadedLabel: String? = null,
-    favoriteLabel: String? = null
+    favoriteLabel: String? = null,
+    explicit: Boolean = false
 ) {
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(LevyraCardDesign.RowLineGap)
     ) {
-        Text(
+        LevyraMediaTitle(
             text = title,
+            explicit = explicit,
             color = titleColor,
             style = LevyraType.contentTitle,
             maxLines = 1,

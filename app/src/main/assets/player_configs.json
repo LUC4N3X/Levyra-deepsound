@@ -468,6 +468,13 @@
     "50558212": { "sig": "Fe(80,5355,INPUT)", "nClass": "Lm", "sts": 20755, "aliases": ["c3e008d9"] },
     "8c1e5c4d": { "sig": "ta(80,5355,INPUT)", "nClass": "Ou", "sts": 20755, "aliases": ["09023cf1"] },
     "254d69f9": { "sig": "hr(57,7106,INPUT)", "nClass": "Eb", "sts": 20759, "aliases": [] },
-    "d8a33f35": { "sig": "hs(18,2147,INPUT)", "nClass": "yn", "sts": 20760, "aliases": ["f1cf8a93"] }
+    "d8a33f35": { "sig": "hs(18,2147,INPUT)", "nClass": "yn", "sts": 20760, "aliases": ["f1cf8a93"] },
+    "39a32733": { "sig": "AF(18,2147,INPUT)", "nClass": "tt", "sts": 20760, "aliases": ["650555cd"] },
+    "cd64615e": { "sig": "df(18,2147,INPUT)", "nClass": "sf", "sts": 20760, "aliases": ["03e131b1"] },
+    "ba4d15be": { "sig": "GK(16,3101,INPUT)", "nClass": "FK", "sts": 20761, "aliases": ["29a503c4"] },
+    "f5321ed3": { "sig": "pp(16,3101,INPUT)", "nClass": "kf", "sts": 20761, "aliases": ["bbdc8962"] },
+    "468f4787": { "sig": "ao(58,1388,INPUT)", "nClass": "Bx", "sts": 20762, "aliases": ["4b9619bd"] },
+    "d0013d3f": { "sig": "Ya(58,1388,INPUT)", "nClass": "Ta", "sts": 20762, "aliases": ["f8726fb0"] },
+    "7973adf3": { "sig": "Hz(11,6439,INPUT)", "nClass": "KJ", "sts": 20763, "aliases": ["204d29b0"] }
   }
 }

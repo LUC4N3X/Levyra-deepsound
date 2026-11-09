@@ -6,6 +6,7 @@ import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.data.isYoutubeShortTrack
+import com.luc4n3x.levyra.data.news.MusicNewsStory
 
 internal const val ExploreSampleLimit = 10
 internal const val ExploreImmersiveSampleLimit = 24
@@ -108,7 +109,22 @@ internal sealed interface ExploreRow {
     data class MoodRail(val zones: List<ExploreZone>) : ExploreRow {
         override val key: String = "explore-mood-rail"
     }
+
+    data object NewsHero : ExploreRow {
+        override val key: String = "explore-news-hero"
+    }
+
+    data object DailyTop100 : ExploreRow {
+        override val key: String = "explore-daily-top-100"
+    }
+
+    data object NewsList : ExploreRow {
+        override val key: String = "explore-news-list"
+    }
 }
+
+internal fun levyraSearchOwnsBrowse(spotify: Boolean, apple: Boolean, ownExplore: Boolean): Boolean =
+    !spotify && !apple && !ownExplore
 
 internal fun buildExploreRows(
     zones: List<ExploreZone>,
@@ -118,21 +134,22 @@ internal fun buildExploreRows(
     hasFreshMoment: Boolean = false,
     spotifyStyle: Boolean = false,
     moodsInSearch: Boolean = spotifyStyle,
-    journeyInPlaceOfMoods: Boolean = false
+    journeyInPlaceOfMoods: Boolean = false,
+    editorial: Boolean = false,
+    hasNews: Boolean = false,
+    hasNewsDesk: Boolean = hasNews
 ): List<ExploreRow> {
     val rows = mutableListOf<ExploreRow>()
+    if (editorial) {
+        if (hasNews) rows += ExploreRow.NewsHero
+        rows += exploreFreshRows(isFreshLoading, hasFreshTracks, hasFreshScopes, hasFreshMoment = false)
+        rows += ExploreRow.DailyTop100
+        if (hasNews && hasNewsDesk) rows += ExploreRow.NewsList
+        return rows
+    }
     rows += ExploreRow.Shortcuts
     if (spotifyStyle) rows += ExploreRow.Samples
-    rows += ExploreRow.Header(ExploreAnchor.Fresh)
-    when {
-        hasFreshTracks -> {
-            if (hasFreshScopes) rows += ExploreRow.FreshScopes
-            rows += ExploreRow.FreshSpotlight
-            if (hasFreshMoment) rows += ExploreRow.FreshMoment
-        }
-        isFreshLoading -> rows += ExploreRow.FreshLoading
-        else -> rows += ExploreRow.FreshEmpty
-    }
+    rows += exploreFreshRows(isFreshLoading, hasFreshTracks, hasFreshScopes, hasFreshMoment)
 
     val distinctZones = zones.distinctBy { it.id }
     if (journeyInPlaceOfMoods) {
@@ -141,10 +158,83 @@ internal fun buildExploreRows(
         rows += ExploreRow.Header(ExploreAnchor.Moods)
         rows += ExploreRow.MoodRail(distinctZones)
     }
-
-    rows += ExploreRow.MixTools
     return rows
 }
+
+private fun exploreFreshRows(
+    isFreshLoading: Boolean,
+    hasFreshTracks: Boolean,
+    hasFreshScopes: Boolean,
+    hasFreshMoment: Boolean
+): List<ExploreRow> = buildList {
+    add(ExploreRow.Header(ExploreAnchor.Fresh))
+    when {
+        hasFreshTracks -> {
+            if (hasFreshScopes) add(ExploreRow.FreshScopes)
+            add(ExploreRow.FreshSpotlight)
+            if (hasFreshMoment) add(ExploreRow.FreshMoment)
+        }
+        isFreshLoading -> add(ExploreRow.FreshLoading)
+        else -> add(ExploreRow.FreshEmpty)
+    }
+}
+
+internal const val ExploreRadioSeedLimit = 6
+
+internal fun exploreRadioSeeds(
+    mostPlayed: List<Track>,
+    recent: List<Track>,
+    limit: Int = ExploreRadioSeedLimit
+): List<Track> = (mostPlayed.asSequence() + recent.asSequence())
+    .filter { track -> track.artist.isNotBlank() }
+    .distinctBy { track -> track.artist.trim().lowercase() }
+    .take(limit.coerceAtLeast(0))
+    .toList()
+
+internal enum class ExploreNewsAgeUnit {
+    Minutes,
+    Hours,
+    Days
+}
+
+internal fun exploreNewsAge(nowMs: Long, publishedAtMs: Long): Pair<ExploreNewsAgeUnit, Int>? {
+    if (publishedAtMs <= 0L) return null
+    val minutes = (nowMs - publishedAtMs).coerceAtLeast(0L) / 60_000L
+    return when {
+        minutes < 60L -> ExploreNewsAgeUnit.Minutes to minutes.toInt()
+        minutes < 24L * 60L -> ExploreNewsAgeUnit.Hours to (minutes / 60L).toInt()
+        else -> ExploreNewsAgeUnit.Days to (minutes / (24L * 60L)).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+    }
+}
+
+internal const val ExploreNewsSecondaryCount = 2
+internal const val ExploreNewsFrontSize = 1 + ExploreNewsSecondaryCount
+internal const val ExploreNewsDeskLimit = 8
+internal const val ExploreReleaseShelfLimit = 12
+
+internal class ExploreNewsFront(val lead: MusicNewsStory, val secondary: List<MusicNewsStory>)
+
+internal fun exploreNewsFront(stories: List<MusicNewsStory>): ExploreNewsFront? {
+    val lead = stories.firstOrNull { story -> story.imageUrl.isNotBlank() } ?: stories.firstOrNull() ?: return null
+    return ExploreNewsFront(lead, stories.filter { story -> story.url != lead.url }.take(ExploreNewsSecondaryCount))
+}
+
+internal fun exploreNewsSources(stories: List<MusicNewsStory>): List<String> =
+    stories.map { story -> story.source.trim() }.filter(String::isNotEmpty).distinct()
+
+internal fun exploreNewsDesk(stories: List<MusicNewsStory>, source: String?): List<MusicNewsStory> {
+    val picked = if (source.isNullOrBlank()) {
+        val front = exploreNewsFront(stories)
+        val frontUrls = listOfNotNull(front?.lead).plus(front?.secondary.orEmpty()).mapTo(HashSet()) { story -> story.url }
+        stories.filterNot { story -> story.url in frontUrls }
+    } else {
+        stories.filter { story -> story.source.trim() == source }
+    }
+    return picked.take(ExploreNewsDeskLimit)
+}
+
+internal fun exploreReleaseShelf(feed: ExploreFreshFeed, limit: Int = ExploreReleaseShelfLimit): List<Track> =
+    (feed.spotlight + feed.moment).distinctBy(::exploreReleaseIdentity).take(limit.coerceAtLeast(0))
 
 internal fun exploreAnchorIndex(rows: List<ExploreRow>, anchor: ExploreAnchor): Int =
     rows.indexOfFirst { row -> row is ExploreRow.Header && row.anchor == anchor }

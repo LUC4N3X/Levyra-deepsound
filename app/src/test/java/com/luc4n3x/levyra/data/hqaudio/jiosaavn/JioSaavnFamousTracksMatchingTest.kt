@@ -38,8 +38,51 @@ class JioSaavnFamousTracksMatchingTest {
     }
 
     @Test
-    fun youtubeMusicStarboySelectsOfficialAlbumRecording() {
-        assertAccepted("Paem2Kf1", select(starboy(), starboyCandidates()))
+    fun multiArtistAndAlternateReadingPlanConciseFallbackQueries() {
+        val multiArtist = AlternativeTrackQuery(
+            title = "Kesariya (From \"Brahmastra\")",
+            artist = "Pritam, Arijit Singh, Amitabh Bhattacharya",
+            album = "YouTube Music",
+            durationMs = 268_000,
+            explicit = false
+        )
+        assertEquals(
+            listOf(
+                "Kesariya (From \"Brahmastra\") Pritam",
+                "kesariya pritam arijit singh amitabh bhattacharya",
+                "kesariya pritam"
+            ),
+            AlternativeSearchPlan.queries(multiArtist)
+        )
+
+        val withAlbumAndAlternate = multiArtist.copy(
+            album = "Brahmastra",
+            alternateReading = AlternativeTrackQuery(
+                title = "Kesariyaa",
+                artist = "Arijit Singh",
+                album = "Brahmastra",
+                durationMs = 268_000,
+                explicit = false
+            )
+        )
+        assertEquals(
+            listOf(
+                "Kesariya (From \"Brahmastra\") Pritam Brahmastra",
+                "kesariya pritam",
+                "Kesariyaa Arijit Singh"
+            ),
+            AlternativeSearchPlan.queries(withAlbumAndAlternate)
+        )
+    }
+
+    @Test
+    fun unknownExplicitStateStillFindsTheOfficialStarboyRecording() {
+        assertEquals("Starboy", accepted(select(starboy(), starboyCandidates()), "unmarked Starboy").title)
+    }
+
+    @Test
+    fun cleanStarboySelectsCleanAlbumRecording() {
+        assertAccepted("Paem2Kf1", select(starboy(explicit = false), starboyCandidates()))
     }
 
     @Test
@@ -58,7 +101,7 @@ class JioSaavnFamousTracksMatchingTest {
             "Weeknd"
         )
         credits.forEach { credit ->
-            val selection = select(starboy(title = "Starboy", artist = credit, durationMs = 230_000), starboyCandidates())
+            val selection = select(starboy(title = "Starboy", artist = credit, durationMs = 230_000, explicit = true), starboyCandidates())
             val chosen = accepted(selection, credit)
             assertEquals(credit, "Starboy", chosen.title)
             assertEquals(credit, listOf("The Weeknd"), chosen.primaryArtists)
@@ -68,13 +111,14 @@ class JioSaavnFamousTracksMatchingTest {
 
     @Test
     fun deluxeReissueOfSameMasterIsAcceptedWhenSourceAlbumIsDeluxe() {
-        val chosen = accepted(select(starboy(title = "Starboy", album = "Starboy (Deluxe)"), starboyCandidates()), "deluxe")
+        val chosen = accepted(select(starboy(title = "Starboy", album = "Starboy (Deluxe)", explicit = true), starboyCandidates()), "deluxe")
         assertEquals("Starboy (Deluxe)", chosen.album)
+        assertEquals(true, chosen.explicit)
     }
 
     @Test
     fun smallDurationDriftKeepsOfficialStarboy() {
-        assertAccepted("Paem2Kf1", select(starboy(durationMs = 233_000), starboyCandidates()))
+        assertAccepted("Paem2Kf1", select(starboy(durationMs = 233_000, explicit = false), starboyCandidates()))
     }
 
     @Test
@@ -116,7 +160,7 @@ class JioSaavnFamousTracksMatchingTest {
         )
         assertAccepted("fW-Mxsnu", selection)
         val single = accepted(
-            select(AlternativeTrackQuery("Blinding Lights", "The Weeknd", "Blinding Lights", 201_000, null), candidates),
+            select(AlternativeTrackQuery("Blinding Lights", "The Weeknd", "Blinding Lights", 201_000, true), candidates),
             "single"
         )
         assertEquals("Blinding Lights", single.title)
@@ -134,10 +178,15 @@ class JioSaavnFamousTracksMatchingTest {
         )
         assertAccepted("XaFAVKX2", selection)
         val unknownAlbum = accepted(
-            select(AlternativeTrackQuery("Save Your Tears", "The Weeknd", "YouTube Music", 216_000, null), candidates),
+            select(AlternativeTrackQuery("Save Your Tears", "The Weeknd", "YouTube Music", 216_000, true), candidates),
             "unknown album"
         )
         assertEquals("Save Your Tears", unknownAlbum.title)
+        assertEquals(true, unknownAlbum.explicit)
+        assertEquals("Save Your Tears", accepted(
+            select(AlternativeTrackQuery("Save Your Tears", "The Weeknd", "YouTube Music", 216_000, null), candidates),
+            "unmarked Save Your Tears"
+        ).title)
         assertEquals(
             MatchRejection.VERSION_MISMATCH,
             selection.evaluations.single { it.candidate.providerTrackId == "tlMMxTHp" }.rejection

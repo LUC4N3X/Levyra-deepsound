@@ -43,6 +43,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.LazyListLayoutInfo
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.LazyListState
@@ -108,6 +109,7 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.albumCount
 import com.luc4n3x.levyra.domain.items
 import com.luc4n3x.levyra.domain.playableTracks
+import com.luc4n3x.levyra.ui.i18n.playlistImportCopy
 import com.luc4n3x.levyra.ui.i18n.playlistAlbumCopy
 import com.luc4n3x.levyra.domain.visibleDownloadBatches
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
@@ -124,6 +126,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
 import com.luc4n3x.levyra.viewmodel.LibraryViewModel
+import com.luc4n3x.levyra.viewmodel.libraryBrowseInput
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
@@ -167,11 +170,12 @@ private val playlistSelectionSaver = listSaver<Set<String>, String>(
 private const val PLAYLIST_DRAG_EDGE_FACTOR = 1.35f
 private const val PLAYLIST_DRAG_SCROLL_FACTOR = 0.38f
 private const val DEVICE_LIBRARY_PARENT_LEADING_ITEMS = 4
-private val LibraryCategoriesGutter = 16.dp
+internal val LibraryCategoriesGutter = 16.dp
+private val SpotifyLibraryMoreCategories = setOf(LibraryCategory.Songs, LibraryCategory.Device, LibraryCategory.Collections)
 private val LibraryScrollbarTopInset = 72.dp
 private val LibraryBrowseCategories = LibraryCategory.entries.filter { it != LibraryCategory.Overview }
 
-private fun Modifier.libraryCategoriesBleed(gutter: Dp): Modifier = layout { measurable, constraints ->
+internal fun Modifier.libraryCategoriesBleed(gutter: Dp): Modifier = layout { measurable, constraints ->
     val gutterPx = gutter.roundToPx()
     val width = constraints.maxWidth + gutterPx * 2
     val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
@@ -292,25 +296,26 @@ internal fun LevyraLibraryScreen(
     val strings = LocalLevyraStrings.current
     val colors = MaterialTheme.colorScheme
     val deleteOfflineDownloads = rememberOfflineDeleteHandler(viewModel)
-    val catalog = remember(
+    val libraryRadioSkin = com.luc4n3x.levyra.ui.levyraSearchOwnsBrowse(
+        com.luc4n3x.levyra.ui.theme.LevyraIsSpotify,
+        com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic,
+        com.luc4n3x.levyra.ui.theme.LevyraIsAtelier || com.luc4n3x.levyra.ui.theme.LevyraIsQobuz || com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic
+    )
+    val preparedBrowse by viewModel.browse.collectAsStateWithLifecycle()
+    val browse = preparedBrowse ?: remember(
         state.favorites,
         state.favoriteTimestamps,
         state.playlists,
         state.downloads,
         state.recentListens,
         state.mostPlayedTracks,
-        state.followedArtists
+        state.followedArtists,
+        state.interfaceSettings.librarySort,
+        state.interfaceSettings.librarySortDirection
     ) {
-        buildLibraryCatalog(
-            favorites = state.favorites,
-            playlists = state.playlists,
-            downloads = state.downloads,
-            recentListens = state.recentListens,
-            followedArtists = state.followedArtists,
-            mostPlayedTracks = state.mostPlayedTracks,
-            favoriteTimestamps = state.favoriteTimestamps
-        )
+        libraryBrowseInput(state).buildSnapshot()
     }
+    val catalog = browse.catalog
 
     var qobuzTools by rememberSaveable { mutableStateOf(false) }
     var atelierOnShelf by rememberSaveable { mutableStateOf(true) }
@@ -342,6 +347,12 @@ internal fun LevyraLibraryScreen(
     var pendingDownloadDelete by remember { mutableStateOf<DownloadedTrack?>(null) }
     var showImportPlaylistCard by rememberSaveable { mutableStateOf(true) }
     var openSmartCollectionName by rememberSaveable { mutableStateOf<String?>(null) }
+    var spotifyFilterName by rememberSaveable { mutableStateOf<String?>(null) }
+    var spotifySortName by rememberSaveable { mutableStateOf(SpotifyLibrarySort.Recents.name) }
+    var spotifyGrid by rememberSaveable { mutableStateOf(false) }
+    var spotifySortOpen by remember { mutableStateOf(false) }
+    var spotifyCreateOpen by remember { mutableStateOf(false) }
+    var spotifySearchOpen by rememberSaveable { mutableStateOf(false) }
     val collectionStrings = remember(strings.code) { LevyraPersonalCollectionCatalog.forCode(strings.code) }
     val personalCollections by viewModel.personalCollections.summaries.collectAsStateWithLifecycle()
     val personalCollectionSyncing by viewModel.personalCollections.syncingIds.collectAsStateWithLifecycle()
@@ -409,20 +420,30 @@ internal fun LevyraLibraryScreen(
     val visiblePlaylists = remember(scopedPlaylists, query, sort, direction) {
         filterLibraryPlaylists(scopedPlaylists, query, sort, direction)
     }
-    val visibleAlbums = remember(catalog.albums, query, sort, direction) {
-        filterLibraryAlbums(catalog.albums, query, sort, direction)
+    val savedPlaylists by viewModel.savedPlaylists.collectAsStateWithLifecycle()
+    val visibleSavedPlaylists = remember(savedPlaylists, query, showHiddenPlaylists, selectedTagIds, sort, direction) {
+        if (showHiddenPlaylists || selectedTagIds.isNotEmpty()) emptyList() else filterSavedPlaylists(savedPlaylists, query, sort, direction)
     }
-    val visibleArtists = remember(catalog.artists, query, sort, direction) {
-        filterLibraryArtists(catalog.artists, query, sort, direction)
+    val savedPlaylistCopy = remember(strings.code) { com.luc4n3x.levyra.ui.i18n.savedPlaylistCopy(strings.code) }
+    val presorted = browse.presortedFor(query, sort, direction)
+    val visibleAlbums = remember(browse, query, sort, direction) {
+        if (presorted) browse.albums else filterLibraryAlbums(catalog.albums, query, sort, direction)
     }
-    val visibleTracks = remember(catalog.tracks, query, sort, direction, catalog.trackRecency) {
-        filterLibraryTracks(
-            tracks = catalog.tracks,
-            query = query,
-            sort = sort,
-            direction = direction,
-            recencyProvider = catalog::recencyOf
-        )
+    val visibleArtists = remember(browse, query, sort, direction) {
+        if (presorted) browse.artists else filterLibraryArtists(catalog.artists, query, sort, direction)
+    }
+    val visibleTracks = remember(browse, query, sort, direction) {
+        if (presorted) {
+            browse.tracks
+        } else {
+            filterLibraryTracks(
+                tracks = catalog.tracks,
+                query = query,
+                sort = sort,
+                direction = direction,
+                recencyProvider = catalog::recencyOf
+            )
+        }
     }
     var localTabName by rememberSaveable { mutableStateOf(LocalLibraryTab.Songs.name) }
     val localTab = LocalLibraryTab.entries.firstOrNull { it.name == localTabName } ?: LocalLibraryTab.Songs
@@ -584,8 +605,8 @@ internal fun LevyraLibraryScreen(
         }
     }
 
-    val visibleOffline = remember(catalog.offlineItems, query, sort, direction) {
-        filterLibraryOfflineItems(catalog.offlineItems, query, sort, direction)
+    val visibleOffline = remember(browse, query, sort, direction) {
+        if (presorted) browse.offlineItems else filterLibraryOfflineItems(catalog.offlineItems, query, sort, direction)
     }
 
     val selectedTracks = remember(category, selectedKeys, catalog, state.playlists) {
@@ -670,6 +691,101 @@ internal fun LevyraLibraryScreen(
         }
     )
 
+    val spotifyOverview = com.luc4n3x.levyra.ui.theme.LevyraIsSpotify && category == LibraryCategory.Overview
+    val spotifyCopy = remember(strings.code) { com.luc4n3x.levyra.ui.i18n.spotifyLibraryCopy(strings.code) }
+    val spotifyFilter = SpotifyLibraryFilter.entries.firstOrNull { it.name == spotifyFilterName }
+    val spotifySort = SpotifyLibrarySort.entries.firstOrNull { it.name == spotifySortName } ?: SpotifyLibrarySort.Recents
+    val spotifyItems = if (spotifyOverview) {
+        remember(state.favorites, state.downloads.size, visiblePlaylists, visibleSavedPlaylists, catalog, state.downloadedTrackIds, state.userName, state.recentListens, strings, spotifyFilter, spotifySort) {
+            spotifyLibraryArrange(
+                buildSpotifyLibraryItems(
+                    state.favorites, state.downloads.size, visiblePlaylists, catalog, state.downloadedTrackIds,
+                    state.userName, strings.favorites, strings.downloads, state.recentListens, visibleSavedPlaylists
+                ),
+                spotifyFilter,
+                spotifySort
+            )
+        }
+    } else emptyList()
+    val spotifyLabels = remember(strings, spotifyCopy, state.userName) {
+        SpotifyLibraryLabels(
+            title = strings.libraryTitle,
+            userName = state.userName,
+            copy = spotifyCopy,
+            filterLabel = { filter ->
+                when (filter) {
+                    SpotifyLibraryFilter.Playlists -> strings.playlistsPlain.replaceFirstChar { it.uppercase() }
+                    SpotifyLibraryFilter.Artists -> strings.artists
+                    SpotifyLibraryFilter.Albums -> strings.albumsPlain.replaceFirstChar { it.uppercase() }
+                    SpotifyLibraryFilter.Downloaded -> strings.downloaded
+                }
+            },
+            subtitle = { entry ->
+                when (entry.kind) {
+                    SpotifyLibraryKind.Liked -> "${spotifyCopy.playlist} • ${strings.formatTrackCount(entry.count)}"
+                    SpotifyLibraryKind.Downloads -> strings.formatTrackCount(entry.count)
+                    SpotifyLibraryKind.Playlist -> "${spotifyCopy.playlist} • ${entry.creator.ifBlank { strings.formatTrackCount(entry.count) }}"
+                    SpotifyLibraryKind.SavedPlaylist -> listOf(spotifyCopy.playlist, entry.creator).filter(String::isNotBlank).joinToString(" • ")
+                    SpotifyLibraryKind.Album -> "${strings.albumPlain} • ${entry.creator}"
+                    SpotifyLibraryKind.Artist -> strings.artistLabel
+                }
+            },
+            jam = strings.jamTitle,
+            search = strings.search,
+            create = strings.newPlaylist,
+            clear = strings.clear,
+            cancel = strings.cancel
+        )
+    }
+    val spotifyActions = SpotifyLibraryActions(
+        onJam = viewModel::openJam,
+        onSearch = {
+            spotifySearchOpen = !spotifySearchOpen
+            if (!spotifySearchOpen) query = ""
+        },
+        onCreate = { spotifyCreateOpen = true },
+        onFilter = { spotifyFilterName = it?.name },
+        onSortOpen = { spotifySortOpen = true },
+        onToggleLayout = { spotifyGrid = !spotifyGrid },
+        onOpen = { entry ->
+            when (entry.kind) {
+                SpotifyLibraryKind.Liked -> openSmartCollectionName = SMART_COLLECTION_FAVORITES
+                SpotifyLibraryKind.Downloads -> switchCategory(LibraryCategory.Offline)
+                SpotifyLibraryKind.Playlist -> viewModel.openPlaylist(entry.id)
+                SpotifyLibraryKind.SavedPlaylist -> savedPlaylists.firstOrNull { it.key == entry.id }?.let(viewModel::openSavedPlaylist)
+                SpotifyLibraryKind.Album -> catalog.albums.firstOrNull { it.key == entry.id }?.let { viewModel.openAlbum(it.toAlbumHit()) }
+                SpotifyLibraryKind.Artist -> catalog.artists.firstOrNull { it.key == entry.id }?.let { viewModel.openArtistReference(it.name, it.browseId, it.artworkUrl) }
+            }
+        }
+    )
+    if (spotifyCreateOpen) {
+        SpotifyLibraryCreateSheet(
+            newLabel = strings.newPlaylist,
+            importLabel = strings.playlistImportCopy().action,
+            onNew = {
+                spotifyCreateOpen = false
+                viewModel.openPlaylistStudio()
+            },
+            onImport = {
+                spotifyCreateOpen = false
+                viewModel.openPlaylistImport()
+            },
+            onDismiss = { spotifyCreateOpen = false }
+        )
+    }
+    if (spotifySortOpen) {
+        SpotifyLibrarySortSheet(
+            sort = spotifySort,
+            copy = spotifyCopy,
+            cancel = strings.cancel,
+            onSelect = { option ->
+                spotifySortName = option.name
+                spotifySortOpen = false
+            },
+            onDismiss = { spotifySortOpen = false }
+        )
+    }
+
     BackHandler(
         enabled = backEnabled && !selectionActive && openSmartCollectionName == null && openCollection == null &&
             category != LibraryCategory.Overview
@@ -691,16 +807,22 @@ internal fun LevyraLibraryScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            item(key = "library-title") {
-                LibraryHero(
-                    title = if (category == LibraryCategory.Overview) strings.libraryTitle else category.libraryLabel(strings),
-                    subtitle = when (category) {
-                        LibraryCategory.Overview -> ""
-                        LibraryCategory.Playlists -> "${visiblePlaylists.size} ${strings.playlistsPlain}"
-                        else -> categorySummary(category)
-                    },
-                    onBack = { switchCategory(LibraryCategory.Overview) }.takeIf { category != LibraryCategory.Overview }
-                )
+            if (spotifyOverview) item(key = "library-title") {
+                SpotifyLibraryHeader(spotifyLabels, spotifyActions)
+            } else item(key = "library-title") {
+                com.luc4n3x.levyra.ui.LevyraTopLevelSearchRow(viewModel::openSearch.takeIf { libraryRadioSkin && category == LibraryCategory.Overview }, onJam = viewModel::openJam.takeIf { libraryRadioSkin && category == LibraryCategory.Overview }) {
+                    Box(Modifier.weight(1f)) {
+                        LibraryHero(
+                            title = if (category == LibraryCategory.Overview) strings.libraryTitle else category.libraryLabel(strings),
+                            subtitle = when (category) {
+                                LibraryCategory.Overview -> ""
+                                LibraryCategory.Playlists -> "${visiblePlaylists.size} ${strings.playlistsPlain}"
+                                else -> categorySummary(category)
+                            },
+                            onBack = { switchCategory(LibraryCategory.Overview) }.takeIf { category != LibraryCategory.Overview }
+                        )
+                    }
+                }
             }
 
             if (youtubeMusicAccount != null && category == LibraryCategory.Overview) {
@@ -709,7 +831,7 @@ internal fun LevyraLibraryScreen(
                 }
             }
 
-            item(key = "library-search") {
+            if (!(com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic && category == LibraryCategory.Overview && query.isEmpty()) && (!spotifyOverview || spotifySearchOpen || query.isNotBlank())) item(key = "library-search") {
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
@@ -819,7 +941,25 @@ internal fun LevyraLibraryScreen(
                         albums = visibleAlbums,
                         artists = visibleArtists,
                         strings = strings,
-                        actions = overviewSearchActions
+                        actions = overviewSearchActions,
+                        savedPlaylists = visibleSavedPlaylists,
+                        saved = LibrarySavedPlaylistActions(
+                            section = savedPlaylistCopy.section,
+                            remove = savedPlaylistCopy.remove,
+                            onOpen = viewModel::openSavedPlaylist,
+                            onRemove = { viewModel.removeSavedPlaylist(it.key) }
+                        )
+                    )
+                } else if (spotifyOverview) {
+                    spotifyLibraryOverview(
+                        items = spotifyItems,
+                        filter = spotifyFilter,
+                        sort = spotifySort,
+                        grid = spotifyGrid,
+                        labels = spotifyLabels,
+                        actions = spotifyActions,
+                        more = librarySections.filter { it.category in SpotifyLibraryMoreCategories },
+                        onOpenSection = { switchCategory(it) }
                     )
                 } else if (com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) {
                     item(key = "ytm-library-chips") {
@@ -849,60 +989,112 @@ internal fun LevyraLibraryScreen(
                                 onPlaylistMore = { viewModel.openPlaylistStudio(it.id) },
                                 onOpenAlbum = { viewModel.openAlbum(it.toAlbumHit()) },
                                 onOpenArtist = { viewModel.openArtistReference(it.name, it.browseId, it.artworkUrl) }
-                            )
+                            ),
+                            savedPlaylists = visibleSavedPlaylists,
+                            onOpenSavedPlaylist = viewModel::openSavedPlaylist
                         )
                     }
                 } else {
-                    item(key = "overview-sections") {
-                        LibrarySectionGrid(
-                            entries = librarySections,
-                            onOpen = { switchCategory(it) }
-                        )
+                    val sectionsItem: LazyListScope.() -> Unit = {
+                        item(key = "overview-sections") {
+                            LibrarySectionGrid(
+                                entries = librarySections,
+                                onOpen = { switchCategory(it) }
+                            )
+                        }
                     }
-                    item(key = "overview-smart-title") {
-                        LibrarySectionTitle(strings.quickPicks, "")
+                    val smartGridItem: LazyListScope.() -> Unit = {
+                        item(key = "overview-smart-grid") {
+                            SmartCollectionGrid(
+                                favorites = state.favorites,
+                                recent = catalog.recent,
+                                mostPlayed = catalog.mostPlayed,
+                                onOpenCollection = { openSmartCollectionName = it },
+                                onPlayTracks = { tracks -> tracks.firstOrNull()?.let { viewModel.playFrom(tracks, it) } }
+                            )
+                        }
                     }
-                    item(key = "overview-smart-grid") {
-                        SmartCollectionGrid(
-                            favorites = state.favorites,
-                            recent = catalog.recent,
-                            mostPlayed = catalog.mostPlayed,
-                            onOpenCollection = { openSmartCollectionName = it },
-                            onPlayTracks = { tracks -> tracks.firstOrNull()?.let { viewModel.playFrom(tracks, it) } }
-                        )
+                    if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+                        item(key = "glacier-overview") {
+                            GlacierLibraryOverview(
+                                favorites = state.favorites,
+                                recent = catalog.recent,
+                                mostPlayed = catalog.mostPlayed,
+                                entries = librarySections,
+                                pulse = state.listeningPulse,
+                                onOpenCollection = { openSmartCollectionName = it },
+                                onPlayTracks = { tracks -> tracks.firstOrNull()?.let { viewModel.playFrom(tracks, it) } },
+                                onOpenCategory = { switchCategory(it) },
+                                onOpenInsights = viewModel::openListeningInsights
+                            )
+                        }
+                        item(key = "glacier-pulse") { MonoPulseCard(state.listeningPulse, viewModel::openListeningInsights) }
+                        item(key = "glacier-journey") {
+                            com.luc4n3x.levyra.ui.moodjourney.MoodJourneyEntryCard(
+                                onOpen = { preset -> if (preset == null) viewModel.openMoodJourney() else viewModel.openMoodJourney(preset) },
+                                modifier = Modifier.padding(top = 20.dp)
+                            )
+                        }
+                    } else if (com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic) {
+                        sectionsItem()
+                        item(key = "apple-smart-links") {
+                            Column {
+                                AppleLibraryLinkRow(strings.favoritesPlain) { openSmartCollectionName = SMART_COLLECTION_FAVORITES }
+                                AppleLibraryLinkRow(strings.recent) { openSmartCollectionName = SMART_COLLECTION_RECENT }
+                                AppleLibraryLinkRow(strings.pulsePlays) { openSmartCollectionName = SMART_COLLECTION_MOST_PLAYED }
+                            }
+                        }
+                        if (catalog.recent.isNotEmpty()) {
+                            item(key = "apple-recently-added") {
+                                Column {
+                                    AppleLibrarySectionTitle(strings.recent)
+                                    AppleLibraryRecentlyAdded(catalog.recent, onPlay = { track -> viewModel.playFrom(catalog.recent, track) })
+                                }
+                            }
+                        }
+                        item(key = "apple-listening-pulse") {
+                            Column {
+                                AppleLibrarySectionTitle(strings.pulseTitle)
+                                LibraryTasteCard(pulse = state.listeningPulse, onOpenInsights = viewModel::openListeningInsights)
+                            }
+                        }
+                    } else if (LevyraIsDefaultSkin) {
+                        smartGridItem()
+                        sectionsItem()
+                    } else {
+                        sectionsItem()
+                        item(key = "overview-smart-title") {
+                            LibrarySectionTitle(strings.quickPicks, "")
+                        }
+                        smartGridItem()
                     }
-                    if (visiblePlaylists.isNotEmpty()) {
-                        item(key = "overview-playlists-title") {
+                    if (libraryRadioSkin && !com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+                        item(key = "overview-mood-journey") {
+                            com.luc4n3x.levyra.ui.moodjourney.MoodJourneyEntryCard(
+                                onOpen = { preset -> if (preset == null) viewModel.openMoodJourney() else viewModel.openMoodJourney(preset) }
+                            )
+                        }
+                    }
+                    if (LevyraIsDefaultSkin) {
+                        item(key = "overview-taste-card") {
+                            LibraryTasteCard(
+                                pulse = state.listeningPulse,
+                                onOpenInsights = viewModel::openListeningInsights
+                            )
+                        }
+                    } else if (!com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic && !com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+                        item(key = "overview-insights-title") {
                             LibrarySectionTitle(
-                                title = strings.playlists,
-                                detail = strings.personalPlaylists,
-                                action = strings.showAll,
-                                onAction = { switchCategory(LibraryCategory.Playlists) }
+                                title = strings.pulseTitle,
+                                detail = strings.pulseSubtitle
                             )
                         }
-                        item(key = "overview-playlist-shelf") {
-                            LibraryPlaylistShelf(
-                                playlists = visiblePlaylists.take(6),
-                                onOpen = { viewModel.openPlaylist(it.id) },
-                                onSelect = {
-                                    switchCategory(LibraryCategory.Playlists)
-                                    selectedKeys = setOf("playlist:${it.id}")
-                                },
-                                onPlay = { viewModel.playPlaylist(it.id) }
+                        item(key = "overview-insights-card") {
+                            LibraryListeningDashboard(
+                                pulse = state.listeningPulse,
+                                onOpenInsights = viewModel::openListeningInsights
                             )
                         }
-                    }
-                    item(key = "overview-insights-title") {
-                        LibrarySectionTitle(
-                            title = strings.pulseTitle,
-                            detail = strings.pulseSubtitle
-                        )
-                    }
-                    item(key = "overview-insights-card") {
-                        LibraryListeningDashboard(
-                            pulse = state.listeningPulse,
-                            onOpenInsights = viewModel::openListeningInsights
-                        )
                     }
                 }
 
@@ -933,7 +1125,7 @@ internal fun LevyraLibraryScreen(
                             }
                         }
                     }
-                    if (visiblePlaylists.isEmpty()) {
+                    if (visiblePlaylists.isEmpty() && visibleSavedPlaylists.isEmpty()) {
                         item {
                             when {
                                 query.isNotBlank() -> LibraryEmpty(Icons.Rounded.Search, strings.emptySearchPrompt)
@@ -978,6 +1170,19 @@ internal fun LevyraLibraryScreen(
                                     else viewModel.openPlaylist(playlist.id)
                                 },
                                 onSelect = { playlist -> selectedKeys = selectedKeys.toggle("playlist:${playlist.id}") }
+                            )
+                        }
+                    }
+                    if (visibleSavedPlaylists.isNotEmpty() && !selectionActive) {
+                        item(key = "saved-playlists-title") {
+                            LibrarySectionTitle(savedPlaylistCopy.section, "${visibleSavedPlaylists.size} ${strings.playlistsPlain}")
+                        }
+                        items(visibleSavedPlaylists, key = { "saved-playlist-${it.key}" }) { saved ->
+                            LibrarySavedPlaylistRow(
+                                saved = saved,
+                                removeLabel = savedPlaylistCopy.remove,
+                                onOpen = { viewModel.openSavedPlaylist(saved) },
+                                onRemove = { viewModel.removeSavedPlaylist(saved.key) }
                             )
                         }
                     }
@@ -1915,7 +2120,8 @@ internal fun LevyraPlaylistDetailScreen(
                         query = ""
                         selectionMode = true
                         selectedKeys = selectAllPlaylistItemKeys(orderedItems)
-                    }
+                    },
+                    onExport = { viewModel.playlistExport.open(playlist) }
                 )
             }
         )
@@ -1977,6 +2183,11 @@ internal fun LevyraPlaylistDetailScreen(
                     .padding(14.dp)
             )
         }
+    }
+
+    val exportState by viewModel.playlistExport.state.collectAsStateWithLifecycle()
+    if (exportState.visible && exportState.playlistId == playlist.id) {
+        PlaylistExportSheet(viewModel.playlistExport, exportState)
     }
 
     changeMatchTrack?.let { target ->

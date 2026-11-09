@@ -43,16 +43,18 @@ class HighQualityPlaybackCoordinator(
             artist = recording.artist,
             album = track.album,
             durationMs = track.durationMs.coerceAtLeast(0L),
-            explicit = if (track.explicit) true else null,
+            explicit = track.explicit.takeIf { it || track.metadataProvider.equals("spotify", ignoreCase = true) },
             isrc = track.isrc,
+            musicVideo = !track.videoType.equals(AUDIO_TRACK_VIDEO, ignoreCase = true),
             alternateReading = recording.alternate?.let { alternate ->
                 AlternativeTrackQuery(
                     title = alternate.title,
                     artist = alternate.artist,
                     album = track.album,
                     durationMs = track.durationMs.coerceAtLeast(0L),
-                    explicit = if (track.explicit) true else null,
-                    isrc = track.isrc
+                    explicit = track.explicit.takeIf { it || track.metadataProvider.equals("spotify", ignoreCase = true) },
+                    isrc = track.isrc,
+                    musicVideo = !track.videoType.equals(AUDIO_TRACK_VIDEO, ignoreCase = true)
                 )
             }
         )
@@ -186,6 +188,7 @@ class HighQualityPlaybackCoordinator(
         if (query.durationMs <= 0L) return null
         val result = resolver.resolveLossy(identityKey(track), query)
         if (result !is HighQualityResolution.Selected || result.stream.tier.lossless) return null
+        if (!result.stream.offlineAllowed) return null
         if (result.stream.codec != MP4_AAC_CODEC || result.stream.mimeType != MP4_AUDIO_MIME_TYPE) return null
         return applyStream(track, null, result, provenance())
     }
@@ -202,7 +205,7 @@ class HighQualityPlaybackCoordinator(
         return !resolver.mode.lossless || manifest.streams.any {
             it.selected && it.url == manifest.selectedAudioUrl &&
                 (it.mimeType == ProviderStreamValidator.FLAC_MIME_TYPE ||
-                    (it.codec == "flac" && it.deliveryMethod == PlaybackDeliveryMethod.DASH))
+                    (it.codec == "flac" && it.deliveryMethod == PlaybackDeliveryMethod.DASH && it.isFresh(clock(), 0L)))
         }
     }
 
@@ -262,7 +265,8 @@ class HighQualityPlaybackCoordinator(
                 providerTrackId = stream.providerTrackId,
                 bitrateKbps = stream.displayKbps,
                 verdict = selection.evaluation.verdict,
-                confidence = selection.evaluation.confidence
+                confidence = selection.evaluation.confidence,
+                offlineAllowed = stream.offlineAllowed
             )
         )
         return base.copy(
@@ -310,6 +314,7 @@ class HighQualityPlaybackCoordinator(
 
     companion object {
         const val DOWNLOAD_LOOKUP_BUDGET_MS = 35_000L
+        private const val AUDIO_TRACK_VIDEO = "MUSIC_VIDEO_TYPE_ATV"
         const val DOWNLOAD_LANE_BUDGET_MS = 30_000L
         const val AUTOMATIC_WAIT_MS = 2_500L
         const val AUTOMATIC_GRACE_MS = 1_200L

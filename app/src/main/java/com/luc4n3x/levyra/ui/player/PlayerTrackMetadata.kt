@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui.player
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
+
 import com.luc4n3x.levyra.ui.theme.*
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 
@@ -14,12 +16,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.AddCircleOutline
 import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.Star
-import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material.icons.rounded.ThumbUp
 import androidx.compose.material.icons.outlined.ThumbUp as OutlinedThumbUp
 import androidx.compose.foundation.background
@@ -39,7 +37,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
@@ -98,8 +95,9 @@ internal fun PlayerTrackMetadata(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) Alignment.CenterHorizontally else Alignment.Start
             ) {
-                Text(
+                LevyraMediaTitle(
                     text = shown.title,
+                    explicit = shown.explicit,
                     color = if (LevyraIsQobuz) QobuzDesign.playerContent else surfaces.content,
                     fontSize = titleSize,
                     lineHeight = LevyraTypeRhythm.lineHeight(titleSize),
@@ -107,10 +105,8 @@ internal fun PlayerTrackMetadata(
                     letterSpacing = metadataTitleLetterSpacing(appleMusic),
                     maxLines = if (animationsEnabled) 1 else 2,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.levyraMarquee(
-                        enabled = animationsEnabled,
-                        repeatDelayMillis = TitleMarqueeDelayMs
-                    )
+                    marqueeEnabled = animationsEnabled,
+                    repeatDelayMillis = TitleMarqueeDelayMs
                 )
                 PlayerArtistText(
                     track = shown,
@@ -142,6 +138,7 @@ internal fun PlayerTrackMetadata(
 
 private fun metadataTitleSize(compact: Boolean, appleMusic: Boolean, prism: Boolean): TextUnit = when {
     LevyraIsQobuz -> 18.sp
+    com.luc4n3x.levyra.ui.theme.LevyraIsMono -> 24.sp
     com.luc4n3x.levyra.ui.theme.LevyraIsAtelier -> 20.sp
     LevyraIsYouTubeMusic -> 24.sp
     LevyraIsSpotify -> 22.sp
@@ -154,6 +151,7 @@ private fun metadataTitleSize(compact: Boolean, appleMusic: Boolean, prism: Bool
 
 private fun metadataArtistSize(compact: Boolean, appleMusic: Boolean): TextUnit = when {
     LevyraIsQobuz -> 16.sp
+    com.luc4n3x.levyra.ui.theme.LevyraIsMono -> 15.sp
     com.luc4n3x.levyra.ui.theme.LevyraIsAtelier -> 13.sp
     LevyraIsYouTubeMusic -> 16.sp
     LevyraIsSpotify -> 16.sp
@@ -164,6 +162,7 @@ private fun metadataArtistSize(compact: Boolean, appleMusic: Boolean): TextUnit 
 
 private fun metadataTitleWeight(appleMusic: Boolean, prism: Boolean): FontWeight = when {
     LevyraIsQobuz -> FontWeight.Bold
+    com.luc4n3x.levyra.ui.theme.LevyraIsMono -> FontWeight.Bold
     com.luc4n3x.levyra.ui.theme.LevyraIsAtelier -> FontWeight.Medium
     LevyraIsYouTubeMusic -> FontWeight.Bold
     LevyraIsSpotify -> FontWeight.Bold
@@ -197,6 +196,7 @@ internal fun PlayerFavoriteButton(
         LevyraIsSpotify -> SpotifyPlayerFavoriteButton(isFavorite, label, pop.value, handleToggle)
         LevyraIsYouTubeMusic -> YouTubeMusicPlayerFavoriteButton(isFavorite, label, pop.value, handleToggle)
         LevyraIsQobuz -> QobuzPlayerFavoriteButton(isFavorite, label, handleToggle)
+        com.luc4n3x.levyra.ui.theme.LevyraIsMono -> MonoPlayerFavoriteButton(isFavorite, label, pop.value, handleToggle)
         PlayerAppleMusicStyle -> AppleMusicPlayerFavoriteButton(isFavorite, label, pop.value, handleToggle)
         else -> DefaultPlayerFavoriteButton(isFavorite, surfaces, label, animated, pop.value, handleToggle)
     }
@@ -258,7 +258,7 @@ private fun AppleMusicPlayerFavoriteButton(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                if (isFavorite) Icons.Rounded.Star else Icons.Rounded.StarBorder, label,
+                PlayerIcons.favorite(isFavorite), label,
                 tint = if (isFavorite) Color.Black.copy(alpha = 0.78f) else AppleMusicVibrant.primary, modifier = Modifier.size(19.dp)
             )
         }
@@ -286,7 +286,7 @@ private fun DefaultPlayerFavoriteButton(
     )
     val outline = surfaces.segmentOutline
     PlayerGlassIconButton(
-        icon = favoriteIcon(isFavorite),
+        icon = PlayerIcons.favorite(isFavorite),
         contentDescription = label,
         size = 44.dp,
         iconSize = 23.dp,
@@ -343,6 +343,3 @@ internal fun rememberFavoritePop(
     }
     return pop
 }
-
-private fun favoriteIcon(isFavorite: Boolean): ImageVector =
-    if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder

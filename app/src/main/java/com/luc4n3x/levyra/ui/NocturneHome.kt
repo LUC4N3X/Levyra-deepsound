@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -201,7 +202,7 @@ internal fun NocturneChartShelf(tracks: List<Track>, currentId: String?, isPlayi
                         Text((pageIndex * 5 + rowIndex + 1).toString(), color = Nocturne78Palette.muted, fontFamily = FontFamily.Monospace, fontSize = 12.sp, modifier = Modifier.width(24.dp))
                         Box(Modifier.size(44.dp).clip(RoundedCornerShape(Nocturne78Design.artworkCorner))) { CoverImage(track, Modifier.fillMaxSize()) }
                         Column(Modifier.weight(1f)) {
-                            Text(track.title, color = Nocturne78Palette.text, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            LevyraMediaTitle(track.title, explicit = track.explicit,  color = Nocturne78Palette.text, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text(track.artist, color = Nocturne78Palette.muted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         if (track.id == currentId) LevyraPlayingIndicator(playing = isPlaying, color = Nocturne78Palette.cyan, size = 12.dp)

@@ -31,6 +31,26 @@ class SpotifySearchClientTest {
     }}}"""
 
     @Test
+    fun catalogContentRatingSuppliesExplicitFlagForEachEdition() = runBlocking {
+        for (label in listOf("EXPLICIT", "CLEAN", "")) {
+            withServer { server, http ->
+                server.createContext("/base/v1/catalog/search") { exchange ->
+                    val payload = JSONObject(response)
+                    payload.getJSONObject("data").getJSONObject("searchV2").getJSONObject("tracksV2")
+                        .getJSONArray("items").getJSONObject(0).getJSONObject("item").getJSONObject("data")
+                        .put("contentRating", JSONObject().put("label", label))
+                    val bytes = payload.toString().toByteArray()
+                    exchange.sendResponseHeaders(200, bytes.size.toLong())
+                    exchange.responseBody.use { it.write(bytes) }
+                }
+                val song = client(server, http).search("song").songs.single()
+                assertEquals(label == "EXPLICIT", song.explicit)
+                assertEquals("spotify", song.metadataProvider)
+            }
+        }
+    }
+
+    @Test
     fun fullCatalogRunsEvenWhenCachedResultsExistAndUsesOnlyGatewayAuthentication() = runBlocking {
         val cached = cachedTrack()
         val requests = AtomicInteger()

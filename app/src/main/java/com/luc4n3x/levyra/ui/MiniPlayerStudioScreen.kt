@@ -170,6 +170,7 @@ internal fun MiniPlayerStudioOverlay(
     onUpdate: (LevyraMiniPlayerStudioSettings) -> Unit,
     onClose: () -> Unit,
     scrollEffect: DockScrollEffect = DockScrollEffect.Tide,
+    scrollEffectLocked: Boolean = false,
     onScrollEffect: (DockScrollEffect) -> Unit = {}
 ) {
     val strings = LocalLevyraStrings.current
@@ -234,7 +235,7 @@ internal fun MiniPlayerStudioOverlay(
                         onUpdate(latestSettings.resetStyle(latestSettings.style))
                     }
                 )
-                item(key = "dock-scroll-effect") { DockScrollEffectGroup(selected = scrollEffect, onSelect = onScrollEffect) }
+                item(key = "dock-scroll-effect") { DockScrollEffectGroup(selected = scrollEffect, locked = scrollEffectLocked, onSelect = onScrollEffect) }
             }
             Column(modifier = Modifier.fillMaxSize()) {
                 MiniStudioHeader(

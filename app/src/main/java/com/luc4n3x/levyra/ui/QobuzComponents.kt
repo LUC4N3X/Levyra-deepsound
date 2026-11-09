@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -321,7 +322,7 @@ internal fun QobuzRankedRow(rank: Int?, track: Track, copy: QobuzSkinCopy, curre
         }
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
-            Text(track.title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Medium),
+            LevyraMediaTitle(track.title,  style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Medium),
                 color = if (current) QobuzDesign.textAccent else QobuzDesign.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (track.explicit) {
@@ -341,7 +342,7 @@ internal fun QobuzTrackCard(track: Track, width: Dp, onClick: () -> Unit, onLong
             CoverImage(track, Modifier.fillMaxSize(), highRes = true)
         }
         Spacer(Modifier.height(8.dp))
-        Text(track.title, style = QobuzText.cardTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        LevyraMediaTitle(track.title, explicit = track.explicit,  style = QobuzText.cardTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(track.artist, style = QobuzText.cardSubtitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }

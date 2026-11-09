@@ -49,6 +49,12 @@ internal data class MusicExperienceStyle(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun musicExperienceStyle(artwork: String = ""): MusicExperienceStyle {
+    if (LevyraIsMono) {
+        return MusicExperienceStyle(
+            MonoDesign.base, MonoDesign.text, MonoDesign.textSecondary, MonoDesign.accent,
+            MonoDesign.accent.copy(alpha = 0.35f), MonoDesign.surface, MonoDesign.cardShape, false
+        )
+    }
     val fallback = ArtworkPalette(LevyraCyan.toArgb(), LevyraViolet.toArgb())
     val palette by rememberArtworkPalette("rewind:$artwork", artwork, fallback)
     val expressive = !LevyraSkinManagesLayout

@@ -241,9 +241,6 @@ private fun YouTubeMusicLevyraMix(viewModel: com.luc4n3x.levyra.viewmodel.Explor
     val (familiarity, loading) = mix
     val cards = remember(strings, viewModel) {
         listOf(
-            YouTubeMusicMixCard("mix-for-you", strings.mixForYou, Icons.Rounded.GraphicEq, listOf(Color(0xFFB0124B), Color(0xFF3D0A2A))) {
-                viewModel.startLevyraMix(com.luc4n3x.levyra.domain.LevyraMixKind.Personalized)
-            },
             YouTubeMusicMixCard("mix-surprise", strings.surpriseMe, Icons.Rounded.Casino, listOf(Color(0xFF1E5BB8), Color(0xFF0B1F45))) {
                 viewModel.startLevyraMix(com.luc4n3x.levyra.domain.LevyraMixKind.SurpriseMe)
             },

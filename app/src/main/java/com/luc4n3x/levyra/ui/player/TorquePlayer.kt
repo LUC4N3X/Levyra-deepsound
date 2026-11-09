@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.player
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -93,8 +94,8 @@ private fun TorqueBand(track: Track, height: Dp, transport: @Composable () -> Un
             Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 22.dp),
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Text(
-                track.title.uppercase(), color = onBand, fontSize = 24.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold,
+            LevyraMediaTitle(
+                track.title.uppercase(), explicit = track.explicit,  color = onBand, fontSize = 24.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold,
                 letterSpacing = 2.5.sp, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis
             )
             Text(
@@ -117,7 +118,7 @@ internal fun TorqueTransport(
     Row(modifier.fillMaxWidth().height(88.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
         TorqueModeButton(if (repeat == RepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat, labels.repeat, repeat != RepeatMode.Off, onRepeat)
         IconButton(onClick = onPrevious, modifier = Modifier.size(56.dp)) {
-            Icon(Icons.Rounded.FastRewind, labels.previous, tint = LevyraText, modifier = Modifier.size(40.dp))
+            Icon(PlayerIcons.previous, labels.previous, tint = LevyraText, modifier = Modifier.size(40.dp))
         }
         Box(
             Modifier.size(84.dp).clip(CircleShape).background(LevyraBlack)
@@ -130,7 +131,7 @@ internal fun TorqueTransport(
             else Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = LevyraText, modifier = Modifier.size(40.dp))
         }
         IconButton(onClick = onNext, modifier = Modifier.size(56.dp)) {
-            Icon(Icons.Rounded.FastForward, labels.next, tint = LevyraText, modifier = Modifier.size(40.dp))
+            Icon(PlayerIcons.next, labels.next, tint = LevyraText, modifier = Modifier.size(40.dp))
         }
         TorqueModeButton(Icons.Rounded.Shuffle, labels.shuffle, shuffle, onShuffle)
     }

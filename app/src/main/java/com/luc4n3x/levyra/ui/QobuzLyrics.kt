@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.DragInteraction
@@ -169,7 +170,7 @@ private fun QobuzLyricsMiniPlayer(
         Box(Modifier.size(56.dp).clip(RoundedCornerShape(4.dp))) { CoverImage(track, Modifier.fillMaxSize()) }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(track.title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            LevyraMediaTitle(track.title, explicit = track.explicit,  color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(track.artist, color = QobuzDesign.playerContentSecondary, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Box(

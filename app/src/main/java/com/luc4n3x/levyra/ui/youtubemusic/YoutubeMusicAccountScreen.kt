@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.youtubemusic
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -202,7 +203,7 @@ private fun ColumnScope.YoutubeMusicTracks(state: YoutubeMusicAccountUiState, co
                     Row(Modifier.weight(1f).clickable { actions.play(page!!.tracks, track) }.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         AsyncImage(track.thumbnailUrl, null, Modifier.size(52.dp).clip(MaterialTheme.shapes.medium), contentScale = ContentScale.Crop)
                         Column {
-                            Text(track.title, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            LevyraMediaTitle(track.title, explicit = track.explicit,  style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text(track.artist, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }

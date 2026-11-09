@@ -1,5 +1,9 @@
 package com.luc4n3x.levyra.viewmodel
 
+import android.app.Application
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -12,6 +16,9 @@ import com.luc4n3x.levyra.data.HomeEditorialEngine
 import com.luc4n3x.levyra.data.LevyraStartupCatalog
 import com.luc4n3x.levyra.data.deduplicateHomeAlbums
 import com.luc4n3x.levyra.data.isChartArtworkPlaceholder
+import com.luc4n3x.levyra.data.news.MusicNewsRepository
+import com.luc4n3x.levyra.data.news.MusicNewsSources
+import com.luc4n3x.levyra.data.news.MusicNewsStory
 import com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicHome
 import com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicHomeSource
 import com.luc4n3x.levyra.domain.AlbumHit
@@ -61,6 +68,9 @@ import com.luc4n3x.levyra.feature.radio.RadioStation
 import com.luc4n3x.levyra.ui.HOME_PERSONAL_ORBIT_MAX_TRACKS
 import com.luc4n3x.levyra.ui.homePersonalOrbitFilledTracks
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
+import com.luc4n3x.levyra.ui.library.LibraryBrowseInput
+import com.luc4n3x.levyra.ui.library.LibraryBrowseSnapshot
+import com.luc4n3x.levyra.ui.library.buildSnapshot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -68,8 +78,10 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
@@ -149,6 +161,8 @@ class HomeViewModel internal constructor(
 ) : LevyraScreenViewModel(root, ::homeProjection) {
     fun openExploreZone(zone: ExploreZone) = root.openExploreZone(zone)
     fun selectTab(tab: com.luc4n3x.levyra.domain.LevyraTab) = root.selectTab(tab)
+    val appleNewThisWeek: StateFlow<AppleNewThisWeek> get() = root.appleNewThisWeek
+    fun ensureAppleNewThisWeek(force: Boolean = false) = root.ensureAppleNewThisWeek(force)
 
     private val freezeHomeContent = MutableStateFlow(false)
     private val explicitMoodSelection = MutableStateFlow<Mood?>(null)
@@ -195,6 +209,7 @@ class HomeViewModel internal constructor(
         root.selectExploreCategory(category)
         root.selectTab(LevyraTab.Explore)
     }
+    fun openExploreCategoryPage(category: ExploreCategory) = root.openExploreCategory(category)
     fun ensureExplore(strings: com.luc4n3x.levyra.ui.i18n.LevyraStrings) = root.ensureExplore(strings)
     fun openExploreTab() = root.selectTab(LevyraTab.Explore)
     fun startSongRadioFrom(track: Track) = root.startSongRadioFrom(track)
@@ -216,6 +231,11 @@ class HomeViewModel internal constructor(
     fun openYoutubeCommentsFor(track: Track) = root.openYoutubeCommentsFor(track)
     fun playAll(tracks: List<Track>) = root.playAll(tracks)
     fun playLiveRadio(station: RadioStation) = root.playLiveRadio(station)
+    fun playPodcastEpisode(list: List<Track>, track: Track, startPositionMs: Long) {
+        val current = root.state.value
+        if (!current.isVideoMode && current.currentTrack?.id == track.id) root.togglePlay()
+        else root.playAudioFrom(list, track, startPositionMs = startPositionMs)
+    }
     internal val favoriteRadioStations = root.favoriteRadioStations
     fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) {
         val current = root.state.value
@@ -282,15 +302,15 @@ class HomeViewModel internal constructor(
 }
 
 class SearchViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::searchProjection) {
+    val searchHiddenListens: StateFlow<Set<String>> get() = root.searchHiddenListens
     fun openLyricsPhraseSearch() = root.openLyricsPhraseSearch()
     fun openExploreZone(zone: com.luc4n3x.levyra.domain.ExploreZone) = root.openExploreZone(zone)
     fun openExploreSamples(index: Int) = root.openExploreSamples(index)
     fun ensureExploreSamples() = root.ensureExploreSamples()
     fun ensureExplore(strings: com.luc4n3x.levyra.ui.i18n.LevyraStrings) = root.ensureExplore(strings)
-    fun openExploreCategory(category: com.luc4n3x.levyra.domain.ExploreCategory) {
-        root.selectExploreCategory(category)
-        root.selectTab(com.luc4n3x.levyra.domain.LevyraTab.Explore)
-    }
+    fun openExploreCategory(category: com.luc4n3x.levyra.domain.ExploreCategory) = root.openExploreCategory(category)
+    fun playAudioFrom(list: List<Track>, track: Track, startPositionMs: Long) = root.playAudioFrom(list, track, startPositionMs = startPositionMs)
+    fun ensureExploreCategoryArtwork(params: String) = root.ensureExploreCategoryArtwork(params, false)
     fun openSettings() = root.openSettings()
     fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
     fun addTracksToPlaylist(playlistId: String, tracks: List<Track>) = root.addTracksToPlaylist(playlistId, tracks)
@@ -335,7 +355,40 @@ class ExploreViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::ex
     fun openExploreSamples(index: Int) = root.openExploreSamples(index)
     fun playVideoFrom(list: List<Track>, track: Track) = root.playVideoFrom(list, track)
     fun consumeExploreOpenRequest() = root.consumeExploreOpenRequest()
+    fun navigateBack() = root.navigateBack()
     private var mixPresentationJob: Job? = null
+    private val newsRepository by lazy { MusicNewsRepository.get(root.getApplication<Application>()) }
+    private val _news = MutableStateFlow<List<MusicNewsStory>>(emptyList())
+    val news: StateFlow<List<MusicNewsStory>> = _news.asStateFlow()
+    private var newsLanguage: String? = null
+    private var newsJob: Job? = null
+
+    fun ensureNews(languageCode: String) {
+        val language = MusicNewsSources.key(languageCode)
+        if (language == newsLanguage && newsJob?.isActive == true) return
+        val languageChanged = language != newsLanguage
+        newsLanguage = language
+        newsJob?.cancel()
+        newsJob = viewModelScope.launch {
+            val cached = newsRepository.cached(language)
+            if (newsLanguage != language) return@launch
+            if (cached != null) _news.value = cached else if (languageChanged) _news.value = emptyList()
+            val loaded = newsRepository.load(language) ?: return@launch
+            if (newsLanguage == language) _news.value = loaded
+        }
+    }
+
+    fun openNews(story: MusicNewsStory) {
+        val uri = Uri.parse(story.url)
+        if (!uri.scheme.equals("https", ignoreCase = true) || uri.host.isNullOrBlank()) return
+        val intent = Intent(Intent.ACTION_VIEW, uri)
+            .addCategory(Intent.CATEGORY_BROWSABLE)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        try {
+            root.getApplication<Application>().startActivity(intent)
+        } catch (_: ActivityNotFoundException) {
+        }
+    }
 
     fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
     fun createPlaylist(name: String, firstTrack: Track? = null) = root.createPlaylist(name, firstTrack)
@@ -415,10 +468,23 @@ class ExploreViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::ex
 }
 
 class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::libraryProjection) {
+    internal val browse: StateFlow<LibraryBrowseSnapshot?> = root.state
+        .map(::libraryBrowseInput)
+        .distinctUntilChanged()
+        .conflate()
+        .map { input -> withContext(Dispatchers.Default) { input.buildSnapshot() } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
     val personalCollections: PersonalCollectionsController get() = root.personalCollections
+    val savedPlaylists: StateFlow<List<com.luc4n3x.levyra.domain.SavedPlaylist>> get() = root.savedPlaylists
+    fun openSavedPlaylist(saved: com.luc4n3x.levyra.domain.SavedPlaylist) = root.openSavedPlaylist(saved)
+    fun removeSavedPlaylist(key: String) = root.removeSavedPlaylist(key)
     fun refreshSmartOffline() = root.refreshSmartOffline()
+    fun openSearch() = root.selectTab(LevyraTab.Search)
     fun openYourSound() = root.openYourSound()
     fun openMixLab(initialParams: com.luc4n3x.levyra.domain.MixLabParams = com.luc4n3x.levyra.domain.MixLabParams()) = root.openMixLab(initialParams)
+    fun openMoodJourney() = root.openMoodJourney()
+    fun openMoodJourney(preset: com.luc4n3x.levyra.domain.MoodCurvePreset) = root.openMoodJourney(preset)
+    fun openJam() = root.openJam()
     fun openListeningRecap() = root.openListeningRecap()
     fun openListeningInsights() = root.openListeningInsights()
     fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
@@ -513,8 +579,10 @@ class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::li
 }
 
 class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::playerProjection) {
+    fun setPlayerFocus(enabled: Boolean) = root.setInterfaceSettings(root.state.value.interfaceSettings.copy(playerFocusEnabled = enabled))
     val mixChapters get() = root.mixChapters
     val sectionLoop get() = root.sectionLoop
+    fun openAlbum(album: AlbumHit) = root.openAlbumFromPlayer(album)
     fun openMixChapters() = root.openMixChapters()
     fun setNightListeningEnabled(value: Boolean) = root.setNightListeningEnabled(value)
     fun toggleFollowArtist(artist: com.luc4n3x.levyra.domain.ArtistHit) = root.toggleFollowArtist(artist)
@@ -692,7 +760,6 @@ private fun LevyraUiState.withFrozenHomeContent(previous: LevyraUiState): Levyra
         homeAlbumsLoading = keepWhen(keepAlbums, previous.homeAlbumsLoading, homeAlbumsLoading),
         isLoadingHome = keepWhen(keepSections, previous.isLoadingHome, isLoadingHome),
         homeError = keepWhen(keepSections, previous.homeError, homeError),
-        isDeviceOffline = previous.isDeviceOffline,
         downloads = previous.downloads,
         releaseRadar = previous.releaseRadar.ifEmpty { releaseRadar },
         similarArtists = previous.similarArtists.ifEmpty { similarArtists }
@@ -801,6 +868,7 @@ private fun LevyraUiState.withoutExcludedArtists(): LevyraUiState {
     val filteredRadar = exclusions.filterReleaseRadar(releaseRadar)
     val filteredTracks = exclusions.filterTracks(tracks)
     val filteredForgotten = exclusions.filterTracks(forgottenFavorites)
+    val filteredFollowed = exclusions.filterFollowedArtists(followedArtists)
     val unchanged = filteredSections === homeSections &&
         filteredAlbums === homeAlbums &&
         filteredArtists === homeArtists &&
@@ -809,7 +877,8 @@ private fun LevyraUiState.withoutExcludedArtists(): LevyraUiState {
         filteredResonance === homeResonanceTracks &&
         filteredRadar === releaseRadar &&
         filteredTracks === tracks &&
-        filteredForgotten === forgottenFavorites
+        filteredForgotten === forgottenFavorites &&
+        filteredFollowed === followedArtists
     if (unchanged) return this
     return copy(
         homeSections = filteredSections,
@@ -820,7 +889,8 @@ private fun LevyraUiState.withoutExcludedArtists(): LevyraUiState {
         homeResonanceTracks = filteredResonance,
         releaseRadar = filteredRadar,
         tracks = filteredTracks,
-        forgottenFavorites = filteredForgotten
+        forgottenFavorites = filteredForgotten,
+        followedArtists = filteredFollowed
     )
 }
 
@@ -956,7 +1026,7 @@ private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
         fallbackSections = otherSections.map { moodRank(it.tracks) },
         chartTracks = if (input.showCharts) moodRank(input.charts) else emptyList(),
         preferenceScore = ::moodPreferenceScore
-    )
+    ).filterNot { candidate -> input.artistExclusions.excludesTrack(candidate.track) }
     val visibleCollectionSections = otherSections.filter { section ->
         isHomeSectionVisible(section.title, input)
     }
@@ -1089,6 +1159,7 @@ private fun buildHomeResonanceTracks(input: HomeDerivedInput): List<Track> {
     }
         .asSequence()
         .filter { it.id.length == 11 && isReliableHomeMusicCandidate(it) }
+        .filterNot(input.artistExclusions::excludesTrack)
         .distinctBy { it.id }
         .sortedWith(
             compareByDescending<Track> {
@@ -1339,6 +1410,8 @@ internal fun LocalLibraryUiState.completedScanSongs(): List<Track>? =
 
 internal data class SearchProjection(
     val currentTrack: Track?,
+    val exploreFreshTracks: List<Track>,
+    val exploreWorldFreshTracks: List<Track>,
     val isVideoMode: Boolean,
     val userName: String,
     val exploreSamples: List<Track>,
@@ -1376,6 +1449,8 @@ internal data class SearchProjection(
 
 internal fun searchProjection(state: LevyraUiState): SearchProjection = SearchProjection(
     currentTrack = state.currentTrack,
+    exploreFreshTracks = state.exploreFreshTracks,
+    exploreWorldFreshTracks = state.exploreWorldFreshTracks,
     isVideoMode = state.isVideoMode,
     userName = state.userName,
     exploreSamples = state.exploreSamples,
@@ -1485,6 +1560,8 @@ internal data class LibraryProjection(
     val smartOfflineSettings: com.luc4n3x.levyra.domain.LevyraSmartOfflineSettings,
     val favoriteIds: Set<String>,
     val favorites: List<Track>,
+    val favoriteTimestamps: Map<String, Long>,
+    val mostPlayedTracks: List<Track>,
     val followedArtists: List<FollowedArtist>,
     val isPlaying: Boolean,
     val isResolving: Boolean,
@@ -1499,6 +1576,18 @@ internal data class LibraryProjection(
     val queueUnavailableUris: Set<String>
 )
 
+internal fun libraryBrowseInput(state: LevyraUiState): LibraryBrowseInput = LibraryBrowseInput(
+    favorites = state.favorites,
+    favoriteTimestamps = state.favoriteTimestamps,
+    playlists = state.playlists,
+    downloads = state.downloads,
+    recentListens = state.recentListens,
+    mostPlayedTracks = state.mostPlayedTracks,
+    followedArtists = state.followedArtists,
+    sort = state.interfaceSettings.librarySort,
+    direction = state.interfaceSettings.librarySortDirection
+)
+
 internal fun libraryProjection(state: LevyraUiState): LibraryProjection = LibraryProjection(
     currentTrack = state.currentTrack,
     downloadProgressByTrackId = state.downloadProgressByTrackId,
@@ -1511,6 +1600,8 @@ internal fun libraryProjection(state: LevyraUiState): LibraryProjection = Librar
     smartOfflineSettings = state.smartOfflineSettings,
     favoriteIds = state.favoriteIds,
     favorites = state.favorites,
+    favoriteTimestamps = state.favoriteTimestamps,
+    mostPlayedTracks = state.mostPlayedTracks,
     followedArtists = state.followedArtists,
     isPlaying = state.isPlaying,
     isResolving = state.isResolving,
@@ -1562,7 +1653,8 @@ internal data class PlayerProjection(
     val artistExclusions: ArtistExclusions,
     val recommendationFeedback: RecommendationFeedback,
     val canPlaySimilarSongNow: Boolean,
-    val canQueueSimilarSong: Boolean
+    val canQueueSimilarSong: Boolean,
+    val playlists: List<Playlist>
 )
 
 internal fun playerProjection(state: LevyraUiState): PlayerProjection = PlayerProjection(
@@ -1602,5 +1694,6 @@ internal fun playerProjection(state: LevyraUiState): PlayerProjection = PlayerPr
     artistExclusions = state.artistExclusions,
     recommendationFeedback = state.recommendationFeedback,
     canPlaySimilarSongNow = !state.jam.isActive || state.jam.canControlPlayback,
-    canQueueSimilarSong = !state.jam.isActive || state.jam.canAddTracks
+    canQueueSimilarSong = !state.jam.isActive || state.jam.canAddTracks,
+    playlists = state.playlists
 )

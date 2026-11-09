@@ -54,14 +54,38 @@ internal fun LazyListScope.spotifyHomeFilterItems(
 ) {
     when (filter) {
         SpotifyHomeFilter.Following -> item(key = "spotify-following") { SpotifyFollowingPage(state, viewModel) }
-        SpotifyHomeFilter.Podcasts -> item(key = "spotify-podcasts-page") { SpotifyPodcastsPage(state, viewModel) }
+        SpotifyHomeFilter.Podcasts -> item(key = "spotify-podcasts-page") { SpotifyPodcastsHome(state, viewModel) }
+        SpotifyHomeFilter.Radio -> item(key = "spotify-radio-page") { SpotifyLiveRadioHome(state, viewModel) }
         SpotifyHomeFilter.Music -> spotifyMusicItems(state, albums, releases, viewModel, onActions)
         else -> Unit
     }
 }
 
 private fun LazyListScope.spotifyMusicItems(state: LevyraUiState, albums: List<AlbumHit>, releases: List<Track>, viewModel: HomeViewModel, onActions: (Track) -> Unit) {
+    if (releases.isNotEmpty()) item(key = "spotify-music-for-you") {
+        val strings = LocalLevyraStrings.current
+        SpotifyHomeShelf(com.luc4n3x.levyra.ui.i18n.spotifyNewReleasesForYou(strings.code)) {
+            items(releases.distinctBy(Track::id).take(12), key = { "for-you-${it.id}" }) { track ->
+                val single = track.album.isBlank() || track.album.equals(track.title, ignoreCase = true)
+                SpotifyReleaseCard(
+                    kind = (if (single) strings.singlePlain else strings.albumPlain).replaceFirstChar { it.uppercase() },
+                    title = if (single) track.title else track.album,
+                    artist = track.artist,
+                    url = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
+                    onLongClick = { onActions(track) }
+                ) { viewModel.playFrom(releases, track) }
+            }
+        }
+    }
+    if (state.charts.isNotEmpty() || state.homeArtists.isNotEmpty()) item(key = "spotify-music-year") { SpotifyYearTops(state, viewModel) }
     item(key = "spotify-music-radio") { SpotifyArtistRadios(state, releases, viewModel) }
+    if (state.homeArtists.isNotEmpty()) item(key = "spotify-music-artists") {
+        SpotifyHomeShelf(LevyraSpotifyHomeStrings.forCode(LocalLevyraStrings.current.code).popularArtists) {
+            items(state.homeArtists.take(12), key = { it.browseId.ifBlank { it.name } }) { artist ->
+                SpotifyHomeCoverCard(artist.name, "", artist.thumbnailUrl, round = true) { viewModel.openArtistFromHit(artist) }
+            }
+        }
+    }
     if (albums.isNotEmpty()) item(key = "spotify-music-albums") {
         SpotifyHomeShelf(LevyraSpotifyHomeStrings.forCode(LocalLevyraStrings.current.code).popularAlbums) {
             items(albums, key = { it.browseId.ifBlank { it.query } }) { album ->
@@ -77,13 +101,6 @@ private fun LazyListScope.spotifyMusicItems(state: LevyraUiState, albums: List<A
             }
         }
     }
-    if (state.homeArtists.isNotEmpty()) item(key = "spotify-music-artists") {
-        SpotifyHomeShelf(LevyraSpotifyHomeStrings.forCode(LocalLevyraStrings.current.code).popularArtists) {
-            items(state.homeArtists.take(12), key = { it.browseId.ifBlank { it.name } }) { artist ->
-                SpotifyHomeCoverCard(artist.name, "", artist.thumbnailUrl, round = true) { viewModel.openArtistFromHit(artist) }
-            }
-        }
-    }
     if (state.recentListens.isNotEmpty()) item(key = "spotify-music-recap") {
         val strings = LocalLevyraStrings.current
         SpotifyHomeShelf(strings.listeningRecap) {
@@ -95,22 +112,64 @@ private fun LazyListScope.spotifyMusicItems(state: LevyraUiState, albums: List<A
             } }
         }
     }
-    if (releases.isNotEmpty()) item(key = "spotify-music-releases") {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            SpotifyHomeHeading(LocalLevyraStrings.current.newReleases)
-            SpotifyTrackCarousel(releases.take(12), state.currentTrack?.id, state.isPlaying, state.isResolving, { viewModel.playFrom(releases, it) }, onActions)
+}
+
+@Composable
+private fun SpotifyReleaseCard(kind: String, title: String, artist: String, url: String, onLongClick: () -> Unit, onClick: () -> Unit) {
+    Column(Modifier.width(176.dp).levyraPressable(onClick = onClick, onLongClick = onLongClick, onClickLabel = title, role = Role.Button)) {
+        StableRemoteArtwork(url, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(176.dp).clip(RoundedCornerShape(4.dp)).background(SpotifyDesign.placeholder))
+        Text(kind, color = SpotifyDesign.subdued, fontSize = 14.sp, maxLines = 1, modifier = Modifier.padding(top = 8.dp))
+        Text(title, color = SpotifyDesign.text, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(artist, color = SpotifyDesign.subdued, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+private fun SpotifyYearTops(state: LevyraUiState, viewModel: HomeViewModel) {
+    val region = remember(state.selectedChartId) { com.luc4n3x.levyra.domain.ChartsCatalog.region(state.selectedChartId).label }
+    val year = remember { java.time.LocalDate.now().year }
+    val tracks = state.charts
+    val artists = state.homeArtists
+    SpotifyHomeShelf("Top $year") {
+        if (tracks.isNotEmpty()) item(key = "year-tracks") {
+            SpotifyYearCard(
+                "Top Tracks\n$region $year", tracks.first().largeThumbnailUrl.ifBlank { tracks.first().thumbnailUrl }, Color(0xFFD9822B),
+                tracks.map(Track::artist).distinct().take(5).joinToString(", ")
+            ) { viewModel.playFrom(tracks, tracks.first()) }
+        }
+        if (artists.isNotEmpty()) item(key = "year-artists") {
+            SpotifyYearCard(
+                LevyraSpotifyHomeStrings.forCode(LocalLevyraStrings.current.code).popularArtists, artists.first().thumbnailUrl, Color(0xFF121212),
+                artists.take(5).joinToString(", ") { it.name }
+            ) { viewModel.openArtistFromHit(artists.first()) }
         }
     }
 }
 
 @Composable
-private fun SpotifyHomeHeading(title: String) {
+private fun SpotifyYearCard(title: String, portrait: String, fill: Color, subtitle: String, onClick: () -> Unit) {
+    Column(Modifier.width(176.dp).levyraPressable(onClick = onClick, onClickLabel = title, role = Role.Button)) {
+        Box(Modifier.size(176.dp).clip(RoundedCornerShape(4.dp)).background(fill)) {
+            StableRemoteArtwork(portrait, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.matchParentSize())
+            Box(Modifier.matchParentSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(0.45f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.55f))))
+            Box(Modifier.padding(8.dp).size(14.dp).clip(CircleShape).background(Color.White))
+            Text(
+                title, color = Color.White, fontSize = 22.sp, lineHeight = 24.sp, fontWeight = FontWeight.Bold, maxLines = 2,
+                modifier = Modifier.align(Alignment.BottomStart).padding(start = 10.dp, end = 8.dp, bottom = 10.dp)
+            )
+        }
+        Text(subtitle, color = SpotifyDesign.subdued, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
+    }
+}
+
+@Composable
+internal fun SpotifyHomeHeading(title: String) {
     Text(title, color = SpotifyDesign.text, fontSize = 20.sp, lineHeight = 24.sp, fontWeight = FontWeight.Bold,
         modifier = Modifier.padding(horizontal = 16.dp).padding(top = 8.dp).semantics { heading() })
 }
 
 @Composable
-private fun SpotifyHomeShelf(title: String, content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit) {
+internal fun SpotifyHomeShelf(title: String, content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SpotifyHomeHeading(title)
         LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), content = content)
@@ -118,7 +177,7 @@ private fun SpotifyHomeShelf(title: String, content: androidx.compose.foundation
 }
 
 @Composable
-private fun SpotifyHomeCoverCard(title: String, subtitle: String, url: String, round: Boolean = false, compact: Boolean = false, onClick: () -> Unit) {
+internal fun SpotifyHomeCoverCard(title: String, subtitle: String, url: String, round: Boolean = false, compact: Boolean = false, onClick: () -> Unit) {
     val size = if (compact) 104.dp else 176.dp
     Column(Modifier.width(size).levyraPressable(onClick = onClick, onClickLabel = title, role = Role.Button),
         horizontalAlignment = if (round) Alignment.CenterHorizontally else Alignment.Start) {
@@ -299,42 +358,6 @@ private fun SpotifyFollowArtistPicker(state: LevyraUiState, viewModel: HomeViewM
                     .levyraPressable(onClick = onDismiss, onClickLabel = chart.done, role = Role.Button).padding(horizontal = 36.dp),
                 contentAlignment = Alignment.Center
             ) { Text(chart.done, color = Color.Black, fontSize = 18.sp, fontWeight = FontWeight.Bold) }
-        }
-    }
-}
-
-@Composable
-private fun SpotifyPodcastsPage(state: LevyraUiState, viewModel: HomeViewModel) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val repository = remember(context) { com.luc4n3x.levyra.data.YoutubePodcastsRepository(context.applicationContext) }
-    var attempt by remember { mutableIntStateOf(0) }
-    val loaded by androidx.compose.runtime.produceState<List<com.luc4n3x.levyra.data.PodcastShelf>?>(null, state.languageCode, attempt) {
-        value = null
-        value = try {
-            repository.shelves(state.languageCode)
-        } catch (cancelled: kotlinx.coroutines.CancellationException) {
-            throw cancelled
-        } catch (error: Exception) {
-            emptyList()
-        }
-    }
-    val shelves = loaded
-    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        when {
-            shelves == null -> Text(LocalLevyraStrings.current.searchingYouTubeMusic, color = SpotifyDesign.subdued, modifier = Modifier.padding(16.dp))
-            shelves.isEmpty() -> Box(
-                Modifier.padding(16.dp).height(40.dp).clip(CircleShape).background(Color.White)
-                    .levyraPressable(onClick = { attempt++ }, onClickLabel = LocalLevyraStrings.current.exploreSamplesRetry, role = Role.Button)
-                    .padding(horizontal = 20.dp),
-                contentAlignment = Alignment.Center
-            ) { Text(LocalLevyraStrings.current.exploreSamplesRetry, color = Color.Black, fontSize = 14.sp, fontWeight = FontWeight.Bold) }
-        }
-        shelves.orEmpty().forEach { shelf ->
-            SpotifyHomeShelf(shelf.title) {
-                items(shelf.episodes, key = { "podcast-${shelf.title}-${it.id}" }) { episode ->
-                    SpotifyHomeCoverCard(episode.title, episode.artist, episode.thumbnailUrl) { viewModel.playFrom(shelf.episodes, episode) }
-                }
-            }
         }
     }
 }

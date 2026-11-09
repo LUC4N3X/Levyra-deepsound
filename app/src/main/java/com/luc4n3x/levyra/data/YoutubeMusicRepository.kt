@@ -1870,7 +1870,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             query = "${headerAlbum.title} $finalArtist".trim(),
             browseId = headerAlbum.browseId.ifBlank { resolved.browseId },
             audioPlaylistId = canonicalAudioPlaylistId,
-            explicit = root?.toString()?.contains("MUSIC_ITEM_BADGE_EXPLICIT") == true || headerAlbum.explicit
+            explicit = root?.toString()?.hasExplicitBadge() == true || headerAlbum.explicit
         )
         val enrichedTracks = finalTracks.map { track ->
             track.copy(
@@ -2217,7 +2217,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             browseId = browseId,
             artistBrowseId = artistReferences.firstOrNull()?.browseId.orEmpty(),
             audioPlaylistId = audioPlaylistId,
-            explicit = card.toString().contains("MUSIC_ITEM_BADGE_EXPLICIT"),
+            explicit = card.toString().hasExplicitBadge(),
             releaseType = releaseType
         )
     }
@@ -2237,7 +2237,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
                 albumBrowseId = albumReference.second,
                 artistBrowseIds = artistReferences.map { it.browseId },
                 trackNumber = trackNumber,
-                explicit = renderer.toString().contains("MUSIC_ITEM_BADGE_EXPLICIT")
+                explicit = renderer.toString().hasExplicitBadge()
             )
         }.distinctBy { it.id }
     }
@@ -2388,6 +2388,9 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         val strapline = header?.optJSONObject("strapline")?.optJSONArray("runs")?.joinText().orEmpty().trim()
         val headerThumbnail = header?.optJSONObject("thumbnail")?.let { findBestThumbnail(it) }.orEmpty()
         val contents = shelf.optJSONArray("contents") ?: return null
+        val headerBrowseId = header?.optJSONObject("title")?.optJSONArray("runs")?.optJSONObject(0)
+            ?.optJSONObject("navigationEndpoint")?.optJSONObject("browseEndpoint")?.optString("browseId").orEmpty()
+        val newVideosShelf = headerBrowseId == "FEmusic_new_releases_videos"
         val items = LinkedHashMap<String, YoutubeMusicHomeItem>()
         val buttons = mutableListOf<YoutubeMusicHomeButton>()
         var listRows = 0
@@ -2397,6 +2400,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
                 parseHomeButton(button)?.let(buttons::add)
                 continue
             }
+            if (newVideosShelf && isNonMusicAudioCard(content)) continue
             if (content.has("musicResponsiveListItemRenderer")) listRows++
             val item = parseHomeItem(content) ?: continue
             items.putIfAbsent(item.key, item)
@@ -2417,8 +2421,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             thumbnailUrl = headerThumbnail.takeIf { it.isNotBlank() }?.let(::upgradeThumbnail).orEmpty(),
             style = style,
             items = values,
-            headerBrowseId = header?.optJSONObject("title")?.optJSONArray("runs")?.optJSONObject(0)
-                ?.optJSONObject("navigationEndpoint")?.optJSONObject("browseEndpoint")?.optString("browseId").orEmpty(),
+            headerBrowseId = headerBrowseId,
             buttons = buttons.take(MAX_HOME_SHELF_ITEMS * 2)
         )
     }
@@ -2431,6 +2434,11 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         val stripe = button.optJSONObject("solid")?.optLong("leftStripeColor") ?: 0L
         return YoutubeMusicHomeButton(title, stripe, endpoint.optString("browseId"), params)
     }
+
+    private fun isNonMusicAudioCard(content: JSONObject): Boolean =
+        content.optJSONObject("musicTwoRowItemRenderer")?.optJSONObject("navigationEndpoint")?.optJSONObject("browseEndpoint")
+            ?.optJSONObject("browseEndpointContextSupportedConfigs")?.optJSONObject("browseEndpointContextMusicConfig")
+            ?.optString("pageType") == "MUSIC_PAGE_TYPE_NON_MUSIC_AUDIO_TRACK_PAGE"
 
     private fun parseHomeItem(content: JSONObject): YoutubeMusicHomeItem? {
         content.optJSONObject("musicResponsiveListItemRenderer")?.let { renderer ->
@@ -2920,7 +2928,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             query = album.query.ifBlank { "${album.title} ${album.artist}" },
             source = "YouTube Music Album",
             year = album.year,
-            explicit = renderer.toString().contains("MUSIC_ITEM_BADGE_EXPLICIT"),
+            explicit = renderer.toString().hasExplicitBadge(),
             albumBrowseId = album.browseId,
             artistBrowseIds = artistReferences.map { it.browseId },
             videoType = findStringUnderKey(renderer, "musicVideoType").orEmpty(),
@@ -3354,6 +3362,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             videoUrl = "https://www.youtube.com/watch?v=$videoId",
             query = "home",
             source = "YouTube Music",
+            explicit = two.toString().hasExplicitBadge(),
             artistBrowseIds = artistReferences.map { it.browseId },
             youtubeViewCount = tokens.asSequence()
                 .filterNot { token ->
@@ -3523,6 +3532,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             query = query,
             source = "YouTube Music",
             albumBrowseId = albumReference.second,
+            explicit = allText.hasExplicitBadge(),
             artistBrowseIds = artistReferences.map { it.browseId },
             videoType = findStringUnderKey(renderer, "musicVideoType").orEmpty(),
             youtubeViewCount = tokens.asSequence()

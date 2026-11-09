@@ -106,6 +106,10 @@ internal fun PrismTransport(
         AtelierTransport(playing, resolving, shuffle, repeat, labels, onShuffle, onPrevious, onToggle, onNext, onRepeat, modifier)
         return
     }
+    if (LevyraIsMono) {
+        MonoTransport(playing, resolving, shuffle, repeat, labels, onShuffle, onPrevious, onToggle, onNext, onRepeat, modifier)
+        return
+    }
     if (LevyraIsTorque) {
         TorqueTransport(playing, resolving, shuffle, repeat, labels, onShuffle, onPrevious, onToggle, onNext, onRepeat, modifier)
         return
@@ -163,6 +167,10 @@ private fun PrismModeButton(icon: ImageVector, label: String, active: Boolean, o
 internal fun PrismSeekbar(positionMs: Long, bufferedMs: Long, durationMs: Long, onSeek: (Float) -> Unit, modifier: Modifier = Modifier, playing: Boolean = true) {
     if (LevyraIsAtelier) {
         AtelierSeekbar(positionMs, durationMs, onSeek, modifier, playing)
+        return
+    }
+    if (LevyraIsMono) {
+        MonoSeekbar(positionMs, durationMs, onSeek, modifier, playing)
         return
     }
     if (LevyraIsTorque) {

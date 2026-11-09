@@ -36,6 +36,29 @@ private val DIAGNOSTIC_SECRET_PATTERN = Regex(
 private val DIAGNOSTIC_BEARER_PATTERN = Regex("(?i)\\b(bearer|basic|digest)\\s+\\S+")
 private val DIAGNOSTIC_URL_PATTERN = Regex("(?i)(?:[a-z][a-z0-9+.-]*://|\\bwww\\.)\\S*")
 private val DIAGNOSTIC_LONG_OPAQUE_PATTERN = Regex("[A-Za-z0-9_\\-]{40,}")
+private val DIAGNOSTIC_COOKIE_LINE = Regex("(?im)\\b((?:set-)?cookie\\s*[:=]\\s*)[^\\r\\n]+")
+private val DIAGNOSTIC_TEXT_SECRET = Regex(
+    "(?im)([\"']?(?:authorization|proxy-authorization|cookie|set-cookie|potoken|po_token|token|" +
+        "access[_ -]?token|refresh[_ -]?token|id[_ -]?token|session|signature|api[_ -]?key|" +
+        "x-goog-api-key|secret|password|passwd|credential|username|email)[\"']?\\s*[:=]\\s*)" +
+        "(?:\"[^\"\\r\\n]*\"|'[^'\\r\\n]*'|[^\\r\\n,;]+)"
+)
+private val DIAGNOSTIC_EMAIL = Regex("[A-Za-z0-9._%+\\-]+@[A-Za-z0-9.\\-]+\\.[A-Za-z]{2,}")
+private val DIAGNOSTIC_PRIVATE_PATH = Regex(
+    "(?i)(?:[A-Z]:[\\\\/](?:Users|Documents and Settings)[\\\\/]|/(?:storage|sdcard|data|mnt|home|Users)/|\\\\\\\\)[^\\s\"'<>]+"
+)
+private val DIAGNOSTIC_PRIVATE_IP = Regex("\\b(?:10(?:\\.\\d{1,3}){3}|192\\.168(?:\\.\\d{1,3}){2}|172\\.(?:1[6-9]|2\\d|3[01])(?:\\.\\d{1,3}){2}|127(?:\\.\\d{1,3}){3})\\b")
+private val DIAGNOSTIC_JWT = Regex("\\beyJ[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\b")
+
+internal fun redactDiagnosticText(value: String): String = value
+    .replace(DIAGNOSTIC_COOKIE_LINE) { "${it.groupValues[1]}$DIAGNOSTIC_REDACTED" }
+    .replace(DIAGNOSTIC_URL_PATTERN, DIAGNOSTIC_REDACTED)
+    .replace(DIAGNOSTIC_BEARER_PATTERN, DIAGNOSTIC_REDACTED)
+    .replace(DIAGNOSTIC_TEXT_SECRET) { "${it.groupValues[1]}$DIAGNOSTIC_REDACTED" }
+    .replace(DIAGNOSTIC_EMAIL, DIAGNOSTIC_REDACTED)
+    .replace(DIAGNOSTIC_PRIVATE_PATH, DIAGNOSTIC_REDACTED)
+    .replace(DIAGNOSTIC_PRIVATE_IP, DIAGNOSTIC_REDACTED)
+    .replace(DIAGNOSTIC_JWT, DIAGNOSTIC_REDACTED)
 
 internal enum class PlaybackDiagnosticStatus {
     HEALTHY,
@@ -294,7 +317,7 @@ internal class PlaybackDiagnosticsReader(context: Context) {
                 client = playerState.client,
                 policy = readPolicy(),
                 strategies = strategies
-            )
+            ).also(PlaybackDiagnosticHistory::recordSnapshot)
         }
     }
 
@@ -456,4 +479,45 @@ private fun playerStateName(state: Int): String = when (state) {
     Player.STATE_READY -> "READY"
     Player.STATE_ENDED -> "ENDED"
     else -> "UNKNOWN"
+}
+
+@UnstableApi
+internal object PlaybackDiagnosticHistory {
+    @Volatile private var latest = "Unavailable"
+    @Volatile private var lastCapture = "No network or resolver snapshot captured"
+    private val errors = ArrayDeque<String>()
+
+    fun update(player: Player) {
+        val exoPlayer = player as? ExoPlayer
+        val formats = exoPlayer?.let(::selectedFormats).orEmpty()
+        val snapshot = PlaybackDiagnosticSnapshot(
+            playerState = playerStateName(player.playbackState),
+            isPlaying = player.isPlaying,
+            positionMs = player.currentPosition,
+            bufferedPositionMs = player.bufferedPosition,
+            playbackSpeed = player.playbackParameters.speed,
+            durationMs = player.duration.takeIf { it != C.TIME_UNSET && it >= 0 } ?: 0L,
+            audioSessionId = exoPlayer?.audioSessionId?.takeIf { it > 0 },
+            audioFormat = formats.firstOrNull { it.sampleMimeType?.startsWith("audio/") == true }?.toDiagnosticFormat(),
+            videoFormat = formats.firstOrNull { it.sampleMimeType?.startsWith("video/") == true }?.toDiagnosticFormat(),
+            videoMode = player.currentMediaItem?.mediaMetadata?.extras?.getBoolean(PlaybackService.EXTRA_VIDEO_MODE, false) == true,
+            audioOffload = PlaybackService.audioOffloadState,
+            playerErrorCode = player.playerError?.errorCodeName.orEmpty()
+        )
+        latest = (snapshot.playbackRows() + snapshot.formatRows()).joinToString("\n") { (key, value) -> "$key: $value" }
+    }
+
+    fun recordSnapshot(snapshot: PlaybackDiagnosticSnapshot) {
+        lastCapture = "Captured at ${java.time.Instant.now()}\n" +
+            snapshot.copy(trackId = "", title = "", artist = "", source = "").safeReport()
+    }
+
+    @Synchronized
+    fun recordError(code: String) {
+        if (errors.size == 8) errors.removeFirst()
+        errors.addLast("${java.time.Instant.now()}: ${sanitizeDiagnosticField(code)}")
+    }
+
+    @Synchronized
+    fun snapshot(): String = latest + "\n\n" + lastCapture + "\n\nRecent playback errors:\n" + errors.joinToString("\n").ifBlank { "None recorded" }
 }

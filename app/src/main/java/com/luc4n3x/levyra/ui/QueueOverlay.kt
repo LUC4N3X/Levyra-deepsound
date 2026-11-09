@@ -1,4 +1,6 @@
 package com.luc4n3x.levyra.ui
+
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import com.luc4n3x.levyra.ui.theme.*
 import com.luc4n3x.levyra.domain.exploreSamplesRequestIndex
 import com.luc4n3x.levyra.ui.theme.nocturneMiniSettings
@@ -986,6 +988,7 @@ internal fun QueueOverlay(
     onClose: () -> Unit
 ) {
     if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) return com.luc4n3x.levyra.ui.player.AtelierQueueScreen(state, onPlay, onToggleRadio, onMove, { onTrackActions(QueueRemovalTarget(it, state.activeQueueSpaceId, it.id != state.currentTrack?.id)) }, onClose)
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) return com.luc4n3x.levyra.ui.player.MonoQueueScreen(state, onPlay, onToggleRadio, onMove, { onTrackActions(QueueRemovalTarget(it, state.activeQueueSpaceId, it.id != state.currentTrack?.id)) }, onClose)
     if (LevyraIsQobuz) return com.luc4n3x.levyra.ui.player.QobuzQueueScreen(state, onPlay, onToggleRadio, onMove, { onTrackActions(QueueRemovalTarget(it, state.activeQueueSpaceId, it.id != state.currentTrack?.id)) }, onClose)
     val strings = LocalLevyraStrings.current
     val haptics = LocalLevyraHaptics.current
@@ -1202,8 +1205,8 @@ internal fun QueueOverlay(
                                         .alpha(if (wasPlayed && !isCurrent) 0.5f else 1f)
                                 )
                                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    Text(
-                                        track.title,
+                                    LevyraMediaTitle(
+                                        track.title, explicit = track.explicit,
                                         color = when {
                                             isCurrent -> queueAccent
                                             wasPlayed -> LevyraMuted

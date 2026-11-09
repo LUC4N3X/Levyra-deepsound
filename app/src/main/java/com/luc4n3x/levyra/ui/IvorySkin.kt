@@ -1,5 +1,9 @@
 package com.luc4n3x.levyra.ui
 
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.lazy.rememberLazyListState
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -183,7 +187,7 @@ private fun IvorySoundtrackStage(hero: StudioHero, playLabel: String, inset: Dp)
                     letterSpacing = (-1.2).sp, maxLines = 2, overflow = TextOverflow.Ellipsis
                 )
                 Spacer(Modifier.height(6.dp))
-                Text(hero.ivorySecondLine(), color = LevyraMuted, style = MaterialTheme.typography.bodyLarge, letterSpacing = 0.6.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                LevyraMediaTitle(hero.ivorySecondLine(), explicit = hero.track.explicit, color = LevyraMuted, style = MaterialTheme.typography.bodyLarge, letterSpacing = 0.6.sp)
             }
             IvoryInkTab(start = false, Modifier.padding(bottom = 2.dp).width(inset + 82.dp).height(92.dp)) {
                 Box(Modifier.padding(end = inset - 8.dp), contentAlignment = Alignment.Center) {
@@ -231,7 +235,7 @@ internal fun IvoryAlbumCard(item: StudioShelfItem, isPlaying: Boolean) {
             IvoryCornerBadge(52.dp, Modifier.align(Alignment.BottomEnd)) { IvoryCornerGlyph(item.current, isPlaying, 52.dp) }
         }
         Spacer(Modifier.height(6.dp))
-        Text(item.title, color = if (item.current) IvoryDesign.rose else LevyraText, style = MaterialTheme.typography.titleSmall, fontSize = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        LevyraMediaTitle(item.title, explicit = item.explicit, color = if (item.current) IvoryDesign.rose else LevyraText, style = MaterialTheme.typography.titleSmall, fontSize = 15.sp)
         if (item.subtitle.isNotBlank()) Text(item.subtitle, color = LevyraMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
@@ -254,9 +258,13 @@ internal fun IvoryArtistCard(item: StudioShelfItem) {
 
 @Composable
 internal fun IvoryShowcaseShelf(items: List<StudioShelfItem>, isPlaying: Boolean, inset: Dp, modifier: Modifier) {
-    LazyRow(modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+    val rowState = rememberLazyListState()
+    val motion = ivoryRailMotionEnabled()
+    LazyRow(modifier.fillMaxWidth(), state = rowState, contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         itemsIndexed(items, key = { _, item -> item.key }) { _, item ->
-            if (item.round) IvoryArtistCard(item) else IvoryAlbumCard(item, isPlaying)
+            Box(Modifier.ivoryRailItemMotion(motion, rowState, item.key)) {
+                if (item.round) IvoryArtistCard(item) else IvoryAlbumCard(item, isPlaying)
+            }
         }
     }
 }
@@ -264,7 +272,7 @@ internal fun IvoryShowcaseShelf(items: List<StudioShelfItem>, isPlaying: Boolean
 @Composable
 internal fun IvoryTrackRow(
     title: String, subtitle: String, current: Boolean, playing: Boolean, leadInset: Dp,
-    onClick: () -> Unit, onLongClick: (() -> Unit)?, modifier: Modifier = Modifier,
+    onClick: () -> Unit, onLongClick: (() -> Unit)?, modifier: Modifier = Modifier, explicit: Boolean = false,
     artwork: @Composable (Modifier) -> Unit
 ) {
     Row(
@@ -281,7 +289,7 @@ internal fun IvoryTrackRow(
             Box(Modifier.size(54.dp).clip(RoundedCornerShape(IvoryDesign.tileCorner))) { artwork(Modifier.fillMaxSize()) }
         }
         Column(Modifier.weight(1f).padding(start = 14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, color = LevyraText, style = MaterialTheme.typography.titleSmall, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            LevyraMediaTitle(title, explicit = explicit, color = LevyraText, style = MaterialTheme.typography.titleSmall, fontSize = 16.sp)
             if (subtitle.isNotBlank()) Text(subtitle, color = LevyraMuted, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
@@ -294,7 +302,7 @@ internal fun IvoryCompactShelf(items: List<StudioShelfItem>, isPlaying: Boolean,
         itemsIndexed(pages, key = { index, page -> "$index:${page.first().key}" }) { index, page ->
             Column(Modifier.width(320.dp)) {
                 page.forEach { item ->
-                    IvoryTrackRow(item.title, item.subtitle, item.current, isPlaying, if (index == 0) inset else 12.dp, item.onClick, item.onLongClick) {
+                    IvoryTrackRow(item.title, item.subtitle, item.current, isPlaying, if (index == 0) inset else 12.dp, item.onClick, item.onLongClick, explicit = item.explicit) {
                         item.artwork(it, item.round)
                     }
                 }
@@ -322,7 +330,7 @@ internal fun IvoryChartPage(page: List<IndexedValue<Track>>, currentId: String?,
                 )
                 Box(Modifier.size(50.dp).clip(RoundedCornerShape(IvoryDesign.tileCorner))) { CoverImage(track, Modifier.fillMaxSize()) }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(track.title, color = content, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    LevyraMediaTitle(track.title, explicit = track.explicit,  color = content, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(track.artist, color = content.copy(alpha = 0.66f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 if (current) LevyraPlayingIndicator(playing = playing, color = IvoryDesign.onInk, size = 12.dp)
@@ -403,7 +411,7 @@ internal fun IvoryFreshRelease(track: Track, title: String, subtitle: String, la
         }
         Row(Modifier.padding(start = 6.dp, top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(title, color = LevyraText, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                LevyraMediaTitle(title, explicit = track.explicit, color = LevyraText, style = MaterialTheme.typography.titleLarge)
                 Text(subtitle, color = LevyraMuted, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             actions()
@@ -417,10 +425,18 @@ internal fun IvoryOrbitShelf(
     onPlay: (Track) -> Unit, onActions: (Track) -> Unit
 ) {
     val animate = LocalAnimationsEnabled.current
-    LazyRow(Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        itemsIndexed(tracks, key = { index, track -> "$index-${LevyraPersonalOrbit.identityKey(track)}" }) { _, track ->
+    val rowState = rememberLazyListState()
+    val motion = ivoryRailMotionEnabled()
+    LazyRow(Modifier.fillMaxWidth(), state = rowState, contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        itemsIndexed(tracks, key = { index, track -> "$index-${LevyraPersonalOrbit.identityKey(track)}" }) { index, track ->
             val current = track.id == currentId
-            IvorySleeveCard(track, current, playing, current && playing && animate, current && resolving, onPlay, onActions)
+            val key = "$index-${LevyraPersonalOrbit.identityKey(track)}"
+            Box(Modifier.ivoryRailItemMotion(motion, rowState, key)) {
+                IvorySleeveCard(
+                    track, current, playing, current && playing && animate, current && resolving, onPlay, onActions,
+                    recordMotion = Modifier.ivoryRecordScrollMotion(motion, rowState, key)
+                )
+            }
         }
     }
 }
@@ -428,7 +444,7 @@ internal fun IvoryOrbitShelf(
 @Composable
 private fun IvorySleeveCard(
     track: Track, current: Boolean, playing: Boolean, spinning: Boolean, resolving: Boolean,
-    onPlay: (Track) -> Unit, onActions: (Track) -> Unit
+    onPlay: (Track) -> Unit, onActions: (Track) -> Unit, recordMotion: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
     val slide by androidx.compose.animation.core.animateDpAsState(if (current) 36.dp else 18.dp, label = "ivory-sleeve-record")
@@ -440,7 +456,7 @@ private fun IvorySleeveCard(
         verticalArrangement = Arrangement.spacedBy(3.dp)
     ) {
         Box(Modifier.fillMaxWidth().height(150.dp)) {
-            IvoryRecord(track, spinning, Modifier.align(Alignment.CenterStart).offset(x = slide).size(140.dp))
+            IvoryRecord(track, spinning, Modifier.align(Alignment.CenterStart).offset(x = slide).then(recordMotion).size(140.dp))
             Box(Modifier.align(Alignment.CenterStart).size(150.dp).clip(RoundedCornerShape(26.dp)).background(LevyraPanel)) {
                 CoverImage(track, Modifier.fillMaxSize(), highRes = true)
                 if (current) Box(
@@ -453,10 +469,25 @@ private fun IvorySleeveCard(
             }
         }
         Spacer(Modifier.height(8.dp))
-        Text(track.title, color = if (current) IvoryDesign.rose else LevyraText, style = MaterialTheme.typography.titleSmall, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.width(150.dp))
+        LevyraMediaTitle(track.title, explicit = track.explicit,  color = if (current) IvoryDesign.rose else LevyraText, style = MaterialTheme.typography.titleSmall, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.width(150.dp))
         Text(track.artist, color = LevyraMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.width(150.dp))
     }
 }
+
+private fun Modifier.ivoryRecordScrollMotion(enabled: Boolean, state: LazyListState, key: Any): Modifier =
+    if (!enabled) this else graphicsLayer {
+        val info = state.layoutInfo
+        val item = info.visibleItemsInfo.firstOrNull { it.key == key } ?: return@graphicsLayer
+        val half = ((info.viewportEndOffset - info.viewportStartOffset) / 2f).coerceAtLeast(1f)
+        val center = (info.viewportStartOffset + info.viewportEndOffset) / 2f
+        val offset = ((item.offset + item.size / 2f - center) / half).coerceIn(-1f, 1f)
+        val focus = 1f - kotlin.math.abs(offset)
+        translationX = IvoryRecordPeek.toPx() * focus * focus
+        rotationZ = item.offset * IvoryRecordRollPerPx
+    }
+
+private val IvoryRecordPeek = 26.dp
+private const val IvoryRecordRollPerPx = 0.32f
 
 @Composable
 private fun IvoryRecord(track: Track, spinning: Boolean, modifier: Modifier) {
@@ -515,7 +546,7 @@ private fun IvoryChartBands(page: List<IndexedValue<Track>>, total: Int, current
                     ) {
                         Box(Modifier.size(42.dp).clip(CircleShape)) { CoverImage(track, Modifier.fillMaxSize()) }
                         Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                            Text(track.title, color = onInk, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            LevyraMediaTitle(track.title, explicit = track.explicit,  color = onInk, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text(track.artist, color = onInk.copy(alpha = 0.62f), style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         if (current) LevyraPlayingIndicator(playing = playing, color = onInk, size = 12.dp)

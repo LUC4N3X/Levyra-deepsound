@@ -80,7 +80,9 @@ internal fun YouTubeMusicLibraryOverview(
     albums: List<LibraryAlbum>,
     artists: List<LibraryArtist>,
     copy: YouTubeMusicLibraryRows,
-    actions: YouTubeMusicLibraryActions
+    actions: YouTubeMusicLibraryActions,
+    savedPlaylists: List<com.luc4n3x.levyra.domain.SavedPlaylist> = emptyList(),
+    onOpenSavedPlaylist: (com.luc4n3x.levyra.domain.SavedPlaylist) -> Unit = {}
 ) {
     Column(Modifier.youTubeMusicBleed(16.dp)) {
         YouTubeMusicLibraryRow(
@@ -105,6 +107,14 @@ internal fun YouTubeMusicLibraryOverview(
                 onMore = { actions.onPlaylistMore(playlist) },
                 moreLabel = copy.moreLabel,
                 artwork = { YouTubeMusicLibraryCover(playlist.coverUrl, playlist.tracks.firstOrNull()) }
+            )
+        }
+        savedPlaylists.forEach { saved ->
+            YouTubeMusicLibraryRow(
+                title = saved.hit.title,
+                subtitle = listOf(copy.playlistLabel, saved.hit.author).filter(String::isNotBlank).joinToString(" • "),
+                onClick = { onOpenSavedPlaylist(saved) },
+                artwork = { YouTubeMusicLibraryCover(saved.hit.thumbnailUrl, null) }
             )
         }
         albums.forEach { album ->

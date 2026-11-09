@@ -1,11 +1,7 @@
 package com.luc4n3x.levyra.ui.player
 
-import android.content.Context
-import android.database.ContentObserver
-import android.media.AudioManager
-import android.os.Handler
-import android.os.Looper
-import android.provider.Settings
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Canvas
@@ -28,14 +24,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
-import androidx.compose.material.icons.rounded.AddCircleOutline
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.FastForward
-import androidx.compose.material.icons.rounded.FastRewind
 import androidx.compose.material.icons.rounded.GraphicEq
-import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.Star
-import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Slider
@@ -43,10 +32,8 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.rememberSliderState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -61,7 +48,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -298,17 +284,17 @@ private fun AuraHeadline(
             label = "player-aura-headline"
         ) { shown ->
             Column {
-                Text(
+                LevyraMediaTitle(
                     text = shown.title,
+                    explicit = shown.explicit,
                     color = AuraInk,
                     fontSize = 17.sp,
                     lineHeight = 22.sp,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .levyraMarquee(enabled = animated, repeatDelayMillis = 3_200)
-                        .semantics { heading() }
+                    marqueeEnabled = animated,
+                    modifier = Modifier.semantics { heading() }
                 )
                 PlayerArtistText(
                     track = shown,
@@ -321,18 +307,18 @@ private fun AuraHeadline(
             }
         }
         AuraIconButton(
-            icon = if (isDownloaded) Icons.Rounded.CheckCircle else Icons.Rounded.AddCircleOutline,
+            icon = PlayerIcons.download(isDownloaded),
             label = if (isDownloaded) strings.downloaded else strings.download,
             size = 24.dp,
             onClick = onDownload
         )
         AuraIconButton(
-            icon = if (isFavorite) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+            icon = PlayerIcons.favorite(isFavorite),
             label = strings.favoritesPlain,
             size = 26.dp,
             onClick = onToggleFavorite
         )
-        AuraIconButton(icon = Icons.Rounded.MoreVert, label = strings.more, size = 22.dp, onClick = onMore)
+        AuraIconButton(icon = PlayerIcons.more, label = strings.more, size = 22.dp, onClick = onMore)
     }
 }
 
@@ -461,7 +447,7 @@ private fun AuraTransport(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        AuraTransportButton(Icons.Rounded.FastRewind, labels.previous, 38.dp) {
+        AuraTransportButton(PlayerIcons.previous, labels.previous, 38.dp) {
             haptics.perform(LevyraHapticAction.Transport)
             onPrevious()
         }
@@ -471,7 +457,7 @@ private fun AuraTransport(
             labels = labels,
             onTogglePlay = onTogglePlay
         )
-        AuraTransportButton(Icons.Rounded.FastForward, labels.next, 38.dp) {
+        AuraTransportButton(PlayerIcons.next, labels.next, 38.dp) {
             haptics.perform(LevyraHapticAction.Transport)
             onNext()
         }
@@ -536,23 +522,9 @@ internal fun PlayerOutputVolume(
     modifier: Modifier = Modifier
 ) {
     val label = LocalLevyraStrings.current.volume
-    val context = LocalContext.current
-    val audio = remember(context) { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
-    val max = remember(audio) { audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1) }
-    var level by remember { mutableFloatStateOf(audio.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat() / max) }
-    DisposableEffect(audio) {
-        val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
-            override fun onChange(selfChange: Boolean) {
-                level = audio.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat() / max
-            }
-        }
-        context.contentResolver.registerContentObserver(Settings.System.CONTENT_URI, true, observer)
-        onDispose { context.contentResolver.unregisterContentObserver(observer) }
-    }
-    val apply: (Float) -> Unit = { fraction ->
-        level = fraction
-        audio.setStreamVolume(AudioManager.STREAM_MUSIC, (fraction * max).toInt().coerceIn(0, max), 0)
-    }
+    val volume = rememberMusicStreamVolume() ?: return
+    val level = volume.fraction
+    val apply: (Float) -> Unit = volume::set
     val sliderColors = SliderDefaults.colors(
         thumbColor = activeColor,
         activeTrackColor = activeColor,

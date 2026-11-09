@@ -85,6 +85,10 @@ import com.luc4n3x.levyra.ui.library.LibraryEmpty
 import com.luc4n3x.levyra.ui.library.LibraryNowPlayingDock
 import com.luc4n3x.levyra.ui.library.LibraryTrackRow
 import com.luc4n3x.levyra.ui.media.ImmersiveMediaActionRow
+import com.luc4n3x.levyra.ui.media.ImmersiveMediaQuietAction
+import com.luc4n3x.levyra.domain.canBeSaved
+import androidx.compose.material.icons.rounded.LibraryAdd
+import androidx.compose.material.icons.rounded.LibraryAddCheck
 import com.luc4n3x.levyra.ui.media.ImmersiveMediaColors
 import com.luc4n3x.levyra.ui.media.ImmersiveMediaHero
 import com.luc4n3x.levyra.ui.media.ImmersiveMediaPrimaryAction
@@ -140,8 +144,35 @@ internal fun PlaylistHitOverlay(
     onAddTracksToPlaylist: (String, List<Track>) -> Unit,
     onCreatePlaylistWithTracks: (String, List<Track>) -> Unit,
     onDownloadTracks: (List<Track>) -> Unit,
-    onDislikeTracks: (List<Track>) -> Unit
+    onDislikeTracks: (List<Track>) -> Unit,
+    onTrackActions: (Track) -> Unit = {},
+    isSaved: Boolean = false,
+    onToggleSave: (() -> Unit)? = null
 ) {
+    val saveCopy = com.luc4n3x.levyra.ui.i18n.savedPlaylistCopy(LocalLevyraStrings.current.code)
+    val saveLabel = if (isSaved) saveCopy.remove else saveCopy.save
+    val saveEnabled = isSaved || preview.canBeSaved
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+        Box(Modifier.fillMaxSize()) {
+        GlacierCollectionScreen(
+            title = preview.hit.title, tracks = preview.tracks, currentId = currentTrack?.id, isPlaying = isPlaying,
+            onDismiss = onClose, onPlay = onPlayTrack, onPlayAll = onPlay, onShuffle = onShuffle,
+            onTrackActions = onTrackActions, bottomInset = 96.dp,
+            artworkUrl = preview.hit.thumbnailUrl, byline = monoWithoutYoutube(preview.hit.author).ifBlank { "Levyra" }, loading = preview.loading,
+            onDownloadAll = onDownload, onLikeAll = onLikeAll,
+            failedLabel = LocalLevyraStrings.current.albumTracksUnavailable,
+            saveAction = onToggleSave?.let { GlacierSaveAction(isSaved, saveLabel, saveEnabled, it) }
+        )
+        currentTrack?.let { track ->
+            PlaylistHitNowPlayingDock(
+                preview = preview, track = track, isPlaying = isPlaying,
+                onTogglePlayback = onTogglePlayback, onOpenPlayer = onOpenPlayer, onPlayTrack = onPlayTrack,
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
+        }
+        }
+        return
+    }
     val strings = LocalLevyraStrings.current
     val density = LocalDensity.current
     val listState = rememberSaveable(preview.hit.playlistId, saver = LazyListState.Saver) { LazyListState() }
@@ -215,7 +246,8 @@ internal fun PlaylistHitOverlay(
             onFavorite = onFavorite,
             onDownloadTrack = onDownloadTrack,
             onQueueTrack = onQueueTrack,
-            selection = selection
+            selection = selection,
+            saveAction = onToggleSave?.let { GlacierSaveAction(isSaved, saveLabel, saveEnabled, it) }
         )
         PlaylistHitTopBar(
             preview, colors, collapsedState, topBarHeight, animationsEnabled,
@@ -331,7 +363,8 @@ private fun PlaylistHitList(
     onFavorite: (Track) -> Unit,
     onDownloadTrack: (Track) -> Unit,
     onQueueTrack: (Track) -> Unit,
-    selection: TrackSelectionState
+    selection: TrackSelectionState,
+    saveAction: GlacierSaveAction?
 ) {
     val strings = LocalLevyraStrings.current
     val tracks = preview.tracks
@@ -370,7 +403,20 @@ private fun PlaylistHitList(
                         shuffleEnabled = tracks.size > 1,
                         downloadEnabled = tracks.isNotEmpty(),
                         onShuffle = onShuffle,
-                        onDownload = onDownload
+                        onDownload = onDownload,
+                        secondary = {
+                            saveAction?.let { save ->
+                                ImmersiveMediaQuietAction(
+                                    icon = if (save.saved) Icons.Rounded.LibraryAddCheck else Icons.Rounded.LibraryAdd,
+                                    label = save.label,
+                                    enabled = save.enabled,
+                                    colors = colors,
+                                    onClick = save.onToggle,
+                                    active = save.saved,
+                                    toggleable = true
+                                )
+                            }
+                        }
                     )
                 },
                 artwork = {

@@ -5,6 +5,7 @@ import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.domain.PlaybackStreamProvenance
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.player.LevyraPlaybackCacheKey
+import com.luc4n3x.levyra.player.allowsPlaybackDiskCache
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -25,6 +26,15 @@ import org.junit.Assert.fail
 import org.junit.Test
 
 class HighQualityPlaybackCoordinatorTest {
+    @Test
+    fun catalogCleanRatingIsKnownWhileUnmarkedYoutubeRatingRemainsUnknown() {
+        val coordinator = coordinator(exactProvider())
+        val clean = playbackTrack().copy(explicit = false, metadataProvider = "spotify")
+        assertEquals(false, coordinator.queryFor(clean, false, "Auto")!!.explicit)
+        assertNull(coordinator.queryFor(clean.copy(metadataProvider = "youtube"), false, "Auto")!!.explicit)
+        assertEquals(true, coordinator.queryFor(clean.copy(explicit = true), false, "Auto")!!.explicit)
+    }
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val provenance = { PlaybackStreamProvenance(networkRoute = "streaming-direct") }
 
@@ -78,6 +88,34 @@ class HighQualityPlaybackCoordinatorTest {
         assertNotNull(coordinator.resolveLosslessDownload(result.copy(streamUrl = ""), "Auto", provenance))
         coordinator.mode = HighQualityAudioMode.PREFER_320
         assertNull(coordinator.resolveLosslessDownload(playbackTrack(), "Auto", provenance))
+    }
+
+    @Test
+    fun streamOnlyRightsPlayButNeverBecomeAHighBitrateDownload() = runBlocking {
+        val streamOnly = exactProvider().apply {
+            searchOutcome = { ProviderSearchOutcome.Found(listOf(candidate().copy(offlineAllowed = false))) }
+            lookupOutcome = { ProviderLookupOutcome.Found(candidate().copy(offlineAllowed = false)) }
+        }
+        val played = coordinator(streamOnly).play()
+        assertFalse(played.playbackManifest!!.alternativeSource!!.offlineAllowed)
+        assertFalse(played.allowsPlaybackDiskCache())
+        assertTrue(coordinator(exactProvider()).play().allowsPlaybackDiskCache())
+        assertNull(coordinator(streamOnly).resolveLossyDownload(playbackTrack(), "High", provenance))
+        assertNotNull(coordinator(exactProvider()).resolveLossyDownload(playbackTrack(), "High", provenance))
+    }
+
+    @Test
+    fun downloadKeepsTheOfflineCopyWhenPlaybackPrefersAStreamOnlyRelease() = runBlocking {
+        val streamOnly = candidate(id = "stream-only").copy(offlineAllowed = false)
+        val offline = candidate(id = "offline", album = "After Hours (Deluxe)")
+        val provider = exactProvider().apply {
+            pageOutcome = { _, _ -> ProviderSearchOutcome.Found(listOf(streamOnly, offline)) }
+            lookupOutcome = { id -> ProviderLookupOutcome.Found(if (id == streamOnly.providerTrackId) streamOnly else offline) }
+        }
+        val coordinator = coordinator(provider)
+        assertEquals("stream-only", coordinator.play().playbackManifest!!.alternativeSource!!.providerTrackId)
+        val download = coordinator.resolveLossyDownload(playbackTrack(), "High", provenance)!!
+        assertEquals("offline", download.playbackManifest!!.alternativeSource!!.providerTrackId)
     }
 
     @Test

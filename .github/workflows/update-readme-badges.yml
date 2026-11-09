@@ -11,7 +11,7 @@ on:
       - edited
       - deleted
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "17 5 * * *"
   push:
     branches:
       - main

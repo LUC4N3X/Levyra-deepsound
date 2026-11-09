@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 
 import androidx.compose.ui.graphics.Shape
@@ -142,8 +143,7 @@ internal fun DiscoveryTrackCard(
                 subtitle = track.artist,
                 titleColor = if (isCurrent) colors.primary else colors.onSurface,
                 subtitleColor = colors.onSurfaceVariant,
-                modifier = Modifier.weight(1f)
-            )
+                modifier = Modifier.weight(1f), explicit = track.explicit)
             trailing?.invoke()
         }
     }

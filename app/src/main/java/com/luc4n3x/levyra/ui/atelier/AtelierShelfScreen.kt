@@ -15,6 +15,8 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -217,7 +219,7 @@ private fun AtelierShelfStage(items: List<AtelierShelfItem>, viewModel: LevyraVi
     val settle: (Float) -> Unit = { target ->
         scope.launch {
             val clamped = target.coerceIn(0f, items.lastIndex.toFloat())
-            if (animated) position.animateTo(clamped, spring(dampingRatio = 0.86f, stiffness = Spring.StiffnessLow)) else position.snapTo(clamped)
+            if (animated) position.animateTo(clamped, spring(dampingRatio = 0.78f, stiffness = 280f, visibilityThreshold = 0.0005f)) else position.snapTo(clamped)
         }
     }
     LaunchedEffect(state.selectedTab) {
@@ -270,7 +272,13 @@ private fun AtelierShelfStage(items: List<AtelierShelfItem>, viewModel: LevyraVi
             Spacer(Modifier.height(10.dp))
             AnimatedContent(
                 targetState = current,
-                transitionSpec = { fadeIn(tween(170, easing = FastOutSlowInEasing)) togetherWith fadeOut(tween(110)) },
+                transitionSpec = {
+                    val direction = if (items.indexOf(targetState) >= items.indexOf(initialState)) 1 else -1
+                    val enter = fadeIn(tween(220, delayMillis = 60, easing = FastOutSlowInEasing)) +
+                        slideInHorizontally(tween(320, easing = FastOutSlowInEasing)) { width -> direction * width / 6 }
+                    val exit = fadeOut(tween(120)) + slideOutHorizontally(tween(220, easing = FastOutSlowInEasing)) { width -> -direction * width / 8 }
+                    enter togetherWith exit
+                },
                 contentKey = { it.key },
                 label = "atelier-shelf-title"
             ) { item ->
@@ -414,12 +422,14 @@ private fun drawAtelierShelfSleeves(
     covers: SnapshotStateMap<String, Bitmap>, disc: () -> Bitmap?, rich: Boolean
 ) {
     val reach = 6
+    val nearest = pos.roundToInt().coerceIn(0, items.lastIndex)
     val low = (base - reach).coerceAtLeast(0)
-    val high = (base + reach).coerceAtMost(items.lastIndex)
+    val high = (base + 1 + reach).coerceAtMost(items.lastIndex)
     var outward = reach + 1
     while (outward >= 0) {
-        for (side in 0..1) {
-            val index = if (side == 0) base + 1 + outward else base - outward
+        val sides = if (outward == 0) 0..0 else 0..1
+        for (side in sides) {
+            val index = if (side == 0 == pos >= nearest) nearest - outward else nearest + outward
             if (index !in low..high) continue
             val depth = index - pos
             AtelierSlot.fill(depth, entered, r.slot)

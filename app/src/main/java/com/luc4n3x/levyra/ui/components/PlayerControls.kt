@@ -48,13 +48,12 @@ private fun ioniconForPlayer(icon: ImageVector): ImageVector? {
         "RepeatOne" -> LevyraIonicons.RepeatOne
         "KeyboardArrowDown" -> LevyraIonicons.ChevronDown
         "MoreVert" -> LevyraIonicons.MoreVertical
-        "PlaylistAdd" -> LevyraIonicons.AddCircle
         "Favorite" -> LevyraIonicons.Heart
         "FavoriteBorder" -> LevyraIonicons.HeartOutline
         "Download", "FileDownload" -> LevyraIonicons.Download
         "QueueMusic", "PlaylistPlay" -> LevyraIonicons.Queue
         "Subject", "TextFields" -> LevyraIonicons.Lyrics
-        "Bedtime", "Schedule", "Timer" -> LevyraIonicons.Timer
+        "Schedule", "Timer" -> LevyraIonicons.Timer
         "Equalizer", "GraphicEq", "Tune" -> LevyraIonicons.Equalizer
         "PhoneAndroid", "Devices" -> LevyraIonicons.Device
         "Settings" -> LevyraIonicons.Settings

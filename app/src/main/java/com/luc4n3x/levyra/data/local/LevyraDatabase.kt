@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-const val LEVYRA_DATABASE_VERSION = 28
+const val LEVYRA_DATABASE_VERSION = 29
 
 @Database(
     entities = [
@@ -38,7 +38,8 @@ const val LEVYRA_DATABASE_VERSION = 28
         PersonalCollectionEntity::class,
         PersonalCollectionTrackEntity::class,
         PodcastSubscriptionEntity::class,
-        PodcastEpisodeProgressEntity::class
+        PodcastEpisodeProgressEntity::class,
+        SavedPlaylistEntity::class
     ],
     version = LEVYRA_DATABASE_VERSION,
     exportSchema = true
@@ -64,6 +65,7 @@ abstract class LevyraDatabase : RoomDatabase() {
     abstract fun localMediaDao(): LocalMediaDao
     abstract fun personalCollectionDao(): PersonalCollectionDao
     abstract fun podcastLibraryDao(): PodcastLibraryDao
+    abstract fun savedPlaylistsDao(): SavedPlaylistsDao
 
     companion object {
         @Volatile private var instance: LevyraDatabase? = null
@@ -903,6 +905,26 @@ abstract class LevyraDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_28_29 = object : Migration(28, 29) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS saved_playlists (
+                        playlistKey TEXT NOT NULL PRIMARY KEY,
+                        playlistId TEXT NOT NULL,
+                        browseId TEXT NOT NULL,
+                        appleStorefront TEXT NOT NULL,
+                        title TEXT NOT NULL,
+                        author TEXT NOT NULL,
+                        thumbnailUrl TEXT NOT NULL,
+                        trackCountLabel TEXT NOT NULL,
+                        savedAt INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
         internal val MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2,
             MIGRATION_2_3,
@@ -930,7 +952,8 @@ abstract class LevyraDatabase : RoomDatabase() {
             MIGRATION_24_25,
             MIGRATION_25_26,
             MIGRATION_26_27,
-            MIGRATION_27_28
+            MIGRATION_27_28,
+            MIGRATION_28_29
         )
 
         fun get(context: Context): LevyraDatabase {

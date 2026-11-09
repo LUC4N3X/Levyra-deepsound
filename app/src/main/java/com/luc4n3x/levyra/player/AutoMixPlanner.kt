@@ -77,31 +77,6 @@ internal fun equalPowerCrossfade(progress: Float): CrossfadeGains {
     return CrossfadeGains(outgoing = cos(angle), incoming = sin(angle))
 }
 
-internal fun crossfadeHandoffNeedsResync(
-    primaryPositionMs: Long,
-    secondaryPositionMs: Long,
-    toleranceMs: Long = 250L
-): Boolean = abs(primaryPositionMs.coerceAtLeast(0L) - secondaryPositionMs.coerceAtLeast(0L)) > toleranceMs.coerceAtLeast(0L)
-
-internal fun crossfadeHandoffSeekPosition(
-    secondaryPositionMs: Long,
-    durationMs: Long,
-    leadMs: Long = 120L
-): Long {
-    val requested = secondaryPositionMs.coerceAtLeast(0L) + leadMs.coerceAtLeast(0L)
-    if (durationMs <= 0L) return requested
-    return requested.coerceAtMost((durationMs - 1L).coerceAtLeast(0L))
-}
-
-internal fun crossfadeStepWallClockMs(
-    mediaStepMs: Long,
-    playbackSpeed: Float,
-    minWallClockMs: Long = 10L
-): Long {
-    val speed = if (playbackSpeed.isFinite() && playbackSpeed > 0f) playbackSpeed else 1f
-    return ((mediaStepMs.toFloat() / speed).toLong()).coerceAtLeast(minWallClockMs)
-}
-
 private const val MIN_TRACK_MS = 30_000L
 private const val MIN_TRANSITION_MS = 800L
 private const val MAX_TRANSITION_MS = 12_000L

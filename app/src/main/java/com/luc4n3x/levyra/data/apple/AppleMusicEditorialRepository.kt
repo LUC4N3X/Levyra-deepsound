@@ -48,6 +48,7 @@ internal data class AppleCatalogPath(val segment: String, val cacheName: String)
         val TopCharts = AppleCatalogPath("new/top-charts", "topcharts")
         val Genres = AppleCatalogPath("room/1654814539", "genres")
         val Moods = AppleCatalogPath("room/1654813864", "moods")
+        val DailyTop100 = AppleCatalogPath("room/6504092645", "dailytop100")
     }
 }
 
@@ -95,6 +96,15 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
 
     suspend fun newReleaseAlbums(storefront: String, language: String, limit: Int): List<AlbumHit> =
         appleNewReleaseAlbums(newMusic(storefront, language)?.page, limit)
+
+    suspend fun newThisWeekAlbums(storefront: String, language: String, limit: Int): List<AlbumHit> {
+        val shelf = appleNewThisWeekShelf(newMusic(storefront, language)?.page) ?: return emptyList()
+        val room = shelf.roomId.takeIf { id -> id.isNotEmpty() && id.all(Char::isDigit) }?.let { id ->
+            page(AppleCatalogPath("room/$id", "room-$id"), storefront, language)?.page
+        }
+        val roomAlbums = appleAlbumHits(room?.shelves.orEmpty().asSequence().flatMap { it.items.asSequence() }, limit)
+        return roomAlbums.ifEmpty { appleAlbumHits(shelf.items.asSequence(), limit) }
+    }
 
     suspend fun recentChartAlbums(storefront: String, language: String, limit: Int): List<AlbumHit> {
         val front = AppleStorefronts.normalize(storefront)
@@ -147,6 +157,12 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
     private suspend fun curatorPage(curatorId: String, storefront: String, language: String): AppleCatalogPage? =
         page(AppleCatalogPath("curator/levyra/$curatorId", "curator-$curatorId"), storefront, language)?.page
             ?.takeIf { page -> page.shelves.any { shelf -> shelf.items.isNotEmpty() } }
+
+    suspend fun dailyTop100(storefront: String, language: String): List<AppleDailyChart> =
+        AppleDailyTop100.charts(page(AppleCatalogPath.DailyTop100, storefront, language)?.page, storefront)
+
+    suspend fun cachedDailyTop100(storefront: String, language: String): List<AppleDailyChart> =
+        AppleDailyTop100.charts(cachedPage(AppleCatalogPath.DailyTop100, storefront, language)?.page, storefront)
 
     suspend fun cachedNewMusic(storefront: String, language: String): AppleCatalogResult? = cachedPage(AppleCatalogPath.New, storefront, language)
 
@@ -232,6 +248,7 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
         val body = catalogApiClient.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
                 Timber.w("%s HTTP %d", label, response.code)
+                tokenProvider.reportRejected(developerToken, response.code)
                 return null
             }
             response.body.string()
@@ -560,6 +577,7 @@ internal object AppleCatalogPageCodec {
                     .put("title", shelf.title)
                     .put("kind", shelf.kind.name)
                     .put("rows", shelf.rows)
+                    .put("roomId", shelf.roomId)
                     .put("items", JSONArray().apply { shelf.items.forEach { put(encodeItem(it)) } }))
             }
         })
@@ -573,7 +591,7 @@ internal object AppleCatalogPageCodec {
             val kind = runCatching { AppleCatalogShelfKind.valueOf(shelf.optString("kind")) }.getOrNull() ?: return@mapNotNull null
             val itemsJson = shelf.optJSONArray("items") ?: return@mapNotNull null
             val items = (0 until itemsJson.length()).mapNotNull { itemsJson.optJSONObject(it)?.let(::decodeItem) }
-            if (items.isEmpty()) null else AppleCatalogShelf(shelf.optString("id"), shelf.optString("title"), kind, items, shelf.optInt("rows", 1).coerceIn(1, 4))
+            if (items.isEmpty()) null else AppleCatalogShelf(shelf.optString("id"), shelf.optString("title"), kind, items, shelf.optInt("rows", 1).coerceIn(1, 4), shelf.optString("roomId"))
         }
         if (shelves.isEmpty()) return null
         return AppleCatalogPage(storefront, shelves, root.optLong("fetchedAtMs"))

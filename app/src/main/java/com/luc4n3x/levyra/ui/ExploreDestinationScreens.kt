@@ -1,7 +1,7 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
-
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import com.luc4n3x.levyra.ui.components.LevyraSectionHeader
 import com.luc4n3x.levyra.ui.components.LevyraPlayAllIconButton
@@ -181,6 +181,34 @@ internal fun ExploreCollectionDestinationScreen(
     }
     val editorial = remember(editorialStructure, tracks) {
         refreshExploreGenreEditorialMetadata(editorialStructure, tracks)
+    }
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsIvory) {
+        IvoryCollectionDestination(
+            title, subtitle, tracks, editorial, isLoading, currentTrackId, strings, bottomInset,
+            onBack, onPlayAll, onPlayTrack, onRequestTrackArtwork
+        )
+        return
+    }
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsTorque) {
+        TorqueCollectionDestination(
+            title, subtitle, tracks, editorial, isLoading, currentTrackId, strings, bottomInset,
+            onBack, onPlayAll, onPlayTrack, onRequestTrackArtwork
+        )
+        return
+    }
+    if (LevyraIsPrismOnly) {
+        PrismCollectionDestination(
+            title, subtitle, tracks, editorial, isLoading, currentTrackId, strings, bottomInset,
+            onBack, onPlayAll, onPlayTrack, onRequestTrackArtwork
+        )
+        return
+    }
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) {
+        AtelierCollectionDestination(
+            title, subtitle, tracks, editorial, isLoading, currentTrackId, strings, bottomInset,
+            onBack, onPlayAll, onPlayTrack, onRequestTrackArtwork
+        )
+        return
     }
     val categoryPalette = exploreCategoryPalette(identity)
     val accent = zone?.let { value -> Color(value.accentStart) } ?: categoryPalette.first
@@ -611,13 +639,13 @@ private fun ExploreGenreTrackCard(
                 )
             }
         }
-        Text(
-            text = track.title,
+        LevyraMediaTitle(
+            text = track.title, explicit = track.explicit,
             color = LevyraText,
             fontSize = 13.5.sp,
             lineHeight = LevyraTypeRhythm.lineHeight(13.5.sp),
             fontWeight = FontWeight.Bold,
-            maxLines = 2,
+            maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
         Text(
@@ -883,6 +911,19 @@ internal fun ExploreNewReleasesDestinationScreen(
     bottomInset: Dp = ExploreDestinationBottomInset
 ) {
     BackHandler(enabled = backEnabled, onBack = onBack)
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsTorque) {
+        TorqueNewReleasesDestination(releases, isLoading, strings, bottomInset, onBack, onOpenRelease)
+        return
+    }
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) {
+        AtelierNewReleasesDestination(releases, isLoading, strings, bottomInset, onBack, onOpenRelease)
+        return
+    }
+    val releaseLook = rememberReleaseLook()
+    if (releaseLook != null) {
+        SkinNewReleasesDestination(releaseLook, releases, isLoading, strings, bottomInset, onBack, onOpenRelease)
+        return
+    }
     ExploreDestinationSurface(
         title = strings.exploreNewReleases,
         subtitle = null,
@@ -1431,7 +1472,7 @@ internal fun ExploreDiscoveryCategoryCard(
         return
     }
     val (accentStart, accentEnd) = accentColors ?: exploreCategoryPalette(identity)
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(if (com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin) 24.dp else 16.dp)
     val metrics = exploreCategoryCardMetrics(prominent)
     val longTitle = title.length >= 14
     val titleSize = if (longTitle) metrics.titleSize * 0.92f else metrics.titleSize
@@ -1582,8 +1623,13 @@ private fun ExploreDiscoveryCategoryPlaceholder(modifier: Modifier = Modifier) {
 }
 
 @Composable
-internal fun exploreCategoryPalette(identity: String): Pair<Color, Color> {
-    val palette = listOf(
+internal fun exploreCategoryPalette(identity: String): Pair<Color, Color> =
+    ExploreCategoryPalettes[exploreCategoryPaletteIndex(identity)]
+
+internal fun exploreCategoryPaletteIndex(identity: String): Int = (identity.hashCode() and Int.MAX_VALUE) % ExploreCategoryPalettes.size
+
+internal val ExploreCategoryPalettes: List<Pair<Color, Color>> by lazy {
+    listOf(
         Color(0xFF7C3AED) to Color(0xFF4C1D95),
         Color(0xFFD81B60) to Color(0xFF7A1538),
         Color(0xFF0F8A78) to Color(0xFF075E54),
@@ -1593,7 +1639,6 @@ internal fun exploreCategoryPalette(identity: String): Pair<Color, Color> {
         Color(0xFFB335B5) to Color(0xFF64236C),
         Color(0xFFD9571C) to Color(0xFF7B3215)
     )
-    return palette[(identity.hashCode() and Int.MAX_VALUE) % palette.size]
 }
 
 @Composable
@@ -1692,13 +1737,13 @@ private fun ExploreDestinationTrackRow(
                 .clip(if (isCurrent) MaterialShapes.Cookie9Sided.toShape() else RoundedCornerShape(14.dp))
         )
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(
-                text = track.title,
+            LevyraMediaTitle(
+                text = track.title, explicit = track.explicit,
                 color = LevyraText,
                 fontSize = 14.5.sp,
                 lineHeight = LevyraTypeRhythm.lineHeight(14.5.sp),
                 fontWeight = FontWeight.Bold,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(

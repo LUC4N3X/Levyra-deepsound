@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import com.luc4n3x.levyra.ui.theme.*
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 
@@ -236,6 +237,9 @@ private fun rememberSkinMiniPlayerPalette(track: Track, animated: Boolean): Mini
         val surface by androidx.compose.animation.animateColorAsState(target, androidx.compose.animation.core.tween(if (animated) 420 else 0), label = "atelier-mini-surface")
         return MiniPlayerPalette(AtelierDesign.accent, AtelierDesign.accent, surface, AtelierDesign.text, AtelierDesign.textSecondary, true)
     }
+    if (LevyraIsMono) {
+        return MiniPlayerPalette(MonoDesign.accent, MonoDesign.accent, MonoDesign.surface, MonoDesign.text, MonoDesign.textSecondary, true)
+    }
     if (LevyraIsQobuz) {
         return MiniPlayerPalette(QobuzDesign.textAccent, QobuzDesign.textAccent, QobuzDesign.miniPlayer, QobuzDesign.textPrimary, QobuzDesign.textSecondary, !LevyraActivePalette.isLight)
     }
@@ -378,7 +382,7 @@ private fun rememberMiniContainerShape(
     return if (style == MiniPlayerStyle.SuperExpressive) {
         RoundedCornerShape(expressiveCorner)
     } else {
-        if (LevyraIsAtelier) RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp) else RoundedCornerShape(skinMiniPlayerCorner(tuning))
+        if (LevyraIsAtelier) RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp) else if (LevyraIsMono) GlacierSlabShape else RoundedCornerShape(skinMiniPlayerCorner(tuning))
     }
 }
 
@@ -405,6 +409,7 @@ private fun MiniFillProgress(progress: () -> Float, palette: MiniPlayerPalette) 
     )
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun StyledMiniPlayer(
@@ -476,7 +481,12 @@ internal fun StyledMiniPlayer(
                 .miniOutline(style, palette, containerShape)
                 .then(interaction)
         ) {
-            MiniBackdropLayers(style, tuning, track, palette, progress, liveRadio)
+            if (LevyraIsMono) {
+                val artwork = rememberMiniArtworkPalette(track)
+                GlacierMiniBackdrop(Color(artwork.start), progress, !liveRadio, model.isPlaying)
+            } else {
+                MiniBackdropLayers(style, tuning, track, palette, progress, liveRadio)
+            }
             Row(
                 modifier = Modifier
                     .fillMaxSize()
@@ -772,6 +782,7 @@ private fun BoxScope.MiniBottomProgress(
     height: Dp,
     waving: Boolean
 ) {
+    if (LevyraIsMono) return
     when (tuning.progress) {
         MiniProgressStyle.Line -> when (style) {
             MiniPlayerStyle.YtMusic -> MiniEdgeProgress(
@@ -1019,6 +1030,10 @@ private fun MiniStyledArtwork(
         AtelierMiniSleeve(track, playing, animated, modifier)
         return
     }
+    if (LevyraIsMono) {
+        MonoMiniArtwork(track, playing, animated, modifier)
+        return
+    }
     if (LevyraIsQobuz) {
         Box(modifier.clip(QobuzDesign.artworkShape).background(QobuzDesign.placeholder)) { CoverImage(track, Modifier.fillMaxSize()) }
         return
@@ -1109,13 +1124,13 @@ private fun MiniStyledMetadata(
                         .size(12.dp)
                 )
             }
-            Text(
-                text = track.title,
+            LevyraMediaTitle(
+                text = track.title, explicit = track.explicit, marqueeEnabled = animated, repeatDelayMillis = 3_200,
                 color = palette.content,
                 style = miniStyledTitleTextStyle(tuning.typography, compact),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.levyraMarquee(enabled = animated, repeatDelayMillis = 3_200)
+                modifier = Modifier
             )
         }
         Text(
@@ -1132,12 +1147,12 @@ private fun MiniStyledMetadata(
 @Composable
 @ReadOnlyComposable
 private fun miniStyledTitleTextStyle(typography: MiniTypography, compact: Boolean): TextStyle =
-    if (LevyraIsAtelier) MaterialTheme.typography.titleSmall else if (LevyraIsSpotify) MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp, lineHeight = 17.sp) else if (LevyraIsQobuz) MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Medium) else if (LevyraIsYouTubeMusic) MaterialTheme.typography.titleMedium else if (LevyraIsAppleMusic) MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium, lineHeight = 16.sp) else miniTitleStyle(typography, compact)
+    if (LevyraIsAtelier || LevyraIsMono) MaterialTheme.typography.titleSmall else if (LevyraIsSpotify) MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp, lineHeight = 17.sp) else if (LevyraIsQobuz) MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Medium) else if (LevyraIsYouTubeMusic) MaterialTheme.typography.titleMedium else if (LevyraIsAppleMusic) MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium, lineHeight = 16.sp) else miniTitleStyle(typography, compact)
 
 @Composable
 @ReadOnlyComposable
 private fun miniStyledSubtitleTextStyle(typography: MiniTypography, compact: Boolean): TextStyle =
-    if (LevyraIsAtelier) MaterialTheme.typography.bodySmall else if (LevyraIsSpotify) MaterialTheme.typography.bodySmall else if (LevyraIsQobuz) MaterialTheme.typography.bodyMedium.copy(lineHeight = 18.sp) else if (LevyraIsYouTubeMusic) MaterialTheme.typography.bodyLarge else if (LevyraIsAppleMusic) MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Normal) else miniArtistStyle(typography, compact)
+    if (LevyraIsAtelier || LevyraIsMono) MaterialTheme.typography.bodySmall else if (LevyraIsSpotify) MaterialTheme.typography.bodySmall else if (LevyraIsQobuz) MaterialTheme.typography.bodyMedium.copy(lineHeight = 18.sp) else if (LevyraIsYouTubeMusic) MaterialTheme.typography.bodyLarge else if (LevyraIsAppleMusic) MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Normal) else miniArtistStyle(typography, compact)
 
 @Composable
 private fun MiniEqualizerBars(playing: Boolean, animated: Boolean, color: Color, modifier: Modifier) {
@@ -1257,6 +1272,10 @@ private fun MiniStyledControls(
     }
     if (LevyraIsAtelier && !liveRadio) {
         AtelierMiniControls(isPlaying, isResolving, onToggle, playbackActions.next)
+        return
+    }
+    if (LevyraIsMono) {
+        MonoMiniControls(isPlaying, isResolving, isFavorite, !liveRadio, animated, playbackActions.favorite, onToggle, playbackActions.close)
         return
     }
     if (LevyraIsQobuz && !liveRadio) {

@@ -142,6 +142,8 @@ import com.luc4n3x.levyra.domain.BatchDownload
 import com.luc4n3x.levyra.domain.BatchDownloadKind
 import com.luc4n3x.levyra.domain.PlaylistHit
 import com.luc4n3x.levyra.domain.PlaylistHitPreview
+import com.luc4n3x.levyra.domain.canBeSaved
+import com.luc4n3x.levyra.domain.savedPlaylistKey
 import com.luc4n3x.levyra.domain.resolvedWith
 import com.luc4n3x.levyra.domain.nextInCycle
 import com.luc4n3x.levyra.domain.batchDownloadKey
@@ -412,7 +414,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
@@ -447,7 +452,18 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 private const val PLAYLIST_ALBUM_RECOVERY_TIMEOUT_MS = 8_000L
+private const val APPLE_NEW_THIS_WEEK_LIMIT = 60
+private const val EXPLORE_VIDEOS_LIMIT = 40
+
+data class AppleNewThisWeek(
+    val key: String = "",
+    val albums: List<com.luc4n3x.levyra.domain.AlbumHit> = emptyList(),
+    val loading: Boolean = false
+)
 private const val ARTIST_PROFILE_UNAVAILABLE_ERROR = "artist_profile_unavailable"
+private const val SEARCH_HIDDEN_LISTENS_LIMIT = 200
+private const val SPOTIFY_MATCH_CONCURRENCY = 8
+private const val SPOTIFY_SOURCED_CACHE_TTL_MS = 6L * 60 * 60 * 1000
 private const val ARTIST_INITIAL_BIOGRAPHY_WAIT_MS = 250L
 private const val RADIO_TAIL_MAX_APPEND_ROUNDS = 3
 private const val RADIO_MIX_LIMIT = 15
@@ -1031,6 +1047,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
         )
     }
+    val playlistExport: PlaylistExportController by lazy {
+        PlaylistExportController(viewModelScope, getApplication<Application>().applicationContext)
+    }
     private val deArrowRepository = lazy { DeArrowRepository(DeArrowApi()) }
     private val videoMetadataEnhancer by lazy { VideoMetadataEnhancer(deArrowRepository.value) }
     private val levyraContext: Context get() = getApplication<Application>().applicationContext
@@ -1130,6 +1149,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val recommendationFeedbackStore =
         com.luc4n3x.levyra.data.RecommendationFeedbackStore(application.applicationContext)
     private val playlistStore = com.luc4n3x.levyra.data.PlaylistStore(application.applicationContext)
+    private val savedPlaylistsStore = com.luc4n3x.levyra.data.SavedPlaylistsStore(database.savedPlaylistsDao())
+    val savedPlaylists: StateFlow<List<com.luc4n3x.levyra.domain.SavedPlaylist>> = savedPlaylistsStore.observe()
+        .catch { error -> Timber.w(error, "Saved playlists load failed"); emit(emptyList()) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val personalCollections = PersonalCollectionsController(application.applicationContext, viewModelScope)
     val playlistStudio = PlaylistStudioController(
         scope = viewModelScope,
@@ -2244,6 +2267,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         LevyraWidgetBridge.onToggle = { togglePlay() }
         LevyraWidgetBridge.onNext = { next() }
         LevyraWidgetBridge.onPrevious = { previous() }
+        LevyraWidgetBridge.onTrackCompleted = { onTrackCompleted() }
         updateWidget()
         refreshHomeResonanceComments(startupResonanceTracks)
     }
@@ -2738,6 +2762,32 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val startupSnapshot = _state.value
         homeArtistsJob?.cancel()
         homeArtistsJob = viewModelScope.launch(Dispatchers.IO) {
+            val chartLanguage = LevyraLanguageCatalog.normalize(startupSnapshot.languageCode)
+            val chartCountry = LevyraContentLocales.forLanguage(chartLanguage).chartCountry.uppercase(java.util.Locale.ROOT)
+            val chartArtists = runCatchingPreservingCancellation {
+                com.luc4n3x.levyra.data.YoutubeMusicChartsRepository(getApplication<Application>()).topArtists(chartCountry, chartLanguage)
+            }.getOrNull().orEmpty().take(HOME_ARTIST_SHELF_SIZE)
+            if (chartArtists.size >= HOME_CHART_ARTIST_MIN) {
+                homeArtistsFingerprint = "chart|$chartLanguage|$chartCountry"
+                val audienceGate = Semaphore(HOME_ARTIST_RESOLUTION_CONCURRENCY)
+                val withListeners = coroutineScope {
+                    chartArtists.map { artist ->
+                        async {
+                            val listeners = audienceGate.withPermit {
+                                withTimeoutOrNull(HOME_ARTIST_FAST_TIMEOUT_MS) {
+                                    runCatchingPreservingCancellation { artistRepository.monthlyListeners(artist.browseId) }.getOrNull()
+                                }
+                            }
+                            artist.copy(subscribers = listeners.orEmpty(), officialArtwork = artist.thumbnailUrl.isNotBlank())
+                        }
+                    }.awaitAll()
+                }
+                _state.update { current ->
+                    if (current.languageCode == startupSnapshot.languageCode) current.copy(homeArtists = withListeners, homeArtistsLoading = false) else current
+                }
+                persistHomeSnapshotSync(chartLanguage)
+                return@launch
+            }
             val plan = buildHomeArtistPlan(startupSnapshot)
             val visibleArtists = visibleHomeArtists(startupSnapshot, plan)
             val fingerprint = homeArtistFingerprint(plan.languageCode, plan.orderedCandidates)
@@ -6014,6 +6064,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
 
         ensureMusicVideosLoaded()
+        ensureExploreVideosLoaded()
         val requestGeneration = homeFeedRequestGeneration.incrementAndGet()
         homeFeedJob?.cancel()
         homeFeedJob = viewModelScope.launch {
@@ -8457,8 +8508,26 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         return entry.id to enriched
     }
 
+    private val _searchHiddenListens = MutableStateFlow<Set<String>>(emptySet())
+    val searchHiddenListens: StateFlow<Set<String>> = _searchHiddenListens.asStateFlow()
+    private val searchHiddenListensWrite = kotlinx.coroutines.sync.Mutex()
+
+    init {
+        viewModelScope.launch(Dispatchers.IO) {
+            val saved = preferences.searchHiddenListens()
+            _searchHiddenListens.update { saved + it }
+        }
+    }
+
     fun removeRecentSearch(track: Track) {
         val identity = LevyraPersonalOrbit.identityKey(track)
+        val hidden = _searchHiddenListens.updateAndGet { (it + identity).toList().takeLast(SEARCH_HIDDEN_LISTENS_LIMIT).toSet() }
+        viewModelScope.launch(Dispatchers.IO) {
+            searchHiddenListensWrite.withLock {
+                val merged = preferences.searchHiddenListens() + _searchHiddenListens.value + hidden
+                preferences.saveSearchHiddenListens(merged.toList().takeLast(SEARCH_HIDDEN_LISTENS_LIMIT).toSet())
+            }
+        }
         val matches: (Track) -> Boolean = { candidate ->
             candidate.id == track.id || LevyraPersonalOrbit.identityKey(candidate) == identity
         }
@@ -8795,6 +8864,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             browseId = hit.browseId,
             artworkHint = hit.thumbnailUrl
         )
+        if (_state.value.selectedTab == LevyraTab.Player) {
+            moveToTab(previousTab(LevyraTab.Player), rememberCurrent = false)
+        }
+    }
+
+    fun openAlbumFromPlayer(album: AlbumHit) {
+        restorePlayerReturnDetail()
+        openAlbum(album)
         if (_state.value.selectedTab == LevyraTab.Player) {
             moveToTab(previousTab(LevyraTab.Player), rememberCurrent = false)
         }
@@ -9363,6 +9440,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun openPlaylistHit(playlist: PlaylistHit) {
         playerReturnDetail = null
         val playlistId = playlist.playlistId.ifBlank { return }
+        if (playlistId == CuratedFeaturedPlaylist.YOUTUBE_ID) {
+            openSpotifySourcedPlaylist(playlist, CuratedFeaturedPlaylist.SPOTIFY_ID)
+            return
+        }
         playlistHitJob?.cancel()
         _state.update { it.copy(playlistHitPreview = PlaylistHitPreview(hit = playlist)) }
         playlistHitJob = viewModelScope.launch {
@@ -9382,11 +9463,107 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    private val spotifyTrackMatches = java.util.concurrent.ConcurrentHashMap<String, Track>()
+
+    private fun openSpotifySourcedPlaylist(playlist: PlaylistHit, spotifyPlaylistId: String) {
+        playlistHitJob?.cancel()
+        _state.update { it.copy(playlistHitPreview = PlaylistHitPreview(hit = playlist)) }
+        val publish: (List<Track>) -> Unit = { tracks ->
+            _state.update { current ->
+                val resolved = current.playlistHitPreview?.resolvedWith(
+                    playlistId = playlist.playlistId,
+                    author = playlist.author,
+                    thumbnailUrl = playlist.thumbnailUrl,
+                    tracks = tracks
+                )
+                if (resolved == null) current else current.copy(playlistHitPreview = resolved)
+            }
+        }
+        playlistHitJob = viewModelScope.launch {
+            val cached = withContext(Dispatchers.IO) { readSpotifySourcedCache(spotifyPlaylistId) }
+            if (cached.isNotEmpty()) publish(cached)
+            val fresh = runCatchingPreservingCancellation { streamSpotifyPlaylistTracks(spotifyPlaylistId, publish) }
+                .onFailure { Timber.w(it, "Spotify-sourced playlist lookup failed") }
+                .getOrNull().orEmpty()
+            if (fresh.isNotEmpty() || cached.isEmpty()) publish(fresh)
+        }
+    }
+
+    private suspend fun streamSpotifyPlaylistTracks(spotifyPlaylistId: String, publish: (List<Track>) -> Unit): List<Track> = coroutineScope {
+        val fetcher = com.luc4n3x.levyra.data.playlistimport.PlaylistImportFetcher(
+            com.luc4n3x.levyra.data.network.LevyraHttpClientFactory.media(getApplication<Application>().applicationContext)
+        )
+        val url = "https://open.spotify.com/playlist/$spotifyPlaylistId"
+        val entries = withContext(Dispatchers.IO) {
+            com.luc4n3x.levyra.data.playlistimport.SpotifyPlaylistAdapter(fetcher).read(
+                com.luc4n3x.levyra.data.playlistimport.PlaylistImportInput(url),
+                com.luc4n3x.levyra.nexus.playlistimport.DetectedPlaylistInput.RemotePlaylist(
+                    com.luc4n3x.levyra.nexus.playlistimport.PlaylistImportSource.SPOTIFY, spotifyPlaylistId, url
+                )
+            ) { _, _ -> }.playlist.tracks
+        }
+        if (entries.isEmpty()) return@coroutineScope emptyList()
+        val languageCode = _state.value.languageCode
+        val slots = arrayOfNulls<Track>(entries.size)
+        val keys = entries.map { "${it.title.trim().lowercase()}|${it.artists.joinToString(",").trim().lowercase()}" }
+        keys.forEachIndexed { index, key -> slots[index] = spotifyTrackMatches[key] }
+        spotifyTrackMatches.keys.retainAll(keys.toSet())
+        slots.filterNotNull().takeIf { it.isNotEmpty() }?.let(publish)
+        val lowRam = (getApplication<Application>().getSystemService(android.content.Context.ACTIVITY_SERVICE) as? android.app.ActivityManager)?.isLowRamDevice == true
+        val gate = kotlinx.coroutines.sync.Semaphore(if (lowRam) SPOTIFY_MATCH_CONCURRENCY / 2 else SPOTIFY_MATCH_CONCURRENCY)
+        val publishLock = kotlinx.coroutines.sync.Mutex()
+        entries.indices.filter { slots[it] == null }.map { index ->
+            async {
+                val match = gate.withPermit {
+                    val entry = entries[index]
+                    val shared = com.luc4n3x.levyra.feature.sharedmedia.LevyraSharedTrack("spotify-$index", entry.title, entry.artists.joinToString(", "))
+                    playlistImporter.resolveSharedPlaylistTracks(
+                        com.luc4n3x.levyra.feature.sharedmedia.LevyraSharedPlaylist(1, "", listOf(shared)),
+                        languageCode
+                    ).firstOrNull()
+                } ?: return@async
+                spotifyTrackMatches[keys[index]] = match
+                publishLock.withLock {
+                    slots[index] = match
+                    publish(slots.filterNotNull())
+                }
+            }
+        }.awaitAll()
+        withContext(Dispatchers.IO) { writeSpotifySourcedCache(spotifyPlaylistId, keys, slots.toList()) }
+        slots.filterNotNull()
+    }
+
+    private fun spotifySourcedCacheFile(spotifyPlaylistId: String): java.io.File =
+        java.io.File(getApplication<Application>().cacheDir, "spotify-sourced-$spotifyPlaylistId.json")
+
+    private fun readSpotifySourcedCache(spotifyPlaylistId: String): List<Track> {
+        val file = spotifySourcedCacheFile(spotifyPlaylistId)
+        if (!file.isFile || System.currentTimeMillis() - file.lastModified() > SPOTIFY_SOURCED_CACHE_TTL_MS) return emptyList()
+        return runCatching {
+            val rows = org.json.JSONArray(file.readText())
+            (0 until rows.length()).mapNotNull { index ->
+                val row = rows.optJSONObject(index) ?: return@mapNotNull null
+                val track = row.optJSONObject("track")?.let(com.luc4n3x.levyra.data.TrackJson::fromJson) ?: return@mapNotNull null
+                spotifyTrackMatches.putIfAbsent(row.optString("key"), track)
+                track
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    private fun writeSpotifySourcedCache(spotifyPlaylistId: String, keys: List<String>, tracks: List<Track?>) {
+        val rows = org.json.JSONArray()
+        keys.zip(tracks).forEach { (key, track) ->
+            if (track != null) rows.put(org.json.JSONObject().put("key", key).put("track", com.luc4n3x.levyra.data.TrackJson.toJson(track)))
+        }
+        runCatching { spotifySourcedCacheFile(spotifyPlaylistId).writeText(rows.toString()) }
+            .onFailure { Timber.w(it, "Spotify-sourced cache write failed") }
+    }
+
     fun openApplePlaylist(playlist: PlaylistHit, storefront: String) {
         playerReturnDetail = null
         val playlistId = playlist.playlistId.ifBlank { return }
         playlistHitJob?.cancel()
-        _state.update { it.copy(playlistHitPreview = PlaylistHitPreview(hit = playlist)) }
+        _state.update { it.copy(playlistHitPreview = PlaylistHitPreview(hit = playlist, appleStorefront = storefront)) }
         playlistHitJob = viewModelScope.launch {
             val collection = runCatchingPreservingCancellation {
                 com.luc4n3x.levyra.data.apple.AppleMusicEditorialRepository.get(getApplication<Application>())
@@ -9402,6 +9579,29 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 if (resolved == null) current else current.copy(playlistHitPreview = resolved)
             }
         }
+    }
+
+    fun toggleSaveOpenPlaylistHit() {
+        val preview = _state.value.playlistHitPreview ?: return
+        val key = preview.savedPlaylistKey
+        val alreadySaved = savedPlaylists.value.any { it.key == key }
+        if (!alreadySaved && !preview.canBeSaved) return
+        viewModelScope.launch {
+            runCatchingPreservingCancellation {
+                savedPlaylistsStore.toggle(com.luc4n3x.levyra.domain.SavedPlaylist(preview.hit, preview.appleStorefront))
+            }.onFailure { Timber.w(it, "Saved playlist toggle failed") }
+        }
+    }
+
+    fun removeSavedPlaylist(key: String) {
+        viewModelScope.launch {
+            runCatchingPreservingCancellation { savedPlaylistsStore.remove(key) }
+                .onFailure { Timber.w(it, "Saved playlist removal failed") }
+        }
+    }
+
+    fun openSavedPlaylist(saved: com.luc4n3x.levyra.domain.SavedPlaylist) {
+        if (saved.appleStorefront.isBlank()) openPlaylistHit(saved.hit) else openApplePlaylist(saved.hit, saved.appleStorefront)
     }
 
     fun closePlaylistHit() {
@@ -10056,6 +10256,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun openExploreZone(zone: ExploreZone) {
         selectExploreZone(zone)
         _state.update { current -> current.copy(exploreOpenRequest = zone.id) }
+        selectTab(LevyraTab.Explore)
+    }
+
+    fun openExploreCategory(category: ExploreCategory) {
+        if (category.params.isBlank() || category.title.isBlank()) return
+        selectExploreCategory(category)
+        _state.update { current -> current.copy(exploreOpenRequest = com.luc4n3x.levyra.ui.exploreCategoryDestination(category)) }
         selectTab(LevyraTab.Explore)
     }
 
@@ -11638,6 +11845,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var newReleasesRequestProfileSignature = ""
     private var newReleasesRequestGeneration = 0L
     private var newReleasesJob: Job? = null
+    private val _appleNewThisWeek = MutableStateFlow(AppleNewThisWeek())
+    val appleNewThisWeek: StateFlow<AppleNewThisWeek> = _appleNewThisWeek.asStateFlow()
+    private var appleNewThisWeekJob: Job? = null
+    private var exploreVideosJob: Job? = null
+    private var exploreVideosLanguage = ""
     private var exploreJob: Job? = null
     private var exploreCategoriesLoadedLanguage =
         startupExploreDiscovery?.let { LevyraLanguageCatalog.normalize(startupSettings.languageCode) }.orEmpty()
@@ -12005,6 +12217,28 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             emptyList()
         }
 
+    fun ensureAppleNewThisWeek(force: Boolean = false) {
+        val snapshot = _state.value
+        val language = snapshot.languageCode
+        val storefront = ChartsCatalog.region(snapshot.selectedChartId).country.takeIf { it.equals("it", ignoreCase = true) }
+            ?: ChartsCatalog.defaultRegionForLanguage(language).country
+        val week = java.time.LocalDate.now().let { it.get(java.time.temporal.IsoFields.WEEK_BASED_YEAR) * 100 + it.get(java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR) }
+        val key = "$storefront|${LevyraLanguageCatalog.normalize(language)}|$week"
+        val current = _appleNewThisWeek.value
+        if (!force && current.key == key && (current.albums.isNotEmpty() || appleNewThisWeekJob?.isActive == true)) return
+        appleNewThisWeekJob?.cancel()
+        _appleNewThisWeek.value = AppleNewThisWeek(key, if (current.key == key) current.albums else emptyList(), loading = true)
+        appleNewThisWeekJob = viewModelScope.launch {
+            val albums = newReleaseSource("apple new this week $storefront") {
+                com.luc4n3x.levyra.data.apple.AppleMusicEditorialRepository.get(getApplication<Application>())
+                    .newThisWeekAlbums(storefront, language, limit = APPLE_NEW_THIS_WEEK_LIMIT)
+            }
+            _appleNewThisWeek.update { latest ->
+                if (latest.key != key) latest else AppleNewThisWeek(key, albums.ifEmpty { latest.albums }, loading = false)
+            }
+        }
+    }
+
     private fun ensureOfficialNewReleasesLoaded(force: Boolean = false) {
         val snapshot = _state.value
         val languageCode = snapshot.languageCode
@@ -12104,6 +12338,28 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         ensureFreshCurrentsLoaded()
         ensureOfficialNewReleasesLoaded()
         ensureMusicVideosLoaded()
+        ensureExploreVideosLoaded()
+    }
+
+    private fun ensureExploreVideosLoaded() {
+        val language = _state.value.languageCode
+        if (exploreVideosJob?.isActive == true && exploreVideosLanguage == language) return
+        if (exploreVideosLanguage == language && _state.value.exploreVideos.isNotEmpty()) return
+        exploreVideosJob?.cancel()
+        if (exploreVideosLanguage != language) _state.update { it.copy(exploreVideos = emptyList()) }
+        exploreVideosLanguage = language
+        exploreVideosJob = viewModelScope.launch {
+            val videos = try {
+                repository.newMusicVideos(language, EXPLORE_VIDEOS_LIMIT)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                Timber.w(error, "Explore videos failed")
+                emptyList()
+            }
+            if (videos.isEmpty()) exploreVideosLanguage = ""
+            _state.update { current -> if (current.languageCode != language || videos.isEmpty()) current else current.copy(exploreVideos = videos) }
+        }
     }
 
     fun ensureExploreSamples() {
@@ -14474,7 +14730,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         lastPlaybackSaveJob?.cancel()
         lastPlaybackSaveJob = viewModelScope.launch(Dispatchers.IO) {
-            preferences.saveLastPlayback(null, 0L)
+            preferences.clearLastPlayback()
             queueEngine.flush()
         }
         updateWidget()
@@ -15272,6 +15528,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         private const val CHART_PRIME_REGION_COUNT = 28
         private const val CHART_ARTWORK_BATCH_SIZE = 10
         private const val HOME_ARTIST_SHELF_SIZE = 20
+        private const val HOME_CHART_ARTIST_MIN = 8
         private const val HOME_ARTIST_HISTORY_LIMIT = 72
         private const val HOME_ARTIST_CANDIDATE_LIMIT = 72
         private const val HOME_ARTIST_RESOLUTION_CONCURRENCY = 4

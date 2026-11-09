@@ -141,7 +141,7 @@ internal val YouTubeMusicTypography: Typography = typographyForFamily(FontFamily
 }
 
 internal fun youTubeMusicPalette(): LevyraPalette = LevyraThemes.cosmic.copy(
-    id = YouTubeMusicPaletteId, label = "YouTube Music Style", emoji = "▶", isLight = false,
+    id = YouTubeMusicPaletteId, label = "YouTube Music", emoji = "▶", isLight = false,
     followsCover = false, followsMood = false,
     black = YouTubeMusicDesign.background,
     ink = YouTubeMusicDesign.surface,

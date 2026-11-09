@@ -67,6 +67,8 @@ import com.luc4n3x.levyra.ui.theme.SkinSwitch
 
 @Composable
 internal fun SettingsSwitchIndicator(checked: Boolean) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) return MonoSettingsSwitch(checked)
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) return AtelierSettingsSwitch(checked)
     if (LevyraIsNocturne || LevyraIsTorque || LevyraIsIvory || LevyraIsSpotify || LevyraIsAppleMusic || LevyraIsYouTubeMusic) SkinSwitch(checked) else Switch(
         checked = checked,
         onCheckedChange = null,

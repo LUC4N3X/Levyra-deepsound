@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import com.luc4n3x.levyra.ui.components.LevyraPlayingIndicator
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.material3.toShape
@@ -306,8 +307,8 @@ internal fun HomeChartPodium(
                     .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                Text(
-                    text = track.title,
+                LevyraMediaTitle(
+                    text = track.title, explicit = track.explicit,
                     color = if (active) PodiumActiveInk else Color.White,
                     style = LevyraType.cardTitle.copy(fontSize = 17.sp, lineHeight = 21.sp, fontWeight = FontWeight.ExtraBold),
                     maxLines = 1,

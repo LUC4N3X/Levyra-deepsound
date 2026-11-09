@@ -9,6 +9,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
+import okhttp3.FormBody
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Interceptor
@@ -21,7 +22,8 @@ import okio.Buffer
 data class ProviderHttpRequest(
     val url: String,
     val headers: Map<String, String>,
-    val maxBodyBytes: Int
+    val maxBodyBytes: Int,
+    val form: Map<String, String>? = null
 )
 
 class ProviderHttpResponse(
@@ -45,8 +47,8 @@ fun interface ProviderHttpExchange {
 }
 
 internal object ProviderDestinationPolicy {
-    private val allowedDomains = setOf("jiosaavn.com", "saavncdn.com", "tracks.monochrome.st")
-    private val exactHosts = setOf("arcod.xyz", "api.arcod.xyz")
+    private val allowedDomains = setOf("jiosaavn.com", "saavncdn.com", "tracks.monochrome.st", "kuwo.cn")
+    private val exactHosts = setOf("arcod.xyz", "api.arcod.xyz", "flac.music.hi.cn")
 
     fun allows(url: HttpUrl): Boolean {
         if (!url.isHttps || url.port != 443 || url.username.isNotEmpty() || url.password.isNotEmpty()) return false
@@ -75,7 +77,9 @@ internal class OkHttpProviderExchange(
 ) : ProviderHttpExchange {
     override suspend fun execute(request: ProviderHttpRequest): ProviderHttpResponse =
         suspendCancellableCoroutine { continuation ->
-            val builder = Request.Builder().url(ProviderDestinationPolicy.requireAllowed(request.url)).get()
+            val builder = Request.Builder().url(ProviderDestinationPolicy.requireAllowed(request.url))
+            val form = request.form
+            if (form == null) builder.get() else builder.post(FormBody.Builder().apply { form.forEach { (key, value) -> add(key, value) } }.build())
             request.headers.forEach { (name, value) -> builder.header(name, value) }
             val call = clientProvider().newCall(builder.build())
             continuation.invokeOnCancellation { call.cancel() }

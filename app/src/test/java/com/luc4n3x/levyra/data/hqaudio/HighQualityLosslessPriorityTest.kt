@@ -244,9 +244,13 @@ class HighQualityLosslessPriorityTest {
         recovered = true
         now += 90_001L
 
-        assertNull(resolver.cachedSelection("key"))
-        val retry = resolver.await(resolver.begin("key", query()), 3_000L) as HighQualityResolution.Selected
-        assertEquals("monochrome", retry.stream.providerId)
+        val immediate = resolver.await(resolver.begin("key", query()), 3_000L) as HighQualityResolution.Selected
+        assertEquals("jiosaavn", immediate.stream.providerId)
+        kotlinx.coroutines.withTimeout(3_000L) {
+            while (resolver.cachedSelection("key")?.stream?.providerId != "monochrome") kotlinx.coroutines.delay(10L)
+        }
+        val upgraded = resolver.await(resolver.begin("key", query()), 3_000L) as HighQualityResolution.Selected
+        assertEquals("monochrome", upgraded.stream.providerId)
     }
 
     @Test

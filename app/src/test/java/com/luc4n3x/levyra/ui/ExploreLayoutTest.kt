@@ -1,9 +1,15 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.data.news.MusicNewsStory
 import com.luc4n3x.levyra.domain.ExploreCatalog
 import com.luc4n3x.levyra.domain.ExploreCategory
 import com.luc4n3x.levyra.domain.ExploreZone
+import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.ui.i18n.exploreEditorialCopy
+import com.luc4n3x.levyra.ui.i18n.exploreEditorialLocalizationCodes
+import com.luc4n3x.levyra.ui.i18n.searchBrowseCopy
+import com.luc4n3x.levyra.ui.i18n.searchBrowseLocalizationCodes
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -21,7 +27,7 @@ class ExploreLayoutTest {
                 assertEquals(1, rows.count { it == ExploreRow.MoodJourney })
                 assertTrue(rows.none { it is ExploreRow.MoodRail })
                 assertTrue(ExploreAnchor.Moods in exploreAvailableAnchors(rows))
-                assertTrue(rows.indexOf(ExploreRow.MoodJourney) < rows.indexOf(ExploreRow.MixTools))
+                assertTrue(rows.none { it == ExploreRow.MixTools })
             }
         }
     }
@@ -44,23 +50,37 @@ class ExploreLayoutTest {
         assertTrue(rows.none { it is ExploreRow.MoodRail })
         assertFalse(ExploreAnchor.Moods in exploreAvailableAnchors(rows))
         assertTrue(rows.contains(ExploreRow.FreshSpotlight))
-        assertEquals(ExploreRow.MixTools, rows.last())
+        assertTrue(rows.none { it == ExploreRow.MixTools })
     }
 
     @Test
-    fun discoveryContentPrecedesAdvancedMixControls() {
+    fun levyraMixIsNoLongerPartOfExplore() {
         val rows = buildExploreRows(zones(4), false, true)
 
-        assertTrue(rows.indexOf(ExploreRow.FreshSpotlight) < rows.indexOf(ExploreRow.MixTools))
-        assertEquals(ExploreRow.MixTools, rows.last())
+        assertTrue(rows.contains(ExploreRow.FreshSpotlight))
+        assertTrue(rows.none { it == ExploreRow.MixTools })
     }
 
     @Test
-    fun mixControlsRemainAvailableWhenDiscoveryIsEmpty() {
+    fun forYouFollowsFreshCurrentsBeforeMoodJourneyInEveryFeedState() {
+        listOf(false, true).forEach { loading ->
+            listOf(false, true).forEach { hasTracks ->
+                val rows = buildExploreRows(zones(4), loading, hasTracks,
+                    hasFreshScopes = true, hasFreshMoment = true, journeyInPlaceOfMoods = true)
+                val lastFresh = if (hasTracks) ExploreRow.FreshMoment else if (loading) ExploreRow.FreshLoading else ExploreRow.FreshEmpty
+
+                assertEquals(rows.indexOf(lastFresh) + 1, rows.indexOf(ExploreRow.MoodJourney))
+                assertTrue(rows.none { it == ExploreRow.MixTools })
+            }
+        }
+    }
+
+    @Test
+    fun emptyDiscoveryStillShowsTheEmptyState() {
         val rows = buildExploreRows(emptyList(), false, false)
 
         assertTrue(rows.contains(ExploreRow.FreshEmpty))
-        assertEquals(1, rows.count { it == ExploreRow.MixTools })
+        assertTrue(rows.none { it == ExploreRow.MixTools })
     }
 
     @Test
@@ -461,6 +481,144 @@ class ExploreLayoutTest {
         assertEquals("Senza disco", card.title)
         assertFalse(card.opensAlbum)
     }
+
+    @Test
+    fun levyraSearchBrowseCoversOnlySkinsWithoutTheirOwnBrowse() {
+        assertTrue(levyraSearchOwnsBrowse(spotify = false, apple = false, ownExplore = false))
+        assertFalse(levyraSearchOwnsBrowse(spotify = true, apple = false, ownExplore = false))
+        assertFalse(levyraSearchOwnsBrowse(spotify = false, apple = true, ownExplore = false))
+        assertFalse(levyraSearchOwnsBrowse(spotify = false, apple = false, ownExplore = true))
+    }
+
+    @Test
+    fun editorialExploreIsAMagazineOfNewsReleasesAndCharts() {
+        val rows = buildExploreRows(zones(4), false, true, editorial = true, hasNews = true)
+
+        assertEquals(
+            listOf(
+                ExploreRow.NewsHero,
+                ExploreRow.Header(ExploreAnchor.Fresh),
+                ExploreRow.FreshSpotlight,
+                ExploreRow.DailyTop100,
+                ExploreRow.NewsList
+            ),
+            rows
+        )
+    }
+
+    @Test
+    fun editorialExploreWithoutNewsStillShowsReleasesAndCharts() {
+        val rows = buildExploreRows(emptyList(), false, false, editorial = true, hasNews = false)
+
+        assertEquals(listOf(ExploreRow.Header(ExploreAnchor.Fresh), ExploreRow.FreshEmpty, ExploreRow.DailyTop100), rows)
+    }
+
+    @Test
+    fun editorialExploreDropsTheDeskWhenTheFrontPageUsesEveryStory() {
+        val rows = buildExploreRows(zones(4), false, true, editorial = true, hasNews = true, hasNewsDesk = false)
+
+        assertEquals(ExploreRow.NewsHero, rows.first())
+        assertTrue(ExploreRow.NewsList !in rows)
+    }
+
+    @Test
+    fun editorialExploreHasNoListeningToolsAndKeysStayUnique() {
+        val rows = buildExploreRows(zones(4), true, true, hasFreshScopes = true, hasFreshMoment = true, editorial = true, hasNews = true)
+        val keys = rows.map { it.key }
+
+        assertTrue(rows.none { it == ExploreRow.MoodJourney || it == ExploreRow.MixTools || it == ExploreRow.FreshMoment || it == ExploreRow.Shortcuts })
+        assertEquals(rows.indexOf(ExploreRow.FreshScopes) + 1, rows.indexOf(ExploreRow.FreshSpotlight))
+        assertEquals(rows.indexOf(ExploreRow.FreshSpotlight) + 1, rows.indexOf(ExploreRow.DailyTop100))
+        assertEquals(keys.size, keys.toSet().size)
+        assertEquals(setOf(ExploreAnchor.Fresh), exploreAvailableAnchors(rows))
+    }
+
+    @Test
+    fun legacyExploreNeverShowsEditorialRows() {
+        val rows = buildExploreRows(zones(4), false, true, journeyInPlaceOfMoods = true, hasNews = true)
+
+        assertEquals(ExploreRow.Shortcuts, rows.first())
+        assertTrue(rows.none { it == ExploreRow.NewsHero || it == ExploreRow.NewsList || it == ExploreRow.DailyTop100 })
+        assertTrue(ExploreRow.MoodJourney in rows && ExploreRow.MixTools !in rows)
+    }
+
+    @Test
+    fun newsFrontLeadsWithTheFirstIllustratedStory() {
+        val stories = listOf(story("a", image = ""), story("b"), story("c"), story("d"))
+        val front = exploreNewsFront(stories)
+
+        assertNotNull(front)
+        assertEquals("b", front!!.lead.url)
+        assertEquals(listOf("a", "c"), front.secondary.map { it.url })
+        assertEquals("a", exploreNewsFront(listOf(story("a", image = "")))!!.lead.url)
+        assertNull(exploreNewsFront(emptyList()))
+    }
+
+    @Test
+    fun newsDeskSkipsTheFrontPageUnlessASourceIsPicked() {
+        val stories = listOf(story("a", "NME"), story("b", " Pitchfork "), story("c", "NME"), story("d", ""), story("e", "NME"))
+
+        assertEquals(listOf("NME", "Pitchfork"), exploreNewsSources(stories))
+        assertEquals(listOf("d", "e"), exploreNewsDesk(stories, null).map { it.url })
+        assertEquals(listOf("a", "c", "e"), exploreNewsDesk(stories, "NME").map { it.url })
+        assertEquals(ExploreNewsDeskLimit, exploreNewsDesk(List(20) { story("s-$it") }, null).size)
+    }
+
+    @Test
+    fun releaseShelfKeepsOneCardPerRelease() {
+        val single = track("s").copy(album = "")
+        val albumA = track("a1").copy(album = "Record", artist = "Mina")
+        val albumB = track("a2").copy(album = "record", artist = "MINA")
+        val feed = ExploreFreshFeed(ExploreFreshScope.Local, listOf(albumA, single), listOf(albumB, track("x")))
+
+        assertEquals(listOf("a1", "s", "x"), exploreReleaseShelf(feed).map { it.id })
+        assertEquals(listOf("a1"), exploreReleaseShelf(feed, limit = 1).map { it.id })
+    }
+
+    @Test
+    fun radioSeedsTakeOneTrackPerArtistAcrossMostPlayedAndRecent() {
+        val mostPlayed = listOf(
+            track("a").copy(artist = "Mina"),
+            track("b").copy(artist = " mina "),
+            track("c").copy(artist = "")
+        )
+        val recent = listOf(track("d").copy(artist = "Lucio Dalla"), track("e").copy(artist = "MINA"))
+
+        assertEquals(listOf("a", "d"), exploreRadioSeeds(mostPlayed, recent).map { it.id })
+        assertEquals(ExploreRadioSeedLimit, exploreRadioSeeds(List(10) { track("s-$it") }, emptyList()).size)
+        assertTrue(exploreRadioSeeds(mostPlayed, recent, limit = 0).isEmpty())
+    }
+
+    @Test
+    fun newsAgeRoundsDownAndClampsFutureDates() {
+        val now = 1_793_786_400_000L
+
+        assertEquals(ExploreNewsAgeUnit.Minutes to 0, exploreNewsAge(now, now))
+        assertEquals(ExploreNewsAgeUnit.Minutes to 0, exploreNewsAge(now, now + 3_600_000L))
+        assertEquals(ExploreNewsAgeUnit.Minutes to 59, exploreNewsAge(now, now - 59 * 60_000L - 59_000L))
+        assertEquals(ExploreNewsAgeUnit.Hours to 1, exploreNewsAge(now, now - 60 * 60_000L))
+        assertEquals(ExploreNewsAgeUnit.Hours to 23, exploreNewsAge(now, now - 24 * 3_600_000L + 1L))
+        assertEquals(ExploreNewsAgeUnit.Days to 3, exploreNewsAge(now, now - 3 * 86_400_000L))
+        assertNull(exploreNewsAge(now, 0L))
+    }
+
+    @Test
+    fun everySelectableLanguageShipsSearchBrowseAndEditorialCopy() {
+        val selectable = LevyraLanguageCatalog.selectableLanguages.map { it.code }.toSet()
+
+        assertEquals(selectable, searchBrowseLocalizationCodes())
+        assertEquals(selectable, exploreEditorialLocalizationCodes())
+        selectable.forEach { code ->
+            val browse = searchBrowseCopy(code)
+            val editorial = exploreEditorialCopy(code)
+            assertTrue(code, listOf(browse.browseTitle, browse.newReleasesDetail, browse.moodsAndGenres).all(String::isNotBlank))
+            assertTrue(code, listOf(editorial.newsTitle, editorial.newsMore, editorial.releasesTitle, editorial.justNow, editorial.readStory).all(String::isNotBlank))
+            assertTrue(code, listOf(editorial.minutesAgo, editorial.hoursAgo, editorial.daysAgo).all { "{count}" in it })
+        }
+    }
+
+    private fun story(url: String, source: String = "Source", image: String = "https://levyra.test/$url.jpg"): MusicNewsStory =
+        MusicNewsStory(url = url, title = "Story $url", source = source, imageUrl = image, publishedAtMs = 0L)
 
     private fun zones(count: Int): List<ExploreZone> = List(count) { index ->
         ExploreZone(

@@ -12,6 +12,7 @@ internal class HighQualityProviderLane(
     private val mappingStore: HighQualityMappingStore,
     private val matcher: AlternativeTrackMatcher,
     private val clock: () -> Long,
+    private val admits: (AlternativeTrackCandidate) -> Boolean = { true },
     private val isTrackQuarantined: (providerTrackId: String) -> Boolean
 ) {
     suspend fun resolve(identityKey: String, query: AlternativeTrackQuery): HighQualityResolution = try {
@@ -36,7 +37,8 @@ internal class HighQualityProviderLane(
         }
         return when (val outcome = provider.lookup(mapping.providerTrackId)) {
             is ProviderLookupOutcome.Found -> {
-                val evaluation = matcher.evaluateReadings(query, outcome.candidate)
+                if (!admits(outcome.candidate)) return null
+                val evaluation = matcher.evaluateSelected(query, outcome.candidate)
                 val unchanged = AlternativeTrackFingerprint.of(outcome.candidate) == mapping.candidateFingerprint
                 if (!unchanged || !evaluation.accepted) {
                     HighQualityAudioDiagnostics.staleMapping(
@@ -80,30 +82,67 @@ internal class HighQualityProviderLane(
             selection = matcher.select(query, search.candidates())
             if (isDecisive(selection, index)) break
         }
+        val noAcceptableCandidate = selection is AlternativeMatchSelection.Rejected &&
+            (selection as AlternativeMatchSelection.Rejected).reason != MatchRejection.AMBIGUOUS
+        if (noAcceptableCandidate) {
+            AlternativeSearchPlan.titleOnly(query)?.let { text ->
+                val page = search.fetch(AlternativeSearchPlan.MAX_PASSES + 1, text, FIRST_PAGE)
+                if (page is SearchPage.Loaded) selection = matcher.select(query, search.candidates())
+            }
+        }
         if (needsDeeperPages(selection)) {
             when (val deeperSearch = searchDeeperPages(query, search, deeper, startedAt)) {
                 is DeeperSearch.Failed -> return deeperSearch.fallback
                 is DeeperSearch.Settled -> deeperSearch.selection?.let { selection = it }
             }
         }
-        return when (val finalSelection = selection) {
-            is AlternativeMatchSelection.Rejected -> {
-                HighQualityAudioDiagnostics.matchRejected(provider.id, query, finalSelection)
-                val reason = if (finalSelection.reason == MatchRejection.AMBIGUOUS) {
-                    HighQualityFallbackReason.AMBIGUOUS
-                } else {
-                    HighQualityFallbackReason.NO_MATCH
-                }
-                HighQualityResolution.Fallback(reason, finalSelection.reason.name)
-            }
-            is AlternativeMatchSelection.Accepted -> if (provider.lossless) {
-                LosslessRecordingFallback.resolve(query, finalSelection) {
-                    resolveSelected(identityKey, query, it, queryFingerprint)
-                }
-            } else {
-                resolveSelected(identityKey, query, finalSelection.evaluation, queryFingerprint)
+        return resolveFinalSelection(identityKey, query, search, selection, queryFingerprint)
+    }
+
+    private suspend fun resolveFinalSelection(
+        identityKey: String,
+        query: AlternativeTrackQuery,
+        search: CandidateSearch,
+        selection: AlternativeMatchSelection,
+        queryFingerprint: String
+    ): HighQualityResolution = when (selection) {
+        is AlternativeMatchSelection.Rejected -> {
+            HighQualityAudioDiagnostics.matchRejected(provider.id, query, selection)
+            val offlineOnly = if (selection.reason == MatchRejection.AMBIGUOUS) offlineOnlySelection(query, search) else null
+            when {
+                offlineOnly != null -> resolveAccepted(identityKey, query, offlineOnly, queryFingerprint)
+                selection.reason == MatchRejection.AMBIGUOUS ->
+                    HighQualityResolution.Fallback(HighQualityFallbackReason.AMBIGUOUS, selection.reason.name)
+                else -> HighQualityResolution.Fallback(HighQualityFallbackReason.NO_MATCH, selection.reason.name)
             }
         }
+        is AlternativeMatchSelection.Accepted -> {
+            val resolved = resolveAccepted(identityKey, query, selection, queryFingerprint)
+            val anotherReleaseMayPlay = resolved is HighQualityResolution.Fallback &&
+                resolved.reason in RELEASE_SPECIFIC_FAILURES &&
+                !selection.evaluation.candidate.offlineAllowed
+            val retry = if (anotherReleaseMayPlay) offlineOnlySelection(query, search) else null
+            retry?.let { resolveAccepted(identityKey, query, it, queryFingerprint) } ?: resolved
+        }
+    }
+
+    private fun offlineOnlySelection(query: AlternativeTrackQuery, search: CandidateSearch): AlternativeMatchSelection.Accepted? {
+        val candidates = search.candidates()
+        if (candidates.all { it.offlineAllowed }) return null
+        return matcher.select(query, candidates.filter { it.offlineAllowed }) as? AlternativeMatchSelection.Accepted
+    }
+
+    private suspend fun resolveAccepted(
+        identityKey: String,
+        query: AlternativeTrackQuery,
+        selection: AlternativeMatchSelection.Accepted,
+        queryFingerprint: String
+    ): HighQualityResolution = if (provider.lossless) {
+        LosslessRecordingFallback.resolve(query, selection) {
+            resolveSelected(identityKey, query, it, queryFingerprint)
+        }
+    } else {
+        resolveSelected(identityKey, query, selection.evaluation, queryFingerprint)
     }
 
     private suspend fun resolveSelected(
@@ -127,9 +166,11 @@ internal class HighQualityProviderLane(
             null -> keepSearched(selected, "TIMEOUT", "${HYDRATION_TIMEOUT_MS}ms")
             is ProviderLookupOutcome.Failed -> keepSearched(selected, "UNAVAILABLE", outcome.failure.name)
             ProviderLookupOutcome.Missing -> refuse(searched, "MISSING", "details missing or restricted")
-            is ProviderLookupOutcome.Found -> {
+            is ProviderLookupOutcome.Found -> if (!admits(outcome.candidate)) {
+                refuse(searched, "MISSING", "details missing or restricted")
+            } else {
                 val details = outcome.candidate
-                val evaluation = matcher.evaluateReadings(query, details)
+                val evaluation = matcher.evaluateSelected(query, details)
                 val sameTrack = details.providerId == searched.providerId &&
                     details.providerTrackId == searched.providerTrackId
                 if (sameTrack && evaluation.accepted) {
@@ -220,7 +261,7 @@ internal class HighQualityProviderLane(
                     val seen = seenTrackIdsByQuery.getOrPut(text) { HashSet() }
                     val unseen = outcome.candidates.count { seen.add(it.providerTrackId) }
                     outcome.candidates
-                        .filterNot { isTrackQuarantined(it.providerTrackId) }
+                        .filter { admits(it) && !isTrackQuarantined(it.providerTrackId) }
                         .forEach { collected.putIfAbsent(it.providerTrackId, it) }
                     val repeated = outcome.candidates.isNotEmpty() && unseen == 0
                     val relevant = outcome.candidates.isEmpty() ||
@@ -288,5 +329,9 @@ internal class HighQualityProviderLane(
         const val MAX_SEARCH_PAGE = 3
         const val MAX_EXTRA_PAGES = 3
         const val DEEPER_PAGE_WINDOW_MS = 3_000L
+        private val RELEASE_SPECIFIC_FAILURES = setOf(
+            HighQualityFallbackReason.STREAM_UNAVAILABLE,
+            HighQualityFallbackReason.NO_MATCH
+        )
     }
 }

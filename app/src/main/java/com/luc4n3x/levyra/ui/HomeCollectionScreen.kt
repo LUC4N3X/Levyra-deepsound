@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 import com.luc4n3x.levyra.ui.theme.LevyraIsSpotify
 import com.luc4n3x.levyra.ui.theme.Nocturne78Design
@@ -110,6 +111,10 @@ internal fun HomeCollectionScreen(
             loading = false, failed = false, bottomInset = bottomInset, onDismiss = onDismiss, onPlay = onPlay,
             onPlayAll = onPlayAll, onShuffle = onShuffle, onTrackActions = onTrackActions
         )
+        return
+    }
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+        GlacierCollectionScreen(title, tracks, currentId, isPlaying, onDismiss, onPlay, onPlayAll, onShuffle, onTrackActions, bottomInset)
         return
     }
     if (LevyraIsSpotify) {
@@ -514,8 +519,8 @@ private fun CollectionTrackRow(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(LevyraCardDesign.RowLineGap)
         ) {
-            Text(
-                text = track.title,
+            LevyraMediaTitle(
+                text = track.title, explicit = track.explicit,
                 color = LevyraText,
                 style = LevyraType.contentTitle.copy(fontWeight = if (active) FontWeight.Bold else FontWeight.SemiBold),
                 maxLines = 1,

@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.player
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -173,7 +174,7 @@ private fun QobuzQueueRow(
         Box(Modifier.size(60.dp).clip(RoundedCornerShape(4.dp)).background(QobuzDesign.playerFill)) { CoverImage(track, Modifier.fillMaxSize()) }
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
-            Text(track.title, style = MaterialTheme.typography.titleMedium.copy(fontSize = 19.sp, fontWeight = FontWeight.Medium), color = Color.White,
+            LevyraMediaTitle(track.title,  style = MaterialTheme.typography.titleMedium.copy(fontSize = 19.sp, fontWeight = FontWeight.Medium), color = Color.White,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (track.explicit) {

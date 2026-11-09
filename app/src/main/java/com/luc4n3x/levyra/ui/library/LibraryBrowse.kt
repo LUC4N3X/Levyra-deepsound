@@ -112,21 +112,17 @@ internal fun LibrarySectionGrid(
                 val label = entry.category.libraryLabel(strings)
                 Box(Modifier.fillMaxWidth().heightIn(min = 52.dp).then(Modifier.levyraPressable(onClick = { onOpen(entry.category) }, onClickLabel = label, role = Role.Button, pressedScale = LevyraPressScale.Control))) {
                     Row(Modifier.fillMaxWidth().heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(entry.category.sectionIcon(), null, tint = com.luc4n3x.levyra.ui.theme.AppleMusicDesign.accent, modifier = Modifier.size(26.dp))
                         Text(
                             label, color = com.luc4n3x.levyra.ui.theme.AppleMusicDesign.accent, style = MaterialTheme.typography.titleLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Normal),
-                            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(start = 14.dp)
+                            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
                         )
-                        if (entry.summary.isNotBlank()) {
-                            Text(entry.summary, color = com.luc4n3x.levyra.ui.theme.AppleMusicDesign.secondaryLabel, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
-                        }
                         Icon(
                             androidx.compose.material.icons.Icons.AutoMirrored.Rounded.ArrowForwardIos, null,
-                            tint = com.luc4n3x.levyra.ui.theme.AppleMusicDesign.tertiaryLabel, modifier = Modifier.padding(start = 4.dp).size(22.dp)
+                            tint = com.luc4n3x.levyra.ui.theme.AppleMusicDesign.tertiaryLabel, modifier = Modifier.padding(start = 4.dp).size(16.dp)
                         )
                     }
                     HorizontalDivider(
-                        Modifier.align(Alignment.BottomEnd).padding(start = 40.dp),
+                        Modifier.align(Alignment.BottomEnd),
                         thickness = 0.5.dp, color = com.luc4n3x.levyra.ui.theme.AppleMusicDesign.separator
                     )
                 }
@@ -266,7 +262,7 @@ private fun LibraryCategory.sectionBadgePolygon(): RoundedPolygon = when (this) 
     LibraryCategory.Collections, LibraryCategory.Overview -> MaterialShapes.SoftBurst
 }
 
-private fun LibraryCategory.sectionIcon(): ImageVector = when (this) {
+internal fun LibraryCategory.sectionIcon(): ImageVector = when (this) {
     LibraryCategory.Playlists -> Icons.AutoMirrored.Rounded.QueueMusic
     LibraryCategory.Songs -> Icons.Rounded.MusicNote
     LibraryCategory.Albums -> Icons.Rounded.Album
@@ -485,15 +481,24 @@ internal class LibraryOverviewSearchActions(
 private const val OverviewSearchTrackLimit = 5
 private const val OverviewSearchCollectionLimit = 3
 
+internal class LibrarySavedPlaylistActions(
+    val section: String,
+    val remove: String,
+    val onOpen: (com.luc4n3x.levyra.domain.SavedPlaylist) -> Unit,
+    val onRemove: (com.luc4n3x.levyra.domain.SavedPlaylist) -> Unit
+)
+
 internal fun LazyListScope.libraryOverviewSearch(
     tracks: List<Track>,
     playlists: List<Playlist>,
     albums: List<LibraryAlbum>,
     artists: List<LibraryArtist>,
     strings: LevyraStrings,
-    actions: LibraryOverviewSearchActions
+    actions: LibraryOverviewSearchActions,
+    savedPlaylists: List<com.luc4n3x.levyra.domain.SavedPlaylist> = emptyList(),
+    saved: LibrarySavedPlaylistActions = LibrarySavedPlaylistActions("", "", {}, {})
 ) {
-    if (tracks.isEmpty() && playlists.isEmpty() && albums.isEmpty() && artists.isEmpty()) {
+    if (tracks.isEmpty() && playlists.isEmpty() && savedPlaylists.isEmpty() && albums.isEmpty() && artists.isEmpty()) {
         item(key = "overview-search-empty") { LibraryEmpty(Icons.Rounded.Search, strings.emptySearchPrompt) }
         return
     }
@@ -518,6 +523,14 @@ internal fun LazyListScope.libraryOverviewSearch(
                 onLongClick = { actions.onOpenPlaylist(playlist) },
                 onPlay = { actions.onPlayPlaylist(playlist) }
             )
+        }
+    }
+    if (savedPlaylists.isNotEmpty()) {
+        item(key = "overview-search-saved-playlists-title") {
+            LibrarySearchSectionTitle(saved.section, savedPlaylists.size, LibraryCategory.Playlists, OverviewSearchCollectionLimit, actions)
+        }
+        items(savedPlaylists.take(OverviewSearchCollectionLimit), key = { "overview-search-saved-${it.key}" }) { playlist ->
+            LibrarySavedPlaylistRow(playlist, saved.remove, onOpen = { saved.onOpen(playlist) }, onRemove = { saved.onRemove(playlist) })
         }
     }
     if (albums.isNotEmpty()) {

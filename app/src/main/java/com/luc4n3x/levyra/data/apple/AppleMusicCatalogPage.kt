@@ -36,6 +36,25 @@ data class AppleCatalogItem(
     )
 }
 
+internal fun appleNewThisWeekShelf(page: AppleCatalogPage?): AppleCatalogShelf? {
+    val shelves = page?.shelves.orEmpty()
+    val newSongsIndex = shelves.indexOfFirst { shelf -> shelf.kind == AppleCatalogShelfKind.Songs }
+    if (newSongsIndex < 0) return null
+    return shelves.getOrNull(newSongsIndex + 1)?.takeIf { shelf ->
+        shelf.kind == AppleCatalogShelfKind.Grid && shelf.items.isNotEmpty() && shelf.items.all { item -> item.kind == AppleCatalogItemKind.Album }
+    }
+}
+
+internal fun appleAlbumHits(items: Sequence<AppleCatalogItem>, limit: Int): List<AlbumHit> = items
+    .filter { item ->
+        item.kind == AppleCatalogItemKind.Album && item.title.isNotBlank() && item.subtitle.isNotBlank() &&
+            AppleCatalogIds.albumFromUrl(item.url) != null
+    }
+    .distinctBy { item -> AppleCatalogIds.albumFromUrl(item.url)?.second }
+    .map(AppleCatalogItem::toAlbumHit)
+    .take(limit.coerceIn(1, 100))
+    .toList()
+
 internal fun appleNewReleaseAlbums(page: AppleCatalogPage?, limit: Int): List<AlbumHit> {
     val shelves = page?.shelves.orEmpty()
     val newSongsIndex = shelves.indexOfFirst { shelf -> shelf.kind == AppleCatalogShelfKind.Songs }
@@ -89,12 +108,88 @@ private const val MAX_NEW_RELEASE_SHELVES = 2
 private const val MAX_CHART_RELEASE_AGE_DAYS = 60L
 private const val DAY_MS = 24L * 60L * 60L * 1000L
 
+data class AppleDailyChart(val playlistId: String, val label: String, val global: Boolean)
+
+internal object AppleDailyTop100 {
+    const val GLOBAL_PLAYLIST_ID = "pl.d25f5d1181894928af76c85c967f8f31"
+    private val leadingMarkets = listOf("us", "gb")
+    private val countryCharts = mapOf(
+        "it" to "pl.737e067787df485a8062e2c4927d94db",
+        "us" to "pl.606afcbb70264d2eb2b51d8dbcfa6a12",
+        "gb" to "pl.c2273b7e89b44121b3093f67228918e7",
+        "es" to "pl.0d656d7feae64198bc5fb1b02786ed75",
+        "fr" to "pl.6e8cfd81d51042648fa36c9df5236b8d",
+        "de" to "pl.c10a2c113db14685a0b09fa5834d8e8b",
+        "pt" to "pl.5437c1490ac74e9e9505fc7d1f201655",
+        "br" to "pl.11ac7cc7d09741c5822e8c66e5c7edbb",
+        "mx" to "pl.df3f10ca27b1479087de2cd3f9f6716b",
+        "nl" to "pl.26fb1998d54a4b3192be548529a97f8e",
+        "pl" to "pl.8c91cbb0ef4e48308dbbba4238135eaf",
+        "ro" to "pl.0c6bea611ad54c79b854299bc515a5a6",
+        "gr" to "pl.0f15f3a8ba014979b9fdd7a0ef906dca",
+        "se" to "pl.5876877c387b4ffb8860ac3ea2c244c3",
+        "dk" to "pl.d08496850bc840a4874e877177a69f9f",
+        "cz" to "pl.e447d9ba54254130a76143bf6fdfa65c",
+        "ua" to "pl.815f78effb3844909a8259d759ecbddb",
+        "ru" to "pl.728bd30a9247487c80a483f4168a9dcd",
+        "tr" to "pl.f3e0d6ef238542609572c18b0de1513b",
+        "sa" to "pl.a5365fa3b6ec4a34994339ca100801ae",
+        "cn" to "pl.fde851dc95ce4ffbb74028dfd254ced5",
+        "jp" to "pl.043a2c9876114d95a4659988497567be",
+        "kr" to "pl.d3d10c32fbc540b38e266367dc8cb00c",
+        "in" to "pl.c0e98d2423e54c39b3df955c24df3cc5",
+        "id" to "pl.2b7e089dc9ef4dd7a18429df9c6e26a3",
+        "vn" to "pl.550110ec6feb4ae0aff364bcde6d1372",
+        "th" to "pl.c509137d97214632a087129ece060a3d",
+        "ph" to "pl.b9eb00f9d195440e8b0bdf19b8db7f34",
+        "tw" to "pl.741ff34016704547853b953ec5181d83",
+        "il" to "pl.0c9765e5330048af96c2336fa7bc3525",
+        "hu" to "pl.cee165c3a51e466481bde5de75d6dee3",
+        "bg" to "pl.040cf0b4c7e9467eb9eed2d33e7a29d6",
+        "fi" to "pl.acea41a017664a8ebcd5aa1622aecc88",
+        "no" to "pl.05a67957c3974729aac67c01247e55b6",
+        "sk" to "pl.2e50996a5bf44ab78cbb5c34b1992701",
+        "my" to "pl.a165defeeccb4b17a59bb5c85637b9b7",
+        "ar" to "pl.7ae8594e422f44658e58212d876d9323",
+        "ca" to "pl.79bac9045a2540e0b195e983df8ba569",
+        "au" to "pl.18be1cf04dfd4ffb9b6b0453e8fae8f1"
+    )
+    private val knownCharts = countryCharts.values.toSet()
+    private val titlePrefix = Regex("""^\s*(?:le\s+)?(?:top|топ|トップ)\s*-?\s*100\s*[:：\-–]?\s*""", RegexOption.IGNORE_CASE)
+
+    fun charts(page: AppleCatalogPage?, storefront: String): List<AppleDailyChart> {
+        val all = page?.shelves.orEmpty().asSequence()
+            .flatMap { shelf -> shelf.items.asSequence() }
+            .filter { item -> item.kind == AppleCatalogItemKind.Playlist }
+            .mapNotNull { item ->
+                val id = AppleCatalogIds.playlist(item.id) ?: AppleCatalogIds.playlistIdFromUrl(item.url) ?: return@mapNotNull null
+                val known = id == GLOBAL_PLAYLIST_ID || id in knownCharts
+                if (!known && !item.title.contains("100")) return@mapNotNull null
+                AppleDailyChart(id, label(item.title), id == GLOBAL_PLAYLIST_ID)
+            }
+            .distinctBy { it.playlistId }
+            .toList()
+        val countries = all.filterNot { it.global }
+        val byId = countries.associateBy { it.playlistId }
+        val local = countryCharts[AppleStorefronts.normalize(storefront)]?.let(byId::get) ?: countries.firstOrNull()
+        val leading = leadingMarkets.mapNotNull { countryCharts[it]?.let(byId::get) }
+        val (known, other) = countries.partition { it.playlistId in knownCharts }
+        return (listOfNotNull(local, all.firstOrNull { it.global }) + leading + known + other).distinct()
+    }
+
+    fun label(title: String): String {
+        val trimmed = title.trim()
+        return trimmed.replaceFirst(titlePrefix, "").trim().ifEmpty { trimmed }.replaceFirstChar { it.titlecase(java.util.Locale.ROOT) }
+    }
+}
+
 data class AppleCatalogShelf(
     val id: String,
     val title: String,
     val kind: AppleCatalogShelfKind,
     val items: List<AppleCatalogItem>,
-    val rows: Int = 1
+    val rows: Int = 1,
+    val roomId: String = ""
 )
 
 data class AppleCatalogPage(
@@ -174,8 +269,13 @@ object AppleCatalogPageParser {
         val distinct = parsed.distinctBy { "${it.kind}:${it.id}" }
         if (distinct.isEmpty()) return null
         val rows = section.optJSONObject("presentation")?.optJSONObject("layout")?.optInt("numberOfRows", 1) ?: 1
-        return AppleCatalogShelf(section.optString("id"), title, kind, distinct, rows.coerceIn(1, 4))
+        return AppleCatalogShelf(section.optString("id"), title, kind, distinct, rows.coerceIn(1, 4), sectionRoomId(section))
     }
+
+    internal fun sectionRoomId(section: JSONObject): String =
+        section.optJSONObject("header")?.optJSONObject("item")?.optJSONObject("titleLink")
+            ?.optJSONObject("segue")?.optJSONObject("destination")?.optJSONObject("intent")
+            ?.optString("id").orEmpty().takeIf { id -> id.isNotEmpty() && id.all(Char::isDigit) }.orEmpty()
 
     internal fun sectionTitle(section: JSONObject): String =
         section.optJSONObject("header")?.optJSONObject("item")?.let { header ->

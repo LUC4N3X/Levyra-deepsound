@@ -309,7 +309,7 @@ private fun dockEffectLabel(effect: DockScrollEffect, copy: LevyraDockMorphCopy)
 }
 
 @Composable
-internal fun DockScrollEffectGroup(selected: DockScrollEffect, onSelect: (DockScrollEffect) -> Unit) {
+internal fun DockScrollEffectGroup(selected: DockScrollEffect, onSelect: (DockScrollEffect) -> Unit, locked: Boolean = false) {
     val copy = LocalLevyraStrings.current.dockMorph()
     MiniStudioGroup(title = copy.title) {
         MiniStudioCaption(copy.subtitle)
@@ -328,6 +328,7 @@ internal fun DockScrollEffectGroup(selected: DockScrollEffect, onSelect: (DockSc
                     selected = effect == selected,
                     first = index == 0,
                     last = index == options.lastIndex,
+                    enabled = !locked,
                     onClick = { onSelect(effect) }
                 )
             }
@@ -342,6 +343,7 @@ private fun DockScrollEffectOption(
     selected: Boolean,
     first: Boolean,
     last: Boolean,
+    enabled: Boolean,
     onClick: () -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -368,7 +370,8 @@ private fun DockScrollEffectOption(
             .heightIn(min = 56.dp)
             .clip(RoundedCornerShape(topStart = top, topEnd = top, bottomStart = bottom, bottomEnd = bottom))
             .background(container)
-            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onClick)
+            .graphicsLayer { alpha = if (enabled || selected) 1f else 0.38f }
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)

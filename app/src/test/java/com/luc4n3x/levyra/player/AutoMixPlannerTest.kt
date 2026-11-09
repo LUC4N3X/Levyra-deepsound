@@ -4,10 +4,8 @@ import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.domain.Track
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AutoMixPlannerTest {
@@ -137,35 +135,6 @@ class AutoMixPlannerTest {
         assertNull(planAutoMix(current, next, crossfade, RepeatMode.One, videoMode = false, lowRam = false))
         assertNull(planAutoMix(current, next, crossfade, RepeatMode.Off, videoMode = true, lowRam = false))
         assertNull(planAutoMix(current, next, crossfade, RepeatMode.Off, videoMode = false, lowRam = true))
-    }
-
-    @Test
-    fun handoffResyncOnlyWhenPlayersDriftPastTolerance() {
-        assertFalse(crossfadeHandoffNeedsResync(10_000L, 10_180L, toleranceMs = 250L))
-        assertTrue(crossfadeHandoffNeedsResync(10_000L, 10_400L, toleranceMs = 250L))
-    }
-
-    @Test
-    fun handoffSeekTargetsLiveSecondaryPositionAndClampsToDuration() {
-        assertEquals(12_120L, crossfadeHandoffSeekPosition(12_000L, 180_000L, leadMs = 120L))
-        assertEquals(19_999L, crossfadeHandoffSeekPosition(19_950L, 20_000L, leadMs = 120L))
-    }
-
-    @Test
-    fun crossfadeStepScalesInverselyWithPlaybackSpeed() {
-        assertEquals(50L, crossfadeStepWallClockMs(50L, 1.0f))
-        assertEquals(25L, crossfadeStepWallClockMs(50L, 2.0f))
-        assertEquals(100L, crossfadeStepWallClockMs(50L, 0.5f))
-        assertEquals(40L, crossfadeStepWallClockMs(60L, 1.5f))
-    }
-
-    @Test
-    fun crossfadeStepClampsToMinimumAndHandlesInvalidSpeedGracefully() {
-        assertEquals(10L, crossfadeStepWallClockMs(5L, 2.0f, minWallClockMs = 10L))
-        assertEquals(50L, crossfadeStepWallClockMs(50L, 0f))
-        assertEquals(50L, crossfadeStepWallClockMs(50L, -1.5f))
-        assertEquals(50L, crossfadeStepWallClockMs(50L, Float.NaN))
-        assertEquals(50L, crossfadeStepWallClockMs(50L, Float.POSITIVE_INFINITY))
     }
 
     private val crossfade = LevyraAudioSettings(crossfadeSeconds = 6)

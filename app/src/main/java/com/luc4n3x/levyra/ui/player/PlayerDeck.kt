@@ -182,11 +182,11 @@ internal class PlayerDeckSlots(
     val progress: @Composable (style: PlayerProgressStyle) -> Unit,
     val dock: @Composable (Track) -> Unit,
     val dockActions: @Composable (Track) -> List<PlayerDockAction>,
-    val creditsEyebrow: PlayerCreditsEyebrow? = null,
     val lyricsPreview: PlayerLyricsPreview? = null,
     val artistPanel: PlayerArtistPanel? = null,
     val headerTrailing: @Composable () -> Unit = {},
-    val modeSwitch: @Composable () -> Unit = {}
+    val modeSwitch: @Composable () -> Unit = {},
+    val addToPlaylist: ((Track) -> Unit)? = null
 )
 
 internal class PlayerArtistPanel(
@@ -208,14 +208,6 @@ internal class PlayerLyricsPreview(
     val synced: Boolean,
     val positionMs: Long,
     val onOpen: () -> Unit
-)
-
-internal class PlayerCreditsEyebrow(
-    val trackId: String,
-    val heading: String,
-    val names: List<String>,
-    val contentDescription: String,
-    val onClick: () -> Unit
 )
 
 internal val DefaultPlayerVisualMode: PlayerVisualMode = LevyraInterfaceSettings().playerVisualMode

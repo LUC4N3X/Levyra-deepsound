@@ -1,5 +1,8 @@
 package com.luc4n3x.levyra.ui
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.lazy.rememberLazyListState
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -210,12 +213,16 @@ internal fun SkinCollectionsShelf(title: String, collections: List<StudioCollect
     val covers = remember(collections, fourUp) { distinctCollectionCovers(collections, if (fourUp) 4 else 3) }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SkinSectionTitle(title, inset)
-        LazyRow(contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(if (LevyraIsSpotify) SpotifyDesign.gutter else 14.dp)) {
+        val rowState = rememberLazyListState()
+        val motion = ivoryRailMotionEnabled()
+        LazyRow(state = rowState, contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(if (LevyraIsSpotify) SpotifyDesign.gutter else 14.dp)) {
             itemsIndexed(collections, key = { _, collection -> "collection-${collection.id}" }) { _, collection ->
                 val tracks = covers[collection.id].orEmpty()
                 when {
                     torque -> TorqueCollectionCard(collection, tracks, onOpen)
-                    LevyraIsIvory -> IvoryCollectionCard(collection, tracks, onOpen)
+                    LevyraIsIvory -> Box(Modifier.ivoryRailItemMotion(motion, rowState, "collection-${collection.id}")) {
+                        IvoryCollectionCard(collection, tracks, onOpen)
+                    }
                     LevyraIsSpotify -> SpotifyMixCard(collection, tracks, onOpen)
                     else -> PrismCollectionFanCard(collection, tracks, onOpen)
                 }
@@ -420,7 +427,7 @@ private fun SkinChartRow(index: Int, track: Track, currentId: String?, isPlaying
         )
         Box(Modifier.size(52.dp).clip(RoundedCornerShape(PrismDesign.tileCorner))) { CoverImage(track, Modifier.fillMaxSize()) }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(track.title, color = if (current) LevyraCyan else LevyraText, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            LevyraMediaTitle(track.title, explicit = track.explicit,  color = if (current) LevyraCyan else LevyraText, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(track.artist, color = LevyraMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         if (current) LevyraPlayingIndicator(playing = isPlaying, color = LevyraCyan, size = 12.dp)
@@ -459,8 +466,8 @@ private fun PrismChartTrack(index: Int, track: Track, current: Boolean, playing:
             CoverImage(track, Modifier.fillMaxSize(), highRes = first)
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(track.title, color = if (current) LevyraCyan else LevyraText,
-                style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            LevyraMediaTitle(track.title, explicit = track.explicit,  color = if (current) LevyraCyan else LevyraText,
+                style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(track.artist, color = LevyraMuted, style = MaterialTheme.typography.bodySmall,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }

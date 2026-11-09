@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.data.hqaudio
 
+import kotlinx.coroutines.launch
+import com.luc4n3x.levyra.data.runCatchingPreservingCancellation
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
@@ -75,7 +77,13 @@ class HighQualityAudioResolver(
             isQuarantined(quarantinedProviderTracks, trackKey(provider.id, providerTrackId))
         }
     }
+    private val offlineLanes = providers.map { provider ->
+        HighQualityProviderLane(provider, mappingStore, matcher, clock, { it.offlineAllowed }) { providerTrackId ->
+            isQuarantined(quarantinedProviderTracks, trackKey(provider.id, providerTrackId))
+        }
+    }
     private val streams = ConcurrentHashMap<String, HighQualityResolution.Selected>()
+    private val losslessRetryAfter = ConcurrentHashMap<String, Long>()
     private val quarantinedIdentities = ConcurrentHashMap<String, Long>()
     private val quarantinedProviderTracks = ConcurrentHashMap<String, Long>()
     private val unmatchedIdentities = ConcurrentHashMap<String, Long>()
@@ -109,6 +117,7 @@ class HighQualityAudioResolver(
                 field = value
                 if (!value.enabled || losslessChanged) {
                     streams.clear()
+                    losslessRetryAfter.clear()
                     inFlight.values.forEach { it.cancel() }
                     inFlight.clear()
                     backgroundLookups.clear()
@@ -116,7 +125,19 @@ class HighQualityAudioResolver(
                 }
                 if (losslessChanged) unmatchedIdentities.clear()
             }
+            if (value.lossless) prewarmLosslessProviders()
         }
+
+    @Volatile private var prewarmedAtMs = 0L
+
+    private fun prewarmLosslessProviders() {
+        val now = clock()
+        if (now - prewarmedAtMs < PREWARM_INTERVAL_MS) return
+        prewarmedAtMs = now
+        providers.filter { it.lossless }.forEach { provider ->
+            scope.launch { runCatchingPreservingCancellation { provider.prewarm() } }
+        }
+    }
 
     fun providerName(providerId: String): String =
         providers.firstOrNull { it.id == providerId }?.displayName ?: providers.first().displayName
@@ -130,7 +151,7 @@ class HighQualityAudioResolver(
             (mode.lossless || !cached.stream.tier.lossless) &&
             !isQuarantined(quarantinedProviderTracks, trackKey(cached.stream.providerId, cached.stream.providerTrackId))
         if (!usable) {
-            streams.remove(identityKey, cached)
+            if (streams.remove(identityKey, cached)) losslessRetryAfter.remove(identityKey)
             return null
         }
         return cached
@@ -155,7 +176,10 @@ class HighQualityAudioResolver(
         if (!mode.enabled) return completed(HighQualityFallbackReason.DISABLED)
         if (isQuarantined(quarantinedIdentities, identityKey)) return completed(HighQualityFallbackReason.QUARANTINED)
         if (isQuarantined(unmatchedIdentities, identityKey)) return completed(HighQualityFallbackReason.NO_MATCH)
-        cachedSelection(identityKey)?.let { return CompletableDeferred(it) }
+        cachedSelection(identityKey)?.let { cached ->
+            retryLosslessInBackground(identityKey, query, cached)
+            return CompletableDeferred(cached)
+        }
         val queued = background && mode.lossless
         val lookup = synchronized(inFlightLock) {
             inFlight[identityKey]?.let { existing ->
@@ -212,8 +236,8 @@ class HighQualityAudioResolver(
     suspend fun resolveLossy(identityKey: String, query: AlternativeTrackQuery): HighQualityResolution {
         if (!mode.enabled) return HighQualityResolution.Fallback(HighQualityFallbackReason.DISABLED)
         if (isQuarantined(quarantinedIdentities, identityKey)) return HighQualityResolution.Fallback(HighQualityFallbackReason.QUARANTINED)
-        cachedSelection(identityKey)?.takeIf { !it.stream.tier.lossless }?.let { return it }
-        val lossy = lanes.filter { !it.provider.lossless }
+        cachedSelection(identityKey)?.takeIf { !it.stream.tier.lossless && it.stream.offlineAllowed }?.let { return it }
+        val lossy = offlineLanes.filter { !it.provider.lossless }
         if (lossy.isEmpty()) return HighQualityResolution.Fallback(HighQualityFallbackReason.DISABLED)
         return withTimeoutOrNull(lookupBudgetMs) { resolveByPriority(identityKey, query, lossy) }
             ?: HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "lossy lookup budget")
@@ -227,6 +251,7 @@ class HighQualityAudioResolver(
     ) {
         val until = clock() + FAILURE_QUARANTINE_MS
         streams.remove(identityKey)
+        losslessRetryAfter.remove(identityKey)
         val failedLossless = providers.firstOrNull { it.id == providerId }?.lossless == true
         if (!failedLossless || providerTrackId.isBlank()) quarantine(quarantinedIdentities, identityKey, until)
         if (providerTrackId.isNotBlank()) quarantine(quarantinedProviderTracks, trackKey(providerId, providerTrackId), until)
@@ -374,6 +399,25 @@ class HighQualityAudioResolver(
 
     private fun trackKey(providerId: String, providerTrackId: String): String = "$providerId:$providerTrackId"
 
+    private fun retryLosslessInBackground(identityKey: String, query: AlternativeTrackQuery, cached: HighQualityResolution.Selected) {
+        if (!mode.lossless || cached.stream.tier.lossless) return
+        val now = clock()
+        val due = losslessRetryAfter[identityKey] ?: return
+        if (now < due || !losslessRetryAfter.replace(identityKey, due, now + LOSSLESS_FALLBACK_RETRY_MS)) return
+        val losslessLanes = lanes.filter { it.provider.lossless }
+        if (losslessLanes.isEmpty()) return
+        scope.launch {
+            val upgrade = runCatchingPreservingCancellation {
+                withTimeoutOrNull(lookupBudgetMs) { resolveByPriority(identityKey, query, losslessLanes) }
+            }.getOrNull()
+            if (upgrade is HighQualityResolution.Selected && upgrade.stream.tier.lossless) {
+                synchronized(inFlightLock) {
+                    if (mode.lossless && streams[identityKey] === cached) rememberStream(identityKey, upgrade)
+                }
+            }
+        }
+    }
+
     private fun rememberStream(identityKey: String, selection: HighQualityResolution.Selected) {
         if (streams.size >= MAX_CACHED_STREAMS) {
             val now = clock()
@@ -382,12 +426,11 @@ class HighQualityAudioResolver(
                 streams.entries.minByOrNull { it.value.stream.expiresAtMs }?.let { streams.remove(it.key, it.value) }
             }
         }
-        streams[identityKey] = if (mode.lossless && !selection.stream.tier.lossless) {
-            selection.copy(stream = selection.stream.copy(
-                expiresAtMs = minOf(selection.stream.expiresAtMs, clock() + STREAM_REFRESH_MARGIN_MS + LOSSLESS_FALLBACK_RETRY_MS)
-            ))
+        streams[identityKey] = selection
+        if (mode.lossless && !selection.stream.tier.lossless) {
+            losslessRetryAfter[identityKey] = clock() + LOSSLESS_FALLBACK_RETRY_MS
         } else {
-            selection
+            losslessRetryAfter.remove(identityKey)
         }
     }
 
@@ -425,6 +468,7 @@ class HighQualityAudioResolver(
     companion object {
         const val LOOKUP_BUDGET_MS = 8_000L
         const val LOSSLESS_LANE_BUDGET_MS = 4_000L
+        private const val PREWARM_INTERVAL_MS = 5L * 60L * 1_000L
         const val STREAM_REFRESH_MARGIN_MS = 90_000L
         const val LOSSLESS_FALLBACK_RETRY_MS = 90_000L
         const val FAILURE_QUARANTINE_MS = 30L * 60L * 1_000L

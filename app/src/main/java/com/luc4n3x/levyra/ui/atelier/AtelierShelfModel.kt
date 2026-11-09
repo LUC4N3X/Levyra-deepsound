@@ -9,6 +9,7 @@ import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sign
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -110,6 +111,9 @@ internal object AtelierSlot {
     private const val LeanBack = -8f
     private const val FrontLift = 0.07f
     private const val FrontPull = 0.14f
+    private const val PassLift = 0.055f
+    private const val PassRecede = 0.09f
+    private const val PassRoll = 3.5f
 
     fun fill(depth: Float, enter: Float, out: FloatArray) {
         val entry = enter.coerceIn(0f, 1f)
@@ -118,15 +122,16 @@ internal object AtelierSlot {
         val fly = atelierSmooth(0.04f + min(abs(depth), 5f) * 0.035f, 0.62f, entry)
         val reach = abs(d)
         val focus = 1f - atelierSmooth(0f, 1f, min(reach, 1f))
+        val pass = sin(Math.PI * min(reach, 1f)).toFloat() * entry
         val arc = Math.toRadians((d.coerceIn(-4.2f, 4.2f) * ArcStepDegrees).toDouble())
         val sinA = sin(arc).toFloat()
         val cosA = cos(arc).toFloat()
         out[X] = sinA * ArcRadius * ArcSpread
-        out[Y] = FrontY - focus * FrontLift + (1f - fly) * 0.9f
-        out[Z] = FrontZ + (1f - cosA) * ArcRadius * ArcRecede - focus * FrontPull + max(reach - 4.2f, 0f) * 0.4f + (1f - fly) * 0.8f
+        out[Y] = FrontY - focus * FrontLift - pass * PassLift + (1f - fly) * 0.9f
+        out[Z] = FrontZ + (1f - cosA) * ArcRadius * ArcRecede - focus * FrontPull + pass * PassRecede + max(reach - 4.2f, 0f) * 0.4f + (1f - fly) * 0.8f
         out[YAW] = -(d.coerceIn(-4.2f, 4.2f) * ArcStepDegrees) * ArcYawFactor * (1f - focus * 0.6f)
         out[PITCH] = atelierLerp(LeanBack, 1.5f, focus)
-        out[ROLL] = 0f
+        out[ROLL] = -sign(d) * pass * PassRoll
         val edge = 1f - atelierSmooth(VisibleDepth - 3.5f, VisibleDepth - 1.5f, reach)
         out[ALPHA] = edge * fly
     }

@@ -22,11 +22,15 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.basicMarquee
+import androidx.compose.material.icons.automirrored.rounded.ViewList
+import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -91,6 +95,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 import com.luc4n3x.levyra.ui.theme.LevyraSkinManagesLayout
 import com.luc4n3x.levyra.ui.theme.PrismDesign
+import java.text.Collator
 import java.util.Locale
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -126,7 +131,10 @@ internal fun LiveRadioScreen(
     isPlaying: Boolean,
     backEnabled: Boolean,
     onBack: () -> Unit,
-    onPlay: (RadioStation) -> Unit
+    onPlay: (RadioStation) -> Unit,
+    tabTitle: String? = null,
+    onSearch: (() -> Unit)? = null,
+    leadingItems: (LazyListScope.() -> Unit)? = null
 ) {
     BackHandler(enabled = backEnabled, onBack = onBack)
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -147,14 +155,20 @@ internal fun LiveRadioScreen(
 
     LaunchedEffect(languageCode) { viewModel.activate(languageCode) }
 
-    Box(modifier = Modifier.fillMaxSize().background(LevyraBlack)) {
+    val radioListState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val radioScrolled by remember(radioListState) { androidx.compose.runtime.derivedStateOf { radioListState.firstVisibleItemIndex > 0 || radioListState.firstVisibleItemScrollOffset > 0 } }
+    val glacier = com.luc4n3x.levyra.ui.theme.LevyraIsMono
+    Box(modifier = Modifier.fillMaxSize().background(if (glacier) com.luc4n3x.levyra.ui.theme.MonoDesign.base else LevyraBlack)) {
+        if (glacier) MonoRadioGlow()
         LazyColumn(
+            state = radioListState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
                 top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 82.dp,
                 bottom = 190.dp
             )
         ) {
+            leadingItems?.invoke(this)
             item(key = "live-radio-intro") {
                 RadioHero(
                     live = radioStrings.live,
@@ -163,10 +177,14 @@ internal fun LiveRadioScreen(
                     searchHint = radioStrings.searchHint,
                     onQueryChange = viewModel::setQuery
                 )
-                FilledTonalButton(
-                    onClick = { editingId = null; viewModel.clearCustomError(); editorOpen = true },
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp).fillMaxWidth().heightIn(min = 56.dp)
-                ) { Icon(Icons.Rounded.Add, null); Text(libraryCopy.add, modifier = Modifier.padding(start = 8.dp)) }
+                if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+                    MonoRadioAddAction(libraryCopy.add) { editingId = null; viewModel.clearCustomError(); editorOpen = true }
+                } else {
+                    FilledTonalButton(
+                        onClick = { editingId = null; viewModel.clearCustomError(); editorOpen = true },
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp).fillMaxWidth().heightIn(min = 56.dp)
+                    ) { Icon(Icons.Rounded.Add, null); Text(libraryCopy.add, modifier = Modifier.padding(start = 8.dp)) }
+                }
             }
 
             if (!editorOpen) state.customError?.let { reason ->
@@ -229,43 +247,47 @@ internal fun LiveRadioScreen(
                 }
             }
 
-            if (state.favorites.isNotEmpty() && state.query.isBlank()) {
-                item(key = "live-radio-favorites-title") { RadioSectionTitle(strings.favoritesPlain) }
-                item(key = "live-radio-favorites") {
-                    RadioStationRail(
-                        stations = state.favorites,
-                        favoriteIds = favoriteIds,
-                        currentStationId = currentStationId,
-                        isPlaying = isPlaying,
-                        live = radioStrings.live,
-                        playLabel = strings.play,
-                        addFavoriteLabel = strings.addToFavorites,
-                        removeFavoriteLabel = strings.removeFromFavorites,
-                        onPlay = { station ->
-                            onPlay(station)
-                        },
-                        onFavorite = viewModel::toggleFavorite
-                    )
-                }
-            }
-
-            if (state.recent.isNotEmpty() && state.query.isBlank()) {
-                item(key = "live-radio-recent-title") { RadioSectionTitle(strings.recent) }
-                item(key = "live-radio-recent") {
-                    RadioStationRail(
-                        stations = state.recent,
-                        favoriteIds = favoriteIds,
-                        currentStationId = currentStationId,
-                        isPlaying = isPlaying,
-                        live = radioStrings.live,
-                        playLabel = strings.play,
-                        addFavoriteLabel = strings.addToFavorites,
-                        removeFavoriteLabel = strings.removeFromFavorites,
-                        onPlay = { station ->
-                            onPlay(station)
-                        },
-                        onFavorite = viewModel::toggleFavorite
-                    )
+            if (state.query.isBlank()) {
+                listOf(
+                    "favorites" to (strings.favoritesPlain to state.favorites),
+                    "recent" to (strings.recent to state.recent)
+                ).forEach { (section, content) ->
+                    val (title, stations) = content
+                    if (stations.isEmpty()) return@forEach
+                    item(key = "live-radio-$section-title") {
+                        RadioSectionTitle(title) {
+                            RadioLayoutToggle(
+                                listMode = state.stationListMode,
+                                code = languageCode,
+                                onToggle = { viewModel.setStationListMode(!state.stationListMode) }
+                            )
+                        }
+                    }
+                    if (state.stationListMode) {
+                        itemsIndexed(stations, key = { _, station -> "live-radio-$section-row-${station.uuid}" }) { index, station ->
+                            RadioStationRow(
+                                index, stations.size, station, station.uuid.lowercase(Locale.ROOT) in favoriteIds,
+                                currentStationId == station.uuid && isPlaying,
+                                radioStrings.live, strings.play, strings.addToFavorites, strings.removeFromFavorites,
+                                onPlay = { onPlay(station) }, onFavorite = { viewModel.toggleFavorite(station) }
+                            )
+                        }
+                    } else {
+                        item(key = "live-radio-$section") {
+                            RadioStationRail(
+                                stations = stations,
+                                favoriteIds = favoriteIds,
+                                currentStationId = currentStationId,
+                                isPlaying = isPlaying,
+                                live = radioStrings.live,
+                                playLabel = strings.play,
+                                addFavoriteLabel = strings.addToFavorites,
+                                removeFavoriteLabel = strings.removeFromFavorites,
+                                onPlay = onPlay,
+                                onFavorite = viewModel::toggleFavorite
+                            )
+                        }
+                    }
                 }
             }
 
@@ -280,7 +302,14 @@ internal fun LiveRadioScreen(
             }
 
             val featured = state.stations.firstOrNull()
-            if (featured != null) {
+            if (featured != null && com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+                item(key = "live-radio-mono-tuner") {
+                    MonoRadioTuner(
+                        state.stations.take(40), favoriteIds, currentStationId, isPlaying, radioStrings.live, strings.play,
+                        strings.addToFavorites, strings.removeFromFavorites, onPlay
+                    ) { viewModel.toggleFavorite(it) }
+                }
+            } else if (featured != null) {
                 item(key = "live-radio-featured-${featured.uuid}") {
                     FeaturedRadioStation(
                         station = featured,
@@ -298,7 +327,7 @@ internal fun LiveRadioScreen(
                 }
             }
 
-            val listedStations = state.stations.drop(1)
+            val listedStations = if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) state.stations else state.stations.drop(1)
             itemsIndexed(
                 items = listedStations,
                 key = { _, station -> "live-radio-station-${station.uuid}" },
@@ -366,10 +395,12 @@ internal fun LiveRadioScreen(
         }
 
         RadioTopBar(
-            title = radioStrings.title,
+            title = tabTitle ?: radioStrings.title,
             live = radioStrings.live,
             backLabel = strings.back,
-            onBack = onBack,
+            onBack = onBack.takeIf { onSearch == null },
+            onSearch = onSearch,
+            scrolled = { radioScrolled },
             modifier = Modifier.align(Alignment.TopCenter)
         )
     }
@@ -391,6 +422,7 @@ internal fun LiveRadioScreen(
             entries = state.countries,
             selected = state.selectedCountryCode,
             allLabel = radioStrings.worldwide,
+            alphabeticalLanguageCode = languageCode,
             display = { entry -> localizedCountryName(entry.code, languageCode).ifBlank { entry.name } },
             value = RadioDirectoryEntry::code,
             onDismiss = { countryPickerOpen = false },
@@ -418,7 +450,31 @@ internal fun LiveRadioScreen(
 }
 
 @Composable
+private fun RadioSectionTitle(title: String, trailing: @Composable () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.weight(1f)) { RadioSectionTitle(title) }
+        Box(Modifier.padding(end = 12.dp)) { trailing() }
+    }
+}
+
+@Composable
+private fun RadioLayoutToggle(listMode: Boolean, code: String, onToggle: () -> Unit) {
+    val copy = remember(code) { com.luc4n3x.levyra.ui.i18n.spotifyLibraryCopy(code) }
+    IconButton(onClick = onToggle) {
+        Icon(
+            if (listMode) Icons.Rounded.GridView else Icons.AutoMirrored.Rounded.ViewList,
+            contentDescription = if (listMode) copy.gridView else copy.listView,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
 private fun RadioSectionTitle(title: String) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+        MonoRadioSectionTitle(title)
+        return
+    }
     Text(
         text = title,
         color = LevyraText,
@@ -439,6 +495,10 @@ private fun RadioHero(
     searchHint: String,
     onQueryChange: (String) -> Unit
 ) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+        MonoRadioHero(live, subtitle, query, searchHint, onQueryChange)
+        return
+    }
     val colors = MaterialTheme.colorScheme
     val heroShape = RoundedCornerShape(32.dp)
     Column(
@@ -509,6 +569,10 @@ private val RadioLiveRed = Color(0xFFE53935)
 
 @Composable
 private fun RadioChoiceChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+        MonoPill(label, selected, onClick)
+        return
+    }
     val colors = MaterialTheme.colorScheme
     val interaction = remember { MutableInteractionSource() }
     val rest = levyraExpressiveToggleCorner(
@@ -555,6 +619,10 @@ private fun RadioDirectoryButton(
     icon: (@Composable () -> Unit)?,
     onClick: () -> Unit
 ) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+        MonoRadioDirectoryButton(modifier, label, icon, onClick = onClick)
+        return
+    }
     val colors = MaterialTheme.colorScheme
     val interaction = remember { MutableInteractionSource() }
     val corner = levyraExpressiveCorner(
@@ -590,21 +658,29 @@ private fun RadioTopBar(
     title: String,
     live: String,
     backLabel: String,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
+    onSearch: (() -> Unit)?,
+    scrolled: () -> Boolean = { true },
     modifier: Modifier = Modifier
 ) {
     val colors = MaterialTheme.colorScheme
+    val glacierScrim by androidx.compose.animation.core.animateFloatAsState(
+        if (com.luc4n3x.levyra.ui.theme.LevyraIsMono && scrolled()) 1f else 0f, label = "radio-glacier-scrim"
+    )
     Column(modifier = modifier.fillMaxWidth()) {
+        val glacier = com.luc4n3x.levyra.ui.theme.LevyraIsMono
+        val barTop = if (glacier) com.luc4n3x.levyra.ui.theme.MonoDesign.base.copy(alpha = 0.92f * glacierScrim) else colors.surface
+        val barBottom = if (glacier) com.luc4n3x.levyra.ui.theme.MonoDesign.base.copy(alpha = 0.8f * glacierScrim) else colors.surface
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(colors.surface)
+                .background(Brush.verticalGradient(listOf(barTop, barBottom)))
                 .statusBarsPadding()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+                .padding(start = if (onBack == null) 24.dp else 14.dp, end = 14.dp, top = 10.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            LevyraBackButton(onClick = onBack, contentDescription = backLabel)
+            if (onBack != null) LevyraBackButton(onClick = onBack, contentDescription = backLabel)
             Text(
                 text = title,
                 color = colors.onSurface,
@@ -615,13 +691,13 @@ private fun RadioTopBar(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f).semantics { heading() }
             )
-            RadioLivePill(live = live)
+            if (onSearch != null) LevyraTopBarSearchAction(onSearch) else RadioLivePill(live = live)
         }
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(18.dp)
-                .background(Brush.verticalGradient(listOf(colors.surface, Color.Transparent)))
+                .background(Brush.verticalGradient(listOf(barBottom, Color.Transparent)))
         )
     }
 }
@@ -708,6 +784,10 @@ private fun FeaturedRadioStation(
     onPlay: () -> Unit,
     onFavorite: () -> Unit
 ) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+        MonoRadioFeatured(station, favorite, playing, live, playLabel, addFavoriteLabel, removeFavoriteLabel, onPlay, onFavorite)
+        return
+    }
     val colors = MaterialTheme.colorScheme
     val container = lerp(colors.surfaceContainerHigh, colors.primaryContainer, if (playing) 0.62f else 0.38f)
     Column(
@@ -868,6 +948,10 @@ private fun RadioStationRow(
     onFavorite: () -> Unit,
     actions: (@Composable () -> Unit)? = null
 ) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+        MonoRadioRow(station, favorite, playing, live, playLabel, addFavoriteLabel, removeFavoriteLabel, onPlay, onFavorite, actions)
+        return
+    }
     val colors = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
@@ -901,14 +985,7 @@ private fun RadioStationRow(
 private fun RadioStationRowInfo(station: RadioStation, playing: Boolean, live: String, modifier: Modifier = Modifier) {
     val colors = MaterialTheme.colorScheme
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(
-            station.name,
-            color = colors.onSurface,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+        RadioStationName(name = station.name, playing = playing, color = colors.onSurface, fontSize = 15.sp, minLines = 1)
         if (playing) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 RadioEqualizer(color = colors.primary)
@@ -918,6 +995,30 @@ private fun RadioStationRowInfo(station: RadioStation, playing: Boolean, live: S
             RadioStationDetail(station)
         }
     }
+}
+
+@Composable
+internal fun RadioStationName(
+    name: String,
+    playing: Boolean,
+    color: Color,
+    fontSize: androidx.compose.ui.unit.TextUnit,
+    modifier: Modifier = Modifier,
+    style: androidx.compose.ui.text.TextStyle = androidx.compose.ui.text.TextStyle.Default,
+    minLines: Int = 2
+) {
+    val marquee = playing && LocalAnimationsEnabled.current
+    Text(
+        name,
+        color = color,
+        fontSize = fontSize,
+        fontWeight = FontWeight.Bold,
+        style = style,
+        maxLines = if (marquee) 1 else 2,
+        minLines = if (marquee) 1 else minLines,
+        overflow = if (marquee) TextOverflow.Clip else TextOverflow.Ellipsis,
+        modifier = modifier.then(if (marquee) Modifier.basicMarquee(iterations = Int.MAX_VALUE) else Modifier)
+    )
 }
 
 @Composable
@@ -972,6 +1073,10 @@ private fun RadioStationRail(
     onPlay: (RadioStation) -> Unit,
     onFavorite: (RadioStation) -> Unit
 ) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+        MonoRadioRail(stations, favoriteIds, currentStationId, isPlaying, playLabel, onPlay)
+        return
+    }
     val colors = MaterialTheme.colorScheme
     val languageCode = LocalLevyraStrings.current.code
     val railShapes = listOf(
@@ -981,7 +1086,7 @@ private fun RadioStationRail(
         MaterialShapes.SoftBurst.toShape()
     )
     LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        itemsIndexed(stations.take(12), key = { _, station -> "rail-${station.uuid}" }) { index, station ->
+        itemsIndexed(stations, key = { _, station -> "rail-${station.uuid}" }) { index, station ->
             val favorite = station.uuid.lowercase(Locale.ROOT) in favoriteIds
             val playing = currentStationId == station.uuid && isPlaying
             val place = remember(station.countryCode, station.country, languageCode) {
@@ -1025,13 +1130,11 @@ private fun RadioStationRail(
                         }
                     }
                 }
-                Text(
-                    station.name,
+                RadioStationName(
+                    name = station.name,
+                    playing = playing,
                     color = colors.onSurface,
                     fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(horizontal = 4.dp)
                 )
                 Text(
@@ -1047,6 +1150,8 @@ private fun RadioStationRail(
     }
 }
 
+private const val RADIO_FAVICON_GRACE_MS = 1_500L
+
 @Composable
 internal fun RadioArtwork(station: RadioStation, size: androidx.compose.ui.unit.Dp, shape: Shape) {
     val colors = MaterialTheme.colorScheme
@@ -1058,9 +1163,15 @@ internal fun RadioArtwork(station: RadioStation, size: androidx.compose.ui.unit.
     val needsFallback = safeFavicon.isBlank() || faviconFailed
     var fallbackArtwork by remember(artworkHomepage) { mutableStateOf<String?>(null) }
     var fallbackFailed by remember(fallbackArtwork) { mutableStateOf(false) }
+    var faviconLoaded by remember(safeFavicon) { mutableStateOf(false) }
     LaunchedEffect(needsFallback, artworkHomepage) {
-        if (needsFallback) fallbackArtwork = LiveRadioArtworkResolver.resolve(artworkHomepage)
+        if (!needsFallback) {
+            kotlinx.coroutines.delay(RADIO_FAVICON_GRACE_MS)
+            if (faviconLoaded) return@LaunchedEffect
+        }
+        fallbackArtwork = LiveRadioArtworkResolver.resolve(artworkHomepage)
     }
+    val pixels = with(androidx.compose.ui.platform.LocalDensity.current) { size.roundToPx() }
     val artwork = when {
         !needsFallback -> safeFavicon
         !fallbackFailed -> fallbackArtwork
@@ -1087,10 +1198,11 @@ internal fun RadioArtwork(station: RadioStation, size: androidx.compose.ui.unit.
         )
         if (artwork != null) {
             AsyncImage(
-                model = artwork,
+                model = remember(artwork, pixels) { coil3.request.ImageRequest.Builder(context).data(artwork).size(pixels).build() },
                 imageLoader = imageLoader,
                 contentDescription = null,
                 contentScale = ContentScale.Fit,
+                onSuccess = { if (!needsFallback) faviconLoaded = true },
                 onError = { if (needsFallback) fallbackFailed = true else faviconFailed = true },
                 modifier = Modifier.fillMaxSize().padding(size * 0.12f)
             )
@@ -1127,7 +1239,7 @@ private fun RadioEmptyState(title: String, detail: String?, retry: String, onRet
 }
 
 @Composable
-private fun RadioDirectoryDialog(
+internal fun RadioDirectoryDialog(
     title: String,
     entries: List<RadioDirectoryEntry>,
     selected: String?,
@@ -1135,19 +1247,22 @@ private fun RadioDirectoryDialog(
     display: (RadioDirectoryEntry) -> String,
     value: (RadioDirectoryEntry) -> String,
     onDismiss: () -> Unit,
-    onSelect: (String?) -> Unit
+    onSelect: (String?) -> Unit,
+    alphabeticalLanguageCode: String? = null
 ) {
+    val rows = remember(entries, alphabeticalLanguageCode) { radioDirectoryRows(entries, alphabeticalLanguageCode, display) }
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState(initialFirstVisibleItemIndex = rows.indexOfFirst { value(it.first) == selected }.coerceAtLeast(0))
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title, color = LevyraText, fontWeight = FontWeight.Black) },
         text = {
-            LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp)) {
-                item(key = "radio-directory-all") {
-                    RadioDirectoryDialogRow(allLabel, selected == null) { onSelect(null) }
-                }
-                items(entries, key = { "${it.code}:${it.name}" }) { entry ->
-                    val itemValue = value(entry)
-                    RadioDirectoryDialogRow(display(entry), selected == itemValue) { onSelect(itemValue) }
+            Column(modifier = Modifier.fillMaxWidth()) {
+                RadioDirectoryDialogRow(allLabel, selected == null) { onSelect(null) }
+                LazyColumn(state = listState, modifier = Modifier.fillMaxWidth().heightIn(max = 370.dp)) {
+                    items(rows, key = { (entry, _) -> "${entry.code}:${entry.name}" }) { (entry, label) ->
+                        val itemValue = value(entry)
+                        RadioDirectoryDialogRow(label, selected == itemValue) { onSelect(itemValue) }
+                    }
                 }
             }
         },
@@ -1170,19 +1285,30 @@ private fun RadioDirectoryDialogRow(label: String, selected: Boolean, onClick: (
     }
 }
 
-private fun selectedCountryLabel(state: LiveRadioUiState, strings: LevyraLiveRadioStrings): String {
+internal fun radioDirectoryRows(
+    entries: List<RadioDirectoryEntry>,
+    alphabeticalLanguageCode: String?,
+    display: (RadioDirectoryEntry) -> String
+): List<Pair<RadioDirectoryEntry, String>> {
+    val rows = entries.distinctBy { "${it.code}:${it.name}" }.map { it to display(it) }
+    alphabeticalLanguageCode ?: return rows
+    val collator = Collator.getInstance(Locale.forLanguageTag(alphabeticalLanguageCode)).apply { strength = Collator.PRIMARY }
+    return rows.sortedWith(compareBy(collator) { it.second })
+}
+
+internal fun selectedCountryLabel(state: LiveRadioUiState, strings: LevyraLiveRadioStrings): String {
     val code = state.selectedCountryCode ?: return strings.worldwide
     return localizedCountryName(code, state.levyraLanguageCode).ifBlank { strings.countries }
 }
 
-private fun mainSectionTitle(state: LiveRadioUiState, strings: LevyraLiveRadioStrings): String {
+internal fun mainSectionTitle(state: LiveRadioUiState, strings: LevyraLiveRadioStrings): String {
     if (state.query.isNotBlank()) return state.query.trim()
     state.selectedLanguage?.let { return it }
     val code = state.selectedCountryCode ?: return strings.worldwide
     return strings.popularIn(localizedCountryName(code, state.levyraLanguageCode).ifBlank { code })
 }
 
-private fun localizedCountryName(countryCode: String, languageCode: String): String = runCatching {
+internal fun localizedCountryName(countryCode: String, languageCode: String): String = runCatching {
     Locale.Builder().setRegion(countryCode.uppercase(Locale.ROOT)).build()
         .getDisplayCountry(Locale.forLanguageTag(languageCode))
 }.getOrDefault("")

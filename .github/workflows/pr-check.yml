@@ -90,7 +90,6 @@ jobs:
           yes | "${SDKMANAGER}" --licenses >/dev/null || true
           for attempt in 1 2 3; do
             if "${SDKMANAGER}" --channel=3 \
-              "platform-tools" \
               "platforms;android-37.0" \
               "build-tools;36.0.0" \
               "ndk;28.2.13676358" \
@@ -167,7 +166,6 @@ jobs:
           yes | "${SDKMANAGER}" --licenses >/dev/null || true
           for attempt in 1 2 3; do
             if "${SDKMANAGER}" --channel=3 \
-              "platform-tools" \
               "platforms;android-37.0" \
               "build-tools;36.0.0" \
               "ndk;28.2.13676358" \
@@ -238,7 +236,6 @@ jobs:
           yes | "${SDKMANAGER}" --licenses >/dev/null || true
           for attempt in 1 2 3; do
             if "${SDKMANAGER}" --channel=3 \
-              "platform-tools" \
               "platforms;android-37.0" \
               "build-tools;36.0.0" \
               "ndk;28.2.13676358" \
@@ -315,7 +312,6 @@ jobs:
           yes | "${SDKMANAGER}" --licenses >/dev/null || true
           for attempt in 1 2 3; do
             if "${SDKMANAGER}" --channel=3 \
-              "platform-tools" \
               "platforms;android-37.0" \
               "build-tools;36.0.0" \
               "ndk;28.2.13676358" \
@@ -426,7 +422,6 @@ jobs:
           yes | "${SDKMANAGER}" --licenses >/dev/null || true
           for attempt in 1 2 3; do
             if "${SDKMANAGER}" --channel=3 \
-              "platform-tools" \
               "platforms;android-37.0" \
               "build-tools;36.0.0" \
               "ndk;28.2.13676358" \
@@ -516,7 +511,6 @@ jobs:
           yes | "${SDKMANAGER}" --licenses >/dev/null || true
           for attempt in 1 2 3; do
             if "${SDKMANAGER}" --channel=3 \
-              "platform-tools" \
               "platforms;android-37.0" \
               "build-tools;36.0.0" \
               "ndk;28.2.13676358" \

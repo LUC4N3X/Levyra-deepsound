@@ -53,6 +53,7 @@ internal fun levyraReadableAccent(accent: Color, content: Color): Color {
     return candidate
 }
 
+@Suppress("ComplexMethod", "CognitiveComplexMethod")
 internal fun levyraColorScheme(palette: LevyraPalette): ColorScheme {
     if (palette.id == SpotifyPaletteId) return darkColorScheme(
         primary = SpotifyDesign.green, onPrimary = Color.Black,
@@ -76,6 +77,7 @@ internal fun levyraColorScheme(palette: LevyraPalette): ColorScheme {
     if (palette.id == AppleMusicPaletteId) return appleMusicColorScheme(palette)
     if (palette.id == QobuzPaletteId) return qobuzColorScheme(palette)
     if (palette.id == AtelierPaletteId) return atelierColorScheme(palette)
+    if (palette.id == MonoPaletteId) return monoColorScheme(palette)
     if (palette.id == YouTubeMusicPaletteId) return youTubeMusicColorScheme(palette)
     if (palette.id == IvoryPaletteId) return levyraColorScheme(palette.copy(id = "")).copy(
         primary = palette.cyan, onPrimary = palette.black,

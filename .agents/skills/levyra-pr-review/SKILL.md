@@ -97,6 +97,7 @@ Check, as applicable:
 - Never name reference apps or other repositories in PR text, commit messages, code or comments; describe Levyra changes on their own terms.
 - Commits and PRs belong to the owner: no assistant co-author trailers, footers or attribution.
 - Write PR prose with one unslop pass that keeps every fact; no em dashes, inline-header lists or invented results.
+- Replies to Greptile use one pstack `unslop` pass and a natural, concise developer voice. State only the concrete fix and relevant commit, or the technical reason for declining the finding. Omit greetings, thanks, praise, conversational filler, AI attribution, and test/check inventories unless the owner requests them.
 - CodeFactor runs detekt on Kotlin and flags functions above cyclomatic complexity 15 ("Complex Method"). Keep new or changed functions under that bound by extracting cohesive helpers; check moved code too, because a moved function counts as new.
 - Run `scripts/ai_quality_gate.py` with Python 3.11+. On Windows, `test_service_skill_bodies_stay_compact` can fail only from CRLF size (6150 vs 6008 bytes); report it as environment-only when the branch does not touch that file.
 

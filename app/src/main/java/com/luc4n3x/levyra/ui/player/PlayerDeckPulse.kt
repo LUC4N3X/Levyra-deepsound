@@ -1,6 +1,9 @@
 @file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.ui.player
 
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.runtime.getValue
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
@@ -10,7 +13,6 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -28,7 +30,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -36,8 +37,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.FastForward
 import androidx.compose.material.icons.rounded.FastRewind
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Forward10
 import androidx.compose.material.icons.rounded.Forward30
 import androidx.compose.material.icons.rounded.Forward5
@@ -54,7 +53,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.State
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -82,10 +80,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
-import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -461,7 +455,6 @@ private fun NightStage(
                 stepDirection = stepDirection,
                 onArtistClick = onArtistClick,
                 onToggleFavorite = onToggleFavorite,
-                creditsEyebrow = slots.creditsEyebrow,
                 modifier = headlineModifier
                     .fillMaxWidth()
                     .padding(
@@ -496,7 +489,6 @@ private fun NightHeadline(
     stepDirection: Int,
     onArtistClick: (Int) -> Unit,
     onToggleFavorite: () -> Unit,
-    creditsEyebrow: PlayerCreditsEyebrow?,
     modifier: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
@@ -511,10 +503,6 @@ private fun NightHeadline(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (creditsEyebrow != null && creditsEyebrow.trackId == shown.id) {
-                NightCreditsEyebrow(creditsEyebrow)
-                Spacer(Modifier.height(LevyraPlayerDesign.SpaceXs))
-            }
             val titleSize = flowTitleSize(shown.title, compact)
             Text(
                 text = shown.title,
@@ -560,46 +548,6 @@ private fun NightHeadline(
 }
 
 @Composable
-private fun NightCreditsEyebrow(eyebrow: PlayerCreditsEyebrow) {
-    val measurer = rememberTextMeasurer()
-    val density = LocalDensity.current
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        val available = constraints.maxWidth - with(density) { (NightEyebrowPadding * 2).roundToPx() }
-        val heading = eyebrow.heading.uppercase()
-        val line = remember(heading, eyebrow.names, available) {
-            playerCreditsLine(eyebrow.names) { names ->
-                measurer.measure("$heading  ${names.uppercase()}", NightEyebrowStyle).size.width <= available
-            }
-        }
-        Text(
-            text = buildAnnotatedString {
-                withStyle(SpanStyle(color = Color.White.copy(alpha = 0.56f))) { append(heading) }
-                append("  ")
-                withStyle(SpanStyle(color = Color.White.copy(alpha = 0.9f))) { append(line.uppercase()) }
-            },
-            style = NightEyebrowStyle,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-            modifier = Modifier
-                .clip(CircleShape)
-                .levyraPressable(onClick = eyebrow.onClick, role = Role.Button)
-                .semantics {
-                    contentDescription = "${eyebrow.contentDescription}: ${eyebrow.names.joinToString(", ")}"
-                }
-                .padding(horizontal = NightEyebrowPadding, vertical = 6.dp)
-        )
-    }
-}
-
-private val NightEyebrowPadding = 10.dp
-private val NightEyebrowStyle = TextStyle(
-    fontSize = 11.sp,
-    fontWeight = FontWeight.Bold,
-    letterSpacing = 1.8.sp,
-    shadow = Shadow(Color.Black.copy(alpha = 0.4f), blurRadius = 8f)
-)
-
-@Composable
 private fun NightFavoriteButton(
     isFavorite: Boolean,
     label: String,
@@ -636,7 +584,7 @@ private fun NightFavoriteButton(
             contentAlignment = Alignment.Center
         ) {
             PlayerIcon(
-                if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                PlayerIcons.favorite(isFavorite),
                 tint,
                 Modifier.size(18.dp)
             )

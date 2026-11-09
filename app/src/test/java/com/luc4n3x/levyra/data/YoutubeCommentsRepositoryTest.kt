@@ -88,4 +88,12 @@ class YoutubeCommentsRepositoryTest {
             sanitizeContinuationPageUrl("https://evil.example/live_chat", "aBcDeFgHiJk")
         )
     }
+
+    @Test
+    fun commentCountKeepsOnlyTheNumber() {
+        assertEquals("6,222", commentCountNumber("6,222 Amazwana"))
+        assertEquals("1.2K", commentCountNumber("1.2K comments"))
+        assertEquals("1 203", commentCountNumber("Commenti 1 203"))
+        assertEquals("", commentCountNumber("Comments"))
+    }
 }

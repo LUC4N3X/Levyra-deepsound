@@ -589,6 +589,8 @@ class LevyraStrings private constructor(
     val engagement: String get() = value("engagement")
     val commentsLabel: String get() = value("commentsLabel")
     val mostCommentedTracks: String get() = value("mostCommentedTracks")
+    val monthlyListeners: String get() = value("monthlyListeners")
+    val commentsOverline: String get() = value("commentsOverline")
     val tapToOpenComments: String get() = value("tapToOpenComments")
     val noCommentsAvailable: String get() = value("noCommentsAvailable")
     val commentsDisabledLabel: String get() = value("commentsDisabled")
@@ -2296,7 +2298,7 @@ class LevyraStrings private constructor(
         private val builtBundles = java.util.concurrent.ConcurrentHashMap<String, LevyraStrings>()
 
         private val allRequiredKeys: Set<String> by lazy(LazyThreadSafetyMode.PUBLICATION) {
-            requiredKeys + "removeFromPlaylist" + profileKeys + motionArtworkKeys + exploreSectionKeys + freshCurrentsKeys + canvasKeys + audioKeys + audioOutputKeys + alternativeAudioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + jamModerationKeys + ambientModeKeys + themeStudioKeys + lyricsStudioKeys + networkKeys + resonanceKeys + organizationKeys + downloadLocationKeys + downloadDestinationKeys + offlineStorageKeys + keepScreenOnKeys + similarSongsKeys + playerVisualKeys + playerDeckKeys + playerGestureKeys + playlistStudioKeys + queueSelectionKeys + librarySortKeys + offlineHomeKeys + recapKeys + listeningInsightsKeys + queueSpaceKeys + localLibraryKeys + localTagKeys + lyricsOffsetKeys + lyricsTranslationStatusKeys + playbackTileKeys + visualPerformanceKeys + liquidGlassKeys + immersiveModeKeys + musicVideoPreferenceKeys + videoQualityKeys + lyricsProviderPriorityKeys + mixLabKeys + chartMarketKeys + homeSoundtrackKeys + lyricsShareKeys + listeningReceiptKeys + settingsSearchKeys + smartOfflineLocalizationKeys + appUpdateKeys
+            requiredKeys + "removeFromPlaylist" + profileKeys + motionArtworkKeys + exploreSectionKeys + freshCurrentsKeys + canvasKeys + audioKeys + audioOutputKeys + alternativeAudioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + jamModerationKeys + jamQrKeys + ambientModeKeys + themeStudioKeys + lyricsStudioKeys + networkKeys + resonanceKeys + organizationKeys + downloadLocationKeys + downloadDestinationKeys + offlineStorageKeys + keepScreenOnKeys + similarSongsKeys + playerVisualKeys + playerDeckKeys + playerGestureKeys + playlistStudioKeys + queueSelectionKeys + librarySortKeys + offlineHomeKeys + recapKeys + listeningInsightsKeys + queueSpaceKeys + localLibraryKeys + localTagKeys + lyricsOffsetKeys + lyricsTranslationStatusKeys + playbackTileKeys + visualPerformanceKeys + liquidGlassKeys + immersiveModeKeys + musicVideoPreferenceKeys + videoQualityKeys + lyricsProviderPriorityKeys + mixLabKeys + chartMarketKeys + homeSoundtrackKeys + lyricsShareKeys + listeningReceiptKeys + settingsSearchKeys + smartOfflineLocalizationKeys + appUpdateKeys
         }
 
         private fun bundleFor(code: String): LevyraStrings? {
@@ -2316,7 +2318,7 @@ class LevyraStrings private constructor(
                     audioLocalizationEntries(code), audioOutputLocalizationEntries(code), alternativeAudioLocalizationEntries(code),
                     autoEqLocalizationEntries(code), experienceLocalizationEntries(code), insightLocalizationEntries(code),
                     systemActionLocalizationEntries(code), integrationLocalizationEntries(code), recognitionLocalizationEntries(code),
-                    jamLocalizationEntries(code), jamModerationLocalizationEntries(code), ambientModeLocalizationEntries(code),
+                    jamLocalizationEntries(code), jamModerationLocalizationEntries(code), jamQrLocalizationEntries(code), ambientModeLocalizationEntries(code),
                     themeStudioLocalizationEntries(code), lyricsStudioLocalizationEntries(code), networkLocalizationEntries(code),
                     resonanceLocalizationEntries(code), organizationLocalizationEntries(code), downloadLocationLocalizationEntries(code),
                     downloadDestinationLocalizationEntries(code), offlineStorageLocalizationEntries(code), keepScreenOnLocalizationEntries(code),

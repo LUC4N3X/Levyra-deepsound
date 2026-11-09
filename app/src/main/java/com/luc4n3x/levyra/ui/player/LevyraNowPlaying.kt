@@ -1,8 +1,14 @@
 package com.luc4n3x.levyra.ui.player
 
 import com.luc4n3x.levyra.ui.theme.*
-import com.luc4n3x.levyra.ui.PlayerAccentPair
 import com.luc4n3x.levyra.ui.theme.Nocturne78Palette
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
+import com.luc4n3x.levyra.ui.PlayerAccentPair
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 
 import android.app.Activity
@@ -28,7 +34,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -39,7 +44,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -48,46 +52,20 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
-import androidx.compose.material.icons.automirrored.rounded.QueueMusic
-import androidx.compose.material.icons.automirrored.rounded.Subject
-import androidx.compose.material.icons.automirrored.rounded.VolumeUp
-import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.Interests
-import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CloseFullscreen
 import androidx.compose.material.icons.rounded.DeleteOutline
-import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.DownloadDone
-import androidx.compose.material.icons.rounded.Album
-import androidx.compose.material.icons.rounded.BlurOn
+import com.luc4n3x.levyra.data.hqaudio.AlternativeTrackMatcher
+import com.luc4n3x.levyra.ui.trackAlbumHit
+import java.util.Locale
 import androidx.compose.material.icons.rounded.Fullscreen
-import androidx.compose.material.icons.rounded.GraphicEq
-import androidx.compose.material.icons.rounded.Groups
-import androidx.compose.material.icons.rounded.Image
-import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.MoreHoriz
-import androidx.compose.material.icons.rounded.Newspaper
-import androidx.compose.material.icons.rounded.Waves
-import androidx.compose.material.icons.rounded.LocalFireDepartment
-import androidx.compose.material.icons.rounded.Nightlight
 import androidx.compose.material.icons.rounded.Pause
-import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PictureInPictureAlt
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Radio
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Share
-import androidx.compose.material.icons.rounded.Loop
-import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Stop
-import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material.icons.rounded.HighQuality
 import androidx.compose.material.icons.rounded.Subtitles
-import androidx.compose.material.icons.rounded.Tune
-import androidx.compose.material.icons.rounded.ThumbDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -100,21 +78,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
@@ -131,8 +106,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel as composeViewModel
-import androidx.compose.material.icons.automirrored.rounded.ListAlt
-import androidx.compose.material.icons.rounded.Bedtime
 import com.luc4n3x.levyra.ui.i18n.SmartAudioText
 import com.luc4n3x.levyra.ui.i18n.smartAudioCopy
 import com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin
@@ -195,7 +168,6 @@ import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
 private const val CreditsPrefetchDelayMs = 1_200L
-private const val CreditsCaptionRevealMs = 360
 private val MinimumFittedPlayerHeight = 600.dp
 private val ScrollingArtworkMax = 260.dp
 private val HeaderSideReserve = 108.dp
@@ -215,17 +187,21 @@ fun LevyraNowPlaying(
     modeSwitchContent: (@Composable () -> Unit)? = null,
     videoSurfaceContent: (@Composable (Track, Modifier) -> Unit)? = null,
     gestureLayerContent: (@Composable (Track, PlayerGestureConfig, PlayerGestureMediaActions, PlayerGestureUiActions, androidx.compose.runtime.MutableState<PlayerVideoTransform>?, Modifier) -> Unit)? = null,
-    engagementContent: (@Composable (Track) -> Unit)? = null,
+    commentsEnabled: Boolean = false,
     similarSongsContent: (@Composable (Track) -> Unit)? = null,
     errorContent: (@Composable () -> Unit)? = null,
     playlistDialogContent: (@Composable () -> Unit)? = null,
     onOpenPlaylistDialog: ((Track) -> Unit)? = null
 ) {
+    if (state.interfaceSettings.playerFocusEnabled) {
+        PlayerFocus(viewModel, state, modifier, videoSurfaceContent, errorContent)
+        return
+    }
     val velvet = !LevyraSkinManagesLayout && state.interfaceSettings.playerVisualMode == PlayerVisualMode.CanvasImmersive
     AppleMusicPlayerStyleScope(velvet) {
         LevyraNowPlayingContent(
             viewModel, state, morphAnchors, morphActive, collapseActions, modifier, motionSuspended,
-            modeSwitchContent, videoSurfaceContent, gestureLayerContent, engagementContent,
+            modeSwitchContent, videoSurfaceContent, gestureLayerContent, commentsEnabled,
             similarSongsContent, errorContent, playlistDialogContent, onOpenPlaylistDialog
         )
     }
@@ -243,7 +219,7 @@ private fun LevyraNowPlayingContent(
     modeSwitchContent: (@Composable () -> Unit)?,
     videoSurfaceContent: (@Composable (Track, Modifier) -> Unit)?,
     gestureLayerContent: (@Composable (Track, PlayerGestureConfig, PlayerGestureMediaActions, PlayerGestureUiActions, androidx.compose.runtime.MutableState<PlayerVideoTransform>?, Modifier) -> Unit)?,
-    engagementContent: (@Composable (Track) -> Unit)?,
+    commentsEnabled: Boolean,
     similarSongsContent: (@Composable (Track) -> Unit)?,
     errorContent: (@Composable () -> Unit)?,
     playlistDialogContent: (@Composable () -> Unit)?,
@@ -317,7 +293,10 @@ private fun LevyraNowPlayingContent(
     val artworkTargets = remember(rawPrimaryTarget, rawSecondaryTarget) {
         harmonizePlayerAccents(rawPrimaryTarget, rawSecondaryTarget)
     }
-    val harmonizedTargets = fixedAccents ?: artworkTargets
+    val canvasTargets = canvasBackdropPalette
+        ?.takeIf { palette -> motionEnabled && palette.identityKey == state.motionArtwork?.identityKey }
+        ?.let { palette -> remember(palette) { harmonizePlayerAccents(palette.primary, palette.secondary) } }
+    val harmonizedTargets = fixedAccents ?: canvasTargets ?: artworkTargets
     val primaryTarget = harmonizedTargets.primary
     val secondaryTarget = harmonizedTargets.secondary
     val primary by animateColorAsState(
@@ -388,9 +367,9 @@ private fun LevyraNowPlayingContent(
         if (playerArtistHits.size < 2) showArtistPicker = false
     }
     var spotifyArtistProfile by remember(track?.id) { mutableStateOf<com.luc4n3x.levyra.domain.ArtistProfile?>(null) }
-    LaunchedEffect(track?.id, LevyraIsSpotify) {
+    LaunchedEffect(track?.id, LevyraIsSpotify, com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
         val activeTrack = track
-        if (LevyraIsSpotify && activeTrack != null && !activeTrack.isLiveRadio()) {
+        if ((LevyraIsSpotify || com.luc4n3x.levyra.ui.theme.LevyraIsMono) && activeTrack != null && !activeTrack.isLiveRadio()) {
             spotifyArtistProfile = viewModel.playerArtistProfile(activeTrack)
         }
     }
@@ -428,7 +407,7 @@ private fun LevyraNowPlayingContent(
         }
     }
 
-    val artworkRestsFullBleed = nocturne || velvetAppleMusic || LevyraIsSpotify || state.isPlaying ||
+    val artworkRestsFullBleed = if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) state.isPlaying else nocturne || velvetAppleMusic || LevyraIsSpotify || state.isPlaying ||
         state.interfaceSettings.playerVisualMode == PlayerVisualMode.Artwork ||
         state.interfaceSettings.playerVisualMode == PlayerVisualMode.Folio ||
         state.interfaceSettings.playerVisualMode == PlayerVisualMode.Flow ||
@@ -465,6 +444,7 @@ private fun LevyraNowPlayingContent(
         val showTopArtistCluster = playerArtistHits.size > 1 &&
             !LevyraIsQobuz &&
             !com.luc4n3x.levyra.ui.theme.LevyraIsAtelier &&
+            !com.luc4n3x.levyra.ui.theme.LevyraIsMono &&
             !appleMusicImmersive &&
             !liveRadio &&
             !state.isVideoMode &&
@@ -503,7 +483,6 @@ private fun LevyraNowPlayingContent(
         LaunchedEffect(
             motionEnabled,
             motionBackdropVisible,
-            backgroundMode,
             state.motionArtwork?.identityKey
         ) {
             val activeIdentity = state.motionArtwork?.identityKey
@@ -512,29 +491,14 @@ private fun LevyraNowPlayingContent(
                     palette = canvasBackdropPalette,
                     motionEnabled = motionEnabled,
                     motionBackdropVisible = motionBackdropVisible,
-                    backgroundMode = backgroundMode,
                     activeIdentity = activeIdentity
                 )
             ) {
                 canvasBackdropPalette = null
             }
         }
-        val canvasBackdropTargets = canvasBackdropPalette
-            ?.takeIf { fixedAccents == null }
-            ?.takeIf { palette ->
-                canvasBackdropPaletteMatches(
-                    palette = palette,
-                    motionEnabled = motionEnabled,
-                    motionBackdropVisible = motionBackdropVisible,
-                    backgroundMode = backgroundMode,
-                    activeIdentity = state.motionArtwork?.identityKey
-                )
-            }
-            ?.let { palette -> harmonizePlayerAccents(palette.primary, palette.secondary) }
-        val backdropPrimaryTarget = canvasBackdropTargets?.primary ?: primaryTarget
-        val backdropSecondaryTarget = canvasBackdropTargets?.secondary ?: secondaryTarget
-        val backdropAmbience = remember(backdropPrimaryTarget, backdropSecondaryTarget) {
-            playerAmbienceOf(backdropPrimaryTarget, backdropSecondaryTarget)
+        val backdropAmbience = remember(primaryTarget, secondaryTarget) {
+            playerAmbienceOf(primaryTarget, secondaryTarget)
         }
         val acceptDynamicBackdropPalette: (MotionBackdropPalette?) -> Unit = { palette ->
             val activeIdentity = state.motionArtwork?.identityKey
@@ -586,6 +550,7 @@ private fun LevyraNowPlayingContent(
         )
 
         val headerButtonFill = surfaces.controlQuiet
+        val headerTint = if (com.luc4n3x.levyra.ui.LevyraIsPrismOnly && com.luc4n3x.levyra.ui.theme.LevyraActivePalette.isLight) Color(0xFF17121A) else LevyraPlayerDesign.TextPrimary
         val headerButtonBorder = if (surfaces.amoled) surfaces.outline else Color.Transparent
         val headerButtonSize = if (compactPlayer) LevyraPlayerDesign.HeaderButtonCompact else LevyraPlayerDesign.HeaderButton
         val headerSlotWidth = maxOf(headerButtonSize, HeaderButtonMinimumWidth)
@@ -608,6 +573,7 @@ private fun LevyraNowPlayingContent(
                 size = headerButtonSize,
                 iconSize = 24.dp,
                 fill = headerButtonFill,
+                tint = headerTint,
                 borderTop = headerButtonBorder,
                 borderBottom = headerButtonBorder,
                 onClick = collapseActions.collapse
@@ -724,6 +690,7 @@ private fun LevyraNowPlayingContent(
                     size = headerButtonSize,
                     iconSize = 19.dp,
                     fill = headerButtonFill,
+                tint = headerTint,
                     borderTop = headerButtonBorder,
                     borderBottom = headerButtonBorder,
                     onClick = { LevyraPipBridge.enter() }
@@ -733,11 +700,12 @@ private fun LevyraNowPlayingContent(
                 QobuzPlayerMoreButton(strings.more) { showActions = true }
             } else if (track != null) {
                 PlayerGlassIconButton(
-                    icon = Icons.Rounded.MoreHoriz,
+                    icon = PlayerIcons.more,
                     contentDescription = strings.more,
                     size = headerButtonSize,
                     iconSize = 22.dp,
                     fill = headerButtonFill,
+                tint = headerTint,
                     borderTop = headerButtonBorder,
                     borderBottom = headerButtonBorder,
                     onClick = { showActions = true }
@@ -897,7 +865,7 @@ private fun LevyraNowPlayingContent(
                         track = activeTrack,
                         artworkUrl = artworkUrl,
                         motionArtwork = state.motionArtwork,
-                        livingArtwork = livingArtwork,
+                        livingArtwork = livingArtwork.takeUnless { com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic },
                         animationsEnabled = animated && !state.isVideoMode,
                         motionEnabled = motionEnabled && !lyricsFlip.lyricsSettled,
                         isPlaying = state.isPlaying,
@@ -917,8 +885,7 @@ private fun LevyraNowPlayingContent(
                                 depth = lyricsFlipDepth,
                                 rightToLeft = rightToLeft
                             ),
-                        dynamicBackdropEnabled = backgroundMode == PlayerBackgroundMode.Dynamic &&
-                            motionBackdropVisible,
+                        dynamicBackdropEnabled = motionBackdropVisible && fixedAccents == null,
                         onDynamicBackdropPalette = acceptDynamicBackdropPalette,
                         staticPresentation = LevyraIsSpotify,
                         staticArtworkMotion = deckLayout != PlayerDeckLayout.Ember
@@ -1145,7 +1112,9 @@ private fun LevyraNowPlayingContent(
 
         val dockActionsFor: @Composable (Track) -> List<PlayerDockAction> = { activeTrack ->
             val isDownloaded = activeTrack.id in state.downloadedTrackIds
+            val playerIcons = PlayerIcons
             remember(
+                playerIcons,
                 activeTrack.id,
                 state.showLyrics,
                 state.isVideoMode,
@@ -1161,6 +1130,7 @@ private fun LevyraNowPlayingContent(
                 hapticFeedback
             ) {
                 playerDockActions(
+                    icons = playerIcons,
                     strings = strings,
                     visualMode = selectedVisualMode,
                     presentedMode = visualMode,
@@ -1187,6 +1157,22 @@ private fun LevyraNowPlayingContent(
                 compact = compactPlayer,
                 animated = animated
             )
+        }
+
+        val commentsTeaser = track?.takeIf { commentsEnabled && !it.isLiveRadio() }?.let { current ->
+            val engagement = state.youtubeEngagement
+            val comments = engagement.comments
+            PlayerCommentsTeaser(
+                trackId = current.id,
+                countBadge = com.luc4n3x.levyra.ui.youtubeCommentCountBadge(comments.countText),
+                topComments = if (comments.videoId == engagement.videoId) comments.items.take(3) else emptyList(),
+                loading = comments.loading,
+                fallbackText = strings.tapToOpenComments,
+                onOpen = viewModel::openYoutubeComments
+            ).takeIf { engagement.videoId.isNotBlank() && !comments.disabled }
+        }
+        val engagementContent: (@Composable (Track) -> Unit)? = commentsTeaser?.let { teaser ->
+            { activeTrack -> if (activeTrack.id == teaser.trackId) PlayerCommentsTeaserCard(teaser, surfaces) }
         }
 
         val controlsTailBlock: @Composable ColumnScope.(Track) -> Unit = { activeTrack ->
@@ -1237,23 +1223,15 @@ private fun LevyraNowPlayingContent(
             },
             dock = dockBlock,
             dockActions = dockActionsFor,
+            addToPlaylist = onOpenPlaylistDialog,
             headerTrailing = headerTrailing,
             modeSwitch = {
                 if (track != null && (track.videoUrl.isNotBlank() || track.counterpartVideoId.isNotBlank())) modeSwitchContent?.invoke()
             },
-            creditsEyebrow = creditWriters?.takeIf { it.second.isNotEmpty() && !LevyraIsSpotify }?.let { (id, writers) ->
-                PlayerCreditsEyebrow(
-                    trackId = id,
-                    heading = strings.trackCreditsCopy().writtenBy,
-                    names = writers,
-                    contentDescription = strings.trackCreditsCopy().title,
-                    onClick = { showTrackCredits = true }
-                )
-            },
-            lyricsPreview = track?.takeIf { LevyraIsSpotify && state.lyrics.isNotEmpty() }?.let { current ->
+            lyricsPreview = track?.takeIf { (LevyraIsSpotify || com.luc4n3x.levyra.ui.theme.LevyraIsMono) && state.lyrics.isNotEmpty() }?.let { current ->
                 PlayerLyricsPreview(current.id, state.lyrics, state.lyricsSynced, state.positionMs, viewModel::openLyrics)
             },
-            artistPanel = track?.takeIf { (LevyraIsSpotify || LevyraIsQobuz) && !it.isLiveRadio() }?.let { current ->
+            artistPanel = track?.takeIf { (LevyraIsSpotify || LevyraIsQobuz || com.luc4n3x.levyra.ui.theme.LevyraIsMono) && !it.isLiveRadio() }?.let { current ->
                 PlayerArtistPanel(
                     trackId = current.id,
                     trackTitle = current.title,
@@ -1273,7 +1251,22 @@ private fun LevyraNowPlayingContent(
             .align(Alignment.TopCenter)
 
         if ((LevyraIsPrism || velvetAppleMusic) && track != null && (!state.isVideoMode || appleMusicPlayer) && !liveRadio && (playerPane != LevyraPlayerPane.SideBySide || appleMusicPlayer)) {
-            if (LevyraIsYouTubeMusic) {
+            if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+                MonoPlayerScene(
+                    track, deckSlots, artworkCap, state.isPlaying,
+                    metadata = { metadataBlock(track) }, transport = transportBlock,
+                    actions = MonoPlayerActions(
+                        sleepActive = state.sleepTimerMinutes > 0 || state.sleepTimerEndOfTrack,
+                        onOutput = { showAudioRouteCenter = true },
+                        onSleepTimer = viewModel::openSleepTimer,
+                        onShare = { shareTrack(playerContext, track, strings) },
+                        onQueue = viewModel::openQueue,
+                        onLyrics = viewModel::openLyrics,
+                        similar = similarSongsContent
+                    ),
+                    modifier = deckModifier
+                )
+            } else if (LevyraIsYouTubeMusic) {
                 YouTubeMusicPlayerScene(
                     track, deckSlots, artworkCap, state.isPlaying,
                     metadata = { metadataBlock(track) }, transport = transportBlock, modifier = deckModifier,
@@ -1762,31 +1755,6 @@ private fun LevyraNowPlayingContent(
             }
         }
 
-        val captionWriters = creditWriters?.takeIf { it.first == track?.id }?.second.orEmpty()
-        AnimatedVisibility(
-            visible = captionWriters.isNotEmpty() && !liveRadio && !appleMusicImmersive && !LevyraIsSpotify && !com.luc4n3x.levyra.ui.theme.LevyraIsAtelier &&
-                !state.isVideoMode && playerPane != LevyraPlayerPane.SideBySide &&
-                deckLayout != PlayerDeckLayout.Aura && deckLayout != PlayerDeckLayout.Pulse,
-            enter = fadeIn(tween(if (animated) CreditsCaptionRevealMs else 0)),
-            exit = fadeOut(tween(if (animated) CreditsCaptionRevealMs / 2 else 0)),
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .statusBarsPadding()
-                .padding(
-                    end = gutter,
-                    top = LevyraPlayerDesign.MinimumTouchTarget + LevyraPlayerDesign.SpaceLg
-                )
-                .zIndex(24f)
-        ) {
-            PlayerCreditsCaption(
-                heading = strings.trackCreditsCopy().writtenBy,
-                names = captionWriters,
-                contentDescription = strings.trackCreditsCopy().title,
-                surfaces = surfaces,
-                onClick = { showTrackCredits = true }
-            )
-        }
-
         if (showTopArtistCluster) {
             PlayerTopArtistCluster(
                 artists = playerArtistHits,
@@ -1829,6 +1797,7 @@ private fun LevyraNowPlayingContent(
         if (showActions && track != null) {
             val sectionLoop by viewModel.sectionLoop.collectAsStateWithLifecycle()
             val sheetActions = playerSheetActions(
+                icons = PlayerIcons,
                 track = track,
                 state = state,
                 sectionLoop = sectionLoop,
@@ -1879,6 +1848,7 @@ private fun LevyraNowPlayingContent(
                     hapticFeedback.perform(LevyraHapticAction.Confirm)
                 },
                 onAmbient = viewModel::openAmbient,
+                onOpenAlbum = { viewModel.openAlbum(trackAlbumHit(track)) },
                 onOpenArtist = {
                     if (playerArtistHits.size > 1) {
                         openArtistPickerAfterActions = true
@@ -1892,7 +1862,13 @@ private fun LevyraNowPlayingContent(
                 artworkUrl = artworkUrl,
                 surfaces = surfaces,
                 animated = animated,
-                actions = sheetActions,
+                actions = listOf(
+                    PlayerSheetAction(
+                        key = "player_focus", icon = Icons.Rounded.Fullscreen,
+                        label = com.luc4n3x.levyra.ui.i18n.supportCopy(strings.code).focus,
+                        onClick = { showActions = false; viewModel.setPlayerFocus(true) }
+                    )
+                ) + sheetActions,
                 onDismiss = {
                     showActions = false
                     if (openArtistPickerAfterActions) {
@@ -2072,13 +2048,13 @@ private fun PlayerLiveRadioMetadata(
         verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceXs)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = track.title,
+            LevyraMediaTitle(
+                text = track.title, explicit = track.explicit,
                 color = surfaces.content,
                 fontSize = titleSize,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = (-0.6).sp,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
@@ -2164,6 +2140,7 @@ private fun PlayerLiveRadioTransport(
 }
 
 private fun playerDockActions(
+    icons: PlayerActionIcons,
     strings: LevyraStrings,
     visualMode: PlayerVisualMode,
     presentedMode: PlayerVisualMode,
@@ -2180,7 +2157,7 @@ private fun playerDockActions(
         add(
             PlayerDockAction(
                 key = "lyrics",
-                icon = Icons.AutoMirrored.Rounded.Subject,
+                icon = icons.lyrics,
                 label = strings.lyrics,
                 active = showLyrics,
                 onClick = onLyrics
@@ -2189,7 +2166,7 @@ private fun playerDockActions(
         add(
             PlayerDockAction(
                 key = "queue",
-                icon = Icons.AutoMirrored.Rounded.QueueMusic,
+                icon = icons.queue,
                 label = strings.queue,
                 onClick = onQueue
             )
@@ -2198,7 +2175,7 @@ private fun playerDockActions(
             add(
                 PlayerDockAction(
                     key = "visual-mode",
-                    icon = visualModeIcon(presentedMode),
+                    icon = icons.playerStyle,
                     label = if (LevyraSkinManagesLayout) LevyraSkinLabel else visualModeLabel(strings),
                     stateDescription = if (LevyraSkinManagesLayout) LevyraSkinLabel else visualModeStateDescription(visualMode, strings),
                     active = presentedMode != PlayerVisualMode.Artwork,
@@ -2210,7 +2187,7 @@ private fun playerDockActions(
         add(
             PlayerDockAction(
                 key = "download",
-                icon = if (isDownloaded) Icons.Rounded.DownloadDone else Icons.Rounded.Download,
+                icon = icons.download(isDownloaded),
                 label = when {
                     isExporting -> strings.downloadInProgress
                     isDownloaded -> strings.downloaded
@@ -2249,13 +2226,11 @@ private fun canvasBackdropPaletteMatches(
     palette: MotionBackdropPalette?,
     motionEnabled: Boolean,
     motionBackdropVisible: Boolean,
-    backgroundMode: PlayerBackgroundMode,
     activeIdentity: String?
 ): Boolean {
     val presentationActive = motionEnabled && motionBackdropVisible
-    val dynamicBackground = backgroundMode == PlayerBackgroundMode.Dynamic
     val identityMatches = activeIdentity != null && palette?.identityKey == activeIdentity
-    return presentationActive && dynamicBackground && identityMatches
+    return presentationActive && identityMatches
 }
 
 private fun Track.isLocalMotionArtworkTrack(): Boolean {
@@ -2266,6 +2241,7 @@ private fun Track.isLocalMotionArtworkTrack(): Boolean {
 }
 
 private fun playerDislikeAction(
+    icons: PlayerActionIcons,
     track: Track,
     state: LevyraUiState,
     strings: LevyraStrings,
@@ -2275,7 +2251,7 @@ private fun playerDislikeAction(
     val copy = trackDislikeCopy(strings.code)
     return PlayerSheetAction(
         key = "dislike",
-        icon = Icons.Rounded.ThumbDown,
+        icon = icons.dislike,
         label = if (disliked) copy.removeDislike else copy.dislike,
         value = copy.skipped.takeIf { disliked },
         active = disliked,
@@ -2285,6 +2261,7 @@ private fun playerDislikeAction(
 }
 
 private fun playerSheetActions(
+    icons: PlayerActionIcons,
     track: Track,
     state: LevyraUiState,
     sectionLoop: SectionLoopState,
@@ -2304,6 +2281,7 @@ private fun playerSheetActions(
     onTrackCredits: () -> Unit,
     onRefreshMotionArtwork: () -> Unit,
     onAmbient: () -> Unit,
+    onOpenAlbum: () -> Unit,
     onOpenArtist: () -> Unit,
     hasMixChapters: Boolean,
     onMixChapters: () -> Unit,
@@ -2312,7 +2290,7 @@ private fun playerSheetActions(
     val sleepActive = state.sleepTimerMinutes > 0 || state.sleepTimerEndOfTrack
     val sleepAction = PlayerSheetAction(
         key = "sleep",
-        icon = Icons.Rounded.Bedtime,
+        icon = icons.sleepTimer,
         label = strings.sleepTimer,
         value = when {
             state.sleepTimerEndOfTrack -> strings.sleepTimerEndOfTrack
@@ -2330,7 +2308,7 @@ private fun playerSheetActions(
     ) {
         PlayerSheetAction(
             key = "audio-output",
-            icon = Icons.AutoMirrored.Rounded.VolumeUp,
+            icon = icons.output,
             label = strings.systemPlayerCopy().outputTitle,
             onClick = onAudioOutput
         )
@@ -2339,19 +2317,19 @@ private fun playerSheetActions(
     }
     val audioAction = PlayerSheetAction(
         key = "audio",
-        icon = Icons.Rounded.Tune,
+        icon = icons.audioQuality,
         label = strings.audioQuality,
         onClick = onAudioSettings
     )
     val technicalAudioAction = PlayerSheetAction(
         key = "technical-audio-info",
-        icon = Icons.Rounded.Info,
+        icon = icons.technicalAudio,
         label = strings.technicalAudioInfoCopy().title,
         onClick = onTechnicalAudioInfo
     )
     val ambientAction = PlayerSheetAction(
         key = "ambient",
-        icon = Icons.Rounded.Nightlight,
+        icon = icons.ambient,
         label = strings.ambientMode,
         onClick = onAmbient
     )
@@ -2363,7 +2341,7 @@ private fun playerSheetActions(
     ) {
         PlayerSheetAction(
             key = "refresh-motion-artwork",
-            icon = Icons.Rounded.Refresh,
+            icon = icons.refreshArtwork,
             label = strings.motionArtwork,
             value = strings.exploreSamplesRetry,
             onClick = onRefreshMotionArtwork
@@ -2385,24 +2363,24 @@ private fun playerSheetActions(
     return listOfNotNull(
         PlayerSheetAction(
             key = "playlist",
-            icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
+            icon = icons.addToPlaylist,
             label = strings.addToPlaylist,
             onClick = onAddToPlaylist
         ),
         PlayerSheetAction(
             key = "radio",
-            icon = Icons.Rounded.Radio,
+            icon = icons.startRadio,
             label = strings.startRadio,
             enabled = canStartRadio,
             onClick = onStartRadio
         ),
         PlayerSheetAction(
             key = "share",
-            icon = Icons.Rounded.Share,
+            icon = icons.share,
             label = strings.share,
             onClick = onShare
         ),
-        playerDislikeAction(track, state, strings, onToggleDislike),
+        playerDislikeAction(icons, track, state, strings, onToggleDislike),
         shareMomentSeconds(state.positionMs, state.durationMs)
             ?.takeIf {
                 !state.isResolving &&
@@ -2412,7 +2390,7 @@ private fun playerSheetActions(
             ?.let { seconds ->
                 PlayerSheetAction(
                     key = "share-moment",
-                    icon = Icons.Rounded.AccessTime,
+                    icon = icons.shareMoment,
                     label = strings.shareMomentCopy().action,
                     value = formatShareMomentTimestamp(seconds),
                     onClick = { onShareMoment(seconds) }
@@ -2421,7 +2399,7 @@ private fun playerSheetActions(
         sleepAction,
         PlayerSheetAction(
             key = "speed",
-            icon = Icons.Rounded.Speed,
+            icon = icons.speed,
             label = strings.tempo,
             value = "${formatPlaybackSpeed(state.playbackSpeed)}x",
             active = state.playbackSpeed != 1f,
@@ -2430,7 +2408,7 @@ private fun playerSheetActions(
         ),
         PlayerSheetAction(
             key = "section-loop",
-            icon = Icons.Rounded.Loop,
+            icon = icons.sectionLoop,
             label = strings.sectionLoopCopy().action,
             value = sectionLoopValue(sectionLoop, strings.sectionLoopCopy().setEnd),
             active = sectionLoop !is SectionLoopState.Off,
@@ -2439,7 +2417,7 @@ private fun playerSheetActions(
         ),
         PlayerSheetAction(
             key = "normalization",
-            icon = Icons.AutoMirrored.Rounded.VolumeUp,
+            icon = icons.normalization,
             label = strings.normalizationShort,
             active = state.audioNormalization,
             toggle = true,
@@ -2450,7 +2428,7 @@ private fun playerSheetActions(
         audioAction,
         PlayerSheetAction(
             key = "night-listening",
-            icon = Icons.Rounded.Bedtime,
+            icon = icons.nightListening,
             label = smartAudioCopy(strings.code)[SmartAudioText.NightTitle],
             onClick = onNightListening,
             active = state.audioSettings.nightListeningEnabled,
@@ -2460,7 +2438,7 @@ private fun playerSheetActions(
         if (hasMixChapters) {
             PlayerSheetAction(
                 key = "mix-chapters",
-                icon = Icons.AutoMirrored.Rounded.ListAlt,
+                icon = icons.mixChapters,
                 label = smartAudioCopy(strings.code)[SmartAudioText.ChaptersTitle],
                 onClick = onMixChapters
             )
@@ -2469,21 +2447,35 @@ private fun playerSheetActions(
         },
         PlayerSheetAction(
             key = "track-credits",
-            icon = Icons.Rounded.Groups,
+            icon = icons.credits,
             label = strings.trackCreditsCopy().title,
             onClick = onTrackCredits
         ),
         technicalAudioAction,
         refreshMotionArtworkAction,
         ambientAction,
+        if (track.hasOpenableAlbum()) {
+            PlayerSheetAction(
+                key = "album",
+                icon = icons.album,
+                label = strings.openAlbum,
+                onClick = onOpenAlbum
+            )
+        } else {
+            null
+        },
         PlayerSheetAction(
             key = "artist",
-            icon = Icons.Rounded.Person,
+            icon = icons.artist,
             label = strings.openArtist,
             onClick = onOpenArtist
         )
     )
 }
+
+internal fun Track.hasOpenableAlbum(): Boolean =
+    albumBrowseId.isNotBlank() ||
+        (album.isNotBlank() && album.trim().lowercase(Locale.ROOT) !in AlternativeTrackMatcher.untrustedAlbumNames)
 
 internal fun formatPlaybackSpeed(speed: Float): String =
     if (speed % 1f == 0f) speed.toInt().toString() else speed.toString().trimEnd('0').trimEnd('.')
@@ -2533,18 +2525,6 @@ internal fun visualModeStateDescription(
     PlayerVisualMode.Folio -> strings.playerDeckFolio
     PlayerVisualMode.Flow -> strings.playerDeckFlow
     PlayerVisualMode.Ember -> strings.playerDeckEmber
-}
-
-internal fun visualModeIcon(mode: PlayerVisualMode): ImageVector = when (mode) {
-    PlayerVisualMode.Artwork -> Icons.Rounded.Image
-    PlayerVisualMode.CanvasCard -> Icons.Rounded.AutoAwesome
-    PlayerVisualMode.CanvasImmersive -> Icons.Rounded.BlurOn
-    PlayerVisualMode.Expressive -> Icons.Rounded.Interests
-    PlayerVisualMode.Pulse -> Icons.Rounded.GraphicEq
-    PlayerVisualMode.Halo -> Icons.Rounded.Album
-    PlayerVisualMode.Folio -> Icons.Rounded.Newspaper
-    PlayerVisualMode.Flow -> Icons.Rounded.Waves
-    PlayerVisualMode.Ember -> Icons.Rounded.LocalFireDepartment
 }
 
 @Composable

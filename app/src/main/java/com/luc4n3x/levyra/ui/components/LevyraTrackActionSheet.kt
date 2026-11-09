@@ -583,13 +583,13 @@ private fun TrackActionHeader(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
-            Text(
-                text = track.title,
+            LevyraMediaTitle(
+                text = track.title, explicit = track.explicit,
                 color = LevyraText,
                 fontSize = 15.sp,
                 lineHeight = LevyraTypeRhythm.lineHeight(15.sp),
                 fontWeight = FontWeight.Black,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             if (track.artist.isNotBlank()) {

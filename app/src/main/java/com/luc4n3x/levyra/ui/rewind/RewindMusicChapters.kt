@@ -1,7 +1,7 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
-
 package com.luc4n3x.levyra.ui.rewind
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.background
@@ -106,7 +106,7 @@ private fun RewindTrackList(tracks: List<ListeningInsightsTrack>, selected: Int,
                 contentColor = if (selected == index) style.onAccent else style.text, shape = MaterialTheme.shapes.large) {
                 Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(number.format(index + 1), fontWeight = FontWeight.Black, style = MaterialTheme.typography.headlineSmall)
-                    Text(track.title, modifier = Modifier.weight(1f), maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium)
+                    LevyraMediaTitle(track.title,  modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium)
                     Text(number.format(track.plays), style = MaterialTheme.typography.labelLarge)
                 }
             }

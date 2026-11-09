@@ -42,10 +42,6 @@ class MaterialExpressiveContractTest {
             "app/src/main/java/com/luc4n3x/levyra/ui/HomeExploreEditorial.kt",
             "src/main/java/com/luc4n3x/levyra/ui/HomeExploreEditorial.kt"
         )
-        val library = source(
-            "app/src/main/java/com/luc4n3x/levyra/ui/library/LibraryPlaylistShelf.kt",
-            "src/main/java/com/luc4n3x/levyra/ui/library/LibraryPlaylistShelf.kt"
-        )
         val selection = source(
             "app/src/main/java/com/luc4n3x/levyra/ui/selection/TrackSelectionBar.kt",
             "src/main/java/com/luc4n3x/levyra/ui/selection/TrackSelectionBar.kt"
@@ -56,7 +52,6 @@ class MaterialExpressiveContractTest {
         )
 
         assertTrue(discovery.contains("LevyraExpressiveIconButton("))
-        assertTrue(library.contains("LevyraExpressiveIconButton("))
         assertTrue(selection.contains("LevyraExpressiveIconButton("))
         assertTrue(matching.contains("LevyraExpressiveIconButton("))
         assertTrue(matching.contains("LevyraLoadingIndicator("))
@@ -114,13 +109,13 @@ class MaterialExpressiveContractTest {
     }
 
     @Test
-    fun `material3 expressive uses the current beta api surface`() {
+    fun `material3 expressive uses the current rc api surface`() {
         val versions = source(
             "gradle/libs.versions.toml",
             "../gradle/libs.versions.toml"
         )
 
-        assertTrue(versions.contains("material3Expressive = \"1.5.0-beta02\""))
+        assertTrue(versions.contains("material3Expressive = \"1.5.0-rc01\""))
     }
 
     private fun source(vararg candidates: String): String {

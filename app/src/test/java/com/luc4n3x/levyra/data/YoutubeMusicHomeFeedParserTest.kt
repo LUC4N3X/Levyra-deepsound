@@ -62,6 +62,34 @@ class YoutubeMusicHomeFeedParserTest {
         assertEquals(0xFF7E57C2L, shelf.buttons.single().stripeColor)
     }
 
+    @Test
+    fun newVideosShelfDropsNonMusicAudioCards() {
+        val promo = JSONObject().put(
+            "musicTwoRowItemRenderer", JSONObject()
+                .put("aspectRatio", "MUSIC_TWO_ROW_ITEM_THUMBNAIL_ASPECT_RATIO_RECTANGLE_16_9")
+                .put("title", runs("Sorrento"))
+                .put("subtitle", runs("5 min 51 s"))
+                .put("navigationEndpoint", browseEndpoint("MPEDpromo0001", "MUSIC_PAGE_TYPE_NON_MUSIC_AUDIO_TRACK_PAGE"))
+        )
+        val header = JSONObject().put(
+            "musicCarouselShelfBasicHeaderRenderer", JSONObject().put(
+                "title", linkedRuns("New music videos", browseEndpoint("FEmusic_new_releases_videos", ""))
+            )
+        )
+        val root = JSONObject().put(
+            "contents", JSONArray().put(
+                JSONObject().put(
+                    "musicCarouselShelfRenderer", JSONObject().put("header", header)
+                        .put("contents", JSONArray().put(promo).put(videoCard("video000001", "City Lights", "Neon Avenue")))
+                )
+            )
+        )
+
+        val shelf = repository.parseHomeFeed(root).shelves.single()
+        assertEquals("FEmusic_new_releases_videos", shelf.headerBrowseId)
+        assertEquals(listOf("video000001"), shelf.items.map { it.track?.id })
+    }
+
     private fun runs(text: String) = JSONObject().put("runs", JSONArray().put(JSONObject().put("text", text)))
 
     private fun thumbnail(url: String) = JSONObject().put(

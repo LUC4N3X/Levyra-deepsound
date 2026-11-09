@@ -43,6 +43,36 @@ class HighQualityMappingStoreTest {
     }
 
     @Test
+    fun mappingsStoredByThePreviousExplicitPolicyAreDiscarded() {
+        val query = query(title = "Starboy", artist = "The Weeknd", album = "Starboy", durationMs = 230_000L)
+        val title = AlternativeTrackText.title(query.title)
+        val legacyFingerprint = java.security.MessageDigest.getInstance("SHA-256")
+            .digest(
+                listOf(
+                    "query-v1",
+                    title.core,
+                    title.versionSignature.sorted().joinToString(","),
+                    AlternativeTrackText.artistCredit(query.artist).primary,
+                    AlternativeTrackText.album(query.album).core,
+                    (query.durationMs / 1_000L).toString(),
+                    "unknown",
+                    ""
+                ).joinToString("|").toByteArray(Charsets.UTF_8)
+            )
+            .joinToString("") { "%02x".format(it) }
+        store.save("track-a", mapping(id = "clean-edition", fingerprint = legacyFingerprint))
+
+        assertNull(store.load("track-a", "jiosaavn", AlternativeTrackFingerprint.of(query)))
+        assertTrue(storage.values.isEmpty())
+    }
+
+    @Test
+    fun explicitStateIsPartOfTheMappingIdentity() {
+        val unknown = query(explicit = null)
+        assertFalse(AlternativeTrackFingerprint.of(unknown) == AlternativeTrackFingerprint.of(unknown.copy(explicit = true)))
+    }
+
+    @Test
     fun changedLevyraMetadataInvalidatesMapping() {
         store.save("track-a", mapping())
         assertNull(store.load("track-a", "jiosaavn", "different-fp"))

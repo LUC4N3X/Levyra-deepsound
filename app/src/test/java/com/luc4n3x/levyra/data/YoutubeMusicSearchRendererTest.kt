@@ -11,6 +11,43 @@ class YoutubeMusicSearchRendererTest {
     private val repository = YoutubeMusicRepository()
 
     @Test
+    fun `carousel preserves its own explicit badge`() {
+        val clean = carouselItem(artistRun("Coldplay", "UC_COLDPLAY"))
+        val explicit = JSONObject(clean.toString())
+        explicit.getJSONObject("musicTwoRowItemRenderer").put(
+            "badges", JSONArray().put(JSONObject().put(
+                "musicInlineBadgeRenderer",
+                JSONObject().put("icon", JSONObject().put("iconType", "MUSIC_ITEM_BADGE_EXPLICIT"))
+            ))
+        )
+        assertEquals(false, requireNotNull(repository.parseCarouselItem(clean)).explicit)
+        assertEquals(true, requireNotNull(repository.parseCarouselItem(explicit)).explicit)
+    }
+
+    @Test
+    fun `search preserves explicit badge without labeling unbadged songs explicit`() {
+        val cleanRenderer = renderer(line("O"), artistLine("Coldplay", "UC_COLDPLAY"))
+        val explicitRenderer = JSONObject(cleanRenderer.toString()).put(
+            "badges",
+            JSONArray().put(JSONObject().put(
+                "musicInlineBadgeRenderer",
+                JSONObject().put("icon", JSONObject().put("iconType", "MUSIC_ITEM_BADGE_EXPLICIT"))
+            ))
+        )
+
+        assertEquals(false, requireNotNull(repository.parseMusicRenderer(cleanRenderer, "Song")).explicit)
+        assertEquals(true, requireNotNull(repository.parseMusicRenderer(explicitRenderer, "Song")).explicit)
+        val currentBadgeRenderer = JSONObject(cleanRenderer.toString()).put(
+            "badges",
+            JSONArray().put(JSONObject().put(
+                "musicInlineBadgeRenderer",
+                JSONObject().put("icon", JSONObject().put("iconType", "MUSIC_EXPLICIT_BADGE"))
+            ))
+        )
+        assertEquals(true, requireNotNull(repository.parseMusicRenderer(currentBadgeRenderer, "Song")).explicit)
+    }
+
+    @Test
     fun videoDiscoveryUsesYoutubeMusicVideoFilter() {
         assertEquals("EgWKAQIQAWoMEA4QChADEAQQCRAF", YOUTUBE_MUSIC_VIDEO_SEARCH_PARAMS)
     }

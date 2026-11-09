@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
@@ -228,7 +229,7 @@ private fun EditorialIndexRow(rank: Int, track: Track, rowState: StudioChartRowS
             CoverImage(track = track, modifier = Modifier.fillMaxSize())
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(track.title, style = MaterialTheme.typography.titleSmall, color = LevyraText, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            LevyraMediaTitle(track.title, explicit = track.explicit,  style = MaterialTheme.typography.titleSmall, color = LevyraText, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
                 text = track.artist,
                 style = MaterialTheme.typography.bodySmall,
@@ -433,7 +434,7 @@ private fun MaxTickerChip(rank: Int, track: Track, rowState: StudioChartRowState
                 MaxRankBadge(rank = rank, size = 26.dp, modifier = Modifier.align(Alignment.BottomEnd).offset(x = 4.dp, y = 4.dp))
             }
             Column(modifier = Modifier.weight(1f).padding(end = 10.dp)) {
-                Text(track.title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = LevyraText, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.levyraMarquee())
+                LevyraMediaTitle(track.title, explicit = track.explicit,  style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = LevyraText, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier)
                 Text(track.artist, style = MaterialTheme.typography.bodySmall, color = LevyraMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             if (current) {
@@ -501,7 +502,7 @@ private fun MaxSegmentRow(rank: Int, track: Track, first: Boolean, last: Boolean
             MaxRankBadge(rank = rank, size = 38.dp)
             Box(Modifier.size(46.dp).clip(RoundedCornerShape(14.dp))) { CoverImage(track = track, modifier = Modifier.fillMaxSize()) }
             Column(modifier = Modifier.weight(1f)) {
-                Text(track.title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = LevyraText, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.levyraMarquee())
+                LevyraMediaTitle(track.title, explicit = track.explicit,  style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = LevyraText, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier)
                 Text(track.artist, style = MaterialTheme.typography.bodySmall, color = LevyraMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             if (current) LevyraPlayingIndicator(playing = rowState.isPlaying, color = scheme.primary, size = 12.dp)
@@ -563,7 +564,7 @@ internal fun StudioFlowSpotlight(
                 Box(Modifier.size(8.dp).clip(CircleShape).background(scheme.primary))
                 Text(label.uppercase(), style = MaterialTheme.typography.labelMedium, color = scheme.primary, fontWeight = FontWeight.Bold, letterSpacing = 1.6.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            Text(track.title, style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black), color = LevyraText, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            LevyraMediaTitle(track.title, explicit = track.explicit,  style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black), color = LevyraText, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(lead.ifBlank { track.artist }, style = MaterialTheme.typography.bodyLarge, color = LevyraText.copy(alpha = 0.72f), maxLines = 2, overflow = TextOverflow.Ellipsis)
             FlowPlayPill(playback)
         }
@@ -799,7 +800,7 @@ private fun ResonanceTrackLine(track: Track, actions: StudioResonanceActions, co
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Box(Modifier.size(40.dp).clip(coverShape)) { CoverImage(track = track, modifier = Modifier.fillMaxSize()) }
         Column(modifier = Modifier.weight(1f)) {
-            Text(track.title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = if (current) MaterialTheme.colorScheme.primary else LevyraText, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.levyraMarquee())
+            LevyraMediaTitle(track.title, explicit = track.explicit,  style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = if (current) MaterialTheme.colorScheme.primary else LevyraText, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier)
             Text(track.artist, style = MaterialTheme.typography.bodySmall, color = LevyraMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         FilledIconButton(onClick = { actions.onPlay(track) }, shapes = IconButtonDefaults.shapes(), modifier = Modifier.size(40.dp)) {
