@@ -155,6 +155,37 @@ class HighQualityProviderLaneTest {
     }
 
     @Test
+    fun ambiguityCausedOnlyByStreamOnlyReleaseKeepsTheOfflineChoice() = runBlocking {
+        val short = candidate(id = "short", duration = 197)
+        val long = candidate(id = "long", duration = 203).copy(offlineAllowed = false)
+        val resolved = { candidate: AlternativeTrackCandidate -> ProviderStreamOutcome.Resolved(resolvedStream(candidate)) }
+
+        val mixed = lane(provider(listOf(short, long), lossless = false, outcome = resolved)).resolve("identity", query())
+        val offlineOnly = lane(provider(listOf(short), lossless = false, outcome = resolved)).resolve("identity", query())
+
+        assertEquals("short", (offlineOnly as HighQualityResolution.Selected).stream.providerTrackId)
+        assertEquals("short", (mixed as HighQualityResolution.Selected).stream.providerTrackId)
+    }
+
+    @Test
+    fun unavailableStreamOnlyReleaseFallsBackToTheOfflineCopy() = runBlocking {
+        val streamOnly = candidate(id = "stream-only").copy(offlineAllowed = false)
+        val offline = candidate(id = "offline", album = "After Hours (Deluxe)")
+        val provider = provider(listOf(streamOnly, offline), lossless = false) {
+            if (it.providerTrackId == streamOnly.providerTrackId) {
+                ProviderStreamOutcome.Unavailable(listOf(StreamRejection.NO_MEDIA))
+            } else {
+                ProviderStreamOutcome.Resolved(resolvedStream(it))
+            }
+        }
+
+        val result = lane(provider).resolve("identity", query()) as HighQualityResolution.Selected
+
+        assertEquals("offline", result.stream.providerTrackId)
+        assertEquals(listOf("stream-only", "offline"), provider.streamRequests.toList())
+    }
+
+    @Test
     fun cancellationDuringFirstStreamPreventsFurtherAttempts() = runBlocking {
         val provider = provider(listOf(candidate(id = "first"), candidate(id = "second"))) { awaitCancellation() }
 

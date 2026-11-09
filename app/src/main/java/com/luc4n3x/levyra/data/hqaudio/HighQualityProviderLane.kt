@@ -96,24 +96,54 @@ internal class HighQualityProviderLane(
                 is DeeperSearch.Settled -> deeperSearch.selection?.let { selection = it }
             }
         }
-        return when (val finalSelection = selection) {
-            is AlternativeMatchSelection.Rejected -> {
-                HighQualityAudioDiagnostics.matchRejected(provider.id, query, finalSelection)
-                val reason = if (finalSelection.reason == MatchRejection.AMBIGUOUS) {
-                    HighQualityFallbackReason.AMBIGUOUS
-                } else {
-                    HighQualityFallbackReason.NO_MATCH
-                }
-                HighQualityResolution.Fallback(reason, finalSelection.reason.name)
-            }
-            is AlternativeMatchSelection.Accepted -> if (provider.lossless) {
-                LosslessRecordingFallback.resolve(query, finalSelection) {
-                    resolveSelected(identityKey, query, it, queryFingerprint)
-                }
-            } else {
-                resolveSelected(identityKey, query, finalSelection.evaluation, queryFingerprint)
+        return resolveFinalSelection(identityKey, query, search, selection, queryFingerprint)
+    }
+
+    private suspend fun resolveFinalSelection(
+        identityKey: String,
+        query: AlternativeTrackQuery,
+        search: CandidateSearch,
+        selection: AlternativeMatchSelection,
+        queryFingerprint: String
+    ): HighQualityResolution = when (selection) {
+        is AlternativeMatchSelection.Rejected -> {
+            HighQualityAudioDiagnostics.matchRejected(provider.id, query, selection)
+            val offlineOnly = if (selection.reason == MatchRejection.AMBIGUOUS) offlineOnlySelection(query, search) else null
+            when {
+                offlineOnly != null -> resolveAccepted(identityKey, query, offlineOnly, queryFingerprint)
+                selection.reason == MatchRejection.AMBIGUOUS ->
+                    HighQualityResolution.Fallback(HighQualityFallbackReason.AMBIGUOUS, selection.reason.name)
+                else -> HighQualityResolution.Fallback(HighQualityFallbackReason.NO_MATCH, selection.reason.name)
             }
         }
+        is AlternativeMatchSelection.Accepted -> {
+            val resolved = resolveAccepted(identityKey, query, selection, queryFingerprint)
+            val retry = if (resolved is HighQualityResolution.Selected || selection.evaluation.candidate.offlineAllowed) {
+                null
+            } else {
+                offlineOnlySelection(query, search)
+            }
+            retry?.let { resolveAccepted(identityKey, query, it, queryFingerprint) } ?: resolved
+        }
+    }
+
+    private fun offlineOnlySelection(query: AlternativeTrackQuery, search: CandidateSearch): AlternativeMatchSelection.Accepted? {
+        val candidates = search.candidates()
+        if (candidates.all { it.offlineAllowed }) return null
+        return matcher.select(query, candidates.filter { it.offlineAllowed }) as? AlternativeMatchSelection.Accepted
+    }
+
+    private suspend fun resolveAccepted(
+        identityKey: String,
+        query: AlternativeTrackQuery,
+        selection: AlternativeMatchSelection.Accepted,
+        queryFingerprint: String
+    ): HighQualityResolution = if (provider.lossless) {
+        LosslessRecordingFallback.resolve(query, selection) {
+            resolveSelected(identityKey, query, it, queryFingerprint)
+        }
+    } else {
+        resolveSelected(identityKey, query, selection.evaluation, queryFingerprint)
     }
 
     private suspend fun resolveSelected(
