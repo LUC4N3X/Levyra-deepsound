@@ -101,7 +101,7 @@ private fun DefaultCuratedPlaylistCard(item: YoutubeMusicHomeItem, artworkMotion
     }
     var failed by remember(item.thumbnailUrl) { mutableStateOf(false) }
     val fallback = remember(scheme.primary, scheme.tertiary) { ArtworkPalette(scheme.primary.toArgb(), scheme.tertiary.toArgb()) }
-    val palette by rememberArtworkPalette(paletteKey = "curated-${item.key}", artworkUrl = item.thumbnailUrl, fallback = fallback)
+    val palette by rememberArtworkPalette(paletteKey = "curated-${item.key}-${item.thumbnailUrl}", artworkUrl = item.thumbnailUrl, fallback = fallback)
     val backSheet = lerp(Color(palette.end), scheme.surfaceContainerHighest, 0.55f)
     val midSheet = lerp(Color(palette.start), scheme.surfaceContainerHighest, 0.25f)
     Column(
