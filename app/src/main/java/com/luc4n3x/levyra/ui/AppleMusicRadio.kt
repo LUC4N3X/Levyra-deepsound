@@ -144,6 +144,7 @@ internal fun AppleMusicRadioScreen(viewModel: LevyraViewModel, state: LevyraUiSt
             entries = radioState.countries,
             selected = radioState.selectedCountryCode,
             allLabel = radioStrings.worldwide,
+            alphabeticalLanguageCode = state.languageCode,
             display = { entry -> localizedCountryName(entry.code, state.languageCode).ifBlank { entry.name } },
             value = com.luc4n3x.levyra.feature.radio.RadioDirectoryEntry::code,
             onDismiss = { countryPickerOpen = false },

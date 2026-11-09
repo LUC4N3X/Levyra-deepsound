@@ -95,6 +95,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 import com.luc4n3x.levyra.ui.theme.LevyraSkinManagesLayout
 import com.luc4n3x.levyra.ui.theme.PrismDesign
+import java.text.Collator
 import java.util.Locale
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -421,6 +422,7 @@ internal fun LiveRadioScreen(
             entries = state.countries,
             selected = state.selectedCountryCode,
             allLabel = radioStrings.worldwide,
+            alphabeticalLanguageCode = languageCode,
             display = { entry -> localizedCountryName(entry.code, languageCode).ifBlank { entry.name } },
             value = RadioDirectoryEntry::code,
             onDismiss = { countryPickerOpen = false },
@@ -1245,19 +1247,22 @@ internal fun RadioDirectoryDialog(
     display: (RadioDirectoryEntry) -> String,
     value: (RadioDirectoryEntry) -> String,
     onDismiss: () -> Unit,
-    onSelect: (String?) -> Unit
+    onSelect: (String?) -> Unit,
+    alphabeticalLanguageCode: String? = null
 ) {
+    val rows = remember(entries, alphabeticalLanguageCode) { radioDirectoryRows(entries, alphabeticalLanguageCode, display) }
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState(initialFirstVisibleItemIndex = rows.indexOfFirst { value(it.first) == selected }.coerceAtLeast(0))
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title, color = LevyraText, fontWeight = FontWeight.Black) },
         text = {
-            LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp)) {
-                item(key = "radio-directory-all") {
-                    RadioDirectoryDialogRow(allLabel, selected == null) { onSelect(null) }
-                }
-                items(entries, key = { "${it.code}:${it.name}" }) { entry ->
-                    val itemValue = value(entry)
-                    RadioDirectoryDialogRow(display(entry), selected == itemValue) { onSelect(itemValue) }
+            Column(modifier = Modifier.fillMaxWidth()) {
+                RadioDirectoryDialogRow(allLabel, selected == null) { onSelect(null) }
+                LazyColumn(state = listState, modifier = Modifier.fillMaxWidth().heightIn(max = 370.dp)) {
+                    items(rows, key = { (entry, _) -> "${entry.code}:${entry.name}" }) { (entry, label) ->
+                        val itemValue = value(entry)
+                        RadioDirectoryDialogRow(label, selected == itemValue) { onSelect(itemValue) }
+                    }
                 }
             }
         },
@@ -1278,6 +1283,17 @@ private fun RadioDirectoryDialogRow(label: String, selected: Boolean, onClick: (
         Box(modifier = Modifier.size(8.dp).background(if (selected) LevyraCyan else Color.Transparent, CircleShape))
         Text(label, color = if (selected) LevyraCyan else LevyraText, fontSize = 14.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, modifier = Modifier.weight(1f))
     }
+}
+
+internal fun radioDirectoryRows(
+    entries: List<RadioDirectoryEntry>,
+    alphabeticalLanguageCode: String?,
+    display: (RadioDirectoryEntry) -> String
+): List<Pair<RadioDirectoryEntry, String>> {
+    val rows = entries.distinctBy { "${it.code}:${it.name}" }.map { it to display(it) }
+    alphabeticalLanguageCode ?: return rows
+    val collator = Collator.getInstance(Locale.forLanguageTag(alphabeticalLanguageCode)).apply { strength = Collator.PRIMARY }
+    return rows.sortedWith(compareBy(collator) { it.second })
 }
 
 internal fun selectedCountryLabel(state: LiveRadioUiState, strings: LevyraLiveRadioStrings): String {
