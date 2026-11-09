@@ -44,26 +44,26 @@
     "SINGLE_SOURCE_PRIMARY": 12
   },
   "decision": "UPDATED",
-  "generatedAt": "2026-11-07T17:00:10Z",
+  "generatedAt": "2026-11-09T21:38:58Z",
   "playerCount": 475,
   "schema": 1,
   "source": "MIXED",
   "sources": {
     "faraday": {
-      "contentHash": "a1abeed092981cce76710727ae744dbd83a51f66264e800f693376d38c80cb47",
+      "contentHash": "8e01af0be81372327a6312b30890914852c747010ef52e54d94e2732d81ae2a5",
       "detail": "",
-      "fetchedAt": "2026-11-07T17:00:10Z",
+      "fetchedAt": "2026-11-09T21:38:58Z",
       "playerCount": 501,
-      "registryUpdatedAt": "2026-11-07T07:07:24.044Z",
+      "registryUpdatedAt": "2026-11-09T17:47:25.973Z",
       "role": "secondary",
       "source": "faraday",
       "status": "ok"
     },
     "zemer": {
-      "contentHash": "83892110d5d66757b38733b1ed2f0493c4a1697416a2bb3636984c33351a78be",
+      "contentHash": "d152d97b7ba1041b8393a305b6002f4e2ff3e3231ce1ba32714433a69eacda2a",
       "detail": "",
-      "fetchedAt": "2026-11-07T17:00:10Z",
-      "playerCount": 573,
+      "fetchedAt": "2026-11-09T21:38:58Z",
+      "playerCount": 576,
       "registryUpdatedAt": null,
       "role": "primary",
       "source": "zemer",
