@@ -177,9 +177,7 @@ internal object JioSaavnPayloadParser {
         "writer",
         "starring",
         "actor",
-        "composer",
-        "producer",
-        "arranger"
+        "composer"
     )
 
     private fun releaseYear(json: JSONObject, info: JSONObject): Int {

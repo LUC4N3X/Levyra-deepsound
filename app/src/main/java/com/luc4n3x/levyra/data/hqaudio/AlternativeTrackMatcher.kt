@@ -687,9 +687,12 @@ class AlternativeTrackMatcher {
         expectedTitle: TitleIdentity
     ): Boolean {
         if (candidate.album.isBlank()) return false
-        val candidateAlbumMarkers = AlternativeTrackText.album(candidate.album).versionMarkers intersect conflictingAlbumVersionMarkers
+        val candidateAlbum = AlternativeTrackText.album(candidate.album)
+        val candidateAlbumMarkers = candidateAlbum.versionMarkers intersect conflictingAlbumVersionMarkers
         if (candidateAlbumMarkers.isEmpty()) return false
-        val expectedMarkers = (expectedTitle.markers + AlternativeTrackText.album(query.album).versionMarkers) intersect conflictingAlbumVersionMarkers
+        val expectedAlbum = AlternativeTrackText.album(query.album)
+        if (expectedAlbum.core.isNotBlank() && expectedAlbum.core == candidateAlbum.core) return false
+        val expectedMarkers = (expectedTitle.markers + expectedAlbum.versionMarkers) intersect conflictingAlbumVersionMarkers
         return !expectedMarkers.containsAll(candidateAlbumMarkers)
     }
 

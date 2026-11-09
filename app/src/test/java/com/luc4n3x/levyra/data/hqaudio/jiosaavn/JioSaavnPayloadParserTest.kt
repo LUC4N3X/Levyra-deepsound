@@ -229,6 +229,8 @@ class JioSaavnPayloadParserTest {
                                 .put(JSONObject().put("name", "Amitabh Bhattacharya").put("role", "writer"))
                                 .put(JSONObject().put("name", "Ranbir Kapoor").put("role", "actor"))
                                 .put(JSONObject().put("name", "Arijit Singh").put("role", "singer"))
+                                .put(JSONObject().put("name", "Martin Garrix").put("role", "producer"))
+                                .put(JSONObject().put("name", "Hans Zimmer").put("role", "arranger"))
                         )
                     )
             )
