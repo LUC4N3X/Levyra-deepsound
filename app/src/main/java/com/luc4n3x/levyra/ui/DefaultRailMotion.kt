@@ -105,7 +105,7 @@ internal fun Modifier.defaultVideoRailMotion(enabled: Boolean, state: LazyListSt
         val info = state.layoutInfo
         val item = info.visibleItemsInfo.firstOrNull { it.key == key } ?: return@graphicsLayer
         if (item.size <= 0) return@graphicsLayer
-        val folded = videoFoldPixels(item.offset, item.size, info.beforeContentPadding)
+        val folded = videoFoldPixels(item.offset, item.size)
         if (folded > 0f) {
             val progress = RailEasing.transform(folded / item.size)
             val scale = 1f - VideoEdgeScale * progress
@@ -131,12 +131,12 @@ internal fun Modifier.defaultVideoArtworkMotion(enabled: Boolean, state: LazyLis
     if (!enabled) this else graphicsLayer {
         val info = state.layoutInfo
         val item = info.visibleItemsInfo.firstOrNull { it.key == key } ?: return@graphicsLayer
-        val shift = videoFoldPixels(item.offset, item.size, info.beforeContentPadding) / 2f
+        val shift = videoFoldPixels(item.offset, item.size) / 2f
         translationX = if (rtl) shift else -shift
     }
 
-internal fun videoFoldPixels(itemOffset: Int, itemSize: Int, restingStart: Int): Float =
-    (restingStart - itemOffset).toFloat().coerceIn(0f, itemSize.toFloat())
+internal fun videoFoldPixels(itemOffset: Int, itemSize: Int): Float =
+    (-itemOffset).toFloat().coerceIn(0f, itemSize.toFloat())
 
 private class VideoFoldShape(
     private val folded: Float,
