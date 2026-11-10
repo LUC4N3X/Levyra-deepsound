@@ -1923,17 +1923,11 @@ class PlaybackService : MediaLibraryService() {
             val origin = queueEngine.state.value
             var attempts = 0
             while (true) {
-                val target = withContext(Dispatchers.IO) {
+                val selected = withContext(Dispatchers.IO) {
                     selectSkipTarget(forward, respectRepeatOne && attempts == 0)
                 }
-                if (target == null) {
-                    if (attempts > 0) restoreSkipOrigin(origin, player)
-                    return@launch
-                }
-                if (!autoAdvance && manualSkipWrappedToOrigin(origin, target, attempts)) {
-                    restoreSkipOrigin(origin, player)
-                    return@launch
-                }
+                val target = skipTargetOrRestoreOrigin(selected, autoAdvance, attempts, origin, player)
+                    ?: return@launch
                 val resolved = withContext(Dispatchers.IO) { resolveSkipTarget(target, autoAdvance) }
                 if (resolved != null) {
                     playSkipTarget(player, resolved)
@@ -1951,6 +1945,24 @@ class PlaybackService : MediaLibraryService() {
                 }
             }
         }
+    }
+
+    private fun skipTargetOrRestoreOrigin(
+        target: com.luc4n3x.levyra.domain.Track?,
+        autoAdvance: Boolean,
+        attempts: Int,
+        origin: PlaybackQueueSnapshot,
+        player: ExoPlayer
+    ): com.luc4n3x.levyra.domain.Track? {
+        if (target == null) {
+            if (attempts > 0) restoreSkipOrigin(origin, player)
+            return null
+        }
+        if (!autoAdvance && manualSkipWrappedToOrigin(origin, target, attempts)) {
+            restoreSkipOrigin(origin, player)
+            return null
+        }
+        return target
     }
 
     private fun restoreSkipOrigin(origin: PlaybackQueueSnapshot, player: ExoPlayer) {

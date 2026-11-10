@@ -275,14 +275,7 @@ class LevyraPlayer(context: Context) {
                         }
                         return
                     }
-                    val cachedCopy = isPlaybackCacheOnlyUri(track.streamUrl)
-                    val terminalFailure = !cachedCopy && isTerminalPlaybackFailure(classifyPlaybackFailureReason(message))
-                    val recoverable = if (track.isLiveRadio()) {
-                        isRecoverableLiveRadioErrorCode(error.errorCode) || isRecoverable(error)
-                    } else {
-                        !terminalFailure && (cachedCopy || isRecoverable(error))
-                    }
-                    if (recoverable && startStreamRecovery(connected, track, message)) return
+                    if (isRecoverablePlaybackFailure(track, error, message) && startStreamRecovery(connected, track, message)) return
                     failLoadedStream(connected, message)
                 }
             })
@@ -311,6 +304,16 @@ class LevyraPlayer(context: Context) {
 
     val hasMediaItem: Boolean
         get() = (controller?.mediaItemCount ?: 0) > 0 || pendingPlayback != null
+
+    private fun isRecoverablePlaybackFailure(track: Track, error: PlaybackException, message: String): Boolean {
+        val cachedCopy = isPlaybackCacheOnlyUri(track.streamUrl)
+        val terminalFailure = !cachedCopy && isTerminalPlaybackFailure(classifyPlaybackFailureReason(message))
+        return if (track.isLiveRadio()) {
+            isRecoverableLiveRadioErrorCode(error.errorCode) || isRecoverable(error)
+        } else {
+            !terminalFailure && (cachedCopy || isRecoverable(error))
+        }
+    }
 
     private fun startStreamRecovery(active: Player, track: Track, message: String): Boolean {
         if (recoveryInFlight || recoveryAttempts >= 3) return false
