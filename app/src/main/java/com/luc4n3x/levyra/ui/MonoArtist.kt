@@ -109,7 +109,6 @@ import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
 
 private const val MonoArtistSongRows = 4
-private const val MonoArtistSongLimit = 20
 private const val MonoArtistRailLimit = 24
 private const val MonoArtistParallax = 0.5f
 private const val MonoArtistPortraitRatio = 1.18f
@@ -423,7 +422,7 @@ private fun LazyListScope.monoArtistSections(
                     action = strings.playAll, onAction = { viewModel.playAll(topSongs) }
                 )
                 MonoTrackColumns(
-                    topSongs, rows = MonoArtistSongRows, limit = MonoArtistSongLimit, ranked = true,
+                    topSongs, rows = MonoArtistSongRows, limit = topSongs.size, ranked = true,
                     currentId = currentId, isPlaying = state.isPlaying, actionsLabel = strings.songOptions,
                     onPlay = { _, track -> viewModel.playFrom(profile.topSongs, track) }, onActions = onTrackActions
                 )

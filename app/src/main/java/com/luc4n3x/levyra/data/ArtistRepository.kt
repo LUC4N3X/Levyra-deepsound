@@ -35,6 +35,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
+import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.Locale
@@ -51,6 +52,9 @@ internal fun chooseVerifiedArtistShelfThumbnail(
     searchThumbnailUrl: String,
     headerPortraitUrl: String
 ): String = searchThumbnailUrl.trim().ifBlank { headerPortraitUrl.trim() }
+
+internal fun artistSearchReferer(query: String): String =
+    "https://music.youtube.com/search?q=${URLEncoder.encode(query, StandardCharsets.UTF_8.name())}"
 
 internal fun mergeArtistSongs(
     preview: List<Track>,
@@ -331,6 +335,9 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
     private val clientVersion = "1.20260423.01.00"
     private val preferences = context?.applicationContext?.let { LevyraPreferences(it) }
     private val memory = ConcurrentHashMap<String, ArtistProfile>()
+    private val fallbackMemory = java.util.Collections.synchronizedMap(object : LinkedHashMap<String, ArtistProfile>(MAX_FALLBACK_PROFILES, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ArtistProfile>?): Boolean = size > MAX_FALLBACK_PROFILES
+    })
     private val artistHitMemory = ConcurrentHashMap<String, ArtistHit>()
     private val artistLore = ArtistLoreRepository(context)
 
@@ -344,6 +351,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         const val MAX_RELEASE_POINTERS = 2
         const val MAX_FEATURED_PLAYLISTS = 12
         const val MAX_ARTIST_VERIFICATIONS = 6
+        const val MAX_FALLBACK_PROFILES = 24
         const val ARTIST_SEARCH_PARAMS = "EgWKAQIgAWoMEAMQBBAJEAoQBRAV"
         val RELEASE_YEAR_REGEX = Regex("\\b(19|20)\\d{2}\\b")
         val RELEASE_TOKEN_SEPARATOR_REGEX = Regex("[^\\p{L}\\p{M}\\p{N}]+")
@@ -369,12 +377,18 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         } else {
             null
         }
-        val resolved = profile ?: runCatching { fallbackProfile(clean, resolvedArtist) }.getOrNull()
-        resolved?.also { profile ->
-            memory[artistIdentityKey(clean)] = profile
-            memory[artistIdentityKey(profile.name)] = profile
-            if (profile.browseId.isNotBlank()) memory[profileBrowseKey(profile.browseId)] = profile
+        if (profile == null) {
+            val fallbackKey = artistIdentityKey(clean)
+            val fallback = runCatching { fallbackProfile(clean, resolvedArtist) }.getOrNull()
+            val fresh = fallback?.takeIf { it.topSongs.isNotEmpty() }
+            if (fresh != null) fallbackMemory[fallbackKey] = fresh
+            return@withContext fresh ?: fallbackMemory[fallbackKey] ?: fallback
         }
+        fallbackMemory.remove(artistIdentityKey(clean))
+        memory[artistIdentityKey(clean)] = profile
+        memory[artistIdentityKey(profile.name)] = profile
+        if (profile.browseId.isNotBlank()) memory[profileBrowseKey(profile.browseId)] = profile
+        profile
     }
 
     suspend fun artistHitFor(artistName: String): ArtistHit? = withContext(Dispatchers.IO) {
@@ -421,8 +435,6 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
                 memory.replace(key, cached, updated)
             }
         }
-        memory[artistIdentityKey(updated.name)] = updated
-        if (updated.browseId.isNotBlank()) memory[profileBrowseKey(updated.browseId)] = updated
         return updated
     }
 
@@ -1333,7 +1345,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         return post(
             endpoint = endpoint,
             body = body,
-            referer = "https://music.youtube.com/search?q=${query.replace(" ", "+")}",
+            referer = artistSearchReferer(query),
             connectTimeoutMs = connectTimeoutMs,
             readTimeoutMs = readTimeoutMs
         )
