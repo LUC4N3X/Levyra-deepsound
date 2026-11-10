@@ -5,6 +5,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -360,6 +362,7 @@ internal fun AtelierLibraryScreen(
                 .graphicsLayer { translationY = headerOffsetPx }
                 .background(AtelierDesign.room)
                 .onSizeChanged { headerHeightPx = it.height }
+                .scrollable(gridState, Orientation.Vertical, reverseDirection = true)
         ) {
             val selectTab: (AtelierLibraryTab) -> Unit = { next ->
                 if (next != tab) {
