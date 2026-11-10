@@ -8862,7 +8862,7 @@ private fun HomeScreen(
     }
     val rawOtherSections = homeDerivedState.otherSections
     val officialHomeVideos = rememberNewMusicVideos(strings.code)
-    val freshHomeVideoTracks = remember(officialHomeVideos) { officialHomeVideos.mapNotNull { it.track } }
+    val freshHomeVideoTracks = rememberHomeVideoTracks(strings.code, state.selectedChartId, officialHomeVideos)
     val lastHomeVideoTracks = remember { mutableStateOf<List<Track>>(emptyList()) }
     val homeVideoTracks = if (freshHomeVideoTracks.isEmpty() && state.isLoadingCharts) {
         lastHomeVideoTracks.value
@@ -9406,7 +9406,7 @@ private fun HomeScreen(
                 item(key = "home-music-videos", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
                     HomeSectionLead(compactHome) {
                         HomeMusicVideoShelf(
-                            title = strings.homeVideoShelfTitle,
+                            title = rememberHomeVideoShelfTitle(strings, homeVideoTracks),
                             tracks = homeVideoTracks,
                             playback = HomeVideoShelfPlayback(
                                 currentId = state.currentTrack?.id?.takeIf { state.isVideoMode },
@@ -10045,7 +10045,7 @@ private fun rememberStudioHomeVideo(
     strings: LevyraStrings
 ): Pair<List<Track>, List<IndexedValue<com.luc4n3x.levyra.domain.HomeSection>>> {
     val officialHomeVideos = rememberNewMusicVideos(strings.code)
-    val freshHomeVideoTracks = remember(officialHomeVideos) { officialHomeVideos.mapNotNull { it.track } }
+    val freshHomeVideoTracks = rememberHomeVideoTracks(strings.code, state.selectedChartId, officialHomeVideos)
     val lastHomeVideoTracks = remember { mutableStateOf<List<Track>>(emptyList()) }
     val homeVideoTracks = if (freshHomeVideoTracks.isEmpty() && state.isLoadingCharts) {
         lastHomeVideoTracks.value
@@ -11195,7 +11195,7 @@ private fun LazyListScope.homeStudioSectionMusicVideos(c: StudioHomeContext) {
                 item(key = "home-music-videos", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
                     HomeSectionLead(compactHome) {
                         HomeMusicVideoShelf(
-                            title = strings.homeVideoShelfTitle,
+                            title = rememberHomeVideoShelfTitle(strings, homeVideoTracks),
                             tracks = homeVideoTracks,
                             playback = HomeVideoShelfPlayback(
                                 currentId = state.currentTrack?.id?.takeIf { state.isVideoMode },
@@ -13264,7 +13264,7 @@ private fun HomeMusicVideoShelf(
     val currentId = playback.currentId
     val videos = remember(tracks) {
         LevyraPersonalOrbit.distinctRecordings(tracks)
-            .take(10)
+            .take(20)
             .map(::homeMusicVideoCardItem)
     }
     if (videos.isEmpty()) return

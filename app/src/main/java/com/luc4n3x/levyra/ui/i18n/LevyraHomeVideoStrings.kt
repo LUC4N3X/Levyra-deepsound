@@ -46,3 +46,50 @@ private val homeVideoShelfTitles: Map<String, String> = mapOf(
 
 internal val LevyraStrings.homeVideoShelfTitle: String
     get() = localizedValueOrEnglish(homeVideoShelfTitles, code)
+
+private val homeTrendingVideoShelfTitles: Map<String, String> = mapOf(
+    "en" to "Trending music videos",
+    "it" to "Video musicali di tendenza",
+    "es" to "Videoclips en tendencia",
+    "fr" to "Clips tendance",
+    "de" to "Angesagte Musikvideos",
+    "pt" to "Videoclipes em alta",
+    "nl" to "Trending muziekvideo's",
+    "pl" to "Popularne teledyski",
+    "ro" to "Videoclipuri în tendințe",
+    "el" to "Δημοφιλή μουσικά βίντεο",
+    "sv" to "Trendande musikvideor",
+    "da" to "Populære musikvideoer",
+    "cs" to "Populární hudební klipy",
+    "sk" to "Populárne hudobné klipy",
+    "bn" to "জনপ্রিয় মিউজিক ভিডিও",
+    "kk" to "Танымал музыкалық бейнеклиптер",
+    "sr" to "Популарни музички спотови",
+    "sq" to "Videoklipe muzikore në trend",
+    "hr" to "Popularni glazbeni spotovi",
+    "bg" to "Популярни музикални видеоклипове",
+    "hu" to "Felkapott zenei videók",
+    "fi" to "Suositut musiikkivideot",
+    "et" to "Populaarsed muusikavideod",
+    "nb" to "Populære musikkvideoer",
+    "ca" to "Videoclips en tendència",
+    "uk" to "Популярні музичні кліпи",
+    "ru" to "Популярные музыкальные клипы",
+    "tr" to "Trend müzik videoları",
+    "ar" to "فيديوهات موسيقية رائجة",
+    "fa" to "موزیک‌ویدیوهای پرطرفدار",
+    "zh" to "热门音乐视频",
+    "zh-Hant" to "熱門音樂影片",
+    "ja" to "人気のミュージックビデオ",
+    "ko" to "인기 뮤직비디오",
+    "hi" to "ट्रेंडिंग म्यूज़िक वीडियो",
+    "id" to "Video musik populer",
+    "ms" to "Video muzik sohor kini",
+    "vi" to "Video âm nhạc thịnh hành",
+    "th" to "มิวสิกวิดีโอยอดนิยม",
+    "fil" to "Mga trending na music video",
+    "he" to "קליפים מוזיקליים פופולריים"
+)
+
+internal val LevyraStrings.homeTrendingVideoShelfTitle: String
+    get() = localizedValueOrEnglish(homeTrendingVideoShelfTitles, code)
