@@ -53,9 +53,7 @@ object AudioStreamResolver {
             currentCoroutineContext().ensureActive()
             recovered?.let { AudioResolution.Resolved(it) } ?: AudioResolution.Inconclusive
         } catch (cancellation: CancellationException) {
-            currentCoroutineContext().ensureActive()
-            onAttemptError(cancellation)
-            AudioResolution.Inconclusive
+            throw cancellation
         } catch (error: Exception) {
             currentCoroutineContext().ensureActive()
             onAttemptError(error)
@@ -73,9 +71,7 @@ object AudioStreamResolver {
         val candidate = try {
             attempt()
         } catch (cancellation: CancellationException) {
-            currentCoroutineContext().ensureActive()
-            onAttemptError(cancellation)
-            null
+            throw cancellation
         } catch (error: Throwable) {
             currentCoroutineContext().ensureActive()
             onAttemptError(error)

@@ -46,11 +46,8 @@ The first valid stream wins. Tiers retain their input order and hedge delay;
 losing work is cancelled and joined before returning. A recovery invocation is
 allowed only after every normal attempt conclusively reports no playable stream.
 An ambiguous result, network/HTTP/verification failure, or cancellation suppresses
-that recovery. A `CancellationException` thrown by one attempt or by recovery
-while the resolver itself is still active, such as an inner `withTimeout`, is an
-inconclusive failure of that attempt, not cancellation of the whole resolution.
-The result distinguishes `Resolved`, `NoPlayableStream`, and `Inconclusive`; its
-default diagnostic string redacts the stream payload.
+that recovery. The result distinguishes `Resolved`, `NoPlayableStream`, and
+`Inconclusive`; its default diagnostic string redacts the stream payload.
 
 Plans permit at most 32 normal attempts across at most 32 tiers, followed by at
 most one recovery. Oversized plans and negative hedge delays fail before making

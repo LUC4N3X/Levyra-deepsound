@@ -242,49 +242,21 @@ class AudioStreamResolverTest {
     }
 
     @Test
-    fun cancellationThrownByAnActiveAttemptIsInconclusiveNotAbsenceOrCancellation() = runBlocking {
-        val cancellation = CancellationException("inner scope cancelled")
-        val errors = mutableListOf<Throwable>()
-
-        val result = AudioStreamResolver.resolve(
-            listOf(listOf<suspend () -> String?>({ throw cancellation }), listOf({ throw NoStream() })), 0L,
-            recovery = { fail("inconclusive failure must not trigger recovery"); null },
-            isNoPlayableStream = { it is NoStream },
-            onAttemptError = errors::add
-        )
-
-        assertSame(AudioResolution.Inconclusive, result)
-        assertTrue(errors.any { it === cancellation })
-    }
-
-    @Test
-    fun innerTimeoutOfOneClientDoesNotAbortTheLadder() = runBlocking {
-        val timedOut = CompletableDeferred<Unit>()
-        val timingOut: suspend () -> String? = {
+    fun childAndRecoveryCancellationPropagateInsteadOfBecomingAbsence() = runBlocking {
+        for (cancelRecovery in listOf(false, true)) {
+            val cancellation = CancellationException("cancelled")
+            val normal: suspend () -> String? = { if (cancelRecovery) throw NoStream() else throw cancellation }
             try {
-                withTimeout(1L) { awaitCancellation() }
-            } finally {
-                timedOut.complete(Unit)
+                AudioStreamResolver.resolve(
+                    listOf(listOf(normal), listOf({ throw NoStream() })), 0L,
+                    recovery = { throw cancellation },
+                    isNoPlayableStream = { it is NoStream }
+                )
+                fail("expected cancellation")
+            } catch (actual: CancellationException) {
+                assertTrue(generateSequence<Throwable>(actual) { it.cause }.any { it === cancellation })
             }
         }
-        val backup: suspend () -> String? = { timedOut.await(); "backup" }
-
-        val result = AudioStreamResolver.resolve(listOf(listOf(timingOut), listOf(backup)), 0L)
-
-        assertEquals("backup", stream(result))
-    }
-
-    @Test
-    fun cancellationThrownByActiveRecoveryIsInconclusive() = runBlocking {
-        val cancellation = CancellationException("inner scope cancelled")
-
-        val result = AudioStreamResolver.resolve<String>(
-            listOf(listOf({ throw NoStream() })), 0L,
-            recovery = { throw cancellation },
-            isNoPlayableStream = { it is NoStream }
-        )
-
-        assertSame(AudioResolution.Inconclusive, result)
     }
 
     @Test
