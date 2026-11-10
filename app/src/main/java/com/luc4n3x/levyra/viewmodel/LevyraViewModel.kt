@@ -125,6 +125,7 @@ import com.luc4n3x.levyra.data.homeAlbumHitFromTrack
 import com.luc4n3x.levyra.data.homeAlbumArtistFromTrack
 import com.luc4n3x.levyra.data.isCanonicalHomeAlbumHit
 import com.luc4n3x.levyra.data.RecordingIdentityMatch
+import com.luc4n3x.levyra.data.addsDifferentPlaybackVariant
 import com.luc4n3x.levyra.data.recordingIdentityMatch
 import com.luc4n3x.levyra.data.local.DownloadEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
@@ -717,19 +718,7 @@ internal fun isPlaybackCandidateCompatible(target: Track, candidate: Track): Boo
         RecordingIdentityMatch.Conflict -> return false
         RecordingIdentityMatch.Unknown -> Unit
     }
-    val targetTitle = playbackTitleKey(target.title)
-    val candidateTitle = playbackTitleKey(candidate.title)
-    if (targetTitle.isBlank() || candidateTitle.isBlank()) return false
-
-    val targetTitleTokens = playbackTokens(targetTitle)
-    val candidateTitleTokens = PlaybackTokenSet(playbackTokens(candidateTitle))
-    val titleMatches = targetTitleTokens.count(candidateTitleTokens::matches)
-    val titleCoverage = if (targetTitleTokens.isEmpty()) 0.0 else titleMatches.toDouble() / targetTitleTokens.size.toDouble()
-    val titleCompatible = candidateTitle == targetTitle ||
-        candidateTitle.startsWith("$targetTitle ") ||
-        targetTitle.startsWith("$candidateTitle ") ||
-        titleCoverage >= 0.8
-    if (!titleCompatible) return false
+    if (!playbackTitlesCompatible(target.title, candidate.title)) return false
 
     val targetArtistTokens = playbackArtistTokens(target.artist)
     if (targetArtistTokens.isEmpty()) return true
@@ -740,6 +729,22 @@ internal fun isPlaybackCandidateCompatible(target: Track, candidate: Track): Boo
     val artistMatches = targetArtistTokens.count(candidateArtistTokens::matches)
     val requiredMatches = maxOf(1, (targetArtistTokens.size + 1) / 2)
     return artistMatches >= requiredMatches
+}
+
+private fun playbackTitlesCompatible(originalTitle: String, replacementTitle: String): Boolean {
+    if (addsDifferentPlaybackVariant(originalTitle, replacementTitle)) return false
+    val targetTitle = playbackTitleKey(originalTitle)
+    val candidateTitle = playbackTitleKey(replacementTitle)
+    if (targetTitle.isBlank() || candidateTitle.isBlank()) return false
+
+    val targetTitleTokens = playbackTokens(targetTitle)
+    val candidateTitleTokens = PlaybackTokenSet(playbackTokens(candidateTitle))
+    val titleMatches = targetTitleTokens.count(candidateTitleTokens::matches)
+    val titleCoverage = if (targetTitleTokens.isEmpty()) 0.0 else titleMatches.toDouble() / targetTitleTokens.size.toDouble()
+    return candidateTitle == targetTitle ||
+        candidateTitle.startsWith("$targetTitle ") ||
+        targetTitle.startsWith("$candidateTitle ") ||
+        titleCoverage >= 0.8
 }
 
 internal fun playbackCandidateScore(
@@ -3712,12 +3717,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun replacePlaylistTrack(playlistId: String, original: Track, replacement: Track) {
         viewModelScope.launch {
-            val entry = withContext(Dispatchers.Default) {
+            val equivalent = withContext(Dispatchers.Default) {
                 original.withEquivalentPlaybackSource(replacement)
-            } ?: replacement
+            }
+            val entry = equivalent ?: replacement
             val replaced = playlistStore.replaceTrack(playlistId, original.id, entry)
             if (replaced) {
-                if (original.id in _state.value.favoriteIds) carryFavorite(original, entry)
+                if (equivalent != null && original.id in _state.value.favoriteIds) carryFavorite(original, entry)
                 loadPlaylists()
                 refreshOpenPlaylist(playlistId)
             } else {

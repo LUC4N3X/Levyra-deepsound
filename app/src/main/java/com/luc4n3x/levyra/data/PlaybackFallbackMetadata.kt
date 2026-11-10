@@ -178,7 +178,7 @@ private fun isTrustedPlaybackRecordingMatch(
 private fun samePlaybackKey(candidate: String, original: String, timed: Boolean): Boolean =
     candidate == original || (timed && ImportTransliteration.sameRomanized(candidate, original))
 
-private fun addsDifferentPlaybackVariant(originalTitle: String, candidateTitle: String): Boolean {
+internal fun addsDifferentPlaybackVariant(originalTitle: String, candidateTitle: String): Boolean {
     val originalMarkers = MusicIdentityText.title(originalTitle).markers
     if (MusicIdentityText.title(candidateTitle).markers.any { it in PLAYBACK_DISTINCT_VERSION_MARKERS && it !in originalMarkers }) {
         return true
