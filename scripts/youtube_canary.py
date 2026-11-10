@@ -1372,6 +1372,21 @@ def _classify(
                     "Baseline not seeded because required live probes failed: " + ", ".join(failed_required)
                 ],
             }
+        unhealthy_capabilities = [
+            f"{name} {check.get('status')}"
+            for name, check in sorted(_capability_map(observation).items())
+            if check.get("status") in (CAPABILITY_STATUS_FAIL, CAPABILITY_STATUS_BLOCKED)
+        ]
+        if unhealthy_capabilities:
+            return {
+                "decision": "blocked",
+                "severity": "warning",
+                "material_changes": [],
+                "informational_changes": [
+                    "Baseline not seeded because capability checks are unhealthy: "
+                    + ", ".join(unhealthy_capabilities)
+                ],
+            }
         return {
             "decision": "bootstrap",
             "severity": "info",

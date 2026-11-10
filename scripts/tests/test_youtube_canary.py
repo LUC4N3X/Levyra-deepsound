@@ -994,6 +994,36 @@ class YoutubeCanaryCapabilityCheckTest(unittest.TestCase):
             flags,
         )
 
+    def test_bootstrap_blocks_unhealthy_capabilities_with_healthy_sentinels(self):
+        for name in (canary.CAPABILITY_MADE_FOR_KIDS, canary.CAPABILITY_POTOKEN):
+            for status in (canary.CAPABILITY_STATUS_FAIL, canary.CAPABILITY_STATUS_BLOCKED):
+                with self.subTest(name=name, status=status):
+                    observation = self._observation([
+                        {"name": check["name"], "status": status if check["name"] == name else "PASS"}
+                        for check in canary.DEFAULT_CAPABILITY_CHECKS
+                    ])
+                    observation["sentinels"] = [{"name": "required", "required": True, "ok": True}]
+
+                    decision = canary._classify({"observation": None}, observation, {})
+
+                    self.assertEqual("blocked", decision["decision"])
+                    self.assertEqual([], decision["material_changes"])
+                    self.assertIn(f"{name} {status}", " ".join(decision["informational_changes"]))
+
+    def test_bootstrap_accepts_healthy_capabilities_and_ignores_optional_probe_failure(self):
+        observation = self._observation([
+            {"name": check["name"], "status": canary.CAPABILITY_STATUS_PASS}
+            for check in canary.DEFAULT_CAPABILITY_CHECKS
+        ])
+        observation["sentinels"] = [
+            {"name": "required", "required": True, "ok": True},
+            {"name": "optional", "required": False, "ok": False},
+        ]
+
+        decision = canary._classify({"observation": None}, observation, {})
+
+        self.assertEqual("bootstrap", decision["decision"])
+
     def test_made_for_kids_failure_is_material_even_when_sentinels_stay_healthy(self):
         baseline = {
             "schema": canary.SCHEMA_VERSION,
