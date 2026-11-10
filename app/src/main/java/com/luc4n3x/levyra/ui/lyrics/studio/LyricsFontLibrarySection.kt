@@ -150,32 +150,7 @@ internal fun LyricsFontLibrarySection(
             .border(1.dp, Color.White.copy(alpha = 0.06f), shape)
             .padding(16.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(strings.lyricsFontsTitle, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                Text(strings.lyricsFontsHint, color = LevyraMuted, fontSize = 12.sp, lineHeight = 16.sp)
-            }
-            OutlinedButton(
-                onClick = { importLauncher.launch(FONT_MIME_TYPES) },
-                enabled = !busy,
-                border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.6f)),
-                modifier = Modifier.padding(start = 8.dp)
-            ) {
-                if (busy) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = LevyraCyan)
-                } else {
-                    Icon(Icons.Rounded.Add, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(18.dp))
-                }
-                Text(
-                    strings.lyricsFontsImport,
-                    color = LevyraCyan,
-                    fontSize = 13.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(start = 6.dp)
-                )
-            }
-        }
+        LyricsFontLibraryHeader(busy = busy, onImport = { importLauncher.launch(FONT_MIME_TYPES) })
         val selectedMissing = loaded && settings.customFontId.isNotBlank() && fonts.none { it.id == settings.customFontId }
         val notice = status.ifBlank { if (selectedMissing) strings.lyricsFontsUnavailable else "" }
         if (notice.isNotBlank()) {
@@ -206,47 +181,85 @@ internal fun LyricsFontLibrarySection(
     }
 
     renameTarget?.let { entry ->
-        var name by remember(entry.id) { mutableStateOf(entry.name) }
-        AlertDialog(
-            onDismissRequest = { renameTarget = null },
-            title = { Text(strings.lyricsFontsRename) },
-            text = {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it.take(64) },
-                    label = { Text(strings.lyricsFontsName) },
-                    singleLine = true
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    enabled = name.isNotBlank(),
-                    onClick = {
-                        renameTarget = null
-                        scope.launch { runCatching { library.rename(entry.id, name) } }
-                    }
-                ) { Text(strings.save) }
-            },
-            dismissButton = { TextButton(onClick = { renameTarget = null }) { Text(strings.cancel) } }
-        )
+        LyricsFontRenameDialog(entry, onDismiss = { renameTarget = null }) { name ->
+            renameTarget = null
+            scope.launch { runCatching { library.rename(entry.id, name) } }
+        }
     }
 
     deleteTarget?.let { entry ->
-        AlertDialog(
-            onDismissRequest = { deleteTarget = null },
-            title = { Text(strings.lyricsFontsDeleteTitle) },
-            text = { Text(strings.lyricsFontsDeleteBody) },
-            confirmButton = {
-                TextButton(onClick = {
-                    deleteTarget = null
-                    status = ""
-                    if (latestSettings.customFontId == entry.id) onUpdateSettings(latestSettings.copy(customFontId = ""))
-                    scope.launch { runCatching { library.delete(entry.id) } }
-                }) { Text(strings.delete) }
-            },
-            dismissButton = { TextButton(onClick = { deleteTarget = null }) { Text(strings.cancel) } }
-        )
+        LyricsFontDeleteDialog(onDismiss = { deleteTarget = null }) {
+            deleteTarget = null
+            status = ""
+            if (latestSettings.customFontId == entry.id) onUpdateSettings(latestSettings.copy(customFontId = ""))
+            scope.launch { runCatching { library.delete(entry.id) } }
+        }
     }
+}
+
+@Composable
+private fun LyricsFontLibraryHeader(busy: Boolean, onImport: () -> Unit) {
+    val strings = LocalLevyraStrings.current
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(strings.lyricsFontsTitle, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text(strings.lyricsFontsHint, color = LevyraMuted, fontSize = 12.sp, lineHeight = 16.sp)
+        }
+        OutlinedButton(
+            onClick = onImport,
+            enabled = !busy,
+            border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.6f)),
+            modifier = Modifier.padding(start = 8.dp)
+        ) {
+            if (busy) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = LevyraCyan)
+            } else {
+                Icon(Icons.Rounded.Add, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(18.dp))
+            }
+            Text(
+                strings.lyricsFontsImport,
+                color = LevyraCyan,
+                fontSize = 13.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(start = 6.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun LyricsFontRenameDialog(entry: LyricsFontEntry, onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+    val strings = LocalLevyraStrings.current
+    var name by remember(entry.id) { mutableStateOf(entry.name) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(strings.lyricsFontsRename) },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it.take(64) },
+                label = { Text(strings.lyricsFontsName) },
+                singleLine = true
+            )
+        },
+        confirmButton = {
+            TextButton(enabled = name.isNotBlank(), onClick = { onConfirm(name) }) { Text(strings.save) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(strings.cancel) } }
+    )
+}
+
+@Composable
+private fun LyricsFontDeleteDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    val strings = LocalLevyraStrings.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(strings.lyricsFontsDeleteTitle) },
+        text = { Text(strings.lyricsFontsDeleteBody) },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(strings.delete) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(strings.cancel) } }
+    )
 }
 
 @Composable

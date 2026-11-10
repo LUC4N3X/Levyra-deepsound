@@ -87,27 +87,35 @@ object LyricsFontInspector {
         val storage = source.u16(table.first + 4).toLong()
         if (6L + count * 12L > table.size()) return null
         val candidates = (0 until count).mapNotNull { index ->
-            val record = table.first + 6 + index * 12L
-            val platform = source.u16(record)
-            val encoding = source.u16(record + 2)
-            val language = source.u16(record + 4)
-            val nameId = source.u16(record + 6)
-            val size = source.u16(record + 8)
-            val offset = source.u16(record + 10)
-            if (nameId != 1 && nameId != 16) return@mapNotNull null
-            if (size == 0 || storage + offset + size > table.size()) return@mapNotNull null
-            val bytes = source.bytes(table.first + storage + offset, size)
-            val text = when {
-                platform == 3 || platform == 0 -> String(bytes, Charsets.UTF_16BE)
-                platform == 1 && encoding == 0 -> String(bytes, Charsets.ISO_8859_1)
-                else -> return@mapNotNull null
-            }
-            val englishOrDefault = language == 0x0409 || (platform == 1 && language == 0)
-            val rank = (if (nameId == 16) 0 else 10) + (if (platform == 3) 0 else 4) + (if (englishOrDefault) 0 else 1)
-            rank to text
+            nameRecord(source, table, storage, table.first + 6 + index * 12L)
         }
         return candidates.sortedBy { it.first }
             .firstNotNullOfOrNull { (_, text) -> sanitizeLyricsFontName(text).takeIf(String::isNotEmpty) }
+    }
+
+    private fun nameRecord(source: RandomAccessFile, table: LongRange, storage: Long, record: Long): Pair<Int, String>? {
+        val platform = source.u16(record)
+        val encoding = source.u16(record + 2)
+        val language = source.u16(record + 4)
+        val nameId = source.u16(record + 6)
+        val size = source.u16(record + 8)
+        val offset = source.u16(record + 10)
+        if (nameId != 1 && nameId != 16) return null
+        if (size == 0 || storage + offset + size > table.size()) return null
+        val charset = when {
+            platform == 3 || platform == 0 -> Charsets.UTF_16BE
+            platform == 1 && encoding == 0 -> Charsets.ISO_8859_1
+            else -> return null
+        }
+        val text = String(source.bytes(table.first + storage + offset, size), charset)
+        return nameRank(nameId, platform, language) to text
+    }
+
+    private fun nameRank(nameId: Int, platform: Int, language: Int): Int {
+        val familyRank = if (nameId == 16) 0 else 10
+        val platformRank = if (platform == 3) 0 else 4
+        val englishOrDefault = language == 0x0409 || platform == 1 && language == 0
+        return familyRank + platformRank + if (englishOrDefault) 0 else 1
     }
 
     private fun LongRange.size(): Long = last - first + 1
