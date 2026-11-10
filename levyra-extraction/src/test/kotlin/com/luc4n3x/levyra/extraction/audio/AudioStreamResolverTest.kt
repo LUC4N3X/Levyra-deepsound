@@ -466,6 +466,29 @@ class AudioStreamResolverTest {
     }
 
     @Test
+    fun cancellationDuringGracePropagatesInsteadOfReturningTheWeakerStream() = runBlocking {
+        val cancellation = CancellationException("attempt cancelled during grace")
+        val stillRunning: suspend () -> String? = { awaitCancellation() }
+        try {
+            withTimeout(2_000L) {
+                AudioStreamResolver.resolve(
+                    listOf(
+                        listOf<suspend () -> String?>({ "low" }),
+                        listOf({ delay(10L); throw cancellation }),
+                        listOf(stillRunning)
+                    ),
+                    0L,
+                    quality = quality(graceMs = 60_000L)
+                )
+            }
+            fail("expected cancellation")
+        } catch (actual: CancellationException) {
+            assertFalse(actual is kotlinx.coroutines.TimeoutCancellationException)
+            assertTrue(generateSequence<Throwable>(actual) { it.cause }.any { it === cancellation })
+        }
+    }
+
+    @Test
     fun failureDuringGraceKeepsTheStreamAlreadyFound() = runBlocking {
         withTimeout(2_000L) {
             val result = AudioStreamResolver.resolve(

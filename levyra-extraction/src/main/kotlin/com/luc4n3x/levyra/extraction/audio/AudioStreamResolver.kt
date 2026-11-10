@@ -186,7 +186,7 @@ object AudioStreamResolver {
 
         fun fail(cancellation: CancellationException) {
             first.completeExceptionally(cancellation)
-            settled.complete(Unit)
+            settled.completeExceptionally(cancellation)
         }
 
         fun best(): T? = synchronized(this) { best }
