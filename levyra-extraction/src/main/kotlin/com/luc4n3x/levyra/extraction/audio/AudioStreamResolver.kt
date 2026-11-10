@@ -1,7 +1,6 @@
 package com.luc4n3x.levyra.extraction.audio
 
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.cancelChildren
@@ -108,8 +107,9 @@ object AudioStreamResolver {
             return attemptOnce(ladder[0][0], onAttemptError)
         }
         return coroutineScope {
-            val selection = StreamSelection(quality, ladder.sumOf { it.size })
+            val selection = StreamSelection(quality)
             fun dispatch(attempt: suspend () -> T?) {
+                selection.started()
                 launch {
                     settleAttempt(attempt, selection, onAttemptError)
                 }
@@ -124,6 +124,7 @@ object AudioStreamResolver {
                         if (settled) break
                     }
                 }
+                selection.closeDispatch()
             }
             val first = selection.first.await()
             val result = if (first == null || quality == null || quality.graceMs == 0L) {
@@ -137,12 +138,26 @@ object AudioStreamResolver {
         }
     }
 
-    private class StreamSelection<T>(private val quality: StreamQuality<T>?, attempts: Int) {
+    private class StreamSelection<T>(private val quality: StreamQuality<T>?) {
         val first = CompletableDeferred<T?>()
         val settled = CompletableDeferred<Unit>()
-        private val remaining = AtomicInteger(attempts)
+        private var started = 0
+        private var finished = 0
+        private var dispatchClosed = false
         private var best: T? = null
         private var bestRank = Int.MIN_VALUE
+
+        fun started() {
+            synchronized(this) { started++ }
+        }
+
+        fun closeDispatch() {
+            val drained = synchronized(this) {
+                dispatchClosed = true
+                finished == started
+            }
+            if (drained) completeDrained()
+        }
 
         fun offer(candidate: T?) {
             if (candidate != null) {
@@ -157,10 +172,16 @@ object AudioStreamResolver {
                 first.complete(candidate)
                 if (sufficient) settled.complete(Unit)
             }
-            if (remaining.decrementAndGet() == 0) {
-                first.complete(null)
-                settled.complete(Unit)
+            val drained = synchronized(this) {
+                finished++
+                dispatchClosed && finished == started
             }
+            if (drained) completeDrained()
+        }
+
+        private fun completeDrained() {
+            first.complete(null)
+            settled.complete(Unit)
         }
 
         fun fail(cancellation: CancellationException) {

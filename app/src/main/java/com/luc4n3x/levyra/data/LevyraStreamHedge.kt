@@ -57,13 +57,15 @@ internal fun <T> audioHedgeQuality(
 ): StreamQuality<T>? {
     if (isVideoMode || requestedAudioQuality.equals("low", true)) return null
     fun rank(itag: Int, direct: Boolean): Int =
-        audioItagPreference(itag, requestedAudioQuality) * 2 + if (direct) 1 else 0
+        audioItagPreference(itag, requestedAudioQuality) + if (direct) DIRECT_DELIVERY_RANK_BONUS else 0
     return StreamQuality(
         rank = { stream -> audioItagOf(stream)?.let { rank(it, isDirectDelivery(stream)) } ?: 0 },
         sufficientRank = rank(251, direct = true),
         graceMs = LevyraResolverLatency.AUDIO_QUALITY_GRACE_MS
     )
 }
+
+private const val DIRECT_DELIVERY_RANK_BONUS = 1_000_000
 
 internal fun orderAudioStrategiesForQuality(
     strategies: List<PlaybackAudioStrategy>,
@@ -81,7 +83,7 @@ internal fun orderAudioStrategiesForQuality(
 
 internal object LevyraResolverLatency {
     const val INNER_TUBE_HEDGE_BUDGET_MS = 35L
-    const val AUDIO_QUALITY_GRACE_MS = 250L
+    const val AUDIO_QUALITY_GRACE_MS = 900L
     private const val AUDIO_INNER_TUBE_FALLBACK_MS = 0L
     private const val VIDEO_INNER_TUBE_FALLBACK_MS = 0L
     private const val OFFLINE_INNER_TUBE_FALLBACK_MS = 2_500L

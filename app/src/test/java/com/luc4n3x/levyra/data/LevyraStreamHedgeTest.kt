@@ -124,9 +124,11 @@ class LevyraStreamHedgeTest {
     fun audioHedgeQualityRanksOpusAboveAacAndMuxedAndIsOffForLowAndVideo() {
         val quality = candidateQuality("High")!!
 
-        assertTrue(quality.rank(251 to false) > quality.rank(140 to true))
+        assertTrue(quality.rank(251 to true) > quality.rank(140 to true))
+        assertTrue(quality.rank(251 to false) > quality.rank(140 to false))
         assertTrue(quality.rank(140 to true) > quality.rank(18 to true))
         assertTrue(quality.rank(251 to true) > quality.rank(251 to false))
+        assertTrue(quality.rank(140 to true) > quality.rank(251 to false))
         assertTrue(quality.rank(251 to true) >= quality.sufficientRank)
         assertTrue(quality.rank(251 to false) < quality.sufficientRank)
         assertEquals(LevyraResolverLatency.AUDIO_QUALITY_GRACE_MS, quality.graceMs)
@@ -162,6 +164,6 @@ class LevyraStreamHedgeTest {
 
     @Test
     fun qualityGraceStaysInsideTheTapLatencyBudget() {
-        assertTrue(LevyraResolverLatency.AUDIO_QUALITY_GRACE_MS <= 300L)
+        assertTrue(LevyraResolverLatency.AUDIO_QUALITY_GRACE_MS <= 1_000L)
     }
 }

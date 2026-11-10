@@ -425,9 +425,12 @@ verified by the host. Losers are cancelled and joined, cancellation propagates,
 and results are checked against caller cancellation before publication.
 `hedgedAudioWithRecovery` maps Android's existing no-stream exception into that
 contract. Outside Low quality and video mode, Android ranks audio-only streams by
-the same itag preference used for format selection and grants a 250 ms quality
-grace, so a faster client with a weaker format does not displace an Opus stream
-already in flight. For the same qualities the muxed Reel fallback runs after the
+the same itag preference used for format selection, ranks any directly delivered
+stream above any SABR stream, and grants a 900 ms quality grace, so a faster
+client with a weaker format does not displace a direct Opus stream already in
+flight. The audio hedge rejects SABR-delivered audio, which answered 403 on every
+observed playback without a proof-of-origin token, so it can neither win nor
+quarantine the clients that return direct Opus. For the same qualities the muxed Reel fallback runs after the
 audio-only hedge instead of before it. `PlaybackResolver` retains the eight-profile plan, client health,
 latency budgets, HTTP timeouts, stream validation and atomic low-quality recovery
 permit. It also retains ownership of video, offline, cache, and shared in-flight

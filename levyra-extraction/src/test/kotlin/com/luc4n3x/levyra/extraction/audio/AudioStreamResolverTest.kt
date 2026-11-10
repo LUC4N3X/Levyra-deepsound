@@ -451,6 +451,21 @@ class AudioStreamResolverTest {
     }
 
     @Test
+    fun graceEndsWhenEveryStartedAttemptHasSettled() = runBlocking {
+        val started = System.nanoTime()
+        val result = withTimeout(5_000L) {
+            AudioStreamResolver.resolve(
+                listOf(listOf<suspend () -> String?>({ "low" }), listOf({ "never started" })), 1_000L,
+                quality = quality(graceMs = 60_000L)
+            )
+        }
+        val elapsedMs = (System.nanoTime() - started) / 1_000_000L
+
+        assertEquals("low", stream(result))
+        assertTrue("grace waited for an attempt that never started: $elapsedMs ms", elapsedMs < 2_000L)
+    }
+
+    @Test
     fun failureDuringGraceKeepsTheStreamAlreadyFound() = runBlocking {
         withTimeout(2_000L) {
             val result = AudioStreamResolver.resolve(

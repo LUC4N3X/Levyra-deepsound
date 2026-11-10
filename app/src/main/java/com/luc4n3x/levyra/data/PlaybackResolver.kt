@@ -342,7 +342,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         private const val YOUTUBE_VIDEO_ID_PATTERN = "[A-Za-z0-9_-]{11}"
         private const val LEVYRA_EXTRACTOR_PROVIDER = "LevyraExtractor"
         private const val LEVYRA_EXTRACTOR_HLS_PROVIDER = "LevyraExtractor HLS"
-        private const val AUDIO_HEALTH_MODE = "audio"
+        private const val AUDIO_HEALTH_MODE = "audio-v2"
         private const val VIDEO_HEALTH_MODE = "video"
         private const val MAX_STREAM_CACHE_ENTRIES = 128
         private const val MAX_FAILED_PLAYBACK_URLS = 256
@@ -653,9 +653,15 @@ class PlaybackResolver private constructor(private val context: Context) {
         highQualityPlayback.awaitsUpgrade(track, normalCached, isVideoMode, selectedAudioQuality) &&
             hasInternetCapableNetwork()
 
+    private fun isMuxedAudioFallback(track: Track, isVideoMode: Boolean, audioQuality: String): Boolean =
+        !isVideoMode && track.playbackManifest?.isMuxed == true &&
+            !normalizeAudioQuality(audioQuality).equals("Low", true) &&
+            hasInternetCapableNetwork()
+
     private fun cached(track: Track, isVideoMode: Boolean, audioQuality: String): Track? {
         if (track.streamUrl.isNotBlank()) {
             val valid = canReuseProvidedPlayback(track) &&
+                !isMuxedAudioFallback(track, isVideoMode, audioQuality) &&
                 !isPlaybackUrlBlocked(track.streamUrl) &&
                 (track.videoStreamUrl.isBlank() || !isPlaybackUrlBlocked(track.videoStreamUrl)) &&
                 (isVideoMode || isPlayableAudioUrl(track.streamUrl)) &&
@@ -671,7 +677,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             RuntimeHooks.cache(RuntimeSignal.CACHE_MISS)
             return null
         }
-        if (isDisabledPremiumSource(hit.track)) {
+        if (isDisabledPremiumSource(hit.track) || isMuxedAudioFallback(hit.track, isVideoMode, audioQuality)) {
             remove(key)
             return null
         }
@@ -788,10 +794,13 @@ class PlaybackResolver private constructor(private val context: Context) {
             strategyHealth.recordRuntimeFailure(
                 mode = origin.mode,
                 strategy = origin.strategy,
-                kind = failureKind
+                kind = strategyHealthFailureKind(origin.mode, origin.strategy, failureKind)
             )
         }
     }
+
+    private fun strategyHealthFailureKind(mode: String, strategy: String, kind: PlaybackFailureKind): PlaybackFailureKind =
+        if (mode == AUDIO_HEALTH_MODE && strategy == PlaybackAudioStrategy.DIRECT.name) PlaybackFailureKind.Unknown else kind
 
     private fun attributedPlaybackUrl(track: Track, isVideoMode: Boolean, failedUrl: String?): String? {
         failedUrl?.takeIf { it.isNotBlank() }?.let { return it }
@@ -1557,7 +1566,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 AUDIO_HEALTH_MODE,
                 strategy.name,
                 elapsedMs,
-                failureKind
+                strategyHealthFailureKind(AUDIO_HEALTH_MODE, strategy.name, failureKind)
             )
             RuntimeHooks.resolver(
                 mode = RuntimeSignal.MODE_AUDIO,
@@ -2369,7 +2378,10 @@ class PlaybackResolver private constructor(private val context: Context) {
         val now = System.currentTimeMillis()
         if (stored.entity.blockedUntil > now) return null
         val manifest = stored.manifest
-        if (!isVideoMode && manifest?.isMuxed == true && !normalizeAudioQuality(audioQuality).equals("Low", true)) return null
+        if (
+            !preferMp4Audio && allowNetworkRefresh && manifest?.isMuxed == true &&
+            isMuxedAudioFallback(track.copy(playbackManifest = manifest), isVideoMode, audioQuality)
+        ) return null
         if (preferredAudioLanguage.isNotBlank() && manifest?.let(AudioLanguageIntelligence::isLanguageBlindFallback) == true) {
             return null
         }
@@ -2765,8 +2777,17 @@ class PlaybackResolver private constructor(private val context: Context) {
                 suspend {
                     resolveWithInnerTube(track, profile, isVideoMode, false, audioQuality)
                         .takeIf { stream ->
-                            val accepted = acceptResolvedStream(stream, isVideoMode, "${profile.label} probe", errors)
-                            if (!accepted) recordClientFailure(profile, null, IllegalStateException("Stream non valido o URL scaduto"))
+                            val sabrAudio = !isVideoMode && stream.manifest.streams.any {
+                                it.selected && it.kind == PlaybackStreamKind.AUDIO &&
+                                    it.deliveryMethod == PlaybackDeliveryMethod.SABR
+                            }
+                            val accepted = !sabrAudio && acceptResolvedStream(stream, isVideoMode, "${profile.label} probe", errors)
+                            if (sabrAudio) {
+                                errors += "${profile.label}: audio SABR escluso"
+                                recordClientFailure(profile, null, IllegalStateException("Audio SABR non riproducibile"))
+                            } else if (!accepted) {
+                                recordClientFailure(profile, null, IllegalStateException("Stream non valido o URL scaduto"))
+                            }
                             accepted
                         }
                 }
