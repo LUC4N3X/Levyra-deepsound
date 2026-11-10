@@ -2259,6 +2259,8 @@ fun LevyraApp(
             rewind = { musicExperience = "rewind" }, health = { musicExperience = "health" }
         ),
         LocalAnimationsEnabled provides state.animationsEnabled,
+        com.luc4n3x.levyra.ui.lyrics.LocalLyricsCustomFontFamily provides
+            com.luc4n3x.levyra.ui.lyrics.rememberLyricsFontFamily(state.lyricsStudioSettings.customFontId),
         LocalLivePlaybackPosition provides livePlaybackPosition,
         LocalTrackSelectionChromeHeight provides selectionChromeHeight,
         LocalLevyraVisualCapabilities provides visualCapabilities,

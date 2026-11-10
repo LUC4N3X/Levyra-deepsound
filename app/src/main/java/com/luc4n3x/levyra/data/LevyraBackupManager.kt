@@ -73,6 +73,7 @@ import com.luc4n3x.levyra.domain.LevyraHomeStudioSettings
 import com.luc4n3x.levyra.domain.LevyraMiniPlayerStudioSettings
 import com.luc4n3x.levyra.domain.LevyraNavigationStudioSettings
 import com.luc4n3x.levyra.domain.LevyraLyricsStudioSettings
+import com.luc4n3x.levyra.domain.LyricsFontFormat
 import com.luc4n3x.levyra.domain.LyricsProviderOrdering
 import com.luc4n3x.levyra.domain.PlayerBackgroundMode
 import com.luc4n3x.levyra.domain.ReactiveAuraPreset
@@ -122,6 +123,7 @@ class LevyraBackupManager(private val context: Context) {
     private val savedPlaylistsStore = SavedPlaylistsStore(database.savedPlaylistsDao())
     private val excludedArtistsStore = ExcludedArtistsStore(appContext)
     private val playlistCoverStore = PlaylistCoverStore(appContext)
+    private val lyricsFontLibrary = LyricsFontLibrary.get(appContext)
     private val tagsDao get() = database.playlistTagsDao()
 
     suspend fun exportTo(uri: Uri): LevyraBackupResult = withContext(Dispatchers.IO) {
@@ -315,12 +317,23 @@ class LevyraBackupManager(private val context: Context) {
             } else {
                 vaultSnapshot(entries)
             }
+            val stagedFonts = target.lyricsFonts?.let { items ->
+                try {
+                    lyricsFontLibrary.stageRestore(items)
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    Timber.w(error, "Lyrics fonts restore staging failed")
+                    null
+                }
+            }
             val rollback = currentSnapshot()
             val retainedOfflineAudio = database.downloadedTracksDao().all().filter { isOfflineAudioStoreUri(it.uri) }
             val downloads = reconcileDownloadedTracks(target.downloads, scanLevyraDownloads() + retainedOfflineAudio, ::downloadUriReadable)
             try {
                 applySnapshot(target, downloads)
             } catch (restoreError: Throwable) {
+                stagedFonts?.let(lyricsFontLibrary::discardRestore)
                 withContext(NonCancellable) {
                     try {
                         applySnapshot(rollback, rollback.downloads)
@@ -329,6 +342,10 @@ class LevyraBackupManager(private val context: Context) {
                     }
                 }
                 throw restoreError
+            }
+            stagedFonts?.let { staged ->
+                runCatching { lyricsFontLibrary.commitRestore(staged) }
+                    .onFailure { error -> Timber.w(error, "Lyrics fonts restore failed") }
             }
             LevyraBackupResult("Ripristino completato", "")
         }
@@ -354,6 +371,14 @@ class LevyraBackupManager(private val context: Context) {
                 val name = playlistCoverBackupEntry(playlist.id)
                 sections[name] = writeBinarySection(zip, name, bytes)
                 coverEntries[playlist.id] = name
+            }
+            val fontItems = lyricsFontLibrary.backupItems()
+            fontItems.forEach { item ->
+                val name = lyricsFontBackupEntry(item.entry.id, item.entry.format)
+                sections[name] = writeBinarySection(zip, name, item.bytes)
+            }
+            sections[LYRICS_FONTS_ENTRY] = writeJsonSection(zip, LYRICS_FONTS_ENTRY) { writer ->
+                writeJsonArray(writer, fontItems) { lyricsFontEntryToJson(it.entry).toString() }
             }
             sections[FAVORITES_ENTRY] = writeJsonSection(zip, FAVORITES_ENTRY) { writer ->
                 val favorites = database.favoriteTracksDao().all().map { it.toTrack() }
@@ -558,7 +583,8 @@ class LevyraBackupManager(private val context: Context) {
             playlists = parsePlaylists(entries[PLAYLISTS_ENTRY].toJsonArray(), entries),
             history = parseHistory(entries[HISTORY_ENTRY].toJsonArray()),
             downloads = parseDownloads(entries[DOWNLOADS_ENTRY].toJsonArray()),
-            queue = parseQueueBackup(queueJson)
+            queue = parseQueueBackup(queueJson),
+            lyricsFonts = entries[LYRICS_FONTS_ENTRY]?.toJsonArray()?.let { parseLyricsFontBackup(it, entries) }
         )
     }
 
@@ -1640,7 +1666,8 @@ class LevyraBackupManager(private val context: Context) {
         val playlists: List<PlaylistBackup>,
         val history: List<ListenEventEntity>,
         val downloads: List<DownloadEntity>,
-        val queue: QueueBackup
+        val queue: QueueBackup,
+        val lyricsFonts: List<LyricsFontBackupItem>? = null
     )
 
     private data class QueueBackup(
@@ -1687,7 +1714,8 @@ class LevyraBackupManager(private val context: Context) {
         const val DOWNLOADS_ENTRY = "data/downloads.json"
         const val QUEUE_ENTRY = "data/queue.json"
         const val ORGANIZATION_ENTRY = "data/library_organization.json"
-        const val MAX_ZIP_ENTRIES = 528
+        const val LYRICS_FONTS_ENTRY = "data/lyrics_fonts.json"
+        const val MAX_ZIP_ENTRIES = 544
         const val MAX_ENTRY_BYTES = 64L * 1024L * 1024L
         const val MAX_TOTAL_BYTES = 96L * 1024L * 1024L
         const val MAX_PLAYLIST_COVER_ENTRIES = 512
@@ -1707,6 +1735,7 @@ class LevyraBackupManager(private val context: Context) {
             HISTORY_ENTRY,
             DOWNLOADS_ENTRY,
             QUEUE_ENTRY,
+            LYRICS_FONTS_ENTRY,
             LEGACY_PAYLOAD_ENTRY
         )
     }
@@ -1727,11 +1756,12 @@ data class VaultPreview(
 
 internal fun vaultEntryAllowed(name: String): Boolean {
     if (name.isEmpty() || name.startsWith("/") || name.contains("..") || name.contains('\\')) return false
-    return name in LevyraBackupManager.ALLOWED_VAULT_ENTRIES || playlistCoverBackupEntryAllowed(name)
+    return name in LevyraBackupManager.ALLOWED_VAULT_ENTRIES || playlistCoverBackupEntryAllowed(name) || lyricsFontBackupEntryAllowed(name)
 }
 
 private fun vaultEntryLimit(name: String): Long =
     if (playlistCoverBackupEntryAllowed(name)) MAX_PLAYLIST_COVER_BACKUP_BYTES.toLong()
+    else if (lyricsFontBackupEntryAllowed(name)) LyricsFontLibrary.MAX_FONT_BYTES
     else LevyraBackupManager.MAX_ENTRY_BYTES
 
 internal val REQUIRED_VAULT_ENTRIES = setOf(
@@ -2166,3 +2196,16 @@ internal fun backupInterfaceSettingsFromJson(
         playerColorAccent = json.optInt("playerColorAccent", PlayerColorMode.DEFAULT_ACCENT)
     ).normalized()
 }
+
+private val LYRICS_FONT_BACKUP_ENTRY = Regex("fonts/lyrics/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.(ttf|otf)")
+
+internal fun lyricsFontBackupEntry(id: String, format: LyricsFontFormat): String = "fonts/lyrics/$id.${format.extension}"
+
+internal fun lyricsFontBackupEntryAllowed(name: String): Boolean = LYRICS_FONT_BACKUP_ENTRY.matches(name)
+
+internal fun parseLyricsFontBackup(json: JSONArray, entries: Map<String, ByteArray>): List<LyricsFontBackupItem> =
+    (0 until json.length()).mapNotNull { index ->
+        val entry = json.optJSONObject(index)?.let(::lyricsFontEntryFromJson) ?: return@mapNotNull null
+        val bytes = entries[lyricsFontBackupEntry(entry.id, entry.format)] ?: return@mapNotNull null
+        LyricsFontBackupItem(entry, bytes)
+    }

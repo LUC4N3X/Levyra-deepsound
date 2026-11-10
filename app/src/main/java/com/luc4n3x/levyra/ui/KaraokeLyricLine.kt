@@ -198,7 +198,9 @@ internal fun KaraokeLyricLine(
     val resolvedRomanization = line.romanized.ifBlank {
         line.words.joinToString("") { word -> word.romanized }.trim()
     }
-    val studioFontFamily = remember(studioSettings.fontPreset, spotifyLyrics) { lyricFontFamily(spotifyLyrics, studioSettings) }
+    val customFontFamily = com.luc4n3x.levyra.ui.lyrics.LocalLyricsCustomFontFamily.current
+    val presetFontFamily = remember(studioSettings.fontPreset, spotifyLyrics) { lyricFontFamily(spotifyLyrics, studioSettings) }
+    val studioFontFamily = customFontFamily ?: presetFontFamily
     val typography = LyricLineTypography(
         fontSize = resolvedFontSizeSp.sp,
         lineHeight = LevyraTypeRhythm.lineHeight(resolvedFontSizeSp),
@@ -261,14 +263,16 @@ internal fun KaraokeLyricLine(
             color = animatedRomanizationColor,
             fontSize = lyricSecondarySize(compact, cinemaPrimary, 11.sp, 15.sp, 13.sp),
             lineHeight = lyricSecondarySize(compact, false, 15.sp, 18.sp, 18.sp),
-            textAlign = textAlign
+            textAlign = textAlign,
+            fontFamily = customFontFamily
         )
         LyricLineSecondaryText(
             text = line.translated.takeIf { showTranslation }.orEmpty(),
             color = animatedTranslationColor,
             fontSize = lyricSecondarySize(compact, cinemaPrimary, 12.sp, 16.sp, 14.sp),
             lineHeight = lyricSecondarySize(compact, false, 16.sp, 20.sp, 20.sp),
-            textAlign = textAlign
+            textAlign = textAlign,
+            fontFamily = customFontFamily
         )
     }
 }
@@ -346,7 +350,7 @@ private fun LyricLineMainText(
 }
 
 @Composable
-private fun LyricLineSecondaryText(text: String, color: Color, fontSize: TextUnit, lineHeight: TextUnit, textAlign: TextAlign) {
+private fun LyricLineSecondaryText(text: String, color: Color, fontSize: TextUnit, lineHeight: TextUnit, textAlign: TextAlign, fontFamily: FontFamily?) {
     if (text.isBlank()) return
     Text(
         text = text,
@@ -354,6 +358,7 @@ private fun LyricLineSecondaryText(text: String, color: Color, fontSize: TextUni
         fontSize = fontSize,
         lineHeight = lineHeight,
         fontWeight = FontWeight.Medium,
+        fontFamily = fontFamily,
         textAlign = textAlign,
         modifier = Modifier.fillMaxWidth()
     )
