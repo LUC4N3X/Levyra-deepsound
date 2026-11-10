@@ -19,7 +19,8 @@ object AudioStreamResolver {
         hedgeBudgetMs: Long,
         recovery: (suspend () -> T?)? = null,
         isNoPlayableStream: (Throwable) -> Boolean = { false },
-        onAttemptError: (Throwable) -> Unit = {}
+        onAttemptError: (Throwable) -> Unit = {},
+        quality: StreamQuality<T>? = null
     ): AudioResolution<T> {
         require(hedgeBudgetMs >= 0L)
         require(tiers.size <= MAX_NORMAL_ATTEMPTS)
@@ -31,7 +32,7 @@ object AudioStreamResolver {
                 suspend { attempt().also { if (it == null) inconclusive.set(true) } }
             }
         }
-        val stream = hedgedFirst(guarded, hedgeBudgetMs) { error ->
+        val stream = hedgedFirst(guarded, hedgeBudgetMs, quality) { error ->
             if (!isNoPlayableStream(error)) inconclusive.set(true)
             onAttemptError(error)
         }
@@ -83,26 +84,22 @@ object AudioStreamResolver {
 
     private suspend fun <T> settleAttempt(
         attempt: suspend () -> T?,
-        winner: CompletableDeferred<T?>,
-        remaining: AtomicInteger,
+        selection: StreamSelection<T>,
         onAttemptError: (Throwable) -> Unit
     ) {
         val outcome = try {
             attemptOnce(attempt, onAttemptError)
         } catch (cancellation: CancellationException) {
-            winner.completeExceptionally(cancellation)
+            selection.fail(cancellation)
             throw cancellation
         }
-        if (outcome != null) {
-            winner.complete(outcome)
-        } else if (remaining.decrementAndGet() == 0) {
-            winner.complete(null)
-        }
+        selection.offer(outcome)
     }
 
     private suspend fun <T> hedgedFirst(
         tiers: List<List<suspend () -> T?>>,
         hedgeBudgetMs: Long,
+        quality: StreamQuality<T>?,
         onAttemptError: (Throwable) -> Unit
     ): T? {
         val ladder = tiers.filter { it.isNotEmpty() }
@@ -111,26 +108,76 @@ object AudioStreamResolver {
             return attemptOnce(ladder[0][0], onAttemptError)
         }
         return coroutineScope {
-            val winner = CompletableDeferred<T?>()
-            val remaining = AtomicInteger(ladder.sumOf { it.size })
+            val selection = StreamSelection(quality, ladder.sumOf { it.size })
             fun dispatch(attempt: suspend () -> T?) {
                 launch {
-                    settleAttempt(attempt, winner, remaining, onAttemptError)
+                    settleAttempt(attempt, selection, onAttemptError)
                 }
             }
             launch {
                 for ((index, tier) in ladder.withIndex()) {
-                    if (winner.isCompleted) break
+                    if (selection.first.isCompleted) break
                     tier.forEach { dispatch(it) }
                     if (index != ladder.lastIndex) {
-                        val settled = withTimeoutOrNull(hedgeBudgetMs) { winner.await() } != null || winner.isCompleted
+                        val settled = withTimeoutOrNull(hedgeBudgetMs) { selection.first.await() } != null ||
+                            selection.first.isCompleted
                         if (settled) break
                     }
                 }
             }
-            val result = winner.await()
+            val first = selection.first.await()
+            val result = if (first == null || quality == null || quality.graceMs == 0L) {
+                first
+            } else {
+                withTimeoutOrNull(quality.graceMs) { selection.settled.await() }
+                selection.best()
+            }
             coroutineContext.cancelChildren()
             result
         }
+    }
+
+    private class StreamSelection<T>(private val quality: StreamQuality<T>?, attempts: Int) {
+        val first = CompletableDeferred<T?>()
+        val settled = CompletableDeferred<Unit>()
+        private val remaining = AtomicInteger(attempts)
+        private var best: T? = null
+        private var bestRank = Int.MIN_VALUE
+
+        fun offer(candidate: T?) {
+            if (candidate != null) {
+                val rank = quality?.rank?.invoke(candidate) ?: 0
+                val sufficient = synchronized(this) {
+                    if (best == null || rank > bestRank) {
+                        best = candidate
+                        bestRank = rank
+                    }
+                    quality == null || bestRank >= quality.sufficientRank
+                }
+                first.complete(candidate)
+                if (sufficient) settled.complete(Unit)
+            }
+            if (remaining.decrementAndGet() == 0) {
+                first.complete(null)
+                settled.complete(Unit)
+            }
+        }
+
+        fun fail(cancellation: CancellationException) {
+            first.completeExceptionally(cancellation)
+            settled.complete(Unit)
+        }
+
+        fun best(): T? = synchronized(this) { best }
+    }
+}
+
+class StreamQuality<in T>(
+    val rank: (T) -> Int,
+    val sufficientRank: Int,
+    val graceMs: Long
+) {
+    init {
+        require(graceMs >= 0L)
     }
 }

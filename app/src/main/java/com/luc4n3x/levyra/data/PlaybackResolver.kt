@@ -1504,7 +1504,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         expectedGeneration: Long
     ): Track? {
         val hasYoutubeIdentity = PlaybackSourceIdentity.sourceVideoId(track).isNotBlank()
-        val applicableStrategies = orderedAudioStrategies().filter { strategy ->
+        val applicableStrategies = orderedAudioStrategies(audioQuality).filter { strategy ->
             hasYoutubeIdentity || !strategy.requiresYoutubeIdentity()
         }
         for ((attemptIndex, strategy) in applicableStrategies.withIndex()) {
@@ -1579,7 +1579,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         expectedGeneration: Long
     ): Track? {
         if (PlaybackSourceIdentity.sourceVideoId(candidate).isBlank()) return null
-        val strategies = orderedAudioStrategies().filterNot { it == PlaybackAudioStrategy.SEARCH }
+        val strategies = orderedAudioStrategies(audioQuality).filterNot { it == PlaybackAudioStrategy.SEARCH }
         for (strategy in strategies) {
             currentCoroutineContext().ensureActive()
             attemptAudioStrategy(strategy, candidate, audioQuality, errors, expectedGeneration)
@@ -1633,8 +1633,12 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
     }
 
-    private fun orderedAudioStrategies(): List<PlaybackAudioStrategy> {
-        val healthyOrder = strategyHealth.order(AUDIO_HEALTH_MODE, playbackPolicyStore.current().audioStrategies)
+    private fun orderedAudioStrategies(audioQuality: String): List<PlaybackAudioStrategy> {
+        val healthyOrder = strategyHealth.order(
+            AUDIO_HEALTH_MODE,
+            orderAudioStrategiesForQuality(playbackPolicyStore.current().audioStrategies, normalizeAudioQuality(audioQuality)),
+            retryStaleDemotions = true
+        )
         if (selectedPreferredAudioLanguage.isBlank()) return healthyOrder
         return healthyOrder.filterNot { it == PlaybackAudioStrategy.REEL_MUXED } +
             healthyOrder.filter { it == PlaybackAudioStrategy.REEL_MUXED }
@@ -2365,6 +2369,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         val now = System.currentTimeMillis()
         if (stored.entity.blockedUntil > now) return null
         val manifest = stored.manifest
+        if (!isVideoMode && manifest?.isMuxed == true && !normalizeAudioQuality(audioQuality).equals("Low", true)) return null
         if (preferredAudioLanguage.isNotBlank() && manifest?.let(AudioLanguageIntelligence::isLanguageBlindFallback) == true) {
             return null
         }
@@ -2790,7 +2795,15 @@ class PlaybackResolver private constructor(private val context: Context) {
                 }
             }
         }
-        return hedgedAudioWithRecovery(ladder, hedgeBudgetMs, recovery) { error ->
+        fun selectedAudio(stream: DirectStream) =
+            stream.manifest.streams.firstOrNull { it.selected && it.kind == PlaybackStreamKind.AUDIO }
+        val quality = audioHedgeQuality<DirectStream>(
+            normalizeAudioQuality(audioQuality),
+            isVideoMode,
+            audioItagOf = { selectedAudio(it)?.itag },
+            isDirectDelivery = { selectedAudio(it)?.deliveryMethod == PlaybackDeliveryMethod.PROGRESSIVE }
+        )
+        return hedgedAudioWithRecovery(ladder, hedgeBudgetMs, recovery, quality) { error ->
             error.message?.takeIf { it.isNotBlank() }?.let { errors += it }
         }
     }
@@ -3384,8 +3397,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             profile = profile,
             visitorData = session.visitorData,
             playerPoToken = poTokens?.playerToken,
-            signatureTimestamp = signatureTimestamp,
-            isVideoMode = isVideoMode
+            signatureTimestamp = signatureTimestamp
         ).toString()
         val requestBuilder = Request.Builder()
             .url(endpoint)
@@ -4389,8 +4401,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         profile: ClientProfile,
         visitorData: String,
         playerPoToken: String?,
-        signatureTimestamp: Int?,
-        isVideoMode: Boolean
+        signatureTimestamp: Int?
     ): JSONObject {
         val locale = YoutubeRegionProfile.effectiveLocale(userPreferences.languageCode())
         val client = JSONObject()
@@ -4434,7 +4445,6 @@ class PlaybackResolver private constructor(private val context: Context) {
             .put("contentCheckOk", true)
             .put("racyCheckOk", true)
             .put("playbackContext", JSONObject().put("contentPlaybackContext", contentPlaybackContext))
-            .apply { if (!isVideoMode) put("params", "CgIQBg") }
             .put("watchEndpointMusicSupportedConfigs", JSONObject().put("watchEndpointMusicConfig", JSONObject().put("musicVideoType", "MUSIC_VIDEO_TYPE_ATV")))
             .apply {
                 playerPoToken?.takeIf { it.isNotBlank() }?.let {
@@ -4461,29 +4471,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             isMp4 -> 420_000
             else -> 0
         }
-        val itagBias = if (requestedAudioQuality.equals("low", true)) {
-            when (itag) {
-                139 -> 420_000
-                249 -> 380_000
-                140 -> 260_000
-                250 -> 180_000
-                251 -> 80_000
-                141 -> 40_000
-                774 -> 20_000
-                else -> 0
-            }
-        } else {
-            when (itag) {
-                774 -> if (requestedAudioQuality.equals("high", true)) 820_000 else 0
-                251 -> 760_000
-                141 -> 700_000
-                140 -> 560_000
-                250 -> 480_000
-                249 -> 280_000
-                139 -> 120_000
-                else -> 0
-            }
-        }
+        val itagBias = audioItagPreference(itag, requestedAudioQuality)
         val qualityBias = when {
             formatAudioQuality.contains("HIGH", true) -> 620_000
             formatAudioQuality.contains("MEDIUM", true) -> 420_000

@@ -42,7 +42,12 @@ The host classifies conclusive no-stream exceptions through `isNoPlayableStream`
 URL, expiry, MIME, redirect, and transport validation stay in the host's existing
 verification path before an attempt returns a stream.
 
-The first valid stream wins. Tiers retain their input order and hedge delay;
+The first valid stream wins unless the host passes a `StreamQuality`. Then a
+first stream ranked below `sufficientRank` opens a bounded grace window: attempts
+already in flight may replace it only with a strictly higher-ranked stream, and the
+window closes early once a sufficient stream arrives or every attempt settles.
+The grace never dispatches later tiers, and an attempt failure during the window
+keeps the stream already found. Tiers retain their input order and hedge delay;
 losing work is cancelled and joined before returning. A recovery invocation is
 allowed only after every normal attempt conclusively reports no playable stream.
 An ambiguous result, network/HTTP/verification failure, or cancellation suppresses

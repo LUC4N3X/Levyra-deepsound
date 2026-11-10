@@ -8,6 +8,7 @@ import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -388,6 +389,85 @@ class AudioStreamResolverTest {
         assertEquals(1, recoveryCalls)
     }
 
+    @Test
+    fun qualityGraceWaitsForABetterStreamAlreadyInFlight() = runBlocking {
+        withTimeout(2_000L) {
+            val fast: suspend () -> String? = { "low" }
+            val better: suspend () -> String? = { delay(20L); "high" }
+
+            val result = AudioStreamResolver.resolve(
+                listOf(listOf(fast), listOf(better)), 0L,
+                quality = quality(graceMs = 10_000L)
+            )
+
+            assertEquals("high", stream(result))
+        }
+    }
+
+    @Test
+    fun qualityGraceExpiresWithTheBestAvailableAndJoinsLosers() = runBlocking {
+        withTimeout(2_000L) {
+            val stopped = CompletableDeferred<Unit>()
+            val pending: suspend () -> String? = {
+                try {
+                    awaitCancellation()
+                } finally {
+                    stopped.complete(Unit)
+                }
+            }
+
+            val result = AudioStreamResolver.resolve(
+                listOf(listOf<suspend () -> String?>({ "low" }), listOf(pending)), 0L,
+                quality = quality(graceMs = 30L)
+            )
+
+            assertEquals("low", stream(result))
+            assertTrue(stopped.isCompleted)
+        }
+    }
+
+    @Test
+    fun sufficientFirstStreamSkipsTheGrace() = runBlocking {
+        withTimeout(2_000L) {
+            val result = AudioStreamResolver.resolve(
+                listOf(listOf<suspend () -> String?>({ "high" }), listOf({ awaitCancellation() })), 0L,
+                quality = quality(graceMs = 60_000L)
+            )
+
+            assertEquals("high", stream(result))
+        }
+    }
+
+    @Test
+    fun qualityGraceDoesNotDispatchLaterTiers() = runBlocking {
+        var laterCalls = 0
+        val result = AudioStreamResolver.resolve(
+            listOf(listOf<suspend () -> String?>({ "low" }), listOf({ laterCalls++; "high" })), 1_000L,
+            quality = quality(graceMs = 30L)
+        )
+
+        assertEquals("low", stream(result))
+        assertEquals(0, laterCalls)
+    }
+
+    @Test
+    fun failureDuringGraceKeepsTheStreamAlreadyFound() = runBlocking {
+        withTimeout(2_000L) {
+            val result = AudioStreamResolver.resolve(
+                listOf(listOf<suspend () -> String?>({ "low" }), listOf({ delay(10L); throw NoStream() })), 0L,
+                isNoPlayableStream = { it is NoStream },
+                quality = quality(graceMs = 60_000L)
+            )
+
+            assertEquals("low", stream(result))
+        }
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun negativeQualityGraceIsRejected() {
+        quality(graceMs = -1L)
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun negativeHedgeBudgetIsRejected() = runBlocking {
         AudioStreamResolver.resolve<String>(emptyList(), -1L)
@@ -400,6 +480,12 @@ class AudioStreamResolverTest {
 
         assertFalse(result.toString().contains("synthetic-private-media-location"))
     }
+
+    private fun quality(graceMs: Long) = StreamQuality<String>(
+        rank = { if (it == "high") 2 else 1 },
+        sufficientRank = 2,
+        graceMs = graceMs
+    )
 
     private fun stream(result: AudioResolution<String>): String =
         (result as AudioResolution.Resolved).stream

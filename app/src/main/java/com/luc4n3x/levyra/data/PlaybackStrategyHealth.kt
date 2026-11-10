@@ -52,6 +52,7 @@ internal data class PlaybackStrategyStats(
 }
 
 private const val SCORE_GAP_THRESHOLD = 25.0
+private const val SCORE_DEMOTION_WINDOW_MS = 10L * 60L * 1_000L
 private const val HARD_FAILURE_STREAK_THRESHOLD = 3
 private const val BASE_QUARANTINE_MS = 5L * 60L * 1_000L
 private const val MAX_QUARANTINE_MS = 30L * 60L * 1_000L
@@ -68,13 +69,15 @@ private data class RankedPlaybackStrategy<T>(
     val index: Int,
     val strategy: T,
     val circuit: PlaybackStrategyCircuit,
-    val score: Double
+    val score: Double,
+    val recentlyFailed: Boolean
 )
 
 internal fun <T : Enum<T>> orderPlaybackStrategiesByHealth(
     strategies: List<T>,
     statsFor: (String) -> PlaybackStrategyStats?,
-    nowMs: Long
+    nowMs: Long,
+    retryStaleDemotions: Boolean = false
 ): List<T> {
     if (strategies.size <= 1) return strategies
     if (statsFor(strategies.first().name) == null) return strategies
@@ -83,7 +86,23 @@ internal fun <T : Enum<T>> orderPlaybackStrategiesByHealth(
 
     val ranked = strategies.mapIndexed { index, strategy ->
         val stats = statsFor(strategy.name) ?: PlaybackStrategyStats()
-        RankedPlaybackStrategy(index, strategy, stats.circuitAt(nowMs), stats.score)
+        RankedPlaybackStrategy(
+            index,
+            strategy,
+            stats.circuitAt(nowMs),
+            stats.score,
+            recentlyFailed = stats.failures > 0 && nowMs - stats.lastFailureAtMs < SCORE_DEMOTION_WINDOW_MS
+        )
+    }
+    if (retryStaleDemotions) {
+        val bestScoreByCircuit = ranked.groupBy { it.circuit }.mapValues { (_, group) -> group.maxOf { it.score } }
+        fun demoted(entry: RankedPlaybackStrategy<T>): Boolean =
+            entry.recentlyFailed && entry.score <= bestScoreByCircuit.getValue(entry.circuit) - SCORE_GAP_THRESHOLD
+        return ranked.sortedWith(
+            compareBy<RankedPlaybackStrategy<T>> { it.circuit.ordinal }
+                .thenBy { demoted(it) }
+                .thenBy { if (demoted(it)) -it.score else it.index.toDouble() }
+        ).map { it.strategy }
     }
 
     val comparator = Comparator<RankedPlaybackStrategy<T>> { a, b ->
@@ -224,11 +243,17 @@ internal class PlaybackStrategyHealthStore(context: Context) {
         stats.putAll(parsePlaybackStrategyHealthSnapshot(prefs.getString(KEY_HEALTH, null)))
     }
 
-    fun <T : Enum<T>> order(mode: String, strategies: List<T>, nowMs: Long = System.currentTimeMillis()): List<T> {
+    fun <T : Enum<T>> order(
+        mode: String,
+        strategies: List<T>,
+        nowMs: Long = System.currentTimeMillis(),
+        retryStaleDemotions: Boolean = false
+    ): List<T> {
         return orderPlaybackStrategiesByHealth(
             strategies = strategies,
             statsFor = { strategyName -> stats[keyFor(mode, strategyName)] },
-            nowMs = nowMs
+            nowMs = nowMs,
+            retryStaleDemotions = retryStaleDemotions
         )
     }
 

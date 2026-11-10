@@ -224,6 +224,23 @@ class PlaybackStrategyHealthTest {
     }
 
     @Test
+    fun scoreDemotionExpiresSoAStaleLoserIsRetriedInPolicyOrder() {
+        val failedAt = 1_000L
+        val loser = PlaybackStrategyStats(successes = 0, failures = 13, consecutiveFailures = 13, lastFailureAtMs = failedAt)
+        val winner = PlaybackStrategyStats(successes = 134, failures = 3, lastFailureAtMs = failedAt)
+        val strategies = listOf(SampleStrategy.WebEmbedded, SampleStrategy.InnerTube)
+        val statsMap = mapOf(SampleStrategy.WebEmbedded.name to loser, SampleStrategy.InnerTube.name to winner)
+
+        val recent = orderPlaybackStrategiesByHealth(strategies, { statsMap[it] }, failedAt + 60_000L, retryStaleDemotions = true)
+        val stale = orderPlaybackStrategiesByHealth(strategies, { statsMap[it] }, failedAt + 11L * 60_000L, retryStaleDemotions = true)
+        val staleWithoutRetry = orderPlaybackStrategiesByHealth(strategies, { statsMap[it] }, failedAt + 11L * 60_000L)
+
+        assertEquals(listOf(SampleStrategy.InnerTube, SampleStrategy.WebEmbedded), recent)
+        assertEquals(strategies, stale)
+        assertEquals(listOf(SampleStrategy.InnerTube, SampleStrategy.WebEmbedded), staleWithoutRetry)
+    }
+
+    @Test
     fun corruptPersistedJsonDegradesToEmptyHealth() {
         assertEquals(emptyMap<String, PlaybackStrategyStats>(), parsePlaybackStrategyHealthSnapshot("{not valid json"))
         assertEquals(emptyMap<String, PlaybackStrategyStats>(), parsePlaybackStrategyHealthSnapshot("[1,2,3]"))
