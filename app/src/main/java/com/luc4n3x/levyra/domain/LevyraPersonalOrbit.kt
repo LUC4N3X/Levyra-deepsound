@@ -271,6 +271,9 @@ object LevyraPersonalOrbit {
     fun distinctHistory(tracks: List<Track>): List<Track> =
         tracks.distinctBy(::identityKey).distinctBy(Track::id)
 
+    fun repairStoredHistory(tracks: List<Track>): List<Track> =
+        distinctHistory(tracks.map(::withoutVideoArtwork)).take(DISPLAY_LIMIT)
+
     internal fun musicTitleKey(track: Track): String = normalizedMusicTitle(track.title)
 
     internal fun artistKeys(track: Track): Set<String> = normalizedArtists(track.artist).toSet()

@@ -1909,9 +1909,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val favorites = favoritesStore.load()
         val favoriteTimestamps = favoritesStore.loadTimestamps()
         val settings = startupSettings
-        val repairedRecentSearches = LevyraPersonalOrbit
-            .distinctHistory(settings.recentSearches.map(LevyraPersonalOrbit::withoutVideoArtwork))
-            .take(LevyraPersonalOrbit.DISPLAY_LIMIT)
+        val repairedRecentSearches = LevyraPersonalOrbit.repairStoredHistory(settings.recentSearches)
         val instantSnapshot = homeSnapshotCache.load(settings.languageCode)
         val cachedHomeSections = instantSnapshot?.homeSections?.takeIf { it.isNotEmpty() } ?: preferences.loadHomeSections(settings.languageCode)
         val startupHomeSections = LevyraStartupCatalog.repairHomeSections(
@@ -7145,7 +7143,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 favoriteTimestamps = favoriteTimestamps,
                 playlists = playlists,
                 playlistTags = playlistTags,
-                recentSearches = snapshot.recentSearches,
+                recentSearches = LevyraPersonalOrbit.repairStoredHistory(snapshot.recentSearches),
                 personalOrbitTracks = snapshot.personalOrbitTracks,
                 userName = snapshot.userName,
                 languageCode = snapshot.languageCode,

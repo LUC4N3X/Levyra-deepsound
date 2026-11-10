@@ -40,6 +40,22 @@ class LevyraPersonalOrbitIdentityTest {
     }
 
     @Test
+    fun storedHistoryRepairDropsRepeatedIdsAndKeepsDisplayLimit() {
+        val stored = listOf(
+            track(id = "same1234567", title = "Kaavaalaa", artist = "Anirudh Ravichander"),
+            track(id = "same1234567", title = "Kaavaalaa (From Jailer)", artist = "Shilpa Rao")
+        ) + (1..LevyraPersonalOrbit.DISPLAY_LIMIT + 5).map { index ->
+            track(id = "track${index.toString().padStart(6, '0')}", title = "Song $index", artist = "Artist $index")
+        }
+
+        val repaired = LevyraPersonalOrbit.repairStoredHistory(stored)
+
+        assertEquals(repaired.size, repaired.map { it.id }.toSet().size)
+        assertEquals(LevyraPersonalOrbit.DISPLAY_LIMIT, repaired.size)
+        assertEquals("same1234567", repaired.first().id)
+    }
+
+    @Test
     fun deduplicatesArtistsWhenCreditsUseDifferentOrderAndSeparators() {
         val first = track(id = "first123456", title = "Dai Dai", artist = "Shakira & Burna Boy")
         val second = track(id = "second12345", title = "Dai Dai", artist = "Burna Boy, Shakira")
