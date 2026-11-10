@@ -57,10 +57,9 @@ internal fun LivingArtworkLayer(
 
     if (!active && amount <= 0.001f) return
 
-    val shader = rememberLivingArtworkShader(colors)
-    if (shader != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        LivingArtworkShaderSurface(
-            shader = shader,
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        LivingArtworkApi33Surface(
+            colors = colors,
             phase = { phase.floatValue },
             amount = { amount },
             modifier = modifier
@@ -75,6 +74,23 @@ internal fun LivingArtworkLayer(
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+@Composable
+private fun LivingArtworkApi33Surface(
+    colors: LivingArtworkColors,
+    phase: () -> Float,
+    amount: () -> Float,
+    modifier: Modifier
+) {
+    val shader = rememberLivingArtworkShader(colors)
+    if (shader != null) {
+        LivingArtworkShaderSurface(shader, phase, amount, modifier)
+    } else {
+        LivingArtworkLegacySurface(colors, phase, amount, modifier)
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
 private fun rememberLivingArtworkShader(colors: LivingArtworkColors): RuntimeShader? =
     remember(colors) {
