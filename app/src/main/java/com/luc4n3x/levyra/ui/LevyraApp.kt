@@ -13274,6 +13274,7 @@ private fun HomeMusicVideoShelf(
             }
             val rowState = rememberLazyListState()
             val railMotion = defaultRailMotionEnabled()
+            val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
             LazyRow(
                 state = rowState,
                 modifier = Modifier.fillMaxWidth(),
@@ -13290,7 +13291,7 @@ private fun HomeMusicVideoShelf(
                     val track = item.track
                     val active = currentId != null && track.id == currentId
                     val activeResolving = active && playback.isResolving
-                    Box(Modifier.defaultVideoRailMotion(railMotion, rowState, motionKey)) {
+                    Box(Modifier.defaultVideoRailMotion(railMotion, rowState, motionKey, rtl)) {
                         HomeMusicVideoCard(
                             item = item,
                             width = videoCardWidth,
@@ -13302,7 +13303,7 @@ private fun HomeMusicVideoShelf(
                             onClick = {
                                 if (active && !activeResolving) actions.onToggleCurrent() else actions.onPlay(track)
                             },
-                            artworkMotion = Modifier.defaultRailParallax(railMotion, rowState, motionKey)
+                            artworkMotion = Modifier.defaultVideoArtworkMotion(railMotion, rowState, motionKey, rtl)
                         )
                     }
                 }

@@ -6,9 +6,17 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
 import com.luc4n3x.levyra.ui.theme.LevyraIsMono
 import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
 import kotlin.math.abs
@@ -23,9 +31,9 @@ private const val PagerScale = 0.05f
 private const val PagerFade = 0.25f
 private const val ParallaxZoom = 1.06f
 private const val PagerTilt = 6f
-private const val VideoTilt = 9f
 private const val VideoEdgeScale = 0.06f
 private const val VideoEdgeFade = 0.22f
+private const val VideoFoldFade = 0.55f
 private val RailSink = 6.dp
 private val RailEasing = CubicBezierEasing(0.3f, 0f, 0.8f, 0.15f)
 
@@ -92,20 +100,53 @@ internal fun Modifier.defaultRailParallax(enabled: Boolean, state: LazyListState
         translationX = -travel * size.width * (ParallaxZoom - 1f) / 2f
     }
 
-internal fun Modifier.defaultVideoRailMotion(enabled: Boolean, state: LazyListState, key: Any): Modifier =
+internal fun Modifier.defaultVideoRailMotion(enabled: Boolean, state: LazyListState, key: Any, rtl: Boolean): Modifier =
     if (!enabled) this else graphicsLayer {
         val info = state.layoutInfo
         val item = info.visibleItemsInfo.firstOrNull { it.key == key } ?: return@graphicsLayer
         if (item.size <= 0) return@graphicsLayer
-        val viewportCenter = (info.viewportStartOffset + info.viewportEndOffset) / 2f
-        val half = ((info.viewportEndOffset - info.viewportStartOffset) / 2f).coerceAtLeast(1f)
-        val offset = ((item.offset + item.size / 2f - viewportCenter) / half).coerceIn(-1f, 1f)
-        val focus = RailEasing.transform(abs(offset))
-        val scale = 1f - VideoEdgeScale * focus
-        scaleX = scale
-        scaleY = scale
-        alpha = 1f - VideoEdgeFade * focus
-        cameraDistance = 14f * density
-        rotationY = -VideoTilt * offset
-        transformOrigin = TransformOrigin(if (offset < 0f) 1f else 0f, 0.5f)
+        val folded = videoFoldPixels(item.offset, item.size, info.beforeContentPadding)
+        if (folded > 0f) {
+            val progress = RailEasing.transform(folded / item.size)
+            val scale = 1f - VideoEdgeScale * progress
+            translationX = if (rtl) -folded else folded
+            scaleX = scale
+            scaleY = scale
+            alpha = 1f - VideoFoldFade * progress
+            transformOrigin = TransformOrigin(if (rtl) 1f else 0f, 0.5f)
+            clip = true
+            shape = VideoFoldShape(folded, scale, LevyraHomeDesign.ArtworkCorner.toPx(), rtl)
+        } else {
+            val entering = item.offset + item.size - info.viewportEndOffset
+            val hidden = RailEasing.transform((entering.toFloat() / item.size).coerceIn(0f, 1f))
+            val scale = 1f - VideoEdgeScale * hidden
+            scaleX = scale
+            scaleY = scale
+            alpha = 1f - VideoEdgeFade * hidden
+            transformOrigin = TransformOrigin(if (rtl) 1f else 0f, 0.5f)
+        }
     }
+
+internal fun Modifier.defaultVideoArtworkMotion(enabled: Boolean, state: LazyListState, key: Any, rtl: Boolean): Modifier =
+    if (!enabled) this else graphicsLayer {
+        val info = state.layoutInfo
+        val item = info.visibleItemsInfo.firstOrNull { it.key == key } ?: return@graphicsLayer
+        val shift = videoFoldPixels(item.offset, item.size, info.beforeContentPadding) / 2f
+        translationX = if (rtl) shift else -shift
+    }
+
+internal fun videoFoldPixels(itemOffset: Int, itemSize: Int, restingStart: Int): Float =
+    (restingStart - itemOffset).toFloat().coerceIn(0f, itemSize.toFloat())
+
+private class VideoFoldShape(
+    private val folded: Float,
+    private val scale: Float,
+    private val corner: Float,
+    private val rtl: Boolean
+) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        val visibleWidth = ((size.width - folded) / scale).coerceIn(0f, size.width)
+        val left = if (rtl) size.width - visibleWidth else 0f
+        return Outline.Rounded(RoundRect(left, 0f, left + visibleWidth, size.height, CornerRadius(corner)))
+    }
+}
