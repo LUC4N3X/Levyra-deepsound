@@ -375,6 +375,11 @@ class ChartsRepository(context: Context) {
         return ChartFeedParser.modern(body, limit)
     }
 
+    suspend fun appleTopMusicVideos(country: String, limit: Int): List<AppleChartVideo> {
+        val body = httpGet(AppleMusicVideoChart.feedUrl(country, limit)) ?: return emptyList()
+        return AppleMusicVideoChart.parse(body, limit)
+    }
+
     private suspend fun fetchAppleClassic(country: String, limit: Int): List<Track> {
         val url = "https://itunes.apple.com/$country/rss/topsongs/limit=$limit/json"
         val body = httpGet(url) ?: return emptyList()
