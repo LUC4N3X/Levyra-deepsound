@@ -281,15 +281,19 @@ internal fun LyricsStudioOverlay(
                         contentPadding = PaddingValues(horizontal = 2.dp)
                     ) {
                         items(LevyraFontPreset.entries) { fontPreset ->
-                            val selected = settings.fontPreset == fontPreset
+                            val selected = settings.customFontId.isBlank() && settings.fontPreset == fontPreset
                             StudioChoiceChip(
                                 label = fontPreset.displayName,
                                 selected = selected,
-                                onClick = { onUpdateSettings(settings.copy(fontPreset = fontPreset)) }
+                                onClick = { onUpdateSettings(settings.copy(fontPreset = fontPreset, customFontId = "")) }
                             )
                         }
                     }
                 }
+            }
+
+            item(contentType = "studio-typography-custom-fonts") {
+                LyricsFontLibrarySection(settings = settings, onUpdateSettings = onUpdateSettings)
             }
 
             item(contentType = "studio-typography-options") {
@@ -313,6 +317,7 @@ internal fun LyricsStudioOverlay(
                                 LyricsTextSize.STANDARD -> strings.lyricsStudioSizeStandard
                                 LyricsTextSize.LARGE -> strings.lyricsStudioSizeLarge
                                 LyricsTextSize.EXTRA_LARGE -> strings.lyricsStudioSizeExtraLarge
+                                LyricsTextSize.HUGE -> strings.lyricsStudioSizeHuge
                             }
                             StudioChoiceChip(
                                 label = label,
@@ -1003,9 +1008,11 @@ private fun LyricsStudioLivePreview(
     }
 
     val accentColor = resolveStudioAccentColor(settings, currentTrack)
-    val fontFamily = remember(settings.fontPreset) {
+    val customFontFamily = com.luc4n3x.levyra.ui.lyrics.LocalLyricsCustomFontFamily.current
+    val presetFontFamily = remember(settings.fontPreset) {
         levyraFontFamilyFor(settings.fontPreset)
     }
+    val fontFamily = customFontFamily ?: presetFontFamily
     val baseFontSize = 21f * settings.textSize.scale
     val lineHeight = LevyraTypeRhythm.lineHeight(baseFontSize)
     val glowShadow = resolveStudioGlowShadow(settings, accentColor)

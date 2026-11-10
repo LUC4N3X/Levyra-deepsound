@@ -169,6 +169,25 @@ class LevyraStrings private constructor(
     val lyricsStudioSizeLarge: String get() = value("lyricsStudioSizeLarge")
     val lyricsStudioSizeExtraLarge: String get() = value("lyricsStudioSizeExtraLarge")
     val lyricsStudioWeightMedium: String get() = value("lyricsStudioWeightMedium")
+    val lyricsFontsTitle: String get() = value("lyricsFontsTitle")
+    val lyricsFontsHint: String get() = value("lyricsFontsHint")
+    val lyricsFontsImport: String get() = value("lyricsFontsImport")
+    val lyricsFontsImporting: String get() = value("lyricsFontsImporting")
+    val lyricsFontsImported: String get() = value("lyricsFontsImported")
+    val lyricsFontsReplaced: String get() = value("lyricsFontsReplaced")
+    val lyricsFontsInvalid: String get() = value("lyricsFontsInvalid")
+    val lyricsFontsTooLarge: String get() = value("lyricsFontsTooLarge")
+    val lyricsFontsLibraryFull: String get() = value("lyricsFontsLibraryFull")
+    val lyricsFontsFailed: String get() = value("lyricsFontsFailed")
+    val lyricsFontsUnavailable: String get() = value("lyricsFontsUnavailable")
+    val lyricsFontsVariable: String get() = value("lyricsFontsVariable")
+    val lyricsFontsRename: String get() = value("lyricsFontsRename")
+    val lyricsFontsReplace: String get() = value("lyricsFontsReplace")
+    val lyricsFontsDeleteTitle: String get() = value("lyricsFontsDeleteTitle")
+    val lyricsFontsDeleteBody: String get() = value("lyricsFontsDeleteBody")
+    val lyricsFontsName: String get() = value("lyricsFontsName")
+    val lyricsFontsOptions: String get() = value("lyricsFontsOptions")
+    val lyricsStudioSizeHuge: String get() = value("lyricsStudioSizeHuge")
     val lyricsStudioWeightSemiBold: String get() = value("lyricsStudioWeightSemiBold")
     val lyricsStudioWeightBold: String get() = value("lyricsStudioWeightBold")
     val lyricsStudioWeightExtraBold: String get() = value("lyricsStudioWeightExtraBold")
@@ -2298,7 +2317,7 @@ class LevyraStrings private constructor(
         private val builtBundles = java.util.concurrent.ConcurrentHashMap<String, LevyraStrings>()
 
         private val allRequiredKeys: Set<String> by lazy(LazyThreadSafetyMode.PUBLICATION) {
-            requiredKeys + "removeFromPlaylist" + profileKeys + motionArtworkKeys + exploreSectionKeys + freshCurrentsKeys + canvasKeys + audioKeys + audioOutputKeys + alternativeAudioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + jamModerationKeys + jamQrKeys + ambientModeKeys + themeStudioKeys + lyricsStudioKeys + networkKeys + resonanceKeys + organizationKeys + downloadLocationKeys + downloadDestinationKeys + offlineStorageKeys + keepScreenOnKeys + similarSongsKeys + playerVisualKeys + playerDeckKeys + playerGestureKeys + playlistStudioKeys + queueSelectionKeys + librarySortKeys + offlineHomeKeys + recapKeys + listeningInsightsKeys + queueSpaceKeys + localLibraryKeys + localTagKeys + lyricsOffsetKeys + lyricsTranslationStatusKeys + playbackTileKeys + visualPerformanceKeys + liquidGlassKeys + immersiveModeKeys + musicVideoPreferenceKeys + videoQualityKeys + lyricsProviderPriorityKeys + mixLabKeys + chartMarketKeys + homeSoundtrackKeys + lyricsShareKeys + listeningReceiptKeys + settingsSearchKeys + smartOfflineLocalizationKeys + appUpdateKeys
+            requiredKeys + "removeFromPlaylist" + profileKeys + motionArtworkKeys + exploreSectionKeys + freshCurrentsKeys + canvasKeys + audioKeys + audioOutputKeys + alternativeAudioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + jamModerationKeys + jamQrKeys + ambientModeKeys + themeStudioKeys + lyricsStudioKeys + lyricsFontKeys + networkKeys + resonanceKeys + organizationKeys + downloadLocationKeys + downloadDestinationKeys + offlineStorageKeys + keepScreenOnKeys + similarSongsKeys + playerVisualKeys + playerDeckKeys + playerGestureKeys + playlistStudioKeys + queueSelectionKeys + librarySortKeys + offlineHomeKeys + recapKeys + listeningInsightsKeys + queueSpaceKeys + localLibraryKeys + localTagKeys + lyricsOffsetKeys + lyricsTranslationStatusKeys + playbackTileKeys + visualPerformanceKeys + liquidGlassKeys + immersiveModeKeys + musicVideoPreferenceKeys + videoQualityKeys + lyricsProviderPriorityKeys + mixLabKeys + chartMarketKeys + homeSoundtrackKeys + lyricsShareKeys + listeningReceiptKeys + settingsSearchKeys + smartOfflineLocalizationKeys + appUpdateKeys
         }
 
         private fun bundleFor(code: String): LevyraStrings? {
@@ -2319,7 +2338,7 @@ class LevyraStrings private constructor(
                     autoEqLocalizationEntries(code), experienceLocalizationEntries(code), insightLocalizationEntries(code),
                     systemActionLocalizationEntries(code), integrationLocalizationEntries(code), recognitionLocalizationEntries(code),
                     jamLocalizationEntries(code), jamModerationLocalizationEntries(code), jamQrLocalizationEntries(code), ambientModeLocalizationEntries(code),
-                    themeStudioLocalizationEntries(code), lyricsStudioLocalizationEntries(code), networkLocalizationEntries(code),
+                    themeStudioLocalizationEntries(code), lyricsStudioLocalizationEntries(code), lyricsFontLocalizationEntries(code), networkLocalizationEntries(code),
                     resonanceLocalizationEntries(code), organizationLocalizationEntries(code), downloadLocationLocalizationEntries(code),
                     downloadDestinationLocalizationEntries(code), offlineStorageLocalizationEntries(code), keepScreenOnLocalizationEntries(code),
                     similarSongsLocalizationEntries(code), playerVisualLocalizationEntries(code), playerDeckLocalizationEntries(code),

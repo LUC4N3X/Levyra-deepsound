@@ -206,7 +206,8 @@ private fun rememberAppleLyricsTextKit(
     showTranslation: Boolean,
     animations: Boolean
 ): AppleLyricsTextKit {
-    val fontFamily = remember { levyraFontFamilyFor(LevyraFontPreset.Inter) }
+    val customFontFamily = com.luc4n3x.levyra.ui.lyrics.LocalLyricsCustomFontFamily.current
+    val fontFamily = customFontFamily ?: remember { levyraFontFamilyFor(LevyraFontPreset.Inter) }
     val fontKey = LocalFontFamilyResolver.current.resolve(fontFamily, FontWeight.Bold).value
     val measurer = rememberTextMeasurer(cacheSize = 0)
     val main = remember(fontFamily) {

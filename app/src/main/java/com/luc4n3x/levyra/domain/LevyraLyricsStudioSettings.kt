@@ -48,7 +48,8 @@ enum class LyricsTextSize(val scale: Float) {
     COMPACT(0.88f),
     STANDARD(1.0f),
     LARGE(1.16f),
-    EXTRA_LARGE(1.32f);
+    EXTRA_LARGE(1.32f),
+    HUGE(1.5f);
 
     companion object {
         fun from(value: String?): LyricsTextSize =
@@ -132,7 +133,8 @@ data class LevyraLyricsStudioSettings(
     val autoScrollEnabled: Boolean = true,
     val showOriginalLyrics: Boolean = true,
     val romanizationEnabled: Boolean = true,
-    val appleBlurEnabled: Boolean = false
+    val appleBlurEnabled: Boolean = false,
+    val customFontId: String = ""
 ) {
     fun normalized(): LevyraLyricsStudioSettings = copy(
         inactiveOpacity = inactiveOpacity.coerceIn(0.15f, 0.90f),
@@ -149,7 +151,8 @@ data class LevyraLyricsStudioSettings(
         autoScrollEnabled = autoScrollEnabled,
         showOriginalLyrics = showOriginalLyrics,
         romanizationEnabled = romanizationEnabled,
-        appleBlurEnabled = appleBlurEnabled
+        appleBlurEnabled = appleBlurEnabled,
+        customFontId = customFontId
     )
 
     private fun presetBase(preset: LyricsStylePreset): LevyraLyricsStudioSettings = when (preset) {
@@ -255,6 +258,7 @@ data class LevyraLyricsStudioSettings(
         put("showOriginalLyrics", showOriginalLyrics)
         put("romanizationEnabled", romanizationEnabled)
         put("appleBlurEnabled", appleBlurEnabled)
+        put("customFontId", customFontId)
     }.toString()
 
     companion object {
@@ -281,7 +285,8 @@ data class LevyraLyricsStudioSettings(
                     autoScrollEnabled = json.optBoolean("autoScrollEnabled", true),
                     showOriginalLyrics = json.optBoolean("showOriginalLyrics", true),
                     romanizationEnabled = json.optBoolean("romanizationEnabled", true),
-                    appleBlurEnabled = json.optBoolean("appleBlurEnabled", false)
+                    appleBlurEnabled = json.optBoolean("appleBlurEnabled", false),
+                    customFontId = json.optString("customFontId").trim()
                 ).normalized()
             }.getOrDefault(LevyraLyricsStudioSettings())
         }
