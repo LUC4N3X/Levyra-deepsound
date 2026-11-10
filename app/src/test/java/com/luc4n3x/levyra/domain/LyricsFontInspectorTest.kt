@@ -42,6 +42,12 @@ class LyricsFontInspectorTest {
     }
 
     @Test
+    fun oversizedNameRecordsAreIgnored() {
+        val result = inspect(LyricsFontTestFonts.trueType("x".repeat(400)))!!
+        assertEquals("", result.familyName)
+    }
+
+    @Test
     fun fontNamesAreSanitized() {
         assertEquals("My Font", sanitizeLyricsFontName("  My\u0000\n  Font  "))
         assertEquals(64, sanitizeLyricsFontName("a".repeat(200)).length)

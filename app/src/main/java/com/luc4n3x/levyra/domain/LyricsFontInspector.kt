@@ -26,6 +26,7 @@ object LyricsFontInspector {
     private const val HEAD_MAGIC = 0x5F0F3CF5
     private const val MAX_TABLES = 96
     internal const val NAME_LIMIT = 64
+    private const val MAX_NAME_RECORD_BYTES = 512
     private val REQUIRED_TABLES = setOf("cmap", "head", "hhea", "hmtx", "maxp", "name")
 
     fun inspect(file: File): LyricsFontInspection? = runCatching {
@@ -86,29 +87,36 @@ object LyricsFontInspector {
         val count = source.u16(table.first + 2)
         val storage = source.u16(table.first + 4).toLong()
         if (6L + count * 12L > table.size()) return null
-        val candidates = (0 until count).mapNotNull { index ->
-            nameRecord(source, table, storage, table.first + 6 + index * 12L)
+        var bestRank = Int.MAX_VALUE
+        var bestName: String? = null
+        for (index in 0 until count) {
+            val record = table.first + 6 + index * 12L
+            val rank = nameRecordRank(source, record) ?: continue
+            if (rank >= bestRank) continue
+            val name = nameRecordText(source, table, storage, record) ?: continue
+            bestRank = rank
+            bestName = name
+            if (rank == 0) break
         }
-        return candidates.sortedBy { it.first }
-            .firstNotNullOfOrNull { (_, text) -> sanitizeLyricsFontName(text).takeIf(String::isNotEmpty) }
+        return bestName
     }
 
-    private fun nameRecord(source: RandomAccessFile, table: LongRange, storage: Long, record: Long): Pair<Int, String>? {
+    private fun nameRecordRank(source: RandomAccessFile, record: Long): Int? {
         val platform = source.u16(record)
         val encoding = source.u16(record + 2)
-        val language = source.u16(record + 4)
         val nameId = source.u16(record + 6)
+        val supported = platform == 3 || platform == 0 || (platform == 1 && encoding == 0)
+        if ((nameId != 1 && nameId != 16) || !supported) return null
+        return nameRank(nameId, platform, source.u16(record + 4))
+    }
+
+    private fun nameRecordText(source: RandomAccessFile, table: LongRange, storage: Long, record: Long): String? {
         val size = source.u16(record + 8)
         val offset = source.u16(record + 10)
-        if (nameId != 1 && nameId != 16) return null
-        if (size == 0 || storage + offset + size > table.size()) return null
-        val charset = when {
-            platform == 3 || platform == 0 -> Charsets.UTF_16BE
-            platform == 1 && encoding == 0 -> Charsets.ISO_8859_1
-            else -> return null
-        }
-        val text = String(source.bytes(table.first + storage + offset, size), charset)
-        return nameRank(nameId, platform, language) to text
+        if (size == 0 || size > MAX_NAME_RECORD_BYTES || storage + offset + size > table.size()) return null
+        val charset = if (source.u16(record) == 1) Charsets.ISO_8859_1 else Charsets.UTF_16BE
+        return sanitizeLyricsFontName(String(source.bytes(table.first + storage + offset, size), charset))
+            .takeIf(String::isNotEmpty)
     }
 
     private fun nameRank(nameId: Int, platform: Int, language: Int): Int {
@@ -138,9 +146,11 @@ object LyricsFontInspector {
     }
 }
 
+private val FONT_NAME_WHITESPACE = Regex("\\s+")
+
 fun sanitizeLyricsFontName(raw: String): String =
     raw.filterNot { it.isISOControl() || it == '�' }
-        .replace(Regex("\\s+"), " ")
+        .replace(FONT_NAME_WHITESPACE, " ")
         .trim()
         .take(LyricsFontInspector.NAME_LIMIT)
         .trim()

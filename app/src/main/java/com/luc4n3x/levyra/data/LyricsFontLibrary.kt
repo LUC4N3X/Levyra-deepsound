@@ -339,6 +339,8 @@ internal fun androidTypefaceLoads(file: File, variableWeight: IntRange?): Boolea
     typeface != null && typeface != Typeface.DEFAULT
 }.getOrDefault(false)
 
+private val FONT_FILE_SUFFIX = Regex("[0-9a-f-]{36}\\.(ttf|otf)")
+
 internal fun encodeLyricsFontIndex(entries: List<LyricsFontEntry>): String = JSONObject()
     .put("version", 1)
     .put("fonts", JSONArray().apply { entries.forEach { put(lyricsFontEntryToJson(it)) } })
@@ -366,7 +368,9 @@ internal fun lyricsFontEntryFromJson(json: JSONObject): LyricsFontEntry? {
     if (!LyricsFontLibrary.ID_PATTERN.matches(id)) return null
     val format = LyricsFontFormat.from(json.optString("format")) ?: return null
     val fileName = json.optString("file").ifBlank { "$id-00000000-0000-0000-0000-000000000000.${format.extension}" }
-    if (!Regex("${Regex.escape(id)}-[0-9a-f-]{36}\\.${format.extension}").matches(fileName)) return null
+    val validFileName = fileName.startsWith("$id-") && fileName.endsWith(".${format.extension}") &&
+        FONT_FILE_SUFFIX.matches(fileName.substring(id.length + 1))
+    if (!validFileName) return null
     val minWeight = json.optInt("minWeight", 0)
     val maxWeight = json.optInt("maxWeight", 0)
     return LyricsFontEntry(

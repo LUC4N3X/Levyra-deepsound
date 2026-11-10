@@ -317,35 +317,26 @@ class LevyraBackupManager(private val context: Context) {
             } else {
                 vaultSnapshot(entries)
             }
-            val stagedFonts = target.lyricsFonts?.let { items ->
-                try {
-                    lyricsFontLibrary.stageRestore(items)
-                } catch (cancelled: kotlinx.coroutines.CancellationException) {
-                    throw cancelled
-                } catch (error: Exception) {
-                    Timber.w(error, "Lyrics fonts restore staging failed")
-                    null
-                }
-            }
-            val rollback = currentSnapshot()
-            val retainedOfflineAudio = database.downloadedTracksDao().all().filter { isOfflineAudioStoreUri(it.uri) }
-            val downloads = reconcileDownloadedTracks(target.downloads, scanLevyraDownloads() + retainedOfflineAudio, ::downloadUriReadable)
+            val stagedFonts = target.lyricsFonts?.let { lyricsFontLibrary.stageRestore(it) }
             try {
-                applySnapshot(target, downloads)
-            } catch (restoreError: Throwable) {
-                stagedFonts?.let(lyricsFontLibrary::discardRestore)
-                withContext(NonCancellable) {
-                    try {
-                        applySnapshot(rollback, rollback.downloads)
-                    } catch (rollbackError: Throwable) {
-                        restoreError.addSuppressed(rollbackError)
+                val rollback = currentSnapshot()
+                val retainedOfflineAudio = database.downloadedTracksDao().all().filter { isOfflineAudioStoreUri(it.uri) }
+                val downloads = reconcileDownloadedTracks(target.downloads, scanLevyraDownloads() + retainedOfflineAudio, ::downloadUriReadable)
+                try {
+                    applySnapshot(target, downloads)
+                    stagedFonts?.let { lyricsFontLibrary.commitRestore(it) }
+                } catch (restoreError: Throwable) {
+                    withContext(NonCancellable) {
+                        try {
+                            applySnapshot(rollback, rollback.downloads)
+                        } catch (rollbackError: Throwable) {
+                            restoreError.addSuppressed(rollbackError)
+                        }
                     }
+                    throw restoreError
                 }
-                throw restoreError
-            }
-            stagedFonts?.let { staged ->
-                runCatching { lyricsFontLibrary.commitRestore(staged) }
-                    .onFailure { error -> Timber.w(error, "Lyrics fonts restore failed") }
+            } finally {
+                stagedFonts?.let(lyricsFontLibrary::discardRestore)
             }
             LevyraBackupResult("Ripristino completato", "")
         }
@@ -372,7 +363,12 @@ class LevyraBackupManager(private val context: Context) {
                 sections[name] = writeBinarySection(zip, name, bytes)
                 coverEntries[playlist.id] = name
             }
-            val fontItems = lyricsFontLibrary.backupItems()
+            var fontBudget = MAX_TOTAL_BYTES - coverBytesTotal - DATA_SECTIONS_RESERVE_BYTES
+            val fontItems = lyricsFontLibrary.backupItems().filter { item ->
+                val fits = item.bytes.size <= fontBudget
+                if (fits) fontBudget -= item.bytes.size else Timber.w("Lyrics font %s left out of backup: size budget", item.entry.id)
+                fits
+            }
             fontItems.forEach { item ->
                 val name = lyricsFontBackupEntry(item.entry.id, item.entry.format)
                 sections[name] = writeBinarySection(zip, name, item.bytes)
@@ -1718,6 +1714,7 @@ class LevyraBackupManager(private val context: Context) {
         const val MAX_ZIP_ENTRIES = 544
         const val MAX_ENTRY_BYTES = 64L * 1024L * 1024L
         const val MAX_TOTAL_BYTES = 96L * 1024L * 1024L
+        const val DATA_SECTIONS_RESERVE_BYTES = 16L * 1024L * 1024L
         const val MAX_PLAYLIST_COVER_ENTRIES = 512
         const val MAX_PLAYLIST_COVER_TOTAL_BYTES = 64L * 1024L * 1024L
         const val MAX_AUTOMATIC_BACKUPS = 12

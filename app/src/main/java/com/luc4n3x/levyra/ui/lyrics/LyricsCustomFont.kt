@@ -14,13 +14,15 @@ import androidx.compose.ui.text.font.FontWeight
 import com.luc4n3x.levyra.data.LyricsFontEntry
 import com.luc4n3x.levyra.data.LyricsFontLibrary
 import java.io.File
-import java.util.concurrent.ConcurrentHashMap
 
 val LocalLyricsCustomFontFamily = compositionLocalOf<FontFamily?> { null }
 
-private val lyricsFontFamilies = ConcurrentHashMap<String, FontFamily>()
+private val lyricsFontFamilies = object : LinkedHashMap<String, FontFamily>(16, 0.75f, true) {
+    override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, FontFamily>): Boolean =
+        size > LyricsFontLibrary.MAX_FONTS
+}
 
-internal fun lyricsFontFamily(entry: LyricsFontEntry, file: File): FontFamily =
+internal fun lyricsFontFamily(entry: LyricsFontEntry, file: File): FontFamily = synchronized(lyricsFontFamilies) {
     lyricsFontFamilies.getOrPut(entry.fileName) {
         val range = entry.variableWeight
         if (range == null) {
@@ -35,6 +37,7 @@ internal fun lyricsFontFamily(entry: LyricsFontEntry, file: File): FontFamily =
             })
         }
     }
+}
 
 @Composable
 fun rememberLyricsFontFamily(fontId: String): FontFamily? {
