@@ -271,6 +271,37 @@ internal fun shouldRefreshArtistProfileAlias(cached: ArtistProfile, source: Arti
     return sourceBrowseId.isNotBlank() && cached.browseId.trim().equals(sourceBrowseId, ignoreCase = true)
 }
 
+internal fun refreshArtistProfileAliases(
+    cache: ConcurrentHashMap<String, ArtistProfile>,
+    source: ArtistProfile,
+    updated: ArtistProfile
+) {
+    cache.forEach { (key, cached) ->
+        if (shouldRefreshArtistProfileAlias(cached, source)) cache.replace(key, cached, updated)
+    }
+}
+
+internal class ArtistFallbackProfiles(private val capacity: Int) {
+    private val entries = object : LinkedHashMap<String, ArtistProfile>(capacity, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ArtistProfile>?): Boolean = size > capacity
+    }
+
+    @Synchronized
+    fun settle(key: String, latest: ArtistProfile?): ArtistProfile? {
+        val usable = latest?.takeIf { it.topSongs.isNotEmpty() }
+        if (usable != null) {
+            entries[key] = usable
+            return usable
+        }
+        return entries[key] ?: latest
+    }
+
+    @Synchronized
+    fun forget(key: String) {
+        entries.remove(key)
+    }
+}
+
 internal fun artistNameMatches(expectedName: String, resolvedName: String): Boolean {
     val expected = expectedName.trim().cleanAlbumArtistLabel()
     val expectedPrimary = primaryArtistSegment(expected).ifBlank { expected }
@@ -335,9 +366,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
     private val clientVersion = "1.20260423.01.00"
     private val preferences = context?.applicationContext?.let { LevyraPreferences(it) }
     private val memory = ConcurrentHashMap<String, ArtistProfile>()
-    private val fallbackMemory = java.util.Collections.synchronizedMap(object : LinkedHashMap<String, ArtistProfile>(MAX_FALLBACK_PROFILES, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ArtistProfile>?): Boolean = size > MAX_FALLBACK_PROFILES
-    })
+    private val fallbackProfiles = ArtistFallbackProfiles(MAX_FALLBACK_PROFILES)
     private val artistHitMemory = ConcurrentHashMap<String, ArtistHit>()
     private val artistLore = ArtistLoreRepository(context)
 
@@ -378,13 +407,10 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             null
         }
         if (profile == null) {
-            val fallbackKey = artistIdentityKey(clean)
             val fallback = runCatching { fallbackProfile(clean, resolvedArtist) }.getOrNull()
-            val fresh = fallback?.takeIf { it.topSongs.isNotEmpty() }
-            if (fresh != null) fallbackMemory[fallbackKey] = fresh
-            return@withContext fresh ?: fallbackMemory[fallbackKey] ?: fallback
+            return@withContext fallbackProfiles.settle(artistIdentityKey(clean), fallback)
         }
-        fallbackMemory.remove(artistIdentityKey(clean))
+        fallbackProfiles.forget(artistIdentityKey(clean))
         memory[artistIdentityKey(clean)] = profile
         memory[artistIdentityKey(profile.name)] = profile
         if (profile.browseId.isNotBlank()) memory[profileBrowseKey(profile.browseId)] = profile
@@ -430,11 +456,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
                 originalImageUrl = ""
             )
         )
-        memory.forEach { (key, cached) ->
-            if (shouldRefreshArtistProfileAlias(cached, profile)) {
-                memory.replace(key, cached, updated)
-            }
-        }
+        refreshArtistProfileAliases(memory, profile, updated)
         return updated
     }
 
