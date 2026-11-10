@@ -88,6 +88,7 @@ class LevyraPreferencesStoreTest {
     @After
     fun tearDown() {
         scopes.forEach { it.cancel() }
+        com.luc4n3x.levyra.domain.LevyraMusicRegion.apply(com.luc4n3x.levyra.domain.LevyraMusicRegion.AUTO)
     }
 
     private fun open(): Pair<LevyraPreferencesStore, LevyraPreferences> {
@@ -543,7 +544,7 @@ class LevyraPreferencesStoreTest {
 
     @Test
     fun manualMusicRegionSurvivesLanguageChangeRestartAndBackup() {
-        val (_, preferences) = open()
+        val (store, preferences) = open()
         assertEquals("", preferences.musicRegionId())
 
         preferences.setMusicRegionId("br")
@@ -551,6 +552,7 @@ class LevyraPreferencesStoreTest {
         assertEquals("br", preferences.musicRegionId())
         assertEquals("it", preferences.languageCode())
         assertEquals("br", com.luc4n3x.levyra.domain.LevyraMusicRegion.selectedId)
+        flush(store)
 
         val snapshot = preferences.snapshot()
         assertEquals("br", snapshot.musicRegionId)
