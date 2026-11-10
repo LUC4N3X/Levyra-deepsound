@@ -1909,10 +1909,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val favorites = favoritesStore.load()
         val favoriteTimestamps = favoritesStore.loadTimestamps()
         val settings = startupSettings
-        val repairedRecentSearches = settings.recentSearches
-            .map(LevyraPersonalOrbit::withoutVideoArtwork)
-            .distinctBy(LevyraPersonalOrbit::identityKey)
-            .take(LevyraPersonalOrbit.DISPLAY_LIMIT)
+        val repairedRecentSearches = LevyraPersonalOrbit.repairStoredHistory(settings.recentSearches)
         val instantSnapshot = homeSnapshotCache.load(settings.languageCode)
         val cachedHomeSections = instantSnapshot?.homeSections?.takeIf { it.isNotEmpty() } ?: preferences.loadHomeSections(settings.languageCode)
         val startupHomeSections = LevyraStartupCatalog.repairHomeSections(
@@ -7146,7 +7143,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 favoriteTimestamps = favoriteTimestamps,
                 playlists = playlists,
                 playlistTags = playlistTags,
-                recentSearches = snapshot.recentSearches,
+                recentSearches = LevyraPersonalOrbit.repairStoredHistory(snapshot.recentSearches),
                 personalOrbitTracks = snapshot.personalOrbitTracks,
                 userName = snapshot.userName,
                 languageCode = snapshot.languageCode,
@@ -10522,8 +10519,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             addAll(snapshot.tracks)
         }
         val stableTrack = LevyraPersonalOrbit.prepareForOrbit(track, artworkDonors)
-        val updated = (listOf(stableTrack) + snapshot.recentSearches)
-            .distinctBy { LevyraPersonalOrbit.identityKey(it) }
+        val updated = LevyraPersonalOrbit.distinctHistory(listOf(stableTrack) + snapshot.recentSearches)
             .take(LevyraPersonalOrbit.DISPLAY_LIMIT)
         val orbit = LevyraPersonalOrbit.build(
             currentTrack = stableTrack,
