@@ -177,12 +177,12 @@ class LyricsFontLibrary internal constructor(
                         if (!File(staged.directory, entry.fileName).renameTo(target)) throw IOException("Unable to restore lyrics font")
                         moved += target
                     }
-                    persistLocked(staged.entries, rollback = null)
+                    persistLocked(mergeRestoredFonts(staged.entries, previous), rollback = null)
                 } catch (error: Throwable) {
                     moved.forEach(::deleteQuietly)
                     throw error
                 }
-                val kept = staged.entries.mapTo(HashSet()) { it.fileName }
+                val kept = state.value.mapTo(HashSet()) { it.fileName }
                 previous.filterNot { it.fileName in kept }.forEach { deleteQuietly(File(directory, it.fileName)) }
             } finally {
                 staged.directory.deleteRecursively()
@@ -340,6 +340,17 @@ internal fun androidTypefaceLoads(file: File, variableWeight: IntRange?): Boolea
 }.getOrDefault(false)
 
 private val FONT_FILE_SUFFIX = Regex("[0-9a-f-]{36}\\.(ttf|otf)")
+
+internal fun mergeRestoredFonts(restored: List<LyricsFontEntry>, local: List<LyricsFontEntry>): List<LyricsFontEntry> {
+    val restoredIds = restored.mapTo(HashSet()) { it.id }
+    var total = restored.sumOf { it.sizeBytes }
+    val kept = local.filter { entry ->
+        val fits = entry.id !in restoredIds && total + entry.sizeBytes <= LyricsFontLibrary.MAX_LIBRARY_BYTES
+        if (fits) total += entry.sizeBytes
+        fits
+    }
+    return (restored + kept).take(LyricsFontLibrary.MAX_FONTS)
+}
 
 internal fun encodeLyricsFontIndex(entries: List<LyricsFontEntry>): String = JSONObject()
     .put("version", 1)

@@ -146,11 +146,11 @@ class LyricsFontLibraryTest {
         val stale = device.import(source(LyricsFontTestFonts.trueType("Stale")), "s")
         device.commitRestore(device.stageRestore(parsed))
         val restored = library().load()
-        assertEquals(listOf(kept.id), restored.map { it.id })
-        assertEquals("Backup Sans", restored.single().name)
-        assertEquals(200..800, restored.single().variableWeight)
-        assertNull(library().fontFile(stale.id))
-        assertEquals(1, fontFiles().size)
+        assertEquals(listOf(kept.id, stale.id), restored.map { it.id })
+        assertEquals("Backup Sans", restored.first().name)
+        assertEquals(200..800, restored.first().variableWeight)
+        assertTrue(library().fontFile(stale.id) != null)
+        assertEquals(2, fontFiles().size)
     }
 
     @Test
