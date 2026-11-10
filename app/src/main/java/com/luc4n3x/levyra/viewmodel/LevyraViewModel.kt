@@ -1909,9 +1909,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val favorites = favoritesStore.load()
         val favoriteTimestamps = favoritesStore.loadTimestamps()
         val settings = startupSettings
-        val repairedRecentSearches = settings.recentSearches
-            .map(LevyraPersonalOrbit::withoutVideoArtwork)
-            .distinctBy(LevyraPersonalOrbit::identityKey)
+        val repairedRecentSearches = LevyraPersonalOrbit
+            .distinctHistory(settings.recentSearches.map(LevyraPersonalOrbit::withoutVideoArtwork))
             .take(LevyraPersonalOrbit.DISPLAY_LIMIT)
         val instantSnapshot = homeSnapshotCache.load(settings.languageCode)
         val cachedHomeSections = instantSnapshot?.homeSections?.takeIf { it.isNotEmpty() } ?: preferences.loadHomeSections(settings.languageCode)
@@ -10522,8 +10521,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             addAll(snapshot.tracks)
         }
         val stableTrack = LevyraPersonalOrbit.prepareForOrbit(track, artworkDonors)
-        val updated = (listOf(stableTrack) + snapshot.recentSearches)
-            .distinctBy { LevyraPersonalOrbit.identityKey(it) }
+        val updated = LevyraPersonalOrbit.distinctHistory(listOf(stableTrack) + snapshot.recentSearches)
             .take(LevyraPersonalOrbit.DISPLAY_LIMIT)
         val orbit = LevyraPersonalOrbit.build(
             currentTrack = stableTrack,

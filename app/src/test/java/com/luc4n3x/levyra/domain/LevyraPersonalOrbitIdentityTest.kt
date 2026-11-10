@@ -28,6 +28,18 @@ class LevyraPersonalOrbitIdentityTest {
     }
 
     @Test
+    fun historyNeverRepeatsTrackIdWhenMetadataChanged() {
+        val enriched = track(id = "same1234567", title = "Kaavaalaa", artist = "Anirudh Ravichander")
+        val raw = track(id = "same1234567", title = "Kaavaalaa (From Jailer)", artist = "Shilpa Rao")
+        val other = track(id = "other123456", title = "Hukum", artist = "Anirudh Ravichander")
+
+        val result = LevyraPersonalOrbit.distinctHistory(listOf(enriched, raw, other))
+
+        assertEquals(listOf("same1234567", "other123456"), result.map { it.id })
+        assertEquals("Kaavaalaa", result.first().title)
+    }
+
+    @Test
     fun deduplicatesArtistsWhenCreditsUseDifferentOrderAndSeparators() {
         val first = track(id = "first123456", title = "Dai Dai", artist = "Shakira & Burna Boy")
         val second = track(id = "second12345", title = "Dai Dai", artist = "Burna Boy, Shakira")

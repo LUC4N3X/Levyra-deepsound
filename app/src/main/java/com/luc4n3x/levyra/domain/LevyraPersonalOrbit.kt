@@ -268,6 +268,9 @@ object LevyraPersonalOrbit {
     fun identityKey(track: Track): String =
         recordingIdentityKey(track.title, track.artist).ifBlank { stableKey(track) }
 
+    fun distinctHistory(tracks: List<Track>): List<Track> =
+        tracks.distinctBy(::identityKey).distinctBy(Track::id)
+
     internal fun musicTitleKey(track: Track): String = normalizedMusicTitle(track.title)
 
     internal fun artistKeys(track: Track): Set<String> = normalizedArtists(track.artist).toSet()
