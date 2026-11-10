@@ -7,7 +7,11 @@ import re
 import sys
 from pathlib import Path
 
-SOURCE_ROOTS = (Path("app/src/main"), Path("third_party/LevyraNexus/src/main"))
+SOURCE_ROOTS = (
+    Path("app/src/main"),
+    Path("levyra-extraction/src/main"),
+    Path("third_party/LevyraNexus/src/main"),
+)
 SOURCE_SUFFIXES = {".kt", ".java"}
 INLINE_FLAGS = re.compile(r"\(\?([idmsuxU-]+)(?::|\))")
 UNSUPPORTED_CONSTANTS = (

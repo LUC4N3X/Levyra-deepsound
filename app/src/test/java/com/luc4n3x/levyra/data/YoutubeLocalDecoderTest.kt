@@ -337,6 +337,22 @@ class YoutubeLocalDecoderTest {
     }
 
     @Test
+    fun independentAnalyzerDoesNotPublishCandidatesForInvalidPlayerIdentity() {
+        val javascript = """
+            x&&(y=Ab(4,decodeURIComponent(z)));
+            a.get("n"))&&(b=Nz[2](b));
+            var cfg={signatureTimestamp:20644};
+        """.trimIndent()
+
+        assertTrue(YoutubePlayerJsAnalyzer.analyzeCandidates("invalid", javascript).isEmpty())
+        val config = YoutubePlayerJsAnalyzer.analyze("2182a2cc", javascript)
+        assertEquals("2182a2cc", config?.primaryHash)
+        assertEquals(YoutubePlayerConfigOrigin.ANALYZED, config?.origin)
+        assertEquals("Ab(4,INPUT)", config?.signatureExpression)
+        assertEquals("Nz[2](INPUT)", config?.nExpression)
+    }
+
+    @Test
     fun atomicWriterReplacesFileWithoutLeavingTemporaryArtifacts() {
         val directory = createTempDirectory(prefix = "levyra-decoder-").toFile()
         try {

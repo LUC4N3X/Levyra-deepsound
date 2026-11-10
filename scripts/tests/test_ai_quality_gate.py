@@ -152,6 +152,22 @@ class AiQualityGateTest(unittest.TestCase):
         self.assertEqual([], blocked)
         self.assertNotIn("Run all Android unit tests", labels)
 
+    def test_extraction_core_changes_select_standalone_and_android_validation(self) -> None:
+        paths = {"levyra-extraction/src/main/kotlin/example.kt"}
+        kinds = classify_changes(paths)
+        commands, blocked = build_commands(paths, "full", python="python")
+        core_command = next(command for command in commands if command.label == "Run extraction core tests")
+
+        self.assertTrue(kinds.android)
+        self.assertFalse(kinds.desktop)
+        self.assertFalse(kinds.extractor)
+        self.assertEqual([], blocked)
+        self.assertEqual(
+            (gradle_wrapper(), "-p", "levyra-extraction", "--no-daemon", "test"),
+            core_command.argv,
+        )
+        self.assertIn("Run all Android unit tests", {command.label for command in commands})
+
     def test_full_desktop_profile_uses_desktop_project_directory(self) -> None:
         """The full gate must invoke the Desktop wrapper in the Desktop project."""
         commands, blocked = build_commands(

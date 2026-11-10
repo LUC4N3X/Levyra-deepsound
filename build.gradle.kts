@@ -17,4 +17,8 @@ project(":app").pluginManager.withPlugin("com.android.application") {
         "implementation",
         project(":app").dependencies.project(":levyra-recognition")
     )
+    project(":app").dependencies.add(
+        "implementation",
+        project(":app").dependencies.project(":levyra-extraction")
+    )
 }

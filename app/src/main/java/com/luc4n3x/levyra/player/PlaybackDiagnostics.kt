@@ -360,7 +360,7 @@ internal class PlaybackDiagnosticsReader(context: Context) {
     }
 
     private fun readStrategyHealth(videoMode: Boolean, nowMs: Long): List<PlaybackDiagnosticStrategy> {
-        val prefix = if (videoMode) "video::" else "audio::"
+        val prefix = if (videoMode) "video::" else "audio-v2::"
         val raw = runCatching {
             strategyHealthPreferences.getString(PLAYBACK_STRATEGY_HEALTH_KEY, null)
         }.getOrNull()

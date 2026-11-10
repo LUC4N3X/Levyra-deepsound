@@ -1,46 +1,89 @@
 package com.luc4n3x.levyra.data
 
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.cancelChildren
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.withTimeoutOrNull
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicBoolean
+import com.luc4n3x.levyra.extraction.audio.AudioResolution
+import com.luc4n3x.levyra.extraction.audio.AudioStreamResolver
+import com.luc4n3x.levyra.extraction.audio.StreamQuality
 
 internal suspend fun <T> hedgedAudioWithRecovery(
     tiers: List<List<suspend () -> T?>>,
     hedgeBudgetMs: Long,
     recovery: (suspend () -> T?)?,
+    quality: StreamQuality<T>? = null,
     onAttemptError: (Throwable) -> Unit = {}
 ): T? {
-    val inconclusive = AtomicBoolean(false)
-    val guarded = tiers.map { tier ->
-        tier.map { attempt ->
-            suspend { attempt().also { if (it == null) inconclusive.set(true) } }
+    return when (val result = AudioStreamResolver.resolve(
+        tiers = tiers,
+        hedgeBudgetMs = hedgeBudgetMs,
+        recovery = recovery,
+        isNoPlayableStream = { it is YoutubePlayerRequestException && it.noPlayableStream },
+        onAttemptError = onAttemptError,
+        quality = quality
+    )) {
+        is AudioResolution.Resolved -> result.stream
+        AudioResolution.NoPlayableStream, AudioResolution.Inconclusive -> null
+    }
+}
+
+internal fun audioItagPreference(itag: Int, requestedAudioQuality: String): Int =
+    if (requestedAudioQuality.equals("low", true)) {
+        when (itag) {
+            139 -> 420_000
+            249 -> 380_000
+            140 -> 260_000
+            250 -> 180_000
+            251 -> 80_000
+            141 -> 40_000
+            774 -> 20_000
+            else -> 0
+        }
+    } else {
+        when (itag) {
+            774 -> if (requestedAudioQuality.equals("high", true)) 820_000 else 0
+            251 -> 760_000
+            141 -> 700_000
+            140 -> 560_000
+            250 -> 480_000
+            249 -> 280_000
+            139 -> 120_000
+            else -> 0
         }
     }
-    val stream = hedgedFirst(guarded, hedgeBudgetMs) { error ->
-        if (error !is YoutubePlayerRequestException || !error.noPlayableStream) inconclusive.set(true)
-        onAttemptError(error)
-    }
-    if (stream != null || inconclusive.get() || tiers.none { it.isNotEmpty() } || recovery == null) return stream
-    currentCoroutineContext().ensureActive()
-    return try {
-        recovery()
-    } catch (cancellation: CancellationException) {
-        throw cancellation
-    } catch (error: Exception) {
-        onAttemptError(error)
-        null
+
+internal fun <T> audioHedgeQuality(
+    requestedAudioQuality: String,
+    isVideoMode: Boolean,
+    audioItagOf: (T) -> Int?,
+    isDirectDelivery: (T) -> Boolean
+): StreamQuality<T>? {
+    if (isVideoMode || requestedAudioQuality.equals("low", true)) return null
+    fun rank(itag: Int, direct: Boolean): Int =
+        audioItagPreference(itag, requestedAudioQuality) + if (direct) DIRECT_DELIVERY_RANK_BONUS else 0
+    return StreamQuality(
+        rank = { stream -> audioItagOf(stream)?.let { rank(it, isDirectDelivery(stream)) } ?: 0 },
+        sufficientRank = rank(251, direct = true),
+        graceMs = LevyraResolverLatency.AUDIO_QUALITY_GRACE_MS
+    )
+}
+
+private const val DIRECT_DELIVERY_RANK_BONUS = 1_000_000
+
+internal fun orderAudioStrategiesForQuality(
+    strategies: List<PlaybackAudioStrategy>,
+    requestedAudioQuality: String
+): List<PlaybackAudioStrategy> {
+    if (requestedAudioQuality.equals("low", true)) return strategies
+    val muxedIndex = strategies.indexOf(PlaybackAudioStrategy.REEL_MUXED)
+    val directIndex = strategies.indexOf(PlaybackAudioStrategy.DIRECT)
+    if (muxedIndex < 0 || directIndex < 0 || muxedIndex > directIndex) return strategies
+    return strategies.toMutableList().apply {
+        removeAt(muxedIndex)
+        add(indexOf(PlaybackAudioStrategy.DIRECT) + 1, PlaybackAudioStrategy.REEL_MUXED)
     }
 }
 
 internal object LevyraResolverLatency {
     const val INNER_TUBE_HEDGE_BUDGET_MS = 35L
+    const val AUDIO_QUALITY_GRACE_MS = 900L
     private const val AUDIO_INNER_TUBE_FALLBACK_MS = 0L
     private const val VIDEO_INNER_TUBE_FALLBACK_MS = 0L
     private const val OFFLINE_INNER_TUBE_FALLBACK_MS = 2_500L
@@ -53,59 +96,5 @@ internal object LevyraResolverLatency {
     fun innerTubeFallbackDelayMs(isVideoMode: Boolean, preferMp4Audio: Boolean): Long {
         if (preferMp4Audio) return OFFLINE_INNER_TUBE_FALLBACK_MS
         return if (isVideoMode) VIDEO_INNER_TUBE_FALLBACK_MS else AUDIO_INNER_TUBE_FALLBACK_MS
-    }
-}
-
-internal suspend fun <T> hedgedFirst(
-    tiers: List<List<suspend () -> T?>>,
-    hedgeBudgetMs: Long,
-    onAttemptError: (Throwable) -> Unit = {}
-): T? {
-    val ladder = tiers.filter { it.isNotEmpty() }
-    if (ladder.isEmpty()) return null
-    if (ladder.size == 1 && ladder[0].size == 1) {
-        return try {
-            ladder[0][0].invoke()
-        } catch (cancellation: CancellationException) {
-            throw cancellation
-        } catch (error: Throwable) {
-            onAttemptError(error)
-            null
-        }
-    }
-    return coroutineScope {
-        val winner = CompletableDeferred<T?>()
-        val remaining = AtomicInteger(ladder.sumOf { it.size })
-        fun dispatch(attempt: suspend () -> T?) {
-            launch {
-                val outcome = try {
-                    attempt()
-                } catch (cancellation: CancellationException) {
-                    winner.completeExceptionally(cancellation)
-                    throw cancellation
-                } catch (error: Throwable) {
-                    onAttemptError(error)
-                    null
-                }
-                if (outcome != null) {
-                    winner.complete(outcome)
-                } else if (remaining.decrementAndGet() == 0) {
-                    winner.complete(null)
-                }
-            }
-        }
-        launch {
-            for ((index, tier) in ladder.withIndex()) {
-                if (winner.isCompleted) break
-                tier.forEach { dispatch(it) }
-                if (index != ladder.lastIndex) {
-                    val settled = withTimeoutOrNull(hedgeBudgetMs) { winner.await() } != null || winner.isCompleted
-                    if (settled) break
-                }
-            }
-        }
-        val result = winner.await()
-        coroutineContext.cancelChildren()
-        result
     }
 }

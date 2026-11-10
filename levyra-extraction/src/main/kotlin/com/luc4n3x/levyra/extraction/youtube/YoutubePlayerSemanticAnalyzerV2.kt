@@ -1,4 +1,4 @@
-package com.luc4n3x.levyra.data
+package com.luc4n3x.levyra.extraction.youtube
 
 internal data class YoutubeSemanticTransformCandidate(
     val expression: String,

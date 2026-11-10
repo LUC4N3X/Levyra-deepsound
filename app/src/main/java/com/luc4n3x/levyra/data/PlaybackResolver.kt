@@ -342,7 +342,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         private const val YOUTUBE_VIDEO_ID_PATTERN = "[A-Za-z0-9_-]{11}"
         private const val LEVYRA_EXTRACTOR_PROVIDER = "LevyraExtractor"
         private const val LEVYRA_EXTRACTOR_HLS_PROVIDER = "LevyraExtractor HLS"
-        private const val AUDIO_HEALTH_MODE = "audio"
+        private const val AUDIO_HEALTH_MODE = "audio-v2"
         private const val VIDEO_HEALTH_MODE = "video"
         private const val MAX_STREAM_CACHE_ENTRIES = 128
         private const val MAX_FAILED_PLAYBACK_URLS = 256
@@ -653,9 +653,15 @@ class PlaybackResolver private constructor(private val context: Context) {
         highQualityPlayback.awaitsUpgrade(track, normalCached, isVideoMode, selectedAudioQuality) &&
             hasInternetCapableNetwork()
 
+    private fun isMuxedAudioFallback(track: Track, isVideoMode: Boolean, audioQuality: String): Boolean =
+        !isVideoMode && track.playbackManifest?.isMuxed == true &&
+            !normalizeAudioQuality(audioQuality).equals("Low", true) &&
+            hasInternetCapableNetwork()
+
     private fun cached(track: Track, isVideoMode: Boolean, audioQuality: String): Track? {
         if (track.streamUrl.isNotBlank()) {
             val valid = canReuseProvidedPlayback(track) &&
+                !isMuxedAudioFallback(track, isVideoMode, audioQuality) &&
                 !isPlaybackUrlBlocked(track.streamUrl) &&
                 (track.videoStreamUrl.isBlank() || !isPlaybackUrlBlocked(track.videoStreamUrl)) &&
                 (isVideoMode || isPlayableAudioUrl(track.streamUrl)) &&
@@ -671,7 +677,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             RuntimeHooks.cache(RuntimeSignal.CACHE_MISS)
             return null
         }
-        if (isDisabledPremiumSource(hit.track)) {
+        if (isDisabledPremiumSource(hit.track) || isMuxedAudioFallback(hit.track, isVideoMode, audioQuality)) {
             remove(key)
             return null
         }
@@ -788,10 +794,13 @@ class PlaybackResolver private constructor(private val context: Context) {
             strategyHealth.recordRuntimeFailure(
                 mode = origin.mode,
                 strategy = origin.strategy,
-                kind = failureKind
+                kind = strategyHealthFailureKind(origin.mode, origin.strategy, failureKind)
             )
         }
     }
+
+    private fun strategyHealthFailureKind(mode: String, strategy: String, kind: PlaybackFailureKind): PlaybackFailureKind =
+        if (mode == AUDIO_HEALTH_MODE && strategy == PlaybackAudioStrategy.DIRECT.name) PlaybackFailureKind.Unknown else kind
 
     private fun attributedPlaybackUrl(track: Track, isVideoMode: Boolean, failedUrl: String?): String? {
         failedUrl?.takeIf { it.isNotBlank() }?.let { return it }
@@ -1345,7 +1354,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 }
             }
             restored?.let { return@coroutineScope it }
-            throw PlaybackBlockedException("Connessione Internet non disponibile")
+            throw PlaybackBlockedException("Connessione Internet non disponibile", transientNetwork = true)
         }
 
         val key = "${cacheKey(track, isVideoMode, audioQuality)}_${requestKind}_$expectedGeneration"
@@ -1504,7 +1513,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         expectedGeneration: Long
     ): Track? {
         val hasYoutubeIdentity = PlaybackSourceIdentity.sourceVideoId(track).isNotBlank()
-        val applicableStrategies = orderedAudioStrategies().filter { strategy ->
+        val applicableStrategies = orderedAudioStrategies(audioQuality).filter { strategy ->
             hasYoutubeIdentity || !strategy.requiresYoutubeIdentity()
         }
         for ((attemptIndex, strategy) in applicableStrategies.withIndex()) {
@@ -1557,7 +1566,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 AUDIO_HEALTH_MODE,
                 strategy.name,
                 elapsedMs,
-                failureKind
+                strategyHealthFailureKind(AUDIO_HEALTH_MODE, strategy.name, failureKind)
             )
             RuntimeHooks.resolver(
                 mode = RuntimeSignal.MODE_AUDIO,
@@ -1579,7 +1588,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         expectedGeneration: Long
     ): Track? {
         if (PlaybackSourceIdentity.sourceVideoId(candidate).isBlank()) return null
-        val strategies = orderedAudioStrategies().filterNot { it == PlaybackAudioStrategy.SEARCH }
+        val strategies = orderedAudioStrategies(audioQuality).filterNot { it == PlaybackAudioStrategy.SEARCH }
         for (strategy in strategies) {
             currentCoroutineContext().ensureActive()
             attemptAudioStrategy(strategy, candidate, audioQuality, errors, expectedGeneration)
@@ -1633,8 +1642,12 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
     }
 
-    private fun orderedAudioStrategies(): List<PlaybackAudioStrategy> {
-        val healthyOrder = strategyHealth.order(AUDIO_HEALTH_MODE, playbackPolicyStore.current().audioStrategies)
+    private fun orderedAudioStrategies(audioQuality: String): List<PlaybackAudioStrategy> {
+        val healthyOrder = strategyHealth.order(
+            AUDIO_HEALTH_MODE,
+            orderAudioStrategiesForQuality(playbackPolicyStore.current().audioStrategies, normalizeAudioQuality(audioQuality)),
+            retryStaleDemotions = true
+        )
         if (selectedPreferredAudioLanguage.isBlank()) return healthyOrder
         return healthyOrder.filterNot { it == PlaybackAudioStrategy.REEL_MUXED } +
             healthyOrder.filter { it == PlaybackAudioStrategy.REEL_MUXED }
@@ -2365,6 +2378,10 @@ class PlaybackResolver private constructor(private val context: Context) {
         val now = System.currentTimeMillis()
         if (stored.entity.blockedUntil > now) return null
         val manifest = stored.manifest
+        if (
+            !preferMp4Audio && allowNetworkRefresh && manifest?.isMuxed == true &&
+            isMuxedAudioFallback(track.copy(playbackManifest = manifest), isVideoMode, audioQuality)
+        ) return null
         if (preferredAudioLanguage.isNotBlank() && manifest?.let(AudioLanguageIntelligence::isLanguageBlindFallback) == true) {
             return null
         }
@@ -2760,8 +2777,17 @@ class PlaybackResolver private constructor(private val context: Context) {
                 suspend {
                     resolveWithInnerTube(track, profile, isVideoMode, false, audioQuality)
                         .takeIf { stream ->
-                            val accepted = acceptResolvedStream(stream, isVideoMode, "${profile.label} probe", errors)
-                            if (!accepted) recordClientFailure(profile, null, IllegalStateException("Stream non valido o URL scaduto"))
+                            val sabrAudio = !isVideoMode && stream.manifest.streams.any {
+                                it.selected && it.kind == PlaybackStreamKind.AUDIO &&
+                                    it.deliveryMethod == PlaybackDeliveryMethod.SABR
+                            }
+                            val accepted = !sabrAudio && acceptResolvedStream(stream, isVideoMode, "${profile.label} probe", errors)
+                            if (sabrAudio) {
+                                errors += "${profile.label}: audio SABR escluso"
+                                recordClientFailure(profile, null, IllegalStateException("Audio SABR non riproducibile"))
+                            } else if (!accepted) {
+                                recordClientFailure(profile, null, IllegalStateException("Stream non valido o URL scaduto"))
+                            }
                             accepted
                         }
                 }
@@ -2790,7 +2816,15 @@ class PlaybackResolver private constructor(private val context: Context) {
                 }
             }
         }
-        return hedgedAudioWithRecovery(ladder, hedgeBudgetMs, recovery) { error ->
+        fun selectedAudio(stream: DirectStream) =
+            stream.manifest.streams.firstOrNull { it.selected && it.kind == PlaybackStreamKind.AUDIO }
+        val quality = audioHedgeQuality<DirectStream>(
+            normalizeAudioQuality(audioQuality),
+            isVideoMode,
+            audioItagOf = { selectedAudio(it)?.itag },
+            isDirectDelivery = { selectedAudio(it)?.deliveryMethod == PlaybackDeliveryMethod.PROGRESSIVE }
+        )
+        return hedgedAudioWithRecovery(ladder, hedgeBudgetMs, recovery, quality) { error ->
             error.message?.takeIf { it.isNotBlank() }?.let { errors += it }
         }
     }
@@ -3384,8 +3418,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             profile = profile,
             visitorData = session.visitorData,
             playerPoToken = poTokens?.playerToken,
-            signatureTimestamp = signatureTimestamp,
-            isVideoMode = isVideoMode
+            signatureTimestamp = signatureTimestamp
         ).toString()
         val requestBuilder = Request.Builder()
             .url(endpoint)
@@ -4389,8 +4422,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         profile: ClientProfile,
         visitorData: String,
         playerPoToken: String?,
-        signatureTimestamp: Int?,
-        isVideoMode: Boolean
+        signatureTimestamp: Int?
     ): JSONObject {
         val locale = YoutubeRegionProfile.effectiveLocale(userPreferences.languageCode())
         val client = JSONObject()
@@ -4434,7 +4466,6 @@ class PlaybackResolver private constructor(private val context: Context) {
             .put("contentCheckOk", true)
             .put("racyCheckOk", true)
             .put("playbackContext", JSONObject().put("contentPlaybackContext", contentPlaybackContext))
-            .apply { if (!isVideoMode) put("params", "CgIQBg") }
             .put("watchEndpointMusicSupportedConfigs", JSONObject().put("watchEndpointMusicConfig", JSONObject().put("musicVideoType", "MUSIC_VIDEO_TYPE_ATV")))
             .apply {
                 playerPoToken?.takeIf { it.isNotBlank() }?.let {
@@ -4461,29 +4492,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             isMp4 -> 420_000
             else -> 0
         }
-        val itagBias = if (requestedAudioQuality.equals("low", true)) {
-            when (itag) {
-                139 -> 420_000
-                249 -> 380_000
-                140 -> 260_000
-                250 -> 180_000
-                251 -> 80_000
-                141 -> 40_000
-                774 -> 20_000
-                else -> 0
-            }
-        } else {
-            when (itag) {
-                774 -> if (requestedAudioQuality.equals("high", true)) 820_000 else 0
-                251 -> 760_000
-                141 -> 700_000
-                140 -> 560_000
-                250 -> 480_000
-                249 -> 280_000
-                139 -> 120_000
-                else -> 0
-            }
-        }
+        val itagBias = audioItagPreference(itag, requestedAudioQuality)
         val qualityBias = when {
             formatAudioQuality.contains("HIGH", true) -> 620_000
             formatAudioQuality.contains("MEDIUM", true) -> 420_000
@@ -4652,7 +4661,10 @@ private fun Throwable.playbackDiagnostic(): String {
     return messages.joinToString(" → ").ifBlank { this::class.java.simpleName.ifBlank { "errore sconosciuto" } }
 }
 
-class PlaybackBlockedException(message: String) : IllegalStateException(message)
+class PlaybackBlockedException(
+    message: String,
+    val transientNetwork: Boolean = false
+) : IllegalStateException(message)
 
 private const val ANDROID_REEL_CLIENT_NAME = "ANDROID"
 

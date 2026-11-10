@@ -389,6 +389,52 @@ Base URL
 ```
  
 Formats are ranked before JavaScript work. Only the selected candidate is transformed, and the JavaScript decoder starts only when the URL actually requires it.
+
+### 6.8 Independent extraction core
+
+`levyra-extraction/` owns player transform discovery and concurrent audio client
+resolution in a Kotlin/JVM module with no Android, NewPipe, HTTP, or JavaScript
+execution dependency. Its coroutines core dependency uses the same version as
+the Android app. It builds through
+the repository wrapper both as an Android project dependency and independently
+with `./gradlew -p levyra-extraction test`.
+
+`YoutubePlayerAnalyzer` combines the existing URL-factory anchors, semantic
+source-to-sink analysis, and legacy patterns. Its public result distinguishes
+ranked candidates from unavailable analysis, including missing timestamps or
+transforms and oversized input. Discovery accepts at most 6,000,000 UTF-16 code
+units and returns at most six transform pairs; confidence orders discovery
+candidates and does not prove they execute correctly.
+
+Android's `YoutubePlayerJsAnalyzer` validates player identity and maps the result
+into the existing `ANALYZED` configuration type. Validated registry entries from
+the synchronization described in section 6.6 remain preferred to local discovery;
+the core does not replace Zemer or Faraday as configuration sources.
+`YoutubeLocalDecoder` still owns
+off-main-thread execution, runtime verification, caches, and configuration
+publication. Fallback ordering and playback ownership stay in their existing
+owners. The core's synthetic replay fixtures and regression tests run without
+network access; they do not establish live YouTube compatibility or comparative
+performance. See [the module contract](../levyra-extraction/README.md).
+
+`AudioStreamResolver` owns the existing tiered audio hedge and one-shot recovery
+decision. Its result distinguishes a resolved stream, conclusive absence of
+playable streams, and an inconclusive failure. A plan admits at most 32 normal
+attempts across 32 tiers plus one recovery. Non-null attempt results are already
+verified by the host. Losers are cancelled and joined, cancellation propagates,
+and results are checked against caller cancellation before publication.
+`hedgedAudioWithRecovery` maps Android's existing no-stream exception into that
+contract. Outside Low quality and video mode, Android ranks audio-only streams by
+the same itag preference used for format selection, ranks any directly delivered
+stream above any SABR stream, and grants a 900 ms quality grace, so a faster
+client with a weaker format does not displace a direct Opus stream already in
+flight. The audio hedge rejects SABR-delivered audio, which answered 403 on every
+observed playback without a proof-of-origin token, so it can neither win nor
+quarantine the clients that return direct Opus. For the same qualities the muxed Reel fallback runs after the
+audio-only hedge instead of before it. `PlaybackResolver` retains the eight-profile plan, client health,
+latency budgets, HTTP timeouts, stream validation and atomic low-quality recovery
+permit. It also retains ownership of video, offline, cache, and shared in-flight
+requests. No second HTTP client, cache or playback controller is introduced.
  
 ---
  

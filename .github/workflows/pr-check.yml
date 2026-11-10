@@ -189,6 +189,9 @@ jobs:
       - name: Extractor Unit Tests
         run: ./gradlew -p third_party/LevyraExtractor :extractor:test --console=plain --warning-mode summary
 
+      - name: Extraction Core Unit Tests
+        run: ./gradlew -p levyra-extraction test --console=plain --warning-mode summary
+
       - name: Android and Native Audio Unit Tests
         run: ./gradlew :app:testDebugUnitTest :levyra-native-audio:testDebugUnitTest --console=plain --warning-mode summary
 
@@ -200,6 +203,7 @@ jobs:
           path: |
             app/build/reports
             levyra-native-audio/build/reports
+            levyra-extraction/build/reports
             third_party/LevyraExtractor/**/build/reports
           if-no-files-found: ignore
 

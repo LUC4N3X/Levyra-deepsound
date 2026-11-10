@@ -20,194 +20,194 @@ private val alternativeAudioBundles: Map<String, Map<String, String>> = mapOf(
     "en" to alternativeAudioStrings(
         "High-quality alternative audio",
         "Use a higher-quality external audio stream when Levyra can verify that it is the exact same track.",
-        "Off",
+        "YouTube · Opus 160 kbps",
         "Automatic",
-        "Prefer 320 kbps",
-        "Prefer FLAC lossless"
+        "JioSaavn · 320 kbps",
+        "FLAC · Lossless"
     ),
     "it" to alternativeAudioStrings(
         "Audio alternativo ad alta qualità",
         "Usa uno stream audio esterno di qualità superiore quando Levyra può verificare che si tratti esattamente dello stesso brano.",
-        "Disattivato",
+        "YouTube · Opus 160 kbps",
         "Automatico",
-        "Preferisci 320 kbps",
-        "Preferisci FLAC lossless"
+        "JioSaavn · 320 kbps",
+        "FLAC · Lossless"
     ),
     "es" to alternativeAudioStrings(
         "Audio alternativo de alta calidad",
         "Usa una transmisión de audio externa de mayor calidad cuando Levyra puede verificar que es exactamente la misma canción.",
-        "Desactivado",
+        "YouTube · Opus 160 kbps",
         "Automático",
-        "Preferir 320 kbps",
-        "Preferir FLAC sin pérdida"
+        "JioSaavn · 320 kbps",
+        "FLAC · Sin pérdida"
     ),
     "fr" to alternativeAudioStrings(
         "Audio alternatif haute qualité",
         "Utilise un flux audio externe de meilleure qualité lorsque Levyra peut vérifier qu’il s’agit exactement du même titre.",
-        "Désactivé",
+        "YouTube · Opus 160 kbps",
         "Automatique",
-        "Privilégier 320 kbps",
-        "Privilégier FLAC sans perte"
+        "JioSaavn · 320 kbps",
+        "FLAC · Sans perte"
     ),
     "de" to alternativeAudioStrings(
         "Alternatives Audio in hoher Qualität",
         "Verwendet einen externen Audiostream in höherer Qualität, wenn Levyra bestätigen kann, dass es genau derselbe Titel ist.",
-        "Aus",
+        "YouTube · Opus 160 kbps",
         "Automatisch",
-        "320 kbps bevorzugen",
-        "FLAC verlustfrei bevorzugen"
+        "JioSaavn · 320 kbps",
+        "FLAC · Verlustfrei"
     ),
     "pt" to alternativeAudioStrings(
         "Áudio alternativo de alta qualidade",
         "Usa um stream de áudio externo de maior qualidade quando o Levyra consegue verificar que é exatamente a mesma faixa.",
-        "Desativado",
+        "YouTube · Opus 160 kbps",
         "Automático",
-        "Preferir 320 kbps",
-        "Preferir FLAC sem perdas"
+        "JioSaavn · 320 kbps",
+        "FLAC · Sem perdas"
     ),
     "nl" to alternativeAudioStrings(
         "Alternatieve audio van hoge kwaliteit",
         "Gebruik een externe audiostream van hogere kwaliteit wanneer Levyra kan verifiëren dat het exact hetzelfde nummer is.",
-        "Uit",
+        "YouTube · Opus 160 kbps",
         "Automatisch",
-        "Voorkeur voor 320 kbps",
-        "Voorkeur voor FLAC lossless"
+        "JioSaavn · 320 kbps",
+        "FLAC · Lossless"
     ),
     "pl" to alternativeAudioStrings(
         "Alternatywny dźwięk wysokiej jakości",
         "Używaj zewnętrznego strumienia audio wyższej jakości, gdy Levyra może potwierdzić, że to dokładnie ten sam utwór.",
-        "Wyłączone",
+        "YouTube · Opus 160 kbps",
         "Automatycznie",
-        "Preferuj 320 kb/s",
-        "Preferuj bezstratny FLAC"
+        "JioSaavn · 320 kbps",
+        "FLAC · Bezstratny"
     ),
     "ro" to alternativeAudioStrings(
         "Audio alternativ de înaltă calitate",
         "Folosește un flux audio extern de calitate superioară când Levyra poate verifica faptul că este exact aceeași piesă.",
-        "Dezactivat",
+        "YouTube · Opus 160 kbps",
         "Automat",
-        "Preferă 320 kbps",
-        "Preferă FLAC fără pierderi"
+        "JioSaavn · 320 kbps",
+        "FLAC · Fără pierderi"
     ),
     "el" to alternativeAudioStrings(
         "Εναλλακτικός ήχος υψηλής ποιότητας",
         "Χρησιμοποιεί εξωτερική ροή ήχου υψηλότερης ποιότητας όταν το Levyra μπορεί να επιβεβαιώσει ότι είναι ακριβώς το ίδιο κομμάτι.",
-        "Ανενεργό",
+        "YouTube · Opus 160 kbps",
         "Αυτόματα",
-        "Προτίμηση 320 kbps",
-        "Προτίμηση FLAC χωρίς απώλειες"
+        "JioSaavn · 320 kbps",
+        "FLAC · Χωρίς απώλειες"
     ),
     "sv" to alternativeAudioStrings(
         "Alternativt ljud i hög kvalitet",
         "Använd en extern ljudström med högre kvalitet när Levyra kan verifiera att det är exakt samma låt.",
-        "Av",
+        "YouTube · Opus 160 kbps",
         "Automatiskt",
-        "Föredra 320 kbps",
-        "Föredra förlustfri FLAC"
+        "JioSaavn · 320 kbps",
+        "FLAC · Förlustfri"
     ),
     "da" to alternativeAudioStrings(
         "Alternativ lyd i høj kvalitet",
         "Brug en ekstern lydstream i højere kvalitet, når Levyra kan bekræfte, at det er præcis det samme nummer.",
-        "Fra",
+        "YouTube · Opus 160 kbps",
         "Automatisk",
-        "Foretræk 320 kbps",
-        "Foretræk tabsfri FLAC"
+        "JioSaavn · 320 kbps",
+        "FLAC · Tabsfri"
     ),
     "cs" to alternativeAudioStrings(
         "Alternativní zvuk ve vysoké kvalitě",
         "Použije externí zvukový stream vyšší kvality, když Levyra ověří, že jde přesně o stejnou skladbu.",
-        "Vypnuto",
+        "YouTube · Opus 160 kbps",
         "Automaticky",
-        "Upřednostnit 320 kb/s",
-        "Upřednostnit bezztrátový FLAC"
+        "JioSaavn · 320 kbps",
+        "FLAC · Bezztrátový"
     ),
     "uk" to alternativeAudioStrings(
         "Альтернативне аудіо високої якості",
         "Використовувати зовнішній аудіопотік вищої якості, коли Levyra може підтвердити, що це точно той самий трек.",
-        "Вимкнено",
+        "YouTube · Opus 160 kbps",
         "Автоматично",
-        "Надавати перевагу 320 кбіт/с",
-        "Надавати перевагу FLAC без втрат"
+        "JioSaavn · 320 kbps",
+        "FLAC · Без втрат"
     ),
     "ru" to alternativeAudioStrings(
         "Альтернативный звук высокого качества",
         "Использовать внешний аудиопоток более высокого качества, когда Levyra может подтвердить, что это точно тот же трек.",
-        "Выкл.",
+        "YouTube · Opus 160 kbps",
         "Автоматически",
-        "Предпочитать 320 кбит/с",
-        "Предпочитать FLAC без потерь"
+        "JioSaavn · 320 kbps",
+        "FLAC · Без потерь"
     ),
     "tr" to alternativeAudioStrings(
         "Yüksek kaliteli alternatif ses",
         "Levyra tam olarak aynı parça olduğunu doğrulayabildiğinde daha yüksek kaliteli harici bir ses akışı kullanır.",
-        "Kapalı",
+        "YouTube · Opus 160 kbps",
         "Otomatik",
-        "320 kbps tercih et",
-        "Kayıpsız FLAC tercih et"
+        "JioSaavn · 320 kbps",
+        "FLAC · Kayıpsız"
     ),
     "ar" to alternativeAudioStrings(
         "صوت بديل عالي الجودة",
         "استخدم بث صوت خارجيًا بجودة أعلى عندما يتمكن Levyra من التحقق من أنه المقطع نفسه تمامًا.",
-        "إيقاف",
+        "YouTube · Opus 160 kbps",
         "تلقائي",
-        "تفضيل 320 كيلوبت/ث",
-        "تفضيل FLAC بدون فقدان"
+        "JioSaavn · 320 kbps",
+        "FLAC · بدون فقد"
     ),
     "zh" to alternativeAudioStrings(
         "高音质备用音频",
         "当 Levyra 能确认是完全相同的曲目时，使用更高音质的外部音频流。",
-        "关闭",
+        "YouTube · Opus 160 kbps",
         "自动",
-        "优先 320 kbps",
-        "优先 FLAC 无损"
+        "JioSaavn · 320 kbps",
+        "FLAC · 无损"
     ),
     "ja" to alternativeAudioStrings(
         "高音質の代替オーディオ",
         "Levyra がまったく同じ曲であることを確認できた場合に、より高音質な外部オーディオストリームを使用します。",
-        "オフ",
+        "YouTube · Opus 160 kbps",
         "自動",
-        "320 kbps を優先",
-        "FLAC ロスレスを優先"
+        "JioSaavn · 320 kbps",
+        "FLAC · ロスレス"
     ),
     "ko" to alternativeAudioStrings(
         "고음질 대체 오디오",
         "Levyra가 정확히 같은 곡임을 확인할 수 있을 때 더 높은 음질의 외부 오디오 스트림을 사용합니다.",
-        "끄기",
+        "YouTube · Opus 160 kbps",
         "자동",
-        "320kbps 우선",
-        "FLAC 무손실 우선"
+        "JioSaavn · 320 kbps",
+        "FLAC · 무손실"
     ),
     "hi" to alternativeAudioStrings(
         "उच्च गुणवत्ता वाला वैकल्पिक ऑडियो",
         "जब Levyra पुष्टि कर सके कि यह बिल्कुल वही ट्रैक है, तब उच्च गुणवत्ता वाली बाहरी ऑडियो स्ट्रीम का उपयोग करें।",
-        "बंद",
+        "YouTube · Opus 160 kbps",
         "स्वचालित",
-        "320 kbps को प्राथमिकता दें",
-        "FLAC लॉसलेस को प्राथमिकता दें"
+        "JioSaavn · 320 kbps",
+        "FLAC · लॉसलेस"
     ),
     "id" to alternativeAudioStrings(
         "Audio alternatif berkualitas tinggi",
         "Gunakan stream audio eksternal berkualitas lebih tinggi saat Levyra dapat memastikan bahwa lagunya benar-benar sama.",
-        "Nonaktif",
+        "YouTube · Opus 160 kbps",
         "Otomatis",
-        "Utamakan 320 kbps",
-        "Utamakan FLAC lossless"
+        "JioSaavn · 320 kbps",
+        "FLAC · Lossless"
     ),
     "vi" to alternativeAudioStrings(
         "Âm thanh thay thế chất lượng cao",
         "Dùng luồng âm thanh bên ngoài chất lượng cao hơn khi Levyra xác minh được đó chính xác là cùng một bài hát.",
-        "Tắt",
+        "YouTube · Opus 160 kbps",
         "Tự động",
-        "Ưu tiên 320 kbps",
-        "Ưu tiên FLAC lossless"
+        "JioSaavn · 320 kbps",
+        "FLAC · Lossless"
     ),
     "th" to alternativeAudioStrings(
         "เสียงทางเลือกคุณภาพสูง",
         "ใช้สตรีมเสียงภายนอกที่มีคุณภาพสูงกว่าเมื่อ Levyra ยืนยันได้ว่าเป็นเพลงเดียวกันทุกประการ",
-        "ปิด",
+        "YouTube · Opus 160 kbps",
         "อัตโนมัติ",
-        "เลือก 320 kbps ก่อน",
-        "เลือก FLAC แบบไม่สูญเสียก่อน"
+        "JioSaavn · 320 kbps",
+        "FLAC · ไม่สูญเสียคุณภาพ"
     ),
     "fil" to alternativeAudioStrings(
         "Mataas na kalidad na alternatibong audio",
@@ -220,26 +220,26 @@ private val alternativeAudioBundles: Map<String, Map<String, String>> = mapOf(
     "he" to alternativeAudioStrings(
         "שמע חלופי באיכות גבוהה",
         "שימוש בזרם שמע חיצוני באיכות גבוהה יותר כש-Levyra יכולה לאמת שזה בדיוק אותו שיר.",
-        "כבוי",
+        "YouTube · Opus 160 kbps",
         "אוטומטי",
-        "העדפת 320 kbps",
-        "העדפת FLAC ללא אובדן"
+        "JioSaavn · 320 kbps",
+        "FLAC · ללא אובדן"
     ),
     "fi" to alternativeAudioStrings(
         "Korkealaatuinen vaihtoehtoinen ääni",
         "Käytä korkealaatuisempaa ulkoista äänilähdettä, kun Levyra voi varmistaa sen olevan täsmälleen sama kappale.",
-        "Pois",
+        "YouTube · Opus 160 kbps",
         "Automaattinen",
-        "Suosi 320 kbps",
-        "Suosi häviötöntä FLACia"
+        "JioSaavn · 320 kbps",
+        "FLAC · Häviötön"
     ),
     "et" to alternativeAudioStrings(
         "Kõrge kvaliteediga alternatiivne heli",
         "Kasuta kvaliteetsemat välist helivoogu, kui Levyra saab kinnitada, et tegemist on täpselt sama looga.",
-        "Väljas",
+        "YouTube · Opus 160 kbps",
         "Automaatne",
-        "Eelista 320 kbps",
-        "Eelista kadudeta FLAC-i"
+        "JioSaavn · 320 kbps",
+        "FLAC · Kadudeta"
     )
 )
 
