@@ -148,6 +148,29 @@ internal fun combineOnlineSearchResults(songs: List<Track>, mixed: List<Track>, 
     return result
 }
 
+internal fun Track.withEquivalentPlaybackSource(replacement: Track): Track? {
+    val candidate = replacement.toMatchCandidate().candidate
+    if (candidate.origin == CandidateOrigin.LOCAL) return null
+    if (!PlaylistMatchEngine.evaluate(toImportIdentity(0), candidate).confidence.autoAccepted) return null
+    return replacement.copy(
+        title = title,
+        artist = artist,
+        album = album.ifBlank { replacement.album },
+        thumbnailUrl = thumbnailUrl.ifBlank { replacement.thumbnailUrl },
+        largeThumbnailUrl = largeThumbnailUrl.ifBlank { replacement.largeThumbnailUrl },
+        isrc = isrc.ifBlank { replacement.isrc },
+        year = year.ifBlank { replacement.year },
+        releaseDate = releaseDate.ifBlank { replacement.releaseDate },
+        explicit = explicit || replacement.explicit,
+        albumBrowseId = albumBrowseId.ifBlank { replacement.albumBrowseId },
+        artistBrowseIds = artistBrowseIds.ifEmpty { replacement.artistBrowseIds },
+        streamUrl = "",
+        videoStreamUrl = "",
+        playbackManifest = null,
+        playlistEntryId = replacement.playlistEntryId.ifBlank { playlistEntryId }
+    )
+}
+
 internal fun Track.toMatchCandidate(): CatalogCandidate {
     val local = id.startsWith(LOCAL_TRACK_PREFIX) || streamUrl.startsWith("content://") || streamUrl.startsWith("file://")
     val type = videoType.uppercase()

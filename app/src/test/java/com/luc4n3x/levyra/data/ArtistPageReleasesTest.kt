@@ -52,6 +52,27 @@ class ArtistPageReleasesTest {
     }
 
     @Test
+    fun russianAndUkrainianArtistPagesKeepAlbumsAndSingles() {
+        listOf(
+            "Альбомы" to "Синглы и выпуски",
+            "Альбоми" to "Сингли й мініальбоми"
+        ).forEach { (albumsTitle, singlesTitle) ->
+            val root = page(
+                shelf(albumsTitle, card("Земля", "2024", "MPRE_SYNTH_RU_ALBUM"), card("Без меж", "2016", "MPRE_SYNTH_RU_OLD")),
+                shelf(singlesTitle, card("Мить", "Сингл • 2025", "MPRE_SYNTH_RU_SINGLE"))
+            )
+
+            val releases = ArtistRepository(YoutubeMusicRepository()).extractArtistPageReleases(root).associateBy { it.browseId }
+
+            assertEquals(albumsTitle, ReleaseType.Album, releases["MPRE_SYNTH_RU_ALBUM"]?.releaseType)
+            assertEquals(albumsTitle, ReleaseType.Album, releases["MPRE_SYNTH_RU_OLD"]?.releaseType)
+            assertEquals(singlesTitle, ReleaseType.Single, releases["MPRE_SYNTH_RU_SINGLE"]?.releaseType)
+        }
+        assertEquals(ReleaseType.Compilation, artistReleaseType("Сборник • 2019", null))
+        assertEquals(ReleaseType.Compilation, artistReleaseType("Збірка • 2019", null))
+    }
+
+    @Test
     fun unlabeledShelvesStillRequireAReleaseLabel() {
         val root = page(shelf("Featured on", card("Not A Release", "2024", "MPRE_SYNTH_UNKNOWN")))
 

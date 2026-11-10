@@ -41,6 +41,8 @@ import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.hasReusableVideoPlaybackPayload
 import com.luc4n3x.levyra.domain.hasVideoPlaybackPayload
+import com.luc4n3x.levyra.player.PlaybackCacheHintStore
+import com.luc4n3x.levyra.player.playbackCacheReadSpec
 import com.luc4n3x.levyra.player.sabr.SabrStreamSpec
 import com.luc4n3x.levyra.runtime.RuntimeHooks
 import com.luc4n3x.levyra.runtime.RuntimeSignal
@@ -722,6 +724,10 @@ class PlaybackResolver private constructor(private val context: Context) {
     ) {
         if (isLocalPlaybackTrack(track)) {
             resilienceEngine.recordPlayerFailure(track.id, isVideoMode, reason)
+            return
+        }
+        playbackCacheReadSpec(track.streamUrl)?.let { spec ->
+            PlaybackCacheHintStore.forgetCacheKey(spec.cacheKey)
             return
         }
         if (highQualityPlayback.handlesFailure(track)) {

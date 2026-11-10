@@ -95,6 +95,36 @@ class LevyraProviderRouterTest {
     }
 
     @Test
+    fun repeatedFailuresOfOneTrackNeverLeaveOnlyTheCacheProvider() = runBlocking {
+        val cache = object : LevyraPlaybackProvider {
+            override val id: String = "playback_cache"
+            override val priority: Int = 0
+            override suspend fun resolve(track: Track, videoMode: Boolean): Track = throw LevyraProviderMissException("miss")
+            override suspend fun resolveForOffline(track: Track): Track = throw LevyraProviderMissException("miss")
+        }
+        val native = object : LevyraPlaybackProvider {
+            override val id: String = "native"
+            override val priority: Int = 10
+            override suspend fun resolve(track: Track, videoMode: Boolean): Track {
+                if (track.id == "broken") throw IOException("Stream non disponibile")
+                return track.copy(streamUrl = "https://example.com/${track.id}.webm")
+            }
+            override suspend fun resolveForOffline(track: Track): Track = resolve(track, false)
+        }
+        val router = LevyraProviderRouter(
+            catalogProviders = emptyList(),
+            playbackProviders = listOf(cache, native),
+            healthTracker = LevyraProviderHealthTracker(failureThreshold = 3, cooldownMs = 60_000L),
+            playbackTimeoutMs = 1_000L
+        )
+
+        repeat(4) { runCatching { router.resolve(track().copy(id = "broken")) } }
+
+        assertTrue(router.health().first { it.providerId == "native" }.circuitOpenUntilMs > System.currentTimeMillis())
+        assertEquals("https://example.com/healthy.webm", router.resolve(track().copy(id = "healthy")).streamUrl)
+    }
+
+    @Test
     fun videoResolutionSkipsAudioOnlyProvider() = runBlocking {
         val audioOnlyCalls = AtomicInteger(0)
         val audioOnly = object : LevyraPlaybackProvider {

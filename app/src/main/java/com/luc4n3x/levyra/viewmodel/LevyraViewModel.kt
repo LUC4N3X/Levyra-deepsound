@@ -1,5 +1,8 @@
 package com.luc4n3x.levyra.viewmodel
 
+import com.luc4n3x.levyra.data.playlistimport.withEquivalentPlaybackSource
+import com.luc4n3x.levyra.nexus.identity.MusicIdentityText
+import com.luc4n3x.levyra.nexus.playlistimport.ImportTransliteration
 import com.luc4n3x.levyra.player.SECTION_LOOP_POLL_MS
 import com.luc4n3x.levyra.player.SectionLoopState
 import com.luc4n3x.levyra.player.advance
@@ -122,6 +125,7 @@ import com.luc4n3x.levyra.data.homeAlbumHitFromTrack
 import com.luc4n3x.levyra.data.homeAlbumArtistFromTrack
 import com.luc4n3x.levyra.data.isCanonicalHomeAlbumHit
 import com.luc4n3x.levyra.data.RecordingIdentityMatch
+import com.luc4n3x.levyra.data.addsDifferentPlaybackVariant
 import com.luc4n3x.levyra.data.recordingIdentityMatch
 import com.luc4n3x.levyra.data.local.DownloadEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
@@ -714,29 +718,33 @@ internal fun isPlaybackCandidateCompatible(target: Track, candidate: Track): Boo
         RecordingIdentityMatch.Conflict -> return false
         RecordingIdentityMatch.Unknown -> Unit
     }
-    val targetTitle = playbackTitleKey(target.title)
-    val candidateTitle = playbackTitleKey(candidate.title)
-    if (targetTitle.isBlank() || candidateTitle.isBlank()) return false
-
-    val targetTitleTokens = playbackTokens(targetTitle)
-    val candidateTitleTokens = playbackTokens(candidateTitle).toSet()
-    val titleMatches = targetTitleTokens.count { it in candidateTitleTokens }
-    val titleCoverage = if (targetTitleTokens.isEmpty()) 0.0 else titleMatches.toDouble() / targetTitleTokens.size.toDouble()
-    val titleCompatible = candidateTitle == targetTitle ||
-        candidateTitle.startsWith("$targetTitle ") ||
-        targetTitle.startsWith("$candidateTitle ") ||
-        titleCoverage >= 0.8
-    if (!titleCompatible) return false
+    if (!playbackTitlesCompatible(target.title, candidate.title)) return false
 
     val targetArtistTokens = playbackArtistTokens(target.artist)
     if (targetArtistTokens.isEmpty()) return true
     if (target.artistBrowseIds.isNotEmpty() && candidate.artistBrowseIds.any { it in target.artistBrowseIds }) {
         return true
     }
-    val candidateArtistTokens = playbackArtistTokens("${candidate.artist} ${candidate.title}").toSet()
-    val artistMatches = targetArtistTokens.count { it in candidateArtistTokens }
+    val candidateArtistTokens = PlaybackTokenSet(playbackArtistTokens("${candidate.artist} ${candidate.title}"))
+    val artistMatches = targetArtistTokens.count(candidateArtistTokens::matches)
     val requiredMatches = maxOf(1, (targetArtistTokens.size + 1) / 2)
     return artistMatches >= requiredMatches
+}
+
+private fun playbackTitlesCompatible(originalTitle: String, replacementTitle: String): Boolean {
+    if (addsDifferentPlaybackVariant(originalTitle, replacementTitle)) return false
+    val targetTitle = playbackTitleKey(originalTitle)
+    val candidateTitle = playbackTitleKey(replacementTitle)
+    if (targetTitle.isBlank() || candidateTitle.isBlank()) return false
+
+    val targetTitleTokens = playbackTokens(targetTitle)
+    val candidateTitleTokens = PlaybackTokenSet(playbackTokens(candidateTitle))
+    val titleMatches = targetTitleTokens.count(candidateTitleTokens::matches)
+    val titleCoverage = if (targetTitleTokens.isEmpty()) 0.0 else titleMatches.toDouble() / targetTitleTokens.size.toDouble()
+    return candidateTitle == targetTitle ||
+        candidateTitle.startsWith("$targetTitle ") ||
+        targetTitle.startsWith("$candidateTitle ") ||
+        titleCoverage >= 0.8
 }
 
 internal fun playbackCandidateScore(
@@ -759,16 +767,18 @@ internal fun playbackCandidateScore(
     var score = 0
     when {
         candidateTitle == targetTitle -> score += 140
-        candidateTitle.contains(targetTitle) || targetTitle.contains(candidateTitle) -> score += 95
+        ImportTransliteration.sameRomanized(targetTitle, candidateTitle) -> score += 120
+        candidateTitle.isNotBlank() && (candidateTitle.contains(targetTitle) || targetTitle.contains(candidateTitle)) -> score += 95
         titleTokens.isNotEmpty() && titleTokens.all { candidateBlob.split(' ').contains(it) } -> score += 70
     }
     when {
         targetArtist.isNotBlank() && candidateArtist == targetArtist -> score += 80
-        targetArtist.isNotBlank() && (candidateArtist.contains(targetArtist) || targetArtist.contains(candidateArtist)) -> score += 55
+        targetArtist.isNotBlank() && ImportTransliteration.sameRomanized(targetArtist, candidateArtist) -> score += 70
+        targetArtist.isNotBlank() && candidateArtist.isNotBlank() &&
+            (candidateArtist.contains(targetArtist) || targetArtist.contains(candidateArtist)) -> score += 55
         artistTokens.isNotEmpty() && artistTokens.all { candidateBlob.split(' ').contains(it) } -> score += 35
     }
-    val penaltyTerms = listOf("karaoke", "cover", "reaction", "sped up", "slowed", "instrumental", "remix", "live", "nightcore")
-    if (penaltyTerms.any { candidateBlob.contains(it) } && penaltyTerms.none { targetTitle.contains(it) }) score -= 60
+    if (PLAYBACK_PENALTY_TERMS.any { candidateBlob.contains(it) } && PLAYBACK_PENALTY_TERMS.none { targetTitle.contains(it) }) score -= 60
     if (candidate.source.contains("YouTube Music", ignoreCase = true)) score += 18
     if (candidate.source.contains("Extractor", ignoreCase = true)) score += 8
     if (candidate.durationMs > 0L && target.durationMs > 0L) {
@@ -871,16 +881,25 @@ internal fun selectPreferredVideoPlaybackCandidate(
         ?.second
 }
 
-private val PLAYBACK_TEXT_BRACKETS = Regex("""[()\[\]]""")
-private val PLAYBACK_TEXT_NON_WORD = Regex("""[^a-z0-9àèéìòóùçñäöüß\s]""")
-private val PLAYBACK_TEXT_WHITESPACE = Regex("""\s+""")
+private val PLAYBACK_PENALTY_TERMS = listOf(
+    "karaoke", "cover", "reaction", "sped up", "slowed", "instrumental", "remix", "live", "nightcore",
+    "караоке", "кавер", "ремикс", "ремікс", "минусовка", "инструментал", "інструментал", "наживо", "живой звук"
+)
 
-internal fun playbackTextKey(value: String): String {
-    return value.lowercase()
-        .replace(PLAYBACK_TEXT_BRACKETS, " ")
-        .replace(PLAYBACK_TEXT_NON_WORD, " ")
-        .replace(PLAYBACK_TEXT_WHITESPACE, " ")
-        .trim()
+internal fun playbackTextKey(value: String): String = MusicIdentityText.normalize(value)
+
+private class PlaybackTokenSet(tokens: List<String>) {
+    private val exact = tokens.toHashSet()
+    private val romanized = tokens.mapTo(HashSet(), ImportTransliteration::romanizedKey)
+    private val romanizedCyrillic = tokens.filter(ImportTransliteration::containsCyrillic)
+        .mapTo(HashSet(), ImportTransliteration::romanizedKey)
+
+    fun matches(token: String): Boolean {
+        if (token in exact) return true
+        val key = ImportTransliteration.romanizedKey(token)
+        if (key.length < 2) return false
+        return if (ImportTransliteration.containsCyrillic(token)) key in romanized else key in romanizedCyrillic
+    }
 }
 
 private fun playbackTokens(value: String): List<String> {
@@ -3696,16 +3715,37 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun replacePlaylistTrack(playlistId: String, oldTrackId: String, replacement: Track) {
+    fun replacePlaylistTrack(playlistId: String, original: Track, replacement: Track) {
         viewModelScope.launch {
-            val replaced = playlistStore.replaceTrack(playlistId, oldTrackId, replacement)
+            val equivalent = withContext(Dispatchers.Default) {
+                original.withEquivalentPlaybackSource(replacement)
+            }
+            val entry = equivalent ?: replacement
+            val replaced = playlistStore.replaceTrack(playlistId, original.id, entry)
             if (replaced) {
+                if (equivalent != null && original.id in _state.value.favoriteIds) carryFavorite(original, entry)
                 loadPlaylists()
                 refreshOpenPlaylist(playlistId)
             } else {
                 _state.update { current ->
                     current.copy(offlineExportMessage = playlistImportHubCopy(current.languageCode).changeMatchConflict)
                 }
+            }
+        }
+    }
+
+    private suspend fun carryFavorite(original: Track, replacement: Track) {
+        favoriteMutationMutex.withLock {
+            val updated = runCatchingPreservingCancellation { favoritesStore.replaceFavorite(original, replacement) }
+                .onFailure { error -> Timber.w(error, "Favorite replacement failed") }
+                .getOrNull() ?: return
+            val timestamps = favoritesStore.loadTimestampsSuspending()
+            _state.update { state ->
+                state.copy(
+                    favorites = updated,
+                    favoriteIds = updated.map { favorite -> favorite.id }.toSet(),
+                    favoriteTimestamps = timestamps
+                )
             }
         }
     }

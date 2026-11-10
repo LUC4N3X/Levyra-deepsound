@@ -23,6 +23,7 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.ReleaseType
 import com.luc4n3x.levyra.domain.isSingleLike
 import com.luc4n3x.levyra.domain.releaseTypeFromProviderLabel
+import com.luc4n3x.levyra.nexus.playlistimport.ImportTransliteration
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -307,7 +308,8 @@ internal fun artistNameMatches(expectedName: String, resolvedName: String): Bool
     val expectedPrimary = primaryArtistSegment(expected).ifBlank { expected }
     val resolved = resolvedName.cleanAlbumArtistLabel()
     if (expected.isBlank() || resolved.isBlank()) return true
-    return artistIdentityMatches(resolved, expected) || artistIdentityMatches(resolved, expectedPrimary)
+    return artistIdentityMatches(resolved, expected) || artistIdentityMatches(resolved, expectedPrimary) ||
+        ImportTransliteration.sameRomanized(resolved, expected) || ImportTransliteration.sameRomanized(resolved, expectedPrimary)
 }
 
 /**

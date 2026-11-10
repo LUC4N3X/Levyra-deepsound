@@ -34,6 +34,17 @@ internal fun playbackCacheKeysToDiscard(
     }
 }
 
+internal fun failedPlaybackCacheKeys(
+    mediaItemUri: String?,
+    mediaItemCacheKey: String?,
+    invalidateCache: Boolean,
+    derivedKeys: () -> Set<String>
+): Set<String> {
+    mediaItemUri?.let(::playbackCacheReadSpec)?.let { spec -> return setOf(spec.cacheKey) }
+    if (!invalidateCache) return emptySet()
+    return derivedKeys() + listOfNotNull(mediaItemCacheKey?.trim()?.takeIf(String::isNotBlank))
+}
+
 internal fun isRecoverableStreamEnd(error: Throwable): Boolean {
     var current: Throwable? = error
     var depth = 0

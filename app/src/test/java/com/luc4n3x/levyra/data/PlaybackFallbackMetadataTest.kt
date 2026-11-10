@@ -80,6 +80,17 @@ class PlaybackFallbackMetadataTest {
     }
 
     @Test
+    fun mixedCyrillicFallbackSearchTriesTheNormalizedIdentityFirst() {
+        val original = track(id = "zzzzzzzzzz2", title = "Обiйми", artist = "Океан Ельзи", durationMs = 224_000L)
+        val queries = playbackAlternativeSearchQueries(original)
+
+        assertEquals("океан ельзи обійми", queries.first())
+        assertTrue("Океан Ельзи Обiйми official audio" in queries)
+        assertFalse(isResolvedPlaybackDurationCompatible(original, 254_000L))
+        assertTrue(isResolvedPlaybackDurationCompatible(original, 225_000L))
+    }
+
+    @Test
     fun canonicalFallbackArtistAdoptsVerifiedOfficialArtist() {
         val original = track(
             id = "chart-source",

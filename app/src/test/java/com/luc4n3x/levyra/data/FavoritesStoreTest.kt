@@ -58,6 +58,24 @@ class FavoritesStoreTest {
     }
 
     @Test
+    fun replacedPlaylistTrackKeepsItsFavoriteSlot() {
+        val first = track("first", "First")
+        val broken = track("broken", "Обійми", artist = "Океан Ельзи")
+        val last = track("last", "Last")
+        val working = broken.copy(id = "working")
+
+        assertEquals(
+            listOf("first", "working", "last"),
+            favoriteTracksWithReplacement(listOf(first, broken, last), broken, working)?.map { it.id }
+        )
+        assertEquals(
+            listOf("first", "working"),
+            favoriteTracksWithReplacement(listOf(first, broken, working), broken, working)?.map { it.id }
+        )
+        assertEquals(null, favoriteTracksWithReplacement(listOf(first, last), broken, working))
+    }
+
+    @Test
     fun explicitFavoriteStateIsIdempotent() {
         val current = track("current", "Current")
         val other = track("other", "Other")

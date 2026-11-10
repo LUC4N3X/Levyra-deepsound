@@ -175,7 +175,14 @@ internal fun playbackRecoveryPlanFor(kind: PlaybackFailureKind): PlaybackRecover
         quarantineMs = 0L,
         invalidateCache = true
     )
-    PlaybackFailureKind.Decoder -> PlaybackRecoveryPlan(true, false, true, false, 30L * 60L * 1000L)
+    PlaybackFailureKind.Decoder -> PlaybackRecoveryPlan(
+        invalidateStream = true,
+        rotateClient = false,
+        rotateCodec = true,
+        refreshSecurity = false,
+        quarantineMs = 30L * 60L * 1000L,
+        invalidateCache = true
+    )
     PlaybackFailureKind.Timeout,
     PlaybackFailureKind.Network -> PlaybackRecoveryPlan(true, false, false, false, 45_000L)
     PlaybackFailureKind.Unknown -> PlaybackRecoveryPlan(true, false, false, false, 20_000L)

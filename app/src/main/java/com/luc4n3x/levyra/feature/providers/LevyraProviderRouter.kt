@@ -8,6 +8,7 @@ import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.hasVideoPlaybackPayload
+import com.luc4n3x.levyra.nexus.identity.MusicIdentityText
 import com.luc4n3x.levyra.player.LevyraMediaCache
 import com.luc4n3x.levyra.player.fullyCachedPlaybackTrack
 import kotlinx.coroutines.CancellationException
@@ -158,12 +159,7 @@ class MemoryCatalogProvider(
         return tokens.count { token -> text.contains(token) } * 10
     }
 
-    private fun normalize(value: String): String {
-        return value.lowercase()
-            .replace(Regex("[^a-z0-9àèéìòóùçñäöüß\\s]"), " ")
-            .replace(Regex("\\s+"), " ")
-            .trim()
-    }
+    private fun normalize(value: String): String = MusicIdentityText.normalize(value)
 }
 
 class CachedPlaybackProvider(
@@ -336,9 +332,9 @@ class LevyraProviderRouter(
     }
 
     private fun orderedPlaybackProviders(): List<LevyraPlaybackProvider> {
-        val available = playbackProviders.filter { healthTracker.available(it.id) }
-        val source = available.ifEmpty { playbackProviders }
-        return source.sortedBy { healthTracker.score(it.id, it.priority) }
+        val (available, coolingDown) = playbackProviders.partition { healthTracker.available(it.id) }
+        return available.sortedBy { healthTracker.score(it.id, it.priority) } +
+            coolingDown.sortedBy { healthTracker.score(it.id, it.priority) }
     }
 
     private fun elapsedMs(startedAt: Long): Long = (System.nanoTime() - startedAt).coerceAtLeast(0L) / 1_000_000L

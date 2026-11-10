@@ -101,6 +101,14 @@ internal object PlaybackCacheHintStore {
         return synchronized(lock) { hints[sourceVideoId] }
     }
 
+    fun forgetCacheKey(cacheKey: String) {
+        val cleanKey = cacheKey.trim()
+        if (cleanKey.isBlank()) return
+        synchronized(lock) {
+            if (hints.values.removeAll { it.cacheKey == cleanKey }) persistLocked()
+        }
+    }
+
     suspend fun isCompatibleWithCurrentAudioQuality(hint: PlaybackCacheHint): Boolean {
         val context = appContext ?: return false
         val requestedAudioQuality = withContext(Dispatchers.IO) {
@@ -168,6 +176,8 @@ internal fun playbackCacheOnlyUri(hint: PlaybackCacheHint): String =
         append("&mime=")
         append(encodePlaybackCacheComponent(hint.mimeType))
     }
+
+internal fun isPlaybackCacheOnlyUri(url: String?): Boolean = url != null && playbackCacheReadSpec(url) != null
 
 internal fun playbackCacheReadSpec(url: String): PlaybackCacheReadSpec? {
     if (!url.startsWith(PLAYBACK_CACHE_ONLY_PREFIX, ignoreCase = true)) return null

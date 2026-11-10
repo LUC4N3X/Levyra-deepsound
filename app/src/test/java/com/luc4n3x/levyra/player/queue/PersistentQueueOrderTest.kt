@@ -3,6 +3,8 @@ package com.luc4n3x.levyra.player.queue
 import com.luc4n3x.levyra.domain.Track
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class PersistentQueueOrderTest {
@@ -109,6 +111,54 @@ class PersistentQueueOrderTest {
                 requestedPositionMs = 12_000L
             )
         )
+    }
+
+    @Test
+    fun failedSkipRestoresSelectionWithoutUndoingNewerQueueSettings() {
+        val origin = PlaybackQueueSnapshot(
+            tracks = (0..2).map(::track),
+            currentIndex = 0,
+            history = listOf(2)
+        )
+        val current = origin.copy(
+            tracks = origin.tracks.map { it.copy(album = "Updated album") },
+            currentIndex = 1,
+            history = listOf(2, 0),
+            shuffleEnabled = true,
+            shuffleOrder = listOf(1, 2, 0),
+            shuffleCursor = 0,
+            repeatMode = com.luc4n3x.levyra.domain.RepeatMode.All,
+            radioEnabled = true
+        )
+
+        val restored = current.withRestoredSkipSelection(origin, 12_000L)
+
+        assertEquals(0, restored.currentIndex)
+        assertEquals(12_000L, restored.positionMs)
+        assertEquals(origin.history, restored.history)
+        assertEquals(current.tracks, restored.tracks)
+        assertEquals(current.shuffleEnabled, restored.shuffleEnabled)
+        assertEquals(current.shuffleOrder, restored.shuffleOrder)
+        assertEquals(2, restored.shuffleCursor)
+        assertEquals(current.repeatMode, restored.repeatMode)
+        assertEquals(current.radioEnabled, restored.radioEnabled)
+    }
+
+    @Test
+    fun failedSkipWithRepeatAllPreservesPlayingTrackWhenTheQueueWraps() {
+        val playing = track(0)
+        val unavailable = track(1)
+        val origin = PlaybackQueueSnapshot(
+            tracks = listOf(playing, unavailable),
+            currentIndex = 0,
+            positionMs = 45_000L,
+            repeatMode = com.luc4n3x.levyra.domain.RepeatMode.All
+        )
+
+        assertFalse(manualSkipWrappedToOrigin(origin, unavailable, 0))
+        assertTrue(manualSkipWrappedToOrigin(origin, playing, 1))
+        assertFalse(manualSkipWrappedToOrigin(origin, playing, 0))
+        assertEquals(45_000L, origin.copy(currentIndex = 1).withRestoredSkipSelection(origin, 45_000L).positionMs)
     }
 
     private fun track(index: Int): Track = Track(

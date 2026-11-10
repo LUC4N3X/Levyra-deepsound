@@ -27,6 +27,30 @@ object ImportTransliteration {
         return a.any { it.length >= 3 && it in b }
     }
 
+    fun romanizedKey(value: String): String {
+        val folded = latinQuery(value)
+            .replace("shch", "sh")
+            .replace("sch", "sh")
+            .replace("kh", "h")
+            .replace("ts", "c")
+            .replace("x", "ks")
+            .replace('g', 'h')
+            .replace('y', 'i')
+            .replace('j', 'i')
+        return buildString(folded.length) {
+            folded.forEach { char -> if (char == ' ' || isEmpty() || last() != char) append(char) }
+        }
+    }
+
+    fun containsCyrillic(value: String): Boolean =
+        value.any { Character.UnicodeScript.of(it.code) == Character.UnicodeScript.CYRILLIC }
+
+    fun sameRomanized(left: String, right: String): Boolean {
+        if (!containsCyrillic(left) && !containsCyrillic(right)) return false
+        val key = romanizedKey(left)
+        return key.count { it != ' ' } >= 2 && key == romanizedKey(right)
+    }
+
     private fun variants(value: String): Set<String> = setOf(
         value,
         value.replace("kh", "h").replace("shch", "sch").replace("yu", "iu").replace("ya", "ia").replace('y', 'i'),

@@ -39,7 +39,8 @@ class PlaybackRecoveryBudgetContractTest {
         assertFalse(player.contains("recoveryResetJob"))
         assertFalse(player.contains("delay(5_000L)\n                            if (connected.playbackState == Player.STATE_READY) recoveryAttempts = 0"))
         assertTrue(
-            Regex("""if\s*\(\s*isTerminalPlaybackFailure\([^)]*\)\s*\)""").containsMatchIn(service)
+            Regex("""if\s*\(\s*isTerminalPlaybackFailure\([^)]*\)\s*&&\s*!isPlaybackCacheOnlyUri\(""")
+                .containsMatchIn(service)
         )
         assertTrue(
             Regex("""isTerminalPlaybackFailure\(\s*classifyPlaybackFailureReason\(message\)\s*\)""")

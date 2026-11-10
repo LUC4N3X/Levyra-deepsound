@@ -267,8 +267,19 @@ object MusicIdentityText {
             .replace(whitespace, " ")
             .trim()
             .split(' ')
-            .joinToString(" ", transform = ::foldMixedGreek)
+            .joinToString(" ") { word -> foldMixedCyrillic(foldMixedGreek(word)) }
     }
+
+    private fun foldMixedCyrillic(word: String): String {
+        val cyrillic = word.any { Character.UnicodeScript.of(it.code) == Character.UnicodeScript.CYRILLIC }
+        if (!cyrillic || word.none { it in 'a'..'z' }) return word
+        return word.map { cyrillicLookalikes[it] ?: it }.joinToString("")
+    }
+
+    private val cyrillicLookalikes = mapOf(
+        'a' to 'а', 'b' to 'в', 'c' to 'с', 'e' to 'е', 'h' to 'н', 'i' to 'і', 'k' to 'к',
+        'm' to 'м', 'o' to 'о', 'p' to 'р', 't' to 'т', 'x' to 'х', 'y' to 'у'
+    )
 
     private fun foldMixedGreek(word: String): String {
         val greek = word.any { Character.UnicodeScript.of(it.code) == Character.UnicodeScript.GREEK }
