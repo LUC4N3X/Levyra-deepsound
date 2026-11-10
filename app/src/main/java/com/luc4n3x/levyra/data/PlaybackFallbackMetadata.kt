@@ -1,6 +1,9 @@
 package com.luc4n3x.levyra.data
 
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.nexus.identity.MusicIdentityText
+import com.luc4n3x.levyra.nexus.identity.TrackVersionMarker
+import com.luc4n3x.levyra.nexus.playlistimport.ImportTransliteration
 import java.util.Locale
 import kotlin.math.abs
 
@@ -29,6 +32,16 @@ private val PLAYBACK_VARIANT_MARKER = Regex(
     RegexOption.IGNORE_CASE
 )
 private val PLAYBACK_WHITESPACE = Regex("""\s+""")
+private val PLAYBACK_DISTINCT_VERSION_MARKERS = setOf(
+    TrackVersionMarker.LIVE,
+    TrackVersionMarker.REMIX,
+    TrackVersionMarker.KARAOKE,
+    TrackVersionMarker.COVER,
+    TrackVersionMarker.SPED_UP,
+    TrackVersionMarker.SLOWED,
+    TrackVersionMarker.REVERB,
+    TrackVersionMarker.INSTRUMENTAL
+)
 
 internal fun isKnownMisattributedPlaybackMetadata(artist: String, title: String): Boolean =
     MisattributedPlaybackSignature(
@@ -152,8 +165,9 @@ private fun isTrustedPlaybackRecordingMatch(
     originalTitle: String,
     originalArtist: String
 ): Boolean {
-    if (candidate.title.playbackRecordingTitleKey() != originalTitle) return false
-    if (candidate.artist.playbackPrimaryArtistKey() != originalArtist) return false
+    val timed = original.durationMs > 0L && candidate.durationMs > 0L
+    if (!samePlaybackKey(candidate.title.playbackRecordingTitleKey(), originalTitle, timed)) return false
+    if (!samePlaybackKey(candidate.artist.playbackPrimaryArtistKey(), originalArtist, timed)) return false
     if (addsDifferentPlaybackVariant(original.title, candidate.title)) return false
     if (original.durationMs > 0L && candidate.durationMs > 0L) {
         if (abs(original.durationMs - candidate.durationMs) > CANONICAL_FALLBACK_DURATION_TOLERANCE_MS) return false
@@ -161,7 +175,14 @@ private fun isTrustedPlaybackRecordingMatch(
     return true
 }
 
+private fun samePlaybackKey(candidate: String, original: String, timed: Boolean): Boolean =
+    candidate == original || (timed && ImportTransliteration.sameRomanized(candidate, original))
+
 private fun addsDifferentPlaybackVariant(originalTitle: String, candidateTitle: String): Boolean {
+    val originalMarkers = MusicIdentityText.title(originalTitle).markers
+    if (MusicIdentityText.title(candidateTitle).markers.any { it in PLAYBACK_DISTINCT_VERSION_MARKERS && it !in originalMarkers }) {
+        return true
+    }
     val originalVariants = PLAYBACK_VARIANT_MARKER.findAll(originalTitle.lowercase(Locale.ROOT))
         .map { it.value.replace(PLAYBACK_WHITESPACE, " ") }
         .toSet()
@@ -191,8 +212,12 @@ internal fun playbackAlternativeSearchQueries(track: Track): List<String> {
         .joinToString(" ")
         .ifBlank { title.ifBlank { track.id.trim() } }
     val misattributedArtist = isKnownMisattributedPlaybackMetadata(track.artist, track.title)
+    val normalizedBase = MusicIdentityText.normalize(base)
+    val needsCyrillicNormalization = ImportTransliteration.containsCyrillic(base) &&
+        normalizedBase != base.lowercase(Locale.ROOT)
 
     return buildList {
+        if (needsCyrillicNormalization && !misattributedArtist) add(normalizedBase)
         if ((isEditorialDiscoveryPlayback(track) || PlaybackSourceIdentity.sourceVideoId(track).isBlank()) && !misattributedArtist) {
             add(base)
             if (title != base) add(title)
@@ -296,9 +321,4 @@ private fun String.playbackSearchToken(): String = trim()
     .filter(String::isNotBlank)
     .joinToString(" ")
 
-private fun String.playbackMatchKey(): String = playbackSearchToken()
-    .lowercase(Locale.ROOT)
-    .filter { it.isLetterOrDigit() || it.isWhitespace() }
-    .splitToSequence(' ')
-    .filter(String::isNotBlank)
-    .joinToString(" ")
+private fun String.playbackMatchKey(): String = MusicIdentityText.normalize(playbackSearchToken())

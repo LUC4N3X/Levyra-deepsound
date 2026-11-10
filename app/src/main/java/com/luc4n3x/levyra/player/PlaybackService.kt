@@ -135,6 +135,8 @@ import com.luc4n3x.levyra.feature.audio.queryLevyraAudioOutputState
 import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
 import com.luc4n3x.levyra.player.queue.PlaybackQueueSnapshot
 import com.luc4n3x.levyra.player.queue.playbackQueueIdentity
+import com.luc4n3x.levyra.player.queue.withRestoredSkipSelection
+import com.luc4n3x.levyra.player.queue.manualSkipWrappedToOrigin
 import com.luc4n3x.levyra.player.sabr.SabrDataSource
 import com.luc4n3x.levyra.player.sabr.SabrStreamSpec
 import com.luc4n3x.levyra.runtime.RuntimeHooks
@@ -329,6 +331,7 @@ class PlaybackService : MediaLibraryService() {
         private const val MAX_TRANSITION_LOOKAHEAD_MS = 20_000L
         private const val TRANSITION_PREPARE_TIMEOUT_MS = 8_000L
         private const val PREPARED_QUEUE_WAIT_MS = 2_000L
+        private const val MANUAL_SKIP_RESOLVE_ATTEMPTS = 3
         private const val PREPARED_QUEUE_MAX_AGE_MS = 15L * 60L * 1_000L
         private const val PREPARED_QUEUE_PRIME_BYTES = 384L * 1024L
         private const val PRIMARY_HANDOFF_WARN_MS = 5_000L
@@ -1261,7 +1264,10 @@ class PlaybackService : MediaLibraryService() {
                 if (isLiveRadioMediaItem(player.currentMediaItem)) {
                     markPlaybackExpected(false, force = true)
                     releasePlaybackWakeLock()
-                } else if (isTerminalPlaybackFailure(failureKind)) {
+                } else if (
+                    isTerminalPlaybackFailure(failureKind) &&
+                    !isPlaybackCacheOnlyUri(player.currentMediaItem?.localConfiguration?.uri?.toString())
+                ) {
                     serviceRecoveryExhausted = true
                     markPlaybackExpected(false, force = true)
                     releasePlaybackWakeLock()
@@ -1783,6 +1789,36 @@ class PlaybackService : MediaLibraryService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == Intent.ACTION_MEDIA_BUTTON && !isPlaybackOngoing) {
+            runCatching {
+                val channelId = DefaultMediaNotificationProvider.DEFAULT_CHANNEL_ID
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    getSystemService(android.app.NotificationManager::class.java)?.createNotificationChannel(
+                        android.app.NotificationChannel(
+                            channelId,
+                            getString(DefaultMediaNotificationProvider.DEFAULT_CHANNEL_NAME_RESOURCE_ID),
+                            android.app.NotificationManager.IMPORTANCE_LOW
+                        )
+                    )
+                }
+                val notification = androidx.core.app.NotificationCompat.Builder(this, channelId)
+                    .setSmallIcon(com.luc4n3x.levyra.R.drawable.ic_widget_playing)
+                    .setContentTitle(getString(com.luc4n3x.levyra.R.string.app_name))
+                    .setSilent(true)
+                    .build()
+                androidx.core.app.ServiceCompat.startForeground(
+                    this,
+                    DefaultMediaNotificationProvider.DEFAULT_NOTIFICATION_ID,
+                    notification,
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+                )
+                androidx.core.app.ServiceCompat.stopForeground(this, androidx.core.app.ServiceCompat.STOP_FOREGROUND_REMOVE)
+            }.getOrElse { error ->
+                Timber.w(error, "Media button foreground start failed")
+                stopSelfResult(startId)
+                return START_NOT_STICKY
+            }
+        }
         super.onStartCommand(intent, flags, startId)
         if (intent?.action == ACTION_START_GENTLE_WAKE_SERVICE) {
             val prefs = LevyraPreferences(this)
@@ -1884,17 +1920,50 @@ class PlaybackService : MediaLibraryService() {
         queueSkipJob = serviceScope.launch {
             val player = activePlayer ?: return@launch
             if (allowRewind && rewindInsteadOfSkip(player, forward)) return@launch
-            val target = withContext(Dispatchers.IO) {
-                selectSkipTarget(forward, respectRepeatOne)
-            } ?: return@launch
-            val resolved = withContext(Dispatchers.IO) {
-                resolveSkipTarget(target, autoAdvance)
-            } ?: run {
-                abandonAutoAdvance(target, autoAdvance)
-                return@launch
+            val origin = queueEngine.state.value
+            var attempts = 0
+            while (true) {
+                val target = withContext(Dispatchers.IO) {
+                    selectSkipTarget(forward, respectRepeatOne && attempts == 0)
+                }
+                if (target == null) {
+                    if (attempts > 0) restoreSkipOrigin(origin, player)
+                    return@launch
+                }
+                if (!autoAdvance && manualSkipWrappedToOrigin(origin, target, attempts)) {
+                    restoreSkipOrigin(origin, player)
+                    return@launch
+                }
+                val resolved = withContext(Dispatchers.IO) { resolveSkipTarget(target, autoAdvance) }
+                if (resolved != null) {
+                    playSkipTarget(player, resolved)
+                    onAdvanced?.invoke()
+                    return@launch
+                }
+                if (autoAdvance) {
+                    abandonAutoAdvance(target, autoAdvance = true)
+                    return@launch
+                }
+                attempts++
+                if (attempts >= MANUAL_SKIP_RESOLVE_ATTEMPTS) {
+                    restoreSkipOrigin(origin, player)
+                    return@launch
+                }
             }
-            playSkipTarget(player, resolved)
-            onAdvanced?.invoke()
+        }
+    }
+
+    private fun restoreSkipOrigin(origin: PlaybackQueueSnapshot, player: ExoPlayer) {
+        Timber.w("Manual skip found no playable track; keeping the current one")
+        val current = queueEngine.state.value
+        if (current.spaceId != origin.spaceId) return
+        val sameQueue = current.tracks.map(::playbackQueueIdentity) == origin.tracks.map(::playbackQueueIdentity)
+        if (sameQueue) {
+            queueEngine.restoreSnapshot(current.withRestoredSkipSelection(origin, player.currentPosition))
+        } else {
+            current.tracks.indexOfFirst { playbackQueueIdentity(it) == origin.currentTrack?.let(::playbackQueueIdentity) }
+                .takeIf { it >= 0 }
+                ?.let { index -> queueEngine.select(index, player.currentPosition.coerceAtLeast(0L), rememberCurrent = false) }
         }
     }
 
@@ -3591,20 +3660,25 @@ class PlaybackService : MediaLibraryService() {
     )
 
     private fun discardIncompatiblePlaybackCache(error: PlaybackException) {
-        if (isLiveRadioMediaItem(mediaSession?.player?.currentMediaItem ?: activePlayer?.currentMediaItem)) return
+        val mediaItem = mediaSession?.player?.currentMediaItem ?: activePlayer?.currentMediaItem
+        if (isLiveRadioMediaItem(mediaItem)) return
         val reason = playbackFailureReasonOf(error)
         val plan = playbackRecoveryPlanFor(classifyPlaybackFailureReason(reason))
-        if (!plan.invalidateCache) return
         val track = queueEngine.state.value.currentTrack ?: return
         if (isLocalPlaybackTrack(track)) return
-        val videoMode = mediaSession?.player?.currentMediaItem
-            ?.mediaMetadata?.extras?.getBoolean(EXTRA_VIDEO_MODE, false) == true
-        val keys = playbackCacheKeysToDiscard(
-            streamKey = LevyraPlaybackCacheKey.stream(track),
-            videoKey = LevyraPlaybackCacheKey.video(track),
-            videoMode = videoMode,
-            hasSeparateVideoStream = track.videoStreamUrl.isNotBlank()
-        )
+        val configuration = mediaItem?.localConfiguration
+        val mediaItemUri = configuration?.uri?.toString()?.takeIf(::isPlaybackCacheOnlyUri) ?: track.streamUrl
+        val videoMode = mediaItem?.mediaMetadata?.extras?.getBoolean(EXTRA_VIDEO_MODE, false) == true
+        val keys = failedPlaybackCacheKeys(mediaItemUri, configuration?.customCacheKey, plan.invalidateCache) {
+            playbackCacheKeysToDiscard(
+                streamKey = LevyraPlaybackCacheKey.stream(track),
+                videoKey = LevyraPlaybackCacheKey.video(track),
+                videoMode = videoMode,
+                hasSeparateVideoStream = track.videoStreamUrl.isNotBlank()
+            )
+        }
+        if (keys.isEmpty()) return
+        if (isPlaybackCacheOnlyUri(mediaItemUri)) keys.forEach(PlaybackCacheHintStore::forgetCacheKey)
         serviceScope.launch(Dispatchers.IO) {
             val cache = runCatching { LevyraMediaCache.get(this@PlaybackService) }.getOrNull() ?: return@launch
             keys.forEach { key ->

@@ -97,6 +97,17 @@ class FavoritesStore(context: Context) {
         }
     }
 
+    suspend fun replaceFavorite(original: Track, replacement: Track): List<Track>? = withContext(Dispatchers.IO) {
+        favoritesStoreMutationMutex.withLock {
+            val current = loadInternal(failOnReadError = true)
+            val updated = favoriteTracksWithReplacement(current, original, replacement) ?: return@withLock null
+            val createdAt = currentTimestampSnapshot()?.get(original.id)
+            replaceAll(updated, createdAt?.let { mapOf(replacement.id to it) }.orEmpty())
+            completeLegacyMigration()
+            updated
+        }
+    }
+
     internal fun observeMembership(): Flow<FavoriteMembership> = dao.observeIdentities()
         .onStart { favoritesStoreMutationMutex.withLock { loadInternal() } }
         .map { rows -> FavoriteMembership(rows.mapTo(hashSetOf()) { favoriteTrackKey(it.id, it.artist, it.title) }) }
@@ -161,13 +172,13 @@ class FavoritesStore(context: Context) {
         }
     }
 
-    private suspend fun replaceAll(tracks: List<Track>) {
+    private suspend fun replaceAll(tracks: List<Track>, carriedTimestamps: Map<String, Long> = emptyMap()) {
         val existingTimestamps = currentTimestampSnapshot() ?: dao.all().associate {
             it.id to it.createdAt
         }
         val now = System.currentTimeMillis()
         val entities = tracks.mapIndexed { index, track ->
-            val timestamp = existingTimestamps[track.id]?.takeIf { it > 0L } ?: (now - index)
+            val timestamp = (carriedTimestamps[track.id] ?: existingTimestamps[track.id])?.takeIf { it > 0L } ?: (now - index)
             track.toFavoriteTrackEntity(timestamp)
         }
         dao.replaceAll(entities)
@@ -239,6 +250,19 @@ internal fun favoriteTracksWithMembership(current: List<Track>, track: Track, fa
         present == favorite -> current
         favorite -> listOf(track) + current
         else -> current.filterNot { favoriteTrackKey(it) == key }
+    }
+}
+
+internal fun favoriteTracksWithReplacement(current: List<Track>, original: Track, replacement: Track): List<Track>? {
+    val originalKey = favoriteTrackKey(original)
+    if (current.none { favoriteTrackKey(it) == originalKey }) return null
+    val replacementKey = favoriteTrackKey(replacement)
+    return current.mapNotNull { favorite ->
+        when (favoriteTrackKey(favorite)) {
+            originalKey -> replacement
+            replacementKey -> null
+            else -> favorite
+        }
     }
 }
 

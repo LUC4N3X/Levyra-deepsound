@@ -43,16 +43,17 @@ fun releaseTypeFromProviderLabel(value: String): ReleaseType {
 }
 
 private val ALBUM_LABELS = normalizedLabelSet(
-    "album", "albumo", "alben", "albom", "albumes", "albumi", "άλμπουμ", "альбом",
+    "album", "albumo", "alben", "albom", "albumes", "albumi", "άλμπουμ", "альбом", "альбомы", "альбоми",
     "专辑", "專輯", "アルバム", "앨범", "एल्बम", "अल्बम", "อัลบั้ม", "אלבום", "ألبوم"
 )
 
 private val SINGLE_LABELS = normalizedLabelSet(
-    "single", "singolo", "singoli", "sencillo", "sencillos", "singl", "singel", "單曲", "单曲",
+    "single", "singolo", "singoli", "sencillo", "sencillos", "singl", "singel", "сингл", "синглы", "сингли", "單曲", "单曲",
     "シングル", "싱글", "एकल", "ซิงเกิล", "סינגל", "أغنية منفردة"
 )
 
 private val COMPILATION_LABELS = normalizedLabelSet(
-    "compilation", "compilations", "raccolta", "raccolte", "anthology", "best of", "greatest hits", "合集",
+    "compilation", "compilations", "raccolta", "raccolte", "anthology", "best of", "greatest hits", "сборник",
+    "сборники", "збірка", "збірки", "збірник", "合集",
     "合輯", "コンピレーション", "컴필레이션", "संकलन", "รวมเพลง", "אוסף", "تجميع"
 )

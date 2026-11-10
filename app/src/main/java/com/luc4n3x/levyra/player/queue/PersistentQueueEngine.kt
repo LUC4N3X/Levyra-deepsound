@@ -1327,6 +1327,19 @@ data class PlaybackQueueSnapshot(
         get() = tracks.getOrNull(currentIndex)
 }
 
+internal fun PlaybackQueueSnapshot.withRestoredSkipSelection(
+    origin: PlaybackQueueSnapshot,
+    playbackPositionMs: Long
+): PlaybackQueueSnapshot = copy(
+    currentIndex = origin.currentIndex,
+    positionMs = playbackPositionMs.coerceAtLeast(0L),
+    history = origin.history,
+    shuffleCursor = if (shuffleEnabled) shuffleOrder.indexOf(origin.currentIndex) else -1
+)
+
+internal fun manualSkipWrappedToOrigin(origin: PlaybackQueueSnapshot, target: Track, failedAttempts: Int): Boolean =
+    failedAttempts > 0 && playbackQueueIdentity(target) == origin.currentTrack?.let(::playbackQueueIdentity)
+
 internal fun resolvedQueueTrackForHandoff(
     selected: Track,
     expectedNextIdentity: String,

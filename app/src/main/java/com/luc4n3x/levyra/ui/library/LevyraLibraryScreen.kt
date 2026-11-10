@@ -2195,7 +2195,7 @@ internal fun LevyraPlaylistDetailScreen(
             track = target,
             onSearch = { query, origin, onResult -> viewModel.searchPlaylistReplacements(target, query, origin, onResult) },
             onReplace = { replacement ->
-                viewModel.replacePlaylistTrack(playlist.id, target.id, replacement)
+                viewModel.replacePlaylistTrack(playlist.id, target, replacement)
                 changeMatchTrack = null
             },
             onDismiss = { changeMatchTrack = null }

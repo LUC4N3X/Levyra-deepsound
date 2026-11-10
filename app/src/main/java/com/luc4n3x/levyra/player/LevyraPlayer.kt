@@ -275,11 +275,12 @@ class LevyraPlayer(context: Context) {
                         }
                         return
                     }
-                    val terminalFailure = isTerminalPlaybackFailure(classifyPlaybackFailureReason(message))
+                    val cachedCopy = isPlaybackCacheOnlyUri(track.streamUrl)
+                    val terminalFailure = !cachedCopy && isTerminalPlaybackFailure(classifyPlaybackFailureReason(message))
                     val recoverable = if (track.isLiveRadio()) {
                         isRecoverableLiveRadioErrorCode(error.errorCode) || isRecoverable(error)
                     } else {
-                        !terminalFailure && isRecoverable(error)
+                        !terminalFailure && (cachedCopy || isRecoverable(error))
                     }
                     if (recoverable && startStreamRecovery(connected, track, message)) return
                     failLoadedStream(connected, message)

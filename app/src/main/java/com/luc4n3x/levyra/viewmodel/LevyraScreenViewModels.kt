@@ -520,8 +520,8 @@ class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::li
 
     fun importPlaylistFile(uri: android.net.Uri) = root.importPlaylistFile(uri)
 
-    fun replacePlaylistTrack(playlistId: String, oldTrackId: String, replacement: Track) =
-        root.replacePlaylistTrack(playlistId, oldTrackId, replacement)
+    fun replacePlaylistTrack(playlistId: String, original: Track, replacement: Track) =
+        root.replacePlaylistTrack(playlistId, original, replacement)
 
     fun searchPlaylistReplacements(
         reference: Track,

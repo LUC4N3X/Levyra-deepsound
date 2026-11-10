@@ -40,6 +40,35 @@ class PlaybackCacheRecoveryTest {
     }
 
     @Test
+    fun failedCachedCopyIsDiscardedByTheKeyItWasReadFromForAnyFailure() {
+        val hint = PlaybackCacheHint("abcdefghijk", "levyra:abcdefghijk:stream-v2:itag-251", "audio/webm", 0L)
+        val cachedCopy = playbackCacheOnlyUri(hint)
+        assertTrue(isPlaybackCacheOnlyUri(cachedCopy))
+        assertEquals(
+            setOf("levyra:abcdefghijk:stream-v2:itag-251"),
+            failedPlaybackCacheKeys(cachedCopy, hint.cacheKey, invalidateCache = false) { setOf("levyra:derived") }
+        )
+        assertEquals(
+            setOf("levyra:derived", "levyra:item"),
+            failedPlaybackCacheKeys("https://rr1.googlevideo.com/videoplayback?itag=251", "levyra:item", invalidateCache = true) {
+                setOf("levyra:derived")
+            }
+        )
+        assertTrue(
+            failedPlaybackCacheKeys("https://rr1.googlevideo.com/videoplayback?itag=251", "levyra:item", invalidateCache = false) {
+                setOf("levyra:derived")
+            }.isEmpty()
+        )
+        assertFalse(isPlaybackCacheOnlyUri("https://rr1.googlevideo.com/videoplayback?itag=251"))
+    }
+
+    @Test
+    fun decoderFailuresDropTheCachedBytesTheyWereDecoding() {
+        assertTrue(playbackRecoveryPlanFor(PlaybackFailureKind.Decoder).invalidateCache)
+        assertTrue(playbackRecoveryPlanFor(PlaybackFailureKind.Decoder).rotateCodec)
+    }
+
+    @Test
     fun discardedKeysMatchTheKeysThePlaybackModeActuallyUses() {
         assertEquals(
             setOf("stream"),
