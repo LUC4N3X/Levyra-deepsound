@@ -4766,6 +4766,7 @@ private fun AlbumOverlay(
             context.startActivity(Intent.createChooser(intent, strings.share))
         }
     }
+    val appleTail = state.albumDetail?.takeIf { LevyraIsAppleMusic && tracks.isNotEmpty() && (it.footer.isNotBlank() || it.relatedShelves.isNotEmpty()) }
     val albumTrackItems: LazyListScope.(Dp) -> Unit = { gutter ->
         when {
             tracksLoading -> items(
@@ -4822,9 +4823,8 @@ private fun AlbumOverlay(
                 }
             }
         }
-        val appleTail = state.albumDetail?.takeIf { LevyraIsAppleMusic && tracks.isNotEmpty() && (it.footer.isNotBlank() || it.relatedShelves.isNotEmpty()) }
         if (appleTail != null) item(key = "album-apple-tail", contentType = "album-apple-tail") {
-            com.luc4n3x.levyra.ui.media.AppleAlbumTail(appleTail.footer, appleTail.relatedShelves, stage, onOpen = { related ->
+            com.luc4n3x.levyra.ui.media.AppleAlbumTail(appleTail.footer, appleTail.relatedShelves, stage, bottomSpace = selection.listBottomPadding(albumBottomInset), onOpen = { related ->
                 val item = AppleCatalogItem(id = related.id, kind = if (related.playlist) AppleCatalogItemKind.Playlist else AppleCatalogItemKind.Album, title = related.title, subtitle = related.subtitle, artworkTemplate = related.artworkUrl, url = related.url)
                 if (related.playlist) onOpenRelatedPlaylist(item.toApplePlaylistHit()) else onOpenRelatedAlbum(item.toArtistAlbumHit(related.subtitle))
             })
@@ -4880,7 +4880,7 @@ private fun AlbumOverlay(
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = selection.listBottomPadding(albumBottomInset))
+                    contentPadding = PaddingValues(bottom = if (appleTail != null) 0.dp else selection.listBottomPadding(albumBottomInset))
                 ) {
                     item(key = "album-hero", contentType = "album-hero") {
                         ImmersiveMediaHero(

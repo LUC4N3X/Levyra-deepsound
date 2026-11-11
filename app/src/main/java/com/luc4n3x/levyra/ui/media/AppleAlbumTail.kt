@@ -38,9 +38,11 @@ internal fun AppleAlbumTail(
     footer: String,
     shelves: List<AlbumRelatedShelf>,
     colors: ImmersiveMediaColors,
+    bottomSpace: androidx.compose.ui.unit.Dp,
     onOpen: (AlbumRelatedItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val band = lerp(colors.base, Color.Black, AppleAlbumShelfDarken)
     Column(modifier.fillMaxWidth()) {
         HorizontalDivider(Modifier.padding(horizontal = AppleAlbumTailGutter), thickness = 0.5.dp, color = colors.hairline)
         if (footer.isNotBlank()) {
@@ -49,13 +51,11 @@ internal fun AppleAlbumTail(
                 modifier = Modifier.padding(start = AppleAlbumTailGutter, end = AppleAlbumTailGutter, top = 18.dp, bottom = 24.dp)
             )
         }
-        if (shelves.isNotEmpty()) {
-            Column(
-                Modifier.fillMaxWidth().background(lerp(colors.base, Color.Black, AppleAlbumShelfDarken)).padding(top = 20.dp, bottom = 32.dp),
-                verticalArrangement = Arrangement.spacedBy(28.dp)
-            ) {
-                shelves.forEach { shelf -> AppleAlbumShelf(shelf, colors, onOpen) }
-            }
+        Column(
+            Modifier.fillMaxWidth().background(if (shelves.isNotEmpty()) band else colors.base).padding(top = 20.dp, bottom = 32.dp + bottomSpace),
+            verticalArrangement = Arrangement.spacedBy(28.dp)
+        ) {
+            shelves.forEach { shelf -> AppleAlbumShelf(shelf, colors, onOpen) }
         }
     }
 }
