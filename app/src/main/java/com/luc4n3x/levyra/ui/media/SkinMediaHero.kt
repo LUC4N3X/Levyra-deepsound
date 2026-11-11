@@ -46,7 +46,7 @@ private val TorqueMediaBand = GenericShape { size, _ ->
 internal fun skinMediaColors(cover: Color = Color.Unspecified): ImmersiveMediaColors? {
     if (!LevyraIsPrism) return null
     val p = LevyraActivePalette
-    if (LevyraIsAppleMusic) return appleMusicMediaColors()
+    if (LevyraIsAppleMusic) return appleMusicMediaColors(cover)
     if (com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) return youTubeMusicMediaColors()
     if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) return atelierMediaColors(cover)
     if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) return monoMediaColors(cover)

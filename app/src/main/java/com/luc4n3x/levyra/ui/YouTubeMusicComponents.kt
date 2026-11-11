@@ -479,10 +479,11 @@ internal fun SkinAlbumTrackRow(
     selected: Boolean,
     onPlay: () -> Unit,
     onMore: () -> Unit,
-    modifier: Modifier
+    modifier: Modifier,
+    stage: com.luc4n3x.levyra.ui.media.ImmersiveMediaColors? = null
 ): Boolean {
     if (com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic) {
-        AppleMusicAlbumTrackRow(index, last, track.title, subtitle, track.explicit, current, selected, onPlay, onMore, modifier)
+        AppleMusicAlbumTrackRow(index, last, track.title, subtitle, track.explicit, current, selected, onPlay, onMore, modifier, stage)
         return true
     }
     if (!com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) return false

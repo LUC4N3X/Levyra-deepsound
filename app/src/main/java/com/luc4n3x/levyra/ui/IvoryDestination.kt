@@ -220,7 +220,7 @@ private fun IvoryEssentialRow(index: Int, track: Track, current: Boolean, onPlay
             .padding(start = 10.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text((index + 1).toString(), color = if (index < 3) IvoryDesign.ink else LevyraMuted, style = MaterialTheme.typography.titleMedium, modifier = Modifier.width(28.dp))
+        Text((index + 1).toString(), color = if (index < 3) IvoryDesign.ink else LevyraMuted, style = MaterialTheme.typography.titleMedium, maxLines = 1, softWrap = false, modifier = Modifier.widthIn(min = 28.dp))
         Box(Modifier.size(52.dp).clip(RoundedCornerShape(IvoryDesign.tileCorner))) { CoverImage(track, Modifier.fillMaxSize()) }
         Column(Modifier.weight(1f)) {
             LevyraMediaTitle(track.title, explicit = track.explicit,  color = LevyraText, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)

@@ -664,6 +664,8 @@ import com.luc4n3x.levyra.domain.ArtistBiography
 import com.luc4n3x.levyra.domain.artistBiographyEditorial
 import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.ChartsCatalog
+import com.luc4n3x.levyra.data.apple.AppleCatalogItem
+import com.luc4n3x.levyra.data.apple.AppleCatalogItemKind
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.data.apple.AppleArtistPage
 import com.luc4n3x.levyra.data.apple.AppleArtistShelfStyle
@@ -889,11 +891,9 @@ import com.luc4n3x.levyra.ui.player.playerBackgroundScale
 import com.luc4n3x.levyra.ui.player.playerChromeAlpha
 import com.luc4n3x.levyra.ui.player.playerExpansionFromDrag
 import com.luc4n3x.levyra.ui.player.playerAxisDragGestures
-import com.luc4n3x.levyra.ui.player.playerMorphActive
 import com.luc4n3x.levyra.ui.player.playerPredictiveBackExpansion
 import com.luc4n3x.levyra.ui.player.playerMorphAnchor
 import com.luc4n3x.levyra.ui.player.playerMorphContainer
-import com.luc4n3x.levyra.ui.player.playerMorphFraction
 import com.luc4n3x.levyra.ui.player.playerSeekDeltaMs
 import com.luc4n3x.levyra.ui.player.playerSurfaceAlpha
 import com.luc4n3x.levyra.ui.player.playerSwipeContentAlpha
@@ -2342,8 +2342,6 @@ fun LevyraApp(
             val chromeVisible by remember { derivedStateOf { playerExpansion.value < 1f } }
             val playerVisible by remember { derivedStateOf { playerExpansion.value > 0f } }
             HideSystemBars(state.interfaceSettings.immersive.hiddenBars(fullPlayerVisible = !chromeVisible && !rootOverlayOpen))
-            val canvasShowing = state.motionArtworkEnabled && state.motionArtwork != null
-            val morphAllowed = state.animationsEnabled && !state.isVideoMode && !LevyraIsAtelier && !canvasShowing
             val atelierContext = LocalContext.current
             val atelierWindowWidth = androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.width
             LaunchedEffect(LevyraIsAtelier, atelierWindowWidth) {
@@ -2357,14 +2355,6 @@ fun LevyraApp(
                 com.luc4n3x.levyra.ui.atelier.AtelierStage.expansion = { playerExpansion.value }
                 com.luc4n3x.levyra.ui.atelier.AtelierStage.miniRect = { morphAnchors.miniBounds }
                 onDispose { com.luc4n3x.levyra.ui.atelier.AtelierStage.reset() }
-            }
-            val artworkMorphActive by remember(morphAllowed) {
-                derivedStateOf {
-                    morphAllowed &&
-                        morphAnchors.miniBounds != null &&
-                        morphAnchors.targetBounds != null &&
-                        playerMorphActive(playerExpansion.value)
-                }
             }
             val onExpansionDragStart: () -> Unit = {
                 expansionDragStart = playerExpansion.value
@@ -2716,7 +2706,7 @@ fun LevyraApp(
                                             model = miniModel,
                                             morphAnchors = morphAnchors,
                                             compaction = compactionProvider,
-                                            artworkHidden = { artworkMorphActive },
+                                            artworkHidden = { false },
                                             playbackActions = miniPlaybackActions,
                                             expansionActions = miniExpansionActions,
                                             fixedAccents = rememberPlayerFixedAccents(state.interfaceSettings)
@@ -2728,7 +2718,7 @@ fun LevyraApp(
                                             model = miniModel,
                                             morphAnchors = morphAnchors,
                                             compaction = compactionProvider,
-                                            artworkHidden = { artworkMorphActive },
+                                            artworkHidden = { false },
                                             playbackActions = miniPlaybackActions,
                                             expansionActions = miniExpansionActions,
                                             glass = dockGlass,
@@ -2861,7 +2851,7 @@ fun LevyraApp(
                         viewModel = playerViewModel,
                         state = playerScreenState,
                         morphAnchors = morphAnchors,
-                        morphActive = { artworkMorphActive },
+                        morphActive = { false },
                         collapseActions = PlayerCollapseActions(
                             collapse = collapsePlayer,
                             dragStart = onExpansionDragStart,
@@ -2885,16 +2875,6 @@ fun LevyraApp(
                     onRetryLoadMore = viewModel::retryYoutubeCommentsPage,
                     onToggleReplies = viewModel::toggleYoutubeCommentReplies,
                     onLoadMoreReplies = viewModel::loadMoreYoutubeCommentReplies
-                )
-            }
-
-            val morphTrack = state.currentTrack
-            if (morphAllowed && morphTrack != null) {
-                PlayerArtworkMorphLayer(
-                    track = morphTrack,
-                    anchors = morphAnchors,
-                    active = { artworkMorphActive },
-                    expansion = expansionProvider
                 )
             }
 
@@ -3402,6 +3382,13 @@ fun LevyraApp(
                 )
             }
 
+            val playlistPreviewOpen = state.playlistHitPreview != null
+            val openAlbumIdentity = listOf(state.albumDetail?.album)
+            val lastAlbumUnderPlaylist = remember { arrayOfNulls<List<AlbumHit?>>(1) }
+            val albumUnderPlaylist = remember(playlistPreviewOpen) {
+                if (playlistPreviewOpen) openAlbumIdentity.takeIf { state.showAlbum }.also { lastAlbumUnderPlaylist[0] = it } else lastAlbumUnderPlaylist[0]
+            }
+            val playlistAboveAlbum = state.showAlbum && albumUnderPlaylist == openAlbumIdentity
             AnimatedVisibility(visible = state.showAlbum, modifier = Modifier.zIndex(40f), enter = detailEnter, exit = pageExit) {
                 AlbumOverlay(
                     state = state,
@@ -3434,7 +3421,9 @@ fun LevyraApp(
                     onOpenAlbumArtist = viewModel::openArtistFromAlbum,
                     onOpenTrackArtist = viewModel::openArtist,
                     onOpenPlayer = viewModel::openPlayerScreen,
-                    onClose = viewModel::closeAlbum
+                    onClose = viewModel::closeAlbum,
+                    onOpenRelatedAlbum = viewModel::openAlbum,
+                    onOpenRelatedPlaylist = { playlist -> viewModel.openApplePlaylist(playlist, ChartsCatalog.region(state.selectedChartId).country) }
                 )
             }
 
@@ -3476,7 +3465,7 @@ fun LevyraApp(
             }
 
             val lastPlaylistHitPreview = rememberLastNonNull(state.playlistHitPreview)
-            AnimatedVisibility(visible = state.playlistHitPreview != null, enter = detailEnter, exit = pageExit) {
+            AnimatedVisibility(visible = state.playlistHitPreview != null, modifier = Modifier.zIndex(if (playlistAboveAlbum) 40.5f else 0f), enter = detailEnter, exit = pageExit) {
                 lastPlaylistHitPreview?.let { preview ->
                     PlaylistHitOverlay(
                         preview = preview,
@@ -4655,7 +4644,9 @@ private fun AlbumOverlay(
     onOpenAlbumArtist: () -> Unit,
     onOpenTrackArtist: (Track) -> Unit,
     onOpenPlayer: () -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    onOpenRelatedAlbum: (AlbumHit) -> Unit = {},
+    onOpenRelatedPlaylist: (PlaylistHit) -> Unit = {}
 ) {
     val detail = state.albumDetail
     var albumPlaylistPicker by remember(detail?.album?.browseId, detail?.album?.title, detail?.album?.artist) { mutableStateOf(false) }
@@ -4760,6 +4751,7 @@ private fun AlbumOverlay(
             context.startActivity(Intent.createChooser(intent, strings.share))
         }
     }
+    val appleTail = state.albumDetail?.takeIf { LevyraIsAppleMusic && tracks.isNotEmpty() && (it.footer.isNotBlank() || it.relatedShelves.isNotEmpty()) }
     val albumTrackItems: LazyListScope.(Dp) -> Unit = { gutter ->
         when {
             tracksLoading -> items(
@@ -4816,6 +4808,12 @@ private fun AlbumOverlay(
                 }
             }
         }
+        if (appleTail != null) item(key = "album-apple-tail", contentType = "album-apple-tail") {
+            com.luc4n3x.levyra.ui.media.AppleAlbumTail(appleTail.footer, appleTail.relatedShelves, stage, bottomSpace = selection.listBottomPadding(albumBottomInset), onOpen = { related ->
+                val item = AppleCatalogItem(id = related.id, kind = if (related.playlist) AppleCatalogItemKind.Playlist else AppleCatalogItemKind.Album, title = related.title, subtitle = related.subtitle, artworkTemplate = related.artworkUrl, url = related.url)
+                if (related.playlist) onOpenRelatedPlaylist(item.toApplePlaylistHit()) else onOpenRelatedAlbum(item.toArtistAlbumHit(related.subtitle))
+            })
+        }
     }
 
     BoxWithConstraints(
@@ -4867,7 +4865,7 @@ private fun AlbumOverlay(
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = selection.listBottomPadding(albumBottomInset))
+                    contentPadding = PaddingValues(bottom = if (appleTail != null) 0.dp else selection.listBottomPadding(albumBottomInset))
                 ) {
                     item(key = "album-hero", contentType = "album-hero") {
                         ImmersiveMediaHero(
@@ -5278,7 +5276,7 @@ private fun AlbumTrackRow(
     if (SkinAlbumTrackRow(
             index, index == count - 1, track,
             track.artist.takeIf { albumTrackShowsArtist(track.artist, albumArtist, true) }.orEmpty(),
-            presentation.isCurrent, presentation.selected, actions.onPlay, actions.onLongClick, modifier
+            presentation.isCurrent, presentation.selected, actions.onPlay, actions.onLongClick, modifier, stage
         )
     ) return
     val strings = LocalLevyraStrings.current
@@ -6363,7 +6361,8 @@ private fun ArtistPopularRank(rank: Int, isCurrent: Boolean) {
         ),
         textAlign = TextAlign.Center,
         maxLines = 1,
-        modifier = Modifier.width(30.dp)
+        softWrap = false,
+        modifier = Modifier.widthIn(min = 30.dp)
     )
 }
 
@@ -24494,68 +24493,6 @@ private fun downloadStateTransform(
     val exit = scaleOut(LevyraMotion.fade(LevyraMotion.Durations.Quick), targetScale = if (completed) 1.12f else 0.85f) +
         fadeOut(LevyraMotion.fade(LevyraMotion.Durations.Instant))
     return enter togetherWith exit
-}
-
-@Composable
-private fun PlayerArtworkMorphLayer(
-    track: Track,
-    anchors: PlayerMorphAnchors,
-    active: () -> Boolean,
-    expansion: () -> Float
-) {
-    val density = LocalDensity.current
-    val startCornerPx = with(density) { LevyraPlayerDesign.MiniArtworkCorner.toPx() }
-    val fullWidthPx = anchors.fullBounds?.width ?: 0f
-    val cardCornerPx = with(density) { LevyraPlayerShapes.artworkCorner(fullWidthPx.toDp()).toPx() }
-    val flightShadowPx = with(density) { PlayerMorphFlightShadow.toPx() }
-    val artworkUrl = remember(track) { preferredPlayerArtworkUrl(track) }
-    Box(
-        modifier = Modifier
-            .layout { measurable, constraints ->
-                val rect = if (active()) {
-                    anchors.resolve(playerMorphFraction(expansion()))
-                } else {
-                    anchors.idleBounds(constraints.maxWidth.toFloat())
-                }
-                if (rect == null) {
-                    val placeable = measurable.measure(Constraints.fixed(0, 0))
-                    layout(0, 0) { placeable.place(0, 0) }
-                } else {
-                    val placeable = measurable.measure(
-                        Constraints.fixed(rect.width.roundToInt(), rect.height.roundToInt())
-                    )
-                    layout(placeable.width, placeable.height) {
-                        placeable.place(rect.left.roundToInt(), rect.top.roundToInt())
-                    }
-                }
-            }
-            .graphicsLayer {
-                if (!active()) {
-                    alpha = 0f
-                    shadowElevation = 0f
-                    return@graphicsLayer
-                }
-                val fraction = playerMorphFraction(expansion())
-                val flightAlpha = anchors.flightAlpha()
-                val endCornerPx = if (anchors.targetsStage) 0f else cardCornerPx
-                alpha = flightAlpha
-                shadowElevation = flightShadowPx * fraction * flightAlpha
-                shape = when (anchors.landing) {
-                    PlayerMorphLanding.Cookie -> levyraCookieLandingShape(fraction)
-                    PlayerMorphLanding.FlowPlaying, PlayerMorphLanding.FlowPaused -> flowLandingShape(
-                        fraction = fraction,
-                        startCorner = startCornerPx,
-                        side = size.minDimension,
-                        playing = anchors.landing == PlayerMorphLanding.FlowPlaying
-                    )
-                    PlayerMorphLanding.Rounded -> RoundedCornerShape(morphCornerRadius(startCornerPx, endCornerPx, fraction))
-                }
-                clip = true
-            }
-    ) {
-        CoverImage(track, Modifier.fillMaxSize())
-        SeamlessArtworkImage(url = artworkUrl, modifier = Modifier.fillMaxSize()) {}
-    }
 }
 
 internal fun handleMiniPlayerDragEvent(

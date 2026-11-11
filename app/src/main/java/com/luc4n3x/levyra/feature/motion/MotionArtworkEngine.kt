@@ -255,7 +255,8 @@ class MotionArtworkEngine(context: Context) {
             confidence = ARTIST_MOTION_CONFIDENCE,
             expiresAtMs = minOf(verified.expiresAtMs, now + config.positiveTtlMs),
             lastVerifiedAtMs = now,
-            configEpoch = configEpoch
+            configEpoch = configEpoch,
+            posterUrl = verified.posterUrl
         )
         repository.save(artwork)
         repository.cleanup(configEpoch)
@@ -634,7 +635,8 @@ class MotionArtworkEngine(context: Context) {
             confidence = ranked.confidence,
             expiresAtMs = minOf(candidate.expiresAtMs, now + config.positiveTtlMs),
             lastVerifiedAtMs = now,
-            configEpoch = configEpoch
+            configEpoch = configEpoch,
+            posterUrl = candidate.posterUrl
         )
     }
 

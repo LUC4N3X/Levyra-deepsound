@@ -63,6 +63,17 @@ class PlaybackResourceLifecycleContractTest {
         assertTrue(prepare.contains("if (!currentAudioSettings.preloadNextTrack) return false"))
     }
 
+    @Test
+    fun `motion gesture gate reads the local player not the cached session wrapper`() {
+        val service = readSource("player/PlaybackService.kt")
+        val sync = service
+            .substringAfter("private fun syncMotionGestureContext")
+            .substringBefore("private fun handleMotionFlipToPause")
+
+        assertTrue(sync.contains("val playing = activePlayer?.isPlaying == true"))
+        assertFalse(sync.contains("mediaSession"))
+    }
+
     private fun readSource(relativePath: String): String =
         Files.readString(sourceFile(relativePath)).replace("\r\n", "\n")
 

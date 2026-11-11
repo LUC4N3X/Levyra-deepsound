@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui
 
+import androidx.compose.ui.text.TextStyle
+import com.luc4n3x.levyra.ui.components.LevyraTabLabel
 import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -508,10 +510,13 @@ internal fun SpotifyBottomTabs(
                         tint = if (active) SpotifyDesign.text else SpotifyDesign.subdued, modifier = Modifier.size(24.dp)
                     )
                     Spacer(Modifier.height(4.dp))
-                    Text(
-                        entry.label, color = if (active) SpotifyDesign.text else SpotifyDesign.subdued,
-                        fontSize = 11.sp, lineHeight = 13.sp, fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
-                        textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 4.dp)
+                    LevyraTabLabel(
+                        entry.label,
+                        TextStyle(
+                            color = if (active) SpotifyDesign.text else SpotifyDesign.subdued,
+                            fontSize = 11.sp, lineHeight = 13.sp, fontWeight = if (active) FontWeight.Bold else FontWeight.Normal
+                        ),
+                        Modifier.padding(horizontal = 4.dp)
                     )
                 }
             }

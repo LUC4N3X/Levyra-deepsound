@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -496,7 +497,8 @@ private fun Top100Row(rank: Int, track: Track, optionsLabel: String, onClick: ()
             fontWeight = FontWeight.Black,
             textAlign = TextAlign.Center,
             maxLines = 1,
-            modifier = Modifier.width(44.dp)
+            softWrap = false,
+            modifier = Modifier.widthIn(min = 44.dp)
         )
         StableRemoteArtwork(
             url = track.thumbnailUrl,

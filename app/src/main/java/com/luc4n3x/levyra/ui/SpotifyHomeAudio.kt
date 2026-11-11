@@ -328,7 +328,7 @@ internal fun SpotifyLiveRadioHome(state: LevyraUiState, viewModel: HomeViewModel
         SpotifyPodcastSearch(radioState.query, radioStrings.searchHint, radio::setQuery)
         Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SpotifyRadioPill(Icons.Rounded.Public, countryLabel, radioState.selectedCountryCode != null) { countryOpen = true }
-            SpotifyRadioPill(Icons.Rounded.Translate, radioState.selectedLanguage ?: radioStrings.languages, radioState.selectedLanguage != null) { languageOpen = true }
+            SpotifyRadioPill(Icons.Rounded.Translate, radioState.selectedLanguage?.let { radioLanguageLabel(it, radioState.languages, state.languageCode) } ?: radioStrings.languages, radioState.selectedLanguage != null) { languageOpen = true }
         }
         SpotifyRadioCategories(radioState.category, radioStrings, radio::selectCategory)
         if (radioState.query.isBlank()) {
@@ -357,7 +357,8 @@ internal fun SpotifyLiveRadioHome(state: LevyraUiState, viewModel: HomeViewModel
         entries = radioState.languages,
         selected = radioState.selectedLanguage,
         allLabel = radioStrings.worldwide,
-        display = com.luc4n3x.levyra.feature.radio.RadioDirectoryEntry::name,
+        alphabeticalLanguageCode = state.languageCode,
+        display = { localizedLanguageName(it, state.languageCode) },
         value = com.luc4n3x.levyra.feature.radio.RadioDirectoryEntry::name,
         onDismiss = { languageOpen = false },
         onSelect = {

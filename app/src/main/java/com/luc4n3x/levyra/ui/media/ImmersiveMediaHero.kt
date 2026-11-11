@@ -433,7 +433,7 @@ internal fun ImmersiveMediaActionRow(
         return
     }
     if (com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic) {
-        AppleMusicMediaActionRow(primary, shuffleLabel, downloadLabel, shuffleEnabled, downloadEnabled, onShuffle, onDownload, modifier, secondary)
+        AppleMusicMediaActionRow(primary, shuffleLabel, downloadLabel, colors, shuffleEnabled, downloadEnabled, onShuffle, onDownload, modifier, secondary)
         return
     }
     if (LevyraIsSpotify) {

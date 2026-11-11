@@ -527,7 +527,20 @@ data class AlbumDetail(
     val tracks: List<Track>,
     val otherVersions: List<AlbumHit> = emptyList(),
     val trackCount: Int = tracks.size,
-    val durationMs: Long = tracks.sumOf { it.durationMs }
+    val durationMs: Long = tracks.sumOf { it.durationMs },
+    val footer: String = "",
+    val relatedShelves: List<AlbumRelatedShelf> = emptyList()
+)
+
+data class AlbumRelatedShelf(val title: String, val items: List<AlbumRelatedItem>)
+
+data class AlbumRelatedItem(
+    val id: String,
+    val title: String,
+    val subtitle: String,
+    val artworkUrl: String,
+    val url: String,
+    val playlist: Boolean
 )
 
 data class PlaylistHit(

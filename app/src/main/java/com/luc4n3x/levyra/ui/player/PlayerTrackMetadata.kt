@@ -71,7 +71,9 @@ internal fun PlayerTrackMetadata(
     favoritesLabel: String,
     onArtistClick: (Int) -> Unit,
     onToggleFavorite: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    moreLabel: String = "",
+    onMore: (() -> Unit)? = null
 ) {
     val appleMusic = PlayerAppleMusicStyle
     val prism = PlayerPrismStyle
@@ -133,6 +135,19 @@ internal fun PlayerTrackMetadata(
             animated = animationsEnabled,
             onToggle = onToggleFavorite
         )
+        if (onMore != null) AppleMusicPlayerMoreButton(moreLabel, onMore)
+    }
+}
+
+@Composable
+private fun AppleMusicPlayerMoreButton(label: String, onClick: () -> Unit) {
+    IconButton(onClick = onClick, modifier = Modifier.size(LevyraPlayerDesign.MinimumTouchTarget)) {
+        Box(
+            Modifier.size(30.dp).clip(androidx.compose.foundation.shape.CircleShape).background(AppleMusicVibrant.quaternary),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(PlayerIcons.more, label, tint = AppleMusicVibrant.primary, modifier = Modifier.size(19.dp))
+        }
     }
 }
 

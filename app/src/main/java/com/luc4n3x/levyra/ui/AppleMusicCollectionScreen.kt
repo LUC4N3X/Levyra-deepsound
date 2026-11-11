@@ -94,7 +94,7 @@ internal fun AppleMusicCollectionScreen(
                                             ) { CoverImage(track, Modifier.fillMaxSize()) }
                                             Text(
                                                 "${index + 1}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                                                color = AppleMusicDesign.label, textAlign = TextAlign.Center, modifier = Modifier.width(34.dp)
+                                                color = AppleMusicDesign.label, textAlign = TextAlign.Center, softWrap = false, modifier = Modifier.widthIn(min = 34.dp)
                                             )
                                         }
                                     }

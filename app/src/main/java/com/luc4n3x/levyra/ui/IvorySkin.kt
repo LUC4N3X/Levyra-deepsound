@@ -326,7 +326,8 @@ internal fun IvoryChartPage(page: List<IndexedValue<Track>>, currentId: String?,
                 val content = if (current) IvoryDesign.onInk else LevyraText
                 Text(
                     (index + 1).toString(), color = if (current) IvoryDesign.onInk else if (index < 3) IvoryDesign.rose else LevyraMuted,
-                    fontSize = 24.sp, fontWeight = FontWeight.Light, textAlign = TextAlign.Center, modifier = Modifier.width(32.dp)
+                    fontSize = 24.sp, fontWeight = FontWeight.Light, textAlign = TextAlign.Center, maxLines = 1, softWrap = false,
+                    modifier = Modifier.widthIn(min = 32.dp)
                 )
                 Box(Modifier.size(50.dp).clip(RoundedCornerShape(IvoryDesign.tileCorner))) { CoverImage(track, Modifier.fillMaxSize()) }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -535,7 +536,7 @@ private fun IvoryChartBands(page: List<IndexedValue<Track>>, total: Int, current
             ) {
                 Text(
                     (index + 1).toString().padStart(2, '0'), color = if (index < 3) IvoryDesign.rose else LevyraMuted,
-                    style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.width(34.dp)
+                    style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, softWrap = false, modifier = Modifier.widthIn(min = 34.dp)
                 )
                 Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.CenterStart) {
                     Box(Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(LevyraPanel))

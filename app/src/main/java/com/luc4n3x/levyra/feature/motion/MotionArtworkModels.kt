@@ -47,7 +47,8 @@ data class MotionArtworkCandidate(
     val mimeType: String,
     val width: Int? = null,
     val height: Int? = null,
-    val expiresAtMs: Long
+    val expiresAtMs: Long,
+    val posterUrl: String? = null
 )
 
 data class MotionArtwork(
@@ -60,7 +61,8 @@ data class MotionArtwork(
     val confidence: Int,
     val expiresAtMs: Long,
     val lastVerifiedAtMs: Long,
-    val configEpoch: Long
+    val configEpoch: Long,
+    val posterUrl: String? = null
 )
 
 data class MotionArtworkMatch(

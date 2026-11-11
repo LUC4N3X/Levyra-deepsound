@@ -46,6 +46,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -924,7 +925,7 @@ private fun StudioList(
                         text = (index + 1).toString().padStart(2, '0'),
                         style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily.Serif),
                         color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.width(32.dp)
+                        softWrap = false, modifier = Modifier.widthIn(min = 32.dp)
                     )
                 }
                 Box(
@@ -2597,7 +2598,7 @@ private fun StudioEditorialChart(
                     style = if (index == 0) MaterialTheme.typography.displaySmall else MaterialTheme.typography.headlineSmall,
                     color = if (track.id == currentId) MaterialTheme.colorScheme.primary else LevyraMuted,
                     fontFamily = FontFamily.Serif,
-                    modifier = Modifier.width(52.dp)
+                    softWrap = false, modifier = Modifier.widthIn(min = 52.dp)
                 )
                 Box(
                     modifier = Modifier
@@ -2646,7 +2647,7 @@ private fun StudioMinimalChart(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text((index + 1).toString(), style = MaterialTheme.typography.labelLarge, color = LevyraMuted, modifier = Modifier.width(20.dp))
+                Text((index + 1).toString(), style = MaterialTheme.typography.labelLarge, color = LevyraMuted, softWrap = false, modifier = Modifier.widthIn(min = 20.dp))
                 Box(modifier = Modifier.size(44.dp).clip(RoundedCornerShape(6.dp))) { CoverImage(track, Modifier.fillMaxSize()) }
                 Column(modifier = Modifier.weight(1f)) {
                     LevyraMediaTitle(track.title, explicit = track.explicit,  style = MaterialTheme.typography.titleSmall, color = LevyraText, maxLines = 1, overflow = TextOverflow.Ellipsis)

@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -384,9 +385,9 @@ private fun SpotifyPlaylistTrackRow(
             .padding(start = 16.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(Modifier.width(28.dp), contentAlignment = Alignment.CenterStart) {
+        Box(Modifier.widthIn(min = 28.dp), contentAlignment = Alignment.CenterStart) {
             if (active) LevyraPlayingIndicator(playing = isPlaying, color = SpotifyDesign.green, size = 12.dp)
-            else Text((index + 1).toString(), color = SpotifyDesign.text, fontSize = 15.sp)
+            else Text((index + 1).toString(), color = SpotifyDesign.text, fontSize = 15.sp, maxLines = 1, softWrap = false)
         }
         Box(Modifier.size(48.dp).background(SpotifyDesign.placeholder)) { CoverImage(track, Modifier.fillMaxSize()) }
         Column(Modifier.weight(1f).padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {

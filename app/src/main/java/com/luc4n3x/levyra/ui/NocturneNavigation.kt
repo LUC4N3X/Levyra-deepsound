@@ -1,12 +1,13 @@
 package com.luc4n3x.levyra.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.layout.onSizeChanged
@@ -18,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -67,10 +69,15 @@ internal fun NocturneBottomTabs(tuning: NavTuning, selected: LevyraTab, onSelect
                     Spacer(Modifier.height(5.dp))
                     Icon(Nocturne78Icons.resolve(entry.unselectedIcon), null, tint = tint, modifier = Modifier.size(22.dp))
                     Spacer(Modifier.height(4.dp))
-                    Text(
-                        entry.label, color = tint, fontSize = 11.sp, lineHeight = 15.sp,
-                        fontWeight = FontWeight.Medium, textAlign = TextAlign.Center,
-                        maxLines = 2, overflow = TextOverflow.Ellipsis
+                    BasicText(
+                        text = entry.label,
+                        style = TextStyle(
+                            color = tint, lineHeight = 15.sp,
+                            fontWeight = FontWeight.Medium, textAlign = TextAlign.Center
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        autoSize = TextAutoSize.StepBased(minFontSize = 8.sp, maxFontSize = 11.sp)
                     )
                 }
             }

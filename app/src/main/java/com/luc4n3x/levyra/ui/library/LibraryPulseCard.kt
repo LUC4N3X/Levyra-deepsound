@@ -437,7 +437,7 @@ private fun PulseTopTracks(tracks: List<PulseTrack>) {
                     color = if (index == 0) colors.primary else colors.onSurfaceVariant,
                     style = LevyraType.cardTitle.copy(fontWeight = FontWeight.Black),
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.width(16.dp)
+                    softWrap = false, modifier = Modifier.widthIn(min = 16.dp)
                 )
                 PulseTrackCover(track.thumbnailUrl)
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {

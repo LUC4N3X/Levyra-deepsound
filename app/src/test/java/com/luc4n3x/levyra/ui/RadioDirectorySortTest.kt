@@ -41,6 +41,27 @@ class RadioDirectorySortTest {
     }
 
     @Test
+    fun languagesSortAlphabeticallyAndDropTagJunk() {
+        val languages = listOf("russian", "#japan", "english", "", "ukrainian", "arabic").map {
+            RadioDirectoryEntry(name = it, stationCount = 1)
+        }
+        val rows = radioDirectoryRows(languages, "ru", RadioDirectoryEntry::name).map { it.second }
+        assertEquals(listOf("arabic", "english", "russian", "ukrainian"), rows)
+    }
+
+    @Test
+    fun languageNamesFollowTheAppLanguageAndSortThatWay() {
+        val languages = listOf("russian" to "ru", "english" to "en", "ukrainian" to "uk", "german" to "de").map { (name, code) ->
+            RadioDirectoryEntry(name = name, code = code, stationCount = 1)
+        }
+        val rows = radioDirectoryRows(languages, "ru") { localizedLanguageName(it, "ru") }
+        assertEquals(listOf("Английский", "Немецкий", "Русский", "Украинский"), rows.map { it.second })
+        assertEquals("german", rows[1].first.name)
+        assertEquals("Inglese", radioLanguageLabel("english", languages, "it"))
+        assertEquals("unknown tag", radioLanguageLabel("unknown tag", languages, "it"))
+    }
+
+    @Test
     fun italianOrderIsLocaleAware() {
         assertEquals("Austria", labels("it").first())
         assertEquals(collated("it", labels("it")), labels("it"))

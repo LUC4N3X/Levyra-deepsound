@@ -63,10 +63,9 @@ internal object AppleMusicDesign {
     val playerArtworkInset = 24.dp
     val playerMetadataInset = 32.dp
     val playerSeekbarInset = 32.dp
-    val playerTransportGap = 40.dp
-    val playerSkipIcon = 40.dp
-    val playerPlayIcon = 38.dp
-    val playerControlPadding = 11.dp
+    val playerSkipIcon = 62.dp
+    val playerPlayIcon = 64.dp
+    val playerControlPadding = 5.dp
     val playerActionIcon = 28.dp
     val playerActionPadding = 16.dp
     val playerActionBottom = 14.dp

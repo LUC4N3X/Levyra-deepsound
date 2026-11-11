@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import coil3.SingletonImageLoader
 import coil3.request.CachePolicy
@@ -176,6 +177,20 @@ internal fun Modifier.verticalFadeEdges(topFade: Dp, bottomFade: Dp): Modifier =
             val topStop = topFade.toPx().coerceIn(0f, size.height / 2f) / size.height
             val bottomStop = 1f - bottomFade.toPx().coerceIn(0f, size.height / 2f) / size.height
             drawRect(Brush.verticalGradient(colorStops = fadeEdgeStops(topStop, bottomStop)), blendMode = BlendMode.DstIn)
+        }
+
+internal fun Modifier.horizontalFadeEdges(fadeBackward: Boolean, fadeForward: Boolean, fade: Dp): Modifier =
+    if (!fadeBackward && !fadeForward) this
+    else graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+        .drawWithContent {
+            drawContent()
+            if (size.width <= 0f) return@drawWithContent
+            val edge = fade.toPx().coerceIn(0f, size.width / 2f) / size.width
+            val ltr = layoutDirection == LayoutDirection.Ltr
+            val fadeLeft = if (ltr) fadeBackward else fadeForward
+            val fadeRight = if (ltr) fadeForward else fadeBackward
+            val stops = fadeEdgeStops(if (fadeLeft) edge else 0f, if (fadeRight) 1f - edge else 1f)
+            drawRect(Brush.horizontalGradient(colorStops = stops), blendMode = BlendMode.DstIn)
         }
 
 private fun fadeEdgeStops(topStop: Float, bottomStop: Float): Array<Pair<Float, Color>> = buildList {

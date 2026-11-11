@@ -1418,6 +1418,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     @Volatile private var motionArtworkRequestGeneration: Long = 0L
     private val motionArtworkRequestToken = AtomicLong(0L)
     private var motionArtworkPrefetchJob: Job? = null
+    private var motionPosterJob: Job? = null
     @Volatile private var motionArtworkPrefetchKey: String? = null
     @Volatile private var motionArtworkPrefetchToken = 0L
     private var sleepTimerCollectorJob: Job? = null
@@ -9256,7 +9257,23 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         return AlbumDetail(
             album = album.copy(thumbnailUrl = album.thumbnailUrl.ifBlank { collection.artworkUrl }),
             description = collection.description,
-            tracks = tracks
+            tracks = tracks,
+            footer = collection.footer,
+            relatedShelves = collection.related.map { shelf ->
+                com.luc4n3x.levyra.domain.AlbumRelatedShelf(
+                    title = shelf.title,
+                    items = shelf.items.filter { it.url.isNotBlank() && it.title.isNotBlank() }.map { item ->
+                        com.luc4n3x.levyra.domain.AlbumRelatedItem(
+                            id = item.id,
+                            title = item.title,
+                            subtitle = item.subtitle,
+                            artworkUrl = item.artworkUrl(APPLE_RELATED_ARTWORK_SIZE),
+                            url = item.url,
+                            playlist = item.kind == com.luc4n3x.levyra.data.apple.AppleCatalogItemKind.Playlist
+                        )
+                    }
+                )
+            }.filter { it.items.isNotEmpty() }
         )
     }
 
@@ -13655,6 +13672,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 current
             }
         }
+        val published = artwork?.takeIf { it.identityKey == _state.value.motionArtwork?.identityKey } ?: return
+        if (com.luc4n3x.levyra.feature.motion.MotionPosterCache.posterKey(published) == null) return
+        motionPosterJob?.cancel()
+        motionPosterJob = viewModelScope.launch {
+            com.luc4n3x.levyra.feature.motion.MotionPosterCache.warm(getApplication(), published)
+        }
     }
 
     private fun launchMotionArtworkResolution(
@@ -15559,6 +15582,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private companion object {
+        const val APPLE_RELATED_ARTWORK_SIZE = 400
         private const val RESUME_SHORTCUT_RESTORE_TIMEOUT_MS = 3_000L
         private const val CHART_CACHE_FRESH_MS = 60L * 60L * 1000L
         private const val CHART_PRIME_REGION_COUNT = 28

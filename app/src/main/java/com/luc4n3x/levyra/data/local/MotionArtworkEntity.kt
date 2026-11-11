@@ -23,5 +23,6 @@ data class MotionArtworkEntity(
     val expiresAt: Long,
     val lastVerifiedAt: Long,
     val configEpoch: Long,
-    val negative: Boolean
+    val negative: Boolean,
+    val posterUrl: String? = null
 )

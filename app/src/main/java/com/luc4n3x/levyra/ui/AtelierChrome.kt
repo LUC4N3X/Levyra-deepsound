@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraTabLabel
 import com.luc4n3x.levyra.ui.theme.atelierCarbon
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
@@ -56,7 +57,6 @@ import androidx.compose.material.icons.outlined.LibraryMusic
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -66,7 +66,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.ui.theme.AtelierDesign
@@ -140,7 +139,7 @@ private fun AtelierTabKey(entry: LevyraTabEntry, active: Boolean, modifier: Modi
         Icon(atelierTabIcon(entry.tab, entry), if (showLabel) null else entry.label, tint = tint, modifier = Modifier.size(22.dp))
         if (showLabel) {
             Spacer(Modifier.width(8.dp))
-            Text(entry.label, color = tint, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            LevyraTabLabel(entry.label, MaterialTheme.typography.labelLarge.copy(color = tint))
         }
     }
 }

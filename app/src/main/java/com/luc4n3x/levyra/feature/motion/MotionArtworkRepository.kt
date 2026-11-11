@@ -21,6 +21,10 @@ class MotionArtworkRepository(
             return MotionArtworkCacheResult.Miss
         }
         if (entity.negative) return MotionArtworkCacheResult.Negative
+        if (entity.provider == APPLE_MOTION_PROVIDER && entity.posterUrl == null) {
+            dao.delete(identityKey)
+            return MotionArtworkCacheResult.Miss
+        }
         val provider = entity.provider ?: return MotionArtworkCacheResult.Miss
         val url = entity.url ?: return MotionArtworkCacheResult.Miss
         val mimeType = entity.mimeType ?: return MotionArtworkCacheResult.Miss
@@ -35,7 +39,8 @@ class MotionArtworkRepository(
                 confidence = entity.confidence,
                 expiresAtMs = entity.expiresAt,
                 lastVerifiedAtMs = entity.lastVerifiedAt,
-                configEpoch = entity.configEpoch
+                configEpoch = entity.configEpoch,
+                posterUrl = entity.posterUrl?.takeIf { it.startsWith("https://") }
             )
         )
     }
@@ -53,7 +58,8 @@ class MotionArtworkRepository(
                 expiresAt = artwork.expiresAtMs,
                 lastVerifiedAt = artwork.lastVerifiedAtMs,
                 configEpoch = artwork.configEpoch,
-                negative = false
+                negative = false,
+                posterUrl = artwork.posterUrl ?: if (artwork.provider == APPLE_MOTION_PROVIDER) NO_POSTER else null
             )
         )
         dao.prune(MAX_CACHE_ENTRIES)
@@ -89,5 +95,7 @@ class MotionArtworkRepository(
 
     private companion object {
         const val MAX_CACHE_ENTRIES = 240
+        const val APPLE_MOTION_PROVIDER = "apple-motion"
+        const val NO_POSTER = ""
     }
 }
