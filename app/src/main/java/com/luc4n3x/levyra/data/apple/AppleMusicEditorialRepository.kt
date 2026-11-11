@@ -39,7 +39,9 @@ data class AppleCatalogPlaylist(
     val description: String,
     val artworkUrl: String,
     val tracks: List<Track>,
-    val fetchedAtMs: Long
+    val fetchedAtMs: Long,
+    val footer: String = "",
+    val related: List<AppleCatalogShelf> = emptyList()
 )
 
 internal data class AppleCatalogPath(val segment: String, val cacheName: String) {
@@ -366,7 +368,12 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
             description = header?.description.orEmpty(),
             artworkUrl = header?.artworkUrl(PLAYLIST_ARTWORK_SIZE).orEmpty(),
             tracks = tracks,
-            fetchedAtMs = now
+            fetchedAtMs = now,
+            footer = page.shelf { it.kind == AppleCatalogShelfKind.Footer }?.items?.firstOrNull()?.description.orEmpty(),
+            related = page.shelves.filter { shelf ->
+                shelf.kind == AppleCatalogShelfKind.Grid && shelf.title.isNotBlank() &&
+                    shelf.items.any { it.kind == AppleCatalogItemKind.Album || it.kind == AppleCatalogItemKind.Playlist }
+            }
         )
     }
 

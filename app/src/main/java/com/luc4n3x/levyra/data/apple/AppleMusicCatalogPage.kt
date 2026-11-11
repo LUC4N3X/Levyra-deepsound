@@ -6,7 +6,7 @@ import org.json.JSONObject
 
 enum class AppleCatalogItemKind { Album, Playlist, Song, Artist, Video, Other }
 
-enum class AppleCatalogShelfKind { Header, Hero, Songs, Grid, Videos, Other }
+enum class AppleCatalogShelfKind { Header, Hero, Songs, Grid, Videos, Footer, Other }
 
 data class AppleCatalogItem(
     val id: String,
@@ -260,6 +260,14 @@ object AppleCatalogPageParser {
 
     private fun parseShelf(section: JSONObject): AppleCatalogShelf? {
         val itemKind = section.optString("itemKind")
+        if (itemKind == "containerDetailTracklistFooterLockup") {
+            val description = section.optJSONArray("items")?.optJSONObject(0)?.optString("description").orEmpty().trim()
+            if (description.isBlank()) return null
+            return AppleCatalogShelf(
+                id = section.optString("id"), title = "", kind = AppleCatalogShelfKind.Footer,
+                items = listOf(AppleCatalogItem(id = "footer", kind = AppleCatalogItemKind.Other, title = "", subtitle = "", description = description))
+            )
+        }
         val kind = when (itemKind) {
             "containerDetailHeaderLockup", "headerComponentModel" -> AppleCatalogShelfKind.Header
             "flowcaseLockup" -> AppleCatalogShelfKind.Hero

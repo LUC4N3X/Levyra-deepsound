@@ -466,37 +466,42 @@ internal fun AppleMusicAlbumTrackRow(
     selected: Boolean,
     onPlay: () -> Unit,
     onMore: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    stage: com.luc4n3x.levyra.ui.media.ImmersiveMediaColors? = null
 ) {
+    val label = stage?.content ?: AppleMusicDesign.label
+    val secondary = stage?.contentMuted ?: AppleMusicDesign.secondaryLabel
+    val highlight = stage?.content ?: AppleMusicDesign.accent
+    val separator = stage?.hairline ?: AppleMusicDesign.separator
     Box(
         modifier.fillMaxWidth().heightIn(min = AppleMusicDesign.listRow)
-            .background(if (selected) AppleMusicDesign.fill else Color.Transparent)
+            .background(if (selected) stage?.secondaryFill ?: AppleMusicDesign.fill else Color.Transparent)
             .clickable(role = Role.Button, onClick = onPlay)
     ) {
         Row(Modifier.fillMaxWidth().heightIn(min = AppleMusicDesign.listRow).padding(start = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "${index + 1}", style = MaterialTheme.typography.bodyLarge, color = if (current) AppleMusicDesign.accent else AppleMusicDesign.secondaryLabel,
+                "${index + 1}", style = MaterialTheme.typography.bodyLarge, color = if (current) highlight else secondary,
                 maxLines = 1, modifier = Modifier.width(28.dp)
             )
             Column(Modifier.weight(1f).padding(start = 8.dp, top = 6.dp, bottom = 6.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     LevyraMediaTitle(
-                        title, style = MaterialTheme.typography.bodyLarge, color = if (current) AppleMusicDesign.accent else AppleMusicDesign.label,
+                        title, style = MaterialTheme.typography.bodyLarge, color = if (current) highlight else label,
                         maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false)
                     )
                     if (explicit) AppleMusicExplicitBadge(com.luc4n3x.levyra.ui.i18n.LevyraAppleMusicStrings.forCode(com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings.current.code).explicit, Modifier.padding(start = 6.dp))
                 }
                 if (subtitle.isNotBlank()) {
-                    Text(subtitle, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Normal), color = AppleMusicDesign.secondaryLabel, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(subtitle, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Normal), color = secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
             Box(Modifier.size(width = 44.dp, height = AppleMusicDesign.listRow).clickable(role = Role.Button, onClick = onMore), contentAlignment = Alignment.Center) {
-                Icon(Icons.Rounded.MoreVert, null, tint = AppleMusicDesign.label, modifier = Modifier.size(20.dp))
+                Icon(Icons.Rounded.MoreVert, null, tint = label, modifier = Modifier.size(20.dp))
             }
             Spacer(Modifier.width(6.dp))
         }
         if (!last) {
-            HorizontalDivider(Modifier.align(Alignment.BottomEnd).padding(start = 52.dp, end = 16.dp), thickness = 0.5.dp, color = AppleMusicDesign.separator)
+            HorizontalDivider(Modifier.align(Alignment.BottomEnd).padding(start = 52.dp, end = 16.dp), thickness = 0.5.dp, color = separator)
         }
     }
 }

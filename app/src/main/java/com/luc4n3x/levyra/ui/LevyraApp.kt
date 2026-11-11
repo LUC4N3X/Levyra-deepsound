@@ -664,6 +664,8 @@ import com.luc4n3x.levyra.domain.ArtistBiography
 import com.luc4n3x.levyra.domain.artistBiographyEditorial
 import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.ChartsCatalog
+import com.luc4n3x.levyra.data.apple.AppleCatalogItem
+import com.luc4n3x.levyra.data.apple.AppleCatalogItemKind
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.data.apple.AppleArtistPage
 import com.luc4n3x.levyra.data.apple.AppleArtistShelfStyle
@@ -3434,7 +3436,9 @@ fun LevyraApp(
                     onOpenAlbumArtist = viewModel::openArtistFromAlbum,
                     onOpenTrackArtist = viewModel::openArtist,
                     onOpenPlayer = viewModel::openPlayerScreen,
-                    onClose = viewModel::closeAlbum
+                    onClose = viewModel::closeAlbum,
+                    onOpenRelatedAlbum = viewModel::openAlbum,
+                    onOpenRelatedPlaylist = { playlist -> viewModel.openApplePlaylist(playlist, ChartsCatalog.region(state.selectedChartId).country) }
                 )
             }
 
@@ -4655,7 +4659,9 @@ private fun AlbumOverlay(
     onOpenAlbumArtist: () -> Unit,
     onOpenTrackArtist: (Track) -> Unit,
     onOpenPlayer: () -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    onOpenRelatedAlbum: (AlbumHit) -> Unit = {},
+    onOpenRelatedPlaylist: (PlaylistHit) -> Unit = {}
 ) {
     val detail = state.albumDetail
     var albumPlaylistPicker by remember(detail?.album?.browseId, detail?.album?.title, detail?.album?.artist) { mutableStateOf(false) }
@@ -4815,6 +4821,13 @@ private fun AlbumOverlay(
                     AlbumTracksUnavailableState(state.albumError ?: strings.albumTracksUnavailable)
                 }
             }
+        }
+        val appleTail = state.albumDetail?.takeIf { LevyraIsAppleMusic && tracks.isNotEmpty() && (it.footer.isNotBlank() || it.relatedShelves.isNotEmpty()) }
+        if (appleTail != null) item(key = "album-apple-tail", contentType = "album-apple-tail") {
+            com.luc4n3x.levyra.ui.media.AppleAlbumTail(appleTail.footer, appleTail.relatedShelves, stage, onOpen = { related ->
+                val item = AppleCatalogItem(id = related.id, kind = if (related.playlist) AppleCatalogItemKind.Playlist else AppleCatalogItemKind.Album, title = related.title, subtitle = related.subtitle, artworkTemplate = related.artworkUrl, url = related.url)
+                if (related.playlist) onOpenRelatedPlaylist(item.toApplePlaylistHit()) else onOpenRelatedAlbum(item.toArtistAlbumHit(related.subtitle))
+            })
         }
     }
 
@@ -5278,7 +5291,7 @@ private fun AlbumTrackRow(
     if (SkinAlbumTrackRow(
             index, index == count - 1, track,
             track.artist.takeIf { albumTrackShowsArtist(track.artist, albumArtist, true) }.orEmpty(),
-            presentation.isCurrent, presentation.selected, actions.onPlay, actions.onLongClick, modifier
+            presentation.isCurrent, presentation.selected, actions.onPlay, actions.onLongClick, modifier, stage
         )
     ) return
     val strings = LocalLevyraStrings.current

@@ -9257,7 +9257,23 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         return AlbumDetail(
             album = album.copy(thumbnailUrl = album.thumbnailUrl.ifBlank { collection.artworkUrl }),
             description = collection.description,
-            tracks = tracks
+            tracks = tracks,
+            footer = collection.footer,
+            relatedShelves = collection.related.map { shelf ->
+                com.luc4n3x.levyra.domain.AlbumRelatedShelf(
+                    title = shelf.title,
+                    items = shelf.items.filter { it.url.isNotBlank() && it.title.isNotBlank() }.map { item ->
+                        com.luc4n3x.levyra.domain.AlbumRelatedItem(
+                            id = item.id,
+                            title = item.title,
+                            subtitle = item.subtitle,
+                            artworkUrl = item.artworkUrl(APPLE_RELATED_ARTWORK_SIZE),
+                            url = item.url,
+                            playlist = item.kind == com.luc4n3x.levyra.data.apple.AppleCatalogItemKind.Playlist
+                        )
+                    }
+                )
+            }.filter { it.items.isNotEmpty() }
         )
     }
 
@@ -15566,6 +15582,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private companion object {
+        const val APPLE_RELATED_ARTWORK_SIZE = 400
         private const val RESUME_SHORTCUT_RESTORE_TIMEOUT_MS = 3_000L
         private const val CHART_CACHE_FRESH_MS = 60L * 60L * 1000L
         private const val CHART_PRIME_REGION_COUNT = 28
