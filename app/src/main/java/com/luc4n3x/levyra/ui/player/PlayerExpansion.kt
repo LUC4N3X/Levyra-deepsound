@@ -22,12 +22,13 @@ private const val CommitVelocity = 900f
 private const val MorphStart = 0.01f
 private const val MorphEnd = 0.96f
 private const val ChromeFadeStart = 0.02f
-private const val ChromeFadeEnd = 0.52f
+private const val ChromeFadeEnd = 0.3f
 private const val SurfaceFadeStart = 0f
-private const val SurfaceFadeEnd = 0.2f
+private const val SurfaceFadeEnd = 0.4f
 private const val BackgroundDepth = 0.028f
 private const val PredictiveBackCollapseDepth = 0.14f
 private const val ContainerFallbackHeightFraction = 0.12f
+private const val ContainerTravelFraction = 0.16f
 
 fun playerExpansionFromDrag(start: Float, dragPx: Float, travelPx: Float): Float {
     if (!start.isFinite()) return PlayerExpansionCollapsed
@@ -74,7 +75,7 @@ fun playerContainerBounds(expansion: Float, origin: Rect?, width: Float, height:
     val safeHeight = height.finiteOr(0f).coerceAtLeast(0f)
     val startTop = (origin?.top ?: (safeHeight * (1f - ContainerFallbackHeightFraction))).finiteOr(safeHeight).coerceIn(0f, safeHeight)
     val remaining = 1f - expansion.finiteOr(PlayerExpansionCollapsed).coerceIn(PlayerExpansionCollapsed, PlayerExpansionExpanded)
-    val top = startTop * remaining
+    val top = minOf(startTop, safeHeight * ContainerTravelFraction) * remaining
     return Rect(0f, top, safeWidth, top + safeHeight)
 }
 
