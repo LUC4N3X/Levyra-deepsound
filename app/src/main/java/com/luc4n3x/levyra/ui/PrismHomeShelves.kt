@@ -54,7 +54,7 @@ private val PrismCyanSplit = ColorFilter.tint(LevyraCyan, BlendMode.Modulate)
 private val PrismPinkSplit = ColorFilter.tint(LevyraPink, BlendMode.Modulate)
 
 @Composable
-private fun PrismShelfHeader(title: String, inset: Dp) {
+internal fun PrismShelfHeader(title: String, inset: Dp) {
     Row(Modifier.fillMaxWidth().padding(horizontal = inset).padding(top = 22.dp, bottom = 14.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.width(22.dp).height(4.dp).clip(CircleShape).background(PrismAccent.gradient()))
         Spacer(Modifier.width(12.dp))
@@ -130,6 +130,7 @@ internal fun PrismCuratedAndReleases(viewModel: HomeViewModel, inset: Dp, showRe
                 }
             }
         }
+        com.luc4n3x.levyra.ui.discovery.DailyDiscoveryShelf(inset)
         if (showReleases && releases.isNotEmpty()) {
             val labels = searchDiscographyCopy(strings.code)
             PrismShelfHeader(copy.newAlbums, inset)

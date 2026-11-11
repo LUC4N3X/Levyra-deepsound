@@ -15,6 +15,7 @@ import com.luc4n3x.levyra.domain.ResonanceCommentSnippet
 import com.luc4n3x.levyra.domain.SpeedDialPin
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.discovery.DiscoveryHomeHandle
+import com.luc4n3x.levyra.ui.discovery.composedDailyDiscovery
 import com.luc4n3x.levyra.ui.discovery.discoveryReasonLabel
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.discoveryCopy
@@ -133,7 +134,12 @@ internal fun LazyListScope.composedHomeSections(
     request.blocks.forEach { block ->
         when (block) {
             HomeBlock.SkinFeed -> skinFeed()
-            is HomeBlock.Section -> composedSection(block.id, content, kit)
+            is HomeBlock.Section -> {
+                composedSection(block.id, content, kit)
+                if (block.id == HomeSectionId.EditorialCollections && content.deferredReady) {
+                    composedDailyDiscovery(request.showsSkinFeed)
+                }
+            }
         }
     }
 }

@@ -59,6 +59,35 @@ class DiscoveryEngine(
         DiscoveryBuildResult(cards, outcomes.count { it.failed }, outcomes.size)
     }
 
+    suspend fun daily(
+        profile: DiscoveryTasteProfile,
+        interactions: DiscoveryInteractions,
+        rotation: Long,
+        familiarArtistKeys: Set<String> = emptySet()
+    ): List<DiscoveryCard> = coroutineScope {
+        rotate(profile.seeds, rotation).take(DAILY_SEEDS).map { seed ->
+            async {
+                val reason = DiscoveryReason(DiscoveryReasonKind.SimilarToTrack, seed.title, seedArtist = seed.artist)
+                val seedTitle = seed.title.trim().lowercase(Locale.ROOT)
+                val seedArtist = discoveryPrimaryArtistKey(seed.artist)
+                val perArtist = HashMap<String, Int>()
+                val closest = fetch { sources.similarToTrack(seed) }.tracks.filter { track ->
+                    val artist = discoveryPrimaryArtistKey(track.artist)
+                    artist != seedArtist && artist !in familiarArtistKeys &&
+                        DiscoveryRanker.isEligible(DiscoveryCandidate(track, reason), profile, interactions) &&
+                        !DiscoveryFilmScores.matches(track) && !isSessionAct(track.artist) &&
+                        track.title.trim().lowercase(Locale.ROOT) != seedTitle
+                }.filter { perArtist.merge(discoveryPrimaryArtistKey(it.artist), 1, Int::plus)!! <= DAILY_TRACKS_PER_ARTIST }.take(DAILY_POOL_PER_SEED)
+                rotate(closest, rotation).map { DiscoveryCard(it, reason) }
+            }
+        }.awaitAll().flatten()
+    }
+
+    private fun isSessionAct(artist: String): Boolean {
+        val name = artist.lowercase(Locale.ROOT)
+        return SESSION_ACT_MARKERS.any(name::contains)
+    }
+
     private fun nearRequests(profile: DiscoveryTasteProfile, rotation: Long): List<suspend () -> Outcome> {
         val seeds = rotate(profile.seeds, rotation).take(MAX_SEED_QUERIES)
         val similarArtists = rotate(profile.similarArtistNames, rotation).take(MAX_SIMILAR_ARTISTS)
@@ -66,7 +95,7 @@ class DiscoveryEngine(
             seeds.forEach { seed ->
                 add {
                     fetch { sources.similarToTrack(seed) }.map {
-                        DiscoveryCandidate(it, DiscoveryReason(DiscoveryReasonKind.SimilarToTrack, seed.title), confidence = 8)
+                        DiscoveryCandidate(it, DiscoveryReason(DiscoveryReasonKind.SimilarToTrack, seed.title, seedArtist = seed.artist), confidence = 8)
                     }
                 }
             }
@@ -178,7 +207,7 @@ class DiscoveryEngine(
             }
         }.awaitAll()
         val first = firstHops.flatMap { (seed, result) ->
-            result.map { DiscoveryCandidate(it, DiscoveryReason(DiscoveryReasonKind.SimilarToTrack, seed.title), confidence = 5) }.candidates
+            result.map { DiscoveryCandidate(it, DiscoveryReason(DiscoveryReasonKind.SimilarToTrack, seed.title, seedArtist = seed.artist), confidence = 5) }.candidates
         }
         Outcome(first + hops.flatMap { it.candidates }, firstHops.all { it.second.failed } && hops.all { it.failed })
     }
@@ -224,6 +253,13 @@ class DiscoveryEngine(
     companion object {
         const val DEFAULT_SOURCE_TIMEOUT_MS = 9_000L
         private const val MAX_SEED_QUERIES = 4
+        private const val DAILY_SEEDS = 6
+        private const val DAILY_POOL_PER_SEED = 8
+        private const val DAILY_TRACKS_PER_ARTIST = 2
+        private val SESSION_ACT_MARKERS = listOf(
+            "studio musicians", "various artists", "karaoke", "tribute", "cover band", "session singers", "kidz bop",
+            "hit crew", "party tyme", "ameritz", "lullaby", "for kids", "sound-alike", "soundalike", "originally performed"
+        )
         private const val MAX_SIMILAR_ARTISTS = 3
         private const val MAX_TRACKS_PER_SOURCE = 30
         private const val ADVENTURE_SEEDS = 2

@@ -128,10 +128,15 @@ internal class DiscoveryHomeHandle(
     val onWarm: () -> Unit,
     val onOpen: () -> Unit,
     val onRetry: () -> Unit,
-    val onOpenBubble: (BubbleLevel) -> Unit = {}
+    val onOpenBubble: (BubbleLevel) -> Unit = {},
+    val homeTrackKeys: () -> Set<String> = { emptySet() },
+    val familiarArtistKeys: () -> Set<String> = { emptySet() },
+    val onPlayDaily: (List<DiscoveryCard>, DiscoveryCard) -> Unit = { _, _ -> }
 )
 
 internal val LocalHomeDiscovery = staticCompositionLocalOf<DiscoveryHomeHandle?> { null }
+
+internal val LocalDailyDiscovery = staticCompositionLocalOf<DiscoveryHomeHandle?> { null }
 
 internal fun LazyListScope.discoverySection(
     handle: DiscoveryHomeHandle?,
@@ -145,6 +150,12 @@ internal fun LazyListScope.discoverySection(
         val ui by handle.state.collectAsStateWithLifecycle()
         LaunchedEffect(handle) { handle.onWarm() }
         Box(modifier) { DiscoveryHomeSection(ui, style, spec, animationsEnabled, handle) }
+    }
+}
+
+internal fun LazyListScope.dailyDiscoverySection(style: HomeStyle, spec: HomeStyleSpec) {
+    item(key = "home-daily-discovery", contentType = "home-daily-discovery") {
+        DailyDiscoveryShelf(spec.inset, style, spec)
     }
 }
 

@@ -10,6 +10,7 @@ import com.luc4n3x.levyra.feature.discovery.DiscoveryLens
 import com.luc4n3x.levyra.feature.discovery.DiscoveryRequest
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.discovery.DiscoveryCard
+import com.luc4n3x.levyra.feature.discovery.discoveryTrackKey
 import com.luc4n3x.levyra.feature.discovery.DiscoveryDecision
 import com.luc4n3x.levyra.feature.discovery.DiscoveryDeck
 import com.luc4n3x.levyra.feature.discovery.DiscoveryEngine
@@ -57,7 +58,8 @@ data class DiscoveryUiState(
     val savedThisWeek: Int = 0,
     val message: DiscoveryMessage? = null,
     val request: DiscoveryRequest = DiscoveryRequest(),
-    val scenes: List<ExploreCategory> = emptyList()
+    val scenes: List<ExploreCategory> = emptyList(),
+    val daily: List<DiscoveryCard> = emptyList()
 ) {
     val teaser: List<DiscoveryCard> get() = listOfNotNull(deck.current) + deck.upcoming
 }
@@ -87,6 +89,8 @@ class DiscoveryViewModel internal constructor(private val root: LevyraViewModel)
     private val bubblePreferences = root.getApplication<android.app.Application>()
         .getSharedPreferences(BUBBLE_PREFERENCES, android.content.Context.MODE_PRIVATE)
     private var scenesJob: Job? = null
+    private var dailyJob: Job? = null
+    private var dailyDay = -1L
 
     init {
         val level = BubbleLevel.fromStorage(bubblePreferences.getString(KEY_LEVEL, null))
@@ -124,6 +128,7 @@ class DiscoveryViewModel internal constructor(private val root: LevyraViewModel)
     }
 
     fun warm() {
+        warmDaily()
         if (loadJob?.isActive == true) return
         val language = languageCode()
         val stale = System.currentTimeMillis() - loadedAtMs > FEED_TTL_MS
@@ -131,6 +136,17 @@ class DiscoveryViewModel internal constructor(private val root: LevyraViewModel)
         val needsLoad = current.status == DiscoveryFeedStatus.Idle || current.status == DiscoveryFeedStatus.Error ||
             language != loadedLanguage || (stale && !sessionActive)
         if (needsLoad) load(keepVisible = current.deck.current != null && language == loadedLanguage)
+    }
+
+    fun warmDaily() {
+        val today = LocalDate.now().toEpochDay()
+        if (dailyJob?.isActive == true || dailyDay == today) return
+        dailyJob = viewModelScope.launch {
+            val cards = runCatchingSafely { engine.daily(root.discoveryProfile(), interactionStore.load(), today, familiarArtistKeys()) } ?: return@launch
+            if (cards.isEmpty()) return@launch
+            dailyDay = today
+            feed.update { it.copy(daily = cards) }
+        }
     }
 
     fun refresh() {
@@ -230,6 +246,22 @@ class DiscoveryViewModel internal constructor(private val root: LevyraViewModel)
         previewPlayer.stop()
         val lead = savedTrackFor(card)
         root.playAudioFrom(listOf(lead) + deck.upcoming.map(::savedTrackFor), lead)
+    }
+
+    fun playDaily(cards: List<DiscoveryCard>, start: DiscoveryCard) {
+        val tracks = cards.map(::savedTrackFor)
+        root.playAudioFrom(tracks, tracks[cards.indexOf(start).coerceAtLeast(0)])
+    }
+
+    fun homeVisibleTrackKeys(): Set<String> = root.state.value.run {
+        sequenceOf(tracks, quickPickSeeds, personalOrbitTracks, charts, homeResonanceTracks, forgottenFavorites, similarSongs, recentListens, mostPlayedTracks, favorites)
+            .flatten()
+            .mapTo(HashSet(), ::discoveryTrackKey)
+    }
+
+    fun familiarArtistKeys(): Set<String> = root.state.value.run {
+        sequenceOf(recentListens, favorites, mostPlayedTracks).flatten()
+            .mapTo(HashSet()) { com.luc4n3x.levyra.feature.discovery.discoveryPrimaryArtistKey(it.artist) }
     }
 
     fun openSavedPlaylist() {

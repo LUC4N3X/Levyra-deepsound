@@ -1065,6 +1065,9 @@ private fun LazyListScope.monoHomeFeed(
             MonoSection(copy.mixedForYou, copy.rotationOverline) { kit.CardRail(feed.rotation, MonoDesign.cardWide) }
         }
     }
+    item(key = "mono-daily-discovery", contentType = "mono-daily-discovery") {
+        com.luc4n3x.levyra.ui.discovery.DailyDiscoveryShelf(MonoDesign.gutter)
+    }
     if (feed.artists.isNotEmpty()) {
         item(key = "mono-artists", contentType = "mono-rail") {
             MonoSection(strings.trendingArtists, copy.trendingOverline) { MonoArtistRail(feed.artists, actions.openArtist) }
