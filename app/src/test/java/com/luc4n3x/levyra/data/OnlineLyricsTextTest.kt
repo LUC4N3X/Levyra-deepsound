@@ -77,6 +77,27 @@ class OnlineLyricsTextTest {
         org.junit.Assert.assertFalse(repository.shouldUpgrade(read, plain))
     }
 
+    @Test
+    fun `online readings replace existing local readings`() {
+        val repository = LyricsRepository()
+        val text = "まだ繋いでたいの"
+        val kana = "ダイダイダイダイダイキライ"
+        val local = LyricsRepository.LyricsResult(
+            true,
+            listOf(
+                com.luc4n3x.levyra.domain.LyricLine(0L, 1_000L, kana, romanized = LyricsRomanizer.romanize(kana)),
+                com.luc4n3x.levyra.domain.LyricLine(1_000L, 2_000L, text)
+            ),
+            "lrclib",
+            80,
+            false
+        )
+        val online = local.copy(lines = listOf(local.lines[0].copy(romanized = "dai dai dai dai dai kirai"), local.lines[1].copy(romanized = "mada tsunaidetai no")))
+        org.junit.Assert.assertTrue(local.lines[0].romanized.isNotBlank())
+        org.junit.Assert.assertTrue(repository.shouldUpgrade(local, online))
+        org.junit.Assert.assertFalse(repository.shouldUpgrade(online, local))
+    }
+
     private class FixedBackend(private val result: LyricsBatchTranslation) : LyricsTranslationBackend {
         override val version: String = "fixed"
         override suspend fun translate(texts: List<String>, targetLanguageTag: String): LyricsBatchTranslation = result

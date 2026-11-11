@@ -695,30 +695,27 @@ class LyricsRepository(context: Context? = null) {
 
     private fun needsLyricsEnrichmentRetry(result: LyricsResult, query: QuerySpec): Boolean =
         needsLyricsTranslationRetry(result.translationState, query.translate) ||
-            (query.online && japaneseReadingTargets(result).isNotEmpty())
+            (query.online && japaneseReadingTargets(result, query.languageCode).isNotEmpty())
 
-    private fun japaneseReadingTargets(result: LyricsResult): List<Int> {
+    private fun japaneseReadingTargets(result: LyricsResult, readerLanguage: String): List<Int> {
         if (onlineLyricsText == null) return emptyList()
         if (preferences?.lyricsStudioSettings()?.romanizationEnabled == false) return emptyList()
-        if (!LyricsRomanizer.context(result.lines.map { it.text }, "").japanese) return emptyList()
-        return result.lines.indices.filter { index ->
-            val line = result.lines[index]
-            !line.isMetadata && !line.isInstrumental && JAPANESE_TEXT.containsMatchIn(line.text) &&
-                (line.romanized.isBlank() || line.romanized == LyricsRomanizer.romanize(line.text))
-        }
+        val context = LyricsRomanizer.context(result.lines.map { it.text }, readerLanguage)
+        if (!context.japanese || Character.UnicodeScript.HIRAGANA in context.readerScripts) return emptyList()
+        return japaneseReadingGapIndices(result)
     }
 
     private suspend fun applyTranslation(result: LyricsResult, query: QuerySpec): LyricsResult {
         if (!query.online) return result
-        val read = withJapaneseReadings(result)
+        val read = withJapaneseReadings(result, query.languageCode)
         if (!query.translate) return read
         val outcome = translationCoordinator.translate(read.lines, query.languageCode)
         return read.copy(lines = outcome.lines, translationState = outcome.state)
     }
 
-    private suspend fun withJapaneseReadings(result: LyricsResult): LyricsResult {
+    private suspend fun withJapaneseReadings(result: LyricsResult, readerLanguage: String): LyricsResult {
         val service = onlineLyricsText ?: return result
-        val missing = japaneseReadingTargets(result)
+        val missing = japaneseReadingTargets(result, readerLanguage)
         if (missing.isEmpty()) return result
         val readings = runCatching {
             withTimeoutOrNull(JAPANESE_READINGS_TIMEOUT_MS) { service.japaneseReadings(missing.map { result.lines[it].text }) }
@@ -779,7 +776,17 @@ class LyricsRepository(context: Context? = null) {
             romanizedEligibleCount(current) > romanizedEligibleCount(previous) &&
             current.confidence >= previous.confidence
         ) return true
+        if (
+            japaneseReadingGapIndices(current).size < japaneseReadingGapIndices(previous).size &&
+            current.confidence >= previous.confidence
+        ) return true
         return false
+    }
+
+    private fun japaneseReadingGapIndices(result: LyricsResult): List<Int> = result.lines.indices.filter { index ->
+        val line = result.lines[index]
+        !line.isMetadata && !line.isInstrumental && JAPANESE_TEXT.containsMatchIn(line.text) &&
+            (line.romanized.isBlank() || line.romanized == LyricsRomanizer.romanize(line.text))
     }
 
     private fun translatedEligibleCount(result: LyricsResult): Int = result.lines.count { line ->
