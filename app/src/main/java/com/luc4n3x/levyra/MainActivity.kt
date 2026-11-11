@@ -147,6 +147,7 @@ class MainActivity : ComponentActivity() {
         val startPalette = LevyraThemes.byId(LevyraThemes.APPLE_MUSIC)
         LevyraThemeController.apply(startPalette.id)
         WindowCompat.enableEdgeToEdge(window)
+        preferHighestRefreshRate()
         window.setBackgroundDrawable(ColorDrawable(if (startPalette.isLight) Color.WHITE else Color.BLACK))
         WindowCompat.getInsetsController(window, window.decorView).apply {
             isAppearanceLightStatusBars = startPalette.isLight
@@ -331,6 +332,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        preferHighestRefreshRate()
         viewModel.refreshGentleWakeReliability()
     }
 
