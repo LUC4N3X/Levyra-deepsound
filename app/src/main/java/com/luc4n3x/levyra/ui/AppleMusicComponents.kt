@@ -481,7 +481,7 @@ internal fun AppleMusicAlbumTrackRow(
         Row(Modifier.fillMaxWidth().heightIn(min = AppleMusicDesign.listRow).padding(start = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 "${index + 1}", style = MaterialTheme.typography.bodyLarge, color = if (current) highlight else secondary,
-                maxLines = 1, modifier = Modifier.width(28.dp)
+                maxLines = 1, softWrap = false, modifier = Modifier.widthIn(min = 28.dp)
             )
             Column(Modifier.weight(1f).padding(start = 8.dp, top = 6.dp, bottom = 6.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {

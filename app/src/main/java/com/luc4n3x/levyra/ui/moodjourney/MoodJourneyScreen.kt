@@ -38,6 +38,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
@@ -925,7 +926,7 @@ private fun JourneyStepRow(
                 style = MaterialTheme.typography.titleMedium,
                 fontFamily = FontFamily.Monospace,
                 color = if (step.pinned) scheme.primary else scheme.onSurfaceVariant,
-                modifier = Modifier.width(28.dp)
+                softWrap = false, modifier = Modifier.widthIn(min = 28.dp)
             )
         }
         StepCover(index, step, tone, style, showIndex = !cueSheet)

@@ -536,7 +536,7 @@ private fun IvoryChartBands(page: List<IndexedValue<Track>>, total: Int, current
             ) {
                 Text(
                     (index + 1).toString().padStart(2, '0'), color = if (index < 3) IvoryDesign.rose else LevyraMuted,
-                    style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.width(34.dp)
+                    style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, softWrap = false, modifier = Modifier.widthIn(min = 34.dp)
                 )
                 Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.CenterStart) {
                     Box(Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(LevyraPanel))

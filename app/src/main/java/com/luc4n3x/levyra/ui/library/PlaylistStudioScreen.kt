@@ -882,7 +882,7 @@ private fun LazyItemScope.StudioTrackRow(
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
                 style = TextStyle(fontFeatureSettings = "tnum"),
-                modifier = Modifier.width(30.dp)
+                softWrap = false, modifier = Modifier.widthIn(min = 30.dp)
             )
             LibraryArtwork(
                 playlistStudioArtwork(track),

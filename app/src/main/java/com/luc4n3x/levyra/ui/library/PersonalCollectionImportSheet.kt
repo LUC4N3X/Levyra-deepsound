@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -476,7 +477,7 @@ private fun ImportPreviewSample(preview: PersonalCollectionPreview) {
                         "${index + 1}",
                         style = MaterialTheme.typography.labelLarge,
                         color = colors.onSurfaceVariant,
-                        modifier = Modifier.width(24.dp),
+                        softWrap = false, modifier = Modifier.widthIn(min = 24.dp),
                         textAlign = TextAlign.End
                     )
                     Column(modifier = Modifier.weight(1f)) {

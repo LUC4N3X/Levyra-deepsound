@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
@@ -123,7 +124,7 @@ internal fun GlacierTopResultCard(
                 ) {
                     Text(
                         (index + 1).toString().padStart(2, '0'), style = MaterialTheme.typography.labelMedium.copy(fontFamily = MonoCodeFont),
-                        color = if (current) MonoDesign.accent else MonoDesign.textFaint, modifier = Modifier.width(28.dp)
+                        color = if (current) MonoDesign.accent else MonoDesign.textFaint, softWrap = false, modifier = Modifier.widthIn(min = 28.dp)
                     )
                     Box(Modifier.size(44.dp).clip(MonoDesign.artShape).background(MonoDesign.raised)) { CoverImage(track, Modifier.matchParentSize()) }
                     Spacer(Modifier.width(12.dp))

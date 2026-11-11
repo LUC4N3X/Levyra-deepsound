@@ -6376,7 +6376,8 @@ private fun ArtistPopularRank(rank: Int, isCurrent: Boolean) {
         ),
         textAlign = TextAlign.Center,
         maxLines = 1,
-        modifier = Modifier.width(30.dp)
+        softWrap = false,
+        modifier = Modifier.widthIn(min = 30.dp)
     )
 }
 
