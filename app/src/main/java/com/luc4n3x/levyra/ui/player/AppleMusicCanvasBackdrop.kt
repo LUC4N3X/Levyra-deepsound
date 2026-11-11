@@ -100,7 +100,7 @@ internal fun AppleMusicCanvasBackdrop(track: Track, canvas: AppleMusicCanvas, pl
         val livePalette = canvasPalette?.takeIf { posterSource == null && it.identityKey == canvas.artwork?.identityKey }
         val canvasReflection = rememberCanvasPaletteReflection(livePalette, widthPx, videoHeightPx)
         val coverReflection = rememberAppleCanvasReflection(track, widthPx, videoHeightPx)
-        val reflection = if (posterSource != null) posterReflection else canvasReflection ?: coverReflection
+        val reflection = posterReflection ?: canvasReflection ?: coverReflection
         Box(Modifier.fillMaxWidth().height(videoHeight)) {
             key(track.id) {
                 MotionArtworkLayer(

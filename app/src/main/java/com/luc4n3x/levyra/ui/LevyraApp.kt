@@ -3382,6 +3382,13 @@ fun LevyraApp(
                 )
             }
 
+            val playlistPreviewOpen = state.playlistHitPreview != null
+            val openAlbumIdentity = listOf(state.albumDetail?.album)
+            val lastAlbumUnderPlaylist = remember { arrayOfNulls<List<AlbumHit?>>(1) }
+            val albumUnderPlaylist = remember(playlistPreviewOpen) {
+                if (playlistPreviewOpen) openAlbumIdentity.takeIf { state.showAlbum }.also { lastAlbumUnderPlaylist[0] = it } else lastAlbumUnderPlaylist[0]
+            }
+            val playlistAboveAlbum = state.showAlbum && albumUnderPlaylist == openAlbumIdentity
             AnimatedVisibility(visible = state.showAlbum, modifier = Modifier.zIndex(40f), enter = detailEnter, exit = pageExit) {
                 AlbumOverlay(
                     state = state,
@@ -3458,7 +3465,7 @@ fun LevyraApp(
             }
 
             val lastPlaylistHitPreview = rememberLastNonNull(state.playlistHitPreview)
-            AnimatedVisibility(visible = state.playlistHitPreview != null, modifier = Modifier.zIndex(40.5f), enter = detailEnter, exit = pageExit) {
+            AnimatedVisibility(visible = state.playlistHitPreview != null, modifier = Modifier.zIndex(if (playlistAboveAlbum) 40.5f else 0f), enter = detailEnter, exit = pageExit) {
                 lastPlaylistHitPreview?.let { preview ->
                     PlaylistHitOverlay(
                         preview = preview,
