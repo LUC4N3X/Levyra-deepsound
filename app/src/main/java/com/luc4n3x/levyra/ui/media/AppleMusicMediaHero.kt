@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui.media
 
+import androidx.compose.ui.text.TextStyle
+import com.luc4n3x.levyra.ui.components.LevyraTabLabel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -111,15 +113,17 @@ private fun AppleMediaPill(
     Row(
         modifier.height(AppleMusicDesign.pillHeight).clip(AppleMusicDesign.pillShape).background(AppleMusicDesign.fill)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .semantics { contentDescription = description },
+            .semantics { contentDescription = description }
+            .padding(horizontal = 12.dp),
         horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically
     ) {
         if (loading) LevyraLoadingIndicator(color = AppleMusicDesign.accent, modifier = Modifier.size(20.dp))
         else Icon(icon, null, tint = if (enabled) AppleMusicDesign.accent else AppleMusicDesign.tertiaryLabel, modifier = Modifier.size(22.dp))
         Spacer(Modifier.width(5.dp))
-        Text(
-            label, color = if (enabled) AppleMusicDesign.accent else AppleMusicDesign.tertiaryLabel,
-            fontSize = 18.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis
+        LevyraTabLabel(
+            label,
+            TextStyle(color = if (enabled) AppleMusicDesign.accent else AppleMusicDesign.tertiaryLabel, fontSize = 18.sp, fontWeight = FontWeight.Medium),
+            Modifier.weight(1f, fill = false)
         )
     }
 }

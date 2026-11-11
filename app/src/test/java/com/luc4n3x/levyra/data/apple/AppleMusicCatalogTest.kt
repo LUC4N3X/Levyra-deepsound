@@ -183,4 +183,23 @@ class AppleMusicCatalogTest {
         backoff.onSuccess()
         assertFalse(backoff.blocked(1L))
     }
+
+    @Test
+    fun albumTracksInheritTheAlbumArtistAndArtworkWhenTheirOwnAreMissing() {
+        val header = AppleCatalogItem(
+            id = "album", kind = AppleCatalogItemKind.Album, title = "Record", subtitle = "Artist A, Artist B",
+            artworkTemplate = "https://is1-ssl.mzstatic.com/image/thumb/a/{w}x{h}{c}.{f}"
+        )
+        val bare = AppleCatalogItem(id = "1", kind = AppleCatalogItemKind.Song, title = "Song", subtitle = "")
+        val inherited = bare.inheritAlbumHeader(header)
+        assertEquals("Artist A, Artist B", inherited.subtitle)
+        assertEquals(header.artworkTemplate, inherited.artworkTemplate)
+        assertEquals("Record", inherited.album)
+        assertEquals("Artist A, Artist B", AppleCatalogTracks.fromItem(inherited)?.artist)
+
+        val featured = bare.copy(subtitle = "Artist C", artworkTemplate = "own").inheritAlbumHeader(header)
+        assertEquals("Artist C", featured.subtitle)
+        assertEquals("own", featured.artworkTemplate)
+        assertEquals(bare, bare.inheritAlbumHeader(null))
+    }
 }

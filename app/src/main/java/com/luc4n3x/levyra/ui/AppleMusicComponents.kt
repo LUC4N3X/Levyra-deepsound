@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraTabLabel
 import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -440,12 +441,17 @@ internal fun AppleMusicPillButtons(
 private fun AppleMusicPill(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, enabled: Boolean, onClick: () -> Unit, modifier: Modifier) {
     Row(
         modifier.height(AppleMusicDesign.pillHeight).clip(AppleMusicDesign.pillShape).background(AppleMusicDesign.fill)
-            .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .padding(horizontal = 12.dp),
         horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(icon, null, tint = AppleMusicDesign.accent, modifier = Modifier.size(22.dp))
         Spacer(Modifier.width(5.dp))
-        Text(label, style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp, fontWeight = FontWeight.Medium), color = AppleMusicDesign.accent, maxLines = 1)
+        LevyraTabLabel(
+            label,
+            MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp, fontWeight = FontWeight.Medium, color = AppleMusicDesign.accent),
+            Modifier.weight(1f, fill = false)
+        )
     }
 }
 

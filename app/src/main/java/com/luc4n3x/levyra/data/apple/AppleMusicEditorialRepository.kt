@@ -355,6 +355,7 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
         val header = page.shelf { it.kind == AppleCatalogShelfKind.Header }?.items?.firstOrNull()
         val tracks = page.shelves.filter { it.kind == AppleCatalogShelfKind.Songs }
             .flatMap { it.items }
+            .map { item -> if (kind == AppleCatalogCollection.Album) item.inheritAlbumHeader(header) else item }
             .mapNotNull(AppleCatalogTracks::fromItem)
             .distinctBy { it.id }
         if (tracks.isEmpty()) return null

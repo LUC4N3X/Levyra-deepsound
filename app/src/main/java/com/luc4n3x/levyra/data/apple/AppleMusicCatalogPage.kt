@@ -25,6 +25,15 @@ data class AppleCatalogItem(
 ) {
     fun artworkUrl(size: Int): String = AppleCatalogArtwork.url(artworkTemplate, size, size)
 
+    fun inheritAlbumHeader(header: AppleCatalogItem?): AppleCatalogItem {
+        header ?: return this
+        return copy(
+            subtitle = subtitle.ifBlank { header.subtitle },
+            artworkTemplate = artworkTemplate.ifBlank { header.artworkTemplate },
+            album = album.ifBlank { header.title }
+        )
+    }
+
     fun coverUrl(size: Int): String = AppleCatalogArtwork.url(coverArtworkTemplate.ifBlank { artworkTemplate }, size, size)
 
     fun heroUrl(width: Int): String = AppleCatalogArtwork.url(artworkTemplate, width, (width / 1.5f).toInt())
