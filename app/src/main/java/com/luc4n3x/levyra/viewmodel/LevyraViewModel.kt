@@ -13672,11 +13672,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 current
             }
         }
-        val posterUrl = artwork?.posterUrl ?: return
-        if (_state.value.motionArtwork?.posterUrl != posterUrl) return
+        val published = artwork?.takeIf { it.identityKey == _state.value.motionArtwork?.identityKey } ?: return
+        if (com.luc4n3x.levyra.feature.motion.MotionPosterCache.posterKey(published) == null) return
         motionPosterJob?.cancel()
         motionPosterJob = viewModelScope.launch {
-            com.luc4n3x.levyra.feature.motion.MotionPosterCache.warm(getApplication(), posterUrl)
+            com.luc4n3x.levyra.feature.motion.MotionPosterCache.warm(getApplication(), published)
         }
     }
 
