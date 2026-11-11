@@ -18,7 +18,6 @@ Streamed tracks and local files share one library. You can save music for offlin
   <a href="https://levyra.dpdns.org/docs/"><picture><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-wiki-mobile-light.svg?v=m3-info-generator-3 126w, docs/assets/levyra-wiki-light.svg?v=m3-info-generator-3 160w" sizes="(max-width: 480px) 126px, 160px"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/levyra-wiki-mobile.svg?v=m3-info-generator-3 126w, docs/assets/levyra-wiki.svg?v=m3-info-generator-3 160w" sizes="(max-width: 480px) 126px, 160px"><img src="docs/assets/levyra-wiki.svg?v=m3-info-generator-3" srcset="docs/assets/levyra-wiki-mobile.svg?v=m3-info-generator-3 126w, docs/assets/levyra-wiki.svg?v=m3-info-generator-3 160w" sizes="(max-width: 480px) 126px, 160px" alt="Levyra Documentation"></picture></a>
 </p>
 
-
 <p align="center"><b>Download Levyra</b></p>
 
 <p align="center">
@@ -56,44 +55,23 @@ Streamed tracks and local files share one library. You can save music for offlin
 ---
 
 > [!IMPORTANT]
-> **Legal & responsible use · No piracy.** Levyra is independent open-source client software. It does not operate a music-hosting service or claim ownership of third-party catalogs. It is built for lawful use and is not intended or promoted for copyright infringement, piracy, or unauthorized copying. Use Levyra only with media you are allowed to access or save, and follow the terms of any third-party service you use.
->
-> External audio integrations do not supply third-party accounts or credentials or authorize access to them. Availability through an external source is not permission to stream, download, or redistribute music. Users must obtain the necessary permissions and respect artists' rights.
->
-> Third-party artwork, visuals, and editorial content shown in Levyra come from publicly accessible sources, including the providers' own websites and services. Levyra does not host a separate catalog of this material or claim ownership of it. All rights remain with the respective owners.
->
-> For details about third-party services, lawful use, downloads, and user responsibilities, please review the complete [Legal Notice](docs/legal/LEGAL.md). It applies to Levyra alongside this README.
->
-> Levyra does not grant rights to third-party content and is not affiliated with or endorsed by any third-party service.
+> Levyra is independent open-source client software. It does not host music or claim ownership of third-party catalogs, artwork, lyrics or editorial content, and it is not affiliated with or endorsed by any service it connects to. Use it only with media you are allowed to access, and follow the terms of the services you use. The full [Legal Notice](docs/legal/LEGAL.md) applies alongside this README.
 
 ## Why Levyra
 
-I built Levyra because I was tired of keeping two players: one for streaming and one for the files on my phone. I wanted a single library where a local album and a streamed single sit in the same playlist, and where my history and downloads don't depend on yet another account.
+I built Levyra because I was tired of keeping two players: one for streaming and one for the files on my phone. I wanted one library where a local album and a streamed single sit in the same playlist, and where my history and downloads don't depend on yet another account.
 
 Downloads land in your storage as ordinary audio files, so they keep working outside Levyra. Your listening data stays on the device.
 
-If you use YouTube Music on Android, you can sign in to bring over your playlists, liked songs and saved albums, plus a Home feed built from your account. You don't have to. Without signing in, nothing changes. If you disconnect later, everything you imported stays in your library. Sign-in goes through Google's own pages, and Levyra keeps only the session, encrypted with Android Keystore. It never sees your password.
+Signing in to YouTube Music on Android is optional. It imports your playlists, liked songs and saved albums and adds a Home feed built from your account. Sign-in goes through Google's own pages, and Levyra keeps only the session, encrypted with Android Keystore. If you disconnect, everything you imported stays in your library.
 
-The rest grew out of daily use. Every time another player had something I missed, I added it: synced lyrics with timing controls and romanization, SponsorBlock, Queue Spaces, AutoEQ, Android Auto, music recognition, live radio, backups, and eventually a Windows version. All of it runs on the same library and the same playback path.
+The Android and Windows apps are separate native apps, not a web page in a wrapper. Android uses Kotlin, Jetpack Compose and Media3. Windows uses Compose Multiplatform and libVLC. Both share `LevyraExtractor` for stream resolution, so a fix there reaches both apps.
 
-Some features need outside services for music, lyrics, artwork and metadata. The app itself is open source, and your library stays yours.
+## High-quality audio
 
-## High-quality audio · JioSaavn & FLAC
+With high-quality audio on, Levyra plays a track from JioSaavn when it finds the same recording there. A matching title isn't enough. Levyra compares performers, album, release details, duration, language and version markers, then measures the stream it gets. A stream labeled 320 kbps that measures well below that isn't shown as 320 kbps. If Levyra can't verify a match, the track plays from its normal source, and your queue, lyrics and history stay the same either way.
 
-With high-quality audio on, Levyra plays a track from JioSaavn when it finds the same recording there. The track in your library doesn't change.
-
-A matching title isn't enough to switch. Levyra compares the performers and their roles, the album and release details, duration, the explicit flag, language, featured artists and version markers. If the search results are ambiguous, it opens the JioSaavn track page to tell the original release apart from a compilation, a reissue or an alternate version.
-
-Levyra also checks the stream. It tries the 320, 160 and 96 kbps versions and measures what it gets. A stream labeled 320 kbps that measures well below that doesn't get shown as 320 kbps. A verified match plays straight from JioSaavn's CDN, and Levyra saves the match so the next play skips the lookup. If JioSaavn is down or Levyra can't verify the match, the track plays from its normal source. Artwork, lyrics, queue position, history and recommendations stay attached to the original track either way.
-
-FLAC on Android goes through the same steps with stricter checks. Levyra looks for a lossless copy of the same recording through independent third-party sources, then reads the audio headers to confirm the format, bit depth and sample rate. If no lossless copy passes, playback falls back the same way as above. FLAC support is experimental. Whether you get it depends on the track, your region and your access rights.
-
-Each provider's terms and access rules apply to its sources and content. See [Third-party services and rights](docs/legal/LEGAL.md#3-third-party-services-and-rights).
-
-<div align="center">
-  <p><code>OFF</code> &nbsp;·&nbsp; <code>AUTOMATIC</code> &nbsp;·&nbsp; <code>PREFER&nbsp;320&nbsp;KBPS</code></p>
-  <sub>Levyra measures each stream before using it and goes back to the normal source when JioSaavn isn't a safe match.</sub>
-</div>
+FLAC on Android goes through the same steps with stricter checks. Levyra reads the audio headers to confirm the format, bit depth and sample rate before it plays a lossless copy. FLAC support is experimental and depends on the track, your region and your access rights. See [Third-party services and rights](docs/legal/LEGAL.md#3-third-party-services-and-rights).
 
 ---
 
@@ -121,56 +99,19 @@ Each provider's terms and access rules apply to its sources and content. See [Th
 
 ## Features
 
-- **Native playback.** Media3 and ExoPlayer on Android. libVLC through direct C bindings on Windows. No web wrappers on either.
-- **Gapless playback and audio tuning.** Albums play without gaps. There is also crossfade, pitch shifting, custom speed, a 10-band EQ and AutoEQ headphone profiles.
-- **SponsorBlock.** Sponsored segments, intros, outros and talking that isn't music get skipped automatically.
-- **Audio or video.** One tap switches between audio-only streaming and full video with subtitles.
-- **Offline downloads.** Tracks are saved to device storage as standard M4A files, with metadata, artwork and lyrics included.
-- **One library.** Local files and streamed tracks share playlists, favorites and queues.
-- **Optional YouTube Music sign-in (Android).** Browse your account and import playlists, liked songs and albums. Skip it and Levyra works exactly the same.
-- **Queue Spaces.** Keep several listening sessions side by side without losing the one you're in.
-- **Synced lyrics.** Tap a line to jump to it, nudge the timing by hand, set a separate offset for Bluetooth latency, and read romanized versions of non-Latin scripts.
+- **Native playback.** Media3 and ExoPlayer on Android, libVLC on Windows. Gapless albums, crossfade, pitch and speed control, a 10-band EQ and AutoEQ headphone profiles.
+- **One library.** Local files and streamed tracks share playlists, favorites and queues. Queue Spaces keep several listening sessions side by side.
+- **Offline downloads.** Tracks are saved to device storage as standard audio files, with metadata, artwork and lyrics.
+- **Synced lyrics.** Tap a line to jump to it, adjust the timing, set an offset for Bluetooth latency, and read romanized versions of non-Latin scripts.
 - **Motion artwork.** Animated artwork on the Now Playing screen, with the regular album cover as fallback.
-- **Skins (Android).** Ten complete looks beyond Levyra Default. Each one changes the layout, not only the colors. Nocturne 78 uses AMOLED black, graphite and amber. Prism pairs deep black with raspberry. Torque uses bold graphite shapes. Ivory has bright paper surfaces, ink tabs that slide in from the edges, and its own dark mode. Glacier is dark and monochrome, with one ice-blue accent and a dock that moves with you. Atelier is built around a vinyl record deck. Spotify Style, Apple Music Style, YouTube Music Style and Qobuz Style follow layouts people already know. Each skin restyles Home, Explore, Library, Settings, the mini player and the full player. Find them in **Settings** > **Design** > **Skin**. Your customizations survive switching back and forth.
-- **Theme Studio.** Sixteen presets, Midnight, Aurora, Pure Material, Velvet and Editorial among them. You can also make your own: pick background, surface and accent colors from swatches or a HEX code, choose light or dark, set the corner roundness, then save, rename or duplicate. Levyra Aura is the default, and one tap brings it back.
-- **Mini player studio.** Eight alternative mini player designs, among them Super Expressive, Floating, Liquid Glass and Artwork Focus. Each one has its own size, shape, progress bar and controls, and you see the result live before applying it. The original mini player stays until you pick another.
-- **Navigation studio.** Nine extra styles for the bottom bar. Reorder the buttons by dragging, hide Explore or Library, decide when labels show, and set the indicator, icon size, height and background. Home and Search always stay in the bar.
-- **System integration.** Android Auto, lockscreen media controls, a persistent notification and a Quick Settings tile.
-- **Device integration (Android).** Levyra detects the phone it runs on and turns on what that system supports. On HyperOS 3 it shows synced lyrics in the Super Island. On OriginOS the current track appears in the Atomic Island. OPPO, OnePlus and realme keep their system lyrics panel. Samsung's Now Bar and other phones use the standard media controls. **Settings** > **Integrations** shows what was detected and links to the right battery page for background playback.
-- **Song recognition.** Identify a song from the microphone or from audio playing on the phone. Levyra computes the audio fingerprint on the device and sends only the fingerprint for matching. Results go into a local history.
+- **Audio or video.** Switch between audio-only and full video with subtitles. SponsorBlock skips sponsored segments.
+- **Skins (Android).** Ten complete looks beyond Levyra Default, each with its own layout: Nocturne 78, Prism, Torque, Ivory, Glacier, Atelier, Spotify Style, Apple Music Style, YouTube Music Style and Qobuz Style. Find them in **Settings** > **Design** > **Skin**.
+- **Studios.** Sixteen theme presets plus your own colors, eight mini player designs and nine navigation bar styles. You see each change live before you apply it.
+- **System integration.** Android Auto, lockscreen controls and a Quick Settings tile. On HyperOS 3, synced lyrics appear in the Super Island. On OriginOS, the current track appears in the Atomic Island.
+- **Song recognition.** Identify a song from the microphone or from audio playing on the phone. Results go into a local history.
 - **Explore.** Live radio, international charts, and browsing by genre or mood.
 - **Levyra Vault.** Back up and restore playlists, favorites, history and preferences in one local file.
 - **Private stats.** Play counts and listening hours computed on your device, with optional Last.fm and ListenBrainz scrobbling.
-
-## Technology
-
-I kept Android and Windows as two separate apps instead of putting a web interface inside both. Android uses Kotlin, Jetpack Compose and Media3. Windows uses Compose Multiplatform and libVLC for audio.
-
-They share `LevyraExtractor` for stream resolution and network requests. When something breaks there, I can fix it once for both apps. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) describes the playback path from a tap to audible sound.
-
-### Requirements
-
-- Android 8.0 or later (`minSdk` 26, `targetSdk` 37).
-- 64-bit Windows for the desktop app, with libVLC 3.0.x bundled or a 64-bit VLC 3.0.x installed.
-
-### Build from source
-
-The Android app builds with JDK 17 and the Android SDK. Use the Gradle wrapper in the repository, not a system Gradle install.
-
-```bash
-./gradlew :app:assembleDebug
-./gradlew :app:testDebugUnitTest
-```
-
-The desktop app lives in `desktop/` and builds with JDK 21. It does not need the Android SDK.
-
-```bash
-cd desktop
-./gradlew run
-./gradlew check
-```
-
-On Windows, use `gradlew.bat` instead of `./gradlew`. [desktop/README.md](desktop/README.md) covers the MSI and EXE packages.
 
 ## Translations
 
@@ -196,6 +137,18 @@ Levyra is available in 42 languages because people volunteer their time to trans
   <sub>Translation hosting is kindly provided free of charge by <a href="https://weblate.org/">Hosted Weblate</a>. Thank you for supporting Levyra.</sub>
 </p>
 
+## Contributing
+
+Bug reports and pull requests are welcome. Report bugs in the [issue tracker](https://github.com/LUC4N3X/Levyra-deepsound/issues) with your Levyra version, device and the steps that trigger the problem. Use [GitHub Discussions](https://github.com/LUC4N3X/Levyra-deepsound/discussions) for questions and ideas.
+
+The Android app needs Android 8.0 or later and builds with JDK 17. The Windows app lives in `desktop/` and builds with JDK 21. [desktop/README.md](desktop/README.md) has its build steps.
+
+```bash
+./gradlew :app:assembleDebug
+```
+
+Architecture notes are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and the [project documentation](https://levyra.dpdns.org/docs/).
+
 ## Open-source acknowledgements
 
 Levyra uses work from these open-source projects:
@@ -212,13 +165,6 @@ Levyra uses work from these open-source projects:
 - [AutoEq](https://github.com/jaakkopasanen/AutoEq): headphone measurements and GraphicEQ profiles used by the AutoEQ catalog.
 
 FLAC playback on Android depends on independent third-party sources. Their inclusion does not imply a partnership or endorsement.
-
-## Contributing
-
-- Report bugs in the [issue tracker](https://github.com/LUC4N3X/Levyra-deepsound/issues). Include the Levyra version, your device and the steps that trigger the problem.
-- Ask questions and share ideas in [GitHub Discussions](https://github.com/LUC4N3X/Levyra-deepsound/discussions).
-- Open pull requests against `main`. The pull request template lists the checks a reviewer expects.
-- Find architecture notes and technical docs in the [project documentation](https://levyra.dpdns.org/docs/).
 
 ---
 
@@ -279,83 +225,21 @@ FLAC playback on Android depends on independent third-party sources. Their inclu
 
 ---
 
-## Legal disclaimer and terms of use
+## Legal
 
 <div align="center">
-
-#### Levyra is open source, independent, and built for lawful use
 
 <code>NO PIRACY</code> &nbsp;·&nbsp; <code>NO CONTENT HOSTING</code> &nbsp;·&nbsp; <code>THIRD-PARTY RIGHTS RESPECTED</code>
 
-<sub>Levyra is an independent open-source music player built for lawful use, research, and interoperability. It does not operate a music-hosting service or claim ownership of third-party catalogs.</sub>
-
 </div>
 
-#### Third-party services and content
+Levyra is client-side software. It does not host music catalogs, artwork, lyrics or video, and it connects only to the services that the features you use need. Those services can change, limit or block access at any time.
 
-Levyra is client-side software that runs on your device. It does not own or host music catalogs, artwork, lyrics, or video files. When you stream or search, Levyra connects to the external services needed for that feature. Those services can change, rate-limit, or restrict access at any time.
+Streaming, downloading and caching are software features. They do not give you rights to third-party content, unlock paid subscriptions, or authorize access to accounts, regions or catalogs you are not otherwise allowed to use. This includes the FLAC sources and the optional network compatibility tools. You are responsible for following applicable law and the terms of the services you use. Please support artists through official channels.
 
-If there is a problem with media hosted by another service, contact that service or the relevant rights holder. If the issue is with something distributed as part of Levyra itself, use the GitHub issue tracker.
+Levyra has no Levyra account, telemetry, analytics or ads. Network requests go directly to the services behind the features you enable.
 
-#### FLAC sources and lawful access
-
-Levyra's FLAC integration relies on responses and audio streams supplied by independent third-party sites. Their operation, access arrangements, and catalog availability are outside Levyra's control. Levyra does not host, obtain, provide, or share third-party accounts, account credentials, or login sessions for these integrations, and does not authorize access to anyone else's account or catalog.
-
-These integrations are provided for developer study, research, interoperability, and lawful playback. The project and its developers do not approve or endorse illegal streaming, unauthorized downloads, piracy, or illegitimate account access. Users must ensure that they have the necessary rights and permissions and that their use complies with applicable law and each provider's terms.
-
-Availability through an external site does not establish permission to access an account, stream a recording, or download or redistribute music. This notice does not grant those permissions or remove any legal obligations of project maintainers or users.
-
-#### Lawful use and user responsibility
-
-Levyra is built for lawful use, research, and interoperability, not for piracy or copyright infringement. Streaming, downloading, format conversion, and offline caching are software features. They do not transfer copyright or ownership of third-party media.
-
-Levyra may cache media temporarily for playback and can save user-requested downloads as standard media files. Neither feature gives you permission to redistribute third-party content. You are responsible for making sure your use of Levyra complies with applicable law and with the terms of any third-party service you choose to access.
-
-#### Regional availability and experimental network compatibility
-
-Some streaming features depend on third-party services such as YouTube Music. Those services may be unavailable, filtered, or unreliable in some countries, networks, or accounts.
-
-Some Levyra builds include optional experimental network compatibility tools that can change how YouTube requests are resolved, routed, or sent when the normal connection does not work. These are best-effort features. They can fail, slow playback, or stop working after a network or provider change, and Levyra does not guarantee that they will restore access.
-
-Enabling a compatibility option does not grant access rights, unlock paid features, or make an otherwise restricted use authorized. You are responsible for following applicable law and the terms, account rules, and network policies that apply to the services you use.
-
-Local playback and features that do not depend on the affected service continue to work independently.
-
-#### Support artists and creators
-
-Support the people who create the music you listen to, and use only content you are entitled to access.
-
-Levyra does not unlock paid subscriptions or grant access rights offered by third-party providers. If you want an official subscription experience, subscribe directly through the provider, including [YouTube Premium](https://www.youtube.com/premium), [YouTube Music Premium](https://www.youtube.com/musicpremium), or [Spotify Premium](https://www.spotify.com/premium/).
-
-You can also support artists directly through licensed streaming services, music purchases, concerts, merchandise, and other official channels.
-
-#### Privacy
-
-Levyra does not require a Levyra account and does not include telemetry, analytics, or ads. Network requests go directly to the services used by the features you enable, including optional integrations.
-
-#### Technical interoperability and access restrictions
-
-Levyra includes client-side code for compatibility with external services. Depending on the feature, it may resolve streams, process requests and tokens, use alternate DNS or routing, or apply optional experimental connection methods.
-
-Those capabilities do not grant permission to access a service, region, catalog item, account feature, subscription tier, or paid entitlement that you are not otherwise allowed to use. Availability and authorization remain governed by the service, your account, the network you are using, applicable terms, and applicable law. Network compatibility options are provided on a best-effort basis and may stop working at any time.
-
-#### Warranty and third-party availability
-
-Levyra is released under the **[GNU GPL v3.0](LICENSE)** and is provided "as is", without warranty of any kind, to the fullest extent permitted by applicable law.
-
-To the fullest extent permitted by applicable law, Levyra's authors, maintainers and contributors disclaim liability for losses arising from use, misuse or inability to use the software, including third-party account restrictions and service interruptions. This does not exclude liability that cannot lawfully be excluded. See [Warranty and liability](docs/legal/LEGAL.md#9-warranty-and-liability).
-
-The GNU GPL v3.0 covers Levyra's source code. It does not grant rights to third-party content, trademarks, or service endpoints. Third-party services can change or disappear, so Levyra cannot guarantee that every stream, metadata source, artwork provider, lyrics source, or API will keep working.
-
-<div align="center">
-
-#### Use Levyra responsibly
-
-For the complete legal terms covering technical interoperability, user responsibilities, and third-party integrations, see the **[Legal Notice](docs/legal/LEGAL.md)**.
-
-<sub>Using Levyra does not give you rights to content you are not otherwise allowed to access or use.</sub>
-
-</div>
+Levyra is released under the [GNU GPL v3.0](LICENSE) and provided "as is", without warranty, to the extent permitted by law. The license covers Levyra's source code, not third-party content, trademarks or services. The complete terms are in the [Legal Notice](docs/legal/LEGAL.md).
 
 ---
 
