@@ -2111,7 +2111,7 @@ internal fun AudioSegmentStrip(
             layout(total, height) {
                 var x = 0
                 placeables.forEach { placeable ->
-                    placeable.place(x, 0)
+                    placeable.placeRelative(x, 0)
                     x += placeable.width + gapPx
                 }
             }
