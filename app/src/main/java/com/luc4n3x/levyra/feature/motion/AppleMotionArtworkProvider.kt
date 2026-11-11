@@ -17,6 +17,7 @@ import org.json.JSONObject
 import timber.log.Timber
 import java.io.IOException
 import java.util.Locale
+import com.luc4n3x.levyra.data.apple.AppleCatalogArtwork
 import com.luc4n3x.levyra.data.apple.AppleDeveloperTokenProvider
 import java.util.concurrent.TimeUnit
 
@@ -84,7 +85,8 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
                 mimeType = "application/x-mpegURL",
                 width = selected.video.width,
                 height = selected.video.height,
-                expiresAtMs = System.currentTimeMillis() + MOTION_ARTWORK_POSITIVE_TTL_MS
+                expiresAtMs = System.currentTimeMillis() + MOTION_ARTWORK_POSITIVE_TTL_MS,
+                posterUrl = selected.video.posterUrl()
             )
         }
 
@@ -383,7 +385,8 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
                 mimeType = "application/x-mpegURL",
                 width = resolved.video.width,
                 height = resolved.video.height,
-                expiresAtMs = System.currentTimeMillis() + MOTION_ARTWORK_POSITIVE_TTL_MS
+                expiresAtMs = System.currentTimeMillis() + MOTION_ARTWORK_POSITIVE_TTL_MS,
+                posterUrl = resolved.video.posterUrl()
             )
         }
         Timber.d("Apple player search produced=%d storefront=%s type=%s title=%s", output.size, storefront, type, identity.title)
@@ -565,8 +568,20 @@ private fun JSONArray.optJSONObject(index: Int): JSONObject? = if (index in 0 un
 internal data class AppleEditorialVideo(
     val url: String,
     val width: Int?,
-    val height: Int?
-)
+    val height: Int?,
+    val posterTemplate: String? = null
+) {
+    fun posterUrl(maxWidth: Int = APPLE_POSTER_MAX_WIDTH): String? {
+        val template = posterTemplate?.takeIf { it.startsWith("https://") } ?: return null
+        val sourceWidth = width?.takeIf { it > 0 } ?: return null
+        val sourceHeight = height?.takeIf { it > 0 } ?: return null
+        val targetWidth = minOf(maxWidth, sourceWidth)
+        val targetHeight = (targetWidth.toLong() * sourceHeight / sourceWidth).toInt().coerceAtLeast(1)
+        return AppleCatalogArtwork.url(template, targetWidth, targetHeight).takeIf { it.startsWith("https://") }
+    }
+}
+
+private const val APPLE_POSTER_MAX_WIDTH = 1080
 
 internal data class AppleArtistMotionMatch(
     val key: String,
@@ -690,7 +705,12 @@ private fun selectAppleEditorialAssetVideo(
             (orientationRank == bestRank && area > bestArea) ||
             (orientationRank == bestRank && area == bestArea && best == null)
         if (better) {
-            best = AppleEditorialVideo(url = url, width = width, height = height)
+            best = AppleEditorialVideo(
+                url = url,
+                width = width,
+                height = height,
+                posterTemplate = frame?.optString("url")?.trim()?.takeIf { it.startsWith("https://") }
+            )
             bestRank = orientationRank
             bestArea = area
         }

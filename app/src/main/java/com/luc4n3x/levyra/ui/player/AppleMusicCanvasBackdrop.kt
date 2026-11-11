@@ -34,18 +34,21 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import coil3.SingletonImageLoader
+import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.SuccessResult
 import coil3.request.allowHardware
 import coil3.size.Size
 import coil3.toBitmap
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.feature.motion.MotionPosterCache
 import com.luc4n3x.levyra.ui.CoverImage
 import com.luc4n3x.levyra.ui.MotionArtworkLayer
 import com.luc4n3x.levyra.ui.MotionArtworkPresentation
@@ -80,11 +83,18 @@ internal fun AppleMusicCanvasBackdrop(track: Track, canvas: AppleMusicCanvas, pl
         val barrierTop = (videoHeight - CanvasBarrierOverlap).coerceAtLeast(0.dp)
         val widthPx = with(density) { maxWidth.roundToPx() }
         val videoHeightPx = with(density) { videoHeight.roundToPx() }
+        val context = LocalContext.current
+        val posterUrl = canvas.artwork?.posterUrl
+        LaunchedEffect(posterUrl) { if (posterUrl != null) MotionPosterCache.warm(context, posterUrl) }
+        val posterSource = posterUrl?.let(MotionPosterCache::source)
+        val posterReflection = remember(posterSource, widthPx, videoHeightPx) {
+            posterSource?.takeIf { widthPx > 0 && videoHeightPx > 0 }?.let { AppleCanvasReflections.build(it, widthPx, videoHeightPx) }
+        }
         var canvasPalette by remember(track.id) { mutableStateOf<MotionBackdropPalette?>(null) }
-        val livePalette = canvasPalette?.takeIf { it.identityKey == canvas.artwork?.identityKey }
+        val livePalette = canvasPalette?.takeIf { posterUrl == null && it.identityKey == canvas.artwork?.identityKey }
         val canvasReflection = rememberCanvasPaletteReflection(livePalette, widthPx, videoHeightPx)
         val coverReflection = rememberAppleCanvasReflection(track, widthPx, videoHeightPx)
-        val reflection = canvasReflection ?: coverReflection
+        val reflection = posterReflection ?: canvasReflection ?: coverReflection
         Box(Modifier.fillMaxWidth().height(videoHeight)) {
             key(track.id) {
                 MotionArtworkLayer(
@@ -95,11 +105,20 @@ internal fun AppleMusicCanvasBackdrop(track: Track, canvas: AppleMusicCanvas, pl
                     presentation = MotionArtworkPresentation.Immersive,
                     quality = canvas.quality,
                     livingArtwork = canvas.livingArtwork,
-                    dynamicBackdropEnabled = canvas.enabled,
+                    dynamicBackdropEnabled = canvas.enabled && posterUrl == null,
                     onDynamicBackdropPalette = { palette -> canvasPalette = palette },
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    CoverImage(track, Modifier.fillMaxSize(), highRes = true)
+                    if (posterUrl != null) {
+                        AsyncImage(
+                            model = MotionPosterCache.displayRequest(context, posterUrl),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        CoverImage(track, Modifier.fillMaxSize(), highRes = true)
+                    }
                 }
             }
         }

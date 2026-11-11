@@ -1418,6 +1418,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     @Volatile private var motionArtworkRequestGeneration: Long = 0L
     private val motionArtworkRequestToken = AtomicLong(0L)
     private var motionArtworkPrefetchJob: Job? = null
+    private var motionPosterJob: Job? = null
     @Volatile private var motionArtworkPrefetchKey: String? = null
     @Volatile private var motionArtworkPrefetchToken = 0L
     private var sleepTimerCollectorJob: Job? = null
@@ -13654,6 +13655,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             } else {
                 current
             }
+        }
+        val posterUrl = artwork?.posterUrl ?: return
+        if (_state.value.motionArtwork?.posterUrl != posterUrl) return
+        motionPosterJob?.cancel()
+        motionPosterJob = viewModelScope.launch {
+            com.luc4n3x.levyra.feature.motion.MotionPosterCache.warm(getApplication(), posterUrl)
         }
     }
 

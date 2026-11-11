@@ -81,4 +81,20 @@ class AppleEditorialVideoSelectionTest {
         )
         assertEquals("https://example.invalid/raw.m3u8", selected?.url)
     }
+
+    @Test
+    fun `preview frame becomes a poster sized like the video`() {
+        val selected = selectAppleEditorialVideo(
+            JSONObject(
+                """
+                {"motionDetailTall": {"video": "https://example.invalid/tall.m3u8",
+                  "previewFrame": {"url": "https://is1-ssl.mzstatic.com/image/thumb/p/{w}x{h}bb.{f}", "width": 2160, "height": 2880}}}
+                """.trimIndent()
+            )
+        )
+        assertEquals("https://is1-ssl.mzstatic.com/image/thumb/p/1080x1440bb.jpg", selected?.posterUrl())
+        assertNull(AppleEditorialVideo("https://example.invalid/v.m3u8", 1080, 1440, "http://insecure/{w}x{h}.{f}").posterUrl())
+        assertNull(AppleEditorialVideo("https://example.invalid/v.m3u8", null, 1440, "https://p/{w}x{h}.{f}").posterUrl())
+        assertNull(AppleEditorialVideo("https://example.invalid/v.m3u8", 1080, 1440).posterUrl())
+    }
 }
