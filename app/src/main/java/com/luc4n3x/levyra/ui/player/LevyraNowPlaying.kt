@@ -1029,7 +1029,7 @@ private fun LevyraNowPlayingContent(
                     onToggleFavorite = { viewModel.toggleFavorite(activeTrack) },
                     modifier = lyricsFlipSwipeModifier,
                     moreLabel = strings.more,
-                    onMore = if (appleMusicPlayer) ({ showActions = true }) else null
+                    onMore = { showActions = true }.takeIf { appleMusicPlayer }
                 )
             }
         }
