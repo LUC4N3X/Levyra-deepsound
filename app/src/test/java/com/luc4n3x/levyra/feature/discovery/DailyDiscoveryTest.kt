@@ -54,6 +54,24 @@ class DailyDiscoveryTest {
     }
 
     @Test
+    fun dailyBuildFiltersArtistsBeforeLimitingThePool() = kotlinx.coroutines.runBlocking {
+        val radio = (1..12).map { track("Song r$it", "Known", "r$it") } + track("Song n", "New", "n")
+        val sources = DiscoverySources(
+            similarToTrack = { radio },
+            newMusic = { _, _ -> emptyList() },
+            followedReleases = { emptyList() },
+            similarArtistTracks = { emptyList() },
+            regional = { emptyList() },
+            editorial = { emptyList() }
+        )
+        val profile = DiscoveryTasteProfile(
+            "en", "US", listOf(track("Seed", "Seed Artist", "s")), emptyMap(), emptySet(), emptySet(), emptySet(), emptyList()
+        )
+        val cards = DiscoveryEngine(sources).daily(profile, DiscoveryInteractions(), 0, setOf(discoveryPrimaryArtistKey("Known")))
+        assertEquals(listOf("n"), cards.map { it.track.id })
+    }
+
+    @Test
     fun alternatesSeedsSoNeighboursCarryDifferentReasons() {
         val other = DiscoveryReason(DiscoveryReasonKind.SimilarToTrack, "Other", seedArtist = "Other Artist")
         val cards = listOf(card("a", "One", similar), card("b", "Two", similar), card("c", "Three", other), card("d", "Four", other))

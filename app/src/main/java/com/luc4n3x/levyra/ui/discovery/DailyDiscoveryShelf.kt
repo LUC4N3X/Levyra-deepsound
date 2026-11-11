@@ -115,6 +115,13 @@ private fun dailyLook(): DailyLook = when {
 internal fun skinShowsDailyDiscovery(): Boolean =
     !LevyraIsQobuz && !LevyraIsAppleMusic && !LevyraIsYouTubeMusic && !LevyraIsSpotify
 
+internal fun androidx.compose.foundation.lazy.LazyListScope.composedDailyDiscovery(skinFeedShown: Boolean) {
+    if (!skinShowsDailyDiscovery() || (LevyraIsMono && skinFeedShown)) return
+    item(key = "composed-daily-discovery", contentType = "home-daily-discovery") {
+        DailyDiscoveryShelf(if (LevyraIsMono) MonoDesign.gutter else AtelierDesign.gutter)
+    }
+}
+
 @Composable
 internal fun DailyDiscoveryShelf(inset: Dp, style: HomeStyle? = null, spec: HomeStyleSpec? = null) {
     val handle = LocalDailyDiscovery.current ?: return

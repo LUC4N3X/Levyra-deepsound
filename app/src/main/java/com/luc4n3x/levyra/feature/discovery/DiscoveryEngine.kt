@@ -59,16 +59,24 @@ class DiscoveryEngine(
         DiscoveryBuildResult(cards, outcomes.count { it.failed }, outcomes.size)
     }
 
-    suspend fun daily(profile: DiscoveryTasteProfile, interactions: DiscoveryInteractions, rotation: Long): List<DiscoveryCard> = coroutineScope {
+    suspend fun daily(
+        profile: DiscoveryTasteProfile,
+        interactions: DiscoveryInteractions,
+        rotation: Long,
+        familiarArtistKeys: Set<String> = emptySet()
+    ): List<DiscoveryCard> = coroutineScope {
         rotate(profile.seeds, rotation).take(DAILY_SEEDS).map { seed ->
             async {
                 val reason = DiscoveryReason(DiscoveryReasonKind.SimilarToTrack, seed.title, seedArtist = seed.artist)
                 val seedTitle = seed.title.trim().lowercase(Locale.ROOT)
+                val seedArtist = discoveryPrimaryArtistKey(seed.artist)
                 val closest = fetch { sources.similarToTrack(seed) }.tracks.filter { track ->
-                    DiscoveryRanker.isEligible(DiscoveryCandidate(track, reason), profile, interactions) &&
+                    val artist = discoveryPrimaryArtistKey(track.artist)
+                    artist != seedArtist && artist !in familiarArtistKeys &&
+                        DiscoveryRanker.isEligible(DiscoveryCandidate(track, reason), profile, interactions) &&
                         !DiscoveryFilmScores.matches(track) && !isSessionAct(track.artist) &&
                         track.title.trim().lowercase(Locale.ROOT) != seedTitle
-                }.take(DAILY_POOL_PER_SEED)
+                }.distinctBy { discoveryPrimaryArtistKey(it.artist) }.take(DAILY_POOL_PER_SEED)
                 rotate(closest, rotation).map { DiscoveryCard(it, reason) }
             }
         }.awaitAll().flatten()
