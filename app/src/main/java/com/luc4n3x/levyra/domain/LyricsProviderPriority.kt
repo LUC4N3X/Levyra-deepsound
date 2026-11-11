@@ -9,7 +9,10 @@ enum class LyricsProviderId(val storageValue: String) {
     LRCLIB_SEARCH("lrclib_search"),
     LYRICS_PLUS("lyrics_plus"),
     BINIMUM("binimum"),
+    NETEASE("netease"),
+    KUGOU("kugou"),
     YOUTUBE_TRANSCRIPT("youtube_transcript"),
+    JIOSAAVN("jiosaavn"),
     LYRICS_OVH("lyrics_ovh");
 
     fun matches(providerString: String): Boolean {
@@ -20,6 +23,9 @@ enum class LyricsProviderId(val storageValue: String) {
             LRCLIB_SEARCH -> clean.startsWith("LRCLIB Search", ignoreCase = true)
             LYRICS_PLUS -> clean.startsWith("LyricsPlus", ignoreCase = true)
             BINIMUM -> clean.startsWith("Binimum", ignoreCase = true)
+            NETEASE -> clean.startsWith("NetEase", ignoreCase = true)
+            KUGOU -> clean.startsWith("Kugou", ignoreCase = true)
+            JIOSAAVN -> clean.startsWith("JioSaavn", ignoreCase = true)
             YOUTUBE_TRANSCRIPT -> clean.startsWith("YouTube Transcript", ignoreCase = true)
             LYRICS_OVH -> clean.startsWith("Lyrics.ovh", ignoreCase = true)
         }
@@ -32,7 +38,10 @@ enum class LyricsProviderId(val storageValue: String) {
             LRCLIB_SEARCH,
             LYRICS_PLUS,
             BINIMUM,
+            NETEASE,
+            KUGOU,
             YOUTUBE_TRANSCRIPT,
+            JIOSAAVN,
             LYRICS_OVH
         )
 
@@ -114,6 +123,7 @@ data class LyricsProviderOrdering(
 
 fun isLastResortLyricsProvider(id: LyricsProviderId): Boolean = when (id) {
     LyricsProviderId.LYRICS_OVH,
+    LyricsProviderId.JIOSAAVN,
     LyricsProviderId.YOUTUBE_TRANSCRIPT -> true
     else -> false
 }

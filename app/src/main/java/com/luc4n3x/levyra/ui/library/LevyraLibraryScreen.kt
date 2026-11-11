@@ -54,9 +54,11 @@ import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.OfflinePin
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -171,7 +173,7 @@ private const val PLAYLIST_DRAG_EDGE_FACTOR = 1.35f
 private const val PLAYLIST_DRAG_SCROLL_FACTOR = 0.38f
 private const val DEVICE_LIBRARY_PARENT_LEADING_ITEMS = 4
 internal val LibraryCategoriesGutter = 16.dp
-private val SpotifyLibraryMoreCategories = setOf(LibraryCategory.Songs, LibraryCategory.Device, LibraryCategory.Collections)
+private val SpotifyLibraryMoreCategories = setOf(LibraryCategory.Songs, LibraryCategory.Collections)
 private val LibraryScrollbarTopInset = 72.dp
 private val LibraryBrowseCategories = LibraryCategory.entries.filter { it != LibraryCategory.Overview }
 
@@ -319,6 +321,7 @@ internal fun LevyraLibraryScreen(
 
     var qobuzTools by rememberSaveable { mutableStateOf(false) }
     var atelierOnShelf by rememberSaveable { mutableStateOf(true) }
+    var categoryName by rememberSaveable { mutableStateOf(LibraryCategory.Overview.name) }
     if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier && !qobuzTools) {
         BackHandler(enabled = backEnabled && !atelierOnShelf) { atelierOnShelf = true }
         if (atelierOnShelf) {
@@ -329,11 +332,23 @@ internal fun LevyraLibraryScreen(
         return
     }
     if (com.luc4n3x.levyra.ui.theme.LevyraIsQobuz && !qobuzTools) {
-        QobuzLibraryScreen(viewModel, state, catalog, onOpenDownloads) { qobuzTools = true }
+        QobuzLibraryScreen(
+            viewModel = viewModel,
+            state = state,
+            catalog = catalog,
+            onOpenDownloads = onOpenDownloads,
+            onOpenDevice = {
+                categoryName = LibraryCategory.Device.name
+                qobuzTools = true
+            },
+            onOpenTools = {
+                categoryName = LibraryCategory.Overview.name
+                qobuzTools = true
+            }
+        )
         return
     }
     BackHandler(enabled = backEnabled && (com.luc4n3x.levyra.ui.theme.LevyraIsQobuz || com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) && qobuzTools) { qobuzTools = false }
-    var categoryName by rememberSaveable { mutableStateOf(LibraryCategory.Overview.name) }
     val category = LibraryCategory.entries.firstOrNull { it.name == categoryName } ?: LibraryCategory.Overview
     var layoutName by rememberSaveable { mutableStateOf(LibraryLayout.List.name) }
     val layout = LibraryLayout.entries.firstOrNull { it.name == layoutName } ?: LibraryLayout.List
@@ -696,11 +711,13 @@ internal fun LevyraLibraryScreen(
     val spotifyFilter = SpotifyLibraryFilter.entries.firstOrNull { it.name == spotifyFilterName }
     val spotifySort = SpotifyLibrarySort.entries.firstOrNull { it.name == spotifySortName } ?: SpotifyLibrarySort.Recents
     val spotifyItems = if (spotifyOverview) {
-        remember(state.favorites, state.downloads.size, visiblePlaylists, visibleSavedPlaylists, catalog, state.downloadedTrackIds, state.userName, state.recentListens, strings, spotifyFilter, spotifySort) {
+        remember(state.favorites, state.downloads.size, visiblePlaylists, visibleSavedPlaylists, catalog, state.downloadedTrackIds, state.userName, state.recentListens, state.localLibrary.catalog.totalCount, strings, spotifyFilter, spotifySort) {
             spotifyLibraryArrange(
                 buildSpotifyLibraryItems(
                     state.favorites, state.downloads.size, visiblePlaylists, catalog, state.downloadedTrackIds,
-                    state.userName, strings.favorites, strings.downloads, state.recentListens, visibleSavedPlaylists
+                    state.userName, strings.favorites, strings.downloads, state.recentListens, visibleSavedPlaylists,
+                    deviceTitle = strings.localOnDevice, deviceCount = state.localLibrary.catalog.totalCount,
+                    recentTitle = strings.offlineHomeRecent, recentCount = catalog.recent.size
                 ),
                 spotifyFilter,
                 spotifySort
@@ -724,6 +741,8 @@ internal fun LevyraLibraryScreen(
                 when (entry.kind) {
                     SpotifyLibraryKind.Liked -> "${spotifyCopy.playlist} • ${strings.formatTrackCount(entry.count)}"
                     SpotifyLibraryKind.Downloads -> strings.formatTrackCount(entry.count)
+                    SpotifyLibraryKind.Device -> if (entry.count > 0) strings.formatTrackCount(entry.count) else strings.localScanQuick
+                    SpotifyLibraryKind.Recent -> strings.formatTrackCount(entry.count)
                     SpotifyLibraryKind.Playlist -> "${spotifyCopy.playlist} • ${entry.creator.ifBlank { strings.formatTrackCount(entry.count) }}"
                     SpotifyLibraryKind.SavedPlaylist -> listOf(spotifyCopy.playlist, entry.creator).filter(String::isNotBlank).joinToString(" • ")
                     SpotifyLibraryKind.Album -> "${strings.albumPlain} • ${entry.creator}"
@@ -751,6 +770,8 @@ internal fun LevyraLibraryScreen(
             when (entry.kind) {
                 SpotifyLibraryKind.Liked -> openSmartCollectionName = SMART_COLLECTION_FAVORITES
                 SpotifyLibraryKind.Downloads -> switchCategory(LibraryCategory.Offline)
+                SpotifyLibraryKind.Device -> switchCategory(LibraryCategory.Device)
+                SpotifyLibraryKind.Recent -> openSmartCollectionName = SMART_COLLECTION_RECENT
                 SpotifyLibraryKind.Playlist -> viewModel.openPlaylist(entry.id)
                 SpotifyLibraryKind.SavedPlaylist -> savedPlaylists.firstOrNull { it.key == entry.id }?.let(viewModel::openSavedPlaylist)
                 SpotifyLibraryKind.Album -> catalog.albums.firstOrNull { it.key == entry.id }?.let { viewModel.openAlbum(it.toAlbumHit()) }
@@ -991,7 +1012,27 @@ internal fun LevyraLibraryScreen(
                                 onOpenArtist = { viewModel.openArtistReference(it.name, it.browseId, it.artworkUrl) }
                             ),
                             savedPlaylists = visibleSavedPlaylists,
-                            onOpenSavedPlaylist = viewModel::openSavedPlaylist
+                            onOpenSavedPlaylist = viewModel::openSavedPlaylist,
+                            shortcuts = listOfNotNull(
+                                catalog.recent.takeIf { it.isNotEmpty() }?.let { recent ->
+                                    YouTubeMusicShortcutRow(
+                                        title = strings.offlineHomeRecent,
+                                        subtitle = strings.formatTrackCount(recent.size),
+                                        icon = Icons.Rounded.History,
+                                        colors = listOf(Color(0xFF3A1C71), Color(0xFFD76D77)),
+                                        onOpen = { openSmartCollectionName = SMART_COLLECTION_RECENT }
+                                    )
+                                },
+                                YouTubeMusicShortcutRow(
+                                    title = strings.localOnDevice,
+                                    subtitle = state.localLibrary.catalog.totalCount.let { count ->
+                                        if (count > 0) strings.formatTrackCount(count) else strings.localScanQuick
+                                    },
+                                    icon = Icons.Rounded.PhoneAndroid,
+                                    colors = listOf(Color(0xFF2A2A2A), Color(0xFF5F6368)),
+                                    onOpen = { switchCategory(LibraryCategory.Device) }
+                                )
+                            )
                         )
                     }
                 } else {

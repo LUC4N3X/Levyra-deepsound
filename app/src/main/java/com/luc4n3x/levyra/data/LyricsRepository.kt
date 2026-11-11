@@ -30,6 +30,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.collect
@@ -57,12 +59,22 @@ class LyricsRepository(context: Context? = null) {
     private val legacyCacheDir = appContext?.cacheDir?.let { File(it, "lyrics_pro") }
     private val youtubeTranscript = appContext?.let(::YoutubeTranscriptLyricsProvider)
     private val youtubeMusic = YoutubeMusicWatchRepository(appContext)
-    private val translationCoordinator = LyricsTranslationCoordinator(appContext?.let(::AndroidLyricsTranslationBackend))
     private val lyricsPlusClient = LevyraHttpClientFactory.media(appContext).newBuilder()
         .connectTimeout(3, TimeUnit.SECONDS)
         .readTimeout(4, TimeUnit.SECONDS)
         .callTimeout(5, TimeUnit.SECONDS)
         .build()
+    private val onlineLyricsText = appContext?.let {
+        OnlineLyricsTextService(
+            lyricsPlusClient.newBuilder()
+                .readTimeout(8, TimeUnit.SECONDS)
+                .callTimeout(10, TimeUnit.SECONDS)
+                .build()
+        )
+    }
+    private val translationCoordinator = LyricsTranslationCoordinator(
+        onlineLyricsText?.let { online -> FallbackLyricsTranslationBackend(appContext?.let(::AndroidLyricsTranslationBackend), online) }
+    )
     private val lyricsPlus = LyricsPlusProvider(lyricsPlusClient)
     private val memoryLock = Any()
     private val negativeLock = Any()
@@ -109,7 +121,8 @@ class LyricsRepository(context: Context? = null) {
         val videoId: String,
         val languageCode: String,
         val translate: Boolean,
-        val key: String
+        val key: String,
+        val online: Boolean = true
     )
 
     private data class MemoryEntry(
@@ -151,8 +164,20 @@ class LyricsRepository(context: Context? = null) {
         videoId: String = "",
         languageCode: String = "",
         translate: Boolean = false
+    ): Flow<LyricsResult> = observeQuery(title, artist, durationSec, album, videoId, languageCode, translate, online = true)
+
+    private fun observeQuery(
+        title: String,
+        artist: String,
+        durationSec: Long,
+        album: String,
+        videoId: String,
+        languageCode: String,
+        translate: Boolean,
+        online: Boolean
     ): Flow<LyricsResult> = channelFlow {
-        val query = querySpec(title, artist, durationSec, album, videoId, languageCode, translate) ?: return@channelFlow
+        val query = querySpec(title, artist, durationSec, album, videoId, languageCode, translate)
+            ?.copy(online = online) ?: return@channelFlow
         if (emitSelectedResult(query) { send(it) }) return@channelFlow
         val (cached, restored) = restoreCachedResult(query) { send(it) }
         if (cached.negative) return@channelFlow
@@ -209,7 +234,7 @@ class LyricsRepository(context: Context? = null) {
         val selected = readSelection(query) ?: return false
         val restored = selected.result.copy(cached = true)
         emit(restored)
-        if (!needsLyricsTranslationRetry(restored.translationState, query.translate)) return true
+        if (!needsLyricsEnrichmentRetry(restored, query)) return true
         val refreshed = applyTranslation(restored.copy(cached = false), query)
             .copy(cached = false, manualSelection = true)
         if (!shouldUpgrade(restored, refreshed)) return true
@@ -232,7 +257,7 @@ class LyricsRepository(context: Context? = null) {
         val cached = readCached(query)
         val stable = cached.result?.copy(cached = true) ?: return cached to null
         emit(stable)
-        if (!needsLyricsTranslationRetry(stable.translationState, query.translate)) return cached to stable
+        if (!needsLyricsEnrichmentRetry(stable, query)) return cached to stable
         val refreshed = applyTranslation(stable.copy(cached = false), query)
         if (!shouldUpgrade(stable, refreshed)) return cached to stable
         memoryPut(query.key, refreshed, System.currentTimeMillis())
@@ -341,7 +366,7 @@ class LyricsRepository(context: Context? = null) {
         languageCode: String = "",
         translate: Boolean = false
     ) {
-        observe(title, artist, durationSec, album, videoId, languageCode, translate).collect { }
+        observeQuery(title, artist, durationSec, album, videoId, languageCode, translate, online = false).collect { }
     }
 
     private inner class ProgressiveLyricsCollector(
@@ -358,7 +383,7 @@ class LyricsRepository(context: Context? = null) {
         suspend fun consume(attempt: ProviderAttempt) {
             attempted = attempted || attempt.attempted
             hadTransientFailure = hadTransientFailure || attempt.hadTransientFailure
-            attempt.candidates.mapNotNullTo(candidates) { prepareCandidate(it, query.durationSec) }
+            attempt.candidates.mapNotNullTo(candidates) { prepareCandidate(it, query.durationSec, query.languageCode) }
             val best = currentBest()?.let { result ->
                 markTranslationPending(result, query)
             }
@@ -513,6 +538,15 @@ class LyricsRepository(context: Context? = null) {
         LyricsProviderId.LYRICS_OVH -> async {
             providerWithin(FAST_PROVIDER_TIMEOUT_MS) { lyricsOvh(query.queryTitle, query.queryArtist) }
         }
+        LyricsProviderId.NETEASE -> async {
+            providerWithin(LYRICS_PLUS_TIMEOUT_MS) { netEaseAttempt(query) }
+        }
+        LyricsProviderId.KUGOU -> async {
+            providerWithin(LYRICS_PLUS_TIMEOUT_MS) { kugouAttempt(query) }
+        }
+        LyricsProviderId.JIOSAAVN -> async {
+            providerWithin(LYRICS_PLUS_TIMEOUT_MS) { jioSaavnAttempt(query) }
+        }
         else -> null
     }
 
@@ -652,17 +686,53 @@ class LyricsRepository(context: Context? = null) {
         )
     }
 
-    private fun prepareCandidate(candidate: LyricsCandidate, durationSec: Long): LyricsCandidate? {
+    private fun prepareCandidate(candidate: LyricsCandidate, durationSec: Long, languageCode: String): LyricsCandidate? {
         val normalized = normalizeTiming(candidate.result, durationSec)
-        val enriched = cleanAndEnrich(normalized)
+        val enriched = cleanAndEnrich(normalized, languageCode)
         if (enriched.lines.isEmpty()) return null
         return candidate.copy(result = enriched)
     }
 
+    private fun needsLyricsEnrichmentRetry(result: LyricsResult, query: QuerySpec): Boolean =
+        needsLyricsTranslationRetry(result.translationState, query.translate) ||
+            (query.online && japaneseReadingTargets(result, query.languageCode).isNotEmpty())
+
+    private fun japaneseReadingTargets(result: LyricsResult, readerLanguage: String): List<Int> {
+        if (onlineLyricsText == null) return emptyList()
+        if (preferences?.lyricsStudioSettings()?.romanizationEnabled == false) return emptyList()
+        val context = LyricsRomanizer.context(result.lines.map { it.text }, readerLanguage)
+        if (!context.japanese || Character.UnicodeScript.HIRAGANA in context.readerScripts) return emptyList()
+        return japaneseReadingGapIndices(result)
+    }
+
     private suspend fun applyTranslation(result: LyricsResult, query: QuerySpec): LyricsResult {
-        if (!query.translate) return result
-        val outcome = translationCoordinator.translate(result.lines, query.languageCode)
-        return result.copy(lines = outcome.lines, translationState = outcome.state)
+        if (!query.online) return result
+        val read = withJapaneseReadings(result, query.languageCode)
+        if (!query.translate) return read
+        val outcome = translationCoordinator.translate(read.lines, query.languageCode)
+        return read.copy(lines = outcome.lines, translationState = outcome.state)
+    }
+
+    private suspend fun withJapaneseReadings(result: LyricsResult, readerLanguage: String): LyricsResult {
+        val service = onlineLyricsText ?: return result
+        val missing = japaneseReadingTargets(result, readerLanguage)
+        if (missing.isEmpty()) return result
+        val readings = runCatching {
+            withTimeoutOrNull(JAPANESE_READINGS_TIMEOUT_MS) { service.japaneseReadings(missing.map { result.lines[it].text }) }
+                ?: return result
+        }
+            .getOrElse { error ->
+                if (error is kotlinx.coroutines.CancellationException) throw error
+                return result
+            }
+        if (readings.size != missing.size) return result
+        val byIndex = missing.zip(readings).mapNotNull { (index, reading) -> reading?.let { index to it } }.toMap()
+        if (byIndex.isEmpty()) return result
+        return result.copy(
+            lines = result.lines.mapIndexed { index, line ->
+                byIndex[index]?.let { line.copy(romanized = it) } ?: line
+            }
+        )
     }
 
     private fun markTranslationPending(result: LyricsResult, query: QuerySpec): LyricsResult {
@@ -702,11 +772,29 @@ class LyricsRepository(context: Context? = null) {
             translatedEligibleCount(current) > translatedEligibleCount(previous) &&
             current.confidence >= previous.confidence
         ) return true
+        if (
+            romanizedEligibleCount(current) > romanizedEligibleCount(previous) &&
+            current.confidence >= previous.confidence
+        ) return true
+        if (
+            japaneseReadingGapIndices(current).size < japaneseReadingGapIndices(previous).size &&
+            current.confidence >= previous.confidence
+        ) return true
         return false
+    }
+
+    private fun japaneseReadingGapIndices(result: LyricsResult): List<Int> = result.lines.indices.filter { index ->
+        val line = result.lines[index]
+        !line.isMetadata && !line.isInstrumental && JAPANESE_TEXT.containsMatchIn(line.text) &&
+            (line.romanized.isBlank() || line.romanized == LyricsRomanizer.romanize(line.text))
     }
 
     private fun translatedEligibleCount(result: LyricsResult): Int = result.lines.count { line ->
         !line.isMetadata && !line.isInstrumental && line.text.isNotBlank() && line.translated.isNotBlank()
+    }
+
+    private fun romanizedEligibleCount(result: LyricsResult): Int = result.lines.count { line ->
+        !line.isMetadata && !line.isInstrumental && line.text.isNotBlank() && line.romanized.isNotBlank()
     }
 
     private fun sameResult(left: LyricsResult, right: LyricsResult): Boolean {
@@ -913,6 +1001,101 @@ class LyricsRepository(context: Context? = null) {
         }
     }
 
+    private class DownloadedLyrics(val candidate: LyricsCandidate?, val failed: Boolean)
+
+    private fun downloadedAttempt(downloads: List<DownloadedLyrics>): ProviderAttempt {
+        val candidates = downloads.mapNotNull { it.candidate }
+        return ProviderAttempt(
+            candidates = candidates,
+            attempted = true,
+            hadTransientFailure = candidates.isEmpty() && downloads.any { it.failed }
+        )
+    }
+
+    private suspend fun netEaseAttempt(query: QuerySpec): ProviderAttempt = coroutineScope {
+        val searchUrl = "$NETEASE_API/search/get?type=1&limit=$NETEASE_SEARCH_LIMIT&s=${enc("${query.queryTitle} ${query.queryArtist}")}"
+        val songs = when (val response = httpGet(searchUrl, "application/json")) {
+            is HttpGetResult.Success -> runCatching { parseNetEaseSongs(response.body) }.getOrElse {
+                Timber.w(it, "NetEase search parsing failed")
+                return@coroutineScope ProviderAttempt(attempted = true, hadTransientFailure = true)
+            }
+            HttpGetResult.NotFound -> return@coroutineScope ProviderAttempt(attempted = true)
+            HttpGetResult.Failure -> return@coroutineScope ProviderAttempt(attempted = true, hadTransientFailure = true)
+        }
+        val chineseReader = query.languageCode.trim().lowercase(Locale.ROOT).startsWith("zh")
+        val candidates = netEaseShortlist(songs, query.durationSec)
+            .map { song ->
+                async {
+                    val response = httpGet("$NETEASE_API/song/lyric?lv=1&tv=-1&id=${song.id}", "application/json")
+                    when (response) {
+                        is HttpGetResult.Success -> runCatching { parseNetEaseLyrics(response.body, chineseReader) }
+                            .map { result -> result?.let { DownloadedLyrics(LyricsCandidate(it, song.title, song.artist, song.durationSec, song.album), false) } }
+                            .getOrElse { DownloadedLyrics(null, true) } ?: DownloadedLyrics(null, false)
+                        HttpGetResult.NotFound -> DownloadedLyrics(null, false)
+                        HttpGetResult.Failure -> DownloadedLyrics(null, true)
+                    }
+                }
+            }
+            .awaitAll()
+        downloadedAttempt(candidates)
+    }
+
+    private suspend fun kugouAttempt(query: QuerySpec): ProviderAttempt = coroutineScope {
+        val chineseReader = query.languageCode.trim().lowercase(Locale.ROOT).startsWith("zh")
+        val duration = if (query.durationSec > 0L) "&duration=${query.durationSec * 1_000L}" else ""
+        val searchUrl = "$KUGOU_API/search?ver=1&man=yes&client=pc&hash=&keyword=${enc("${query.queryTitle} ${query.queryArtist}")}$duration"
+        val candidates = when (val response = httpGet(searchUrl, "application/json")) {
+            is HttpGetResult.Success -> runCatching { parseKugouCandidates(response.body) }.getOrElse {
+                Timber.w(it, "Kugou lyrics search parsing failed")
+                return@coroutineScope ProviderAttempt(attempted = true, hadTransientFailure = true)
+            }
+            HttpGetResult.NotFound -> return@coroutineScope ProviderAttempt(attempted = true)
+            HttpGetResult.Failure -> return@coroutineScope ProviderAttempt(attempted = true, hadTransientFailure = true)
+        }
+        val results = kugouShortlist(candidates, query.durationSec)
+            .map { candidate ->
+                async {
+                    val url = "$KUGOU_API/download?ver=1&client=pc&fmt=krc&charset=utf8&id=${enc(candidate.id)}&accesskey=${enc(candidate.accessKey)}"
+                    when (val response = httpGet(url, "application/json")) {
+                        is HttpGetResult.Success -> runCatching { parseKugouDownload(response.body, chineseReader) }
+                            .map { result -> result?.let { DownloadedLyrics(LyricsCandidate(it, candidate.title, candidate.artist, candidate.durationSec), false) } }
+                            .getOrElse { DownloadedLyrics(null, true) } ?: DownloadedLyrics(null, false)
+                        HttpGetResult.NotFound -> DownloadedLyrics(null, false)
+                        HttpGetResult.Failure -> DownloadedLyrics(null, true)
+                    }
+                }
+            }
+            .awaitAll()
+        downloadedAttempt(results)
+    }
+
+    private suspend fun jioSaavnAttempt(query: QuerySpec): ProviderAttempt = coroutineScope {
+        val searchUrl = "$JIOSAAVN_API?__call=search.getResults&_format=json&_marker=0&api_version=4&ctx=web6dot0&n=$JIOSAAVN_SEARCH_LIMIT&p=1&q=${enc("${query.queryTitle} ${query.queryArtist}")}"
+        val songs = when (val response = httpGet(searchUrl, "application/json")) {
+            is HttpGetResult.Success -> runCatching { parseJioSaavnLyricsSongs(response.body) }.getOrElse {
+                Timber.w(it, "JioSaavn lyrics search parsing failed")
+                return@coroutineScope ProviderAttempt(attempted = true, hadTransientFailure = true)
+            }
+            HttpGetResult.NotFound -> return@coroutineScope ProviderAttempt(attempted = true)
+            HttpGetResult.Failure -> return@coroutineScope ProviderAttempt(attempted = true, hadTransientFailure = true)
+        }
+        val candidates = jioSaavnShortlist(songs, query.durationSec)
+            .map { song ->
+                async {
+                    val response = httpGet("$JIOSAAVN_API?__call=lyrics.getLyrics&_format=json&_marker=0&api_version=4&ctx=web6dot0&lyrics_id=${enc(song.id)}", "application/json")
+                    when (response) {
+                        is HttpGetResult.Success -> runCatching { parseJioSaavnLyrics(response.body) }
+                            .map { result -> result?.let { DownloadedLyrics(LyricsCandidate(it, song.title, song.artist, song.durationSec, song.album), false) } }
+                            .getOrElse { DownloadedLyrics(null, true) } ?: DownloadedLyrics(null, false)
+                        HttpGetResult.NotFound -> DownloadedLyrics(null, false)
+                        HttpGetResult.Failure -> DownloadedLyrics(null, true)
+                    }
+                }
+            }
+            .awaitAll()
+        downloadedAttempt(candidates)
+    }
+
     private fun parseLrcLibEntry(json: JSONObject, provider: String): LyricsResult? {
         val syncedText = json.optString("syncedLyrics").takeIf { it.isMeaningfulLyrics() }
         if (syncedText != null) {
@@ -1058,7 +1241,7 @@ class LyricsRepository(context: Context? = null) {
 
         val legacy = readLegacyCache(query.key)
         if (legacy != null) {
-            val enriched = cleanAndEnrich(legacy)
+            val enriched = cleanAndEnrich(legacy, query.languageCode)
             if (enriched.lines.isNotEmpty()) {
                 persistPositive(query, enriched)
                 memoryPut(query.key, enriched, now)
@@ -1326,15 +1509,16 @@ class LyricsRepository(context: Context? = null) {
             .getOrNull()
     }
 
-    private fun cleanAndEnrich(result: LyricsResult): LyricsResult {
+    private fun cleanAndEnrich(result: LyricsResult, languageCode: String): LyricsResult {
         val cleaned = LyricsCleaner.clean(result.lines)
+        val romanization = LyricsRomanizer.context(cleaned.map { it.text }, languageCode)
         val enriched = cleaned.map { line ->
-            val lineRomanized = line.romanized.ifBlank { LyricsRomanizer.romanize(line.text) }
+            val lineRomanized = line.romanized.ifBlank { LyricsRomanizer.romanize(line.text, romanization) }
             val enrichedWords = if (line.words.isEmpty()) {
                 emptyList()
             } else {
                 line.words.map { word ->
-                    word.copy(romanized = word.romanized.ifBlank { LyricsRomanizer.romanize(word.text) })
+                    word.copy(romanized = word.romanized.ifBlank { LyricsRomanizer.romanize(word.text, romanization) })
                 }
             }
             line.copy(romanized = lineRomanized, words = enrichedWords)
@@ -1515,7 +1699,14 @@ class LyricsRepository(context: Context? = null) {
     private fun encPath(value: String): String = value.split("/").joinToString("%2F") { enc(it) }
 
     companion object {
-        internal const val CACHE_VERSION = 8
+        internal const val CACHE_VERSION = 9
+        private const val JAPANESE_READINGS_TIMEOUT_MS = 12_000L
+        private const val NETEASE_API = "https://music.163.com/api"
+        private const val NETEASE_SEARCH_LIMIT = 6
+        private const val JIOSAAVN_API = "https://www.jiosaavn.com/api.php"
+        private const val KUGOU_API = "https://lyrics.kugou.com"
+        private const val JIOSAAVN_SEARCH_LIMIT = 5
+        private val JAPANESE_TEXT = Regex("[\\u3040-\\u30ff\\u31f0-\\u31ff\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff]")
         private const val PARSER_REVISION = 2
         private const val POSITIVE_CACHE_TTL_MS = 90L * 24L * 60L * 60L * 1_000L
         private const val STALE_CACHE_TTL_MS = 90L * 24L * 60L * 60L * 1_000L

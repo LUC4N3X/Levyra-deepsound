@@ -36,6 +36,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.HowToReg
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
@@ -126,6 +127,7 @@ internal fun QobuzLibraryScreen(
     state: LevyraUiState,
     catalog: LibraryCatalog,
     onOpenDownloads: () -> Unit,
+    onOpenDevice: () -> Unit,
     onOpenTools: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -153,7 +155,7 @@ internal fun QobuzLibraryScreen(
             }
         )
         if (searching) QobuzLibrarySearchField(strings, query) { query = it }
-        QobuzLibraryFilterRow(strings, copy, filter, { filterName = it }, onOpenDownloads, onOpenTools) { viewModel.openPlaylistImport() }
+        QobuzLibraryFilterRow(strings, copy, filter, { filterName = it }, onOpenDownloads, onOpenDevice, onOpenTools) { viewModel.openPlaylistImport() }
         Box(Modifier.fillMaxWidth().height(1.dp).background(QobuzDesign.separator))
         QobuzLibraryControls(
             strings = strings,
@@ -192,6 +194,14 @@ private fun buildQobuzLibraryRows(
         if (filter == null || filter == QobuzLibraryFilter.Albums) catalog.albums.forEach { add(QobuzLibraryRow.Album(it, listOf(strings.albumPlain, it.artist).filter(String::isNotBlank).joinToString(" • "))) }
         if (filter == QobuzLibraryFilter.Songs) catalog.tracks.forEach {
             add(QobuzLibraryRow.Song(it, listOf(copy.trackType, it.artist).joinToString(" • "), catalog.trackRecency[it.id] ?: 0L))
+        }
+    }.ifEmpty {
+        if (filter == null) {
+            catalog.recent.mapIndexed { index, track ->
+                QobuzLibraryRow.Song(track, listOf(copy.trackType, track.artist).joinToString(" • "), (catalog.recent.size - index).toLong())
+            }
+        } else {
+            emptyList()
         }
     }
     val needle = query.trim().lowercase()
@@ -232,6 +242,7 @@ private fun QobuzLibraryFilterRow(
     filter: QobuzLibraryFilter?,
     onFilterName: (String?) -> Unit,
     onOpenDownloads: () -> Unit,
+    onOpenDevice: () -> Unit,
     onOpenTools: () -> Unit,
     onImport: () -> Unit
 ) {
@@ -246,6 +257,7 @@ private fun QobuzLibraryFilterRow(
             QobuzChip(label, filter == option, { onFilterName(if (filter == option) null else option.name) })
         }
         item(key = "downloads") { QobuzLibraryChip(Icons.Outlined.DownloadForOffline, strings.downloads, onOpenDownloads) }
+        item(key = "device") { QobuzLibraryChip(Icons.Rounded.PhoneAndroid, strings.localOnDevice, onOpenDevice) }
         item(key = "import") { QobuzLibraryChip(Icons.AutoMirrored.Rounded.PlaylistAdd, strings.playlistImportCopy().action, onImport) }
         item(key = "tools") { QobuzLibraryChip(Icons.Rounded.Tune, copy.levyraTools, onOpenTools) }
     }

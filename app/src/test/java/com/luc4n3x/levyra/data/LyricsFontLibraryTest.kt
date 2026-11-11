@@ -30,6 +30,20 @@ class LyricsFontLibraryTest {
 
     private fun source(bytes: ByteArray): () -> InputStream = { ByteArrayInputStream(bytes) }
 
+    private fun zeros(length: Long): InputStream = object : InputStream() {
+        private var left = length
+
+        override fun read(): Int = if (left-- > 0) 0 else -1
+
+        override fun read(buffer: ByteArray, offset: Int, count: Int): Int {
+            if (left <= 0) return -1
+            val read = minOf(count.toLong(), left).toInt()
+            java.util.Arrays.fill(buffer, offset, offset + read, 0)
+            left -= read
+            return read
+        }
+    }
+
     private fun expectError(expected: LyricsFontError, block: suspend () -> Unit) = runBlocking {
         try {
             block()
@@ -76,8 +90,10 @@ class LyricsFontLibraryTest {
     @Test
     fun oversizedFontIsRejected() {
         val library = library()
-        val huge = LyricsFontTestFonts.trueType() + ByteArray(LyricsFontLibrary.MAX_FONT_BYTES.toInt())
-        expectError(LyricsFontError.TOO_LARGE) { library.import(source(huge), "huge") }
+        val huge = {
+            java.io.SequenceInputStream(ByteArrayInputStream(LyricsFontTestFonts.trueType()), zeros(LyricsFontLibrary.MAX_FONT_BYTES))
+        }
+        expectError(LyricsFontError.TOO_LARGE) { library.import(huge, "huge") }
         assertTrue(fontFiles().isEmpty())
     }
 
@@ -151,6 +167,15 @@ class LyricsFontLibraryTest {
         assertEquals(200..800, restored.first().variableWeight)
         assertTrue(library().fontFile(stale.id) != null)
         assertEquals(2, fontFiles().size)
+    }
+
+    @Test
+    fun backupSkipsFontsBeyondTheBudgetWithoutReadingThem() = runBlocking {
+        val first = library().import(source(LyricsFontTestFonts.trueType("First")), "f")
+        library().import(source(LyricsFontTestFonts.trueType("Second")), "s")
+        assertEquals(listOf(first.id), library().backupItems(first.sizeBytes).map { it.entry.id })
+        assertTrue(library().backupItems(0L).isEmpty())
+        assertTrue(LyricsFontLibrary.MAX_FONT_BYTES >= 100L * 1024L * 1024L)
     }
 
     @Test

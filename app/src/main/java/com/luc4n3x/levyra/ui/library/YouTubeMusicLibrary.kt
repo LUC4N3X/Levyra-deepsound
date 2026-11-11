@@ -45,6 +45,14 @@ internal class YouTubeMusicLibraryRows(
     val trackCount: (Int) -> String
 )
 
+internal class YouTubeMusicShortcutRow(
+    val title: String,
+    val subtitle: String,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val colors: List<Color>,
+    val onOpen: () -> Unit
+)
+
 internal class YouTubeMusicLibraryActions(
     val onOpenLiked: () -> Unit,
     val onOpenPlaylist: (Playlist) -> Unit,
@@ -82,7 +90,8 @@ internal fun YouTubeMusicLibraryOverview(
     copy: YouTubeMusicLibraryRows,
     actions: YouTubeMusicLibraryActions,
     savedPlaylists: List<com.luc4n3x.levyra.domain.SavedPlaylist> = emptyList(),
-    onOpenSavedPlaylist: (com.luc4n3x.levyra.domain.SavedPlaylist) -> Unit = {}
+    onOpenSavedPlaylist: (com.luc4n3x.levyra.domain.SavedPlaylist) -> Unit = {},
+    shortcuts: List<YouTubeMusicShortcutRow> = emptyList()
 ) {
     Column(Modifier.youTubeMusicBleed(16.dp)) {
         YouTubeMusicLibraryRow(
@@ -99,6 +108,22 @@ internal fun YouTubeMusicLibraryOverview(
                 }
             }
         )
+        shortcuts.forEach { row ->
+            YouTubeMusicLibraryRow(
+                title = row.title,
+                subtitle = row.subtitle,
+                pinned = true,
+                onClick = row.onOpen,
+                artwork = {
+                    Box(
+                        Modifier.fillMaxSize().background(Brush.linearGradient(row.colors)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(row.icon, null, tint = Color.White, modifier = Modifier.size(28.dp))
+                    }
+                }
+            )
+        }
         playlists.forEach { playlist ->
             YouTubeMusicLibraryRow(
                 title = playlist.name,

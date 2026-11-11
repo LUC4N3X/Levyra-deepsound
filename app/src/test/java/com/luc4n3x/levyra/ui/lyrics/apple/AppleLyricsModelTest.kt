@@ -123,6 +123,19 @@ class AppleLyricsModelTest {
     }
 
     @Test
+    fun appleSkinsCanLeaveTheAppleViewer() {
+        val defaults = LevyraLyricsStudioSettings()
+        listOf(true, false).forEach { appleSkin ->
+            val off = defaults.withAppleMusicViewer(enabled = false, appleMusicSkin = appleSkin)
+            val on = off.withAppleMusicViewer(enabled = true, appleMusicSkin = appleSkin)
+            assertFalse(off.usesAppleMusicLyrics(appleSkin))
+            assertTrue(on.usesAppleMusicLyrics(appleSkin))
+            assertEquals(off, LevyraLyricsStudioSettings.decode(off.encode()))
+        }
+        assertEquals(LyricsViewerStyle.CLASSIC, defaults.withAppleMusicViewer(enabled = false, appleMusicSkin = true).viewerStyle)
+    }
+
+    @Test
     fun viewerOptionsPersistAndSurvivePresets() {
         val settings = LevyraLyricsStudioSettings(
             viewerStyle = LyricsViewerStyle.APPLE_MUSIC, autoScrollEnabled = false, showOriginalLyrics = false,

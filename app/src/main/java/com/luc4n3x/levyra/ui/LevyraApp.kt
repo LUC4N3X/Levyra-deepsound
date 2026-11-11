@@ -7264,7 +7264,7 @@ private fun LyricsOverlay(
 ) {
     val strings = LocalLevyraStrings.current
     val track = state.currentTrack
-    val appleLyrics = state.lyricsStudioSettings.usesAppleMusicLyrics(LevyraIsAppleMusic || com.luc4n3x.levyra.ui.theme.LevyraIsMono)
+    val appleLyrics = state.lyricsStudioSettings.usesAppleMusicLyrics(appleLyricsSkin)
     val overlayConfiguration = LocalConfiguration.current
     val landscapeLayout = !appleLyrics && lyricsLandscapeLayoutActive(overlayConfiguration)
     val landscapeMetrics = if (landscapeLayout) {
@@ -7334,12 +7334,14 @@ private fun LyricsOverlay(
     var calibrateMode by remember(track?.id) { mutableStateOf(false) }
     var showSyncBar by rememberSaveable { mutableStateOf(false) }
     var showSyncSheet by remember(track?.id) { mutableStateOf(false) }
-    val visibleLyrics = remember(state.lyrics, showSecondaryVoices) {
-        if (showSecondaryVoices) {
+    val estimateWords = state.lyricsSynced && state.lyricsStudioSettings.progressiveKaraokeEnabled
+    val visibleLyrics = remember(state.lyrics, showSecondaryVoices, estimateWords) {
+        val voices = if (showSecondaryVoices) {
             state.lyrics
         } else {
             state.lyrics.filter { line -> line.role == LyricVocalRole.MAIN }
         }
+        if (estimateWords) com.luc4n3x.levyra.ui.lyrics.lyricsWithEstimatedWords(voices) else voices
     }
     LaunchedEffect(state.lyrics, showSecondaryVoices) {
         selectedRange = null
@@ -8166,7 +8168,7 @@ private fun LyricsOverlay(
                     icon = Icons.Rounded.FormatQuote,
                     onClick = {
                         showLyricsOptions = false
-                        onUpdateLyricsStudio(state.lyricsStudioSettings.withAppleMusicViewer())
+                        onUpdateLyricsStudio(state.lyricsStudioSettings.withAppleMusicViewer(true, appleLyricsSkin))
                     }
                 )
                 LyricsControlChip(
@@ -8175,16 +8177,18 @@ private fun LyricsOverlay(
                     icon = Icons.Rounded.Visibility,
                     onClick = { lyricsFocusMode = !lyricsFocusMode }
                 )
+                val translationTarget = LevyraLanguageCatalog.displayName(state.languageCode)
                 val translationLabel = when (state.lyricsTranslationState) {
-                    LyricsTranslationState.ON_DEVICE -> "${strings.automaticTranslation} · ${strings.offline}"
+                    LyricsTranslationState.ON_DEVICE -> "${strings.automaticTranslation} · $translationTarget · ${strings.offline}"
                     LyricsTranslationState.MODEL_DOWNLOAD_REQUIRED -> "${strings.automaticTranslation} · ${strings.download}"
                     LyricsTranslationState.MODEL_DOWNLOADING -> "${strings.automaticTranslation} · ${strings.updateDownloading}"
+                    LyricsTranslationState.ONLINE -> "${strings.automaticTranslation} · $translationTarget · Google Translate"
                     LyricsTranslationState.UNAVAILABLE,
                     LyricsTranslationState.FAILED,
                     LyricsTranslationState.DISABLED,
                     LyricsTranslationState.PENDING,
                     LyricsTranslationState.PROVIDER,
-                    LyricsTranslationState.SAME_LANGUAGE -> strings.automaticTranslation
+                    LyricsTranslationState.SAME_LANGUAGE -> "${strings.automaticTranslation} · $translationTarget"
                 }
                 LyricsControlChip(
                     label = translationLabel,
@@ -8441,6 +8445,7 @@ internal fun KaraokeWordTimedText(
                 lineHeight = lineHeight,
                 fontWeight = fontWeight,
                 textAlign = textAlign,
+                style = TextStyle(),
                 onTextLayout = { textLayoutResult = it },
                 modifier = Modifier.wrapContentWidth()
             )
@@ -8611,6 +8616,7 @@ private fun lyricsTranslationFeedback(strings: LevyraStrings, state: LyricsTrans
     LyricsTranslationState.DISABLED,
     LyricsTranslationState.PROVIDER,
     LyricsTranslationState.ON_DEVICE,
+    LyricsTranslationState.ONLINE,
     LyricsTranslationState.SAME_LANGUAGE -> null
 }
 
@@ -10918,9 +10924,9 @@ private fun LazyListScope.homeStudioSectionEditorialCollections(c: StudioHomeCon
                                     )
                                 }
                             }
-                            if (LevyraIsPrism) SkinCuratedShelf(viewModel, strings.collectionsTitle, fans, styleSpec.inset) { id -> selectedHomeCollectionId = id }
+                            if (LevyraIsPrism) SkinCuratedShelf(viewModel, homeCollectionsTitle(strings), fans, styleSpec.inset) { id -> selectedHomeCollectionId = id }
                             else MxCollectionFan(
-                                title = strings.collectionsTitle,
+                                title = homeCollectionsTitle(strings),
                                 collections = fans,
                                 onOpen = { id -> selectedHomeCollectionId = id }
                             )
@@ -12485,7 +12491,7 @@ private fun HomeEditorialCollectionsShelf(
     val strings = LocalLevyraStrings.current
     Column(verticalArrangement = Arrangement.spacedBy(homeHeaderContentGap())) {
         HomeSectionHeader(
-            title = strings.collectionsTitle,
+            title = homeCollectionsTitle(strings),
             modifier = Modifier.padding(horizontal = HomeHorizontalInset)
         )
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
@@ -24842,7 +24848,8 @@ private fun ExploreScreen(
             journeyInPlaceOfMoods = true,
             editorial = editorialExplore,
             hasNews = news.isNotEmpty(),
-            hasNewsDesk = news.size > ExploreNewsFrontSize
+            hasNewsDesk = news.size > ExploreNewsFrontSize,
+            editorialJourney = spotifyExplore
         )
     }
     val availableAnchors = remember(rows) { exploreAvailableAnchors(rows) }

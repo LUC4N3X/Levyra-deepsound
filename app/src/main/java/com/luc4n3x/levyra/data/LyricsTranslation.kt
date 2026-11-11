@@ -10,7 +10,10 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withTimeoutOrNull
 
 internal sealed interface LyricsBatchTranslation {
-    data class Success(val texts: List<String?>) : LyricsBatchTranslation
+    data class Success(
+        val texts: List<String?>,
+        val state: LyricsTranslationState = LyricsTranslationState.ON_DEVICE
+    ) : LyricsBatchTranslation
     data object SameLanguage : LyricsBatchTranslation
     data class Unavailable(val state: LyricsTranslationState) : LyricsBatchTranslation
 }
@@ -33,8 +36,10 @@ internal class LyricsTranslationCoordinator(
     private val backend: LyricsTranslationBackend?,
     private val timeoutMs: Long = TRANSLATION_TIMEOUT_MS
 ) {
-    private val cache = object : LinkedHashMap<String, Map<Int, String>>(CACHE_SIZE + 1, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Map<Int, String>>?): Boolean =
+    private class CachedTranslation(val texts: Map<Int, String>, val state: LyricsTranslationState)
+
+    private val cache = object : LinkedHashMap<String, CachedTranslation>(CACHE_SIZE + 1, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CachedTranslation>?): Boolean =
             size > CACHE_SIZE
     }
 
@@ -54,7 +59,7 @@ internal class LyricsTranslationCoordinator(
         if (target.isBlank()) return providerOr(lines, LyricsTranslationState.UNAVAILABLE)
         val cacheKey = cacheKey(lines, target, translator.version)
         synchronized(cache) { cache[cacheKey] }?.let { cached ->
-            return LyricsTranslationOutcome(applyTranslations(lines, cached), LyricsTranslationState.ON_DEVICE)
+            return LyricsTranslationOutcome(applyTranslations(lines, cached.texts), cached.state)
         }
         val sources = eligibleIndices.map { index -> lines[index].text.trim() }
         val result = try {
@@ -73,8 +78,8 @@ internal class LyricsTranslationCoordinator(
                 val translations = eligibleIndices.zip(result.texts)
                     .mapNotNull { (index, text) -> text?.let { index to it } }
                     .toMap()
-                synchronized(cache) { cache[cacheKey] = translations }
-                LyricsTranslationOutcome(applyTranslations(lines, translations), LyricsTranslationState.ON_DEVICE)
+                synchronized(cache) { cache[cacheKey] = CachedTranslation(translations, result.state) }
+                LyricsTranslationOutcome(applyTranslations(lines, translations), result.state)
             }
         }
     }
@@ -89,9 +94,11 @@ internal class LyricsTranslationCoordinator(
         if (first.texts.size != sources.size) return LyricsBatchTranslation.Unavailable(LyricsTranslationState.FAILED)
         val merged = first.texts.map(::normalizeTranslatedLine).toMutableList()
         val missing = merged.indices.filter { merged[it] == null }
+        var state = first.state
         if (missing.isNotEmpty()) {
             val retry = translator.translate(missing.map(sources::get), target)
             if (retry is LyricsBatchTranslation.Success && retry.texts.size == missing.size) {
+                if (retry.state == LyricsTranslationState.ONLINE) state = LyricsTranslationState.ONLINE
                 missing.zip(retry.texts).forEach { (position, text) ->
                     merged[position] = normalizeTranslatedLine(text)
                 }
@@ -101,7 +108,7 @@ internal class LyricsTranslationCoordinator(
         if (stillMissing > merged.size / MAX_UNTRANSLATED_LINE_RATIO) {
             return LyricsBatchTranslation.Unavailable(LyricsTranslationState.FAILED)
         }
-        return LyricsBatchTranslation.Success(merged)
+        return LyricsBatchTranslation.Success(merged, state)
     }
 
     private fun applyTranslations(
@@ -161,6 +168,7 @@ internal fun needsLyricsTranslationRetry(
         LyricsTranslationState.FAILED -> true
         LyricsTranslationState.PROVIDER,
         LyricsTranslationState.ON_DEVICE,
+        LyricsTranslationState.ONLINE,
         LyricsTranslationState.SAME_LANGUAGE -> false
     }
 }

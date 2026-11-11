@@ -363,12 +363,7 @@ class LevyraBackupManager(private val context: Context) {
                 sections[name] = writeBinarySection(zip, name, bytes)
                 coverEntries[playlist.id] = name
             }
-            var fontBudget = MAX_TOTAL_BYTES - coverBytesTotal - DATA_SECTIONS_RESERVE_BYTES
-            val fontItems = lyricsFontLibrary.backupItems().filter { item ->
-                val fits = item.bytes.size <= fontBudget
-                if (fits) fontBudget -= item.bytes.size else Timber.w("Lyrics font %s left out of backup: size budget", item.entry.id)
-                fits
-            }
+            val fontItems = lyricsFontLibrary.backupItems(MAX_TOTAL_BYTES - coverBytesTotal - DATA_SECTIONS_RESERVE_BYTES)
             fontItems.forEach { item ->
                 val name = lyricsFontBackupEntry(item.entry.id, item.entry.format)
                 sections[name] = writeBinarySection(zip, name, item.bytes)

@@ -11,10 +11,32 @@ object LyricsRomanizer {
             "\\uac00-\\ud7af]"
     )
     private val whitespaceRegex = Regex("\\s+")
+    private val kanaRegex = Regex("[\\u3040-\\u30ff\\u31f0-\\u31ff]")
+    private val hanRegex = Regex("[\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff]")
 
-    fun romanize(text: String): String {
+    class Context internal constructor(
+        val japanese: Boolean,
+        val readerScripts: Set<Character.UnicodeScript>
+    )
+
+    fun context(texts: List<String>, readerLanguage: String): Context {
+        val scripted = texts.filter { hanRegex.containsMatchIn(it) || kanaRegex.containsMatchIn(it) }
+        val kana = scripted.count { kanaRegex.containsMatchIn(it) }
+        return Context(
+            japanese = kana > 0 && kana * JAPANESE_KANA_LINE_RATIO_DENOMINATOR >= scripted.size,
+            readerScripts = readerScripts(readerLanguage)
+        )
+    }
+
+    private const val JAPANESE_KANA_LINE_RATIO_DENOMINATOR = 4
+
+    fun romanize(text: String): String = romanize(text, context(listOf(text), ""))
+
+    fun romanize(text: String, context: Context): String {
         val source = text.trim()
         if (source.isBlank() || !supportedScriptRegex.containsMatchIn(source)) return ""
+        if (context.japanese && hanRegex.containsMatchIn(source)) return ""
+        if (readableWithoutRomanization(source, context.readerScripts)) return ""
 
         val icuResult = transliterateCjkWithIcu(source)
         if (icuResult != null) return icuResult
@@ -26,6 +48,42 @@ object LyricsRomanizer {
 
         val normalized = normalize(result.text)
         return if (normalized.isNotBlank() && normalized != normalize(source)) normalized else ""
+    }
+
+    private fun readableWithoutRomanization(source: String, readerScripts: Set<Character.UnicodeScript>): Boolean {
+        if (readerScripts.isEmpty()) return false
+        var foreign = false
+        var readable = false
+        source.codePoints().forEach { codePoint ->
+            if (!Character.isLetter(codePoint)) return@forEach
+            when (val script = Character.UnicodeScript.of(codePoint)) {
+                Character.UnicodeScript.LATIN, Character.UnicodeScript.COMMON, Character.UnicodeScript.INHERITED -> Unit
+                in readerScripts -> readable = true
+                else -> foreign = true
+            }
+        }
+        return readable && !foreign
+    }
+
+    private fun readerScripts(languageCode: String): Set<Character.UnicodeScript> {
+        val language = languageCode.trim().substringBefore('-').substringBefore('_').lowercase(Locale.ROOT)
+        return readerScriptsByLanguage[language].orEmpty()
+    }
+
+    private val readerScriptsByLanguage: Map<String, Set<Character.UnicodeScript>> = buildMap {
+        listOf("ru", "uk", "be", "bg", "sr", "mk", "kk", "ky", "tg", "mn").forEach { put(it, setOf(Character.UnicodeScript.CYRILLIC)) }
+        put("el", setOf(Character.UnicodeScript.GREEK))
+        listOf("he", "iw", "yi").forEach { put(it, setOf(Character.UnicodeScript.HEBREW)) }
+        listOf("ar", "fa", "ur", "ps").forEach { put(it, setOf(Character.UnicodeScript.ARABIC)) }
+        listOf("hi", "mr", "ne").forEach { put(it, setOf(Character.UnicodeScript.DEVANAGARI)) }
+        listOf("bn", "as").forEach { put(it, setOf(Character.UnicodeScript.BENGALI)) }
+        put("pa", setOf(Character.UnicodeScript.GURMUKHI))
+        put("ka", setOf(Character.UnicodeScript.GEORGIAN))
+        put("hy", setOf(Character.UnicodeScript.ARMENIAN))
+        put("th", setOf(Character.UnicodeScript.THAI))
+        put("ko", setOf(Character.UnicodeScript.HANGUL))
+        put("zh", setOf(Character.UnicodeScript.HAN))
+        put("ja", setOf(Character.UnicodeScript.HAN, Character.UnicodeScript.HIRAGANA, Character.UnicodeScript.KATAKANA))
     }
 
     private data class CjkFallbackResult(val text: String, val transformedCount: Int)

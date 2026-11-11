@@ -216,14 +216,11 @@ internal fun LyricsStudioOverlay(
                         modifier = Modifier.padding(bottom = 10.dp)
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        com.luc4n3x.levyra.domain.LyricsViewerStyle.entries.forEach { style ->
+                        com.luc4n3x.levyra.ui.lyricsViewerChoices(settings, copy.skinDefault, strings.lyricsStyleOriginal).forEach { choice ->
                             StudioChoiceChip(
-                                label = when (style) {
-                                    com.luc4n3x.levyra.domain.LyricsViewerStyle.SKIN_DEFAULT -> copy.skinDefault
-                                    com.luc4n3x.levyra.domain.LyricsViewerStyle.APPLE_MUSIC -> com.luc4n3x.levyra.ui.i18n.APPLE_MUSIC_LYRICS_STYLE_LABEL
-                                },
-                                selected = settings.viewerStyle == style,
-                                onClick = { onUpdateSettings(settings.copy(viewerStyle = style)) }
+                                label = choice.label,
+                                selected = choice.selected,
+                                onClick = { onUpdateSettings(choice.settings) }
                             )
                         }
                     }
