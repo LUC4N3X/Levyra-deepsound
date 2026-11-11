@@ -70,13 +70,14 @@ class DiscoveryEngine(
                 val reason = DiscoveryReason(DiscoveryReasonKind.SimilarToTrack, seed.title, seedArtist = seed.artist)
                 val seedTitle = seed.title.trim().lowercase(Locale.ROOT)
                 val seedArtist = discoveryPrimaryArtistKey(seed.artist)
+                val perArtist = HashMap<String, Int>()
                 val closest = fetch { sources.similarToTrack(seed) }.tracks.filter { track ->
                     val artist = discoveryPrimaryArtistKey(track.artist)
                     artist != seedArtist && artist !in familiarArtistKeys &&
                         DiscoveryRanker.isEligible(DiscoveryCandidate(track, reason), profile, interactions) &&
                         !DiscoveryFilmScores.matches(track) && !isSessionAct(track.artist) &&
                         track.title.trim().lowercase(Locale.ROOT) != seedTitle
-                }.distinctBy { discoveryPrimaryArtistKey(it.artist) }.take(DAILY_POOL_PER_SEED)
+                }.filter { perArtist.merge(discoveryPrimaryArtistKey(it.artist), 1, Int::plus)!! <= DAILY_TRACKS_PER_ARTIST }.take(DAILY_POOL_PER_SEED)
                 rotate(closest, rotation).map { DiscoveryCard(it, reason) }
             }
         }.awaitAll().flatten()
@@ -254,6 +255,7 @@ class DiscoveryEngine(
         private const val MAX_SEED_QUERIES = 4
         private const val DAILY_SEEDS = 6
         private const val DAILY_POOL_PER_SEED = 8
+        private const val DAILY_TRACKS_PER_ARTIST = 2
         private val SESSION_ACT_MARKERS = listOf(
             "studio musicians", "various artists", "karaoke", "tribute", "cover band", "session singers", "kidz bop",
             "hit crew", "party tyme", "ameritz", "lullaby", "for kids", "sound-alike", "soundalike", "originally performed"
