@@ -70,9 +70,12 @@ fun playerSurfaceAlpha(expansion: Float): Float =
     playerMotionProgress(normalize(expansion, SurfaceFadeStart, SurfaceFadeEnd))
 
 fun playerContainerBounds(expansion: Float, origin: Rect?, width: Float, height: Float): Rect {
-    val full = Rect(0f, 0f, width.coerceAtLeast(0f), height.coerceAtLeast(0f))
-    val start = origin ?: Rect(0f, full.bottom * (1f - ContainerFallbackHeightFraction), full.right, full.bottom)
-    return lerpRect(start, full, expansion.finiteOr(PlayerExpansionCollapsed))
+    val safeWidth = width.finiteOr(0f).coerceAtLeast(0f)
+    val safeHeight = height.finiteOr(0f).coerceAtLeast(0f)
+    val startTop = (origin?.top ?: (safeHeight * (1f - ContainerFallbackHeightFraction))).finiteOr(safeHeight).coerceIn(0f, safeHeight)
+    val remaining = 1f - expansion.finiteOr(PlayerExpansionCollapsed).coerceIn(PlayerExpansionCollapsed, PlayerExpansionExpanded)
+    val top = startTop * remaining
+    return Rect(0f, top, safeWidth, top + safeHeight)
 }
 
 fun playerContainerCornerPx(expansion: Float, origin: Rect?): Float {

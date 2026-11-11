@@ -97,13 +97,14 @@ class PlayerExpansionTest {
     }
 
     @Test
-    fun `the player container grows out of the mini player card`() {
+    fun `the full size player slides up from the mini player card`() {
         val card = Rect(24f, 2400f, 1056f, 2560f)
-        assertEquals(card, playerContainerBounds(0f, card, 1080f, 2400f + 600f))
+        assertEquals(Rect(0f, 2400f, 1080f, 5400f), playerContainerBounds(0f, card, 1080f, 3000f))
+        assertEquals(Rect(0f, 1200f, 1080f, 4200f), playerContainerBounds(0.5f, card, 1080f, 3000f))
         assertEquals(Rect(0f, 0f, 1080f, 3000f), playerContainerBounds(1f, card, 1080f, 3000f))
-        assertEquals(Rect(12f, 1200f, 1068f, 2780f), playerContainerBounds(0.5f, card, 1080f, 3000f))
         assertEquals(Rect(0f, 0f, 1080f, 3000f), playerContainerBounds(2f, card, 1080f, 3000f))
-        assertEquals(Rect(0f, 2640f, 1080f, 3000f), playerContainerBounds(0f, null, 1080f, 3000f))
+        assertEquals(Rect(0f, 2640f, 1080f, 5640f), playerContainerBounds(0f, null, 1080f, 3000f))
+        assertEquals(Rect(0f, 3000f, 1080f, 6000f), playerContainerBounds(0f, Rect(0f, 9000f, 1080f, 9100f), 1080f, 3000f))
     }
 
     @Test
@@ -117,13 +118,12 @@ class PlayerExpansionTest {
 
     @Test
     fun `player anchors follow the container while it travels`() {
-        val container = Rect(12f, 1200f, 1068f, 2780f)
+        val container = playerContainerBounds(0.5f, Rect(24f, 2400f, 1056f, 2560f), 1080f, 3000f)
         val artwork = Rect(108f, 300f, 972f, 1164f)
         val placed = artwork.placedInContainer(container, 1080f)
-        val scale = 1056f / 1080f
-        assertEquals(12f + 108f * scale, placed.left, 0.01f)
-        assertEquals(1200f + 300f * scale, placed.top, 0.01f)
-        assertEquals(artwork.width * scale, placed.width, 0.01f)
+        assertEquals(108f, placed.left, 0.01f)
+        assertEquals(1200f + 300f, placed.top, 0.01f)
+        assertEquals(artwork.width, placed.width, 0.01f)
         assertEquals(artwork, artwork.placedInContainer(Rect(0f, 0f, 1080f, 3000f), 1080f))
         assertEquals(artwork, artwork.placedInContainer(container, 0f))
     }

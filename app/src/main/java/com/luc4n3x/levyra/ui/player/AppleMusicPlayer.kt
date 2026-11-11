@@ -366,11 +366,9 @@ internal fun AppleMusicTransport(
     labels: PlayerControlLabels, onShuffle: () -> Unit, onPrevious: () -> Unit,
     onToggle: () -> Unit, onNext: () -> Unit, onRepeat: () -> Unit, modifier: Modifier = Modifier
 ) {
-    Row(modifier.fillMaxWidth().height(80.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier.fillMaxWidth().height(96.dp), verticalAlignment = Alignment.CenterVertically) {
         AppleMusicModeToggle(Icons.Rounded.Shuffle, labels.shuffle, shuffle, null, onShuffle)
-        val compactWidth = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp < 390
-        val gap = if (compactWidth) AppleMusicDesign.playerTransportGap / 2 else AppleMusicDesign.playerTransportGap
-        Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(gap, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.weight(1f), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onPrevious, modifier = Modifier.size(AppleMusicDesign.playerSkipIcon + AppleMusicDesign.playerControlPadding * 2)) {
                 Icon(PlayerIcons.previous, labels.previous, tint = AppleMusicVibrant.primary, modifier = Modifier.size(AppleMusicDesign.playerSkipIcon))
             }
@@ -379,7 +377,7 @@ internal fun AppleMusicTransport(
                     .semantics { contentDescription = if (playing) labels.pause else labels.play },
                 contentAlignment = Alignment.Center
             ) {
-                if (resolving) LevyraLoadingIndicator(color = AppleMusicVibrant.primary, modifier = Modifier.size(30.dp))
+                if (resolving) LevyraLoadingIndicator(color = AppleMusicVibrant.primary, modifier = Modifier.size(42.dp))
                 else Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = AppleMusicVibrant.primary, modifier = Modifier.size(AppleMusicDesign.playerPlayIcon + 10.dp))
             }
             IconButton(onClick = onNext, modifier = Modifier.size(AppleMusicDesign.playerSkipIcon + AppleMusicDesign.playerControlPadding * 2)) {

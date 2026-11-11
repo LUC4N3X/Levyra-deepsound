@@ -698,7 +698,7 @@ private fun LevyraNowPlayingContent(
             }
             if (track != null && LevyraIsQobuz) {
                 QobuzPlayerMoreButton(strings.more) { showActions = true }
-            } else if (track != null) {
+            } else if (track != null && (!appleMusicPlayer || liveRadio)) {
                 PlayerGlassIconButton(
                     icon = PlayerIcons.more,
                     contentDescription = strings.more,
@@ -1027,7 +1027,9 @@ private fun LevyraNowPlayingContent(
                             ?: viewModel.openArtist(activeTrack, artistIndex)
                     },
                     onToggleFavorite = { viewModel.toggleFavorite(activeTrack) },
-                    modifier = lyricsFlipSwipeModifier
+                    modifier = lyricsFlipSwipeModifier,
+                    moreLabel = strings.more,
+                    onMore = if (appleMusicPlayer) ({ showActions = true }) else null
                 )
             }
         }
