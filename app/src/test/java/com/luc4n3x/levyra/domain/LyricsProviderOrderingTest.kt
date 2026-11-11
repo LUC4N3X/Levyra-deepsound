@@ -19,7 +19,10 @@ class LyricsProviderOrderingTest {
                 LyricsProviderId.LRCLIB_SEARCH,
                 LyricsProviderId.LYRICS_PLUS,
                 LyricsProviderId.BINIMUM,
+                LyricsProviderId.NETEASE,
+                LyricsProviderId.KUGOU,
                 LyricsProviderId.YOUTUBE_TRANSCRIPT,
+                LyricsProviderId.JIOSAAVN,
                 LyricsProviderId.LYRICS_OVH
             ),
             defaultOrdering.enabledIds
@@ -36,7 +39,10 @@ class LyricsProviderOrderingTest {
                 LyricsProviderEntry(LyricsProviderId.LYRICS_PLUS),
                 LyricsProviderEntry(LyricsProviderId.LRCLIB_SEARCH),
                 LyricsProviderEntry(LyricsProviderId.BINIMUM),
-                LyricsProviderEntry(LyricsProviderId.YOUTUBE_TRANSCRIPT, enabled = false)
+                LyricsProviderEntry(LyricsProviderId.NETEASE),
+                LyricsProviderEntry(LyricsProviderId.KUGOU),
+                LyricsProviderEntry(LyricsProviderId.YOUTUBE_TRANSCRIPT, enabled = false),
+                LyricsProviderEntry(LyricsProviderId.JIOSAAVN)
             )
         )
         assertEquals(ordering, LyricsProviderOrdering.decode(ordering.encode()))
@@ -51,7 +57,10 @@ class LyricsProviderOrderingTest {
                 LyricsProviderEntry(LyricsProviderId.LRCLIB_EXACT, enabled = false),
                 LyricsProviderEntry(LyricsProviderId.LRCLIB_SEARCH),
                 LyricsProviderEntry(LyricsProviderId.LYRICS_PLUS),
+                LyricsProviderEntry(LyricsProviderId.NETEASE),
+                LyricsProviderEntry(LyricsProviderId.KUGOU),
                 LyricsProviderEntry(LyricsProviderId.YOUTUBE_TRANSCRIPT),
+                LyricsProviderEntry(LyricsProviderId.JIOSAAVN),
                 LyricsProviderEntry(LyricsProviderId.LYRICS_OVH)
             )
         )
@@ -65,7 +74,10 @@ class LyricsProviderOrderingTest {
                 LyricsProviderId.YOUTUBE_MUSIC,
                 LyricsProviderId.LRCLIB_SEARCH,
                 LyricsProviderId.LYRICS_PLUS,
+                LyricsProviderId.NETEASE,
+                LyricsProviderId.KUGOU,
                 LyricsProviderId.YOUTUBE_TRANSCRIPT,
+                LyricsProviderId.JIOSAAVN,
                 LyricsProviderId.LYRICS_OVH
             ),
             roundTrip.enabledIds
@@ -119,11 +131,13 @@ class LyricsProviderOrderingTest {
                 LyricsProviderId.LRCLIB_EXACT,
                 LyricsProviderId.LRCLIB_SEARCH,
                 LyricsProviderId.LYRICS_PLUS,
-                LyricsProviderId.BINIMUM
+                LyricsProviderId.BINIMUM,
+                LyricsProviderId.NETEASE,
+                LyricsProviderId.KUGOU
             ),
             plan.trusted
         )
-        assertEquals(listOf(LyricsProviderId.YOUTUBE_TRANSCRIPT, LyricsProviderId.LYRICS_OVH), plan.lastResort)
+        assertEquals(listOf(LyricsProviderId.YOUTUBE_TRANSCRIPT, LyricsProviderId.JIOSAAVN, LyricsProviderId.LYRICS_OVH), plan.lastResort)
     }
 
     @Test

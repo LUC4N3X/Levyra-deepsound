@@ -208,9 +208,7 @@ private class AppleKaraokeFrame(
     val feather: Float,
     val liftPx: Float,
     val glowPx: Float
-) {
-    val slack: Float = liftPx * 2f + glowPx * 2f
-}
+)
 
 private fun DrawScope.drawKaraoke(
     layout: TextLayoutResult,
@@ -232,7 +230,7 @@ private fun DrawScope.drawKaraoke(
 private fun DrawScope.drawGapSegment(frame: AppleKaraokeFrame, segment: AppleKaraokeSegment) {
     val previous = if (segment.previousWord >= 0) frame.plan.words[segment.previousWord] else null
     val color = if (previous != null && frame.now >= previous.endMs) frame.lit else frame.dim
-    clipRect(segment.left, segment.top - frame.slack, segment.right, segment.bottom + frame.slack) {
+    clipRect(segment.left, segment.top, segment.right, segment.bottom) {
         drawText(frame.layout, color = color)
     }
 }
@@ -255,8 +253,8 @@ private fun DrawScope.drawWordSegment(frame: AppleKaraokeFrame, segment: AppleKa
         drawEmphasized(frame, segment, word, progress, lift)
         return
     }
-    clipRect(segment.left, segment.top - frame.slack, segment.right, segment.bottom + frame.slack) {
-        translate(0f, lift) {
+    translate(0f, lift) {
+        clipRect(segment.left, segment.top, segment.right, segment.bottom) {
             val local = segmentProgress(segment, progress)
             when {
                 local >= 1f -> drawText(frame.layout, color = frame.lit)
@@ -335,7 +333,7 @@ private fun DrawScope.drawEmphasized(
             translate(if (segment.rtl) -offset else offset, lift)
             scale(scale, scale, pivot)
         }) {
-            clipRect(left, plan.charTop[i] - frame.glowPx, right, plan.charBottom[i] + frame.glowPx) {
+            clipRect(left, plan.charTop[i], right, plan.charBottom[i]) {
                 if (brush != null) drawText(frame.layout, brush = brush, shadow = shadow) else drawText(frame.layout, color = solid, shadow = shadow)
             }
         }

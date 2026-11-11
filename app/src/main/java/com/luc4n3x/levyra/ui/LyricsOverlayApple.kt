@@ -13,7 +13,6 @@ import androidx.compose.runtime.remember
 import com.luc4n3x.levyra.domain.LevyraLyricsStudioSettings
 import com.luc4n3x.levyra.domain.LyricLine
 import com.luc4n3x.levyra.domain.LyricsTranslationState
-import com.luc4n3x.levyra.domain.LyricsViewerStyle
 import com.luc4n3x.levyra.ui.i18n.APPLE_MUSIC_LYRICS_STYLE_LABEL
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.appleLyricsCopy
@@ -131,14 +130,9 @@ internal fun AppleLyricsOverlayOptions(
         title = strings.options,
         subtitle = lyricsProviderDisplayName(state.lyricsProvider).takeIf(String::isNotBlank)?.let { "${strings.lyricsSource} · $it" },
         styleTitle = copy.lyricsStyle,
-        styles = listOf(
-            AppleLyricsChoice(copy.skinDefault, settings.viewerStyle == LyricsViewerStyle.SKIN_DEFAULT) {
-                onUpdateStudio(settings.copy(viewerStyle = LyricsViewerStyle.SKIN_DEFAULT))
-            },
-            AppleLyricsChoice(APPLE_MUSIC_LYRICS_STYLE_LABEL, settings.viewerStyle == LyricsViewerStyle.APPLE_MUSIC) {
-                onUpdateStudio(settings.copy(viewerStyle = LyricsViewerStyle.APPLE_MUSIC))
-            }
-        ),
+        styles = lyricsViewerChoices(settings, copy.skinDefault, strings.lyricsStyleOriginal).map { choice ->
+            AppleLyricsChoice(choice.label, choice.selected) { onUpdateStudio(choice.settings) }
+        },
         toggles = buildList {
             add(AppleLyricsToggle(strings.automaticTranslation, state.lyricsTranslationEnabled, onTranslation))
             if (hasRomanization) add(AppleLyricsToggle(strings.lyricsRomanization, settings.romanizationEnabled) { onUpdateStudio(settings.copy(romanizationEnabled = it)) })
@@ -172,4 +166,20 @@ internal fun AppleLyricsOverlayOptions(
 
 internal fun appleLyricsStyleChipLabel(code: String): String = "${appleLyricsCopy(code).lyricsStyle} · $APPLE_MUSIC_LYRICS_STYLE_LABEL"
 
-internal fun LevyraLyricsStudioSettings.withAppleMusicViewer(): LevyraLyricsStudioSettings = copy(viewerStyle = LyricsViewerStyle.APPLE_MUSIC)
+internal val appleLyricsSkin: Boolean
+    get() = com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic || com.luc4n3x.levyra.ui.theme.LevyraIsMono
+
+internal class LyricsViewerChoice(val label: String, val selected: Boolean, val settings: LevyraLyricsStudioSettings)
+
+internal fun lyricsViewerChoices(
+    settings: LevyraLyricsStudioSettings,
+    skinDefaultLabel: String,
+    classicLabel: String
+): List<LyricsViewerChoice> {
+    val appleSkin = appleLyricsSkin
+    val apple = settings.usesAppleMusicLyrics(appleSkin)
+    return listOf(
+        LyricsViewerChoice(if (appleSkin) classicLabel else skinDefaultLabel, !apple, settings.withAppleMusicViewer(false, appleSkin)),
+        LyricsViewerChoice(APPLE_MUSIC_LYRICS_STYLE_LABEL, apple, settings.withAppleMusicViewer(true, appleSkin))
+    )
+}

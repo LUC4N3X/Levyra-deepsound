@@ -244,7 +244,7 @@ private fun LazyListScope.composedCollections(content: ComposedHomeContent, kit:
                 ) { content.actions.openCollection(collection.id) }
             }
         }
-        kit.Cards(strings.collectionsTitle, collections)
+        kit.Cards(homeCollectionsTitle(strings), collections)
     }
 }
 

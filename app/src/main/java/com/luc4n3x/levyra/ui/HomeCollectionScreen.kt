@@ -211,7 +211,7 @@ internal fun HomeCollectionScreen(
                                 .aspectRatio(1f)
                         )
                         Text(
-                            text = strings.collectionsTitle.uppercase(),
+                            text = homeCollectionsTitle(strings).uppercase(),
                             color = LevyraText.copy(alpha = 0.72f),
                             style = LevyraType.overline,
                             modifier = Modifier.padding(top = 24.dp)
@@ -540,3 +540,6 @@ private fun CollectionTrackRow(
         }
     }
 }
+
+internal fun homeCollectionsTitle(strings: com.luc4n3x.levyra.ui.i18n.LevyraStrings): String =
+    if (LevyraIsSpotify) com.luc4n3x.levyra.ui.i18n.curatedPlaylistsTitle(strings.code) else strings.collectionsTitle

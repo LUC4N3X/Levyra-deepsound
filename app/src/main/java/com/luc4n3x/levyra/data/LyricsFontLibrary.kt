@@ -114,9 +114,15 @@ class LyricsFontLibrary internal constructor(
         }
     }
 
-    suspend fun backupItems(): List<LyricsFontBackupItem> = withContext(Dispatchers.IO) {
+    suspend fun backupItems(budgetBytes: Long = MAX_BACKUP_BYTES): List<LyricsFontBackupItem> = withContext(Dispatchers.IO) {
         mutex.withLock {
+            var remaining = budgetBytes.coerceAtMost(MAX_BACKUP_BYTES)
             ensureLoadedLocked().mapNotNull { entry ->
+                if (entry.sizeBytes > remaining) {
+                    Timber.w("Lyrics font %s left out of backup: size budget", entry.id)
+                    return@mapNotNull null
+                }
+                remaining -= entry.sizeBytes
                 runCatching { File(directory, entry.fileName).readBytes() }
                     .onFailure { Timber.w(it, "Lyrics font %s skipped from backup", entry.id) }
                     .getOrNull()
@@ -305,8 +311,9 @@ class LyricsFontLibrary internal constructor(
     }
 
     companion object {
-        const val MAX_FONT_BYTES = 20L * 1024L * 1024L
-        const val MAX_LIBRARY_BYTES = 32L * 1024L * 1024L
+        const val MAX_FONT_BYTES = 128L * 1024L * 1024L
+        const val MAX_LIBRARY_BYTES = 256L * 1024L * 1024L
+        const val MAX_BACKUP_BYTES = 48L * 1024L * 1024L
         const val MAX_FONTS = 12
         private const val INDEX_FILE = "index.json"
         private const val IMPORT_PREFIX = ".import-"

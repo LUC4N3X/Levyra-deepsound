@@ -13,6 +13,7 @@ import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -775,15 +776,17 @@ private fun HomeStudioSectionRow(
             )
             if (id.supportsLayouts && !LevyraSkinManagesLayout) {
                 Box {
-                    TextButton(
-                        onClick = { layoutMenu = true },
-                        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp)
-                    ) {
-                        Text(
-                            text = "${copy.layout}: ${layoutLabel(layout, copy)}",
-                            style = MaterialTheme.typography.labelMedium,
-                        )
-                    }
+                    Text(
+                        text = "${copy.layout}: ${layoutLabel(layout, copy)}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .padding(top = 2.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable(role = Role.Button) { layoutMenu = true }
+                            .heightIn(min = 32.dp)
+                            .padding(vertical = 6.dp)
+                    )
                     DropdownMenu(expanded = layoutMenu, onDismissRequest = { layoutMenu = false }) {
                         HomeSectionLayout.entries.forEach { option ->
                             DropdownMenuItem(

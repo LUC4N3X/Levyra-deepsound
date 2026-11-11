@@ -84,4 +84,30 @@ class LyricsRomanizationTest {
         assertEquals("a", LyricsRomanizer.romanize(nfdGreek))
     }
 
+    @Test
+    fun `japanese lyrics never read kanji with chinese pinyin`() {
+        val lines = listOf("視覚信号, 発射! また会う日まで", "目, 時間盲, 不安感", "どうして どうして")
+        val context = LyricsRomanizer.context(lines, "en")
+        assertEquals("", LyricsRomanizer.romanize(lines[0], context))
+        assertEquals("", LyricsRomanizer.romanize(lines[1], context))
+        assertEquals("doushite doushite", LyricsRomanizer.romanize(lines[2], context))
+    }
+
+    @Test
+    fun `chinese lyrics without kana keep pinyin path`() {
+        val context = LyricsRomanizer.context(listOf("我爱你"), "en")
+        assertTrue(!context.japanese)
+    }
+
+    @Test
+    fun `skips romanization of the reader's own script`() {
+        val russian = LyricsRomanizer.context(listOf("Но я с ней не проведу эту ночь"), "ru")
+        assertEquals("", LyricsRomanizer.romanize("Но я с ней не проведу эту ночь", russian))
+        assertEquals("", LyricsRomanizer.romanize("Найду тебя дуру и у нас будет LOVE", russian))
+        assertEquals("annyeong", LyricsRomanizer.romanize("안녕", russian))
+        val ukrainian = LyricsRomanizer.context(emptyList(), "uk-UA")
+        assertEquals("", LyricsRomanizer.romanize("Привіт", ukrainian))
+        val english = LyricsRomanizer.context(emptyList(), "en")
+        assertEquals("privet mir", LyricsRomanizer.romanize("Привет мир", english))
+    }
 }

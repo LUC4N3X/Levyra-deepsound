@@ -1113,6 +1113,9 @@ class LevyraStrings private constructor(
         LyricsProviderId.LRCLIB_SEARCH -> value("lyricsProviderLrclibSearch")
         LyricsProviderId.LYRICS_PLUS -> value("lyricsProviderLyricsPlus")
         LyricsProviderId.BINIMUM -> value("lyricsProviderBinimum")
+        LyricsProviderId.NETEASE -> "NetEase Cloud Music"
+        LyricsProviderId.KUGOU -> "Kugou"
+        LyricsProviderId.JIOSAAVN -> "JioSaavn"
         LyricsProviderId.YOUTUBE_TRANSCRIPT -> value("lyricsProviderYoutubeTranscript")
         LyricsProviderId.LYRICS_OVH -> value("lyricsProviderLyricsOvh")
     }

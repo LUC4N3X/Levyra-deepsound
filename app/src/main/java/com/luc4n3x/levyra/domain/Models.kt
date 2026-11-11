@@ -189,6 +189,7 @@ enum class LyricsTranslationState {
     PENDING,
     PROVIDER,
     ON_DEVICE,
+    ONLINE,
     SAME_LANGUAGE,
     MODEL_DOWNLOAD_REQUIRED,
     MODEL_DOWNLOADING,

@@ -30,8 +30,10 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.GridView
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SwapVert
@@ -69,7 +71,7 @@ internal enum class SpotifyLibraryFilter { Playlists, Artists, Albums, Downloade
 
 internal enum class SpotifyLibrarySort { Recents, RecentlyAdded, Alphabetical, Creator }
 
-internal enum class SpotifyLibraryKind { Liked, Downloads, Playlist, SavedPlaylist, Album, Artist }
+internal enum class SpotifyLibraryKind { Liked, Recent, Downloads, Device, Playlist, SavedPlaylist, Album, Artist }
 
 @Immutable
 internal data class SpotifyLibraryItem(
@@ -83,7 +85,8 @@ internal data class SpotifyLibraryItem(
     val addedAt: Long,
     val downloaded: Boolean
 ) {
-    val pinned: Boolean get() = kind == SpotifyLibraryKind.Liked || kind == SpotifyLibraryKind.Downloads
+    val pinned: Boolean get() = kind == SpotifyLibraryKind.Liked || kind == SpotifyLibraryKind.Recent ||
+        kind == SpotifyLibraryKind.Downloads || kind == SpotifyLibraryKind.Device
     val key: String get() = "${kind.name}:$id"
 }
 
@@ -100,7 +103,7 @@ internal fun spotifyLibraryArrange(
                 item.kind == SpotifyLibraryKind.SavedPlaylist
             SpotifyLibraryFilter.Artists -> item.kind == SpotifyLibraryKind.Artist
             SpotifyLibraryFilter.Albums -> item.kind == SpotifyLibraryKind.Album
-            SpotifyLibraryFilter.Downloaded -> item.downloaded
+            SpotifyLibraryFilter.Downloaded -> item.downloaded || item.kind == SpotifyLibraryKind.Device
         }
     }
     val (pinned, rest) = filtered.partition { it.pinned }
@@ -124,7 +127,11 @@ internal fun buildSpotifyLibraryItems(
     likedTitle: String,
     downloadsTitle: String,
     listens: List<com.luc4n3x.levyra.domain.Track> = emptyList(),
-    savedPlaylists: List<com.luc4n3x.levyra.domain.SavedPlaylist> = emptyList()
+    savedPlaylists: List<com.luc4n3x.levyra.domain.SavedPlaylist> = emptyList(),
+    deviceTitle: String = "",
+    deviceCount: Int = 0,
+    recentTitle: String = "",
+    recentCount: Int = 0
 ): List<SpotifyLibraryItem> {
     val listenRank = HashMap<String, Long>()
     listens.forEachIndexed { index, track -> if (track.id.isNotBlank()) listenRank.putIfAbsent(track.id, (listens.size - index).toLong()) }
@@ -133,7 +140,11 @@ internal fun buildSpotifyLibraryItems(
     fun saved(tracks: List<com.luc4n3x.levyra.domain.Track>): Boolean = tracks.isNotEmpty() && tracks.all { it.id in downloadedIds }
     return buildList {
         add(SpotifyLibraryItem("liked", SpotifyLibraryKind.Liked, likedTitle, "", "", favorites.size, 0L, 0L, saved(favorites)))
+        if (recentTitle.isNotBlank() && recentCount > 0) {
+            add(SpotifyLibraryItem("recent", SpotifyLibraryKind.Recent, recentTitle, "", "", recentCount, 0L, 0L, false))
+        }
         if (downloadCount > 0) add(SpotifyLibraryItem("downloads", SpotifyLibraryKind.Downloads, downloadsTitle, "", "", downloadCount, 0L, 0L, true))
+        if (deviceTitle.isNotBlank()) add(SpotifyLibraryItem("device", SpotifyLibraryKind.Device, deviceTitle, "", "", deviceCount, 0L, 0L, false))
         playlists.forEach { playlist ->
             val artwork = playlist.coverUrl.ifBlank { playlist.tracks.firstOrNull()?.thumbnailUrl.orEmpty() }
             add(
@@ -373,6 +384,8 @@ private fun SpotifyLibraryArtwork(entry: SpotifyLibraryItem, modifier: Modifier)
     when (entry.kind) {
         SpotifyLibraryKind.Liked -> SpotifyLibraryGlyph(Icons.Rounded.Favorite, SpotifyLikedBrush, shape, modifier)
         SpotifyLibraryKind.Downloads -> SpotifyLibraryGlyph(Icons.Rounded.ArrowCircleDown, SpotifyDownloadsBrush, shape, modifier)
+        SpotifyLibraryKind.Device -> SpotifyLibraryGlyph(Icons.Rounded.PhoneAndroid, SpotifyDeviceBrush, shape, modifier)
+        SpotifyLibraryKind.Recent -> SpotifyLibraryGlyph(Icons.Rounded.History, SpotifyRecentBrush, shape, modifier)
         else -> if (entry.artworkUrl.isNotBlank()) {
             com.luc4n3x.levyra.ui.StableRemoteArtwork(
                 entry.artworkUrl, contentDescription = null, contentScale = ContentScale.Crop,
@@ -451,6 +464,8 @@ private const val SpotifyLibraryGridColumns = 3
 private val SpotifyAvatarColor = Color(0xFFF59B23)
 private val SpotifyLikedBrush = Brush.linearGradient(listOf(Color(0xFF450AF5), Color(0xFF8E8EE5), Color(0xFFC4EFD9)))
 private val SpotifyDownloadsBrush = Brush.linearGradient(listOf(Color(0xFF006450), Color(0xFF1ED760)))
+private val SpotifyDeviceBrush = Brush.linearGradient(listOf(Color(0xFF1E3264), Color(0xFF509BF5)))
+private val SpotifyRecentBrush = Brush.linearGradient(listOf(Color(0xFF8D67AB), Color(0xFFE8115B)))
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

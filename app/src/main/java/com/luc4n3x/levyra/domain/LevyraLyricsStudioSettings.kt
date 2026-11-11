@@ -106,6 +106,7 @@ enum class LyricsGlowEffect {
 
 enum class LyricsViewerStyle {
     SKIN_DEFAULT,
+    CLASSIC,
     APPLE_MUSIC;
 
     companion object {
@@ -143,8 +144,17 @@ data class LevyraLyricsStudioSettings(
 
     fun usesAppleMusicLyrics(appleMusicSkin: Boolean): Boolean = when (viewerStyle) {
         LyricsViewerStyle.APPLE_MUSIC -> true
+        LyricsViewerStyle.CLASSIC -> false
         LyricsViewerStyle.SKIN_DEFAULT -> appleMusicSkin
     }
+
+    fun withAppleMusicViewer(enabled: Boolean, appleMusicSkin: Boolean): LevyraLyricsStudioSettings = copy(
+        viewerStyle = when {
+            enabled == appleMusicSkin -> LyricsViewerStyle.SKIN_DEFAULT
+            enabled -> LyricsViewerStyle.APPLE_MUSIC
+            else -> LyricsViewerStyle.CLASSIC
+        }
+    )
 
     fun applyPreset(preset: LyricsStylePreset): LevyraLyricsStudioSettings = presetBase(preset).copy(
         viewerStyle = viewerStyle,

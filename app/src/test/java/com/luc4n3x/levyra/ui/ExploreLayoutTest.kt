@@ -33,6 +33,15 @@ class ExploreLayoutTest {
     }
 
     @Test
+    fun editorialExploreCarriesTheJourneyOnlyWhenRequested() {
+        val withJourney = buildExploreRows(zones(4), false, true, editorial = true, editorialJourney = true)
+        val withoutJourney = buildExploreRows(zones(4), false, true, editorial = true)
+
+        assertEquals(1, withJourney.count { it == ExploreRow.MoodJourney })
+        assertTrue(withoutJourney.none { it == ExploreRow.MoodJourney })
+    }
+
+    @Test
     fun spotifyDiscoveryReplacesMoodGridWithSamplesAndRemovesItsShortcut() {
         val rows = buildExploreRows(zones(4), false, true, spotifyStyle = true)
 
