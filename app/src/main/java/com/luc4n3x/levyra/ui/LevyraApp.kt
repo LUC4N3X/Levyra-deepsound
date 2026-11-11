@@ -3458,7 +3458,7 @@ fun LevyraApp(
             }
 
             val lastPlaylistHitPreview = rememberLastNonNull(state.playlistHitPreview)
-            AnimatedVisibility(visible = state.playlistHitPreview != null, enter = detailEnter, exit = pageExit) {
+            AnimatedVisibility(visible = state.playlistHitPreview != null, modifier = Modifier.zIndex(40.5f), enter = detailEnter, exit = pageExit) {
                 lastPlaylistHitPreview?.let { preview ->
                     PlaylistHitOverlay(
                         preview = preview,

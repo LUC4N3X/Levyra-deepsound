@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -90,14 +91,16 @@ internal fun AppleMusicCanvasBackdrop(track: Track, canvas: AppleMusicCanvas, pl
         LaunchedEffect(posterKey) { canvas.artwork?.takeIf { posterKey != null }?.let { MotionPosterCache.warm(context, it) } }
         val posterSource = posterKey?.let(MotionPosterCache::source)
         val posterFrame = posterKey?.let(MotionPosterCache::frame)
-        val posterReflection = remember(posterSource, widthPx, videoHeightPx) {
-            posterSource?.takeIf { widthPx > 0 && videoHeightPx > 0 }?.let { AppleCanvasReflections.build(it, widthPx, videoHeightPx) }
+        val posterReflection by produceState<AppleCanvasReflection?>(null, posterSource, widthPx, videoHeightPx) {
+            value = null
+            val source = posterSource?.takeIf { widthPx > 0 && videoHeightPx > 0 } ?: return@produceState
+            value = withContext(Dispatchers.Default) { AppleCanvasReflections.build(source, widthPx, videoHeightPx) }
         }
         var canvasPalette by remember(track.id) { mutableStateOf<MotionBackdropPalette?>(null) }
         val livePalette = canvasPalette?.takeIf { posterSource == null && it.identityKey == canvas.artwork?.identityKey }
         val canvasReflection = rememberCanvasPaletteReflection(livePalette, widthPx, videoHeightPx)
         val coverReflection = rememberAppleCanvasReflection(track, widthPx, videoHeightPx)
-        val reflection = posterReflection ?: canvasReflection ?: coverReflection
+        val reflection = if (posterSource != null) posterReflection else canvasReflection ?: coverReflection
         Box(Modifier.fillMaxWidth().height(videoHeight)) {
             key(track.id) {
                 MotionArtworkLayer(
@@ -112,6 +115,7 @@ internal fun AppleMusicCanvasBackdrop(track: Track, canvas: AppleMusicCanvas, pl
                     onDynamicBackdropPalette = { palette -> canvasPalette = palette },
                     modifier = Modifier.fillMaxSize()
                 ) {
+                    CoverImage(track, Modifier.fillMaxSize(), highRes = true)
                     if (posterFrame != null) {
                         androidx.compose.foundation.Image(
                             bitmap = remember(posterFrame) { posterFrame.asImageBitmap() },
@@ -126,8 +130,6 @@ internal fun AppleMusicCanvasBackdrop(track: Track, canvas: AppleMusicCanvas, pl
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
                         )
-                    } else {
-                        CoverImage(track, Modifier.fillMaxSize(), highRes = true)
                     }
                 }
             }

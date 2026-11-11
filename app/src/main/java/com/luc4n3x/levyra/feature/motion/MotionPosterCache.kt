@@ -48,10 +48,14 @@ object MotionPosterCache {
 
     suspend fun warm(context: Context, artwork: MotionArtwork) {
         val key = posterKey(artwork) ?: return
-        if (synchronized(sources) { sources.containsKey(key) }) return
-        val appContext = context.applicationContext
         val poster = artwork.posterUrl
-        if (!poster.isNullOrBlank()) warmImage(appContext, poster) else warmVideoFrame(key)
+        if (!poster.isNullOrBlank()) {
+            if (synchronized(sources) { sources.containsKey(key) }) return
+            warmImage(context.applicationContext, poster)
+        } else {
+            if (synchronized(frames) { frames.containsKey(key) }) return
+            warmVideoFrame(key)
+        }
     }
 
     private suspend fun warmImage(context: Context, url: String) {

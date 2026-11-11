@@ -191,6 +191,8 @@ internal val AudioTonalSurface: Color get() = if (LevyraIsLight) LevyraCyan.copy
 internal val AudioSelected: Color get() = if (LevyraIsLight) LevyraCyan else lerp(LevyraCyan, Color.White, 0.42f)
 private val AudioSegmentGap = 3.dp
 private val AudioScrollFade = 28.dp
+private val AudioPanelGutter = 20.dp
+private val AudioCardGutter = 18.dp
 private const val DISABLED_ALPHA = 0.42f
 private const val CROSSFADE_CURVE_SAMPLE_COUNT = 49
 private val EqualizerHandleRadius = 5.dp
@@ -305,7 +307,7 @@ internal fun AudioSettingsPanel(
             LazyColumn(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 state = tabListState,
-                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 28.dp),
+                contentPadding = PaddingValues(start = AudioPanelGutter, end = AudioPanelGutter, top = 12.dp, bottom = 28.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 if (panelTab == AudioPanelTab.PLAYBACK) {
@@ -1574,7 +1576,7 @@ private fun AudioCard(content: @Composable () -> Unit) {
         shape = CardShape,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Box(modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp)) {
+        Box(modifier = Modifier.padding(horizontal = AudioCardGutter, vertical = 18.dp)) {
             content()
         }
     }
@@ -1623,6 +1625,7 @@ private fun PlaybackBufferModeCard(
                     copy.automatic to PlaybackBufferMode.AUTOMATIC.storageValue,
                     copy.custom to PlaybackBufferMode.CUSTOM.storageValue
                 ),
+                gutter = AudioCardGutter,
                 onSelect = { selected ->
                     onSettings(settings.copy(mode = PlaybackBufferMode.fromStorage(selected)))
                 }
@@ -2085,16 +2088,18 @@ internal fun AudioSegment(
 @Composable
 internal fun AudioSegmentStrip(
     gap: Dp = AudioSegmentGap,
+    gutter: Dp = AudioPanelGutter,
     content: @Composable () -> Unit
 ) {
-    BoxWithConstraints(Modifier.fillMaxWidth()) {
-        val available = constraints.maxWidth
+    BoxWithConstraints(Modifier.fillMaxWidth().recentSearchesBleed(gutter)) {
+        val available = constraints.maxWidth - 2 * with(LocalDensity.current) { gutter.roundToPx() }
         val scroll = rememberScrollState()
         Layout(
             content = content,
             modifier = Modifier
                 .horizontalFadeEdges(scroll.canScrollBackward, scroll.canScrollForward, AudioScrollFade)
                 .horizontalScroll(scroll)
+                .padding(horizontal = gutter)
                 .selectableGroup()
         ) { measurables, _ ->
             val gapPx = gap.roundToPx()
@@ -2132,9 +2137,10 @@ internal fun audioSegmentWidths(naturalWidths: List<Int>, availableWidth: Int, g
 private fun AudioQualityRow(
     selected: String,
     labels: List<Pair<String, String>>,
+    gutter: Dp = AudioPanelGutter,
     onSelect: (String) -> Unit
 ) {
-    AudioSegmentStrip {
+    AudioSegmentStrip(gutter = gutter) {
         labels.forEachIndexed { index, (label, quality) ->
             AudioSegment(
                 label = label,
