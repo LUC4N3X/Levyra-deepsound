@@ -196,7 +196,7 @@ internal fun TorqueRadioScreen(
                 TorqueRadioField(state.query, radioStrings.searchHint, strings.clear, viewModel::setQuery)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     TorqueRadioPlate(selectedCountryLabel(state, radioStrings), true, Modifier.weight(1f)) { countryPickerOpen = true }
-                    TorqueRadioPlate(state.selectedLanguage ?: radioStrings.languages, false, Modifier.weight(1f)) { languagePickerOpen = true }
+                    TorqueRadioPlate(state.selectedLanguage?.let { radioLanguageLabel(it, state.languages, languageCode) } ?: radioStrings.languages, false, Modifier.weight(1f)) { languagePickerOpen = true }
                 }
             }
         }
@@ -314,8 +314,8 @@ internal fun TorqueRadioScreen(
     }
     if (languagePickerOpen) {
         RadioDirectoryDialog(
-            title = radioStrings.languages, entries = state.languages, selected = state.selectedLanguage, allLabel = radioStrings.worldwide,
-            display = RadioDirectoryEntry::name, value = RadioDirectoryEntry::name,
+            title = radioStrings.languages, entries = state.languages, selected = state.selectedLanguage, allLabel = radioStrings.worldwide, alphabeticalLanguageCode = languageCode,
+            display = { localizedLanguageName(it, languageCode) }, value = RadioDirectoryEntry::name,
             onDismiss = { languagePickerOpen = false },
             onSelect = {
                 viewModel.selectLanguage(it)

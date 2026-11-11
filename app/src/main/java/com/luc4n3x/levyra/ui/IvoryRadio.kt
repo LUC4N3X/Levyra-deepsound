@@ -197,7 +197,7 @@ internal fun IvoryRadioScreen(
                 IvoryRadioField(state.query, radioStrings.searchHint, strings.clear, viewModel::setQuery)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     IvoryRadioPlate(selectedCountryLabel(state, radioStrings), true, Modifier.weight(1f)) { countryPickerOpen = true }
-                    IvoryRadioPlate(state.selectedLanguage ?: radioStrings.languages, false, Modifier.weight(1f)) { languagePickerOpen = true }
+                    IvoryRadioPlate(state.selectedLanguage?.let { radioLanguageLabel(it, state.languages, languageCode) } ?: radioStrings.languages, false, Modifier.weight(1f)) { languagePickerOpen = true }
                 }
             }
         }
@@ -315,8 +315,8 @@ internal fun IvoryRadioScreen(
     }
     if (languagePickerOpen) {
         RadioDirectoryDialog(
-            title = radioStrings.languages, entries = state.languages, selected = state.selectedLanguage, allLabel = radioStrings.worldwide,
-            display = RadioDirectoryEntry::name, value = RadioDirectoryEntry::name,
+            title = radioStrings.languages, entries = state.languages, selected = state.selectedLanguage, allLabel = radioStrings.worldwide, alphabeticalLanguageCode = languageCode,
+            display = { localizedLanguageName(it, languageCode) }, value = RadioDirectoryEntry::name,
             onDismiss = { languagePickerOpen = false },
             onSelect = {
                 viewModel.selectLanguage(it)

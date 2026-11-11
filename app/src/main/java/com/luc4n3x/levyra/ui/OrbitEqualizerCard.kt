@@ -8,6 +8,8 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -71,8 +73,10 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.OrbitEqualizer
@@ -480,8 +484,8 @@ private fun OrbitField(
             drawCircle(surface, radius = 11.dp.toPx(), center = point)
             drawCircle(accent, radius = 8.dp.toPx(), center = point)
         }
-        OrbitPoleLabel(copy.forward, Modifier.align(Alignment.TopCenter)) { onPole(OrbitPosition(0f, POLE_REACH)) }
-        OrbitPoleLabel(copy.open, Modifier.align(Alignment.BottomCenter)) { onPole(OrbitPosition(0f, -POLE_REACH)) }
+        OrbitPoleLabel(copy.forward, Modifier.align(Alignment.TopCenter), maxWidth = 168.dp) { onPole(OrbitPosition(0f, POLE_REACH)) }
+        OrbitPoleLabel(copy.open, Modifier.align(Alignment.BottomCenter), maxWidth = 168.dp) { onPole(OrbitPosition(0f, -POLE_REACH)) }
         OrbitPoleLabel(copy.warm, Modifier.align(AbsoluteAlignment.CenterLeft)) { onPole(OrbitPosition(-POLE_REACH, 0f)) }
         OrbitPoleLabel(copy.bright, Modifier.align(AbsoluteAlignment.CenterRight)) { onPole(OrbitPosition(POLE_REACH, 0f)) }
     }
@@ -495,20 +499,19 @@ private fun poleState(position: OrbitPosition, copy: OrbitEqCopy): String {
 }
 
 @Composable
-private fun OrbitPoleLabel(label: String, modifier: Modifier, onClick: () -> Unit) {
+private fun OrbitPoleLabel(label: String, modifier: Modifier, maxWidth: Dp = 96.dp, onClick: () -> Unit) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
-            .sizeIn(minWidth = 48.dp, minHeight = 48.dp, maxWidth = 96.dp)
+            .sizeIn(minWidth = 48.dp, minHeight = 48.dp, maxWidth = maxWidth)
             .clickable(role = Role.Button, onClick = onClick)
     ) {
-        Text(
-            label,
-            color = LevyraMuted,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Black,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
+        BasicText(
+            text = label,
+            style = TextStyle(color = LevyraMuted, fontWeight = FontWeight.Black),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            autoSize = TextAutoSize.StepBased(minFontSize = 7.sp, maxFontSize = 11.sp)
         )
     }
 }

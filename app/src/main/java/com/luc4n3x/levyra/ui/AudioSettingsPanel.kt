@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui
 
+import androidx.compose.foundation.lazy.rememberLazyListState
+import com.luc4n3x.levyra.ui.player.horizontalFadeEdges
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 import com.luc4n3x.levyra.ui.theme.LevyraIsPrism
 
@@ -13,7 +15,6 @@ import com.luc4n3x.levyra.ui.components.levyraExpressiveCorner
 import com.luc4n3x.levyra.ui.components.levyraExpressiveToggleCorner
 import com.luc4n3x.levyra.ui.components.levyraGroupedListShape
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.animation.core.Spring
@@ -69,6 +70,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.progressSemantics
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -105,6 +107,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -185,6 +190,7 @@ internal val AudioCardSurface: Color get() = if (LevyraIsLight) LevyraAdaptiveCa
 internal val AudioTonalSurface: Color get() = if (LevyraIsLight) LevyraCyan.copy(alpha = 0.14f) else lerp(Color(0xFF1C1D21), LevyraCyan, 0.30f)
 internal val AudioSelected: Color get() = if (LevyraIsLight) LevyraCyan else lerp(LevyraCyan, Color.White, 0.42f)
 private val AudioSegmentGap = 3.dp
+private val AudioScrollFade = 28.dp
 private const val DISABLED_ALPHA = 0.42f
 private const val CROSSFADE_CURVE_SAMPLE_COUNT = 49
 private val EqualizerHandleRadius = 5.dp
@@ -377,7 +383,10 @@ internal fun AudioSettingsPanel(
                                     )
                                 }
                             )
+                            val presetRow = rememberLazyListState()
                             LazyRow(
+                                state = presetRow,
+                                modifier = Modifier.horizontalFadeEdges(presetRow.canScrollBackward, presetRow.canScrollForward, AudioScrollFade),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 contentPadding = PaddingValues(end = 4.dp)
                             ) {
@@ -1550,7 +1559,7 @@ private fun AudioPanelTabs(
                         ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = 13.sp)
+                        autoSize = TextAutoSize.StepBased(minFontSize = 8.sp, maxFontSize = 13.sp)
                     )
                 }
             }
@@ -1638,7 +1647,12 @@ private fun PlaybackBufferPresetCard(
     AudioCard {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             AudioCardHeader(copy.presets, "")
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            val presetRow = rememberLazyListState()
+            LazyRow(
+                state = presetRow,
+                modifier = Modifier.horizontalFadeEdges(presetRow.canScrollBackward, presetRow.canScrollForward, AudioScrollFade),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 val presets = listOf(
                     copy.reduced to PlaybackBufferSettings.Reduced,
                     copy.balanced to PlaybackBufferSettings.Balanced,
@@ -1822,7 +1836,6 @@ private fun AudioEqualizerSwitchRow(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 56.dp)
-            .clip(RoundedCornerShape(18.dp))
             .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
             .semantics { contentDescription = label },
         verticalAlignment = Alignment.CenterVertically,
@@ -2017,12 +2030,11 @@ private fun AudioPresetChip(label: String, selected: Boolean, enabled: Boolean, 
 }
 
 @Composable
-internal fun RowScope.AudioSegment(
+internal fun AudioSegment(
     label: String,
     selected: Boolean,
     first: Boolean,
     last: Boolean,
-    maxLines: Int = 1,
     showCheck: Boolean = true,
     onClick: () -> Unit
 ) {
@@ -2047,7 +2059,6 @@ internal fun RowScope.AudioSegment(
             bottomEnd = if (last) outer else inner
         ),
         modifier = Modifier
-            .weight(1f)
             .heightIn(min = 52.dp)
             .semantics { role = Role.RadioButton }
     ) {
@@ -2063,12 +2074,58 @@ internal fun RowScope.AudioSegment(
                 label,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                maxLines = maxLines,
-                overflow = TextOverflow.Ellipsis,
+                maxLines = 1,
+                softWrap = false,
                 textAlign = TextAlign.Center
             )
         }
     }
+}
+
+@Composable
+internal fun AudioSegmentStrip(
+    gap: Dp = AudioSegmentGap,
+    content: @Composable () -> Unit
+) {
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val available = constraints.maxWidth
+        val scroll = rememberScrollState()
+        Layout(
+            content = content,
+            modifier = Modifier
+                .horizontalFadeEdges(scroll.canScrollBackward, scroll.canScrollForward, AudioScrollFade)
+                .horizontalScroll(scroll)
+                .selectableGroup()
+        ) { measurables, _ ->
+            val gapPx = gap.roundToPx()
+            val widths = audioSegmentWidths(
+                naturalWidths = measurables.map { it.maxIntrinsicWidth(Constraints.Infinity) },
+                availableWidth = available,
+                gap = gapPx
+            )
+            val height = measurables.indices.maxOfOrNull { measurables[it].minIntrinsicHeight(widths[it]) } ?: 0
+            val placeables = measurables.mapIndexed { index, measurable ->
+                measurable.measure(Constraints.fixed(widths[index], height))
+            }
+            val total = widths.sum() + gapPx * (placeables.size - 1).coerceAtLeast(0)
+            layout(total, height) {
+                var x = 0
+                placeables.forEach { placeable ->
+                    placeable.place(x, 0)
+                    x += placeable.width + gapPx
+                }
+            }
+        }
+    }
+}
+
+internal fun audioSegmentWidths(naturalWidths: List<Int>, availableWidth: Int, gap: Int): List<Int> {
+    if (naturalWidths.isEmpty()) return emptyList()
+    val used = naturalWidths.sum() + gap * (naturalWidths.size - 1)
+    val spare = (availableWidth - used).coerceAtLeast(0)
+    val share = spare / naturalWidths.size
+    val remainder = spare % naturalWidths.size
+    return naturalWidths.mapIndexed { index, width -> width + share + if (index < remainder) 1 else 0 }
 }
 
 @Composable
@@ -2077,10 +2134,7 @@ private fun AudioQualityRow(
     labels: List<Pair<String, String>>,
     onSelect: (String) -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth().selectableGroup(),
-        horizontalArrangement = Arrangement.spacedBy(AudioSegmentGap)
-    ) {
+    AudioSegmentStrip {
         labels.forEachIndexed { index, (label, quality) ->
             AudioSegment(
                 label = label,

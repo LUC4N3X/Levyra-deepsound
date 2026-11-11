@@ -130,17 +130,13 @@ internal fun EqualizerModeSelector(
         EqualizerEditorMode.PARAMETRIC to copy.parametricEq,
         EqualizerEditorMode.ORBIT to orbitLabel
     )
-    Row(
-        modifier = Modifier.fillMaxWidth().selectableGroup(),
-        horizontalArrangement = Arrangement.spacedBy(3.dp)
-    ) {
+    AudioSegmentStrip {
         modes.forEachIndexed { index, (mode, label) ->
             AudioSegment(
                 label = label,
                 selected = selected == mode,
                 first = index == 0,
                 last = index == modes.lastIndex,
-                maxLines = 2,
                 showCheck = false,
                 onClick = { onSelect(mode) }
             )

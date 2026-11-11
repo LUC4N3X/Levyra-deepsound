@@ -240,7 +240,7 @@ internal fun LiveRadioScreen(
                     )
                     RadioDirectoryButton(
                         modifier = Modifier.weight(1f),
-                        label = state.selectedLanguage ?: radioStrings.languages,
+                        label = state.selectedLanguage?.let { radioLanguageLabel(it, state.languages, languageCode) } ?: radioStrings.languages,
                         icon = null,
                         onClick = { languagePickerOpen = true }
                     )
@@ -438,7 +438,8 @@ internal fun LiveRadioScreen(
             entries = state.languages,
             selected = state.selectedLanguage,
             allLabel = radioStrings.worldwide,
-            display = RadioDirectoryEntry::name,
+            alphabeticalLanguageCode = languageCode,
+            display = { localizedLanguageName(it, languageCode) },
             value = RadioDirectoryEntry::name,
             onDismiss = { languagePickerOpen = false },
             onSelect = {
@@ -1290,7 +1291,9 @@ internal fun radioDirectoryRows(
     alphabeticalLanguageCode: String?,
     display: (RadioDirectoryEntry) -> String
 ): List<Pair<RadioDirectoryEntry, String>> {
-    val rows = entries.distinctBy { "${it.code}:${it.name}" }.map { it to display(it) }
+    val rows = entries.distinctBy { "${it.code}:${it.name}" }
+        .map { it to display(it) }
+        .filter { it.second.firstOrNull()?.isLetter() == true }
     alphabeticalLanguageCode ?: return rows
     val collator = Collator.getInstance(Locale.forLanguageTag(alphabeticalLanguageCode)).apply { strength = Collator.PRIMARY }
     return rows.sortedWith(compareBy(collator) { it.second })
@@ -1303,10 +1306,21 @@ internal fun selectedCountryLabel(state: LiveRadioUiState, strings: LevyraLiveRa
 
 internal fun mainSectionTitle(state: LiveRadioUiState, strings: LevyraLiveRadioStrings): String {
     if (state.query.isNotBlank()) return state.query.trim()
-    state.selectedLanguage?.let { return it }
+    state.selectedLanguage?.let { return radioLanguageLabel(it, state.languages, state.levyraLanguageCode) }
     val code = state.selectedCountryCode ?: return strings.worldwide
     return strings.popularIn(localizedCountryName(code, state.levyraLanguageCode).ifBlank { code })
 }
+
+internal fun localizedLanguageName(entry: RadioDirectoryEntry, languageCode: String): String {
+    val uiLocale = Locale.forLanguageTag(languageCode)
+    val localized = runCatching { Locale.forLanguageTag(entry.code).getDisplayLanguage(uiLocale) }.getOrDefault("")
+    return localized.takeIf { it.isNotBlank() && !it.equals(entry.code, ignoreCase = true) }
+        ?.replaceFirstChar { it.titlecase(uiLocale) }
+        ?: entry.name
+}
+
+internal fun radioLanguageLabel(name: String, languages: List<RadioDirectoryEntry>, languageCode: String): String =
+    languages.firstOrNull { it.name == name }?.let { localizedLanguageName(it, languageCode) } ?: name
 
 internal fun localizedCountryName(countryCode: String, languageCode: String): String = runCatching {
     Locale.Builder().setRegion(countryCode.uppercase(Locale.ROOT)).build()

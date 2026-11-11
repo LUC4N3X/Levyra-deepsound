@@ -3062,7 +3062,7 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private fun syncMotionGestureContext() {
-        val playing = (mediaSession?.player ?: activePlayer)?.isPlaying == true
+        val playing = activePlayer?.isPlaying == true
         val alarmRinging = _gentleWakeRuntimeStateFlow.value.active &&
             !_gentleWakeRuntimeStateFlow.value.previewActive
         motionGestureController.updatePlaybackContext(

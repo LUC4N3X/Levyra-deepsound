@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraTabLabel
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -17,8 +18,6 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.ui.components.LocalDockMorph
 import com.luc4n3x.levyra.ui.components.dockMorphTray
@@ -98,7 +97,7 @@ private fun RowScope.PrismNavigationTab(entry: LevyraTabEntry, active: Boolean, 
             Icon(if (active) entry.selectedIcon else entry.unselectedIcon, null, tint = tint, modifier = Modifier.size(22.dp))
         }
         Spacer(Modifier.height(4.dp))
-        Text(entry.label, color = if (active) LevyraText else LevyraMuted, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        LevyraTabLabel(entry.label, MaterialTheme.typography.labelSmall.copy(color = if (active) LevyraText else LevyraMuted))
         if (torque) Box(Modifier.padding(top = 4.dp).width(20.dp).height(3.dp).background(if (active) LevyraActivePalette.blue else Color.Transparent))
     }
 }
@@ -127,9 +126,9 @@ private fun IvoryBottomTabs(
                             tint = if (active) IvoryDesign.onInk else LevyraText, modifier = Modifier.size(22.dp)
                         )
                         Spacer(Modifier.height(3.dp))
-                        Text(
-                            entry.label, color = if (active) IvoryDesign.onInk else LevyraMuted, style = MaterialTheme.typography.labelSmall,
-                            textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 10.dp)
+                        LevyraTabLabel(
+                            entry.label, MaterialTheme.typography.labelSmall.copy(color = if (active) IvoryDesign.onInk else LevyraMuted),
+                            Modifier.padding(horizontal = 10.dp)
                         )
                     }
                 }

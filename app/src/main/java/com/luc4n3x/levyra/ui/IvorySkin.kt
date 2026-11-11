@@ -326,7 +326,8 @@ internal fun IvoryChartPage(page: List<IndexedValue<Track>>, currentId: String?,
                 val content = if (current) IvoryDesign.onInk else LevyraText
                 Text(
                     (index + 1).toString(), color = if (current) IvoryDesign.onInk else if (index < 3) IvoryDesign.rose else LevyraMuted,
-                    fontSize = 24.sp, fontWeight = FontWeight.Light, textAlign = TextAlign.Center, modifier = Modifier.width(32.dp)
+                    fontSize = 24.sp, fontWeight = FontWeight.Light, textAlign = TextAlign.Center, maxLines = 1, softWrap = false,
+                    modifier = Modifier.widthIn(min = 32.dp)
                 )
                 Box(Modifier.size(50.dp).clip(RoundedCornerShape(IvoryDesign.tileCorner))) { CoverImage(track, Modifier.fillMaxSize()) }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {

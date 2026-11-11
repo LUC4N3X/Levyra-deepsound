@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraTabLabel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -14,7 +15,6 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Sensors
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -25,8 +25,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.LevyraTab
@@ -80,11 +78,12 @@ internal fun AppleMusicBottomTabs(
                 ) {
                     Icon(appleMusicTabIcon(entry.tab, entry.selectedIcon), null, tint = tint, modifier = Modifier.size(AppleMusicDesign.navIcon - 2.dp))
                     Spacer(Modifier.height(1.dp))
-                    Text(
-                        entry.label, color = tint, fontSize = 11.sp, lineHeight = 13.sp,
-                        fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium,
-                        style = MaterialTheme.typography.labelSmall,
-                        textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis
+                    LevyraTabLabel(
+                        entry.label,
+                        MaterialTheme.typography.labelSmall.copy(
+                            color = tint, fontSize = 11.sp, lineHeight = 13.sp,
+                            fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium
+                        )
                     )
                 }
             }

@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraTabLabel
 import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -27,7 +28,6 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -71,11 +71,12 @@ internal fun YouTubeMusicBottomTabs(
                         tint = YouTubeMusicDesign.text, modifier = Modifier.size(YouTubeMusicDesign.navIcon)
                     )
                     Spacer(Modifier.height(4.dp))
-                    Text(
-                        entry.label, color = YouTubeMusicDesign.text, fontSize = 12.sp, lineHeight = 14.sp,
-                        fontWeight = if (active) FontWeight.Medium else FontWeight.Normal,
-                        style = MaterialTheme.typography.labelSmall,
-                        textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis
+                    LevyraTabLabel(
+                        entry.label,
+                        MaterialTheme.typography.labelSmall.copy(
+                            color = YouTubeMusicDesign.text, fontSize = 12.sp, lineHeight = 14.sp,
+                            fontWeight = if (active) FontWeight.Medium else FontWeight.Normal
+                        )
                     )
                 }
             }

@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.Role
@@ -35,6 +36,7 @@ import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -56,6 +58,10 @@ private val TorqueBandShape = GenericShape { size, _ ->
 }
 
 private const val TorqueDiagonalCenter = 0.67f
+private val TorqueMinCoverHeight = 160.dp
+
+internal fun torqueCoverHeightPx(viewportPx: Int, preferredPx: Int, minPx: Int, restPx: Int): Int =
+    (viewportPx - restPx).coerceAtMost(preferredPx).coerceAtLeast(minOf(minPx, preferredPx))
 
 @Composable
 internal fun TorquePlayerScene(track: Track, slots: PlayerDeckSlots, metadata: @Composable () -> Unit, transport: @Composable () -> Unit, modifier: Modifier = Modifier) {
@@ -64,21 +70,42 @@ internal fun TorquePlayerScene(track: Track, slots: PlayerDeckSlots, metadata: @
         val bandHeight = (maxHeight * 0.32f).coerceIn(220.dp, 270.dp)
         val viewport = maxHeight
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-            Column(Modifier.fillMaxWidth().heightIn(min = viewport)) {
-                Box(Modifier.fillMaxWidth().height(coverHeight)) {
-                    slots.stage(track, Modifier.fillMaxSize(), 0.dp)
-                    Box(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp)) { slots.header() }
+            Layout(
+                content = {
+                    Box(Modifier.fillMaxWidth()) {
+                        slots.stage(track, Modifier.fillMaxSize(), 0.dp)
+                        Box(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp)) { slots.header() }
+                    }
+                    Box(Modifier.fillMaxWidth()) { slots.progress(PlayerProgressStyle.Classic) }
+                    TorqueBand(track, bandHeight, transport)
+                    Column(
+                        Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        metadata()
+                        slots.engagement(track)
+                        slots.dock(track)
+                    }
                 }
-                slots.progress(PlayerProgressStyle.Classic)
-                TorqueBand(track, bandHeight, transport)
-                Spacer(Modifier.weight(1f))
-                Column(
-                    Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    metadata()
-                    slots.engagement(track)
-                    slots.dock(track)
+            ) { measurables, constraints ->
+                val width = constraints.maxWidth
+                val loose = Constraints(maxWidth = width)
+                val progress = measurables[1].measure(loose)
+                val band = measurables[2].measure(loose)
+                val bottom = measurables[3].measure(loose)
+                val viewportPx = viewport.roundToPx()
+                val cover = torqueCoverHeightPx(
+                    viewportPx, coverHeight.roundToPx(), TorqueMinCoverHeight.roundToPx(),
+                    progress.height + band.height + bottom.height
+                )
+                val stage = measurables[0].measure(Constraints.fixed(width, cover))
+                val stacked = cover + progress.height + band.height
+                val height = maxOf(viewportPx, stacked + bottom.height)
+                layout(width, height) {
+                    stage.place(0, 0)
+                    progress.place(0, cover)
+                    band.place(0, cover + progress.height)
+                    bottom.place(0, height - bottom.height)
                 }
             }
         }

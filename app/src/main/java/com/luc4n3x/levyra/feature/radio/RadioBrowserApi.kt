@@ -115,9 +115,10 @@ internal class RadioBrowserApi(
     suspend fun languages(): List<RadioDirectoryEntry> = directoryRequest("json/languages") { json ->
         RadioDirectoryEntry(
             name = json.optString("name").trim(),
+            code = json.optString("iso_639").trim().lowercase(Locale.ROOT),
             stationCount = json.optInt("stationcount", 0)
         )
-    }
+    }.filter { ISO_639_LANGUAGE.matches(it.code) }
 
     suspend fun recordClick(stationUuid: String) {
         if (!SAFE_UUID.matches(stationUuid)) return
@@ -228,6 +229,7 @@ internal class RadioBrowserApi(
         const val MAX_DIRECTORY_BYTES = 400_000
         const val MAX_CLICK_BYTES = 16_000
         val SAFE_UUID = Regex("^[a-fA-F0-9-]{8,64}$")
+        val ISO_639_LANGUAGE = Regex("^[a-z]{2,3}$")
         val nextServer = AtomicInteger(0)
     }
 }
