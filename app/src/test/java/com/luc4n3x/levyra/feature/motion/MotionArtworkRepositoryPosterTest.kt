@@ -51,4 +51,20 @@ class MotionArtworkRepositoryPosterTest {
         val hit = repository.get("key", 3L) as MotionArtworkCacheResult.Hit
         assertNull(hit.artwork.posterUrl)
     }
+
+    @Test
+    fun appleVideoWithoutPreviewFrameIsCachedWithoutResolvingAgain() = runBlocking {
+        val dao = FakeDao()
+        val repository = MotionArtworkRepository(dao) { 5L }
+        repository.save(
+            MotionArtwork(
+                identityKey = "key", provider = "apple-motion", url = "https://example.invalid/v.m3u8",
+                mimeType = "application/x-mpegURL", width = null, height = null, confidence = 90,
+                expiresAtMs = 10_000L, lastVerifiedAtMs = 1L, configEpoch = 3L, posterUrl = null
+            )
+        )
+        val hit = repository.get("key", 3L) as MotionArtworkCacheResult.Hit
+        assertNull(hit.artwork.posterUrl)
+        assertEquals(1, dao.rows.size)
+    }
 }

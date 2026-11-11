@@ -59,7 +59,7 @@ class MotionArtworkRepository(
                 lastVerifiedAt = artwork.lastVerifiedAtMs,
                 configEpoch = artwork.configEpoch,
                 negative = false,
-                posterUrl = artwork.posterUrl
+                posterUrl = artwork.posterUrl ?: if (artwork.provider == APPLE_MOTION_PROVIDER) NO_POSTER else null
             )
         )
         dao.prune(MAX_CACHE_ENTRIES)
@@ -96,5 +96,6 @@ class MotionArtworkRepository(
     private companion object {
         const val MAX_CACHE_ENTRIES = 240
         const val APPLE_MOTION_PROVIDER = "apple-motion"
+        const val NO_POSTER = ""
     }
 }
