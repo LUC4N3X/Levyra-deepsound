@@ -78,7 +78,7 @@ internal fun decryptKugouKrc(payload: ByteArray): String? {
             output.write(buffer, 0, read)
             if (output.size() > KUGOU_MAX_LYRICS_BYTES) return null
         }
-        output.toString(Charsets.UTF_8.name()).removePrefix("﻿")
+        output.toString(Charsets.UTF_8.name()).removePrefix("\uFEFF")
     } catch (_: java.util.zip.DataFormatException) {
         null
     } finally {
