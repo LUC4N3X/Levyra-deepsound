@@ -136,6 +136,8 @@ internal class DiscoveryHomeHandle(
 
 internal val LocalHomeDiscovery = staticCompositionLocalOf<DiscoveryHomeHandle?> { null }
 
+internal val LocalDailyDiscovery = staticCompositionLocalOf<DiscoveryHomeHandle?> { null }
+
 internal fun LazyListScope.discoverySection(
     handle: DiscoveryHomeHandle?,
     style: HomeStyle,
@@ -147,11 +149,13 @@ internal fun LazyListScope.discoverySection(
     item(key = "home-discovery", contentType = "home-discovery") {
         val ui by handle.state.collectAsStateWithLifecycle()
         LaunchedEffect(handle) { handle.onWarm() }
-        Column(modifier) {
-            DiscoveryHomeSection(ui, style, spec, animationsEnabled, handle)
-            val code = LocalLevyraStrings.current.code
-            DailyDiscoveryShelf(ui, style, spec, remember(code) { discoveryCopy(code) }, handle)
-        }
+        Box(modifier) { DiscoveryHomeSection(ui, style, spec, animationsEnabled, handle) }
+    }
+}
+
+internal fun LazyListScope.dailyDiscoverySection(style: HomeStyle, spec: HomeStyleSpec) {
+    item(key = "home-daily-discovery", contentType = "home-daily-discovery") {
+        DailyDiscoveryShelf(spec.inset, style, spec)
     }
 }
 

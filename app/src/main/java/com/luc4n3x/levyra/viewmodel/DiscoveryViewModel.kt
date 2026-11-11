@@ -58,7 +58,8 @@ data class DiscoveryUiState(
     val savedThisWeek: Int = 0,
     val message: DiscoveryMessage? = null,
     val request: DiscoveryRequest = DiscoveryRequest(),
-    val scenes: List<ExploreCategory> = emptyList()
+    val scenes: List<ExploreCategory> = emptyList(),
+    val daily: List<DiscoveryCard> = emptyList()
 ) {
     val teaser: List<DiscoveryCard> get() = listOfNotNull(deck.current) + deck.upcoming
 }
@@ -88,6 +89,8 @@ class DiscoveryViewModel internal constructor(private val root: LevyraViewModel)
     private val bubblePreferences = root.getApplication<android.app.Application>()
         .getSharedPreferences(BUBBLE_PREFERENCES, android.content.Context.MODE_PRIVATE)
     private var scenesJob: Job? = null
+    private var dailyJob: Job? = null
+    private var dailyDay = -1L
 
     init {
         val level = BubbleLevel.fromStorage(bubblePreferences.getString(KEY_LEVEL, null))
@@ -125,6 +128,7 @@ class DiscoveryViewModel internal constructor(private val root: LevyraViewModel)
     }
 
     fun warm() {
+        warmDaily()
         if (loadJob?.isActive == true) return
         val language = languageCode()
         val stale = System.currentTimeMillis() - loadedAtMs > FEED_TTL_MS
@@ -132,6 +136,17 @@ class DiscoveryViewModel internal constructor(private val root: LevyraViewModel)
         val needsLoad = current.status == DiscoveryFeedStatus.Idle || current.status == DiscoveryFeedStatus.Error ||
             language != loadedLanguage || (stale && !sessionActive)
         if (needsLoad) load(keepVisible = current.deck.current != null && language == loadedLanguage)
+    }
+
+    fun warmDaily() {
+        val today = LocalDate.now().toEpochDay()
+        if (dailyJob?.isActive == true || dailyDay == today) return
+        dailyJob = viewModelScope.launch {
+            val cards = runCatchingSafely { engine.daily(root.discoveryProfile(), interactionStore.load(), today) } ?: return@launch
+            if (cards.isEmpty()) return@launch
+            dailyDay = today
+            feed.update { it.copy(daily = cards) }
+        }
     }
 
     fun refresh() {

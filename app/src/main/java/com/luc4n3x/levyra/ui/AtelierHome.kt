@@ -1507,6 +1507,9 @@ private fun AtelierHomeContent(
                 chartsExpanded = !chartsExpanded
             }
             atelierHomeCurated(curatedShelves, curatedTitle, viewModel::openPlaylistHit)
+            item(key = "atelier-daily-discovery", contentType = "atelier-daily-discovery") {
+                com.luc4n3x.levyra.ui.discovery.DailyDiscoveryShelf(AtelierDesign.gutter)
+            }
             atelierHomeForgotten(forgotten, currentId, trackOptions, strings, actions)
         }
         PullToRefreshDefaults.LoadingIndicator(

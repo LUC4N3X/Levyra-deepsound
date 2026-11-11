@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.ui.discovery
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -24,7 +25,8 @@ internal fun DiscoveryHomeHost(
     bottomInset: Dp,
     content: @Composable () -> Unit
 ) {
-    if (LevyraSkinManagesLayout && !skinComposesDiscovery && !com.luc4n3x.levyra.ui.theme.LevyraIsMono && !com.luc4n3x.levyra.ui.theme.LevyraIsAtelier && !com.luc4n3x.levyra.ui.theme.LevyraIsTorque && !com.luc4n3x.levyra.ui.theme.LevyraIsIvory && com.luc4n3x.levyra.ui.theme.LevyraActivePalette.id != com.luc4n3x.levyra.ui.theme.PrismPaletteId) {
+    val skinHidesDiscovery = LevyraSkinManagesLayout && !skinComposesDiscovery && !com.luc4n3x.levyra.ui.theme.LevyraIsMono && !com.luc4n3x.levyra.ui.theme.LevyraIsAtelier && !com.luc4n3x.levyra.ui.theme.LevyraIsTorque && !com.luc4n3x.levyra.ui.theme.LevyraIsIvory && com.luc4n3x.levyra.ui.theme.LevyraActivePalette.id != com.luc4n3x.levyra.ui.theme.PrismPaletteId
+    if (skinHidesDiscovery && !skinShowsDailyDiscovery()) {
         content()
         return
     }
@@ -45,7 +47,12 @@ internal fun DiscoveryHomeHost(
             onPlayDaily = discovery::playDaily
         )
     }
-    CompositionLocalProvider(LocalHomeDiscovery provides handle) { content() }
+    if (skinShowsDailyDiscovery()) LaunchedEffect(discovery) { discovery.warmDaily() }
+    if (skinHidesDiscovery) {
+        CompositionLocalProvider(LocalDailyDiscovery provides handle) { content() }
+        return
+    }
+    CompositionLocalProvider(LocalHomeDiscovery provides handle, LocalDailyDiscovery provides handle) { content() }
     if (open) {
         DiscoveryScreen(
             viewModel = discovery,

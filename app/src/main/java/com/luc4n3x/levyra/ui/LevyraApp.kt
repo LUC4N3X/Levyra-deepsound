@@ -847,6 +847,7 @@ import com.luc4n3x.levyra.viewmodel.HomeRenderSnapshot
 import com.luc4n3x.levyra.viewmodel.buildHomeRenderSnapshot
 import com.luc4n3x.levyra.viewmodel.HomeViewModel
 import com.luc4n3x.levyra.viewmodel.LevyraScreenViewModelFactory
+import com.luc4n3x.levyra.ui.discovery.dailyDiscoverySection
 import com.luc4n3x.levyra.ui.discovery.discoverySection
 import com.luc4n3x.levyra.ui.discovery.DiscoveryHomeHost
 import com.luc4n3x.levyra.ui.discovery.LocalHomeDiscovery
@@ -9302,6 +9303,7 @@ private fun HomeScreen(
                     }
                 }
             }
+            if (showDeferredHomeSections) dailyDiscoverySection(HomeStyle.Original, classicDiscoverySpec)
 
             if (showDeferredHomeSections && quickPicks != null && quickPicks.tracks.isNotEmpty()) {
                 item(key = "home-quick-picks", contentType = HOME_DENSE_SHELF_CONTENT_TYPE) {
@@ -10631,7 +10633,10 @@ private fun LazyListScope.studioHomeSections(
                     skinDiscoveryAfterOrbit(c, stagedSpotlight != null)
                 }
                 HomeSectionId.FavoriteRadio -> favoriteRadioSection(homeRadio)
-                HomeSectionId.EditorialCollections -> homeStudioSectionEditorialCollections(c)
+                HomeSectionId.EditorialCollections -> {
+                    homeStudioSectionEditorialCollections(c)
+                    if (showDeferredHomeSections && !prismHomeOnly()) dailyDiscoverySection(homeStyle, styleSpec)
+                }
                 HomeSectionId.QuickPicks -> homeStudioSectionQuickPicks(c)
                 HomeSectionId.ForgottenFavorites -> homeStudioSectionForgottenFavorites(c)
                 HomeSectionId.AlbumsForYou -> homeStudioSectionAlbums(c)
