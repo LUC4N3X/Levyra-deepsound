@@ -891,11 +891,9 @@ import com.luc4n3x.levyra.ui.player.playerBackgroundScale
 import com.luc4n3x.levyra.ui.player.playerChromeAlpha
 import com.luc4n3x.levyra.ui.player.playerExpansionFromDrag
 import com.luc4n3x.levyra.ui.player.playerAxisDragGestures
-import com.luc4n3x.levyra.ui.player.playerMorphActive
 import com.luc4n3x.levyra.ui.player.playerPredictiveBackExpansion
 import com.luc4n3x.levyra.ui.player.playerMorphAnchor
 import com.luc4n3x.levyra.ui.player.playerMorphContainer
-import com.luc4n3x.levyra.ui.player.playerMorphFraction
 import com.luc4n3x.levyra.ui.player.playerSeekDeltaMs
 import com.luc4n3x.levyra.ui.player.playerSurfaceAlpha
 import com.luc4n3x.levyra.ui.player.playerSwipeContentAlpha
@@ -2344,8 +2342,6 @@ fun LevyraApp(
             val chromeVisible by remember { derivedStateOf { playerExpansion.value < 1f } }
             val playerVisible by remember { derivedStateOf { playerExpansion.value > 0f } }
             HideSystemBars(state.interfaceSettings.immersive.hiddenBars(fullPlayerVisible = !chromeVisible && !rootOverlayOpen))
-            val canvasShowing = state.motionArtworkEnabled && state.motionArtwork != null
-            val morphAllowed = state.animationsEnabled && !state.isVideoMode && !LevyraIsAtelier && !canvasShowing
             val atelierContext = LocalContext.current
             val atelierWindowWidth = androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.width
             LaunchedEffect(LevyraIsAtelier, atelierWindowWidth) {
@@ -2359,14 +2355,6 @@ fun LevyraApp(
                 com.luc4n3x.levyra.ui.atelier.AtelierStage.expansion = { playerExpansion.value }
                 com.luc4n3x.levyra.ui.atelier.AtelierStage.miniRect = { morphAnchors.miniBounds }
                 onDispose { com.luc4n3x.levyra.ui.atelier.AtelierStage.reset() }
-            }
-            val artworkMorphActive by remember(morphAllowed) {
-                derivedStateOf {
-                    morphAllowed &&
-                        morphAnchors.miniBounds != null &&
-                        morphAnchors.targetBounds != null &&
-                        playerMorphActive(playerExpansion.value)
-                }
             }
             val onExpansionDragStart: () -> Unit = {
                 expansionDragStart = playerExpansion.value
@@ -2718,7 +2706,7 @@ fun LevyraApp(
                                             model = miniModel,
                                             morphAnchors = morphAnchors,
                                             compaction = compactionProvider,
-                                            artworkHidden = { artworkMorphActive },
+                                            artworkHidden = { false },
                                             playbackActions = miniPlaybackActions,
                                             expansionActions = miniExpansionActions,
                                             fixedAccents = rememberPlayerFixedAccents(state.interfaceSettings)
@@ -2730,7 +2718,7 @@ fun LevyraApp(
                                             model = miniModel,
                                             morphAnchors = morphAnchors,
                                             compaction = compactionProvider,
-                                            artworkHidden = { artworkMorphActive },
+                                            artworkHidden = { false },
                                             playbackActions = miniPlaybackActions,
                                             expansionActions = miniExpansionActions,
                                             glass = dockGlass,
@@ -2863,7 +2851,7 @@ fun LevyraApp(
                         viewModel = playerViewModel,
                         state = playerScreenState,
                         morphAnchors = morphAnchors,
-                        morphActive = { artworkMorphActive },
+                        morphActive = { false },
                         collapseActions = PlayerCollapseActions(
                             collapse = collapsePlayer,
                             dragStart = onExpansionDragStart,
@@ -2887,16 +2875,6 @@ fun LevyraApp(
                     onRetryLoadMore = viewModel::retryYoutubeCommentsPage,
                     onToggleReplies = viewModel::toggleYoutubeCommentReplies,
                     onLoadMoreReplies = viewModel::loadMoreYoutubeCommentReplies
-                )
-            }
-
-            val morphTrack = state.currentTrack
-            if (morphAllowed && morphTrack != null) {
-                PlayerArtworkMorphLayer(
-                    track = morphTrack,
-                    anchors = morphAnchors,
-                    active = { artworkMorphActive },
-                    expansion = expansionProvider
                 )
             }
 
@@ -24508,68 +24486,6 @@ private fun downloadStateTransform(
     val exit = scaleOut(LevyraMotion.fade(LevyraMotion.Durations.Quick), targetScale = if (completed) 1.12f else 0.85f) +
         fadeOut(LevyraMotion.fade(LevyraMotion.Durations.Instant))
     return enter togetherWith exit
-}
-
-@Composable
-private fun PlayerArtworkMorphLayer(
-    track: Track,
-    anchors: PlayerMorphAnchors,
-    active: () -> Boolean,
-    expansion: () -> Float
-) {
-    val density = LocalDensity.current
-    val startCornerPx = with(density) { LevyraPlayerDesign.MiniArtworkCorner.toPx() }
-    val fullWidthPx = anchors.fullBounds?.width ?: 0f
-    val cardCornerPx = with(density) { LevyraPlayerShapes.artworkCorner(fullWidthPx.toDp()).toPx() }
-    val flightShadowPx = with(density) { PlayerMorphFlightShadow.toPx() }
-    val artworkUrl = remember(track) { preferredPlayerArtworkUrl(track) }
-    Box(
-        modifier = Modifier
-            .layout { measurable, constraints ->
-                val rect = if (active()) {
-                    anchors.resolve(playerMorphFraction(expansion()))
-                } else {
-                    anchors.idleBounds(constraints.maxWidth.toFloat())
-                }
-                if (rect == null) {
-                    val placeable = measurable.measure(Constraints.fixed(0, 0))
-                    layout(0, 0) { placeable.place(0, 0) }
-                } else {
-                    val placeable = measurable.measure(
-                        Constraints.fixed(rect.width.roundToInt(), rect.height.roundToInt())
-                    )
-                    layout(placeable.width, placeable.height) {
-                        placeable.place(rect.left.roundToInt(), rect.top.roundToInt())
-                    }
-                }
-            }
-            .graphicsLayer {
-                if (!active()) {
-                    alpha = 0f
-                    shadowElevation = 0f
-                    return@graphicsLayer
-                }
-                val fraction = playerMorphFraction(expansion())
-                val flightAlpha = anchors.flightAlpha()
-                val endCornerPx = if (anchors.targetsStage) 0f else cardCornerPx
-                alpha = flightAlpha
-                shadowElevation = flightShadowPx * fraction * flightAlpha
-                shape = when (anchors.landing) {
-                    PlayerMorphLanding.Cookie -> levyraCookieLandingShape(fraction)
-                    PlayerMorphLanding.FlowPlaying, PlayerMorphLanding.FlowPaused -> flowLandingShape(
-                        fraction = fraction,
-                        startCorner = startCornerPx,
-                        side = size.minDimension,
-                        playing = anchors.landing == PlayerMorphLanding.FlowPlaying
-                    )
-                    PlayerMorphLanding.Rounded -> RoundedCornerShape(morphCornerRadius(startCornerPx, endCornerPx, fraction))
-                }
-                clip = true
-            }
-    ) {
-        CoverImage(track, Modifier.fillMaxSize())
-        SeamlessArtworkImage(url = artworkUrl, modifier = Modifier.fillMaxSize()) {}
-    }
 }
 
 internal fun handleMiniPlayerDragEvent(
