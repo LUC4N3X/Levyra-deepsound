@@ -618,18 +618,9 @@ class LevyraStrings private constructor(
     val audioSectionEqualizer: String get() = value("audioSectionEqualizer")
     val audioSectionSpatial: String get() = value("audioSectionSpatial")
     val audioSectionDynamics: String get() = value("audioSectionDynamics")
-    val audioSectionEnhancement: String get() = when (translationKey(code)) {
-        "it" -> "RESTORATION & ENHANCEMENT"
-        else -> "RESTORATION & ENHANCEMENT"
-    }
+    val audioSectionEnhancement: String get() = enhancementSectionTitle(code)
     val enhancedAudioTitle: String get() = "Levyra Enhanced Audio"
-    val enhancedAudioSubtitle: String get() = when (translationKey(code)) {
-        "it" -> "Ripristina i dettagli persi durante la compressione lossy lasciando il flusso originale intatto quando l'elaborazione non è benefica."
-        "es" -> "Restaura los detalles perdidos durante la compresión manteniendo el flujo original si no es beneficioso."
-        "fr" -> "Restaure les détails perdus lors de la compression en préservant le flux d'origine si l'amélioration n'est pas bénéfique."
-        "de" -> "Stellt bei verlustbehafteter Kompression verlorene Details wieder her und belässt den Originalstream unverändert."
-        else -> "Restores detail lost during lossy compression while keeping the original stream untouched when enhancement is not beneficial."
-    }
+    val enhancedAudioSubtitle: String get() = enhancedAudioSubtitle(code)
     val audioEfficiencyTitle: String get() = when (translationKey(code)) {
         "it" -> "Efficienza audio"
         "es" -> "Eficiencia de audio"

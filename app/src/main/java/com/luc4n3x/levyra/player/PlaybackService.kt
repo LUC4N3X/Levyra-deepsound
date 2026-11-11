@@ -3168,11 +3168,12 @@ class PlaybackService : MediaLibraryService() {
         if (local || firstTrack.isLiveRadio()) return firstTrack
         return withContext(Dispatchers.IO) {
             runCatching { resolveSkipTarget(firstTrack, autoAdvance = false) }.getOrNull()
-        } ?: GentleWakeToneGenerator.ensureToneTrack(
-            context = this@PlaybackService,
-            title = displayTitle,
-            subtitle = "Gentle Wake"
-        )
+                ?: GentleWakeToneGenerator.ensureToneTrack(
+                    context = this@PlaybackService,
+                    title = displayTitle,
+                    subtitle = com.luc4n3x.levyra.ui.i18n.smartListeningCopyForCode(LevyraPreferences(this@PlaybackService).languageCode()).gentleWakeTitle
+                )
+        }
     }
 
     private suspend fun CoroutineScope.runGentleWakeRamp(

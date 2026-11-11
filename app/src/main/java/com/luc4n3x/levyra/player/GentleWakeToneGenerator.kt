@@ -29,7 +29,7 @@ internal object GentleWakeToneGenerator {
             id = BUILT_IN_TONE_TRACK_ID,
             title = title.ifBlank { "Aurora Harmonics" },
             artist = subtitle.ifBlank { "Levyra Gentle Wake" },
-            album = "Gentle Wake",
+            album = subtitle.ifBlank { "Gentle Wake" },
             durationMs = DURATION_SECONDS * 1_000L,
             streamUrl = uriString,
             videoUrl = "",
