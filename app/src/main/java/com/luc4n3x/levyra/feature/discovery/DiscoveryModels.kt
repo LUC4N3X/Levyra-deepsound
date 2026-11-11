@@ -8,7 +8,7 @@ import java.util.Locale
 enum class DiscoveryReasonKind { SimilarToTrack, FollowedArtist, NewRelease, SimilarArtist, Trending, Editorial, SecondHop, Scene, Country, Decade, City }
 
 @Immutable
-data class DiscoveryReason(val kind: DiscoveryReasonKind, val seedTitle: String = "", val place: String = "")
+data class DiscoveryReason(val kind: DiscoveryReasonKind, val seedTitle: String = "", val place: String = "", val seedArtist: String = "")
 
 @Immutable
 data class DiscoveryCandidate(

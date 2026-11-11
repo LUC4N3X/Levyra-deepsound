@@ -39,7 +39,10 @@ internal fun DiscoveryHomeHost(
             onOpenBubble = { level ->
                 discovery.setLevel(level)
                 openChange(true)
-            }
+            },
+            homeTrackKeys = discovery::homeVisibleTrackKeys,
+            familiarArtistKeys = discovery::familiarArtistKeys,
+            onPlayDaily = discovery::playDaily
         )
     }
     CompositionLocalProvider(LocalHomeDiscovery provides handle) { content() }

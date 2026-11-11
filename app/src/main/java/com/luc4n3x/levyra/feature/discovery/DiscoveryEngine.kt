@@ -66,7 +66,7 @@ class DiscoveryEngine(
             seeds.forEach { seed ->
                 add {
                     fetch { sources.similarToTrack(seed) }.map {
-                        DiscoveryCandidate(it, DiscoveryReason(DiscoveryReasonKind.SimilarToTrack, seed.title), confidence = 8)
+                        DiscoveryCandidate(it, DiscoveryReason(DiscoveryReasonKind.SimilarToTrack, seed.title, seedArtist = seed.artist), confidence = 8)
                     }
                 }
             }
@@ -178,7 +178,7 @@ class DiscoveryEngine(
             }
         }.awaitAll()
         val first = firstHops.flatMap { (seed, result) ->
-            result.map { DiscoveryCandidate(it, DiscoveryReason(DiscoveryReasonKind.SimilarToTrack, seed.title), confidence = 5) }.candidates
+            result.map { DiscoveryCandidate(it, DiscoveryReason(DiscoveryReasonKind.SimilarToTrack, seed.title, seedArtist = seed.artist), confidence = 5) }.candidates
         }
         Outcome(first + hops.flatMap { it.candidates }, firstHops.all { it.second.failed } && hops.all { it.failed })
     }

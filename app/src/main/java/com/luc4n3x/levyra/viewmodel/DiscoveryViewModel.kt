@@ -10,6 +10,7 @@ import com.luc4n3x.levyra.feature.discovery.DiscoveryLens
 import com.luc4n3x.levyra.feature.discovery.DiscoveryRequest
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.discovery.DiscoveryCard
+import com.luc4n3x.levyra.feature.discovery.discoveryTrackKey
 import com.luc4n3x.levyra.feature.discovery.DiscoveryDecision
 import com.luc4n3x.levyra.feature.discovery.DiscoveryDeck
 import com.luc4n3x.levyra.feature.discovery.DiscoveryEngine
@@ -230,6 +231,22 @@ class DiscoveryViewModel internal constructor(private val root: LevyraViewModel)
         previewPlayer.stop()
         val lead = savedTrackFor(card)
         root.playAudioFrom(listOf(lead) + deck.upcoming.map(::savedTrackFor), lead)
+    }
+
+    fun playDaily(cards: List<DiscoveryCard>, start: DiscoveryCard) {
+        val tracks = cards.map(::savedTrackFor)
+        root.playAudioFrom(tracks, tracks[cards.indexOf(start).coerceAtLeast(0)])
+    }
+
+    fun homeVisibleTrackKeys(): Set<String> = root.state.value.run {
+        sequenceOf(tracks, quickPickSeeds, personalOrbitTracks, charts, homeResonanceTracks, forgottenFavorites, similarSongs, recentListens, mostPlayedTracks, favorites)
+            .flatten()
+            .mapTo(HashSet(), ::discoveryTrackKey)
+    }
+
+    fun familiarArtistKeys(): Set<String> = root.state.value.run {
+        sequenceOf(recentListens, favorites, mostPlayedTracks).flatten()
+            .mapTo(HashSet()) { com.luc4n3x.levyra.feature.discovery.discoveryPrimaryArtistKey(it.artist) }
     }
 
     fun openSavedPlaylist() {
