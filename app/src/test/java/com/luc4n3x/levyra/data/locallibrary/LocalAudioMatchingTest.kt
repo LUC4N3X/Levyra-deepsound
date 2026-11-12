@@ -43,7 +43,7 @@ class LocalAudioMatchingTest {
             "Song (Live)", "Song - Live at Wembley", "Song (Remastered 2011)", "Song (Acoustic)",
             "Song (Instrumental)", "Song (Radio Edit)", "Song (Remix)", "Song (Club Mix)", "Song (Sped Up)",
             "Song (Taylor's Version)", "Song (Demo)", "Song (Karaoke Version)", "Song (Clean)", "Song (Reprise)",
-            "Song feat. Guest - Live at Wembley", "Song ft. Guest - Remix"
+            "Song feat. Guest - Live at Wembley", "Song ft. Guest - Remix", "Song (feat. Guest - Live)"
         )
         versions.forEach { version ->
             assertNull(version, match(online(version, "Artist"), local(1, "Song", "Artist")))
@@ -172,6 +172,18 @@ class LocalAudioMatchingTest {
         online("Song", "Artist").withPreferredLocalStream(uri)
         assertTrue(rejectPreferredLocalStream(uri))
         assertTrue(isRejectedPreferredLocalStream(uri))
+    }
+
+    @Test
+    fun trackedStreamsAreBounded() {
+        val keys = RecentKeys(2)
+        keys += "a"
+        keys += "b"
+        assertTrue("a" in keys)
+        keys += "c"
+        assertFalse("b" in keys)
+        assertTrue("a" in keys)
+        assertTrue("c" in keys)
     }
 
     @Test

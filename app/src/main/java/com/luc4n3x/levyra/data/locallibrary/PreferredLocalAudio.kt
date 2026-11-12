@@ -146,9 +146,19 @@ class PreferredLocalAudio private constructor(context: Context) {
     }
 }
 
-private val handedOutLocalStreams: MutableSet<String> = ConcurrentHashMap.newKeySet()
-private val handedOutSubstitutions: MutableSet<String> = ConcurrentHashMap.newKeySet()
-private val rejectedLocalStreams: MutableSet<String> = ConcurrentHashMap.newKeySet()
+private val handedOutLocalStreams = RecentKeys(MAX_TRACKED_STREAMS)
+private val handedOutSubstitutions = RecentKeys(MAX_TRACKED_STREAMS)
+private val rejectedLocalStreams = RecentKeys(MAX_TRACKED_STREAMS)
+
+internal class RecentKeys(private val capacity: Int) {
+    private val keys = object : LinkedHashMap<String, Unit>(capacity, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Unit>?): Boolean = size > capacity
+    }
+
+    operator fun plusAssign(key: String) = synchronized(keys) { keys[key] = Unit }
+
+    operator fun contains(key: String): Boolean = synchronized(keys) { keys[key] != null }
+}
 
 fun rejectPreferredLocalStream(uri: String): Boolean {
     if (uri !in handedOutLocalStreams) return false
@@ -189,5 +199,6 @@ private fun decisionKey(track: Track): String =
     listOf(track.id, track.title, track.artist, track.albumArtist, track.album, track.durationMs, track.explicit)
         .joinToString("\u001f")
 
+private const val MAX_TRACKED_STREAMS = 4_096
 private const val OFFLINE_SOURCE = "Offline"
 private const val SPOTIFY_SAMPLES_SOURCE = "Spotify Samples"

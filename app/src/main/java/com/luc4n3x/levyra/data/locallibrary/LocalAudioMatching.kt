@@ -199,7 +199,11 @@ private fun absorbTitleQualifier(segment: String, versions: MutableSet<String>):
     val text = normalizeMatchText(segment)
     if (text.isEmpty()) return true
     val words = text.split(' ')
-    if (words.first() in FEATURING_WORDS || text in NEUTRAL_VERSIONS) return true
+    if (words.first() in FEATURING_WORDS) {
+        TITLE_DASH_SEPARATOR.split(segment).drop(1).forEach { absorbTitleQualifier(it, versions) }
+        return true
+    }
+    if (text in NEUTRAL_VERSIONS) return true
     val tags = titleVersionTags(text)
     if (tags.isNotEmpty()) {
         versions += tags

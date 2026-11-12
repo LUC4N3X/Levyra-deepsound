@@ -76,6 +76,7 @@ import com.luc4n3x.levyra.data.SPOTIFY_CLIP_ID_PREFIX
 import com.luc4n3x.levyra.data.SpotifyClipCanvasRegistry
 import com.luc4n3x.levyra.data.isSpotifySampleAudioUrl
 import com.luc4n3x.levyra.data.locallibrary.PreferredLocalAudio
+import com.luc4n3x.levyra.data.locallibrary.isPreferredLocalSubstitute
 import com.luc4n3x.levyra.data.locallibrary.isRejectedPreferredLocalStream
 import com.luc4n3x.levyra.data.locallibrary.rejectPreferredLocalStream
 import com.luc4n3x.levyra.data.locallibrary.withoutPreferredLocalStream
@@ -2173,8 +2174,16 @@ class PlaybackService : MediaLibraryService() {
             }
             return null
         }
+        if (!preparedLocalStreamStillAllowed(prepared.resolved)) {
+            preparedQueueNext = null
+            return null
+        }
         return prepared.resolved
     }
+
+    private fun preparedLocalStreamStillAllowed(track: Track): Boolean =
+        !track.isPreferredLocalSubstitute() ||
+            (PreferredLocalAudio.get(this).enabled() && !isRejectedPreferredLocalStream(track.streamUrl))
 
     private fun preparedQueueTrackForTransition(sourceIdentity: String, targetIdentity: String): Track? {
         val prepared = preparedQueueNext ?: return null
@@ -2192,6 +2201,10 @@ class PlaybackService : MediaLibraryService() {
             if (!isQueuePrecacheFresh(prepared.preparedAtElapsedMs, now, PREPARED_QUEUE_MAX_AGE_MS)) {
                 preparedQueueNext = null
             }
+            return null
+        }
+        if (!preparedLocalStreamStillAllowed(prepared.resolved)) {
+            preparedQueueNext = null
             return null
         }
         return prepared.resolved
@@ -2258,6 +2271,7 @@ class PlaybackService : MediaLibraryService() {
     private suspend fun resolveQueueTrackPersistently(
         track: com.luc4n3x.levyra.domain.Track
     ): com.luc4n3x.levyra.domain.Track? {
+        PreferredLocalAudio.get(this).playableMatch(track.withoutPreferredLocalStream())?.let { return it }
         var attempts = 0
         while (isPlaybackRecoveryExpected() && !isStickyRestoreExpired()) {
             if (!isLocalPlaybackTrack(track) && !hasInternetCapableNetwork()) {
