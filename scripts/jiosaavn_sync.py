@@ -457,13 +457,7 @@ class MediaLocation:
         return f"https://{self.open_host}{self.directory}/{self.stem}_{tier_kbps}.{self.extension}"
 
 
-def parse_media_location(
-    raw_url: str,
-    *,
-    override_open_host: str | None = None,
-    authorized: bool = False,
-) -> MediaLocation | None:
-    parsed = urllib.parse.urlsplit(raw_url.strip())
+def _validate_media_host(parsed: urllib.parse.SplitResult, authorized: bool) -> str | None:
     if parsed.scheme not in (("https",) if authorized else ("https", "http")):
         return None
     if parsed.username or parsed.password:
@@ -476,23 +470,39 @@ def parse_media_location(
         return None
     if not all(HOST_LABEL_RE.match(label) for label in host.split(".")):
         return None
-    segments = [seg for seg in parsed.path.split("/") if seg]
+    return host
+
+
+def _parse_media_path(path: str) -> tuple[str, str, int, str] | None:
+    segments = [seg for seg in path.split("/") if seg]
     if len(segments) < 2:
         return None
     match = MEDIA_FILE_RE.match(segments[-1])
-    if not match:
-        return None
     folders = segments[:-1]
-    if not all(PATH_SEGMENT_RE.match(seg) for seg in folders):
+    if not match or not all(PATH_SEGMENT_RE.match(seg) for seg in folders):
         return None
+    return "".join(f"/{seg}" for seg in folders), match.group(1), int(match.group(2)), match.group(3).lower()
+
+
+def parse_media_location(
+    raw_url: str,
+    *,
+    override_open_host: str | None = None,
+    authorized: bool = False,
+) -> MediaLocation | None:
+    parsed = urllib.parse.urlsplit(raw_url.strip())
+    host = _validate_media_host(parsed, authorized)
+    path_parts = _parse_media_path(parsed.path) if host else None
+    if not host or not path_parts:
+        return None
+    directory, stem, parsed_tier, extension = path_parts
     query = urllib.parse.parse_qs(parsed.query)
-    open_host = override_open_host or host
     return MediaLocation(
-        open_host=open_host,
-        directory="".join(f"/{seg}" for seg in folders),
-        stem=match.group(1),
-        extension=match.group(3).lower(),
-        authorized_tier=int(match.group(2)) if authorized else None,
+        open_host=override_open_host or host,
+        directory=directory,
+        stem=stem,
+        extension=extension,
+        authorized_tier=parsed_tier if authorized else None,
         has_expires=bool(query.get("Expires")) if authorized else False,
     )
 
@@ -582,6 +592,42 @@ def validate_media_probe(
     }
 
 
+def _parse_api_response(response: BoundedResponse) -> tuple[dict[str, Any] | list[Any] | None, dict[str, Any]]:
+    if response.status != 200:
+        return None, {
+            "ok": False,
+            "http_status": response.status,
+            "error": f"http_{response.status}",
+            "access_blocked": response.status >= 500,
+        }
+    body_text = response.body.decode("utf-8", errors="replace").strip()
+    if not body_text or body_text.startswith("<"):
+        return None, {
+            "ok": False,
+            "http_status": response.status,
+            "error": "non_json_html_response",
+            "access_blocked": True,
+        }
+    try:
+        parsed = json.loads(body_text)
+    except json.JSONDecodeError as exc:
+        return None, {
+            "ok": False,
+            "http_status": response.status,
+            "error": f"json_decode_error: {exc.msg}",
+            "access_blocked": False,
+        }
+    if isinstance(parsed, dict) and isinstance(parsed.get("error"), dict):
+        code = str(parsed["error"].get("code") or "API_ERROR")[:48]
+        return parsed, {
+            "ok": False,
+            "http_status": response.status,
+            "error": f"api_error:{code}",
+            "access_blocked": False,
+        }
+    return parsed, {"ok": True, "http_status": response.status, "access_blocked": False}
+
+
 def _api_call(
     api_cfg: dict[str, Any],
     call_name: str,
@@ -637,40 +683,7 @@ def _api_call(
             }
             continue
 
-        if response.status != 200:
-            return None, {
-                "ok": False,
-                "http_status": response.status,
-                "error": f"http_{response.status}",
-                "access_blocked": response.status >= 500,
-            }
-
-        body_text = response.body.decode("utf-8", errors="replace").strip()
-        if not body_text or body_text.startswith("<"):
-            return None, {
-                "ok": False,
-                "http_status": response.status,
-                "error": "non_json_html_response",
-                "access_blocked": True,
-            }
-        try:
-            parsed = json.loads(body_text)
-        except json.JSONDecodeError as exc:
-            return None, {
-                "ok": False,
-                "http_status": response.status,
-                "error": f"json_decode_error: {exc.msg}",
-                "access_blocked": False,
-            }
-        if isinstance(parsed, dict) and isinstance(parsed.get("error"), dict):
-            code = str(parsed["error"].get("code") or "API_ERROR")[:48]
-            return parsed, {
-                "ok": False,
-                "http_status": response.status,
-                "error": f"api_error:{code}",
-                "access_blocked": False,
-            }
-        return parsed, {"ok": True, "http_status": response.status, "access_blocked": False}
+        return _parse_api_response(response)
 
     return None, last_meta
 
@@ -702,53 +715,78 @@ def _extract_song_list(search_payload: Any) -> tuple[list[dict[str, Any]], dict[
     }
 
 
-def _inspect_song_schema(songs: list[dict[str, Any]]) -> dict[str, Any]:
-    explicit_values: set[str] = set()
-    offers320_values: set[str] = set()
-    more_info_keys: set[str] = set()
-    artist_map_keys: set[str] = set()
-    playable_count = 0
-    lyrics_capable_id = ""
-    first_playable: dict[str, Any] | None = None
+def _record_song_more_info(
+    item: dict[str, Any],
+    info: dict[str, Any],
+    acc: dict[str, Any],
+) -> None:
+    acc["more_info_keys"].update(str(k) for k in info.keys())
+    flag320 = info.get("320kbps")
+    if flag320 is not None:
+        acc["offers320_values"].add(str(flag320).strip().lower())
+    artist_map = info.get("artistMap")
+    if isinstance(artist_map, dict):
+        acc["artist_map_keys"].update(str(k) for k in artist_map.keys())
+    encrypted = str(info.get("encrypted_media_url") or "").strip()
+    song_id = str(item.get("id") or "").strip()
+    if song_id and encrypted:
+        acc["playable_count"] += 1
+        if acc["first_playable"] is None:
+            acc["first_playable"] = item
+        if not acc["lyrics_capable_id"] and str(info.get("has_lyrics") or "").lower() == "true":
+            acc["lyrics_capable_id"] = song_id
 
+
+def _inspect_song_schema(songs: list[dict[str, Any]]) -> dict[str, Any]:
+    acc: dict[str, Any] = {
+        "explicit_values": set(),
+        "offers320_values": set(),
+        "more_info_keys": set(),
+        "artist_map_keys": set(),
+        "playable_count": 0,
+        "lyrics_capable_id": "",
+        "first_playable": None,
+    }
     for item in songs:
         exp = item.get("explicit_content")
         if exp is not None:
-            explicit_values.add(str(exp).strip().lower())
+            acc["explicit_values"].add(str(exp).strip().lower())
         info = item.get("more_info")
         if isinstance(info, dict):
-            more_info_keys.update(str(k) for k in info.keys())
-            flag320 = info.get("320kbps")
-            if flag320 is not None:
-                offers320_values.add(str(flag320).strip().lower())
-            artist_map = info.get("artistMap")
-            if isinstance(artist_map, dict):
-                artist_map_keys.update(str(k) for k in artist_map.keys())
-            encrypted = str(info.get("encrypted_media_url") or "").strip()
-            song_id = str(item.get("id") or "").strip()
-            if song_id and encrypted:
-                playable_count += 1
-                if first_playable is None:
-                    first_playable = item
-                if not lyrics_capable_id and str(info.get("has_lyrics") or "").lower() == "true":
-                    lyrics_capable_id = song_id
+            _record_song_more_info(item, info, acc)
 
+    explicit_values = acc["explicit_values"]
+    more_info_keys = acc["more_info_keys"]
     return {
-        "playable_count": playable_count,
+        "playable_count": acc["playable_count"],
         "has_explicit": "1" in explicit_values or "true" in explicit_values,
         "has_clean": "0" in explicit_values or "false" in explicit_values,
         "explicit_values": sorted(explicit_values),
-        "offers320_values": sorted(offers320_values),
+        "offers320_values": sorted(acc["offers320_values"]),
         "more_info_has_required": {
             "encrypted_media_url": "encrypted_media_url" in more_info_keys,
             "duration": "duration" in more_info_keys,
             "album": "album" in more_info_keys,
             "artistMap": "artistMap" in more_info_keys,
         },
-        "artist_map_keys": sorted(artist_map_keys),
-        "_first_playable": first_playable,
-        "_lyrics_id": lyrics_capable_id,
+        "artist_map_keys": sorted(acc["artist_map_keys"]),
+        "_first_playable": acc["first_playable"],
+        "_lyrics_id": acc["lyrics_capable_id"],
     }
+
+
+def _extract_song_details_entry(
+    payload: dict[str, Any],
+    song_id: str,
+) -> tuple[str, dict[str, Any] | None]:
+    if isinstance(payload.get("songs"), list):
+        for item in payload["songs"]:
+            if isinstance(item, dict) and str(item.get("id") or "") == song_id:
+                return "songs_array", item
+        return "songs_array", None
+    if isinstance(payload.get(song_id), dict):
+        return "id_keyed_object", payload[song_id]
+    return "unrecognized", None
 
 
 def _probe_song_details(
@@ -782,18 +820,7 @@ def _probe_song_details(
     if not isinstance(payload, dict):
         return {"ok": False, "envelope_kind": "non_object", "access_blocked": False}
 
-    envelope_kind = "unrecognized"
-    entry: dict[str, Any] | None = None
-    if isinstance(payload.get("songs"), list):
-        envelope_kind = "songs_array"
-        for item in payload["songs"]:
-            if isinstance(item, dict) and str(item.get("id") or "") == song_id:
-                entry = item
-                break
-    elif isinstance(payload.get(song_id), dict):
-        envelope_kind = "id_keyed_object"
-        entry = payload[song_id]
-
+    envelope_kind, entry = _extract_song_details_entry(payload, song_id)
     if not entry:
         return {"ok": False, "envelope_kind": envelope_kind, "access_blocked": False}
 
@@ -876,6 +903,62 @@ def _probe_single_media_url(
         }
 
 
+def _authorize_media_location(
+    api_cfg: dict[str, Any],
+    endpoints: dict[str, str],
+    encrypted_payload: str,
+    *,
+    host_override: str | None,
+    context_override: str | None,
+    open_media_host_override: str | None,
+    max_rotations: int,
+) -> tuple[MediaLocation | None, str, dict[str, Any]]:
+    auth_payload, auth_meta = _api_call(
+        api_cfg,
+        endpoints.get("authorize_media", "song.generateAuthToken"),
+        {"url": encrypted_payload, "bitrate": "320"},
+        host_override=host_override,
+        context_override=context_override,
+        max_rotations=max_rotations,
+    )
+    if not isinstance(auth_payload, dict):
+        return None, "", auth_meta
+    auth_status = str(auth_payload.get("status") or "").lower()
+    raw_auth_url = auth_payload.get("auth_url")
+    if auth_status != "success" or not isinstance(raw_auth_url, str):
+        return None, auth_status, auth_meta
+    auth_loc = parse_media_location(
+        raw_auth_url,
+        override_open_host=open_media_host_override or str(api_cfg.get("open_media_host") or "aac.saavncdn.com"),
+        authorized=True,
+    )
+    return auth_loc, auth_status, auth_meta
+
+
+def _probe_tier_across_candidates(
+    candidates: list[MediaLocation],
+    media_headers: dict[str, str],
+    tier: int,
+    duration_seconds: int,
+) -> tuple[dict[str, Any] | None, bool, bool]:
+    chosen: dict[str, Any] | None = None
+    saw_attempt = False
+    for idx, loc in enumerate(candidates):
+        saw_attempt = True
+        validation = _probe_single_media_url(loc.open_url(tier), media_headers, tier, duration_seconds)
+        if chosen is None or validation.get("valid"):
+            chosen = validation
+        if validation.get("valid"):
+            return chosen, saw_attempt, False
+        non_blocked = (
+            validation.get("status") != "transport_error"
+            and validation.get("http_status") not in (403, 429, 500, 502, 503)
+        )
+        if non_blocked and idx == len(candidates) - 1:
+            return chosen, saw_attempt, False
+    return chosen, saw_attempt, True
+
+
 def _probe_streams(
     api_cfg: dict[str, Any],
     endpoints: dict[str, str],
@@ -890,69 +973,34 @@ def _probe_streams(
 ) -> dict[str, Any]:
     decoded = decode_media_token(encrypted_payload)
     # Parity with JioSaavnMediaLocation.fromMediaToken: preserve decrypted CDN host.
-    location = (
-        parse_media_location(
-            decoded,
-            override_open_host=None,
-            authorized=False,
-        )
-        if decoded
-        else None
-    )
-
-    auth_payload, auth_meta = _api_call(
+    location = parse_media_location(decoded, override_open_host=None, authorized=False) if decoded else None
+    auth_loc, auth_status, auth_meta = _authorize_media_location(
         api_cfg,
-        endpoints.get("authorize_media", "song.generateAuthToken"),
-        {"url": encrypted_payload, "bitrate": "320"},
+        endpoints,
+        encrypted_payload,
         host_override=host_override,
         context_override=context_override,
+        open_media_host_override=open_media_host_override,
         max_rotations=max_rotations,
     )
-    auth_status = ""
-    auth_loc: MediaLocation | None = None
-    if isinstance(auth_payload, dict):
-        auth_status = str(auth_payload.get("status") or "").lower()
-        raw_auth_url = auth_payload.get("auth_url")
-        if auth_status == "success" and isinstance(raw_auth_url, str):
-            auth_loc = parse_media_location(
-                raw_auth_url,
-                override_open_host=open_media_host_override
-                or str(api_cfg.get("open_media_host") or "aac.saavncdn.com"),
-                authorized=True,
-            )
 
-    profile = build_india_profile()
-    media_headers = profile.media_headers()
+    media_headers = build_india_profile().media_headers()
+    candidates = [loc for loc in (location, auth_loc) if loc is not None]
     tier_results: dict[str, Any] = {}
     verified_tiers: set[int] = set()
-    candidates = [loc for loc in (location, auth_loc) if loc is not None]
     saw_transport_attempt = False
     all_transport_blocked = True
 
     for tier in quality_tiers:
-        chosen_validation: dict[str, Any] | None = None
-        for idx, loc in enumerate(candidates):
-            saw_transport_attempt = True
-            url = loc.open_url(tier)
-            validation = _probe_single_media_url(url, media_headers, tier, duration_seconds)
-            if chosen_validation is None or validation.get("valid"):
-                chosen_validation = validation
-            if validation.get("valid"):
-                all_transport_blocked = False
-                break
-            if validation.get("status") != "transport_error" and validation.get("http_status") not in (
-                403,
-                429,
-                500,
-                502,
-                503,
-            ):
-                if idx == len(candidates) - 1:
-                    all_transport_blocked = False
-        if chosen_validation is not None:
-            tier_results[str(tier)] = chosen_validation
-            measured_tier = chosen_validation.get("verified_tier")
-            if chosen_validation.get("valid") and isinstance(measured_tier, int):
+        chosen, attempt_seen, blocked = _probe_tier_across_candidates(
+            candidates, media_headers, tier, duration_seconds
+        )
+        saw_transport_attempt = saw_transport_attempt or attempt_seen
+        all_transport_blocked = all_transport_blocked and blocked
+        if chosen is not None:
+            tier_results[str(tier)] = chosen
+            measured_tier = chosen.get("verified_tier")
+            if chosen.get("valid") and isinstance(measured_tier, int):
                 verified_tiers.add(measured_tier)
 
     return {
@@ -971,6 +1019,140 @@ def _probe_streams(
     }
 
 
+def _evaluate_track_attempt(
+    search_summary: dict[str, Any],
+    schema_info: dict[str, Any],
+    details: dict[str, Any],
+    lyrics: dict[str, Any],
+    streams: dict[str, Any],
+    *,
+    expect_explicit_and_clean: bool,
+    expect_lyrics: bool,
+) -> dict[str, Any]:
+    explicit_ok = (
+        (schema_info["has_explicit"] and schema_info["has_clean"])
+        if expect_explicit_and_clean
+        else True
+    )
+    lyrics_ok = bool(lyrics.get("ok")) if expect_lyrics else True
+    all_ok = (
+        search_summary.get("envelope_ok", False)
+        and details.get("ok", False)
+        and lyrics_ok
+        and streams.get("playable_any_tier", False)
+        and explicit_ok
+    )
+    access_blocked = bool(
+        details.get("access_blocked")
+        or (expect_lyrics and lyrics.get("access_blocked"))
+        or streams.get("cdn_access_blocked")
+        or (not streams.get("playable_any_tier") and streams.get("auth_api_blocked"))
+    )
+    return {
+        "ok": all_ok,
+        "access_blocked": access_blocked,
+        "search": search_summary,
+        "schema": schema_info,
+        "explicit_and_clean_ok": explicit_ok,
+        "details": details,
+        "lyrics": lyrics,
+        "streams": streams,
+    }
+
+
+def _probe_track_attempt(
+    query: str,
+    api_cfg: dict[str, Any],
+    endpoints: dict[str, str],
+    quality_tiers: list[int],
+    *,
+    expect_explicit_and_clean: bool,
+    expect_lyrics: bool,
+    host_override: str | None = None,
+    context_override: str | None = None,
+    open_media_host_override: str | None = None,
+    max_rotations: int = 2,
+) -> dict[str, Any]:
+    search_payload, search_meta = _api_call(
+        api_cfg,
+        endpoints.get("search_songs", "search.getResults"),
+        {"q": query, "n": 10, "p": 1},
+        host_override=host_override,
+        context_override=context_override,
+        max_rotations=max_rotations,
+    )
+    if not search_meta.get("ok"):
+        return {
+            "ok": False,
+            "access_blocked": bool(search_meta.get("access_blocked")),
+            "error": f"search_failed:{search_meta.get('error')}",
+        }
+
+    songs, search_summary = _extract_song_list(search_payload)
+    schema_info = _inspect_song_schema(songs)
+    first_song = schema_info.pop("_first_playable", None)
+    lyrics_id = schema_info.pop("_lyrics_id", "")
+    if not first_song:
+        return {
+            "ok": False,
+            "access_blocked": False,
+            "search": search_summary,
+            "schema": schema_info,
+            "error": "no_playable_song_in_search",
+        }
+
+    first_info = first_song.get("more_info") or {}
+    song_id = str(first_song.get("id") or "")
+    duration_sec = _parse_duration_seconds(first_info.get("duration"))
+    if duration_sec is None:
+        return {
+            "ok": False,
+            "access_blocked": False,
+            "search": search_summary,
+            "schema": schema_info,
+            "error": "invalid_duration_schema",
+        }
+
+    details = _probe_song_details(
+        api_cfg,
+        endpoints,
+        song_id,
+        host_override=host_override,
+        context_override=context_override,
+    )
+    lyrics = (
+        _probe_lyrics(
+            api_cfg,
+            endpoints,
+            lyrics_id or song_id,
+            host_override=host_override,
+            context_override=context_override,
+        )
+        if expect_lyrics
+        else {"skipped": True}
+    )
+    streams = _probe_streams(
+        api_cfg,
+        endpoints,
+        str(first_info.get("encrypted_media_url") or "").strip(),
+        duration_sec,
+        quality_tiers,
+        host_override=host_override,
+        context_override=context_override,
+        open_media_host_override=open_media_host_override,
+        max_rotations=max_rotations,
+    )
+    return _evaluate_track_attempt(
+        search_summary,
+        schema_info,
+        details,
+        lyrics,
+        streams,
+        expect_explicit_and_clean=expect_explicit_and_clean,
+        expect_lyrics=expect_lyrics,
+    )
+
+
 def _probe_track_sentinel(
     sentinel: dict[str, Any],
     api_cfg: dict[str, Any],
@@ -986,135 +1168,131 @@ def _probe_track_sentinel(
     endpoints = api_cfg.get("endpoints") if isinstance(api_cfg.get("endpoints"), dict) else {}
     name = str(sentinel.get("name") or sentinel.get("query") or "")
     query = str(sentinel.get("query") or "")
-    required = bool(sentinel.get("required", True))
     expect_explicit_and_clean = bool(sentinel.get("expect_explicit_and_clean", False))
     expect_lyrics = bool(sentinel.get("expect_lyrics", False))
 
     last_result: dict[str, Any] = {}
     for attempt in range(max(1, attempts)):
-        search_payload, search_meta = _api_call(
-            api_cfg,
-            endpoints.get("search_songs", "search.getResults"),
-            {"q": query, "n": 10, "p": 1},
-            host_override=host_override,
-            context_override=context_override,
-            max_rotations=max_rotations,
-        )
-        if not search_meta.get("ok"):
-            last_result = {
-                "ok": False,
-                "access_blocked": bool(search_meta.get("access_blocked")),
-                "error": f"search_failed:{search_meta.get('error')}",
-            }
-            if attempt + 1 < attempts:
-                time.sleep(retry_delay_seconds)
-            continue
-
-        songs, search_summary = _extract_song_list(search_payload)
-        schema_info = _inspect_song_schema(songs)
-        first_song = schema_info.pop("_first_playable", None)
-        lyrics_id = schema_info.pop("_lyrics_id", "")
-
-        if not first_song:
-            last_result = {
-                "ok": False,
-                "access_blocked": False,
-                "search": search_summary,
-                "schema": schema_info,
-                "error": "no_playable_song_in_search",
-            }
-            if attempt + 1 < attempts:
-                time.sleep(retry_delay_seconds)
-            continue
-
-        first_info = first_song.get("more_info") or {}
-        song_id = str(first_song.get("id") or "")
-        duration_sec = _parse_duration_seconds(first_info.get("duration"))
-        if duration_sec is None:
-            last_result = {
-                "ok": False,
-                "access_blocked": False,
-                "search": search_summary,
-                "schema": schema_info,
-                "error": "invalid_duration_schema",
-            }
-            if attempt + 1 < attempts:
-                time.sleep(retry_delay_seconds)
-            continue
-
-        encrypted_payload = str(first_info.get("encrypted_media_url") or "").strip()
-
-        details = _probe_song_details(
+        last_result = _probe_track_attempt(
+            query,
             api_cfg,
             endpoints,
-            song_id,
-            host_override=host_override,
-            context_override=context_override,
-        )
-        lyrics = (
-            _probe_lyrics(
-                api_cfg,
-                endpoints,
-                lyrics_id or song_id,
-                host_override=host_override,
-                context_override=context_override,
-            )
-            if expect_lyrics
-            else {"skipped": True}
-        )
-        streams = _probe_streams(
-            api_cfg,
-            endpoints,
-            encrypted_payload,
-            duration_sec,
             quality_tiers,
+            expect_explicit_and_clean=expect_explicit_and_clean,
+            expect_lyrics=expect_lyrics,
             host_override=host_override,
             context_override=context_override,
             open_media_host_override=open_media_host_override,
             max_rotations=max_rotations,
         )
-
-        explicit_ok = (
-            (schema_info["has_explicit"] and schema_info["has_clean"])
-            if expect_explicit_and_clean
-            else True
-        )
-        lyrics_ok = bool(lyrics.get("ok")) if expect_lyrics else True
-        all_ok = (
-            search_summary.get("envelope_ok", False)
-            and details.get("ok", False)
-            and lyrics_ok
-            and streams.get("playable_any_tier", False)
-            and explicit_ok
-        )
-        access_blocked = bool(
-            details.get("access_blocked")
-            or (expect_lyrics and lyrics.get("access_blocked"))
-            or streams.get("cdn_access_blocked")
-            or (not streams.get("playable_any_tier") and streams.get("auth_api_blocked"))
-        )
-        last_result = {
-            "ok": all_ok,
-            "access_blocked": access_blocked,
-            "search": search_summary,
-            "schema": schema_info,
-            "explicit_and_clean_ok": explicit_ok,
-            "details": details,
-            "lyrics": lyrics,
-            "streams": streams,
-        }
-        if all_ok:
+        if last_result.get("ok"):
             break
         if attempt + 1 < attempts:
             time.sleep(retry_delay_seconds)
 
     return {
         "name": name,
-        "required": required,
+        "required": bool(sentinel.get("required", True)),
         "expect_explicit_and_clean": expect_explicit_and_clean,
         "expect_lyrics": expect_lyrics,
         "ok": bool(last_result.get("ok")),
         "observation": last_result,
+    }
+
+
+def _match_entity_id(
+    results: list[Any],
+    match_keys: tuple[str, ...],
+    expected_text: str,
+) -> str:
+    dict_items = [item for item in results if isinstance(item, dict)]
+    if not dict_items:
+        return ""
+    if expected_text:
+        for item in dict_items:
+            candidate = " ".join(str(item.get(k) or "") for k in match_keys).lower()
+            if expected_text in candidate:
+                return str(item.get("id") or "").strip()
+    return str(dict_items[0].get("id") or "").strip()
+
+
+def _probe_entity_once(
+    api_cfg: dict[str, Any],
+    kind: str,
+    search_call: str,
+    query: str,
+    match_keys: tuple[str, ...],
+    expected_text: str,
+    details_call: str,
+    details_params_fn: Any,
+    summarize_fn: Any,
+    *,
+    host_override: str | None,
+    context_override: str | None,
+) -> dict[str, Any]:
+    search_payload, search_meta = _api_call(
+        api_cfg, search_call, {"q": query, "n": 5, "p": 1},
+        host_override=host_override, context_override=context_override,
+    )
+    if not search_meta.get("ok"):
+        return {
+            "ok": False,
+            "access_blocked": bool(search_meta.get("access_blocked")),
+            "error": f"{kind}_search_failed:{search_meta.get('error')}",
+        }
+    results = search_payload.get("results") if isinstance(search_payload, dict) else None
+    if not isinstance(results, list) or not results:
+        return {"ok": False, "access_blocked": False, "error": f"{kind}_search_empty_or_malformed"}
+    entity_id = _match_entity_id(results, match_keys, expected_text)
+    if not entity_id:
+        return {"ok": False, "access_blocked": False, "error": f"{kind}_id_missing"}
+    details_payload, details_meta = _api_call(
+        api_cfg, details_call, details_params_fn(entity_id),
+        host_override=host_override, context_override=context_override,
+    )
+    if not details_meta.get("ok") or not isinstance(details_payload, dict):
+        return {
+            "ok": False,
+            "access_blocked": bool(details_meta.get("access_blocked")),
+            "error": f"{kind}_details_failed:{details_meta.get('error', 'non_object')}",
+        }
+    return summarize_fn(details_payload, len(results))
+
+
+def _summarize_artist_details(payload: dict[str, Any], search_count: int) -> dict[str, Any]:
+    top_songs = payload.get("topSongs")
+    top_albums = payload.get("topAlbums")
+    has_name = bool(str(payload.get("name") or "").strip())
+    has_songs = isinstance(top_songs, list) and len(top_songs) > 0
+    has_albums = isinstance(top_albums, list) and len(top_albums) > 0
+    return {
+        "ok": has_name and has_songs and has_albums,
+        "access_blocked": False,
+        "search_count": search_count,
+        "has_artist_id": bool(payload.get("artistId")),
+        "has_name": has_name,
+        "top_songs_count": len(top_songs) if isinstance(top_songs, list) else 0,
+        "top_albums_count": len(top_albums) if isinstance(top_albums, list) else 0,
+        "detail_keys": sorted(str(k) for k in payload.keys()),
+    }
+
+
+def _summarize_album_details(payload: dict[str, Any], search_count: int) -> dict[str, Any]:
+    songs = payload.get("list")
+    has_title = bool(str(payload.get("title") or "").strip())
+    has_songs = isinstance(songs, list) and len(songs) > 0
+    songs_have_more_info = bool(
+        has_songs and all(isinstance(s, dict) and isinstance(s.get("more_info"), dict) for s in songs[:3])
+    )
+    return {
+        "ok": has_title and has_songs and songs_have_more_info,
+        "access_blocked": False,
+        "search_count": search_count,
+        "has_title": has_title,
+        "list_count": len(songs) if isinstance(songs, list) else 0,
+        "songs_have_more_info": songs_have_more_info,
+        "has_more_info": isinstance(payload.get("more_info"), dict),
+        "detail_keys": sorted(str(k) for k in payload.keys()),
     }
 
 
@@ -1128,104 +1306,28 @@ def _probe_artist_sentinel(
     context_override: str | None = None,
 ) -> dict[str, Any]:
     endpoints = api_cfg.get("endpoints") if isinstance(api_cfg.get("endpoints"), dict) else {}
-    name = str(sentinel.get("name") or sentinel.get("query") or "")
-    query = str(sentinel.get("query") or "")
-    expected_name = str(sentinel.get("expected_name") or "").lower()
-    required = bool(sentinel.get("required", True))
-
     last_result: dict[str, Any] = {}
     for attempt in range(max(1, attempts)):
-        search_payload, search_meta = _api_call(
+        last_result = _probe_entity_once(
             api_cfg,
+            "artist",
             endpoints.get("search_artists", "search.getArtistResults"),
-            {"q": query, "n": 5, "p": 1},
-            host_override=host_override,
-            context_override=context_override,
-        )
-        if not search_meta.get("ok"):
-            last_result = {
-                "ok": False,
-                "access_blocked": bool(search_meta.get("access_blocked")),
-                "error": f"artist_search_failed:{search_meta.get('error')}",
-            }
-            if attempt + 1 < attempts:
-                time.sleep(retry_delay_seconds)
-            continue
-
-        results = search_payload.get("results") if isinstance(search_payload, dict) else None
-        if not isinstance(results, list) or not results:
-            last_result = {
-                "ok": False,
-                "access_blocked": False,
-                "error": "artist_search_empty_or_malformed",
-            }
-            if attempt + 1 < attempts:
-                time.sleep(retry_delay_seconds)
-            continue
-
-        matched = next(
-            (
-                item
-                for item in results
-                if isinstance(item, dict)
-                and expected_name
-                and expected_name in str(item.get("name") or item.get("title") or "").lower()
-            ),
-            results[0] if isinstance(results[0], dict) else None,
-        )
-        artist_id = str((matched or {}).get("id") or "").strip()
-        if not artist_id:
-            last_result = {"ok": False, "access_blocked": False, "error": "artist_id_missing"}
-            continue
-
-        details_payload, details_meta = _api_call(
-            api_cfg,
+            str(sentinel.get("query") or ""),
+            ("name", "title"),
+            str(sentinel.get("expected_name") or "").lower(),
             endpoints.get("artist_details", "artist.getArtistPageDetails"),
-            {
-                "artistId": artist_id,
-                "n_song": 5,
-                "n_album": 5,
-                "page": 0,
-                "sort_order": "desc",
-                "category": "popularity",
-            },
+            lambda aid: {"artistId": aid, "n_song": 5, "n_album": 5, "page": 0, "sort_order": "desc", "category": "popularity"},
+            _summarize_artist_details,
             host_override=host_override,
             context_override=context_override,
         )
-        if not details_meta.get("ok") or not isinstance(details_payload, dict):
-            last_result = {
-                "ok": False,
-                "access_blocked": bool(details_meta.get("access_blocked")),
-                "error": f"artist_details_failed:{details_meta.get('error', 'non_object')}",
-            }
-            if attempt + 1 < attempts:
-                time.sleep(retry_delay_seconds)
-            continue
-
-        top_songs = details_payload.get("topSongs")
-        top_albums = details_payload.get("topAlbums")
-        has_name = bool(str(details_payload.get("name") or "").strip())
-        has_songs = isinstance(top_songs, list) and len(top_songs) > 0
-        has_albums = isinstance(top_albums, list) and len(top_albums) > 0
-        ok = has_name and has_songs and has_albums
-        last_result = {
-            "ok": ok,
-            "access_blocked": False,
-            "search_count": len(results),
-            "has_artist_id": bool(details_payload.get("artistId")),
-            "has_name": has_name,
-            "top_songs_count": len(top_songs) if isinstance(top_songs, list) else 0,
-            "top_albums_count": len(top_albums) if isinstance(top_albums, list) else 0,
-            "detail_keys": sorted(str(k) for k in details_payload.keys()),
-        }
-        if ok:
+        if last_result.get("ok"):
             break
         if attempt + 1 < attempts:
             time.sleep(retry_delay_seconds)
-
     return {
-        "name": name,
-        "required": required,
+        "name": str(sentinel.get("name") or sentinel.get("query") or ""),
+        "required": bool(sentinel.get("required", True)),
         "ok": bool(last_result.get("ok")),
         "observation": last_result,
     }
@@ -1241,99 +1343,28 @@ def _probe_album_sentinel(
     context_override: str | None = None,
 ) -> dict[str, Any]:
     endpoints = api_cfg.get("endpoints") if isinstance(api_cfg.get("endpoints"), dict) else {}
-    name = str(sentinel.get("name") or sentinel.get("query") or "")
-    query = str(sentinel.get("query") or "")
-    expected_title = str(sentinel.get("expected_title_contains") or "").lower()
-    required = bool(sentinel.get("required", True))
-
     last_result: dict[str, Any] = {}
     for attempt in range(max(1, attempts)):
-        search_payload, search_meta = _api_call(
+        last_result = _probe_entity_once(
             api_cfg,
+            "album",
             endpoints.get("search_albums", "search.getAlbumResults"),
-            {"q": query, "n": 5, "p": 1},
-            host_override=host_override,
-            context_override=context_override,
-        )
-        if not search_meta.get("ok"):
-            last_result = {
-                "ok": False,
-                "access_blocked": bool(search_meta.get("access_blocked")),
-                "error": f"album_search_failed:{search_meta.get('error')}",
-            }
-            if attempt + 1 < attempts:
-                time.sleep(retry_delay_seconds)
-            continue
-
-        results = search_payload.get("results") if isinstance(search_payload, dict) else None
-        if not isinstance(results, list) or not results:
-            last_result = {
-                "ok": False,
-                "access_blocked": False,
-                "error": "album_search_empty_or_malformed",
-            }
-            if attempt + 1 < attempts:
-                time.sleep(retry_delay_seconds)
-            continue
-
-        matched = next(
-            (
-                item
-                for item in results
-                if isinstance(item, dict)
-                and expected_title
-                and expected_title in str(item.get("title") or "").lower()
-            ),
-            results[0] if isinstance(results[0], dict) else None,
-        )
-        album_id = str((matched or {}).get("id") or "").strip()
-        if not album_id:
-            last_result = {"ok": False, "access_blocked": False, "error": "album_id_missing"}
-            continue
-
-        details_payload, details_meta = _api_call(
-            api_cfg,
+            str(sentinel.get("query") or ""),
+            ("title",),
+            str(sentinel.get("expected_title_contains") or "").lower(),
             endpoints.get("album_details", "content.getAlbumDetails"),
-            {"albumid": album_id},
+            lambda aid: {"albumid": aid},
+            _summarize_album_details,
             host_override=host_override,
             context_override=context_override,
         )
-        if not details_meta.get("ok") or not isinstance(details_payload, dict):
-            last_result = {
-                "ok": False,
-                "access_blocked": bool(details_meta.get("access_blocked")),
-                "error": f"album_details_failed:{details_meta.get('error', 'non_object')}",
-            }
-            if attempt + 1 < attempts:
-                time.sleep(retry_delay_seconds)
-            continue
-
-        songs = details_payload.get("list")
-        has_title = bool(str(details_payload.get("title") or "").strip())
-        has_songs = isinstance(songs, list) and len(songs) > 0
-        songs_have_more_info = bool(
-            has_songs
-            and all(isinstance(s, dict) and isinstance(s.get("more_info"), dict) for s in songs[:3])
-        )
-        ok = has_title and has_songs and songs_have_more_info
-        last_result = {
-            "ok": ok,
-            "access_blocked": False,
-            "search_count": len(results),
-            "has_title": has_title,
-            "list_count": len(songs) if isinstance(songs, list) else 0,
-            "songs_have_more_info": songs_have_more_info,
-            "has_more_info": isinstance(details_payload.get("more_info"), dict),
-            "detail_keys": sorted(str(k) for k in details_payload.keys()),
-        }
-        if ok:
+        if last_result.get("ok"):
             break
         if attempt + 1 < attempts:
             time.sleep(retry_delay_seconds)
-
     return {
-        "name": name,
-        "required": required,
+        "name": str(sentinel.get("name") or sentinel.get("query") or ""),
+        "required": bool(sentinel.get("required", True)),
         "ok": bool(last_result.get("ok")),
         "observation": last_result,
     }
@@ -1373,6 +1404,186 @@ def _fetch_upstream(repo: str, branch: str) -> dict[str, Any]:
     return {"repo": repo, "branch": branch, "relevant_commits": relevant[:5]}
 
 
+def _allowlisted_candidates(
+    api_cfg: dict[str, Any],
+    key: str,
+    primary: str,
+    allowlist: Any,
+) -> list[str]:
+    extras = api_cfg.get(key)
+    if not isinstance(extras, list):
+        return [primary]
+    return [primary] + [str(item) for item in extras if item in allowlist]
+
+
+def _append_candidate(
+    candidates: list[dict[str, str]],
+    seen: set[tuple[str, str, str]],
+    host: str,
+    ctx: str,
+    media_host: str,
+) -> None:
+    triple = (host, ctx, media_host)
+    if triple not in seen:
+        seen.add(triple)
+        candidates.append({"api_host": host, "client_context": ctx, "open_media_host": media_host})
+
+
+def _build_protocol_candidates(api_cfg: dict[str, Any]) -> list[dict[str, str]]:
+    primary_host = str(api_cfg.get("host") or "www.jiosaavn.com")
+    primary_ctx = str(api_cfg.get("client_context") or "web6dot0")
+    primary_media = str(api_cfg.get("open_media_host") or "aac.saavncdn.com")
+
+    candidate_hosts = _allowlisted_candidates(api_cfg, "fallback_hosts", primary_host, ALLOWLISTED_API_HOSTS)
+    candidate_ctxs = _allowlisted_candidates(api_cfg, "fallback_contexts", primary_ctx, ALLOWLISTED_CONTEXTS)
+    candidate_media = _allowlisted_candidates(api_cfg, "fallback_media_hosts", primary_media, ALLOWLISTED_OPEN_MEDIA_HOSTS)
+
+    candidates: list[dict[str, str]] = []
+    seen: set[tuple[str, str, str]] = {(primary_host, primary_ctx, primary_media)}
+    for host in candidate_hosts:
+        for ctx in candidate_ctxs:
+            _append_candidate(candidates, seen, host, ctx, primary_media)
+    for media_host in candidate_media:
+        _append_candidate(candidates, seen, primary_host, primary_ctx, media_host)
+    return candidates
+
+
+def _sentinel_list(config: dict[str, Any], key: str) -> list[dict[str, Any]]:
+    raw = config.get(key)
+    if not isinstance(raw, list):
+        return []
+    return [item for item in raw if isinstance(item, dict)]
+
+
+def _probe_candidate_sentinels(
+    sentinels: list[dict[str, Any]],
+    deadline: float,
+    probe_fn: Any,
+) -> list[dict[str, Any]]:
+    collected: list[dict[str, Any]] = []
+    for sentinel in sentinels:
+        if time.monotonic() >= deadline:
+            break
+        collected.append(probe_fn(sentinel))
+    return collected
+
+
+def _candidate_all_passed(
+    alt_tracks: list[dict[str, Any]],
+    alt_artists: list[dict[str, Any]],
+    alt_albums: list[dict[str, Any]],
+    expected_counts: tuple[int, int, int],
+    baseline: dict[str, Any] | None,
+    config: dict[str, Any],
+) -> bool:
+    t_count, a_count, al_count = expected_counts
+    if (
+        len(alt_tracks) != t_count
+        or len(alt_artists) != a_count
+        or len(alt_albums) != al_count
+    ):
+        return False
+    if not all(item.get("ok") for item in alt_tracks + alt_artists + alt_albums):
+        return False
+    if not isinstance(baseline, dict) or not isinstance(baseline.get("observation"), dict):
+        return True
+    alt_decision = _classify(
+        baseline,
+        {
+            "schema": SCHEMA_VERSION,
+            "tracks": alt_tracks,
+            "artists": alt_artists,
+            "albums": alt_albums,
+        },
+        config,
+    )
+    return alt_decision.get("decision") != "repair"
+
+
+def _evaluate_protocol_candidate(
+    candidate: dict[str, str],
+    config: dict[str, Any],
+    api_cfg: dict[str, Any],
+    quality_tiers: list[int],
+    baseline: dict[str, Any] | None,
+    deadline: float,
+) -> dict[str, Any]:
+    track_sentinels = _sentinel_list(config, "track_sentinels")
+    artist_sentinels = _sentinel_list(config, "artist_sentinels")
+    album_sentinels = _sentinel_list(config, "album_sentinels")
+
+    def run_track(sentinel: dict[str, Any]) -> dict[str, Any]:
+        return _probe_track_sentinel(
+            sentinel,
+            api_cfg,
+            quality_tiers,
+            attempts=1,
+            retry_delay_seconds=0.0,
+            host_override=candidate["api_host"],
+            context_override=candidate["client_context"],
+            open_media_host_override=candidate["open_media_host"],
+            max_rotations=1,
+        )
+
+    canary_track = run_track(track_sentinels[0])
+    if not canary_track.get("ok"):
+        return {**candidate, "all_passed": False, "tracks_ok": 0, "artists_ok": 0, "albums_ok": 0}
+
+    alt_tracks = [canary_track] + _probe_candidate_sentinels(track_sentinels[1:], deadline, run_track)
+    alt_artists = _probe_candidate_sentinels(
+        artist_sentinels,
+        deadline,
+        lambda s: _probe_artist_sentinel(
+            s,
+            api_cfg,
+            attempts=1,
+            retry_delay_seconds=0.0,
+            host_override=candidate["api_host"],
+            context_override=candidate["client_context"],
+        ),
+    )
+    alt_albums = _probe_candidate_sentinels(
+        album_sentinels,
+        deadline,
+        lambda s: _probe_album_sentinel(
+            s,
+            api_cfg,
+            attempts=1,
+            retry_delay_seconds=0.0,
+            host_override=candidate["api_host"],
+            context_override=candidate["client_context"],
+        ),
+    )
+    all_passed = _candidate_all_passed(
+        alt_tracks,
+        alt_artists,
+        alt_albums,
+        (len(track_sentinels), len(artist_sentinels), len(album_sentinels)),
+        baseline,
+        config,
+    )
+    return {
+        **candidate,
+        "all_passed": all_passed,
+        "tracks_ok": sum(1 for item in alt_tracks if item.get("ok")),
+        "artists_ok": sum(1 for item in alt_artists if item.get("ok")),
+        "albums_ok": sum(1 for item in alt_albums if item.get("ok")),
+    }
+
+
+def _should_probe_alternatives(
+    all_items: list[dict[str, Any]],
+    provisional_decision: dict[str, Any] | None,
+) -> bool:
+    needs_repair = (provisional_decision or {}).get("decision") == "repair"
+    if all(item.get("ok") for item in all_items) and not needs_repair:
+        return False
+    failed_items = [item for item in all_items if not item.get("ok")]
+    if failed_items and not needs_repair and all(_is_access_blocked(item) for item in failed_items):
+        return False
+    return True
+
+
 def _probe_protocol_alternatives(
     config: dict[str, Any],
     tracks: list[dict[str, Any]],
@@ -1383,165 +1594,48 @@ def _probe_protocol_alternatives(
     provisional_decision: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     """Probe allowlisted host/context/media-host fallbacks within a bounded budget."""
-    needs_repair = (provisional_decision or {}).get("decision") == "repair"
-    all_sentinels_ok = (
-        all(t.get("ok") for t in tracks)
-        and all(a.get("ok") for a in artists)
-        and all(b.get("ok") for b in albums)
-    )
-    if all_sentinels_ok and not needs_repair:
+    if not _should_probe_alternatives(tracks + artists + albums, provisional_decision):
         return []
-    all_items = tracks + artists + albums
-    failed_items = [item for item in all_items if not item.get("ok")]
-    if failed_items and not needs_repair and all(_is_access_blocked(item) for item in failed_items):
-        # All failures look like geo/rate-limit/transport outages; avoid burning CI budget.
+
+    track_sentinels = _sentinel_list(config, "track_sentinels")
+    if not track_sentinels:
         return []
 
     api_cfg = config.get("api") if isinstance(config.get("api"), dict) else {}
-    primary_host = str(api_cfg.get("host") or "www.jiosaavn.com")
-    primary_ctx = str(api_cfg.get("client_context") or "web6dot0")
-    primary_media = str(api_cfg.get("open_media_host") or "aac.saavncdn.com")
     quality_tiers = [int(t) for t in (config.get("quality_tiers") or QUALITY_TIERS)]
-    track_sentinels = [s for s in (config.get("track_sentinels") or []) if isinstance(s, dict)]
-    if not track_sentinels:
-        return []
-    artist_sentinels = [s for s in (config.get("artist_sentinels") or []) if isinstance(s, dict)]
-    album_sentinels = [s for s in (config.get("album_sentinels") or []) if isinstance(s, dict)]
-
     budget_seconds = float(config.get("alternative_discovery_budget_seconds") or 90.0)
     deadline = time.monotonic() + max(5.0, budget_seconds)
 
-    candidates: list[dict[str, str]] = []
-    seen_candidates: set[tuple[str, str, str]] = {(primary_host, primary_ctx, primary_media)}
-    candidate_hosts = [primary_host] + [
-        h for h in (api_cfg.get("fallback_hosts") or []) if h in ALLOWLISTED_API_HOSTS
-    ]
-    candidate_ctxs = [primary_ctx] + [
-        c for c in (api_cfg.get("fallback_contexts") or []) if c in ALLOWLISTED_CONTEXTS
-    ]
-    candidate_media = [primary_media] + [
-        m for m in (api_cfg.get("fallback_media_hosts") or []) if m in ALLOWLISTED_OPEN_MEDIA_HOSTS
-    ]
-    for host in candidate_hosts:
-        for ctx in candidate_ctxs:
-            triple = (host, ctx, primary_media)
-            if triple not in seen_candidates:
-                seen_candidates.add(triple)
-                candidates.append(
-                    {"api_host": host, "client_context": ctx, "open_media_host": primary_media}
-                )
-    for media_host in candidate_media:
-        triple = (primary_host, primary_ctx, media_host)
-        if triple not in seen_candidates:
-            seen_candidates.add(triple)
-            candidates.append(
-                {"api_host": primary_host, "client_context": primary_ctx, "open_media_host": media_host}
-            )
-
     results: list[dict[str, Any]] = []
-    for candidate in candidates:
+    for candidate in _build_protocol_candidates(api_cfg):
         if time.monotonic() >= deadline:
             break
-        # Canary-first: probe only the first track sentinel before expanding to full suite.
-        canary_track = _probe_track_sentinel(
-            track_sentinels[0],
-            api_cfg,
-            quality_tiers,
-            attempts=1,
-            retry_delay_seconds=0.0,
-            host_override=candidate["api_host"],
-            context_override=candidate["client_context"],
-            open_media_host_override=candidate["open_media_host"],
-            max_rotations=1,
-        )
-        if not canary_track.get("ok"):
-            results.append(
-                {
-                    **candidate,
-                    "all_passed": False,
-                    "tracks_ok": 0,
-                    "artists_ok": 0,
-                    "albums_ok": 0,
-                }
-            )
-            continue
-
-        alt_tracks = [canary_track]
-        for s in track_sentinels[1:]:
-            if time.monotonic() >= deadline:
-                break
-            alt_tracks.append(
-                _probe_track_sentinel(
-                    s,
-                    api_cfg,
-                    quality_tiers,
-                    attempts=1,
-                    retry_delay_seconds=0.0,
-                    host_override=candidate["api_host"],
-                    context_override=candidate["client_context"],
-                    open_media_host_override=candidate["open_media_host"],
-                    max_rotations=1,
-                )
-            )
-        alt_artists: list[dict[str, Any]] = []
-        for s in artist_sentinels:
-            if time.monotonic() >= deadline:
-                break
-            alt_artists.append(
-                _probe_artist_sentinel(
-                    s,
-                    api_cfg,
-                    attempts=1,
-                    retry_delay_seconds=0.0,
-                    host_override=candidate["api_host"],
-                    context_override=candidate["client_context"],
-                )
-            )
-        alt_albums: list[dict[str, Any]] = []
-        for s in album_sentinels:
-            if time.monotonic() >= deadline:
-                break
-            alt_albums.append(
-                _probe_album_sentinel(
-                    s,
-                    api_cfg,
-                    attempts=1,
-                    retry_delay_seconds=0.0,
-                    host_override=candidate["api_host"],
-                    context_override=candidate["client_context"],
-                )
-            )
-        all_passed = (
-            len(alt_tracks) == len(track_sentinels)
-            and len(alt_artists) == len(artist_sentinels)
-            and len(alt_albums) == len(album_sentinels)
-            and all(item.get("ok") for item in alt_tracks)
-            and all(item.get("ok") for item in alt_artists)
-            and all(item.get("ok") for item in alt_albums)
-        )
-        if all_passed and isinstance(baseline, dict) and isinstance(baseline.get("observation"), dict):
-            alt_decision = _classify(
-                baseline,
-                {
-                    "schema": SCHEMA_VERSION,
-                    "tracks": alt_tracks,
-                    "artists": alt_artists,
-                    "albums": alt_albums,
-                },
-                config,
-            )
-            if alt_decision.get("decision") == "repair":
-                all_passed = False
         results.append(
-            {
-                **candidate,
-                "all_passed": all_passed,
-                "tracks_ok": sum(1 for item in alt_tracks if item.get("ok")),
-                "artists_ok": sum(1 for item in alt_artists if item.get("ok")),
-                "albums_ok": sum(1 for item in alt_albums if item.get("ok")),
-            }
+            _evaluate_protocol_candidate(
+                candidate, config, api_cfg, quality_tiers, baseline, deadline
+            )
         )
     return results
+
+
+def _api_contract_snapshot(api_cfg: dict[str, Any]) -> dict[str, str]:
+    return {
+        "host": str(api_cfg.get("host") or "www.jiosaavn.com"),
+        "api_version": str(api_cfg.get("api_version") or "4"),
+        "client_context": str(api_cfg.get("client_context") or "web6dot0"),
+        "open_media_host": str(api_cfg.get("open_media_host") or "aac.saavncdn.com"),
+    }
+
+
+def _collect_upstreams(config: dict[str, Any]) -> list[dict[str, Any]]:
+    upstreams_cfg = config.get("upstreams")
+    if not isinstance(upstreams_cfg, list):
+        return []
+    return [
+        _fetch_upstream(str(item.get("repo") or ""), str(item.get("branch") or "main"))
+        for item in upstreams_cfg
+        if isinstance(item, dict)
+    ]
 
 
 def _current_observation(
@@ -1554,11 +1648,7 @@ def _current_observation(
     retry_delay = float(config.get("retry_delay_seconds") or 2.0)
     quality_tiers = [int(t) for t in (config.get("quality_tiers") or QUALITY_TIERS)]
 
-    track_sentinels = [s for s in (config.get("track_sentinels") or []) if isinstance(s, dict)]
-    if not track_sentinels:
-        return []
-    artist_sentinels = [s for s in (config.get("artist_sentinels") or []) if isinstance(s, dict)]
-    album_sentinels = [s for s in (config.get("album_sentinels") or []) if isinstance(s, dict)]
+    track_sentinels = _sentinel_list(config, "track_sentinels")
     if not track_sentinels:
         raise SyncError("config requires at least one track sentinel")
 
@@ -1569,26 +1659,17 @@ def _current_observation(
         for s in track_sentinels
     ]
     artists = [
-        _probe_artist_sentinel(
-            s, api_cfg, attempts=attempts, retry_delay_seconds=retry_delay
-        )
-        for s in artist_sentinels
+        _probe_artist_sentinel(s, api_cfg, attempts=attempts, retry_delay_seconds=retry_delay)
+        for s in _sentinel_list(config, "artist_sentinels")
     ]
     albums = [
-        _probe_album_sentinel(
-            s, api_cfg, attempts=attempts, retry_delay_seconds=retry_delay
-        )
-        for s in album_sentinels
+        _probe_album_sentinel(s, api_cfg, attempts=attempts, retry_delay_seconds=retry_delay)
+        for s in _sentinel_list(config, "album_sentinels")
     ]
     observation = {
         "schema": SCHEMA_VERSION,
         "observed_at_epoch": int(time.time()),
-        "api_contract": {
-            "host": str(api_cfg.get("host") or "www.jiosaavn.com"),
-            "api_version": str(api_cfg.get("api_version") or "4"),
-            "client_context": str(api_cfg.get("client_context") or "web6dot0"),
-            "open_media_host": str(api_cfg.get("open_media_host") or "aac.saavncdn.com"),
-        },
+        "api_contract": _api_contract_snapshot(api_cfg),
         "tracks": tracks,
         "artists": artists,
         "albums": albums,
@@ -1606,13 +1687,7 @@ def _current_observation(
         baseline=baseline,
         provisional_decision=provisional_decision,
     )
-
-    upstreams_cfg = config.get("upstreams") if isinstance(config.get("upstreams"), list) else []
-    observation["upstreams"] = [
-        _fetch_upstream(str(item.get("repo") or ""), str(item.get("branch") or "main"))
-        for item in upstreams_cfg
-        if isinstance(item, dict)
-    ]
+    observation["upstreams"] = _collect_upstreams(config)
     return observation
 
 
@@ -1630,15 +1705,252 @@ def _is_access_blocked(entry: dict[str, Any]) -> bool:
     return bool(obs.get("access_blocked"))
 
 
+def _classify_without_baseline(failed_required: list[dict[str, Any]]) -> dict[str, Any]:
+    if not failed_required:
+        return {
+            "decision": "bootstrap",
+            "severity": "info",
+            "material_changes": ["No accepted JioSaavn baseline exists yet."],
+            "informational_changes": [],
+        }
+    blocked_only = all(_is_access_blocked(item) for item in failed_required)
+    failing_names = ", ".join(item["name"] for item in failed_required)
+    return {
+        "decision": "blocked" if blocked_only else "repair",
+        "severity": "warning" if blocked_only else "major",
+        "material_changes": [] if blocked_only else [
+            f"Bootstrap failed on non-blocked required sentinels: {failing_names}"
+        ],
+        "informational_changes": [
+            f"Baseline not seeded; failing sentinels: {failing_names}"
+        ] if blocked_only else [],
+    }
+
+
+def _diff_track_streams(
+    name: str,
+    old_streams: dict[str, Any],
+    new_streams: dict[str, Any],
+) -> tuple[list[str], list[str], bool]:
+    material: list[str] = []
+    info: list[str] = []
+    regressed = False
+    if old_streams.get("playable_any_tier") and not new_streams.get("playable_any_tier"):
+        regressed = True
+        material.append(f"track/{name}: all audio tiers (96/160/320) became unplayable")
+    elif old_streams.get("decrypt_ok") and not new_streams.get("decrypt_ok"):
+        if not new_streams.get("auth_url_valid"):
+            regressed = True
+            material.append(f"track/{name}: both DES decryption and song.generateAuthToken failed")
+        else:
+            info.append(f"track/{name}: local DES decryption failed while auth token still works")
+
+    old_tiers = set(old_streams.get("verified_tiers") or [])
+    new_tiers = set(new_streams.get("verified_tiers") or [])
+    lost_tiers = sorted(old_tiers - new_tiers)
+    if lost_tiers and new_streams.get("playable_any_tier"):
+        info.append(f"track/{name}: quality tier(s) {lost_tiers} unavailable while {sorted(new_tiers)} playable")
+    return material, info, regressed
+
+
+def _check_track_metadata_regressions(
+    name: str,
+    previous: dict[str, Any],
+    current: dict[str, Any],
+    old_obs: dict[str, Any],
+    new_obs: dict[str, Any],
+) -> tuple[list[str], bool]:
+    material: list[str] = []
+    if previous.get("expect_explicit_and_clean") and old_obs.get("explicit_and_clean_ok") and not new_obs.get("explicit_and_clean_ok"):
+        material.append(f"track/{name}: explicit/clean coexistence metadata missing")
+
+    old_details = old_obs.get("details") if isinstance(old_obs.get("details"), dict) else {}
+    new_details = new_obs.get("details") if isinstance(new_obs.get("details"), dict) else {}
+    if old_details.get("ok") and not new_details.get("ok"):
+        material.append(f"track/{name}: song.getDetails failed (envelope={new_details.get('envelope_kind')})")
+
+    old_lyrics = old_obs.get("lyrics") if isinstance(old_obs.get("lyrics"), dict) else {}
+    new_lyrics = new_obs.get("lyrics") if isinstance(new_obs.get("lyrics"), dict) else {}
+    if current.get("expect_lyrics") and old_lyrics.get("ok") and not new_lyrics.get("ok"):
+        material.append(f"track/{name}: lyrics.getLyrics stopped returning lyrics")
+
+    return material, bool(material)
+
+
+def _diff_single_track(
+    name: str,
+    previous: dict[str, Any],
+    current: dict[str, Any],
+) -> tuple[list[str], list[str], bool]:
+    material: list[str] = []
+    info: list[str] = []
+    regressed = False
+    old_obs = previous.get("observation") if isinstance(previous.get("observation"), dict) else {}
+    new_obs = current.get("observation") if isinstance(current.get("observation"), dict) else {}
+
+    if bool(current.get("required", True)) and previous.get("ok") and not current.get("ok"):
+        if _is_access_blocked(current):
+            return [], [f"track/{name}: probe access-blocked (geo/rate-limit/transient)"], False
+        regressed = True
+        material.append(f"track/{name}: required probe regressed ({new_obs.get('error') or 'contract mismatch'})")
+
+    if _is_access_blocked(current):
+        return material, info, regressed
+
+    m_meta, r_meta = _check_track_metadata_regressions(name, previous, current, old_obs, new_obs)
+    material.extend(m_meta)
+
+    s_mat, s_info, s_reg = _diff_track_streams(
+        name,
+        old_obs.get("streams") if isinstance(old_obs.get("streams"), dict) else {},
+        new_obs.get("streams") if isinstance(new_obs.get("streams"), dict) else {},
+    )
+    material.extend(s_mat)
+    info.extend(s_info)
+    return material, info, regressed or r_meta or s_reg
+
+
+def _diff_all_tracks(
+    tracks_before: dict[str, dict[str, Any]],
+    tracks_after: dict[str, dict[str, Any]],
+) -> tuple[list[str], list[str], set[str]]:
+    material: list[str] = []
+    info: list[str] = []
+    regressions: set[str] = set()
+    for name, current in tracks_after.items():
+        previous = tracks_before.get(name)
+        if not previous:
+            info.append(f"track/{name}: new sentinel")
+            continue
+        t_mat, t_info, regressed = _diff_single_track(name, previous, current)
+        material.extend(t_mat)
+        info.extend(t_info)
+        if regressed:
+            regressions.add(name)
+    return material, info, regressions
+
+
+def _diff_entity_sentinels(
+    kind: str,
+    before_map: dict[str, dict[str, Any]],
+    after_map: dict[str, dict[str, Any]],
+) -> tuple[list[str], list[str], set[str]]:
+    material: list[str] = []
+    info: list[str] = []
+    regressions: set[str] = set()
+    for name, current in after_map.items():
+        previous = before_map.get(name)
+        if not previous:
+            info.append(f"{kind}/{name}: new sentinel")
+            continue
+        if not bool(current.get("required", True)):
+            continue
+        if previous.get("ok") and not current.get("ok"):
+            if _is_access_blocked(current):
+                info.append(f"{kind}/{name}: access-blocked (geo/rate-limit/transient)")
+            else:
+                regressions.add(f"{kind}/{name}")
+                obs = current.get("observation") if isinstance(current.get("observation"), dict) else {}
+                err = obs.get("error") or "schema mismatch"
+                material.append(f"{kind}/{name}: failed ({err})")
+    return material, info, regressions
+
+
+def _collect_entity_regressions(
+    accepted: dict[str, Any],
+    artists_after: dict[str, dict[str, Any]],
+    albums_after: dict[str, dict[str, Any]],
+) -> tuple[list[str], list[str], set[str]]:
+    material: list[str] = []
+    info: list[str] = []
+    regressions: set[str] = set()
+    for kind, before_key, after_map in (
+        ("artist", "artists", artists_after),
+        ("album", "albums", albums_after),
+    ):
+        e_mat, e_info, e_regs = _diff_entity_sentinels(kind, _entity_map(accepted.get(before_key)), after_map)
+        material.extend(e_mat)
+        info.extend(e_info)
+        regressions.update(e_regs)
+    return material, info, regressions
+
+
+def _baseline_schema_version(baseline: dict[str, Any], accepted: Any) -> Any:
+    schema = baseline.get("schema")
+    if schema is None and isinstance(accepted, dict):
+        return accepted.get("schema")
+    return schema
+
+
+def _failed_required_probes(
+    *groups: dict[str, dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    all_required = [
+        item
+        for group in groups
+        for item in group.values()
+        if bool(item.get("required", True))
+    ]
+    failed_required = [item for item in all_required if not item.get("ok")]
+    return all_required, failed_required
+
+
+def _verified_tiers_for(entry: dict[str, Any]) -> list[Any]:
+    obs = entry.get("observation") if isinstance(entry.get("observation"), dict) else {}
+    streams = obs.get("streams") if isinstance(obs.get("streams"), dict) else {}
+    tiers = streams.get("verified_tiers")
+    return tiers if isinstance(tiers, list) else []
+
+
+def _has_global_320_loss(
+    tracks_before: dict[str, dict[str, Any]],
+    tracks_after: dict[str, dict[str, Any]],
+    track_threshold: int,
+) -> bool:
+    previously_320 = [
+        name for name, prev in tracks_before.items() if 320 in _verified_tiers_for(prev)
+    ]
+    comparable_non_blocked = [
+        name
+        for name in previously_320
+        if name in tracks_after and not _is_access_blocked(tracks_after[name])
+    ]
+    now_320 = [
+        name for name in comparable_non_blocked if 320 in _verified_tiers_for(tracks_after[name])
+    ]
+    return (
+        len(previously_320) >= track_threshold
+        and len(comparable_non_blocked) >= track_threshold
+        and not now_320
+    )
+
+
+def _apply_regression_thresholds(
+    material: list[str],
+    info: list[str],
+    regression_count: int,
+    threshold: int,
+    prefixes: tuple[str, ...],
+    label: str,
+) -> list[str]:
+    if regression_count and regression_count < threshold:
+        filtered = [m for m in material if not m.startswith(prefixes)]
+        downgraded = [m for m in material if m.startswith(prefixes)]
+        info.extend(downgraded)
+        info.append(
+            f"{label} regression count {regression_count} below repair threshold {threshold}"
+        )
+        return filtered
+    return material
+
+
 def _classify(
     baseline: dict[str, Any],
     observation: dict[str, Any],
     config: dict[str, Any],
 ) -> dict[str, Any]:
     accepted = baseline.get("observation")
-    baseline_schema = baseline.get("schema")
-    if baseline_schema is None and isinstance(accepted, dict):
-        baseline_schema = accepted.get("schema")
+    baseline_schema = _baseline_schema_version(baseline, accepted)
     if isinstance(accepted, dict) and baseline_schema != SCHEMA_VERSION:
         return {
             "decision": "blocked",
@@ -1652,12 +1964,7 @@ def _classify(
     tracks_after = _entity_map(observation.get("tracks"))
     artists_after = _entity_map(observation.get("artists"))
     albums_after = _entity_map(observation.get("albums"))
-
-    req_tracks = [item for item in tracks_after.values() if bool(item.get("required", True))]
-    req_artists = [item for item in artists_after.values() if bool(item.get("required", True))]
-    req_albums = [item for item in albums_after.values() if bool(item.get("required", True))]
-    all_required = req_tracks + req_artists + req_albums
-    failed_required = [item for item in all_required if not item.get("ok")]
+    all_required, failed_required = _failed_required_probes(tracks_after, artists_after, albums_after)
 
     if failed_required and len(failed_required) == len(all_required) and all(
         _is_access_blocked(item) for item in failed_required
@@ -1672,157 +1979,31 @@ def _classify(
         }
 
     if not isinstance(accepted, dict):
-        if failed_required:
-            blocked_only = all(_is_access_blocked(item) for item in failed_required)
-            return {
-                "decision": "blocked" if blocked_only else "repair",
-                "severity": "warning" if blocked_only else "major",
-                "material_changes": [] if blocked_only else [
-                    f"Bootstrap failed on non-blocked required sentinels: {', '.join(i['name'] for i in failed_required)}"
-                ],
-                "informational_changes": [
-                    f"Baseline not seeded; failing sentinels: {', '.join(i['name'] for i in failed_required)}"
-                ] if blocked_only else [],
-            }
-        return {
-            "decision": "bootstrap",
-            "severity": "info",
-            "material_changes": ["No accepted JioSaavn baseline exists yet."],
-            "informational_changes": [],
-        }
+        return _classify_without_baseline(failed_required)
 
     tracks_before = _entity_map(accepted.get("tracks"))
-    artists_before = _entity_map(accepted.get("artists"))
-    albums_before = _entity_map(accepted.get("albums"))
-
-    material: list[str] = []
-    info: list[str] = []
-    track_regressions: set[str] = set()
-    entity_regressions: set[str] = set()
-
-    for name, current in tracks_after.items():
-        previous = tracks_before.get(name)
-        if not previous:
-            info.append(f"track/{name}: new sentinel")
-            continue
-        required = bool(current.get("required", True))
-        blocked = _is_access_blocked(current)
-        old_obs = previous.get("observation") if isinstance(previous.get("observation"), dict) else {}
-        new_obs = current.get("observation") if isinstance(current.get("observation"), dict) else {}
-
-        if required and previous.get("ok") and not current.get("ok"):
-            if blocked:
-                info.append(f"track/{name}: probe access-blocked (geo/rate-limit/transient)")
-                continue
-            track_regressions.add(name)
-            material.append(f"track/{name}: required probe regressed ({new_obs.get('error') or 'contract mismatch'})")
-
-        if blocked:
-            continue
-
-        if previous.get("expect_explicit_and_clean") and old_obs.get("explicit_and_clean_ok") and not new_obs.get("explicit_and_clean_ok"):
-            track_regressions.add(name)
-            material.append(f"track/{name}: explicit/clean coexistence metadata missing")
-
-        old_details = old_obs.get("details") if isinstance(old_obs.get("details"), dict) else {}
-        new_details = new_obs.get("details") if isinstance(new_obs.get("details"), dict) else {}
-        if old_details.get("ok") and not new_details.get("ok"):
-            track_regressions.add(name)
-            material.append(f"track/{name}: song.getDetails failed (envelope={new_details.get('envelope_kind')})")
-
-        old_lyrics = old_obs.get("lyrics") if isinstance(old_obs.get("lyrics"), dict) else {}
-        new_lyrics = new_obs.get("lyrics") if isinstance(new_obs.get("lyrics"), dict) else {}
-        if current.get("expect_lyrics") and old_lyrics.get("ok") and not new_lyrics.get("ok"):
-            track_regressions.add(name)
-            material.append(f"track/{name}: lyrics.getLyrics stopped returning lyrics")
-
-        old_streams = old_obs.get("streams") if isinstance(old_obs.get("streams"), dict) else {}
-        new_streams = new_obs.get("streams") if isinstance(new_obs.get("streams"), dict) else {}
-        if old_streams.get("playable_any_tier") and not new_streams.get("playable_any_tier"):
-            track_regressions.add(name)
-            material.append(f"track/{name}: all audio tiers (96/160/320) became unplayable")
-        elif old_streams.get("decrypt_ok") and not new_streams.get("decrypt_ok"):
-            if not new_streams.get("auth_url_valid"):
-                track_regressions.add(name)
-                material.append(f"track/{name}: both DES decryption and song.generateAuthToken failed")
-            else:
-                info.append(f"track/{name}: local DES decryption failed while auth token still works")
-
-        old_tiers = set(old_streams.get("verified_tiers") or [])
-        new_tiers = set(new_streams.get("verified_tiers") or [])
-        lost_tiers = sorted(old_tiers - new_tiers)
-        if lost_tiers and new_streams.get("playable_any_tier"):
-            info.append(f"track/{name}: quality tier(s) {lost_tiers} unavailable while {sorted(new_tiers)} playable")
-
-    for kind, before_map, after_map in (
-        ("artist", artists_before, artists_after),
-        ("album", albums_before, albums_after),
-    ):
-        for name, current in after_map.items():
-            previous = before_map.get(name)
-            if not previous:
-                info.append(f"{kind}/{name}: new sentinel")
-                continue
-            if not bool(current.get("required", True)):
-                continue
-            if previous.get("ok") and not current.get("ok"):
-                if _is_access_blocked(current):
-                    info.append(f"{kind}/{name}: access-blocked (geo/rate-limit/transient)")
-                else:
-                    entity_regressions.add(f"{kind}/{name}")
-                    err = (current.get("observation") or {}).get("error") or "schema mismatch"
-                    material.append(f"{kind}/{name}: failed ({err})")
+    material, info, track_regressions = _diff_all_tracks(tracks_before, tracks_after)
+    e_mat, e_info, entity_regressions = _collect_entity_regressions(accepted, artists_after, albums_after)
+    material.extend(e_mat)
+    info.extend(e_info)
 
     thresholds = config.get("thresholds") if isinstance(config.get("thresholds"), dict) else {}
     track_threshold = int(thresholds.get("required_track_regressions_for_repair") or 2)
     entity_threshold = int(thresholds.get("required_entity_regressions_for_repair") or 2)
 
-    # Check global 320 kbps tier loss across comparable non-blocked tracks only
-    previously_320 = [
-        name
-        for name, prev in tracks_before.items()
-        if 320 in ((prev.get("observation") or {}).get("streams") or {}).get("verified_tiers", [])
-    ]
-    comparable_non_blocked = [
-        name
-        for name in previously_320
-        if name in tracks_after and not _is_access_blocked(tracks_after[name])
-    ]
-    now_320 = [
-        name
-        for name in comparable_non_blocked
-        if 320 in (((tracks_after[name].get("observation") or {}).get("streams") or {}).get("verified_tiers", []))
-    ]
-    if (
-        len(previously_320) >= track_threshold
-        and len(comparable_non_blocked) >= track_threshold
-        and not now_320
-    ):
+    if _has_global_320_loss(tracks_before, tracks_after, track_threshold):
         material.append("global_quality: 320 kbps tier disappeared across all non-blocked 320-capable tracks")
 
-    if track_regressions and len(track_regressions) < track_threshold:
-        filtered = [m for m in material if not m.startswith("track/")]
-        downgraded = [m for m in material if m.startswith("track/")]
-        material = filtered
-        info.extend(downgraded)
-        info.append(
-            f"Track regression count {len(track_regressions)} below repair threshold {track_threshold}"
-        )
+    material = _apply_regression_thresholds(
+        material, info, len(track_regressions), track_threshold, ("track/",), "Track"
+    )
+    material = _apply_regression_thresholds(
+        material, info, len(entity_regressions), entity_threshold, ("artist/", "album/"), "Artist/album"
+    )
 
-    if entity_regressions and len(entity_regressions) < entity_threshold:
-        filtered = [m for m in material if not m.startswith(("artist/", "album/"))]
-        downgraded = [m for m in material if m.startswith(("artist/", "album/"))]
-        material = filtered
-        info.extend(downgraded)
-        info.append(
-            f"Artist/album regression count {len(entity_regressions)} below repair threshold {entity_threshold}"
-        )
-
-    decision = "repair" if material else "none"
-    severity = "major" if material else "info"
     return {
-        "decision": decision,
-        "severity": severity,
+        "decision": "repair" if material else "none",
+        "severity": "major" if material else "info",
         "material_changes": material,
         "informational_changes": info,
     }
@@ -1842,97 +2023,82 @@ def _sanitize_for_baseline(observation: dict[str, Any]) -> dict[str, Any]:
     return json.loads(serialized)
 
 
-def _render_report(observation: dict[str, Any], decision: dict[str, Any]) -> str:
-    lines = [
-        "# Levyra JioSaavn Sync",
-        "",
-        f"- Decision: **{decision['decision']}**",
-        f"- Severity: **{decision['severity']}**",
-        "",
-        "## Material changes",
-    ]
-    lines.extend([f"- {item}" for item in (decision.get("material_changes") or [])] or ["- None"])
-    lines += ["", "## Informational changes"]
-    lines.extend([f"- {item}" for item in (decision.get("informational_changes") or [])] or ["- None"])
-    lines += [
-        "",
-        "## Track, metadata & stream quality status",
-        "",
-        "| Sentinel | OK | Details | Explicit+Clean | Lyrics | DES | AuthToken | 96 | 160 | 320 |",
-        "|---|---:|---|---:|---:|---:|---:|---|---|---|",
-    ]
-    for item in observation.get("tracks") or []:
-        if not isinstance(item, dict):
-            continue
-        obs = item.get("observation") if isinstance(item.get("observation"), dict) else {}
-        details = obs.get("details") if isinstance(obs.get("details"), dict) else {}
-        lyrics = obs.get("lyrics") if isinstance(obs.get("lyrics"), dict) else {}
-        streams = obs.get("streams") if isinstance(obs.get("streams"), dict) else {}
-        tiers = streams.get("tiers") if isinstance(streams.get("tiers"), dict) else {}
+def _format_tier_cell(tiers: dict[str, Any], tier: int) -> str:
+    info = tiers.get(str(tier))
+    if not isinstance(info, dict):
+        return "n/a"
+    if info.get("valid"):
+        return f"ok ({info.get('estimated_kbps')}k)"
+    return str(info.get("status") or "fail")
 
-        def tier_cell(t: int) -> str:
-            info = tiers.get(str(t))
-            if not isinstance(info, dict):
-                return "n/a"
-            if info.get("valid"):
-                return f"ok ({info.get('estimated_kbps')}k)"
-            return str(info.get("status") or "fail")
 
-        lyr_cell = "n/a" if lyrics.get("skipped") else ("ok" if lyrics.get("ok") else "fail")
-        lines.append(
-            "| {name} | {ok} | {det} | {exp} | {lyr} | {des} | {auth} | {t96} | {t160} | {t320} |".format(
-                name=item.get("name", ""),
-                ok="yes" if item.get("ok") else "no",
-                det=details.get("envelope_kind") or obs.get("error") or "-",
-                exp="yes" if obs.get("explicit_and_clean_ok") else "no",
-                lyr=lyr_cell,
-                des="yes" if streams.get("decrypt_ok") else "no",
-                auth="yes" if streams.get("auth_url_valid") else "no",
-                t96=tier_cell(96),
-                t160=tier_cell(160),
-                t320=tier_cell(320),
-            )
+def _format_track_row(item: dict[str, Any]) -> str:
+    obs = item.get("observation") if isinstance(item.get("observation"), dict) else {}
+    details = obs.get("details") if isinstance(obs.get("details"), dict) else {}
+    lyrics = obs.get("lyrics") if isinstance(obs.get("lyrics"), dict) else {}
+    streams = obs.get("streams") if isinstance(obs.get("streams"), dict) else {}
+    tiers = streams.get("tiers") if isinstance(streams.get("tiers"), dict) else {}
+    lyr_cell = "n/a" if lyrics.get("skipped") else ("ok" if lyrics.get("ok") else "fail")
+    return (
+        "| {name} | {ok} | {det} | {exp} | {lyr} | {des} | {auth} | {t96} | {t160} | {t320} |".format(
+            name=item.get("name", ""),
+            ok="yes" if item.get("ok") else "no",
+            det=details.get("envelope_kind") or obs.get("error") or "-",
+            exp="yes" if obs.get("explicit_and_clean_ok") else "no",
+            lyr=lyr_cell,
+            des="yes" if streams.get("decrypt_ok") else "no",
+            auth="yes" if streams.get("auth_url_valid") else "no",
+            t96=_format_tier_cell(tiers, 96),
+            t160=_format_tier_cell(tiers, 160),
+            t320=_format_tier_cell(tiers, 320),
         )
+    )
 
-    lines += ["", "## Artist & album endpoints", "", "| Kind | Sentinel | OK | Summary |", "|---|---|---:|---|"]
+
+def _render_track_rows(tracks: Any) -> list[str]:
+    return [_format_track_row(item) for item in (tracks or []) if isinstance(item, dict)]
+
+
+def _render_entity_rows(observation: dict[str, Any]) -> list[str]:
+    rows: list[str] = []
     for kind, key in (("artist", "artists"), ("album", "albums")):
         for item in observation.get(key) or []:
             if not isinstance(item, dict):
                 continue
             obs = item.get("observation") if isinstance(item.get("observation"), dict) else {}
-            if kind == "artist":
+            if obs.get("error"):
+                summary = str(obs.get("error"))[:80]
+            elif kind == "artist":
                 summary = f"songs={obs.get('top_songs_count', 0)}, albums={obs.get('top_albums_count', 0)}"
             else:
                 summary = f"tracks={obs.get('list_count', 0)}"
-            if obs.get("error"):
-                summary = str(obs.get("error"))[:80]
-            lines.append(
-                f"| {kind} | {item.get('name', '')} | {'yes' if item.get('ok') else 'no'} | {summary} |"
-            )
+            rows.append(f"| {kind} | {item.get('name', '')} | {'yes' if item.get('ok') else 'no'} | {summary} |")
+    return rows
 
-    alternatives = observation.get("protocol_alternatives") or []
-    if alternatives:
-        lines += ["", "## Protocol fallback diagnostics", ""]
-        for alt in alternatives:
-            lines.append(
-                "- host=`{host}` ctx=`{ctx}` media=`{media}` passed={passed} "
-                "(tracks={tracks}, artists={artists}, albums={albums})".format(
-                    host=alt.get("api_host"),
-                    ctx=alt.get("client_context"),
-                    media=alt.get("open_media_host"),
-                    passed="yes" if alt.get("all_passed") else "no",
-                    tracks=alt.get("tracks_ok"),
-                    artists=alt.get("artists_ok"),
-                    albums=alt.get("albums_ok"),
-                )
-            )
 
-    lines += [
-        "",
-        "## Upstream radar (untrusted evidence only)",
-        "",
-    ]
-    for up in observation.get("upstreams") or []:
+def _render_alternative_rows(alternatives: Any) -> list[str]:
+    if not alternatives:
+        return []
+    lines = ["", "## Protocol fallback diagnostics", ""]
+    for alt in alternatives:
+        lines.append(
+            "- host=`{host}` ctx=`{ctx}` media=`{media}` passed={passed} "
+            "(tracks={tracks}, artists={artists}, albums={albums})".format(
+                host=alt.get("api_host"),
+                ctx=alt.get("client_context"),
+                media=alt.get("open_media_host"),
+                passed="yes" if alt.get("all_passed") else "no",
+                tracks=alt.get("tracks_ok"),
+                artists=alt.get("artists_ok"),
+                albums=alt.get("albums_ok"),
+            )
+        )
+    return lines
+
+
+def _render_upstream_rows(upstreams: Any) -> list[str]:
+    lines = ["", "## Upstream radar (untrusted evidence only)", ""]
+    for up in upstreams or []:
         if not isinstance(up, dict):
             continue
         lines.append(f"- **{up.get('repo')}** ({up.get('branch')}):")
@@ -1942,10 +2108,36 @@ def _render_report(observation: dict[str, Any], decision: dict[str, Any]) -> str
         commits = up.get("relevant_commits") or []
         if not commits:
             lines.append("  - no recent JioSaavn-matching commits")
-        for c in commits:
-            lines.append(f"  - `{c.get('sha', '')}` {c.get('message', '')}")
+        lines.extend(f"  - `{c.get('sha', '')}` {c.get('message', '')}" for c in commits)
+    return lines
 
-    lines += [
+
+def _render_report(observation: dict[str, Any], decision: dict[str, Any]) -> str:
+    lines = [
+        "# Levyra JioSaavn Sync",
+        "",
+        f"- Decision: **{decision['decision']}**",
+        f"- Severity: **{decision['severity']}**",
+        "",
+        "## Material changes",
+        *([f"- {item}" for item in (decision.get("material_changes") or [])] or ["- None"]),
+        "",
+        "## Informational changes",
+        *([f"- {item}" for item in (decision.get("informational_changes") or [])] or ["- None"]),
+        "",
+        "## Track, metadata & stream quality status",
+        "",
+        "| Sentinel | OK | Details | Explicit+Clean | Lyrics | DES | AuthToken | 96 | 160 | 320 |",
+        "|---|---:|---|---:|---:|---:|---:|---|---|---|",
+        *_render_track_rows(observation.get("tracks")),
+        "",
+        "## Artist & album endpoints",
+        "",
+        "| Kind | Sentinel | OK | Summary |",
+        "|---|---|---:|---|",
+        *_render_entity_rows(observation),
+        *_render_alternative_rows(observation.get("protocol_alternatives")),
+        *_render_upstream_rows(observation.get("upstreams")),
         "",
         "## Privacy & security",
         "",
@@ -1961,19 +2153,16 @@ def _write_json(path: Path, value: Any) -> None:
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def apply_deterministic_protocol_fix(
+def _select_passing_alternative(
     observation: dict[str, Any],
-    repo_root: Path,
-) -> dict[str, Any]:
-    """Apply an allowlisted host/context/media-host fix only when proven healthy."""
+) -> tuple[tuple[str, str, str] | None, str]:
     alternatives = [
         alt
         for alt in (observation.get("protocol_alternatives") or [])
         if isinstance(alt, dict) and alt.get("all_passed") is True
     ]
     if not alternatives:
-        return {"applied": False, "reason": "no passing allowlisted protocol alternative found"}
-
+        return None, "no passing allowlisted protocol alternative found"
     chosen = alternatives[0]
     new_host = str(chosen.get("api_host") or "")
     new_ctx = str(chosen.get("client_context") or "")
@@ -1983,40 +2172,17 @@ def apply_deterministic_protocol_fix(
         or new_ctx not in ALLOWLISTED_CONTEXTS
         or new_media not in ALLOWLISTED_OPEN_MEDIA_HOSTS
     ):
-        return {"applied": False, "reason": "candidate outside protocol allowlist"}
+        return None, "candidate outside protocol allowlist"
+    return (new_host, new_ctx, new_media), ""
 
-    endpoints_path = repo_root / "app/src/main/java/com/luc4n3x/levyra/data/hqaudio/jiosaavn/JioSaavnEndpoints.kt"
-    endpoints_test_path = repo_root / "app/src/test/java/com/luc4n3x/levyra/data/hqaudio/jiosaavn/JioSaavnEndpointsTest.kt"
-    config_path = repo_root / "jiosaavn-sync/config.json"
 
-    if not endpoints_path.is_file():
-        return {"applied": False, "reason": "JioSaavnEndpoints.kt not found"}
-
-    text = endpoints_path.read_text(encoding="utf-8")
-    updated = re.sub(
-        r'(const val API_HOST = ")[^"]+(")',
-        rf"\g<1>{new_host}\g<2>",
-        text,
-        count=1,
-    )
-    updated = re.sub(
-        r'(const val OPEN_MEDIA_HOST = ")[^"]+(")',
-        rf"\g<1>{new_media}\g<2>",
-        updated,
-        count=1,
-    )
-    updated = re.sub(
-        r'(private const val CLIENT_CONTEXT = ")[^"]+(")',
-        rf"\g<1>{new_ctx}\g<2>",
-        updated,
-        count=1,
-    )
-
-    if updated == text:
-        return {"applied": False, "reason": "endpoints already match chosen alternative"}
-
-    endpoints_path.write_text(updated, encoding="utf-8")
-
+def _sync_protocol_mirrors(
+    endpoints_test_path: Path,
+    config_path: Path,
+    new_host: str,
+    new_ctx: str,
+    new_media: str,
+) -> None:
     if endpoints_test_path.is_file():
         test_text = endpoints_test_path.read_text(encoding="utf-8")
         test_updated = re.sub(
@@ -2040,6 +2206,36 @@ def apply_deterministic_protocol_fix(
         cfg["api"]["open_media_host"] = new_media
         _write_json(config_path, cfg)
 
+
+def apply_deterministic_protocol_fix(
+    observation: dict[str, Any],
+    repo_root: Path,
+) -> dict[str, Any]:
+    """Apply an allowlisted host/context/media-host fix only when proven healthy."""
+    selected, error_reason = _select_passing_alternative(observation)
+    if selected is None:
+        return {"applied": False, "reason": error_reason}
+
+    new_host, new_ctx, new_media = selected
+    endpoints_path = repo_root / "app/src/main/java/com/luc4n3x/levyra/data/hqaudio/jiosaavn/JioSaavnEndpoints.kt"
+    if not endpoints_path.is_file():
+        return {"applied": False, "reason": "JioSaavnEndpoints.kt not found"}
+
+    text = endpoints_path.read_text(encoding="utf-8")
+    updated = re.sub(r'(const val API_HOST = ")[^"]+(")', rf"\g<1>{new_host}\g<2>", text, count=1)
+    updated = re.sub(r'(const val OPEN_MEDIA_HOST = ")[^"]+(")', rf"\g<1>{new_media}\g<2>", updated, count=1)
+    updated = re.sub(r'(private const val CLIENT_CONTEXT = ")[^"]+(")', rf"\g<1>{new_ctx}\g<2>", updated, count=1)
+    if updated == text:
+        return {"applied": False, "reason": "endpoints already match chosen alternative"}
+
+    endpoints_path.write_text(updated, encoding="utf-8")
+    _sync_protocol_mirrors(
+        repo_root / "app/src/test/java/com/luc4n3x/levyra/data/hqaudio/jiosaavn/JioSaavnEndpointsTest.kt",
+        repo_root / "jiosaavn-sync/config.json",
+        new_host,
+        new_ctx,
+        new_media,
+    )
     return {
         "applied": True,
         "api_host": new_host,
