@@ -1,7 +1,5 @@
 package com.luc4n3x.levyra.ui.i18n
 
-import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
-
 data class LevyraFloatingNavCopy(
     val title: String,
     val subtitle: String,
@@ -609,4 +607,4 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
 )
 
 fun LevyraStrings.floatingNav(): LevyraFloatingNavCopy =
-    floatingNavCopies[LevyraLanguageCatalog.normalize(code)] ?: localizedValueOrEnglish(floatingNavCopies, code)
+    localizedValueOrEnglish(floatingNavCopies, code)
