@@ -101,19 +101,24 @@ I don't host FLAC audio on Levyra's servers. On Android, experimental FLAC playb
 
 ## Features
 
-- **Native playback.** Play gapless albums, use crossfade, change pitch and speed, or tune the sound with a 10-band EQ and AutoEQ headphone profiles. Android uses Media3 and ExoPlayer. Windows uses libVLC.
+- **Native playback.** Play gapless albums, use crossfade, change pitch and speed, or tune the sound with a 10-band EQ and AutoEQ headphone profiles. Android uses Media3 and ExoPlayer and also has ReplayGain. Windows uses libVLC.
 - **One library.** Keep local files and streamed tracks in the same playlists, favorites and queues. Queue Spaces let you keep several listening sessions without losing your place.
+- **Playlist import and export (Android).** Bring over playlists from services such as YouTube Music, Spotify, Apple Music and Deezer, or import a playlist file. Review track matches before saving, and export your playlists to files.
 - **Offline downloads.** Save tracks to your storage as standard audio files, with metadata, artwork and lyrics.
-- **Synced lyrics.** Tap a line to jump to it, adjust the timing, set an offset for Bluetooth latency, and read romanized versions of non-Latin scripts.
-- **Motion artwork.** See animated artwork in Now Playing. When it isn't available, the regular album cover appears.
+- **Synced lyrics.** Tap a line to jump to it, adjust the timing, set an offset for Bluetooth latency, and read romanized versions of non-Latin scripts. On Android, you can also share lyrics as image cards.
+- **Motion artwork.** See animated artwork in Now Playing. When it isn't available, the regular album cover appears. Android also has a full-screen Ambient view.
 - **Audio or video.** Switch between audio-only and full video with subtitles. SponsorBlock skips sponsored segments.
 - **Skins (Android).** Choose one of ten layouts besides Levyra Default: Nocturne 78, Prism, Torque, Ivory, Glacier, Atelier, Spotify Style, Apple Music Style, YouTube Music Style and Qobuz Style. Find them in Settings > Design > Skin.
 - **Studios.** Customize your theme, mini player and navigation bar with presets and live previews.
+- **Widgets (Android).** Control playback or start song recognition from your home screen. Widget Studio lets you customize your playback widgets.
 - **System integration (Android).** Use Android Auto, lockscreen controls and a Quick Settings tile. On HyperOS 3, synced lyrics appear in the Super Island. On OriginOS, the current track appears in the Atomic Island.
+- **Jam (Android).** Listen together on devices connected to the same Wi-Fi network.
+- **Sleep timer (Android).** Stop playback after a set time or at the end of the current track.
 - **Song recognition.** Identify a song through the microphone or from audio playing on your phone. The app saves the results in a local history.
-- **Explore.** Listen to live radio, check international charts, or browse by genre and mood.
+- **Explore.** Listen to live radio, check international charts, browse by genre and mood, or find recommendations and radio based on songs and artists.
+- **Podcasts (Android).** Browse shows and episodes in a dedicated podcast library.
 - **Levyra Vault.** Back up and restore playlists, favorites, history and preferences in one local file.
-- **Private stats.** Check play counts and listening hours calculated on your device. Last.fm and ListenBrainz scrobbling are optional.
+- **Private stats.** Check play counts and listening hours calculated on your device. Android also has listening recaps for different periods. Last.fm and ListenBrainz scrobbling are optional.
 
 ## Translations
 
