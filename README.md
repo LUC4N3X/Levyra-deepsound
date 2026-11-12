@@ -163,17 +163,19 @@ Architecture notes are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and the [
 <div align="center">
 
 <a href="https://luc4n3x.pages.dev/">
-  <img src="docs/assets/levyra-signature.webp?v=levyra-room" width="220" alt="LUC4N3X, creator of Levyra">
+  <img src="docs/assets/levyra-signature.webp?v=levyra-room" width="260" alt="LUC4N3X, creator of Levyra">
 </a>
 
-<p><strong>LUC4N3X</strong><br><sub>Creator &amp; maintainer</sub></p>
+<h3>LUC4N3X</h3>
+
+<p><sub>Creator &amp; maintainer</sub></p>
 
 <p>I built Levyra and still maintain the Android and Windows apps.<br>I review contributions, fix bugs and handle releases.</p>
 
 <p>
-  <a href="https://github.com/LUC4N3X">GitHub</a>
+  <a href="https://github.com/LUC4N3X"><strong>GitHub</strong></a>
   &nbsp;&middot;&nbsp;
-  <a href="https://luc4n3x.pages.dev/">Website</a>
+  <a href="https://luc4n3x.pages.dev/"><strong>Website</strong></a>
 </p>
 
 </div>
