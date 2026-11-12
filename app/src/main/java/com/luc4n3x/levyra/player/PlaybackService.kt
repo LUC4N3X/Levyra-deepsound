@@ -75,6 +75,11 @@ import com.luc4n3x.levyra.data.RecommendationFeedbackStore
 import com.luc4n3x.levyra.data.SPOTIFY_CLIP_ID_PREFIX
 import com.luc4n3x.levyra.data.SpotifyClipCanvasRegistry
 import com.luc4n3x.levyra.data.isSpotifySampleAudioUrl
+import com.luc4n3x.levyra.data.locallibrary.PreferredLocalAudio
+import com.luc4n3x.levyra.data.locallibrary.isPreferredLocalSubstitute
+import com.luc4n3x.levyra.data.locallibrary.isRejectedPreferredLocalStream
+import com.luc4n3x.levyra.data.locallibrary.rejectPreferredLocalStream
+import com.luc4n3x.levyra.data.locallibrary.withoutPreferredLocalStream
 import com.luc4n3x.levyra.data.withSpotifySampleAudio
 import com.luc4n3x.levyra.data.collections.PersonalCollectionHttp
 import com.luc4n3x.levyra.data.collections.PersonalCollectionNetworkPolicy
@@ -1264,6 +1269,8 @@ class PlaybackService : MediaLibraryService() {
                 if (isLiveRadioMediaItem(player.currentMediaItem)) {
                     markPlaybackExpected(false, force = true)
                     releasePlaybackWakeLock()
+                } else if (rejectPreferredLocalStream(player.currentMediaItem?.localConfiguration?.uri?.toString().orEmpty())) {
+                    scheduleServiceRecovery(error)
                 } else if (
                     isTerminalPlaybackFailure(failureKind) &&
                     !isPlaybackCacheOnlyUri(player.currentMediaItem?.localConfiguration?.uri?.toString())
@@ -2167,8 +2174,16 @@ class PlaybackService : MediaLibraryService() {
             }
             return null
         }
+        if (!preparedLocalStreamStillAllowed(prepared.resolved)) {
+            preparedQueueNext = null
+            return null
+        }
         return prepared.resolved
     }
+
+    private fun preparedLocalStreamStillAllowed(track: Track): Boolean =
+        !track.isPreferredLocalSubstitute() ||
+            (PreferredLocalAudio.get(this).enabled() && !isRejectedPreferredLocalStream(track.streamUrl))
 
     private fun preparedQueueTrackForTransition(sourceIdentity: String, targetIdentity: String): Track? {
         val prepared = preparedQueueNext ?: return null
@@ -2186,6 +2201,10 @@ class PlaybackService : MediaLibraryService() {
             if (!isQueuePrecacheFresh(prepared.preparedAtElapsedMs, now, PREPARED_QUEUE_MAX_AGE_MS)) {
                 preparedQueueNext = null
             }
+            return null
+        }
+        if (!preparedLocalStreamStillAllowed(prepared.resolved)) {
+            preparedQueueNext = null
             return null
         }
         return prepared.resolved
@@ -2252,6 +2271,7 @@ class PlaybackService : MediaLibraryService() {
     private suspend fun resolveQueueTrackPersistently(
         track: com.luc4n3x.levyra.domain.Track
     ): com.luc4n3x.levyra.domain.Track? {
+        PreferredLocalAudio.get(this).playableMatch(track.withoutPreferredLocalStream())?.let { return it }
         var attempts = 0
         while (isPlaybackRecoveryExpected() && !isStickyRestoreExpired()) {
             if (!isLocalPlaybackTrack(track) && !hasInternetCapableNetwork()) {
@@ -2273,7 +2293,8 @@ class PlaybackService : MediaLibraryService() {
         return null
     }
 
-    private suspend fun resolveQueueTrack(track: com.luc4n3x.levyra.domain.Track): com.luc4n3x.levyra.domain.Track {
+    private suspend fun resolveQueueTrack(queueTrack: com.luc4n3x.levyra.domain.Track): com.luc4n3x.levyra.domain.Track {
+        val track = queueTrack.withoutPreferredLocalStream()
         if (track.id.startsWith(SPOTIFY_CLIP_ID_PREFIX) && track.source == "Spotify Samples") {
             if (isSpotifySampleAudioUrl(track.streamUrl)) return track
             return withContext(Dispatchers.IO) {
@@ -2289,6 +2310,7 @@ class PlaybackService : MediaLibraryService() {
             }
             return track.copy(videoStreamUrl = "")
         }
+        PreferredLocalAudio.get(this).playableMatch(track)?.let { return it }
         val hasYoutubeIdentity = track.videoUrl.contains("youtube.com", true) ||
             track.videoUrl.contains("youtu.be", true) ||
             Regex("^[A-Za-z0-9_-]{11}$").matches(track.id)
@@ -3403,7 +3425,7 @@ class PlaybackService : MediaLibraryService() {
         )
         castHandoffJob?.cancel()
         castHandoffJob = serviceScope.launch(Dispatchers.IO) {
-            val resolved = window.map { track -> resolver.resolve(track, isVideoMode = false) }
+            val resolved = window.map { track -> resolver.resolve(track, isVideoMode = false, allowLocalAudio = false) }
             val currentState = queueEngine.state.value
             if (currentState.generation != generation ||
                 currentState.currentTrack?.let(::playbackQueueIdentity) != playbackQueueIdentity(current)
@@ -4094,7 +4116,8 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private fun isLocalMediaItem(mediaItem: MediaItem?): Boolean {
-        if (RetiredAudioProviders.isTidalManifestUri(mediaItem?.localConfiguration?.uri?.toString().orEmpty())) return false
+        val uri = mediaItem?.localConfiguration?.uri?.toString().orEmpty()
+        if (RetiredAudioProviders.isTidalManifestUri(uri) || isRejectedPreferredLocalStream(uri)) return false
         val scheme = mediaItem?.localConfiguration?.uri?.scheme.orEmpty()
         if (scheme.equals("content", ignoreCase = true) || scheme.equals("file", ignoreCase = true)) return true
         return mediaItem?.mediaMetadata?.extras

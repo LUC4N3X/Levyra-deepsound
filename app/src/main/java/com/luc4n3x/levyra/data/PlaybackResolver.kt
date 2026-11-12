@@ -8,6 +8,8 @@ import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.security.GoogleApiKeyHeaders
 import com.luc4n3x.levyra.data.collections.PersonalCollectionRepository
 import com.luc4n3x.levyra.data.collections.isPersonalCollectionTrack
+import com.luc4n3x.levyra.data.locallibrary.PreferredLocalAudio
+import com.luc4n3x.levyra.data.locallibrary.withoutPreferredLocalStream
 import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.data.network.LevyraNetworkConfiguration
@@ -388,6 +390,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
     private val playbackSecurity = YoutubePlaybackSecurity.getInstance(context)
     private val personalCollections by lazy { PersonalCollectionRepository.get(context) }
+    private val preferredLocalAudio by lazy { PreferredLocalAudio.get(context) }
     private val playbackPolicyStore = PlaybackCompatibilityPolicyStore(
         context,
         youtubeHttpClient,
@@ -632,7 +635,8 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
     }
 
-    fun cached(track: Track, isVideoMode: Boolean = false): Track? {
+    fun cached(requestedTrack: Track, isVideoMode: Boolean = false): Track? {
+        val track = requestedTrack.withoutPreferredLocalStream()
         if (track.isPersonalCollectionTrack()) return null
         val normal = cached(track, isVideoMode, selectedAudioQuality)
         highQualityPlayback.cachedUpgrade(
@@ -1172,8 +1176,10 @@ class PlaybackResolver private constructor(private val context: Context) {
             withinPlaybackResolveBudget(3_500L) { resolveCatalogTrackIfUnmatched(track) }
         } else track
 
-    suspend fun resolve(track: Track, isVideoMode: Boolean = false): Track {
+    suspend fun resolve(requestedTrack: Track, isVideoMode: Boolean = false, allowLocalAudio: Boolean = true): Track {
+        val track = requestedTrack.withoutPreferredLocalStream()
         if (track.isPersonalCollectionTrack()) return personalCollections.resolveForPlayback(track)
+        if (allowLocalAudio) preferredLocalAudio.playableMatch(track, isVideoMode)?.let { return it }
         if (!hasInternetCapableNetwork()) {
             cached(track, isVideoMode)?.let { return preserveEditorialArtwork(track, it) }
         }
@@ -1383,11 +1389,13 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
     }
 
-    suspend fun prefetch(track: Track, isVideoMode: Boolean = false): Track? {
+    suspend fun prefetch(requestedTrack: Track, isVideoMode: Boolean = false): Track? {
         RuntimeHooks.cache(RuntimeSignal.CACHE_PREFETCH)
+        val track = requestedTrack.withoutPreferredLocalStream()
         if (track.isPersonalCollectionTrack()) {
             return runCatchingPreservingCancellation { personalCollections.resolveForPlayback(track) }.getOrNull()
         }
+        preferredLocalAudio.playableMatch(track, isVideoMode)?.let { return it }
         if (isLocalPlaybackTrack(track)) return track.takeIf { isLocalPlaybackUri(it.streamUrl) }
         if (track.streamUrl.isNotBlank()) {
             if (!isVideoMode && !isPlayableAudioUrl(track.streamUrl)) return null
