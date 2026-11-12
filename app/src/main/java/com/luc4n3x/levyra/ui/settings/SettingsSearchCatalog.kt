@@ -2,6 +2,8 @@ package com.luc4n3x.levyra.ui.settings
 
 import com.luc4n3x.levyra.feature.settings.SettingsSearchEntry
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
+import com.luc4n3x.levyra.ui.i18n.SettingsHubText
+import com.luc4n3x.levyra.ui.i18n.settingsHubCopy
 import com.luc4n3x.levyra.ui.i18n.advancedPrefetchCopy
 import com.luc4n3x.levyra.ui.i18n.advancedPrefetchMobileDataCopy
 import com.luc4n3x.levyra.ui.i18n.automationCopy
@@ -16,6 +18,16 @@ import com.luc4n3x.levyra.ui.preloadNextTrackSubtitle
 import java.util.Locale
 
 internal const val SETTINGS_CATEGORY_AUDIO = "audio"
+
+internal val DOWNLOADS_ADVANCED_SEARCH_IDS = setOf(
+    "downloads.speed_limit",
+    "downloads.simultaneous",
+    "downloads.auto_resume",
+    "downloads.embed_metadata",
+    "downloads.embed_artwork",
+    "downloads.verify",
+    "downloads.skip_duplicates"
+)
 
 private class SettingsSearchCategory(val id: String, val label: String)
 
@@ -32,7 +44,8 @@ private class SettingsSearchCategories(strings: LevyraStrings, locale: Locale) {
     val youtubeMusic = SettingsSearchCategory("youtube_music", "YouTube Music")
     val integrations = SettingsSearchCategory("integrations", settingsCategoryTitle(strings.integrations, locale))
     val network = SettingsSearchCategory("network", settingsCategoryTitle(strings.networkTitle, locale))
-    val jam = SettingsSearchCategory("jam", settingsCategoryTitle(strings.jamTitle, locale))
+    val ambient = SettingsSearchCategory("ambient", settingsCategoryTitle(strings.ambientSettingsTitle, locale))
+    val content = SettingsSearchCategory("content", strings.settingsHubCopy[SettingsHubText.Content])
     val smartListening = SettingsSearchCategory("smart_listening", strings.smartListeningCopy().hubTitle)
 }
 
@@ -86,7 +99,7 @@ private fun MutableList<SettingsSearchEntry>.appearanceEntries(strings: LevyraSt
     entry("home.release_radar", strings.releaseRadar, strings.followedArtistsSubtitle, "releases radar notifications artists", categories.home)
     entry("home.albums_for_you", strings.albumsForYouSetting, strings.showRecommendedAlbums, "albums recommendations", categories.home)
     entry("home.trending_artists", strings.trendingArtists, strings.showDiscoveredArtists, "artists trending", categories.home)
-    entry("home.pure_black", strings.pureBlack, strings.pureBlackSubtitle, "amoled oled black dark", categories.home)
+    entry("design.pure_black", strings.pureBlack, strings.pureBlackSubtitle, "amoled oled black dark", categories.design)
     entry("home.top_charts", strings.top50Charts, strings.showChartsCountry, "charts top 50", categories.home)
 }
 
@@ -108,27 +121,27 @@ private fun MutableList<SettingsSearchEntry>.playerEntries(strings: LevyraString
     entry("player.gesture_long_press", strings.playerGestureLongPressAction, strings.playerGestureLongPressActionSubtitle, "gestures long press", categories.player)
     entry("player.long_press", strings.longPress, strings.longPressSubtitle, "gestures long press", categories.player)
     entry("player.gesture_vertical", strings.playerGestureVerticalSwipe, strings.playerGestureVerticalSwipeSubtitle, "gestures swipe", categories.player)
-    entry("player.ambient", strings.ambientOpen, strings.ambientModeSubtitle, "ambient standby clock", categories.player)
-    entry("player.ambient_layout", strings.ambientLayout, strings.ambientLayoutSubtitle, "ambient layout", categories.player)
-    entry("player.ambient_clock", strings.ambientShowClock, strings.ambientShowClockSubtitle, "ambient clock", categories.player)
-    entry("player.ambient_title", strings.ambientShowTitle, strings.ambientShowTitleSubtitle, "ambient title", categories.player)
-    entry("player.ambient_progress", strings.ambientShowProgress, strings.ambientShowProgressSubtitle, "ambient progress", categories.player)
-    entry("player.ambient_amoled", strings.ambientAmoledBlack, strings.ambientAmoledBlackSubtitle, "ambient amoled black", categories.player)
-    entry("player.ambient_brightness", strings.ambientBrightness, strings.ambientModeSubtitle, "ambient brightness", categories.player)
-    entry("player.ambient_auto_dim", strings.ambientAutoDim, strings.ambientModeSubtitle, "ambient dim", categories.player)
-    entry("player.ambient_pixel_shift", strings.ambientPixelShift, strings.ambientModeSubtitle, "ambient burn in oled", categories.player)
-    entry("player.ambient_proximity", strings.ambientProximityBlackout, strings.ambientModeSubtitle, "ambient proximity sensor", categories.player)
-    entry("player.ambient_lyrics", strings.ambientShowLyrics, strings.ambientModeSubtitle, "ambient lyrics", categories.player)
-    entry("player.ambient_canvas", strings.ambientShowCanvas, strings.ambientModeSubtitle, "ambient canvas", categories.player)
-    entry("player.excluded_artists", strings.excludedArtists, strings.excludedArtistsEmpty, "block hide artists", categories.player)
-    entry("player.sponsorblock", strings.sponsorBlock, strings.sponsorBlockSubtitle, "sponsorblock segments skip", categories.player)
+    entry("ambient.open", strings.ambientOpen, strings.ambientModeSubtitle, "ambient standby clock", categories.ambient)
+    entry("ambient.layout", strings.ambientLayout, strings.ambientLayoutSubtitle, "ambient layout", categories.ambient)
+    entry("ambient.clock", strings.ambientShowClock, strings.ambientShowClockSubtitle, "ambient clock", categories.ambient)
+    entry("ambient.title", strings.ambientShowTitle, strings.ambientShowTitleSubtitle, "ambient title", categories.ambient)
+    entry("ambient.progress", strings.ambientShowProgress, strings.ambientShowProgressSubtitle, "ambient progress", categories.ambient)
+    entry("ambient.amoled", strings.ambientAmoledBlack, strings.ambientAmoledBlackSubtitle, "ambient amoled black", categories.ambient)
+    entry("ambient.brightness", strings.ambientBrightness, strings.ambientModeSubtitle, "ambient brightness", categories.ambient)
+    entry("ambient.auto_dim", strings.ambientAutoDim, strings.ambientModeSubtitle, "ambient dim", categories.ambient)
+    entry("ambient.pixel_shift", strings.ambientPixelShift, strings.ambientModeSubtitle, "ambient burn in oled", categories.ambient)
+    entry("ambient.proximity", strings.ambientProximityBlackout, strings.ambientModeSubtitle, "ambient proximity sensor", categories.ambient)
+    entry("ambient.lyrics", strings.ambientShowLyrics, strings.ambientModeSubtitle, "ambient lyrics", categories.ambient)
+    entry("ambient.canvas", strings.ambientShowCanvas, strings.ambientModeSubtitle, "ambient canvas", categories.ambient)
+    entry("content.excluded_artists", strings.excludedArtists, strings.excludedArtistsEmpty, "block hide artists", categories.content)
+    entry("audio.sponsorblock", strings.sponsorBlock, strings.sponsorBlockSubtitle, "sponsorblock segments skip", categories.audio)
     entry("player.enhance_video_metadata", strings.enhanceVideoMetadata, strings.enhanceVideoMetadataSubtitle, "video metadata", categories.player)
-    entry("player.skip_silence", strings.skipSilence, strings.skipSilenceSubtitle, "silence skip", categories.player)
+    entry("audio.skip_silence", strings.skipSilence, strings.skipSilenceSubtitle, "silence skip", categories.audio)
     entry("player.keep_screen_on", strings.keepScreenOn, strings.keepScreenOnSubtitle, "keep screen awake display timeout sleep", categories.player)
-    entry("player.bluetooth_resume", automation.bluetoothResume, automation.bluetoothResumeSubtitle, "bluetooth headphones car automation", categories.player)
-    entry("player.pause_on_mute", automation.pauseOnMute, automation.pauseOnMuteSubtitle, "mute volume automation", categories.player)
-    entry("player.auto_download_favorites", automation.autoDownloadFavorites, automation.autoDownloadFavoritesSubtitle, "download favorites automation", categories.player)
-    entry("player.skip_unrecoverable", automation.skipUnrecoverable, automation.skipUnrecoverableSubtitle, "skip error automation", categories.player)
+    entry("smart_listening.bluetooth_resume", automation.bluetoothResume, automation.bluetoothResumeSubtitle, "bluetooth headphones car automation", categories.smartListening)
+    entry("smart_listening.pause_on_mute", automation.pauseOnMute, automation.pauseOnMuteSubtitle, "mute volume automation", categories.smartListening)
+    entry("downloads.auto_download_favorites", automation.autoDownloadFavorites, automation.autoDownloadFavoritesSubtitle, "download favorites automation", categories.downloads)
+    entry("audio.skip_unrecoverable", automation.skipUnrecoverable, automation.skipUnrecoverableSubtitle, "skip error automation", categories.audio)
     val smartListening = strings.smartListeningCopy()
     entry("smart_listening.hub", smartListening.hubTitle, smartListening.hubSubtitle, "smart listening ascolto intelligente motion flip shake gentle wake alarm sleep timer morning resume", categories.smartListening)
     entry("smart_listening.motion", smartListening.motionSectionTitle, smartListening.motionSectionSubtitle, "motion controls controlli movimento flip shake sensor accelerometer", categories.smartListening)
@@ -213,13 +226,13 @@ private fun MutableList<SettingsSearchEntry>.systemEntries(
     entry("system.battery", strings.batteryUnrestricted, strings.batteryUnrestrictedSubtitle, "battery optimization background", categories.system)
     entry("system.playback_diagnostics", strings.playbackDiagnostics, strings.playbackDiagnosticsSubtitle, "diagnostics logs debug", categories.system)
     entry("system.export_diagnostics", strings.exportSafeDiagnostics, strings.safeDiagnosticsSubtitle, "diagnostics logs export", categories.system)
-    entry("system.redo_questionnaire", strings.redoQuestionnaire, strings.redoQuestionnaireSubtitle, "onboarding genres taste", categories.system)
-    entry("system.profile_photo", strings.profilePhoto, strings.profilePhotoAddSubtitle, "avatar photo profile", categories.system)
+    entry("content.redo_questionnaire", strings.redoQuestionnaire, strings.redoQuestionnaireSubtitle, "onboarding genres taste", categories.content)
+    entry("content.profile_photo", strings.profilePhoto, strings.profilePhotoAddSubtitle, "avatar photo profile", categories.content)
     entry("system.language", strings.language, strings.languageSubtitle, "language locale", categories.system)
     val musicRegion = musicRegionCopy(strings.code)
     val regional = com.luc4n3x.levyra.ui.i18n.LevyraRegionalStrings.forCode(strings.code)
-    entry("system.music_region", regional.contentCountryTitle, musicRegion.automatic, "${musicRegion.title} music region country market charts", categories.system)
-    entry("system.audio_language", regional.audioLanguageTitle, regional.audioLanguageBody, "audio language dub track voice", categories.system)
+    entry("content.music_region", regional.contentCountryTitle, musicRegion.automatic, "${musicRegion.title} music region country market charts", categories.content)
+    entry("content.audio_language", regional.audioLanguageTitle, regional.audioLanguageBody, "audio language dub track voice", categories.content)
     if (updatesAvailable) {
         entry("app.updates", strings.updates, strings.checkNewVersions, "version update", categories.app)
     }
@@ -227,12 +240,12 @@ private fun MutableList<SettingsSearchEntry>.systemEntries(
     entry("integrations.lastfm", "Last.fm", strings.integrations, "lastfm scrobble scrobbling", categories.integrations)
     entry("integrations.listenbrainz", "ListenBrainz", strings.integrations, "listenbrainz scrobble scrobbling", categories.integrations)
     entry("integrations.audd", "AudD", strings.integrations, "audd recognition identify", categories.integrations)
-    entry("integrations.device", deviceIntegrationCopy(strings.code).title, deviceIntegrationCopy(strings.code).subtitle, "hyperos xiaomi poco redmi super island vivo originos atomic island oppo oneplus realme coloros oxygenos samsung one ui now bar honor pixel battery autostart background", categories.integrations)
+    entry("system.device_integration", deviceIntegrationCopy(strings.code).title, deviceIntegrationCopy(strings.code).subtitle, "hyperos xiaomi poco redmi super island vivo originos atomic island oppo oneplus realme coloros oxygenos samsung one ui now bar honor pixel battery autostart background", categories.system)
     entry("network.dns", strings.networkDns, strings.networkSubtitle, "${strings.networkCustomDohUrl} dns doh", categories.network)
     entry("network.proxy", strings.networkProxy, strings.networkSubtitle, "${strings.networkProxyHost} ${strings.networkProxyAuthentication} proxy http socks", categories.network)
     entry("network.byedpi", strings.networkByeDpi, strings.networkByeDpiSubtitle, "byedpi dpi desync", categories.network)
     entry("network.bypass_streams", strings.networkBypassStreams, strings.networkBypassStreamsSubtitle, "proxy streams", categories.network)
     entry("network.restricted_compatibility", strings.networkRestrictedCompatibility, strings.networkRestrictedCompatibilitySubtitle, "youtube restricted", categories.network)
     entry("network.region_profile", strings.networkYoutubeRegionProfile, strings.networkYoutubeRegionProfileSubtitle, "youtube region country", categories.network)
-    entry("jam.session", strings.jamTitle, strings.jamSubtitle, "jam session together", categories.jam)
+    entry("player.jam", strings.jamTitle, strings.jamSubtitle, "jam session together", categories.player)
 }

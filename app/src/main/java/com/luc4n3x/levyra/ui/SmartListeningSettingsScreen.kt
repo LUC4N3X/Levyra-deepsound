@@ -1,5 +1,9 @@
 package com.luc4n3x.levyra.ui
 
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.toShape
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode as ComposeRepeatMode
@@ -759,18 +763,46 @@ private fun SmartListeningSleepSection(
             }
         }
 
-        OutlinedButton(
-            onClick = onOpenSleepTimerSheet,
-            shape = RoundedCornerShape(18.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = LevyraText),
+        SleepTimerTile(label = strings.sleepTimer, accent = LevyraPink, onClick = onOpenSleepTimerSheet)
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun SleepTimerTile(label: String, accent: Color, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 64.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(accent.copy(alpha = 0.16f))
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 48.dp)
+                .size(40.dp)
+                .clip(MaterialShapes.Cookie6Sided.toShape())
+                .background(accent),
+            contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Rounded.Bedtime, contentDescription = null, tint = LevyraPink)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(strings.sleepTimer, fontWeight = FontWeight.SemiBold)
+            Icon(Icons.Rounded.Bedtime, contentDescription = null, tint = LevyraInk, modifier = Modifier.size(22.dp))
         }
+        Text(
+            text = label,
+            color = LevyraText,
+            fontWeight = FontWeight.Bold,
+            fontSize = 15.sp,
+            modifier = Modifier.weight(1f)
+        )
+        Icon(
+            Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+            contentDescription = null,
+            tint = accent,
+            modifier = Modifier.size(24.dp)
+        )
     }
 }
 

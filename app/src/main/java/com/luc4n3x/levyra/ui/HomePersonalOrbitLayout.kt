@@ -6,16 +6,18 @@ import java.util.Locale
 
 internal const val HOME_PERSONAL_ORBIT_GRID_COLUMNS = 3
 private const val HOME_PERSONAL_ORBIT_PAGE_SIZE = HOME_PERSONAL_ORBIT_GRID_COLUMNS * HOME_PERSONAL_ORBIT_GRID_COLUMNS
-internal const val HOME_PERSONAL_ORBIT_MAX_TRACKS = HOME_PERSONAL_ORBIT_PAGE_SIZE * 2
+private const val HOME_PERSONAL_ORBIT_PAGE_COUNT = 3
+internal const val HOME_PERSONAL_ORBIT_MAX_TRACKS = HOME_PERSONAL_ORBIT_PAGE_SIZE * HOME_PERSONAL_ORBIT_PAGE_COUNT
 
 internal fun homePersonalOrbitPages(
     tracks: List<Track>,
-    limit: Int = LevyraPersonalOrbit.DISPLAY_LIMIT
+    limit: Int = HOME_PERSONAL_ORBIT_MAX_TRACKS
 ): List<List<List<Track>>> {
     val distinct = LevyraPersonalOrbit.distinctWorks(
         LevyraPersonalOrbit.distinctRecordings(tracks)
     ).take(limit.coerceAtLeast(0))
-    val visibleCount = distinct.size.coerceAtMost(HOME_PERSONAL_ORBIT_MAX_TRACKS)
+    val available = distinct.size.coerceAtMost(HOME_PERSONAL_ORBIT_MAX_TRACKS)
+    val visibleCount = if (available <= HOME_PERSONAL_ORBIT_PAGE_SIZE) available else available - available % HOME_PERSONAL_ORBIT_PAGE_SIZE
     return distinct
         .take(visibleCount)
         .chunked(HOME_PERSONAL_ORBIT_PAGE_SIZE)

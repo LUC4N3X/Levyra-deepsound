@@ -15,6 +15,15 @@ class SettingsHubLocalizationTest {
     }
 
     @Test
+    fun brazilianPortugueseShipsItsOwnCompleteCopy() {
+        val brazil = LevyraStrings.forCode("pt-BR").settingsHubCopy
+        val portugal = LevyraStrings.forCode("pt").settingsHubCopy
+        assertTrue(brazil.complete)
+        assertEquals("Quando baixar", brazil[SettingsHubText.WhenToDownload])
+        assertNotEquals(portugal[SettingsHubText.WhenToDownload], brazil[SettingsHubText.WhenToDownload])
+    }
+
+    @Test
     fun translatedLanguagesDoNotFallBackToEnglishGroupTitles() {
         val english = LevyraStrings.forCode("en").settingsHubCopy
         LevyraStrings.all().filter { it.code != "en" }.forEach { strings ->

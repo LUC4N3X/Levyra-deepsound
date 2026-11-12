@@ -116,7 +116,16 @@ fun LevyraStrings.systemPlayerCopy(): LevyraSystemPlayerCopy = when (translation
         "AVAILABLE OUTPUTS", "Switching output…", "Could not change output", "Sample rates", "Channels",
         "Open system output picker", "No outputs available"
     )
-}.forBrazil(code) { brazilian() }
+}.forBrazil(code) { brazilian() }.withSleepTimer(sleepTimerCopy(code))
+
+private fun LevyraSystemPlayerCopy.withSleepTimer(sleep: SleepTimerCopy): LevyraSystemPlayerCopy = copy(
+    sleepChooseDuration = sleep.chooseDuration,
+    sleepEndsAt = sleep.endsAt,
+    sleepActive = sleep.active,
+    sleepAddFifteen = sleep.addFifteen,
+    sleepMinuteUnit = sleep.minuteUnit,
+    sleepFadeActive = sleep.fadeActive
+)
 
 private fun LevyraSystemPlayerCopy.brazilian(): LevyraSystemPlayerCopy = copy(
     outputTitle = LevyraBrazilianPortuguese.adapt(outputTitle),

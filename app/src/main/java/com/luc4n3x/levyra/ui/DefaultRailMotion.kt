@@ -35,6 +35,10 @@ private const val VideoEdgeScale = 0.06f
 private const val VideoEdgeFade = 0.22f
 private const val VideoFoldFade = 0.55f
 private val RailSink = 6.dp
+private const val OrbitTileStagger = 0.22f
+private const val OrbitTileScale = 0.08f
+private const val OrbitTileFade = 0.3f
+private val OrbitTileSink = 4.dp
 private val RailEasing = CubicBezierEasing(0.3f, 0f, 0.8f, 0.15f)
 
 @Composable
@@ -87,6 +91,18 @@ internal fun Modifier.defaultPagerPageMotion(enabled: Boolean, state: PagerState
         alpha = 1f - PagerFade * distance
         cameraDistance = 12f * density
         rotationY = -PagerTilt * offset
+    }
+
+internal fun Modifier.defaultOrbitTileMotion(enabled: Boolean, state: PagerState, page: Int, order: Int): Modifier =
+    if (!enabled) this else graphicsLayer {
+        val offset = abs(state.getOffsetDistanceInPages(page)).coerceIn(0f, 1f)
+        if (offset == 0f) return@graphicsLayer
+        val progress = RailEasing.transform((offset * (1f + order * OrbitTileStagger)).coerceIn(0f, 1f))
+        val scale = 1f - OrbitTileScale * progress
+        scaleX = scale
+        scaleY = scale
+        alpha = 1f - OrbitTileFade * progress
+        translationY = OrbitTileSink.toPx() * progress
     }
 
 internal fun Modifier.defaultRailParallax(enabled: Boolean, state: LazyListState, key: Any): Modifier =

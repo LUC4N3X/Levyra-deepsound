@@ -44,7 +44,7 @@ class SettingsSearchCatalogTest {
         assertTrue(ids("eq").take(3).contains("audio.equalizer"))
         val canvas = index.search("canvas")
         assertTrue(canvas.isNotEmpty())
-        assertTrue(canvas.take(4).all { it.categoryId == "design" || it.categoryId == "player" })
+        assertTrue(canvas.take(4).all { it.categoryId == "design" || it.categoryId == "player" || it.categoryId == "ambient" })
         assertTrue(canvas.any { it.id == "design.canvas_quality" })
     }
 
@@ -53,6 +53,24 @@ class SettingsSearchCatalogTest {
         assertEquals("lyrics.provider_priority", topId("lyrics"))
         assertTrue(index.search("download").take(3).count { it.categoryId == "downloads" } >= 2)
         assertEquals(SETTINGS_CATEGORY_AUDIO, index.search("audio").first().categoryId)
+    }
+
+    @Test
+    fun `reorganized settings are found where the screen now shows them`() {
+        assertEquals("audio.sponsorblock", topId("SponsorBlock"))
+        assertEquals("audio.skip_silence", topId("skip silence"))
+        assertEquals("design.pure_black", topId("pure black"))
+        assertEquals("content.excluded_artists", topId("excluded artists"))
+        assertEquals("smart_listening.bluetooth_resume", topId("bluetooth"))
+        assertEquals("player.jam", topId("jam"))
+        assertEquals("ambient", index.search("ambient").first().categoryId)
+        assertEquals("system.device_integration", topId("autostart"))
+    }
+
+    @Test
+    fun `collapsed download options are real catalog entries`() {
+        val ids = entries(english).map { it.id }.toSet()
+        assertTrue(DOWNLOADS_ADVANCED_SEARCH_IDS.all { it in ids })
     }
 
     @Test
@@ -104,7 +122,7 @@ class SettingsSearchCatalogTest {
     private companion object {
         val CATEGORY_IDS = setOf(
             "design", "home", "player", SETTINGS_CATEGORY_AUDIO, "downloads", "lyrics",
-            "backup", "system", "app", "integrations", "network", "jam", "youtube_music", "smart_listening"
+            "backup", "system", "app", "integrations", "network", "youtube_music", "smart_listening", "ambient", "content"
         )
     }
 }

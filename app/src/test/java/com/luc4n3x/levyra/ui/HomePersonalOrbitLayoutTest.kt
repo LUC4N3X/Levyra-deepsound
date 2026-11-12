@@ -40,29 +40,23 @@ class HomePersonalOrbitLayoutTest {
     }
 
     @Test
-    fun `orbit keeps a partial second swipe page`() {
-        val pages = homePersonalOrbitPages(tracks(12))
-
-        assertEquals(2, pages.size)
-        assertEquals(
-            listOf(
-                listOf(listOf(0, 1, 2), listOf(3, 4, 5), listOf(6, 7, 8)),
-                listOf(listOf(9, 10, 11))
-            ),
-            pages.map { page -> page.map { row -> row.map(::indexOf) } }
-        )
+    fun `orbit never shows a partial swipe page`() {
+        assertEquals(1, homePersonalOrbitPages(tracks(12)).size)
+        assertEquals((0 until 9).toList(), homePersonalOrbitPages(tracks(12)).flatten().flatten().map(::indexOf))
+        assertEquals(2, homePersonalOrbitPages(tracks(26)).size)
     }
 
     @Test
-    fun `orbit exposes the tenth track on a second page`() {
-        val pages = homePersonalOrbitPages(tracks(10))
+    fun `orbit fills three full pages`() {
+        val pages = homePersonalOrbitPages(tracks(40))
 
-        assertEquals(2, pages.size)
-        assertEquals(listOf(9), pages.last().flatten().map(::indexOf))
+        assertEquals(3, pages.size)
+        assertTrue(pages.all { page -> page.size == 3 && page.all { row -> row.size == 3 } })
+        assertEquals((0 until 27).toList(), pages.flatten().flatten().map(::indexOf))
     }
 
     @Test
-    fun `orbit fills both pages without borrowing from quick picks`() {
+    fun `orbit fills every page without borrowing from quick picks`() {
         val catalog = tracks(35)
         val quickPicks = listOf(catalog[1], catalog[12], catalog[13], catalog[17], catalog[23])
         val filled = homePersonalOrbitFilledTracks(
@@ -71,8 +65,8 @@ class HomePersonalOrbitLayoutTest {
             excludedTracks = quickPicks
         )
 
-        assertEquals(18, filled.size)
-        assertEquals(2, homePersonalOrbitPages(filled).size)
+        assertEquals(27, filled.size)
+        assertEquals(3, homePersonalOrbitPages(filled).size)
         assertTrue(homePersonalOrbitPages(filled).all { it.flatten().size == 9 })
         assertEquals((0..12).filterNot { it == 1 || it == 12 }, filled.take(11).map(::indexOf))
         assertTrue(filled.none { it in quickPicks })
@@ -81,7 +75,7 @@ class HomePersonalOrbitLayoutTest {
 
     @Test
     fun `orbit avoids other versions of quick picks songs`() {
-        val catalog = tracks(28)
+        val catalog = tracks(40)
         val liveVersion = catalog[2].copy(title = "Orbit 2 (Live)")
         val filled = homePersonalOrbitFilledTracks(
             tracks = catalog.take(11),
@@ -89,8 +83,8 @@ class HomePersonalOrbitLayoutTest {
             excludedTracks = listOf(catalog[2])
         )
 
-        assertEquals(18, filled.size)
-        assertTrue(filled.none { it.title.startsWith("Orbit 2") })
+        assertEquals(27, filled.size)
+        assertTrue(filled.none { it.title == "Orbit 2" || it.title.startsWith("Orbit 2 (") })
     }
 
     @Test
