@@ -2,10 +2,14 @@ package com.luc4n3x.levyra.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
@@ -53,12 +57,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -98,8 +102,10 @@ import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.floatingNav
 import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
+import com.luc4n3x.levyra.ui.theme.LevyraHaptics
 import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -121,14 +127,85 @@ private const val SidebarSurfaceAlpha = 0.97f
 private const val SidebarLiftScale = 1.04f
 private const val SidebarAccessibilityStep = 0.12f
 
-private class SidebarGeometry {
-    var width = 0f
-    var leftX = 0f
-    var rightX = 0f
-    var panelWidth = 0f
-    var travel = 0f
+private class SidebarMotion(
+    initialSide: FloatingNavSide,
+    initialAnchor: Float,
+    private val scope: CoroutineScope
+) {
+    var side by mutableStateOf(initialSide)
+    val anchor = mutableFloatStateOf(initialAnchor)
+    val offsetX = mutableFloatStateOf(0f)
+    var dragging by mutableStateOf(false)
+        private set
+    var animated = true
+    var interactive = true
+    var haptics: LevyraHaptics = LevyraHaptics.Disabled
+    var onSave: (FloatingNavSide, Float) -> Unit = { _, _ -> }
 
-    fun baseX(side: FloatingNavSide): Float = if (side == FloatingNavSide.Left) leftX else rightX
+    private var settleJob: Job? = null
+    private var width = 0f
+    private var leftX = 0f
+    private var rightX = 0f
+    private var panelWidth = 0f
+    private var travel = 0f
+
+    private fun baseX(target: FloatingNavSide): Float = if (target == FloatingNavSide.Left) leftX else rightX
+
+    fun measured(width: Int, left: Int, right: Int, panelWidth: Int, travel: Int) {
+        this.width = width.toFloat()
+        leftX = left.toFloat()
+        rightX = right.toFloat()
+        this.panelWidth = panelWidth.toFloat()
+        this.travel = travel.toFloat()
+    }
+
+    fun placementX(): Int = (baseX(side) + offsetX.floatValue).roundToInt()
+
+    private fun save() = onSave(side, anchor.floatValue)
+
+    fun nudge(step: Float) {
+        anchor.floatValue = (anchor.floatValue + step).coerceIn(0f, 1f)
+        save()
+    }
+
+    fun switchSide() {
+        side = side.opposite
+        haptics.perform(LevyraHapticAction.Reorder)
+        save()
+    }
+
+    fun startDrag() {
+        if (!interactive) return
+        settleJob?.cancel()
+        dragging = true
+        haptics.perform(LevyraHapticAction.SeekSnap)
+    }
+
+    fun drag(dx: Float, dy: Float): Boolean {
+        if (!dragging) return false
+        if (travel > 0f) anchor.floatValue = (anchor.floatValue + dy / travel).coerceIn(0f, 1f)
+        offsetX.floatValue = (offsetX.floatValue + dx).coerceIn(leftX - baseX(side), rightX - baseX(side))
+        return true
+    }
+
+    fun settle() {
+        if (!dragging) return
+        dragging = false
+        val from = baseX(side)
+        val center = from + offsetX.floatValue + panelWidth / 2f
+        val target = if (center < width / 2f) FloatingNavSide.Left else FloatingNavSide.Right
+        if (target != side) {
+            offsetX.floatValue = from + offsetX.floatValue - baseX(target)
+            side = target
+            haptics.perform(LevyraHapticAction.Reorder)
+        }
+        save()
+        val spec: AnimationSpec<Float> = if (animated) spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessMediumLow) else snap()
+        val start = offsetX.floatValue
+        settleJob = scope.launch {
+            animate(initialValue = start, targetValue = 0f, animationSpec = spec) { value, _ -> offsetX.floatValue = value }
+        }
+    }
 }
 
 @Composable
@@ -152,167 +229,49 @@ internal fun FloatingNavSidebar(
     val copy = LocalLevyraStrings.current.floatingNav()
     val animated = LocalAnimationsEnabled.current
     val haptics = LocalLevyraHaptics.current
-    val gestureAnimated by rememberUpdatedState(animated)
-    val gestureHaptics by rememberUpdatedState(haptics)
-    val interactive by rememberUpdatedState(visible)
     val scope = rememberCoroutineScope()
-    val persist by rememberUpdatedState(onSettingsChange)
-    val latestSettings by rememberUpdatedState(settings)
-
+    val motion = remember { SidebarMotion(settings.side, settings.anchor, scope) }
+    SideEffect {
+        motion.animated = animated
+        motion.interactive = visible
+        motion.haptics = haptics
+        motion.onSave = { side, anchor -> onSettingsChange(settings.copy(side = side, anchor = anchor)) }
+    }
     var expanded by rememberSaveable { mutableStateOf(false) }
-    var side by remember { mutableStateOf(settings.side) }
-    val anchor = remember { mutableFloatStateOf(settings.anchor) }
-    val offsetX = remember { mutableFloatStateOf(0f) }
-    var dragging by remember { mutableStateOf(false) }
-    var settleJob by remember { mutableStateOf<Job?>(null) }
-    val geometry = remember { SidebarGeometry() }
 
-    LaunchedEffect(settings.side) { side = settings.side }
-    LaunchedEffect(settings.anchor) { if (!dragging) anchor.floatValue = settings.anchor }
-    BackHandler(enabled = visible && expanded) { expanded = false }
-
-    fun save() = persist(latestSettings.copy(side = side, anchor = anchor.floatValue))
-
-    fun nudge(step: Float) {
-        anchor.floatValue = (anchor.floatValue + step).coerceIn(0f, 1f)
-        save()
-    }
-
-    fun switchSide() {
-        side = side.opposite
-        haptics.perform(LevyraHapticAction.Reorder)
-        save()
-    }
-
-    fun settle() {
-        if (!dragging) return
-        dragging = false
-        val from = geometry.baseX(side)
-        val center = from + offsetX.floatValue + geometry.panelWidth / 2f
-        val target = if (center < geometry.width / 2f) FloatingNavSide.Left else FloatingNavSide.Right
-        if (target != side) {
-            offsetX.floatValue = from + offsetX.floatValue - geometry.baseX(target)
-            side = target
-            gestureHaptics.perform(LevyraHapticAction.Reorder)
-        }
-        save()
-        val start = offsetX.floatValue
-        settleJob = scope.launch {
-            animate(
-                initialValue = start,
-                targetValue = 0f,
-                animationSpec = if (gestureAnimated) spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessMediumLow) else snap()
-            ) { value, _ -> offsetX.floatValue = value }
-        }
-    }
-
+    LaunchedEffect(settings.side) { motion.side = settings.side }
+    LaunchedEffect(settings.anchor) { if (!motion.dragging) motion.anchor.floatValue = settings.anchor }
     LaunchedEffect(visible) {
         if (!visible) {
             expanded = false
-            settle()
+            motion.settle()
         }
     }
+    BackHandler(enabled = visible && expanded) { expanded = false }
 
     val lift by animateFloatAsState(
-        targetValue = if (dragging) 1f else 0f,
+        targetValue = if (motion.dragging) 1f else 0f,
         animationSpec = if (animated) spring(stiffness = Spring.StiffnessMedium) else snap(),
         label = "floating-nav-lift"
     )
     val selectedEntry = entries.firstOrNull { it.tab == selected }
-    val selectedIndex = entries.indexOfFirst { it.tab == selected }
-    val shape = RoundedCornerShape(percent = 50)
     val accessibilityActions = listOf(
-        CustomAccessibilityAction(copy.moveUp) { nudge(-SidebarAccessibilityStep); true },
-        CustomAccessibilityAction(copy.moveDown) { nudge(SidebarAccessibilityStep); true },
-        CustomAccessibilityAction(copy.switchSide) { switchSide(); true }
+        CustomAccessibilityAction(copy.moveUp) { motion.nudge(-SidebarAccessibilityStep); true },
+        CustomAccessibilityAction(copy.moveDown) { motion.nudge(SidebarAccessibilityStep); true },
+        CustomAccessibilityAction(copy.switchSide) { motion.switchSide(); true }
     )
-
-    val safeHorizontal = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)
-    val safeTop = WindowInsets.safeDrawing.only(WindowInsetsSides.Top)
-    val bottomSystem = WindowInsets.ime.union(WindowInsets.navigationBars).only(WindowInsetsSides.Bottom)
 
     Box(modifier = Modifier.fillMaxSize()) {
         AnimatedVisibility(
             visible = visible,
-            modifier = Modifier.layout { measurable, constraints ->
-                val width = constraints.maxWidth
-                val height = constraints.maxHeight
-                val margin = SidebarBandMargin.roundToPx()
-                val gap = SidebarEdgeGap.roundToPx()
-                val top = safeTop.getTop(this) + margin
-                val bottom = height - maxOf(bottomClearancePx(), bottomSystem.getBottom(this)) - margin
-                val band = (bottom - top).coerceAtLeast(SidebarTouchTarget.roundToPx())
-                val placeable = measurable.measure(Constraints(maxWidth = width, maxHeight = band))
-                val left = safeHorizontal.getLeft(this, layoutDirection) + gap
-                val right = maxOf(left, width - safeHorizontal.getRight(this, layoutDirection) - gap - placeable.width)
-                geometry.width = width.toFloat()
-                geometry.leftX = left.toFloat()
-                geometry.rightX = right.toFloat()
-                geometry.panelWidth = placeable.width.toFloat()
-                geometry.travel = (band - placeable.height).toFloat()
-                layout(width, height) {
-                    val x = (geometry.baseX(side) + offsetX.floatValue).roundToInt()
-                    val y = top + (anchor.floatValue * (band - placeable.height).coerceAtLeast(0)).roundToInt()
-                    placeable.place(x, y)
-                }
-            },
-            enter = fadeIn(if (animated) tween(220) else snap()) +
-                scaleIn(animationSpec = if (animated) tween(220) else snap(), initialScale = 0.86f),
-            exit = fadeOut(if (animated) tween(160) else snap()) +
-                scaleOut(animationSpec = if (animated) tween(160) else snap(), targetScale = 0.86f)
+            modifier = Modifier.sidebarPlacement(motion, bottomClearancePx),
+            enter = fadeIn(sidebarTween(animated, 220)) + scaleIn(sidebarTween(animated, 220), initialScale = 0.86f),
+            exit = fadeOut(sidebarTween(animated, 160)) + scaleOut(sidebarTween(animated, 160), targetScale = 0.86f)
         ) {
-            Box(
-                modifier = Modifier
-                    .graphicsLayer {
-                        val scale = 1f + (SidebarLiftScale - 1f) * lift
-                        scaleX = scale
-                        scaleY = scale
-                        transformOrigin = TransformOrigin(if (side == FloatingNavSide.Left) 0f else 1f, 0.5f)
-                        shadowElevation = (SidebarRestElevation + (SidebarLiftElevation - SidebarRestElevation) * lift).toPx()
-                        this.shape = shape
-                        clip = true
-                        ambientShadowColor = Color.Black.copy(alpha = 0.28f)
-                        spotShadowColor = Color.Black.copy(alpha = 0.36f)
-                    }
-                    .background(surface)
-                    .systemGestureExclusion()
-                    .border(1.dp, colors.rim, shape)
-                    .pointerInput(Unit) {
-                        detectDragGestures(
-                            onDragStart = {
-                                if (!interactive) return@detectDragGestures
-                                settleJob?.cancel()
-                                dragging = true
-                                gestureHaptics.perform(LevyraHapticAction.SeekSnap)
-                            },
-                            onDragEnd = { settle() },
-                            onDragCancel = { settle() },
-                            onDrag = { change, amount ->
-                                if (!dragging) return@detectDragGestures
-                                change.consume()
-                                if (geometry.travel > 0f) {
-                                    anchor.floatValue = (anchor.floatValue + amount.y / geometry.travel).coerceIn(0f, 1f)
-                                }
-                                val minimum = geometry.leftX - geometry.baseX(side)
-                                val maximum = geometry.rightX - geometry.baseX(side)
-                                offsetX.floatValue = (offsetX.floatValue + amount.x).coerceIn(minimum, maximum)
-                            }
-                        )
-                    }
-            ) {
+            Box(modifier = Modifier.sidebarSurface(motion, { lift }, surface, colors.rim).sidebarDrag(motion)) {
                 AnimatedContent(
                     targetState = expanded,
-                    transitionSpec = {
-                        val sizeSpec = if (animated) {
-                            spring<IntSize>(dampingRatio = 0.8f, stiffness = 420f)
-                        } else {
-                            snap()
-                        }
-                        (fadeIn(tween(if (animated) 200 else 0, delayMillis = if (animated) 70 else 0)) +
-                            scaleIn(initialScale = 0.92f, animationSpec = if (animated) tween(240) else snap()))
-                            .togetherWith(fadeOut(tween(if (animated) 90 else 0)))
-                            .using(SizeTransform(clip = true) { _, _ -> sizeSpec })
-                    },
+                    transitionSpec = { sidebarMorph(animated) },
                     contentAlignment = Alignment.TopCenter,
                     label = "floating-nav-morph"
                 ) { open ->
@@ -320,7 +279,7 @@ internal fun FloatingNavSidebar(
                         SidebarPanel(
                             entries = entries,
                             selected = selected,
-                            selectedIndex = selectedIndex,
+                            selectedIndex = entries.indexOfFirst { it.tab == selected },
                             colors = colors,
                             collapseLabel = copy.collapse,
                             paneLabel = copy.handle,
@@ -340,13 +299,75 @@ internal fun FloatingNavSidebar(
                             label = selectedEntry?.let { "${copy.handle}, ${it.label}" } ?: copy.handle,
                             expandLabel = copy.expand,
                             accessibilityActions = accessibilityActions,
-                            onExpand = { if (interactive) expanded = true }
+                            onExpand = { if (motion.interactive) expanded = true }
                         )
                     }
                 }
             }
         }
     }
+}
+
+private fun <T> sidebarTween(animated: Boolean, millis: Int): FiniteAnimationSpec<T> = if (animated) tween(millis) else snap()
+
+private fun AnimatedContentTransitionScope<Boolean>.sidebarMorph(animated: Boolean): ContentTransform {
+    val sizeSpec: FiniteAnimationSpec<IntSize> = if (animated) spring(dampingRatio = 0.8f, stiffness = 420f) else snap()
+    val reveal = fadeIn(tween(if (animated) 200 else 0, delayMillis = if (animated) 70 else 0)) +
+        scaleIn(sidebarTween(animated, 240), initialScale = 0.92f)
+    return reveal.togetherWith(fadeOut(sidebarTween(animated, 90))).using(SizeTransform(clip = true) { _, _ -> sizeSpec })
+}
+
+@Composable
+private fun Modifier.sidebarPlacement(motion: SidebarMotion, bottomClearancePx: () -> Int): Modifier {
+    val safeHorizontal = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)
+    val safeTop = WindowInsets.safeDrawing.only(WindowInsetsSides.Top)
+    val bottomSystem = WindowInsets.ime.union(WindowInsets.navigationBars).only(WindowInsetsSides.Bottom)
+    return layout { measurable, constraints ->
+        val width = constraints.maxWidth
+        val height = constraints.maxHeight
+        val margin = SidebarBandMargin.roundToPx()
+        val gap = SidebarEdgeGap.roundToPx()
+        val top = safeTop.getTop(this) + margin
+        val bottom = height - maxOf(bottomClearancePx(), bottomSystem.getBottom(this)) - margin
+        val band = (bottom - top).coerceAtLeast(SidebarTouchTarget.roundToPx())
+        val placeable = measurable.measure(Constraints(maxWidth = width, maxHeight = band))
+        val left = safeHorizontal.getLeft(this, layoutDirection) + gap
+        val right = maxOf(left, width - safeHorizontal.getRight(this, layoutDirection) - gap - placeable.width)
+        val travel = band - placeable.height
+        motion.measured(width, left, right, placeable.width, travel)
+        layout(width, height) {
+            val y = top + (motion.anchor.floatValue * travel.coerceAtLeast(0)).roundToInt()
+            placeable.place(motion.placementX(), y)
+        }
+    }
+}
+
+private fun Modifier.sidebarSurface(motion: SidebarMotion, lift: () -> Float, surface: Color, rim: Color): Modifier {
+    val shape = RoundedCornerShape(percent = 50)
+    return graphicsLayer {
+        val progress = lift()
+        val scale = 1f + (SidebarLiftScale - 1f) * progress
+        scaleX = scale
+        scaleY = scale
+        transformOrigin = TransformOrigin(if (motion.side == FloatingNavSide.Left) 0f else 1f, 0.5f)
+        shadowElevation = (SidebarRestElevation + (SidebarLiftElevation - SidebarRestElevation) * progress).toPx()
+        this.shape = shape
+        clip = true
+        ambientShadowColor = Color.Black.copy(alpha = 0.28f)
+        spotShadowColor = Color.Black.copy(alpha = 0.36f)
+    }
+        .background(surface)
+        .systemGestureExclusion()
+        .border(1.dp, rim, shape)
+}
+
+private fun Modifier.sidebarDrag(motion: SidebarMotion): Modifier = pointerInput(motion) {
+    detectDragGestures(
+        onDragStart = { motion.startDrag() },
+        onDragEnd = { motion.settle() },
+        onDragCancel = { motion.settle() },
+        onDrag = { change, amount -> if (motion.drag(amount.x, amount.y)) change.consume() }
+    )
 }
 
 @Composable

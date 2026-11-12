@@ -161,7 +161,7 @@ class FloatingNavSidebarTest {
         val (startX, startY) = main {
             val bounds = nodes().first(handle(fromLabel)).boundsInWindow
             val origin = IntArray(2).also { activity.window.decorView.getLocationOnScreen(it) }
-            (origin[0] + bounds.center.x) to (origin[1] + bounds.center.y)
+            origin[0] + bounds.center.x to origin[1] + bounds.center.y
         }
         val downTime = SystemClock.uptimeMillis()
         fun send(action: Int, x: Float, y: Float) {
