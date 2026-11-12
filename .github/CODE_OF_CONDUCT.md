@@ -1,79 +1,63 @@
-# Code of Conduct
+# Code of conduct
 
-Levyra is an open-source project, and everyone should be able to contribute without being harassed, demeaned, or excluded.
+I want people to be able to contribute to Levyra without being harassed, insulted or excluded. This applies whether you're reporting your first bug, reviewing a PR or maintaining part of the app.
 
-This applies whether you are opening your first issue, reviewing code, discussing a feature, or maintaining part of the codebase.
+## How to take part
 
-## Standards
+Be direct about the work and respectful toward the person doing it.
 
-Be respectful, direct, and constructive.
+- Disagree with a technical decision without attacking its author.
+- Give feedback someone can act on.
+- Accept reasonable criticism without turning it into a personal argument.
+- Be patient with people who have less experience.
+- Acknowledge mistakes and correct them.
+- Keep the discussion on the problem being worked on.
 
-Good participation includes:
-
-- Disagreeing with technical decisions without attacking the person behind them.
-- Providing specific, actionable feedback.
-- Accepting reasonable criticism without escalating technical discussions into personal conflicts.
-- Being patient with contributors of varying experience levels.
-- Acknowledging and correcting mistakes when pointed out.
-- Keeping discussions focused on the task or problem at hand.
-
-Strong technical opinions and disagreements are completely normal. Hostility and personal attacks are not.
+Strong opinions about code, architecture, UX and design are welcome. Personal attacks aren't.
 
 ## Unacceptable behavior
 
-The following behaviors are not tolerated in any Levyra project space:
+I don't accept these behaviors in Levyra's project spaces:
 
-- Harassment, threats, intimidation, or personal attacks.
-- Discriminatory or demeaning comments based on identity, background, disability, religion, nationality, gender identity, sexual orientation, or appearance.
+- Harassment, threats, intimidation or personal attacks.
+- Discriminatory or demeaning comments about identity, background, disability, religion, nationality, gender identity, sexual orientation or appearance.
 - Sexualized language or unwelcome attention.
-- Publishing someone else's private contact information without consent.
-- Trolling, baiting, or intentionally derailing discussions after being asked to stop.
-- Hostility directed at users or contributors over a technical disagreement.
-- Using project channels for spam, advertising, or unsolicited promotion.
+- Sharing someone's private contact information without consent.
+- Trolling, baiting or derailing a discussion after being asked to stop.
+- Hostility toward users or contributors over a technical disagreement.
+- Spam, advertising or unsolicited promotion.
 
-Critique of code, architecture, UX, or design choices is encouraged, provided it remains focused on the work itself.
+## Where this applies
 
-## Scope
-
-This Code of Conduct applies to Levyra's GitHub repository, issues, pull requests, discussions, and any other channels used to coordinate the project.
-
-It also applies when an individual is publicly representing Levyra in external settings.
+This policy covers the repository, issues, pull requests, discussions and other channels used to coordinate Levyra. It also applies when someone publicly represents the project elsewhere.
 
 ## Maintainer responsibilities
 
-Project maintainers are responsible for clarifying and enforcing these standards fairly.
+As maintainer, I'm responsible for explaining and enforcing these rules fairly. Other project maintainers share that responsibility.
 
-Depending on the severity and context of an incident, responses may include a private reminder, removing or editing inappropriate comments, temporary interaction limits, closing discussions, rejecting contributions, or removing an individual from project spaces.
+Depending on what happened, a response may include a private reminder, editing or removing comments, temporary interaction limits, closing a discussion, rejecting a contribution or removing someone from project spaces.
 
-The goal is to maintain a safe, productive environment, not to turn every minor disagreement into an enforcement action.
+A minor disagreement doesn't need a moderation action. Threats, harassment and repeated disruption do.
 
-## Reporting issues
+## Reporting a problem
 
-If an issue occurs in a public thread and can be resolved there, you can ask for the behavior to stop or tag a maintainer.
+For a public disagreement that can be resolved in the thread, you can ask for the behavior to stop or tag a maintainer.
 
-For harassment, private information leaks, threats, or other sensitive situations, do not post details in a public issue. Contact the project maintainer privately via the email address listed on their GitHub profile, or use GitHub's built-in reporting features.
+For threats, harassment, exposed private information or another sensitive situation, don't post the details publicly. Contact me privately through the email address on my GitHub profile, or use GitHub's reporting tools.
 
-Reports should provide sufficient context and will be handled confidentially.
+Include enough context to understand what happened. I'll handle reports confidentially.
 
-## Enforcement guidelines
+## Enforcement
 
-Maintainers will consider context, severity, whether the behavior is repeated, and whether the individual is making a genuine effort to correct it.
+When reviewing an incident, maintainers consider its severity, context, whether it has happened before, and whether the person is trying to correct the behavior.
 
-Standard responses include:
+1. A request to change inappropriate language or behavior.
+2. A formal warning that the behavior must stop.
+3. Temporary moderation or interaction limits if disruption continues.
+4. Permanent removal for severe or repeated violations.
 
-1. **Correction**: A reminder or request to modify inappropriate language or behavior.
-2. **Warning**: A formal notice that the behavior must stop.
-3. **Temporary restriction**: Temporary moderation or interaction limits when disruption continues.
-4. **Permanent removal**: A permanent ban from project spaces for severe or repeated violations.
-
-Severe threats, targeted harassment, or doxxing can result in immediate removal without prior warnings.
-
-## A final note
-
-Open source works best when people can speak candidly without making the space hostile.
-
-Challenge weak ideas, report bugs, ask hard questions, and push for better code. Just keep the focus on the work and treat fellow contributors with respect.
+Severe threats, targeted harassment or doxxing can lead to immediate removal without a warning.
 
 ---
 
-This Code of Conduct is adapted from the [Contributor Covenant, version 2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct/).
+Adapted from the [Contributor Covenant, version 2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct/).

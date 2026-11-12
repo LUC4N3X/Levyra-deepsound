@@ -1,8 +1,6 @@
 # Contributing to Levyra
 
-Thank you for contributing to Levyra.
-
-Levyra moves quickly, so focused pull requests are much easier to review and test than large PRs that touch multiple subsystems at once. You do not need to understand the entire codebase to contribute; just keep the scope well-defined and test your changes.
+I maintain the Android and Windows apps and review contributions here. A small, focused PR is easier to review and test. You don't need to know the whole codebase to fix one problem.
 
 ## Before you start
 
@@ -13,26 +11,20 @@ Levyra moves quickly, so focused pull requests are much easier to review and tes
 | Major architecture, database changes, or new modules | Open an RFC issue first |
 | Security vulnerability | Follow [SECURITY.md](SECURITY.md) and report it privately |
 
-Please keep unrelated cleanups out of functional PRs. In particular, avoid broad refactors, reformatting sweeps, dependency bumps, or moving files unless directly relevant to the change.
+Keep unrelated cleanup out of your PR. Refactors, formatting changes, dependency updates and file moves should serve the change you're making.
 
-Key guidelines to keep in mind:
+- Preserve behavior and user data outside your change.
+- Use the architecture and owners already in the module.
+- Only mark a check as passed if you ran it and it passed.
+- Don't commit credentials, private tokens or personal data.
+- Follow Levyra's existing design and interactions.
 
-- Preserve existing behavior and user data outside the scope of your change.
-- Work with existing architecture and patterns rather than introducing parallel systems.
-- Do not mark checks as passed unless they actually ran and passed.
-- Never commit credentials, private tokens, or sensitive personal data.
-- Maintain Levyra's distinct design and interaction identity.
-
-Helpful links: [Development guide](../docs/site/development.md) | [AGENTS.md](../AGENTS.md) | [Security policy](SECURITY.md) | [Code of Conduct](CODE_OF_CONDUCT.md)
-
----
+The [development guide](../docs/site/development.md) covers setup. [AGENTS.md](../AGENTS.md) describes the repository rules. The [security policy](SECURITY.md) and [Code of Conduct](CODE_OF_CONDUCT.md) also apply.
 
 <details>
-<summary><strong>Development setup</strong></summary>
+<summary>Development setup</summary>
 
-<br>
-
-Fork the repository, clone your fork, and create a branch from `main`:
+Fork the repository, clone your fork, and branch from `main`:
 
 ```bash
 git clone https://github.com/<your-user>/Levyra-deepsound.git
@@ -42,63 +34,55 @@ git pull --ff-only
 git checkout -b <your-branch-name>
 ```
 
-Always use the Gradle wrapper scripts provided in the repository:
+Use the repository's Gradle wrapper.
 
-Android:
+To build Android from a Unix shell:
 
 ```bash
 ./gradlew assembleDebug
 ```
 
-Windows:
+To build Android from Windows PowerShell:
 
 ```powershell
 .\gradlew.bat assembleDebug
 ```
 
-For complete Windows Desktop toolchain requirements, MSI packaging commands, and ADB device qualification scripts, refer to the [development guide](../docs/site/development.md).
+For the Windows Desktop toolchain, MSI packaging and ADB device qualification, see the [development guide](../docs/site/development.md).
 
 </details>
 
 <details>
-<summary><strong>Code and UI guidelines</strong></summary>
+<summary>Code and UI guidelines</summary>
 
-<br>
+Follow the patterns in the module you touch. Leave working code alone unless your change needs it.
 
-Follow the architectural patterns and ownership conventions already present in the modules you touch. Avoid refactoring stable, working code purely for aesthetic reasons.
+Take extra care with playback, Media3, queues, Room migrations, playlists, favorites, downloads, credentials, provider fallbacks and lifecycle state. A regression here can stop playback or lose someone's data. Don't reset databases or preferences to make a change easier to implement.
 
-Exercise extra care around core audio subsystems: Media3 playback, queue management, Room migrations, playlists, favorites, offline downloads, credentials, provider fallbacks, and lifecycle state. Regressions in these areas can have widespread side effects.
-
-For UI changes, respect existing spacing, typography, corner radii, motion tokens, and accessibility labels. Avoid cluttering screens with unnecessary controls, and be mindful of recomposition performance and UI thread overhead.
-
-Include screenshots or brief screen recordings for visual changes.
-
-Never reset or overwrite user databases or preferences to simplify an implementation.
+For UI work, follow the existing spacing, typography, corner radii, motion and accessibility labels. Keep controls useful and check recomposition and work on the UI thread. Include screenshots or a short recording for visual changes.
 
 </details>
 
 <details>
-<summary><strong>Testing</strong></summary>
+<summary>Testing</summary>
 
-<br>
+Start with the checks that cover your change. That might be a unit test, a module build, a device check or a Desktop test.
 
-Run targeted checks first: a focused unit test, module build, manual verification on device, or desktop test depending on your changes.
-
-Before committing changes, run the fast quality gate:
+Before committing:
 
 ```bash
 python3 scripts/ai_quality_gate.py --profile fast
 ```
 
-Before pushing your branch or opening a PR, run the full quality gate:
+Before pushing or opening a PR:
 
 ```bash
 python3 scripts/ai_quality_gate.py --profile full
 ```
 
-If an environment-specific check cannot run locally, state clearly what was skipped and why.
+If a check can't run in your environment, say which one and why. Don't count it as passed.
 
-For Android changes touching playback, MediaSession, startup, lifecycle, or memory performance, run the device test harness:
+For Android changes to playback, MediaSession, startup, lifecycle or memory performance, also run the device harness:
 
 ```powershell
 .\scripts\levyra-device-qualification.ps1
@@ -107,61 +91,47 @@ For Android changes touching playback, MediaSession, startup, lifecycle, or memo
 </details>
 
 <details>
-<summary><strong>Pull requests</strong></summary>
+<summary>Pull requests</summary>
 
-<br>
+Fill in the repository's PR template. Tell me what problem you fixed, what changed for the user, what you tested, and what you couldn't verify.
 
-Keep your pull request description concise and informative:
+Include before-and-after screenshots for UI changes. For bugs, add reproduction steps when they help explain the fix.
 
-- What problem is being solved
-- What was changed
-- User-facing impacts
-- What was tested
-- Any checks that were skipped or could not run
-
-For UI changes, include before-and-after screenshots. For bug fixes, include reproduction steps if helpful.
-
-If code review reveals an unrelated issue, handle it in a separate issue or PR rather than expanding the current one.
+If review turns up an unrelated problem, open a separate issue or PR for it.
 
 </details>
 
 <details>
-<summary><strong>AI-assisted contributions</strong></summary>
+<summary>AI-assisted contributions</summary>
 
-<br>
+You can use AI coding tools. You're still responsible for every line you submit.
 
-Using AI coding tools is fine, but you remain responsible for the code you submit.
+Read the generated code, remove unrelated changes, check APIs against the current codebase, and run the tests. Don't submit proprietary code, invented APIs or code with an incompatible license.
 
-Review all generated code before committing, remove unnecessary changes, verify APIs against the current codebase, and run tests. Ensure that no proprietary code, fake APIs, or license violations are introduced.
-
-An AI model claiming code works is not a substitute for running actual tests.
+A model saying the code works doesn't count as a test.
 
 </details>
 
 <details>
-<summary><strong>Security and licensing</strong></summary>
+<summary>Security and licensing</summary>
 
-<br>
+Don't commit API tokens, passwords, keystores, private signing keys, populated `.env` or `local.properties` files, or user data.
 
-Do not commit API tokens, passwords, keystores, private signing keys, populated `.env` or `local.properties` files, or user data.
+Report vulnerabilities through [SECURITY.md](SECURITY.md), never with details in a public issue or PR.
 
-Potential security issues should always be reported via [SECURITY.md](SECURITY.md), never in public PRs or issues.
-
-Levyra is licensed under the [GNU GPL v3.0](../LICENSE). If adapting code from external projects, verify that the license is GPL-3.0 compatible and retain all required upstream copyright and license notices.
+Levyra uses the [GNU GPL v3.0](../LICENSE). Before adapting code from another project, check that its license is GPL-3.0 compatible and keep the required copyright and license notices.
 
 </details>
 
----
+## Before submitting
 
-## Pre-submission checklist
-
-- [ ] The change has a single, well-defined purpose.
-- [ ] Unrelated refactors and generated files are omitted.
+- [ ] The PR has one clear purpose.
+- [ ] There are no unrelated refactors or generated files.
 - [ ] Existing behavior and user data are preserved.
-- [ ] Targeted tests and quality gates were executed.
-- [ ] Any skipped or unverified checks are noted in the PR description.
-- [ ] Visual UI changes include screenshots or recordings.
-- [ ] No secrets or sensitive data are committed.
-- [ ] Reused code includes proper license compatibility and attribution.
+- [ ] I ran the relevant tests and quality gates.
+- [ ] I listed any skipped or unverified checks in the PR description.
+- [ ] I included screenshots or recordings for visual changes.
+- [ ] I haven't committed secrets or sensitive data.
+- [ ] Reused code has a compatible license and the required attribution.
 
-Please keep technical discussions constructive and respectful. Our [Code of Conduct](CODE_OF_CONDUCT.md) applies across all project interactions.
+Keep technical discussions respectful. The [Code of Conduct](CODE_OF_CONDUCT.md) applies throughout the project.
