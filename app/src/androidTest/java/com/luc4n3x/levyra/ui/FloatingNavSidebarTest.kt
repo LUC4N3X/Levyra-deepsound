@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.ui
 
 import android.os.SystemClock
+import android.view.InputDevice
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.compose.setContent
@@ -155,6 +157,29 @@ class FloatingNavSidebarTest {
         }
     }
 
+    private fun drag(fromLabel: String, dxPx: Float, dyPx: Float, cancel: Boolean = false) {
+        val (startX, startY) = main {
+            val bounds = nodes().first(handle(fromLabel)).boundsInWindow
+            val origin = IntArray(2).also { activity.window.decorView.getLocationOnScreen(it) }
+            (origin[0] + bounds.center.x) to (origin[1] + bounds.center.y)
+        }
+        val downTime = SystemClock.uptimeMillis()
+        fun send(action: Int, x: Float, y: Float) {
+            val event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action, x, y, 0)
+            event.source = InputDevice.SOURCE_TOUCHSCREEN
+            instrumentation.sendPointerSync(event)
+            event.recycle()
+        }
+        send(MotionEvent.ACTION_DOWN, startX, startY)
+        val steps = 24
+        for (step in 1..steps) {
+            send(MotionEvent.ACTION_MOVE, startX + dxPx * step / steps, startY + dyPx * step / steps)
+            SystemClock.sleep(8)
+        }
+        send(if (cancel) MotionEvent.ACTION_CANCEL else MotionEvent.ACTION_UP, startX + dxPx, startY + dyPx)
+        instrumentation.waitForIdleSync()
+    }
+
     private fun expand(label: String) {
         click(handle(label))
         await("Expanded panel missing") { exists(collapseButton) && exists(tab(strings.home)) }
@@ -213,6 +238,24 @@ class FloatingNavSidebarTest {
     @Test fun hiddenSidebarRemovesTheHandle() = withSidebar { host ->
         main { host.visible = false }
         await("Handle still present while hidden") { !exists(handle(strings.home)) }
+        assertFalse(exists(collapseButton))
+    }
+
+    @Test fun draggingAcrossTheScreenSwitchesSideAndSavesPosition() = withSidebar { host ->
+        val width = main { activity.window.decorView.width.toFloat() }
+        val start = main { host.settings.anchor }
+        drag(strings.home, dxPx = -width * 0.7f, dyPx = 160f)
+        await("Drag did not move the sidebar to the left edge") { main { host.settings.side } == FloatingNavSide.Left }
+        assertTrue(main { host.settings.anchor } > start)
+        assertTrue(exists(handle(strings.home)))
+        assertTrue(main { host.selections.isEmpty() })
+    }
+
+    @Test fun shortDragKeepsSideAndCancelledDragStillSaves() = withSidebar { host ->
+        val start = main { host.settings.anchor }
+        drag(strings.home, dxPx = -40f, dyPx = -160f, cancel = true)
+        await("Cancelled drag was not saved") { main { host.settings.anchor } < start }
+        assertEquals(FloatingNavSide.Right, main { host.settings.side })
         assertFalse(exists(collapseButton))
     }
 }

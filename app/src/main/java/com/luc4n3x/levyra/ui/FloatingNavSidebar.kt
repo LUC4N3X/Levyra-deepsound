@@ -255,8 +255,10 @@ internal fun FloatingNavSidebar(
                     placeable.place(x, y)
                 }
             },
-            enter = fadeIn(tween(220)) + scaleIn(initialScale = 0.86f),
-            exit = fadeOut(tween(160)) + scaleOut(targetScale = 0.86f)
+            enter = fadeIn(if (animated) tween(220) else snap()) +
+                scaleIn(animationSpec = if (animated) tween(220) else snap(), initialScale = 0.86f),
+            exit = fadeOut(if (animated) tween(160) else snap()) +
+                scaleOut(animationSpec = if (animated) tween(160) else snap(), targetScale = 0.86f)
         ) {
             Box(
                 modifier = Modifier
