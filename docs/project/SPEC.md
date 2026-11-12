@@ -150,8 +150,8 @@ with its own playback, packaging, versioning, and release lifecycle.
 
 ## Security and privacy
 
-- Levyra does not add account login, cookies, private tokens, telemetry,
-  tracking, or unrelated data collection without explicit approval.
+- Levyra does not add telemetry, tracking, or unrelated data collection
+  without explicit approval.
 - Secrets, signing material, keystores, private URLs, `.env`, and
   `local.properties` never enter the repository.
 - Remote URLs are validated across scheme, host, port, user info, DNS/IP
