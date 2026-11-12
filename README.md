@@ -180,23 +180,16 @@ Architecture notes are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and the [
 
 ### Open-source projects
 
-#### Extraction
-
-LevyraExtractor started from [PipePipeExtractor](https://github.com/InfinityLoop1308/PipePipeExtractor)'s architecture, adapted with Levyra's own stream resolution and retry handling. [NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor) provided upstream extractor concepts and service foundations.
-
-I used [Metrolist](https://github.com/MetrolistGroup/Metrolist) as a reference for renderer recovery and BetterLyrics TTML parsing.
-
-#### YouTube resolution
-
-[zemer-cipher](https://github.com/ZemerTeam/zemer-cipher) provides YouTube cipher deobfuscation and PoToken generation. [faraday](https://github.com/MetrolistGroup/faraday) is a second source of YouTube player configurations, checked alongside zemer-cipher.
-
-#### Lyrics and sound
-
-[LRCLIB](https://lrclib.net/) provides the synchronized lyrics database and API. [SponsorBlock](https://github.com/ajayyy/SponsorBlock) supplies community timestamps for skipping sponsored and other marked video segments. [AutoEq](https://github.com/jaakkopasanen/AutoEq) provides headphone measurements and GraphicEQ profiles for the AutoEQ catalog.
-
-#### Network compatibility
-
-[ByeDPI](https://github.com/hufrea/byedpi) powers the optional local YouTube connection mode. [ByeDPIAndroid](https://github.com/dovecoteescapee/ByeDPIAndroid) provides its Android wrapper.
+- [Metrolist](https://github.com/MetrolistGroup/Metrolist): used as a reference for renderer recovery and BetterLyrics TTML parsing.
+- [PipePipeExtractor](https://github.com/InfinityLoop1308/PipePipeExtractor): the starting architecture for LevyraExtractor, later adapted with Levyra's own stream resolution and retry handling.
+- [NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor): upstream extractor concepts and service foundations.
+- [zemer-cipher](https://github.com/ZemerTeam/zemer-cipher): open-source work used for YouTube cipher deobfuscation and PoToken generation.
+- [faraday](https://github.com/MetrolistGroup/faraday): secondary source of YouTube player configurations, checked alongside zemer-cipher.
+- [LRCLIB](https://lrclib.net/): provides the synchronized lyrics database and API.
+- [ByeDPI](https://github.com/hufrea/byedpi): local network compatibility tool used by the optional YouTube connection mode.
+- [ByeDPIAndroid](https://github.com/dovecoteescapee/ByeDPIAndroid): Android wrapper for the ByeDPI integration.
+- [SponsorBlock](https://github.com/ajayyy/SponsorBlock): community timestamps used to skip sponsored and other marked video segments.
+- [AutoEq](https://github.com/jaakkopasanen/AutoEq): headphone measurements and GraphicEQ profiles used by the AutoEQ catalog.
 
 FLAC playback on Android uses independent third-party websites. I don't host their audio, and listing an integration doesn't mean there is a partnership or endorsement.
 
