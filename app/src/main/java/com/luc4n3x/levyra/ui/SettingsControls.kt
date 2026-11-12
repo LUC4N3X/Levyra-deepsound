@@ -65,6 +65,9 @@ import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
 import com.luc4n3x.levyra.ui.theme.LevyraIsAtelier
+import com.luc4n3x.levyra.ui.theme.LevyraIsTorque
+import com.luc4n3x.levyra.ui.theme.LevyraIsPrism
+import com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraPanel
 import com.luc4n3x.levyra.ui.theme.LevyraPink
@@ -428,3 +431,32 @@ internal fun SettingsHubCategoryRow(
     }
 }
 
+private const val SETTINGS_TITLE_MARQUEE_DELAY = 3000
+
+@Composable
+internal fun SettingsTileTitle(title: String, maxLines: Int) {
+    val marquee = LocalAnimationsEnabled.current && maxLines == Int.MAX_VALUE
+    Text(
+        title,
+        color = LevyraText,
+        fontFamily = if (LevyraIsAtelier) AtelierSerif else null,
+        fontSize = if (LevyraIsAppleMusic || LevyraIsAtelier) 17.sp else 16.sp,
+        fontWeight = settingsTileTitleWeight(),
+        maxLines = if (marquee) 1 else maxLines,
+        overflow = if (marquee) TextOverflow.Clip else TextOverflow.Ellipsis,
+        modifier = Modifier.levyraMarquee(marquee, SETTINGS_TITLE_MARQUEE_DELAY)
+    )
+}
+
+private fun settingsTileTitleWeight(): FontWeight = when {
+    LevyraIsAppleMusic -> FontWeight.Normal
+    SkinChrome.active -> FontWeight.Medium
+    else -> FontWeight.Bold
+}
+
+@Composable
+internal fun settingsSectionLabelColor(): Color = when {
+    LevyraIsPrism && !LevyraIsTorque -> LevyraMuted
+    SkinChrome.active -> LevyraCyan
+    else -> LocalSettingsAccent.current ?: LevyraCyan
+}

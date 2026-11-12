@@ -21043,8 +21043,6 @@ internal fun SettingsTileIcon(icon: ImageVector, accent: Color, shape: Shape = M
     }
 }
 
-private const val SETTINGS_TITLE_MARQUEE_DELAY = 3000
-
 @Composable
 internal fun SettingsTileText(
     title: String,
@@ -21053,18 +21051,8 @@ internal fun SettingsTileText(
     maxTitleLines: Int = Int.MAX_VALUE,
     maxSubtitleLines: Int = Int.MAX_VALUE
 ) {
-    val titleMarquee = LocalAnimationsEnabled.current && maxTitleLines == Int.MAX_VALUE
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        Text(
-            title,
-            color = LevyraText,
-            fontFamily = if (LevyraIsAtelier) AtelierSerif else null,
-            fontSize = if (LevyraIsAppleMusic || LevyraIsAtelier) 17.sp else 16.sp,
-            fontWeight = if (LevyraIsAppleMusic) FontWeight.Normal else if (SkinChrome.active) FontWeight.Medium else FontWeight.Bold,
-            maxLines = if (titleMarquee) 1 else maxTitleLines,
-            overflow = if (titleMarquee) TextOverflow.Clip else TextOverflow.Ellipsis,
-            modifier = Modifier.levyraMarquee(titleMarquee, SETTINGS_TITLE_MARQUEE_DELAY)
-        )
+        SettingsTileTitle(title, maxTitleLines)
         if (subtitle.isNotBlank()) {
             Text(
                 subtitle,
@@ -21697,7 +21685,7 @@ private fun SettingsSectionLabel(text: String) {
     }
     Text(
         SkinChrome.label(title, locale),
-        color = if (LevyraIsPrism && !LevyraIsTorque) LevyraMuted else if (SkinChrome.active) LevyraCyan else LocalSettingsAccent.current ?: LevyraCyan,
+        color = settingsSectionLabelColor(),
         fontSize = if (SkinChrome.labelsUppercase) 12.sp else 14.sp,
         fontWeight = if (SkinChrome.active) FontWeight.Medium else FontWeight.Bold,
         letterSpacing = if (SkinChrome.labelsUppercase) 1.6.sp else 0.2.sp,
