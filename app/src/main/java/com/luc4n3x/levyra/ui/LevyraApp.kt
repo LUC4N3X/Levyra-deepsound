@@ -760,6 +760,7 @@ import com.luc4n3x.levyra.ui.jam.LevyraJamOverlay
 import com.luc4n3x.levyra.ui.recognition.LevyraRecognitionOverlay
 import com.luc4n3x.levyra.ui.settings.NetworkSettingsPanel
 import com.luc4n3x.levyra.ui.settings.DeviceIntegrationSettingsPanel
+import com.luc4n3x.levyra.ui.settings.PreferLocalAudioSettingsPanel
 import com.luc4n3x.levyra.ui.settings.DOWNLOADS_ADVANCED_SEARCH_IDS
 import com.luc4n3x.levyra.ui.settings.SETTINGS_CATEGORY_AUDIO
 import com.luc4n3x.levyra.ui.settings.settingsCategoryTitle
@@ -20525,6 +20526,7 @@ private fun SettingsOverlay(
                                     }
                                 )
                             }
+                            item { PreferLocalAudioSettingsPanel() }
                             item { DeviceIntegrationSettingsPanel() }
                             item {
                                 SettingsButton(

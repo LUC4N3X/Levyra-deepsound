@@ -1109,6 +1109,7 @@ class LevyraBackupManager(private val context: Context) {
             .put("dynamicColor", snapshot.dynamicColor)
             .put("sponsorBlock", snapshot.sponsorBlock)
             .put("skipSilence", snapshot.skipSilence)
+            .put("preferLocalAudio", snapshot.preferLocalAudio)
             .put("audioQuality", snapshot.audioQuality)
             .put("highQualityAudioMode", snapshot.highQualityAudioMode.storageValue)
             .put("qobuzEnabled", snapshot.qobuzEnabled)
@@ -1162,6 +1163,7 @@ class LevyraBackupManager(private val context: Context) {
             dynamicColor = json.optBoolean("dynamicColor", true),
             sponsorBlock = json.optBoolean("sponsorBlock", true),
             skipSilence = json.optBoolean("skipSilence", false),
+            preferLocalAudio = json.optBoolean("preferLocalAudio", false),
             audioQuality = backupAudioQualityFromJson(json),
             highQualityAudioMode = HighQualityAudioMode.fromStorage(
                 json.optString("highQualityAudioMode", HighQualityAudioMode.DEFAULT.storageValue)

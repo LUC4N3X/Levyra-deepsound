@@ -379,8 +379,12 @@ import com.luc4n3x.levyra.data.locallibrary.LOCAL_MEDIA_TRACK_ID_PREFIX
 import com.luc4n3x.levyra.data.locallibrary.LocalLibraryRepository
 import com.luc4n3x.levyra.data.locallibrary.LocalLibraryStatus
 import com.luc4n3x.levyra.data.locallibrary.LocalScanMode
+import com.luc4n3x.levyra.data.locallibrary.PreferredLocalAudio
 import com.luc4n3x.levyra.data.locallibrary.buildLocalLibraryCatalog
+import com.luc4n3x.levyra.data.locallibrary.isPreferredLocalSubstitute
+import com.luc4n3x.levyra.data.locallibrary.rejectPreferredLocalStream
 import com.luc4n3x.levyra.data.locallibrary.toLocalTrack
+import com.luc4n3x.levyra.data.locallibrary.withoutPreferredLocalStream
 import com.luc4n3x.levyra.player.queue.QueueSpaceSummary
 import com.luc4n3x.levyra.player.queue.shouldPromptForQueueDestination
 import com.luc4n3x.levyra.player.queue.mergePendingQueueDestinationTracks
@@ -1139,6 +1143,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val adaptivePlaybackPolicy = AdaptivePlaybackPolicy(application.applicationContext)
     private val queueEngine = PersistentQueueEngine.get(application.applicationContext)
     private val localLibrary = LocalLibraryRepository.get(application.applicationContext)
+    private val preferredLocalAudio = PreferredLocalAudio.get(application.applicationContext)
     private val offlineExporter = OfflineAudioExporter(application.applicationContext, resolver)
     private val downloadQualityProbe = DownloadQualityProbe(resolver)
     private val _downloadQualityPicker = MutableStateFlow<DownloadQualityPickerState?>(null)
@@ -2196,7 +2201,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         player.onError = { errorMsg ->
             val current = _state.value.currentTrack
             val liveRadioStation = _state.value.liveRadioStation
-            if (current?.isLiveRadio() == true && liveRadioStation != null) {
+            if (current != null && current.isPreferredLocalSubstitute()) {
+                fallBackFromPreferredLocal(current, _state.value.positionMs)
+            } else if (current?.isLiveRadio() == true && liveRadioStation != null) {
                 val playbackIntended = _state.value.isPlaying || _state.value.isResolving
                 tryLiveRadioSiblingStream(liveRadioStation, playWhenReady = playbackIntended, errorMessage = errorMsg)
             } else {
@@ -5064,6 +5071,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         playWhenReady: Boolean,
         errorMessage: String
     ) {
+        if (failedTrack.isPreferredLocalSubstitute()) {
+            fallBackFromPreferredLocal(failedTrack, positionMs)
+            return
+        }
         if (isLocalPlaybackTrack(failedTrack)) return
         val transitionId = ++streamTransitionId
         modeSwitchJob?.cancel()
@@ -11772,10 +11783,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private suspend fun CoroutineScope.resolveStandardPlayback(
-        track: Track,
+        requestedTrack: Track,
         request: PlaybackResolveRequest,
         autoRetryWhenOffline: Boolean
     ) {
+        val track = requestedTrack.withoutPreferredLocalStream()
         val requestId = request.id
         val requestedVideoMode = _state.value.isVideoMode
         val playableTrack = if (requestedVideoMode && !isYoutubeShortTrack(track)) {
@@ -11789,7 +11801,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             handleUnavailableLocalTrack(track)
             return
         }
-        val instant = localDownloadedTrack(track) ?: resolver.cached(selectedTrack, requestedVideoMode)
+        val instant = localDownloadedTrack(track)
+            ?: preferredLocalAudio.playableMatch(track, requestedVideoMode)
+            ?: resolver.cached(selectedTrack, requestedVideoMode)
         if (instant != null) {
             if (!isCurrentPlaybackRequest(requestId)) return
             startPlayback(preserveNativeSampleClip(track, preserveEditorialArtwork(track, instant)), request)
@@ -13258,6 +13272,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    private fun fallBackFromPreferredLocal(track: Track, positionMs: Long) {
+        rejectPreferredLocalStream(track.streamUrl)
+        pendingSeekMs = positionMs.coerceAtLeast(0L)
+        startResolve(track.withoutPreferredLocalStream())
+    }
+
     private fun fetchSponsorSegments(track: Track) {
         sponsorJob?.cancel()
         sponsorSegments = emptyList()
@@ -13265,6 +13285,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (
             !_state.value.sponsorBlockEnabled ||
             isLocalPlaybackTrack(track) ||
+            track.isPreferredLocalSubstitute() ||
             track.id.isBlank() ||
             track.id.startsWith("chart-")
         ) return
@@ -15259,7 +15280,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun isLocalPlaybackTrack(track: Track): Boolean {
-        val stream = track.streamUrl.trim()
+        val stream = track.withoutPreferredLocalStream().streamUrl.trim()
         return track.source.equals("Offline", ignoreCase = true) ||
             track.isPersonalCollectionTrack() ||
             stream.startsWith("content://", ignoreCase = true) ||

@@ -22,6 +22,12 @@ interface LocalMediaDao {
     @Query("SELECT * FROM local_media WHERE identityKey = :identityKey LIMIT 1")
     suspend fun byIdentityKey(identityKey: String): LocalMediaEntity?
 
+    @Query(
+        "SELECT id, contentUri, title, artist, album, albumArtist, durationMs, bitrate, levyraTrackId " +
+            "FROM local_media WHERE available = 1"
+    )
+    suspend fun availableMatchRows(): List<LocalMediaMatchRow>
+
     @Query("SELECT contentUri FROM local_media WHERE available = 0 AND contentUri IN (:uris)")
     suspend fun unavailableAmong(uris: List<String>): List<String>
 
@@ -55,3 +61,15 @@ interface LocalMediaDao {
         const val SQL_CHUNK = 400
     }
 }
+
+data class LocalMediaMatchRow(
+    val id: Long,
+    val contentUri: String,
+    val title: String,
+    val artist: String,
+    val album: String,
+    val albumArtist: String,
+    val durationMs: Long,
+    val bitrate: Int,
+    val levyraTrackId: String
+)

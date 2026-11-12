@@ -11,6 +11,7 @@ import com.luc4n3x.levyra.ui.i18n.deviceIntegrationCopy
 import com.luc4n3x.levyra.ui.i18n.dockMorph
 import com.luc4n3x.levyra.ui.i18n.musicRegionCopy
 import com.luc4n3x.levyra.ui.i18n.parametricEqCopy
+import com.luc4n3x.levyra.ui.i18n.preferLocalAudioCopy
 import com.luc4n3x.levyra.ui.i18n.smartOfflineCopy
 import com.luc4n3x.levyra.ui.i18n.smartListeningCopy
 import com.luc4n3x.levyra.ui.preloadNextTrack
@@ -224,6 +225,7 @@ private fun MutableList<SettingsSearchEntry>.systemEntries(
     updatesAvailable: Boolean
 ) {
     entry("system.battery", strings.batteryUnrestricted, strings.batteryUnrestrictedSubtitle, "battery optimization background", categories.system)
+    entry("system.prefer_local_audio", preferLocalAudioCopy(strings.code).title, preferLocalAudioCopy(strings.code).subtitle, "local offline device files storage mp3 flac library", categories.system)
     entry("system.playback_diagnostics", strings.playbackDiagnostics, strings.playbackDiagnosticsSubtitle, "diagnostics logs debug", categories.system)
     entry("system.export_diagnostics", strings.exportSafeDiagnostics, strings.safeDiagnosticsSubtitle, "diagnostics logs export", categories.system)
     entry("content.redo_questionnaire", strings.redoQuestionnaire, strings.redoQuestionnaireSubtitle, "onboarding genres taste", categories.content)

@@ -106,6 +106,7 @@ data class LevyraPreferencesSnapshot(
     val dynamicColor: Boolean,
     val sponsorBlock: Boolean,
     val skipSilence: Boolean,
+    val preferLocalAudio: Boolean = false,
     val audioQuality: String,
     val dismissedUpdateVersion: String,
     val lastTrack: Track?,
@@ -186,6 +187,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_DYNAMIC_COLOR] = snapshot.dynamicColor
             mutable[KEY_SPONSORBLOCK] = snapshot.sponsorBlock
             mutable[KEY_SKIP_SILENCE] = snapshot.skipSilence
+            mutable[KEY_PREFER_LOCAL_AUDIO] = snapshot.preferLocalAudio
             mutable[KEY_AUDIO_QUALITY] = normalizeAudioQuality(snapshot.audioQuality)
             mutable[KEY_HIGH_QUALITY_ALTERNATIVE_AUDIO] = snapshot.highQualityAudioMode.storageValue
             mutable[KEY_QOBUZ_ENABLED] = snapshot.qobuzEnabled
@@ -442,6 +444,12 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
 
     fun setAudioNormalization(value: Boolean) {
         write { it[KEY_AUDIO_NORMALIZATION] = value }
+    }
+
+    fun preferLocalAudio(): Boolean = read { it[KEY_PREFER_LOCAL_AUDIO] ?: false }
+
+    fun setPreferLocalAudio(value: Boolean) {
+        write { it[KEY_PREFER_LOCAL_AUDIO] = value }
     }
 
     fun lyricsTranslationEnabled(): Boolean = read { it[KEY_LYRICS_TRANSLATION] ?: false }
@@ -902,6 +910,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             dynamicColor = preferences[KEY_DYNAMIC_COLOR] ?: true,
             sponsorBlock = preferences[KEY_SPONSORBLOCK] ?: DEFAULT_SPONSORBLOCK_ENABLED,
             skipSilence = preferences[KEY_SKIP_SILENCE] ?: false,
+            preferLocalAudio = preferences[KEY_PREFER_LOCAL_AUDIO] ?: false,
             audioQuality = normalizeAudioQuality(preferences[KEY_AUDIO_QUALITY].orEmpty()),
             dismissedUpdateVersion = preferences[KEY_DISMISSED_UPDATE_VERSION].orEmpty(),
             lastTrack = parseTrack(preferences[KEY_LAST_TRACK].orEmpty(), "Last track restore failed"),
@@ -1622,6 +1631,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
         val KEY_SPONSORBLOCK = booleanPreferencesKey("sponsorblock_enabled")
         val KEY_SKIP_SILENCE = booleanPreferencesKey("skip_silence")
+        val KEY_PREFER_LOCAL_AUDIO = booleanPreferencesKey("prefer_local_audio")
         val KEY_AUTOMATION_BT_RESUME = booleanPreferencesKey("automation_bluetooth_resume")
         val KEY_AUTOMATION_PAUSE_ON_MUTE = booleanPreferencesKey("automation_pause_on_mute")
         val KEY_AUTOMATION_AUTO_DOWNLOAD_FAVORITES = booleanPreferencesKey("automation_auto_download_favorites")

@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.player.queue
 
 import android.content.Context
 import com.luc4n3x.levyra.data.local.DEFAULT_QUEUE_SPACE_ID
+import com.luc4n3x.levyra.data.locallibrary.withoutPreferredLocalStream
 import com.luc4n3x.levyra.data.runCatchingPreservingCancellation
 import com.luc4n3x.levyra.domain.RecommendationFeedback
 import com.luc4n3x.levyra.domain.RepeatMode
@@ -1355,10 +1356,11 @@ internal fun resolvedQueueTrackForHandoff(
 }
 
 internal fun Track.queueStoredCopy(): Track {
-    val localStream = streamUrl.takeIf { value ->
+    val stored = withoutPreferredLocalStream()
+    val localStream = stored.streamUrl.takeIf { value ->
         value.startsWith("content://", ignoreCase = true) || value.startsWith("file://", ignoreCase = true)
     }.orEmpty()
-    return copy(streamUrl = localStream, videoStreamUrl = "")
+    return stored.copy(streamUrl = localStream, videoStreamUrl = "")
 }
 
 internal fun stableShuffleOrder(tracks: List<Track>, currentIndex: Int, generation: Long): List<Int> {

@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.data.local
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.luc4n3x.levyra.data.locallibrary.withoutPreferredLocalStream
 import com.luc4n3x.levyra.domain.Track
 
 @Entity(tableName = "favorite_tracks")
@@ -90,7 +91,7 @@ fun Track.toFavoriteTrackEntity(createdAt: Long): FavoriteTrackEntity = Favorite
     artist = artist,
     album = album,
     durationMs = durationMs,
-    streamUrl = streamUrl,
+    streamUrl = withoutPreferredLocalStream().streamUrl,
     videoUrl = videoUrl,
     thumbnailUrl = thumbnailUrl,
     largeThumbnailUrl = largeThumbnailUrl,
