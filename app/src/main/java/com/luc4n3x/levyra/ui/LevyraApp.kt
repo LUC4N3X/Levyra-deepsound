@@ -11905,31 +11905,7 @@ private fun PersonalListeningShelf(
                     ) { pageIndex ->
                         orbitPage(pageIndex, true, Modifier.fillMaxWidth().defaultPagerPageMotion(defaultRailMotionEnabled(), pagerState, pageIndex))
                     }
-                    if (pages.size > 1) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(
-                                LevyraHomeDesign.OrbitDotGap,
-                                Alignment.CenterHorizontally
-                            ),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            pages.indices.forEach { index ->
-                                Box(
-                                    modifier = Modifier
-                                        .size(LevyraHomeDesign.OrbitDotSize)
-                                        .background(
-                                            if (pagerState.currentPage == index) {
-                                                LevyraText
-                                            } else {
-                                                LevyraText.copy(alpha = 0.30f)
-                                            },
-                                            CircleShape
-                                        )
-                                )
-                            }
-                        }
-                    }
+                    HomePersonalOrbitDots(pageCount = pages.size, currentPage = pagerState.currentPage)
                 }
             }
         }
