@@ -22,7 +22,8 @@ class AgentTokenBudgetTest(unittest.TestCase):
         }
         for relative_path, max_bytes in limits.items():
             with self.subTest(path=relative_path):
-                self.assertLessEqual((ROOT / relative_path).stat().st_size, max_bytes)
+                content = (ROOT / relative_path).read_bytes().replace(b"\r\n", b"\n")
+                self.assertLessEqual(len(content), max_bytes)
 
     def test_routed_prompt_context_stays_small(self) -> None:
         prompts = (

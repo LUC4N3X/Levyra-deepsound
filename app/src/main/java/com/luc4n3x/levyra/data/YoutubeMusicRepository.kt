@@ -1088,6 +1088,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
         val artists = mutableListOf<ArtistHit>()
         val albums = mutableListOf<AlbumHit>()
         val playlists = mutableListOf<PlaylistHit>()
+        val cardRowArtists = searchCardShelfRowArtists(root)
         val listItems = mutableListOf<JSONObject>()
         collectObjectsByKey(root, "musicResponsiveListItemRenderer", listItems)
         listItems.forEach { renderer ->
@@ -1096,7 +1097,13 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
                 SearchEntityKind.Album -> parseSearchAlbumHit(renderer)?.let(albums::add)
                 SearchEntityKind.Playlist -> parseSearchPlaylistHit(renderer)?.let(playlists::add)
                 SearchEntityKind.Track -> {
-                    val track = parseMusicRenderer(renderer, query) ?: return@forEach
+                    val parsed = parseMusicRenderer(renderer, query) ?: return@forEach
+                    val cardArtist = cardRowArtists.firstOrNull { (row, _) -> row === renderer }?.second
+                    val track = if (cardArtist != null && parsed.artistBrowseIds.isEmpty()) {
+                        parsed.copy(artist = cardArtist.name, artistBrowseIds = listOf(cardArtist.browseId))
+                    } else {
+                        parsed
+                    }
                     if (isMusicVideoResult(track.videoType)) videos.add(track) else songs.add(track)
                 }
             }
@@ -1118,6 +1125,31 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             albums = deduplicateSearchAlbums(albums),
             playlists = deduplicateSearchPlaylists(playlists)
         )
+    }
+
+    private fun searchCardShelfRowArtists(root: JSONObject): List<Pair<JSONObject, YoutubeMusicArtistReference>> {
+        val shelves = mutableListOf<JSONObject>()
+        collectObjectsByKey(root, "musicCardShelfRenderer", shelves)
+        return shelves.flatMap { shelf ->
+            val titleRun = shelf.optJSONObject("title")?.optJSONArray("runs")?.optJSONObject(0)
+                ?: return@flatMap emptyList()
+            val browseEndpoint = titleRun.optJSONObject("navigationEndpoint")?.optJSONObject("browseEndpoint")
+                ?: return@flatMap emptyList()
+            val browseId = browseEndpoint.optString("browseId").trim()
+            val pageType = browseEndpoint
+                .optJSONObject("browseEndpointContextSupportedConfigs")
+                ?.optJSONObject("browseEndpointContextMusicConfig")
+                ?.optString("pageType")
+                .orEmpty()
+            if (browseId.isBlank() || !pageType.contains("ARTIST", ignoreCase = true)) return@flatMap emptyList()
+            val name = artistPageCreditNames(root, browseId).firstOrNull()
+                ?: titleRun.optString("text").cleanAlbumArtistLabel().trim()
+            if (name.isBlank()) return@flatMap emptyList()
+            val reference = YoutubeMusicArtistReference(name = name, browseId = browseId)
+            val rows = mutableListOf<JSONObject>()
+            collectObjectsByKey(shelf.optJSONArray("contents"), "musicResponsiveListItemRenderer", rows)
+            rows.map { row -> row to reference }
+        }
     }
 
     private fun parseLegacyVideoRenderers(root: JSONObject, query: String): List<Track> {

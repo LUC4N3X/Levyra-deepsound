@@ -200,16 +200,14 @@ internal fun LyricsFontLibrarySection(
 @Composable
 private fun LyricsFontLibraryHeader(busy: Boolean, onImport: () -> Unit) {
     val strings = LocalLevyraStrings.current
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(strings.lyricsFontsTitle, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-            Text(strings.lyricsFontsHint, color = LevyraMuted, fontSize = 12.sp, lineHeight = 16.sp)
-        }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(strings.lyricsFontsTitle, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Text(strings.lyricsFontsHint, color = LevyraMuted, fontSize = 12.sp, lineHeight = 16.sp)
         OutlinedButton(
             onClick = onImport,
             enabled = !busy,
             border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.6f)),
-            modifier = Modifier.padding(start = 8.dp)
+            modifier = Modifier.padding(top = 8.dp)
         ) {
             if (busy) {
                 CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = LevyraCyan)

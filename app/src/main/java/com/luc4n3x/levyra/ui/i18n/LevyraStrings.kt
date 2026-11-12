@@ -1163,103 +1163,47 @@ class LevyraStrings private constructor(
     val simultaneousDownloads: String get() = value("simultaneousDownloads")
     val simultaneousDownloadsSubtitle: String get() = value("simultaneousDownloadsSubtitle")
     val backupRestoreSection: String get() = value("backupRestoreSection")
-    val automaticBackup: String get() = if (code == "it") "Backup automatici" else "Automatic backups"
-    val automaticBackupSubtitle: String get() = if (code == "it") {
-        "Crea archivi locali verificati senza includere i file audio"
-    } else {
-        "Create verified local archives without audio files"
-    }
-    val backupFrequency: String get() = if (code == "it") "Frequenza" else "Frequency"
-    val backupRetention: String get() = if (code == "it") "Conservazione" else "Retention"
-    val backupChargingOnly: String get() = if (code == "it") "Solo durante la ricarica" else "Only while charging"
-    val backupChargingOnlySubtitle: String get() = if (code == "it") {
-        "Riduce l'impatto sulla batteria; si applica solo ai backup automatici"
-    } else {
-        "Reduces battery impact; applies only to automatic backups"
-    }
+    val automaticBackup: String get() = value("vaultAutomaticBackup")
+    val automaticBackupSubtitle: String get() = value("vaultAutomaticBackupSubtitle")
+    val backupFrequency: String get() = value("vaultBackupFrequency")
+    val backupRetention: String get() = value("vaultBackupRetention")
+    val backupChargingOnly: String get() = value("vaultBackupChargingOnly")
+    val backupChargingOnlySubtitle: String get() = value("vaultBackupChargingOnlySubtitle")
     fun backupFrequencyLabel(name: String): String = when (name) {
-        "Daily" -> if (code == "it") "Ogni giorno" else "Daily"
-        "Monthly" -> if (code == "it") "Ogni mese" else "Monthly"
-        else -> if (code == "it") "Ogni settimana" else "Weekly"
+        "Daily" -> value("vaultBackupDaily")
+        "Monthly" -> value("vaultBackupMonthly")
+        else -> value("vaultBackupWeekly")
     }
-    fun backupRetentionLabel(count: Int): String = if (code == "it") "$count copie" else "$count copies"
+    fun backupRetentionLabel(count: Int): String = value("vaultBackupCopies").replace("%d", count.toString())
     val vaultTitle: String get() = "Levyra Vault"
-    val vaultSubtitle: String get() = if (code == "it") {
-        "Proteggi playlist, preferiti, cronologia e impostazioni"
-    } else {
-        "Protect playlists, favorites, history and settings"
-    }
-    val backupNow: String get() = if (code == "it") "Backup ora" else "Back up now"
-    val backupNowSubtitle: String get() = if (code == "it") {
-        "Crea subito un backup locale"
-    } else {
-        "Create a local backup now"
-    }
-    val lastBackup: String get() = if (code == "it") "Ultimo backup" else "Last backup"
-    val lastBackupNever: String get() = if (code == "it") "Mai" else "Never"
-    val backupLocation: String get() = if (code == "it") "Posizione backup" else "Backup location"
-    val backupLocationSubtitle: String get() = if (code == "it") {
-        "Scegli dove salvare i backup automatici"
-    } else {
-        "Choose where automatic backups are saved"
-    }
-    val backupLocationSafSelected: String get() = if (code == "it") {
-        "Cartella selezionata con il selettore di sistema"
-    } else {
-        "Folder selected with the system picker"
-    }
-    val backupLocationInternal: String get() = if (code == "it") "Usa memoria interna" else "Use internal storage"
-    val backupLocationInternalSubtitle: String get() = if (code == "it") {
-        "Torna alla cartella interna di Levyra"
-    } else {
-        "Go back to Levyra's internal folder"
-    }
-    val backupBeforeUpdates: String get() = if (code == "it") {
-        "Backup prima degli aggiornamenti"
-    } else {
-        "Back up before updates"
-    }
-    val backupBeforeUpdatesSubtitle: String get() = if (code == "it") {
-        "Crea un backup locale prima di installare un aggiornamento"
-    } else {
-        "Create a local backup before installing an update"
-    }
-    val manageBackups: String get() = if (code == "it") "Gestisci backup" else "Manage backups"
-    val manageBackupsSubtitle: String get() = if (code == "it") {
-        "Apri la cartella dei backup automatici"
-    } else {
-        "Open the automatic backups folder"
-    }
-    val vaultBusy: String get() = if (code == "it") "Operazione Vault in corso..." else "Vault operation in progress..."
-    val restorePreviewTitle: String get() = if (code == "it") "Ripristina Levyra" else "Restore Levyra"
-    val restorePreviewCompatible: String get() = if (code == "it") "Backup compatibile" else "Compatible backup"
-    val restorePreviewIncompatible: String get() = if (code == "it") {
-        "Backup non compatibile con questa versione"
-    } else {
-        "Backup incompatible with this version"
-    }
-    val restorePreviewCreated: String get() = if (code == "it") "Creato" else "Created"
-    val restorePreviewVersion: String get() = if (code == "it") "Versione Levyra" else "Levyra version"
-    val restorePreviewSize: String get() = if (code == "it") "Dimensione" else "Size"
-    val restorePreviewContents: String get() = if (code == "it") "Contenuti" else "Contents"
-    val restoreConfirm: String get() = if (code == "it") "Ripristina" else "Restore"
-    val restoreConfirmBody: String get() = if (code == "it") {
-        "Sostituisce preferiti, playlist, cronologia, coda e impostazioni con i dati del backup."
-    } else {
-        "Replaces favorites, playlists, history, queue and settings with the backup data."
-    }
-    val preUpdateBackupFailedTitle: String get() = if (code == "it") {
-        "Backup prima dell'aggiornamento non riuscito"
-    } else {
-        "Backup before update failed"
-    }
-    val preUpdateBackupFailedBody: String get() = if (code == "it") {
-        "Il backup locale non è riuscito. Puoi riprovare o continuare con l'aggiornamento."
-    } else {
-        "The local backup failed. You can retry or continue with the update."
-    }
-    val preUpdateBackupRetry: String get() = if (code == "it") "Riprova" else "Retry"
-    val preUpdateBackupContinue: String get() = if (code == "it") "Aggiorna comunque" else "Update anyway"
+    val vaultSubtitle: String get() = value("vaultSubtitle")
+    val backupNow: String get() = value("vaultBackupNow")
+    val backupNowSubtitle: String get() = value("vaultBackupNowSubtitle")
+    val lastBackup: String get() = value("vaultLastBackup")
+    val lastBackupNever: String get() = value("vaultLastBackupNever")
+    val backupLocation: String get() = value("vaultBackupLocation")
+    val backupLocationSubtitle: String get() = value("vaultBackupLocationSubtitle")
+    val backupLocationSafSelected: String get() = value("vaultBackupLocationSafSelected")
+    val backupLocationInternal: String get() = value("vaultBackupLocationInternal")
+    val backupLocationInternalSubtitle: String get() = value("vaultBackupLocationInternalSubtitle")
+    val backupBeforeUpdates: String get() = value("vaultBackupBeforeUpdates")
+    val backupBeforeUpdatesSubtitle: String get() = value("vaultBackupBeforeUpdatesSubtitle")
+    val manageBackups: String get() = value("vaultManageBackups")
+    val manageBackupsSubtitle: String get() = value("vaultManageBackupsSubtitle")
+    val vaultBusy: String get() = value("vaultBusy")
+    val restorePreviewTitle: String get() = value("vaultRestorePreviewTitle")
+    val restorePreviewCompatible: String get() = value("vaultRestorePreviewCompatible")
+    val restorePreviewIncompatible: String get() = value("vaultRestorePreviewIncompatible")
+    val restorePreviewCreated: String get() = value("vaultRestorePreviewCreated")
+    val restorePreviewVersion: String get() = value("vaultRestorePreviewVersion")
+    val restorePreviewSize: String get() = value("vaultRestorePreviewSize")
+    val restorePreviewContents: String get() = value("vaultRestorePreviewContents")
+    val restoreConfirm: String get() = value("vaultRestoreConfirm")
+    val restoreConfirmBody: String get() = value("vaultRestoreConfirmBody")
+    val preUpdateBackupFailedTitle: String get() = value("vaultPreUpdateBackupFailedTitle")
+    val preUpdateBackupFailedBody: String get() = value("vaultPreUpdateBackupFailedBody")
+    val preUpdateBackupRetry: String get() = value("vaultPreUpdateBackupRetry")
+    val preUpdateBackupContinue: String get() = value("vaultPreUpdateBackupContinue")
     val restoreBackup: String get() = value("restoreBackup")
     val restoreBackupSubtitle: String get() = value("restoreBackupSubtitle")
     val playbackResilienceSection: String get() = value("playbackResilienceSection")
@@ -2311,7 +2255,7 @@ class LevyraStrings private constructor(
         private val builtBundles = java.util.concurrent.ConcurrentHashMap<String, LevyraStrings>()
 
         private val allRequiredKeys: Set<String> by lazy(LazyThreadSafetyMode.PUBLICATION) {
-            requiredKeys + "removeFromPlaylist" + profileKeys + motionArtworkKeys + exploreSectionKeys + freshCurrentsKeys + canvasKeys + audioKeys + audioOutputKeys + alternativeAudioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + jamModerationKeys + jamQrKeys + ambientModeKeys + themeStudioKeys + lyricsStudioKeys + lyricsFontKeys + networkKeys + resonanceKeys + organizationKeys + downloadLocationKeys + downloadDestinationKeys + offlineStorageKeys + keepScreenOnKeys + similarSongsKeys + playerVisualKeys + playerDeckKeys + playerGestureKeys + playlistStudioKeys + queueSelectionKeys + librarySortKeys + offlineHomeKeys + recapKeys + listeningInsightsKeys + queueSpaceKeys + localLibraryKeys + localTagKeys + lyricsOffsetKeys + lyricsTranslationStatusKeys + playbackTileKeys + visualPerformanceKeys + liquidGlassKeys + immersiveModeKeys + musicVideoPreferenceKeys + videoQualityKeys + lyricsProviderPriorityKeys + mixLabKeys + chartMarketKeys + homeSoundtrackKeys + lyricsShareKeys + listeningReceiptKeys + settingsSearchKeys + smartOfflineLocalizationKeys + appUpdateKeys
+            requiredKeys + "removeFromPlaylist" + profileKeys + motionArtworkKeys + exploreSectionKeys + freshCurrentsKeys + canvasKeys + audioKeys + audioOutputKeys + alternativeAudioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + jamKeys + jamModerationKeys + jamQrKeys + ambientModeKeys + themeStudioKeys + lyricsStudioKeys + lyricsFontKeys + vaultKeys + networkKeys + resonanceKeys + organizationKeys + downloadLocationKeys + downloadDestinationKeys + offlineStorageKeys + keepScreenOnKeys + similarSongsKeys + playerVisualKeys + playerDeckKeys + playerGestureKeys + playlistStudioKeys + queueSelectionKeys + librarySortKeys + offlineHomeKeys + recapKeys + listeningInsightsKeys + queueSpaceKeys + localLibraryKeys + localTagKeys + lyricsOffsetKeys + lyricsTranslationStatusKeys + playbackTileKeys + visualPerformanceKeys + liquidGlassKeys + immersiveModeKeys + musicVideoPreferenceKeys + videoQualityKeys + lyricsProviderPriorityKeys + mixLabKeys + chartMarketKeys + homeSoundtrackKeys + lyricsShareKeys + listeningReceiptKeys + settingsSearchKeys + smartOfflineLocalizationKeys + appUpdateKeys
         }
 
         private fun bundleFor(code: String): LevyraStrings? {
@@ -2332,7 +2276,7 @@ class LevyraStrings private constructor(
                     autoEqLocalizationEntries(code), experienceLocalizationEntries(code), insightLocalizationEntries(code),
                     systemActionLocalizationEntries(code), integrationLocalizationEntries(code), recognitionLocalizationEntries(code),
                     jamLocalizationEntries(code), jamModerationLocalizationEntries(code), jamQrLocalizationEntries(code), ambientModeLocalizationEntries(code),
-                    themeStudioLocalizationEntries(code), lyricsStudioLocalizationEntries(code), lyricsFontLocalizationEntries(code), networkLocalizationEntries(code),
+                    themeStudioLocalizationEntries(code), lyricsStudioLocalizationEntries(code), lyricsFontLocalizationEntries(code), vaultLocalizationEntries(code), networkLocalizationEntries(code),
                     resonanceLocalizationEntries(code), organizationLocalizationEntries(code), downloadLocationLocalizationEntries(code),
                     downloadDestinationLocalizationEntries(code), offlineStorageLocalizationEntries(code), keepScreenOnLocalizationEntries(code),
                     similarSongsLocalizationEntries(code), playerVisualLocalizationEntries(code), playerDeckLocalizationEntries(code),
