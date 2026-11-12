@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
@@ -206,7 +207,7 @@ internal fun SpotifyArtistRank(rank: Int, isCurrent: Boolean) {
     Text(
         rank.toString(), color = if (isCurrent) SpotifyDesign.green else SpotifyDesign.text,
         style = MaterialTheme.typography.bodyLarge.copy(fontFeatureSettings = "tnum"),
-        textAlign = TextAlign.Center, maxLines = 1, modifier = Modifier.width(24.dp)
+        textAlign = TextAlign.Center, maxLines = 1, softWrap = false, modifier = Modifier.widthIn(min = 24.dp)
     )
 }
 
