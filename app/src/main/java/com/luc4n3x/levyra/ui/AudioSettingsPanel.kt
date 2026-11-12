@@ -158,6 +158,7 @@ import com.luc4n3x.levyra.player.equalPowerCrossfade
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.CrossfadeLabCopy
 import com.luc4n3x.levyra.ui.i18n.audioTabsCopy
+import com.luc4n3x.levyra.ui.i18n.automationCopy
 import com.luc4n3x.levyra.ui.i18n.crossfadeLabCopy
 import com.luc4n3x.levyra.ui.i18n.localizedAudioPresetLabel
 import com.luc4n3x.levyra.ui.i18n.orbitEqCopy
@@ -199,6 +200,15 @@ private val EqualizerHandleRadius = 5.dp
 
 private enum class AudioPanelTab { SOUND, PLAYBACK, SMART }
 
+internal class AudioPlaybackExtras(
+    val skipSilence: Boolean,
+    val onSkipSilence: (Boolean) -> Unit,
+    val sponsorBlock: Boolean,
+    val onSponsorBlock: (Boolean) -> Unit,
+    val skipUnrecoverable: Boolean,
+    val onSkipUnrecoverable: (Boolean) -> Unit
+)
+
 @Composable
 internal fun AudioSettingsPanel(
     selected: String,
@@ -222,6 +232,7 @@ internal fun AudioSettingsPanel(
     onPitch: (Float) -> Unit,
     onGapless: (Boolean) -> Unit,
     onPreloadNextTrack: (Boolean) -> Unit,
+    playbackExtras: AudioPlaybackExtras,
     aaudioOutputAvailable: Boolean,
     onAaudioOutput: (Boolean) -> Unit,
     onAudioOffloadPreference: (AudioOffloadPreference) -> Unit = {},
@@ -246,6 +257,7 @@ internal fun AudioSettingsPanel(
 ) {
     val strings = LocalLevyraStrings.current
     val replayGainCopy = strings.replayGainCopy()
+    val automationCopy = strings.automationCopy()
     val parametricCopy = strings.parametricEqCopy()
     val parametricProfileCopy = strings.parametricProfileCopy()
     val outputState = rememberLevyraAudioOutputState()
@@ -618,6 +630,30 @@ internal fun AudioSettingsPanel(
                         subtitle = strings.preloadNextTrackSubtitle,
                         checked = audioSettings.preloadNextTrack,
                         onCheckedChange = onPreloadNextTrack
+                    )
+                }
+                item {
+                    AudioToggleRow(
+                        title = strings.skipSilence,
+                        subtitle = strings.skipSilenceSubtitle,
+                        checked = playbackExtras.skipSilence,
+                        onCheckedChange = playbackExtras.onSkipSilence
+                    )
+                }
+                item {
+                    AudioToggleRow(
+                        title = strings.sponsorBlock,
+                        subtitle = strings.sponsorBlockSubtitle,
+                        checked = playbackExtras.sponsorBlock,
+                        onCheckedChange = playbackExtras.onSponsorBlock
+                    )
+                }
+                item {
+                    AudioToggleRow(
+                        title = automationCopy.skipUnrecoverable,
+                        subtitle = automationCopy.skipUnrecoverableSubtitle,
+                        checked = playbackExtras.skipUnrecoverable,
+                        onCheckedChange = playbackExtras.onSkipUnrecoverable
                     )
                 }
                 item { AudioSectionLabel(bufferCopy.title) }

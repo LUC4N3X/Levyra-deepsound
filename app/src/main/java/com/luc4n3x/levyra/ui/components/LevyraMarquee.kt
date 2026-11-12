@@ -19,7 +19,8 @@ private val MarqueeEdgeFade = 12.dp
 fun Modifier.levyraMarquee(
     enabled: Boolean,
     repeatDelayMillis: Int,
-    edgeFade: Dp = MarqueeEdgeFade
+    edgeFade: Dp = MarqueeEdgeFade,
+    initialDelayMillis: Int = repeatDelayMillis
 ): Modifier {
     if (!enabled) return this
     return this
@@ -50,6 +51,6 @@ fun Modifier.levyraMarquee(
                 drawRect(brush = mask, blendMode = BlendMode.DstIn)
             }
         }
-        .basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = repeatDelayMillis)
+        .basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = repeatDelayMillis, initialDelayMillis = initialDelayMillis)
         .padding(horizontal = edgeFade)
 }

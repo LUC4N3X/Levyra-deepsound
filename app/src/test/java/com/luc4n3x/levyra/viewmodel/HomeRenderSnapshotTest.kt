@@ -7,6 +7,7 @@ import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.ui.HOME_PERSONAL_ORBIT_MAX_TRACKS
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -295,8 +296,8 @@ class HomeRenderSnapshotTest {
         val quickTitles = quickPicks.map(LevyraPersonalOrbit::musicTitleKey).toSet()
 
         assertEquals(20, quickPicks.size)
-        assertEquals(18, displayedOrbit.size)
-        assertEquals(18, displayedOrbit.map(LevyraPersonalOrbit::musicTitleKey).distinct().size)
+        assertEquals(HOME_PERSONAL_ORBIT_MAX_TRACKS, displayedOrbit.size)
+        assertEquals(HOME_PERSONAL_ORBIT_MAX_TRACKS, displayedOrbit.map(LevyraPersonalOrbit::musicTitleKey).distinct().size)
         assertTrue(displayedOrbit.none { LevyraPersonalOrbit.musicTitleKey(it) in quickTitles })
         assertTrue(displayedOrbit.drop(orbit.size).any { it.artist == "Favorite Artist" })
     }

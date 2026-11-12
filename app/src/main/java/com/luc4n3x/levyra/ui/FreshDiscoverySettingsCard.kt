@@ -69,6 +69,7 @@ import com.luc4n3x.levyra.ui.theme.SkinSwitch
 internal fun SettingsSwitchIndicator(checked: Boolean) {
     if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) return MonoSettingsSwitch(checked)
     if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) return AtelierSettingsSwitch(checked)
+    val switchAccent = if (com.luc4n3x.levyra.ui.theme.SkinChrome.active) LevyraCyan else LocalSettingsAccent.current ?: LevyraCyan
     if (LevyraIsNocturne || LevyraIsTorque || LevyraIsIvory || LevyraIsSpotify || LevyraIsAppleMusic || LevyraIsYouTubeMusic) SkinSwitch(checked) else Switch(
         checked = checked,
         onCheckedChange = null,
@@ -79,8 +80,8 @@ internal fun SettingsSwitchIndicator(checked: Boolean) {
         },
         colors = SwitchDefaults.colors(
             checkedThumbColor = if (LevyraIsPrism) Color.White else LevyraBlack,
-            checkedIconColor = LevyraCyan,
-            checkedTrackColor = LevyraCyan,
+            checkedIconColor = switchAccent,
+            checkedTrackColor = switchAccent,
             uncheckedThumbColor = LevyraMuted,
             uncheckedTrackColor = LevyraAdaptiveTrack,
             uncheckedBorderColor = LevyraMuted.copy(alpha = 0.6f)

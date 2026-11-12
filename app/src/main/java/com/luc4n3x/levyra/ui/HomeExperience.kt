@@ -253,6 +253,8 @@ internal fun HomeGenreChips(
     }
 }
 
+private const val PODIUM_PARALLAX_ZOOM = 1.06f
+private const val PODIUM_PARALLAX_FOLLOW = 0.35f
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -266,6 +268,7 @@ internal fun HomeChartPodium(
 ) {
     if (tracks.isEmpty()) return
     val carouselState = rememberCarouselState { tracks.size }
+    val podiumMotion = defaultRailMotionEnabled()
     HorizontalMultiBrowseCarousel(
         state = carouselState,
         preferredItemWidth = PodiumPreferredWidth,
@@ -286,7 +289,14 @@ internal fun HomeChartPodium(
         ) {
             CoverImage(
                 track = track,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().graphicsLayer {
+                    if (podiumMotion) {
+                        val info = carouselItemDrawInfo
+                        scaleX = PODIUM_PARALLAX_ZOOM
+                        scaleY = PODIUM_PARALLAX_ZOOM
+                        translationX = (info.maskRect.center.x - size.width / 2f) * PODIUM_PARALLAX_FOLLOW
+                    }
+                },
                 highRes = true
             )
             Box(

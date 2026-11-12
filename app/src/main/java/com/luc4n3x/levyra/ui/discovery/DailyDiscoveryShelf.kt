@@ -1,5 +1,9 @@
 package com.luc4n3x.levyra.ui.discovery
 
+import com.luc4n3x.levyra.ui.components.levyraMarquee
+import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -206,6 +210,28 @@ private fun Modifier.dailyCard(card: DiscoveryCard, reason: String, onPlay: () -
 
 private fun artworkUrl(card: DiscoveryCard): String = card.track.largeThumbnailUrl.ifBlank { card.track.thumbnailUrl }
 
+private const val DAILY_TEXT_MARQUEE_DELAY = 3200
+
+@Composable
+private fun DailyReasonText(reason: String, color: Color, modifier: Modifier = Modifier) {
+    val style = MaterialTheme.typography.labelMedium
+    var overflows by remember(reason) { mutableStateOf(false) }
+    val marquee = overflows && LocalAnimationsEnabled.current
+    Box(modifier, contentAlignment = Alignment.CenterStart) {
+        Text(
+            reason, color = if (marquee) Color.Transparent else color, style = style, fontWeight = FontWeight.SemiBold,
+            minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis,
+            onTextLayout = { layout -> if (layout.hasVisualOverflow) overflows = true }
+        )
+        if (marquee) {
+            Text(
+                reason, color = color, style = style, fontWeight = FontWeight.SemiBold, maxLines = 1,
+                modifier = Modifier.fillMaxWidth().levyraMarquee(true, DAILY_TEXT_MARQUEE_DELAY, initialDelayMillis = 1600)
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun DefaultDailyCard(card: DiscoveryCard, reason: String, artworkMotion: Modifier, onPlay: () -> Unit) {
@@ -238,18 +264,18 @@ private fun DefaultDailyCard(card: DiscoveryCard, reason: String, artworkMotion:
         Column(Modifier.padding(start = 8.dp, end = 8.dp, top = 12.dp, bottom = 8.dp).clearAndSetSemantics { }) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Icon(Icons.Rounded.AutoAwesome, null, tint = accent, modifier = Modifier.padding(top = 1.dp).size(14.dp))
-                Text(
-                    reason, color = accent, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold,
-                    minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis
-                )
+                DailyReasonText(reason, accent, Modifier.weight(1f))
             }
+            val marquee = LocalAnimationsEnabled.current
             Text(
                 card.track.title, color = scheme.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
-                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp)
+                maxLines = 1, overflow = if (marquee) TextOverflow.Clip else TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 6.dp).fillMaxWidth().levyraMarquee(marquee, DAILY_TEXT_MARQUEE_DELAY, initialDelayMillis = 3000)
             )
             Text(
                 card.track.artist, color = scheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall,
-                maxLines = 1, overflow = TextOverflow.Ellipsis
+                maxLines = 1, overflow = if (marquee) TextOverflow.Clip else TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth().levyraMarquee(marquee, DAILY_TEXT_MARQUEE_DELAY, initialDelayMillis = 4400)
             )
         }
     }

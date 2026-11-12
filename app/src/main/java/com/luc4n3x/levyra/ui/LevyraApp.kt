@@ -446,6 +446,14 @@ import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.DoNotDisturbOn
 import androidx.compose.material.icons.rounded.Recommend
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.Interests
+import androidx.compose.material.icons.rounded.Title
+import androidx.compose.material.icons.rounded.LinearScale
+import androidx.compose.material.icons.rounded.Contrast
+import androidx.compose.material.icons.rounded.BrightnessMedium
+import androidx.compose.material.icons.rounded.BrightnessAuto
+import androidx.compose.material.icons.rounded.Grain
+import androidx.compose.material.icons.rounded.Sensors
 import androidx.compose.material.icons.rounded.Nightlight
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PersonAdd
@@ -752,6 +760,7 @@ import com.luc4n3x.levyra.ui.jam.LevyraJamOverlay
 import com.luc4n3x.levyra.ui.recognition.LevyraRecognitionOverlay
 import com.luc4n3x.levyra.ui.settings.NetworkSettingsPanel
 import com.luc4n3x.levyra.ui.settings.DeviceIntegrationSettingsPanel
+import com.luc4n3x.levyra.ui.settings.DOWNLOADS_ADVANCED_SEARCH_IDS
 import com.luc4n3x.levyra.ui.settings.SETTINGS_CATEGORY_AUDIO
 import com.luc4n3x.levyra.ui.settings.settingsCategoryTitle
 import com.luc4n3x.levyra.ui.settings.settingsSearchEntries
@@ -1407,6 +1416,8 @@ private fun HomeSectionHeader(
     }
 }
 
+private const val CHART_TITLE_MARQUEE_DELAY = 3000
+
 @Composable
 private fun ChartMarketHeader(
     title: String,
@@ -1435,13 +1446,17 @@ private fun ChartMarketHeader(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                val configuration = LocalConfiguration.current
+                var titleOverflows by remember(title, configuration.screenWidthDp, configuration.fontScale) { mutableStateOf(false) }
+                val titleMarquee = titleOverflows && LocalAnimationsEnabled.current
                 Text(
                     text = title,
                     color = LevyraText,
                     style = LevyraType.sectionTitle,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false)
+                    maxLines = if (titleMarquee) 1 else 2,
+                    overflow = if (titleMarquee) TextOverflow.Clip else TextOverflow.Ellipsis,
+                    onTextLayout = { layout -> if (!titleMarquee && layout.hasVisualOverflow) titleOverflows = true },
+                    modifier = Modifier.weight(1f, fill = false).levyraMarquee(titleMarquee, CHART_TITLE_MARQUEE_DELAY)
                 )
                 Box(
                     modifier = Modifier
@@ -1818,6 +1833,7 @@ private fun HomeTrackColumnsShelf(
     }
 
     val lazyListState = rememberLazyListState()
+    val railMotion = defaultRailMotionEnabled()
 
     Column(verticalArrangement = Arrangement.spacedBy(homeHeaderContentGap())) {
         HomeSectionInset {
@@ -1841,9 +1857,10 @@ private fun HomeTrackColumnsShelf(
                     col.joinToString(prefix = "track-col-$columnIndex-", separator = "|") { it.id.ifBlank { it.title } }
                 },
                 contentType = { _, _ -> "home-track-column" }
-            ) { _, col ->
+            ) { columnIndex, col ->
+                val columnKey = col.joinToString(prefix = "track-col-$columnIndex-", separator = "|") { it.id.ifBlank { it.title } }
                 Column(
-                    modifier = Modifier.width(columnWidth),
+                    modifier = Modifier.defaultRailItemMotion(railMotion, lazyListState, columnKey).width(columnWidth),
                     verticalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
                     col.forEachIndexed { rowIndex, track ->
@@ -2965,8 +2982,6 @@ fun LevyraApp(
                     animationsEnabled = state.animationsEnabled,
                     motionArtworkEnabled = state.motionArtworkEnabled,
                     dynamicColor = state.dynamicColor,
-                    sponsorBlock = state.sponsorBlockEnabled,
-                    skipSilence = state.skipSilence,
                     updateInfo = state.updateInfo,
                     isCheckingUpdates = state.isCheckingUpdates,
                     currentLanguageCode = state.languageCode,
@@ -3045,8 +3060,6 @@ fun LevyraApp(
                     onAnimations = viewModel::setAnimationsEnabled,
                     onMotionArtwork = viewModel::setMotionArtworkEnabled,
                     onDynamicColor = viewModel::setDynamicColor,
-                    onSponsorBlock = viewModel::setSponsorBlock,
-                    onSkipSilence = viewModel::setSkipSilence,
                     onMusicRegion = viewModel::setMusicRegion,
                     musicRegionId = musicRegionId,
                     preferredAudioLanguage = preferredAudioLanguage,
@@ -3217,6 +3230,14 @@ fun LevyraApp(
                     onPitch = viewModel::setPitch,
                     onGapless = viewModel::setGaplessEnabled,
                     onPreloadNextTrack = viewModel::setPreloadNextTrack,
+                    playbackExtras = AudioPlaybackExtras(
+                        skipSilence = state.skipSilence,
+                        onSkipSilence = viewModel::setSkipSilence,
+                        sponsorBlock = state.sponsorBlockEnabled,
+                        onSponsorBlock = viewModel::setSponsorBlock,
+                        skipUnrecoverable = state.automationSettings.skipUnrecoverableErrors,
+                        onSkipUnrecoverable = { value -> viewModel.setAutomationSettings(state.automationSettings.copy(skipUnrecoverableErrors = value)) }
+                    ),
                     aaudioOutputAvailable = remember { NativeAudioIntegration.isAaudioOutputSupported() },
                     onAaudioOutput = viewModel::setAaudioOutputEnabled,
                     onAudioOffloadPreference = viewModel::setAudioOffloadPreference,
@@ -11808,7 +11829,8 @@ private fun PersonalListeningShelf(
             ?.let { "orbit-page-$it" }
             ?: "orbit-page-index-$pageIndex"
     }
-    val orbitPage: @Composable (Int, Modifier) -> Unit = { pageIndex, pageModifier ->
+    val orbitMotion = defaultRailMotionEnabled()
+    val orbitPage: @Composable (Int, Boolean, Modifier) -> Unit = { pageIndex, paged, pageModifier ->
         Column(
             modifier = pageModifier.padding(
                 start = LevyraHomeDesign.HorizontalInset,
@@ -11837,7 +11859,7 @@ private fun PersonalListeningShelf(
                                 isResolving = isResolving && track.id == currentId,
                                 onPlay = { onPlay(track) },
                                 onActions = { onTrackActions(track) },
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f).defaultOrbitTileMotion(orbitMotion && paged, pagerState, pageIndex, rowIndex * HOME_PERSONAL_ORBIT_GRID_COLUMNS + columnIndex)
                             )
                         }
                     }
@@ -11870,7 +11892,7 @@ private fun PersonalListeningShelf(
                 ) {
                     pages.indices.forEach { pageIndex ->
                         key(pageKey(pageIndex)) {
-                            orbitPage(pageIndex, Modifier.width(LevyraHomeDesign.OrbitWallPageWidth))
+                            orbitPage(pageIndex, false, Modifier.width(LevyraHomeDesign.OrbitWallPageWidth))
                         }
                     }
                 }
@@ -11881,33 +11903,9 @@ private fun PersonalListeningShelf(
                         modifier = Modifier.fillMaxWidth(),
                         key = pageKey
                     ) { pageIndex ->
-                        orbitPage(pageIndex, Modifier.fillMaxWidth().defaultPagerPageMotion(defaultRailMotionEnabled(), pagerState, pageIndex))
+                        orbitPage(pageIndex, true, Modifier.fillMaxWidth().defaultPagerPageMotion(defaultRailMotionEnabled(), pagerState, pageIndex))
                     }
-                    if (pages.size > 1) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(
-                                LevyraHomeDesign.OrbitDotGap,
-                                Alignment.CenterHorizontally
-                            ),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            pages.indices.forEach { index ->
-                                Box(
-                                    modifier = Modifier
-                                        .size(LevyraHomeDesign.OrbitDotSize)
-                                        .background(
-                                            if (pagerState.currentPage == index) {
-                                                LevyraText
-                                            } else {
-                                                LevyraText.copy(alpha = 0.30f)
-                                            },
-                                            CircleShape
-                                        )
-                                )
-                            }
-                        }
-                    }
+                    HomePersonalOrbitDots(pageCount = pages.size, currentPage = pagerState.currentPage)
                 }
             }
         }
@@ -12837,6 +12835,7 @@ private fun TrendingArtistsShelf(
                         artist = artist,
                         onClick = { onArtistClick(artist) },
                         audience = if (plainDefault) artistAudienceLabel(artist.subscribers, strings.code, strings.monthlyListeners) else "",
+                        reserveAudience = plainDefault,
                         artworkMotion = Modifier.defaultRailParallax(railMotion, artistRowState, motionKey)
                     )
                 }
@@ -12852,11 +12851,14 @@ private fun TrendingArtistsShelf(
     }
 }
 
+private const val ARTIST_NAME_MARQUEE_DELAY = 3000
+
 @Composable
 private fun ArtistHitShelfItem(
     artist: ArtistHit,
     onClick: () -> Unit,
     audience: String = "",
+    reserveAudience: Boolean = false,
     artworkMotion: Modifier = Modifier
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -12883,17 +12885,17 @@ private fun ArtistHitShelfItem(
             color = LevyraText,
             style = LevyraType.cardTitle,
             textAlign = TextAlign.Center,
-            maxLines = 2,
+            maxLines = if (LocalAnimationsEnabled.current) 1 else 2,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().levyraMarquee(LocalAnimationsEnabled.current, ARTIST_NAME_MARQUEE_DELAY)
         )
-        if (audience.isNotBlank()) {
+        if (audience.isNotBlank() || reserveAudience) {
             Text(
                 text = audience,
                 color = LevyraMuted,
                 style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.fillMaxWidth().offset(y = (-5).dp)
             )
@@ -12951,6 +12953,7 @@ private fun ResonanceShelf(
                 .coerceIn(292.dp, 330.dp)
             val resonanceState = rememberLazyListState()
             val resonanceDepth = carouselDepthEnabled()
+            val resonanceRailMotion = defaultRailMotionEnabled()
             LazyRow(
                 state = resonanceState,
                 modifier = Modifier.fillMaxWidth(),
@@ -12965,13 +12968,14 @@ private fun ResonanceShelf(
                     key = { index, track -> "resonance-featured-$index-${LevyraPersonalOrbit.identityKey(track)}" },
                     contentType = { _, _ -> "resonance-featured-card" }
                 ) { index, track ->
+                    val resonanceKey = "resonance-featured-$index-${LevyraPersonalOrbit.identityKey(track)}"
                     ResonanceFeaturedCard(
                         toneIndex = index,
-                        modifier = Modifier.levyraCarouselDepth(
-                            state = resonanceState,
-                            key = "resonance-featured-$index-${LevyraPersonalOrbit.identityKey(track)}",
-                            enabled = resonanceDepth
-                        ),
+                        modifier = if (resonanceRailMotion) {
+                            Modifier.defaultRailItemMotion(true, resonanceState, resonanceKey)
+                        } else {
+                            Modifier.levyraCarouselDepth(state = resonanceState, key = resonanceKey, enabled = resonanceDepth)
+                        },
                         track = track,
                         snippet = comments[track.id],
                         active = track.id == currentId,
@@ -18936,8 +18940,6 @@ private fun SettingsOverlay(
     animationsEnabled: Boolean,
     motionArtworkEnabled: Boolean,
     dynamicColor: Boolean,
-    sponsorBlock: Boolean,
-    skipSilence: Boolean,
     updateInfo: AppUpdateInfo?,
     isCheckingUpdates: Boolean,
     currentLanguageCode: String,
@@ -18997,8 +18999,6 @@ private fun SettingsOverlay(
     onAnimations: (Boolean) -> Unit,
     onMotionArtwork: (Boolean) -> Unit,
     onDynamicColor: (Boolean) -> Unit,
-    onSponsorBlock: (Boolean) -> Unit,
-    onSkipSilence: (Boolean) -> Unit,
     onMusicRegion: (String) -> Unit,
     musicRegionId: String,
     preferredAudioLanguage: String,
@@ -19059,26 +19059,37 @@ private fun SettingsOverlay(
         batteryLifecycleOwner.lifecycle.addObserver(observer)
         onDispose { batteryLifecycleOwner.lifecycle.removeObserver(observer) }
     }
-    BackHandler(enabled = backEnabled && activeCategory != null) { activeCategory = null }
+    var downloadsAdvancedOpen by rememberSaveable { mutableStateOf(false) }
+    val hubEntrance = remember { Animatable(if (animationsEnabled) 0f else 1f) }
+    LaunchedEffect(Unit) { hubEntrance.animateTo(1f, tween(durationMillis = 720, easing = LinearEasing)) }
+    val hubEntranceEnabled = !SkinChrome.active && !LevyraIsAtelier && !LevyraIsQobuz && !com.luc4n3x.levyra.ui.theme.LevyraIsMono
+    fun hubEntranceModifier(order: Int): Modifier =
+        if (hubEntranceEnabled) Modifier.settingsEntrance({ hubEntrance.value }, order) else Modifier
+    val settingsListStates = remember { mutableMapOf<String?, LazyListState>() }
+    fun leaveCategory() {
+        activeCategory = settingsCategoryParent(activeCategory)
+    }
+    BackHandler(enabled = backEnabled && activeCategory != null) { leaveCategory() }
     val categoryLocale = remember(strings.code) { Locale.forLanguageTag(strings.code.replace('_', '-')) }
     fun categoryTitle(value: String): String = settingsCategoryTitle(value, categoryLocale)
-    val categories = remember(strings.code, LevyraActivePalette) {
+    val categories = remember(strings.code, LevyraActivePalette, interfaceSettings.skin) {
         listOf(
-            SettingsCategoryMeta("skins", com.luc4n3x.levyra.ui.i18n.LevyraSkinStrings.forCode(strings.code).title, "Levyra Default · Nocturne 78 · Prism · Torque · Ivory · Glacier · Atelier · Spotify · Apple Music · YouTube Music · Qobuz", Icons.Rounded.Style, LevyraViolet, SettingsHubGroup.Appearance),
-            SettingsCategoryMeta("design", categoryTitle(strings.design), "${strings.theme} · ${strings.animations} · ${strings.dynamicColor}", Icons.Rounded.Palette, LevyraViolet, SettingsHubGroup.Appearance),
-            SettingsCategoryMeta("home", categoryTitle(strings.homeInterfaceSection), "${strings.compactHome} · ${strings.newReleases} · ${strings.top50Charts}", Icons.Rounded.Home, LevyraViolet, SettingsHubGroup.Appearance),
-            SettingsCategoryMeta("player", categoryTitle(strings.player), "${strings.advancedGestures} · ${strings.sponsorBlock} · ${strings.skipSilence}", Icons.Rounded.PlayArrow, LevyraPink, SettingsHubGroup.Listening),
-            SettingsCategoryMeta("smart_listening", strings.smartListeningCopy().hubTitle, strings.smartListeningCopy().hubSubtitle, Icons.Rounded.AutoAwesome, LevyraPink, SettingsHubGroup.Listening),
+            SettingsCategoryMeta("skins", com.luc4n3x.levyra.ui.i18n.LevyraSkinStrings.forCode(strings.code).title, interfaceSettings.skin.title(), Icons.Rounded.Style, LevyraViolet, SettingsHubGroup.Appearance),
+            SettingsCategoryMeta("design", categoryTitle(strings.design), "${strings.theme} · ${strings.animations}", Icons.Rounded.Palette, LevyraViolet, SettingsHubGroup.Appearance),
+            SettingsCategoryMeta("home", categoryTitle(strings.homeInterfaceSection), "${strings.compactHome} · ${strings.top50Charts}", Icons.Rounded.Home, LevyraViolet, SettingsHubGroup.Appearance),
+            SettingsCategoryMeta("player", categoryTitle(strings.player), "${strings.advancedGestures} · ${strings.ambientSettingsTitle}", Icons.Rounded.PlayArrow, LevyraPink, SettingsHubGroup.Listening),
             SettingsCategoryMeta("audio", strings.audioEngine, strings.audioEngineSubtitle, Icons.Rounded.GraphicEq, LevyraPink, SettingsHubGroup.Listening),
-            SettingsCategoryMeta("lyrics", categoryTitle(strings.lyricsAnalysisSection), strings.lyricsAnalysisCompact, Icons.Rounded.Insights, LevyraPink, SettingsHubGroup.Listening),
-            SettingsCategoryMeta("jam", categoryTitle(strings.jamTitle), strings.jamSubtitle, Icons.Rounded.Groups, LevyraPink, SettingsHubGroup.Listening),
+            SettingsCategoryMeta("smart_listening", strings.smartListeningCopy().hubTitle, "${strings.smartListeningCopy().motionSectionTitle} · ${strings.smartListeningCopy().gentleWakeTitle}", Icons.Rounded.AutoAwesome, LevyraPink, SettingsHubGroup.Listening),
+            SettingsCategoryMeta("content", strings.settingsHubCopy[SettingsHubText.Content], "${com.luc4n3x.levyra.ui.i18n.LevyraRegionalStrings.forCode(strings.code).contentCountryTitle} · ${strings.excludedArtists}", Icons.Rounded.Interests, LevyraBlue, SettingsHubGroup.Library),
             SettingsCategoryMeta("downloads", categoryTitle(strings.downloads), "${strings.wifiOnly} · ${strings.simultaneousDownloads}", Icons.Rounded.Download, LevyraBlue, SettingsHubGroup.Library),
             SettingsCategoryMeta("backup", strings.vaultTitle, "${strings.backupNow} · ${strings.restoreBackup}", Icons.Rounded.History, LevyraBlue, SettingsHubGroup.Library),
             SettingsCategoryMeta("youtube_music", "YouTube Music", com.luc4n3x.levyra.ui.i18n.youtubeMusicCopy(strings.code).introduction, Icons.Rounded.AccountCircle, LevyraCyan, SettingsHubGroup.Accounts),
             SettingsCategoryMeta("integrations", categoryTitle(strings.integrations), "Last.fm · ListenBrainz · AudD", Icons.Rounded.Link, LevyraCyan, SettingsHubGroup.Accounts),
-            SettingsCategoryMeta("system", categoryTitle(strings.preferences), "${strings.batteryUnrestricted} · ${strings.language}", Icons.Rounded.Settings, LevyraOrange, SettingsHubGroup.System),
-            SettingsCategoryMeta("network", categoryTitle(strings.networkTitle), strings.networkSubtitle, Icons.Rounded.Public, LevyraOrange, SettingsHubGroup.System),
-            SettingsCategoryMeta("app", categoryTitle(strings.app), "${strings.updates} · ${BuildConfig.VERSION_NAME}", Icons.Rounded.Info, LevyraOrange, SettingsHubGroup.System)
+            SettingsCategoryMeta("system", categoryTitle(strings.preferences), "${strings.language} · ${categoryTitle(strings.networkTitle)}", Icons.Rounded.Settings, LevyraOrange, SettingsHubGroup.System),
+            SettingsCategoryMeta("app", categoryTitle(strings.app), "${strings.updates} · ${BuildConfig.VERSION_NAME}", Icons.Rounded.Info, LevyraOrange, SettingsHubGroup.System),
+            SettingsCategoryMeta("ambient", categoryTitle(strings.ambientSettingsTitle), strings.ambientModeSubtitle, Icons.Rounded.Nightlight, LevyraPink, SettingsHubGroup.Listening),
+            SettingsCategoryMeta("lyrics", categoryTitle(strings.lyricsAnalysisSection), strings.lyricsAnalysisCompact, Icons.Rounded.Insights, LevyraPink, SettingsHubGroup.Listening),
+            SettingsCategoryMeta("network", categoryTitle(strings.networkTitle), strings.networkSubtitle, Icons.Rounded.Public, LevyraOrange, SettingsHubGroup.System)
         )
     }
     val settingsSearchIndex = remember(strings.code) {
@@ -19113,14 +19124,19 @@ private fun SettingsOverlay(
             }
         ) { current ->
             val meta = categories.firstOrNull { it.id == current }
-            val settingsListState = remember(current) { LazyListState() }
+            val pageEntrance = remember(current) { Animatable(if (animationsEnabled && current != null) 0f else 1f) }
+            LaunchedEffect(current) { pageEntrance.animateTo(1f, tween(durationMillis = 620, easing = LinearEasing)) }
+            val pageEntranceModifier: ((Int) -> Modifier)? =
+                if (hubEntranceEnabled) { order -> Modifier.settingsEntrance({ pageEntrance.value }, order + 1) } else null
+            val settingsListState = settingsListStates.getOrPut(current) { LazyListState() }
             val bottomContentInset = animatedBottomContentInset(
                 collapsed = LevyraBottomContentGap,
                 expanded = LevyraMiniPlayerHeight + LevyraBottomContentGap,
                 miniPlayerVisible = miniPlayerVisible,
                 animationsEnabled = animationsEnabled
             )
-            CompositionLocalProvider(LocalSettingsAccent provides meta?.accent) {
+            val pageAccent = meta?.let { if (hubEntranceEnabled) LevyraCyan else it.accent }
+            CompositionLocalProvider(LocalSettingsAccent provides pageAccent) {
             LazyColumn(
                 state = settingsListState,
                 modifier = Modifier
@@ -19189,40 +19205,52 @@ private fun SettingsOverlay(
                                 } else if (result.categoryId == "youtube_music") {
                                     onOpenYoutubeMusic()
                                 } else {
+                                    if (result.id in DOWNLOADS_ADVANCED_SEARCH_IDS) downloadsAdvancedOpen = true
                                     activeCategory = result.categoryId
                                 }
                             }
                         }
                     } else {
                     item(key = "settings_studios") {
-                        val studioContext = LocalContext.current
-                        SettingsStudioShelf(
-                            title = strings.settingsHubCopy[SettingsHubText.Studios],
-                            subtitle = strings.settingsHubCopy[SettingsHubText.StudiosHint],
-                            entries = listOf(
-                                SettingsStudioEntry("skins", com.luc4n3x.levyra.ui.i18n.LevyraSkinStrings.forCode(strings.code).title, Icons.Rounded.Style, LevyraPink, MaterialShapes.Cookie7Sided) { activeCategory = "skins" },
-                                SettingsStudioEntry("theme", strings.themeStudio, Icons.Rounded.Palette, LevyraViolet, MaterialShapes.Cookie9Sided, onOpenThemeStudio),
-                                SettingsStudioEntry("home", strings.homeStudioCopy.title, Icons.Rounded.Home, LevyraCyan, MaterialShapes.Clover4Leaf, onOpenHomeStudio),
-                                SettingsStudioEntry("mini_player", strings.miniPlayerStudioCopy[MiniStudioText.Title], Icons.Rounded.SmartDisplay, LevyraPink, MaterialShapes.Sunny, onOpenMiniPlayerStudio),
-                                SettingsStudioEntry("navigation", strings.navigationStudioCopy[NavStudioText.Title], Icons.Rounded.Dashboard, LevyraBlue, MaterialShapes.Pill, onOpenNavigationStudio),
-                                SettingsStudioEntry("lyrics", strings.lyricsStudio, Icons.Rounded.AutoAwesome, LevyraOrange, MaterialShapes.SoftBurst, onOpenLyricsStudio),
-                                SettingsStudioEntry("widget", strings.widgetStudioCopy[WidgetStudioText.Title], Icons.Rounded.Widgets, LevyraCyan, MaterialShapes.Gem) {
-                                    studioContext.startActivity(WidgetStudioActivity.intent(studioContext))
-                                }
-                            ).filterNot { skinManagesStudio(it.id) }
-                        )
+                        Box(hubEntranceModifier(0)) {
+                            val studioContext = LocalContext.current
+                            SettingsStudioShelf(
+                                title = strings.settingsHubCopy[SettingsHubText.Studios],
+                                subtitle = strings.settingsHubCopy[SettingsHubText.StudiosHint],
+                                entries = listOf(
+                                    SettingsStudioEntry("skins", com.luc4n3x.levyra.ui.i18n.LevyraSkinStrings.forCode(strings.code).title, Icons.Rounded.Style, LevyraPink, MaterialShapes.Cookie7Sided) { activeCategory = "skins" },
+                                    SettingsStudioEntry("theme", strings.themeStudio, Icons.Rounded.Palette, LevyraViolet, MaterialShapes.Cookie9Sided, onOpenThemeStudio),
+                                    SettingsStudioEntry("home", strings.homeStudioCopy.title, Icons.Rounded.Home, LevyraCyan, MaterialShapes.Clover4Leaf, onOpenHomeStudio),
+                                    SettingsStudioEntry("mini_player", strings.miniPlayerStudioCopy[MiniStudioText.Title], Icons.Rounded.SmartDisplay, LevyraPink, MaterialShapes.Sunny, onOpenMiniPlayerStudio),
+                                    SettingsStudioEntry("navigation", strings.navigationStudioCopy[NavStudioText.Title], Icons.Rounded.Dashboard, LevyraBlue, MaterialShapes.Pill, onOpenNavigationStudio),
+                                    SettingsStudioEntry("lyrics", strings.lyricsStudio, Icons.Rounded.AutoAwesome, LevyraOrange, MaterialShapes.SoftBurst, onOpenLyricsStudio),
+                                    SettingsStudioEntry("widget", strings.widgetStudioCopy[WidgetStudioText.Title], Icons.Rounded.Widgets, LevyraCyan, MaterialShapes.Gem) {
+                                        studioContext.startActivity(WidgetStudioActivity.intent(studioContext))
+                                    }
+                                ).filterNot { skinManagesStudio(it.id) }
+                            )
+                        }
                     }
+                    var entranceOrder = 1
                     SettingsHubGroup.entries.forEach { group ->
-                        val groupCategories = categories.filter { it.group == group }
+                        val groupCategories = categories.filter { it.group == group && it.id !in SettingsSubpageParents }
                         if (groupCategories.isEmpty()) return@forEach
+                        val labelOrder = entranceOrder++
+                        val firstCardOrder = entranceOrder
+                        entranceOrder += groupCategories.size
                         item(key = "settings_group_${group.name}") {
-                            SettingsHubGroupLabel(settingsHubGroupTitle(group, strings))
+                            SettingsHubGroupLabel(
+                                text = settingsHubGroupTitle(group, strings),
+                                accent = LevyraCyan,
+                                modifier = hubEntranceModifier(labelOrder)
+                            )
                         }
                         itemsIndexed(groupCategories, key = { _, item -> item.id }) { index, category ->
                             SettingsCategoryCard(
                                 meta = category,
                                 index = index,
-                                count = groupCategories.size
+                                count = groupCategories.size,
+                                modifier = hubEntranceModifier(firstCardOrder + index)
                             ) {
                                 when (category.id) {
                                     "audio" -> onOpenAudioSettings()
@@ -19240,12 +19268,39 @@ private fun SettingsOverlay(
                             title = meta?.title.orEmpty(),
                             summary = meta?.summary.orEmpty(),
                             icon = meta?.icon ?: Icons.Rounded.Settings,
-                            accent = meta?.accent ?: LevyraCyan,
-                            onBack = { activeCategory = null }
+                            accent = pageAccent ?: LevyraCyan,
+                            onBack = { leaveCategory() }
                         )
                     }
-                    settingsGroupedItems { when (current) {
-                        "smart_listening" -> standaloneItem { SmartListeningSettingsHost(onClose = onClose) }
+                    settingsGroupedItems(pageEntranceModifier) { when (current) {
+                        "smart_listening" -> {
+                            standaloneItem { SmartListeningSettingsHost(onClose = onClose) }
+                            standaloneItem { SettingsSectionLabel(automationCopy.automation) }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.Bluetooth,
+                                    title = automationCopy.bluetoothResume,
+                                    subtitle = automationCopy.bluetoothResumeSubtitle,
+                                    checked = automationSettings.resumeOnBluetoothReconnect,
+                                    onCheckedChange = { value ->
+                                        onAutomationSettings(
+                                            automationSettings.copy(resumeOnBluetoothReconnect = value)
+                                        )
+                                    }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.AutoMirrored.Rounded.VolumeOff,
+                                    title = automationCopy.pauseOnMute,
+                                    subtitle = automationCopy.pauseOnMuteSubtitle,
+                                    checked = automationSettings.pauseOnMute,
+                                    onCheckedChange = { value ->
+                                        onAutomationSettings(automationSettings.copy(pauseOnMute = value))
+                                    }
+                                )
+                            }
+                        }
                         "network" -> item {
                             NetworkSettingsPanel(
                                 settings = networkSettings,
@@ -19257,32 +19312,7 @@ private fun SettingsOverlay(
                                 onTest = onTestNetwork
                             )
                         }
-                        "jam" -> item {
-                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Text(
-                                    strings.jamSubtitle,
-                                    color = LevyraMuted,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Text(
-                                    strings.jamLocalNetworkOnly,
-                                    color = LevyraMuted,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                TextButton(onClick = onOpenJam, modifier = Modifier.fillMaxWidth()) {
-                                    Text(
-                                        strings.jamTitle,
-                                        color = LevyraCyan,
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-                        }
                         "integrations" -> {
-                            item { DeviceIntegrationSettingsPanel() }
                             item {
                                 IntegrationSettingsPanel(
                                     lastFmConfigured,
@@ -19305,6 +19335,7 @@ private fun SettingsOverlay(
                             }
                         }
                         "design" -> {
+                            standaloneItem { SettingsSectionLabel(strings.settingsHubCopy[SettingsHubText.Style]) }
                             item {
                                 SettingsButton(
                                     icon = Icons.Rounded.Palette,
@@ -19314,22 +19345,83 @@ private fun SettingsOverlay(
                                     onClick = onOpenThemeStudio
                                 )
                             }
+                            skinSettingsItems(interfaceSettings.skin, defaults = {
                             item {
-                                SettingsButton(
-                                    icon = Icons.Rounded.AutoAwesome,
-                                    title = strings.lyricsStudio,
-                                    subtitle = strings.lyricsStudioSubtitle,
-                                    onClick = onOpenLyricsStudio
+                                SettingsChoiceRow(
+                                    icon = Icons.Rounded.TextFields,
+                                    title = strings.appFont,
+                                    subtitle = strings.appFontSubtitle,
+                                    options = LevyraFontPreset.entries.map { preset -> preset.name to preset.displayName },
+                                    selected = interfaceSettings.fontPreset.name,
+                                    onSelect = { value ->
+                                        onInterfaceSettings(
+                                            interfaceSettings.copy(fontPreset = LevyraFontPreset.from(value))
+                                        )
+                                    }
+                                )
+                            }
+                            })
+                            skinSettingsItems(interfaceSettings.skin, defaults = {
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.Album,
+                                    title = strings.dynamicColor,
+                                    subtitle = strings.dynamicColorSubtitle,
+                                    checked = dynamicColor,
+                                    onCheckedChange = onDynamicColor
+                                )
+                            }
+                            })
+                            skinSettingsItems(interfaceSettings.skin, defaults = {
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.DarkMode,
+                                    title = strings.pureBlack,
+                                    subtitle = strings.pureBlackSubtitle,
+                                    checked = interfaceSettings.pureBlack,
+                                    onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(pureBlack = it)) }
+                                )
+                            }
+                            })
+                            skinSettingsItems(interfaceSettings.skin, defaults = {
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.BlurOn,
+                                    title = strings.liquidGlass,
+                                    subtitle = strings.liquidGlassSubtitle,
+                                    checked = interfaceSettings.liquidGlassEnabled,
+                                    onCheckedChange = { value ->
+                                        onInterfaceSettings(interfaceSettings.copy(liquidGlassEnabled = value))
+                                    }
+                                )
+                            }
+                            })
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.Bolt,
+                                    title = strings.animations,
+                                    subtitle = strings.animationsSubtitle,
+                                    checked = animationsEnabled,
+                                    onCheckedChange = onAnimations
                                 )
                             }
                             item {
-                                SettingsButton(
-                                    icon = Icons.Rounded.Home,
-                                    title = strings.homeStudioCopy.title,
-                                    subtitle = skinHomeStyleLabel(homeStudioStyle) + " · " + strings.homeStudioCopy.subtitle,
-                                    onClick = onOpenHomeStudio
+                                SettingsChoiceRow(
+                                    icon = Icons.Rounded.Speed,
+                                    title = strings.visualPerformance,
+                                    subtitle = visualPerformanceSubtitle(interfaceSettings.visualPerformance, strings),
+                                    options = LevyraVisualPerformance.entries.map { mode ->
+                                        mode.name to visualPerformanceLabel(mode, strings)
+                                    },
+                                    selected = interfaceSettings.visualPerformance.name,
+                                    onSelect = { value ->
+                                        onInterfaceSettings(
+                                            interfaceSettings.copy(visualPerformance = LevyraVisualPerformance.from(value))
+                                        )
+                                    }
                                 )
                             }
+                            standaloneItem { SettingsSectionLabel(strings.settingsHubCopy[SettingsHubText.Studios]) }
                             item {
                                 SettingsButton(
                                     icon = Icons.Rounded.SmartDisplay,
@@ -19360,60 +19452,7 @@ private fun SettingsOverlay(
                                     onClick = { widgetStudioContext.startActivity(WidgetStudioActivity.intent(widgetStudioContext)) }
                                 )
                             }
-                            skinSettingsItems(interfaceSettings.skin, defaults = {
-                            item {
-                                SettingsChoiceRow(
-                                    icon = Icons.Rounded.TextFields,
-                                    title = strings.appFont,
-                                    subtitle = strings.appFontSubtitle,
-                                    options = LevyraFontPreset.entries.map { preset -> preset.name to preset.displayName },
-                                    selected = interfaceSettings.fontPreset.name,
-                                    onSelect = { value ->
-                                        onInterfaceSettings(
-                                            interfaceSettings.copy(fontPreset = LevyraFontPreset.from(value))
-                                        )
-                                    }
-                                )
-                            }
-                            })
-                            item {
-                                SettingsToggle(
-                                    icon = Icons.Rounded.Bolt,
-                                    title = strings.animations,
-                                    subtitle = strings.animationsSubtitle,
-                                    checked = animationsEnabled,
-                                    onCheckedChange = onAnimations
-                                )
-                            }
-                            item {
-                                SettingsChoiceRow(
-                                    icon = Icons.Rounded.Speed,
-                                    title = strings.visualPerformance,
-                                    subtitle = visualPerformanceSubtitle(interfaceSettings.visualPerformance, strings),
-                                    options = LevyraVisualPerformance.entries.map { mode ->
-                                        mode.name to visualPerformanceLabel(mode, strings)
-                                    },
-                                    selected = interfaceSettings.visualPerformance.name,
-                                    onSelect = { value ->
-                                        onInterfaceSettings(
-                                            interfaceSettings.copy(visualPerformance = LevyraVisualPerformance.from(value))
-                                        )
-                                    }
-                                )
-                            }
-                            skinSettingsItems(interfaceSettings.skin, defaults = {
-                            item {
-                                SettingsToggle(
-                                    icon = Icons.Rounded.BlurOn,
-                                    title = strings.liquidGlass,
-                                    subtitle = strings.liquidGlassSubtitle,
-                                    checked = interfaceSettings.liquidGlassEnabled,
-                                    onCheckedChange = { value ->
-                                        onInterfaceSettings(interfaceSettings.copy(liquidGlassEnabled = value))
-                                    }
-                                )
-                            }
-                            })
+                            standaloneItem { SettingsSectionLabel(strings.motionArtwork) }
                             item {
                                 SettingsToggle(
                                     icon = Icons.Rounded.AutoAwesome,
@@ -19475,17 +19514,6 @@ private fun SettingsOverlay(
                                     )
                                 }
                             }
-                            skinSettingsItems(interfaceSettings.skin, defaults = {
-                            item {
-                                SettingsToggle(
-                                    icon = Icons.Rounded.Album,
-                                    title = strings.dynamicColor,
-                                    subtitle = strings.dynamicColorSubtitle,
-                                    checked = dynamicColor,
-                                    onCheckedChange = onDynamicColor
-                                )
-                            }
-                            })
                         }
                         "home" -> {
                             item {
@@ -19561,17 +19589,6 @@ private fun SettingsOverlay(
                                     onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(showTrendingArtists = it)) }
                                 )
                             }
-                            skinSettingsItems(interfaceSettings.skin, defaults = {
-                            item {
-                                SettingsToggle(
-                                    icon = Icons.Rounded.DarkMode,
-                                    title = strings.pureBlack,
-                                    subtitle = strings.pureBlackSubtitle,
-                                    checked = interfaceSettings.pureBlack,
-                                    onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(pureBlack = it)) }
-                                )
-                            }
-                            })
                             item {
                                 SettingsToggle(
                                     icon = Icons.Rounded.LocalFireDepartment,
@@ -19581,51 +19598,15 @@ private fun SettingsOverlay(
                                     onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(showCharts = it)) }
                                 )
                             }
+                            standaloneItem {
+                                FreshDiscoverySettingsCard(
+                                    settings = automationSettings.freshDiscovery,
+                                    onSettings = { value -> onAutomationSettings(automationSettings.copy(freshDiscovery = value)) }
+                                )
+                            }
                         }
                         "player" -> {
                             standaloneItem { SettingsSectionLabel(strings.mobilePlayerSection) }
-                            item {
-                                SettingsChoiceRow(
-                                    icon = Icons.Rounded.HighQuality,
-                                    title = strings.videoQuality,
-                                    subtitle = if (videoQualityTarget == VideoQualityTarget.AUTO) {
-                                        strings.videoQualityAutoSubtitle
-                                    } else {
-                                        strings.videoQualitySubtitle
-                                    },
-                                    options = VideoQualityTarget.entries.map { target ->
-                                        target.storageValue to if (target == VideoQualityTarget.AUTO) {
-                                            strings.videoQualityAuto
-                                        } else {
-                                            target.storageValue
-                                        }
-                                    },
-                                    selected = videoQualityTarget.storageValue,
-                                    onSelect = { value -> onVideoQualityTarget(VideoQualityTarget.fromStorage(value)) }
-                                )
-                            }
-                            item {
-                                SettingsChoiceRow(
-                                    icon = Icons.Rounded.MusicVideo,
-                                    title = strings.musicVideoPreference,
-                                    subtitle = strings.musicVideoPreferenceSubtitle,
-                                    options = MusicVideoPlaybackPreference.entries.map { preference ->
-                                        preference.storageValue to when (preference) {
-                                            MusicVideoPlaybackPreference.Automatic -> strings.musicVideoAutomatic
-                                            MusicVideoPlaybackPreference.PreferAudio -> strings.musicVideoPreferAudio
-                                            MusicVideoPlaybackPreference.PreferVideo -> strings.musicVideoPreferVideo
-                                            MusicVideoPlaybackPreference.RememberLast -> strings.musicVideoRememberLast
-                                        }
-                                    },
-                                    selected = interfaceSettings.musicVideoPreference.storageValue,
-                                    onSelect = { value ->
-                                        onInterfaceSettings(
-                                            interfaceSettings.copy(musicVideoPreference = MusicVideoPlaybackPreference.fromStorage(value))
-                                        )
-                                    }
-                                )
-                            }
-                            immersiveModeSettingsItems(interfaceSettings, strings, onInterfaceSettings)
                             skinSettingsItems(interfaceSettings.skin, defaults = {
                             item {
                                 SettingsChoiceRow(
@@ -19708,6 +19689,21 @@ private fun SettingsOverlay(
                                     }
                                 }
                             })
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.StayCurrentPortrait,
+                                    title = strings.keepScreenOn,
+                                    subtitle = strings.keepScreenOnSubtitle,
+                                    checked = interfaceSettings.keepScreenOnWhilePlaying,
+                                    onCheckedChange = { value ->
+                                        onInterfaceSettings(
+                                            interfaceSettings.copy(keepScreenOnWhilePlaying = value)
+                                        )
+                                    }
+                                )
+                            }
+                            immersiveModeSettingsItems(interfaceSettings, strings, onInterfaceSettings)
+                            standaloneItem { SettingsSectionLabel(strings.settingsHubCopy[SettingsHubText.Gestures]) }
                             item {
                                 SettingsToggle(
                                     icon = Icons.Rounded.Vibration,
@@ -19820,7 +19816,88 @@ private fun SettingsOverlay(
                                     )
                                 }
                             }
-                            standaloneItem { SettingsSectionLabel(strings.ambientSettingsTitle) }
+                            standaloneItem { SettingsSectionLabel(strings.settingsHubCopy[SettingsHubText.Video]) }
+                            item {
+                                SettingsChoiceRow(
+                                    icon = Icons.Rounded.HighQuality,
+                                    title = strings.videoQuality,
+                                    subtitle = if (videoQualityTarget == VideoQualityTarget.AUTO) {
+                                        strings.videoQualityAutoSubtitle
+                                    } else {
+                                        strings.videoQualitySubtitle
+                                    },
+                                    options = VideoQualityTarget.entries.map { target ->
+                                        target.storageValue to if (target == VideoQualityTarget.AUTO) {
+                                            strings.videoQualityAuto
+                                        } else {
+                                            target.storageValue
+                                        }
+                                    },
+                                    selected = videoQualityTarget.storageValue,
+                                    onSelect = { value -> onVideoQualityTarget(VideoQualityTarget.fromStorage(value)) }
+                                )
+                            }
+                            item {
+                                SettingsChoiceRow(
+                                    icon = Icons.Rounded.MusicVideo,
+                                    title = strings.musicVideoPreference,
+                                    subtitle = strings.musicVideoPreferenceSubtitle,
+                                    options = MusicVideoPlaybackPreference.entries.map { preference ->
+                                        preference.storageValue to when (preference) {
+                                            MusicVideoPlaybackPreference.Automatic -> strings.musicVideoAutomatic
+                                            MusicVideoPlaybackPreference.PreferAudio -> strings.musicVideoPreferAudio
+                                            MusicVideoPlaybackPreference.PreferVideo -> strings.musicVideoPreferVideo
+                                            MusicVideoPlaybackPreference.RememberLast -> strings.musicVideoRememberLast
+                                        }
+                                    },
+                                    selected = interfaceSettings.musicVideoPreference.storageValue,
+                                    onSelect = { value ->
+                                        onInterfaceSettings(
+                                            interfaceSettings.copy(musicVideoPreference = MusicVideoPlaybackPreference.fromStorage(value))
+                                        )
+                                    }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.Subtitles,
+                                    title = strings.enhanceVideoMetadata,
+                                    subtitle = strings.enhanceVideoMetadataSubtitle,
+                                    checked = interfaceSettings.enhanceVideoMetadata,
+                                    onCheckedChange = { value ->
+                                        onInterfaceSettings(
+                                            interfaceSettings.copy(enhanceVideoMetadata = value)
+                                        )
+                                    }
+                                )
+                            }
+                            standaloneItem { SettingsSectionLabel(strings.more) }
+                            item {
+                                SettingsButton(
+                                    icon = Icons.Rounded.Nightlight,
+                                    title = categoryTitle(strings.ambientSettingsTitle),
+                                    subtitle = strings.ambientModeSubtitle,
+                                    onClick = { activeCategory = "ambient" }
+                                )
+                            }
+                            item {
+                                SettingsButton(
+                                    icon = Icons.Rounded.Insights,
+                                    title = categoryTitle(strings.lyricsAnalysisSection),
+                                    subtitle = strings.lyricsAnalysisCompact,
+                                    onClick = { activeCategory = "lyrics" }
+                                )
+                            }
+                            item {
+                                SettingsButton(
+                                    icon = Icons.Rounded.Groups,
+                                    title = categoryTitle(strings.jamTitle),
+                                    subtitle = strings.jamSubtitle,
+                                    onClick = onOpenJam
+                                )
+                            }
+                        }
+                        "ambient" -> {
                             item {
                                 SettingsButton(
                                     icon = Icons.Rounded.Nightlight,
@@ -19831,7 +19908,7 @@ private fun SettingsOverlay(
                             }
                             item {
                                 SettingsChoiceRow(
-                                    icon = Icons.Rounded.Nightlight,
+                                    icon = Icons.Rounded.Dashboard,
                                     title = strings.ambientLayout,
                                     subtitle = strings.ambientLayoutSubtitle,
                                     options = listOf(
@@ -19850,7 +19927,7 @@ private fun SettingsOverlay(
                             }
                             item {
                                 SettingsToggle(
-                                    icon = Icons.Rounded.Nightlight,
+                                    icon = Icons.Rounded.Schedule,
                                     title = strings.ambientShowClock,
                                     subtitle = strings.ambientShowClockSubtitle,
                                     checked = ambientSettings.showClock,
@@ -19859,7 +19936,7 @@ private fun SettingsOverlay(
                             }
                             item {
                                 SettingsToggle(
-                                    icon = Icons.Rounded.Nightlight,
+                                    icon = Icons.Rounded.Title,
                                     title = strings.ambientShowTitle,
                                     subtitle = strings.ambientShowTitleSubtitle,
                                     checked = ambientSettings.showTitle,
@@ -19868,7 +19945,7 @@ private fun SettingsOverlay(
                             }
                             item {
                                 SettingsToggle(
-                                    icon = Icons.Rounded.Nightlight,
+                                    icon = Icons.Rounded.LinearScale,
                                     title = strings.ambientShowProgress,
                                     subtitle = strings.ambientShowProgressSubtitle,
                                     checked = ambientSettings.showProgress,
@@ -19877,7 +19954,7 @@ private fun SettingsOverlay(
                             }
                             item {
                                 SettingsToggle(
-                                    icon = Icons.Rounded.Nightlight,
+                                    icon = Icons.Rounded.Contrast,
                                     title = strings.ambientAmoledBlack,
                                     subtitle = strings.ambientAmoledBlackSubtitle,
                                     checked = ambientSettings.amoledBlack,
@@ -19886,9 +19963,9 @@ private fun SettingsOverlay(
                             }
                             item {
                                 SettingsChoiceRow(
-                                    icon = Icons.Rounded.Nightlight,
+                                    icon = Icons.Rounded.BrightnessMedium,
                                     title = strings.ambientBrightness,
-                                    subtitle = strings.ambientModeSubtitle,
+                                    subtitle = "",
                                     options = listOf(
                                         "0.10" to "10%",
                                         "0.25" to "25%",
@@ -19904,27 +19981,27 @@ private fun SettingsOverlay(
                             }
                             item {
                                 SettingsToggle(
-                                    icon = Icons.Rounded.Nightlight,
+                                    icon = Icons.Rounded.BrightnessAuto,
                                     title = strings.ambientAutoDim,
-                                    subtitle = strings.ambientModeSubtitle,
+                                    subtitle = "",
                                     checked = ambientSettings.autoDim,
                                     onCheckedChange = { onAmbientSettings(ambientSettings.copy(autoDim = it)) }
                                 )
                             }
                             item {
                                 SettingsToggle(
-                                    icon = Icons.Rounded.Nightlight,
+                                    icon = Icons.Rounded.Grain,
                                     title = strings.ambientPixelShift,
-                                    subtitle = strings.ambientModeSubtitle,
+                                    subtitle = "",
                                     checked = ambientSettings.pixelShift,
                                     onCheckedChange = { onAmbientSettings(ambientSettings.copy(pixelShift = it)) }
                                 )
                             }
                             item {
                                 SettingsToggle(
-                                    icon = Icons.Rounded.Nightlight,
+                                    icon = Icons.Rounded.Sensors,
                                     title = strings.ambientProximityBlackout,
-                                    subtitle = strings.ambientModeSubtitle,
+                                    subtitle = "",
                                     checked = ambientSettings.proximityBlackout,
                                     onCheckedChange = { onAmbientSettings(ambientSettings.copy(proximityBlackout = it)) }
                                 )
@@ -19933,7 +20010,7 @@ private fun SettingsOverlay(
                                 SettingsToggle(
                                     icon = Icons.Rounded.Subtitles,
                                     title = strings.ambientShowLyrics,
-                                    subtitle = strings.ambientModeSubtitle,
+                                    subtitle = "",
                                     checked = ambientSettings.showLyrics,
                                     onCheckedChange = { onAmbientSettings(ambientSettings.copy(showLyrics = it)) }
                                 )
@@ -19942,16 +20019,71 @@ private fun SettingsOverlay(
                                 SettingsToggle(
                                     icon = Icons.Rounded.AutoAwesome,
                                     title = strings.ambientShowCanvas,
-                                    subtitle = strings.ambientModeSubtitle,
+                                    subtitle = "",
                                     checked = ambientSettings.showCanvas,
                                     onCheckedChange = { onAmbientSettings(ambientSettings.copy(showCanvas = it)) }
                                 )
                             }
+                        }
+                        "content" -> {
                             standaloneItem {
-                                FreshDiscoverySettingsCard(
-                                    settings = automationSettings.freshDiscovery,
-                                    onSettings = { value -> onAutomationSettings(automationSettings.copy(freshDiscovery = value)) }
+                                val musicRegionCopy = com.luc4n3x.levyra.ui.i18n.musicRegionCopy(strings.code)
+                                var musicRegionSheetOpen by rememberSaveable { mutableStateOf(false) }
+                                com.luc4n3x.levyra.ui.regional.RegionalPreferencesCard(
+                                    languageCode = strings.code,
+                                    appLanguageValue = LevyraLanguageCatalog.displayName(currentLanguageCode),
+                                    contentCountryValue = ChartsCatalog.supportedRegion(musicRegionId)
+                                        ?.let { region -> "${region.emoji} ${ChartMarketDirectory.displayName(region, currentLanguageCode)}" }
+                                        ?: musicRegionCopy.automatic,
+                                    preferredAudioLanguage = preferredAudioLanguage,
+                                    selectedAppLanguage = currentLanguageCode,
+                                    onAppLanguage = onLanguage,
+                                    onContentCountryClick = { musicRegionSheetOpen = true },
+                                    onPreferredAudioLanguage = onPreferredAudioLanguage,
+                                    section = com.luc4n3x.levyra.ui.regional.RegionalPreferencesSection.Content
                                 )
+                                if (musicRegionSheetOpen) {
+                                    ChartMarketSheet(
+                                        regions = ChartsCatalog.regions,
+                                        selectedId = musicRegionId,
+                                        languageCode = currentLanguageCode,
+                                        onSelect = onMusicRegion,
+                                        onDismiss = { musicRegionSheetOpen = false },
+                                        title = com.luc4n3x.levyra.ui.i18n.LevyraRegionalStrings.forCode(strings.code).contentCountryTitle,
+                                        automaticLabel = musicRegionCopy.automatic
+                                    )
+                                }
+                            }
+                            standaloneItem { SettingsSectionLabel(strings.settingsHubCopy[SettingsHubText.ProfileAndTaste]) }
+                            item {
+                                SettingsButton(
+                                    icon = Icons.Rounded.Settings,
+                                    title = strings.redoQuestionnaire,
+                                    subtitle = strings.redoQuestionnaireSubtitle,
+                                    onClick = onRedoQuestionnaire
+                                )
+                            }
+                            item {
+                                SettingsButton(
+                                    icon = Icons.Rounded.Person,
+                                    title = strings.profilePhoto,
+                                    subtitle = if (profilePhotoSet) {
+                                        strings.profilePhotoChangeSubtitle
+                                    } else {
+                                        strings.profilePhotoAddSubtitle
+                                    },
+                                    onClick = onPickProfilePhoto
+                                )
+                            }
+                            if (profilePhotoSet) {
+                                item {
+                                    SettingsButton(
+                                        icon = Icons.Rounded.Delete,
+                                        title = strings.profilePhotoRemove,
+                                        subtitle = strings.profilePhoto,
+                                        onClick = onRemoveProfilePhoto
+                                    )
+                                }
                             }
                             standaloneItem { SettingsSectionLabel(strings.excludedArtists) }
                             if (excludedArtists.isEmpty()) {
@@ -19972,100 +20104,6 @@ private fun SettingsOverlay(
                                     )
                                 }
                             }
-                            standaloneItem { SettingsSectionLabel(strings.playback) }
-                            item {
-                                SettingsToggle(
-                                    icon = Icons.Rounded.SkipNext,
-                                    title = strings.sponsorBlock,
-                                    subtitle = strings.sponsorBlockSubtitle,
-                                    checked = sponsorBlock,
-                                    onCheckedChange = onSponsorBlock
-                                )
-                            }
-                            item {
-                                SettingsToggle(
-                                    icon = Icons.Rounded.Subtitles,
-                                    title = strings.enhanceVideoMetadata,
-                                    subtitle = strings.enhanceVideoMetadataSubtitle,
-                                    checked = interfaceSettings.enhanceVideoMetadata,
-                                    onCheckedChange = { value ->
-                                        onInterfaceSettings(
-                                            interfaceSettings.copy(enhanceVideoMetadata = value)
-                                        )
-                                    }
-                                )
-                            }
-                            item {
-                                SettingsToggle(
-                                    icon = Icons.Rounded.Bedtime,
-                                    title = strings.skipSilence,
-                                    subtitle = strings.skipSilenceSubtitle,
-                                    checked = skipSilence,
-                                    onCheckedChange = onSkipSilence
-                                )
-                            }
-                            item {
-                                SettingsToggle(
-                                    icon = Icons.Rounded.StayCurrentPortrait,
-                                    title = strings.keepScreenOn,
-                                    subtitle = strings.keepScreenOnSubtitle,
-                                    checked = interfaceSettings.keepScreenOnWhilePlaying,
-                                    onCheckedChange = { value ->
-                                        onInterfaceSettings(
-                                            interfaceSettings.copy(keepScreenOnWhilePlaying = value)
-                                        )
-                                    }
-                                )
-                            }
-                            standaloneItem { SettingsSectionLabel(automationCopy.automation) }
-                            item {
-                                SettingsToggle(
-                                    icon = Icons.Rounded.Bluetooth,
-                                    title = automationCopy.bluetoothResume,
-                                    subtitle = automationCopy.bluetoothResumeSubtitle,
-                                    checked = automationSettings.resumeOnBluetoothReconnect,
-                                    onCheckedChange = { value ->
-                                        onAutomationSettings(
-                                            automationSettings.copy(resumeOnBluetoothReconnect = value)
-                                        )
-                                    }
-                                )
-                            }
-                            item {
-                                SettingsToggle(
-                                    icon = Icons.AutoMirrored.Rounded.VolumeOff,
-                                    title = automationCopy.pauseOnMute,
-                                    subtitle = automationCopy.pauseOnMuteSubtitle,
-                                    checked = automationSettings.pauseOnMute,
-                                    onCheckedChange = { value ->
-                                        onAutomationSettings(automationSettings.copy(pauseOnMute = value))
-                                    }
-                                )
-                            }
-                            item {
-                                SettingsToggle(
-                                    icon = Icons.Rounded.OfflinePin,
-                                    title = automationCopy.autoDownloadFavorites,
-                                    subtitle = automationCopy.autoDownloadFavoritesSubtitle,
-                                    checked = automationSettings.autoDownloadFavorites,
-                                    onCheckedChange = { value ->
-                                        onAutomationSettings(automationSettings.copy(autoDownloadFavorites = value))
-                                    }
-                                )
-                            }
-                            item {
-                                SettingsToggle(
-                                    icon = Icons.Rounded.SkipNext,
-                                    title = automationCopy.skipUnrecoverable,
-                                    subtitle = automationCopy.skipUnrecoverableSubtitle,
-                                    checked = automationSettings.skipUnrecoverableErrors,
-                                    onCheckedChange = { value ->
-                                        onAutomationSettings(
-                                            automationSettings.copy(skipUnrecoverableErrors = value)
-                                        )
-                                    }
-                                )
-                            }
                         }
                         "downloads" -> {
                             item {
@@ -20075,31 +20113,17 @@ private fun SettingsOverlay(
                                     onRefresh = onRefreshSmartOffline
                                 )
                             }
-                            item {
-                                val prefetchCopy = advancedPrefetchCopy(strings.code)
-                                SettingsChoiceRow(
-                                    icon = Icons.AutoMirrored.Rounded.QueueMusic,
-                                    title = prefetchCopy.title,
-                                    subtitle = prefetchCopy.description,
-                                    options = ADVANCED_QUEUE_PREFETCH_OPTIONS.map { tracks ->
-                                        tracks.toString() to if (tracks == ADVANCED_QUEUE_PREFETCH_OFF) prefetchCopy.off else prefetchCopy.tracks(tracks)
-                                    },
-                                    selected = advancedQueuePrefetchTracks.toString(),
-                                    onSelect = { value -> value.toIntOrNull()?.let(onAdvancedQueuePrefetch) }
-                                )
-                            }
-                            if (advancedQueuePrefetchTracks > ADVANCED_QUEUE_PREFETCH_OFF) {
+                            if (downloadQueue.isNotEmpty()) {
                                 item {
-                                    val mobileDataCopy = advancedPrefetchMobileDataCopy(strings.code)
-                                    SettingsToggle(
-                                        icon = Icons.Rounded.NetworkCell,
-                                        title = mobileDataCopy.title,
-                                        subtitle = mobileDataCopy.description,
-                                        checked = advancedQueuePrefetchOnMobileData,
-                                        onCheckedChange = onAdvancedQueuePrefetchOnMobileData
+                                    DownloadQueueSettingsCard(
+                                        tasks = downloadQueue,
+                                        onPause = onPauseDownload,
+                                        onResume = onResumeDownload,
+                                        onCancel = onCancelDownload
                                     )
                                 }
                             }
+                            standaloneItem { SettingsSectionLabel(strings.settingsHubCopy[SettingsHubText.QualityAndLocation]) }
                             item {
                                 SettingsChoiceRow(
                                     icon = Icons.Rounded.Speed,
@@ -20165,22 +20189,31 @@ private fun SettingsOverlay(
                                     )
                                 }
                             }
+                            standaloneItem { SettingsSectionLabel(strings.settingsHubCopy[SettingsHubText.WhenToDownload]) }
                             item {
+                                val prefetchCopy = advancedPrefetchCopy(strings.code)
                                 SettingsChoiceRow(
-                                    icon = Icons.Rounded.Speed,
-                                    title = strings.downloadSpeedLimit,
-                                    subtitle = strings.downloadSpeedLimitSubtitle,
-                                    options = listOf(
-                                        "0" to strings.downloadSpeedUnlimited,
-                                        "512" to "512 Kbps",
-                                        "1024" to "1 Mbps",
-                                        "2048" to "2 Mbps",
-                                        "4096" to "4 Mbps",
-                                        "8192" to "8 Mbps"
-                                    ),
-                                    selected = downloadSettings.maxRateKbps.toString(),
-                                    onSelect = { value -> onDownloadSettings(downloadSettings.copy(maxRateKbps = value.toInt())) }
+                                    icon = Icons.AutoMirrored.Rounded.QueueMusic,
+                                    title = prefetchCopy.title,
+                                    subtitle = prefetchCopy.description,
+                                    options = ADVANCED_QUEUE_PREFETCH_OPTIONS.map { tracks ->
+                                        tracks.toString() to if (tracks == ADVANCED_QUEUE_PREFETCH_OFF) prefetchCopy.off else prefetchCopy.tracks(tracks)
+                                    },
+                                    selected = advancedQueuePrefetchTracks.toString(),
+                                    onSelect = { value -> value.toIntOrNull()?.let(onAdvancedQueuePrefetch) }
                                 )
+                            }
+                            if (advancedQueuePrefetchTracks > ADVANCED_QUEUE_PREFETCH_OFF) {
+                                item {
+                                    val mobileDataCopy = advancedPrefetchMobileDataCopy(strings.code)
+                                    SettingsToggle(
+                                        icon = Icons.Rounded.NetworkCell,
+                                        title = mobileDataCopy.title,
+                                        subtitle = mobileDataCopy.description,
+                                        checked = advancedQueuePrefetchOnMobileData,
+                                        onCheckedChange = onAdvancedQueuePrefetchOnMobileData
+                                    )
+                                }
                             }
                             item {
                                 SettingsToggle(
@@ -20202,69 +20235,95 @@ private fun SettingsOverlay(
                             }
                             item {
                                 SettingsToggle(
-                                    icon = Icons.Rounded.History,
-                                    title = strings.automaticResume,
-                                    subtitle = strings.partialDownloadResume,
-                                    checked = downloadSettings.resumable,
-                                    onCheckedChange = { onDownloadSettings(downloadSettings.copy(resumable = it)) }
+                                    icon = Icons.Rounded.OfflinePin,
+                                    title = automationCopy.autoDownloadFavorites,
+                                    subtitle = automationCopy.autoDownloadFavoritesSubtitle,
+                                    checked = automationSettings.autoDownloadFavorites,
+                                    onCheckedChange = { value ->
+                                        onAutomationSettings(automationSettings.copy(autoDownloadFavorites = value))
+                                    }
                                 )
                             }
-                            item {
-                                SettingsChoiceRow(
-                                    icon = Icons.AutoMirrored.Rounded.QueueMusic,
-                                    title = strings.simultaneousDownloads,
-                                    subtitle = strings.simultaneousDownloadsSubtitle,
-                                    options = listOf("1" to "1", "2" to "2", "3" to "3", "4" to "4"),
-                                    selected = downloadSettings.maxConcurrentDownloads.toString(),
-                                    onSelect = { value -> onDownloadSettings(downloadSettings.copy(maxConcurrentDownloads = value.toInt())) }
+                            settingsDisclosureSection(
+                                title = strings.settingsHubCopy[SettingsHubText.Advanced],
+                                summary = "${strings.downloadSpeedLimit} · ${strings.simultaneousDownloads} · ${strings.downloadVerifyFile}",
+                                expanded = downloadsAdvancedOpen,
+                                onToggle = { downloadsAdvancedOpen = !downloadsAdvancedOpen },
+                                rows = listOf<@Composable () -> Unit>(
+                                    {
+                                        SettingsChoiceRow(
+                                            icon = Icons.Rounded.Speed,
+                                            title = strings.downloadSpeedLimit,
+                                            subtitle = strings.downloadSpeedLimitSubtitle,
+                                            options = listOf(
+                                                "0" to strings.downloadSpeedUnlimited,
+                                                "512" to "512 Kbps",
+                                                "1024" to "1 Mbps",
+                                                "2048" to "2 Mbps",
+                                                "4096" to "4 Mbps",
+                                                "8192" to "8 Mbps"
+                                            ),
+                                            selected = downloadSettings.maxRateKbps.toString(),
+                                            onSelect = { value -> onDownloadSettings(downloadSettings.copy(maxRateKbps = value.toInt())) }
+                                        )
+                                    },
+                                    {
+                                        SettingsChoiceRow(
+                                            icon = Icons.AutoMirrored.Rounded.QueueMusic,
+                                            title = strings.simultaneousDownloads,
+                                            subtitle = strings.simultaneousDownloadsSubtitle,
+                                            options = listOf("1" to "1", "2" to "2", "3" to "3", "4" to "4"),
+                                            selected = downloadSettings.maxConcurrentDownloads.toString(),
+                                            onSelect = { value -> onDownloadSettings(downloadSettings.copy(maxConcurrentDownloads = value.toInt())) }
+                                        )
+                                    },
+                                    {
+                                        SettingsToggle(
+                                            icon = Icons.Rounded.History,
+                                            title = strings.automaticResume,
+                                            subtitle = strings.partialDownloadResume,
+                                            checked = downloadSettings.resumable,
+                                            onCheckedChange = { onDownloadSettings(downloadSettings.copy(resumable = it)) }
+                                        )
+                                    },
+                                    {
+                                        SettingsToggle(
+                                            icon = Icons.Rounded.Album,
+                                            title = strings.downloadEmbedMetadata,
+                                            subtitle = strings.downloadEmbedMetadataSubtitle,
+                                            checked = downloadSettings.embedMetadata,
+                                            onCheckedChange = { onDownloadSettings(downloadSettings.copy(embedMetadata = it)) }
+                                        )
+                                    },
+                                    {
+                                        SettingsToggle(
+                                            icon = Icons.Rounded.Palette,
+                                            title = strings.downloadEmbedArtwork,
+                                            subtitle = strings.downloadEmbedArtworkSubtitle,
+                                            checked = downloadSettings.embedArtwork,
+                                            onCheckedChange = { onDownloadSettings(downloadSettings.copy(embedArtwork = it)) }
+                                        )
+                                    },
+                                    {
+                                        SettingsToggle(
+                                            icon = Icons.Rounded.Verified,
+                                            title = strings.downloadVerifyFile,
+                                            subtitle = strings.downloadVerifyFileSubtitle,
+                                            checked = downloadSettings.verifyFile,
+                                            onCheckedChange = { onDownloadSettings(downloadSettings.copy(verifyFile = it)) }
+                                        )
+                                    },
+                                    {
+                                        SettingsToggle(
+                                            icon = Icons.Rounded.DownloadDone,
+                                            title = strings.downloadSkipDuplicates,
+                                            subtitle = strings.downloadSkipDuplicatesSubtitle,
+                                            checked = downloadSettings.skipExisting,
+                                            onCheckedChange = { onDownloadSettings(downloadSettings.copy(skipExisting = it)) }
+                                        )
+                                    }
                                 )
-                            }
-                            item {
-                                SettingsToggle(
-                                    icon = Icons.Rounded.Album,
-                                    title = strings.downloadEmbedMetadata,
-                                    subtitle = strings.downloadEmbedMetadataSubtitle,
-                                    checked = downloadSettings.embedMetadata,
-                                    onCheckedChange = { onDownloadSettings(downloadSettings.copy(embedMetadata = it)) }
-                                )
-                            }
-                            item {
-                                SettingsToggle(
-                                    icon = Icons.Rounded.Palette,
-                                    title = strings.downloadEmbedArtwork,
-                                    subtitle = strings.downloadEmbedArtworkSubtitle,
-                                    checked = downloadSettings.embedArtwork,
-                                    onCheckedChange = { onDownloadSettings(downloadSettings.copy(embedArtwork = it)) }
-                                )
-                            }
-                            item {
-                                SettingsToggle(
-                                    icon = Icons.Rounded.Verified,
-                                    title = strings.downloadVerifyFile,
-                                    subtitle = strings.downloadVerifyFileSubtitle,
-                                    checked = downloadSettings.verifyFile,
-                                    onCheckedChange = { onDownloadSettings(downloadSettings.copy(verifyFile = it)) }
-                                )
-                            }
-                            item {
-                                SettingsToggle(
-                                    icon = Icons.Rounded.DownloadDone,
-                                    title = strings.downloadSkipDuplicates,
-                                    subtitle = strings.downloadSkipDuplicatesSubtitle,
-                                    checked = downloadSettings.skipExisting,
-                                    onCheckedChange = { onDownloadSettings(downloadSettings.copy(skipExisting = it)) }
-                                )
-                            }
-                            if (downloadQueue.isNotEmpty()) {
-                                item {
-                                    DownloadQueueSettingsCard(
-                                        tasks = downloadQueue,
-                                        onPause = onPauseDownload,
-                                        onResume = onResumeDownload,
-                                        onCancel = onCancelDownload
-                                    )
-                                }
-                            }
+                            )
                         }
                         "lyrics" -> {
                             item {
@@ -20308,6 +20367,7 @@ private fun SettingsOverlay(
                                     }
                                 )
                             }
+                            standaloneItem { SettingsSectionLabel(strings.automaticBackup) }
                             item {
                                 SettingsToggle(
                                     icon = Icons.Rounded.History,
@@ -20387,6 +20447,7 @@ private fun SettingsOverlay(
                                     onCheckedChange = { onBackupSettings(backupSettings.copy(preUpdate = it)) }
                                 )
                             }
+                            standaloneItem { SettingsSectionLabel(strings.settingsHubCopy[SettingsHubText.ManualBackup]) }
                             item {
                                 SettingsButton(
                                     icon = Icons.Rounded.Download,
@@ -20422,7 +20483,28 @@ private fun SettingsOverlay(
                             }
                         }
                         "system" -> {
+                            standaloneItem {
+                                com.luc4n3x.levyra.ui.regional.RegionalPreferencesCard(
+                                    languageCode = strings.code,
+                                    appLanguageValue = LevyraLanguageCatalog.displayName(currentLanguageCode),
+                                    contentCountryValue = "",
+                                    preferredAudioLanguage = preferredAudioLanguage,
+                                    selectedAppLanguage = currentLanguageCode,
+                                    onAppLanguage = onLanguage,
+                                    onContentCountryClick = {},
+                                    onPreferredAudioLanguage = onPreferredAudioLanguage,
+                                    section = com.luc4n3x.levyra.ui.regional.RegionalPreferencesSection.App
+                                )
+                            }
                             standaloneItem { SettingsSectionLabel(strings.playbackResilienceSection) }
+                            item {
+                                SettingsButton(
+                                    icon = Icons.Rounded.Public,
+                                    title = categoryTitle(strings.networkTitle),
+                                    subtitle = strings.networkSubtitle,
+                                    onClick = { activeCategory = "network" }
+                                )
+                            }
                             item {
                                 SettingsButton(
                                     icon = Icons.Rounded.Bolt,
@@ -20443,6 +20525,7 @@ private fun SettingsOverlay(
                                     }
                                 )
                             }
+                            item { DeviceIntegrationSettingsPanel() }
                             item {
                                 SettingsButton(
                                     icon = Icons.Rounded.Bolt,
@@ -20460,64 +20543,6 @@ private fun SettingsOverlay(
                                 )
                             }
                             item { com.luc4n3x.levyra.diagnostics.CrashReportsSettingsEntry() }
-                            standaloneItem { SettingsSectionLabel(strings.preferences) }
-                            item {
-                                SettingsButton(
-                                    icon = Icons.Rounded.Settings,
-                                    title = strings.redoQuestionnaire,
-                                    subtitle = strings.redoQuestionnaireSubtitle,
-                                    onClick = onRedoQuestionnaire
-                                )
-                            }
-                            item {
-                                SettingsButton(
-                                    icon = Icons.Rounded.Person,
-                                    title = strings.profilePhoto,
-                                    subtitle = if (profilePhotoSet) {
-                                        strings.profilePhotoChangeSubtitle
-                                    } else {
-                                        strings.profilePhotoAddSubtitle
-                                    },
-                                    onClick = onPickProfilePhoto
-                                )
-                            }
-                            if (profilePhotoSet) {
-                                item {
-                                    SettingsButton(
-                                        icon = Icons.Rounded.Delete,
-                                        title = strings.profilePhotoRemove,
-                                        subtitle = strings.profilePhoto,
-                                        onClick = onRemoveProfilePhoto
-                                    )
-                                }
-                            }
-                            standaloneItem {
-                                val musicRegionCopy = com.luc4n3x.levyra.ui.i18n.musicRegionCopy(strings.code)
-                                var musicRegionSheetOpen by rememberSaveable { mutableStateOf(false) }
-                                com.luc4n3x.levyra.ui.regional.RegionalPreferencesCard(
-                                    languageCode = strings.code,
-                                    appLanguageValue = LevyraLanguageCatalog.displayName(currentLanguageCode),
-                                    contentCountryValue = ChartsCatalog.supportedRegion(musicRegionId)
-                                        ?.let { region -> "${region.emoji} ${ChartMarketDirectory.displayName(region, currentLanguageCode)}" }
-                                        ?: musicRegionCopy.automatic,
-                                    preferredAudioLanguage = preferredAudioLanguage,
-                                    selectedAppLanguage = currentLanguageCode,
-                                    onAppLanguage = onLanguage,
-                                    onContentCountryClick = { musicRegionSheetOpen = true },
-                                    onPreferredAudioLanguage = onPreferredAudioLanguage
-                                )
-                                if (musicRegionSheetOpen) {
-                                    ChartMarketSheet(
-                                        regions = ChartsCatalog.regions,
-                                        selectedId = musicRegionId,
-                                        languageCode = currentLanguageCode,
-                                        onSelect = onMusicRegion,
-                                        onDismiss = { musicRegionSheetOpen = false },
-                                        title = com.luc4n3x.levyra.ui.i18n.LevyraRegionalStrings.forCode(strings.code).contentCountryTitle,
-                                        automaticLabel = musicRegionCopy.automatic
-                                    )
-                                }
-                            }
                         }
                         "app" -> {
                             if (BuildConfig.UPSTREAM_UPDATES_ENABLED) {
@@ -20776,6 +20801,11 @@ private data class SettingsCategoryMeta(
     val group: SettingsHubGroup
 )
 
+private val SettingsSubpageParents = mapOf("ambient" to "player", "lyrics" to "player", "network" to "system")
+
+private fun settingsCategoryParent(id: String?): String? = SettingsSubpageParents[id]
+
+
 private enum class SettingsHubGroup { Appearance, Listening, Library, Accounts, System }
 
 private fun settingsHubGroupTitle(group: SettingsHubGroup, strings: LevyraStrings): String = strings.settingsHubCopy[
@@ -20798,18 +20828,18 @@ internal class SettingsStudioEntry(
 )
 
 @Composable
-private fun SettingsHubGroupLabel(text: String) {
+private fun SettingsHubGroupLabel(text: String, accent: Color, modifier: Modifier = Modifier) {
     if (LevyraIsQobuz) return QobuzSettingsGroupLabel(text)
     if (LevyraIsAtelier) return AtelierSettingsGroupLabel(text)
     if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) return MonoSettingsGroupLabel(text)
     val locale = LocalConfiguration.current.locales[0]
     Text(
         SkinChrome.label(text, locale),
-        color = if (SkinChrome.labelsUppercase) LevyraCyan else LevyraMuted,
-        fontSize = if (SkinChrome.labelsUppercase) 12.sp else 13.sp,
+        color = if (SkinChrome.labelsUppercase) LevyraCyan else if (SkinChrome.active) LevyraMuted else accent,
+        fontSize = if (SkinChrome.labelsUppercase) 12.sp else if (SkinChrome.active) 13.sp else 14.sp,
         fontWeight = if (SkinChrome.active) FontWeight.Medium else FontWeight.Bold,
         letterSpacing = if (SkinChrome.labelsUppercase) 1.6.sp else 0.4.sp,
-        modifier = Modifier
+        modifier = modifier
             .padding(start = 8.dp, top = 22.dp, bottom = 10.dp)
             .semantics { heading() }
     )
@@ -20845,7 +20875,7 @@ private fun SettingsStudioShelf(title: String, subtitle: String, entries: List<S
                 Surface(
                     onClick = entry.onClick,
                     shape = RoundedCornerShape(if (SkinChrome.active) SkinChrome.outerCorner else 22.dp),
-                    color = if (SkinChrome.active) LevyraAdaptiveCard else entry.accent.copy(alpha = 0.12f),
+                    color = LevyraAdaptiveCard,
                     modifier = Modifier.width(180.dp).heightIn(min = 80.dp)
                 ) {
                     Row(
@@ -20857,10 +20887,10 @@ private fun SettingsStudioShelf(title: String, subtitle: String, entries: List<S
                             modifier = Modifier
                                 .size(42.dp)
                                 .clip(if (SkinChrome.active) SkinChrome.iconShape else entry.shape.toShape())
-                                .background(if (SkinChrome.active) SkinChrome.iconBackground else entry.accent),
+                                .background(if (SkinChrome.active) SkinChrome.iconBackground else LevyraText.copy(alpha = 0.08f)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(entry.icon, null, tint = if (SkinChrome.active) SkinChrome.iconTint else LevyraBlack, modifier = Modifier.size(22.dp))
+                            Icon(entry.icon, null, tint = if (SkinChrome.active) SkinChrome.iconTint else LevyraText.copy(alpha = 0.88f), modifier = Modifier.size(22.dp))
                         }
                         Text(
                             text = entry.title,
@@ -20880,15 +20910,33 @@ private fun SettingsStudioShelf(title: String, subtitle: String, entries: List<S
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun SettingsCategoryCard(meta: SettingsCategoryMeta, index: Int, count: Int, onClick: () -> Unit) {
+private fun SettingsCategoryCard(
+    meta: SettingsCategoryMeta,
+    index: Int,
+    count: Int,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
     if (LevyraIsQobuz) return QobuzSettingsRow(meta.title, meta.icon, index == count - 1, onClick)
     if (LevyraIsAtelier) return AtelierSettingsRow(meta.title, meta.summary, meta.icon, index == count - 1, onClick)
     if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) return MonoSettingsRow(meta.title, meta.summary, meta.icon, index == 0, index == count - 1, onClick)
+    val spacing = Modifier.padding(bottom = if (index < count - 1) 2.dp else 0.dp)
+    if (!SkinChrome.active) {
+        return SettingsHubCategoryRow(
+            title = meta.title,
+            summary = meta.summary,
+            icon = meta.icon,
+            index = index,
+            count = count,
+            modifier = modifier.then(spacing),
+            onClick = onClick
+        )
+    }
     SettingsTile(
         onClick = onClick,
         groupIndex = index,
         groupCount = count,
-        modifier = Modifier.padding(bottom = if (index < count - 1) 2.dp else 0.dp)
+        modifier = modifier.then(spacing)
     ) {
         Row(
             modifier = Modifier.padding(start = 14.dp, end = 12.dp, top = 14.dp, bottom = 14.dp),
@@ -20899,9 +20947,7 @@ private fun SettingsCategoryCard(meta: SettingsCategoryMeta, index: Int, count: 
             SettingsTileText(
                 title = meta.title,
                 subtitle = meta.summary,
-                modifier = Modifier.weight(1f),
-                maxTitleLines = Int.MAX_VALUE,
-                maxSubtitleLines = Int.MAX_VALUE
+                modifier = Modifier.weight(1f)
             )
             Icon(
                 Icons.AutoMirrored.Rounded.KeyboardArrowRight,
@@ -20967,10 +21013,10 @@ internal fun SettingsTileIcon(icon: ImageVector, accent: Color, shape: Shape = M
         modifier = Modifier
             .size(if (LevyraIsAppleMusic) 30.dp else 44.dp)
             .clip(if (SkinChrome.active) SkinChrome.iconShape else shape)
-            .background(if (SkinChrome.active) SkinChrome.iconBackground else accent.copy(alpha = 0.18f)),
+            .background(if (SkinChrome.active) SkinChrome.iconBackground else LevyraText.copy(alpha = 0.08f)),
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, null, tint = if (SkinChrome.active) SkinChrome.iconTint else accent, modifier = Modifier.size(if (LevyraIsAppleMusic) 19.dp else 22.dp))
+        Icon(icon, null, tint = if (SkinChrome.active) SkinChrome.iconTint else LevyraText.copy(alpha = 0.88f), modifier = Modifier.size(if (LevyraIsAppleMusic) 19.dp else 22.dp))
     }
 }
 
@@ -20983,15 +21029,7 @@ internal fun SettingsTileText(
     maxSubtitleLines: Int = Int.MAX_VALUE
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        Text(
-            title,
-            color = LevyraText,
-            fontFamily = if (LevyraIsAtelier) AtelierSerif else null,
-            fontSize = if (LevyraIsAppleMusic || LevyraIsAtelier) 17.sp else 16.sp,
-            fontWeight = if (LevyraIsAppleMusic) FontWeight.Normal else if (SkinChrome.active) FontWeight.Medium else FontWeight.Bold,
-            maxLines = maxTitleLines,
-            overflow = TextOverflow.Ellipsis
-        )
+        SettingsTileTitle(title, maxTitleLines)
         if (subtitle.isNotBlank()) {
             Text(
                 subtitle,
@@ -21063,11 +21101,14 @@ internal val LocalSettingsAccent = compositionLocalOf<Color?> { null }
 private val SettingsGroupGap = 2.dp
 
 @Immutable
-private data class SettingsGroupSlot(val index: Int, val count: Int)
+internal data class SettingsGroupSlot(val index: Int, val count: Int)
 
-private val LocalSettingsGroupSlot = compositionLocalOf<SettingsGroupSlot?> { null }
+internal val LocalSettingsGroupSlot = compositionLocalOf<SettingsGroupSlot?> { null }
 
-private class SettingsGroupCollector(private val delegate: LazyListScope) : LazyListScope by delegate {
+internal class SettingsGroupCollector(
+    private val delegate: LazyListScope,
+    private val entrance: ((Int) -> Modifier)? = null
+) : LazyListScope by delegate {
     private class Entry(
         val key: Any?,
         val contentType: Any?,
@@ -21097,11 +21138,13 @@ private class SettingsGroupCollector(private val delegate: LazyListScope) : Lazy
     }
 
     fun flush() {
+        val entranceFor = entrance
         var start = 0
         while (start < entries.size) {
             val entry = entries[start]
             if (entry.standalone) {
-                delegate.item(entry.key, entry.contentType, entry.content)
+                val order = start
+                delegate.item(entry.key, entry.contentType) { SettingsEntered(entranceFor?.invoke(order)) { entry.content(this) } }
                 start++
                 continue
             }
@@ -21111,7 +21154,7 @@ private class SettingsGroupCollector(private val delegate: LazyListScope) : Lazy
                 val grouped = entries[position]
                 val slot = SettingsGroupSlot(position - start, end - start)
                 delegate.item(grouped.key, grouped.contentType) {
-                    CompositionLocalProvider(LocalSettingsGroupSlot provides slot) { grouped.content(this) }
+                    SettingsEntered(entranceFor?.invoke(position)) { CompositionLocalProvider(LocalSettingsGroupSlot provides slot) { grouped.content(this) } }
                 }
             }
             start = end
@@ -21119,8 +21162,16 @@ private class SettingsGroupCollector(private val delegate: LazyListScope) : Lazy
     }
 }
 
-private fun LazyListScope.settingsGroupedItems(block: SettingsGroupCollector.() -> Unit) {
-    SettingsGroupCollector(this).apply(block).flush()
+@Composable
+private fun SettingsEntered(modifier: Modifier?, content: @Composable () -> Unit) {
+    if (modifier == null) content() else Box(modifier) { content() }
+}
+
+private fun LazyListScope.settingsGroupedItems(
+    entrance: ((Int) -> Modifier)? = null,
+    block: SettingsGroupCollector.() -> Unit
+) {
+    SettingsGroupCollector(this, entrance).apply(block).flush()
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -21381,37 +21432,6 @@ private fun String.smartOfflineEntries(): Set<String> = split(',')
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun SettingsChoiceRow(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    options: List<Pair<String, String>>,
-    selected: String,
-    onSelect: (String) -> Unit
-) {
-    SettingsTile {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                SettingsTileIcon(icon = icon, accent = LocalSettingsAccent.current ?: LevyraViolet)
-                SettingsTileText(title = title, subtitle = subtitle, modifier = Modifier.weight(1f))
-            }
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                options.forEach { option ->
-                    SettingsChoiceChip(
-                        label = option.second,
-                        active = option.first == selected,
-                        onClick = { onSelect(option.first) }
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun PlayerColorModeSetting(
     settings: LevyraInterfaceSettings,
     onSettings: (LevyraInterfaceSettings) -> Unit
@@ -21642,7 +21662,7 @@ private fun SettingsSectionLabel(text: String) {
     }
     Text(
         SkinChrome.label(title, locale),
-        color = if (LevyraIsPrism && !LevyraIsTorque) LevyraMuted else LevyraCyan,
+        color = settingsSectionLabelColor(),
         fontSize = if (SkinChrome.labelsUppercase) 12.sp else 14.sp,
         fontWeight = if (SkinChrome.active) FontWeight.Medium else FontWeight.Bold,
         letterSpacing = if (SkinChrome.labelsUppercase) 1.6.sp else 0.2.sp,
@@ -22593,7 +22613,10 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
     val effectiveAnimationsEnabled = animationsEnabled && LocalAnimationsEnabled.current
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val cardWidth = rememberShelfItemWidth(maxWidth, HOME_ALBUM_CARD_WIDTH)
+        val albumRowState = rememberLazyListState()
+        val railMotion = defaultRailMotionEnabled()
         LazyRow(
+            state = albumRowState,
             horizontalArrangement = Arrangement.spacedBy(LevyraHomeDesign.ShelfItemGap),
             contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
         ) {
@@ -22601,7 +22624,8 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
                 items = albums,
                 key = { index, album -> "home-album-$index-${album.browseId.ifBlank { "${album.title.trim().lowercase()}|${album.artist.trim().lowercase()}" }}" },
                 contentType = { _, _ -> "home-album-card" }
-            ) { _, album ->
+            ) { index, album ->
+                val motionKey = "home-album-$index-${album.browseId.ifBlank { "${album.title.trim().lowercase()}|${album.artist.trim().lowercase()}" }}"
                 val interaction = remember { MutableInteractionSource() }
                 val isPressed by interaction.collectIsPressedAsState()
                 val scale by animateFloatAsState(
@@ -22611,6 +22635,7 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
                 )
                 Column(
                     modifier = Modifier
+                        .defaultRailItemMotion(railMotion, albumRowState, motionKey)
                         .graphicsLayer {
                             scaleX = scale
                             scaleY = scale
@@ -22636,7 +22661,7 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
                                 url = album.thumbnailUrl,
                                 contentDescription = album.title,
                                 contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
+                                modifier = Modifier.fillMaxSize().defaultRailParallax(railMotion, albumRowState, motionKey)
                             )
                         } else {
                             Box(

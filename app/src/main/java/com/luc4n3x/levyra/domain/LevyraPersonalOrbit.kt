@@ -4,7 +4,7 @@ import java.util.Locale
 import kotlin.math.abs
 
 object LevyraPersonalOrbit {
-    const val DISPLAY_LIMIT = 20
+    const val DISPLAY_LIMIT = 27
 
     private const val RECORDING_DURATION_TOLERANCE_MS = 12_000L
 
