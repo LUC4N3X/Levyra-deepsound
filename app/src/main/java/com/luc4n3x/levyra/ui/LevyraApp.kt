@@ -1446,7 +1446,8 @@ private fun ChartMarketHeader(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                var titleOverflows by remember(title) { mutableStateOf(false) }
+                val configuration = LocalConfiguration.current
+                var titleOverflows by remember(title, configuration.screenWidthDp, configuration.fontScale) { mutableStateOf(false) }
                 val titleMarquee = titleOverflows && LocalAnimationsEnabled.current
                 Text(
                     text = title,
@@ -11829,7 +11830,7 @@ private fun PersonalListeningShelf(
             ?: "orbit-page-index-$pageIndex"
     }
     val orbitMotion = defaultRailMotionEnabled()
-    val orbitPage: @Composable (Int, Modifier) -> Unit = { pageIndex, pageModifier ->
+    val orbitPage: @Composable (Int, Boolean, Modifier) -> Unit = { pageIndex, paged, pageModifier ->
         Column(
             modifier = pageModifier.padding(
                 start = LevyraHomeDesign.HorizontalInset,
@@ -11858,7 +11859,7 @@ private fun PersonalListeningShelf(
                                 isResolving = isResolving && track.id == currentId,
                                 onPlay = { onPlay(track) },
                                 onActions = { onTrackActions(track) },
-                                modifier = Modifier.weight(1f).defaultOrbitTileMotion(orbitMotion, pagerState, pageIndex, rowIndex * HOME_PERSONAL_ORBIT_GRID_COLUMNS + columnIndex)
+                                modifier = Modifier.weight(1f).defaultOrbitTileMotion(orbitMotion && paged, pagerState, pageIndex, rowIndex * HOME_PERSONAL_ORBIT_GRID_COLUMNS + columnIndex)
                             )
                         }
                     }
@@ -11891,7 +11892,7 @@ private fun PersonalListeningShelf(
                 ) {
                     pages.indices.forEach { pageIndex ->
                         key(pageKey(pageIndex)) {
-                            orbitPage(pageIndex, Modifier.width(LevyraHomeDesign.OrbitWallPageWidth))
+                            orbitPage(pageIndex, false, Modifier.width(LevyraHomeDesign.OrbitWallPageWidth))
                         }
                     }
                 }
@@ -11902,7 +11903,7 @@ private fun PersonalListeningShelf(
                         modifier = Modifier.fillMaxWidth(),
                         key = pageKey
                     ) { pageIndex ->
-                        orbitPage(pageIndex, Modifier.fillMaxWidth().defaultPagerPageMotion(defaultRailMotionEnabled(), pagerState, pageIndex))
+                        orbitPage(pageIndex, true, Modifier.fillMaxWidth().defaultPagerPageMotion(defaultRailMotionEnabled(), pagerState, pageIndex))
                     }
                     if (pages.size > 1) {
                         Row(

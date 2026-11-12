@@ -182,7 +182,7 @@ class HomeYoutubeMusicSourceTest {
     @Test
     fun shortAccountOrbitIsFilledFromOtherYoutubeMusicShelves() {
         val shortOrbit = (1..9).map { track("orbit$it") }
-        val shelf = (1..12).map { track("shelf$it") }
+        val shelf = (1..HOME_PERSONAL_ORBIT_MAX_TRACKS).map { track("shelf$it") }
         val source = YoutubeMusicHomeSource.Ready(
             YoutubeMusicHome("account", "it", shortOrbit, listOf(HomeSection("Mixed for you", shelf)), emptyList())
         )

@@ -96,9 +96,9 @@ class LevyraPersonalOrbitIdentityTest {
     }
 
     @Test
-    fun fillsOrbitToTwentyWithTasteRankedUniqueDonors() {
+    fun fillsOrbitToDisplayLimitWithTasteRankedUniqueDonors() {
         val favorite = track(id = "favorite001", title = "Seed", artist = "Sfera Ebbasta", moodTags = setOf("rap"))
-        val donors = (1..25).map { index ->
+        val donors = (1..LevyraPersonalOrbit.DISPLAY_LIMIT + 5).map { index ->
             track(
                 id = "donor${index.toString().padStart(6, '0')}",
                 title = "Track $index",
@@ -117,8 +117,8 @@ class LevyraPersonalOrbitIdentityTest {
             languageCode = "it"
         )
 
-        assertEquals(20, result.size)
-        assertEquals(20, LevyraPersonalOrbit.distinctRecordings(result).size)
+        assertEquals(LevyraPersonalOrbit.DISPLAY_LIMIT, result.size)
+        assertEquals(LevyraPersonalOrbit.DISPLAY_LIMIT, LevyraPersonalOrbit.distinctRecordings(result).size)
         assertEquals("Seed", result.first().title)
     }
 
