@@ -154,6 +154,7 @@ internal fun FloatingNavSidebar(
     val haptics = LocalLevyraHaptics.current
     val gestureAnimated by rememberUpdatedState(animated)
     val gestureHaptics by rememberUpdatedState(haptics)
+    val interactive by rememberUpdatedState(visible)
     val scope = rememberCoroutineScope()
     val persist by rememberUpdatedState(onSettingsChange)
     val latestSettings by rememberUpdatedState(settings)
@@ -243,7 +244,7 @@ internal fun FloatingNavSidebar(
                 val band = (bottom - top).coerceAtLeast(SidebarTouchTarget.roundToPx())
                 val placeable = measurable.measure(Constraints(maxWidth = width, maxHeight = band))
                 val left = safeHorizontal.getLeft(this, layoutDirection) + gap
-                val right = width - safeHorizontal.getRight(this, layoutDirection) - gap - placeable.width
+                val right = maxOf(left, width - safeHorizontal.getRight(this, layoutDirection) - gap - placeable.width)
                 geometry.width = width.toFloat()
                 geometry.leftX = left.toFloat()
                 geometry.rightX = right.toFloat()
@@ -279,6 +280,7 @@ internal fun FloatingNavSidebar(
                     .pointerInput(Unit) {
                         detectDragGestures(
                             onDragStart = {
+                                if (!interactive) return@detectDragGestures
                                 settleJob?.cancel()
                                 dragging = true
                                 gestureHaptics.perform(LevyraHapticAction.SeekSnap)
@@ -286,6 +288,7 @@ internal fun FloatingNavSidebar(
                             onDragEnd = { settle() },
                             onDragCancel = { settle() },
                             onDrag = { change, amount ->
+                                if (!dragging) return@detectDragGestures
                                 change.consume()
                                 if (geometry.travel > 0f) {
                                     anchor.floatValue = (anchor.floatValue + amount.y / geometry.travel).coerceIn(0f, 1f)
@@ -337,7 +340,7 @@ internal fun FloatingNavSidebar(
                             label = selectedEntry?.let { "${copy.handle}, ${it.label}" } ?: copy.handle,
                             expandLabel = copy.expand,
                             accessibilityActions = accessibilityActions,
-                            onExpand = { expanded = true }
+                            onExpand = { if (interactive) expanded = true }
                         )
                     }
                 }
