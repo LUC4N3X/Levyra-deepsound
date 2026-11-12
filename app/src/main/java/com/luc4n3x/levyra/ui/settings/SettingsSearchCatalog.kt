@@ -9,6 +9,7 @@ import com.luc4n3x.levyra.ui.i18n.advancedPrefetchMobileDataCopy
 import com.luc4n3x.levyra.ui.i18n.automationCopy
 import com.luc4n3x.levyra.ui.i18n.deviceIntegrationCopy
 import com.luc4n3x.levyra.ui.i18n.dockMorph
+import com.luc4n3x.levyra.ui.i18n.floatingNav
 import com.luc4n3x.levyra.ui.i18n.musicRegionCopy
 import com.luc4n3x.levyra.ui.i18n.parametricEqCopy
 import com.luc4n3x.levyra.ui.i18n.preferLocalAudioCopy
@@ -88,6 +89,7 @@ private fun MutableList<SettingsSearchEntry>.appearanceEntries(strings: LevyraSt
     entry("design.visual_performance", strings.visualPerformance, strings.visualPerformanceFullSubtitle, "${strings.visualPerformanceAuto} ${strings.visualPerformanceSmooth} performance fps", categories.design)
     entry("design.liquid_glass", strings.liquidGlass, strings.liquidGlassSubtitle, "glass blur transparency", categories.design)
     entry("design.dock_morph", strings.dockMorph().title, strings.dockMorph().subtitle, "dock mini player navigation bar compact scroll merge", categories.design)
+    entry("design.floating_nav", strings.floatingNav().title, strings.floatingNav().subtitle, "sidebar floating navigation side edge left right drag rail", categories.design)
     entry("design.motion_artwork", strings.motionArtwork, strings.motionArtworkSubtitle, "canvas animated artwork video cover", categories.design)
     entry("design.canvas_quality", strings.canvasQuality, strings.canvasQualitySubtitle, "canvas video quality resolution", categories.design)
     entry("design.canvas_source", strings.canvasSource, strings.canvasSourceSubtitle, "canvas provider source", categories.design)

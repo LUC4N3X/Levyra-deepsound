@@ -2824,6 +2824,23 @@ fun LevyraApp(
                 }
             }
 
+            if (state.interfaceSettings.floatingNav.enabled) {
+                FloatingNavSidebar(
+                    settings = state.interfaceSettings.floatingNav,
+                    navigation = skinNavigationSettings(navigationStudio.settings),
+                    selected = backgroundTab,
+                    visible = !rootOverlayOpen && !playerVisible && !state.isSamplesOpen,
+                    bottomClearancePx = { selectionChromeHeight.intValue },
+                    onSelect = { tab ->
+                        dockState.expand()
+                        viewModel.selectTab(tab)
+                    },
+                    onSettingsChange = { next ->
+                        viewModel.setInterfaceSettings(viewModel.state.value.interfaceSettings.copy(floatingNav = next))
+                    }
+                )
+            }
+
             if (playerVisible) {
                 DisposableEffect(morphAnchors) {
                     onDispose { morphAnchors.playerContainer = null }
@@ -19441,6 +19458,7 @@ private fun SettingsOverlay(
                                     onClick = onOpenNavigationStudio
                                 )
                             }
+                            floatingNavSettingsItems(interfaceSettings, strings, onInterfaceSettings)
                             if (interfaceSettings.skin.supportsDockMorph && interfaceSettings.skin != LevyraSkin.Default && interfaceSettings.skin != LevyraSkin.Mono) {
                                 item { DockScrollEffectSkinRow(interfaceSettings, onInterfaceSettings) }
                             }

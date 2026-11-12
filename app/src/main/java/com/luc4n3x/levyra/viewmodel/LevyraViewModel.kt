@@ -2202,7 +2202,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val current = _state.value.currentTrack
             val liveRadioStation = _state.value.liveRadioStation
             if (current != null && current.isPreferredLocalSubstitute()) {
-                fallBackFromPreferredLocal(current, _state.value.positionMs)
+                val playbackIntended = _state.value.isPlaying || _state.value.isResolving
+                fallBackFromPreferredLocal(current, _state.value.positionMs, playWhenReady = playbackIntended)
             } else if (current?.isLiveRadio() == true && liveRadioStation != null) {
                 val playbackIntended = _state.value.isPlaying || _state.value.isResolving
                 tryLiveRadioSiblingStream(liveRadioStation, playWhenReady = playbackIntended, errorMessage = errorMsg)
@@ -5072,7 +5073,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         errorMessage: String
     ) {
         if (failedTrack.isPreferredLocalSubstitute()) {
-            fallBackFromPreferredLocal(failedTrack, positionMs)
+            fallBackFromPreferredLocal(failedTrack, positionMs, playWhenReady)
             return
         }
         if (isLocalPlaybackTrack(failedTrack)) return
@@ -13272,10 +13273,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun fallBackFromPreferredLocal(track: Track, positionMs: Long) {
+    private fun fallBackFromPreferredLocal(track: Track, positionMs: Long, playWhenReady: Boolean) {
         rejectPreferredLocalStream(track.streamUrl)
         pendingSeekMs = positionMs.coerceAtLeast(0L)
-        startResolve(track.withoutPreferredLocalStream())
+        startResolve(track.withoutPreferredLocalStream(), startPaused = !playWhenReady)
     }
 
     private fun fetchSponsorSegments(track: Track) {
