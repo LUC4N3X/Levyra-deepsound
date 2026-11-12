@@ -162,39 +162,40 @@ Architecture notes are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and the [
 
 <div align="center">
 
-<a href="https://luc4n3x.pages.dev/">
-  <img src="docs/assets/levyra-signature.webp?v=levyra-room" width="290" alt="LUC4N3X, creator of Levyra">
-</a>
-
-### LUC4N3X
-
-<p><sub>Creator &amp; maintainer</sub></p>
-
-<p>
-  I built Levyra and still maintain the Android and Windows apps.<br>
-  I review contributions, fix bugs and handle releases.
-</p>
-
-<p>
-  <a href="https://github.com/LUC4N3X">GitHub</a>
-  &nbsp;·&nbsp;
-  <a href="https://luc4n3x.pages.dev/">Website</a>
-</p>
+<table>
+<tr>
+<td align="center">
+  <a href="https://luc4n3x.pages.dev/">
+    <img src="docs/assets/levyra-signature.webp?v=levyra-room" width="200" alt="LUC4N3X, creator of Levyra">
+  </a>
+  <h3>LUC4N3X</h3>
+  <p><sub>Creator &amp; maintainer</sub></p>
+  <p>I built Levyra and still maintain the Android and Windows apps.<br>I review contributions, fix bugs and handle releases.</p>
+  <p>
+    <a href="https://github.com/LUC4N3X">GitHub</a>
+    &nbsp;&middot;&nbsp;
+    <a href="https://luc4n3x.pages.dev/">Website</a>
+  </p>
+</td>
+</tr>
+</table>
 
 </div>
 
 ### Open-source projects
 
-- [Metrolist](https://github.com/MetrolistGroup/Metrolist): used as a reference for renderer recovery and BetterLyrics TTML parsing.
-- [PipePipeExtractor](https://github.com/InfinityLoop1308/PipePipeExtractor): the starting architecture for LevyraExtractor, later adapted with Levyra's own stream resolution and retry handling.
-- [NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor): upstream extractor concepts and service foundations.
-- [zemer-cipher](https://github.com/ZemerTeam/zemer-cipher): open-source work used for YouTube cipher deobfuscation and PoToken generation.
-- [faraday](https://github.com/MetrolistGroup/faraday): secondary source of YouTube player configurations, checked alongside zemer-cipher.
-- [LRCLIB](https://lrclib.net/): provides the synchronized lyrics database and API.
-- [ByeDPI](https://github.com/hufrea/byedpi): local network compatibility tool used by the optional YouTube connection mode.
-- [ByeDPIAndroid](https://github.com/dovecoteescapee/ByeDPIAndroid): Android wrapper for the ByeDPI integration.
-- [SponsorBlock](https://github.com/ajayyy/SponsorBlock): community timestamps used to skip sponsored and other marked video segments.
-- [AutoEq](https://github.com/jaakkopasanen/AutoEq): headphone measurements and GraphicEQ profiles used by the AutoEQ catalog.
+| Project and contribution |
+| :--- |
+| [Metrolist](https://github.com/MetrolistGroup/Metrolist)<br>A reference for renderer recovery and BetterLyrics TTML parsing. |
+| [PipePipeExtractor](https://github.com/InfinityLoop1308/PipePipeExtractor)<br>LevyraExtractor's starting architecture, adapted for stream resolution and retries. |
+| [NewPipeExtractor](https://github.com/TeamNewPipe/NewPipeExtractor)<br>Upstream extractor concepts and service foundations. |
+| [zemer-cipher](https://github.com/ZemerTeam/zemer-cipher)<br>YouTube cipher deobfuscation and PoToken generation. |
+| [faraday](https://github.com/MetrolistGroup/faraday)<br>A second source of YouTube player configurations, checked alongside zemer-cipher. |
+| [LRCLIB](https://lrclib.net/)<br>The synchronized lyrics database and API. |
+| [ByeDPI](https://github.com/hufrea/byedpi)<br>Local network compatibility for the optional YouTube connection mode. |
+| [ByeDPIAndroid](https://github.com/dovecoteescapee/ByeDPIAndroid)<br>The Android wrapper for ByeDPI. |
+| [SponsorBlock](https://github.com/ajayyy/SponsorBlock)<br>Community timestamps for skipping sponsored and other marked video segments. |
+| [AutoEq](https://github.com/jaakkopasanen/AutoEq)<br>Headphone measurements and GraphicEQ profiles for the AutoEQ catalog. |
 
 FLAC playback on Android uses independent third-party websites. I don't host their audio, and listing an integration doesn't mean there is a partnership or endorsement.
 
