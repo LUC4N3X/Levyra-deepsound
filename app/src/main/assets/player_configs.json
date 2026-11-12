@@ -480,6 +480,7 @@
     "958a9d9b": { "sig": "QD(15,3588,INPUT)", "nClass": "nO", "sts": 20766, "aliases": ["50044296"] },
     "8b2685e5": { "sig": "ZB(67,3409,INPUT)", "nClass": "Jv", "sts": 20767, "aliases": ["e28c829a"] },
     "027f738a": { "sig": "ge(67,3409,INPUT)", "nClass": "Do", "sts": 20767, "aliases": ["8784e2c2"] },
-    "b48cc81f": { "sig": "Fq(40,483,INPUT)", "nClass": "uj", "sts": 20768, "aliases": ["ebacb975"] }
+    "b48cc81f": { "sig": "Fq(40,483,INPUT)", "nClass": "uj", "sts": 20768, "aliases": ["ebacb975"] },
+    "fb60d07e": { "sig": "Wj(40,483,INPUT)", "nClass": "gl", "sts": 20768, "aliases": ["8bf004e9"] }
   }
 }
