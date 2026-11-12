@@ -2105,6 +2105,9 @@ internal fun backupInterfaceSettingsToJson(value: LevyraInterfaceSettings): JSON
     .put("musicVideoPreference", value.musicVideoPreference.storageValue)
     .put("lastMusicVideoMode", value.lastMusicVideoMode)
     .put("playerFocusEnabled", value.playerFocusEnabled)
+    .put("floatingNavEnabled", value.floatingNav.enabled)
+    .put("floatingNavSide", value.floatingNav.side.storageId)
+    .put("floatingNavAnchor", value.floatingNav.normalized().anchor.toDouble())
     .put("playerVisualMode", value.playerVisualMode.name)
     .put("playerBackground", value.playerBackground.name)
     .put("reactiveAuraPreset", value.reactiveAuraPreset.name)
@@ -2179,6 +2182,14 @@ internal fun backupInterfaceSettingsFromJson(
         ),
         lastMusicVideoMode = json.optBoolean("lastMusicVideoMode", false),
         playerFocusEnabled = json.optBoolean("playerFocusEnabled", false),
+        floatingNav = com.luc4n3x.levyra.domain.LevyraFloatingNavSettings(
+            enabled = json.optBoolean("floatingNavEnabled", false),
+            side = com.luc4n3x.levyra.domain.FloatingNavSide.from(json.optString("floatingNavSide")),
+            anchor = json.optDouble(
+                "floatingNavAnchor",
+                com.luc4n3x.levyra.domain.LevyraFloatingNavSettings.DEFAULT_ANCHOR.toDouble()
+            ).toFloat()
+        ),
         playerVisualMode = visualMode,
         playerBackground = backgroundMode,
         reactiveAuraPreset = ReactiveAuraPreset.from(json.optString("reactiveAuraPreset")),

@@ -251,6 +251,7 @@ data class LevyraInterfaceSettings(
     val pureBlack: Boolean = false,
     val hapticFeedback: Boolean = true,
     val immersive: LevyraImmersiveSettings = LevyraImmersiveSettings(),
+    val floatingNav: LevyraFloatingNavSettings = LevyraFloatingNavSettings(),
     val musicVideoPreference: MusicVideoPlaybackPreference = MusicVideoPlaybackPreference.Automatic,
     val lastMusicVideoMode: Boolean = false,
     val playerFocusEnabled: Boolean = false,
@@ -274,7 +275,8 @@ data class LevyraInterfaceSettings(
         glassTransparency = glassTransparency.coerceIn(0, 100),
         glassTint = glassTint.coerceIn(0, 100),
         reactiveAuraIntensity = reactiveAuraIntensity.coerceIn(0, 100),
-        playerColorAccent = playerColorAccent or 0xFF000000.toInt()
+        playerColorAccent = playerColorAccent or 0xFF000000.toInt(),
+        floatingNav = floatingNav.normalized()
     )
 
     companion object {

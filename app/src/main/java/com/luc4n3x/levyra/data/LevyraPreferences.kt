@@ -308,6 +308,9 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_UI_MUSIC_VIDEO_PREFERENCE] = normalizedInterface.musicVideoPreference.storageValue
             mutable[KEY_UI_LAST_MUSIC_VIDEO_MODE] = normalizedInterface.lastMusicVideoMode
             mutable[KEY_UI_PLAYER_FOCUS] = normalizedInterface.playerFocusEnabled
+            mutable[KEY_UI_FLOATING_NAV_ENABLED] = normalizedInterface.floatingNav.enabled
+            mutable[KEY_UI_FLOATING_NAV_SIDE] = normalizedInterface.floatingNav.side.storageId
+            mutable[KEY_UI_FLOATING_NAV_ANCHOR] = normalizedInterface.floatingNav.anchor
             mutable[KEY_UI_PLAYER_VISUAL_MODE] = normalizedInterface.playerVisualMode.name
             mutable[KEY_UI_PLAYER_BACKGROUND] = normalizedInterface.playerBackground.name
             mutable[KEY_UI_REACTIVE_AURA_PRESET] = normalizedInterface.reactiveAuraPreset.name
@@ -506,6 +509,9 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             it[KEY_UI_MUSIC_VIDEO_PREFERENCE] = normalized.musicVideoPreference.storageValue
             it[KEY_UI_LAST_MUSIC_VIDEO_MODE] = normalized.lastMusicVideoMode
             it[KEY_UI_PLAYER_FOCUS] = normalized.playerFocusEnabled
+            it[KEY_UI_FLOATING_NAV_ENABLED] = normalized.floatingNav.enabled
+            it[KEY_UI_FLOATING_NAV_SIDE] = normalized.floatingNav.side.storageId
+            it[KEY_UI_FLOATING_NAV_ANCHOR] = normalized.floatingNav.anchor
             it[KEY_UI_PLAYER_VISUAL_MODE] = normalized.playerVisualMode.name
             it[KEY_UI_PLAYER_BACKGROUND] = normalized.playerBackground.name
             it[KEY_UI_REACTIVE_AURA_PRESET] = normalized.reactiveAuraPreset.name
@@ -1019,6 +1025,12 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             ),
             lastMusicVideoMode = preferences[KEY_UI_LAST_MUSIC_VIDEO_MODE] ?: false,
             playerFocusEnabled = preferences[KEY_UI_PLAYER_FOCUS] ?: false,
+            floatingNav = com.luc4n3x.levyra.domain.LevyraFloatingNavSettings(
+                enabled = preferences[KEY_UI_FLOATING_NAV_ENABLED] ?: false,
+                side = com.luc4n3x.levyra.domain.FloatingNavSide.from(preferences[KEY_UI_FLOATING_NAV_SIDE]),
+                anchor = preferences[KEY_UI_FLOATING_NAV_ANCHOR]
+                    ?: com.luc4n3x.levyra.domain.LevyraFloatingNavSettings.DEFAULT_ANCHOR
+            ).normalized(),
             playerVisualMode = visualMode,
             playerBackground = background,
             reactiveAuraPreset = ReactiveAuraPreset.from(preferences[KEY_UI_REACTIVE_AURA_PRESET].orEmpty()),
@@ -1740,6 +1752,9 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_UI_IMMERSIVE_HIDE_NAVIGATION = booleanPreferencesKey("ui_immersive_hide_navigation")
         val KEY_UI_IMMERSIVE_FULL = booleanPreferencesKey("ui_immersive_full")
         val KEY_UI_IMMERSIVE_EVERYWHERE = booleanPreferencesKey("ui_immersive_everywhere")
+        val KEY_UI_FLOATING_NAV_ENABLED = booleanPreferencesKey("ui_floating_nav_enabled")
+        val KEY_UI_FLOATING_NAV_SIDE = stringPreferencesKey("ui_floating_nav_side")
+        val KEY_UI_FLOATING_NAV_ANCHOR = floatPreferencesKey("ui_floating_nav_anchor")
         val KEY_UI_MUSIC_VIDEO_PREFERENCE = stringPreferencesKey("ui_music_video_preference")
         val KEY_UI_LAST_MUSIC_VIDEO_MODE = booleanPreferencesKey("ui_last_music_video_mode")
         val KEY_UI_PLAYER_FOCUS = booleanPreferencesKey("ui_player_focus")
