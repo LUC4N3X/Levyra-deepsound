@@ -44,7 +44,7 @@ Streamed tracks and local files share one library. Save music for offline listen
 
 </details>
 
-<p align="center"><sub>42 languages &nbsp;·&nbsp; 100% Android translation coverage &nbsp;·&nbsp; Zero tracking</sub></p>
+<p align="center"><sub>42 languages &nbsp;·&nbsp; 100% Android translation coverage &nbsp;·&nbsp; No telemetry</sub></p>
 
 <p align="center">
   <a href="https://trendshift.io/repositories/204798?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-204798"><img src="https://trendshift.io/api/badge/trendshift/repositories/204798/daily?language=Kotlin" alt="Levyra Trendshift daily ranking" width="224" height="49"></a>
@@ -233,17 +233,23 @@ FLAC playback on Android depends on independent third-party sources. Their inclu
 
 <div align="center">
 
-<code>NO PIRACY</code> &nbsp;·&nbsp; <code>NO CONTENT HOSTING</code> &nbsp;·&nbsp; <code>THIRD-PARTY RIGHTS RESPECTED</code>
+<code>NO PIRACY</code> &nbsp;·&nbsp; <code>NO HOSTED MUSIC CATALOG</code> &nbsp;·&nbsp; <code>THIRD-PARTY RIGHTS RESPECTED</code>
 
 </div>
 
-Levyra is client-side software. It does not host music catalogs, artwork, lyrics or video, and it connects only to the services that the features you use need. Those services can change, limit or block access at any time.
+Levyra is independent client-side software. It does not operate a centralized music-hosting service and is not affiliated with or endorsed by third-party providers. External services can change, limit or block access at any time.
 
-Streaming, downloading and caching do not grant rights to third-party content or permission to redistribute it. FLAC sources and network compatibility tools do not authorize access to someone else's account, paid features or restricted content. Publicly available streams or credentials are not proof of permission. Follow applicable law and each service's terms, and support artists through licensed services, purchases or other official channels.
+Third-party artwork, visuals and editorial content shown in Levyra come from external sources, including the providers' publicly accessible websites and services. Levyra does not host a separate catalog of this material or claim ownership of it. All rights remain with the respective rights holders. Public accessibility does not, by itself, grant permission to copy, reuse or redistribute this material.
+
+Streaming, downloading, conversion, export and caching do not grant rights to third-party content. Use them only with the necessary permission or another lawful basis, including an applicable copyright exception. Personal or non-commercial use does not, by itself, make a stream or download lawful. Follow applicable law and each service's terms, and support artists through licensed services, purchases or other official channels.
+
+FLAC integrations rely on independent third-party sources. Neither these integrations nor the optional network compatibility tools authorize access to someone else's account, paid features or restricted content, or unlawful circumvention of technological protection measures. Publicly available streams or credentials are not proof of permission. Compatibility tools are experimental and do not guarantee restored access. Service terms, account restrictions and network rules still apply. See [Third-party services and rights](docs/legal/LEGAL.md#3-third-party-services-and-rights) and [Technical compatibility](docs/legal/LEGAL.md#6-technical-compatibility-routing-and-regional-restrictions).
 
 Levyra has no Levyra account, ads or telemetry. Online features contact third-party services, which have their own privacy policies. Optional Last.fm and ListenBrainz scrobbling sends listening activity to the service you enable.
 
-Levyra is released under the [GNU GPL v3.0](LICENSE) and provided "as is", without warranty, to the extent permitted by law. The license covers Levyra's source code, not third-party content, trademarks or services. The [Legal Notice](docs/legal/LEGAL.md) explains lawful use, third-party access, downloads, warranty and liability. It does not remove obligations or liability imposed by law on maintainers, distributors or users. Rights holders can raise concerns through the [repository's official GitHub channels](docs/legal/LEGAL.md#11-rights-holder-concerns).
+Levyra is released under the [GNU GPL v3.0](LICENSE) and provided "as is", without warranty, to the extent permitted by law. The GPL covers Levyra's licensed code, not third-party content, trademarks or services. These notices do not add restrictions to the rights granted by the GPL. The complete [Legal Notice](docs/legal/LEGAL.md), including [Warranty and liability](docs/legal/LEGAL.md#9-warranty-and-liability), applies alongside this README. It does not remove obligations or liability imposed by law on maintainers, distributors or users. Open-source status and research purposes do not, by themselves, make an integration or its use lawful.
+
+For concerns about material distributed in Levyra or this repository, rights holders can use the [repository's official GitHub channels](docs/legal/LEGAL.md#11-rights-holder-concerns). Concerns about media hosted by an external service should normally go to that provider or the relevant rights holder. Do not post credentials or other secrets in public reports.
 
 ---
 
