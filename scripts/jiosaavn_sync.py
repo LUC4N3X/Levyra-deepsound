@@ -18,7 +18,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -452,9 +452,20 @@ class MediaLocation:
     extension: str
     authorized_tier: int | None = None
     has_expires: bool = False
+    authorized_url: str = field(default="", repr=False)
 
     def open_url(self, tier_kbps: int) -> str:
         return f"https://{self.open_host}{self.directory}/{self.stem}_{tier_kbps}.{self.extension}"
+
+    def probe_urls(self, tier_kbps: int) -> list[str]:
+        open_url = self.open_url(tier_kbps)
+        if (
+            self.authorized_url
+            and self.authorized_tier == tier_kbps
+            and self.authorized_url != open_url
+        ):
+            return [self.authorized_url, open_url]
+        return [open_url]
 
 
 def _validate_media_host(parsed: urllib.parse.SplitResult, authorized: bool) -> str | None:
@@ -490,7 +501,8 @@ def parse_media_location(
     override_open_host: str | None = None,
     authorized: bool = False,
 ) -> MediaLocation | None:
-    parsed = urllib.parse.urlsplit(raw_url.strip())
+    cleaned = raw_url.strip()
+    parsed = urllib.parse.urlsplit(cleaned)
     host = _validate_media_host(parsed, authorized)
     path_parts = _parse_media_path(parsed.path) if host else None
     if not host or not path_parts:
@@ -504,6 +516,7 @@ def parse_media_location(
         extension=extension,
         authorized_tier=parsed_tier if authorized else None,
         has_expires=bool(query.get("Expires")) if authorized else False,
+        authorized_url=cleaned if authorized else "",
     )
 
 
@@ -715,6 +728,42 @@ def _extract_song_list(search_payload: Any) -> tuple[list[dict[str, Any]], dict[
     }
 
 
+def _song_has_title(item: dict[str, Any]) -> bool:
+    return bool(str(item.get("title") or item.get("song") or "").strip())
+
+
+def _has_artist_entries(value: Any) -> bool:
+    if not isinstance(value, list):
+        return False
+    return any(isinstance(entry, dict) and str(entry.get("name") or "").strip() for entry in value)
+
+
+def _has_artist_csv(value: Any) -> bool:
+    if not isinstance(value, str):
+        return False
+    return any(part.strip() for part in value.split(","))
+
+
+def _song_has_primary_artists(item: dict[str, Any], info: dict[str, Any]) -> bool:
+    artist_map = info.get("artistMap")
+    if isinstance(artist_map, dict) and _has_artist_entries(artist_map.get("primary_artists")):
+        return True
+    for key in ("primary_artists", "singers"):
+        if _has_artist_csv(info.get(key)) or _has_artist_csv(item.get(key)):
+            return True
+    return False
+
+
+def _is_playable_song_row(item: dict[str, Any], info: dict[str, Any]) -> str:
+    song_id = str(item.get("id") or "").strip()
+    encrypted = str(info.get("encrypted_media_url") or item.get("encrypted_media_url") or "").strip()
+    if not song_id or not encrypted:
+        return ""
+    if not _song_has_title(item) or not _song_has_primary_artists(item, info):
+        return ""
+    return song_id
+
+
 def _record_song_more_info(
     item: dict[str, Any],
     info: dict[str, Any],
@@ -727,9 +776,8 @@ def _record_song_more_info(
     artist_map = info.get("artistMap")
     if isinstance(artist_map, dict):
         acc["artist_map_keys"].update(str(k) for k in artist_map.keys())
-    encrypted = str(info.get("encrypted_media_url") or "").strip()
-    song_id = str(item.get("id") or "").strip()
-    if song_id and encrypted:
+    song_id = _is_playable_song_row(item, info)
+    if song_id:
         acc["playable_count"] += 1
         if acc["first_playable"] is None:
             acc["first_playable"] = item
@@ -827,11 +875,15 @@ def _probe_song_details(
     info = entry.get("more_info") if isinstance(entry.get("more_info"), dict) else {}
     has_media = bool(str(info.get("encrypted_media_url") or entry.get("encrypted_media_url") or "").strip())
     has_duration = str(info.get("duration") or entry.get("duration") or "").strip().isdigit()
+    has_title = _song_has_title(entry)
+    has_primary_artists = _song_has_primary_artists(entry, info)
     return {
-        "ok": has_media and has_duration,
+        "ok": has_media and has_duration and has_title and has_primary_artists,
         "envelope_kind": envelope_kind,
         "has_media_payload": has_media,
         "has_duration": has_duration,
+        "has_title": has_title,
+        "has_primary_artists": has_primary_artists,
         "has_artist_map": isinstance(info.get("artistMap"), dict),
         "access_blocked": False,
     }
@@ -935,6 +987,17 @@ def _authorize_media_location(
     return auth_loc, auth_status, auth_meta
 
 
+def _build_tier_probe_urls(candidates: list[MediaLocation], tier: int) -> list[str]:
+    urls: list[str] = []
+    seen: set[str] = set()
+    for loc in candidates:
+        for url in loc.probe_urls(tier):
+            if url not in seen:
+                seen.add(url)
+                urls.append(url)
+    return urls
+
+
 def _probe_tier_across_candidates(
     candidates: list[MediaLocation],
     media_headers: dict[str, str],
@@ -943,9 +1006,10 @@ def _probe_tier_across_candidates(
 ) -> tuple[dict[str, Any] | None, bool, bool]:
     chosen: dict[str, Any] | None = None
     saw_attempt = False
-    for idx, loc in enumerate(candidates):
+    probe_urls = _build_tier_probe_urls(candidates, tier)
+    for idx, url in enumerate(probe_urls):
         saw_attempt = True
-        validation = _probe_single_media_url(loc.open_url(tier), media_headers, tier, duration_seconds)
+        validation = _probe_single_media_url(url, media_headers, tier, duration_seconds)
         if chosen is None or validation.get("valid"):
             chosen = validation
         if validation.get("valid"):
@@ -954,7 +1018,7 @@ def _probe_tier_across_candidates(
             validation.get("status") != "transport_error"
             and validation.get("http_status") not in (403, 429, 500, 502, 503)
         )
-        if non_blocked and idx == len(candidates) - 1:
+        if non_blocked and idx == len(probe_urls) - 1:
             return chosen, saw_attempt, False
     return chosen, saw_attempt, True
 

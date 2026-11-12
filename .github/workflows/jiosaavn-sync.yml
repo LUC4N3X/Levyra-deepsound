@@ -125,7 +125,7 @@ jobs:
         run: |
           set -euo pipefail
           python -m unittest discover -s scripts/tests -p 'test_jiosaavn_sync.py' -v
-          python scripts/ai_quality_gate.py --profile fast
+          python scripts/ai_quality_gate.py --profile full
 
       - name: Remove Temporary Artifacts Before PR
         if: always()
@@ -144,14 +144,67 @@ jobs:
           title: "[JioSaavn Sync] Seed sanitized monitor baseline"
           body: |
             ## Summary
-            - Seeds the initial sanitized `jiosaavn-sync/baseline.json` from a double-confirmed healthy probe.
-            - Stores only structural field signatures, endpoint status outcomes, and verified quality tiers (96/160/320 kbps), with all signed tokens, query parameters, encrypted payloads, and IPs stripped.
 
-            ## Verification
+            - Seeds the initial sanitized `jiosaavn-sync/baseline.json` from a double-confirmed healthy probe.
+
+            ## Changes
+
+            - Populates `jiosaavn-sync/baseline.json` with structural field signatures, endpoint status outcomes, and verified quality tiers (96/160/320 kbps), with all signed tokens, query parameters, encrypted payloads, and IPs stripped.
+
+            ## Type of change
+
+            - [x] Build, CI, packaging, or release change
+
+            ## Scope
+
+            - **Platform:** Android / Shared
+            - **Area:** JioSaavn Sync / CI Automation
+
+            ## Testing
+
+            ### Automated checks
+
             - `python scripts/jiosaavn_sync.py probe` confirmed healthy baseline twice (`bootstrap`)
             - `python -m unittest discover -s scripts/tests -p 'test_jiosaavn_sync.py' -v` passed
-            - `python scripts/ai_quality_gate.py --profile fast` passed
+            - `python scripts/ai_quality_gate.py --profile full` passed
             - `git diff --check` passed
+
+            ### Manual testing
+
+            | Device or OS | What was tested | Result |
+            |---|---|---|
+            | Ubuntu CI runner | Automated JioSaavn baseline bootstrap & gate checks | Passed |
+
+            ## Screenshots or recordings
+
+            N/A
+
+            ## Risk and compatibility
+
+            - **Risk level:** Low
+            - **Notes:** Baseline-only seed for `jiosaavn-sync/baseline.json`; no runtime app behavior modified.
+
+            ## Reviewer notes
+
+            - Double-confirmed baseline snapshot contains zero secrets, signed URLs, or raw IP addresses.
+
+            ## Release note
+
+            None
+
+            ## Related issues
+
+            - Related to # (N/A)
+
+            ## Checklist
+
+            - [x] This pull request focuses on a single change with no unrelated diffs
+            - [x] The code follows existing repository architecture and conventions
+            - [x] I tested the changes and verified them locally
+            - [x] Documentation, tests, and assets were updated where relevant
+            - [x] No secrets, keystores, build artifacts, or local configuration files were committed
+            - [x] Android and Desktop versioning and release channels remain independent
+            - [x] CI checks pass, or any known issue is explained in the description
 
   repair_pr:
     name: Verify Regression and Propose Safe Draft Repair PR
@@ -269,24 +322,33 @@ jobs:
         run: |
           set -euo pipefail
           python - <<'PY' >> "${GITHUB_OUTPUT}"
+          import re
           import subprocess
           from pathlib import Path
 
-          out = subprocess.check_output(
-              ["git", "status", "--porcelain=v1"], text=True
-          ).splitlines()
+          raw = subprocess.check_output(["git", "status", "--porcelain=v1", "-z"])
+          entries = [item.decode("utf-8", errors="surrogateescape") for item in raw.split(b"\0") if item]
           changed = []
-          for line in out:
-              if not line.strip():
+          idx = 0
+          while idx < len(entries):
+              entry = entries[idx]
+              idx += 1
+              if len(entry) < 4:
                   continue
-              path = line[3:].strip().split(" -> ")[-1]
-              if path.startswith("artifacts/"):
-                  continue
-              changed.append(path)
+              status = entry[:2]
+              paths = [entry[3:]]
+              if ("R" in status or "C" in status) and idx < len(entries):
+                  paths.append(entries[idx])
+                  idx += 1
+              for path in paths:
+                  if path.startswith("artifacts/"):
+                      continue
+                  changed.append(path)
 
+          lyrics_repo = "app/src/main/java/com/luc4n3x/levyra/data/LyricsRepository.kt"
           allowed_exact = {
               "app/src/main/java/com/luc4n3x/levyra/data/JioSaavnLyrics.kt",
-              "app/src/main/java/com/luc4n3x/levyra/data/LyricsRepository.kt",
+              lyrics_repo,
               "app/src/test/java/com/luc4n3x/levyra/data/JioSaavnLyricsTest.kt",
               "app/src/test/java/com/luc4n3x/levyra/data/network/JioSaavnNetworkIsolationTest.kt",
               "jiosaavn-sync/config.json",
@@ -301,6 +363,56 @@ jobs:
               p for p in changed
               if p not in allowed_exact and not p.startswith(allowed_prefixes)
           ]
+
+          def jiosaavn_allowed_lines(source_text: str) -> set[int]:
+              allowed = set()
+              in_attempt = False
+              depth = 0
+              for lineno, line in enumerate(source_text.splitlines(), start=1):
+                  if "fun jioSaavnAttempt(" in line:
+                      in_attempt = True
+                      depth = line.count("{") - line.count("}")
+                      allowed.add(lineno)
+                      continue
+                  if in_attempt:
+                      if depth <= 0 and re.match(r"^\s*(?:private|internal|public|override|suspend)\b.*\bfun\b", line):
+                          in_attempt = False
+                      else:
+                          allowed.add(lineno)
+                          depth += line.count("{") - line.count("}")
+                          if depth <= 0 and "}" in line:
+                              in_attempt = False
+                          continue
+                  if re.search(r"\bJIOSAAVN_[A-Z0-9_]+\b", line):
+                      allowed.add(lineno)
+              return allowed
+
+          def hunk_range(start_str: str, count_str: str | None) -> range:
+              start = int(start_str)
+              count = int(count_str) if count_str is not None else 1
+              if count <= 0:
+                  return range(start, start + 1)
+              return range(start, start + count)
+
+          if lyrics_repo in changed:
+              try:
+                  head_src = subprocess.check_output(["git", "show", f"HEAD:{lyrics_repo}"], text=True)
+                  work_src = Path(lyrics_repo).read_text(encoding="utf-8")
+                  diff_out = subprocess.check_output(["git", "diff", "-U0", "HEAD", "--", lyrics_repo], text=True)
+              except (OSError, subprocess.CalledProcessError):
+                  disallowed.append(f"{lyrics_repo}:unreadable_diff")
+              else:
+                  head_allowed = jiosaavn_allowed_lines(head_src)
+                  work_allowed = jiosaavn_allowed_lines(work_src)
+                  hunk_re = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
+                  hunks = [m for line in diff_out.splitlines() if (m := hunk_re.match(line))]
+                  if not hunks or any(
+                      any(ln not in head_allowed for ln in hunk_range(m.group(1), m.group(2)))
+                      or any(ln not in work_allowed for ln in hunk_range(m.group(3), m.group(4)))
+                      for m in hunks
+                  ):
+                      disallowed.append(f"{lyrics_repo}:non_jiosaavn_section")
+
           prod_changed = any(
               p.startswith("app/src/main/") for p in changed
           )
@@ -389,21 +501,73 @@ jobs:
         run: |
           set -euo pipefail
           cat > /tmp/jiosaavn_pr_body.md <<'EOF'
-          ## Automated JioSaavn Repair (Verified)
-          - Double-confirmed persistent JioSaavn regression triggered an isolated JioSaavn-only fix.
-          - All verification gates passed before opening this draft PR (no auto-merge; awaiting review by `@LUC4N3X`).
+          ## Summary
 
-          ## Checks Verified
+          - Resolves a double-confirmed JioSaavn API, schema, or stream regression detected by the automated JioSaavn Sync monitor.
+          - Strictly isolated to JioSaavn components; awaits human review by `@LUC4N3X` before any merge.
+
+          ## Changes
+
+          - Updates only JioSaavn-owned integration files (`JioSaavnEndpoints.kt`, `JioSaavnPayloadParser.kt`, `JioSaavnAudioProvider.kt`, `JioSaavnLyrics.kt`, or JioSaavn-only sections of `LyricsRepository.kt`) and matching JioSaavn Sync config/baseline/tests.
+
+          ## Type of change
+
+          - [x] Bug fix
+
+          ## Scope
+
+          - **Platform:** Android / Shared
+          - **Area:** HQ Audio (JioSaavn) / JioSaavn Sync
+
+          ## Testing
+
+          ### Automated checks
+
           - `./gradlew --no-daemon :app:compileDebugKotlin :app:lintDebug` passed
           - `python -m unittest discover -s scripts/tests -p 'test_jiosaavn_sync.py' -v` passed
-          - `python scripts/ai_quality_gate.py --profile full` passed (unit tests, release lint, unsigned release build, extraction core tests, regex compatibility)
+          - `python scripts/ai_quality_gate.py --profile full` passed
           - `git diff --check` passed
           - Post-repair live probe cleared the triggering regression against `jiosaavn-sync/baseline.json`
-          - Scope restricted strictly to JioSaavn files (YouTube, FLAC, matching, quality selection, and circuit breakers untouched)
 
-          ## Probe Diagnostics
+          ### Manual testing
+
+          | Device or OS | What was tested | Result |
+          |---|---|---|
+          | Ubuntu CI runner | Post-repair live JioSaavn probe & Android build/lint verification | Passed |
+
+          ## Screenshots or recordings
+
+          N/A
+
+          ## Risk and compatibility
+
+          - **Risk level:** Low
+          - **Notes:** Scope verified strictly within JioSaavn allowlisted files and sections; YouTube, FLAC, track matching, quality selection, and circuit breakers remain untouched.
+
+          ## Reviewer notes
+
           EOF
           cat artifacts/jiosaavn-sync/report.md >> /tmp/jiosaavn_pr_body.md
+          cat >> /tmp/jiosaavn_pr_body.md <<'EOF'
+
+          ## Release note
+
+          Fixed JioSaavn API compatibility regression detected by automated sync monitoring.
+
+          ## Related issues
+
+          - Related to # (N/A)
+
+          ## Checklist
+
+          - [x] This pull request focuses on a single change with no unrelated diffs
+          - [x] The code follows existing repository architecture and conventions
+          - [x] I tested the changes and verified them locally
+          - [x] Documentation, tests, and assets were updated where relevant
+          - [x] No secrets, keystores, build artifacts, or local configuration files were committed
+          - [x] Android and Desktop versioning and release channels remain independent
+          - [x] CI checks pass, or any known issue is explained in the description
+          EOF
 
       - name: Clean Artifact Directories Before Pull Request Commit
         if: always()

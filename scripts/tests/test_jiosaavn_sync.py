@@ -241,7 +241,6 @@ class TestStreamQualityAndSchemas(unittest.TestCase):
             self.assertTrue(checked["has_mp4a"])
 
     def test_validate_media_probe_rejects_downgraded_or_html_responses(self) -> None:
-        # 96 kbps payload returned when 320 kbps was requested must fail bitrate verification.
         total_96 = int(96 * 1000 / 8 * 200)
         downgraded = js.HttpResult(
             status=206,
@@ -280,6 +279,7 @@ class TestStreamQualityAndSchemas(unittest.TestCase):
                     "encrypted_media_url": SAMPLE_ENCRYPTED_PAYLOAD,
                     "has_lyrics": "true",
                     "lyrics_id": "s1",
+                    "artistMap": {"primary_artists": [{"name": "The Weeknd"}]},
                 },
             },
             {
@@ -289,6 +289,7 @@ class TestStreamQualityAndSchemas(unittest.TestCase):
                 "more_info": {
                     "duration": "230",
                     "encrypted_media_url": SAMPLE_ENCRYPTED_PAYLOAD,
+                    "artistMap": {"primary_artists": [{"name": "The Weeknd"}]},
                 },
             },
         ]
@@ -298,6 +299,67 @@ class TestStreamQualityAndSchemas(unittest.TestCase):
         self.assertEqual(summary["playable_count"], 2)
         self.assertIsNotNone(summary.get("_first_playable"))
         self.assertEqual(summary.get("_lyrics_id"), "s1")
+
+    def test_missing_title_or_primary_artist_marks_search_and_details_unplayable(self) -> None:
+        missing_title_summary = js._inspect_song_schema(
+            [
+                {
+                    "id": "s1",
+                    "title": "   ",
+                    "more_info": {
+                        "duration": "230",
+                        "encrypted_media_url": SAMPLE_ENCRYPTED_PAYLOAD,
+                        "artistMap": {"primary_artists": [{"name": "The Weeknd"}]},
+                    },
+                }
+            ]
+        )
+        self.assertEqual(missing_title_summary["playable_count"], 0)
+        self.assertIsNone(missing_title_summary.get("_first_playable"))
+
+        missing_artist_summary = js._inspect_song_schema(
+            [
+                {
+                    "id": "s2",
+                    "title": "Starboy",
+                    "more_info": {
+                        "duration": "230",
+                        "encrypted_media_url": SAMPLE_ENCRYPTED_PAYLOAD,
+                        "artistMap": {"primary_artists": []},
+                    },
+                }
+            ]
+        )
+        self.assertEqual(missing_artist_summary["playable_count"], 0)
+        self.assertIsNone(missing_artist_summary.get("_first_playable"))
+
+        api_cfg = {"host": "www.jiosaavn.com"}
+        details_payload = {
+            "songs": [
+                {
+                    "id": "s2",
+                    "title": "Starboy",
+                    "more_info": {
+                        "duration": "230",
+                        "encrypted_media_url": SAMPLE_ENCRYPTED_PAYLOAD,
+                        "artistMap": {"primary_artists": []},
+                    },
+                }
+            ]
+        }
+        with mock.patch.object(
+            js,
+            "_bounded_request",
+            return_value=js.HttpResult(
+                status=200,
+                headers={"content-type": "application/json"},
+                body=json.dumps(details_payload).encode("utf-8"),
+            ),
+        ):
+            details = js._probe_song_details(api_cfg, {"song_details": "song.getDetails"}, "s2")
+        self.assertFalse(details["ok"])
+        self.assertTrue(details["has_title"])
+        self.assertFalse(details["has_primary_artists"])
 
     def test_mocked_track_artist_album_probes_handle_partial_tiers(self) -> None:
         mp4_bytes = self._mp4_prefix()
@@ -347,7 +409,11 @@ class TestStreamQualityAndSchemas(unittest.TestCase):
                                 "encrypted_media_url": SAMPLE_ENCRYPTED_PAYLOAD,
                                 "has_lyrics": "true",
                                 "lyrics_id": "s1",
-                                "artistMap": {"primary_artists": [], "featured_artists": [], "artists": []},
+                                "artistMap": {
+                                    "primary_artists": [{"name": "The Weeknd"}],
+                                    "featured_artists": [],
+                                    "artists": [],
+                                },
                             },
                         },
                         {
@@ -357,6 +423,7 @@ class TestStreamQualityAndSchemas(unittest.TestCase):
                             "more_info": {
                                 "duration": "230",
                                 "encrypted_media_url": SAMPLE_ENCRYPTED_PAYLOAD,
+                                "artistMap": {"primary_artists": [{"name": "The Weeknd"}]},
                             },
                         },
                     ],
@@ -366,10 +433,11 @@ class TestStreamQualityAndSchemas(unittest.TestCase):
                     "songs": [
                         {
                             "id": "s1",
+                            "title": "Starboy",
                             "more_info": {
                                 "duration": "230",
                                 "encrypted_media_url": SAMPLE_ENCRYPTED_PAYLOAD,
-                                "artistMap": {"primary_artists": []},
+                                "artistMap": {"primary_artists": [{"name": "The Weeknd"}]},
                             },
                         }
                     ]
@@ -472,9 +540,7 @@ class TestStreamQualityAndSchemas(unittest.TestCase):
                 )
             seen_urls.append(url)
             if url.startswith("https://aac.saavncdn.com/"):
-                # Open decrypted host blocked; must fall back to auth_loc (c.saavncdn.com).
                 return js.HttpResult(status=403, headers={}, body=b"")
-            # Return 210 kbps for 320 request -> should record verified_tier=160, NOT 320.
             tier_bytes = int((210 if "_320.mp4" in url else 96) * 1000 / 8 * duration_sec)
             return js.HttpResult(
                 status=206,
@@ -494,11 +560,57 @@ class TestStreamQualityAndSchemas(unittest.TestCase):
                 [96, 320],
                 open_media_host_override="c.saavncdn.com",
             )
-        # Decrypted host remains aac.saavncdn.com matching Kotlin fromMediaToken.
         self.assertEqual(streams["decrypted_cdn_host"], "aac.saavncdn.com")
         self.assertTrue(any(u.startswith("https://aac.saavncdn.com/") for u in seen_urls))
         self.assertTrue(any(u.startswith("https://c.saavncdn.com/") for u in seen_urls))
         self.assertEqual(streams["verified_tiers"], [96, 160])
+
+    def test_signed_auth_url_is_probed_when_open_cdn_fails_without_leaking_url(self) -> None:
+        mp4_bytes = self._mp4_prefix()
+        api_cfg = {
+            "host": "www.jiosaavn.com",
+            "open_media_host": "c.saavncdn.com",
+            "endpoints": {"authorize_media": "song.generateAuthToken"},
+        }
+        duration_sec = 200
+        seen_urls: list[str] = []
+        signed_320 = (
+            "https://web.saavncdn.com/396/eca27e31e93211051fa0de18160ea825_320.mp4"
+            "?Expires=1794500000&Signature=secretSigToken&Key-Pair-Id=KPTEST"
+        )
+
+        def fake_bounded(url: str, *, headers=None, max_bytes=0, timeout=0, media=False):
+            if "song.generateAuthToken" in url:
+                return js.HttpResult(
+                    status=200,
+                    headers={"content-type": "application/json"},
+                    body=json.dumps({"status": "success", "auth_url": signed_320}).encode("utf-8"),
+                )
+            seen_urls.append(url)
+            if url == signed_320:
+                total_bytes = int(320 * 1000 / 8 * duration_sec)
+                return js.HttpResult(
+                    status=206,
+                    headers={"content-type": "audio/mp4", "content-range": f"bytes 0-8191/{total_bytes}"},
+                    body=mp4_bytes,
+                )
+            return js.HttpResult(status=404, headers={}, body=b"")
+
+        with mock.patch.object(js, "_bounded_request", side_effect=fake_bounded):
+            streams = js._probe_streams(
+                api_cfg,
+                api_cfg["endpoints"],
+                SAMPLE_ENCRYPTED_PAYLOAD,
+                duration_sec,
+                [320],
+            )
+        self.assertIn(signed_320, seen_urls)
+        self.assertTrue(streams["playable_any_tier"])
+        self.assertEqual(streams["verified_tiers"], [320])
+        serialized = json.dumps(streams)
+        self.assertNotIn("secretSigToken", serialized)
+        self.assertNotIn("Expires=", serialized)
+        self.assertNotIn("web.saavncdn.com", serialized)
 
     def test_malformed_duration_returns_failed_observation_instead_of_crashing(self) -> None:
         api_cfg = {"host": "www.jiosaavn.com", "endpoints": {"search_songs": "search.getResults"}}
@@ -512,6 +624,7 @@ class TestStreamQualityAndSchemas(unittest.TestCase):
                     "more_info": {
                         "duration": "200.0",
                         "encrypted_media_url": SAMPLE_ENCRYPTED_PAYLOAD,
+                        "artistMap": {"primary_artists": [{"name": "The Weeknd"}]},
                     },
                 }
             ],
@@ -607,7 +720,6 @@ class TestStreamQualityAndSchemas(unittest.TestCase):
         self.assertEqual(provisional["decision"], "repair")
 
         def fake_track_probe(sentinel, *args, **kwargs):
-            # Only api.jiosaavn.com + android restores 320 kbps; other combos return only 96/160.
             tiers = (96, 160, 320) if (
                 kwargs.get("host_override") == "api.jiosaavn.com"
                 and kwargs.get("context_override") == "android"
@@ -673,10 +785,8 @@ class TestClassifierAndDeterministicFix(unittest.TestCase):
             any("below repair threshold" in line for line in decision["informational_changes"])
         )
 
-    def test_multi_track_or_explicit_or_global_320_loss_triggers_repair(self) -> None:
+    def test_two_regressing_tracks_triggers_repair(self) -> None:
         base_obs = _healthy_observation()
-
-        # Two tracks regressing structurally -> repair
         two_broken = _healthy_observation()
         for idx in (0, 1):
             two_broken["tracks"][idx]["ok"] = False
@@ -685,7 +795,8 @@ class TestClassifierAndDeterministicFix(unittest.TestCase):
         res_two = js._classify(_baseline_from(base_obs), two_broken, self.config)
         self.assertEqual(res_two["decision"], "repair")
 
-        # Global 320 kbps tier vanished while 160 & 96 still play -> repair
+    def test_global_320_tier_loss_triggers_repair(self) -> None:
+        base_obs = _healthy_observation()
         no_320 = _healthy_observation()
         for idx in range(3):
             no_320["tracks"][idx] = _track_entry(
@@ -697,7 +808,8 @@ class TestClassifierAndDeterministicFix(unittest.TestCase):
         self.assertEqual(res_320["decision"], "repair")
         self.assertTrue(any("320 kbps" in item for item in res_320["material_changes"]))
 
-        # Explicit+clean coexistence regression across >=2 explicit sentinels -> repair
+    def test_explicit_and_clean_coexistence_loss_triggers_repair(self) -> None:
+        base_obs = _healthy_observation()
         lost_explicit = _healthy_observation()
         for idx in (0, 1):
             lost_explicit["tracks"][idx]["observation"]["explicit_and_clean_ok"] = False
@@ -730,7 +842,6 @@ class TestClassifierAndDeterministicFix(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            # Reject untrusted candidate outside allowlist.
             untrusted_obs = {
                 "protocol_alternatives": [
                     {
@@ -744,7 +855,6 @@ class TestClassifierAndDeterministicFix(unittest.TestCase):
             rejected = js.apply_deterministic_protocol_fix(untrusted_obs, root)
             self.assertFalse(rejected["applied"])
 
-            # Apply allowlisted proven alternative.
             valid_obs = {
                 "protocol_alternatives": [
                     {
@@ -782,6 +892,23 @@ class TestRepositoryContracts(unittest.TestCase):
         self.assertIn("openrouter/free", wf)
         self.assertIn("steps.agent.outputs.available == 'true'", wf)
         self.assertIn("ai_quality_gate.py --profile full", wf)
+        self.assertNotIn("--profile fast", wf)
+        self.assertIn('git", "status", "--porcelain=v1", "-z"', wf)
+        self.assertIn("jiosaavn_allowed_lines", wf)
+        for heading in (
+            "## Summary",
+            "## Changes",
+            "## Type of change",
+            "## Scope",
+            "## Testing",
+            "## Screenshots or recordings",
+            "## Risk and compatibility",
+            "## Reviewer notes",
+            "## Release note",
+            "## Related issues",
+            "## Checklist",
+        ):
+            self.assertGreaterEqual(wf.count(heading), 2, heading)
         self.assertIn("post_decision.get(\"decision\") == \"none\"", wf)
         for line in wf.splitlines():
             stripped = line.lstrip()
