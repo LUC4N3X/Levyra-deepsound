@@ -309,7 +309,99 @@ internal fun artistNameMatches(expectedName: String, resolvedName: String): Bool
     val resolved = resolvedName.cleanAlbumArtistLabel()
     if (expected.isBlank() || resolved.isBlank()) return true
     return artistIdentityMatches(resolved, expected) || artistIdentityMatches(resolved, expectedPrimary) ||
-        ImportTransliteration.sameRomanized(resolved, expected) || ImportTransliteration.sameRomanized(resolved, expectedPrimary)
+        ImportTransliteration.sameRomanized(resolved, expected) || ImportTransliteration.sameRomanized(resolved, expectedPrimary) ||
+        artistNamesDifferOnlyByOmittedInitials(resolved, expected) ||
+        artistNamesDifferOnlyByOmittedInitials(resolved, expectedPrimary)
+}
+
+private fun artistNamesDifferOnlyByOmittedInitials(first: String, second: String): Boolean {
+    val firstKey = artistIdentityKey(first)
+    val secondKey = artistIdentityKey(second)
+    if (firstKey.isBlank() || secondKey.isBlank()) return false
+    return artistKeyWithoutMiddleInitials(firstKey) == secondKey || artistKeyWithoutMiddleInitials(secondKey) == firstKey
+}
+
+private fun artistKeyWithoutMiddleInitials(key: String): String {
+    val tokens = key.split(' ').filter { it.isNotEmpty() }
+    if (tokens.size < 3) return key
+    val middle = tokens.subList(1, tokens.lastIndex).filterNot { it.length == 1 }
+    return (listOf(tokens.first()) + middle + tokens.last()).joinToString(" ")
+}
+
+internal fun artistNamesShareScript(first: String, second: String): Boolean {
+    fun scripts(value: String): Set<Character.UnicodeScript> {
+        val result = HashSet<Character.UnicodeScript>()
+        var offset = 0
+        while (offset < value.length) {
+            val codePoint = value.codePointAt(offset)
+            if (Character.isLetter(codePoint)) {
+                val script = Character.UnicodeScript.of(codePoint)
+                if (script != Character.UnicodeScript.COMMON && script != Character.UnicodeScript.INHERITED) result += script
+            }
+            offset += Character.charCount(codePoint)
+        }
+        return result
+    }
+    val firstScripts = scripts(first)
+    val secondScripts = scripts(second)
+    if (firstScripts.isEmpty() || secondScripts.isEmpty()) return true
+    return firstScripts.any(secondScripts::contains)
+}
+
+internal fun artistPageCreditNames(root: JSONObject, browseId: String): List<String> {
+    val selfId = browseId.trim()
+    if (selfId.isBlank()) return emptyList()
+    val counts = LinkedHashMap<String, Int>()
+
+    fun countRuns(runs: JSONArray?) {
+        if (runs == null) return
+        for (index in 0 until runs.length()) {
+            val run = runs.optJSONObject(index) ?: continue
+            val runBrowseId = run.optJSONObject("navigationEndpoint")
+                ?.optJSONObject("browseEndpoint")
+                ?.optString("browseId")
+                .orEmpty()
+            val text = run.optString("text").trim()
+            if (text.isNotEmpty() && runBrowseId.equals(selfId, ignoreCase = true)) {
+                counts[text] = (counts[text] ?: 0) + 1
+            }
+        }
+    }
+
+    fun visit(value: Any?) {
+        when (value) {
+            is JSONObject -> {
+                value.optJSONObject("musicResponsiveListItemRenderer")?.optJSONArray("flexColumns")?.let { columns ->
+                    for (index in 0 until columns.length()) {
+                        countRuns(
+                            columns.optJSONObject(index)
+                                ?.optJSONObject("musicResponsiveListItemFlexColumnRenderer")
+                                ?.optJSONObject("text")
+                                ?.optJSONArray("runs")
+                        )
+                    }
+                }
+                value.optJSONObject("musicTwoRowItemRenderer")?.let { card ->
+                    countRuns(card.optJSONObject("subtitle")?.optJSONArray("runs"))
+                }
+                value.keys().forEach { key -> visit(value.opt(key)) }
+            }
+            is JSONArray -> for (index in 0 until value.length()) visit(value.opt(index))
+        }
+    }
+
+    visit(root)
+    return counts.entries
+        .filter { it.value >= MIN_ARTIST_CREDIT_OCCURRENCES }
+        .sortedByDescending { it.value }
+        .map { it.key }
+}
+
+private const val MIN_ARTIST_CREDIT_OCCURRENCES = 2
+
+internal fun resolveArtistPageName(requestedName: String, headerName: String, creditNames: () -> List<String>): String? {
+    if (artistNameMatches(requestedName, headerName)) return headerName
+    return creditNames().firstOrNull { artistNameMatches(requestedName, it) }
 }
 
 /**
@@ -382,6 +474,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         const val MAX_RELEASE_POINTERS = 2
         const val MAX_FEATURED_PLAYLISTS = 12
         const val MAX_ARTIST_VERIFICATIONS = 6
+        const val MAX_OTHER_SCRIPT_ARTIST_CANDIDATES = 2
         const val MAX_FALLBACK_PROFILES = 24
         const val ARTIST_SEARCH_PARAMS = "EgWKAQIgAWoMEAMQBBAJEAoQBRAV"
         val RELEASE_YEAR_REGEX = Regex("\\b(19|20)\\d{2}\\b")
@@ -477,8 +570,11 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         val root = runCatching { postBrowseFast(cleanBrowseId) }.getOrNull() ?: return@withContext emptyList()
         val header = root.optJSONObject("header") ?: return@withContext emptyList()
         if (!isArtistPageHeader(header)) return@withContext emptyList()
-        val resolvedName = headerText(header).ifBlank { cleanName }
-        if (!artistNameMatches(cleanName, resolvedName)) return@withContext emptyList()
+        val resolvedName = resolveArtistPageName(
+            requestedName = cleanName,
+            headerName = headerText(header).ifBlank { cleanName },
+            creditNames = { artistPageCreditNames(root, cleanBrowseId) }
+        ) ?: return@withContext emptyList()
         extractRelatedArtists(root, resolvedName)
             .asSequence()
             .filter { hit ->
@@ -611,7 +707,9 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             }.getOrNull()
             val accepted = official != null &&
                 official.officialArtwork &&
-                (artistIdentityMatches(official.name, cleanQuery) || artistIdentityMatches(official.name, primaryName))
+                (artistIdentityMatches(official.name, cleanQuery) ||
+                    artistIdentityMatches(official.name, primaryName) ||
+                    artistNamesDifferOnlyByOmittedInitials(official.name, cleanQuery))
             if (accepted) return official
         }
         return null
@@ -641,18 +739,21 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
                 .filter { candidate ->
                     candidate.browseId.isNotBlank() &&
                         isArtistShelfNameEligible(candidate.name) &&
-                        (artistIdentityMatches(candidate.name, cleanQuery) ||
-                            artistIdentityMatches(candidate.name, primaryName))
+                        (artistNameMatches(cleanQuery, candidate.name) ||
+                            !artistNamesShareScript(cleanQuery, candidate.name))
                 }
                 .forEach { candidate ->
                     candidates.putIfAbsent(candidate.browseId.lowercase(Locale.ROOT), candidate)
                 }
         }
-        return candidates.values.sortedWith(artistCandidateOrder(cleanQuery))
+        val (nameMatches, otherScript) = candidates.values.partition { artistNameMatches(cleanQuery, it.name) }
+        return (nameMatches + otherScript.take(MAX_OTHER_SCRIPT_ARTIST_CANDIDATES))
+            .sortedWith(artistCandidateOrder(cleanQuery))
     }
 
     private fun artistCandidateOrder(query: String): Comparator<ArtistHit> =
         compareByDescending<ArtistHit> { artistIdentityMatches(it.name, query) }
+            .thenByDescending { artistNameMatches(query, it.name) }
             .thenByDescending { artistSearchMatchScore(query, it.name) }
             .thenByDescending { it.thumbnailUrl.isNotBlank() }
             .thenByDescending { artistAudienceWeight(it.subscribers) }
@@ -674,12 +775,11 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         val root = browseArtistPage(browseId, allowRetry) ?: return null
         val header = root.optJSONObject("header") ?: return null
         if (!isArtistPageHeader(header)) return null
-        val resolvedName = headerText(header).trim().ifBlank { candidate.name.trim() }
-        if (
-            resolvedName.isBlank() ||
-            !artistNameMatches(requestedName, resolvedName) ||
-            !isArtistShelfNameEligible(resolvedName)
-        ) return null
+        val headerName = headerText(header).trim().ifBlank { candidate.name.trim() }
+        if (headerName.isBlank()) return null
+        val resolvedName = resolveArtistPageName(requestedName, headerName) { artistPageCreditNames(root, browseId) }
+            ?: return null
+        if (!isArtistShelfNameEligible(resolvedName)) return null
 
         val headerArtwork = parseArtistHeaderArtwork(header)
         val thumbnail = upgradeThumbnail(
@@ -743,8 +843,16 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         }
         val root = postBrowse(browseId)
         val header = root.optJSONObject("header")
-        val name = header?.let { headerText(it).ifBlank { fallbackName.trim() } }.orEmpty()
-        if (header == null || !isArtistPageHeader(header) || !artistNameMatches(fallbackName, name)) {
+        val name = header
+            ?.takeIf(::isArtistPageHeader)
+            ?.let { pageHeader ->
+                resolveArtistPageName(
+                    requestedName = fallbackName,
+                    headerName = headerText(pageHeader).ifBlank { fallbackName.trim() },
+                    creditNames = { artistPageCreditNames(root, browseId) }
+                )
+            }
+        if (header == null || name == null) {
             portraitSearch?.cancel()
             return@coroutineScope null
         }

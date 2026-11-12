@@ -249,6 +249,39 @@ class YoutubeMusicSearchEntityKindTest {
     }
 
     @Test
+    fun `artist card rows inherit the card artist under its credited name`() {
+        val cardRow = JSONObject()
+            .put("playlistItemData", JSONObject().put("videoId", "m6MSnZdFmkE"))
+            .put("flexColumns", JSONArray().put(line("Far Beyond The Sun")).put(line("Композиция • 5:51")))
+        val card = JSONObject()
+            .put("title", JSONObject().put("runs", JSONArray().put(browseRun("イングヴェイ・マルムスティーン", "UCself", "MUSIC_PAGE_TYPE_ARTIST"))))
+            .put("contents", JSONArray().put(JSONObject().put("musicResponsiveListItemRenderer", cardRow)))
+        fun creditedSong(videoId: String, title: String) = JSONObject().put(
+            "musicResponsiveListItemRenderer",
+            JSONObject()
+                .put("playlistItemData", JSONObject().put("videoId", videoId))
+                .put(
+                    "flexColumns",
+                    JSONArray()
+                        .put(line(title))
+                        .put(runLine(browseRun("Yngwie Malmsteen", "UCself", "MUSIC_PAGE_TYPE_ARTIST")))
+                )
+        )
+        val root = JSONObject().put(
+            "contents",
+            JSONArray()
+                .put(JSONObject().put("musicCardShelfRenderer", card))
+                .put(creditedSong("uCVY4Zu_kqk", "Rising Force"))
+                .put(creditedSong("IhTcysZmO9Y", "Eclipse"))
+        )
+
+        val hero = repository.parseSearchOverview(root, "Yngwie Malmsteen").songs.first { it.id == "m6MSnZdFmkE" }
+
+        assertEquals("Yngwie Malmsteen", hero.artist)
+        assertEquals(listOf("UCself"), hero.artistBrowseIds)
+    }
+
+    @Test
     fun `overview is empty for an unparsable payload`() {
         val overview = repository.parseSearchOverview(JSONObject().put("contents", JSONArray()), "query")
 
