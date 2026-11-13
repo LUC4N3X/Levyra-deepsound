@@ -1148,7 +1148,21 @@ private fun LevyraNowPlayingContent(
                     } else {
                         viewModel::exportCurrentTrack
                     }
-                )
+                ) + if (com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) {
+                    youTubeMusicPlayerExtraActions(
+                        icons = playerIcons,
+                        strings = strings,
+                        onComments = viewModel::openYoutubeComments,
+                        onSave = onOpenPlaylistDialog?.let { open -> { open(activeTrack) } },
+                        onShare = { shareTrack(playerContext, activeTrack, strings) },
+                        onMix = {
+                            viewModel.startSongRadio()
+                            viewModel.openQueue()
+                        }
+                    )
+                } else {
+                    emptyList()
+                }
             }
         }
 

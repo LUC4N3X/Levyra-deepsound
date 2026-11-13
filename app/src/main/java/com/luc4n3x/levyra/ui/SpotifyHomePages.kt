@@ -136,7 +136,7 @@ private fun SpotifyYearTops(state: LevyraUiState, viewModel: HomeViewModel) {
             SpotifyYearCard(
                 "Top Tracks\n$region $year", tracks.first().largeThumbnailUrl.ifBlank { tracks.first().thumbnailUrl }, Color(0xFFD9822B),
                 tracks.map(Track::artist).distinct().take(5).joinToString(", ")
-            ) { viewModel.playFrom(tracks, tracks.first()) }
+            ) { SpotifyYearChartNavigator.open = true }
         }
         if (artists.isNotEmpty()) item(key = "year-artists") {
             SpotifyYearCard(

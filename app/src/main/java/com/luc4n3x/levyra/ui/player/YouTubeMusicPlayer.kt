@@ -9,6 +9,7 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -124,8 +125,22 @@ private fun YouTubeMusicLandscapeDeck(
     }
 }
 
-private val YouTubeMusicTabOrder = listOf("queue", "lyrics", "download")
+private val YouTubeMusicTabOrder = listOf("queue", "lyrics", "comments", "save", "share", "mix", "download")
 private val YouTubeMusicPillShape = androidx.compose.foundation.shape.RoundedCornerShape(50)
+
+internal fun youTubeMusicPlayerExtraActions(
+    icons: PlayerActionIcons,
+    strings: com.luc4n3x.levyra.ui.i18n.LevyraStrings,
+    onComments: () -> Unit,
+    onSave: (() -> Unit)?,
+    onShare: () -> Unit,
+    onMix: () -> Unit
+): List<PlayerDockAction> = listOfNotNull(
+    PlayerDockAction(key = "comments", icon = Icons.AutoMirrored.Outlined.Comment, label = strings.commentsLabel, onClick = onComments),
+    onSave?.let { PlayerDockAction(key = "save", icon = icons.addToPlaylist, label = strings.addToPlaylist, onClick = it) },
+    PlayerDockAction(key = "share", icon = icons.share, label = strings.share, onClick = onShare),
+    PlayerDockAction(key = "mix", icon = icons.startRadio, label = strings.startRadio, onClick = onMix)
+)
 
 @Composable
 private fun YouTubeMusicPlayerPills(dockActions: List<PlayerDockAction>) {

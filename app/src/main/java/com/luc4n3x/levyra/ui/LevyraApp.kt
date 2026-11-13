@@ -10755,6 +10755,7 @@ private fun StudioHomeOverlays(c: StudioHomeContext, homeBottomInset: Dp) {
     with(c) {
         if (LevyraIsSpotify) SpotifyTopChartOverlay(state.currentTrack?.id, state.isPlaying, homeBottomInset, viewModel::playFrom, onTrackActions)
         if (LevyraIsSpotify) SpotifyRadioOverlay(viewModel, state.currentTrack?.id, state.isPlaying, homeBottomInset, onTrackActions)
+        if (LevyraIsSpotify) SpotifyYearChartOverlay(state, homeBottomInset, viewModel::playFrom, onTrackActions, viewModel::openExploreGenreChart)
         if (chartMarketSheetOpen) {
             ChartMarketSheet(
                 regions = state.chartRegions,
