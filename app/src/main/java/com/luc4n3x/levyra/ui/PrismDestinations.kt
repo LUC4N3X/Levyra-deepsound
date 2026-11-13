@@ -23,6 +23,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,10 +49,15 @@ import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.DailyTop100Copy
+import com.luc4n3x.levyra.ui.i18n.GenreChartCopy
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
+import com.luc4n3x.levyra.ui.i18n.genreDiscoveryCopy
+import com.luc4n3x.levyra.viewmodel.ExploreGenreDiscoveryState
+import com.luc4n3x.levyra.ui.i18n.genreChartCopy
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
+import com.luc4n3x.levyra.ui.theme.LevyraPanel
 import com.luc4n3x.levyra.ui.theme.LevyraPink
 import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.ui.theme.PrismAccent
@@ -55,7 +65,7 @@ import com.luc4n3x.levyra.ui.theme.PrismDesign
 import com.luc4n3x.levyra.viewmodel.DailyTop100ChartUiState
 import java.util.Locale
 
-private val prismPageBackground: Color get() = if (LevyraActivePalette.isLight) Color(0xFFF7F2F5) else Color(0xFF060507)
+internal val prismPageBackground: Color get() = if (LevyraActivePalette.isLight) Color(0xFFF7F2F5) else Color(0xFF060507)
 private val PrismDestinationGutter = PrismDesign.gutter
 
 @Composable
@@ -160,60 +170,91 @@ internal fun PrismCollectionDestination(
     onBack: () -> Unit,
     onPlayAll: () -> Unit,
     onPlayTrack: (Track) -> Unit,
-    onRequestTrackArtwork: (Track) -> Unit
+    onRequestTrackArtwork: (Track) -> Unit,
+    discovery: ExploreGenreDiscoveryState,
+    discoveryActions: GenreDiscoveryActions?
 ) {
+    val discoveryCopy = remember(strings.code) { genreDiscoveryCopy(strings.code) }
+    val chartCopy = remember(strings.code) { genreChartCopy(strings.code) }
+    var chartExpanded by rememberSaveable(title) { mutableStateOf(false) }
     LazyColumn(Modifier.fillMaxSize().background(prismPageBackground), contentPadding = PaddingValues(bottom = bottomInset + 32.dp)) {
         item(key = "prism-destination-hero") {
-            val lead = tracks.firstOrNull()
+            val lead = tracks.firstOrNull() ?: editorial.chart.firstOrNull()
             if (lead != null) LaunchedEffect(lead.id) { onRequestTrackArtwork(lead) }
             PrismDestinationHero(
                 title, subtitle?.takeIf(String::isNotBlank) ?: strings.explore, lead?.let(::atelierCoverUrl).orEmpty(),
-                strings.playAll, onBack, onPlayAll.takeIf { tracks.isNotEmpty() }
+                strings.playAll, onBack, onPlayAll.takeIf { tracks.isNotEmpty() || editorial.chart.isNotEmpty() }
             )
         }
+        prismGenreChart(editorial, chartCopy, chartExpanded, currentTrackId, strings.songOptions, { chartExpanded = !chartExpanded }, onPlayTrack, onRequestTrackArtwork)
         when {
             isLoading && tracks.isEmpty() -> item(key = "prism-destination-loading") { PrismStatus(true, "", null, null) }
-            tracks.isEmpty() -> item(key = "prism-destination-empty") { PrismStatus(false, strings.exploreEmpty, null, null) }
+            tracks.isEmpty() -> if (editorial.chart.isEmpty() && !editorial.chartLoading && !discovery.hasVisibleContent && !discovery.isLoading) item(key = "prism-destination-empty") { PrismStatus(false, strings.exploreEmpty, null, null) }
             else -> {
                 prismCoverRail("featured", strings.popularTracks, editorial.featured.map { Triple(it.title, it.artist, it) }, onPlayTrack, onRequestTrackArtwork)
-                if (editorial.artists.isNotEmpty()) {
-                    item(key = "prism-destination-artists") {
-                        Column {
-                            PrismDestinationHeader(strings.artists)
-                            LazyRow(contentPadding = PaddingValues(horizontal = PrismDestinationGutter), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                                items(editorial.artists, key = { it.key }) { artist ->
-                                    LaunchedEffect(artist.track.id) { onRequestTrackArtwork(artist.track) }
-                                    Column(
-                                        Modifier.width(104.dp)
-                                            .levyraPressable(onClick = { onPlayTrack(artist.track) }, role = Role.Button, pressedScale = LevyraPressScale.Tile)
-                                            .semantics(mergeDescendants = true) { contentDescription = artist.name },
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        Box(Modifier.size(96.dp).clip(CircleShape).border(2.dp, PrismAccent.gradient(false), CircleShape).padding(4.dp).clip(CircleShape)) {
-                                            coil3.compose.AsyncImage(
-                                                artist.artworkUrl.ifBlank { atelierCoverUrl(artist.track) }, null,
-                                                contentScale = androidx.compose.ui.layout.ContentScale.Crop, modifier = Modifier.fillMaxSize()
-                                            )
-                                        }
-                                        Text(
-                                            artist.name, color = LevyraText, style = MaterialTheme.typography.labelLarge, maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp).clearAndSetSemantics { }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                prismCoverRail("albums", strings.albumsPlain, editorial.albums.map { Triple(it.title, it.artist, it.track) }, onPlayTrack, onRequestTrackArtwork)
-                if (editorial.essentials.isNotEmpty()) {
-                    item(key = "prism-destination-essentials") { PrismDestinationHeader(strings.songsPlain) }
-                    itemsIndexed(editorial.essentials, key = { _, t -> "essential-${t.id}" }) { index, track ->
-                        LaunchedEffect(track.id) { onRequestTrackArtwork(track) }
-                        PrismTrackRow(index + 1, track, track.id == currentTrackId, strings.songOptions, { onPlayTrack(track) })
-                    }
-                }
             }
+        }
+        genreArtistRowItems(genreArtistEntries(editorial, discovery), strings.artists, PrismDiscoverySkin, onPlayTrack, onRequestTrackArtwork) { name ->
+            discoveryActions?.openArtist?.invoke(name)
+        }
+        genreAlbumRowItems(genreAlbumEntries(editorial, discovery), strings.albumsPlain, PrismDiscoverySkin, onPlayTrack, onRequestTrackArtwork) { album ->
+            discoveryActions?.openAlbum?.invoke(album)
+        }
+        if (discoveryActions != null) genreDiscoveryItems(discovery, discoveryCopy, PrismDiscoverySkin, discoveryActions)
+        if (editorial.essentials.isNotEmpty()) {
+            item(key = "prism-destination-essentials") { PrismDestinationHeader(strings.songsPlain) }
+            itemsIndexed(editorial.essentials, key = { _, t -> "essential-${t.id}" }) { index, track ->
+                LaunchedEffect(track.id) { onRequestTrackArtwork(track) }
+                PrismTrackRow(index + 1, track, track.id == currentTrackId, strings.songOptions, { onPlayTrack(track) })
+            }
+        }
+    }
+}
+
+private fun LazyListScope.prismGenreChart(
+    editorial: ExploreGenreEditorial,
+    copy: GenreChartCopy,
+    expanded: Boolean,
+    currentTrackId: String?,
+    actionLabel: String,
+    onToggle: () -> Unit,
+    onPlayTrack: (Track) -> Unit,
+    onRequestTrackArtwork: (Track) -> Unit
+) {
+    val chart = editorial.chart
+    if (chart.isEmpty() && !editorial.chartLoading) return
+    item(key = "prism-chart-header") {
+        Column {
+            PrismDestinationHeader(copy.title)
+            Text(
+                copy.subtitle, color = LevyraMuted, style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(start = PrismDestinationGutter, end = PrismDestinationGutter, bottom = 6.dp)
+            )
+        }
+    }
+    if (chart.isEmpty()) {
+        item(key = "prism-chart-loading") {
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 68.dp).padding(horizontal = PrismDestinationGutter),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                LevyraLoadingIndicator(color = LevyraPink, modifier = Modifier.size(24.dp))
+                Text(copy.loading, color = LevyraMuted, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+        return
+    }
+    itemsIndexed(chart.take(if (expanded) 50 else 10), key = { _, track -> "prism-chart-${track.id}" }) { index, track ->
+        LaunchedEffect(track.id) { onRequestTrackArtwork(track) }
+        PrismTrackRow(index + 1, track, track.id == currentTrackId, actionLabel, { onPlayTrack(track) })
+    }
+    item(key = "prism-chart-footer") {
+        Row(
+            Modifier.fillMaxWidth().padding(start = PrismDestinationGutter, end = 8.dp, top = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(copy.credit, color = LevyraMuted, style = MaterialTheme.typography.labelSmall, letterSpacing = 1.sp, modifier = Modifier.weight(1f))
+            if (chart.size > 10) TextButton(onClick = onToggle) { Text(if (expanded) copy.showLess else copy.showAll, color = LevyraPink, maxLines = 1) }
         }
     }
 }
@@ -322,3 +363,24 @@ internal fun PrismTop100Card(label: String, date: String, slot: Int, global: Boo
         }
     }
 }
+
+private val PrismDiscoverySkin = GenreDiscoverySkin(
+    keyPrefix = "prism",
+    rowModifier = Modifier,
+    rowPadding = PaddingValues(horizontal = PrismDestinationGutter),
+    itemGap = 14.dp,
+    header = { title -> PrismDestinationHeader(title) },
+    cover = { tile ->
+        GenreDiscoveryCoverCard(tile, 150.dp, PrismDesign.cut(18.dp), LevyraPanel, LevyraText, LevyraMuted)
+    },
+    wide = { tile ->
+        GenreDiscoveryCoverCard(tile, 280.dp, PrismDesign.cut(18.dp), LevyraPanel, LevyraText, LevyraMuted, aspectRatio = 16f / 9f)
+    },
+    artist = { tile ->
+        GenreDiscoveryArtistCard(tile, 96.dp, CircleShape, LevyraPanel, LevyraText)
+    },
+    about = { text, copy ->
+        GenreDiscoveryAboutText(text, copy, LevyraText, LevyraMuted, LevyraText, Modifier.padding(horizontal = PrismDestinationGutter))
+    },
+    credit = { text -> GenreDiscoveryCredit(text, LevyraMuted, Modifier.padding(horizontal = PrismDestinationGutter, vertical = 10.dp)) }
+)

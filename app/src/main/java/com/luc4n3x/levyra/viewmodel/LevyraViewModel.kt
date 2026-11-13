@@ -75,6 +75,13 @@ import com.luc4n3x.levyra.data.ListeningPulseStore
 import com.luc4n3x.levyra.data.OfficialArtworkRepository
 import com.luc4n3x.levyra.data.credits.TrackCredits
 import com.luc4n3x.levyra.data.credits.TrackCreditsRepository
+import com.luc4n3x.levyra.data.lastfm.LastFmGenreChartRepository
+import com.luc4n3x.levyra.data.lastfm.LastFmGenreTags
+import com.luc4n3x.levyra.data.lastfm.LastFmGenreDiscoveryRepository
+import com.luc4n3x.levyra.data.apple.AppleCatalogPage
+import com.luc4n3x.levyra.data.apple.AppleExploreCatalog
+import com.luc4n3x.levyra.data.apple.AppleMusicEditorialRepository
+import com.luc4n3x.levyra.data.apple.AppleStorefronts
 import com.luc4n3x.levyra.data.LyricsPhraseHit
 import com.luc4n3x.levyra.data.LyricsPhraseOutcome
 import com.luc4n3x.levyra.data.LyricsPhraseSearchRepository
@@ -975,6 +982,22 @@ internal fun canPublishAlbumMotionArtwork(
     return visible.album.title.equals(expected.album.title, ignoreCase = true) &&
         visible.album.artist.equals(expected.album.artist, ignoreCase = true)
 }
+
+data class ExploreGenreChartState(
+    val key: String = "",
+    val tracks: List<Track> = emptyList(),
+    val isLoading: Boolean = false
+)
+
+private const val EXPLORE_GENRE_CHART_FIRST_PAINT = 10
+
+data class ExploreGenreDiscoveryState(
+    val key: String = "",
+    val storefront: String = "",
+    val apple: List<com.luc4n3x.levyra.data.apple.AppleCatalogShelf> = emptyList(),
+    val lastFm: com.luc4n3x.levyra.data.lastfm.LastFmGenreDiscovery? = null,
+    val isLoading: Boolean = false
+)
 
 class LevyraViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = YoutubeMusicRepository(application.applicationContext)
@@ -10332,6 +10355,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         selectTab(LevyraTab.Explore)
     }
 
+    fun openExploreGenreChart(zone: ExploreZone) {
+        openExploreZoneChart(zone)
+        _state.update { current -> current.copy(exploreOpenRequest = com.luc4n3x.levyra.ui.exploreGenreChartDestination(zone.id)) }
+        selectTab(LevyraTab.Explore)
+    }
+
+    fun openExplorePodcasts() {
+        _state.update { current -> current.copy(exploreOpenRequest = com.luc4n3x.levyra.domain.EXPLORE_PODCASTS_REQUEST) }
+        selectTab(LevyraTab.Explore)
+    }
+
     fun openExploreSamples(index: Int) {
         _state.update { current -> current.copy(exploreOpenRequest = "$EXPLORE_SAMPLES_REQUEST${index.coerceAtLeast(0)}") }
         selectTab(LevyraTab.Explore)
@@ -11919,6 +11953,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var exploreVideosJob: Job? = null
     private var exploreVideosLanguage = ""
     private var exploreJob: Job? = null
+    private val lastFmGenreCharts by lazy { LastFmGenreChartRepository(getApplication()) }
+    private val _exploreGenreChart = MutableStateFlow(ExploreGenreChartState())
+    val exploreGenreChart: StateFlow<ExploreGenreChartState> = _exploreGenreChart.asStateFlow()
+    private var exploreGenreChartJob: Job? = null
+    private val lastFmGenreDiscovery by lazy { LastFmGenreDiscoveryRepository(getApplication()) }
+    private val _exploreGenreDiscovery = MutableStateFlow(ExploreGenreDiscoveryState())
+    val exploreGenreDiscovery: StateFlow<ExploreGenreDiscoveryState> = _exploreGenreDiscovery.asStateFlow()
+    private var exploreGenreDiscoveryJob: Job? = null
     private var exploreCategoriesLoadedLanguage =
         startupExploreDiscovery?.let { LevyraLanguageCatalog.normalize(startupSettings.languageCode) }.orEmpty()
     private var exploreCategoriesRequestLanguage = ""
@@ -12445,6 +12487,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun selectExploreZone(zone: ExploreZone) {
         exploreJob?.cancel()
+        loadExploreGenreChart("zone:${zone.id}", LastFmGenreTags.forZone(zone.id))
         if (zone.id == ExploreCatalog.NEW_RELEASES_ZONE_ID) {
             _state.update { current ->
                 current.copy(
@@ -12509,6 +12552,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val params = category.params
         if (params.isBlank() || category.title.isBlank()) return
         exploreJob?.cancel()
+        loadExploreGenreChart("category:$params", LastFmGenreTags.forCategoryTitle(category.title))
         val languageCode = _state.value.languageCode
         val cacheKey = "provider:$languageCode:$params"
         val cached = exploreCache[cacheKey]
@@ -12569,6 +12613,121 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             ) return@launch
             _state.update { current -> current.copy(exploreTracks = results, isExploreLoading = false) }
             refreshOfficialMetadataBatch(results, 8)
+        }
+    }
+
+    fun openExploreCategoryChart(category: ExploreCategory) {
+        loadExploreGenreChart("category:${category.params}", LastFmGenreTags.forCategoryTitle(category.title))
+    }
+
+    fun openExploreZoneChart(zone: ExploreZone) {
+        loadExploreGenreChart("zone:${zone.id}", LastFmGenreTags.forZone(zone.id))
+    }
+
+    private fun loadExploreGenreChart(identity: String, tags: List<String>) {
+        val languageCode = _state.value.languageCode
+        val key = "$languageCode:$identity"
+        val current = _exploreGenreChart.value
+        if (current.key == key && (current.isLoading || current.tracks.isNotEmpty())) return
+        exploreGenreChartJob?.cancel()
+        if (tags.isEmpty()) {
+            _exploreGenreChart.value = ExploreGenreChartState(key = key)
+            return
+        }
+        _exploreGenreChart.value = ExploreGenreChartState(key = key, isLoading = true)
+        exploreGenreChartJob = viewModelScope.launch {
+            fun publish(tracks: List<Track>, loading: Boolean) {
+                _exploreGenreChart.update { state ->
+                    if (state.key != key) state
+                    else if (loading && tracks.size <= state.tracks.size) state
+                    else state.copy(tracks = tracks, isLoading = loading)
+                }
+            }
+            publish(lastFmGenreCharts.cached(tags, languageCode), loading = true)
+            val tracks = try {
+                lastFmGenreCharts.genreChart(
+                    tags = tags,
+                    languageCode = languageCode,
+                    match = { title, artist -> repository.searchSongMatch(title, artist, languageCode) },
+                    onProgress = { partial -> if (partial.size >= EXPLORE_GENRE_CHART_FIRST_PAINT) publish(partial, loading = true) }
+                )
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                Timber.w(error, "Last.fm genre chart failed for %s", identity)
+                emptyList()
+            }
+            _exploreGenreChart.update { state ->
+                if (state.key != key) state
+                else state.copy(tracks = tracks.ifEmpty { state.tracks }, isLoading = false)
+            }
+        }
+    }
+
+    fun loadExploreZoneDiscovery(zone: ExploreZone) {
+        val curators = AppleExploreCatalog.zoneCuratorIds(zone.id)
+        loadExploreGenreDiscovery("zone:${zone.id}", LastFmGenreTags.forZone(zone.id), curators) { apple, front, lang ->
+            apple.curatorGenre(curators, front, lang)
+        }
+    }
+
+    fun loadExploreCategoryDiscovery(category: ExploreCategory) {
+        val curators = listOfNotNull(AppleExploreCatalog.curatorId(category.params))
+        loadExploreGenreDiscovery("category:${category.params}", LastFmGenreTags.forCategoryTitle(category.title), curators) { apple, front, lang ->
+            apple.genre(category.title, category.params, front, lang)
+        }
+    }
+
+    private fun loadExploreGenreDiscovery(
+        identity: String,
+        tags: List<String>,
+        cachedCurators: List<String>,
+        fetchApple: suspend (AppleMusicEditorialRepository, String, String) -> AppleCatalogPage?
+    ) {
+        val languageCode = _state.value.languageCode
+        val storefront = AppleStorefronts.normalize(ChartsCatalog.region(_state.value.selectedChartId).country)
+        val appleLanguage = AppleStorefronts.language(languageCode)
+        val key = "$languageCode:$identity"
+        val current = _exploreGenreDiscovery.value
+        val sameTarget = current.key == key && current.storefront == storefront
+        if (sameTarget && current.isLoading) return
+        exploreGenreDiscoveryJob?.cancel()
+        _exploreGenreDiscovery.value =
+            if (sameTarget) current.copy(isLoading = true)
+            else ExploreGenreDiscoveryState(key = key, storefront = storefront, isLoading = true)
+        exploreGenreDiscoveryJob = viewModelScope.launch {
+            fun publish(transform: (ExploreGenreDiscoveryState) -> ExploreGenreDiscoveryState) {
+                _exploreGenreDiscovery.update { state -> if (state.key == key && state.storefront == storefront) transform(state) else state }
+            }
+            val apple = AppleMusicEditorialRepository.get(getApplication())
+            coroutineScope {
+                launch {
+                    if (_exploreGenreDiscovery.value.apple.isEmpty()) {
+                        apple.cachedCuratorGenre(cachedCurators, storefront, appleLanguage)?.let { page ->
+                            val shelves = AppleExploreCatalog.genreShelves(page)
+                            publish { state -> if (state.apple.isEmpty()) state.copy(apple = shelves) else state }
+                        }
+                    }
+                    val page = runCatchingPreservingCancellation { fetchApple(apple, storefront, appleLanguage) }
+                        .onFailure { Timber.w(it, "Apple genre discovery failed for %s", identity) }
+                        .getOrNull()
+                    val shelves = page?.let(AppleExploreCatalog::genreShelves).orEmpty()
+                    if (shelves.isNotEmpty()) publish { state -> state.copy(apple = shelves) }
+                }
+                launch {
+                    if (tags.isEmpty()) return@launch
+                    if (_exploreGenreDiscovery.value.lastFm == null) {
+                        lastFmGenreDiscovery.cached(tags, languageCode)?.let { stored ->
+                            publish { state -> if (state.lastFm == null) state.copy(lastFm = stored) else state }
+                        }
+                    }
+                    val fresh = runCatchingPreservingCancellation { lastFmGenreDiscovery.discovery(tags, languageCode) }
+                        .onFailure { Timber.w(it, "Last.fm genre discovery failed for %s", identity) }
+                        .getOrNull()
+                    if (fresh != null) publish { state -> state.copy(lastFm = fresh) }
+                }
+            }
+            publish { state -> state.copy(isLoading = false) }
         }
     }
 

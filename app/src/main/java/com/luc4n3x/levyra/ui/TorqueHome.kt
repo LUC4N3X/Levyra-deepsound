@@ -5,12 +5,10 @@ import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -38,7 +36,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.domain.Track
-import com.luc4n3x.levyra.feature.discovery.BubbleLevel
+import com.luc4n3x.levyra.ui.discovery.DiscoveryLevelChipStyle
+import com.luc4n3x.levyra.ui.discovery.HomeDiscoveryLevelChips
 import com.luc4n3x.levyra.feature.discovery.DiscoveryFilmScores
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
@@ -46,7 +45,6 @@ import com.luc4n3x.levyra.ui.discovery.LocalHomeDiscovery
 import com.luc4n3x.levyra.ui.discovery.discoveryReasonLabel
 import com.luc4n3x.levyra.ui.i18n.LevyraMonoHomeStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
-import com.luc4n3x.levyra.ui.i18n.SmartMusicText
 import com.luc4n3x.levyra.ui.i18n.discoveryCopy
 import com.luc4n3x.levyra.ui.i18n.smartMusicCopy
 import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
@@ -59,8 +57,8 @@ import com.luc4n3x.levyra.ui.theme.TorqueStripShape
 import com.luc4n3x.levyra.viewmodel.HomeViewModel
 import kotlinx.coroutines.delay
 
-private val TorqueCuratedWidth = 212.dp
-private val TorqueCuratedHeight = 276.dp
+internal val TorqueCuratedWidth = 212.dp
+internal val TorqueCuratedHeight = 276.dp
 private const val TorqueDiscoverHoldMillis = 3400L
 private const val TorqueDiscoverSegments = 8
 
@@ -76,7 +74,9 @@ private fun TorqueTag(text: String, background: Color = LevyraBlack, content: Co
 internal fun TorqueCuratedPlaylists(viewModel: HomeViewModel, inset: Dp, fallback: @Composable () -> Unit) {
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { LevyraMonoHomeStrings.forCode(strings.code) }
-    val shelves = rememberCuratedPlaylistShelves(strings.code)
+    val curated = rememberCuratedPlaylistShelves(strings.code)
+    val collections = rememberDefaultCuratedCollectionShelves(strings.code)
+    val shelves = remember(curated, collections) { if (curated.isEmpty()) curated else curated + collections }
     if (shelves.isEmpty()) {
         fallback()
         return
@@ -85,7 +85,9 @@ internal fun TorqueCuratedPlaylists(viewModel: HomeViewModel, inset: Dp, fallbac
         shelves.forEachIndexed { index, shelf ->
             val tiles = remember(shelf.items) { shelf.items.distinctBy { it.key }.filter { it.playlist != null } }
             if (tiles.isEmpty()) return@forEachIndexed
-            SkinSectionTitle(if (index == 0) copy.mixedForYou else shelf.title, inset)
+            SkinSectionTitle(if (index == 0) copy.mixedForYou else shelf.title, inset) {
+                if (index == 0) LocalCuratedPlaylistsOpener.current?.let { open -> TorqueShowAll(open) }
+            }
             LazyRow(contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 itemsIndexed(tiles, key = { _, tile -> tile.key }, contentType = { _, _ -> "torque-curated" }) { position, tile ->
                     TorqueCuratedCard(position + 1, tile.title, monoWithoutYoutube(tile.subtitle), tile.thumbnailUrl) {
@@ -98,9 +100,16 @@ internal fun TorqueCuratedPlaylists(viewModel: HomeViewModel, inset: Dp, fallbac
 }
 
 @Composable
-private fun TorqueCuratedCard(rank: Int, title: String, subtitle: String, artwork: String, onOpen: () -> Unit) {
+internal fun TorqueCuratedCard(
+    rank: Int,
+    title: String,
+    subtitle: String,
+    artwork: String,
+    modifier: Modifier = Modifier.size(TorqueCuratedWidth, TorqueCuratedHeight),
+    onOpen: () -> Unit
+) {
     Box(
-        Modifier.size(TorqueCuratedWidth, TorqueCuratedHeight).background(LevyraPanel)
+        modifier.background(LevyraPanel)
             .levyraPressable(onClick = onOpen, role = Role.Button, pressedScale = LevyraPressScale.Tile)
             .semantics(mergeDescendants = true) { contentDescription = listOf(title, subtitle).filter(String::isNotBlank).joinToString(", ") }
     ) {
@@ -144,99 +153,74 @@ internal fun TorqueDiscoverTeaser(modifier: Modifier = Modifier) {
     val leadIndex = turn.mod(cards.size.coerceAtLeast(1))
     val lead = cards.getOrNull(leadIndex)
     val accent = LevyraActivePalette.blue
-    Row(
-        modifier.fillMaxWidth().heightIn(min = 196.dp).height(IntrinsicSize.Min).background(LevyraPanel)
-            .levyraPressable(onClick = handle.onOpen, role = Role.Button, onClickLabel = copy.start, pressedScale = LevyraPressScale.Surface)
-            .semantics(mergeDescendants = true) { contentDescription = copy.title + ". " + copy.lead }
-    ) {
-        Box(Modifier.fillMaxHeight().width(150.dp).background(LevyraPanelSoft).clearAndSetSemantics { }) {
-            Crossfade(targetState = lead?.track, animationSpec = tween(600), label = "torque-discover-lead") { track: Track? ->
-                if (track != null) CoverImage(track, Modifier.fillMaxSize(), highRes = true)
-            }
-            Box(Modifier.fillMaxSize().clip(TorqueStripShape).background(accent))
-            Text(
-                (leadIndex + 1).toString().padStart(2, '0') + "/" + cards.size.coerceAtLeast(1).toString().padStart(2, '0'),
-                color = Color.White, fontFamily = FontFamily.Monospace, fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                modifier = Modifier.align(Alignment.BottomStart).padding(start = 10.dp, bottom = 20.dp)
-            )
-            Row(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(horizontal = 10.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                repeat(cards.size.coerceAtLeast(1)) { index ->
-                    Box(Modifier.weight(1f).height(3.dp).background(if (index <= leadIndex) Color.White else Color.White.copy(alpha = 0.35f)))
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 196.dp).height(IntrinsicSize.Min).background(LevyraPanel)
+                .levyraPressable(onClick = handle.onOpen, role = Role.Button, onClickLabel = copy.start, pressedScale = LevyraPressScale.Surface)
+                .semantics(mergeDescendants = true) { contentDescription = copy.title + ". " + copy.lead }
+        ) {
+            Box(Modifier.fillMaxHeight().width(150.dp).background(LevyraPanelSoft).clearAndSetSemantics { }) {
+                Crossfade(targetState = lead?.track, animationSpec = tween(600), label = "torque-discover-lead") { track: Track? ->
+                    if (track != null) CoverImage(track, Modifier.fillMaxSize(), highRes = true)
+                }
+                Box(Modifier.fillMaxSize().clip(TorqueStripShape).background(accent))
+                Text(
+                    (leadIndex + 1).toString().padStart(2, '0') + "/" + cards.size.coerceAtLeast(1).toString().padStart(2, '0'),
+                    color = Color.White, fontFamily = FontFamily.Monospace, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                    modifier = Modifier.align(Alignment.BottomStart).padding(start = 10.dp, bottom = 20.dp)
+                )
+                Row(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(horizontal = 10.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                    repeat(cards.size.coerceAtLeast(1)) { index ->
+                        Box(Modifier.weight(1f).height(3.dp).background(if (index <= leadIndex) Color.White else Color.White.copy(alpha = 0.35f)))
+                    }
                 }
             }
-        }
-        Column(Modifier.weight(1f).fillMaxHeight().padding(start = 16.dp, end = 14.dp, top = 14.dp, bottom = 14.dp)) {
-            TorqueTag(overline)
-            Spacer(Modifier.height(10.dp))
-            Text(
-                copy.title.uppercase(), color = LevyraText, fontSize = 20.sp, lineHeight = 23.sp, fontWeight = FontWeight.Bold,
-                letterSpacing = 1.6.sp, maxLines = 2, overflow = TextOverflow.Ellipsis
-            )
-            Spacer(Modifier.height(4.dp))
-            Crossfade(targetState = lead, animationSpec = tween(400), label = "torque-discover-reason") { card ->
-                Column {
+            Column(Modifier.weight(1f).fillMaxHeight().padding(start = 16.dp, end = 14.dp, top = 14.dp, bottom = 14.dp)) {
+                TorqueTag(overline)
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    copy.title.uppercase(), color = LevyraText, fontSize = 20.sp, lineHeight = 23.sp, fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.6.sp, maxLines = 2, overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(4.dp))
+                Crossfade(targetState = lead, animationSpec = tween(400), label = "torque-discover-reason") { card ->
+                    Column {
+                        Text(
+                            (card?.let { discoveryReasonLabel(it, copy, music) } ?: copy.lead).uppercase(), color = accent,
+                            fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp, maxLines = 1, overflow = TextOverflow.Ellipsis
+                        )
+                        LevyraMediaTitle(
+                            card?.track?.let { "${it.title} · ${it.artist}" } ?: copy.lead, color = LevyraMuted, fontSize = 13.sp,
+                            explicit = card?.track?.explicit == true,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+                Spacer(Modifier.weight(1f).heightIn(min = 12.dp))
+                Row(
+                    Modifier.clip(TorqueTagShape).background(accent).padding(horizontal = 18.dp, vertical = 9.dp).clearAndSetSemantics { },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Rounded.PlayArrow, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
                     Text(
-                        (card?.let { discoveryReasonLabel(it, copy, music) } ?: copy.lead).uppercase(), color = accent,
-                        fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp, maxLines = 1, overflow = TextOverflow.Ellipsis
-                    )
-                    LevyraMediaTitle(
-                        card?.track?.let { "${it.title} · ${it.artist}" } ?: copy.lead, color = LevyraMuted, fontSize = 13.sp,
-                        explicit = card?.track?.explicit == true,
+                        copy.start.uppercase(), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp,
                         maxLines = 1, overflow = TextOverflow.Ellipsis
                     )
                 }
             }
-            Spacer(Modifier.weight(1f).heightIn(min = 12.dp))
-            Row(
-                Modifier.clip(TorqueTagShape).background(accent).padding(horizontal = 18.dp, vertical = 9.dp).clearAndSetSemantics { },
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Rounded.PlayArrow, null, tint = Color.White, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    copy.start.uppercase(), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis
-                )
-            }
         }
-    }
-}
-
-@Composable
-internal fun TorqueBubbleEntry(covers: List<String>, modifier: Modifier = Modifier) {
-    val handle = LocalHomeDiscovery.current ?: return
-    val strings = LocalLevyraStrings.current
-    val bubble = remember(strings.code) { smartMusicCopy(strings.code) }
-    val shown = remember(covers) { covers.filter(String::isNotBlank).distinct().take(3) }
-    val accent = LevyraActivePalette.blue
-    Row(
-        modifier.fillMaxWidth().heightIn(min = 64.dp)
-            .levyraPressable(
-                onClick = { handle.onOpenBubble(BubbleLevel.Adventurous) }, role = Role.Button,
-                pressedScale = LevyraPressScale.Row, onClickLabel = bubble[SmartMusicText.BubbleTitle]
+        HomeDiscoveryLevelChips(
+            DiscoveryLevelChipStyle(
+                shape = TorqueTagShape,
+                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp),
+                selectedContainer = accent,
+                selectedContent = Color.White,
+                container = LevyraPanel,
+                content = LevyraText,
+                uppercase = true
             )
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        Box(Modifier.size(width = 84.dp, height = 44.dp).clearAndSetSemantics { }) {
-            repeat(3) { index ->
-                Box(
-                    Modifier.padding(start = (index * 20).dp).size(44.dp).background(LevyraPanelSoft)
-                        .border(1.5.dp, if (index == 2) accent else LevyraBlack)
-                ) { shown.getOrNull(index)?.let { AsyncImage(it, null, contentScale = androidx.compose.ui.layout.ContentScale.Crop, modifier = Modifier.fillMaxSize().padding(1.5.dp)) } }
-            }
-        }
-        Column(Modifier.weight(1f)) {
-            Text(
-                bubble[SmartMusicText.BubbleTitle].uppercase(), color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Bold,
-                letterSpacing = 1.2.sp, maxLines = 1, overflow = TextOverflow.Ellipsis
-            )
-            Text(bubble[SmartMusicText.BubbleEntry], color = LevyraMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        Box(Modifier.width(44.dp).height(28.dp).clip(TorqueTagShape).background(LevyraPanelSoft), contentAlignment = Alignment.Center) {
-            Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = LevyraText, modifier = Modifier.size(16.dp))
-        }
+        )
     }
 }
 

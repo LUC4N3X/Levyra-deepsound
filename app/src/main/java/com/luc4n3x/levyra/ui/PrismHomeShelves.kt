@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -33,6 +34,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ReleaseType
+import com.luc4n3x.levyra.domain.YoutubeMusicHomeItem
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LevyraMonoHomeStrings
@@ -47,21 +49,22 @@ import com.luc4n3x.levyra.ui.theme.PrismAccent
 import com.luc4n3x.levyra.ui.theme.PrismDesign
 import com.luc4n3x.levyra.viewmodel.HomeViewModel
 
-private val PrismCuratedWidth = 196.dp
-private val PrismCuratedHeight = 252.dp
+internal val PrismCuratedWidth = 196.dp
+internal val PrismCuratedHeight = 252.dp
 private val PrismReleaseSide = 156.dp
 private val PrismCyanSplit = ColorFilter.tint(LevyraCyan, BlendMode.Modulate)
 private val PrismPinkSplit = ColorFilter.tint(LevyraPink, BlendMode.Modulate)
 
 @Composable
-internal fun PrismShelfHeader(title: String, inset: Dp) {
+internal fun PrismShelfHeader(title: String, inset: Dp, action: @Composable RowScope.() -> Unit = {}) {
     Row(Modifier.fillMaxWidth().padding(horizontal = inset).padding(top = 22.dp, bottom = 14.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.width(22.dp).height(4.dp).clip(CircleShape).background(PrismAccent.gradient()))
         Spacer(Modifier.width(12.dp))
         Text(
             title, color = LevyraText, style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Normal, letterSpacing = (-0.4).sp),
-            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() }
+            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).semantics { heading() }
         )
+        action()
     }
 }
 
@@ -90,7 +93,9 @@ internal fun PrismSplitArtwork(url: String, modifier: Modifier) {
 internal fun PrismCuratedAndReleases(viewModel: HomeViewModel, inset: Dp, showReleases: Boolean) {
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { LevyraMonoHomeStrings.forCode(strings.code) }
-    val shelves = rememberCuratedPlaylistShelves(strings.code)
+    val curated = rememberCuratedPlaylistShelves(strings.code)
+    val collections = rememberDefaultCuratedCollectionShelves(strings.code)
+    val shelves = remember(curated, collections) { if (curated.isEmpty()) curated else curated + collections }
     val newThisWeek by viewModel.appleNewThisWeek.collectAsStateWithLifecycle()
     androidx.lifecycle.compose.LifecycleResumeEffect(strings.code) {
         viewModel.ensureAppleNewThisWeek()
@@ -101,32 +106,14 @@ internal fun PrismCuratedAndReleases(viewModel: HomeViewModel, inset: Dp, showRe
         shelves.forEachIndexed { index, shelf ->
             val tiles = remember(shelf.items) { shelf.items.distinctBy { it.key }.filter { it.playlist != null } }
             if (tiles.isEmpty()) return@forEachIndexed
-            PrismShelfHeader(if (index == 0) copy.mixedForYou else shelf.title, inset)
+            PrismShelfHeader(if (index == 0) copy.mixedForYou else shelf.title, inset) {
+                if (index == 0) LocalCuratedPlaylistsOpener.current?.let { open ->
+                    TextButton(onClick = open) { Text(strings.showAll, color = LevyraPink, maxLines = 1) }
+                }
+            }
             LazyRow(contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 items(tiles, key = { it.key }, contentType = { "prism-curated" }) { tile ->
-                    val shape = PrismDesign.cut(22.dp)
-                    Box(
-                        Modifier.size(PrismCuratedWidth, PrismCuratedHeight).clip(shape).background(LevyraBlack)
-                            .levyraPressable(onClick = { tile.playlist?.let(viewModel::openPlaylistHit) }, role = Role.Button, pressedScale = LevyraPressScale.Tile)
-                            .semantics(mergeDescendants = true) { contentDescription = tile.title }
-                    ) {
-                        PrismSplitArtwork(tile.thumbnailUrl, Modifier.fillMaxSize().clearAndSetSemantics { })
-                        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.42f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.92f))))
-                        Box(Modifier.align(Alignment.TopEnd).padding(12.dp).size(10.dp).clip(CircleShape).background(PrismAccent.gradient(false)))
-                        Column(Modifier.align(Alignment.BottomStart).padding(16.dp)) {
-                            Text(
-                                tile.title, color = Color.White, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                                maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.clearAndSetSemantics { }
-                            )
-                            val subtitle = monoWithoutYoutube(tile.subtitle)
-                            if (subtitle.isNotBlank()) {
-                                Text(
-                                    subtitle, color = Color.White.copy(alpha = 0.7f), style = MaterialTheme.typography.bodySmall,
-                                    maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.clearAndSetSemantics { }
-                                )
-                            }
-                        }
-                    }
+                    PrismCuratedTile(tile, Modifier.size(PrismCuratedWidth, PrismCuratedHeight)) { tile.playlist?.let(viewModel::openPlaylistHit) }
                 }
             }
         }
@@ -138,6 +125,33 @@ internal fun PrismCuratedAndReleases(viewModel: HomeViewModel, inset: Dp, showRe
                 items(releases, key = { atelierAlbumKey(it) }, contentType = { "prism-release" }) { album ->
                     PrismReleaseCard(album, prismReleaseBadge(album, labels.album, labels.single)) { viewModel.openAlbum(album) }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun PrismCuratedTile(tile: YoutubeMusicHomeItem, modifier: Modifier, onOpen: () -> Unit) {
+    val shape = PrismDesign.cut(22.dp)
+    Box(
+        modifier.clip(shape).background(LevyraBlack)
+            .levyraPressable(onClick = onOpen, role = Role.Button, pressedScale = LevyraPressScale.Tile)
+            .semantics(mergeDescendants = true) { contentDescription = tile.title }
+    ) {
+        PrismSplitArtwork(tile.thumbnailUrl, Modifier.fillMaxSize().clearAndSetSemantics { })
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.42f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.92f))))
+        Box(Modifier.align(Alignment.TopEnd).padding(12.dp).size(10.dp).clip(CircleShape).background(PrismAccent.gradient(false)))
+        Column(Modifier.align(Alignment.BottomStart).padding(16.dp)) {
+            Text(
+                tile.title, color = Color.White, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.clearAndSetSemantics { }
+            )
+            val subtitle = monoWithoutYoutube(tile.subtitle)
+            if (subtitle.isNotBlank()) {
+                Text(
+                    subtitle, color = Color.White.copy(alpha = 0.7f), style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.clearAndSetSemantics { }
+                )
             }
         }
     }

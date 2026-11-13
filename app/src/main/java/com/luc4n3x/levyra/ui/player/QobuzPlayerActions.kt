@@ -21,6 +21,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,6 +38,9 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.InstantArtworkPlaceholder
 import com.luc4n3x.levyra.ui.artwork.SeamlessArtworkImage
 import com.luc4n3x.levyra.ui.components.PlayerIcon
+import com.luc4n3x.levyra.ui.i18n.LevyraQobuzSkinStrings
+import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.QobuzSkinCopy
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 import com.luc4n3x.levyra.ui.theme.QobuzDesign
 
@@ -52,6 +56,8 @@ internal fun QobuzPlayerActions(
     discoverContent: (@Composable () -> Unit)?,
     onPerform: (PlayerSheetAction) -> Unit
 ) {
+    val code = LocalLevyraStrings.current.code
+    val copy = remember(code) { LevyraQobuzSkinStrings.forCode(code) }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -63,7 +69,7 @@ internal fun QobuzPlayerActions(
         HorizontalDivider(thickness = 1.dp, color = QobuzDesign.separator)
         actions.forEachIndexed { index, action ->
             key(action.key) {
-                QobuzPlayerActionRow(action = action, onPerform = onPerform)
+                QobuzPlayerActionRow(action = action, copy = copy, onPerform = onPerform)
                 if (index < actions.lastIndex) {
                     HorizontalDivider(thickness = 1.dp, color = QobuzDesign.separator)
                 }
@@ -119,6 +125,7 @@ private fun QobuzPlayerActionsHeader(track: Track, artworkUrl: String) {
 @Composable
 private fun QobuzPlayerActionRow(
     action: PlayerSheetAction,
+    copy: QobuzSkinCopy,
     onPerform: (PlayerSheetAction) -> Unit
 ) {
     val labelColor = if (action.enabled) QobuzDesign.textPrimary else QobuzDesign.textDisabled
@@ -129,7 +136,7 @@ private fun QobuzPlayerActionRow(
             .clickable(enabled = action.enabled && !action.busy, role = Role.Button) { onPerform(action) }
             .semantics {
                 contentDescription = listOfNotNull(action.label, action.value).joinToString(", ")
-                if (action.toggle) stateDescription = if (action.active) "On" else "Off"
+                if (action.toggle) stateDescription = if (action.active) copy.stateOn else copy.stateOff
             }
             .padding(horizontal = 20.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically

@@ -170,21 +170,33 @@ private fun DiscoveryHomeSection(
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { discoveryCopy(strings.code) }
     val teaser = ui.teaser
-    if (teaser.isEmpty() && (ui.status == DiscoveryFeedStatus.Empty || ui.status == DiscoveryFeedStatus.Error)) {
-        DiscoveryHomeNotice(copy, spec.inset, ui.status == DiscoveryFeedStatus.Error, handle)
-        return
-    }
-    val loading = ui.status == DiscoveryFeedStatus.Loading || ui.status == DiscoveryFeedStatus.Idle
-    val music = remember(strings.code) { smartMusicCopy(strings.code) }
-    val model = DiscoveryTeaserModel(teaser, loading, copy, music, handle.onOpen)
-    when (style) {
-        HomeStyle.Original -> OriginalDiscoveryTeaser(model, spec, animationsEnabled)
-        HomeStyle.ExpressiveMax -> ExpressiveMaxDiscoveryTeaser(model, spec, animationsEnabled)
-        HomeStyle.Flow -> FlowDiscoveryTeaser(model, spec)
-        HomeStyle.Editorial -> EditorialDiscoveryTeaser(model, spec, strings.code)
-        HomeStyle.Minimal -> MinimalDiscoveryTeaser(model, spec)
-        HomeStyle.Immersive -> ImmersiveDiscoveryTeaser(model, spec)
-        HomeStyle.MaterialExpressive -> MaterialExpressiveDiscoveryTeaser(model, spec, animationsEnabled)
+    val scheme = MaterialTheme.colorScheme
+    val chipStyle = DiscoveryLevelChipStyle(
+        shape = CircleShape,
+        textStyle = MaterialTheme.typography.labelLarge,
+        selectedContainer = scheme.secondaryContainer,
+        selectedContent = scheme.onSecondaryContainer,
+        container = scheme.surfaceContainerHigh,
+        content = scheme.onSurfaceVariant
+    )
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (teaser.isEmpty() && (ui.status == DiscoveryFeedStatus.Empty || ui.status == DiscoveryFeedStatus.Error)) {
+            DiscoveryHomeNotice(copy, spec.inset, ui.status == DiscoveryFeedStatus.Error, handle)
+        } else {
+            val loading = ui.status == DiscoveryFeedStatus.Loading || ui.status == DiscoveryFeedStatus.Idle
+            val music = remember(strings.code) { smartMusicCopy(strings.code) }
+            val model = DiscoveryTeaserModel(teaser, loading, copy, music, handle.onOpen)
+            when (style) {
+                HomeStyle.Original -> OriginalDiscoveryTeaser(model, spec, animationsEnabled)
+                HomeStyle.ExpressiveMax -> ExpressiveMaxDiscoveryTeaser(model, spec, animationsEnabled)
+                HomeStyle.Flow -> FlowDiscoveryTeaser(model, spec)
+                HomeStyle.Editorial -> EditorialDiscoveryTeaser(model, spec, strings.code)
+                HomeStyle.Minimal -> MinimalDiscoveryTeaser(model, spec)
+                HomeStyle.Immersive -> ImmersiveDiscoveryTeaser(model, spec)
+                HomeStyle.MaterialExpressive -> MaterialExpressiveDiscoveryTeaser(model, spec, animationsEnabled)
+            }
+        }
+        DiscoveryLevelChips(ui.request.level, chipStyle, handle.onOpenBubble, Modifier.padding(horizontal = spec.inset))
     }
 }
 

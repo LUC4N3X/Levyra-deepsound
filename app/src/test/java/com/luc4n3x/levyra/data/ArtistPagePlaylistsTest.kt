@@ -7,7 +7,31 @@ import org.junit.Test
 
 class ArtistPagePlaylistsTest {
 
-    private fun playlist(id: String, author: String) = PlaylistHit(title = "Playlist $id", author = author, thumbnailUrl = "", playlistId = id)
+    private fun playlist(id: String, author: String, thumbnail: String = "https://i.ytimg.com/$id.jpg") =
+        PlaylistHit(title = "Playlist $id", author = author, thumbnailUrl = thumbnail, playlistId = id)
+
+    @Test
+    fun playlistsWithoutArtworkAreNotShownOnTheArtistPage() {
+        val playlists = listOf(
+            playlist("PL_broken", "Some Listener", thumbnail = ""),
+            playlist("PL_ok", "Some Listener")
+        )
+
+        val split = splitArtistPagePlaylists(playlists, "Yngwie Malmsteen", limit = 12)
+
+        assertEquals(listOf("PL_ok"), split.featuredOn.map { it.playlistId })
+        assertTrue(split.byArtist.isEmpty())
+    }
+
+    @Test
+    fun playlistsWithoutAnyIdAreDroppedButBrowseIdOnlyIsKept() {
+        val noId = PlaylistHit(title = "x", author = "Fan", thumbnailUrl = "https://i.ytimg.com/x.jpg", playlistId = "")
+        val browseOnly = PlaylistHit(title = "y", author = "Fan", thumbnailUrl = "https://i.ytimg.com/y.jpg", playlistId = "", browseId = "VLPLy")
+
+        val split = splitArtistPagePlaylists(listOf(noId, browseOnly), "Yngwie Malmsteen", limit = 12)
+
+        assertEquals(listOf("VLPLy"), split.featuredOn.map { it.browseId })
+    }
 
     @Test
     fun officialPlaylistsAreSeparatedFromPlaylistsThatFeatureTheArtist() {

@@ -189,6 +189,23 @@ private val HomeChipPressedCorner = 12.dp
 private val HomeBackdropBlue = Color(0xFF0A84FF)
 private val HomeBackdropIndigo = Color(0xFF5E5CE6)
 
+internal fun homeChipZones(strings: com.luc4n3x.levyra.ui.i18n.LevyraStrings): List<ExploreZone> {
+    val zones = com.luc4n3x.levyra.domain.ExploreCatalog.getZones(strings)
+    val podcasts = ExploreZone(
+        com.luc4n3x.levyra.domain.EXPLORE_PODCASTS_REQUEST,
+        com.luc4n3x.levyra.ui.i18n.podcastCopy(strings.code).title,
+        "🎙",
+        "",
+        0xFF7C4DFF.toInt(),
+        0xFF00B0FF.toInt()
+    )
+    return zones.take(1) + podcasts + zones.drop(1)
+}
+
+internal fun com.luc4n3x.levyra.viewmodel.HomeViewModel.openHomeChip(zone: ExploreZone) {
+    if (zone.id == com.luc4n3x.levyra.domain.EXPLORE_PODCASTS_REQUEST) openExplorePodcasts() else openExploreZone(zone)
+}
+
 @Composable
 internal fun HomeGenreChips(
     zones: List<ExploreZone>,

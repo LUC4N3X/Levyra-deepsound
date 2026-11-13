@@ -48,6 +48,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
+import com.luc4n3x.levyra.ui.i18n.GenreChartCopy
+import com.luc4n3x.levyra.ui.i18n.genreChartCopy
+import com.luc4n3x.levyra.ui.i18n.genreDiscoveryCopy
+import com.luc4n3x.levyra.viewmodel.ExploreGenreDiscoveryState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -165,48 +174,57 @@ internal fun ExploreCollectionDestinationScreen(
     onPlayAll: () -> Unit,
     onPlayTrack: (Track) -> Unit,
     onRequestTrackArtwork: (Track) -> Unit,
-    bottomInset: Dp = ExploreDestinationBottomInset
+    bottomInset: Dp = ExploreDestinationBottomInset,
+    chart: List<Track> = emptyList(),
+    chartLoading: Boolean = false,
+    discovery: ExploreGenreDiscoveryState = ExploreGenreDiscoveryState(),
+    discoveryActions: GenreDiscoveryActions? = null,
+    chartActions: GenreChartActions? = null
 ) {
     BackHandler(enabled = backEnabled, onBack = onBack)
     val rotationBucket = remember(identity) {
         exploreGenreRotationBucket(System.currentTimeMillis())
     }
     val trackStructure = remember(tracks) { tracks.map { track -> track.id } }
-    val editorialStructure = remember(trackStructure, identity, rotationBucket) {
+    val chartStructure = remember(chart) { chart.map { track -> track.id } }
+    val editorialStructure = remember(trackStructure, chartStructure, chartLoading, identity, rotationBucket) {
         buildExploreGenreEditorial(
             tracks = tracks,
             zoneId = zone?.id ?: identity,
-            rotationBucket = rotationBucket
+            rotationBucket = rotationBucket,
+            chart = chart,
+            chartLoading = chartLoading
         )
     }
-    val editorial = remember(editorialStructure, tracks) {
-        refreshExploreGenreEditorialMetadata(editorialStructure, tracks)
+    val editorial = remember(editorialStructure, tracks, chart) {
+        refreshExploreGenreEditorialMetadata(editorialStructure, tracks + chart)
     }
+    val pageDiscovery = remember(editorialStructure, discovery) { dedupeGenreDiscovery(editorialStructure, discovery) }
     if (com.luc4n3x.levyra.ui.theme.LevyraIsIvory) {
         IvoryCollectionDestination(
             title, subtitle, tracks, editorial, isLoading, currentTrackId, strings, bottomInset,
-            onBack, onPlayAll, onPlayTrack, onRequestTrackArtwork
+            onBack, onPlayAll, onPlayTrack, onRequestTrackArtwork, pageDiscovery, discoveryActions
         )
         return
     }
     if (com.luc4n3x.levyra.ui.theme.LevyraIsTorque) {
         TorqueCollectionDestination(
             title, subtitle, tracks, editorial, isLoading, currentTrackId, strings, bottomInset,
-            onBack, onPlayAll, onPlayTrack, onRequestTrackArtwork
+            onBack, onPlayAll, onPlayTrack, onRequestTrackArtwork, pageDiscovery, discoveryActions
         )
         return
     }
     if (LevyraIsPrismOnly) {
         PrismCollectionDestination(
             title, subtitle, tracks, editorial, isLoading, currentTrackId, strings, bottomInset,
-            onBack, onPlayAll, onPlayTrack, onRequestTrackArtwork
+            onBack, onPlayAll, onPlayTrack, onRequestTrackArtwork, pageDiscovery, discoveryActions
         )
         return
     }
     if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) {
         AtelierCollectionDestination(
             title, subtitle, tracks, editorial, isLoading, currentTrackId, strings, bottomInset,
-            onBack, onPlayAll, onPlayTrack, onRequestTrackArtwork
+            onBack, onPlayAll, onPlayTrack, onRequestTrackArtwork, pageDiscovery, discoveryActions
         )
         return
     }
@@ -217,6 +235,7 @@ internal fun ExploreCollectionDestinationScreen(
     val heroScrolledAway by remember(listState) {
         derivedStateOf { listState.firstVisibleItemIndex > 0 }
     }
+    var chartOpen by rememberSaveable(identity) { mutableStateOf(false) }
 
     ExploreDestinationSurface(
         title = title,
@@ -224,8 +243,8 @@ internal fun ExploreCollectionDestinationScreen(
         strings = strings,
         onBack = onBack,
         headerColor = headerColor,
-        titleVisible = tracks.isEmpty() || heroScrolledAway,
-        trailing = if (tracks.isNotEmpty() && heroScrolledAway) {
+        titleVisible = (tracks.isEmpty() && editorial.chart.isEmpty()) || heroScrolledAway,
+        trailing = if ((tracks.isNotEmpty() || editorial.chart.isNotEmpty()) && heroScrolledAway) {
             { ExploreCollectionPlayAllButton(strings = strings, onPlayAll = onPlayAll) }
         } else {
             null
@@ -244,9 +263,34 @@ internal fun ExploreCollectionDestinationScreen(
             contentPadding = contentPadding,
             listState = listState,
             headerColor = headerColor,
+            genreKey = zone?.id ?: identity,
+            accent = accent,
             onPlayAll = onPlayAll,
             onPlayTrack = onPlayTrack,
-            onRequestTrackArtwork = onRequestTrackArtwork
+            onRequestTrackArtwork = onRequestTrackArtwork,
+            onOpenChart = { chartOpen = true },
+            discovery = pageDiscovery,
+            discoveryActions = discoveryActions
+        )
+    }
+    if (chartOpen && editorial.chart.isNotEmpty()) {
+        val lead = editorial.chart.first()
+        GenreChartDestinationScreen(
+            genreKey = zone?.id ?: identity,
+            genreTitle = title,
+            accent = accent,
+            artworkUrl = lead.largeThumbnailUrl.ifBlank { lead.thumbnailUrl },
+            chart = editorial.chart,
+            loading = editorial.chartLoading,
+            currentTrackId = currentTrackId,
+            isPlaying = isPlaying,
+            strings = strings,
+            backEnabled = backEnabled,
+            onBack = { chartOpen = false },
+            onPlayTrack = onPlayTrack,
+            onRequestTrackArtwork = onRequestTrackArtwork,
+            bottomInset = bottomInset,
+            actions = chartActions
         )
     }
 }
@@ -273,13 +317,19 @@ private fun ExploreCollectionDestinationContent(
     contentPadding: PaddingValues,
     listState: LazyListState,
     headerColor: Color,
+    genreKey: String,
+    accent: Color,
     onPlayAll: () -> Unit,
     onPlayTrack: (Track) -> Unit,
-    onRequestTrackArtwork: (Track) -> Unit
+    onRequestTrackArtwork: (Track) -> Unit,
+    onOpenChart: () -> Unit,
+    discovery: ExploreGenreDiscoveryState,
+    discoveryActions: GenreDiscoveryActions?
 ) {
+    val empty = tracks.isEmpty() && editorial.chart.isEmpty() && !discovery.hasVisibleContent
     when {
-        isLoading && tracks.isEmpty() -> ExploreCollectionLoading(contentPadding)
-        tracks.isEmpty() -> ExploreCollectionEmpty(
+        empty && (isLoading || editorial.chartLoading || discovery.isLoading) -> ExploreCollectionLoading(contentPadding)
+        empty -> ExploreCollectionEmpty(
             contentPadding = contentPadding,
             message = strings.exploreEmpty
         )
@@ -294,9 +344,14 @@ private fun ExploreCollectionDestinationContent(
             contentPadding = contentPadding,
             listState = listState,
             headerColor = headerColor,
+            genreKey = genreKey,
+            accent = accent,
             onPlayAll = onPlayAll,
             onPlayTrack = onPlayTrack,
-            onRequestTrackArtwork = onRequestTrackArtwork
+            onRequestTrackArtwork = onRequestTrackArtwork,
+            onOpenChart = onOpenChart,
+            discovery = discovery,
+            discoveryActions = discoveryActions
         )
     }
 }
@@ -347,10 +402,17 @@ private fun ExploreCollectionList(
     contentPadding: PaddingValues,
     listState: LazyListState,
     headerColor: Color,
+    genreKey: String,
+    accent: Color,
     onPlayAll: () -> Unit,
     onPlayTrack: (Track) -> Unit,
-    onRequestTrackArtwork: (Track) -> Unit
+    onRequestTrackArtwork: (Track) -> Unit,
+    onOpenChart: () -> Unit,
+    discovery: ExploreGenreDiscoveryState,
+    discoveryActions: GenreDiscoveryActions?
 ) {
+    val chartCopy = remember(strings.code) { genreChartCopy(strings.code) }
+    val discoveryCopy = remember(strings.code) { genreDiscoveryCopy(strings.code) }
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
@@ -366,9 +428,23 @@ private fun ExploreCollectionList(
             subtitle = subtitle,
             headerColor = headerColor,
             topInset = contentPadding.calculateTopPadding(),
-            track = tracks.first(),
+            track = tracks.firstOrNull() ?: editorial.chart.firstOrNull(),
             strings = strings,
             onPlayAll = onPlayAll,
+            onRequestTrackArtwork = onRequestTrackArtwork
+        )
+        exploreChartItems(
+            chart = editorial.chart,
+            loading = editorial.chartLoading,
+            genreKey = genreKey,
+            genreTitle = title,
+            accent = accent,
+            copy = chartCopy,
+            strings = strings,
+            currentTrackId = currentTrackId,
+            isPlaying = isPlaying,
+            onOpenChart = onOpenChart,
+            onPlayTrack = onPlayTrack,
             onRequestTrackArtwork = onRequestTrackArtwork
         )
         exploreFeaturedItems(
@@ -378,18 +454,25 @@ private fun ExploreCollectionList(
             onPlayTrack = onPlayTrack,
             onRequestTrackArtwork = onRequestTrackArtwork
         )
-        exploreArtistItems(
-            artists = editorial.artists,
-            strings = strings,
+        genreArtistRowItems(
+            entries = genreArtistEntries(editorial, discovery),
+            title = strings.artists,
+            skin = ExploreDefaultDiscoverySkin,
             onPlayTrack = onPlayTrack,
-            onRequestTrackArtwork = onRequestTrackArtwork
+            onRequestTrackArtwork = onRequestTrackArtwork,
+            onOpenArtist = { name -> discoveryActions?.openArtist?.invoke(name) }
         )
-        exploreAlbumItems(
-            albums = editorial.albums,
-            strings = strings,
+        genreAlbumRowItems(
+            entries = genreAlbumEntries(editorial, discovery),
+            title = strings.albumsPlain,
+            skin = ExploreDefaultDiscoverySkin,
             onPlayTrack = onPlayTrack,
-            onRequestTrackArtwork = onRequestTrackArtwork
+            onRequestTrackArtwork = onRequestTrackArtwork,
+            onOpenAlbum = { album -> discoveryActions?.openAlbum?.invoke(album) }
         )
+        if (discoveryActions != null) {
+            genreDiscoveryItems(discovery, discoveryCopy, ExploreDefaultDiscoverySkin, discoveryActions)
+        }
         exploreEssentialItems(
             tracks = editorial.essentials,
             currentTrackId = currentTrackId,
@@ -406,21 +489,23 @@ private fun LazyListScope.exploreCollectionHeroItem(
     subtitle: String?,
     headerColor: Color,
     topInset: Dp,
-    track: Track,
+    track: Track?,
     strings: LevyraStrings,
     onPlayAll: () -> Unit,
     onRequestTrackArtwork: (Track) -> Unit
 ) {
     item(key = "explore-collection-hero") {
-        LaunchedEffect(track.id) {
-            onRequestTrackArtwork(track)
+        if (track != null) {
+            LaunchedEffect(track.id) {
+                onRequestTrackArtwork(track)
+            }
         }
         ExploreCollectionHero(
             title = title,
             subtitle = subtitle,
             headerColor = headerColor,
             topInset = topInset,
-            artworkUrl = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
+            artworkUrl = track?.let { it.largeThumbnailUrl.ifBlank { it.thumbnailUrl } }.orEmpty(),
             strings = strings,
             onPlayAll = onPlayAll
         )
@@ -443,8 +528,9 @@ private fun LazyListScope.exploreFeaturedItems(
         val featuredDepth = carouselDepthEnabled()
         LazyRow(
             state = featuredState,
+            modifier = Modifier.exploreFullBleed(ExploreCollectionGutter),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(end = 4.dp)
+            contentPadding = PaddingValues(horizontal = ExploreCollectionGutter)
         ) {
             items(
                 items = tracks,
@@ -471,91 +557,6 @@ private fun LazyListScope.exploreFeaturedItems(
     }
 }
 
-private fun LazyListScope.exploreArtistItems(
-    artists: List<ExploreGenreArtistCard>,
-    strings: LevyraStrings,
-    onPlayTrack: (Track) -> Unit,
-    onRequestTrackArtwork: (Track) -> Unit
-) {
-    if (artists.isEmpty()) return
-    item(key = "explore-genre-artists-header") {
-        ExploreGenreSectionHeader(strings.artists)
-    }
-    item(key = "explore-genre-artists") {
-        val artistState = rememberLazyListState()
-        val artistDepth = carouselDepthEnabled()
-        LazyRow(
-            state = artistState,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            contentPadding = PaddingValues(end = 4.dp)
-        ) {
-            itemsIndexed(
-                items = artists,
-                key = { _, artist -> "explore-artist-${artist.key}" }
-            ) { index, artist ->
-                LaunchedEffect(artist.track.id) {
-                    onRequestTrackArtwork(artist.track)
-                }
-                Box(
-                    modifier = Modifier.levyraCarouselDepth(
-                        artistState,
-                        "explore-artist-${artist.key}",
-                        artistDepth
-                    )
-                ) {
-                    ExploreGenreArtistCard(
-                        artist = artist,
-                        shape = exploreArtistShape(index),
-                        onClick = { onPlayTrack(artist.track) }
-                    )
-                }
-            }
-        }
-    }
-}
-
-private fun LazyListScope.exploreAlbumItems(
-    albums: List<ExploreGenreAlbumCard>,
-    strings: LevyraStrings,
-    onPlayTrack: (Track) -> Unit,
-    onRequestTrackArtwork: (Track) -> Unit
-) {
-    if (albums.isEmpty()) return
-    item(key = "explore-genre-albums-header") {
-        ExploreGenreSectionHeader(strings.albumsPlain)
-    }
-    item(key = "explore-genre-albums") {
-        val albumState = rememberLazyListState()
-        val albumDepth = carouselDepthEnabled()
-        LazyRow(
-            state = albumState,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(end = 4.dp)
-        ) {
-            items(
-                items = albums,
-                key = { album -> "explore-album-${album.key}" }
-            ) { album ->
-                LaunchedEffect(album.track.id) {
-                    onRequestTrackArtwork(album.track)
-                }
-                Box(
-                    modifier = Modifier.levyraCarouselDepth(
-                        albumState,
-                        "explore-album-${album.key}",
-                        albumDepth
-                    )
-                ) {
-                    ExploreGenreAlbumCard(
-                        album = album,
-                        onClick = { onPlayTrack(album.track) }
-                    )
-                }
-            }
-        }
-    }
-}
-
 private fun LazyListScope.exploreEssentialItems(
     tracks: List<Track>,
     currentTrackId: String?,
@@ -564,6 +565,7 @@ private fun LazyListScope.exploreEssentialItems(
     onPlayTrack: (Track) -> Unit,
     onRequestTrackArtwork: (Track) -> Unit
 ) {
+    if (tracks.isEmpty()) return
     item(key = "explore-genre-songs-header") {
         ExploreGenreSectionHeader(strings.songsPlain)
     }
@@ -584,8 +586,303 @@ private fun LazyListScope.exploreEssentialItems(
     }
 }
 
+private fun LazyListScope.exploreChartItems(
+    chart: List<Track>,
+    loading: Boolean,
+    genreKey: String,
+    genreTitle: String,
+    accent: Color,
+    copy: GenreChartCopy,
+    strings: LevyraStrings,
+    currentTrackId: String?,
+    isPlaying: Boolean,
+    onOpenChart: () -> Unit,
+    onPlayTrack: (Track) -> Unit,
+    onRequestTrackArtwork: (Track) -> Unit
+) {
+    if (chart.isEmpty() && !loading) return
+    item(key = "explore-chart-header") {
+        ExploreGenreSectionHeader(copy.title)
+    }
+    if (chart.isEmpty()) {
+        item(key = "explore-chart-loading") {
+            ExploreGenreChartLoading(text = copy.loading, accent = accent)
+        }
+        return
+    }
+    item(key = "explore-chart-intro") {
+        val lead = chart.first()
+        ExploreGenreChartIntro(
+            genreKey = genreKey,
+            genreTitle = genreTitle,
+            accent = accent,
+            artworkUrl = lead.largeThumbnailUrl.ifBlank { lead.thumbnailUrl },
+            copy = copy,
+            playLabel = strings.playAll,
+            onOpen = onOpenChart,
+            onPlay = { onPlayTrack(lead) }
+        )
+    }
+    val visible = chart.take(ExploreChartCollapsedCount)
+    itemsIndexed(
+        items = visible,
+        key = { _, track -> "explore-chart-${track.id}" }
+    ) { index, track ->
+        LaunchedEffect(track.id) {
+            onRequestTrackArtwork(track)
+        }
+        ExploreGenreChartRow(
+            rank = index + 1,
+            track = track,
+            accent = accent,
+            shape = exploreSegmentShape(index = index, count = visible.size),
+            isCurrent = track.id == currentTrackId,
+            isPlaying = isPlaying && track.id == currentTrackId,
+            onClick = { onPlayTrack(track) }
+        )
+    }
+    if (chart.size > ExploreChartCollapsedCount) {
+        item(key = "explore-chart-toggle") {
+            ExploreGenreChartToggle(label = copy.showAll, onClick = onOpenChart)
+        }
+    }
+    item(key = "explore-chart-credit") {
+        Text(
+            text = copy.credit,
+            color = LevyraMuted,
+            fontSize = 11.5.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(11.5.sp),
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 4.dp, top = 6.dp, end = 4.dp)
+        )
+    }
+}
+
 @Composable
-private fun ExploreGenreSectionHeader(title: String) {
+private fun ExploreGenreChartIntro(
+    genreKey: String,
+    genreTitle: String,
+    accent: Color,
+    artworkUrl: String,
+    copy: GenreChartCopy,
+    playLabel: String,
+    onOpen: () -> Unit,
+    onPlay: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        GenreChartCover(
+            genreKey = genreKey,
+            genreTitle = genreTitle,
+            accent = accent,
+            artworkUrl = artworkUrl,
+            kicker = copy.title,
+            modifier = Modifier
+                .width(144.dp)
+                .levyraPressable(
+                    onClick = onOpen,
+                    pressedScale = LevyraPressScale.Tile,
+                    role = Role.Button,
+                    onClickLabel = copy.showAll
+                )
+        )
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(onClick = onOpen, onClickLabel = copy.showAll, role = Role.Button)
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = copy.subtitle,
+                    color = LevyraText.copy(alpha = 0.86f),
+                    fontSize = 14.sp,
+                    lineHeight = LevyraTypeRhythm.lineHeight(14.sp),
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 4,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                    contentDescription = null,
+                    tint = lerp(accent, Color.White, 0.42f),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            LevyraPlayAllIconButton(
+                onClick = onPlay,
+                size = 48.dp,
+                contentDescription = "$playLabel, ${copy.title}"
+            )
+        }
+    }
+}
+
+@Composable
+internal fun ExploreGenreChartRow(
+    rank: Int,
+    track: Track,
+    accent: Color,
+    shape: Shape,
+    isCurrent: Boolean,
+    isPlaying: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val rankColor = when {
+        isCurrent -> LevyraCyan
+        rank <= 3 -> lerp(accent, Color.White, 0.42f)
+        else -> LevyraText.copy(alpha = 0.46f)
+    }
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 68.dp)
+            .clip(shape)
+            .background(if (isCurrent) LevyraCyan.copy(alpha = 0.16f) else LevyraPanel.copy(alpha = 0.78f))
+            .clickable(onClick = onClick, onClickLabel = track.title, role = Role.Button)
+            .padding(start = 4.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Text(
+            text = rank.toString(),
+            color = rankColor,
+            fontSize = 24.sp,
+            lineHeight = 26.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = (-0.5).sp,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            style = TextStyle(fontFeatureSettings = "tnum"),
+            modifier = Modifier.width(44.dp)
+        )
+        AsyncImage(
+            model = track.thumbnailUrl.ifBlank { track.largeThumbnailUrl },
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(52.dp)
+                .clip(if (isCurrent) MaterialShapes.Cookie9Sided.toShape() else RoundedCornerShape(12.dp))
+                .background(LevyraPanelSoft)
+        )
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            LevyraMediaTitle(
+                text = track.title, explicit = track.explicit,
+                color = if (isCurrent) LevyraCyan else LevyraText,
+                fontSize = 14.5.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(14.5.sp),
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = track.artist,
+                color = LevyraMuted,
+                fontSize = 12.5.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp),
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        if (isCurrent) {
+            Icon(
+                imageVector = if (isPlaying) Icons.Rounded.GraphicEq else Icons.Rounded.PlayArrow,
+                contentDescription = null,
+                tint = LevyraCyan,
+                modifier = Modifier.size(22.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExploreGenreChartToggle(
+    label: String,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            modifier = Modifier
+                .levyraPressable(onClick = onClick, role = Role.Button)
+                .heightIn(min = 48.dp)
+                .clip(CircleShape)
+                .background(LevyraPanelSoft)
+                .padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = label,
+                color = LevyraText,
+                fontSize = 14.sp,
+                lineHeight = LevyraTypeRhythm.lineHeight(14.sp),
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                contentDescription = null,
+                tint = LevyraText,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+    }
+}
+
+@Composable
+internal fun ExploreGenreChartLoading(text: String, accent: Color) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 64.dp)
+            .clip(RoundedCornerShape(ExploreSegmentOuterRadius))
+            .background(LevyraPanel.copy(alpha = 0.78f))
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        LevyraLoadingIndicator(
+            color = lerp(accent, Color.White, 0.42f),
+            modifier = Modifier.size(36.dp)
+        )
+        Text(
+            text = text,
+            color = LevyraText.copy(alpha = 0.86f),
+            fontSize = 14.sp,
+            lineHeight = LevyraTypeRhythm.lineHeight(14.sp),
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier
+                .weight(1f)
+                .semantics { liveRegion = LiveRegionMode.Polite }
+        )
+    }
+}
+
+private const val ExploreChartCollapsedCount = 5
+
+@Composable
+internal fun ExploreGenreSectionHeader(title: String) {
     LevyraSectionHeader(title = title, modifier = Modifier.padding(top = 18.dp, bottom = 8.dp))
 }
 
@@ -662,7 +959,8 @@ private fun ExploreGenreTrackCard(
 
 @Composable
 private fun ExploreGenreArtistCard(
-    artist: ExploreGenreArtistCard,
+    name: String,
+    artworkUrl: String,
     shape: Shape,
     onClick: () -> Unit
 ) {
@@ -673,13 +971,13 @@ private fun ExploreGenreArtistCard(
                 onClick = onClick,
                 pressedScale = LevyraPressScale.Tile,
                 role = Role.Button,
-                onClickLabel = artist.name
+                onClickLabel = name
             ),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         AsyncImage(
-            model = artist.artworkUrl,
+            model = artworkUrl,
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier
@@ -688,11 +986,12 @@ private fun ExploreGenreArtistCard(
                 .background(LevyraPanel)
         )
         Text(
-            text = artist.name,
+            text = name,
             color = LevyraText,
             fontSize = 12.5.sp,
             lineHeight = LevyraTypeRhythm.lineHeight(12.5.sp),
             fontWeight = FontWeight.Bold,
+            minLines = 2,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
@@ -703,7 +1002,9 @@ private fun ExploreGenreArtistCard(
 
 @Composable
 private fun ExploreGenreAlbumCard(
-    album: ExploreGenreAlbumCard,
+    title: String,
+    artist: String,
+    artworkUrl: String,
     onClick: () -> Unit
 ) {
     Column(
@@ -713,12 +1014,12 @@ private fun ExploreGenreAlbumCard(
                 onClick = onClick,
                 pressedScale = LevyraPressScale.Tile,
                 role = Role.Button,
-                onClickLabel = album.title
+                onClickLabel = title
             ),
         verticalArrangement = Arrangement.spacedBy(7.dp)
     ) {
         AsyncImage(
-            model = album.artworkUrl,
+            model = artworkUrl,
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier
@@ -727,17 +1028,18 @@ private fun ExploreGenreAlbumCard(
                 .background(LevyraPanel)
         )
         Text(
-            text = album.title,
+            text = title,
             color = LevyraText,
             fontSize = 13.sp,
             lineHeight = LevyraTypeRhythm.lineHeight(13.sp),
             fontWeight = FontWeight.Bold,
+            minLines = 2,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
-        if (album.artist.isNotBlank()) {
+        run {
             Text(
-                text = album.artist,
+                text = artist,
                 color = LevyraMuted,
                 fontSize = 11.5.sp,
                 lineHeight = LevyraTypeRhythm.lineHeight(11.5.sp),
@@ -858,7 +1160,7 @@ private fun ExploreCollectionHeroText(
     }
 }
 
-private fun Modifier.exploreFullBleed(gutter: Dp): Modifier = layout { measurable, constraints ->
+internal fun Modifier.exploreFullBleed(gutter: Dp): Modifier = layout { measurable, constraints ->
     val gutterPx = gutter.roundToPx()
     val width = constraints.maxWidth + gutterPx * 2
     val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
@@ -868,7 +1170,7 @@ private fun Modifier.exploreFullBleed(gutter: Dp): Modifier = layout { measurabl
 }
 
 @Composable
-private fun exploreSegmentShape(index: Int, count: Int): Shape {
+internal fun exploreSegmentShape(index: Int, count: Int): Shape {
     val outer = ExploreSegmentOuterRadius
     val inner = ExploreSegmentInnerRadius
     val top = if (index == 0) outer else inner
@@ -1642,7 +1944,7 @@ internal val ExploreCategoryPalettes: List<Pair<Color, Color>> by lazy {
 }
 
 @Composable
-private fun ExploreDestinationSurface(
+internal fun ExploreDestinationSurface(
     title: String,
     subtitle: String?,
     strings: LevyraStrings,
@@ -1772,3 +2074,26 @@ private fun ExploreDestinationTrackRow(
         }
     }
 }
+
+private val ExploreDefaultDiscoverySkin = GenreDiscoverySkin(
+    keyPrefix = "explore",
+    rowModifier = Modifier.exploreFullBleed(ExploreCollectionGutter),
+    rowPadding = PaddingValues(horizontal = ExploreCollectionGutter),
+    itemGap = 12.dp,
+    header = { title -> ExploreGenreSectionHeader(title) },
+    cover = { tile -> ExploreGenreAlbumCard(tile.title, tile.subtitle, tile.artworkUrl, tile.onClick) },
+    wide = { tile ->
+        GenreDiscoveryCoverCard(
+            tile, 264.dp, RoundedCornerShape(28.dp), LevyraPanel, LevyraText, LevyraMuted, aspectRatio = 16f / 9f
+        )
+    },
+    artist = { tile -> ExploreGenreArtistCard(tile.title, tile.artworkUrl, exploreArtistShape(tile.index), tile.onClick) },
+    about = { text, copy ->
+        GenreDiscoveryAboutText(
+            text, copy, LevyraText, LevyraMuted, LevyraCyan,
+            Modifier.clip(RoundedCornerShape(28.dp)).background(LevyraPanel).padding(horizontal = 18.dp, vertical = 16.dp)
+        )
+    },
+    credit = { text -> GenreDiscoveryCredit(text, LevyraMuted, Modifier.padding(start = 4.dp, top = 10.dp, end = 4.dp)) },
+    carouselDepth = true
+)

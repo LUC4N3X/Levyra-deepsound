@@ -21,6 +21,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,7 +48,11 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
+import com.luc4n3x.levyra.ui.i18n.GenreChartCopy
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
+import com.luc4n3x.levyra.ui.i18n.genreDiscoveryCopy
+import com.luc4n3x.levyra.viewmodel.ExploreGenreDiscoveryState
+import com.luc4n3x.levyra.ui.i18n.genreChartCopy
 import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
@@ -68,62 +77,48 @@ internal fun IvoryCollectionDestination(
     onBack: () -> Unit,
     onPlayAll: () -> Unit,
     onPlayTrack: (Track) -> Unit,
-    onRequestTrackArtwork: (Track) -> Unit
+    onRequestTrackArtwork: (Track) -> Unit,
+    discovery: ExploreGenreDiscoveryState,
+    discoveryActions: GenreDiscoveryActions?
 ) {
+    val discoveryCopy = remember(strings.code) { genreDiscoveryCopy(strings.code) }
+    val chartCopy = remember(strings.code) { genreChartCopy(strings.code) }
+    var chartExpanded by rememberSaveable(title) { mutableStateOf(false) }
     LazyColumn(Modifier.fillMaxSize().background(LevyraBlack), contentPadding = PaddingValues(bottom = bottomInset + 32.dp)) {
         item(key = "ivory-destination-hero") {
-            val lead = tracks.firstOrNull()
+            val lead = tracks.firstOrNull() ?: editorial.chart.firstOrNull()
             if (lead != null) LaunchedEffect(lead.id) { onRequestTrackArtwork(lead) }
             IvoryDestinationHero(
                 title, subtitle?.takeIf(String::isNotBlank) ?: strings.explore, lead?.let(::atelierCoverUrl).orEmpty(),
-                tracks.size, strings, onBack, onPlayAll.takeIf { tracks.isNotEmpty() }
+                tracks.size, strings, onBack, onPlayAll.takeIf { tracks.isNotEmpty() || editorial.chart.isNotEmpty() }
             )
         }
+        ivoryGenreChart(editorial, chartCopy, chartExpanded, currentTrackId, { chartExpanded = !chartExpanded }, onPlayTrack, onRequestTrackArtwork)
         when {
             isLoading && tracks.isEmpty() -> item(key = "ivory-destination-loading") {
                 Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
                     LevyraLoadingIndicator(color = IvoryDesign.ink, modifier = Modifier.size(36.dp))
                 }
             }
-            tracks.isEmpty() -> item(key = "ivory-destination-empty") {
+            tracks.isEmpty() -> if (editorial.chart.isEmpty() && !editorial.chartLoading && !discovery.hasVisibleContent && !discovery.isLoading) item(key = "ivory-destination-empty") {
                 Text(strings.exploreEmpty, color = LevyraMuted, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(IvoryDestinationGutter))
             }
             else -> {
                 ivoryCoverRail("featured", strings.popularTracks, editorial.featured.map { Triple(it.title, it.artist, it) }, onPlayTrack, onRequestTrackArtwork)
-                if (editorial.artists.isNotEmpty()) item(key = "ivory-destination-artists") {
-                    Column(Modifier.padding(top = 18.dp)) {
-                        SkinSectionTitle(strings.artists, IvoryDestinationGutter)
-                        LazyRow(contentPadding = PaddingValues(horizontal = IvoryDestinationGutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            items(editorial.artists, key = { it.key }) { artist ->
-                                LaunchedEffect(artist.track.id) { onRequestTrackArtwork(artist.track) }
-                                Box(
-                                    Modifier.size(width = 132.dp, height = 168.dp).clip(RoundedCornerShape(IvoryDesign.coverCorner)).background(LevyraPanel)
-                                        .levyraPressable(onClick = { onPlayTrack(artist.track) }, role = Role.Button, pressedScale = LevyraPressScale.Tile)
-                                        .semantics(mergeDescendants = true) { contentDescription = artist.name }
-                                ) {
-                                    AsyncImage(
-                                        artist.artworkUrl.ifBlank { atelierCoverUrl(artist.track) }, null, contentScale = ContentScale.Crop,
-                                        modifier = Modifier.fillMaxSize().clearAndSetSemantics { }
-                                    )
-                                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.45f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.85f))))
-                                    Column(Modifier.align(Alignment.BottomStart).padding(10.dp).clearAndSetSemantics { }) {
-                                        Text(
-                                            artist.name, color = Color.White, fontSize = 14.sp, lineHeight = 17.sp, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                ivoryCoverRail("albums", strings.albumsPlain, editorial.albums.map { Triple(it.title, it.artist, it.track) }, onPlayTrack, onRequestTrackArtwork)
-                if (editorial.essentials.isNotEmpty()) {
-                    item(key = "ivory-destination-essentials") { Box(Modifier.padding(top = 18.dp)) { SkinSectionTitle(strings.songsPlain, IvoryDestinationGutter) } }
-                    itemsIndexed(editorial.essentials, key = { _, t -> "essential-${t.id}" }) { index, track ->
-                        LaunchedEffect(track.id) { onRequestTrackArtwork(track) }
-                        IvoryEssentialRow(index, track, track.id == currentTrackId) { onPlayTrack(track) }
-                    }
-                }
+            }
+        }
+        genreArtistRowItems(genreArtistEntries(editorial, discovery), strings.artists, IvoryDiscoverySkin, onPlayTrack, onRequestTrackArtwork) { name ->
+            discoveryActions?.openArtist?.invoke(name)
+        }
+        genreAlbumRowItems(genreAlbumEntries(editorial, discovery), strings.albumsPlain, IvoryDiscoverySkin, onPlayTrack, onRequestTrackArtwork) { album ->
+            discoveryActions?.openAlbum?.invoke(album)
+        }
+        if (discoveryActions != null) genreDiscoveryItems(discovery, discoveryCopy, IvoryDiscoverySkin, discoveryActions)
+        if (editorial.essentials.isNotEmpty()) {
+            item(key = "ivory-destination-essentials") { Box(Modifier.padding(top = 18.dp)) { SkinSectionTitle(strings.songsPlain, IvoryDestinationGutter) } }
+            itemsIndexed(editorial.essentials, key = { _, t -> "essential-${t.id}" }) { index, track ->
+                LaunchedEffect(track.id) { onRequestTrackArtwork(track) }
+                IvoryEssentialRow(index, track, track.id == currentTrackId) { onPlayTrack(track) }
             }
         }
     }
@@ -211,6 +206,58 @@ private fun LazyListScope.ivoryCoverRail(
     }
 }
 
+private fun LazyListScope.ivoryGenreChart(
+    editorial: ExploreGenreEditorial,
+    copy: GenreChartCopy,
+    expanded: Boolean,
+    currentTrackId: String?,
+    onToggle: () -> Unit,
+    onPlayTrack: (Track) -> Unit,
+    onRequestTrackArtwork: (Track) -> Unit
+) {
+    val chart = editorial.chart
+    if (chart.isEmpty() && !editorial.chartLoading) return
+    item(key = "ivory-chart-header") {
+        Column(Modifier.padding(top = 18.dp)) {
+            SkinSectionTitle(copy.title, IvoryDestinationGutter)
+            Text(
+                copy.subtitle, color = LevyraMuted, style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(start = IvoryDestinationGutter, end = IvoryDestinationGutter, bottom = 8.dp)
+            )
+        }
+    }
+    if (chart.isEmpty()) {
+        item(key = "ivory-chart-loading") {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = IvoryDestinationGutter, vertical = 3.dp).heightIn(min = 72.dp)
+                    .clip(RoundedCornerShape(IvoryDesign.tileCorner)).background(LevyraPanel).padding(horizontal = 14.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                LevyraLoadingIndicator(color = IvoryDesign.ink, modifier = Modifier.size(24.dp))
+                Text(copy.loading, color = LevyraMuted, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+        return
+    }
+    itemsIndexed(chart.take(if (expanded) 50 else 10), key = { _, track -> "ivory-chart-${track.id}" }) { index, track ->
+        LaunchedEffect(track.id) { onRequestTrackArtwork(track) }
+        IvoryEssentialRow(index, track, track.id == currentTrackId) { onPlayTrack(track) }
+    }
+    item(key = "ivory-chart-footer") {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = IvoryDestinationGutter, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(copy.credit, color = LevyraMuted, style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f))
+            if (chart.size > 10) Box(
+                Modifier.heightIn(min = 48.dp).clip(CircleShape).background(IvoryDesign.ink)
+                    .clickable(role = Role.Button, onClick = onToggle).padding(horizontal = 18.dp),
+                contentAlignment = Alignment.Center
+            ) { Text(if (expanded) copy.showLess else copy.showAll, color = IvoryDesign.onInk, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1) }
+        }
+    }
+}
+
 @Composable
 private fun IvoryEssentialRow(index: Int, track: Track, current: Boolean, onPlay: () -> Unit) {
     Row(
@@ -228,3 +275,27 @@ private fun IvoryEssentialRow(index: Int, track: Track, current: Boolean, onPlay
         }
     }
 }
+
+private val IvoryDiscoverySkin = GenreDiscoverySkin(
+    keyPrefix = "ivory",
+    rowModifier = Modifier,
+    rowPadding = PaddingValues(horizontal = IvoryDestinationGutter),
+    itemGap = 10.dp,
+    header = { title -> Box(Modifier.padding(top = 18.dp)) { SkinSectionTitle(title, IvoryDestinationGutter) } },
+    cover = { tile ->
+        GenreDiscoveryCoverCard(tile, 156.dp, IvoryDesign.coverShape, LevyraPanel, LevyraText, LevyraMuted, titleWeight = FontWeight.Medium)
+    },
+    wide = { tile ->
+        GenreDiscoveryCoverCard(
+            tile, 280.dp, IvoryDesign.coverShape, LevyraPanel, LevyraText, LevyraMuted,
+            titleWeight = FontWeight.Medium, aspectRatio = 16f / 9f
+        )
+    },
+    artist = { tile ->
+        GenreDiscoveryArtistCard(tile, 124.dp, RoundedCornerShape(IvoryDesign.coverCorner), LevyraPanel, LevyraText)
+    },
+    about = { text, copy ->
+        GenreDiscoveryAboutText(text, copy, LevyraText, LevyraMuted, LevyraText, Modifier.padding(horizontal = IvoryDestinationGutter))
+    },
+    credit = { text -> GenreDiscoveryCredit(text, LevyraMuted, Modifier.padding(horizontal = IvoryDestinationGutter, vertical = 10.dp)) }
+)

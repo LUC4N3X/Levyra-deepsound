@@ -16,6 +16,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,14 +46,18 @@ import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LevyraAtelierStrings
+import com.luc4n3x.levyra.ui.i18n.GenreChartCopy
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
+import com.luc4n3x.levyra.ui.i18n.genreDiscoveryCopy
+import com.luc4n3x.levyra.viewmodel.ExploreGenreDiscoveryState
+import com.luc4n3x.levyra.ui.i18n.genreChartCopy
 import com.luc4n3x.levyra.ui.theme.AtelierDesign
 
 private val AtelierDestinationSleeveSide = 148.dp
 private val AtelierDestinationPortrait = 112.dp
 
 @Composable
-private fun AtelierDestinationTopBar(title: String?, backLabel: String, onBack: () -> Unit) {
+internal fun AtelierDestinationTopBar(title: String?, backLabel: String, onBack: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().statusBarsPadding().padding(start = 4.dp, end = AtelierDesign.gutter, top = 4.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -77,9 +85,14 @@ internal fun AtelierCollectionDestination(
     onBack: () -> Unit,
     onPlayAll: () -> Unit,
     onPlayTrack: (Track) -> Unit,
-    onRequestTrackArtwork: (Track) -> Unit
+    onRequestTrackArtwork: (Track) -> Unit,
+    discovery: ExploreGenreDiscoveryState,
+    discoveryActions: GenreDiscoveryActions?
 ) {
+    val discoveryCopy = remember(strings.code) { genreDiscoveryCopy(strings.code) }
     val copy = remember(strings.code) { LevyraAtelierStrings.forCode(strings.code) }
+    val chartCopy = remember(strings.code) { genreChartCopy(strings.code) }
+    var chartExpanded by rememberSaveable(title) { mutableStateOf(false) }
     LazyColumn(
         Modifier.fillMaxSize().background(AtelierDesign.room),
         contentPadding = PaddingValues(bottom = bottomInset + AtelierDesign.sectionGap)
@@ -88,7 +101,7 @@ internal fun AtelierCollectionDestination(
             AtelierDestinationTopBar(null, strings.back, onBack)
         }
         item(key = "atelier-destination-poster", contentType = "atelier-destination-poster") {
-            val lead = tracks.firstOrNull()
+            val lead = tracks.firstOrNull() ?: editorial.chart.firstOrNull()
             if (lead != null) LaunchedEffect(lead.id) { onRequestTrackArtwork(lead) }
             AtelierDestinationPoster(
                 title = title,
@@ -96,16 +109,17 @@ internal fun AtelierCollectionDestination(
                 artwork = lead?.let(::atelierCoverUrl).orEmpty(),
                 meta = if (tracks.isNotEmpty()) copy.tracksCount.format(tracks.size) else "",
                 playLabel = strings.playAll,
-                onPlayAll = onPlayAll.takeIf { tracks.isNotEmpty() }
+                onPlayAll = onPlayAll.takeIf { tracks.isNotEmpty() || editorial.chart.isNotEmpty() }
             )
         }
+        atelierGenreChart(editorial, chartCopy, chartExpanded, currentTrackId, strings.play, { chartExpanded = !chartExpanded }, onPlayTrack, onRequestTrackArtwork)
         when {
             isLoading && tracks.isEmpty() -> item(key = "atelier-destination-loading", contentType = "atelier-destination-status") {
                 Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
                     LevyraLoadingIndicator(color = AtelierDesign.accentBright, modifier = Modifier.size(36.dp))
                 }
             }
-            tracks.isEmpty() -> item(key = "atelier-destination-empty", contentType = "atelier-destination-status") {
+            tracks.isEmpty() -> if (editorial.chart.isEmpty() && !editorial.chartLoading && !discovery.hasVisibleContent && !discovery.isLoading) item(key = "atelier-destination-empty", contentType = "atelier-destination-status") {
                 Text(
                     strings.exploreEmpty, fontFamily = AtelierSerif, fontStyle = FontStyle.Italic, fontSize = 16.sp,
                     color = AtelierDesign.textSecondary, textAlign = TextAlign.Center,
@@ -114,43 +128,81 @@ internal fun AtelierCollectionDestination(
             }
             else -> {
                 atelierDestinationSleeves("featured", strings.popularTracks, editorial.featured, currentTrackId, onPlayTrack, onRequestTrackArtwork)
-                if (editorial.artists.isNotEmpty()) {
-                    item(key = "atelier-destination-artists", contentType = "atelier-destination-artists") {
-                        Column {
-                            AtelierSectionLabel(strings.artists)
-                            LazyRow(contentPadding = AtelierRowPadding, horizontalArrangement = Arrangement.spacedBy(AtelierDesign.itemGap)) {
-                                items(editorial.artists, key = { it.key }, contentType = { "atelier-destination-artist" }) { artist ->
-                                    LaunchedEffect(artist.track.id) { onRequestTrackArtwork(artist.track) }
-                                    AtelierDestinationArtist(artist.name, artist.artworkUrl.ifBlank { atelierCoverUrl(artist.track) }) { onPlayTrack(artist.track) }
-                                }
-                            }
-                        }
-                    }
-                }
-                if (editorial.albums.isNotEmpty()) {
-                    item(key = "atelier-destination-albums", contentType = "atelier-destination-albums") {
-                        Column {
-                            AtelierSectionLabel(strings.albumsPlain)
-                            LazyRow(contentPadding = AtelierRowPadding, horizontalArrangement = Arrangement.spacedBy(AtelierDesign.itemGap)) {
-                                items(editorial.albums, key = { it.key }, contentType = { "atelier-destination-sleeve" }) { album ->
-                                    LaunchedEffect(album.track.id) { onRequestTrackArtwork(album.track) }
-                                    AtelierDestinationSleeve(
-                                        album.title, album.artist, album.artworkUrl.ifBlank { atelierCoverUrl(album.track) }, false
-                                    ) { onPlayTrack(album.track) }
-                                }
-                            }
-                        }
-                    }
-                }
-                if (editorial.essentials.isNotEmpty()) {
-                    item(key = "atelier-destination-essentials-label", contentType = "atelier-label") { AtelierSectionLabel(strings.songsPlain) }
-                    itemsIndexed(editorial.essentials, key = { _, track -> "essential-${track.id}" }, contentType = { _, _ -> "atelier-track-line" }) { index, track ->
-                        LaunchedEffect(track.id) { onRequestTrackArtwork(track) }
-                        AtelierTrackLine(
-                            track, index + 1, track.id == currentTrackId, Icons.Rounded.PlayArrow, strings.play,
-                            onPlay = { onPlayTrack(track) }, onAction = { onPlayTrack(track) }
-                        )
-                    }
+            }
+        }
+        genreArtistRowItems(genreArtistEntries(editorial, discovery), strings.artists, AtelierDiscoverySkin, onPlayTrack, onRequestTrackArtwork) { name ->
+            discoveryActions?.openArtist?.invoke(name)
+        }
+        genreAlbumRowItems(genreAlbumEntries(editorial, discovery), strings.albumsPlain, AtelierDiscoverySkin, onPlayTrack, onRequestTrackArtwork) { album ->
+            discoveryActions?.openAlbum?.invoke(album)
+        }
+        if (discoveryActions != null) genreDiscoveryItems(discovery, discoveryCopy, AtelierDiscoverySkin, discoveryActions)
+        if (editorial.essentials.isNotEmpty()) {
+            item(key = "atelier-destination-essentials-label", contentType = "atelier-label") { AtelierSectionLabel(strings.songsPlain) }
+            itemsIndexed(editorial.essentials, key = { _, track -> "essential-${track.id}" }, contentType = { _, _ -> "atelier-track-line" }) { index, track ->
+                LaunchedEffect(track.id) { onRequestTrackArtwork(track) }
+                AtelierTrackLine(
+                    track, index + 1, track.id == currentTrackId, Icons.Rounded.PlayArrow, strings.play,
+                    onPlay = { onPlayTrack(track) }, onAction = { onPlayTrack(track) }
+                )
+            }
+        }
+    }
+}
+
+private fun LazyListScope.atelierGenreChart(
+    editorial: ExploreGenreEditorial,
+    copy: GenreChartCopy,
+    expanded: Boolean,
+    currentTrackId: String?,
+    playLabel: String,
+    onToggle: () -> Unit,
+    onPlayTrack: (Track) -> Unit,
+    onRequestTrackArtwork: (Track) -> Unit
+) {
+    val chart = editorial.chart
+    if (chart.isEmpty() && !editorial.chartLoading) return
+    item(key = "atelier-chart-header", contentType = "atelier-chart-header") {
+        Column {
+            AtelierSectionLabel(copy.title)
+            Text(
+                copy.subtitle, fontFamily = AtelierSerif, fontStyle = FontStyle.Italic, fontSize = 15.sp, color = AtelierDesign.textSecondary,
+                modifier = Modifier.padding(start = AtelierDesign.gutter, end = AtelierDesign.gutter, bottom = 6.dp)
+            )
+        }
+    }
+    if (chart.isEmpty()) {
+        item(key = "atelier-chart-loading", contentType = "atelier-destination-status") {
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = AtelierDesign.rowHeight).padding(horizontal = AtelierDesign.gutter),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                LevyraLoadingIndicator(color = AtelierDesign.accentBright, modifier = Modifier.size(24.dp))
+                Text(copy.loading, fontFamily = AtelierSerif, fontStyle = FontStyle.Italic, fontSize = 15.sp, color = AtelierDesign.textSecondary)
+            }
+        }
+        return
+    }
+    itemsIndexed(chart.take(if (expanded) 50 else 10), key = { _, track -> "atelier-chart-${track.id}" }, contentType = { _, _ -> "atelier-track-line" }) { index, track ->
+        LaunchedEffect(track.id) { onRequestTrackArtwork(track) }
+        AtelierTrackLine(
+            track, index + 1, track.id == currentTrackId, Icons.Rounded.PlayArrow, playLabel,
+            onPlay = { onPlayTrack(track) }, onAction = { onPlayTrack(track) }
+        )
+    }
+    item(key = "atelier-chart-footer", contentType = "atelier-chart-footer") {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = AtelierDesign.gutter, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                copy.credit, fontFamily = AtelierSerif, fontStyle = FontStyle.Italic, fontSize = 13.sp, color = AtelierDesign.textSecondary,
+                modifier = Modifier.weight(1f)
+            )
+            if (chart.size > 10) {
+                val label = if (expanded) copy.showLess else copy.showAll
+                AtelierHardwareKey(label = label, lit = false, onClick = onToggle) {
+                    Text(label, style = MaterialTheme.typography.labelLarge, color = AtelierDesign.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
@@ -221,14 +273,21 @@ private fun AtelierDestinationPoster(title: String, stamp: String, artwork: Stri
 }
 
 @Composable
-private fun AtelierDestinationSleeve(title: String, subtitle: String, artwork: String, current: Boolean, onClick: () -> Unit) {
+internal fun AtelierDestinationSleeve(
+    title: String,
+    subtitle: String,
+    artwork: String,
+    current: Boolean,
+    modifier: Modifier = Modifier.width(AtelierDestinationSleeveSide),
+    onClick: () -> Unit
+) {
     Column(
-        Modifier.width(AtelierDestinationSleeveSide)
+        modifier
             .levyraPressable(onClick = onClick, role = Role.Button, pressedScale = LevyraPressScale.Tile)
             .semantics(mergeDescendants = true) { contentDescription = "$title, $subtitle" }
     ) {
         Box(
-            Modifier.size(AtelierDestinationSleeveSide)
+            Modifier.fillMaxWidth().aspectRatio(1f)
                 .graphicsLayer {
                     shadowElevation = 10.dp.toPx()
                     shape = AtelierDesign.sleeveShape
@@ -238,15 +297,13 @@ private fun AtelierDestinationSleeve(title: String, subtitle: String, artwork: S
         ) { AtelierArtwork(artwork, Modifier.clearAndSetSemantics { }) }
         Text(
             title, fontFamily = AtelierSerif, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, lineHeight = 19.sp,
-            color = if (current) AtelierDesign.accentBright else AtelierDesign.text, maxLines = 2, overflow = TextOverflow.Ellipsis,
+            color = if (current) AtelierDesign.accentBright else AtelierDesign.text, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = 10.dp).clearAndSetSemantics { }
         )
-        if (subtitle.isNotBlank()) {
-            Text(
-                subtitle, style = MaterialTheme.typography.bodySmall, color = AtelierDesign.textSecondary, maxLines = 1,
-                overflow = TextOverflow.Ellipsis, modifier = Modifier.clearAndSetSemantics { }
-            )
-        }
+        Text(
+            subtitle, style = MaterialTheme.typography.bodySmall, color = AtelierDesign.textSecondary, minLines = 1, maxLines = 1,
+            overflow = TextOverflow.Ellipsis, modifier = Modifier.clearAndSetSemantics { }
+        )
     }
 }
 
@@ -263,7 +320,7 @@ private fun AtelierDestinationArtist(name: String, artwork: String, onClick: () 
         }
         Text(
             name, fontFamily = AtelierSerif, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = AtelierDesign.text,
-            textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = 8.dp).clearAndSetSemantics { }
         )
     }
@@ -317,3 +374,28 @@ internal fun AtelierNewReleasesDestination(
         }
     }
 }
+
+private val AtelierDiscoverySkin = GenreDiscoverySkin(
+    keyPrefix = "atelier",
+    rowModifier = Modifier,
+    rowPadding = AtelierRowPadding,
+    itemGap = AtelierDesign.itemGap,
+    header = { title -> AtelierSectionLabel(title) },
+    cover = { tile -> AtelierDestinationSleeve(tile.title, tile.subtitle, tile.artworkUrl, false, onClick = tile.onClick) },
+    wide = { tile ->
+        GenreDiscoveryCoverCard(
+            tile, 280.dp, AtelierDesign.sleeveShape, AtelierPaper, AtelierDesign.text, AtelierDesign.textSecondary,
+            fontFamily = AtelierSerif, aspectRatio = 16f / 9f
+        )
+    },
+    artist = { tile -> AtelierDestinationArtist(tile.title, tile.artworkUrl, tile.onClick) },
+    about = { text, copy ->
+        GenreDiscoveryAboutText(
+            text, copy, AtelierDesign.text, AtelierDesign.textSecondary, AtelierDesign.accentBright,
+            Modifier.padding(horizontal = AtelierDesign.gutter), AtelierSerif
+        )
+    },
+    credit = { text ->
+        GenreDiscoveryCredit(text, AtelierDesign.textSecondary, Modifier.padding(horizontal = AtelierDesign.gutter, vertical = 10.dp), AtelierSerif)
+    }
+)

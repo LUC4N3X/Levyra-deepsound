@@ -159,7 +159,8 @@ class BreakTheBubbleTest {
             }
         }
         assertEquals(41, smartMusicLocalizationCodes().size)
-        assertEquals("Rompi la bolla", smartMusicCopy("it")[SmartMusicText.BubbleTitle])
+        assertEquals("Avventurosa", smartMusicCopy("it")[SmartMusicText.BubbleAdventurous])
+        assertEquals("Out of orbit", smartMusicCopy("en")[SmartMusicText.BubbleOut])
         assertTrue(smartMusicCopy("pt-BR")[SmartMusicText.MoodTitle].isNotBlank())
     }
 }

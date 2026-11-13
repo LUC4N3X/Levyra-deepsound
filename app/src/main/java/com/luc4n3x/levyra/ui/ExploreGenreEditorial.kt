@@ -23,7 +23,9 @@ internal data class ExploreGenreEditorial(
     val featured: List<Track>,
     val artists: List<ExploreGenreArtistCard>,
     val albums: List<ExploreGenreAlbumCard>,
-    val essentials: List<Track>
+    val essentials: List<Track>,
+    val chart: List<Track> = emptyList(),
+    val chartLoading: Boolean = false
 )
 
 internal fun exploreGenreRotationBucket(nowMs: Long): Long =
@@ -55,28 +57,34 @@ internal fun refreshExploreGenreEditorialMetadata(
                 track = updated
             )
         },
-        essentials = editorial.essentials.map(::latest)
+        essentials = editorial.essentials.map(::latest),
+        chart = editorial.chart.map(::latest),
+        chartLoading = editorial.chartLoading
     )
 }
 
 internal fun buildExploreGenreEditorial(
     tracks: List<Track>,
     zoneId: String,
-    rotationBucket: Long
+    rotationBucket: Long,
+    chart: List<Track> = emptyList(),
+    chartLoading: Boolean = false
 ): ExploreGenreEditorial {
     val uniqueTracks = tracks.distinctBy { it.id }
-    if (uniqueTracks.isEmpty()) {
+    val uniqueChart = chart.distinctBy { it.id }
+    if (uniqueTracks.isEmpty() && uniqueChart.isEmpty()) {
         return ExploreGenreEditorial(
             featured = emptyList(),
             artists = emptyList(),
             albums = emptyList(),
-            essentials = emptyList()
+            essentials = emptyList(),
+            chartLoading = chartLoading
         )
     }
 
     val seed = 31 * zoneId.hashCode() + rotationBucket.hashCode()
     val featured = rotateFromSeed(uniqueTracks, seed).take(8)
-    val rotated = rotateFromSeed(uniqueTracks, seed xor 0x5A17)
+    val rotated = uniqueChart + rotateFromSeed(uniqueTracks, seed xor 0x5A17)
 
     val artists = rotated.asSequence()
         .mapNotNull { track ->
@@ -116,7 +124,9 @@ internal fun buildExploreGenreEditorial(
         featured = featured,
         artists = artists,
         albums = albums,
-        essentials = uniqueTracks.take(18)
+        essentials = uniqueTracks.take(18),
+        chart = uniqueChart,
+        chartLoading = chartLoading
     )
 }
 

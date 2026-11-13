@@ -36,6 +36,8 @@ import com.luc4n3x.levyra.feature.radio.RadioStation
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.components.rememberLevyraPlayMorphShape
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.HOME_SUBTITLE_FAVORITE_RADIO
+import com.luc4n3x.levyra.ui.i18n.defaultHomeSubtitle
 import com.luc4n3x.levyra.ui.i18n.LevyraLiveRadioCatalog
 import com.luc4n3x.levyra.ui.i18n.radioLibraryCopy
 import com.luc4n3x.levyra.ui.theme.*
@@ -71,8 +73,11 @@ private fun HomeFavoriteRadio(radio: HomeRadioState) {
         if (LevyraIsQobuz) QobuzSectionHeader(title, null, "", null, Modifier.padding(top = QobuzDesign.sectionGap))
         else if (LevyraIsAtelier) AtelierSectionLabel(title)
         else if (LevyraSkinManagesLayout && !LevyraIsAppleMusic && !LevyraIsYouTubeMusic) SkinSectionTitle(title, inset)
-        else Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = LevyraText,
-            modifier = Modifier.padding(horizontal = inset).semantics { heading() })
+        else Column(Modifier.padding(horizontal = inset), verticalArrangement = Arrangement.spacedBy(LevyraCardDesign.CaptionLineGap)) {
+            Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = LevyraText,
+                modifier = Modifier.semantics { heading() })
+            defaultHomeSubtitle(HOME_SUBTITLE_FAVORITE_RADIO, "")?.let { Text(it, color = LevyraMuted, style = LevyraType.caption, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+        }
         when {
             LevyraIsNocturne || LevyraIsTorque || LevyraIsIvory -> LazyRow(
                 contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(12.dp)

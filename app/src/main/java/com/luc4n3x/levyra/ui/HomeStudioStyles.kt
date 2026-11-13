@@ -353,7 +353,8 @@ internal fun StudioSectionHeader(
     title: String,
     featured: Boolean,
     onPlayAll: (() -> Unit)?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    subtitle: String? = null
 ) {
     val strings = LocalLevyraStrings.current
     val copy = strings.homeStudioCopy
@@ -390,7 +391,7 @@ internal fun StudioSectionHeader(
         HomeStyle.MaterialExpressive -> MxSectionHeader(spec, title, featured, copy.featured, strings.playAll, onPlayAll, modifier)
         HomeStyle.Original -> LevyraSectionHeader(
             title = title,
-            subtitle = if (featured) copy.featured else null,
+            subtitle = subtitle ?: if (featured) copy.featured else null,
             modifier = headerModifier
         ) {
             onPlayAll?.let { action -> LevyraSectionPlayAll(onClick = action) }

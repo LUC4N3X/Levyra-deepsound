@@ -414,7 +414,10 @@ internal data class ArtistPagePlaylists(
 )
 
 internal fun splitArtistPagePlaylists(playlists: List<PlaylistHit>, artistName: String, limit: Int): ArtistPagePlaylists {
-    val (byArtist, featuredOn) = playlists.partition { playlist ->
+    val openable = playlists.filter { playlist ->
+        playlist.thumbnailUrl.isNotBlank() && (playlist.playlistId.isNotBlank() || playlist.browseId.isNotBlank())
+    }
+    val (byArtist, featuredOn) = openable.partition { playlist ->
         artistName.isNotBlank() && playlist.author.isNotBlank() && artistNameMatches(artistName, playlist.author)
     }
     return ArtistPagePlaylists(byArtist.take(limit), featuredOn.take(limit))

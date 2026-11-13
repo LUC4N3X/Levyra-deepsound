@@ -10,6 +10,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.luc4n3x.levyra.domain.HomeStyle
+import com.luc4n3x.levyra.ui.CuratedPlaylistsHost
 import com.luc4n3x.levyra.ui.theme.LevyraSkinManagesLayout
 import com.luc4n3x.levyra.viewmodel.DiscoveryViewModel
 
@@ -26,8 +27,9 @@ internal fun DiscoveryHomeHost(
     content: @Composable () -> Unit
 ) {
     val skinHidesDiscovery = LevyraSkinManagesLayout && !skinComposesDiscovery && !com.luc4n3x.levyra.ui.theme.LevyraIsMono && !com.luc4n3x.levyra.ui.theme.LevyraIsAtelier && !com.luc4n3x.levyra.ui.theme.LevyraIsTorque && !com.luc4n3x.levyra.ui.theme.LevyraIsIvory && com.luc4n3x.levyra.ui.theme.LevyraActivePalette.id != com.luc4n3x.levyra.ui.theme.PrismPaletteId
+    val homeContent: @Composable () -> Unit = { CuratedPlaylistsHost(factory, bottomInset, backEnabled, content) }
     if (skinHidesDiscovery && !skinShowsDailyDiscovery()) {
-        content()
+        homeContent()
         return
     }
     val discovery: DiscoveryViewModel = viewModel(key = "levyra-discovery", factory = factory)
@@ -49,10 +51,10 @@ internal fun DiscoveryHomeHost(
     }
     if (skinShowsDailyDiscovery()) LaunchedEffect(discovery) { discovery.warmDaily() }
     if (skinHidesDiscovery) {
-        CompositionLocalProvider(LocalDailyDiscovery provides handle) { content() }
+        CompositionLocalProvider(LocalDailyDiscovery provides handle, content = homeContent)
         return
     }
-    CompositionLocalProvider(LocalHomeDiscovery provides handle, LocalDailyDiscovery provides handle) { content() }
+    CompositionLocalProvider(LocalHomeDiscovery provides handle, LocalDailyDiscovery provides handle, content = homeContent)
     if (open) {
         DiscoveryScreen(
             viewModel = discovery,
