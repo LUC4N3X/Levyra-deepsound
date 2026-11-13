@@ -25,7 +25,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -377,6 +379,9 @@ internal fun YouTubeMusicCardCarousel(cards: List<YouTubeMusicCardModel>, modifi
     }
 }
 
+private const val YouTubeMusicCardTitleLines = 2
+private const val YouTubeMusicCardTextLines = 3
+
 @Composable
 internal fun YouTubeMusicCard(card: YouTubeMusicCardModel, modifier: Modifier = Modifier, width: Dp = if (card.wide) 300.dp else YouTubeMusicDesign.cardArtwork) {
     val shape = if (card.circular) CircleShape else YouTubeMusicDesign.cardShape
@@ -395,15 +400,26 @@ internal fun YouTubeMusicCard(card: YouTubeMusicCardModel, modifier: Modifier = 
             }
         }
         Spacer(Modifier.height(8.dp))
-        Text(
-            card.title, color = YouTubeMusicDesign.text, style = MaterialTheme.typography.titleMedium,
-            minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis,
-            modifier = if (card.circular) Modifier.fillMaxWidth() else Modifier
-        )
-        Text(
-            card.subtitle, color = YouTubeMusicDesign.textSecondary, style = MaterialTheme.typography.bodyLarge,
-            minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis
-        )
+        val titleStyle = MaterialTheme.typography.titleMedium
+        val subtitleStyle = MaterialTheme.typography.bodyLarge
+        val blockHeight = with(androidx.compose.ui.platform.LocalDensity.current) {
+            (titleStyle.lineHeight.toDp() * YouTubeMusicCardTitleLines) + subtitleStyle.lineHeight.toDp() * (YouTubeMusicCardTextLines - YouTubeMusicCardTitleLines)
+        }
+        var titleLines by androidx.compose.runtime.remember(card.title) { androidx.compose.runtime.mutableIntStateOf(1) }
+        Column(Modifier.height(blockHeight)) {
+            Text(
+                card.title, color = YouTubeMusicDesign.text, style = titleStyle,
+                maxLines = YouTubeMusicCardTitleLines, overflow = TextOverflow.Ellipsis,
+                onTextLayout = { titleLines = it.lineCount },
+                modifier = if (card.circular) Modifier.fillMaxWidth() else Modifier
+            )
+            if (card.subtitle.isNotBlank()) {
+                Text(
+                    card.subtitle, color = YouTubeMusicDesign.textSecondary, style = subtitleStyle,
+                    maxLines = (YouTubeMusicCardTextLines - titleLines).coerceAtLeast(1), overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
     }
 }
 

@@ -70,7 +70,7 @@ internal fun SpotifyYearChartOverlay(
     val copy = remember(strings.code) { LevyraSpotifyChartStrings.forCode(strings.code) }
     val region = remember(state.selectedChartId) { ChartsCatalog.region(state.selectedChartId).label }
     val year = remember { LocalDate.now().year }
-    val title = "Top Tracks $region $year"
+    val title = "${com.luc4n3x.levyra.ui.i18n.spotifyYearCopy(strings.code).topTracks} $region $year"
     val cover = tracks.first().largeThumbnailUrl.ifBlank { tracks.first().thumbnailUrl }
     val suggestions = rememberProviderGenreCharts()
     val coverPx = with(LocalDensity.current) { SpotifyYearCoverSize.toPx() }

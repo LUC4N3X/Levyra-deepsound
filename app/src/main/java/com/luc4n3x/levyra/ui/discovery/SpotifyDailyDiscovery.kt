@@ -105,3 +105,24 @@ private fun SpotifyDiscoverMixCard(cards: List<DiscoveryCard>, title: String, ar
         )
     }
 }
+
+@Composable
+internal fun YouTubeMusicDailyDiscovery(cards: List<DiscoveryCard>, copy: DiscoveryCopy, onPlay: (DiscoveryCard) -> Unit) {
+    val strings = com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings.current
+    val ytm = remember(strings.code) { com.luc4n3x.levyra.ui.i18n.LevyraYouTubeMusicSkinStrings.forCode(strings.code) }
+    val rows = remember(cards, copy) {
+        cards.mapIndexed { index, card ->
+            com.luc4n3x.levyra.ui.YouTubeMusicSongRowModel(
+                "ytm-discover-${card.key}", card.track, dailyDiscoveryReason(card, copy, index), { onPlay(card) }, { onPlay(card) }
+            )
+        }
+    }
+    Column {
+        com.luc4n3x.levyra.ui.YouTubeMusicSectionHeader(
+            copy.dailyTitle,
+            actionLabel = ytm.playAll, onAction = { onPlay(cards.first()) }
+        )
+        androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 4.dp))
+        com.luc4n3x.levyra.ui.YouTubeMusicSongColumns(rows, null, ytm.explicit)
+    }
+}

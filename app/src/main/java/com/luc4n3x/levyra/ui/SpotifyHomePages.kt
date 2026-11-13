@@ -120,8 +120,7 @@ private fun SpotifyReleaseCard(kind: String, title: String, artist: String, url:
     Column(Modifier.width(176.dp).levyraPressable(onClick = onClick, onLongClick = onLongClick, onClickLabel = title, role = Role.Button)) {
         StableRemoteArtwork(url, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(176.dp).clip(RoundedCornerShape(4.dp)).background(SpotifyDesign.placeholder))
         Text(kind, color = SpotifyDesign.subdued, fontSize = 14.sp, maxLines = 1, modifier = Modifier.padding(top = 8.dp))
-        Text(title, color = SpotifyDesign.text, fontSize = 14.sp, fontWeight = FontWeight.Bold, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        Text(artist, color = SpotifyDesign.subdued, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        SpotifyCardText(title, artist)
     }
 }
 
@@ -131,10 +130,11 @@ private fun SpotifyYearTops(state: LevyraUiState, viewModel: HomeViewModel) {
     val year = remember { java.time.LocalDate.now().year }
     val tracks = state.charts
     val artists = state.homeArtists
-    SpotifyHomeShelf("Top $year") {
+    val yearCopy = com.luc4n3x.levyra.ui.i18n.spotifyYearCopy(LocalLevyraStrings.current.code)
+    SpotifyHomeShelf(yearCopy.topOfYear.format(year)) {
         if (tracks.isNotEmpty()) item(key = "year-tracks") {
             SpotifyYearCard(
-                "Top Tracks\n$region $year", tracks.first().largeThumbnailUrl.ifBlank { tracks.first().thumbnailUrl }, Color(0xFFD9822B),
+                "${yearCopy.topTracks}\n$region $year", tracks.first().largeThumbnailUrl.ifBlank { tracks.first().thumbnailUrl }, Color(0xFFD9822B),
                 tracks.map(Track::artist).distinct().take(5).joinToString(", ")
             ) { SpotifyYearChartNavigator.open = true }
         }
@@ -196,9 +196,12 @@ internal fun SpotifyHomeCoverCard(
         } else {
             StableRemoteArtwork(url, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(size).clip(shape).background(SpotifyDesign.placeholder))
         }
-        Text(title, color = SpotifyDesign.text, fontSize = 14.sp, fontWeight = FontWeight.Bold, minLines = 2, maxLines = 2,
-            overflow = TextOverflow.Ellipsis, textAlign = if (round) TextAlign.Center else TextAlign.Start, modifier = Modifier.padding(top = 8.dp))
-        if (!round) Text(subtitle, color = SpotifyDesign.subdued, fontSize = 14.sp, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+        if (round) {
+            Text(title, color = SpotifyDesign.text, fontSize = 14.sp, fontWeight = FontWeight.Bold, minLines = 2, maxLines = 2,
+                overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
+        } else {
+            SpotifyCardText(title, subtitle, Modifier.padding(top = 8.dp))
+        }
     }
 }
 
@@ -372,6 +375,29 @@ private fun SpotifyFollowArtistPicker(state: LevyraUiState, viewModel: HomeViewM
                     .levyraPressable(onClick = onDismiss, onClickLabel = chart.done, role = Role.Button).padding(horizontal = 36.dp),
                 contentAlignment = Alignment.Center
             ) { Text(chart.done, color = Color.Black, fontSize = 18.sp, fontWeight = FontWeight.Bold) }
+        }
+    }
+}
+
+private const val SpotifyCardTitleLines = 2
+private const val SpotifyCardTextLines = 3
+private val SpotifyCardLine = 18.sp
+
+@Composable
+internal fun SpotifyCardText(title: String, subtitle: String, modifier: Modifier = Modifier) {
+    var titleLines by remember(title) { androidx.compose.runtime.mutableIntStateOf(1) }
+    val blockHeight = with(androidx.compose.ui.platform.LocalDensity.current) { SpotifyCardLine.toDp() * SpotifyCardTextLines + 4.dp }
+    Column(modifier.height(blockHeight)) {
+        Text(
+            title, color = SpotifyDesign.text, fontSize = 14.sp, lineHeight = SpotifyCardLine, fontWeight = FontWeight.Bold,
+            maxLines = SpotifyCardTitleLines, overflow = TextOverflow.Ellipsis, onTextLayout = { titleLines = it.lineCount }
+        )
+        if (subtitle.isNotBlank()) {
+            Text(
+                subtitle, color = SpotifyDesign.subdued, fontSize = 14.sp, lineHeight = SpotifyCardLine,
+                maxLines = (SpotifyCardTextLines - titleLines).coerceAtLeast(1), overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 4.dp)
+            )
         }
     }
 }

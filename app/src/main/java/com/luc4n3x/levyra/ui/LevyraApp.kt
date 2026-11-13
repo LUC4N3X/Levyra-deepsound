@@ -24873,7 +24873,14 @@ private fun ExploreScreen(
     var exploreDestination by rememberSaveable { mutableStateOf<String?>(null) }
     var exploreMoodReturn by rememberSaveable { mutableStateOf<String?>(null) }
     var exploreOpenedFromRequest by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(state.selectedTab) { if (state.selectedTab != LevyraTab.Explore) exploreOpenedFromRequest = false }
+    var exploreClearOnLeave by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(state.selectedTab) {
+        if (state.selectedTab != LevyraTab.Explore) {
+            exploreOpenedFromRequest = false
+            if (exploreClearOnLeave) exploreDestination = null
+            exploreClearOnLeave = false
+        }
+    }
     LaunchedEffect(state.exploreOpenRequest) {
         val requestedZoneId = state.exploreOpenRequest ?: return@LaunchedEffect
         exploreMoodReturn = null
@@ -25112,10 +25119,12 @@ private fun ExploreScreen(
                 }
             },
             onDestinationChange = { destination ->
-                exploreDestination = destination
                 if (destination == null && exploreOpenedFromRequest) {
                     exploreOpenedFromRequest = false
+                    exploreClearOnLeave = true
                     viewModel.navigateBack()
+                } else {
+                    exploreDestination = destination
                 }
             },
             onMoodReturnChange = { exploreMoodReturn = it },
