@@ -1,0 +1,110 @@
+{
+  "schema": 1,
+  "probe_attempts": 2,
+  "retry_delay_seconds": 2,
+  "alternative_discovery_budget_seconds": 90,
+  "api": {
+    "host": "www.jiosaavn.com",
+    "fallback_hosts": [
+      "api.jiosaavn.com"
+    ],
+    "api_path": "/api.php",
+    "api_version": "4",
+    "client_context": "web6dot0",
+    "fallback_contexts": [
+      "android"
+    ],
+    "open_media_host": "aac.saavncdn.com",
+    "fallback_media_hosts": [
+      "c.saavncdn.com",
+      "h.saavncdn.com"
+    ],
+    "endpoints": {
+      "search_songs": "search.getResults",
+      "search_artists": "search.getArtistResults",
+      "search_albums": "search.getAlbumResults",
+      "song_details": "song.getDetails",
+      "artist_details": "artist.getArtistPageDetails",
+      "album_details": "content.getAlbumDetails",
+      "authorize_media": "song.generateAuthToken",
+      "lyrics": "lyrics.getLyrics"
+    }
+  },
+  "quality_tiers": [
+    96,
+    160,
+    320
+  ],
+  "thresholds": {
+    "required_track_regressions_for_repair": 2,
+    "required_entity_regressions_for_repair": 2
+  },
+  "track_sentinels": [
+    {
+      "name": "starboy-explicit-clean",
+      "query": "Starboy The Weeknd",
+      "required": true,
+      "expect_explicit_and_clean": true,
+      "expect_lyrics": false,
+      "expected_artist": "The Weeknd"
+    },
+    {
+      "name": "blinding-lights",
+      "query": "Blinding Lights The Weeknd",
+      "required": true,
+      "expect_explicit_and_clean": true,
+      "expect_lyrics": false,
+      "expected_artist": "The Weeknd"
+    },
+    {
+      "name": "tum-hi-ho-hindi-lyrics",
+      "query": "Tum Hi Ho Arijit Singh",
+      "required": true,
+      "expect_explicit_and_clean": false,
+      "expect_lyrics": true,
+      "expected_artist": "Arijit Singh"
+    }
+  ],
+  "artist_sentinels": [
+    {
+      "name": "the-weeknd",
+      "query": "The Weeknd",
+      "required": true,
+      "expected_name": "The Weeknd"
+    },
+    {
+      "name": "arijit-singh",
+      "query": "Arijit Singh",
+      "required": true,
+      "expected_name": "Arijit Singh"
+    }
+  ],
+  "album_sentinels": [
+    {
+      "name": "after-hours",
+      "query": "After Hours The Weeknd",
+      "required": true,
+      "expected_title_contains": "After Hours"
+    },
+    {
+      "name": "aashiqui-2",
+      "query": "Aashiqui 2",
+      "required": true,
+      "expected_title_contains": "Aashiqui 2"
+    }
+  ],
+  "upstreams": [
+    {
+      "repo": "sumitkolhe/jiosaavn-api",
+      "branch": "main"
+    },
+    {
+      "repo": "shnwazdev/shnwazdev-jiosaavn-api",
+      "branch": "main"
+    },
+    {
+      "repo": "saavn-labs/sdk",
+      "branch": "main"
+    }
+  ]
+}

@@ -1,0 +1,517 @@
+{
+  "accepted_at_epoch": 1794512856,
+  "accepted_reason": "initial validated JioSaavn Sync baseline",
+  "observation": {
+    "albums": [
+      {
+        "name": "after-hours",
+        "observation": {
+          "access_blocked": false,
+          "detail_keys": [
+            "button_tooltip_info",
+            "explicit_content",
+            "header_desc",
+            "id",
+            "image",
+            "language",
+            "list",
+            "list_count",
+            "list_type",
+            "modules",
+            "more_info",
+            "perma_url",
+            "play_count",
+            "pro_hva_campaigns",
+            "subtitle",
+            "title",
+            "type",
+            "year"
+          ],
+          "has_more_info": true,
+          "has_title": true,
+          "list_count": 14,
+          "ok": true,
+          "search_count": 5,
+          "songs_have_more_info": true
+        },
+        "ok": true,
+        "required": true
+      },
+      {
+        "name": "aashiqui-2",
+        "observation": {
+          "access_blocked": false,
+          "detail_keys": [
+            "button_tooltip_info",
+            "explicit_content",
+            "header_desc",
+            "id",
+            "image",
+            "language",
+            "list",
+            "list_count",
+            "list_type",
+            "modules",
+            "more_info",
+            "perma_url",
+            "play_count",
+            "pro_hva_campaigns",
+            "subtitle",
+            "title",
+            "type",
+            "year"
+          ],
+          "has_more_info": true,
+          "has_title": true,
+          "list_count": 10,
+          "ok": true,
+          "search_count": 5,
+          "songs_have_more_info": true
+        },
+        "ok": true,
+        "required": true
+      }
+    ],
+    "api_contract": {
+      "api_version": "4",
+      "client_context": "web6dot0",
+      "host": "www.jiosaavn.com",
+      "open_media_host": "aac.saavncdn.com"
+    },
+    "artists": [
+      {
+        "name": "the-weeknd",
+        "observation": {
+          "access_blocked": false,
+          "detail_keys": [
+            "artistId",
+            "availableLanguages",
+            "bio",
+            "dedicated_artist_playlist",
+            "dob",
+            "dominantLanguage",
+            "dominantType",
+            "fan_count",
+            "fb",
+            "featured_artist_playlist",
+            "follower_count",
+            "image",
+            "isRadioPresent",
+            "isVerified",
+            "is_followed",
+            "latest_release",
+            "modules",
+            "name",
+            "similarArtists",
+            "singles",
+            "subtitle",
+            "topAlbums",
+            "topEpisodes",
+            "topSongs",
+            "twitter",
+            "type",
+            "urls",
+            "wiki"
+          ],
+          "has_artist_id": true,
+          "has_name": true,
+          "ok": true,
+          "search_count": 5,
+          "top_albums_count": 5,
+          "top_songs_count": 5
+        },
+        "ok": true,
+        "required": true
+      },
+      {
+        "name": "arijit-singh",
+        "observation": {
+          "access_blocked": false,
+          "detail_keys": [
+            "artistId",
+            "availableLanguages",
+            "bio",
+            "dedicated_artist_playlist",
+            "dob",
+            "dominantLanguage",
+            "dominantType",
+            "fan_count",
+            "fb",
+            "featured_artist_playlist",
+            "follower_count",
+            "image",
+            "isRadioPresent",
+            "isVerified",
+            "is_followed",
+            "latest_release",
+            "modules",
+            "name",
+            "similarArtists",
+            "singles",
+            "subtitle",
+            "topAlbums",
+            "topEpisodes",
+            "topSongs",
+            "twitter",
+            "type",
+            "urls",
+            "wiki"
+          ],
+          "has_artist_id": true,
+          "has_name": true,
+          "ok": true,
+          "search_count": 5,
+          "top_albums_count": 5,
+          "top_songs_count": 5
+        },
+        "ok": true,
+        "required": true
+      }
+    ],
+    "observed_at_epoch": 1794512822,
+    "schema": 1,
+    "tracks": [
+      {
+        "expect_explicit_and_clean": true,
+        "expect_lyrics": false,
+        "name": "starboy-explicit-clean",
+        "observation": {
+          "access_blocked": false,
+          "details": {
+            "access_blocked": false,
+            "envelope_kind": "songs_array",
+            "has_artist_map": true,
+            "has_duration": true,
+            "has_media_payload": true,
+            "ok": true
+          },
+          "explicit_and_clean_ok": true,
+          "lyrics": {
+            "skipped": true
+          },
+          "ok": true,
+          "schema": {
+            "artist_map_keys": [
+              "artists",
+              "featured_artists",
+              "primary_artists"
+            ],
+            "explicit_values": [
+              "0",
+              "1"
+            ],
+            "has_clean": true,
+            "has_explicit": true,
+            "more_info_has_required": {
+              "album": true,
+              "artistMap": true,
+              "duration": true,
+              "encrypted_media_url": true
+            },
+            "offers320_values": [
+              "true"
+            ],
+            "playable_count": 10
+          },
+          "search": {
+            "envelope_ok": true,
+            "has_results_list": true,
+            "has_start": true,
+            "has_total": true,
+            "song_count": 10,
+            "top_keys": [
+              "results",
+              "start",
+              "total"
+            ],
+            "total_results": 10
+          },
+          "streams": {
+            "auth_api_blocked": false,
+            "auth_api_ok": true,
+            "auth_has_expires": true,
+            "auth_status": "success",
+            "auth_url_valid": true,
+            "cdn_access_blocked": false,
+            "decrypt_ok": true,
+            "decrypted_cdn_host": "aac.saavncdn.com",
+            "decrypted_extension": "mp4",
+            "playable_any_tier": true,
+            "tiers": {
+              "160": {
+                "estimated_kbps": 172,
+                "has_mp4a": true,
+                "http_status": 206,
+                "status": "valid",
+                "valid": true,
+                "verified_tier": 160
+              },
+              "320": {
+                "estimated_kbps": 342,
+                "has_mp4a": true,
+                "http_status": 206,
+                "status": "valid",
+                "valid": true,
+                "verified_tier": 320
+              },
+              "96": {
+                "estimated_kbps": 99,
+                "has_mp4a": true,
+                "http_status": 206,
+                "status": "valid",
+                "valid": true,
+                "verified_tier": 96
+              }
+            },
+            "verified_tiers": [
+              96,
+              160,
+              320
+            ]
+          }
+        },
+        "ok": true,
+        "required": true
+      },
+      {
+        "expect_explicit_and_clean": true,
+        "expect_lyrics": false,
+        "name": "blinding-lights",
+        "observation": {
+          "access_blocked": false,
+          "details": {
+            "access_blocked": false,
+            "envelope_kind": "songs_array",
+            "has_artist_map": true,
+            "has_duration": true,
+            "has_media_payload": true,
+            "ok": true
+          },
+          "explicit_and_clean_ok": true,
+          "lyrics": {
+            "skipped": true
+          },
+          "ok": true,
+          "schema": {
+            "artist_map_keys": [
+              "artists",
+              "featured_artists",
+              "primary_artists"
+            ],
+            "explicit_values": [
+              "0",
+              "1"
+            ],
+            "has_clean": true,
+            "has_explicit": true,
+            "more_info_has_required": {
+              "album": true,
+              "artistMap": true,
+              "duration": true,
+              "encrypted_media_url": true
+            },
+            "offers320_values": [
+              "true"
+            ],
+            "playable_count": 10
+          },
+          "search": {
+            "envelope_ok": true,
+            "has_results_list": true,
+            "has_start": true,
+            "has_total": true,
+            "song_count": 10,
+            "top_keys": [
+              "results",
+              "start",
+              "total"
+            ],
+            "total_results": 10
+          },
+          "streams": {
+            "auth_api_blocked": false,
+            "auth_api_ok": true,
+            "auth_has_expires": true,
+            "auth_status": "success",
+            "auth_url_valid": true,
+            "cdn_access_blocked": false,
+            "decrypt_ok": true,
+            "decrypted_cdn_host": "aac.saavncdn.com",
+            "decrypted_extension": "mp4",
+            "playable_any_tier": true,
+            "tiers": {
+              "160": {
+                "estimated_kbps": 166,
+                "has_mp4a": true,
+                "http_status": 206,
+                "status": "valid",
+                "valid": true,
+                "verified_tier": 160
+              },
+              "320": {
+                "estimated_kbps": 328,
+                "has_mp4a": true,
+                "http_status": 206,
+                "status": "valid",
+                "valid": true,
+                "verified_tier": 320
+              },
+              "96": {
+                "estimated_kbps": 100,
+                "has_mp4a": true,
+                "http_status": 206,
+                "status": "valid",
+                "valid": true,
+                "verified_tier": 96
+              }
+            },
+            "verified_tiers": [
+              96,
+              160,
+              320
+            ]
+          }
+        },
+        "ok": true,
+        "required": true
+      },
+      {
+        "expect_explicit_and_clean": false,
+        "expect_lyrics": true,
+        "name": "tum-hi-ho-hindi-lyrics",
+        "observation": {
+          "access_blocked": false,
+          "details": {
+            "access_blocked": false,
+            "envelope_kind": "songs_array",
+            "has_artist_map": true,
+            "has_duration": true,
+            "has_media_payload": true,
+            "ok": true
+          },
+          "explicit_and_clean_ok": true,
+          "lyrics": {
+            "access_blocked": false,
+            "has_html_breaks": true,
+            "has_lyrics_field": true,
+            "line_count": 35,
+            "ok": true
+          },
+          "ok": true,
+          "schema": {
+            "artist_map_keys": [
+              "artists",
+              "featured_artists",
+              "primary_artists"
+            ],
+            "explicit_values": [
+              "0"
+            ],
+            "has_clean": true,
+            "has_explicit": false,
+            "more_info_has_required": {
+              "album": true,
+              "artistMap": true,
+              "duration": true,
+              "encrypted_media_url": true
+            },
+            "offers320_values": [
+              "true"
+            ],
+            "playable_count": 10
+          },
+          "search": {
+            "envelope_ok": true,
+            "has_results_list": true,
+            "has_start": true,
+            "has_total": true,
+            "song_count": 10,
+            "top_keys": [
+              "results",
+              "start",
+              "total"
+            ],
+            "total_results": 10
+          },
+          "streams": {
+            "auth_api_blocked": false,
+            "auth_api_ok": true,
+            "auth_has_expires": true,
+            "auth_status": "success",
+            "auth_url_valid": true,
+            "cdn_access_blocked": false,
+            "decrypt_ok": true,
+            "decrypted_cdn_host": "aac.saavncdn.com",
+            "decrypted_extension": "mp4",
+            "playable_any_tier": true,
+            "tiers": {
+              "160": {
+                "estimated_kbps": 161,
+                "has_mp4a": true,
+                "http_status": 206,
+                "status": "valid",
+                "valid": true,
+                "verified_tier": 160
+              },
+              "320": {
+                "estimated_kbps": 321,
+                "has_mp4a": true,
+                "http_status": 206,
+                "status": "valid",
+                "valid": true,
+                "verified_tier": 320
+              },
+              "96": {
+                "estimated_kbps": 97,
+                "has_mp4a": true,
+                "http_status": 206,
+                "status": "valid",
+                "valid": true,
+                "verified_tier": 96
+              }
+            },
+            "verified_tiers": [
+              96,
+              160,
+              320
+            ]
+          }
+        },
+        "ok": true,
+        "required": true
+      }
+    ],
+    "upstreams": [
+      {
+        "branch": "main",
+        "relevant_commits": [
+          {
+            "message": "feat!: remove lyrics API endpoint",
+            "sha": "a34bfea8e7fc"
+          },
+          {
+            "message": "fix: random 403 errors from jiosaavn if user-agent was missing",
+            "sha": "45ad74744e79"
+          }
+        ],
+        "repo": "sumitkolhe/jiosaavn-api"
+      },
+      {
+        "branch": "main",
+        "relevant_commits": [],
+        "repo": "shnwazdev/shnwazdev-jiosaavn-api"
+      },
+      {
+        "branch": "main",
+        "relevant_commits": [
+          {
+            "message": "feat: add crypto-js for encryption and decryption in stream URL generation",
+            "sha": "0b66dea4bd67"
+          }
+        ],
+        "repo": "saavn-labs/sdk"
+      }
+    ]
+  },
+  "schema": 1
+}

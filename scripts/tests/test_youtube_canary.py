@@ -834,14 +834,13 @@ class YoutubeCanaryTest(unittest.TestCase):
     def test_repository_canary_workflow_keeps_repair_draft_and_scoped(self):
         root = Path(__file__).resolve().parents[2]
         workflow = (root / ".github/workflows/nightly-extractor-check.yml").read_text(encoding="utf-8")
-        self.assertIn("openai/codex-action@bdf19a4a223ec2549a3e2274a0cf61556bc07675", workflow)
-        self.assertIn("LEVYRA_CANARY_OPENROUTER_API_KEY", workflow)
-        self.assertNotIn("LEVYRA_CANARY_OPENAI_API_KEY", workflow)
-        self.assertIn("responses-api-endpoint: https://openrouter.ai/api/v1/responses", workflow)
-        self.assertIn("model: openrouter/free", workflow)
+        self.assertIn("anthropics/claude-code-action@4d75e5f390ee76b2e09c1980ecc99ff3a2e088c8", workflow)
+        self.assertIn("CLAUDE_CODE_OAUTH_TOKEN", workflow)
+        self.assertIn("--disallowedTools Bash,WebFetch,WebSearch", workflow)
+        self.assertNotIn("openrouter", workflow.lower())
+        self.assertNotIn("openai/codex-action", workflow)
+        self.assertIn("persist-credentials: false", workflow)
         self.assertIn("draft: always-true", workflow)
-        self.assertIn("permission-profile: \":workspace\"", workflow)
-        self.assertIn("safety-strategy: drop-sudo", workflow)
         self.assertNotIn("pull_request_target", workflow)
         self.assertNotIn("enable-auto-merge", workflow)
 

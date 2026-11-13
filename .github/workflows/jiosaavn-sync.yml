@@ -1,0 +1,672 @@
+name: Levyra JioSaavn Sync
+
+on:
+  schedule:
+    - cron: "35 1,13 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run probe and validation without creating or updating a draft PR"
+        required: false
+        type: boolean
+        default: false
+      force_repair_check:
+        description: "Simulate repair eligibility check against current repo without mutating baseline"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jiosaavn-sync-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  jiosaavn_probe:
+    name: Monitor JioSaavn Endpoints, Schemas, and Streams
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      decision: ${{ steps.probe.outputs.decision }}
+      severity: ${{ steps.probe.outputs.severity }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Run JioSaavn Sync Unit Tests
+        run: python -m unittest discover -s scripts/tests -p 'test_jiosaavn_sync.py' -v
+
+      - name: Run Live JioSaavn Monitor Probe
+        id: probe
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/jiosaavn-sync
+          python scripts/jiosaavn_sync.py probe \
+            --config jiosaavn-sync/config.json \
+            --baseline jiosaavn-sync/baseline.json \
+            --out-dir artifacts/jiosaavn-sync \
+            --github-output "${GITHUB_OUTPUT}"
+
+      - name: Flag Blocked JioSaavn Access
+        if: steps.probe.outputs.decision == 'blocked'
+        run: echo "::warning title=JioSaavn Sync blocked::JioSaavn refused or rate-limited this runner, so no regression check ran."
+
+      - name: Publish Probe Summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f artifacts/jiosaavn-sync/report.md ]; then
+            cat artifacts/jiosaavn-sync/report.md >> "${GITHUB_STEP_SUMMARY}"
+          else
+            echo "JioSaavn Sync probe did not produce report.md" >> "${GITHUB_STEP_SUMMARY}"
+          fi
+
+      - name: Upload Sanitized Probe Artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: jiosaavn-sync-probe-${{ github.run_number }}
+          path: |
+            artifacts/jiosaavn-sync/observation.json
+            artifacts/jiosaavn-sync/decision.json
+            artifacts/jiosaavn-sync/report.md
+          if-no-files-found: ignore
+          retention-days: 14
+
+  bootstrap_pr:
+    name: Bootstrap JioSaavn Sync Baseline Draft PR
+    needs: jiosaavn_probe
+    if: >-
+      needs.jiosaavn_probe.outputs.decision == 'bootstrap' &&
+      inputs.dry_run != true
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Confirm Healthy Bootstrap Observation
+        id: confirm
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/jiosaavn-sync
+          python scripts/jiosaavn_sync.py probe \
+            --config jiosaavn-sync/config.json \
+            --baseline jiosaavn-sync/baseline.json \
+            --out-dir artifacts/jiosaavn-sync \
+            --github-output "${GITHUB_OUTPUT}"
+
+      - name: Accept Sanitized Baseline
+        if: steps.confirm.outputs.decision == 'bootstrap'
+        run: |
+          set -euo pipefail
+          python scripts/jiosaavn_sync.py accept \
+            --observation artifacts/jiosaavn-sync/observation.json \
+            --baseline jiosaavn-sync/baseline.json
+          git diff --check
+
+      - name: Run Python and Quality Gate Checks
+        if: steps.confirm.outputs.decision == 'bootstrap'
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s scripts/tests -p 'test_jiosaavn_sync.py' -v
+          python scripts/ai_quality_gate.py --profile full
+
+      - name: Remove Temporary Artifacts Before PR
+        if: always()
+        run: rm -rf artifacts/jiosaavn-sync
+
+      - name: Create or Update Bootstrap Draft PR
+        if: steps.confirm.outputs.decision == 'bootstrap'
+        uses: peter-evans/create-pull-request@v8
+        with:
+          commit-message: "chore(jiosaavn-sync): seed sanitized JioSaavn baseline"
+          branch: automation/jiosaavn-sync-baseline
+          base: main
+          draft: always-true
+          delete-branch: true
+          add-paths: jiosaavn-sync/baseline.json
+          title: "[JioSaavn Sync] Seed sanitized monitor baseline"
+          body: |
+            ## Summary
+
+            - Seeds the initial sanitized `jiosaavn-sync/baseline.json` from a double-confirmed healthy probe.
+
+            ## Changes
+
+            - Populates `jiosaavn-sync/baseline.json` with structural field signatures, endpoint status outcomes, and verified quality tiers (96/160/320 kbps), with all signed tokens, query parameters, encrypted payloads, and IPs stripped.
+
+            ## Type of change
+
+            - [x] Build, CI, packaging, or release change
+
+            ## Scope
+
+            - **Platform:** Android / Shared
+            - **Area:** JioSaavn Sync / CI Automation
+
+            ## Testing
+
+            ### Automated checks
+
+            - `python scripts/jiosaavn_sync.py probe` confirmed healthy baseline twice (`bootstrap`)
+            - `python -m unittest discover -s scripts/tests -p 'test_jiosaavn_sync.py' -v` passed
+            - `python scripts/ai_quality_gate.py --profile full` passed
+            - `git diff --check` passed
+
+            ### Manual testing
+
+            | Device or OS | What was tested | Result |
+            |---|---|---|
+            | Ubuntu CI runner | Automated JioSaavn baseline bootstrap & gate checks | Passed |
+
+            ## Screenshots or recordings
+
+            N/A
+
+            ## Risk and compatibility
+
+            - **Risk level:** Low
+            - **Notes:** Baseline-only seed for `jiosaavn-sync/baseline.json`; no runtime app behavior modified.
+
+            ## Reviewer notes
+
+            - Double-confirmed baseline snapshot contains zero secrets, signed URLs, or raw IP addresses.
+
+            ## Release note
+
+            None
+
+            ## Related issues
+
+            - Related to # (N/A)
+
+            ## Checklist
+
+            - [x] This pull request focuses on a single change with no unrelated diffs
+            - [x] The code follows existing repository architecture and conventions
+            - [x] I tested the changes and verified them locally
+            - [x] Documentation, tests, and assets were updated where relevant
+            - [x] No secrets, keystores, build artifacts, or local configuration files were committed
+            - [x] Android and Desktop versioning and release channels remain independent
+            - [x] CI checks pass, or any known issue is explained in the description
+
+  repair_pr:
+    name: Verify Regression and Propose Safe Draft Repair PR
+    needs: jiosaavn_probe
+    if: >-
+      (needs.jiosaavn_probe.outputs.decision == 'repair' || inputs.force_repair_check == true)
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+      ORG_GRADLE_PROJECT_levyraNativeAudio: "false"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Setup Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          yes | "${SDKMANAGER}" --licenses >/dev/null || true
+          for attempt in 1 2 3; do
+            if "${SDKMANAGER}" --channel=3 \
+              "platforms;android-37.0" \
+              "build-tools;36.0.0"; then
+              break
+            fi
+            if [ "${attempt}" -eq 3 ]; then
+              echo "Android SDK installation failed after 3 attempts." >&2
+              exit 1
+            fi
+            sleep 10
+          done
+
+      - name: Re-run Probe to Confirm Persistent Regression
+        id: confirm
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/jiosaavn-sync
+          python scripts/jiosaavn_sync.py probe \
+            --config jiosaavn-sync/config.json \
+            --baseline jiosaavn-sync/baseline.json \
+            --out-dir artifacts/jiosaavn-sync \
+            --github-output "${GITHUB_OUTPUT}"
+
+      - name: Publish Confirmation Summary
+        if: always()
+        run: |
+          if [ -f artifacts/jiosaavn-sync/report.md ]; then
+            cat artifacts/jiosaavn-sync/report.md >> "${GITHUB_STEP_SUMMARY}"
+          fi
+
+      - name: Attempt Deterministic Verified Protocol Fix
+        id: det_fix
+        if: steps.confirm.outputs.decision == 'repair'
+        run: |
+          set -euo pipefail
+          python scripts/jiosaavn_sync.py deterministic-fix \
+            --observation artifacts/jiosaavn-sync/observation.json \
+            --repo-root . \
+            --github-output "${GITHUB_OUTPUT}"
+
+      - name: Check Repair Agent Credential Availability
+        id: agent
+        if: steps.confirm.outputs.decision == 'repair' && steps.det_fix.outputs.applied != 'true'
+        shell: bash
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${CLAUDE_CODE_OAUTH_TOKEN}" ]; then
+            echo "available=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "available=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Run Scoped Claude Repair Agent
+        id: agent_repair
+        if: >-
+          steps.confirm.outputs.decision == 'repair' &&
+          steps.det_fix.outputs.applied != 'true' &&
+          steps.agent.outputs.available == 'true'
+        continue-on-error: true
+        uses: anthropics/claude-code-action@4d75e5f390ee76b2e09c1980ecc99ff3a2e088c8 # v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          prompt: "Read jiosaavn-sync/REPAIR_PROMPT.md and follow it exactly."
+          claude_args: >-
+            --max-turns 60
+            --allowedTools Read,Edit,Write,Glob,Grep
+            --disallowedTools Bash,WebFetch,WebSearch
+
+      - name: Inspect Patch Scope Against JioSaavn-Only Allowlist
+        id: scope_check
+        if: steps.confirm.outputs.decision == 'repair'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY' >> "${GITHUB_OUTPUT}"
+          import json
+          import re
+          import subprocess
+          from pathlib import Path
+
+          raw = subprocess.check_output(["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"])
+          entries = [item.decode("utf-8", errors="surrogateescape") for item in raw.split(b"\0") if item]
+          changed = []
+          idx = 0
+          while idx < len(entries):
+              entry = entries[idx]
+              idx += 1
+              if len(entry) < 4:
+                  continue
+              status = entry[:2]
+              paths = [entry[3:]]
+              if ("R" in status or "C" in status) and idx < len(entries):
+                  paths.append(entries[idx])
+                  idx += 1
+              for path in paths:
+                  if path.startswith("artifacts/"):
+                      continue
+                  changed.append(path)
+
+          lyrics_repo = "app/src/main/java/com/luc4n3x/levyra/data/LyricsRepository.kt"
+          config_rel = "jiosaavn-sync/config.json"
+          allowed_exact = {
+              "app/src/main/java/com/luc4n3x/levyra/data/JioSaavnLyrics.kt",
+              lyrics_repo,
+              "app/src/test/java/com/luc4n3x/levyra/data/JioSaavnLyricsTest.kt",
+              "app/src/test/java/com/luc4n3x/levyra/data/network/JioSaavnNetworkIsolationTest.kt",
+              config_rel,
+              "scripts/jiosaavn_sync.py",
+              "scripts/tests/test_jiosaavn_sync.py",
+          }
+          allowed_prefixes = (
+              "app/src/main/java/com/luc4n3x/levyra/data/hqaudio/jiosaavn/",
+              "app/src/test/java/com/luc4n3x/levyra/data/hqaudio/jiosaavn/",
+          )
+          disallowed = [
+              p for p in changed
+              if p not in allowed_exact and not p.startswith(allowed_prefixes)
+          ]
+
+          def jiosaavn_allowed_lines(source_text: str) -> set[int]:
+              allowed = set()
+              in_attempt = False
+              depth = 0
+              for lineno, line in enumerate(source_text.splitlines(), start=1):
+                  if "fun jioSaavnAttempt(" in line:
+                      in_attempt = True
+                      depth = line.count("{") - line.count("}")
+                      allowed.add(lineno)
+                      continue
+                  if in_attempt:
+                      if depth <= 0 and re.match(r"^\s*(?:private|internal|public|override|suspend)\b.*\bfun\b", line):
+                          in_attempt = False
+                      else:
+                          allowed.add(lineno)
+                          depth += line.count("{") - line.count("}")
+                          if depth <= 0 and "}" in line:
+                              in_attempt = False
+                          continue
+                  if re.search(r"\bJIOSAAVN_[A-Z0-9_]+\b", line):
+                      allowed.add(lineno)
+              return allowed
+
+          def hunk_range(start_str: str, count_str: str | None) -> range:
+              start = int(start_str)
+              count = int(count_str) if count_str is not None else 1
+              if count <= 0:
+                  return range(start, start + 1)
+              return range(start, start + count)
+
+          if lyrics_repo in changed:
+              try:
+                  head_src = subprocess.check_output(["git", "show", f"HEAD:{lyrics_repo}"], text=True)
+                  work_src = Path(lyrics_repo).read_text(encoding="utf-8")
+                  diff_out = subprocess.check_output(["git", "diff", "-U0", "HEAD", "--", lyrics_repo], text=True)
+              except (OSError, subprocess.CalledProcessError):
+                  disallowed.append(f"{lyrics_repo}:unreadable_diff")
+              else:
+                  head_allowed = jiosaavn_allowed_lines(head_src)
+                  work_allowed = jiosaavn_allowed_lines(work_src)
+                  hunk_re = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
+                  hunks = [m for line in diff_out.splitlines() if (m := hunk_re.match(line))]
+                  if not hunks or any(
+                      any(ln not in head_allowed for ln in hunk_range(m.group(1), m.group(2)))
+                      or any(ln not in work_allowed for ln in hunk_range(m.group(3), m.group(4)))
+                      for m in hunks
+                  ):
+                      disallowed.append(f"{lyrics_repo}:non_jiosaavn_section")
+
+          if config_rel in changed:
+              try:
+                  head_cfg = json.loads(subprocess.check_output(["git", "show", f"HEAD:{config_rel}"], text=True))
+                  work_cfg = json.loads(Path(config_rel).read_text(encoding="utf-8"))
+              except (OSError, ValueError, subprocess.CalledProcessError):
+                  disallowed.append(f"{config_rel}:unreadable")
+              else:
+                  for cfg in (head_cfg, work_cfg):
+                      api = cfg.get("api") if isinstance(cfg, dict) and isinstance(cfg.get("api"), dict) else {}
+                      for key in ("host", "client_context", "open_media_host"):
+                          api.pop(key, None)
+                  if head_cfg != work_cfg:
+                      disallowed.append(f"{config_rel}:non_protocol_change")
+
+          prod_changed = any(
+              p.startswith("app/src/main/") for p in changed
+          )
+          print(f"changed_count={len(changed)}")
+          monitor_changed = any(
+              p in ("scripts/jiosaavn_sync.py", "scripts/tests/test_jiosaavn_sync.py") for p in changed
+          )
+          print(f"production_changed={'true' if prod_changed else 'false'}")
+          print(f"monitor_changed={'true' if monitor_changed else 'false'}")
+          print(f"scope_ok={'true' if (changed and not disallowed) else 'false'}")
+          if disallowed:
+              print(f"disallowed_paths={','.join(disallowed)}")
+          PY
+
+      - name: Validate Repair with Android Unit Tests, Compile, Lint, Full Quality Gate, and Diff Check
+        id: validate_fix
+        if: >-
+          steps.confirm.outputs.decision == 'repair' &&
+          steps.scope_check.outputs.scope_ok == 'true' &&
+          steps.scope_check.outputs.production_changed == 'true'
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          ./gradlew --no-daemon :app:testDebugUnitTest :app:compileDebugKotlin :app:lintDebug --console=plain --warning-mode summary
+          python -m unittest discover -s scripts/tests -p 'test_jiosaavn_sync.py' -v
+          python scripts/ai_quality_gate.py --profile full
+          git diff --check
+
+      - name: Confirm Live Recovery and Accept Updated Baseline
+        id: post_verify
+        if: >-
+          steps.confirm.outputs.decision == 'repair' &&
+          steps.scope_check.outputs.scope_ok == 'true' &&
+          steps.scope_check.outputs.production_changed == 'true' &&
+          steps.validate_fix.outcome == 'success' &&
+          inputs.dry_run != true
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/jiosaavn-sync-post
+          python scripts/jiosaavn_sync.py probe \
+            --config jiosaavn-sync/config.json \
+            --baseline jiosaavn-sync/baseline.json \
+            --out-dir artifacts/jiosaavn-sync-post
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          post = json.loads(Path("artifacts/jiosaavn-sync-post/observation.json").read_text(encoding="utf-8"))
+          post_decision = json.loads(Path("artifacts/jiosaavn-sync-post/decision.json").read_text(encoding="utf-8"))
+          all_items = (post.get("tracks") or []) + (post.get("artists") or []) + (post.get("albums") or [])
+          required_failed = [
+              item.get("name") for item in all_items
+              if bool(item.get("required", True)) and not bool(item.get("ok"))
+          ]
+          if all_items and not required_failed and post_decision.get("decision") == "none":
+              raise SystemExit(0)
+          print(
+              f"Post-repair live probe did not clear regression: decision={post_decision.get('decision')!r}, "
+              f"failed={required_failed}, changes={post_decision.get('material_changes')}"
+          )
+          raise SystemExit(1)
+          PY
+          python scripts/jiosaavn_sync.py accept \
+            --observation artifacts/jiosaavn-sync-post/observation.json \
+            --baseline jiosaavn-sync/baseline.json
+
+      - name: Finalize Verified Repair or Diagnostic Incident
+        id: finalize
+        if: steps.confirm.outputs.decision == 'repair'
+        shell: bash
+        env:
+          POST_VERIFY_OUTCOME: ${{ steps.post_verify.outcome }}
+        run: |
+          set -euo pipefail
+          mode="diagnostic"
+          if [ "${POST_VERIFY_OUTCOME:-skipped}" = "success" ]; then
+            mode="repair"
+          else
+            git checkout -- .
+            git clean -fd -e artifacts/
+            python scripts/jiosaavn_sync.py incident \
+              --report artifacts/jiosaavn-sync/report.md \
+              --destination jiosaavn-sync/incidents/current.md
+          fi
+          echo "mode=${mode}" >> "${GITHUB_OUTPUT}"
+          if [ "${mode}" = "repair" ]; then
+            echo "title=fix(jiosaavn): apply verified JioSaavn sync repair" >> "${GITHUB_OUTPUT}"
+          else
+            echo "title=chore(jiosaavn): investigate detected JioSaavn API change" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Run Full Quality Gate on Final Tree
+        if: steps.confirm.outputs.decision == 'repair' && inputs.dry_run != true
+        run: |
+          set -euo pipefail
+          python scripts/ai_quality_gate.py --profile full
+          git diff --check
+
+      - name: Build Draft PR Body
+        if: steps.confirm.outputs.decision == 'repair' && inputs.dry_run != true
+        shell: bash
+        env:
+          MODE: ${{ steps.finalize.outputs.mode }}
+          DET_FIX_APPLIED: ${{ steps.det_fix.outputs.applied }}
+          AGENT_AVAILABLE: ${{ steps.agent.outputs.available }}
+          AGENT_OUTCOME: ${{ steps.agent_repair.outcome }}
+          SCOPE_OK: ${{ steps.scope_check.outputs.scope_ok }}
+          DISALLOWED_PATHS: ${{ steps.scope_check.outputs.disallowed_paths }}
+          PRODUCTION_CHANGED: ${{ steps.scope_check.outputs.production_changed }}
+          VALIDATION_OUTCOME: ${{ steps.validate_fix.outcome }}
+          POST_VERIFY_OUTCOME: ${{ steps.post_verify.outcome }}
+          MONITOR_CHANGED: ${{ steps.scope_check.outputs.monitor_changed }}
+        run: |
+          set -euo pipefail
+          if [ "${MODE}" = "repair" ]; then
+            cat > /tmp/jiosaavn_pr_body.md <<'EOF'
+          ## Summary
+
+          - Resolves a double-confirmed JioSaavn API, schema, or stream regression detected by the automated JioSaavn Sync monitor.
+          - Strictly isolated to JioSaavn components; awaits human review by `@LUC4N3X` before any merge.
+
+          ## Changes
+
+          - Updates only JioSaavn-owned integration files (`JioSaavnEndpoints.kt`, `JioSaavnPayloadParser.kt`, `JioSaavnAudioProvider.kt`, `JioSaavnLyrics.kt`, or JioSaavn-only sections of `LyricsRepository.kt`), their tests, and the protocol fields of `jiosaavn-sync/config.json`.
+
+          ## Type of change
+
+          - [x] Bug fix
+
+          ## Scope
+
+          - **Platform:** Android / Shared
+          - **Area:** HQ Audio (JioSaavn) / JioSaavn Sync
+
+          ## Testing
+
+          ### Automated checks
+
+          - `./gradlew --no-daemon :app:testDebugUnitTest :app:compileDebugKotlin :app:lintDebug` passed
+          - `python -m unittest discover -s scripts/tests -p 'test_jiosaavn_sync.py' -v` passed, including the Kotlin/monitor protocol parity contract
+          - `python scripts/ai_quality_gate.py --profile full` passed on the repaired tree and again on the final tree
+          - `git diff --check` passed
+          - Post-repair live probe cleared the triggering regression against `jiosaavn-sync/baseline.json`
+
+          ### Manual testing
+
+          | Device or OS | What was tested | Result |
+          |---|---|---|
+          | Ubuntu CI runner | Post-repair live JioSaavn probe and Android unit test, build, and lint verification | Passed |
+
+          ## Screenshots or recordings
+
+          N/A
+
+          ## Risk and compatibility
+
+          - **Risk level:** Low
+          - **Notes:** Scope verified strictly within JioSaavn allowlisted files and sections; YouTube, FLAC, track matching, quality selection, and circuit breakers remain untouched. Not yet tested on a device.
+
+          ## Reviewer notes
+
+          EOF
+            if [ "${MONITOR_CHANGED:-false}" = "true" ]; then
+              printf '%s\n\n' "- **The repair agent also changed the JioSaavn Sync monitor (scripts/jiosaavn_sync.py or its tests).** The post-repair live probe ran with that modified monitor, so review those edits first and reject any change that weakens a check." >> /tmp/jiosaavn_pr_body.md
+            fi
+            cat artifacts/jiosaavn-sync/report.md >> /tmp/jiosaavn_pr_body.md
+            cat >> /tmp/jiosaavn_pr_body.md <<'EOF'
+
+          ## Release note
+
+          Fixed JioSaavn API compatibility regression detected by automated sync monitoring.
+
+          ## Related issues
+
+          - Related to # (N/A)
+
+          ## Checklist
+
+          - [x] This pull request focuses on a single change with no unrelated diffs
+          - [x] The code follows existing repository architecture and conventions
+          - [x] I tested the changes and verified them locally
+          - [x] Documentation, tests, and assets were updated where relevant
+          - [x] No secrets, keystores, build artifacts, or local configuration files were committed
+          - [x] Android and Desktop versioning and release channels remain independent
+          - [ ] CI checks pass, or any known issue is explained in the description
+          EOF
+          else
+            {
+              echo "## JioSaavn Sync incident"
+              echo
+              echo "A material JioSaavn regression was confirmed twice, but no verified fix was accepted. This draft PR contains only the sanitized incident report."
+              echo
+              echo "- Deterministic protocol fix applied: \`${DET_FIX_APPLIED:-false}\`"
+              echo "- Claude repair-agent credential available: \`${AGENT_AVAILABLE:-not-run}\`"
+              echo "- Claude agent outcome: \`${AGENT_OUTCOME:-not-run}\`"
+              echo "- Production change produced: \`${PRODUCTION_CHANGED:-false}\`"
+              echo "- Scope gate: \`${SCOPE_OK:-not-run}\` ${DISALLOWED_PATHS:+(\`${DISALLOWED_PATHS}\`)}"
+              echo "- Validation outcome: \`${VALIDATION_OUTCOME:-not-run}\`"
+              echo "- Post-repair live probe: \`${POST_VERIFY_OUTCOME:-not-run}\`"
+              echo
+              cat jiosaavn-sync/incidents/current.md
+            } > /tmp/jiosaavn_pr_body.md
+          fi
+
+      - name: Clean Artifact Directories Before Pull Request Commit
+        if: always()
+        run: |
+          mkdir -p /tmp/jiosaavn-sync-upload
+          cp -r artifacts/jiosaavn-sync/. /tmp/jiosaavn-sync-upload/ 2>/dev/null || true
+          rm -rf artifacts/jiosaavn-sync artifacts/jiosaavn-sync-post
+
+      - name: Upload Repair Diagnostic Artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: jiosaavn-sync-repair-${{ github.run_number }}
+          path: /tmp/jiosaavn-sync-upload
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Create or Update JioSaavn Sync Draft PR
+        if: steps.confirm.outputs.decision == 'repair' && inputs.dry_run != true
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ github.token }}
+          commit-message: ${{ steps.finalize.outputs.title }}
+          branch: automation/jiosaavn-sync-repair
+          base: main
+          draft: always-true
+          delete-branch: true
+          title: ${{ steps.finalize.outputs.title }}
+          body-path: /tmp/jiosaavn_pr_body.md
