@@ -19,6 +19,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.graphicsLayer
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.HomeBlock
@@ -68,7 +71,8 @@ internal fun YouTubeMusicHomeContent(
     val copy = remember(strings.code) { LevyraYouTubeMusicSkinStrings.forCode(strings.code) }
     val homeViewModel = viewModel<YouTubeMusicHomeViewModel>()
     val feed by homeViewModel.state.collectAsStateWithLifecycle()
-    val previews by homeViewModel.previews.collectAsStateWithLifecycle()
+    val previewsState = homeViewModel.previews.collectAsStateWithLifecycle()
+    val previews: (String) -> List<Track> = remember(previewsState) { { playlistId -> previewsState.value[playlistId].orEmpty() } }
     val allShelves = remember(feed.shelves, feed.discovery) { feed.allShelves }
     LaunchedEffect(strings.code, showsFeed) { if (showsFeed) homeViewModel.load(strings.code) }
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -188,8 +192,7 @@ private fun LazyListScope.youTubeMusicHomeHeaders(
     }
     if (chips.isNotEmpty()) {
         stickyHeader(key = YTM_CHIPS_KEY, contentType = "ytm-chips") {
-            val pinned by remember(homeListState) { derivedStateOf { homeListState.firstVisibleItemIndex >= 1 } }
-            YouTubeMusicChipsStickyHeader(chips, selectedChip, pinned, statusBarTop, onSelectChip)
+            YouTubeMusicChipsStickyHeader(chips, selectedChip, homeListState, statusBarTop, onSelectChip)
         }
     }
 }
@@ -206,34 +209,43 @@ private fun LazyListScope.youTubeMusicComposedFeedChips(
     if (chips.isEmpty()) return
     if (sticky) {
         stickyHeader(key = YTM_CHIPS_KEY, contentType = "ytm-chips") {
-            val pinned by remember(homeListState) {
-                derivedStateOf {
-                    homeListState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == YTM_CHIPS_KEY }
-                        ?.let { homeListState.firstVisibleItemIndex >= it.index } == true
-                }
-            }
-            YouTubeMusicChipsStickyHeader(chips, selectedChip, pinned, statusBarTop, onSelectChip)
+            YouTubeMusicChipsStickyHeader(chips, selectedChip, homeListState, statusBarTop, onSelectChip)
         }
     } else {
         item(key = YTM_CHIPS_KEY, contentType = "ytm-chips") {
-            YouTubeMusicChipsStickyHeader(chips, selectedChip, false, statusBarTop, onSelectChip)
+            YouTubeMusicChipsStickyHeader(chips, selectedChip, null, statusBarTop, onSelectChip)
         }
     }
+}
+
+private fun youTubeMusicChipsPinOffset(listState: LazyListState?, limit: Float): Float {
+    if (listState == null || limit <= 0f) return 0f
+    val header = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == YTM_CHIPS_KEY }
+        ?: return if (listState.firstVisibleItemIndex > 0) limit else 0f
+    return (-header.offset.toFloat()).coerceIn(0f, limit)
 }
 
 @Composable
 private fun YouTubeMusicChipsStickyHeader(
     chips: List<com.luc4n3x.levyra.domain.YoutubeMusicHomeChip>,
     selectedChip: String,
-    pinned: Boolean,
+    pinnedListState: LazyListState?,
     statusBarTop: Dp,
     onSelectChip: (String) -> Unit
 ) {
     val labels = remember(chips) { chips.map { it.title } }
+    val background = YouTubeMusicDesign.background
     Box(
         Modifier.fillMaxWidth()
-            .background(if (pinned) YouTubeMusicDesign.background else Color.Transparent)
-            .padding(top = if (pinned) statusBarTop else 0.dp, bottom = 8.dp)
+            .graphicsLayer { translationY = youTubeMusicChipsPinOffset(pinnedListState, statusBarTop.toPx()) }
+            .drawBehind {
+                val limit = statusBarTop.toPx()
+                val pin = youTubeMusicChipsPinOffset(pinnedListState, limit)
+                if (pin > 0f) {
+                    drawRect(background.copy(alpha = pin / limit), topLeft = Offset(0f, -pin), size = Size(size.width, size.height + pin))
+                }
+            }
+            .padding(bottom = 8.dp)
     ) {
         YouTubeMusicChipRow(labels, chips.indexOfFirst { it.params == selectedChip }, onSelect = { index ->
             chips.getOrNull(index)?.let { onSelectChip(it.params) }
@@ -250,7 +262,7 @@ private fun LazyListScope.youTubeMusicHomeContentItems(
     hasShelves: Boolean,
     allShelves: List<YoutubeMusicHomeShelf>,
     levyraBlocks: List<YouTubeMusicHomeBlock>,
-    previews: Map<String, List<Track>>,
+    previews: (String) -> List<Track>,
     onRequestPreview: (String) -> Unit,
     homeRadio: HomeRadioState,
     onRetry: () -> Unit
@@ -314,7 +326,7 @@ internal fun YouTubeMusicFeedShelf(
     currentId: String?,
     copy: YouTubeMusicSkinCopy,
     actions: YouTubeMusicHomeActions,
-    previews: Map<String, List<Track>>,
+    previews: (String) -> List<Track>,
     requestPreview: (String) -> Unit
 ) {
     val tracks = remember(shelf) { shelf.tracks }

@@ -52,10 +52,13 @@ internal class YouTubeMusicCommunityActions(
     val trackActions: (Track) -> Unit
 )
 
+private const val CommunityCardPreviewRows = 3
+private val CommunityCardHeaderMinHeight = 112.dp
+
 @Composable
 internal fun YouTubeMusicCommunityCarousel(
     items: List<YoutubeMusicHomeItem>,
-    previews: Map<String, List<Track>>,
+    previews: (String) -> List<Track>,
     explicitLabel: String,
     labels: Triple<String, String, String>,
     actions: YouTubeMusicCommunityActions
@@ -68,7 +71,7 @@ internal fun YouTubeMusicCommunityCarousel(
         items(items, key = { it.key }) { item ->
             val playlistId = item.playlist?.playlistId.orEmpty()
             LaunchedEffect(playlistId) { actions.requestPreview(playlistId) }
-            YouTubeMusicCommunityCard(item, previews[playlistId].orEmpty(), width, explicitLabel, labels, actions)
+            YouTubeMusicCommunityCard(item, previews(playlistId), width, explicitLabel, labels, actions)
         }
     }
 }
@@ -91,7 +94,8 @@ private fun YouTubeMusicCommunityCard(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Row(
-            Modifier.fillMaxWidth().levyraPressable(onClick = { actions.open(item) }, role = Role.Button, pressedScale = LevyraPressScale.Surface),
+            Modifier.fillMaxWidth().heightIn(min = CommunityCardHeaderMinHeight)
+                .levyraPressable(onClick = { actions.open(item) }, role = Role.Button, pressedScale = LevyraPressScale.Surface),
             verticalAlignment = Alignment.CenterVertically
         ) {
             YouTubeMusicMosaic(item.thumbnailUrl, tracks.take(4), 100.dp)
@@ -101,8 +105,8 @@ private fun YouTubeMusicCommunityCard(
                 Text(item.subtitle, color = Color.White.copy(alpha = 0.78f), style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
-        Column {
-            tracks.take(3).forEach { track ->
+        Column(Modifier.height(YouTubeMusicDesign.compactRow * CommunityCardPreviewRows)) {
+            tracks.take(CommunityCardPreviewRows).forEach { track ->
                 YouTubeMusicSongRow(
                     track = track, subtitle = track.artist, current = false, explicitLabel = explicitLabel,
                     onClick = { actions.play(tracks, track) }, onMore = { actions.trackActions(track) },

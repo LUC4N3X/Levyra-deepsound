@@ -65,7 +65,8 @@ internal fun YouTubeMusicExploreContent(
     val copy = remember(strings.code) { LevyraYouTubeMusicSkinStrings.forCode(strings.code) }
     val exploreViewModel = viewModel<YouTubeMusicHomeViewModel>(key = "ytm-explore")
     val feed by exploreViewModel.state.collectAsStateWithLifecycle()
-    val previews by exploreViewModel.previews.collectAsStateWithLifecycle()
+    val previewsState = exploreViewModel.previews.collectAsStateWithLifecycle()
+    val previews: (String) -> List<Track> = remember(previewsState) { { playlistId -> previewsState.value[playlistId].orEmpty() } }
     LaunchedEffect(strings.code) { exploreViewModel.load(strings.code, browseId = EXPLORE_BROWSE_ID) }
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     Box(Modifier.fillMaxSize().background(YouTubeMusicDesign.background)) {
