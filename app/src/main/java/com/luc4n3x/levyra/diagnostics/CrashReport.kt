@@ -106,8 +106,14 @@ internal fun crashIssueDraft(report: CrashReport): CrashIssueDraft {
         .replace("````", "[code fence]")
     val prefix = warning + words.pasteOnGithub + "\n\n## Logs or error details\n````text\n"
     val suffix = "\n````\n"
-    fun excerpt(length: Int): String = if (length >= diagnostics.length) diagnostics else
-        diagnostics.take((length + 1) / 2) + "\n[... truncated; full report copied ...]\n" + diagnostics.takeLast(length / 2)
+    fun excerpt(length: Int): String {
+        if (length >= diagnostics.length) return diagnostics
+        var headEnd = (length + 1) / 2
+        if (headEnd > 0 && diagnostics[headEnd - 1].isHighSurrogate() && diagnostics[headEnd].isLowSurrogate()) headEnd--
+        var tailStart = diagnostics.length - (length / 2)
+        if (tailStart < diagnostics.length && diagnostics[tailStart - 1].isHighSurrogate() && diagnostics[tailStart].isLowSurrogate()) tailStart++
+        return diagnostics.substring(0, headEnd) + "\n[... truncated; full report copied ...]\n" + diagnostics.substring(tailStart)
+    }
     var low = 0
     var high = minOf(diagnostics.length, 6_000)
     while (low < high) {

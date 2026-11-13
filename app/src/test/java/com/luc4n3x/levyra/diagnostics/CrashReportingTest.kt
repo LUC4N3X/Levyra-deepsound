@@ -135,7 +135,22 @@ class CrashReportingTest {
         assertTrue(decoded.contains("NON CANCELLARLI"))
         assertTrue(decoded.contains("IllegalStateException: inizio"))
         assertTrue(decoded.contains("Caused by: fine"))
+        assertFalse(decoded.contains('?'))
         assertTrue(draft.clipboard.endsWith(original.body))
+
+        for (sample in listOf("🎵".repeat(1_000), "a" + "🎵".repeat(1_000), "🎵".repeat(1_000) + "a")) {
+            val emojiDraft = crashIssueDraft(original.copy(body = "## Logs or error details\n$sample"))
+            val emojiDecoded = URLDecoder.decode(URI(emojiDraft.url).rawQuery.substringAfter("&body="), "UTF-8")
+            assertTrue(emojiDraft.needsPaste)
+            assertTrue(emojiDraft.url.length <= 6_000)
+            assertFalse(emojiDecoded.contains('?'))
+            val marker = "\n[... truncated; full report copied ...]\n"
+            assertTrue(emojiDecoded.contains(marker))
+            val head = emojiDecoded.substringAfter("## Logs or error details\n````text\n").substringBefore(marker)
+            val tail = emojiDecoded.substringAfter(marker).substringBefore("\n````\n")
+            assertFalse(head.lastOrNull()?.isHighSurrogate() == true)
+            assertFalse(tail.firstOrNull()?.isLowSurrogate() == true)
+        }
     }
 
     @Test fun captureFailuresStillDelegateAndTerminate() {
