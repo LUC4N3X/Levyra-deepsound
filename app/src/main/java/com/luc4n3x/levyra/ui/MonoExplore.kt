@@ -12,8 +12,6 @@ import com.luc4n3x.levyra.domain.YoutubeMusicHomeShelf
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -59,13 +57,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -146,86 +140,16 @@ internal fun glacierTileTone(index: Int): Color = GlacierTileTones[index.mod(Gla
 internal fun MonoBrowseTile(entry: MonoTileEntry, index: Int, height: Dp, modifier: Modifier = Modifier, glacier: Boolean = false) {
     val seed = remember(entry.title) { monoTileSeed(entry.title) }
     val hue = if (glacier) glacierTileTone(index) else MonoTileHues[seed % MonoTileHues.size]
-    val cycles = 1.4f + seed % 5 * 0.35f
-    val phase = seed % 360 / 57.3f
-    val path = remember { Path() }
     Box(
         modifier.height(height)
             .levyraPressable(onClick = entry.onClick, role = Role.Button, pressedScale = LevyraPressScale.Tile)
             .clip(MonoDesign.cardShape)
             .then(if (glacier) Modifier.border(1.dp, MonoDesign.hairlineStrong, MonoDesign.cardShape) else Modifier)
-            .drawWithCache {
-                val fill = if (glacier) {
-                    Brush.linearGradient(
-                        listOf(lerp(hue, MonoDesign.accent, 0.22f), hue, lerp(hue, MonoDesign.void, 0.66f)),
-                        Offset.Zero,
-                        Offset(size.width * (0.55f + seed % 3 * 0.15f), size.height)
-                    )
-                } else {
-                    Brush.linearGradient(listOf(lerp(hue, Color.White, 0.08f), lerp(hue, Color.Black, 0.38f)), Offset.Zero, Offset(size.width * 0.6f, size.height))
-                }
-                val frost = if (glacier) {
-                    Brush.radialGradient(
-                        listOf(MonoDesign.accent.copy(alpha = 0.28f), Color.Transparent),
-                        center = Offset(size.width * 0.86f, size.height * 0.1f),
-                        radius = size.width * 0.62f
-                    )
-                } else null
-                val waveShade = if (glacier) MonoDesign.void.copy(alpha = 0.24f) else Color.Black.copy(alpha = 0.16f)
-                val echo = if (glacier) MonoDesign.accent.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.34f)
-                val stroke = 9.dp.toPx()
-                val band = size.height * 0.34f
-                val baseY = size.height * 0.84f
-                path.reset()
-                val steps = 48
-                for (i in 0..steps) {
-                    val t = i / steps.toFloat()
-                    val x = size.width * (0.18f + t * 0.95f)
-                    val y = baseY - kotlin.math.sin(t * cycles * 2f * kotlin.math.PI.toFloat() + phase) * band * (0.35f + 0.65f * t)
-                    if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
-                }
-                val waveStyle = androidx.compose.ui.graphics.drawscope.Stroke(stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round)
-                val echoStyle = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx())
-                onDrawBehind {
-                    drawRect(fill)
-                    frost?.let { drawRect(it) }
-                    drawPath(path, waveShade, style = waveStyle)
-                    translate(top = -stroke * 1.4f) { drawPath(path, echo, style = echoStyle) }
-                }
-            }
+            .monoTileWaveBackground(hue, seed, glacier)
     ) {
         entry.onAppear?.let { request -> LaunchedEffect(entry.key) { if (entry.artwork.isBlank()) request() } }
-        if (entry.artwork.isNotBlank()) {
-            MonoArtwork(
-                entry.artwork,
-                Modifier.align(Alignment.BottomEnd)
-                    .size(height * 0.78f)
-                    .graphicsLayer {
-                        translationX = size.width * 0.18f
-                        translationY = size.height * 0.16f
-                        rotationZ = -12f
-                        shadowElevation = 10.dp.toPx()
-                        shape = MonoDesign.artShape
-                        clip = true
-                    }
-            )
-        }
-        Box(Modifier.matchParentSize().padding(horizontal = 14.dp, vertical = 12.dp)) {
-        Text(
-            entry.title,
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-            color = Color.White,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.fillMaxWidth(0.82f)
-        )
-        Text(
-            monoRank(index + 1),
-            style = MaterialTheme.typography.labelSmall,
-            color = Color.White.copy(alpha = 0.72f),
-            modifier = Modifier.align(Alignment.BottomStart).clearAndSetSemantics { }
-        )
-        }
+        if (entry.artwork.isNotBlank()) MonoTileArtwork(entry.artwork, height)
+        MonoTileLabels(entry.title, index)
     }
 }
 
