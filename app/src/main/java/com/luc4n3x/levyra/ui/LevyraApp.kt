@@ -12089,7 +12089,7 @@ private fun HomeOrbitHeader(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.semantics { heading() }
             )
-            defaultHomeSubtitle(HOME_SUBTITLE_ORBIT, "")?.let { Text(it, color = LevyraMuted, style = LevyraType.caption, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+            if (initial == null) defaultHomeSubtitle(HOME_SUBTITLE_ORBIT, "")?.let { Text(it, color = LevyraMuted, style = LevyraType.caption, maxLines = 2, overflow = TextOverflow.Ellipsis) }
         }
         if (onPlayAll != null) {
             Spacer(modifier = Modifier.width(6.dp))
