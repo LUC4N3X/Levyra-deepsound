@@ -73,7 +73,7 @@ internal fun YouTubeMusicHomeContent(
     val feed by homeViewModel.state.collectAsStateWithLifecycle()
     val previewsState = homeViewModel.previews.collectAsStateWithLifecycle()
     val previews: (String) -> List<Track> = remember(previewsState) { { playlistId -> previewsState.value[playlistId].orEmpty() } }
-    val allShelves = remember(feed.shelves, feed.discovery) { feed.allShelves.filter { it.style != YoutubeMusicHomeShelfStyle.Buttons } }
+    val allShelves = remember(feed.shelves, feed.discovery) { feed.allShelves.filter { it.style != YoutubeMusicHomeShelfStyle.Buttons && !it.headerBrowseId.startsWith("FEmusic_new_releases") } }
     LaunchedEffect(strings.code, showsFeed) { if (showsFeed) homeViewModel.load(strings.code) }
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val levyraBlocks = if (composition == null) youTubeMusicLevyraBlocks(data, actions.home, copy, strings, actions.openPlaylist) else emptyList()
@@ -440,9 +440,9 @@ private fun youTubeMusicLevyraBlocks(
     chartBlock(data, copy, actions),
     if (data.charts.isEmpty()) null else "levyra-genre-hits" to @Composable { YouTubeMusicGenreHitsShelf(actions.openGenreChart) },
     dailyDiscoveryBlock(data, copy, actions),
-    cardsBlock("levyra-albums", strings.albumsForYou, data.albums.takeIf { data.showAlbums }.orEmpty().map { album ->
-        YouTubeMusicCardModel("album-${album.browseId.ifBlank { album.title + album.artist }}", album.title, album.artist, album.thumbnailUrl, onClick = { actions.openAlbum(album) })
-    }),
+    if (data.resonanceTracks.isEmpty()) null else "levyra-most-discussed" to @Composable {
+        YouTubeMusicMostDiscussedShelf(data.resonanceTracks, data.resonanceComments, copy.explicit, actions)
+    },
     cardsBlock("levyra-artists", strings.trendingArtists, data.artists.takeIf { data.showArtists }.orEmpty().map { artist ->
         YouTubeMusicCardModel("artist-${artist.browseId.ifBlank { artist.name }}", artist.name, artistAudienceLabel(artist.subscribers, strings.code, strings.monthlyListeners), artist.thumbnailUrl, circular = true, onClick = { actions.openArtist(artist) })
     }),

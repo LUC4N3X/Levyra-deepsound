@@ -127,6 +127,8 @@ internal fun ExploreDailyTop100(
     val slots = remember(charts) { dailyTop100HueSlots(charts.map { it.playlistId }) }
     if (charts.isNotEmpty() && com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) {
         AtelierTop100Shelf(charts, slots, copy, date, viewModel::open)
+    } else if (charts.isNotEmpty() && com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) {
+        YouTubeMusicTop100Shelf(charts, slots, copy, date, modifier) { chart -> viewModel.open(chart) }
     } else if (charts.isNotEmpty()) {
         Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
@@ -223,6 +225,13 @@ internal fun ExploreDailyTop100(
             }
             if (LevyraIsPrismOnly) {
                 PrismTop100ChartScreen(open, chartLabel(open.chart, copy), date, slot, copy, viewModel::close, viewModel::retry, onPlay) { track ->
+                    viewModel.close()
+                    onTrackActions(track)
+                }
+                return@Dialog
+            }
+            if (com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) {
+                YouTubeMusicTop100ChartScreen(open, chartLabel(open.chart, copy), date, slot, copy, viewModel::close, viewModel::retry, onPlay) { track ->
                     viewModel.close()
                     onTrackActions(track)
                 }

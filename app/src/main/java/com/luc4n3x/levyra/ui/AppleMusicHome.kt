@@ -52,7 +52,8 @@ internal class AppleMusicHomeActions(
     val openSettings: () -> Unit,
     val pickCountry: () -> Unit,
     val onTrackActions: (Track) -> Unit,
-    val openGenreChart: (com.luc4n3x.levyra.domain.ExploreZone) -> Unit = {}
+    val openGenreChart: (com.luc4n3x.levyra.domain.ExploreZone) -> Unit = {},
+    val openComments: (Track) -> Unit = {}
 )
 
 internal class AppleMusicHomeData(
@@ -71,7 +72,9 @@ internal class AppleMusicHomeData(
     val countryLabel: String = "",
     val charts: List<Track> = emptyList(),
     val chartsTitle: String = "",
-    val listener: HomeListener = HomeListener("", "", 0L, "")
+    val listener: HomeListener = HomeListener("", "", 0L, ""),
+    val resonanceTracks: List<Track> = emptyList(),
+    val resonanceComments: Map<String, com.luc4n3x.levyra.domain.ResonanceCommentSnippet> = emptyMap()
 )
 
 internal class HomeListener(val name: String, val photoPath: String, val photoVersion: Long, val avatarUrl: String)

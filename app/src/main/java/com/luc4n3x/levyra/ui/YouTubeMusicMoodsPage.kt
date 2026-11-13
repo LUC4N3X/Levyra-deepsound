@@ -36,8 +36,15 @@ import com.luc4n3x.levyra.ui.theme.YouTubeMusicDesign
 private const val YouTubeMusicMoodColumns = 2
 private val YouTubeMusicMoodGap = 12.dp
 
+private val YouTubeMusicMoodStripes = listOf(
+    Color(0xFFFF8A3D), Color(0xFFCC0000), Color(0xFF9CE7A0), Color(0xFFD0D0D0), Color(0xFFFFE57A),
+    Color(0xFFA27BF0), Color(0xFF707070), Color(0xFF14A80F), Color(0xFF9AB7FF), Color(0xFF6E3CD8),
+    Color(0xFF1E6BFF), Color(0xFFFFC107), Color(0xFFF46BEF), Color(0xFFE85D04), Color(0xFF42E8F5), Color(0xFF0B96B0)
+)
+
 private fun ExploreCategory.youTubeMusicStripe(): Color =
-    if (stripeColor == 0L) YouTubeMusicDesign.textTertiary else Color(stripeColor.toInt())
+    if (stripeColor != 0L) Color(stripeColor.toInt())
+    else YouTubeMusicMoodStripes[title.lowercase().hashCode().mod(YouTubeMusicMoodStripes.size)]
 
 @Composable
 internal fun YouTubeMusicMoodsPage(

@@ -9983,7 +9983,9 @@ private fun StudioHomeScreen(
                         ?.let { region -> "${region.emoji} ${ChartMarketDirectory.displayName(region, state.languageCode)}" }.orEmpty(),
                     charts = if (state.interfaceSettings.showCharts) state.charts else emptyList(),
                     chartsTitle = strings.chartMarketTitle(state.charts.size.coerceAtMost(50), state.chartRegions.firstOrNull { it.id == state.selectedChartId }?.let { ChartMarketDirectory.displayName(it, state.languageCode) }.orEmpty()),
-                    listener = HomeListener(state.userName, state.profilePhotoPath, state.profilePhotoVersion, accountAvatarUrl)
+                    listener = HomeListener(state.userName, state.profilePhotoPath, state.profilePhotoVersion, accountAvatarUrl),
+                    resonanceTracks = if (state.interfaceSettings.showResonance) resonanceTracks else emptyList(),
+                    resonanceComments = state.homeResonanceComments
                 )
             }
         val skinHomeActions = AppleMusicHomeActions(
@@ -9996,7 +9998,8 @@ private fun StudioHomeScreen(
                 openSettings = homeContext.viewModel::openSettings,
                 pickCountry = { homeContext.chartMarketSheetOpen = true },
                 onTrackActions = homeContext.onTrackActions,
-                openGenreChart = homeContext.viewModel::openExploreGenreChart
+                openGenreChart = homeContext.viewModel::openExploreGenreChart,
+                openComments = homeContext.viewModel::openYoutubeCommentsFor
             )
         val composedRadio = LocalHomeRadio.current
         val composedDiscovery = LocalHomeDiscovery.current
