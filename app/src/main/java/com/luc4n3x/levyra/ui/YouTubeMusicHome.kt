@@ -218,11 +218,12 @@ private fun LazyListScope.youTubeMusicComposedFeedChips(
     }
 }
 
-private fun youTubeMusicChipsPinOffset(listState: LazyListState?, limit: Float): Float {
+internal fun youTubeMusicStickyPinOffset(listState: LazyListState?, key: Any, limit: Float): Float {
     if (listState == null || limit <= 0f) return 0f
-    val header = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == YTM_CHIPS_KEY }
+    val info = listState.layoutInfo
+    val header = info.visibleItemsInfo.firstOrNull { it.key == key }
         ?: return if (listState.firstVisibleItemIndex > 0) limit else 0f
-    return (-header.offset.toFloat()).coerceIn(0f, limit)
+    return (limit - (header.offset - info.viewportStartOffset)).coerceIn(0f, limit)
 }
 
 @Composable
@@ -237,10 +238,10 @@ private fun YouTubeMusicChipsStickyHeader(
     val background = YouTubeMusicDesign.background
     Box(
         Modifier.fillMaxWidth()
-            .graphicsLayer { translationY = youTubeMusicChipsPinOffset(pinnedListState, statusBarTop.toPx()) }
+            .graphicsLayer { translationY = youTubeMusicStickyPinOffset(pinnedListState, YTM_CHIPS_KEY, statusBarTop.toPx()) }
             .drawBehind {
                 val limit = statusBarTop.toPx()
-                val pin = youTubeMusicChipsPinOffset(pinnedListState, limit)
+                val pin = youTubeMusicStickyPinOffset(pinnedListState, YTM_CHIPS_KEY, limit)
                 if (pin > 0f) {
                     drawRect(background.copy(alpha = pin / limit), topLeft = Offset(0f, -pin), size = Size(size.width, size.height + pin))
                 }
