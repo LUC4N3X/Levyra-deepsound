@@ -992,6 +992,18 @@ data class ExploreGenreChartState(
 
 private const val EXPLORE_GENRE_CHART_REFRESH_MS = 6 * 60 * 60 * 1000L
 
+internal fun ExploreGenreChartState.coversRequest(requestKey: String, nowMs: Long): Boolean {
+    if (key != requestKey) return false
+    if (isLoading) return true
+    return tracks.isNotEmpty() && refreshedAtMs > 0L && nowMs - refreshedAtMs < EXPLORE_GENRE_CHART_REFRESH_MS
+}
+
+internal fun ExploreGenreChartState.finishedWith(result: List<Track>, nowMs: Long): ExploreGenreChartState = copy(
+    tracks = result.ifEmpty { tracks },
+    isLoading = false,
+    refreshedAtMs = if (result.isEmpty()) refreshedAtMs else nowMs
+)
+
 private const val EXPLORE_GENRE_CHART_FIRST_PAINT = 10
 
 data class ExploreGenreDiscoveryState(
@@ -12627,12 +12639,25 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         loadExploreGenreChart("zone:${zone.id}", LastFmGenreTags.forZone(zone.id))
     }
 
+    private suspend fun fetchExploreGenreChart(
+        identity: String,
+        tags: List<String>,
+        languageCode: String,
+        onProgress: (List<Track>) -> Unit
+    ): List<Track> = runCatchingPreservingCancellation {
+        lastFmGenreCharts.genreChart(
+            tags = tags,
+            languageCode = languageCode,
+            match = { title, artist -> repository.searchSongMatch(title, artist, languageCode) },
+            onProgress = onProgress
+        )
+    }.onFailure { Timber.w(it, "Last.fm genre chart failed for %s", identity) }.getOrDefault(emptyList())
+
     private fun loadExploreGenreChart(identity: String, tags: List<String>) {
         val languageCode = _state.value.languageCode
         val key = "$languageCode:$identity"
         val current = _exploreGenreChart.value
-        val fresh = current.refreshedAtMs > 0L && System.currentTimeMillis() - current.refreshedAtMs < EXPLORE_GENRE_CHART_REFRESH_MS
-        if (current.key == key && (current.isLoading || (current.tracks.isNotEmpty() && fresh))) return
+        if (current.coversRequest(key, System.currentTimeMillis())) return
         exploreGenreChartJob?.cancel()
         if (tags.isEmpty()) {
             _exploreGenreChart.value = ExploreGenreChartState(key = key)
@@ -12648,27 +12673,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
             publish(lastFmGenreCharts.cached(tags, languageCode), loading = true)
-            val tracks = try {
-                lastFmGenreCharts.genreChart(
-                    tags = tags,
-                    languageCode = languageCode,
-                    match = { title, artist -> repository.searchSongMatch(title, artist, languageCode) },
-                    onProgress = { partial -> if (partial.size >= EXPLORE_GENRE_CHART_FIRST_PAINT) publish(partial, loading = true) }
-                )
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Throwable) {
-                Timber.w(error, "Last.fm genre chart failed for %s", identity)
-                emptyList()
+            val tracks = fetchExploreGenreChart(identity, tags, languageCode) { partial ->
+                if (partial.size >= EXPLORE_GENRE_CHART_FIRST_PAINT) publish(partial, loading = true)
             }
-            _exploreGenreChart.update { state ->
-                if (state.key != key) state
-                else state.copy(
-                    tracks = tracks.ifEmpty { state.tracks },
-                    isLoading = false,
-                    refreshedAtMs = if (tracks.isEmpty()) state.refreshedAtMs else System.currentTimeMillis()
-                )
-            }
+            _exploreGenreChart.update { state -> if (state.key != key) state else state.finishedWith(tracks, System.currentTimeMillis()) }
         }
     }
 
