@@ -1420,8 +1420,7 @@ private fun AtelierHomeContent(
     val charts = remember(data.charts) { data.charts.distinctBy(Track::id).take(50) }
     val collections = remember(data.collections) { data.collections.distinctBy { it.id } }
     val curatedPlaylists = rememberCuratedPlaylistShelves(strings.code)
-    val curatedCollections = rememberDefaultCuratedCollectionShelves(strings.code)
-    val curatedShelves = remember(curatedPlaylists, curatedCollections) { if (curatedPlaylists.isEmpty()) curatedPlaylists else curatedPlaylists + curatedCollections }
+    val curatedShelves = curatedPlaylists
     val newVideos = rememberNewMusicVideos(strings.code)
     val curatedTitle = remember(strings.code) { com.luc4n3x.levyra.ui.i18n.LevyraMonoHomeStrings.forCode(strings.code).mixedForYou }
     val forgotten = remember(data.forgottenFavorites) { data.forgottenFavorites.distinctBy(Track::id).take(20) }

@@ -66,8 +66,7 @@ internal fun IvoryCuratedPlaylists(viewModel: HomeViewModel, inset: Dp, fallback
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { LevyraMonoHomeStrings.forCode(strings.code) }
     val curated = rememberCuratedPlaylistShelves(strings.code)
-    val collections = rememberDefaultCuratedCollectionShelves(strings.code)
-    val shelves = remember(curated, collections) { if (curated.isEmpty()) curated else curated + collections }
+    val shelves = curated
     if (shelves.isEmpty()) {
         fallback()
         return

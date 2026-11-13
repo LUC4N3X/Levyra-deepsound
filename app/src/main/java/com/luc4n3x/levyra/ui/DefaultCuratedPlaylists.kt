@@ -66,11 +66,7 @@ internal fun rememberDefaultCuratedShelves(): List<YoutubeMusicHomeShelf> {
     if (!defaultHomeOwnsCuratedPlaylists()) return emptyList()
     val code = LocalLevyraStrings.current.code
     val shelves = rememberCuratedPlaylistShelves(code)
-    val collections = rememberDefaultCuratedCollectionShelves(code)
-    return remember(shelves, collections) {
-        val curated = shelves.filter { shelf -> shelf.items.any { it.playlist != null } }
-        if (curated.isEmpty()) curated else curated + collections
-    }
+    return remember(shelves) { shelves.filter { shelf -> shelf.items.any { it.playlist != null } } }
 }
 
 @Composable

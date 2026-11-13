@@ -94,8 +94,7 @@ internal fun PrismCuratedAndReleases(viewModel: HomeViewModel, inset: Dp, showRe
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { LevyraMonoHomeStrings.forCode(strings.code) }
     val curated = rememberCuratedPlaylistShelves(strings.code)
-    val collections = rememberDefaultCuratedCollectionShelves(strings.code)
-    val shelves = remember(curated, collections) { if (curated.isEmpty()) curated else curated + collections }
+    val shelves = curated
     val newThisWeek by viewModel.appleNewThisWeek.collectAsStateWithLifecycle()
     androidx.lifecycle.compose.LifecycleResumeEffect(strings.code) {
         viewModel.ensureAppleNewThisWeek()

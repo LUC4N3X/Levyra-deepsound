@@ -351,10 +351,7 @@ private fun NocturneGenreChartCard(tile: GenreChartTile, onOpen: () -> Unit) {
 private fun NocturneCuratedCollections(spec: HomeStyleSpec, onOpen: (PlaylistHit) -> Unit) {
     val strings = LocalLevyraStrings.current
     val curated = rememberCuratedPlaylistShelves(strings.code)
-    val collections = rememberDefaultCuratedCollectionShelves(strings.code)
-    val shelves = remember(curated, collections) {
-        (curated.filter { shelf -> shelf.items.any { it.playlist != null } } + collections).distinctBy { it.key }
-    }
+    val shelves = remember(curated) { curated.filter { shelf -> shelf.items.any { it.playlist != null } }.distinctBy { it.key } }
     if (shelves.isEmpty()) return
     val motion = skinRailMotionEnabled()
     val openAll = LocalCuratedPlaylistsOpener.current

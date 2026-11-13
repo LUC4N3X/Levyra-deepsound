@@ -110,12 +110,10 @@ internal fun SpotifyHomeHeader(hero: StudioHero?, inset: Dp) {
     }
 }
 
-internal const val SpotifyOrbitTitle = "Your Orbit"
-
 @Composable
 internal fun SpotifyOrbitHeader(onPlayAll: (() -> Unit)?) {
     val strings = LocalLevyraStrings.current
-    SpotifySectionTitle(SpotifyOrbitTitle, SpotifyDesign.gutter) {
+    SpotifySectionTitle(strings.personalOrbitTitle, SpotifyDesign.gutter) {
         if (onPlayAll != null) Box(
             Modifier.heightIn(min = 48.dp).levyraPressable(onClick = onPlayAll, onClickLabel = strings.playAll, role = Role.Button).padding(horizontal = 8.dp),
             contentAlignment = Alignment.Center
