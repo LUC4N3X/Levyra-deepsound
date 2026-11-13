@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import random
 import sys
 import tempfile
@@ -822,7 +823,8 @@ class TestClassifierAndDeterministicFix(unittest.TestCase):
             kt_rel = "app/src/main/java/com/luc4n3x/levyra/data/hqaudio/jiosaavn/JioSaavnEndpoints.kt"
             kt_test_rel = "app/src/test/java/com/luc4n3x/levyra/data/hqaudio/jiosaavn/JioSaavnEndpointsTest.kt"
             cfg_rel = "jiosaavn-sync/config.json"
-            for rel in (kt_rel, kt_test_rel, cfg_rel):
+            lyrics_rel = "app/src/main/java/com/luc4n3x/levyra/data/LyricsRepository.kt"
+            for rel in (kt_rel, kt_test_rel, cfg_rel, lyrics_rel):
                 (root / rel).parent.mkdir(parents=True, exist_ok=True)
             (root / kt_rel).write_text(
                 'object JioSaavnEndpoints {\n'
@@ -839,6 +841,12 @@ class TestClassifierAndDeterministicFix(unittest.TestCase):
             )
             (root / cfg_rel).write_text(
                 json.dumps({"api": {"host": "www.jiosaavn.com", "client_context": "web6dot0"}}),
+                encoding="utf-8",
+            )
+            (root / lyrics_rel).write_text(
+                'val searchUrl = "$JIOSAAVN_API?__call=search.getResults&_format=json&ctx=web6dot0&n=1"\n'
+                'val other = "https://example.com/?ctx=web6dot0"\n'
+                'private const val JIOSAAVN_API = "https://www.jiosaavn.com/api.php"\n',
                 encoding="utf-8",
             )
 
@@ -873,6 +881,10 @@ class TestClassifierAndDeterministicFix(unittest.TestCase):
             self.assertIn('private const val CLIENT_CONTEXT = "android"', kt_after)
             kt_test_after = (root / kt_test_rel).read_text(encoding="utf-8")
             self.assertIn('assertEquals("android", url.queryParameter("ctx"))', kt_test_after)
+            lyrics_after = (root / lyrics_rel).read_text(encoding="utf-8")
+            self.assertIn('const val JIOSAAVN_API = "https://api.jiosaavn.com/api.php"', lyrics_after)
+            self.assertIn("&_format=json&ctx=android&n=1", lyrics_after)
+            self.assertIn('"https://example.com/?ctx=web6dot0"', lyrics_after)
             self.assertIn(
                 '"https://c.saavncdn.com/820/5ddb9a79a5218f85ca9bef170f3a461d_160.mp4"',
                 kt_test_after,
@@ -887,9 +899,18 @@ class TestRepositoryContracts(unittest.TestCase):
         self.assertNotIn("pull_request_target", wf)
         self.assertNotIn("enable-auto-merge", wf)
         self.assertIn("draft: always-true", wf)
-        self.assertIn("openai/codex-action@bdf19a4a223ec2549a3e2274a0cf61556bc07675", wf)
-        self.assertIn("LEVYRA_CANARY_OPENROUTER_API_KEY", wf)
-        self.assertIn("openrouter/free", wf)
+        self.assertIn("anthropics/claude-code-action@4d75e5f390ee76b2e09c1980ecc99ff3a2e088c8", wf)
+        self.assertIn("CLAUDE_CODE_OAUTH_TOKEN", wf)
+        self.assertIn("--allowedTools Read,Edit,Write,Glob,Grep", wf)
+        self.assertIn("--disallowedTools Bash,WebFetch,WebSearch", wf)
+        self.assertNotIn("openrouter", wf.lower())
+        self.assertNotIn("openai/codex-action", wf)
+        self.assertEqual(wf.count("uses: actions/checkout@"), wf.count("persist-credentials: false"))
+        self.assertIn(":app:testDebugUnitTest", wf)
+        self.assertIn("non_protocol_change", wf)
+        self.assertIn("jiosaavn_sync.py incident", wf)
+        self.assertNotIn('"scripts/jiosaavn_sync.py",', wf)
+        self.assertNotIn('"scripts/tests/test_jiosaavn_sync.py",', wf)
         self.assertIn("steps.agent.outputs.available == 'true'", wf)
         self.assertIn("ai_quality_gate.py --profile full", wf)
         self.assertNotIn("--profile fast", wf)
@@ -917,6 +938,31 @@ class TestRepositoryContracts(unittest.TestCase):
         self.assertIn("production_changed == 'true'", wf)
         self.assertIn("scope_check.outputs.scope_ok == 'true'", wf)
         self.assertIn("validate_fix.outcome == 'success'", wf)
+
+    def test_monitor_protocol_matches_android_client(self) -> None:
+        api = json.loads((REPO_ROOT / "jiosaavn-sync" / "config.json").read_text(encoding="utf-8"))["api"]
+        endpoints = (
+            REPO_ROOT / "app/src/main/java/com/luc4n3x/levyra/data/hqaudio/jiosaavn/JioSaavnEndpoints.kt"
+        ).read_text(encoding="utf-8")
+        lyrics = (
+            REPO_ROOT / "app/src/main/java/com/luc4n3x/levyra/data/LyricsRepository.kt"
+        ).read_text(encoding="utf-8")
+
+        def kotlin_const(name: str) -> str:
+            match = re.search(rf'const val {name} = "([^"]+)"', endpoints)
+            self.assertIsNotNone(match, name)
+            return match.group(1)
+
+        self.assertEqual(api["host"], kotlin_const("API_HOST"))
+        self.assertEqual(api["client_context"], kotlin_const("CLIENT_CONTEXT"))
+        self.assertEqual(api["open_media_host"], kotlin_const("OPEN_MEDIA_HOST"))
+        self.assertEqual(api["api_version"], kotlin_const("API_VERSION"))
+        lyrics_api = re.search(r'const val JIOSAAVN_API = "https://([^/"]+)(/api\.php)"', lyrics)
+        self.assertIsNotNone(lyrics_api)
+        self.assertEqual(api["host"], lyrics_api.group(1))
+        self.assertEqual(api["api_path"], lyrics_api.group(2))
+        lyrics_contexts = set(re.findall(r'\$JIOSAAVN_API\?[^"\n]*?[?&]ctx=([a-z0-9]+)', lyrics))
+        self.assertEqual({api["client_context"]}, lyrics_contexts)
 
     def test_baseline_is_present_valid_and_free_of_secrets(self) -> None:
         baseline_path = REPO_ROOT / "jiosaavn-sync" / "baseline.json"

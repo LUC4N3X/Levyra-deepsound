@@ -25,10 +25,10 @@ Using a small fixed set of public sentinels, the sync observer probes and record
 A **draft PR** is opened **only** when:
 
 1. A material regression is confirmed across two independent live probe runs (and is not transient or geo-blocked).
-2. Either deterministic protocol discovery identifies an allowlisted host/context/version adaptation verified across all sentinels, or the constrained Codex repair agent produces an in-scope patch inside the JioSaavn allowlist.
-3. All Android JioSaavn/HQ tests, `:app:testDebugUnitTest`, `:app:compileDebugKotlin`, `:app:lintDebug`, Python regression tests, `scripts/ai_quality_gate.py --profile fast`, and `git diff --check` pass.
+2. Either deterministic protocol discovery identifies an allowlisted host/context/version adaptation verified across all sentinels, or the Claude repair agent (`anthropics/claude-code-action`, secret `CLAUDE_CODE_OAUTH_TOKEN`, file tools only with no shell or network) produces an in-scope patch inside the JioSaavn allowlist.
+3. `:app:testDebugUnitTest`, `:app:compileDebugKotlin`, `:app:lintDebug`, Python regression tests (including the Kotlin/monitor protocol parity contract), `scripts/ai_quality_gate.py --profile full`, and `git diff --check` pass, and a post-repair live probe clears the regression.
 
-There is **never** automatic merge, release, or publication, and no PR is opened for unverified or failing fixes.
+There is **never** automatic merge, release, or publication. When a confirmed regression has no verified fix, the workflow opens or updates a diagnostic draft PR with only the sanitized incident report in `jiosaavn-sync/incidents/current.md`. A `blocked` probe raises a workflow warning instead of a PR.
 
 ## Privacy & security boundaries
 

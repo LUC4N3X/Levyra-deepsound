@@ -60,7 +60,7 @@ Do **not** edit:
 
 ## Validation responsibility
 
-The workflow will run the authoritative Gradle, lint, unit-test, diff-scope, and quality gates after you finish. You should still run focused tests when useful while investigating.
+The workflow will run the authoritative Gradle, lint, unit-test, diff-scope, and quality gates after you finish. You have no shell access: do not try to run commands, builds, or tests. The workflow runs every check.
 
 Do not commit, push, create a branch, open a pull request, merge, publish, or release. Leave only the working-tree changes for the workflow to inspect.
 

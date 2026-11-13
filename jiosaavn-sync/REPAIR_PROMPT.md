@@ -41,11 +41,11 @@ You may edit only these JioSaavn files and tests:
 
 Do **not** edit:
 
-- GitHub Actions workflows or `jiosaavn-sync/baseline.json` or `jiosaavn-sync/README.md` or `jiosaavn-sync/CODEX_REPAIR_PROMPT.md`
+- GitHub Actions workflows, `scripts/jiosaavn_sync.py`, `scripts/tests/test_jiosaavn_sync.py`, `jiosaavn-sync/baseline.json`, `jiosaavn-sync/README.md`, or `jiosaavn-sync/REPAIR_PROMPT.md`
 - YouTube, FLAC, Lossless, Tidal, `AlternativeTrackMatcher.kt`, `ProviderCircuitBreaker.kt`, `ProviderStreamValidator.kt`, or `HighQualityAudioResolver.kt`
 - UI, player controls, database/schema, localization, versions, dependencies, signing, or release configuration
 
-If the production fix changes an endpoint host, parameter, `ctx`, or response parser expectation, also keep `jiosaavn-sync/config.json`, `scripts/jiosaavn_sync.py`, and `scripts/tests/test_jiosaavn_sync.py` synchronized only as needed.
+If the production fix changes the API host, `ctx`, or open media host, update only `api.host`, `api.client_context`, or `api.open_media_host` in `jiosaavn-sync/config.json` to the same values, and keep `JIOSAAVN_API` and its `ctx=` values in `LyricsRepository.kt` in sync. The workflow rejects any other `config.json` change and fails if Kotlin and monitor protocol values differ.
 
 ## Engineering constraints
 
@@ -57,6 +57,6 @@ If the production fix changes an endpoint host, parameter, `ctx`, or response pa
 
 ## Validation responsibility
 
-The workflow runs deterministic Gradle tests, Kotlin compilation, Android lint, Python regression tests, diff scope checks, and Levyra's fast AI quality gate after you finish. Leave only working-tree edits; do not commit, push, or open a PR.
+You have file tools only: no shell, no network. Do not try to run commands. After you finish, the workflow runs Android unit tests, Kotlin compilation, Android lint, Python regression tests, diff scope checks, Levyra's full AI quality gate, and a live probe. Leave only working-tree edits; do not commit, push, or open a PR.
 
 If the evidence is insufficient for a safe production fix, make **no production change** and explain why.

@@ -61,10 +61,11 @@ When a material regression is confirmed twice in the same workflow:
 
 1. the workflow captures a fresh sanitized report and keeps the current player JavaScript only as
    ephemeral private job evidence;
-2. if repository secret `LEVYRA_CANARY_OPENROUTER_API_KEY` is configured, the pinned official Codex
-   GitHub Action runs through OpenRouter's OpenAI-compatible Responses API using `openrouter/free`;
-3. the free router selects an available zero-cost model that supports the request; if the provider,
-   model, rate limit, or agent execution is unavailable, the workflow fails closed to diagnostics;
+2. if repository secret `CLAUDE_CODE_OAUTH_TOKEN` is configured (created with `claude setup-token`,
+   billed to the owner's Claude subscription), the pinned `anthropics/claude-code-action` runs the
+   repair agent;
+3. the agent gets file tools only (`Read`, `Edit`, `Write`, `Glob`, `Grep`) with no shell and no web
+   access; if the token is missing or the agent fails, the workflow fails closed to diagnostics;
 4. the repair agent may change only the extractor/protocol compatibility allowlist and must add/update
    a deterministic regression test;
 5. the workflow rejects out-of-scope edits and runs extractor tests, Android unit tests, Kotlin
@@ -74,8 +75,8 @@ When a material regression is confirmed twice in the same workflow:
 
 There is **never automatic merge, release, or publication**.
 
-If the OpenRouter key is unavailable, the regression disappears on confirmation, the agent makes no
-safe code change, the diff escapes the allowlist, the free model is unavailable, or validation fails,
+If the Claude token is unavailable, the regression disappears on confirmation, the agent makes no
+safe code change, the diff escapes the allowlist, the agent fails, or validation fails,
 the workflow does not fabricate a fix. It opens/updates a diagnostic draft PR containing only the
 sanitized incident report when a confirmed regression still exists.
 
@@ -83,8 +84,8 @@ sanitized incident report when a confirmed regression still exists.
 
 - The workflow is schedule/manual-dispatch only; it never runs a repair agent on pull-request code.
 - Write permissions are limited to the jobs that create the baseline/repair PR.
-- The OpenRouter API key is scoped only to the Codex action step and must never be printed or stored.
-- The repair request uses OpenRouter's Responses API endpoint and the zero-cost `openrouter/free` router.
+- The Claude OAuth token is scoped only to the repair-agent step and must never be printed or stored.
+- The repair agent cannot run commands or reach the network; all builds and tests run in later workflow steps.
 - YouTube and media responses are size-bounded and time-bounded.
 - Watch/player endpoints use an exact HTTPS host allowlist.
 - Media probes accept only HTTPS `googlevideo.com` subdomains on port 443 and validate every redirect.

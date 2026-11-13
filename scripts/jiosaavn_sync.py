@@ -2271,6 +2271,25 @@ def _sync_protocol_mirrors(
         _write_json(config_path, cfg)
 
 
+def _sync_lyrics_repository(path: Path, new_host: str, new_ctx: str) -> None:
+    if not path.is_file():
+        return
+    text = path.read_text(encoding="utf-8")
+    updated = re.sub(
+        r'(const val JIOSAAVN_API = "https://)[^/"]+(/api\.php")',
+        rf"\g<1>{new_host}\g<2>",
+        text,
+        count=1,
+    )
+    updated = re.sub(
+        r'(\$JIOSAAVN_API\?[^"\n]*?[?&]ctx=)(?:web6dot0|android|iphone)\b',
+        rf"\g<1>{new_ctx}",
+        updated,
+    )
+    if updated != text:
+        path.write_text(updated, encoding="utf-8")
+
+
 def apply_deterministic_protocol_fix(
     observation: dict[str, Any],
     repo_root: Path,
@@ -2293,6 +2312,11 @@ def apply_deterministic_protocol_fix(
         return {"applied": False, "reason": "endpoints already match chosen alternative"}
 
     endpoints_path.write_text(updated, encoding="utf-8")
+    _sync_lyrics_repository(
+        repo_root / "app/src/main/java/com/luc4n3x/levyra/data/LyricsRepository.kt",
+        new_host,
+        new_ctx,
+    )
     _sync_protocol_mirrors(
         repo_root / "app/src/test/java/com/luc4n3x/levyra/data/hqaudio/jiosaavn/JioSaavnEndpointsTest.kt",
         repo_root / "jiosaavn-sync/config.json",
