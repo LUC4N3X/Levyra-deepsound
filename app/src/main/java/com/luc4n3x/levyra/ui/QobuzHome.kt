@@ -274,6 +274,7 @@ private fun LazyListScope.qobuzHomeSections(
     val ideal = albumShelfBlock(QobuzShelfKind.IdealDiscography, copy.idealDiscography, copy.idealDiscographyBaseline, feed, rows = 2, width = QobuzDesign.gridCard, awards = false, actions, copy, onSeeAll)
     val qobuzissime = albumShelfBlock(QobuzShelfKind.Qobuzissime, copy.qobuzissime, copy.qobuzissimeBaseline, feed, rows = 1, width = QobuzDesign.extraWideCard, awards = false, actions, copy, onSeeAll)
     val top50 = rankedBlock("top50", data.chartsTitle, copy.top50Baseline, data.charts, true, data, actions, copy, onSeeAll)
+    val genreHits: QobuzBlock? = if (data.charts.isEmpty()) null else "genre-hits" to @Composable { QobuzGenreHitsShelf(actions.home.openGenreChart) }
     val press = albumShelfBlock(QobuzShelfKind.PressAwards, copy.pressAwards, copy.pressAwardsBaseline, feed, rows = 1, width = QobuzDesign.wideCard, awards = true, actions, copy, onSeeAll)
     val albumsForYou = levyraAlbumsBlock(data, actions, copy)
     val albumsCovered = HomeSectionId.AlbumsForYou in coveredSections
@@ -290,10 +291,11 @@ private fun LazyListScope.qobuzHomeSections(
             ideal,
             qobuzissime,
             top50.takeUnless { HomeSectionId.Charts in coveredSections },
+            genreHits,
             press
         )
         QobuzDiscoverTab.EditorPicks -> listOf(newReleases, playlists, categories, ideal, qobuzissime, press)
-        QobuzDiscoverTab.ForYou -> listOf(mixes, artists, similar, orbit, picks, top50)
+        QobuzDiscoverTab.ForYou -> listOf(mixes, artists, similar, orbit, picks, top50, genreHits)
     }.filterNotNull()
     blocks.forEachIndexed { index, (key, content) ->
         item(key = "qobuz-$key", contentType = key) {
@@ -432,6 +434,20 @@ private fun newReleasesBlock(
             QobuzGridRow(qobuz.take(24).chunked(2), QobuzDesign.gridCard) { album ->
                 QobuzAlbumCard(album, copy, QobuzDesign.gridCard, { actions.home.openAlbum(album.toAlbumHit()) })
             }
+        }
+    }
+}
+
+@Composable
+private fun QobuzGenreHitsShelf(onOpen: (com.luc4n3x.levyra.domain.ExploreZone) -> Unit) {
+    val charts = rememberProviderGenreCharts()
+    if (charts.isEmpty()) return
+    val copy = rememberGenreHitsCopy()
+    Column {
+        QobuzSectionHeader(copy.shelfTitle, copy.shelfSubtitle, "", null)
+        Spacer(Modifier.height(QobuzDesign.headerToContent))
+        QobuzGridRow(charts.chunked(1), QobuzDesign.gridCard) { chart ->
+            QobuzPlaylistCard(chart.title, chart.artworkUrl, chart.subtitle, QobuzDesign.gridCard, cover = chart.cover) { onOpen(chart.zone) }
         }
     }
 }

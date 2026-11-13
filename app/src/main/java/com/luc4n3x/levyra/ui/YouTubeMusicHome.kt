@@ -73,10 +73,10 @@ internal fun YouTubeMusicHomeContent(
     val feed by homeViewModel.state.collectAsStateWithLifecycle()
     val previewsState = homeViewModel.previews.collectAsStateWithLifecycle()
     val previews: (String) -> List<Track> = remember(previewsState) { { playlistId -> previewsState.value[playlistId].orEmpty() } }
-    val allShelves = remember(feed.shelves, feed.discovery) { feed.allShelves }
+    val allShelves = remember(feed.shelves, feed.discovery) { feed.allShelves.filter { it.style != YoutubeMusicHomeShelfStyle.Buttons } }
     LaunchedEffect(strings.code, showsFeed) { if (showsFeed) homeViewModel.load(strings.code) }
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val levyraBlocks = if (composition == null) youTubeMusicLevyraBlocks(data, actions.home, copy, strings) else emptyList()
+    val levyraBlocks = if (composition == null) youTubeMusicLevyraBlocks(data, actions.home, copy, strings, actions.openPlaylist) else emptyList()
     val seed = remember(feed.shelves, showsFeed, data.personalTracks, data.charts) { youTubeMusicBackdropSeed(feed.shelves, showsFeed, data) }
     val composedFeedEndKey = remember(allShelves, composition == null) {
         if (composition == null) null else youTubeMusicLeadingOrder(allShelves).lastOrNull()?.let { "ytm-${it.key}" }
@@ -86,7 +86,7 @@ internal fun YouTubeMusicHomeContent(
     val composedKit = remember(copy, data.countryLabel, actions.home) { YouTubeMusicComposedKit(copy, data.countryLabel, actions.home.pickCountry) }
     Box(Modifier.fillMaxSize().background(YouTubeMusicDesign.background)) {
         YouTubeMusicHomeBackdrop(
-            seed, height = statusBarTop + 420.dp,
+            seed?.first, height = statusBarTop + 380.dp, endSeed = seed?.second,
             modifier = Modifier.graphicsLayer {
                 val first = homeListState.firstVisibleItemIndex == 0
                 translationY = if (first) -homeListState.firstVisibleItemScrollOffset.toFloat() else -size.height
@@ -104,7 +104,7 @@ internal fun YouTubeMusicHomeContent(
             if (composition == null) {
                 youTubeMusicHomeHeaders(
                     copy, actions, feed.chips, feed.selectedChip, homeListState, statusBarTop,
-                    homeViewModel::selectChip
+                    homeViewModel::selectChip, data.listener
                 )
                 if (pins.isNotEmpty()) item(key = "ytm-home-pins", contentType = "composed-cards") { composedKit.Cards(strings.speedDialCopy().title, pins) }
                 youTubeMusicHomeContentItems(
@@ -137,13 +137,13 @@ internal fun YouTubeMusicHomeContent(
     }
 }
 
-private fun youTubeMusicBackdropSeed(shelves: List<YoutubeMusicHomeShelf>, showsFeed: Boolean, data: AppleMusicHomeData): Color? {
+private fun youTubeMusicBackdropSeed(shelves: List<YoutubeMusicHomeShelf>, showsFeed: Boolean, data: AppleMusicHomeData): Pair<Color, Color>? {
     val lead = if (showsFeed) {
         shelves.firstNotNullOfOrNull { it.tracks.firstOrNull() }
     } else {
         data.personalTracks.firstOrNull() ?: data.charts.firstOrNull()
     }
-    return lead?.accentStart?.let(::Color)
+    return lead?.let { Color(it.accentStart) to Color(it.accentEnd) }
 }
 
 @Composable
@@ -173,6 +173,14 @@ private fun LazyListScope.youTubeMusicComposedFeedStatus(
     }
 }
 
+@Composable
+private fun YouTubeMusicBarAvatar(initial: String, listener: HomeListener) {
+    val scale = YouTubeMusicDesign.avatar / com.luc4n3x.levyra.ui.theme.LevyraHomeDesign.OrbitAvatarSize
+    Box(Modifier.requiredSize(com.luc4n3x.levyra.ui.theme.LevyraHomeDesign.OrbitAvatarSize).graphicsLayer { scaleX = scale; scaleY = scale }) {
+        HomeOrbitAvatar(initial, listener.photoPath, listener.photoVersion, listener.avatarUrl)
+    }
+}
+
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 private fun LazyListScope.youTubeMusicHomeHeaders(
     copy: YouTubeMusicSkinCopy,
@@ -181,13 +189,19 @@ private fun LazyListScope.youTubeMusicHomeHeaders(
     selectedChip: String,
     homeListState: LazyListState,
     statusBarTop: Dp,
-    onSelectChip: (String) -> Unit
+    onSelectChip: (String) -> Unit,
+    listener: HomeListener? = null
 ) {
     item(key = "ytm-home-bar", contentType = "ytm-bar") {
+        val initial = remember(listener?.name) { listener?.name?.trim()?.let(::homePersonalOrbitInitial) }
+        val hasAvatar = listener != null && (initial != null || listener.avatarUrl.isNotBlank() || listener.photoPath.isNotBlank())
         YouTubeMusicTopBar(
             title = "Levyra", searchLabel = copy.search, settingsLabel = copy.settings,
             onSearch = actions.openSearch, onSettings = actions.home.openSettings,
-            trailing = { com.luc4n3x.levyra.ui.rewind.RewindEntry() }
+            avatar = if (hasAvatar) {
+                { YouTubeMusicBarAvatar(initial.orEmpty(), listener) }
+            } else null,
+            trailing = { com.luc4n3x.levyra.ui.rewind.RewindEntry(tint = YouTubeMusicDesign.text) }
         )
     }
     if (chips.isNotEmpty()) {
@@ -274,6 +288,12 @@ private fun LazyListScope.youTubeMusicHomeContentItems(
         }
     }
     val orbit = data.personalTracks.takeIf { data.showPersonal }.orEmpty()
+    val quickPicks = youTubeMusicLeadingOrder(allShelves).firstOrNull()?.takeIf { orbit.isNotEmpty() && it.style == YoutubeMusicHomeShelfStyle.ListColumns }
+    if (quickPicks != null) {
+        item(key = "ytm-${quickPicks.key}", contentType = "ytm-${quickPicks.style}") {
+            YouTubeMusicFeedShelf(quickPicks, data.currentId, copy, actions, previews, onRequestPreview)
+        }
+    }
     if (orbit.isNotEmpty()) {
         item(key = "levyra-orbit", contentType = "ytm-speed-grid") {
             YouTubeMusicSpeedGrid(
@@ -284,7 +304,7 @@ private fun LazyListScope.youTubeMusicHomeContentItems(
         }
     }
     favoriteRadioSection(homeRadio)
-    youTubeMusicHomeSections(allShelves, levyraBlocks) { shelf ->
+    youTubeMusicHomeSections(allShelves, levyraBlocks, skipKey = quickPicks?.key) { shelf ->
         YouTubeMusicFeedShelf(shelf, data.currentId, copy, actions, previews, onRequestPreview)
     }
 }
@@ -300,10 +320,11 @@ private fun YouTubeMusicStatusBarScrim(homeListState: LazyListState, statusBarTo
 private fun LazyListScope.youTubeMusicHomeSections(
     shelves: List<YoutubeMusicHomeShelf>,
     levyraBlocks: List<YouTubeMusicHomeBlock>,
+    skipKey: String? = null,
     shelfContent: @Composable (YoutubeMusicHomeShelf) -> Unit
 ) {
     var nextBlock = 0
-    youTubeMusicLeadingOrder(shelves).forEachIndexed { index, shelf ->
+    youTubeMusicLeadingOrder(shelves).filter { it.key != skipKey }.forEachIndexed { index, shelf ->
         item(key = "ytm-${shelf.key}", contentType = "ytm-${shelf.style}") { shelfContent(shelf) }
         if (index % 2 == 1 && nextBlock < levyraBlocks.size) {
             val (key, block) = levyraBlocks[nextBlock++]
@@ -412,9 +433,12 @@ private fun youTubeMusicLevyraBlocks(
     data: AppleMusicHomeData,
     actions: AppleMusicHomeActions,
     copy: YouTubeMusicSkinCopy,
-    strings: com.luc4n3x.levyra.ui.i18n.LevyraStrings
+    strings: com.luc4n3x.levyra.ui.i18n.LevyraStrings,
+    openPlaylist: (com.luc4n3x.levyra.domain.PlaylistHit) -> Unit
 ): List<YouTubeMusicHomeBlock> = listOfNotNull(
+    "levyra-curated" to @Composable { YouTubeMusicCuratedShelves(openPlaylist) },
     chartBlock(data, copy, actions),
+    if (data.charts.isEmpty()) null else "levyra-genre-hits" to @Composable { YouTubeMusicGenreHitsShelf(actions.openGenreChart) },
     dailyDiscoveryBlock(data, copy, actions),
     cardsBlock("levyra-albums", strings.albumsForYou, data.albums.takeIf { data.showAlbums }.orEmpty().map { album ->
         YouTubeMusicCardModel("album-${album.browseId.ifBlank { album.title + album.artist }}", album.title, album.artist, album.thumbnailUrl, onClick = { actions.openAlbum(album) })

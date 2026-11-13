@@ -55,14 +55,15 @@ internal fun GenreChartCover(
     accent: Color,
     artworkUrl: String?,
     kicker: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    shape: androidx.compose.ui.graphics.Shape = GenreChartCoverShape
 ) {
     val description = "$kicker $genreTitle"
     val highlight = remember(genreKey, accent) { lerp(accent, Color.White, 0.16f) }
     BoxWithConstraints(
         modifier = modifier
             .aspectRatio(1f)
-            .clip(GenreChartCoverShape)
+            .clip(shape)
             .clearAndSetSemantics {
                 contentDescription = description
                 role = Role.Image

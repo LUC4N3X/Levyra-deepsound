@@ -29,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -59,7 +60,8 @@ internal class YouTubeMusicCardModel(
     val wide: Boolean = false,
     val track: Track? = null,
     val onClick: () -> Unit,
-    val onLongClick: (() -> Unit)? = null
+    val onLongClick: (() -> Unit)? = null,
+    val cover: (@Composable (androidx.compose.ui.graphics.Shape) -> Unit)? = null
 )
 
 @Immutable
@@ -85,10 +87,11 @@ internal fun YouTubeMusicBrandMark(title: String, modifier: Modifier = Modifier)
                 scaleY = 1.9f
             }
         )
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(6.dp))
         Text(
-            title, color = YouTubeMusicDesign.text, fontSize = 27.sp, lineHeight = 30.sp,
-            fontWeight = FontWeight.Bold, letterSpacing = (-1.0).sp, maxLines = 1
+            title, color = YouTubeMusicDesign.text, fontSize = 29.sp, lineHeight = 32.sp,
+            fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.8).sp, maxLines = 1,
+            style = androidx.compose.ui.text.TextStyle(textGeometricTransform = androidx.compose.ui.text.style.TextGeometricTransform(scaleX = 0.9f))
         )
     }
 }
@@ -101,21 +104,26 @@ internal fun YouTubeMusicTopBar(
     onSearch: () -> Unit,
     onSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    avatar: (@Composable () -> Unit)? = null,
     trailing: (@Composable RowScope.() -> Unit)? = null
 ) {
     Row(
-        modifier.fillMaxWidth().height(YouTubeMusicDesign.topBarHeight).padding(start = YouTubeMusicDesign.gutter, end = 4.dp),
+        modifier.fillMaxWidth().height(YouTubeMusicDesign.topBarHeight).padding(start = YouTubeMusicDesign.gutter, end = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         YouTubeMusicBrandMark(title, Modifier.weight(1f))
         trailing?.invoke(this)
-        YouTubeMusicIconAction(Icons.Outlined.Search, searchLabel, onSearch)
+        YouTubeMusicIconAction(Icons.Outlined.Search, searchLabel, onSearch, iconSize = 28.dp)
         Box(
             Modifier.size(48.dp).clip(CircleShape).levyraPressable(onClick = onSettings, role = Role.Button, onClickLabel = settingsLabel),
             contentAlignment = Alignment.Center
         ) {
-            Box(Modifier.size(YouTubeMusicDesign.avatar).clip(CircleShape).background(YouTubeMusicDesign.surfaceHigh), contentAlignment = Alignment.Center) {
-                Icon(Icons.Outlined.Settings, settingsLabel, tint = YouTubeMusicDesign.text, modifier = Modifier.size(20.dp))
+            if (avatar != null) {
+                avatar()
+            } else {
+                Box(Modifier.size(YouTubeMusicDesign.avatar).clip(CircleShape).background(YouTubeMusicDesign.surfaceHigh), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Outlined.Settings, settingsLabel, tint = YouTubeMusicDesign.text, modifier = Modifier.size(20.dp))
+                }
             }
         }
     }
@@ -378,7 +386,9 @@ internal fun YouTubeMusicCard(card: YouTubeMusicCardModel, modifier: Modifier = 
     ) {
         Box(Modifier.size(width, artHeight).clip(shape).background(YouTubeMusicDesign.placeholder)) {
             val track = card.track
-            if (card.artworkUrl.isNotBlank()) {
+            if (card.cover != null) {
+                card.cover.invoke(shape)
+            } else if (card.artworkUrl.isNotBlank()) {
                 StableRemoteArtwork(card.artworkUrl, card.title, Modifier.fillMaxSize(), ContentScale.Crop, highRes = true)
             } else if (track != null) {
                 CoverImage(track, Modifier.fillMaxSize(), highRes = true)
@@ -400,12 +410,20 @@ internal fun YouTubeMusicCard(card: YouTubeMusicCardModel, modifier: Modifier = 
 }
 
 @Composable
-internal fun YouTubeMusicHomeBackdrop(seed: Color?, modifier: Modifier = Modifier, height: Dp = 420.dp) {
-    val top = remember(seed) { seed?.let { YouTubeMusicDesign.sheetField(it) } ?: YouTubeMusicDesign.surface }
+internal fun YouTubeMusicHomeBackdrop(seed: Color?, modifier: Modifier = Modifier, height: Dp = 420.dp, endSeed: Color? = seed) {
+    val start = remember(seed) { seed?.let { YouTubeMusicDesign.sheetField(it) } ?: YouTubeMusicDesign.surface }
+    val end = remember(endSeed, start) { endSeed?.let { YouTubeMusicDesign.sheetField(it) } ?: start }
+    val background = YouTubeMusicDesign.background
     Box(
-        modifier.fillMaxWidth().height(height).background(
-            Brush.verticalGradient(listOf(top.copy(alpha = 0.92f), top.copy(alpha = 0.45f), YouTubeMusicDesign.background))
-        )
+        modifier.fillMaxWidth().height(height).drawBehind {
+            drawRect(Brush.linearGradient(listOf(start, end), start = Offset.Zero, end = Offset(size.width, size.height * 0.35f)))
+            drawRect(
+                Brush.verticalGradient(
+                    0f to background.copy(alpha = 0.08f), 0.38f to background.copy(alpha = 0.62f),
+                    0.72f to background.copy(alpha = 0.94f), 1f to background
+                )
+            )
+        }
     )
 }
 

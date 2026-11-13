@@ -9995,7 +9995,8 @@ private fun StudioHomeScreen(
                 openCollection = { id -> homeContext.selectedHomeCollectionId = id },
                 openSettings = homeContext.viewModel::openSettings,
                 pickCountry = { homeContext.chartMarketSheetOpen = true },
-                onTrackActions = homeContext.onTrackActions
+                onTrackActions = homeContext.onTrackActions,
+                openGenreChart = homeContext.viewModel::openExploreGenreChart
             )
         val composedRadio = LocalHomeRadio.current
         val composedDiscovery = LocalHomeDiscovery.current
@@ -12136,7 +12137,8 @@ private fun PersonalOrbitTile(
                 )
         )
         LevyraMediaTitle(
-            text = track.title, explicit = track.explicit, marqueeEnabled = !LevyraIsDefaultSkin,
+            text = track.title, explicit = track.explicit,
+            initialDelayMillis = 1_600 + (track.id.hashCode() and 3) * 700,
             color = if (isCurrent && !(LevyraIsPrism && LevyraIsLight)) LevyraCyan else Color.White,
             fontSize = LevyraHomeDesign.OrbitTileTitleSize,
             lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitTileTitleSize),
@@ -14024,7 +14026,8 @@ private fun StudioPersonalOrbitTile(
                 modifier = Modifier.fillMaxWidth()
             )
             LevyraMediaTitle(
-                text = track.title, explicit = track.explicit, marqueeEnabled = !LevyraIsDefaultSkin,
+                text = track.title, explicit = track.explicit,
+            initialDelayMillis = 1_600 + (track.id.hashCode() and 3) * 700,
                 color = if (isCurrent) MaterialTheme.colorScheme.primary else LevyraText,
                 fontSize = LevyraHomeDesign.OrbitTileTitleSize,
                 lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitTileTitleSize),
@@ -24853,7 +24856,7 @@ private fun ExploreScreen(
     val strings = LocalLevyraStrings.current
     LaunchedEffect(strings.code) { viewModel.ensureExplore(strings) }
     val editorialExplore = LevyraIsSpotify || LevyraIsMono || LevyraIsAtelier || levyraSearchOwnsBrowse(false, LevyraIsAppleMusic, LevyraIsAtelier || LevyraIsQobuz || LevyraIsYouTubeMusic)
-    LaunchedEffect(strings.code, editorialExplore) { if (editorialExplore) viewModel.ensureNews(strings.code) }
+    LaunchedEffect(strings.code, editorialExplore) { if (editorialExplore || LevyraIsYouTubeMusic) viewModel.ensureNews(strings.code) }
     val news by viewModel.news.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val listState = rememberLazyListState()
@@ -25007,7 +25010,7 @@ private fun ExploreScreen(
         miniPlayerVisible = state.currentTrack != null && !state.isSamplesOpen,
         animationsEnabled = state.animationsEnabled
     )
-    val editorialContent = if (editorialExplore) {
+    val editorialContent = if (editorialExplore || LevyraIsYouTubeMusic) {
         remember(news) {
             ExploreEditorialContent(
                 news = news,
@@ -25035,7 +25038,8 @@ private fun ExploreScreen(
                     samplesStartIndex = null
                     exploreMoodReturn = null
                     exploreDestination = exploreCategoryDestination(ExploreCategory(title, params))
-                }
+                },
+                editorial = editorialContent
             ) { addToPlaylistTarget = it }
         } else LazyColumn(
             state = listState,

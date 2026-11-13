@@ -51,7 +51,8 @@ internal class AppleMusicHomeActions(
     val openCollection: (String) -> Unit,
     val openSettings: () -> Unit,
     val pickCountry: () -> Unit,
-    val onTrackActions: (Track) -> Unit
+    val onTrackActions: (Track) -> Unit,
+    val openGenreChart: (com.luc4n3x.levyra.domain.ExploreZone) -> Unit = {}
 )
 
 internal class AppleMusicHomeData(
@@ -327,6 +328,7 @@ private fun appleMusicLevyraBlocks(
     openCharts: () -> Unit
 ): List<AppleHomeBlock> = listOfNotNull(
     songsBlock(TOP50_KEY, data.chartsTitle, data.charts, data, actions, copy.explicit, openCharts, limit = 20),
+    genreHitsBlock(data.charts.isNotEmpty()) { AppleMusicGenreHitsShelf(actions.openGenreChart) },
     soundtrackBlock(data.soundtrack),
     songsBlock("levyra-orbit", strings.personalOrbitTitle, data.personalTracks.takeIf { data.showPersonal }.orEmpty(), data, actions, copy.explicit),
     data.quickPicks?.let { section -> songsBlock("levyra-quick-picks", section.title.ifBlank { strings.quickPicks }, section.tracks, data, actions, copy.explicit) },
@@ -375,6 +377,9 @@ private fun cardsBlock(key: String, title: String, cards: List<AppleMusicCardMod
         }
     }
 }
+
+private fun genreHitsBlock(visible: Boolean, shelf: @Composable () -> Unit): AppleHomeBlock? =
+    if (visible) "levyra-genre-hits" to shelf else null
 
 private fun soundtrackBlock(hero: StudioHero?): AppleHomeBlock? {
     hero ?: return null

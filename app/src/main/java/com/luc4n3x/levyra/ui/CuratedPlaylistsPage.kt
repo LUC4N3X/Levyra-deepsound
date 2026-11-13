@@ -151,6 +151,7 @@ private fun CuratedPlaylistsPage(page: CuratedPageData, onOpen: (PlaylistHit) ->
         LevyraIsTorque -> TorqueCuratedPlaylistsPage(page, onOpen, onDismiss, bottomInset)
         LevyraIsIvory -> IvoryCuratedPlaylistsPage(page, onOpen, onDismiss, bottomInset)
         LevyraIsAtelier -> AtelierCuratedPlaylistsPage(page, onOpen, onDismiss, bottomInset)
+        com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic -> YouTubeMusicCuratedPlaylistsPage(page, onOpen, onDismiss, bottomInset)
         else -> DefaultCuratedPlaylistsScreen(page, onOpen, onDismiss, bottomInset)
     }
 }

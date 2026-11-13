@@ -221,14 +221,23 @@ internal fun QobuzAlbumCard(album: QobuzAlbum, copy: QobuzSkinCopy, width: Dp, o
 
 @Composable
 internal fun QobuzPlaylistCard(playlist: QobuzPlaylist, caption: String, width: Dp, onClick: () -> Unit) =
-    QobuzPlaylistCard(playlist.title, playlist.imageUrl, caption, width, onClick)
+    QobuzPlaylistCard(playlist.title, playlist.imageUrl, caption, width, onClick = onClick)
 
 @Composable
-internal fun QobuzPlaylistCard(title: String, imageUrl: String, caption: String, width: Dp, onClick: () -> Unit) {
+internal fun QobuzPlaylistCard(
+    title: String,
+    imageUrl: String,
+    caption: String,
+    width: Dp,
+    cover: (@Composable (androidx.compose.ui.graphics.Shape) -> Unit)? = null,
+    onClick: () -> Unit
+) {
     val playlist = QobuzPlaylist("", "", title, imageUrl)
     Column(Modifier.cardWidth(width).clickable(role = Role.Button, onClick = onClick)) {
         Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(QobuzDesign.cardShape).background(Color(0xFF2B2522))) {
-            if (playlist.imageUrl.isNotBlank()) {
+            if (cover != null) {
+                cover(QobuzDesign.cardShape)
+            } else if (playlist.imageUrl.isNotBlank()) {
                 coil3.compose.AsyncImage(
                     playlist.imageUrl, null, contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize().blur(18.dp), alpha = 0.55f

@@ -2108,7 +2108,8 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             title = title,
             params = params,
             section = section,
-            sectionIndex = sectionIndex
+            sectionIndex = sectionIndex,
+            stripeColor = button.optJSONObject("solid")?.optLong("leftStripeColor") ?: 0L
         )
     }
 

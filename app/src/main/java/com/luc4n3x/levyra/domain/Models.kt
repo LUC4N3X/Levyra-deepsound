@@ -292,7 +292,8 @@ data class ExploreCategory(
     val title: String,
     val params: String,
     val section: String = "",
-    val sectionIndex: Int = -1
+    val sectionIndex: Int = -1,
+    val stripeColor: Long = 0L
 )
 
 object ExploreCatalog {
