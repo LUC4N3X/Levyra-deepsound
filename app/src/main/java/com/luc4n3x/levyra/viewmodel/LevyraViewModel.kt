@@ -986,8 +986,11 @@ internal fun canPublishAlbumMotionArtwork(
 data class ExploreGenreChartState(
     val key: String = "",
     val tracks: List<Track> = emptyList(),
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val refreshedAtMs: Long = 0L
 )
+
+private const val EXPLORE_GENRE_CHART_REFRESH_MS = 6 * 60 * 60 * 1000L
 
 private const val EXPLORE_GENRE_CHART_FIRST_PAINT = 10
 
@@ -12628,13 +12631,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val languageCode = _state.value.languageCode
         val key = "$languageCode:$identity"
         val current = _exploreGenreChart.value
-        if (current.key == key && (current.isLoading || current.tracks.isNotEmpty())) return
+        val fresh = current.refreshedAtMs > 0L && System.currentTimeMillis() - current.refreshedAtMs < EXPLORE_GENRE_CHART_REFRESH_MS
+        if (current.key == key && (current.isLoading || (current.tracks.isNotEmpty() && fresh))) return
         exploreGenreChartJob?.cancel()
         if (tags.isEmpty()) {
             _exploreGenreChart.value = ExploreGenreChartState(key = key)
             return
         }
-        _exploreGenreChart.value = ExploreGenreChartState(key = key, isLoading = true)
+        _exploreGenreChart.value = if (current.key == key) current.copy(isLoading = true) else ExploreGenreChartState(key = key, isLoading = true)
         exploreGenreChartJob = viewModelScope.launch {
             fun publish(tracks: List<Track>, loading: Boolean) {
                 _exploreGenreChart.update { state ->
@@ -12659,7 +12663,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
             _exploreGenreChart.update { state ->
                 if (state.key != key) state
-                else state.copy(tracks = tracks.ifEmpty { state.tracks }, isLoading = false)
+                else state.copy(
+                    tracks = tracks.ifEmpty { state.tracks },
+                    isLoading = false,
+                    refreshedAtMs = if (tracks.isEmpty()) state.refreshedAtMs else System.currentTimeMillis()
+                )
             }
         }
     }

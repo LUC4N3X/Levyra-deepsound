@@ -69,7 +69,11 @@ internal fun rememberGenreChartCover(zone: ExploreZone): GenreChartCoverData {
         if (tags.isEmpty()) return@LaunchedEffect
         val loaded = try {
             val repository = GenreChartLastFmSource.get(app)
-            (repository.cached(tags, strings.code) ?: repository.discovery(tags, strings.code))?.artists.orEmpty()
+            repository.cached(tags, strings.code)?.artists?.takeIf { it.isNotEmpty() }?.let { stored ->
+                GenreChartLastFmSource.artists[cacheKey] = stored
+                artists = stored
+            }
+            repository.discovery(tags, strings.code)?.artists.orEmpty()
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {

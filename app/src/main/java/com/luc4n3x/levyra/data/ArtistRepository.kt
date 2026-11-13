@@ -414,8 +414,13 @@ internal data class ArtistPagePlaylists(
 )
 
 internal fun splitArtistPagePlaylists(playlists: List<PlaylistHit>, artistName: String, limit: Int): ArtistPagePlaylists {
-    val openable = playlists.filter { playlist ->
-        playlist.thumbnailUrl.isNotBlank() && (playlist.playlistId.isNotBlank() || playlist.browseId.isNotBlank())
+    val openable = playlists.mapNotNull { playlist ->
+        when {
+            playlist.thumbnailUrl.isBlank() -> null
+            playlist.playlistId.isNotBlank() -> playlist
+            playlist.browseId.startsWith("VL") -> playlist.copy(playlistId = playlist.browseId.removePrefix("VL"))
+            else -> null
+        }
     }
     val (byArtist, featuredOn) = openable.partition { playlist ->
         artistName.isNotBlank() && playlist.author.isNotBlank() && artistNameMatches(artistName, playlist.author)

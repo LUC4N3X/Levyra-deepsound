@@ -49,11 +49,13 @@ private fun ExploreCategory.youTubeMusicStripe(): Color =
 @Composable
 internal fun YouTubeMusicMoodsPage(
     sections: List<ExploreCategorySection>,
+    fallbackZones: List<com.luc4n3x.levyra.domain.ExploreZone>,
     isLoading: Boolean,
     strings: LevyraStrings,
     bottomInset: Dp,
     onBack: () -> Unit,
-    onOpenCategory: (ExploreCategory) -> Unit
+    onOpenCategory: (ExploreCategory) -> Unit,
+    onOpenZone: (com.luc4n3x.levyra.domain.ExploreZone) -> Unit
 ) {
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val gutter = YouTubeMusicDesign.gutter
@@ -77,6 +79,21 @@ internal fun YouTubeMusicMoodsPage(
             item(key = "ytm-moods-loading", contentType = "ytm-moods-loading") {
                 Box(Modifier.fillMaxWidth().padding(vertical = 48.dp), contentAlignment = Alignment.Center) {
                     LevyraLoadingIndicator(Modifier.size(32.dp), color = YouTubeMusicDesign.text)
+                }
+            }
+        }
+        if (!isLoading && sections.isEmpty()) {
+            fallbackZones.chunked(YouTubeMusicMoodColumns).forEachIndexed { rowIndex, row ->
+                item(key = "ytm-moods-fallback-$rowIndex", contentType = "ytm-moods-row") {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = gutter).padding(top = if (rowIndex == 0) 24.dp else 0.dp, bottom = YouTubeMusicMoodGap),
+                        horizontalArrangement = Arrangement.spacedBy(YouTubeMusicMoodGap)
+                    ) {
+                        row.forEach { zone ->
+                            YouTubeMusicMoodTile(zone.label, YouTubeMusicMoodStripes[zone.id.hashCode().mod(YouTubeMusicMoodStripes.size)], { onOpenZone(zone) }, Modifier.weight(1f))
+                        }
+                        repeat(YouTubeMusicMoodColumns - row.size) { Spacer(Modifier.weight(1f)) }
+                    }
                 }
             }
         }

@@ -73,7 +73,7 @@ internal fun YouTubeMusicHomeContent(
     val feed by homeViewModel.state.collectAsStateWithLifecycle()
     val previewsState = homeViewModel.previews.collectAsStateWithLifecycle()
     val previews: (String) -> List<Track> = remember(previewsState) { { playlistId -> previewsState.value[playlistId].orEmpty() } }
-    val allShelves = remember(feed.shelves, feed.discovery) { feed.allShelves.filter { it.style != YoutubeMusicHomeShelfStyle.Buttons && !(it.key.startsWith("discovery-") && (it.headerBrowseId.startsWith("FEmusic_new_releases") || it.style == YoutubeMusicHomeShelfStyle.ListColumns)) } }
+    val allShelves = remember(feed.shelves, feed.discovery) { feed.allShelves.filter(::isYouTubeMusicHomeShelf) }
     LaunchedEffect(strings.code, showsFeed) { if (showsFeed) homeViewModel.load(strings.code) }
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val levyraBlocks = if (composition == null) youTubeMusicLevyraBlocks(data, actions.home, copy, strings, actions.openPlaylist) else emptyList()
@@ -82,7 +82,8 @@ internal fun YouTubeMusicHomeContent(
         if (composition == null) null else youTubeMusicLeadingOrder(allShelves).lastOrNull()?.let { "ytm-${it.key}" }
     }
     val nearEnd by rememberYouTubeMusicNearEnd(homeListState, composedFeedEndKey)
-    LaunchedEffect(nearEnd, feed.canLoadMore, showsFeed) { if (showsFeed && nearEnd && feed.canLoadMore) homeViewModel.loadMore() }
+    val shouldLoadMore = showsFeed && nearEnd && feed.canLoadMore
+    LaunchedEffect(shouldLoadMore) { if (shouldLoadMore) homeViewModel.loadMore() }
     val composedKit = remember(copy, data.countryLabel, actions.home) { YouTubeMusicComposedKit(copy, data.countryLabel, actions.home.pickCountry) }
     Box(Modifier.fillMaxSize().background(YouTubeMusicDesign.background)) {
         YouTubeMusicHomeBackdrop(
@@ -135,6 +136,12 @@ internal fun YouTubeMusicHomeContent(
             modifier = Modifier.align(Alignment.TopCenter).padding(top = statusBarTop + 16.dp)
         )
     }
+}
+
+private fun isYouTubeMusicHomeShelf(shelf: YoutubeMusicHomeShelf): Boolean {
+    if (shelf.style == YoutubeMusicHomeShelfStyle.Buttons) return false
+    if (!shelf.key.startsWith("discovery-")) return true
+    return !shelf.headerBrowseId.startsWith("FEmusic_new_releases") && shelf.style != YoutubeMusicHomeShelfStyle.ListColumns
 }
 
 private fun youTubeMusicBackdropSeed(shelves: List<YoutubeMusicHomeShelf>, showsFeed: Boolean, data: AppleMusicHomeData): Pair<Color, Color>? {

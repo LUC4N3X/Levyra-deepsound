@@ -31,6 +31,7 @@ class ArtistPagePlaylistsTest {
         val split = splitArtistPagePlaylists(listOf(noId, browseOnly), "Yngwie Malmsteen", limit = 12)
 
         assertEquals(listOf("VLPLy"), split.featuredOn.map { it.browseId })
+        assertEquals(listOf("PLy"), split.featuredOn.map { it.playlistId })
     }
 
     @Test

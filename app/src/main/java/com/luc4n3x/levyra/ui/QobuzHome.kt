@@ -230,6 +230,49 @@ private fun QobuzDiscoverTabs(copy: QobuzSkinCopy, tab: QobuzDiscoverTab, elevat
     }
 }
 
+private fun qobuzMixSources(
+    data: AppleMusicHomeData,
+    copy: QobuzSkinCopy,
+    orbitTitle: String,
+    quickPicksTitle: String
+): List<Pair<HomeSectionId, QobuzMix>> = buildList {
+    data.soundtrack?.let { hero -> add(HomeSectionId.Spotlight to QobuzMix("soundtrack", copy.welcomeTitle, copy.welcomeBody, (listOf(hero.track) + data.personalTracks).distinctBy { it.id }, 0)) }
+    data.personalTracks.takeIf { data.showPersonal && it.isNotEmpty() }?.let { add(HomeSectionId.PersonalOrbit to QobuzMix("orbit", orbitTitle, copy.orbitBaseline, it, 1)) }
+    data.quickPicks?.tracks?.takeIf { it.isNotEmpty() }?.let { add(HomeSectionId.QuickPicks to QobuzMix("picks", data.quickPicks.title.ifBlank { quickPicksTitle }, copy.picksMixBody, it, 2)) }
+}
+
+private fun similarAlbumsBlock(data: AppleMusicHomeData, actions: QobuzHomeActions, copy: QobuzSkinCopy): QobuzBlock? {
+    val seed = data.personalTracks.firstOrNull() ?: data.soundtrack?.track
+    if (seed == null || !data.showAlbums || data.albums.isEmpty()) return null
+    return "similar" to @Composable {
+        Column {
+            QobuzSimilarHeader(seed, copy)
+            Spacer(Modifier.height(QobuzDesign.headerToContent + 4.dp))
+            QobuzGridRow(data.albums.take(16).chunked(1), QobuzDesign.gridCard) { album ->
+                QobuzAlbumCard(QobuzAlbum("", album.title, album.artist, album.thumbnailUrl), copy, QobuzDesign.gridCard, { actions.home.openAlbum(album) })
+            }
+        }
+    }
+}
+
+private fun LazyListScope.qobuzHomeFooter(copy: QobuzSkinCopy, feed: QobuzDiscoverUiState, composed: Boolean, onRetry: () -> Unit) {
+    val editorialFailed = feed.failed && feed.shelves.isEmpty()
+    if (!composed || editorialFailed) {
+        item(key = "qobuz-footer", contentType = "qobuz-footer") {
+            Column(Modifier.fillMaxWidth().padding(horizontal = QobuzDesign.gutter, vertical = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (editorialFailed) {
+                    Text(copy.editorialUnavailable, style = QobuzText.baseline)
+                    Text(
+                        copy.retry, style = MaterialTheme.typography.labelLarge, color = QobuzDesign.textPrimary,
+                        modifier = Modifier.clip(QobuzDesign.buttonShape).background(QobuzDesign.surfaceSecondary)
+                            .clickable(role = Role.Button, onClick = onRetry).padding(horizontal = 16.dp, vertical = 10.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
 private fun LazyListScope.qobuzHomeSections(
     data: AppleMusicHomeData,
     actions: QobuzHomeActions,
@@ -249,26 +292,13 @@ private fun LazyListScope.qobuzHomeSections(
     val playlists = playlistsBlock(copy, feed, onOpenPlaylist, onSeeAll)
     val categories = categoriesBlock(copy, extras.categories, actions.openCategory)
     val artists = artistsBlock(data, actions, extras, copy)
-    val mixSources = buildList<Pair<HomeSectionId, QobuzMix>> {
-        data.soundtrack?.let { hero -> add(HomeSectionId.Spotlight to QobuzMix("soundtrack", copy.welcomeTitle, copy.welcomeBody, (listOf(hero.track) + data.personalTracks).distinctBy { it.id }, 0)) }
-        data.personalTracks.takeIf { data.showPersonal && it.isNotEmpty() }?.let { add(HomeSectionId.PersonalOrbit to QobuzMix("orbit", orbitTitle, copy.orbitBaseline, it, 1)) }
-        data.quickPicks?.tracks?.takeIf { it.isNotEmpty() }?.let { add(HomeSectionId.QuickPicks to QobuzMix("picks", data.quickPicks.title.ifBlank { quickPicksTitle }, copy.picksMixBody, it, 2)) }
-    }
+    val mixSources = qobuzMixSources(data, copy, orbitTitle, quickPicksTitle)
     val mixBlock: (List<QobuzMix>) -> QobuzBlock? = { mixList ->
         if (mixList.isEmpty()) null else "mixes" to @Composable { QobuzMixRow(mixList, copy) { onSeeAll(QobuzSeeAll.Mix(it)) } }
     }
     val mixes = mixBlock(mixSources.map { it.second })
     val homeMixes = mixBlock(mixSources.filterNot { it.first in coveredSections }.map { it.second })
-    val seed = data.personalTracks.firstOrNull() ?: data.soundtrack?.track
-    val similar: QobuzBlock? = if (seed == null || !data.showAlbums || data.albums.isEmpty()) null else "similar" to @Composable {
-        Column {
-            QobuzSimilarHeader(seed, copy)
-            Spacer(Modifier.height(QobuzDesign.headerToContent + 4.dp))
-            QobuzGridRow(data.albums.take(16).chunked(1), QobuzDesign.gridCard) { album ->
-                QobuzAlbumCard(QobuzAlbum("", album.title, album.artist, album.thumbnailUrl), copy, QobuzDesign.gridCard, { actions.home.openAlbum(album) })
-            }
-        }
-    }
+    val similar = similarAlbumsBlock(data, actions, copy)
     val orbit = trackRowBlock("orbit", orbitTitle, copy.orbitBaseline, data.personalTracks.takeIf { data.showPersonal }.orEmpty(), data, actions, copy, onSeeAll)
     val picks = rankedBlock("quick-picks", data.quickPicks?.title?.ifBlank { quickPicksTitle } ?: quickPicksTitle, null, data.quickPicks?.tracks.orEmpty(), false, data, actions, copy, onSeeAll)
     val ideal = albumShelfBlock(QobuzShelfKind.IdealDiscography, copy.idealDiscography, copy.idealDiscographyBaseline, feed, rows = 2, width = QobuzDesign.gridCard, awards = false, actions, copy, onSeeAll)
@@ -290,7 +320,7 @@ private fun LazyListScope.qobuzHomeSections(
             categories,
             artists.takeUnless { HomeSectionId.TrendingArtists in coveredSections },
             homeMixes,
-            discover,
+            discover.takeUnless { HomeSectionId.Discovery in coveredSections },
             similar.takeUnless { albumsCovered },
             ideal,
             qobuzissime,
@@ -299,28 +329,14 @@ private fun LazyListScope.qobuzHomeSections(
             press
         )
         QobuzDiscoverTab.EditorPicks -> listOf(newReleases, playlists, categories, ideal, qobuzissime, press)
-        QobuzDiscoverTab.ForYou -> listOf(mixes, discover, artists, similar, orbit, picks, top50, genreHits)
+        QobuzDiscoverTab.ForYou -> listOf(mixes, discover.takeUnless { HomeSectionId.Discovery in coveredSections }, artists, similar, orbit, picks, top50, genreHits)
     }.filterNotNull()
     blocks.forEachIndexed { index, (key, content) ->
         item(key = "qobuz-$key", contentType = key) {
             Box(Modifier.padding(top = if (index == 0) 24.dp else QobuzDesign.sectionGap)) { content() }
         }
     }
-    val editorialFailed = feed.failed && feed.shelves.isEmpty()
-    if (!composed || editorialFailed) {
-        item(key = "qobuz-footer", contentType = "qobuz-footer") {
-            Column(Modifier.fillMaxWidth().padding(horizontal = QobuzDesign.gutter, vertical = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (editorialFailed) {
-                    Text(copy.editorialUnavailable, style = QobuzText.baseline)
-                    Text(
-                        copy.retry, style = MaterialTheme.typography.labelLarge, color = QobuzDesign.textPrimary,
-                        modifier = Modifier.clip(QobuzDesign.buttonShape).background(QobuzDesign.surfaceSecondary)
-                            .clickable(role = Role.Button, onClick = onRetry).padding(horizontal = 16.dp, vertical = 10.dp)
-                    )
-                }
-            }
-        }
-    }
+    qobuzHomeFooter(copy, feed, composed, onRetry)
 }
 
 private fun welcomeBlock(data: AppleMusicHomeData, actions: QobuzHomeActions, copy: QobuzSkinCopy): QobuzBlock? {
