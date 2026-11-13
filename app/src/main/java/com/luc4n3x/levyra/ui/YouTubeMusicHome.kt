@@ -304,7 +304,7 @@ private fun LazyListScope.youTubeMusicHomeContentItems(
         }
     }
     item(key = "ytm-discover-for-you", contentType = "ytm-discover-for-you") {
-        com.luc4n3x.levyra.ui.discovery.LocalHomeDiscovery.current?.let { handle -> com.luc4n3x.levyra.ui.discovery.YouTubeMusicDiscoverForYou(handle) }
+        com.luc4n3x.levyra.ui.discovery.LocalHomeDiscovery.current?.let { handle -> com.luc4n3x.levyra.ui.discovery.SkinDiscoverForYou(handle, LocalAnimationsEnabled.current) }
     }
     favoriteRadioSection(homeRadio)
     youTubeMusicHomeSections(allShelves, levyraBlocks, skipKey = quickPicks?.key) { shelf ->

@@ -42,8 +42,6 @@ import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ReleaseType
 import com.luc4n3x.levyra.domain.Track
-import com.luc4n3x.levyra.ui.discovery.DiscoveryLevelChipStyle
-import com.luc4n3x.levyra.ui.discovery.HomeDiscoveryLevelChips
 import com.luc4n3x.levyra.feature.discovery.DiscoveryFilmScores
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
@@ -178,16 +176,6 @@ internal fun IvoryDiscoverTeaser(modifier: Modifier = Modifier) {
                 }
             }
         }
-        HomeDiscoveryLevelChips(
-            DiscoveryLevelChipStyle(
-                shape = CircleShape,
-                textStyle = MaterialTheme.typography.labelLarge,
-                selectedContainer = IvoryDesign.ink,
-                selectedContent = IvoryDesign.onInk,
-                container = LevyraPanel,
-                content = LevyraText
-            )
-        )
     }
 }
 

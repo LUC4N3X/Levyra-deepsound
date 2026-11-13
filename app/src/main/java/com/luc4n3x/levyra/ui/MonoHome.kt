@@ -1066,18 +1066,6 @@ private fun LazyListScope.monoHomeFeed(
     item(key = "mono-discover", contentType = "mono-discover") {
         Column {
             MonoDiscoverTeaser(state.recentListens.ifEmpty { feed.picks }.map { it.thumbnailUrl }) { MonoExploreBridge.discoverRequested = true }
-            com.luc4n3x.levyra.ui.discovery.HomeDiscoveryLevelChips(
-                com.luc4n3x.levyra.ui.discovery.DiscoveryLevelChipStyle(
-                    shape = MonoDesign.pillShape,
-                    textStyle = MaterialTheme.typography.labelLarge,
-                    selectedContainer = MonoDesign.accent,
-                    selectedContent = MonoDesign.onAccent,
-                    container = Color.Transparent,
-                    content = MonoDesign.text,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MonoDesign.hairlineStrong)
-                ),
-                Modifier.padding(horizontal = MonoDesign.gutter).padding(top = 10.dp)
-            )
         }
     }
     if (model.pinnedCards.isNotEmpty()) {

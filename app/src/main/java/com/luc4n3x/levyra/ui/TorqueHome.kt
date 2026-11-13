@@ -36,8 +36,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.domain.Track
-import com.luc4n3x.levyra.ui.discovery.DiscoveryLevelChipStyle
-import com.luc4n3x.levyra.ui.discovery.HomeDiscoveryLevelChips
 import com.luc4n3x.levyra.feature.discovery.DiscoveryFilmScores
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
@@ -209,17 +207,6 @@ internal fun TorqueDiscoverTeaser(modifier: Modifier = Modifier) {
                 }
             }
         }
-        HomeDiscoveryLevelChips(
-            DiscoveryLevelChipStyle(
-                shape = TorqueTagShape,
-                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp),
-                selectedContainer = accent,
-                selectedContent = Color.White,
-                container = LevyraPanel,
-                content = LevyraText,
-                uppercase = true
-            )
-        )
     }
 }
 

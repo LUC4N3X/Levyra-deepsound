@@ -153,6 +153,14 @@ internal fun LazyListScope.discoverySection(
     }
 }
 
+@Composable
+internal fun SkinDiscoverForYou(handle: DiscoveryHomeHandle, animationsEnabled: Boolean) {
+    val ui by handle.state.collectAsStateWithLifecycle()
+    LaunchedEffect(handle) { handle.onWarm() }
+    val spec = remember { com.luc4n3x.levyra.ui.homeStyleSpec(HomeStyle.Original, com.luc4n3x.levyra.domain.HomeDensity.Balanced) }
+    DiscoveryHomeSection(ui, HomeStyle.Original, spec, animationsEnabled, handle)
+}
+
 internal fun LazyListScope.dailyDiscoverySection(style: HomeStyle, spec: HomeStyleSpec) {
     item(key = "home-daily-discovery", contentType = "home-daily-discovery") {
         DailyDiscoveryShelf(spec.inset, style, spec)
@@ -167,22 +175,9 @@ private fun DiscoveryHomeSection(
     animationsEnabled: Boolean,
     handle: DiscoveryHomeHandle
 ) {
-    if (com.luc4n3x.levyra.ui.theme.LevyraIsSpotify) {
-        SpotifyDiscoverForYou(handle)
-        return
-    }
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { discoveryCopy(strings.code) }
     val teaser = ui.teaser
-    val scheme = MaterialTheme.colorScheme
-    val chipStyle = DiscoveryLevelChipStyle(
-        shape = CircleShape,
-        textStyle = MaterialTheme.typography.labelLarge,
-        selectedContainer = scheme.secondaryContainer,
-        selectedContent = scheme.onSecondaryContainer,
-        container = scheme.surfaceContainerHigh,
-        content = scheme.onSurfaceVariant
-    )
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (teaser.isEmpty() && (ui.status == DiscoveryFeedStatus.Empty || ui.status == DiscoveryFeedStatus.Error)) {
             DiscoveryHomeNotice(copy, spec.inset, ui.status == DiscoveryFeedStatus.Error, handle)
@@ -200,7 +195,6 @@ private fun DiscoveryHomeSection(
                 HomeStyle.MaterialExpressive -> MaterialExpressiveDiscoveryTeaser(model, spec, animationsEnabled)
             }
         }
-        DiscoveryLevelChips(ui.request.level, chipStyle, handle.onOpenBubble, Modifier.padding(horizontal = spec.inset))
     }
 }
 

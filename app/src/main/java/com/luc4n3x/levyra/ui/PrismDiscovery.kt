@@ -36,8 +36,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.discovery.DiscoveryFilmScores
 import com.luc4n3x.levyra.ui.components.levyraPressable
-import com.luc4n3x.levyra.ui.discovery.DiscoveryLevelChipStyle
-import com.luc4n3x.levyra.ui.discovery.HomeDiscoveryLevelChips
 import com.luc4n3x.levyra.ui.discovery.LocalHomeDiscovery
 import com.luc4n3x.levyra.ui.discovery.discoveryReasonLabel
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
@@ -137,16 +135,5 @@ internal fun PrismDiscoverTeaser(modifier: Modifier = Modifier) {
                 }
             }
         }
-        HomeDiscoveryLevelChips(
-            DiscoveryLevelChipStyle(
-                shape = PrismDesign.cut(12.dp),
-                textStyle = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                selectedContainer = LevyraPink,
-                selectedContent = Color.White,
-                container = surface,
-                content = ink,
-                border = BorderStroke(1.dp, ink.copy(alpha = 0.08f))
-            )
-        )
     }
 }
