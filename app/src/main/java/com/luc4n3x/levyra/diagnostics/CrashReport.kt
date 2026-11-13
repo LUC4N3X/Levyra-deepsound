@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.diagnostics
 
+import com.luc4n3x.levyra.ui.i18n.supportCopy
 import java.io.PrintWriter
 import java.io.Writer
 import java.net.URLEncoder
@@ -95,23 +96,25 @@ internal data class CrashIssueDraft(val url: String, val clipboard: String, val 
 
 internal fun crashIssueDraft(report: CrashReport): CrashIssueDraft {
     fun encode(value: String): String = URLEncoder.encode(value, "UTF-8")
-    val base = "https://github.com/LUC4N3X/Levyra-deepsound/issues/new?template=bug_report.yml&title=${encode(report.title)}"
-    val fields = linkedMapOf(
-        "description" to report.body.substringAfter("## Problem description\n").substringBefore("\n## Platform").trim(),
-        "reproduce" to "Please add the steps that led to this crash.",
-        "actual" to "Levyra closed unexpectedly.",
-        "expected" to "Please describe what you expected to happen.",
-        "version" to report.body.substringAfter("## Levyra version\n").substringBefore("\n## Installation source").trim(),
-        "system_information" to report.body.substringAfter("## System information\n").substringBefore("\n## Logs or error details").trim()
-    )
-    val expanded = base + fields.entries.joinToString("") { (key, value) -> "&$key=${encode(value.take(300))}" }
-    val prefix = expanded.takeIf { it.length <= 3_000 } ?: base
-    val complete = "$prefix&logs=${encode(report.body)}"
-    val needsPaste = complete.length > 6_000
-    val url = if (needsPaste) {
-        "$prefix&logs=${encode("The complete report has been copied. Paste it here before submitting.")}"
-    } else complete
-    return CrashIssueDraft(url, report.body, needsPaste)
+    val words = supportCopy(report.presentation.language)
+    val warning = "**${words.keepLogs}**\n\n"
+    val body = warning + report.body
+    val base = "https://github.com/LUC4N3X/Levyra-deepsound/issues/new?template=&title=${encode(report.title.take(240))}&body="
+    val complete = base + encode(body)
+    if (complete.length <= 6_000) return CrashIssueDraft(complete, body, false)
+    val diagnostics = report.body.substringAfter("## Logs or error details\n", report.body)
+        .replace("````", "[code fence]")
+    val prefix = warning + words.pasteOnGithub + "\n\n## Logs or error details\n````text\n"
+    val suffix = "\n````\n"
+    fun excerpt(length: Int): String = if (length >= diagnostics.length) diagnostics else
+        diagnostics.take((length + 1) / 2) + "\n[... truncated; full report copied ...]\n" + diagnostics.takeLast(length / 2)
+    var low = 0
+    var high = minOf(diagnostics.length, 6_000)
+    while (low < high) {
+        val middle = (low + high + 1) / 2
+        if ((base + encode(prefix + excerpt(middle) + suffix)).length <= 6_000) low = middle else high = middle - 1
+    }
+    return CrashIssueDraft(base + encode(prefix + excerpt(low) + suffix), body, true)
 }
 
 private class LimitedTraceWriter : Writer() {

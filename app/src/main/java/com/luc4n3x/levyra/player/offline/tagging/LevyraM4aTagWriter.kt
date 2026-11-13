@@ -4,7 +4,6 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
 import java.nio.charset.StandardCharsets
-import kotlin.math.max
 
 object LevyraM4aTagWriter {
     const val MAX_INPUT_BYTES: Long = 128L * 1024L * 1024L
@@ -84,12 +83,12 @@ object LevyraM4aTagWriter {
         }.getOrElse {
             return LevyraM4aTagResult(false, false, "offset_patch_failed")
         }
-        val out = ByteArrayOutputStream(source.size + max(0, finalMoov.size - moov.length))
-        for (box in boxes) {
-            if (box.type == Atom.MOOV) out.write(finalMoov) else out.write(source, box.start, box.length)
-        }
         output.parentFile?.mkdirs()
-        output.writeBytes(out.toByteArray())
+        output.outputStream().buffered().use { out ->
+            for (box in boxes) {
+                if (box.type == Atom.MOOV) out.write(finalMoov) else out.write(source, box.start, box.length)
+            }
+        }
         return LevyraM4aTagResult(output.exists() && output.length() > 0L, artworkEmbedded, "ok")
     }
 
