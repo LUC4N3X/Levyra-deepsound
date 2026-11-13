@@ -167,6 +167,10 @@ private fun DiscoveryHomeSection(
     animationsEnabled: Boolean,
     handle: DiscoveryHomeHandle
 ) {
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsSpotify) {
+        SpotifyDiscoverForYou(handle)
+        return
+    }
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { discoveryCopy(strings.code) }
     val teaser = ui.teaser

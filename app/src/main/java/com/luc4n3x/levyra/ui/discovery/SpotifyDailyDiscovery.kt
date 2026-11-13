@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -19,8 +20,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,46 +38,85 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.luc4n3x.levyra.feature.discovery.DiscoveryCard
 import com.luc4n3x.levyra.ui.CoverImage
 import com.luc4n3x.levyra.ui.SpotifyHomeCoverCard
+import com.luc4n3x.levyra.ui.YouTubeMusicSectionHeader
+import com.luc4n3x.levyra.ui.YouTubeMusicSongColumns
+import com.luc4n3x.levyra.ui.YouTubeMusicSongRowModel
 import com.luc4n3x.levyra.ui.components.levyraPressable
-import com.luc4n3x.levyra.ui.i18n.DiscoveryCopy
+import com.luc4n3x.levyra.ui.i18n.LevyraYouTubeMusicSkinStrings
+import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.discoveryCopy
+import com.luc4n3x.levyra.ui.i18n.smartMusicCopy
 import com.luc4n3x.levyra.ui.theme.SpotifyDesign
+import com.luc4n3x.levyra.ui.theme.YouTubeMusicDesign
 
 private val SpotifyDiscoverCover = 176.dp
 private val SpotifyDiscoverShape = RoundedCornerShape(4.dp)
 private const val SpotifyDiscoverMosaic = 4
 
+private class SkinDiscoverModel(val title: String, val cards: List<DiscoveryCard>, val reasons: List<String>, val onOpen: () -> Unit)
+
 @Composable
-internal fun SpotifyDailyDiscovery(cards: List<DiscoveryCard>, copy: DiscoveryCopy, onPlay: (DiscoveryCard) -> Unit) {
-    val lead = cards.first()
-    val tone = remember(lead.track.accentStart) { Color(lead.track.accentStart) }
-    val artists = remember(cards) { cards.map { it.track.artist }.distinct().take(3).joinToString(", ") }
+private fun rememberSkinDiscover(handle: DiscoveryHomeHandle): SkinDiscoverModel? {
+    val ui by handle.state.collectAsStateWithLifecycle()
+    LaunchedEffect(handle) { handle.onWarm() }
+    val code = LocalLevyraStrings.current.code
+    val copy = remember(code) { discoveryCopy(code) }
+    val music = remember(code) { smartMusicCopy(code) }
+    val cards = ui.teaser
+    if (cards.isEmpty()) return null
+    return remember(cards, copy, music) { SkinDiscoverModel(copy.title, cards, cards.map { discoveryReasonLabel(it, copy, music) }, handle.onOpen) }
+}
+
+@Composable
+internal fun SpotifyDiscoverForYou(handle: DiscoveryHomeHandle) {
+    val model = rememberSkinDiscover(handle)
+    val state by handle.state.collectAsStateWithLifecycle()
     Column(Modifier.fillMaxWidth().padding(top = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                copy.dailyTitle, color = SpotifyDesign.text, fontSize = 22.sp, fontWeight = FontWeight.Bold, maxLines = 1,
-                overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).semantics { heading() }
-            )
-            Box(
-                Modifier.size(44.dp).clip(CircleShape).background(SpotifyDesign.green)
-                    .levyraPressable(onClick = { onPlay(lead) }, role = Role.Button, onClickLabel = copy.dailyTitle),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Rounded.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(28.dp))
-            }
+        if (model != null) SpotifyDiscoverRow(model)
+        DiscoveryLevelChips(
+            state.request.level,
+            DiscoveryLevelChipStyle(
+                shape = CircleShape, textStyle = MaterialTheme.typography.labelLarge.copy(fontSize = 14.sp),
+                selectedContainer = SpotifyDesign.green, selectedContent = Color.Black,
+                container = Color(0xFF2A2A2A), content = Color.White
+            ),
+            handle.onOpenBubble, Modifier.padding(horizontal = 16.dp)
+        )
+    }
+}
+
+@Composable
+private fun SpotifyDiscoverRow(model: SkinDiscoverModel) {
+    val lead = model.cards.first()
+    val tone = remember(lead.track.accentStart) { Color(lead.track.accentStart) }
+    val artists = remember(model.cards) { model.cards.map { it.track.artist }.distinct().take(3).joinToString(", ") }
+    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            model.title, color = SpotifyDesign.text, fontSize = 22.sp, fontWeight = FontWeight.Bold, maxLines = 1,
+            overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).semantics { heading() }
+        )
+        Box(
+            Modifier.size(44.dp).clip(CircleShape).background(SpotifyDesign.green)
+                .levyraPressable(onClick = model.onOpen, role = Role.Button, onClickLabel = model.title),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Rounded.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(28.dp))
         }
-        LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            item(key = "spotify-discover-mix", contentType = "spotify-discover-mix") {
-                SpotifyDiscoverMixCard(cards, copy.dailyTitle, artists, tone) { onPlay(lead) }
-            }
-            itemsIndexed(cards, key = { _, card -> "spotify-discover-${card.key}" }, contentType = { _, _ -> "spotify-discover-track" }) { index, card ->
-                SpotifyHomeCoverCard(
-                    card.track.title, dailyDiscoveryReason(card, copy, index),
-                    card.track.largeThumbnailUrl.ifBlank { card.track.thumbnailUrl }
-                ) { onPlay(card) }
-            }
+    }
+    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        item(key = "spotify-discover-mix", contentType = "spotify-discover-mix") {
+            SpotifyDiscoverMixCard(model.cards, model.title, artists, tone, model.onOpen)
+        }
+        itemsIndexed(model.cards, key = { _, card -> "spotify-discover-${card.key}" }, contentType = { _, _ -> "spotify-discover-track" }) { index, card ->
+            SpotifyHomeCoverCard(
+                card.track.title, model.reasons.getOrElse(index) { card.track.artist },
+                card.track.largeThumbnailUrl.ifBlank { card.track.thumbnailUrl },
+                onClick = model.onOpen
+            )
         }
     }
 }
@@ -100,29 +143,37 @@ private fun SpotifyDiscoverMixCard(cards: List<DiscoveryCard>, title: String, ar
             )
         }
         Text(
-            artists, color = SpotifyDesign.subdued, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
+            artists, color = SpotifyDesign.subdued, fontSize = 14.sp, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = 8.dp).heightIn(min = 18.dp)
         )
     }
 }
 
 @Composable
-internal fun YouTubeMusicDailyDiscovery(cards: List<DiscoveryCard>, copy: DiscoveryCopy, onPlay: (DiscoveryCard) -> Unit) {
-    val strings = com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings.current
-    val ytm = remember(strings.code) { com.luc4n3x.levyra.ui.i18n.LevyraYouTubeMusicSkinStrings.forCode(strings.code) }
-    val rows = remember(cards, copy) {
-        cards.mapIndexed { index, card ->
-            com.luc4n3x.levyra.ui.YouTubeMusicSongRowModel(
-                "ytm-discover-${card.key}", card.track, dailyDiscoveryReason(card, copy, index), { onPlay(card) }, { onPlay(card) }
-            )
+internal fun YouTubeMusicDiscoverForYou(handle: DiscoveryHomeHandle) {
+    val model = rememberSkinDiscover(handle)
+    val state by handle.state.collectAsStateWithLifecycle()
+    val code = LocalLevyraStrings.current.code
+    val ytm = remember(code) { LevyraYouTubeMusicSkinStrings.forCode(code) }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (model != null) {
+            val rows = remember(model) {
+                model.cards.mapIndexed { index, card ->
+                    YouTubeMusicSongRowModel("ytm-discover-${card.key}", card.track, model.reasons.getOrElse(index) { card.track.artist }, model.onOpen, model.onOpen)
+                }
+            }
+            YouTubeMusicSectionHeader(model.title, actionLabel = ytm.playAll, onAction = model.onOpen)
+            Spacer(Modifier.padding(top = 4.dp))
+            YouTubeMusicSongColumns(rows, null, ytm.explicit)
         }
-    }
-    Column {
-        com.luc4n3x.levyra.ui.YouTubeMusicSectionHeader(
-            copy.dailyTitle,
-            actionLabel = ytm.playAll, onAction = { onPlay(cards.first()) }
+        DiscoveryLevelChips(
+            state.request.level,
+            DiscoveryLevelChipStyle(
+                shape = YouTubeMusicDesign.chipShape, textStyle = MaterialTheme.typography.labelLarge.copy(fontSize = 15.sp),
+                selectedContainer = Color.White, selectedContent = Color.Black,
+                container = Color.White.copy(alpha = 0.1f), content = Color.White
+            ),
+            handle.onOpenBubble, Modifier.padding(horizontal = YouTubeMusicDesign.gutter)
         )
-        androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 4.dp))
-        com.luc4n3x.levyra.ui.YouTubeMusicSongColumns(rows, null, ytm.explicit)
     }
 }

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.MoreVert
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyColumn
@@ -281,38 +282,49 @@ private fun YouTubeMusicDiscussedCard(
     onOpenComments: () -> Unit
 ) {
     val cardShape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp)
-    val bubbleShape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
-    Column(
-        Modifier.width(width).clip(cardShape).background(YouTubeMusicDesign.surface).padding(vertical = 14.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        YouTubeMusicSongRow(
-            track = track, subtitle = track.artist, current = false, explicitLabel = explicitLabel,
-            onClick = onPlay, onMore = onMore, compact = true, modifier = Modifier.fillMaxWidth()
-        )
-        Column(
-            Modifier.padding(horizontal = YouTubeMusicDesign.gutter).fillMaxWidth().height(96.dp).clip(bubbleShape)
-                .background(YouTubeMusicDesign.surfaceHigh)
-                .levyraPressable(onClick = onOpenComments, role = androidx.compose.ui.semantics.Role.Button, onClickLabel = strings.tapToOpenComments)
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+    val bubbleShape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp)
+    Column(Modifier.width(width).clip(cardShape).background(YouTubeMusicDesign.surface).padding(20.dp)) {
+        Row(
+            Modifier.fillMaxWidth().levyraPressable(onClick = onPlay, onLongClick = onMore, role = androidx.compose.ui.semantics.Role.Button),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(strings.commentsLabel, color = YouTubeMusicDesign.text, fontSize = 15.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium, maxLines = 1)
-                comment?.countText?.takeIf(String::isNotBlank)?.let { count ->
-                    Text(count, color = YouTubeMusicDesign.textSecondary, fontSize = 13.sp, maxLines = 1, modifier = Modifier.padding(start = 6.dp))
+            Box(Modifier.size(60.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(4.dp)).background(YouTubeMusicDesign.placeholder)) {
+                CoverImage(track, Modifier.fillMaxSize())
+            }
+            Column(Modifier.weight(1f).padding(horizontal = 16.dp)) {
+                com.luc4n3x.levyra.ui.components.LevyraMediaTitle(
+                    track.title, explicit = false, color = YouTubeMusicDesign.text, fontSize = 17.sp, lineHeight = 22.sp,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (track.explicit) YouTubeMusicExplicitBadge(explicitLabel, Modifier.padding(end = 6.dp))
+                    Text(track.artist, color = YouTubeMusicDesign.textSecondary, fontSize = 15.sp, lineHeight = 20.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(24.dp).clip(androidx.compose.foundation.shape.CircleShape).background(YouTubeMusicDesign.placeholder)) {
+            YouTubeMusicIconAction(androidx.compose.material.icons.Icons.Rounded.MoreVert, strings.songOptions, onMore)
+        }
+        Column(
+            Modifier.padding(top = 18.dp).fillMaxWidth().clip(bubbleShape)
+                .background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.08f))
+                .levyraPressable(onClick = onOpenComments, role = androidx.compose.ui.semantics.Role.Button, onClickLabel = strings.tapToOpenComments)
+                .padding(horizontal = 16.dp, vertical = 14.dp)
+        ) {
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(strings.commentsLabel, color = YouTubeMusicDesign.text, fontSize = 16.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium, maxLines = 1)
+                comment?.countText?.takeIf(String::isNotBlank)?.let { count ->
+                    Text(count, color = YouTubeMusicDesign.textSecondary, fontSize = 13.sp, maxLines = 1, modifier = Modifier.padding(start = 6.dp, bottom = 1.dp))
+                }
+            }
+            Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(30.dp).clip(androidx.compose.foundation.shape.CircleShape).background(YouTubeMusicDesign.placeholder)) {
                     comment?.authorAvatarUrl?.takeIf(String::isNotBlank)?.let { url ->
                         StableRemoteArtwork(url, null, Modifier.fillMaxSize(), androidx.compose.ui.layout.ContentScale.Crop)
                     }
                 }
                 Text(
                     comment?.text?.takeIf(String::isNotBlank) ?: strings.tapToOpenComments,
-                    color = YouTubeMusicDesign.text, fontSize = 14.sp, lineHeight = 18.sp, minLines = 2, maxLines = 2,
-                    overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(horizontal = 12.dp)
+                    color = YouTubeMusicDesign.text, fontSize = 15.sp, lineHeight = 20.sp, minLines = 2, maxLines = 2,
+                    overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(start = 14.dp, end = 8.dp)
                 )
                 androidx.compose.material3.Icon(
                     androidx.compose.material.icons.Icons.Rounded.KeyboardArrowDown, null,
@@ -322,7 +334,6 @@ private fun YouTubeMusicDiscussedCard(
         }
     }
 }
-
 internal fun youTubeMusicChartTone(slot: Int): androidx.compose.ui.graphics.Color = YouTubeMusicChartTones[slot.mod(YouTubeMusicChartTones.size)]
 
 @Composable

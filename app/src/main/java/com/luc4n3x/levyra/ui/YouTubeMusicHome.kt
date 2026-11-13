@@ -303,6 +303,9 @@ private fun LazyListScope.youTubeMusicHomeContentItems(
             )
         }
     }
+    item(key = "ytm-discover-for-you", contentType = "ytm-discover-for-you") {
+        com.luc4n3x.levyra.ui.discovery.LocalHomeDiscovery.current?.let { handle -> com.luc4n3x.levyra.ui.discovery.YouTubeMusicDiscoverForYou(handle) }
+    }
     favoriteRadioSection(homeRadio)
     youTubeMusicHomeSections(allShelves, levyraBlocks, skipKey = quickPicks?.key) { shelf ->
         YouTubeMusicFeedShelf(shelf, data.currentId, copy, actions, previews, onRequestPreview)
@@ -438,7 +441,6 @@ private fun youTubeMusicLevyraBlocks(
 ): List<YouTubeMusicHomeBlock> = listOfNotNull(
     "levyra-curated" to @Composable { YouTubeMusicCuratedShelves(openPlaylist) },
     chartBlock(data, copy, actions),
-    "levyra-discover-for-you" to @Composable { com.luc4n3x.levyra.ui.discovery.DailyDiscoveryShelf(YouTubeMusicDesign.gutter) },
     if (data.charts.isEmpty()) null else "levyra-genre-hits" to @Composable { YouTubeMusicGenreHitsShelf(actions.openGenreChart) },
     dailyDiscoveryBlock(data, copy, actions),
     if (data.resonanceTracks.isEmpty()) null else "levyra-most-discussed" to @Composable {

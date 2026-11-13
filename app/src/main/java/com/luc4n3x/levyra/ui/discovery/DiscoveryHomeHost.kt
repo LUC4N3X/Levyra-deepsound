@@ -26,7 +26,8 @@ internal fun DiscoveryHomeHost(
     bottomInset: Dp,
     content: @Composable () -> Unit
 ) {
-    val skinHidesDiscovery = LevyraSkinManagesLayout && !skinComposesDiscovery && !com.luc4n3x.levyra.ui.theme.LevyraIsMono && !com.luc4n3x.levyra.ui.theme.LevyraIsAtelier && !com.luc4n3x.levyra.ui.theme.LevyraIsTorque && !com.luc4n3x.levyra.ui.theme.LevyraIsIvory && com.luc4n3x.levyra.ui.theme.LevyraActivePalette.id != com.luc4n3x.levyra.ui.theme.PrismPaletteId
+    val skinHidesDiscovery = LevyraSkinManagesLayout && !skinComposesDiscovery && !com.luc4n3x.levyra.ui.theme.LevyraIsMono && !com.luc4n3x.levyra.ui.theme.LevyraIsAtelier && !com.luc4n3x.levyra.ui.theme.LevyraIsTorque && !com.luc4n3x.levyra.ui.theme.LevyraIsIvory && com.luc4n3x.levyra.ui.theme.LevyraActivePalette.id != com.luc4n3x.levyra.ui.theme.PrismPaletteId &&
+        !com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic && !com.luc4n3x.levyra.ui.theme.LevyraIsSpotify
     val homeContent: @Composable () -> Unit = { CuratedPlaylistsHost(factory, bottomInset, backEnabled, content) }
     if (skinHidesDiscovery && !skinShowsDailyDiscovery()) {
         homeContent()
