@@ -87,7 +87,7 @@ class CrashReportingTest {
         assertTrue(safe.contains('\n'))
     }
 
-    @Test fun githubDraftTargetsTheExistingFormAndPreservesEditableFields() {
+    @Test fun githubDraftPrefillsTheStandardBodyWithCompleteLogsAndWarning() {
         val error = IllegalStateException("failure").apply {
             stackTrace = arrayOf(StackTraceElement("CrashReportingTest", "next", "Player.kt", 42))
         }
@@ -100,10 +100,13 @@ class CrashReportingTest {
             val pair = it.split('=', limit = 2)
             pair[0] to URLDecoder.decode(pair[1], "UTF-8")
         }
-        assertEquals("bug_report.yml", fields["template"])
+        assertEquals("", fields["template"])
         assertTrue(fields["title"]!!.startsWith("[Crash] IllegalStateException on Android 9"))
-        assertTrue(fields["logs"]!!.contains("CrashReportingTest"))
-        assertTrue(fields["reproduce"]!!.contains("Please add"))
+        assertTrue(fields["body"]!!.contains("CrashReportingTest"))
+        assertTrue(fields["body"]!!.contains("DO NOT DELETE THESE LOGS"))
+        assertTrue(fields["body"]!!.contains("## Steps to reproduce"))
+        assertEquals(draft.clipboard, fields["body"])
+        assertFalse(fields.containsKey("logs"))
         assertFalse(fields.containsKey("preflight"))
         assertFalse(fields.containsKey("labels"))
     }
@@ -112,9 +115,42 @@ class CrashReportingTest {
         val original = report().copy(body = report().body + "\n" + "frame\n".repeat(5_000))
         val draft = crashIssueDraft(original)
         assertTrue(draft.needsPaste)
-        assertEquals(original.body, draft.clipboard)
-        assertTrue(draft.url.length < 6_000)
-        assertTrue(URLDecoder.decode(draft.url, "UTF-8").contains("Paste it here"))
+        assertTrue(draft.clipboard.endsWith(original.body))
+        assertTrue(draft.url.length <= 6_000)
+        val decoded = URLDecoder.decode(draft.url, "UTF-8")
+        assertTrue(decoded.contains("complete copied report"))
+        assertTrue(decoded.contains("IllegalStateException"))
+        assertTrue(decoded.contains("DO NOT DELETE"))
+    }
+
+    @Test fun italianReportKeepsWarningAndUnicodeDiagnosticsInBoundedDraft() {
+        val original = report().copy(
+            body = "## Logs or error details\nIllegalStateException: inizio\n" + "音楽 🎵\n".repeat(5_000) + "Caused by: fine",
+            presentation = CrashPresentation(language = "it")
+        )
+        val draft = crashIssueDraft(original)
+        val decoded = URLDecoder.decode(URI(draft.url).rawQuery.substringAfter("&body="), "UTF-8")
+        assertTrue(draft.needsPaste)
+        assertTrue(draft.url.length <= 6_000)
+        assertTrue(decoded.contains("NON CANCELLARLI"))
+        assertTrue(decoded.contains("IllegalStateException: inizio"))
+        assertTrue(decoded.contains("Caused by: fine"))
+        assertFalse(decoded.contains('?'))
+        assertTrue(draft.clipboard.endsWith(original.body))
+
+        for (sample in listOf("🎵".repeat(1_000), "a" + "🎵".repeat(1_000), "🎵".repeat(1_000) + "a")) {
+            val emojiDraft = crashIssueDraft(original.copy(body = "## Logs or error details\n$sample"))
+            val emojiDecoded = URLDecoder.decode(URI(emojiDraft.url).rawQuery.substringAfter("&body="), "UTF-8")
+            assertTrue(emojiDraft.needsPaste)
+            assertTrue(emojiDraft.url.length <= 6_000)
+            assertFalse(emojiDecoded.contains('?'))
+            val marker = "\n[... truncated; full report copied ...]\n"
+            assertTrue(emojiDecoded.contains(marker))
+            val head = emojiDecoded.substringAfter("## Logs or error details\n````text\n").substringBefore(marker)
+            val tail = emojiDecoded.substringAfter(marker).substringBefore("\n````\n")
+            assertFalse(head.lastOrNull()?.isHighSurrogate() == true)
+            assertFalse(tail.firstOrNull()?.isLowSurrogate() == true)
+        }
     }
 
     @Test fun captureFailuresStillDelegateAndTerminate() {

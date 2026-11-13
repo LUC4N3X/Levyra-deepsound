@@ -215,38 +215,35 @@ jobs:
         if: steps.confirm.outputs.decision == 'repair'
         shell: bash
         env:
-          CANARY_OPENROUTER_API_KEY: ${{ secrets.LEVYRA_CANARY_OPENROUTER_API_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         run: |
           set -euo pipefail
-          if [ -n "${CANARY_OPENROUTER_API_KEY}" ]; then
+          if [ -n "${CLAUDE_CODE_OAUTH_TOKEN}" ]; then
             echo "available=true" >> "${GITHUB_OUTPUT}"
           else
             echo "available=false" >> "${GITHUB_OUTPUT}"
           fi
 
-      - name: Run constrained Codex repair agent through OpenRouter
-        id: codex
+      - name: Run constrained Claude repair agent
+        id: agent_run
         if: steps.confirm.outputs.decision == 'repair' && steps.agent.outputs.available == 'true'
         continue-on-error: true
-        uses: openai/codex-action@bdf19a4a223ec2549a3e2274a0cf61556bc07675 # v1.13
+        uses: anthropics/claude-code-action@4d75e5f390ee76b2e09c1980ecc99ff3a2e088c8 # v1
         with:
-          openai-api-key: ${{ secrets.LEVYRA_CANARY_OPENROUTER_API_KEY }}
-          responses-api-endpoint: https://openrouter.ai/api/v1/responses
-          model: openrouter/free
-          prompt-file: third_party/LevyraExtractor/canary/CODEX_REPAIR_PROMPT.md
-          output-file: artifacts/youtube-canary-repair/codex-final.md
-          working-directory: ${{ github.workspace }}
-          permission-profile: ":workspace"
-          safety-strategy: drop-sudo
-          effort: high
-          allow-bots: true
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          prompt: "Read third_party/LevyraExtractor/canary/REPAIR_PROMPT.md and follow it exactly."
+          claude_args: >-
+            --max-turns 60
+            --allowedTools Read,Edit,Write,Glob,Grep
+            --disallowedTools Bash,WebFetch,WebSearch
 
       - name: Enforce autonomous repair scope
         id: scope
         if: >-
           steps.confirm.outputs.decision == 'repair' &&
           steps.agent.outputs.available == 'true' &&
-          steps.codex.outcome == 'success'
+          steps.agent_run.outcome == 'success'
         shell: bash
         run: |
           set -euo pipefail
@@ -288,7 +285,7 @@ jobs:
         if: >-
           steps.confirm.outputs.decision == 'repair' &&
           steps.agent.outputs.available == 'true' &&
-          steps.codex.outcome == 'success' &&
+          steps.agent_run.outcome == 'success' &&
           steps.scope.outputs.scope_ok == 'true' &&
           steps.scope.outputs.production_changed == 'true'
         continue-on-error: true
@@ -307,7 +304,7 @@ jobs:
         shell: bash
         env:
           AGENT_AVAILABLE: ${{ steps.agent.outputs.available }}
-          CODEX_OUTCOME: ${{ steps.codex.outcome }}
+          AGENT_OUTCOME: ${{ steps.agent_run.outcome }}
           SCOPE_OK: ${{ steps.scope.outputs.scope_ok }}
           PRODUCTION_CHANGED: ${{ steps.scope.outputs.production_changed }}
           VALIDATION_OUTCOME: ${{ steps.validate.outcome }}
@@ -316,7 +313,7 @@ jobs:
           mode="diagnostic"
 
           if [ "${AGENT_AVAILABLE:-false}" = "true" ] && \
-             [ "${CODEX_OUTCOME:-skipped}" = "success" ] && \
+             [ "${AGENT_OUTCOME:-skipped}" = "success" ] && \
              [ "${SCOPE_OK:-false}" = "true" ] && \
              [ "${PRODUCTION_CHANGED:-false}" = "true" ] && \
              [ "${VALIDATION_OUTCOME:-skipped}" = "success" ]; then
@@ -348,7 +345,7 @@ jobs:
         env:
           MODE: ${{ steps.finalize.outputs.mode }}
           AGENT_AVAILABLE: ${{ steps.agent.outputs.available }}
-          CODEX_OUTCOME: ${{ steps.codex.outcome }}
+          AGENT_OUTCOME: ${{ steps.agent_run.outcome }}
           SCOPE_OK: ${{ steps.scope.outputs.scope_ok }}
           PRODUCTION_CHANGED: ${{ steps.scope.outputs.production_changed }}
           VALIDATION_OUTCOME: ${{ steps.validate.outcome }}
@@ -365,8 +362,8 @@ jobs:
             else
               echo "A material live YouTube regression was observed twice, but the workflow did **not** accept an autonomous production fix. This draft PR intentionally contains only the sanitized incident report."
               echo
-              echo "- OpenRouter repair-agent credential available: \`${AGENT_AVAILABLE:-false}\`"
-              echo "- Codex action outcome: \`${CODEX_OUTCOME:-not-run}\`"
+              echo "- Claude repair-agent credential available: \`${AGENT_AVAILABLE:-false}\`"
+              echo "- Claude agent outcome: \`${AGENT_OUTCOME:-not-run}\`"
               echo "- Generated production change: \`${PRODUCTION_CHANGED:-false}\`"
               echo "- Scope gate: \`${SCOPE_OK:-not-run}\`"
               echo "- Validation outcome: \`${VALIDATION_OUTCOME:-not-run}\`"
