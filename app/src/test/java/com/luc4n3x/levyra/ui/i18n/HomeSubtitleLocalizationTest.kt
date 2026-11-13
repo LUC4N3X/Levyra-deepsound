@@ -34,7 +34,7 @@ class HomeSubtitleLocalizationTest {
                 assertEquals(label, value.trim(), value)
                 assertTrue(label, value.codePointCount(0, value.length) <= if (code == "en") 32 else 40)
                 assertFalse(label, value.contains('{') || value.contains('\n'))
-                if (code != "en" && (code to subtitle) !in sharedWithEnglish) assertNotEquals(label, english[subtitle], value)
+                if (code != "en" && code to subtitle !in sharedWithEnglish) assertNotEquals(label, english[subtitle], value)
             }
             assertEquals(code, HomeSubtitle.entries.size, HomeSubtitle.entries.map { copy[it] }.toSet().size)
         }

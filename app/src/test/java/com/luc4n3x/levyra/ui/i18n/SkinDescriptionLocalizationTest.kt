@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.ui.i18n
 
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -35,8 +36,8 @@ class SkinDescriptionLocalizationTest {
         assertTrue("zh-Hant falls back to zh: $sameAsSimplified", sameAsSimplified.isEmpty())
         val traditional = LevyraQobuzSkinStrings.forCode("zh-Hant")
         val simplified = LevyraQobuzSkinStrings.forCode("zh")
-        assertEquals(simplified.discover, traditional.discover)
-        assertEquals(simplified.queueTitle, traditional.queueTitle)
+        assertNotEquals(simplified.discover, traditional.discover)
+        assertNotEquals(simplified.queueTitle, traditional.queueTitle)
     }
 
     @Test

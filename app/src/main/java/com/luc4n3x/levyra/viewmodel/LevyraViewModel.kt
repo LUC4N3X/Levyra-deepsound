@@ -12678,6 +12678,46 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    private suspend fun loadAppleGenreShelves(
+        apple: AppleMusicEditorialRepository,
+        identity: String,
+        cachedCurators: List<String>,
+        storefront: String,
+        appleLanguage: String,
+        fetchApple: suspend (AppleMusicEditorialRepository, String, String) -> AppleCatalogPage?,
+        publish: ((ExploreGenreDiscoveryState) -> ExploreGenreDiscoveryState) -> Unit
+    ) {
+        if (_exploreGenreDiscovery.value.apple.isEmpty()) {
+            apple.cachedCuratorGenre(cachedCurators, storefront, appleLanguage)?.let { page ->
+                val shelves = AppleExploreCatalog.genreShelves(page)
+                publish { state -> if (state.apple.isEmpty()) state.copy(apple = shelves) else state }
+            }
+        }
+        val page = runCatchingPreservingCancellation { fetchApple(apple, storefront, appleLanguage) }
+            .onFailure { Timber.w(it, "Apple genre discovery failed for %s", identity) }
+            .getOrNull()
+        val shelves = page?.let(AppleExploreCatalog::genreShelves).orEmpty()
+        if (shelves.isNotEmpty()) publish { state -> state.copy(apple = shelves) }
+    }
+
+    private suspend fun loadLastFmGenreDiscovery(
+        identity: String,
+        tags: List<String>,
+        languageCode: String,
+        publish: ((ExploreGenreDiscoveryState) -> ExploreGenreDiscoveryState) -> Unit
+    ) {
+        if (tags.isEmpty()) return
+        if (_exploreGenreDiscovery.value.lastFm == null) {
+            lastFmGenreDiscovery.cached(tags, languageCode)?.let { stored ->
+                publish { state -> if (state.lastFm == null) state.copy(lastFm = stored) else state }
+            }
+        }
+        val fresh = runCatchingPreservingCancellation { lastFmGenreDiscovery.discovery(tags, languageCode) }
+            .onFailure { Timber.w(it, "Last.fm genre discovery failed for %s", identity) }
+            .getOrNull()
+        if (fresh != null) publish { state -> state.copy(lastFm = fresh) }
+    }
+
     private fun loadExploreGenreDiscovery(
         identity: String,
         tags: List<String>,
@@ -12701,31 +12741,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
             val apple = AppleMusicEditorialRepository.get(getApplication())
             coroutineScope {
-                launch {
-                    if (_exploreGenreDiscovery.value.apple.isEmpty()) {
-                        apple.cachedCuratorGenre(cachedCurators, storefront, appleLanguage)?.let { page ->
-                            val shelves = AppleExploreCatalog.genreShelves(page)
-                            publish { state -> if (state.apple.isEmpty()) state.copy(apple = shelves) else state }
-                        }
-                    }
-                    val page = runCatchingPreservingCancellation { fetchApple(apple, storefront, appleLanguage) }
-                        .onFailure { Timber.w(it, "Apple genre discovery failed for %s", identity) }
-                        .getOrNull()
-                    val shelves = page?.let(AppleExploreCatalog::genreShelves).orEmpty()
-                    if (shelves.isNotEmpty()) publish { state -> state.copy(apple = shelves) }
-                }
-                launch {
-                    if (tags.isEmpty()) return@launch
-                    if (_exploreGenreDiscovery.value.lastFm == null) {
-                        lastFmGenreDiscovery.cached(tags, languageCode)?.let { stored ->
-                            publish { state -> if (state.lastFm == null) state.copy(lastFm = stored) else state }
-                        }
-                    }
-                    val fresh = runCatchingPreservingCancellation { lastFmGenreDiscovery.discovery(tags, languageCode) }
-                        .onFailure { Timber.w(it, "Last.fm genre discovery failed for %s", identity) }
-                        .getOrNull()
-                    if (fresh != null) publish { state -> state.copy(lastFm = fresh) }
-                }
+                launch { loadAppleGenreShelves(apple, identity, cachedCurators, storefront, appleLanguage, fetchApple, ::publish) }
+                launch { loadLastFmGenreDiscovery(identity, tags, languageCode, ::publish) }
             }
             publish { state -> state.copy(isLoading = false) }
         }
