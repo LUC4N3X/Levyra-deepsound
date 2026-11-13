@@ -28,7 +28,7 @@ A **draft PR** is opened **only** when:
 2. Either deterministic protocol discovery identifies an allowlisted host/context/version adaptation verified across all sentinels, or the Claude repair agent (`anthropics/claude-code-action`, secret `CLAUDE_CODE_OAUTH_TOKEN`, file tools only with no shell or network) produces an in-scope patch inside the JioSaavn allowlist.
 3. `:app:testDebugUnitTest`, `:app:compileDebugKotlin`, `:app:lintDebug`, Python regression tests (including the Kotlin/monitor protocol parity contract), `scripts/ai_quality_gate.py --profile full`, and `git diff --check` pass, and a post-repair live probe clears the regression.
 
-There is **never** automatic merge, release, or publication. When a confirmed regression has no verified fix, the workflow opens or updates a diagnostic draft PR with only the sanitized incident report in `jiosaavn-sync/incidents/current.md`. A `blocked` probe raises a workflow warning instead of a PR.
+There is **never** automatic merge, release, or publication. When a confirmed regression has no verified fix, the workflow opens or updates a diagnostic draft PR with only the sanitized incident report in `jiosaavn-sync/incidents/current.md`. A `blocked` probe raises a workflow warning instead of a PR. Every draft PR, repair or diagnostic, runs `scripts/ai_quality_gate.py --profile full` on the final tree first. If the agent also updates the monitor for a schema change, the draft PR flags it for review.
 
 ## Privacy & security boundaries
 

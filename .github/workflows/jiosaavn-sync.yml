@@ -363,6 +363,8 @@ jobs:
               "app/src/test/java/com/luc4n3x/levyra/data/JioSaavnLyricsTest.kt",
               "app/src/test/java/com/luc4n3x/levyra/data/network/JioSaavnNetworkIsolationTest.kt",
               config_rel,
+              "scripts/jiosaavn_sync.py",
+              "scripts/tests/test_jiosaavn_sync.py",
           }
           allowed_prefixes = (
               "app/src/main/java/com/luc4n3x/levyra/data/hqaudio/jiosaavn/",
@@ -440,7 +442,11 @@ jobs:
               p.startswith("app/src/main/") for p in changed
           )
           print(f"changed_count={len(changed)}")
+          monitor_changed = any(
+              p in ("scripts/jiosaavn_sync.py", "scripts/tests/test_jiosaavn_sync.py") for p in changed
+          )
           print(f"production_changed={'true' if prod_changed else 'false'}")
+          print(f"monitor_changed={'true' if monitor_changed else 'false'}")
           print(f"scope_ok={'true' if (changed and not disallowed) else 'false'}")
           if disallowed:
               print(f"disallowed_paths={','.join(disallowed)}")
@@ -523,6 +529,13 @@ jobs:
             echo "title=chore(jiosaavn): investigate detected JioSaavn API change" >> "${GITHUB_OUTPUT}"
           fi
 
+      - name: Run Full Quality Gate on Final Tree
+        if: steps.confirm.outputs.decision == 'repair' && inputs.dry_run != true
+        run: |
+          set -euo pipefail
+          python scripts/ai_quality_gate.py --profile full
+          git diff --check
+
       - name: Build Draft PR Body
         if: steps.confirm.outputs.decision == 'repair' && inputs.dry_run != true
         shell: bash
@@ -536,6 +549,7 @@ jobs:
           PRODUCTION_CHANGED: ${{ steps.scope_check.outputs.production_changed }}
           VALIDATION_OUTCOME: ${{ steps.validate_fix.outcome }}
           POST_VERIFY_OUTCOME: ${{ steps.post_verify.outcome }}
+          MONITOR_CHANGED: ${{ steps.scope_check.outputs.monitor_changed }}
         run: |
           set -euo pipefail
           if [ "${MODE}" = "repair" ]; then
@@ -564,7 +578,7 @@ jobs:
 
           - `./gradlew --no-daemon :app:testDebugUnitTest :app:compileDebugKotlin :app:lintDebug` passed
           - `python -m unittest discover -s scripts/tests -p 'test_jiosaavn_sync.py' -v` passed, including the Kotlin/monitor protocol parity contract
-          - `python scripts/ai_quality_gate.py --profile full` passed
+          - `python scripts/ai_quality_gate.py --profile full` passed on the repaired tree and again on the final tree
           - `git diff --check` passed
           - Post-repair live probe cleared the triggering regression against `jiosaavn-sync/baseline.json`
 
@@ -586,6 +600,9 @@ jobs:
           ## Reviewer notes
 
           EOF
+            if [ "${MONITOR_CHANGED:-false}" = "true" ]; then
+              printf '%s\n\n' "- **The repair agent also changed the JioSaavn Sync monitor (scripts/jiosaavn_sync.py or its tests).** The post-repair live probe ran with that modified monitor, so review those edits first and reject any change that weakens a check." >> /tmp/jiosaavn_pr_body.md
+            fi
             cat artifacts/jiosaavn-sync/report.md >> /tmp/jiosaavn_pr_body.md
             cat >> /tmp/jiosaavn_pr_body.md <<'EOF'
 

@@ -41,11 +41,13 @@ You may edit only these JioSaavn files and tests:
 
 Do **not** edit:
 
-- GitHub Actions workflows, `scripts/jiosaavn_sync.py`, `scripts/tests/test_jiosaavn_sync.py`, `jiosaavn-sync/baseline.json`, `jiosaavn-sync/README.md`, or `jiosaavn-sync/REPAIR_PROMPT.md`
+- GitHub Actions workflows, `jiosaavn-sync/baseline.json`, `jiosaavn-sync/README.md`, or `jiosaavn-sync/REPAIR_PROMPT.md`
 - YouTube, FLAC, Lossless, Tidal, `AlternativeTrackMatcher.kt`, `ProviderCircuitBreaker.kt`, `ProviderStreamValidator.kt`, or `HighQualityAudioResolver.kt`
 - UI, player controls, database/schema, localization, versions, dependencies, signing, or release configuration
 
 If the production fix changes the API host, `ctx`, or open media host, update only `api.host`, `api.client_context`, or `api.open_media_host` in `jiosaavn-sync/config.json` to the same values, and keep `JIOSAAVN_API` and its `ctx=` values in `LyricsRepository.kt` in sync. The workflow rejects any other `config.json` change and fails if Kotlin and monitor protocol values differ.
+
+If the drift is a JSON field or layout change, update the matching parsing in `scripts/jiosaavn_sync.py` and its tests in `scripts/tests/test_jiosaavn_sync.py` together with the Kotlin parser, so the post-repair live probe checks the same contract. Change only what the new response layout requires. Never remove, relax, or skip a sentinel, threshold, redaction, URL, host, or stream check. Any monitor edit is flagged for human review in the draft PR.
 
 ## Engineering constraints
 
