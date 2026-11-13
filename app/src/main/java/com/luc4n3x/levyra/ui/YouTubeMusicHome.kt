@@ -73,7 +73,7 @@ internal fun YouTubeMusicHomeContent(
     val feed by homeViewModel.state.collectAsStateWithLifecycle()
     val previewsState = homeViewModel.previews.collectAsStateWithLifecycle()
     val previews: (String) -> List<Track> = remember(previewsState) { { playlistId -> previewsState.value[playlistId].orEmpty() } }
-    val allShelves = remember(feed.shelves, feed.discovery) { feed.allShelves.filter { it.style != YoutubeMusicHomeShelfStyle.Buttons && !it.headerBrowseId.startsWith("FEmusic_new_releases") } }
+    val allShelves = remember(feed.shelves, feed.discovery) { feed.allShelves.filter { it.style != YoutubeMusicHomeShelfStyle.Buttons && !(it.key.startsWith("discovery-") && it.headerBrowseId.startsWith("FEmusic_new_releases")) } }
     LaunchedEffect(strings.code, showsFeed) { if (showsFeed) homeViewModel.load(strings.code) }
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val levyraBlocks = if (composition == null) youTubeMusicLevyraBlocks(data, actions.home, copy, strings, actions.openPlaylist) else emptyList()

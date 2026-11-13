@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.ui.player
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
@@ -86,12 +87,14 @@ private fun YouTubeMusicPortraitDeck(
         ) { artwork(minOf(maxWidth, maxHeight, artworkCap)) }
         Box(Modifier.padding(horizontal = YouTubeMusicDesign.playerInset - 16.dp).clipToBounds()) { metadata() }
         Spacer(Modifier.height(8.dp))
+        val dockActions = slots.dockActions(track)
+        YouTubeMusicPlayerPills(dockActions)
         Box(Modifier.padding(start = 4.dp)) { slots.engagement(track) }
         Box(Modifier.padding(horizontal = YouTubeMusicDesign.playerInset)) { slots.progress(PlayerProgressStyle.Classic) }
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             Box(Modifier.padding(horizontal = YouTubeMusicDesign.playerInset - 12.dp)) { transport() }
         }
-        YouTubeMusicPlayerTabs(slots.dockActions(track), Modifier.padding(top = 8.dp, bottom = 12.dp))
+        YouTubeMusicUpNextHandle(dockActions, Modifier.padding(top = 4.dp, bottom = 8.dp))
     }
 }
 
@@ -122,6 +125,64 @@ private fun YouTubeMusicLandscapeDeck(
 }
 
 private val YouTubeMusicTabOrder = listOf("queue", "lyrics", "download")
+private val YouTubeMusicPillShape = androidx.compose.foundation.shape.RoundedCornerShape(50)
+
+@Composable
+private fun YouTubeMusicPlayerPills(dockActions: List<PlayerDockAction>) {
+    val actions = remember(dockActions) {
+        dockActions.filter { it.key != "visual-mode" && it.key != "queue" }
+            .sortedBy { action -> YouTubeMusicTabOrder.indexOf(action.key).let { if (it < 0) YouTubeMusicTabOrder.size else it } }
+    }
+    if (actions.isEmpty()) return
+    val copy = LevyraYouTubeMusicSkinStrings.forCode(LocalLevyraStrings.current.code)
+    Row(
+        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = YouTubeMusicDesign.playerInset, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        actions.forEach { action ->
+            Row(
+                Modifier.height(44.dp).clip(YouTubeMusicPillShape).background(Color.White.copy(alpha = if (action.active) 0.2f else 0.1f))
+                    .levyraPressable(onClick = action.onClick, enabled = action.enabled, role = Role.Button, pressedScale = LevyraPressScale.Control)
+                    .semantics {
+                        contentDescription = action.label
+                        action.stateDescription?.let { stateDescription = it }
+                    }
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (action.busy) {
+                    LevyraLoadingIndicator(color = Color.White, modifier = Modifier.size(18.dp))
+                } else {
+                    Icon(action.icon, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                }
+                Text(
+                    if (action.key == "lyrics") copy.lyrics else action.label,
+                    color = Color.White, style = MaterialTheme.typography.titleSmall.copy(fontSize = 15.sp),
+                    maxLines = 1, modifier = Modifier.padding(start = 8.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun YouTubeMusicUpNextHandle(dockActions: List<PlayerDockAction>, modifier: Modifier = Modifier) {
+    val queue = dockActions.firstOrNull { it.key == "queue" } ?: return
+    val copy = LevyraYouTubeMusicSkinStrings.forCode(LocalLevyraStrings.current.code)
+    Column(
+        modifier.fillMaxWidth().height(64.dp)
+            .levyraPressable(onClick = queue.onClick, enabled = queue.enabled, role = Role.Button, pressedScale = 1f)
+            .semantics { contentDescription = queue.label },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Box(Modifier.width(36.dp).height(4.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.32f)))
+        Text(
+            copy.upNext, color = Color.White, style = MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp),
+            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 14.dp)
+        )
+    }
+}
 
 @Composable
 private fun YouTubeMusicPlayerTabs(dockActions: List<PlayerDockAction>, modifier: Modifier = Modifier) {
@@ -226,9 +287,9 @@ internal fun YouTubeMusicSeekbar(positionMs: Long, bufferedMs: Long, durationMs:
             state = sliderState, onValueChange = { dragging = it },
             onValueChangeFinished = { dragging?.let(onSeek); dragging = null },
             enabled = durationMs > 0L, modifier = Modifier.fillMaxWidth().heightIn(min = 32.dp).semantics { contentDescription = seekLabel },
-            thumb = { Box(Modifier.size(if (dragging != null) 16.dp else 12.dp).clip(CircleShape).background(Color.White)) },
+            thumb = { Box(Modifier.size(if (dragging != null) 14.dp else 0.dp).clip(CircleShape).background(Color.White)) },
             track = { state ->
-                Box(Modifier.fillMaxWidth().height(2.dp).background(YouTubeMusicDesign.seekTrack)) {
+                Box(Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(YouTubeMusicDesign.seekTrack)) {
                     val buffered = if (durationMs > 0L) (bufferedMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
                     Box(Modifier.fillMaxWidth(buffered).fillMaxHeight().background(Color.White.copy(alpha = 0.12f)))
                     Box(Modifier.fillMaxWidth(state.value.coerceIn(0f, 1f)).fillMaxHeight().background(Color.White))
