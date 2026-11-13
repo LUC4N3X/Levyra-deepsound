@@ -263,17 +263,17 @@ private fun OriginalDiscoveryTeaser(model: DiscoveryTeaserModel, spec: HomeStyle
     val scheme = MaterialTheme.colorScheme
     val isLight = LevyraIsLight
     val accent = discoveryAccent(model.lead)
-    val action = remember(accent, isLight) { discoveryActionRole(accent, isLight) }
-    val shape = LevyraHomeDesign.HeroShape
+    val look = skinDiscoverLook(accent) ?: defaultDiscoverLook(accent, isLight, scheme)
+    val action = look.action
+    val shape = look.shape
     val morph = rememberLevyraPlayMorphShape(playing = false, animated = animationsEnabled)
-    val coverBorder = scheme.surfaceContainer
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = spec.inset)
+            .padding(horizontal = look.inset ?: spec.inset)
             .clip(shape)
-            .background(Brush.verticalGradient(listOf(lerp(scheme.surfaceContainer, accent, 0.24f), scheme.surfaceContainer)))
-            .border(1.dp, scheme.outlineVariant.copy(alpha = 0.35f), shape)
+            .background(look.background)
+            .then(if (look.border != null) Modifier.border(1.dp, look.border, shape) else Modifier)
             .discoveryEntry(model)
             .padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -281,8 +281,8 @@ private fun OriginalDiscoveryTeaser(model: DiscoveryTeaserModel, spec: HomeStyle
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 model.copy.title,
-                style = LevyraType.sectionTitle,
-                color = LevyraText,
+                style = look.titleStyle ?: LevyraType.sectionTitle,
+                color = look.text,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.semantics { heading() }
@@ -290,23 +290,120 @@ private fun OriginalDiscoveryTeaser(model: DiscoveryTeaserModel, spec: HomeStyle
             Text(
                 if (model.loading && model.lead == null) model.copy.loading else model.copy.lead,
                 style = LevyraType.metadata,
-                color = LevyraMuted,
+                color = look.muted,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
         }
-        DiscoveryDeck(model, animationsEnabled, accent, action, coverBorder)
+        DiscoveryDeck(model, animationsEnabled, look.deckAccent, action, look.coverBorder)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Box(Modifier.size(52.dp).clip(morph).background(action.container), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(52.dp).clip(look.actionShape ?: morph).background(action.container), contentAlignment = Alignment.Center) {
                 if (model.loading && model.lead == null) LevyraLoadingIndicator(Modifier.size(24.dp), action.content)
                 else Icon(Icons.Rounded.PlayArrow, null, tint = action.content, modifier = Modifier.size(28.dp))
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(model.copy.start, style = LevyraType.cardTitle.copy(fontWeight = FontWeight.Bold), color = LevyraText, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(model.copy.swipeHint, style = MaterialTheme.typography.bodySmall, color = LevyraMuted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(model.copy.start, style = LevyraType.cardTitle.copy(fontWeight = FontWeight.Bold), color = look.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(model.copy.swipeHint, style = MaterialTheme.typography.bodySmall, color = look.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
     }
+}
+
+private class DiscoverLook(
+    val background: Brush,
+    val border: Color?,
+    val shape: androidx.compose.ui.graphics.Shape,
+    val text: Color,
+    val muted: Color,
+    val action: DiscoveryActionRole,
+    val actionShape: androidx.compose.ui.graphics.Shape?,
+    val deckAccent: Color,
+    val coverBorder: Color,
+    val titleStyle: androidx.compose.ui.text.TextStyle? = null,
+    val inset: androidx.compose.ui.unit.Dp? = null
+)
+
+private fun defaultDiscoverLook(accent: Color, isLight: Boolean, scheme: androidx.compose.material3.ColorScheme): DiscoverLook = DiscoverLook(
+    background = Brush.verticalGradient(listOf(lerp(scheme.surfaceContainer, accent, 0.24f), scheme.surfaceContainer)),
+    border = scheme.outlineVariant.copy(alpha = 0.35f),
+    shape = LevyraHomeDesign.HeroShape,
+    text = LevyraText,
+    muted = LevyraMuted,
+    action = discoveryActionRole(accent, isLight),
+    actionShape = null,
+    deckAccent = accent,
+    coverBorder = scheme.surfaceContainer
+)
+
+private val SkinDiscoverTitle = androidx.compose.ui.text.TextStyle(
+    fontSize = androidx.compose.ui.unit.TextUnit(22f, androidx.compose.ui.unit.TextUnitType.Sp),
+    lineHeight = androidx.compose.ui.unit.TextUnit(28f, androidx.compose.ui.unit.TextUnitType.Sp),
+    fontWeight = FontWeight.Bold
+)
+
+private fun skinDiscoverLook(accent: Color): DiscoverLook? = when {
+    com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic -> {
+        val field = com.luc4n3x.levyra.ui.theme.YouTubeMusicDesign.playerField(accent)
+        DiscoverLook(
+            background = Brush.verticalGradient(listOf(field, com.luc4n3x.levyra.ui.theme.YouTubeMusicDesign.playerFieldDeep(field))),
+            border = null,
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+            text = Color.White,
+            muted = Color.White.copy(alpha = 0.7f),
+            action = DiscoveryActionRole(Color.White, Color.Black),
+            actionShape = androidx.compose.foundation.shape.CircleShape,
+            deckAccent = Color.White,
+            coverBorder = field,
+            titleStyle = SkinDiscoverTitle,
+            inset = com.luc4n3x.levyra.ui.theme.YouTubeMusicDesign.gutter
+        )
+    }
+    com.luc4n3x.levyra.ui.theme.LevyraIsSpotify -> DiscoverLook(
+        background = Brush.verticalGradient(listOf(lerp(Color(0xFF121212), accent, 0.42f), Color(0xFF181818))),
+        border = null,
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+        text = Color.White,
+        muted = Color(0xFFB3B3B3),
+        action = DiscoveryActionRole(com.luc4n3x.levyra.ui.theme.SpotifyDesign.green, Color.Black),
+        actionShape = androidx.compose.foundation.shape.CircleShape,
+        deckAccent = com.luc4n3x.levyra.ui.theme.SpotifyDesign.green,
+        coverBorder = Color(0xFF181818),
+        titleStyle = SkinDiscoverTitle,
+        inset = 16.dp
+    )
+    com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic -> {
+        val apple = com.luc4n3x.levyra.ui.theme.AppleMusicDesign
+        DiscoverLook(
+            background = Brush.verticalGradient(listOf(lerp(apple.raised, apple.accent, 0.18f), apple.raised)),
+            border = null,
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+            text = apple.label,
+            muted = apple.secondaryLabel,
+            action = DiscoveryActionRole(apple.accent, Color.White),
+            actionShape = androidx.compose.foundation.shape.CircleShape,
+            deckAccent = apple.accent,
+            coverBorder = apple.raised,
+            titleStyle = SkinDiscoverTitle,
+            inset = 20.dp
+        )
+    }
+    com.luc4n3x.levyra.ui.theme.LevyraIsQobuz -> {
+        val qobuz = com.luc4n3x.levyra.ui.theme.QobuzDesign
+        DiscoverLook(
+            background = Brush.verticalGradient(listOf(qobuz.surfaceAccent, qobuz.surfaceSecondary)),
+            border = null,
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp),
+            text = qobuz.textPrimary,
+            muted = qobuz.textSecondary,
+            action = DiscoveryActionRole(qobuz.textAccent, qobuz.textInvert),
+            actionShape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp),
+            deckAccent = qobuz.textAccent,
+            coverBorder = qobuz.surfaceSecondary,
+            titleStyle = SkinDiscoverTitle,
+            inset = 16.dp
+        )
+    }
+    else -> null
 }
 
 private class DiscoveryActionRole(val container: Color, val content: Color)

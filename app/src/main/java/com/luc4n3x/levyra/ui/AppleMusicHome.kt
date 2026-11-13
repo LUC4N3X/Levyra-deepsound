@@ -334,6 +334,9 @@ private fun appleMusicLevyraBlocks(
     genreHitsBlock(data.charts.isNotEmpty()) { AppleMusicGenreHitsShelf(actions.openGenreChart) },
     soundtrackBlock(data.soundtrack),
     songsBlock("levyra-orbit", strings.personalOrbitTitle, data.personalTracks.takeIf { data.showPersonal }.orEmpty(), data, actions, copy.explicit),
+    "levyra-discover-for-you" to @Composable {
+        com.luc4n3x.levyra.ui.discovery.LocalHomeDiscovery.current?.let { handle -> com.luc4n3x.levyra.ui.discovery.SkinDiscoverForYou(handle, LocalAnimationsEnabled.current) }
+    },
     data.quickPicks?.let { section -> songsBlock("levyra-quick-picks", section.title.ifBlank { strings.quickPicks }, section.tracks, data, actions, copy.explicit) },
     cardsBlock("levyra-albums", strings.albumsForYou, data.albums.takeIf { data.showAlbums }.orEmpty().map { album ->
         AppleMusicCardModel("album-${album.title}-${album.artist}", album.title, album.artist, album.thumbnailUrl, album.explicit) { actions.openAlbum(album) }

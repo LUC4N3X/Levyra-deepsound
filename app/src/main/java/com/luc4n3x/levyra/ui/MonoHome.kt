@@ -456,7 +456,8 @@ internal fun rememberCuratedPlaylistShelves(code: String): List<YoutubeMusicHome
     LaunchedEffect(code) { mixedHome.requestFeaturedPlaylist(CuratedFeaturedPlaylist.YOUTUBE_ID, code) }
     val featuredPlaylists by mixedHome.featuredPlaylists.collectAsStateWithLifecycle()
     val mixLabel = LocalLevyraStrings.current.mix
-    val featuredItem = featuredPlaylists[featuredPlaylistKey(CuratedFeaturedPlaylist.YOUTUBE_ID, code)]
+    val releaseMix = remember(ytHomeState.allShelves) { newReleaseMixItem(ytHomeState.allShelves) }
+    val featuredItem = releaseMix ?: featuredPlaylists[featuredPlaylistKey(CuratedFeaturedPlaylist.YOUTUBE_ID, code)]
         ?.let { item -> if (item.subtitle.isBlank()) item.copy(subtitle = mixLabel) else item }
     return remember(mixedState.allShelves, featuredShelves, ytHomeState.allShelves, featuredItem) {
         withFeaturedCuratedPlaylist(
@@ -465,6 +466,12 @@ internal fun rememberCuratedPlaylistShelves(code: String): List<YoutubeMusicHome
         )
     }
 }
+
+internal fun newReleaseMixItem(shelves: List<YoutubeMusicHomeShelf>): YoutubeMusicHomeItem? =
+    shelves.asSequence()
+        .filter { it.headerBrowseId.startsWith("FEmusic_new_releases") }
+        .flatMap { it.items.asSequence() }
+        .firstOrNull { it.kind == YoutubeMusicHomeItemKind.Playlist && it.playlist != null && it.thumbnailUrl.isNotBlank() }
 
 internal fun withFeaturedCuratedPlaylist(shelves: List<YoutubeMusicHomeShelf>, featured: YoutubeMusicHomeItem?): List<YoutubeMusicHomeShelf> {
     val first = shelves.firstOrNull() ?: return shelves
