@@ -15,6 +15,7 @@ internal data class LevyraSupportCopy(
     val copied: String,
     val pasteOnGithub: String,
     val githubReady: String,
+    val keepLogs: String,
     val focus: String,
     val exitFocus: String,
     val focusSubtitle: String
@@ -33,8 +34,9 @@ private val englishSupportCopy = LevyraSupportCopy(
     empty = "No saved crash reports",
     failed = "The report could not be opened or shared. Please try again.",
     copied = "Report copied",
-    pasteOnGithub = "The complete report was copied. Paste it into Logs or error details on GitHub, complete the required fields and review before submitting.",
-    githubReady = "Report copied. Review the GitHub form and complete the required fields before submitting.",
+    pasteOnGithub = "This preview is shortened to fit the GitHub link. Replace the issue description with the complete copied report before submitting. DO NOT DELETE THE LOGS.",
+    githubReady = "Crash logs are included in the GitHub report. DO NOT DELETE THEM. Review the report before submitting.",
+    keepLogs = "DO NOT DELETE THESE LOGS. They are needed to diagnose the crash. Remove any remaining personal information before publishing.",
     focus = "Player Focus",
     exitFocus = "Exit Player Focus",
     focusSubtitle = "Just your music and the essential controls"
@@ -54,8 +56,9 @@ internal fun supportCopy(code: String): LevyraSupportCopy = when (code.substring
         empty = "Nessun report di crash salvato",
         failed = "Impossibile aprire o condividere il report. Riprova.",
         copied = "Report copiato",
-        pasteOnGithub = "Il report completo è stato copiato. Incollalo in Logs or error details su GitHub, completa i campi obbligatori e controlla prima di pubblicare.",
-        githubReady = "Report copiato. Controlla il modulo GitHub e completa i campi obbligatori prima di pubblicare.",
+        pasteOnGithub = "Anteprima abbreviata per il limite del link GitHub. Prima di pubblicare, sostituisci la descrizione con il report completo copiato. NON CANCELLARE I LOG.",
+        githubReady = "I log del crash sono inclusi nel report GitHub. NON CANCELLARLI. Controlla il report prima di pubblicare.",
+        keepLogs = "Log necessari per diagnosticare il crash: NON CANCELLARLI. Rimuovi eventuali dati personali rimasti prima di pubblicare.",
         focus = "Player Focus",
         exitFocus = "Esci da Player Focus",
         focusSubtitle = "Solo la tua musica e i controlli essenziali"
