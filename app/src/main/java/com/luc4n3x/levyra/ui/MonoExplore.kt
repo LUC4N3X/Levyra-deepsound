@@ -12,14 +12,11 @@ import com.luc4n3x.levyra.domain.YoutubeMusicHomeShelf
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,7 +42,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -61,13 +57,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -134,71 +126,30 @@ private val MonoTileHues = listOf(
 
 private fun monoTileSeed(title: String): Int = title.lowercase().fold(7) { acc, c -> acc * 31 + c.code } and 0x7FFFFFFF
 
+private val GlacierTileTones = listOf(
+    MonoDesign.accentDim,
+    MonoDesign.moodTravel,
+    lerp(MonoDesign.accentDim, MonoDesign.accent, 0.28f),
+    MonoDesign.moodFocus,
+    lerp(MonoDesign.moodTravel, MonoDesign.accentDim, 0.5f)
+)
+
+internal fun glacierTileTone(index: Int): Color = GlacierTileTones[index.mod(GlacierTileTones.size)]
+
 @Composable
-internal fun MonoBrowseTile(entry: MonoTileEntry, index: Int, height: Dp, modifier: Modifier = Modifier) {
+internal fun MonoBrowseTile(entry: MonoTileEntry, index: Int, height: Dp, modifier: Modifier = Modifier, glacier: Boolean = false) {
     val seed = remember(entry.title) { monoTileSeed(entry.title) }
-    val hue = MonoTileHues[seed % MonoTileHues.size]
-    val cycles = 1.4f + seed % 5 * 0.35f
-    val phase = seed % 360 / 57.3f
-    val path = remember { Path() }
+    val hue = if (glacier) glacierTileTone(index) else MonoTileHues[seed % MonoTileHues.size]
     Box(
         modifier.height(height)
             .levyraPressable(onClick = entry.onClick, role = Role.Button, pressedScale = LevyraPressScale.Tile)
             .clip(MonoDesign.cardShape)
-            .drawWithCache {
-                val fill = Brush.linearGradient(listOf(lerp(hue, Color.White, 0.08f), lerp(hue, Color.Black, 0.38f)), Offset.Zero, Offset(size.width * 0.6f, size.height))
-                val stroke = 9.dp.toPx()
-                val band = size.height * 0.34f
-                val baseY = size.height * 0.84f
-                path.reset()
-                val steps = 48
-                for (i in 0..steps) {
-                    val t = i / steps.toFloat()
-                    val x = size.width * (0.18f + t * 0.95f)
-                    val y = baseY - kotlin.math.sin(t * cycles * 2f * kotlin.math.PI.toFloat() + phase) * band * (0.35f + 0.65f * t)
-                    if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
-                }
-                val waveStyle = androidx.compose.ui.graphics.drawscope.Stroke(stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round)
-                val echoStyle = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx())
-                onDrawBehind {
-                    drawRect(fill)
-                    drawPath(path, Color.Black.copy(alpha = 0.16f), style = waveStyle)
-                    translate(top = -stroke * 1.4f) { drawPath(path, Color.White.copy(alpha = 0.34f), style = echoStyle) }
-                }
-            }
+            .then(if (glacier) Modifier.border(1.dp, MonoDesign.hairlineStrong, MonoDesign.cardShape) else Modifier)
+            .monoTileWaveBackground(hue, seed, glacier)
     ) {
         entry.onAppear?.let { request -> LaunchedEffect(entry.key) { if (entry.artwork.isBlank()) request() } }
-        if (entry.artwork.isNotBlank()) {
-            MonoArtwork(
-                entry.artwork,
-                Modifier.align(Alignment.BottomEnd)
-                    .size(height * 0.78f)
-                    .graphicsLayer {
-                        translationX = size.width * 0.18f
-                        translationY = size.height * 0.16f
-                        rotationZ = -12f
-                        shadowElevation = 10.dp.toPx()
-                        shape = MonoDesign.artShape
-                        clip = true
-                    }
-            )
-        }
-        Box(Modifier.matchParentSize().padding(horizontal = 14.dp, vertical = 12.dp)) {
-        Text(
-            entry.title,
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-            color = Color.White,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.fillMaxWidth(0.82f)
-        )
-        Text(
-            monoRank(index + 1),
-            style = MaterialTheme.typography.labelSmall,
-            color = Color.White.copy(alpha = 0.72f),
-            modifier = Modifier.align(Alignment.BottomStart).clearAndSetSemantics { }
-        )
-        }
+        if (entry.artwork.isNotBlank()) MonoTileArtwork(entry.artwork, height)
+        MonoTileLabels(entry.title, index)
     }
 }
 
@@ -219,10 +170,17 @@ private fun LazyListScope.monoTileGrid(
     }
 }
 
-private fun LazyListScope.monoBrowseHeader(key: String, title: String, overline: String, action: String?, onAction: (() -> Unit)?) {
+private fun LazyListScope.monoBrowseHeader(
+    key: String,
+    title: String,
+    overline: String,
+    action: String?,
+    onAction: (() -> Unit)?,
+    overlineColor: Color = MonoDesign.textSecondary
+) {
     item(key = key, contentType = "mono-header") {
         Column(Modifier.padding(top = MonoDesign.sectionGap, bottom = MonoDesign.headerToContent)) {
-            MonoSectionHeader(title, overline = overline, action = action, onAction = onAction)
+            MonoSectionHeader(title, overline = overline, action = action, overlineColor = overlineColor, onAction = onAction)
         }
     }
 }
@@ -235,14 +193,16 @@ internal fun LazyListScope.monoBrowseSections(
     seeAllLabel: String? = null,
     moodLimit: Int = Int.MAX_VALUE,
     genreLimit: Int = Int.MAX_VALUE,
+    glacier: Boolean = false,
     onSeeAll: (() -> Unit)? = null
 ) {
     val moods = entries.moods.take(moodLimit)
     val genres = entries.genres.take(genreLimit)
+    val overlineColor = if (glacier) MonoDesign.accent else MonoDesign.textSecondary
     if (moods.isNotEmpty()) {
-        monoBrowseHeader("$keyPrefix-moods-header", copy.moodsTitle, copy.momentsOverline, seeAllLabel, onSeeAll)
+        monoBrowseHeader("$keyPrefix-moods-header", copy.moodsTitle, copy.momentsOverline, seeAllLabel, onSeeAll, overlineColor)
         monoTileGrid("$keyPrefix-moods", moods) { entry, index, modifier ->
-            MonoBrowseTile(entry, index, MonoMoodTileHeight, modifier)
+            MonoBrowseTile(entry, index, MonoMoodTileHeight, modifier, glacier)
         }
     } else if (loading) {
         item(key = "$keyPrefix-moods-skeleton", contentType = "mono-skeleton-section") {
@@ -253,9 +213,9 @@ internal fun LazyListScope.monoBrowseSections(
         }
     }
     if (genres.isNotEmpty()) {
-        monoBrowseHeader("$keyPrefix-genres-header", copy.genresTitle, copy.genresOverline, seeAllLabel, onSeeAll)
+        monoBrowseHeader("$keyPrefix-genres-header", copy.genresTitle, copy.genresOverline, seeAllLabel, onSeeAll, overlineColor)
         monoTileGrid("$keyPrefix-genres", genres) { entry, index, modifier ->
-            MonoBrowseTile(entry, index, MonoGenreTileHeight, modifier)
+            MonoBrowseTile(entry, index, MonoGenreTileHeight, modifier, glacier)
         }
     }
 }
@@ -417,38 +377,6 @@ private fun monoDiscoverSway(enabled: Boolean): androidx.compose.runtime.State<F
         androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(3200, easing = androidx.compose.animation.core.FastOutSlowInEasing), androidx.compose.animation.core.RepeatMode.Reverse),
         label = "mono-discover-sway"
     )
-}
-
-@Composable
-internal fun MonoBubbleEntry(covers: List<String>, onOpen: () -> Unit) {
-    val strings = LocalLevyraStrings.current
-    val bubble = com.luc4n3x.levyra.ui.i18n.smartMusicCopy(strings.code)
-    val shown = remember(covers) { covers.filter(String::isNotBlank).distinct().take(3) }
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = MonoDesign.gutter).padding(top = MonoDesign.sectionGap)
-            .heightIn(min = 64.dp)
-            .clip(MonoDesign.cardShape)
-            .levyraPressable(onClick = onOpen, role = Role.Button, pressedScale = LevyraPressScale.Row, onClickLabel = bubble[com.luc4n3x.levyra.ui.i18n.SmartMusicText.BubbleTitle])
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        Box(Modifier.size(width = 84.dp, height = 44.dp).clearAndSetSemantics { }) {
-            repeat(3) { index ->
-                Box(
-                    Modifier.padding(start = (index * 20).dp).size(44.dp).clip(CircleShape).background(MonoDesign.raised)
-                        .border(1.5.dp, if (index == 2) MonoDesign.accent else MonoDesign.base, CircleShape)
-                ) { shown.getOrNull(index)?.let { MonoArtwork(it, Modifier.fillMaxSize()) } }
-            }
-        }
-        Column(Modifier.weight(1f)) {
-            Text(bubble[com.luc4n3x.levyra.ui.i18n.SmartMusicText.BubbleTitle], style = MaterialTheme.typography.titleSmall, color = MonoDesign.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(bubble[com.luc4n3x.levyra.ui.i18n.SmartMusicText.BubbleEntry], style = MaterialTheme.typography.bodySmall, color = MonoDesign.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        Box(Modifier.size(36.dp).clip(CircleShape).border(1.dp, MonoDesign.hairlineStrong, CircleShape), contentAlignment = Alignment.Center) {
-            Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = MonoDesign.text, modifier = Modifier.size(18.dp))
-        }
-    }
 }
 
 internal fun monoExploreNewVideos(shelves: List<YoutubeMusicHomeShelf>, limit: Int): List<YoutubeMusicHomeItem> =

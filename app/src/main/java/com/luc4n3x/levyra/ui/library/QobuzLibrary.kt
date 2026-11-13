@@ -319,7 +319,7 @@ private fun QobuzLibraryContent(
             if (grid) QobuzLibraryCard(row, open) else QobuzLibraryListRow(row, state, copy.explicit, open, { viewModel.toggleFollowArtistRow(row) })
         }
         item(key = "count", span = { GridItemSpan(maxLineSpan) }) {
-            Text(copy.itemsCount.format(rows.size), style = MaterialTheme.typography.bodyLarge, color = QobuzDesign.textSecondary, textAlign = TextAlign.Center,
+            Text((if (rows.size == 1) copy.itemsCountOne else copy.itemsCount).format(rows.size),style = MaterialTheme.typography.bodyLarge, color = QobuzDesign.textSecondary, textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp))
         }
     }

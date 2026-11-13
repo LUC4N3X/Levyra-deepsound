@@ -62,7 +62,7 @@ internal fun ivoryRailMotionEnabled(): Boolean =
 internal fun Modifier.ivoryRailItemMotion(enabled: Boolean, state: LazyListState, key: Any): Modifier =
     railEdgeMotion(enabled, state, key, IvoryEdgeScale, IvoryEdgeFade)
 
-private fun Modifier.railEdgeMotion(enabled: Boolean, state: LazyListState, key: Any, edgeScale: Float, edgeFade: Float): Modifier =
+internal fun Modifier.railEdgeMotion(enabled: Boolean, state: LazyListState, key: Any, edgeScale: Float, edgeFade: Float): Modifier =
     if (!enabled) this else graphicsLayer {
         val info = state.layoutInfo
         val item = info.visibleItemsInfo.firstOrNull { it.key == key } ?: return@graphicsLayer

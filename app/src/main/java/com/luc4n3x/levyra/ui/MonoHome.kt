@@ -122,7 +122,9 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -134,6 +136,7 @@ import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ExploreCatalog
+import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.SpeedDialPin
 import com.luc4n3x.levyra.domain.Track
@@ -158,6 +161,7 @@ private val MonoAlbumTile = 140.dp
 private const val MonoQuickRows = 4
 private const val MonoQuickColumns = 5
 private val MonoSegmentWidth = 76.dp
+private val MonoSegmentLabelPadding = 14.dp
 private const val MonoChartRows = 5
 private const val MonoChartMax = 50
 private const val MonoMixedForYouBrowseId = "FEmusic_mixed_for_you"
@@ -452,7 +456,8 @@ internal fun rememberCuratedPlaylistShelves(code: String): List<YoutubeMusicHome
     LaunchedEffect(code) { mixedHome.requestFeaturedPlaylist(CuratedFeaturedPlaylist.YOUTUBE_ID, code) }
     val featuredPlaylists by mixedHome.featuredPlaylists.collectAsStateWithLifecycle()
     val mixLabel = LocalLevyraStrings.current.mix
-    val featuredItem = featuredPlaylists[featuredPlaylistKey(CuratedFeaturedPlaylist.YOUTUBE_ID, code)]
+    val releaseMix = remember(ytHomeState.allShelves) { newReleaseMixItem(ytHomeState.allShelves) }
+    val featuredItem = releaseMix ?: featuredPlaylists[featuredPlaylistKey(CuratedFeaturedPlaylist.YOUTUBE_ID, code)]
         ?.let { item -> if (item.subtitle.isBlank()) item.copy(subtitle = mixLabel) else item }
     return remember(mixedState.allShelves, featuredShelves, ytHomeState.allShelves, featuredItem) {
         withFeaturedCuratedPlaylist(
@@ -461,6 +466,12 @@ internal fun rememberCuratedPlaylistShelves(code: String): List<YoutubeMusicHome
         )
     }
 }
+
+internal fun newReleaseMixItem(shelves: List<YoutubeMusicHomeShelf>): YoutubeMusicHomeItem? =
+    shelves.asSequence()
+        .filter { it.headerBrowseId.startsWith("FEmusic_new_releases") }
+        .flatMap { it.items.asSequence() }
+        .firstOrNull { it.kind == YoutubeMusicHomeItemKind.Playlist && it.playlist != null && it.thumbnailUrl.isNotBlank() }
 
 internal fun withFeaturedCuratedPlaylist(shelves: List<YoutubeMusicHomeShelf>, featured: YoutubeMusicHomeItem?): List<YoutubeMusicHomeShelf> {
     val first = shelves.firstOrNull() ?: return shelves
@@ -584,24 +595,31 @@ internal enum class MonoShortcut { Podcasts, Samples, Radio, Jam }
 private fun MonoPageSegment(labels: List<String>, page: Int, onPage: (Int) -> Unit) {
     val animated = LocalAnimationsEnabled.current
     val position by animateFloatAsState(page.toFloat(), if (animated) spring(dampingRatio = 0.78f, stiffness = 420f) else snap(), label = "mono-segment")
+    val labelStyle = MaterialTheme.typography.labelLarge
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val segmentWidth = remember(labels, labelStyle, density) {
+        val widest = labels.maxOfOrNull { measurer.measure(it, labelStyle, maxLines = 1, softWrap = false).size.width } ?: 0
+        maxOf(MonoSegmentWidth, with(density) { widest.toDp() } + MonoSegmentLabelPadding * 2)
+    }
     Box(
         Modifier.clip(MonoDesign.pillShape).background(MonoDesign.surface).border(1.dp, MonoDesign.hairline, MonoDesign.pillShape).padding(3.dp)
     ) {
         Box(
-            Modifier.width(MonoSegmentWidth).height(34.dp)
-                .graphicsLayer { translationX = position * MonoSegmentWidth.toPx() }
+            Modifier.width(segmentWidth).height(34.dp)
+                .graphicsLayer { translationX = position * segmentWidth.toPx() }
                 .clip(MonoDesign.pillShape).background(MonoDesign.accent)
         )
         Row(Modifier.selectableGroup()) {
             labels.forEachIndexed { index, label ->
                 val active = index == page
                 Box(
-                    Modifier.width(MonoSegmentWidth).height(34.dp).clip(MonoDesign.pillShape)
+                    Modifier.width(segmentWidth).height(34.dp).clip(MonoDesign.pillShape)
                         .selectable(active, role = Role.Tab, onClick = { onPage(index) }),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        label, style = MaterialTheme.typography.labelLarge, maxLines = 1,
+                        label, style = labelStyle, maxLines = 1, softWrap = false,
                         color = lerp(MonoDesign.text, MonoDesign.onAccent, (1f - kotlin.math.abs(position - index)).coerceIn(0f, 1f))
                     )
                 }
@@ -894,13 +912,19 @@ private fun MonoHomeContent(
     val homeRadio = LocalHomeRadio.current
     val state = model.state
     var orbitOpen by rememberSaveable { mutableStateOf(false) }
+    var curatedOpen by rememberSaveable { mutableStateOf(false) }
     val feed = rememberMonoHomeFeed(model, copy) { orbitOpen = true }
     val zones = remember(strings) { ExploreCatalog.getZones(strings) }
+    val genreZones = remember(zones, strings.code) { exploreGenreChartZones(zones, strings.code) }
     val browse = remember(state.exploreCategories, zones) { monoBrowseTiles(state.exploreCategories, zones) }
     val viewModel = model.viewModel
     val categoriesLoading = state.isExploreCategoriesLoading
-    val moodEntries = remember(browse, categoriesLoading, viewModel) {
-        monoBrowseEntries(browse, categoriesLoading, viewModel::openExploreCategoryPage, viewModel::openExploreZone)
+    val categoryArtwork = if (page == MonoPageMood) viewModel.exploreCategoryArtwork.collectAsStateWithLifecycle().value else emptyMap()
+    val moodEntries = remember(browse, categoriesLoading, viewModel, categoryArtwork) {
+        monoBrowseEntries(
+            browse, categoriesLoading, viewModel::openExploreCategoryPage, viewModel::openExploreZone,
+            categoryArtwork, viewModel::ensureExploreCategoryArtwork
+        )
     }
     val isPlaying = rememberUpdatedState(state.isPlaying)
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -950,19 +974,19 @@ private fun MonoHomeContent(
                 MonoHomeTopBar(model.data.listener, page, copy, onPage, model.actions.openSettings) { MonoExploreBridge.pending = it; viewModel.openExploreTab() }
             }
             if (page == MonoPageMood) {
-                monoBrowseSections("mono-home", moodEntries, categoriesLoading, copy)
+                monoBrowseSections("mono-home", moodEntries, categoriesLoading, copy, glacier = true)
                 return@LazyColumn
             }
             val composition = model.composition
             if (composition != null) {
                 composedHomeSections(composition, kit) {
-                    monoHomeFeed(model, feed, copy, strings, kit, heroCard, releaseCard, playlistShelves, albumShelf, newVideos)
+                    monoHomeFeed(model, feed, copy, strings, kit, heroCard, releaseCard, playlistShelves, albumShelf, newVideos, genreZones) { curatedOpen = true }
                 }
                 monoHomeFallback(feed.isEmpty && monoComposedSectionsEmpty(composition.content), state, copy, viewModel)
                 return@LazyColumn
             }
             monoHomeFallback(feed.isEmpty && model.pinnedCards.isEmpty() && !(homeRadio.visible && homeRadio.stations.isNotEmpty()), state, copy, viewModel)
-            monoHomeFeed(model, feed, copy, strings, kit, heroCard, releaseCard, playlistShelves, albumShelf, newVideos)
+            monoHomeFeed(model, feed, copy, strings, kit, heroCard, releaseCard, playlistShelves, albumShelf, newVideos, genreZones) { curatedOpen = true }
             favoriteRadioSection(homeRadio)
         }
         PullToRefreshDefaults.LoadingIndicator(
@@ -979,6 +1003,12 @@ private fun MonoHomeContent(
                 onPlayAll = { model.actions.playAll(orbitTracks) },
                 onShuffle = { orbitTracks.shuffled().let { shuffled -> shuffled.firstOrNull()?.let { model.actions.playFrom(shuffled, it) } } },
                 onTrackActions = model.actions.onTrackActions, bottomInset = homeBottomInset
+            )
+        }
+        if (curatedOpen) {
+            GlacierCuratedPlaylistsScreen(
+                title = copy.mixedForYou, leadTitle = copy.rotationOverline, curatedShelves = playlistShelves,
+                onOpen = viewModel::openPlaylistHit, onDismiss = { curatedOpen = false }, bottomInset = homeBottomInset
             )
         }
     }
@@ -1015,7 +1045,9 @@ private fun LazyListScope.monoHomeFeed(
     releaseCard: Dp,
     playlistShelves: List<YoutubeMusicHomeShelf>,
     albumShelf: List<AlbumHit>,
-    newVideos: List<YoutubeMusicHomeItem>
+    newVideos: List<YoutubeMusicHomeItem>,
+    genreZones: List<ExploreZone>,
+    onOpenCurated: () -> Unit
 ) {
     val state = model.state
     val data = model.data
@@ -1039,14 +1071,8 @@ private fun LazyListScope.monoHomeFeed(
         monoSkeletonSection("mono-picks-skeleton", feed.picksTitle, copy.startHere, MonoDesign.card, 3)
     }
     item(key = "mono-discover", contentType = "mono-discover") {
-        MonoDiscoverTeaser(state.recentListens.ifEmpty { feed.picks }.map { it.thumbnailUrl }) { MonoExploreBridge.discoverRequested = true }
-    }
-    item(key = "mono-bubble", contentType = "mono-bubble") {
-        val bubble = com.luc4n3x.levyra.ui.discovery.LocalHomeDiscovery.current
-        if (bubble != null) {
-            MonoBubbleEntry(feed.picks.ifEmpty { state.recentListens }.map { it.thumbnailUrl }) {
-                bubble.onOpenBubble(com.luc4n3x.levyra.feature.discovery.BubbleLevel.Adventurous)
-            }
+        Column {
+            MonoDiscoverTeaser(state.recentListens.ifEmpty { feed.picks }.map { it.thumbnailUrl }) { MonoExploreBridge.discoverRequested = true }
         }
     }
     if (model.pinnedCards.isNotEmpty()) {
@@ -1055,7 +1081,12 @@ private fun LazyListScope.monoHomeFeed(
     if (playlistShelves.isNotEmpty()) {
         playlistShelves.forEachIndexed { index, shelf ->
             item(key = "mono-mixed-${shelf.key}", contentType = "mono-rail") {
-                MonoSection(if (index == 0) copy.mixedForYou else shelf.title, if (index == 0) copy.rotationOverline else shelf.strapline.ifBlank { null }) {
+                MonoSection(
+                    if (index == 0) copy.mixedForYou else shelf.title,
+                    if (index == 0) copy.rotationOverline else shelf.strapline.ifBlank { null },
+                    action = strings.showAll.takeIf { index == 0 },
+                    onAction = onOpenCurated.takeIf { index == 0 }
+                ) {
                     MonoPlaylistRail(shelf.items, model.viewModel::openPlaylistHit)
                 }
             }
@@ -1067,6 +1098,14 @@ private fun LazyListScope.monoHomeFeed(
     }
     item(key = "mono-daily-discovery", contentType = "mono-daily-discovery") {
         com.luc4n3x.levyra.ui.discovery.DailyDiscoveryShelf(MonoDesign.gutter)
+    }
+    if (settings.showCharts && genreZones.isNotEmpty()) {
+        item(key = "mono-genre-charts", contentType = "mono-genre-charts") {
+            val chartCopy = remember(strings.code) { com.luc4n3x.levyra.ui.i18n.genreChartCopy(strings.code) }
+            MonoSection(chartCopy.shelfTitle, chartCopy.shelfSubtitle) {
+                GlacierGenreChartRail(genreZones, chartCopy.title, model.viewModel::openExploreGenreChart)
+            }
+        }
     }
     if (feed.artists.isNotEmpty()) {
         item(key = "mono-artists", contentType = "mono-rail") {

@@ -812,7 +812,9 @@ internal fun LazyListScope.atelierHomeCurated(shelves: List<YoutubeMusicHomeShel
         if (tiles.isEmpty()) return@forEachIndexed
         item(key = "atelier-curated-${shelf.key}", contentType = "atelier-curated") {
             Column {
-                AtelierSectionLabel(if (index == 0) leadTitle else shelf.title)
+                AtelierSectionLabel(if (index == 0) leadTitle else shelf.title) {
+                    if (index == 0) LocalCuratedPlaylistsOpener.current?.let { open -> AtelierTextAction(LocalLevyraStrings.current.showAll, open) }
+                }
                 LazyRow(contentPadding = AtelierRowPadding, horizontalArrangement = Arrangement.spacedBy(AtelierDesign.itemGap)) {
                     items(tiles, key = { it.key }, contentType = { "atelier-curated-sleeve" }) { tile ->
                         Column(

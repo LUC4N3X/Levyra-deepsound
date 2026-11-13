@@ -79,6 +79,8 @@ import com.luc4n3x.levyra.ui.glacierRailItemMotion
 import com.luc4n3x.levyra.ui.glacierRailMotionEnabled
 import com.luc4n3x.levyra.ui.i18n.DiscoveryCopy
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.HOME_SUBTITLE_DAILY_DISCOVER
+import com.luc4n3x.levyra.ui.i18n.defaultHomeSubtitle
 import com.luc4n3x.levyra.ui.i18n.discoveryCopy
 import com.luc4n3x.levyra.ui.ivoryRailItemMotion
 import com.luc4n3x.levyra.ui.ivoryRailMotionEnabled
@@ -144,7 +146,7 @@ internal fun DailyDiscoveryShelf(inset: Dp, style: HomeStyle? = null, spec: Home
     val playAll = { handle.onPlayDaily(cards, cards.first()) }
     Column(Modifier.fillMaxWidth().padding(top = dailyTopGap(look, spec))) {
         if (style != null && spec != null) {
-            Box(Modifier.padding(bottom = 12.dp)) { StudioSectionHeader(style, spec, copy.dailyTitle, false, onPlayAll = playAll) }
+            Box(Modifier.padding(bottom = 12.dp)) { StudioSectionHeader(style, spec, copy.dailyTitle, false, onPlayAll = playAll, subtitle = defaultHomeSubtitle(HOME_SUBTITLE_DAILY_DISCOVER, "")) }
         } else when (look) {
             DailyLook.Prism -> PrismShelfHeader(copy.dailyTitle, inset)
             DailyLook.Mono -> MonoSectionHeader(copy.dailyTitle, Modifier.padding(bottom = MonoDesign.headerToContent))

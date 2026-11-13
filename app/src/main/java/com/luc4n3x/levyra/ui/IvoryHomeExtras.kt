@@ -7,14 +7,13 @@ import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -33,15 +32,16 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ReleaseType
 import com.luc4n3x.levyra.domain.Track
-import com.luc4n3x.levyra.feature.discovery.BubbleLevel
 import com.luc4n3x.levyra.feature.discovery.DiscoveryFilmScores
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
@@ -49,7 +49,6 @@ import com.luc4n3x.levyra.ui.discovery.LocalHomeDiscovery
 import com.luc4n3x.levyra.ui.discovery.discoveryReasonLabel
 import com.luc4n3x.levyra.ui.i18n.LevyraMonoHomeStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
-import com.luc4n3x.levyra.ui.i18n.SmartMusicText
 import com.luc4n3x.levyra.ui.i18n.discoveryCopy
 import com.luc4n3x.levyra.ui.i18n.searchDiscographyCopy
 import com.luc4n3x.levyra.ui.i18n.smartMusicCopy
@@ -64,7 +63,8 @@ import kotlinx.coroutines.delay
 internal fun IvoryCuratedPlaylists(viewModel: HomeViewModel, inset: Dp, fallback: @Composable () -> Unit) {
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { LevyraMonoHomeStrings.forCode(strings.code) }
-    val shelves = rememberCuratedPlaylistShelves(strings.code)
+    val curated = rememberCuratedPlaylistShelves(strings.code)
+    val shelves = curated
     if (shelves.isEmpty()) {
         fallback()
         return
@@ -73,7 +73,9 @@ internal fun IvoryCuratedPlaylists(viewModel: HomeViewModel, inset: Dp, fallback
         shelves.forEachIndexed { index, shelf ->
             val tiles = remember(shelf.items) { shelf.items.distinctBy { it.key }.filter { it.playlist != null } }
             if (tiles.isEmpty()) return@forEachIndexed
-            SkinSectionTitle(if (index == 0) copy.mixedForYou else shelf.title, inset)
+            SkinSectionTitle(if (index == 0) copy.mixedForYou else shelf.title, inset) {
+                if (index == 0) LocalCuratedPlaylistsOpener.current?.let { open -> IvoryShowAll(open) }
+            }
             val rowState = rememberLazyListState()
             val motion = ivoryRailMotionEnabled()
             LazyRow(state = rowState, contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -85,6 +87,16 @@ internal fun IvoryCuratedPlaylists(viewModel: HomeViewModel, inset: Dp, fallback
             }
         }
     }
+}
+
+@Composable
+internal fun IvoryShowAll(onClick: () -> Unit) {
+    val label = LocalLevyraStrings.current.showAll
+    Box(
+        Modifier.heightIn(min = 48.dp).clip(CircleShape).background(IvoryDesign.ink)
+            .clickable(role = Role.Button, onClickLabel = label, onClick = onClick).padding(horizontal = 18.dp),
+        contentAlignment = Alignment.Center
+    ) { Text(label, color = IvoryDesign.onInk, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1) }
 }
 
 @Composable
@@ -133,68 +145,36 @@ internal fun IvoryDiscoverTeaser(modifier: Modifier = Modifier) {
         }
     }
     val lead = cards.getOrNull(turn.mod(cards.size.coerceAtLeast(1)))
-    Box(
-        modifier.fillMaxWidth().clip(RoundedCornerShape(IvoryDesign.surfaceCorner)).background(LevyraPanel)
-            .levyraPressable(onClick = handle.onOpen, role = Role.Button, onClickLabel = copy.start, pressedScale = LevyraPressScale.Surface)
-            .semantics(mergeDescendants = true) { contentDescription = copy.title + ". " + copy.lead }
-    ) {
-        Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(128.dp).clip(IvoryDesign.coverShape).background(IvoryDesign.well).clearAndSetSemantics { }) {
-                Crossfade(targetState = lead?.track, animationSpec = tween(600), label = "ivory-discover-lead") { track: Track? ->
-                    if (track != null) CoverImage(track, Modifier.fillMaxSize(), highRes = true)
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Box(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(IvoryDesign.surfaceCorner)).background(LevyraPanel)
+                .levyraPressable(onClick = handle.onOpen, role = Role.Button, onClickLabel = copy.start, pressedScale = LevyraPressScale.Surface)
+                .semantics(mergeDescendants = true) { contentDescription = copy.title + ". " + copy.lead }
+        ) {
+            Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(128.dp).clip(IvoryDesign.coverShape).background(IvoryDesign.well).clearAndSetSemantics { }) {
+                    Crossfade(targetState = lead?.track, animationSpec = tween(600), label = "ivory-discover-lead") { track: Track? ->
+                        if (track != null) CoverImage(track, Modifier.fillMaxSize(), highRes = true)
+                    }
                 }
-            }
-            Spacer(Modifier.width(16.dp))
-            Column(Modifier.weight(1f).padding(bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(copy.title, color = LevyraText, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Crossfade(targetState = lead, animationSpec = tween(400), label = "ivory-discover-reason") { card ->
-                    Column {
-                        Text(card?.let { discoveryReasonLabel(it, copy, music) } ?: copy.lead, color = IvoryDesign.ink, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        LevyraMediaTitle(card?.track?.let { "${it.title} · ${it.artist}" } ?: copy.lead, explicit = card?.track?.explicit == true, color = LevyraMuted, style = MaterialTheme.typography.bodySmall)
+                Spacer(Modifier.width(16.dp))
+                Column(Modifier.weight(1f).padding(bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(copy.title, color = LevyraText, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Crossfade(targetState = lead, animationSpec = tween(400), label = "ivory-discover-reason") { card ->
+                        Column {
+                            Text(card?.let { discoveryReasonLabel(it, copy, music) } ?: copy.lead, color = IvoryDesign.ink, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            LevyraMediaTitle(card?.track?.let { "${it.title} · ${it.artist}" } ?: copy.lead, explicit = card?.track?.explicit == true, color = LevyraMuted, style = MaterialTheme.typography.bodySmall)
+                        }
                     }
                 }
             }
-        }
-        IvoryInkTab(start = false, Modifier.align(Alignment.BottomEnd).padding(bottom = 14.dp).height(44.dp)) {
-            Row(Modifier.padding(start = 18.dp, end = 20.dp).clearAndSetSemantics { }, verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.PlayArrow, null, tint = IvoryDesign.onInk, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(copy.start, color = IvoryDesign.onInk, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+            IvoryInkTab(start = false, Modifier.align(Alignment.BottomEnd).padding(bottom = 14.dp).height(44.dp)) {
+                Row(Modifier.padding(start = 18.dp, end = 20.dp).clearAndSetSemantics { }, verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.PlayArrow, null, tint = IvoryDesign.onInk, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(copy.start, color = IvoryDesign.onInk, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                }
             }
-        }
-    }
-}
-
-@Composable
-internal fun IvoryBubbleEntry(covers: List<String>, modifier: Modifier = Modifier) {
-    val handle = LocalHomeDiscovery.current ?: return
-    val strings = LocalLevyraStrings.current
-    val bubble = remember(strings.code) { smartMusicCopy(strings.code) }
-    val shown = remember(covers) { covers.filter(String::isNotBlank).distinct().take(3) }
-    Row(
-        modifier.fillMaxWidth().heightIn(min = 64.dp)
-            .levyraPressable(
-                onClick = { handle.onOpenBubble(BubbleLevel.Adventurous) }, role = Role.Button,
-                pressedScale = LevyraPressScale.Row, onClickLabel = bubble[SmartMusicText.BubbleTitle]
-            )
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        Box(Modifier.size(width = 84.dp, height = 44.dp).clearAndSetSemantics { }) {
-            repeat(3) { index ->
-                Box(
-                    Modifier.padding(start = (index * 20).dp).size(44.dp).clip(CircleShape).background(IvoryDesign.well)
-                        .border(2.dp, if (index == 2) IvoryDesign.ink else IvoryDesign.onInk, CircleShape)
-                ) { shown.getOrNull(index)?.let { AsyncImage(it, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().clip(CircleShape)) } }
-            }
-        }
-        Column(Modifier.weight(1f)) {
-            Text(bubble[SmartMusicText.BubbleTitle], color = LevyraText, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(bubble[SmartMusicText.BubbleEntry], color = LevyraMuted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        Box(Modifier.size(40.dp).clip(CircleShape).background(IvoryDesign.ink), contentAlignment = Alignment.Center) {
-            Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = IvoryDesign.onInk, modifier = Modifier.size(18.dp))
         }
     }
 }

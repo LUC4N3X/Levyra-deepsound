@@ -156,8 +156,23 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
             .filter(AppleExploreCatalog::isCategory)
             .distinctBy { it.id }
 
+    suspend fun curatorGenre(curatorIds: List<String>, storefront: String, language: String): AppleCatalogPage? {
+        if (curatorIds.isEmpty()) return null
+        val listed = browseCategories(storefront, language).mapTo(HashSet()) { it.id }
+        val ordered = curatorIds.distinct().sortedByDescending { it in listed }
+        for (id in ordered.take(MAX_CURATOR_ATTEMPTS)) curatorPage(id, storefront, language)?.let { return it }
+        return null
+    }
+
+    suspend fun cachedCuratorGenre(curatorIds: List<String>, storefront: String, language: String): AppleCatalogPage? =
+        curatorIds.distinct().firstNotNullOfOrNull { id ->
+            cachedPage(curatorPath(id), storefront, language)?.page?.takeIf { page -> page.shelves.any { it.items.isNotEmpty() } }
+        }
+
+    private fun curatorPath(curatorId: String) = AppleCatalogPath("curator/levyra/$curatorId", "curator-$curatorId")
+
     private suspend fun curatorPage(curatorId: String, storefront: String, language: String): AppleCatalogPage? =
-        page(AppleCatalogPath("curator/levyra/$curatorId", "curator-$curatorId"), storefront, language)?.page
+        page(curatorPath(curatorId), storefront, language)?.page
             ?.takeIf { page -> page.shelves.any { shelf -> shelf.items.isNotEmpty() } }
 
     suspend fun dailyTop100(storefront: String, language: String): List<AppleDailyChart> =
@@ -452,6 +467,7 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
         private const val MAX_ARTIST_PAGES = 24
         private const val ARTIST_SEARCH_LIMIT = 5
         private const val TOP_VIDEOS_LIMIT = 12
+        private const val MAX_CURATOR_ATTEMPTS = 3
         private const val CATALOG_API_HOST = "amp-api.music.apple.com"
         private const val CATALOG_API_URL = "https://$CATALOG_API_HOST"
 

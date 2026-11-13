@@ -51,7 +51,9 @@ internal class AppleMusicHomeActions(
     val openCollection: (String) -> Unit,
     val openSettings: () -> Unit,
     val pickCountry: () -> Unit,
-    val onTrackActions: (Track) -> Unit
+    val onTrackActions: (Track) -> Unit,
+    val openGenreChart: (com.luc4n3x.levyra.domain.ExploreZone) -> Unit = {},
+    val openComments: (Track) -> Unit = {}
 )
 
 internal class AppleMusicHomeData(
@@ -70,7 +72,9 @@ internal class AppleMusicHomeData(
     val countryLabel: String = "",
     val charts: List<Track> = emptyList(),
     val chartsTitle: String = "",
-    val listener: HomeListener = HomeListener("", "", 0L, "")
+    val listener: HomeListener = HomeListener("", "", 0L, ""),
+    val resonanceTracks: List<Track> = emptyList(),
+    val resonanceComments: Map<String, com.luc4n3x.levyra.domain.ResonanceCommentSnippet> = emptyMap()
 )
 
 internal class HomeListener(val name: String, val photoPath: String, val photoVersion: Long, val avatarUrl: String)
@@ -327,8 +331,12 @@ private fun appleMusicLevyraBlocks(
     openCharts: () -> Unit
 ): List<AppleHomeBlock> = listOfNotNull(
     songsBlock(TOP50_KEY, data.chartsTitle, data.charts, data, actions, copy.explicit, openCharts, limit = 20),
+    genreHitsBlock(data.charts.isNotEmpty()) { AppleMusicGenreHitsShelf(actions.openGenreChart) },
     soundtrackBlock(data.soundtrack),
     songsBlock("levyra-orbit", strings.personalOrbitTitle, data.personalTracks.takeIf { data.showPersonal }.orEmpty(), data, actions, copy.explicit),
+    "levyra-discover-for-you" to @Composable {
+        com.luc4n3x.levyra.ui.discovery.LocalHomeDiscovery.current?.let { handle -> com.luc4n3x.levyra.ui.discovery.SkinDiscoverForYou(handle, LocalAnimationsEnabled.current) }
+    },
     data.quickPicks?.let { section -> songsBlock("levyra-quick-picks", section.title.ifBlank { strings.quickPicks }, section.tracks, data, actions, copy.explicit) },
     cardsBlock("levyra-albums", strings.albumsForYou, data.albums.takeIf { data.showAlbums }.orEmpty().map { album ->
         AppleMusicCardModel("album-${album.title}-${album.artist}", album.title, album.artist, album.thumbnailUrl, album.explicit) { actions.openAlbum(album) }
@@ -375,6 +383,9 @@ private fun cardsBlock(key: String, title: String, cards: List<AppleMusicCardMod
         }
     }
 }
+
+private fun genreHitsBlock(visible: Boolean, shelf: @Composable () -> Unit): AppleHomeBlock? =
+    if (visible) "levyra-genre-hits" to shelf else null
 
 private fun soundtrackBlock(hero: StudioHero?): AppleHomeBlock? {
     hero ?: return null

@@ -48,26 +48,26 @@ import com.luc4n3x.levyra.viewmodel.EXPLORE_BROWSE_ID
 import com.luc4n3x.levyra.viewmodel.NEW_VIDEOS_BROWSE_ID
 import com.luc4n3x.levyra.viewmodel.YouTubeMusicHomeViewModel
 
-private const val MoodGridRows = 4
-
 @Composable
 internal fun YouTubeMusicExploreContent(
     listState: LazyListState,
-    currentId: String?,
     bottomInset: Dp,
     actions: YouTubeMusicHomeActions,
-    onOpenMood: (String, String) -> Unit,
     shortcuts: @Composable () -> Unit,
-    levyraMix: @Composable () -> Unit = {},
+    editorial: ExploreEditorialContent?,
     moodJourney: @Composable () -> Unit = {}
 ) {
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { LevyraYouTubeMusicSkinStrings.forCode(strings.code) }
-    val exploreViewModel = viewModel<YouTubeMusicHomeViewModel>(key = "ytm-explore")
-    val feed by exploreViewModel.state.collectAsStateWithLifecycle()
-    val previews by exploreViewModel.previews.collectAsStateWithLifecycle()
-    LaunchedEffect(strings.code) { exploreViewModel.load(strings.code, browseId = EXPLORE_BROWSE_ID) }
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val rows = remember(editorial?.news) {
+        val news = editorial?.news.orEmpty()
+        buildList {
+            if (news.isNotEmpty()) add(ExploreRow.NewsHero)
+            add(ExploreRow.DailyTop100)
+            if (news.size > 1) add(ExploreRow.NewsList)
+        }
+    }
     Box(Modifier.fillMaxSize().background(YouTubeMusicDesign.background)) {
         LazyColumn(
             state = listState,
@@ -82,94 +82,14 @@ internal fun YouTubeMusicExploreContent(
                 )
             }
             item(key = "ytm-explore-shortcuts", contentType = "ytm-shortcuts") { shortcuts() }
-            item(key = "ytm-explore-levyra-mix", contentType = "ytm-levyra-mix") { levyraMix() }
-            if (feed.shelves.isEmpty() && feed.failed) {
-                item(key = "ytm-explore-failed", contentType = "ytm-notice") {
-                    YouTubeMusicNotice(copy.homeUnavailable, copy.retry) { exploreViewModel.load(strings.code, force = true, browseId = EXPLORE_BROWSE_ID) }
-                }
-            }
             item(key = "explore-mood-journey", contentType = "explore-mood-journey") { moodJourney() }
-            val shelves = feed.allShelves.filterNot {
-                it.headerBrowseId == NEW_VIDEOS_BROWSE_ID || it.headerBrowseId == "FEmusic_moods_and_genres"
-            }
-            shelves.forEach { shelf ->
-                item(key = "ytm-explore-${shelf.key}", contentType = "ytm-explore-${shelf.style}") {
-                    when (shelf.style) {
-                        YoutubeMusicHomeShelfStyle.Buttons -> YouTubeMusicMoodShelf(shelf, onOpenMood)
-                        YoutubeMusicHomeShelfStyle.ListColumns -> YouTubeMusicRankedShelf(shelf, currentId, copy.playAll, copy.explicit, actions)
-                        else -> YouTubeMusicFeedShelf(shelf, currentId, copy, actions, previews, exploreViewModel::requestPreview)
-                    }
+            if (editorial != null) {
+                rows.forEach { row ->
+                    item(key = "ytm-explore-${row.key}", contentType = "ytm-explore-${row.key}") { ExploreEditorialRow(row, editorial) }
                 }
             }
         }
         Box(Modifier.fillMaxWidth().height(statusBarTop).background(YouTubeMusicDesign.background))
-    }
-}
-
-@Composable
-private fun YouTubeMusicMoodShelf(shelf: YoutubeMusicHomeShelf, onOpenMood: (String, String) -> Unit) {
-    Column {
-        YouTubeMusicSectionHeader(shelf.title)
-        Spacer(Modifier.height(8.dp))
-        LazyHorizontalGrid(
-            rows = GridCells.Fixed(MoodGridRows),
-            modifier = Modifier.fillMaxWidth().height(56.dp * MoodGridRows + 12.dp * (MoodGridRows - 1)),
-            contentPadding = PaddingValues(horizontal = YouTubeMusicDesign.gutter),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(shelf.buttons, key = { it.params }) { button ->
-                YouTubeMusicMoodTile(button.title, button.stripe(), onClick = { onOpenMood(button.title, button.params) }, modifier = Modifier.width(176.dp))
-            }
-        }
-    }
-}
-
-private fun YoutubeMusicHomeButton.stripe(): Color =
-    if (stripeColor == 0L) YouTubeMusicDesign.textTertiary else Color(stripeColor.toInt())
-
-@Composable
-private fun YouTubeMusicRankedShelf(
-    shelf: YoutubeMusicHomeShelf,
-    currentId: String?,
-    playAllLabel: String,
-    explicitLabel: String,
-    actions: YouTubeMusicHomeActions
-) {
-    val tracks = remember(shelf) { shelf.tracks }
-    val columns = remember(shelf) { shelf.items.filter { it.track != null }.chunked(4) }
-    val width = YouTubeMusicDesign.quickPickColumnWidth(youTubeMusicViewportWidth())
-    Column {
-        YouTubeMusicSectionHeader(shelf.title, actionLabel = playAllLabel.takeIf { tracks.isNotEmpty() }, onAction = { actions.home.playAll(tracks) })
-        Spacer(Modifier.height(4.dp))
-        LazyRow {
-            items(columns.size, key = { columns[it].first().key }) { columnIndex ->
-                Column(Modifier.width(width)) {
-                    columns[columnIndex].forEachIndexed { rowIndex, item ->
-                        val track = item.track ?: return@forEachIndexed
-                        val rank = columnIndex * 4 + rowIndex + 1
-                        YouTubeMusicSongRow(
-                            track = track, subtitle = item.subtitle, current = track.id == currentId, explicitLabel = explicitLabel,
-                            onClick = { actions.home.playFrom(tracks, track) }, onMore = { actions.home.onTrackActions(track) },
-                            leading = { YouTubeMusicRankArtwork(rank, track) }
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun YouTubeMusicRankArtwork(rank: Int, track: Track) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            rank.toString(), color = YouTubeMusicDesign.text, style = MaterialTheme.typography.headlineMedium,
-            fontSize = 30.sp, fontWeight = FontWeight.Light, modifier = Modifier.width(40.dp)
-        )
-        Box(Modifier.size(YouTubeMusicDesign.listArtwork).clip(YouTubeMusicDesign.thumbShape).background(YouTubeMusicDesign.placeholder)) {
-            CoverImage(track, Modifier.fillMaxSize())
-        }
     }
 }
 
@@ -203,14 +123,14 @@ internal fun YouTubeMusicExploreScreen(
     onOpenJam: () -> Unit,
     onLiveRadioOpenChange: (Boolean) -> Unit,
     onOpenMood: (String, String) -> Unit,
+    editorial: ExploreEditorialContent?,
     onTrackActions: (Track) -> Unit
 ) {
     YouTubeMusicExploreContent(
         listState = listState,
-        currentId = currentId,
         bottomInset = bottomInset,
         actions = remember(viewModel, onTrackActions) { youTubeMusicExploreActions(viewModel, onTrackActions) },
-        onOpenMood = onOpenMood,
+        editorial = editorial,
         shortcuts = {
             ExplorePrimaryShortcuts(
                 availableAnchors = availableAnchors,
@@ -220,7 +140,6 @@ internal fun YouTubeMusicExploreScreen(
                 modifier = Modifier
             )
         },
-        levyraMix = { YouTubeMusicLevyraMix(viewModel) },
         moodJourney = {
             com.luc4n3x.levyra.ui.moodjourney.MoodJourneyEntryCard(
                 onOpen = { preset -> if (preset == null) viewModel.openMoodJourney() else viewModel.openMoodJourney(preset) },
@@ -228,63 +147,4 @@ internal fun YouTubeMusicExploreScreen(
             )
         }
     )
-}
-
-private class YouTubeMusicMixCard(val key: String, val title: String, val icon: androidx.compose.ui.graphics.vector.ImageVector, val colors: List<Color>, val onClick: () -> Unit)
-
-@Composable
-private fun YouTubeMusicLevyraMix(viewModel: com.luc4n3x.levyra.viewmodel.ExploreViewModel) {
-    val strings = LocalLevyraStrings.current
-    val mixFlow = remember(viewModel) { viewModel.state.map { it.mixFamiliarity to it.mixLoading }.distinctUntilChanged() }
-    val initialMix = remember(viewModel) { viewModel.state.value.let { it.mixFamiliarity to it.mixLoading } }
-    val mix by mixFlow.collectAsStateWithLifecycle(initialMix)
-    val (familiarity, loading) = mix
-    val cards = remember(strings, viewModel) {
-        listOf(
-            YouTubeMusicMixCard("mix-surprise", strings.surpriseMe, Icons.Rounded.Casino, listOf(Color(0xFF1E5BB8), Color(0xFF0B1F45))) {
-                viewModel.startLevyraMix(com.luc4n3x.levyra.domain.LevyraMixKind.SurpriseMe)
-            },
-            YouTubeMusicMixCard("mix-your-sound", strings.yourSound, Icons.Rounded.Equalizer, listOf(Color(0xFF0E8A6B), Color(0xFF06302A)), viewModel::openYourSound),
-            YouTubeMusicMixCard("mix-lab", strings.mixLab, Icons.Rounded.Tune, listOf(Color(0xFF8A5A0E), Color(0xFF33210A))) { viewModel.openMixLab() }
-        )
-    }
-    Column {
-        YouTubeMusicSectionHeader(strings.levyraMix, strapline = strings.mixCreate)
-        Spacer(Modifier.height(8.dp))
-        YouTubeMusicChipRow(
-            listOf(strings.mixFamiliarLabel, strings.mixDiscoveryLabel),
-            if (familiarity >= 0.5f) 0 else 1,
-            onSelect = { index -> viewModel.setMixFamiliarity(if (index == 0) 0.8f else 0.2f) }
-        )
-        Spacer(Modifier.height(16.dp))
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = YouTubeMusicDesign.gutter),
-            horizontalArrangement = Arrangement.spacedBy(YouTubeMusicDesign.itemGap)
-        ) {
-            items(cards.size, key = { cards[it].key }) { index ->
-                val card = cards[index]
-                Column(
-                    Modifier.width(YouTubeMusicDesign.cardArtwork)
-                        .levyraPressable(onClick = card.onClick, enabled = !loading, role = Role.Button, pressedScale = 1f)
-                ) {
-                    Box(
-                        Modifier.size(YouTubeMusicDesign.cardArtwork).clip(YouTubeMusicDesign.cardShape)
-                            .background(Brush.linearGradient(card.colors)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (loading && index == 0) LevyraLoadingIndicator(color = Color.White)
-                        else Icon(card.icon, null, tint = Color.White, modifier = Modifier.size(56.dp))
-                        Text(
-                            card.title, color = Color.White, fontSize = 18.sp, lineHeight = 22.sp, fontWeight = FontWeight.Bold,
-                            maxLines = 2, overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.align(Alignment.BottomStart).padding(12.dp)
-                        )
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    Text(card.title, color = YouTubeMusicDesign.text, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(strings.levyraMix, color = YouTubeMusicDesign.textSecondary, style = MaterialTheme.typography.bodyLarge, maxLines = 1)
-                }
-            }
-        }
-    }
 }

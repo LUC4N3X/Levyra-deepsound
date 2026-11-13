@@ -18,7 +18,6 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -62,8 +61,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.border
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
@@ -77,7 +74,6 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.Category
 import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.Flag
@@ -89,19 +85,14 @@ import androidx.compose.material.icons.rounded.RocketLaunch
 import androidx.compose.material.icons.rounded.TripOrigin
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
-import androidx.compose.material3.toShape
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
 import kotlin.math.abs
 import com.luc4n3x.levyra.domain.ChartsCatalog
 import com.luc4n3x.levyra.domain.ExploreCategory
@@ -132,7 +123,7 @@ private fun bubbleLevelHint(level: BubbleLevel): SmartMusicText = when (level) {
     BubbleLevel.OutOfOrbit -> SmartMusicText.BubbleOutHint
 }
 
-private fun bubbleLevelIcon(level: BubbleLevel): ImageVector = when (level) {
+internal fun bubbleLevelIcon(level: BubbleLevel): ImageVector = when (level) {
     BubbleLevel.Near -> Icons.Rounded.TripOrigin
     BubbleLevel.Adventurous -> Icons.Rounded.Explore
     BubbleLevel.OutOfOrbit -> Icons.Rounded.RocketLaunch
@@ -453,88 +444,6 @@ internal fun BubbleDistanceBadge(distance: Float, copy: SmartMusicCopy, containe
                 drawCircle(content, 2.dp.toPx(), Offset(center.x + radius * 0.7071f, center.y - radius * 0.7071f))
             }
             Text(label, style = MaterialTheme.typography.labelSmall, maxLines = 1)
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-internal fun BubbleOrbitEntry(
-    copy: SmartMusicCopy,
-    animated: Boolean,
-    artworks: List<String>,
-    onOpen: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val scheme = MaterialTheme.colorScheme
-    val haptics = LocalLevyraHaptics.current
-    Row(
-        modifier
-            .fillMaxWidth()
-            .heightIn(min = 64.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .clickable(role = Role.Button) {
-                haptics.perform(LevyraHapticAction.Confirm)
-                onOpen()
-            }
-            .padding(horizontal = 4.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        ArtworkConstellation(artworks, animated)
-        Column(Modifier.weight(1f)) {
-            Text(
-                copy[SmartMusicText.BubbleTitle],
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = scheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                copy[SmartMusicText.BubbleEntry],
-                style = MaterialTheme.typography.bodySmall,
-                color = scheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null, tint = scheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun ArtworkConstellation(artworks: List<String>, animated: Boolean) {
-    val scheme = MaterialTheme.colorScheme
-    val shapes = listOf(MaterialShapes.Cookie9Sided.toShape(), MaterialShapes.Clover4Leaf.toShape(), MaterialShapes.Sunny.toShape())
-    val fallback = listOf(scheme.tertiaryContainer, scheme.secondaryContainer, scheme.primaryContainer)
-    val spin = if (animated) {
-        rememberInfiniteTransition(label = "bubble-constellation").animateFloat(
-            0f, 360f, infiniteRepeatable(tween(40_000, easing = LinearEasing), RepeatMode.Restart), label = "bubble-constellation-spin"
-        )
-    } else null
-    Box(Modifier.size(width = 84.dp, height = 44.dp)) {
-        repeat(3) { index ->
-            val url = artworks.getOrNull(index)
-            Box(
-                Modifier
-                    .offset(x = (index * 20).dp)
-                    .size(44.dp)
-                    .graphicsLayer { rotationZ = (spin?.value ?: 0f) * if (index % 2 == 0) 1f else -1f }
-                    .clip(shapes[index])
-                    .background(fallback[index])
-                    .border(2.dp, scheme.surface, shapes[index])
-            ) {
-                if (url != null) {
-                    AsyncImage(
-                        model = url,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.matchParentSize().graphicsLayer { rotationZ = -((spin?.value ?: 0f) * if (index % 2 == 0) 1f else -1f) }
-                    )
-                }
-            }
         }
     }
 }

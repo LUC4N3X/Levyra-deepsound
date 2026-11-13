@@ -186,7 +186,7 @@ private fun ComposedCard.appleArtworkUrl(): String =
     artworkUrl.ifBlank { track?.let { it.largeThumbnailUrl.ifBlank { it.thumbnailUrl } }.orEmpty() }
 
 private fun ComposedCard.toAppleCard(): AppleMusicCardModel =
-    AppleMusicCardModel(key, title, subtitle, appleArtworkUrl(), explicit, circular, onClick)
+    AppleMusicCardModel(key, title, subtitle, appleArtworkUrl(), explicit, circular, onClick = onClick)
 
 @Composable
 private fun AppleMusicRankedColumns(

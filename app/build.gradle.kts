@@ -83,6 +83,8 @@ val canvasClientKey = if (isFdroidBuild) {
 } else {
     envOrProperty("LEVYRA_CANVAS_CLIENT_KEY", "levyraCanvasClientKey")
 }
+val publicLastFmApiKey = "91b4cb20fcbb97e574f8046f762ef963"
+val lastFmApiKey = envOrProperty("LASTFM_API_KEY", "lastFmApiKey").ifBlank { publicLastFmApiKey }
 val releaseStoreFilePath = envOrProperty("LEVYRA_KEYSTORE_FILE", "levyraStoreFile").ifBlank { "app/levyra-release.jks" }
 val releaseStorePassword = envOrProperty("LEVYRA_KEYSTORE_PASSWORD", "levyraStorePassword")
 val releaseKeyAlias = envOrProperty("LEVYRA_KEY_ALIAS", "levyraKeyAlias")
@@ -172,6 +174,7 @@ android {
         buildConfigField("String", "YOUTUBE_INNERTUBE_API_KEY", buildConfigString(youtubeInnertubeApiKey))
         buildConfigField("String", "CANVAS_RESOLVER_URL", buildConfigString(canvasResolverUrl))
         buildConfigField("String", "CANVAS_CLIENT_KEY", buildConfigString(canvasClientKey))
+        buildConfigField("String", "LASTFM_API_KEY", buildConfigString(lastFmApiKey))
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

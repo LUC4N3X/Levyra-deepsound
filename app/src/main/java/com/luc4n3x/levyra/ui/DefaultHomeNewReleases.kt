@@ -30,7 +30,7 @@ internal fun rememberDefaultHomeAlbumShelf(
     personalAlbums: List<AlbumHit>,
     personalTitle: String
 ): DefaultHomeAlbumShelf {
-    if (!defaultHomeUsesNewReleases(enabled)) {
+    if (!homeAlbumsUseNewReleases(enabled)) {
         return remember(personalAlbums, personalTitle) { DefaultHomeAlbumShelf(personalAlbums, personalTitle) }
     }
     val newThisWeek by viewModel.appleNewThisWeek.collectAsStateWithLifecycle()
@@ -45,13 +45,15 @@ internal fun rememberDefaultHomeAlbumShelf(
     }
 }
 
+internal fun homeAlbumsUseNewReleases(enabled: Boolean): Boolean = defaultHomeUsesNewReleases(enabled) || (enabled && LevyraIsSpotify)
+
 internal fun defaultHomeUsesNewReleases(enabled: Boolean): Boolean =
     enabled && LevyraIsDefaultSkin && !LevyraIsTorque && !LevyraIsIvory &&
         !LevyraIsMono && !LevyraIsAtelier && !LevyraIsQobuz && !LevyraIsAppleMusic && !LevyraIsYouTubeMusic && !LevyraIsSpotify
 
 @Composable
 internal fun rememberDefaultHomePullRefresh(viewModel: HomeViewModel, enabled: Boolean, onPullRefresh: () -> Unit): () -> Unit {
-    val active = defaultHomeUsesNewReleases(enabled)
+    val active = homeAlbumsUseNewReleases(enabled)
     val latestRefresh by rememberUpdatedState(onPullRefresh)
     return remember(viewModel, active) {
         {

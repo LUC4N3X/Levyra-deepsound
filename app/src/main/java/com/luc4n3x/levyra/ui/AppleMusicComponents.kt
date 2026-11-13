@@ -60,6 +60,7 @@ internal class AppleMusicCardModel(
     val artworkUrl: String,
     val explicit: Boolean = false,
     val circular: Boolean = false,
+    val cover: (@Composable (androidx.compose.ui.graphics.Shape) -> Unit)? = null,
     val onClick: () -> Unit
 )
 
@@ -322,7 +323,9 @@ internal fun AppleMusicSquareCard(card: AppleMusicCardModel, explicitLabel: Stri
             Modifier.fillMaxWidth().aspectRatio(1f).clip(shape).background(AppleMusicDesign.placeholder)
                 .border(0.5.dp, AppleMusicDesign.artworkStroke, shape)
         ) {
-            if (card.artworkUrl.isNotBlank()) {
+            if (card.cover != null) {
+                card.cover.invoke(shape)
+            } else if (card.artworkUrl.isNotBlank()) {
                 StableRemoteArtwork(card.artworkUrl, card.title, Modifier.fillMaxSize(), ContentScale.Crop, highRes = true)
             }
         }

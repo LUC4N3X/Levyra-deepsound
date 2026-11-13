@@ -51,7 +51,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.UnfoldLess
-import androidx.compose.material.icons.rounded.ViewSidebar
+import androidx.compose.material.icons.automirrored.rounded.ViewSidebar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -410,7 +410,7 @@ private fun SidebarHandle(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = entry?.selectedIcon ?: Icons.Rounded.ViewSidebar,
+                imageVector = entry?.selectedIcon ?: Icons.AutoMirrored.Rounded.ViewSidebar,
                 contentDescription = null,
                 tint = colors.onIndicator,
                 modifier = Modifier.size(22.dp)
@@ -557,7 +557,7 @@ internal fun SettingsGroupCollector.floatingNavSettingsItems(
     fun update(value: LevyraFloatingNavSettings) = onInterfaceSettings(interfaceSettings.copy(floatingNav = value))
     item {
         SettingsToggle(
-            icon = Icons.Rounded.ViewSidebar,
+            icon = Icons.AutoMirrored.Rounded.ViewSidebar,
             title = copy.title,
             subtitle = copy.subtitle,
             checked = floating.enabled,

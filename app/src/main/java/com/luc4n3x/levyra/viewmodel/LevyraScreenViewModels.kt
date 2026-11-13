@@ -160,9 +160,16 @@ class HomeViewModel internal constructor(
     private val youtubeMusicHome: StateFlow<YoutubeMusicHomeSource>
 ) : LevyraScreenViewModel(root, ::homeProjection) {
     fun openExploreZone(zone: ExploreZone) = root.openExploreZone(zone)
+    fun openExploreGenreChart(zone: ExploreZone) = root.openExploreGenreChart(zone)
+    fun openExplorePodcasts() = root.openExplorePodcasts()
     fun selectTab(tab: com.luc4n3x.levyra.domain.LevyraTab) = root.selectTab(tab)
     val appleNewThisWeek: StateFlow<AppleNewThisWeek> get() = root.appleNewThisWeek
     fun ensureAppleNewThisWeek(force: Boolean = false) = root.ensureAppleNewThisWeek(force)
+    fun ensureExploreCategoryArtwork(params: String) = root.ensureExploreCategoryArtwork(params, false)
+    val exploreCategoryArtwork: StateFlow<Map<String, String>> = root.state
+        .map { it.exploreCategoryArtwork }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), root.state.value.exploreCategoryArtwork)
 
     private val freezeHomeContent = MutableStateFlow(false)
     private val explicitMoodSelection = MutableStateFlow<Mood?>(null)
@@ -409,7 +416,15 @@ class ExploreViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::ex
     fun playPodcastEpisode(list: List<Track>, track: Track, startPositionMs: Long) =
         root.playAudioFrom(list, track, startPositionMs = startPositionMs)
     fun playLiveRadio(station: RadioStation) = root.playLiveRadio(station)
+    val exploreGenreChart: StateFlow<ExploreGenreChartState> get() = root.exploreGenreChart
     fun selectExploreZone(zone: ExploreZone) = root.selectExploreZone(zone)
+    fun openExploreZoneChart(zone: ExploreZone) = root.openExploreZoneChart(zone)
+    fun openExploreCategoryChart(category: ExploreCategory) = root.openExploreCategoryChart(category)
+    fun exportTracks(tracks: List<Track>, label: String) = root.exportTracks(tracks, label)
+    val exploreGenreDiscovery: StateFlow<ExploreGenreDiscoveryState> get() = root.exploreGenreDiscovery
+    fun loadExploreZoneDiscovery(zone: ExploreZone) = root.loadExploreZoneDiscovery(zone)
+    fun loadExploreCategoryDiscovery(category: ExploreCategory) = root.loadExploreCategoryDiscovery(category)
+    fun openApplePlaylist(playlist: PlaylistHit, storefront: String) = root.openApplePlaylist(playlist, storefront)
     fun selectExploreCategory(category: ExploreCategory) = root.selectExploreCategory(category)
     fun ensureExploreTrackArtwork(track: Track) = root.ensureExploreTrackArtwork(track)
     fun ensureExploreCategoryArtwork(params: String, allowTrackFallback: Boolean) =

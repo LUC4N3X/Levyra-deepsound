@@ -52,7 +52,8 @@ internal fun LevyraMediaTitle(
     overflow: TextOverflow = TextOverflow.Ellipsis,
     style: TextStyle = LocalTextStyle.current,
     marqueeEnabled: Boolean = true,
-    repeatDelayMillis: Int = 3_200
+    repeatDelayMillis: Int = 3_200,
+    initialDelayMillis: Int = repeatDelayMillis
 ) {
     val animationsEnabled = LocalAnimationsEnabled.current
     val strings = LocalLevyraStrings.current
@@ -82,7 +83,7 @@ internal fun LevyraMediaTitle(
                 .then(if (explicit) Modifier.padding(start = 5.dp) else Modifier)
                 .then(
                     if (animationsEnabled && marqueeEnabled && maxLines == 1) {
-                        Modifier.basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = repeatDelayMillis)
+                        Modifier.basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = repeatDelayMillis, initialDelayMillis = initialDelayMillis)
                     } else Modifier
                 ),
             color = color,

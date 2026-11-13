@@ -1419,7 +1419,8 @@ private fun AtelierHomeContent(
     val artists = remember(data.artists, data.showArtists) { atelierHomeArtists(data) }
     val charts = remember(data.charts) { data.charts.distinctBy(Track::id).take(50) }
     val collections = remember(data.collections) { data.collections.distinctBy { it.id } }
-    val curatedShelves = rememberCuratedPlaylistShelves(strings.code)
+    val curatedPlaylists = rememberCuratedPlaylistShelves(strings.code)
+    val curatedShelves = curatedPlaylists
     val newVideos = rememberNewMusicVideos(strings.code)
     val curatedTitle = remember(strings.code) { com.luc4n3x.levyra.ui.i18n.LevyraMonoHomeStrings.forCode(strings.code).mixedForYou }
     val forgotten = remember(data.forgottenFavorites) { data.forgottenFavorites.distinctBy(Track::id).take(20) }
@@ -1501,6 +1502,7 @@ private fun AtelierHomeContent(
             favoriteRadioSection(homeRadio)
             atelierHomeAlbumGrid(albumRows, columns, strings, actions)
             atelierHomeReleases(newTracks, newAlbums, releaseTitle, currentId, trackOptions, actions)
+            atelierGenreChartsSection(state.interfaceSettings.showCharts, viewModel::openExploreGenreChart)
             atelierHomeVideos(strings.homeVideoShelfTitle, newVideos, currentId) { track -> actions.playFrom(newVideos.mapNotNull { it.track }, track) }
             atelierHomeTrendingArtists(artists, strings, actions)
             atelierHomeCharts(charts, chartsExpanded, data, strings, actions, trackLine) {

@@ -249,6 +249,7 @@ internal fun SpotifyPlaylistPage(
     onDismiss: () -> Unit,
     descriptionContent: (@Composable () -> Unit)? = null,
     heroBehindTopBar: Boolean = false,
+    footer: (androidx.compose.foundation.lazy.LazyListScope.() -> Unit)? = null,
     hero: @Composable (headerScroll: Float, progress: Float) -> Unit
 ) {
     BackHandler(onBack = onDismiss)
@@ -302,6 +303,7 @@ internal fun SpotifyPlaylistPage(
                 val active = track.id == currentId
                 SpotifyPlaylistTrackRow(index, track, active, isPlaying, onPlay = { onPlay(tracks, track) }, onActions = { onTrackActions(track) })
             }
+            footer?.invoke(this)
         }
         SpotifyPlaylistTopBar(title, tone, barAlpha, pinned, playTracks, onDismiss) { statusBarPx = it }
     }

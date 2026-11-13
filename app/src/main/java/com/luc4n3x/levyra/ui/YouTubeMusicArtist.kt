@@ -121,7 +121,7 @@ internal fun YouTubeMusicArtistScreen(
                                 modifier = Modifier.padding(start = YouTubeMusicDesign.gutter, end = YouTubeMusicDesign.gutter, top = statusTop + 96.dp)
                             )
                         }
-                    else -> youTubeMusicArtistItems(profile, state, viewModel, copy, heroHeight, pinned, statusTop, onTrackActions)
+                    else -> youTubeMusicArtistItems(profile, state, viewModel, copy, heroHeight, listState, statusTop, onTrackActions)
                 }
             }
             YouTubeMusicArtistBar(profile, state, viewModel, collapse, pinned, copy)
@@ -142,6 +142,8 @@ internal fun YouTubeMusicArtistScreen(
     }
 }
 
+private const val YTM_ARTIST_TABS_KEY = "ytm-artist-tabs"
+
 @OptIn(ExperimentalFoundationApi::class)
 private fun LazyListScope.youTubeMusicArtistItems(
     artist: ArtistProfile,
@@ -149,15 +151,20 @@ private fun LazyListScope.youTubeMusicArtistItems(
     viewModel: LevyraViewModel,
     copy: YouTubeMusicSkinCopy,
     heroHeight: Dp,
-    pinned: Boolean,
+    listState: LazyListState,
     statusTop: Dp,
     onTrackActions: (Track) -> Unit
 ) {
     val currentId = state.currentTrack?.id
     item(key = "ytm-artist-hero", contentType = "ytm-artist-hero") { YouTubeMusicArtistHero(artist, heroHeight) }
     item(key = "ytm-artist-actions", contentType = "ytm-artist-actions") { YouTubeMusicArtistActions(artist, state, viewModel, copy) }
-    stickyHeader(key = "ytm-artist-tabs", contentType = "ytm-artist-tabs") {
-        YouTubeMusicArtistTabs(copy.music, Modifier.padding(top = if (pinned) statusTop + ArtistBarHeight else 0.dp))
+    stickyHeader(key = YTM_ARTIST_TABS_KEY, contentType = "ytm-artist-tabs") {
+        YouTubeMusicArtistTabs(
+            copy.music,
+            Modifier.graphicsLayer {
+                translationY = youTubeMusicStickyPinOffset(listState, YTM_ARTIST_TABS_KEY, (statusTop + ArtistBarHeight).toPx())
+            }
+        )
     }
     latestRelease(artist)?.let { release ->
         item(key = "ytm-artist-promo", contentType = "ytm-artist-promo") {
@@ -392,7 +399,7 @@ private fun YouTubeMusicArtistActions(
 @Composable
 private fun YouTubeMusicArtistTabs(label: String, modifier: Modifier = Modifier) {
     val divider = YouTubeMusicDesign.divider
-    Box(Modifier.fillMaxWidth().background(YouTubeMusicDesign.background).then(modifier)) {
+    Box(modifier.fillMaxWidth().background(YouTubeMusicDesign.background)) {
         Box(
             Modifier.fillMaxWidth().height(ArtistTabRowHeight)
                 .drawBehind { drawRect(divider, Offset(0f, size.height - 1.dp.toPx()), Size(size.width, 1.dp.toPx())) }

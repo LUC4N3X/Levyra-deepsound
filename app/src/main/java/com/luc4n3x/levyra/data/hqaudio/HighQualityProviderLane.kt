@@ -83,7 +83,7 @@ internal class HighQualityProviderLane(
             if (isDecisive(selection, index)) break
         }
         val noAcceptableCandidate = selection is AlternativeMatchSelection.Rejected &&
-            (selection as AlternativeMatchSelection.Rejected).reason != MatchRejection.AMBIGUOUS
+            selection.reason != MatchRejection.AMBIGUOUS
         if (noAcceptableCandidate) {
             AlternativeSearchPlan.titleOnly(query)?.let { text ->
                 val page = search.fetch(AlternativeSearchPlan.MAX_PASSES + 1, text, FIRST_PAGE)

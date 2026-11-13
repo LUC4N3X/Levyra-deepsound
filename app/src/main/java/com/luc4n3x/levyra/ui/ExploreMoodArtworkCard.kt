@@ -64,7 +64,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import java.util.Locale
 
-private val ExploreMoodPortraitLookupSemaphore = Semaphore(2)
+internal val ExploreMoodPortraitLookupSemaphore = Semaphore(2)
 private const val ExploreRapFallbackPortraitUrl = "https://upload.wikimedia.org/wikipedia/commons/5/54/Eminem_in_2021.jpg"
 
 private val ExploreMoodGlobalArtistPools = mapOf(
@@ -78,7 +78,11 @@ private val ExploreMoodGlobalArtistPools = mapOf(
     "latino" to listOf("Bad Bunny", "KAROL G", "Rauw Alejandro", "Feid"),
     "lofi-chill" to listOf("Joji", "Laufey", "beabadoobee", "keshi"),
     "anime-jpop" to listOf("Ado", "YOASOBI", "LiSA", "Kenshi Yonezu"),
-    "afrobeats" to listOf("Burna Boy", "Rema", "Ayra Starr", "Wizkid")
+    "afrobeats" to listOf("Burna Boy", "Rema", "Ayra Starr", "Wizkid"),
+    "chart-kpop" to listOf("BLACKPINK", "Stray Kids", "NewJeans", "TWICE", "SEVENTEEN"),
+    "chart-metal" to listOf("Metallica", "Slipknot", "Iron Maiden", "System of a Down", "Gojira"),
+    "chart-indie" to listOf("Tame Impala", "Phoebe Bridgers", "The Strokes", "Mac DeMarco", "boygenius"),
+    "chart-jazz" to listOf("Norah Jones", "Kamasi Washington", "Gregory Porter", "Esperanza Spalding", "Diana Krall")
 )
 
 private val ExploreMoodLocalWaveArtistPools = mapOf(

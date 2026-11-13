@@ -46,9 +46,12 @@ import com.luc4n3x.levyra.domain.YoutubeMusicHomeShelf
 import com.luc4n3x.levyra.ui.artwork.rememberArtworkPalette
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.LevyraSectionHeader
+import com.luc4n3x.levyra.ui.components.LevyraSectionShowAll
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LevyraMonoHomeStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.HOME_SUBTITLE_CURATED_PLAYLISTS
+import com.luc4n3x.levyra.ui.i18n.defaultHomeSubtitle
 import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
 import com.luc4n3x.levyra.viewmodel.CuratedFeaturedPlaylist
 
@@ -61,7 +64,8 @@ internal fun defaultHomeOwnsCuratedPlaylists(): Boolean = defaultHomeUsesNewRele
 @Composable
 internal fun rememberDefaultCuratedShelves(): List<YoutubeMusicHomeShelf> {
     if (!defaultHomeOwnsCuratedPlaylists()) return emptyList()
-    val shelves = rememberCuratedPlaylistShelves(LocalLevyraStrings.current.code)
+    val code = LocalLevyraStrings.current.code
+    val shelves = rememberCuratedPlaylistShelves(code)
     return remember(shelves) { shelves.filter { shelf -> shelf.items.any { it.playlist != null } } }
 }
 
@@ -74,8 +78,9 @@ internal fun DefaultCuratedPlaylistShelf(index: Int, shelf: YoutubeMusicHomeShel
     Column {
         LevyraSectionHeader(
             title = if (index == 0) copy.mixedForYou else shelf.title,
-            subtitle = if (index == 0) copy.rotationOverline else shelf.strapline.ifBlank { null },
-            modifier = Modifier.padding(horizontal = LevyraHomeDesign.HorizontalInset).padding(bottom = 12.dp)
+            subtitle = if (index == 0) copy.rotationOverline else shelf.strapline.ifBlank { null } ?: defaultHomeSubtitle(HOME_SUBTITLE_CURATED_PLAYLISTS, ""),
+            modifier = Modifier.padding(horizontal = LevyraHomeDesign.HorizontalInset).padding(bottom = 12.dp),
+            actions = { if (index == 0) LocalCuratedPlaylistsOpener.current?.let { open -> LevyraSectionShowAll(onClick = open) } }
         )
         val rowState = rememberLazyListState()
         LazyRow(
@@ -85,7 +90,9 @@ internal fun DefaultCuratedPlaylistShelf(index: Int, shelf: YoutubeMusicHomeShel
         ) {
             items(items, key = { it.key }, contentType = { "default-curated-playlist" }) { item ->
                 Box(Modifier.defaultRailItemMotion(railMotion, rowState, item.key)) {
-                    DefaultCuratedPlaylistCard(item, Modifier.defaultRailParallax(railMotion, rowState, item.key)) { item.playlist?.let(onOpen) }
+                    DefaultCuratedPlaylistCard(item, Modifier.defaultRailParallax(railMotion, rowState, item.key), Modifier.width(CuratedCardWidth)) {
+                        item.playlist?.let(onOpen)
+                    }
                 }
             }
         }
@@ -93,7 +100,7 @@ internal fun DefaultCuratedPlaylistShelf(index: Int, shelf: YoutubeMusicHomeShel
 }
 
 @Composable
-private fun DefaultCuratedPlaylistCard(item: YoutubeMusicHomeItem, artworkMotion: Modifier, onClick: () -> Unit) {
+internal fun DefaultCuratedPlaylistCard(item: YoutubeMusicHomeItem, artworkMotion: Modifier, modifier: Modifier, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     val newReleasesLabel = LocalLevyraStrings.current.newReleases
     val subtitle = remember(item.subtitle, item.playlist?.playlistId, newReleasesLabel) {
@@ -105,7 +112,7 @@ private fun DefaultCuratedPlaylistCard(item: YoutubeMusicHomeItem, artworkMotion
     val backSheet = lerp(Color(palette.end), scheme.surfaceContainerHighest, 0.55f)
     val midSheet = lerp(Color(palette.start), scheme.surfaceContainerHighest, 0.25f)
     Column(
-        Modifier.width(CuratedCardWidth)
+        modifier
             .levyraPressable(onClick = onClick, pressedScale = LevyraPressScale.Tile, role = Role.Button)
             .semantics(mergeDescendants = true) { contentDescription = listOf(item.title, subtitle).filter(String::isNotBlank).joinToString(", ") }
     ) {
@@ -118,7 +125,7 @@ private fun DefaultCuratedPlaylistCard(item: YoutubeMusicHomeItem, artworkMotion
                 }
             }
         }
-        if (subtitle.isNotBlank()) {
+        run {
             Text(
                 subtitle, color = lerp(Color(palette.start), scheme.onSurface, 0.35f), style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
@@ -127,8 +134,8 @@ private fun DefaultCuratedPlaylistCard(item: YoutubeMusicHomeItem, artworkMotion
         }
         Text(
             item.title, color = scheme.onSurface, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold,
-            maxLines = 2, overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = if (subtitle.isNotBlank()) 2.dp else 10.dp).clearAndSetSemantics { }
+            minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 2.dp).clearAndSetSemantics { }
         )
     }
 }

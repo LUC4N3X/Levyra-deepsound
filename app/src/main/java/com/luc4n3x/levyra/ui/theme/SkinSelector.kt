@@ -338,7 +338,7 @@ private fun skinSelectorStyle(active: LevyraSkin): SkinSelectorStyle {
             }
             SkinSelectorStyle(
                 stageColor = palette.panel, stageShape = RoundedCornerShape(corner * 2), stageBorder = palette.outline,
-                accent = palette.cyan, onAccent = palette.black, text = palette.text, muted = palette.muted,
+                accent = palette.cyan, onAccent = palette.black, text = scheme.onSurface, muted = scheme.onSurfaceVariant,
                 cardCorner = corner, selectedCorner = corner, badgeShape = if (corner < 8.dp) RoundedCornerShape(corner) else CircleShape,
                 cutCorners = false, labelFont = null, numbered = false,
                 titleWeight = if (active == LevyraSkin.Atelier || active == LevyraSkin.Nocturne78) FontWeight.Medium else FontWeight.Bold

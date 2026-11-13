@@ -38,6 +38,7 @@ internal fun encodeExploreDiscoverySnapshot(
                 .put("params", category.params)
                 .put("section", category.section)
                 .put("sectionIndex", category.sectionIndex)
+                .put("stripeColor", category.stripeColor)
         )
     }
     val artworkJson = JSONObject()
@@ -76,7 +77,8 @@ internal fun decodeExploreDiscoverySnapshot(
                     title = title,
                     params = params,
                     section = item.optString("section").trim(),
-                    sectionIndex = item.optInt("sectionIndex", -1)
+                    sectionIndex = item.optInt("sectionIndex", -1),
+                    stripeColor = item.optLong("stripeColor", 0L)
                 )
             )
             if (categories.size >= EXPLORE_DISCOVERY_MAX_CATEGORIES) break
@@ -100,5 +102,5 @@ internal fun decodeExploreDiscoverySnapshot(
 }
 
 internal const val EXPLORE_DISCOVERY_CACHE_TTL_MS = 12L * 60L * 60L * 1000L
-private const val EXPLORE_DISCOVERY_SCHEMA = 1
+private const val EXPLORE_DISCOVERY_SCHEMA = 2
 private const val EXPLORE_DISCOVERY_MAX_CATEGORIES = 120
