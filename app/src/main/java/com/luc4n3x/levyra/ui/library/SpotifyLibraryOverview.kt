@@ -37,13 +37,14 @@ import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SwapVert
-import androidx.compose.material.icons.rounded.ViewList
+import androidx.compose.material.icons.automirrored.rounded.ViewList
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
@@ -322,7 +323,7 @@ private fun SpotifyLibrarySortRow(sort: SpotifyLibrarySort, grid: Boolean, label
         Spacer(Modifier.weight(1f))
         IconButton(onClick = actions.onToggleLayout, modifier = Modifier.size(40.dp)) {
             Icon(
-                if (grid) Icons.Rounded.ViewList else Icons.Rounded.GridView,
+                if (grid) Icons.AutoMirrored.Rounded.ViewList else Icons.Rounded.GridView,
                 contentDescription = if (grid) labels.copy.listView else labels.copy.gridView,
                 tint = SpotifyDesign.text, modifier = Modifier.size(20.dp)
             )
@@ -417,7 +418,7 @@ internal fun SpotifyLibrarySortSheet(
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)),
         containerColor = SpotifyDesign.sheet,
         dragHandle = null
     ) {
@@ -472,7 +473,7 @@ private val SpotifyRecentBrush = Brush.linearGradient(listOf(Color(0xFF8D67AB), 
 internal fun SpotifyLibraryCreateSheet(newLabel: String, importLabel: String, onNew: () -> Unit, onImport: () -> Unit, onDismiss: () -> Unit) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)),
         containerColor = SpotifyDesign.sheet
     ) {
         Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {

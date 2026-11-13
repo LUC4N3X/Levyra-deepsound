@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.diagnostics
 
+import android.os.Build
 import java.io.PrintWriter
 import java.io.Writer
 import java.net.URLEncoder
@@ -73,7 +74,7 @@ internal fun createCrashReport(
         appendLine()
         appendLine("## Logs or error details")
         appendLine("Crash time (UTC): ${Instant.ofEpochMilli(timestampMs)}")
-        appendLine("Thread: ${thread.name} (id=${thread.id})")
+        appendLine("Thread: ${thread.name} (id=${thread.stableId()})")
         appendLine("Last screen: ${context.screen}")
         appendLine("Skin: ${context.skin}")
         appendLine()
@@ -129,3 +130,9 @@ private class LimitedTraceWriter : Writer() {
     override fun close() = Unit
     override fun toString(): String = text.toString()
 }
+
+private fun Thread.stableId(): Long =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) threadId() else legacyThreadId()
+
+@Suppress("DEPRECATION")
+private fun Thread.legacyThreadId(): Long = id

@@ -282,7 +282,7 @@ class LastFmGenreChartRepository(
         val body = try {
             runInterruptible {
                 httpClient.newCall(Request.Builder().url(url).get().build()).execute().use { response ->
-                    response.body?.string()?.takeIf { it.length <= MAX_RESPONSE_CHARS }
+                    response.body.string().takeIf { it.length <= MAX_RESPONSE_CHARS }
                 }
             }
         } catch (error: CancellationException) {
