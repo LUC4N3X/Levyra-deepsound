@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import com.luc4n3x.levyra.ui.theme.AppleMusicDesign
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -76,60 +77,80 @@ internal fun rememberGenreHitsCopy(): GenreChartCopy {
 }
 
 @Composable
-internal fun rememberProviderGenreCharts(): List<ProviderGenreChart> {
+internal fun rememberProviderGenreZones(): List<ExploreZone> {
     val strings = LocalLevyraStrings.current
-    val zones = remember(strings) { exploreGenreChartZones(ExploreCatalog.getZones(strings), strings.code) }
+    return remember(strings) { exploreGenreChartZones(ExploreCatalog.getZones(strings), strings.code) }
+}
+
+@Composable
+internal fun rememberProviderGenreChart(zone: ExploreZone): ProviderGenreChart {
     val kicker = rememberGenreHitsCopy().title
-    return zones.map { zone ->
-        key(zone.id) {
-            val cover = rememberGenreChartCover(zone)
-            remember(zone, cover, kicker) {
-                val artists = cover.artists.take(ProviderGenreChartArtists).joinToString(", ")
-                ProviderGenreChart(zone, zone.label, artists, cover.artworkUrl, kicker, genreChartCoverTone(zone))
+    val cover = rememberGenreChartCover(zone)
+    return remember(zone, cover, kicker) {
+        val artists = cover.artists.take(ProviderGenreChartArtists).joinToString(", ")
+        ProviderGenreChart(zone, zone.label, artists, cover.artworkUrl, kicker, genreChartCoverTone(zone))
+    }
+}
+
+@Composable
+internal fun YouTubeMusicGenreHitsShelf(onOpen: (ExploreZone) -> Unit) {
+    val zones = rememberProviderGenreZones()
+    if (zones.isEmpty()) return
+    val copy = rememberGenreHitsCopy()
+    Column {
+        YouTubeMusicSectionHeader(copy.shelfTitle, strapline = copy.shelfSubtitle)
+        Spacer(Modifier.height(8.dp))
+        androidx.compose.foundation.lazy.LazyRow(
+            Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = YouTubeMusicDesign.gutter),
+            horizontalArrangement = Arrangement.spacedBy(YouTubeMusicDesign.itemGap)
+        ) {
+            items(zones, key = { "genre-hits-${it.id}" }, contentType = { "ytm-genre-hit" }) { zone ->
+                val chart = rememberProviderGenreChart(zone)
+                val model = remember(chart) {
+                    YouTubeMusicCardModel("genre-hits-${zone.id}", chart.title, chart.subtitle, chart.artworkUrl, onClick = { onOpen(zone) }, cover = chart.cover)
+                }
+                YouTubeMusicCard(model)
             }
         }
     }
 }
 
 @Composable
-internal fun YouTubeMusicGenreHitsShelf(onOpen: (ExploreZone) -> Unit) {
-    val charts = rememberProviderGenreCharts()
-    if (charts.isEmpty()) return
-    val copy = rememberGenreHitsCopy()
-    Column {
-        YouTubeMusicSectionHeader(copy.shelfTitle, strapline = copy.shelfSubtitle)
-        Spacer(Modifier.height(8.dp))
-        YouTubeMusicCardCarousel(
-            charts.map { chart ->
-                YouTubeMusicCardModel("genre-hits-${chart.zone.id}", chart.title, chart.subtitle, chart.artworkUrl, onClick = { onOpen(chart.zone) }, cover = chart.cover)
-            }
-        )
-    }
-}
-
-@Composable
 internal fun AppleMusicGenreHitsShelf(onOpen: (ExploreZone) -> Unit) {
-    val charts = rememberProviderGenreCharts()
-    if (charts.isEmpty()) return
+    val zones = rememberProviderGenreZones()
+    if (zones.isEmpty()) return
     val copy = rememberGenreHitsCopy()
+    val width = AppleMusicDesign.cardWidth(appleMusicViewportWidth())
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
     Column {
         AppleMusicSectionHeader(copy.shelfTitle)
-        AppleMusicCardCarousel(
-            charts.map { chart ->
-                AppleMusicCardModel("genre-hits-${chart.zone.id}", chart.title, chart.subtitle, chart.artworkUrl, cover = chart.cover) { onOpen(chart.zone) }
+        androidx.compose.foundation.lazy.LazyRow(
+            state = listState,
+            flingBehavior = androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior(listState, androidx.compose.foundation.gestures.snapping.SnapPosition.Start),
+            contentPadding = PaddingValues(horizontal = AppleMusicDesign.gutter),
+            horizontalArrangement = Arrangement.spacedBy(AppleMusicDesign.itemGap)
+        ) {
+            items(zones, key = { "genre-hits-${it.id}" }, contentType = { "apple-genre-hit" }) { zone ->
+                val chart = rememberProviderGenreChart(zone)
+                val model = remember(chart) {
+                    AppleMusicCardModel("genre-hits-${zone.id}", chart.title, chart.subtitle, chart.artworkUrl, cover = chart.cover) { onOpen(zone) }
+                }
+                AppleMusicSquareCard(model, "", Modifier.width(width))
             }
-        )
+        }
     }
 }
 
 @Composable
 internal fun SpotifyGenreHitsShelf(onOpen: (ExploreZone) -> Unit) {
-    val charts = rememberProviderGenreCharts()
-    if (charts.isEmpty()) return
+    val zones = rememberProviderGenreZones()
+    if (zones.isEmpty()) return
     val copy = rememberGenreHitsCopy()
     SpotifyHomeShelf(copy.shelfTitle) {
-        items(charts, key = { "genre-hits-${it.zone.id}" }) { chart ->
-            SpotifyHomeCoverCard(chart.title, chart.subtitle, chart.artworkUrl, cover = chart.cover) { onOpen(chart.zone) }
+        items(zones, key = { "genre-hits-${it.id}" }, contentType = { "spotify-genre-hit" }) { zone ->
+            val chart = rememberProviderGenreChart(zone)
+            SpotifyHomeCoverCard(chart.title, chart.subtitle, chart.artworkUrl, cover = chart.cover) { onOpen(zone) }
         }
     }
 }

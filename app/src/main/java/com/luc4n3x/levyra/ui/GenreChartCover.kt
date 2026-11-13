@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
-import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -48,6 +47,15 @@ private val GenreCoverTextShadow = Shadow(color = Color.Black.copy(alpha = 0.5f)
 
 internal val GenreChartCoverShape = RoundedCornerShape(16.dp)
 
+internal fun genreChartTitleScale(title: String): Float {
+    val longestWord = title.split(' ', '-', '&').maxOfOrNull { it.length } ?: 0
+    return when {
+        longestWord > 11 || title.length > 22 -> 0.085f
+        longestWord > 8 || title.length > 14 -> 0.1f
+        else -> 0.125f
+    }
+}
+
 @Composable
 internal fun GenreChartCover(
     genreKey: String,
@@ -73,6 +81,7 @@ internal fun GenreChartCover(
         val density = LocalDensity.current
         GenreChartArtwork(accent = accent, artworkUrl = artworkUrl, modifier = Modifier.fillMaxSize())
         val titleSize = with(density) { (unit * 0.125f).toSp() }
+        val genreSize = with(density) { (unit * genreChartTitleScale(genreTitle)).toSp() }
         val titleStyle = LevyraType.heroTitle.copy(
             color = Color.White,
             fontWeight = FontWeight.ExtraBold,
@@ -90,13 +99,9 @@ internal fun GenreChartCover(
         ) {
             BasicText(
                 text = genreTitle,
-                style = titleStyle,
+                style = titleStyle.copy(fontSize = genreSize),
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                autoSize = TextAutoSize.StepBased(
-                    minFontSize = with(density) { (unit * 0.08f).toSp() },
-                    maxFontSize = titleSize
-                )
+                overflow = TextOverflow.Ellipsis
             )
             BasicText(
                 text = kicker,

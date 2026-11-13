@@ -444,14 +444,15 @@ private fun newReleasesBlock(
 
 @Composable
 private fun QobuzGenreHitsShelf(onOpen: (com.luc4n3x.levyra.domain.ExploreZone) -> Unit) {
-    val charts = rememberProviderGenreCharts()
-    if (charts.isEmpty()) return
+    val zones = rememberProviderGenreZones()
+    if (zones.isEmpty()) return
     val copy = rememberGenreHitsCopy()
     Column {
         QobuzSectionHeader(copy.shelfTitle, copy.shelfSubtitle, "", null)
         Spacer(Modifier.height(QobuzDesign.headerToContent))
-        QobuzGridRow(charts.chunked(1), QobuzDesign.gridCard) { chart ->
-            QobuzPlaylistCard(chart.title, chart.artworkUrl, chart.subtitle, QobuzDesign.gridCard, cover = chart.cover) { onOpen(chart.zone) }
+        QobuzGridRow(zones.chunked(1), QobuzDesign.gridCard) { zone ->
+            val chart = rememberProviderGenreChart(zone)
+            QobuzPlaylistCard(chart.title, chart.artworkUrl, chart.subtitle, QobuzDesign.gridCard, cover = chart.cover) { onOpen(zone) }
         }
     }
 }

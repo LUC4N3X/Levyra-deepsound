@@ -72,7 +72,7 @@ internal fun SpotifyYearChartOverlay(
     val year = remember { LocalDate.now().year }
     val title = "${com.luc4n3x.levyra.ui.i18n.spotifyYearCopy(strings.code).topTracks} $region $year"
     val cover = tracks.first().largeThumbnailUrl.ifBlank { tracks.first().thumbnailUrl }
-    val suggestions = rememberProviderGenreCharts()
+    val suggestions = rememberProviderGenreZones()
     val coverPx = with(LocalDensity.current) { SpotifyYearCoverSize.toPx() }
     val close = { SpotifyYearChartNavigator.open = false }
     SpotifyPlaylistPage(
@@ -118,7 +118,7 @@ internal fun SpotifyYearChartOverlay(
     }
 }
 
-private fun LazyListScope.spotifyYearSuggestions(title: String, charts: List<ProviderGenreChart>, onOpen: (ExploreZone) -> Unit) {
+private fun LazyListScope.spotifyYearSuggestions(title: String, charts: List<ExploreZone>, onOpen: (ExploreZone) -> Unit) {
     if (charts.isEmpty()) return
     item(key = "spotify-year-suggestions-title", contentType = "spotify-year-suggestions-title") {
         Text(
@@ -129,7 +129,7 @@ private fun LazyListScope.spotifyYearSuggestions(title: String, charts: List<Pro
     charts.chunked(SpotifyYearSuggestionColumns).forEachIndexed { index, row ->
         item(key = "spotify-year-suggestions-$index", contentType = "spotify-year-suggestions-row") {
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 24.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                row.forEach { chart -> SpotifyYearSuggestionCard(chart, Modifier.weight(1f)) { onOpen(chart.zone) } }
+                row.forEach { zone -> SpotifyYearSuggestionCard(rememberProviderGenreChart(zone), Modifier.weight(1f)) { onOpen(zone) } }
                 repeat(SpotifyYearSuggestionColumns - row.size) { Spacer(Modifier.weight(1f)) }
             }
         }
