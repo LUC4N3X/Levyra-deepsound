@@ -90,7 +90,6 @@ private fun YouTubeMusicPortraitDeck(
         Spacer(Modifier.height(8.dp))
         val dockActions = slots.dockActions(track)
         YouTubeMusicPlayerPills(dockActions)
-        Box(Modifier.padding(start = 4.dp)) { slots.engagement(track) }
         Box(Modifier.padding(horizontal = YouTubeMusicDesign.playerInset)) { slots.progress(PlayerProgressStyle.Classic) }
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             Box(Modifier.padding(horizontal = YouTubeMusicDesign.playerInset - 12.dp)) { transport() }

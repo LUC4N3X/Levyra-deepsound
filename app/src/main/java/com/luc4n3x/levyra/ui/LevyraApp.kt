@@ -11535,6 +11535,9 @@ private fun LazyListScope.homeGenreChartsSection(c: StudioHomeContext) {
     with(c) {
         homeGenreChartsSection(strings, compactHome, showDeferredHomeSections && state.interfaceSettings.showCharts, viewModel::openExploreGenreChart)
         skinGenreChartsSection(styleSpec, state.interfaceSettings.showCharts, showDeferredHomeSections, viewModel::openExploreGenreChart, viewModel::openPlaylistHit)
+        if (LevyraIsSpotify && showDeferredHomeSections && state.interfaceSettings.showCharts) {
+            item(key = "spotify-home-genre-hits", contentType = "spotify-genre-hits") { SpotifyGenreHitsShelf(viewModel::openExploreGenreChart) }
+        }
     }
 }
 

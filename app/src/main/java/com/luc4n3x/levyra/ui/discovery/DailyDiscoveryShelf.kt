@@ -119,7 +119,7 @@ private fun dailyLook(): DailyLook = when {
 }
 
 internal fun skinShowsDailyDiscovery(): Boolean =
-    !LevyraIsQobuz && !LevyraIsAppleMusic && !LevyraIsYouTubeMusic && !LevyraIsSpotify
+    !LevyraIsQobuz && !LevyraIsAppleMusic && !LevyraIsYouTubeMusic
 
 internal fun androidx.compose.foundation.lazy.LazyListScope.composedDailyDiscovery(skinFeedShown: Boolean) {
     if (!skinShowsDailyDiscovery() || (LevyraIsMono && skinFeedShown)) return
@@ -138,6 +138,10 @@ internal fun DailyDiscoveryShelf(inset: Dp, style: HomeStyle? = null, spec: Home
     if (cards.isEmpty()) return
     val code = LocalLevyraStrings.current.code
     val copy = remember(code) { discoveryCopy(code) }
+    if (LevyraIsSpotify) {
+        SpotifyDailyDiscovery(cards, copy) { card -> handle.onPlayDaily(cards, card) }
+        return
+    }
     val look = dailyLook()
     val rowState = rememberLazyListState()
     val defaultMotion = defaultRailMotionEnabled()

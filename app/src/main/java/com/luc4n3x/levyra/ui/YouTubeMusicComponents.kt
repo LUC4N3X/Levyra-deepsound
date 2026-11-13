@@ -397,15 +397,13 @@ internal fun YouTubeMusicCard(card: YouTubeMusicCardModel, modifier: Modifier = 
         Spacer(Modifier.height(8.dp))
         Text(
             card.title, color = YouTubeMusicDesign.text, style = MaterialTheme.typography.titleMedium,
-            maxLines = 2, overflow = TextOverflow.Ellipsis,
+            minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis,
             modifier = if (card.circular) Modifier.fillMaxWidth() else Modifier
         )
-        if (card.subtitle.isNotBlank()) {
-            Text(
-                card.subtitle, color = YouTubeMusicDesign.textSecondary, style = MaterialTheme.typography.bodyLarge,
-                maxLines = 2, overflow = TextOverflow.Ellipsis
-            )
-        }
+        Text(
+            card.subtitle, color = YouTubeMusicDesign.textSecondary, style = MaterialTheme.typography.bodyLarge,
+            minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
