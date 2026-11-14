@@ -6,31 +6,33 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.luc4n3x.levyra.data.apple.AppleCityChart
@@ -51,15 +53,11 @@ import com.luc4n3x.levyra.ui.theme.LevyraIsTorque
 import com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic
 import com.luc4n3x.levyra.viewmodel.DailyChartRef
 import com.luc4n3x.levyra.viewmodel.DailyTop100ViewModel
-
-private class CityCoverStyle(val palette: Top100Palette, val shapes: List<Shape>, val largeText: Boolean)
+import kotlin.random.Random
 
 private enum class CitySkin { Mono, Ivory, Torque, Prism, Spotify, YouTubeMusic, Atelier, Default }
 
 internal val AppleCityChart.numeral: String get() = badge.filter(Char::isDigit).ifEmpty { badge }
-
-internal fun cityChartPalette(scheme: ColorScheme): Top100Palette =
-    Top100Palette(scheme.tertiaryContainer, scheme.onTertiaryContainer, scheme.tertiary, scheme.tertiary.copy(alpha = 0.16f))
 
 @Composable
 internal fun ExploreCityCharts(
@@ -86,11 +84,6 @@ internal fun ExploreCityCharts(
             LevyraIsYouTubeMusic -> CitySkin.YouTubeMusic
             LevyraIsAtelier -> CitySkin.Atelier
             else -> CitySkin.Default
-        }
-        val defaultStyle = if (skin == CitySkin.Default) {
-            CityCoverStyle(cityChartPalette(MaterialTheme.colorScheme), coverShapes(), LocalDensity.current.fontScale > 1.3f)
-        } else {
-            null
         }
         val monoOverline = if (skin == CitySkin.Mono) LevyraMonoHomeStrings.forCode(code).chartsOverline else ""
         val openCity = { chart: AppleCityChart -> viewModel.open(DailyChartRef.City(chart)) }
@@ -121,16 +114,12 @@ internal fun ExploreCityCharts(
                             CitySkin.Torque -> TorqueCityCard(chart, Modifier.size(TorqueTop100Size).then(tap))
                             CitySkin.Prism -> PrismCityCard(chart, slots[index], Modifier.size(Top100CoverSize).then(tap))
                             CitySkin.Spotify -> SpotifyCityCard(chart, slots[index], tap)
-                            else -> defaultStyle?.let { style ->
-                                CityChartCover(
-                                    chart = chart,
-                                    palette = style.palette,
-                                    glyph = style.shapes[slots[index] % 4],
-                                    rotation = slots[index] * 15f,
-                                    largeText = style.largeText,
-                                    modifier = Modifier.size(Top100CoverSize).then(tap)
-                                )
-                            }
+                            else -> CityChartCover(
+                                chart = chart,
+                                palette = rememberTop100Palette(global = false, slot = slots[index]),
+                                marker = coverShapes()[slots[index] % 4],
+                                modifier = Modifier.size(Top100CoverSize).then(tap)
+                            )
                         }
                     }
                 }
@@ -144,34 +133,67 @@ internal fun ExploreCityCharts(
 private fun CityChartCover(
     chart: AppleCityChart,
     palette: Top100Palette,
-    glyph: Shape,
-    rotation: Float,
-    largeText: Boolean,
+    marker: Shape,
     modifier: Modifier = Modifier
 ) {
-    Box(modifier.clip(RoundedCornerShape(Top100CoverCorner)).background(palette.canvas)) {
-        Top100Glyph(glyph, rotation, palette.glyph, 128.dp, Modifier.align(Alignment.BottomEnd).offset(x = 40.dp, y = 40.dp))
-        Text(
-            chart.badge,
-            color = palette.canvas,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(start = 12.dp, top = 12.dp)
-                .clip(CircleShape)
-                .background(palette.ink)
-                .padding(horizontal = 10.dp, vertical = 4.dp)
-        )
-        Text(
-            chart.name,
-            color = palette.ink,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Black,
-            maxLines = if (largeText) 1 else 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.align(Alignment.BottomStart).padding(start = 14.dp, end = 12.dp, bottom = 14.dp)
-        )
+    val seed = chart.name.hashCode()
+    Box(
+        modifier
+            .clip(RoundedCornerShape(Top100CoverCorner))
+            .background(palette.canvas)
+            .drawWithCache {
+                val random = Random(seed)
+                val count = 6 + random.nextInt(4)
+                val gap = 3.dp.toPx()
+                val radius = CornerRadius(6.dp.toPx())
+                val shades = arrayOf(palette.glyph, palette.accent.copy(alpha = 0.3f), palette.ink.copy(alpha = 0.14f))
+                val low = count / 2 + random.nextInt(count - count / 2)
+                val weights = FloatArray(count) { if (it == low) 1.5f else 0.7f + random.nextFloat() * 0.6f }
+                val unit = (size.width - gap * (count + 1)) / weights.sum()
+                val widths = FloatArray(count) { weights[it] * unit }
+                val lefts = FloatArray(count)
+                var x = gap
+                for (i in 0 until count) {
+                    lefts[i] = x
+                    x += widths[i] + gap
+                }
+                val tops = FloatArray(count) {
+                    size.height * (1f - if (it == low) 0.16f + random.nextFloat() * 0.05f else 0.2f + random.nextFloat() * 0.2f)
+                }
+                val tones = IntArray(count) { random.nextInt(shades.size) }
+                val markerSide = minOf(22.dp.toPx(), widths[low])
+                val markerOutline = marker.createOutline(Size(markerSide, markerSide), layoutDirection, this)
+                val markerLeft = lefts[low] + (widths[low] - markerSide) / 2f
+                val markerTop = tops[low] - gap * 2 - markerSide
+                onDrawBehind {
+                    for (i in 0 until count) {
+                        drawRoundRect(shades[tones[i]], Offset(lefts[i], tops[i]), Size(widths[i], size.height - tops[i] + radius.y), radius)
+                    }
+                    translate(markerLeft, markerTop) { drawOutline(markerOutline, palette.accent) }
+                }
+            }
+    ) {
+        Column(Modifier.padding(start = 14.dp, top = 14.dp, end = 12.dp)) {
+            Text(
+                chart.badge,
+                color = palette.accent,
+                fontSize = fixedSp(12f),
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.4.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                chart.name,
+                color = palette.ink,
+                style = MaterialTheme.typography.headlineSmall,
+                fontSize = fixedSp(22f),
+                lineHeight = fixedSp(25f),
+                fontWeight = FontWeight.Black,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
     }
 }

@@ -266,7 +266,7 @@ internal fun DailyChartDialog(
                 date = date,
                 numeral = numeral,
                 copy = screenCopy,
-                palette = cityChartPalette(MaterialTheme.colorScheme),
+                palette = rememberTop100Palette(global = false, slot = slot),
                 glyph = coverShapes()[slot % 4],
                 rotation = slot * 15f,
                 onBack = viewModel::close,
@@ -305,7 +305,7 @@ private fun chartLabel(chart: DailyChartRef, copy: DailyTop100Copy): String = wh
 }
 
 @Composable
-private fun rememberTop100Palette(global: Boolean, slot: Int): Top100Palette {
+internal fun rememberTop100Palette(global: Boolean, slot: Int): Top100Palette {
     val scheme = MaterialTheme.colorScheme
     val dark = scheme.surface.luminance() < 0.5f
     return remember(global, slot, scheme.primary, scheme.inverseSurface, scheme.inverseOnSurface, scheme.inversePrimary, dark) {
