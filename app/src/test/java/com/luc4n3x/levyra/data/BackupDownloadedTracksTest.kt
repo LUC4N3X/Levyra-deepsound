@@ -28,7 +28,8 @@ class BackupDownloadedTracksTest {
             downloadPreset = "high",
             downloadQuality = "256k",
             savedAt = 123_456L,
-            ownership = DownloadOwnership.SMART_OFFLINE.name
+            ownership = DownloadOwnership.SMART_OFFLINE.name,
+            artworkUrl = "https://lh3.googleusercontent.com/cover=w544-h544"
         )
 
         val restored = parseDownloads(JSONArray().put(downloadToJson(download)))
@@ -44,6 +45,18 @@ class BackupDownloadedTracksTest {
         val restored = parseDownloads(JSONArray().put(legacy)).single()
 
         assertEquals(DownloadOwnership.MANUAL.name, restored.ownership)
+    }
+
+    @Test
+    fun restoredArtworkAcceptsOnlyHttpsAndDefaultsToEmpty() {
+        val legacy = downloadToJson(download("track-1", "content://downloads/1", "Track.flac"))
+        legacy.remove("artworkUrl")
+        val unsafe = downloadToJson(download("track-2", "content://downloads/2", "Other.flac"))
+            .put("artworkUrl", "file:///data/data/other/cover.jpg")
+
+        val restored = parseDownloads(JSONArray().put(legacy).put(unsafe))
+
+        assertEquals(listOf("", ""), restored.map { it.artworkUrl })
     }
 
     @Test

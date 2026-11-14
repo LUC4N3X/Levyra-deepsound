@@ -210,10 +210,12 @@ internal fun LazyListScope.spotifyLibraryOverview(
     labels: SpotifyLibraryLabels,
     actions: SpotifyLibraryActions,
     more: List<LibrarySectionEntry> = emptyList(),
-    onOpenSection: (LibraryCategory) -> Unit = {}
+    onOpenSection: (LibraryCategory) -> Unit = {},
+    pinned: (@Composable () -> Unit)? = null
 ) {
     item(key = "spotify-library-filters", contentType = "spotify-library-filters") { SpotifyLibraryFilters(filter, labels, actions.onFilter) }
     item(key = "spotify-library-sort", contentType = "spotify-library-sort") { SpotifyLibrarySortRow(sort, grid, labels, actions) }
+    if (filter == null && pinned != null) item(key = "spotify-library-pinned", contentType = "spotify-library-pinned") { pinned() }
     if (grid) {
         items.chunked(SpotifyLibraryGridColumns).forEach { row ->
             item(key = "spotify-library-grid-${row.first().key}", contentType = "spotify-library-grid") {

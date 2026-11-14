@@ -483,7 +483,8 @@ data class DownloadedTrack(
     val embeddedMetadata: Boolean,
     val savedAt: Long,
     val sizeBytes: Long = 0L,
-    val ownership: DownloadOwnership = DownloadOwnership.MANUAL
+    val ownership: DownloadOwnership = DownloadOwnership.MANUAL,
+    val artworkUrl: String = ""
 )
 
 data class ArtistHit(

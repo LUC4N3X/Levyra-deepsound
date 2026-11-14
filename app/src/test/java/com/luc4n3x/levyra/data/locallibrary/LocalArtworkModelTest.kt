@@ -41,4 +41,24 @@ class LocalArtworkModelTest {
             assertEquals(null, parseLocalArtworkModel(localArtworkModel(uri, 0L)))
         }
     }
+
+    @Test
+    fun downloadArtworkKeepsLocalCoverFirstAndCarriesSecureFallback() {
+        val cover = "https://lh3.googleusercontent.com/abc=w544-h544-l90-rj?x=1&y=2"
+        val file = "file:///data/user/0/com.luc4n3x.levyra/files/offline_audio/track.flac"
+
+        val reference = parseLocalArtworkModel(downloadArtworkModel(file, cover))
+
+        assertEquals(LocalArtworkReference(file, 0L, 0L, cover), reference)
+        assertEquals(cover, downloadArtworkModel("content://com.example.provider/secret", cover))
+    }
+
+    @Test
+    fun downloadArtworkDropsInsecureFallback() {
+        val file = "content://media/external_primary/audio/media/76"
+
+        assertEquals("", parseLocalArtworkModel(downloadArtworkModel(file, "http://example.com/a.jpg"))?.fallbackUrl)
+        assertEquals("", parseLocalArtworkModel("levyra-local-art://art?a=0&f=file%3A%2F%2F%2Fetc%2Fhosts&u=$file")?.fallbackUrl)
+        assertEquals("", downloadArtworkModel("", "javascript:alert(1)"))
+    }
 }

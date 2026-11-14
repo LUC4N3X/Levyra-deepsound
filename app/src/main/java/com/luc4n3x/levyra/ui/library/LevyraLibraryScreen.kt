@@ -55,6 +55,7 @@ import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.Insights
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.OfflinePin
 import androidx.compose.material.icons.rounded.Person
@@ -980,7 +981,8 @@ internal fun LevyraLibraryScreen(
                         labels = spotifyLabels,
                         actions = spotifyActions,
                         more = librarySections.filter { it.category in SpotifyLibraryMoreCategories },
-                        onOpenSection = { switchCategory(it) }
+                        onOpenSection = { switchCategory(it) },
+                        pinned = { SpotifyLibraryPulseRow(state.listeningPulse, viewModel::openListeningInsights) }
                     )
                 } else if (com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) {
                     item(key = "ytm-library-chips") {
@@ -1014,6 +1016,13 @@ internal fun LevyraLibraryScreen(
                             savedPlaylists = visibleSavedPlaylists,
                             onOpenSavedPlaylist = viewModel::openSavedPlaylist,
                             shortcuts = listOfNotNull(
+                                YouTubeMusicShortcutRow(
+                                    title = strings.pulseTitle,
+                                    subtitle = pulseWeekSummary(state.listeningPulse, strings),
+                                    icon = Icons.Rounded.Insights,
+                                    colors = YouTubeMusicPulseColors,
+                                    onOpen = viewModel::openListeningInsights
+                                ),
                                 catalog.recent.takeIf { it.isNotEmpty() }?.let { recent ->
                                     YouTubeMusicShortcutRow(
                                         title = strings.offlineHomeRecent,
@@ -1117,6 +1126,12 @@ internal fun LevyraLibraryScreen(
                         }
                     }
                     if (LevyraIsDefaultSkin) {
+                        item(key = "overview-insights-title") {
+                            LibrarySectionTitle(
+                                title = strings.pulseTitle,
+                                detail = strings.pulseSubtitle
+                            )
+                        }
                         item(key = "overview-taste-card") {
                             LibraryTasteCard(
                                 pulse = state.listeningPulse,

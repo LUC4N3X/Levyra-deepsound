@@ -813,8 +813,6 @@ private class AtelierFeature(
 
 private fun atelierFeatures(
     soundtrack: StudioHero?,
-    orbit: List<Track>,
-    orbitTitle: String,
     picks: List<Track>,
     picksTitle: String,
     collections: List<AppleMusicHomeCollection>,
@@ -828,10 +826,6 @@ private fun atelierFeatures(
         artist.isNotEmpty() && artist !in used
     }
     soundtrack?.let { hero -> used += atelierArtistKey(hero.track) }
-    leadOf(orbit)?.let { lead ->
-        used += atelierArtistKey(lead)
-        cards += AtelierFeature("feature-orbit", orbitTitle, lead.artist, copy.tracksCount.format(orbit.size), lead, orbit, null)
-    }
     leadOf(picks)?.let { lead ->
         used += atelierArtistKey(lead)
         cards += AtelierFeature("feature-picks", picksTitle, lead.title, lead.artist, lead, picks, null)
@@ -1425,11 +1419,9 @@ private fun AtelierHomeContent(
     val curatedTitle = remember(strings.code) { com.luc4n3x.levyra.ui.i18n.LevyraMonoHomeStrings.forCode(strings.code).mixedForYou }
     val forgotten = remember(data.forgottenFavorites) { data.forgottenFavorites.distinctBy(Track::id).take(20) }
     val fanSleeves = remember(orbit, recents) { (orbit + recents).distinctBy(Track::id).take(AtelierFanMax) }
-    val features = remember(data.soundtrack, orbit, picks, picksTitle, collections, strings.code) {
+    val features = remember(data.soundtrack, picks, picksTitle, collections, strings.code) {
         atelierFeatures(
             soundtrack = data.soundtrack,
-            orbit = orbit,
-            orbitTitle = strings.personalOrbitTitle,
             picks = picks,
             picksTitle = picksTitle,
             collections = collections,

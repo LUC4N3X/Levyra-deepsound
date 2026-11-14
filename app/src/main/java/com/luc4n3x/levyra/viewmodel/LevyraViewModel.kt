@@ -4736,7 +4736,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         embeddedMetadata = embeddedMetadata,
         savedAt = savedAt,
         sizeBytes = sizeBytes,
-        ownership = DownloadOwnership.fromStorage(ownership)
+        ownership = DownloadOwnership.fromStorage(ownership),
+        artworkUrl = artworkUrl
     )
 
     private fun downloadedMediaSize(rawUri: String): Long {
