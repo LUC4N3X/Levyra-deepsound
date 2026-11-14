@@ -4,7 +4,9 @@ import android.app.Application
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.luc4n3x.levyra.data.YoutubeMusicMoodPlaylist
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
+import com.luc4n3x.levyra.domain.ExploreCategory
 import com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicAccountRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -15,6 +17,8 @@ import com.luc4n3x.levyra.domain.YoutubeMusicHomeShelf
 import com.luc4n3x.levyra.domain.YoutubeMusicHomeItem
 import com.luc4n3x.levyra.domain.YoutubeMusicHomeItemKind
 import com.luc4n3x.levyra.domain.PlaylistHit
+import com.luc4n3x.levyra.domain.YoutubeMusicHomeShelfStyle
+import com.luc4n3x.levyra.ui.toHit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,6 +58,9 @@ internal const val CHARTS_BROWSE_ID = "FEmusic_charts"
 internal const val NEW_VIDEOS_BROWSE_ID = "FEmusic_new_releases_videos"
 private const val PREVIEW_TRACK_LIMIT = 25
 private const val MAX_CACHED_PREVIEWS = 24
+private const val CURATED_MOOD_SHELVES = 6
+private const val CURATED_MOOD_PLAYLISTS = 10
+private const val CURATED_MOOD_FETCH_LIMIT = 40
 
 internal fun featuredPlaylistKey(playlistId: String, language: String): String = "$language|$playlistId"
 
@@ -75,6 +82,11 @@ class YouTubeMusicHomeViewModel(application: Application) : AndroidViewModel(app
     private val featuredRequests = HashSet<String>()
     private var job: Job? = null
     private var generation = 0L
+    private val _moodShelves = MutableStateFlow<Map<String, List<YoutubeMusicHomeShelf>>>(emptyMap())
+    val moodShelves: StateFlow<Map<String, List<YoutubeMusicHomeShelf>>> = _moodShelves.asStateFlow()
+    private val moodLoaded = HashSet<String>()
+    private var moodJob: Job? = null
+    private var moodLanguage = ""
 
     fun load(language: String, force: Boolean = false, browseId: String = HOME_BROWSE_ID) {
         val current = _state.value
@@ -108,6 +120,39 @@ class YouTubeMusicHomeViewModel(application: Application) : AndroidViewModel(app
                 playlist = hit
             )
             _featuredPlaylists.update { it + (cacheKey to item) }
+        }
+    }
+
+    fun requestMoodShelves(language: String) {
+        if (language.isBlank() || language in moodLoaded || (moodLanguage == language && moodJob?.isActive == true)) return
+        moodJob?.cancel()
+        moodLanguage = language
+        val cached = language in _moodShelves.value
+        moodJob = viewModelScope.launch {
+            val categories = try {
+                repository.moodCategories(language)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                Timber.w(error, "Curated moods and genres lookup failed")
+                return@launch
+            }
+            val shelves = mutableListOf<YoutubeMusicHomeShelf>()
+            for (category in curatedMoodCategories(categories)) {
+                val playlists = try {
+                    repository.moodPlaylists(category.params, language, CURATED_MOOD_FETCH_LIMIT)
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    Timber.w(error, "Curated mood shelf lookup failed")
+                    continue
+                }
+                val shelf = curatedMoodShelf(category, playlists) ?: continue
+                shelves += shelf
+                if (!cached) _moodShelves.update { it + (language to shelves.toList()) }
+            }
+            if (shelves.isNotEmpty()) _moodShelves.update { it + (language to shelves.toList()) }
+            if (categories.isNotEmpty()) moodLoaded += language
         }
     }
 
@@ -231,5 +276,47 @@ class YouTubeMusicHomeViewModel(application: Application) : AndroidViewModel(app
             Timber.w(error, "YouTube Music style home refresh failed")
             YoutubeMusicHomeFeed()
         }
+    }
+}
+
+internal fun curatedMoodCategories(categories: List<ExploreCategory>): List<ExploreCategory> {
+    val (moods, genres) = categories.partition { it.sectionIndex == 0 }
+    return (0 until maxOf(moods.size, genres.size))
+        .flatMap { index -> listOfNotNull(moods.getOrNull(index), genres.getOrNull(index)) }
+        .take(CURATED_MOOD_SHELVES)
+}
+
+internal fun curatedMoodShelf(category: ExploreCategory, playlists: List<YoutubeMusicMoodPlaylist>): YoutubeMusicHomeShelf? {
+    val items = playlists.filter { it.playlistId.isNotBlank() }.map { playlist ->
+        YoutubeMusicHomeItem(
+            key = "mood-${playlist.playlistId}",
+            kind = YoutubeMusicHomeItemKind.Playlist,
+            title = playlist.title,
+            subtitle = playlist.description,
+            thumbnailUrl = playlist.thumbnailUrl,
+            playlist = playlist.toHit()
+        )
+    }
+    if (items.isEmpty()) return null
+    return YoutubeMusicHomeShelf(
+        key = "mood-${category.params}",
+        title = category.title,
+        strapline = "",
+        thumbnailUrl = "",
+        style = YoutubeMusicHomeShelfStyle.Cards,
+        items = items
+    )
+}
+
+internal fun withCuratedMoodShelves(curated: List<YoutubeMusicHomeShelf>, moods: List<YoutubeMusicHomeShelf>): List<YoutubeMusicHomeShelf> {
+    if (moods.isEmpty()) return curated
+    val seen = curated.flatMapTo(HashSet()) { shelf -> shelf.items.mapNotNull { it.playlist?.playlistId?.takeIf(String::isNotBlank) } }
+    val keys = curated.mapTo(HashSet()) { it.key }
+    return curated + moods.filter { keys.add(it.key) }.mapNotNull { shelf ->
+        val items = shelf.items.asSequence()
+            .filter { item -> item.kind == YoutubeMusicHomeItemKind.Playlist && item.playlist?.playlistId?.takeIf(String::isNotBlank)?.let(seen::add) == true }
+            .take(CURATED_MOOD_PLAYLISTS)
+            .toList()
+        if (items.isEmpty()) null else shelf.copy(items = items)
     }
 }

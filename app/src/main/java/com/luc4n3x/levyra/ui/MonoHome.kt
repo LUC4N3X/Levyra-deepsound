@@ -42,6 +42,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.luc4n3x.levyra.viewmodel.YouTubeMusicHomeViewModel
 import com.luc4n3x.levyra.viewmodel.featuredPlaylistKey
 import com.luc4n3x.levyra.viewmodel.CuratedFeaturedPlaylist
+import com.luc4n3x.levyra.viewmodel.withCuratedMoodShelves
 import com.luc4n3x.levyra.domain.YoutubeMusicHomeShelf
 import com.luc4n3x.levyra.domain.YoutubeMusicHomeItem
 import com.luc4n3x.levyra.domain.YoutubeMusicHomeItemKind
@@ -459,12 +460,18 @@ internal fun rememberCuratedPlaylistShelves(code: String): List<YoutubeMusicHome
     val releaseMix = remember(ytHomeState.allShelves) { newReleaseMixItem(ytHomeState.allShelves) }
     val featuredItem = releaseMix ?: featuredPlaylists[featuredPlaylistKey(CuratedFeaturedPlaylist.YOUTUBE_ID, code)]
         ?.let { item -> if (item.subtitle.isBlank()) item.copy(subtitle = mixLabel) else item }
-    return remember(mixedState.allShelves, featuredShelves, ytHomeState.allShelves, featuredItem) {
+    val curated = remember(mixedState.allShelves, featuredShelves, ytHomeState.allShelves, featuredItem) {
         withFeaturedCuratedPlaylist(
             monoPlaylistShelves(mixedState.allShelves).ifEmpty { featuredShelves }.ifEmpty { monoPlaylistShelves(ytHomeState.allShelves) },
             featuredItem
         )
     }
+    val curatedSettled = curated.isNotEmpty() ||
+        (mixedState.language == code && !mixedState.loading && ytHomeState.language == code && !ytHomeState.loading && !ytHomeState.loadingMore)
+    LaunchedEffect(code, curatedSettled) { if (curatedSettled) mixedHome.requestMoodShelves(code) }
+    val moodShelves by mixedHome.moodShelves.collectAsStateWithLifecycle()
+    val moods = moodShelves[code].orEmpty()
+    return remember(curated, moods) { withCuratedMoodShelves(curated, moods) }
 }
 
 internal fun newReleaseMixItem(shelves: List<YoutubeMusicHomeShelf>): YoutubeMusicHomeItem? =
