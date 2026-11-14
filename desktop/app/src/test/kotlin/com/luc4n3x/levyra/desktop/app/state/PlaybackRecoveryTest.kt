@@ -82,6 +82,50 @@ class PlaybackRecoveryTest {
         } finally { controller.shutdown() }
     }
 
+    @Test fun failedSourceWhilePausedIsRefreshedBeforeTheFirstResumeAttempt() = runTest {
+        val player = FakePlayer()
+        val resolver = FakeResolver()
+        val controller = controller(backgroundScope, player, resolver)
+        try {
+            controller.playTrack(track("one"))
+            runCurrent()
+            player.events.emit(PlayerEvent.Playing)
+            player.events.emit(PlayerEvent.TimeChanged(61_000))
+            runCurrent()
+            controller.togglePlayPause()
+            player.events.emit(PlayerEvent.Failed("HTTP_403"))
+            runCurrent()
+            assertEquals(PlaybackStatus.PAUSED, controller.state.value.status)
+            assertEquals(1, player.starts.size)
+            assertEquals(1, resolver.invalidations)
+            controller.togglePlayPause()
+            runCurrent()
+            assertEquals("https://audio.example/one?fresh=1", player.starts.last().first)
+            assertEquals(61_000L, player.starts.last().second)
+        } finally { controller.shutdown() }
+    }
+
+    @Test fun selectingAnotherCardStopsOldAudioAndStartsTheSelectionAutomatically() = runTest {
+        val player = FakePlayer()
+        val resolver = FakeResolver()
+        val controller = controller(backgroundScope, player, resolver)
+        try {
+            controller.playTrack(track("one"))
+            runCurrent()
+            player.events.emit(PlayerEvent.Playing)
+            runCurrent()
+            resolver.pending = CompletableDeferred()
+            controller.playTracks(listOf(track("one"), track("two")), 1)
+            runCurrent()
+            assertEquals("two", controller.state.value.current?.id)
+            assertNull("Old audio must stop while the selected source resolves", player.playingUrl)
+            resolver.pending!!.complete(Unit)
+            runCurrent()
+            assertEquals("https://audio.example/two", player.playingUrl)
+            assertEquals(0L, player.starts.last().second)
+        } finally { controller.shutdown() }
+    }
+
     private fun controller(scope: kotlinx.coroutines.CoroutineScope, player: FakePlayer, resolver: FakeResolver): PlaybackController {
         val paths = AppPaths(temporary.newFolder().toPath()).prepare()
         val settings = SettingsStore.create(paths).apply {
@@ -98,7 +142,8 @@ class PlaybackRecoveryTest {
         var pending: CompletableDeferred<Unit>? = null
         override suspend fun resolve(track: Track, quality: AudioQuality, codec: PreferredCodec): ResolvedAudio {
             pending?.await()
-            return ResolvedAudio("https://audio.example/${track.id}", "AAC", 0, track.durationMs, "", track.title, track.artist)
+            val suffix = if (invalidations == 0) "" else "?fresh=$invalidations"
+            return ResolvedAudio("https://audio.example/${track.id}$suffix", "AAC", 0, track.durationMs, "", track.title, track.artist)
         }
         override fun invalidate(track: Track) { invalidations++ }
     }
@@ -106,13 +151,14 @@ class PlaybackRecoveryTest {
     private class FakePlayer : AudioPlayer {
         override val events = MutableSharedFlow<PlayerEvent>(extraBufferCapacity = 32)
         val starts = mutableListOf<Pair<String, Long>>()
-        override fun play(url: String, startAtMs: Long) { starts += url to startAtMs }
+        var playingUrl: String? = null
+        override fun play(url: String, startAtMs: Long) { starts += url to startAtMs; playingUrl = url }
         override fun prepare(url: String, startAtMs: Long) = false
         override fun startPrepared() = false
         override fun createCompanion(): AudioPlayer? = null
         override fun resume() = Unit
         override fun pause() = Unit
-        override fun stop() = Unit
+        override fun stop() { playingUrl = null }
         override fun seekTo(positionMs: Long) = Unit
         override fun setVolume(volume: Int) = Unit
         override fun setMuted(muted: Boolean) = Unit
@@ -122,7 +168,7 @@ class PlaybackRecoveryTest {
         override fun setSpeed(speed: Float) = true
         override fun positionMs() = 0L
         override fun durationMs() = 200_000L
-        override fun isPlaying() = false
+        override fun isPlaying() = playingUrl != null
         override fun close() = Unit
     }
 }

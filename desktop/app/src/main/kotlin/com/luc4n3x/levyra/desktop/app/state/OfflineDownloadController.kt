@@ -117,7 +117,7 @@ class OfflineDownloadController(
 
     fun retry(id: String) {
         val record = store.record(id) ?: return
-        resolver.invalidate(record.track)
+        resolver.refresh(record.track)
         store.upsert(record.copy(status = DownloadStatus.QUEUED, error = ""))
         start(id)
     }
@@ -173,7 +173,7 @@ class OfflineDownloadController(
             throw cancellation
         } catch (error: ExpiredDownloadSource) {
             if (refreshExpired) {
-                resolver.invalidate(original.track)
+                resolver.refresh(original.track)
                 download(id, refreshExpired = false)
             } else {
                 store.update(id) { it.copy(status = DownloadStatus.FAILED, error = error.message.orEmpty()) }

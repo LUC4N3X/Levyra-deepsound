@@ -29,4 +29,6 @@ interface StreamResolver {
     suspend fun resolve(track: Track, quality: AudioQuality, codec: PreferredCodec): ResolvedAudio
 
     fun invalidate(track: Track)
+
+    fun refresh(track: Track) = invalidate(track)
 }

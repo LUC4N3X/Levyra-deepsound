@@ -281,7 +281,7 @@ class PlaybackController(
 
             PlaybackStatus.PAUSED -> {
                 if (recoveryPending || current.preparingTrackId.isNotEmpty()) {
-                    startCurrent(current.positionMs, forceRestart = true)
+                    startCurrent(current.positionMs)
                 } else {
                     player?.resume()
                     internalState.update { state -> state.copy(status = PlaybackStatus.PLAYING) }
@@ -304,9 +304,8 @@ class PlaybackController(
             }
             return
         }
-        val repeatingSame = automatic && advanced.index == current.queue.index
         internalState.update { state -> state.copy(queue = advanced) }
-        startCurrent(0L, forceRestart = repeatingSame)
+        startCurrent(0L)
     }
 
     fun previous() {
@@ -449,7 +448,7 @@ class PlaybackController(
         playerScope.cancel()
     }
 
-    private fun startCurrent(startAtMs: Long, forceRestart: Boolean = false, recovering: Boolean = false) {
+    private fun startCurrent(startAtMs: Long, recovering: Boolean = false) {
         val track = internalState.value.queue.current ?: return
         val generation = playbackGeneration.incrementAndGet()
         if (!recovering) retriedTrackId = ""
@@ -471,10 +470,10 @@ class PlaybackController(
                 streamLabel = ""
             )
         }
-        playbackJob = playerScope.launch { runPlayback(track, startAtMs, forceRestart, generation) }
+        playbackJob = playerScope.launch { runPlayback(track, startAtMs, generation) }
     }
 
-    private suspend fun runPlayback(track: Track, startAtMs: Long, forceRestart: Boolean, generation: Long) {
+    private suspend fun runPlayback(track: Track, startAtMs: Long, generation: Long) {
         val activePlayer = ensurePlayer()
         currentCoroutineContext().ensureActive()
         if (playbackGeneration.get() != generation) return
@@ -484,9 +483,7 @@ class PlaybackController(
             }
             return
         }
-        if (forceRestart) {
-            activePlayer.stop()
-        }
+        activePlayer.stop()
         if (track.isLocalFile) {
             val localSource = resolveLocalSource(track)
             if (localSource == null) {
@@ -1241,6 +1238,7 @@ class PlaybackController(
     private fun handleFailure(reason: String) {
         val track = internalState.value.queue.current ?: return
         if (internalState.value.status == PlaybackStatus.PAUSED) {
+            if (!recoveryPending && !track.isLocalFile) resolver.invalidate(track)
             recoveryPending = true
             return
         }
@@ -1249,7 +1247,7 @@ class PlaybackController(
             if (!track.isLocalFile) {
                 resolver.invalidate(track)
             }
-            startCurrent(internalState.value.positionMs, forceRestart = true, recovering = true)
+            startCurrent(internalState.value.positionMs, recovering = true)
             return
         }
         messageFlow.tryEmit(reason)

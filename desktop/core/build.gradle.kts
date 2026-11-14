@@ -20,6 +20,24 @@ val prepareSharedAudioSources = tasks.register("prepareSharedAudioSources") {
         sync { from(sources); into(sharedAudioSources) }
         sources.forEach { source ->
             var code = source.readText()
+            if (source.name == "HighQualityAudioResolver.kt") {
+                val marker = "    fun reportPlaybackFailure("
+                check(code.contains(marker))
+                val refresh = """
+    fun refreshStream(identityKey: String) {
+        synchronized(inFlightLock) {
+            inFlight.remove(identityKey)?.cancel()
+            backgroundLookups.remove(identityKey)
+            queuedBackground.remove(identityKey)
+            streams.remove(identityKey)
+            losslessRetryAfter.remove(identityKey)
+            unmatchedIdentities.remove(identityKey)
+        }
+    }
+
+"""
+                code = code.replace(marker, refresh + marker)
+            }
             if (source.name == "PlaybackManifest.kt") {
                 val start = code.indexOf("enum class PlaybackDeliveryMethod")
                 val end = code.indexOf("data class PlaybackStreamProvenance")

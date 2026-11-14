@@ -14,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 
-class DesktopHighQualityResolver private constructor(
+class DesktopHighQualityResolver internal constructor(
     private val original: StreamResolver,
     private val resolver: HighQualityAudioResolver,
     private val mode: () -> HighQualityAudioMode,
@@ -74,6 +74,12 @@ class DesktopHighQualityResolver private constructor(
             sourceIdentity = "${stream.providerId}:${stream.providerTrackId}",
             deliveryMethod = stream.deliveryMethod
         )
+    }
+
+    override fun refresh(track: Track) {
+        selected.remove(track.id)
+        resolver.refreshStream(track.id)
+        original.refresh(track)
     }
 
     override fun invalidate(track: Track) {

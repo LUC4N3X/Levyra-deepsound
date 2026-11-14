@@ -248,7 +248,7 @@ For online YouTube playback, the extractor still resolves the signed audio URL, 
 
 The YouTube resolver first uses the active Android VisionOS client identity and an anonymous visitor session, then falls back to LevyraExtractor. Bridge failures reach the playback controller even when VLC remains in a playing state with a stalled clock. Recovery preserves the current position and cannot replace a newer track or override a user pause.
 
-High-quality matching, provider priority, validation, and provider implementations compile from the Android source tree. The Desktop build adapts only the JVM transport, logging, mapping-storage boundary, and file URI handling; it does not modify APK sources. Source mappings currently persist only for the running Desktop session.
+High-quality matching, provider priority, validation, and provider implementations compile from the Android source tree. The Desktop build adapts the JVM transport, logging, mapping-storage boundary, and file URI handling, and adds targeted stream-cache eviction for URL refreshes without quarantining the accepted match. It does not modify APK sources. Source mappings currently persist only for the running Desktop session.
 
 ## Local Data
 
