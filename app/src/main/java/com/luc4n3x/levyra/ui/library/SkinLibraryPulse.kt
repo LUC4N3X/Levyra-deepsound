@@ -55,7 +55,6 @@ import com.luc4n3x.levyra.ui.theme.QobuzDesign
 import com.luc4n3x.levyra.ui.theme.SpotifyDesign
 import java.util.Locale
 
-private val SpotifyPulseTileTop = Color(0xFF1ED760)
 private val SpotifyPulseTileBottom = Color(0xFF0B3D20)
 internal val YouTubeMusicPulseColors = listOf(Color(0xFF8E0E2B), Color(0xFFFF4E45))
 
@@ -217,7 +216,7 @@ internal fun SpotifyLibraryPulseRow(pulse: ListeningPulse, onOpen: () -> Unit) {
     ) {
         Box(
             Modifier.size(64.dp).clip(RoundedCornerShape(SpotifyDesign.cornerSmall))
-                .background(Brush.linearGradient(listOf(SpotifyPulseTileTop, SpotifyPulseTileBottom))),
+                .background(Brush.linearGradient(listOf(SpotifyDesign.green, SpotifyPulseTileBottom))),
             contentAlignment = Alignment.Center
         ) {
             PulseWeekBars(
