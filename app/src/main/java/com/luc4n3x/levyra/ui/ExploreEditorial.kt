@@ -107,6 +107,11 @@ internal fun ExploreEditorialRow(row: ExploreRow, content: ExploreEditorialConte
             onTrackActions = content.onTrackMenu,
             modifier = Modifier.padding(top = ExploreEditorialSectionLead)
         )
+        ExploreRow.CityCharts -> ExploreCityCharts(
+            onPlay = content.onPlayChart,
+            onTrackActions = content.onTrackMenu,
+            modifier = Modifier.padding(top = ExploreEditorialSectionLead)
+        )
         else -> Unit
     }
 }

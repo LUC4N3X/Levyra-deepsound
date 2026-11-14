@@ -73,7 +73,6 @@ import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.luc4n3x.levyra.data.apple.AppleDailyChart
 import com.luc4n3x.levyra.domain.ChartsCatalog
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
@@ -81,20 +80,22 @@ import com.luc4n3x.levyra.ui.components.LevyraSectionHeader
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.DailyTop100Copy
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.cityChartsCopy
 import com.luc4n3x.levyra.ui.i18n.dailyTop100Copy
 import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
+import com.luc4n3x.levyra.viewmodel.DailyChartRef
 import com.luc4n3x.levyra.viewmodel.DailyTop100ChartUiState
 import com.luc4n3x.levyra.viewmodel.DailyTop100ViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val Top100CoverSize = 164.dp
-private val Top100CoverCorner = 24.dp
+internal val Top100CoverSize = 164.dp
+internal val Top100CoverCorner = 24.dp
 private const val HUE_SLOTS = 12
 
 @Immutable
-private data class Top100Palette(val canvas: Color, val ink: Color, val accent: Color, val glyph: Color)
+internal data class Top100Palette(val canvas: Color, val ink: Color, val accent: Color, val glyph: Color)
 
 internal fun dailyTop100HueSlots(ids: List<String>): List<Int> {
     val taken = HashSet<Int>()
@@ -119,16 +120,13 @@ internal fun ExploreDailyTop100(
     LaunchedEffect(strings.code) {
         viewModel.load(ChartsCatalog.defaultRegionForLanguage(strings.code).country, strings.code)
     }
-    val locale = remember(strings.code) { Locale.forLanguageTag(strings.code) }
-    val date = remember(locale) {
-        LocalDate.now().format(DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, "dMMM"), locale)).uppercase(locale)
-    }
+    val date = rememberTop100Date(strings.code)
     val charts = state.charts
     val slots = remember(charts) { dailyTop100HueSlots(charts.map { it.playlistId }) }
     if (charts.isNotEmpty() && com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) {
-        AtelierTop100Shelf(charts, slots, copy, date, viewModel::open)
+        AtelierTop100Shelf(charts, slots, copy, date) { chart -> viewModel.open(DailyChartRef.Country(chart)) }
     } else if (charts.isNotEmpty() && com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) {
-        YouTubeMusicTop100Shelf(charts, slots, copy, date, modifier) { chart -> viewModel.open(chart) }
+        YouTubeMusicTop100Shelf(charts, slots, copy, date, modifier) { chart -> viewModel.open(DailyChartRef.Country(chart)) }
     } else if (charts.isNotEmpty()) {
         Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
@@ -147,12 +145,12 @@ internal fun ExploreDailyTop100(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 itemsIndexed(charts, key = { _, chart -> chart.playlistId }, contentType = { _, _ -> "daily-top-100" }) { index, chart ->
-                    val label = chartLabel(chart, copy)
+                    val label = chartLabel(DailyChartRef.Country(chart), copy)
                     if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
                         MonoTop100Cover(
                             label, date, slots[index], chart.global, Top100CoverSize,
                             Modifier.semantics(mergeDescendants = true) { contentDescription = "${copy.title}, $label" }
-                                .levyraPressable(onClick = { viewModel.open(chart) }, role = Role.Button, pressedScale = LevyraPressScale.Tile)
+                                .levyraPressable(onClick = { viewModel.open(DailyChartRef.Country(chart)) }, role = Role.Button, pressedScale = LevyraPressScale.Tile)
                         )
                         return@itemsIndexed
                     }
@@ -161,7 +159,7 @@ internal fun ExploreDailyTop100(
                             label, date, chart.global,
                             Modifier.size(TorqueTop100Size)
                                 .semantics(mergeDescendants = true) { contentDescription = "${copy.title}, $label" }
-                                .levyraPressable(onClick = { viewModel.open(chart) }, role = Role.Button, pressedScale = LevyraPressScale.Tile)
+                                .levyraPressable(onClick = { viewModel.open(DailyChartRef.Country(chart)) }, role = Role.Button, pressedScale = LevyraPressScale.Tile)
                         )
                         return@itemsIndexed
                     }
@@ -170,7 +168,7 @@ internal fun ExploreDailyTop100(
                             label, date, chart.global,
                             Modifier.size(TorqueTop100Size)
                                 .semantics(mergeDescendants = true) { contentDescription = "${copy.title}, $label" }
-                                .levyraPressable(onClick = { viewModel.open(chart) }, role = Role.Button, pressedScale = LevyraPressScale.Tile)
+                                .levyraPressable(onClick = { viewModel.open(DailyChartRef.Country(chart)) }, role = Role.Button, pressedScale = LevyraPressScale.Tile)
                         )
                         return@itemsIndexed
                     }
@@ -179,12 +177,12 @@ internal fun ExploreDailyTop100(
                             label, date, slots[index], chart.global,
                             Modifier.size(Top100CoverSize)
                                 .semantics(mergeDescendants = true) { contentDescription = "${copy.title}, $label" }
-                                .levyraPressable(onClick = { viewModel.open(chart) }, role = Role.Button, pressedScale = LevyraPressScale.Tile)
+                                .levyraPressable(onClick = { viewModel.open(DailyChartRef.Country(chart)) }, role = Role.Button, pressedScale = LevyraPressScale.Tile)
                         )
                         return@itemsIndexed
                     }
                     if (com.luc4n3x.levyra.ui.theme.LevyraIsSpotify) {
-                        SpotifyTop100Card(label, copy.title, copy.subtitle, slots[index], chart.global) { viewModel.open(chart) }
+                        SpotifyTop100Card(label, copy.title, copy.subtitle, slots[index], chart.global) { viewModel.open(DailyChartRef.Country(chart)) }
                         return@itemsIndexed
                     }
                     Top100Cover(
@@ -196,75 +194,108 @@ internal fun ExploreDailyTop100(
                         modifier = Modifier
                             .size(Top100CoverSize)
                             .semantics(mergeDescendants = true) { contentDescription = "${copy.title}, $label" }
-                            .levyraPressable(onClick = { viewModel.open(chart) }, role = Role.Button, pressedScale = LevyraPressScale.Tile)
+                            .levyraPressable(onClick = { viewModel.open(DailyChartRef.Country(chart)) }, role = Role.Button, pressedScale = LevyraPressScale.Tile)
                     )
                 }
             }
         }
     }
-    state.open?.let { open ->
-        val index = charts.indexOfFirst { it.playlistId == open.chart.playlistId }
-        val slot = slots.getOrNull(index) ?: dailyTop100HueSlots(listOf(open.chart.playlistId)).first()
-        Dialog(
-            onDismissRequest = viewModel::close,
-            properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
-        ) {
-            if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
-                MonoTop100ChartScreen(open, chartLabel(open.chart, copy), date, slot, copy.failed, copy.retry, viewModel::close, viewModel::retry, onPlay) { track ->
-                    viewModel.close()
-                    onTrackActions(track)
-                }
-                return@Dialog
-            }
-            if (com.luc4n3x.levyra.ui.theme.LevyraIsTorque) {
-                TorqueTop100ChartScreen(open, chartLabel(open.chart, copy), date, copy, viewModel::close, viewModel::retry, onPlay) { track ->
-                    viewModel.close()
-                    onTrackActions(track)
-                }
-                return@Dialog
-            }
-            if (LevyraIsPrismOnly) {
-                PrismTop100ChartScreen(open, chartLabel(open.chart, copy), date, slot, copy, viewModel::close, viewModel::retry, onPlay) { track ->
-                    viewModel.close()
-                    onTrackActions(track)
-                }
-                return@Dialog
-            }
-            if (com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) {
-                YouTubeMusicTop100ChartScreen(open, chartLabel(open.chart, copy), date, slot, copy, viewModel::close, viewModel::retry, onPlay) { track ->
-                    viewModel.close()
-                    onTrackActions(track)
-                }
-                return@Dialog
-            }
-            if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) {
-                AtelierTop100ChartScreen(open, chartLabel(open.chart, copy), date, slot, copy, viewModel::close, viewModel::retry, onPlay) { track ->
-                    viewModel.close()
-                    onTrackActions(track)
-                }
-                return@Dialog
-            }
+    DailyChartDialog(cities = false, onPlay = onPlay, onTrackActions = onTrackActions)
+}
+
+@Composable
+internal fun DailyChartDialog(
+    cities: Boolean,
+    onPlay: (List<Track>, Track) -> Unit,
+    onTrackActions: (Track) -> Unit
+) {
+    val viewModel = viewModel<DailyTop100ViewModel>()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val open = state.open?.takeIf { (it.chart is DailyChartRef.City) == cities } ?: return
+    val strings = LocalLevyraStrings.current
+    val copy = remember(strings.code) { dailyTop100Copy(strings.code) }
+    val date = rememberTop100Date(strings.code)
+    val ids = remember(state.charts, state.cities, cities) {
+        if (cities) state.cities.map { it.playlistId } else state.charts.map { it.playlistId }
+    }
+    val slot = remember(ids, open.chart.playlistId) {
+        dailyTop100HueSlots(ids).getOrNull(ids.indexOf(open.chart.playlistId)) ?: dailyTop100HueSlots(listOf(open.chart.playlistId)).first()
+    }
+    val label = chartLabel(open.chart, copy)
+    val chartTrackActions: (Track) -> Unit = { track ->
+        viewModel.close()
+        onTrackActions(track)
+    }
+    Dialog(
+        onDismissRequest = viewModel::close,
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
+    ) {
+        val chart = open.chart
+        if (chart is DailyChartRef.City) {
+            val cityCopy = remember(strings.code) { cityChartsCopy(strings.code) }
             Top100ChartScreen(
                 open = open,
-                label = chartLabel(open.chart, copy),
+                label = label,
                 date = date,
-                copy = copy,
-                palette = rememberTop100Palette(open.chart.global, slot),
+                numeral = chart.chart.badge.filter(Char::isDigit).ifEmpty { chart.chart.badge },
+                copy = copy.copy(title = cityCopy.title),
+                palette = cityChartPalette(MaterialTheme.colorScheme),
                 glyph = coverShapes()[slot % 4],
                 rotation = slot * 15f,
                 onBack = viewModel::close,
                 onRetry = viewModel::retry,
                 onPlay = onPlay,
-                onTrackActions = { track ->
-                    viewModel.close()
-                    onTrackActions(track)
-                }
+                onTrackActions = chartTrackActions
             )
+            return@Dialog
         }
+        if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+            MonoTop100ChartScreen(open, label, date, slot, copy.failed, copy.retry, viewModel::close, viewModel::retry, onPlay, chartTrackActions)
+            return@Dialog
+        }
+        if (com.luc4n3x.levyra.ui.theme.LevyraIsTorque) {
+            TorqueTop100ChartScreen(open, label, date, copy, viewModel::close, viewModel::retry, onPlay, chartTrackActions)
+            return@Dialog
+        }
+        if (LevyraIsPrismOnly) {
+            PrismTop100ChartScreen(open, label, date, slot, copy, viewModel::close, viewModel::retry, onPlay, chartTrackActions)
+            return@Dialog
+        }
+        if (com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) {
+            YouTubeMusicTop100ChartScreen(open, label, date, slot, copy, viewModel::close, viewModel::retry, onPlay, chartTrackActions)
+            return@Dialog
+        }
+        if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) {
+            AtelierTop100ChartScreen(open, label, date, slot, copy, viewModel::close, viewModel::retry, onPlay, chartTrackActions)
+            return@Dialog
+        }
+        Top100ChartScreen(
+            open = open,
+            label = label,
+            date = date,
+            numeral = "100",
+            copy = copy,
+            palette = rememberTop100Palette(open.chart.global, slot),
+            glyph = coverShapes()[slot % 4],
+            rotation = slot * 15f,
+            onBack = viewModel::close,
+            onRetry = viewModel::retry,
+            onPlay = onPlay,
+            onTrackActions = chartTrackActions
+        )
     }
 }
 
-private fun chartLabel(chart: AppleDailyChart, copy: DailyTop100Copy): String = if (chart.global) copy.global else chart.label
+@Composable
+private fun rememberTop100Date(code: String): String = remember(code) {
+    val locale = Locale.forLanguageTag(code)
+    LocalDate.now().format(DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, "dMMM"), locale)).uppercase(locale)
+}
+
+private fun chartLabel(chart: DailyChartRef, copy: DailyTop100Copy): String = when (chart) {
+    is DailyChartRef.Country -> if (chart.global) copy.global else chart.chart.label
+    is DailyChartRef.City -> chart.chart.name
+}
 
 @Composable
 private fun rememberTop100Palette(global: Boolean, slot: Int): Top100Palette {
@@ -289,9 +320,9 @@ private fun rememberTop100Palette(global: Boolean, slot: Int): Top100Palette {
 private fun fixedSp(value: Float): TextUnit = (value / LocalDensity.current.fontScale).sp
 
 @Composable
-private fun Top100Numeral(palette: Top100Palette, size: TextUnit) {
+private fun Top100Numeral(numeral: String, palette: Top100Palette, size: TextUnit) {
     Text(
-        "100",
+        numeral,
         color = palette.ink,
         fontSize = size,
         lineHeight = size,
@@ -303,7 +334,7 @@ private fun Top100Numeral(palette: Top100Palette, size: TextUnit) {
 }
 
 @Composable
-private fun Top100Glyph(glyph: Shape, rotation: Float, color: Color, size: Dp, modifier: Modifier) {
+internal fun Top100Glyph(glyph: Shape, rotation: Float, color: Color, size: Dp, modifier: Modifier) {
     Box(modifier.size(size).rotate(rotation).clip(glyph).background(color))
 }
 
@@ -329,7 +360,7 @@ private fun Top100Cover(
             modifier = Modifier.align(Alignment.TopStart).padding(start = 14.dp, top = 14.dp)
         )
         Column(Modifier.align(Alignment.BottomStart).padding(start = 12.dp, end = 12.dp, bottom = 12.dp)) {
-            Top100Numeral(palette, fixedSp(60f))
+            Top100Numeral("100", palette, fixedSp(60f))
             Text(
                 label,
                 color = palette.ink,
@@ -348,6 +379,7 @@ private fun Top100ChartScreen(
     open: DailyTop100ChartUiState,
     label: String,
     date: String,
+    numeral: String,
     copy: DailyTop100Copy,
     palette: Top100Palette,
     glyph: Shape,
@@ -375,7 +407,7 @@ private fun Top100ChartScreen(
     Box(Modifier.fillMaxSize().background(scheme.background)) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = bottom + 24.dp)) {
             item(key = "top100-hero", contentType = "top100-hero") {
-                Top100Hero(label, date, copy.title, palette, glyph, rotation, tracks.isNotEmpty(), onBack,
+                Top100Hero(label, date, numeral, copy.title, palette, glyph, rotation, tracks.isNotEmpty(), onBack,
                     onPlayAll = { onPlay(tracks, tracks.first()) },
                     onShuffle = {
                         val shuffled = tracks.shuffled()
@@ -412,6 +444,7 @@ private fun Top100ChartScreen(
 private fun Top100Hero(
     label: String,
     date: String,
+    numeral: String,
     overline: String,
     palette: Top100Palette,
     glyph: Shape,
@@ -443,7 +476,7 @@ private fun Top100Hero(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
-                Top100Numeral(palette, fixedSp(128f))
+                Top100Numeral(numeral, palette, fixedSp(128f))
                 Text(
                     label,
                     color = palette.ink,

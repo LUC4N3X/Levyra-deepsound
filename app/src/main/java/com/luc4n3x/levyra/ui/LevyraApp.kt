@@ -25202,7 +25202,7 @@ private fun ExploreContentRowDefault(
 ) {
     val strings = LocalLevyraStrings.current
     when (row) {
-        ExploreRow.NewsHero, ExploreRow.DailyTop100, ExploreRow.NewsList ->
+        ExploreRow.NewsHero, ExploreRow.DailyTop100, ExploreRow.CityCharts, ExploreRow.NewsList ->
             editorial?.let { content -> ExploreEditorialRow(row, content) }
         ExploreRow.MoodJourney -> com.luc4n3x.levyra.ui.moodjourney.MoodJourneyEntryCard(
             onOpen = { preset -> if (preset == null) viewModel.openMoodJourney() else viewModel.openMoodJourney(preset) },

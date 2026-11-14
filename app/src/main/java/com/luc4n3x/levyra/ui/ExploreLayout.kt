@@ -118,6 +118,10 @@ internal sealed interface ExploreRow {
         override val key: String = "explore-daily-top-100"
     }
 
+    data object CityCharts : ExploreRow {
+        override val key: String = "explore-city-charts"
+    }
+
     data object NewsList : ExploreRow {
         override val key: String = "explore-news-list"
     }
@@ -145,6 +149,7 @@ internal fun buildExploreRows(
         if (hasNews) rows += ExploreRow.NewsHero
         rows += exploreFreshRows(isFreshLoading, hasFreshTracks, hasFreshScopes, hasFreshMoment = false)
         rows += ExploreRow.DailyTop100
+        rows += ExploreRow.CityCharts
         if (editorialJourney) rows += ExploreRow.MoodJourney
         if (hasNews && hasNewsDesk) rows += ExploreRow.NewsList
         return rows

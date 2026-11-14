@@ -42,6 +42,13 @@ class ExploreLayoutTest {
     }
 
     @Test
+    fun editorialRowsPlaceCityChartsAfterTop100() {
+        val rows = buildExploreRows(zones(4), false, true, editorial = true, hasNews = true, editorialJourney = true)
+
+        assertEquals(rows.indexOf(ExploreRow.DailyTop100) + 1, rows.indexOf(ExploreRow.CityCharts))
+    }
+
+    @Test
     fun spotifyDiscoveryReplacesMoodGridWithSamplesAndRemovesItsShortcut() {
         val rows = buildExploreRows(zones(4), false, true, spotifyStyle = true)
 
@@ -509,6 +516,7 @@ class ExploreLayoutTest {
                 ExploreRow.Header(ExploreAnchor.Fresh),
                 ExploreRow.FreshSpotlight,
                 ExploreRow.DailyTop100,
+                ExploreRow.CityCharts,
                 ExploreRow.NewsList
             ),
             rows
@@ -519,7 +527,7 @@ class ExploreLayoutTest {
     fun editorialExploreWithoutNewsStillShowsReleasesAndCharts() {
         val rows = buildExploreRows(emptyList(), false, false, editorial = true, hasNews = false)
 
-        assertEquals(listOf(ExploreRow.Header(ExploreAnchor.Fresh), ExploreRow.FreshEmpty, ExploreRow.DailyTop100), rows)
+        assertEquals(listOf(ExploreRow.Header(ExploreAnchor.Fresh), ExploreRow.FreshEmpty, ExploreRow.DailyTop100, ExploreRow.CityCharts), rows)
     }
 
     @Test

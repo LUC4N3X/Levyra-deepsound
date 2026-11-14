@@ -30,14 +30,15 @@ class AppleCityChartsTest {
     fun excludesCountryCharts() {
         val italy = playlist("pl.737e067787df485a8062e2c4927d94db", "Top 100: Italia")
         val world = playlist("pl.ffffffffffffffff", "Top 100: Mondo")
-        assertEquals(emptyList<AppleCityChart>(), AppleCityCharts.charts(page(shelf(italy, world))))
+        val knownCountry = playlist("pl.737e067787df485a8062e2c4927d94db", "Top 25: Italia")
+        assertEquals(emptyList<AppleCityChart>(), AppleCityCharts.charts(page(shelf(italy, world, knownCountry))))
     }
 
     @Test
     fun removesDuplicatesKeepsOrder() {
         assertEquals(
             listOf("pl.bbbbbbbb", "pl.aaaaaaaa"),
-            AppleCityCharts.charts(page(shelf(roma.copy(id = "pl.bbbbbbbb"), milano), shelf(roma))).map { it.playlistId }
+            AppleCityCharts.charts(page(shelf(roma, milano), shelf(roma))).map { it.playlistId }
         )
     }
 
