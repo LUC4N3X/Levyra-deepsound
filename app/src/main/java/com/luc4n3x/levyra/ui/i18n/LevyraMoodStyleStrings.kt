@@ -48,7 +48,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "The height of the curve is energy. Tone is how sad or joyful the songs feel at this point. Both only choose songs: they never change speed or pitch.",
         "Point {n}: energy {e}%, tone {b}%",
         "Move together", "Clear selection",
-        "Pop|Rock|Hip-hop|Electronic|R&B|Jazz|Classical|Reggae|Folk|Country|Disco|New age|Latin|Metal|Blues"
+        "Pop|Rock|Hip-hop|Electronic|R&B|Jazz|Classical|Reggae|Folk|Country|Disco|New age|Latin|Metal|Blues|K-pop|Afrobeats|Indie|Punk|Soul & funk|Ambient"
     ),
     "it" to moodStyle(
         "Stile", "Misto", "Scegli uno o più stili da combinare, oppure lascia Misto",
@@ -57,7 +57,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "L’altezza della curva è l’energia. Il tono è quanto i brani suonano malinconici o gioiosi in questo punto. Entrambi scelgono solo i brani: non cambiano mai velocità o intonazione.",
         "Punto {n}: energia {e}%, tono {b}%",
         "Sposta insieme", "Annulla selezione",
-        "Pop|Rock|Hip-hop|Elettronica|R&B|Jazz|Classica|Reggae|Folk|Country|Disco|New age|Latina|Metal|Blues"
+        "Pop|Rock|Hip-hop|Elettronica|R&B|Jazz|Classica|Reggae|Folk|Country|Disco|New age|Latina|Metal|Blues|K-pop|Afrobeats|Indie|Punk|Soul e funk|Ambient"
     ),
     "es" to moodStyle(
         "Estilo", "Mixto", "Elige uno o varios estilos para mezclar, o deja Mixto",
@@ -66,7 +66,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "La altura de la curva es la energía. El tono indica lo melancólicas o alegres que suenan las canciones en este punto. Ambos solo eligen canciones: nunca cambian la velocidad ni el tono musical.",
         "Punto {n}: energía {e}%, tono {b}%",
         "Mover juntos", "Borrar selección",
-        "Pop|Rock|Hip-hop|Electrónica|R&B|Jazz|Clásica|Reggae|Folk|Country|Disco|New age|Latina|Metal|Blues"
+        "Pop|Rock|Hip-hop|Electrónica|R&B|Jazz|Clásica|Reggae|Folk|Country|Disco|New age|Latina|Metal|Blues|K-pop|Afrobeats|Indie|Punk|Soul y funk|Ambient"
     ),
     "fr" to moodStyle(
         "Style", "Mixte", "Choisissez un ou plusieurs styles à mélanger, ou gardez Mixte",
@@ -75,7 +75,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "La hauteur de la courbe est l’énergie. Le ton indique si les titres sonnent mélancoliques ou joyeux à ce point. Les deux choisissent seulement les titres : ils ne changent jamais la vitesse ni la hauteur.",
         "Point {n} : énergie {e} %, ton {b} %",
         "Déplacer ensemble", "Effacer la sélection",
-        "Pop|Rock|Hip-hop|Électro|R&B|Jazz|Classique|Reggae|Folk|Country|Disco|New age|Latino|Metal|Blues"
+        "Pop|Rock|Hip-hop|Électro|R&B|Jazz|Classique|Reggae|Folk|Country|Disco|New age|Latino|Metal|Blues|K-pop|Afrobeats|Indé|Punk|Soul et funk|Ambient"
     ),
     "de" to moodStyle(
         "Stil", "Gemischt", "Wähle einen oder mehrere Stile zum Mischen oder bleib bei Gemischt",
@@ -84,7 +84,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "Die Höhe der Kurve ist die Energie. Die Stimmung zeigt, wie melancholisch oder fröhlich die Songs an dieser Stelle klingen. Beides wählt nur Songs aus und ändert nie Tempo oder Tonhöhe.",
         "Punkt {n}: Energie {e} %, Stimmung {b} %",
         "Gemeinsam verschieben", "Auswahl aufheben",
-        "Pop|Rock|Hip-Hop|Elektronik|R&B|Jazz|Klassik|Reggae|Folk|Country|Disco|New Age|Latin|Metal|Blues"
+        "Pop|Rock|Hip-Hop|Elektronik|R&B|Jazz|Klassik|Reggae|Folk|Country|Disco|New Age|Latin|Metal|Blues|K-Pop|Afrobeats|Indie|Punk|Soul & Funk|Ambient"
     ),
     "pt" to moodStyle(
         "Estilo", "Misto", "Escolha um ou mais estilos para misturar, ou mantenha Misto",
@@ -93,7 +93,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "A altura da curva é a energia. O tom indica o quão melancólicas ou alegres as músicas soam neste ponto. Ambos só escolhem músicas: nunca mudam a velocidade nem a afinação.",
         "Ponto {n}: energia {e}%, tom {b}%",
         "Mover em conjunto", "Limpar seleção",
-        "Pop|Rock|Hip-hop|Eletrónica|R&B|Jazz|Clássica|Reggae|Folk|Country|Disco|New age|Latina|Metal|Blues"
+        "Pop|Rock|Hip-hop|Eletrónica|R&B|Jazz|Clássica|Reggae|Folk|Country|Disco|New age|Latina|Metal|Blues|K-pop|Afrobeats|Indie|Punk|Soul e funk|Ambient"
     ),
     "nl" to moodStyle(
         "Stijl", "Gemengd", "Kies een of meer stijlen om te mengen, of houd Gemengd",
@@ -102,7 +102,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "De hoogte van de curve is de energie. De toon is hoe melancholisch of vrolijk de nummers op dit punt klinken. Beide kiezen alleen nummers en veranderen nooit tempo of toonhoogte.",
         "Punt {n}: energie {e}%, toon {b}%",
         "Samen verplaatsen", "Selectie wissen",
-        "Pop|Rock|Hiphop|Elektronisch|R&B|Jazz|Klassiek|Reggae|Folk|Country|Disco|New age|Latin|Metal|Blues"
+        "Pop|Rock|Hiphop|Elektronisch|R&B|Jazz|Klassiek|Reggae|Folk|Country|Disco|New age|Latin|Metal|Blues|K-pop|Afrobeats|Indie|Punk|Soul & funk|Ambient"
     ),
     "pl" to moodStyle(
         "Styl", "Mieszany", "Wybierz jeden lub kilka stylów do połączenia albo zostaw Mieszany",
@@ -111,7 +111,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "Wysokość krzywej to energia. Ton określa, jak melancholijnie lub radośnie brzmią utwory w tym punkcie. Oba tylko wybierają utwory i nigdy nie zmieniają tempa ani wysokości dźwięku.",
         "Punkt {n}: energia {e}%, ton {b}%",
         "Przesuwaj razem", "Wyczyść zaznaczenie",
-        "Pop|Rock|Hip-hop|Elektronika|R&B|Jazz|Klasyczna|Reggae|Folk|Country|Disco|New age|Latino|Metal|Blues"
+        "Pop|Rock|Hip-hop|Elektronika|R&B|Jazz|Klasyczna|Reggae|Folk|Country|Disco|New age|Latino|Metal|Blues|K-pop|Afrobeats|Indie|Punk|Soul i funk|Ambient"
     ),
     "ro" to moodStyle(
         "Stil", "Mixt", "Alege unul sau mai multe stiluri de combinat sau păstrează Mixt",
@@ -120,7 +120,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "Înălțimea curbei este energia. Tonul arată cât de melancolice sau vesele sună melodiile în acest punct. Ambele aleg doar melodii și nu schimbă niciodată viteza sau înălțimea sunetului.",
         "Punctul {n}: energie {e}%, ton {b}%",
         "Mută împreună", "Șterge selecția",
-        "Pop|Rock|Hip-hop|Electronică|R&B|Jazz|Clasică|Reggae|Folk|Country|Disco|New age|Latino|Metal|Blues"
+        "Pop|Rock|Hip-hop|Electronică|R&B|Jazz|Clasică|Reggae|Folk|Country|Disco|New age|Latino|Metal|Blues|K-pop|Afrobeats|Indie|Punk|Soul și funk|Ambient"
     ),
     "el" to moodStyle(
         "Στυλ", "Μικτό", "Επίλεξε ένα ή περισσότερα στυλ για συνδυασμό ή κράτησε το Μικτό",
@@ -129,7 +129,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "Το ύψος της καμπύλης είναι η ενέργεια. Ο τόνος δείχνει πόσο μελαγχολικά ή χαρούμενα ακούγονται τα τραγούδια σε αυτό το σημείο. Και τα δύο απλώς επιλέγουν τραγούδια και δεν αλλάζουν ποτέ ταχύτητα ή τονικό ύψος.",
         "Σημείο {n}: ενέργεια {e}%, τόνος {b}%",
         "Μετακίνηση μαζί", "Απαλοιφή επιλογής",
-        "Ποπ|Ροκ|Χιπ-χοπ|Ηλεκτρονική|R&B|Τζαζ|Κλασική|Ρέγκε|Φολκ|Κάντρι|Ντίσκο|New age|Λάτιν|Μέταλ|Μπλουζ"
+        "Ποπ|Ροκ|Χιπ-χοπ|Ηλεκτρονική|R&B|Τζαζ|Κλασική|Ρέγκε|Φολκ|Κάντρι|Ντίσκο|New age|Λάτιν|Μέταλ|Μπλουζ|K-pop|Afrobeats|Ίντι|Πανκ|Σόουλ & φανκ|Ambient"
     ),
     "sv" to moodStyle(
         "Stil", "Blandat", "Välj en eller flera stilar att blanda, eller behåll Blandat",
@@ -138,7 +138,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "Kurvans höjd är energin. Tonen är hur melankoliska eller glada låtarna känns vid den här punkten. Båda väljer bara låtar och ändrar aldrig tempo eller tonhöjd.",
         "Punkt {n}: energi {e} %, ton {b} %",
         "Flytta tillsammans", "Rensa markering",
-        "Pop|Rock|Hiphop|Elektroniskt|R&B|Jazz|Klassiskt|Reggae|Folk|Country|Disco|New age|Latin|Metal|Blues"
+        "Pop|Rock|Hiphop|Elektroniskt|R&B|Jazz|Klassiskt|Reggae|Folk|Country|Disco|New age|Latin|Metal|Blues|K-pop|Afrobeats|Indie|Punk|Soul & funk|Ambient"
     ),
     "da" to moodStyle(
         "Stil", "Blandet", "Vælg en eller flere stilarter at blande, eller behold Blandet",
@@ -147,7 +147,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "Kurvens højde er energien. Tonen er, hvor melankolske eller glade numrene føles på dette punkt. Begge vælger kun numre og ændrer aldrig tempo eller tonehøjde.",
         "Punkt {n}: energi {e} %, tone {b} %",
         "Flyt sammen", "Ryd markering",
-        "Pop|Rock|Hiphop|Elektronisk|R&B|Jazz|Klassisk|Reggae|Folk|Country|Disco|New age|Latin|Metal|Blues"
+        "Pop|Rock|Hiphop|Elektronisk|R&B|Jazz|Klassisk|Reggae|Folk|Country|Disco|New age|Latin|Metal|Blues|K-pop|Afrobeats|Indie|Punk|Soul & funk|Ambient"
     ),
     "cs" to moodStyle(
         "Styl", "Mix", "Vyberte jeden nebo více stylů ke smíchání, nebo nechte Mix",
@@ -156,7 +156,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "Výška křivky je energie. Tón určuje, jak melancholicky nebo radostně skladby v tomto bodě zní. Obojí jen vybírá skladby a nikdy nemění tempo ani výšku tónu.",
         "Bod {n}: energie {e} %, tón {b} %",
         "Posouvat společně", "Zrušit výběr",
-        "Pop|Rock|Hip-hop|Elektronika|R&B|Jazz|Klasika|Reggae|Folk|Country|Disco|New age|Latino|Metal|Blues"
+        "Pop|Rock|Hip-hop|Elektronika|R&B|Jazz|Klasika|Reggae|Folk|Country|Disco|New age|Latino|Metal|Blues|K-pop|Afrobeats|Indie|Punk|Soul a funk|Ambient"
     ),
     "sk" to moodStyle(
         "Štýl", "Mix", "Vyberte jeden alebo viac štýlov na zmiešanie, alebo nechajte Mix",
@@ -165,7 +165,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "Výška krivky je energia. Tón určuje, ako melancholicky alebo radostne skladby v tomto bode znejú. Oboje len vyberá skladby a nikdy nemení tempo ani výšku tónu.",
         "Bod {n}: energia {e} %, tón {b} %",
         "Posúvať spolu", "Zrušiť výber",
-        "Pop|Rock|Hip-hop|Elektronika|R&B|Jazz|Klasika|Reggae|Folk|Country|Disco|New age|Latino|Metal|Blues"
+        "Pop|Rock|Hip-hop|Elektronika|R&B|Jazz|Klasika|Reggae|Folk|Country|Disco|New age|Latino|Metal|Blues|K-pop|Afrobeats|Indie|Punk|Soul a funk|Ambient"
     ),
     "hr" to moodStyle(
         "Stil", "Miješano", "Odaberi jedan ili više stilova za miješanje ili ostavi Miješano",
@@ -174,7 +174,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "Visina krivulje je energija. Ton pokazuje koliko pjesme u ovoj točki zvuče melankolično ili radosno. Oboje samo bira pjesme i nikad ne mijenja tempo ni visinu tona.",
         "Točka {n}: energija {e} %, ton {b} %",
         "Pomakni zajedno", "Poništi odabir",
-        "Pop|Rock|Hip-hop|Elektronika|R&B|Jazz|Klasika|Reggae|Folk|Country|Disco|New age|Latino|Metal|Blues"
+        "Pop|Rock|Hip-hop|Elektronika|R&B|Jazz|Klasika|Reggae|Folk|Country|Disco|New age|Latino|Metal|Blues|K-pop|Afrobeats|Indie|Punk|Soul i funk|Ambient"
     ),
     "sr" to moodStyle(
         "Стил", "Мешано", "Изабери један или више стилова за мешање или остави Мешано",
@@ -183,7 +183,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "Висина криве је енергија. Тон показује колико песме у овој тачки звуче меланхолично или радосно. Обоје само бира песме и никад не мења темпо ни висину тона.",
         "Тачка {n}: енергија {e} %, тон {b} %",
         "Помери заједно", "Обриши избор",
-        "Поп|Рок|Хип-хоп|Електроника|R&B|Џез|Класика|Реге|Фолк|Кантри|Диско|Њу ејџ|Латино|Метал|Блуз"
+        "Поп|Рок|Хип-хоп|Електроника|R&B|Џез|Класика|Реге|Фолк|Кантри|Диско|Њу ејџ|Латино|Метал|Блуз|K-поп|Афробитс|Инди|Панк|Соул и фанк|Амбијент"
     ),
     "sq" to moodStyle(
         "Stili", "I përzier", "Zgjidh një ose më shumë stile për t’i përzier, ose mbaj I përzier",
@@ -192,7 +192,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "Lartësia e kurbës është energjia. Toni tregon sa melankolike ose të gëzueshme tingëllojnë këngët në këtë pikë. Të dyja vetëm zgjedhin këngë dhe nuk ndryshojnë kurrë shpejtësinë ose lartësinë e zërit.",
         "Pika {n}: energjia {e}%, toni {b}%",
         "Lëvizi së bashku", "Pastro përzgjedhjen",
-        "Pop|Rock|Hip-hop|Elektronike|R&B|Xhaz|Klasike|Reggae|Folk|Country|Disko|New age|Latine|Metal|Blues"
+        "Pop|Rock|Hip-hop|Elektronike|R&B|Xhaz|Klasike|Reggae|Folk|Country|Disko|New age|Latine|Metal|Blues|K-pop|Afrobeats|Indie|Punk|Soul dhe funk|Ambient"
     ),
     "bg" to moodStyle(
         "Стил", "Смесено", "Изберете един или повече стилове за смесване или оставете Смесено",
@@ -201,7 +201,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "Височината на кривата е енергията. Тонът показва колко меланхолично или радостно звучат песните в тази точка. И двете само избират песни и никога не променят темпото или височината на звука.",
         "Точка {n}: енергия {e}%, тон {b}%",
         "Премести заедно", "Изчисти избора",
-        "Поп|Рок|Хип-хоп|Електронна|R&B|Джаз|Класическа|Реге|Фолк|Кънтри|Диско|Ню ейдж|Латино|Метъл|Блус"
+        "Поп|Рок|Хип-хоп|Електронна|R&B|Джаз|Класическа|Реге|Фолк|Кънтри|Диско|Ню ейдж|Латино|Метъл|Блус|K-поп|Афробийтс|Инди|Пънк|Соул и фънк|Амбиънт"
     ),
     "hu" to moodStyle(
         "Stílus", "Vegyes", "Válassz egy vagy több stílust a keveréshez, vagy maradj a Vegyesnél",
@@ -210,7 +210,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "A görbe magassága az energia. A hangulat azt mutatja, mennyire melankolikusan vagy vidáman szólnak a dalok ezen a ponton. Mindkettő csak dalokat választ, a tempót és a hangmagasságot sosem változtatja meg.",
         "{n}. pont: energia {e}%, hangulat {b}%",
         "Együtt mozgatás", "Kijelölés törlése",
-        "Pop|Rock|Hiphop|Elektronikus|R&B|Jazz|Klasszikus|Reggae|Folk|Country|Disco|New age|Latin|Metal|Blues"
+        "Pop|Rock|Hiphop|Elektronikus|R&B|Jazz|Klasszikus|Reggae|Folk|Country|Disco|New age|Latin|Metal|Blues|K-pop|Afrobeats|Indie|Punk|Soul és funk|Ambient"
     ),
     "fi" to moodStyle(
         "Tyyli", "Sekoitus", "Valitse yksi tai useampi tyyli sekoitettavaksi tai pidä Sekoitus",
@@ -219,7 +219,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "Käyrän korkeus on energia. Sävy kertoo, kuinka melankolisilta tai iloisilta kappaleet tuntuvat tässä kohdassa. Molemmat vain valitsevat kappaleita eivätkä koskaan muuta tempoa tai sävelkorkeutta.",
         "Piste {n}: energia {e} %, sävy {b} %",
         "Siirrä yhdessä", "Tyhjennä valinta",
-        "Pop|Rock|Hiphop|Elektroninen|R&B|Jazz|Klassinen|Reggae|Folk|Country|Disco|New age|Latin|Metalli|Blues"
+        "Pop|Rock|Hiphop|Elektroninen|R&B|Jazz|Klassinen|Reggae|Folk|Country|Disco|New age|Latin|Metalli|Blues|K-pop|Afrobeats|Indie|Punk|Soul ja funk|Ambient"
     ),
     "et" to moodStyle(
         "Stiil", "Segamini", "Vali segamiseks üks või mitu stiili või jäta Segamini",
@@ -228,7 +228,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "Kõvera kõrgus on energia. Toon näitab, kui melanhoolsed või rõõmsad lood selles punktis tunduvad. Mõlemad ainult valivad lugusid ega muuda kunagi tempot ega helikõrgust.",
         "Punkt {n}: energia {e}%, toon {b}%",
         "Liiguta koos", "Tühjenda valik",
-        "Pop|Rock|Hip-hop|Elektrooniline|R&B|Džäss|Klassika|Reggae|Folk|Kantri|Disko|New age|Ladina|Metal|Bluus"
+        "Pop|Rock|Hip-hop|Elektrooniline|R&B|Džäss|Klassika|Reggae|Folk|Kantri|Disko|New age|Ladina|Metal|Bluus|K-pop|Afrobeats|Indie|Punk|Soul ja funk|Ambient"
     ),
     "nb" to moodStyle(
         "Stil", "Blandet", "Velg én eller flere stiler å blande, eller behold Blandet",
@@ -237,7 +237,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "Kurvens høyde er energien. Tonen er hvor melankolske eller glade låtene føles på dette punktet. Begge velger bare låter og endrer aldri tempo eller tonehøyde.",
         "Punkt {n}: energi {e} %, tone {b} %",
         "Flytt sammen", "Fjern markering",
-        "Pop|Rock|Hiphop|Elektronisk|R&B|Jazz|Klassisk|Reggae|Folk|Country|Disco|New age|Latin|Metal|Blues"
+        "Pop|Rock|Hiphop|Elektronisk|R&B|Jazz|Klassisk|Reggae|Folk|Country|Disco|New age|Latin|Metal|Blues|K-pop|Afrobeats|Indie|Punk|Soul og funk|Ambient"
     ),
     "ca" to moodStyle(
         "Estil", "Mixt", "Tria un o més estils per barrejar, o deixa Mixt",
@@ -246,7 +246,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "L’alçada de la corba és l’energia. El to indica com de melancòliques o alegres sonen les cançons en aquest punt. Tots dos només trien cançons: mai no canvien la velocitat ni l’afinació.",
         "Punt {n}: energia {e}%, to {b}%",
         "Mou junts", "Esborra la selecció",
-        "Pop|Rock|Hip-hop|Electrònica|R&B|Jazz|Clàssica|Reggae|Folk|Country|Disco|New age|Llatina|Metal|Blues"
+        "Pop|Rock|Hip-hop|Electrònica|R&B|Jazz|Clàssica|Reggae|Folk|Country|Disco|New age|Llatina|Metal|Blues|K-pop|Afrobeats|Indie|Punk|Soul i funk|Ambient"
     ),
     "uk" to moodStyle(
         "Стиль", "Змішаний", "Оберіть один або кілька стилів для поєднання або залиште «Змішаний»",
@@ -255,7 +255,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "Висота кривої — це енергія. Тон показує, наскільки сумно чи радісно звучать треки в цій точці. Обидва лише добирають треки й ніколи не змінюють темп чи висоту звуку.",
         "Точка {n}: енергія {e}%, тон {b}%",
         "Рухати разом", "Скасувати вибір",
-        "Поп|Рок|Хіп-хоп|Електроніка|R&B|Джаз|Класика|Реггі|Фолк|Кантрі|Диско|Нью-ейдж|Латино|Метал|Блюз"
+        "Поп|Рок|Хіп-хоп|Електроніка|R&B|Джаз|Класика|Реггі|Фолк|Кантрі|Диско|Нью-ейдж|Латино|Метал|Блюз|K-поп|Афробітс|Інді|Панк|Соул і фанк|Ембієнт"
     ),
     "ru" to moodStyle(
         "Стиль", "Смешанный", "Выберите один или несколько стилей для смешивания или оставьте «Смешанный»",
@@ -264,7 +264,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "Высота кривой — это энергия. Тон показывает, насколько грустно или радостно звучат треки в этой точке. Оба параметра только подбирают треки и никогда не меняют темп или высоту звука.",
         "Точка {n}: энергия {e}%, тон {b}%",
         "Двигать вместе", "Снять выделение",
-        "Поп|Рок|Хип-хоп|Электроника|R&B|Джаз|Классика|Регги|Фолк|Кантри|Диско|Нью-эйдж|Латино|Метал|Блюз"
+        "Поп|Рок|Хип-хоп|Электроника|R&B|Джаз|Классика|Регги|Фолк|Кантри|Диско|Нью-эйдж|Латино|Метал|Блюз|K-поп|Афробитс|Инди|Панк|Соул и фанк|Эмбиент"
     ),
     "kk" to moodStyle(
         "Стиль", "Аралас", "Араластыру үшін бір немесе бірнеше стильді таңдаңыз не «Аралас» қалдырыңыз",
@@ -273,7 +273,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "Қисықтың биіктігі — энергия. Тон осы нүктеде әндердің қаншалықты мұңды не қуанышты естілетінін көрсетеді. Екеуі де тек ән таңдайды, қарқын мен дыбыс биіктігін ешқашан өзгертпейді.",
         "{n}-нүкте: энергия {e}%, тон {b}%",
         "Бірге жылжыту", "Таңдауды тазалау",
-        "Поп|Рок|Хип-хоп|Электроника|R&B|Джаз|Классика|Регги|Фолк|Кантри|Диско|Нью-эйдж|Латино|Метал|Блюз"
+        "Поп|Рок|Хип-хоп|Электроника|R&B|Джаз|Классика|Регги|Фолк|Кантри|Диско|Нью-эйдж|Латино|Метал|Блюз|K-поп|Афробитс|Инди|Панк|Соул және фанк|Эмбиент"
     ),
     "tr" to moodStyle(
         "Tarz", "Karışık", "Karıştırmak için bir veya daha fazla tarz seç ya da Karışık’ta bırak",
@@ -282,7 +282,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "Eğrinin yüksekliği enerjidir. Ton, şarkıların bu noktada ne kadar hüzünlü ya da neşeli hissettirdiğidir. İkisi de yalnızca şarkı seçer; hızı ya da perdeyi asla değiştirmez.",
         "Nokta {n}: enerji %{e}, ton %{b}",
         "Birlikte taşı", "Seçimi temizle",
-        "Pop|Rock|Hip-hop|Elektronik|R&B|Caz|Klasik|Reggae|Folk|Country|Disko|New age|Latin|Metal|Blues"
+        "Pop|Rock|Hip-hop|Elektronik|R&B|Caz|Klasik|Reggae|Folk|Country|Disko|New age|Latin|Metal|Blues|K-pop|Afrobeats|Indie|Punk|Soul ve funk|Ambient"
     ),
     "ar" to moodStyle(
         "الأسلوب", "مختلط", "اختر أسلوبًا واحدًا أو أكثر لمزجها، أو اترك «مختلط»",
@@ -291,7 +291,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "ارتفاع المنحنى هو الطاقة. النبرة تعني مدى حزن الأغاني أو بهجتها في هذه النقطة. كلاهما يختار الأغاني فقط ولا يغيّر أبدًا السرعة أو طبقة الصوت.",
         "النقطة {n}: الطاقة {e}٪، النبرة {b}٪",
         "تحريك معًا", "مسح التحديد",
-        "بوب|روك|هيب هوب|إلكترونية|R&B|جاز|كلاسيكية|ريغي|فولك|كانتري|ديسكو|نيو إيج|لاتينية|ميتال|بلوز"
+        "بوب|روك|هيب هوب|إلكترونية|R&B|جاز|كلاسيكية|ريغي|فولك|كانتري|ديسكو|نيو إيج|لاتينية|ميتال|بلوز|كي بوب|أفروبيتس|إندي|بانك|سول وفانك|أمبينت"
     ),
     "fa" to moodStyle(
         "سبک", "ترکیبی", "یک یا چند سبک را برای ترکیب انتخاب کنید یا «ترکیبی» را نگه دارید",
@@ -300,7 +300,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "ارتفاع منحنی انرژی است. حس نشان می‌دهد آهنگ‌ها در این نقطه چقدر غمگین یا شاد به نظر می‌رسند. هر دو فقط آهنگ انتخاب می‌کنند و هرگز سرعت یا زیر و بمی را تغییر نمی‌دهند.",
         "نقطه {n}: انرژی {e}٪، حس {b}٪",
         "جابه‌جایی با هم", "پاک کردن انتخاب",
-        "پاپ|راک|هیپ‌هاپ|الکترونیک|R&B|جاز|کلاسیک|رگی|فولک|کانتری|دیسکو|نیوایج|لاتین|متال|بلوز"
+        "پاپ|راک|هیپ‌هاپ|الکترونیک|R&B|جاز|کلاسیک|رگی|فولک|کانتری|دیسکو|نیوایج|لاتین|متال|بلوز|کی‌پاپ|افروبیتس|ایندی|پانک|سول و فانک|امبینت"
     ),
     "zh" to moodStyle(
         "风格", "混合", "选择一种或多种风格混合，或保持“混合”",
@@ -309,7 +309,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "曲线高度代表能量。基调表示此处歌曲听起来有多忧郁或欢快。两者都只用于选歌，绝不会改变速度或音高。",
         "第 {n} 个点：能量 {e}%，基调 {b}%",
         "一起移动", "清除选择",
-        "流行|摇滚|嘻哈|电子|R&B|爵士|古典|雷鬼|民谣|乡村|迪斯科|新世纪|拉丁|金属|布鲁斯"
+        "流行|摇滚|嘻哈|电子|R&B|爵士|古典|雷鬼|民谣|乡村|迪斯科|新世纪|拉丁|金属|布鲁斯|K-pop|非洲节拍|独立|朋克|灵魂乐与放克|氛围"
     ),
     "zh-Hant" to moodStyle(
         "風格", "混合", "選擇一種或多種風格混合，或保持「混合」",
@@ -318,7 +318,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "曲線高度代表能量。基調表示此處歌曲聽起來有多憂鬱或歡快。兩者都只用於選歌，絕不會改變速度或音高。",
         "第 {n} 個點：能量 {e}%，基調 {b}%",
         "一起移動", "清除選取",
-        "流行|搖滾|嘻哈|電子|R&B|爵士|古典|雷鬼|民謠|鄉村|迪斯可|新世紀|拉丁|金屬|藍調"
+        "流行|搖滾|嘻哈|電子|R&B|爵士|古典|雷鬼|民謠|鄉村|迪斯可|新世紀|拉丁|金屬|藍調|K-pop|非洲節拍|獨立|龐克|靈魂樂與放克|氛圍"
     ),
     "ja" to moodStyle(
         "スタイル", "ミックス", "組み合わせるスタイルを1つ以上選ぶか、ミックスのままにします",
@@ -327,7 +327,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "カーブの高さはエネルギーです。トーンはこの位置で曲がどれだけ切なく、または明るく感じられるかです。どちらも選曲のためだけに使われ、速さや音程は変わりません。",
         "ポイント {n}：エネルギー {e}%、トーン {b}%",
         "まとめて動かす", "選択を解除",
-        "ポップ|ロック|ヒップホップ|エレクトロニック|R&B|ジャズ|クラシック|レゲエ|フォーク|カントリー|ディスコ|ニューエイジ|ラテン|メタル|ブルース"
+        "ポップ|ロック|ヒップホップ|エレクトロニック|R&B|ジャズ|クラシック|レゲエ|フォーク|カントリー|ディスコ|ニューエイジ|ラテン|メタル|ブルース|K-POP|アフロビーツ|インディー|パンク|ソウル＆ファンク|アンビエント"
     ),
     "ko" to moodStyle(
         "스타일", "믹스", "섞을 스타일을 하나 이상 고르거나 믹스로 두세요",
@@ -336,7 +336,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "곡선의 높이는 에너지예요. 톤은 이 지점에서 곡이 얼마나 슬프거나 밝게 느껴지는지예요. 둘 다 곡을 고르는 데만 쓰이며 속도나 음정은 절대 바뀌지 않아요.",
         "{n}번 지점: 에너지 {e}%, 톤 {b}%",
         "함께 이동", "선택 해제",
-        "팝|록|힙합|일렉트로닉|R&B|재즈|클래식|레게|포크|컨트리|디스코|뉴에이지|라틴|메탈|블루스"
+        "팝|록|힙합|일렉트로닉|R&B|재즈|클래식|레게|포크|컨트리|디스코|뉴에이지|라틴|메탈|블루스|K-팝|아프로비츠|인디|펑크|소울·펑크|앰비언트"
     ),
     "hi" to moodStyle(
         "शैली", "मिश्रित", "मिलाने के लिए एक या अधिक शैलियाँ चुनें, या मिश्रित रहने दें",
@@ -345,7 +345,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "वक्र की ऊँचाई ऊर्जा है। टोन बताता है कि इस बिंदु पर गाने कितने उदास या खुशनुमा लगते हैं। दोनों सिर्फ़ गाने चुनते हैं और कभी गति या सुर नहीं बदलते।",
         "बिंदु {n}: ऊर्जा {e}%, टोन {b}%",
         "साथ में खिसकाएँ", "चयन हटाएँ",
-        "पॉप|रॉक|हिप-हॉप|इलेक्ट्रॉनिक|R&B|जैज़|क्लासिकल|रेगे|फ़ोक|कंट्री|डिस्को|न्यू एज|लैटिन|मेटल|ब्लूज़"
+        "पॉप|रॉक|हिप-हॉप|इलेक्ट्रॉनिक|R&B|जैज़|क्लासिकल|रेगे|फ़ोक|कंट्री|डिस्को|न्यू एज|लैटिन|मेटल|ब्लूज़|के-पॉप|एफ़्रोबीट्स|इंडी|पंक|सोल और फ़ंक|एम्बिएंट"
     ),
     "bn" to moodStyle(
         "স্টাইল", "মিশ্র", "মেশাতে এক বা একাধিক স্টাইল বেছে নিন, অথবা মিশ্র রাখুন",
@@ -354,7 +354,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "বক্ররেখার উচ্চতা হলো এনার্জি। টোন বোঝায় এই বিন্দুতে গানগুলো কতটা বিষণ্ণ বা আনন্দময় লাগে। দুটোই শুধু গান বাছাই করে, কখনও গতি বা সুর বদলায় না।",
         "বিন্দু {n}: এনার্জি {e}%, টোন {b}%",
         "একসঙ্গে সরান", "নির্বাচন মুছুন",
-        "পপ|রক|হিপ-হপ|ইলেকট্রনিক|R&B|জ্যাজ|ক্লাসিক্যাল|রেগে|ফোক|কান্ট্রি|ডিস্কো|নিউ এজ|লাতিন|মেটাল|ব্লুজ"
+        "পপ|রক|হিপ-হপ|ইলেকট্রনিক|R&B|জ্যাজ|ক্লাসিক্যাল|রেগে|ফোক|কান্ট্রি|ডিস্কো|নিউ এজ|লাতিন|মেটাল|ব্লুজ|কে-পপ|আফ্রোবিটস|ইন্ডি|পাঙ্ক|সোল ও ফাঙ্ক|অ্যাম্বিয়েন্ট"
     ),
     "id" to moodStyle(
         "Gaya", "Campuran", "Pilih satu atau beberapa gaya untuk dipadukan, atau biarkan Campuran",
@@ -363,7 +363,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "Tinggi kurva adalah energi. Nuansa menunjukkan seberapa sendu atau ceria lagu terasa di titik ini. Keduanya hanya memilih lagu dan tidak pernah mengubah tempo atau nada.",
         "Titik {n}: energi {e}%, nuansa {b}%",
         "Geser bersama", "Hapus pilihan",
-        "Pop|Rock|Hip-hop|Elektronik|R&B|Jazz|Klasik|Reggae|Folk|Country|Disko|New age|Latin|Metal|Blues"
+        "Pop|Rock|Hip-hop|Elektronik|R&B|Jazz|Klasik|Reggae|Folk|Country|Disko|New age|Latin|Metal|Blues|K-pop|Afrobeats|Indie|Punk|Soul & funk|Ambient"
     ),
     "ms" to moodStyle(
         "Gaya", "Campuran", "Pilih satu atau lebih gaya untuk digabungkan, atau kekalkan Campuran",
@@ -372,7 +372,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "Ketinggian lengkung ialah tenaga. Nada menunjukkan sejauh mana lagu terasa sayu atau ceria pada titik ini. Kedua-duanya hanya memilih lagu dan tidak pernah mengubah tempo atau pic.",
         "Titik {n}: tenaga {e}%, nada {b}%",
         "Alih bersama", "Kosongkan pilihan",
-        "Pop|Rock|Hip-hop|Elektronik|R&B|Jazz|Klasik|Reggae|Folk|Country|Disko|New age|Latin|Metal|Blues"
+        "Pop|Rock|Hip-hop|Elektronik|R&B|Jazz|Klasik|Reggae|Folk|Country|Disko|New age|Latin|Metal|Blues|K-pop|Afrobeats|Indie|Punk|Soul & funk|Ambient"
     ),
     "vi" to moodStyle(
         "Phong cách", "Kết hợp", "Chọn một hoặc nhiều phong cách để pha trộn, hoặc giữ Kết hợp",
@@ -381,7 +381,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "Độ cao của đường cong là năng lượng. Sắc thái cho biết bài hát ở điểm này buồn hay vui đến mức nào. Cả hai chỉ dùng để chọn bài và không bao giờ đổi tốc độ hay cao độ.",
         "Điểm {n}: năng lượng {e}%, sắc thái {b}%",
         "Di chuyển cùng nhau", "Bỏ chọn",
-        "Pop|Rock|Hip-hop|Điện tử|R&B|Jazz|Cổ điển|Reggae|Dân ca|Đồng quê|Disco|New age|Latin|Metal|Blues"
+        "Pop|Rock|Hip-hop|Điện tử|R&B|Jazz|Cổ điển|Reggae|Dân ca|Đồng quê|Disco|New age|Latin|Metal|Blues|K-pop|Afrobeats|Indie|Punk|Soul & funk|Ambient"
     ),
     "th" to moodStyle(
         "สไตล์", "ผสม", "เลือกสไตล์อย่างน้อยหนึ่งแบบเพื่อผสม หรือคงไว้ที่ผสม",
@@ -390,7 +390,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "ความสูงของเส้นโค้งคือพลังงาน โทนคือความเศร้าหรือสดใสของเพลงที่จุดนี้ ทั้งสองใช้เลือกเพลงเท่านั้นและไม่เปลี่ยนความเร็วหรือระดับเสียง",
         "จุดที่ {n}: พลังงาน {e}%, โทน {b}%",
         "ย้ายพร้อมกัน", "ล้างการเลือก",
-        "ป๊อป|ร็อก|ฮิปฮอป|อิเล็กทรอนิกส์|R&B|แจ๊ส|คลาสสิก|เร็กเก้|โฟล์ก|คันทรี|ดิสโก้|นิวเอจ|ละติน|เมทัล|บลูส์"
+        "ป๊อป|ร็อก|ฮิปฮอป|อิเล็กทรอนิกส์|R&B|แจ๊ส|คลาสสิก|เร็กเก้|โฟล์ก|คันทรี|ดิสโก้|นิวเอจ|ละติน|เมทัล|บลูส์|เคป๊อป|แอโฟรบีตส์|อินดี้|พังก์|โซลและฟังก์|แอมเบียนต์"
     ),
     "fil" to moodStyle(
         "Estilo", "Halo", "Pumili ng isa o higit pang estilo na pagsasamahin, o hayaang Halo",
@@ -399,7 +399,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "Ang taas ng kurba ay ang enerhiya. Ang tono ay kung gaano kalungkot o kasaya ang dating ng mga kanta sa puntong ito. Pareho lang silang pumipili ng kanta at hindi kailanman binabago ang bilis o tono ng tunog.",
         "Punto {n}: enerhiya {e}%, tono {b}%",
         "Igalaw nang sabay", "I-clear ang pinili",
-        "Pop|Rock|Hip-hop|Electronic|R&B|Jazz|Classical|Reggae|Folk|Country|Disco|New age|Latin|Metal|Blues"
+        "Pop|Rock|Hip-hop|Electronic|R&B|Jazz|Classical|Reggae|Folk|Country|Disco|New age|Latin|Metal|Blues|K-pop|Afrobeats|Indie|Punk|Soul at funk|Ambient"
     ),
     "he" to moodStyle(
         "סגנון", "מעורב", "בחרו סגנון אחד או יותר לשילוב, או השאירו מעורב",
@@ -408,7 +408,7 @@ private val moodStyleCopies: Map<String, List<String>> = mapOf(
         "גובה העקומה הוא האנרגיה. הגוון מראה עד כמה השירים נשמעים עצובים או שמחים בנקודה הזו. שניהם רק בוחרים שירים ולעולם לא משנים מהירות או גובה צליל.",
         "נקודה {n}: אנרגיה {e}%, גוון {b}%",
         "הזזה יחד", "ניקוי הבחירה",
-        "פופ|רוק|היפ־הופ|אלקטרוני|R&B|ג׳אז|קלאסי|רגאיי|פולק|קאנטרי|דיסקו|ניו אייג׳|לטיני|מטאל|בלוז"
+        "פופ|רוק|היפ־הופ|אלקטרוני|R&B|ג׳אז|קלאסי|רגאיי|פולק|קאנטרי|דיסקו|ניו אייג׳|לטיני|מטאל|בלוז|קיי־פופ|אפרוביטס|אינדי|פאנק|סול ופאנק|אמביינט"
     )
 )
 

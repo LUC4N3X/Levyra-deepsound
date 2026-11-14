@@ -310,4 +310,20 @@ class MoodJourneyTest {
         assertEquals(curve, curve.withEnergyShift(setOf(7), 0.3f))
         assertEquals(curve, curve.withEnergyShift(setOf(1), Float.NaN))
     }
+
+    @Test
+    fun `six newer styles sit beside the original ones without breaking stored ids`() {
+        val legacy = listOf("pop", "rock", "hip_hop", "electronic", "rnb", "jazz", "classical", "reggae", "folk", "country", "disco", "new_age", "latin", "metal", "blues")
+        legacy.forEachIndexed { index, id -> assertEquals(MoodStyle.entries[index], MoodStyle.from(id)) }
+        val added = listOf(MoodStyle.K_POP, MoodStyle.AFROBEATS, MoodStyle.INDIE, MoodStyle.PUNK, MoodStyle.SOUL_FUNK, MoodStyle.AMBIENT)
+        assertEquals(added, MoodStyle.entries.drop(legacy.size))
+        assertEquals(MoodStyle.entries.size, MoodStyle.entries.map { it.storageId }.toSet().size)
+        assertTrue(MoodStyle.K_POP.matchesCategory("K-Pop"))
+        MoodStyle.entries.forEach { style ->
+            assertTrue(style.name, style.searchQueries.isNotEmpty() && style.appleGenres.isNotEmpty())
+            assertTrue(style.name, style.energy in 0f..1f && style.valence in 0f..1f)
+        }
+        val decoded = MoodJourneyCurveCodec.decode(MoodJourneyCurveCodec.encode(MoodCurve.preset(MoodCurvePreset.Wave), 20, setOf(MoodStyle.BLUES, MoodStyle.AMBIENT)))
+        assertEquals(setOf(MoodStyle.BLUES, MoodStyle.AMBIENT), decoded?.styles)
+    }
 }
