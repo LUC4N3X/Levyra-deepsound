@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.ui
 
 import androidx.activity.compose.BackHandler
+import com.luc4n3x.levyra.data.toHit
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -228,13 +229,5 @@ private fun YouTubeMusicGenrePlaceholderRow() {
         }
     }
 }
-
-internal fun YoutubeMusicMoodPlaylist.toHit() = PlaylistHit(
-    title = title,
-    author = description,
-    thumbnailUrl = thumbnailUrl,
-    playlistId = playlistId,
-    browseId = browseId
-)
 
 private val YouTubeMusicGenrePlaceholders = listOf(0, 1, 2)

@@ -88,6 +88,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.luc4n3x.levyra.data.parametricProfileFromJsonText
 import com.luc4n3x.levyra.data.parametricProfileToJson
 import com.luc4n3x.levyra.domain.OrbitEqualizer
+import com.luc4n3x.levyra.domain.OrbitLayout
 import com.luc4n3x.levyra.domain.ParametricBiquad
 import com.luc4n3x.levyra.domain.ParametricEqBand
 import com.luc4n3x.levyra.domain.ParametricEqProfile
@@ -152,7 +153,8 @@ internal data class ParametricProfileActions(
     val onDuplicate: (ParametricEqProfile, String) -> ParametricEqProfile?,
     val onRename: (String, String) -> Boolean,
     val onDelete: (String) -> Unit,
-    val onAudition: (ParametricEqProfile?) -> Unit
+    val onAudition: (ParametricEqProfile?) -> Unit,
+    val onApplyOrbit: (ParametricEqProfile, OrbitLayout) -> Unit
 )
 
 private sealed interface ParametricProfileDialog {
@@ -433,19 +435,23 @@ private fun ParametricProfileRow(
     }
 }
 
-private data class EditorBand(val key: Long, val band: ParametricEqBand)
+internal data class EditorBand(val key: Long, val band: ParametricEqBand)
 
-private data class ParametricEditorSession(
+internal data class ParametricEditorSession(
     val originalJson: String,
     val isNew: Boolean,
     val id: String,
     val name: String,
     val preampDb: Float,
     val bands: List<EditorBand>,
-    val nextKey: Long
+    val nextKey: Long,
+    val orbitLayout: OrbitLayout? = null
 ) {
     val profile: ParametricEqProfile
-        get() = ParametricEqProfile(id = id, name = name, preampDb = preampDb, bands = bands.map { it.band })
+        get() {
+            val edited = ParametricEqProfile(id = id, name = name, preampDb = preampDb, bands = bands.map { it.band })
+            return edited.copy(orbitLayout = orbitLayout?.takeIf { OrbitEqualizer.restore(edited, it) == it })
+        }
 
     val dirty: Boolean
         get() = isNew || parametricProfileToJson(profile).toString() != originalJson
@@ -471,7 +477,8 @@ private data class ParametricEditorSession(
             name = profile.name,
             preampDb = profile.preampDb,
             bands = profile.bands.mapIndexed { index, band -> EditorBand(index.toLong(), band) },
-            nextKey = profile.bands.size.toLong()
+            nextKey = profile.bands.size.toLong(),
+            orbitLayout = profile.orbitLayout
         )
     }
 }

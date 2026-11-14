@@ -467,6 +467,16 @@ internal fun rememberCuratedPlaylistShelves(code: String): List<YoutubeMusicHome
     }
 }
 
+@Composable
+internal fun rememberCuratedMoodShelves(code: String): List<YoutubeMusicHomeShelf> {
+    val mixedHome = viewModel<YouTubeMusicHomeViewModel>(key = "mono-mixed-for-you")
+    val mixedState by mixedHome.state.collectAsStateWithLifecycle()
+    val settled = mixedState.language == code && !mixedState.loading
+    LaunchedEffect(code, settled) { if (settled) mixedHome.requestMoodShelves(code) }
+    val moodShelves by mixedHome.moodShelves.collectAsStateWithLifecycle()
+    return moodShelves[code].orEmpty()
+}
+
 internal fun newReleaseMixItem(shelves: List<YoutubeMusicHomeShelf>): YoutubeMusicHomeItem? =
     shelves.asSequence()
         .filter { it.headerBrowseId.startsWith("FEmusic_new_releases") }
