@@ -18,7 +18,7 @@ import com.luc4n3x.levyra.domain.YoutubeMusicHomeItem
 import com.luc4n3x.levyra.domain.YoutubeMusicHomeItemKind
 import com.luc4n3x.levyra.domain.PlaylistHit
 import com.luc4n3x.levyra.domain.YoutubeMusicHomeShelfStyle
-import com.luc4n3x.levyra.ui.toHit
+import com.luc4n3x.levyra.data.toHit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -59,6 +59,7 @@ internal const val NEW_VIDEOS_BROWSE_ID = "FEmusic_new_releases_videos"
 private const val PREVIEW_TRACK_LIMIT = 25
 private const val MAX_CACHED_PREVIEWS = 24
 private const val CURATED_MOOD_SHELVES = 6
+private const val CURATED_MOOD_GROUP_QUOTA = 3
 private const val CURATED_MOOD_PLAYLISTS = 10
 private const val CURATED_MOOD_FETCH_LIMIT = 40
 
@@ -137,8 +138,11 @@ class YouTubeMusicHomeViewModel(application: Application) : AndroidViewModel(app
                 Timber.w(error, "Curated moods and genres lookup failed")
                 return@launch
             }
+            val selected = curatedMoodCategories(categories)
+            val previous = _moodShelves.value[language].orEmpty().associateBy { it.key }
             val shelves = mutableListOf<YoutubeMusicHomeShelf>()
-            for (category in curatedMoodCategories(categories)) {
+            for (category in selected) {
+                previous[curatedMoodShelfKey(category)]?.let { shelves += it; continue }
                 val playlists = try {
                     repository.moodPlaylists(category.params, language, CURATED_MOOD_FETCH_LIMIT)
                 } catch (error: CancellationException) {
@@ -152,7 +156,7 @@ class YouTubeMusicHomeViewModel(application: Application) : AndroidViewModel(app
                 if (!cached) _moodShelves.update { it + (language to shelves.toList()) }
             }
             if (shelves.isNotEmpty()) _moodShelves.update { it + (language to shelves.toList()) }
-            if (categories.isNotEmpty()) moodLoaded += language
+            if (selected.isNotEmpty() && shelves.size == selected.size) moodLoaded += language
         }
     }
 
@@ -280,11 +284,20 @@ class YouTubeMusicHomeViewModel(application: Application) : AndroidViewModel(app
 }
 
 internal fun curatedMoodCategories(categories: List<ExploreCategory>): List<ExploreCategory> {
-    val (moods, genres) = categories.partition { it.sectionIndex == 0 }
+    val (allMoods, allGenres) = categories.partition { it.sectionIndex == 0 }
+    val moodQuota = minOf(allMoods.size, CURATED_MOOD_GROUP_QUOTA)
+    val genreQuota = minOf(allGenres.size, CURATED_MOOD_GROUP_QUOTA)
+    val moods = evenlySpaced(allMoods, minOf(allMoods.size, moodQuota + CURATED_MOOD_GROUP_QUOTA - genreQuota))
+    val genres = evenlySpaced(allGenres, minOf(allGenres.size, genreQuota + CURATED_MOOD_GROUP_QUOTA - moodQuota))
     return (0 until maxOf(moods.size, genres.size))
         .flatMap { index -> listOfNotNull(moods.getOrNull(index), genres.getOrNull(index)) }
         .take(CURATED_MOOD_SHELVES)
 }
+
+private fun <T> evenlySpaced(list: List<T>, count: Int): List<T> =
+    if (list.size > count) List(count) { list[it * list.size / count] } else list
+
+private fun curatedMoodShelfKey(category: ExploreCategory): String = "mood-${category.params}"
 
 internal fun curatedMoodShelf(category: ExploreCategory, playlists: List<YoutubeMusicMoodPlaylist>): YoutubeMusicHomeShelf? {
     val items = playlists.filter { it.playlistId.isNotBlank() }.map { playlist ->
@@ -299,7 +312,7 @@ internal fun curatedMoodShelf(category: ExploreCategory, playlists: List<Youtube
     }
     if (items.isEmpty()) return null
     return YoutubeMusicHomeShelf(
-        key = "mood-${category.params}",
+        key = curatedMoodShelfKey(category),
         title = category.title,
         strapline = "",
         thumbnailUrl = "",

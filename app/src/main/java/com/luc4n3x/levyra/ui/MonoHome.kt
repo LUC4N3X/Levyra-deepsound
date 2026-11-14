@@ -466,8 +466,8 @@ internal fun rememberCuratedPlaylistShelves(code: String): List<YoutubeMusicHome
             featuredItem
         )
     }
-    val curatedSettled = curated.isNotEmpty() ||
-        (mixedState.language == code && !mixedState.loading && ytHomeState.language == code && !ytHomeState.loading && !ytHomeState.loadingMore)
+    val curatedSettled = mixedState.language == code && !mixedState.loading &&
+        (curated.isNotEmpty() || (ytHomeState.language == code && !ytHomeState.loading && !ytHomeState.loadingMore))
     LaunchedEffect(code, curatedSettled) { if (curatedSettled) mixedHome.requestMoodShelves(code) }
     val moodShelves by mixedHome.moodShelves.collectAsStateWithLifecycle()
     val moods = moodShelves[code].orEmpty()

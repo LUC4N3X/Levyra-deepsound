@@ -43,8 +43,18 @@ class CuratedMoodShelvesTest {
     fun fillsFromLongerGroupWhenOtherIsShort() {
         val categories = listOf(genre("Jazz"), genre("Pop"), genre("Rock"), genre("Soul"), genre("Folk"), genre("Metal"), genre("Blues"), mood("Chill"))
         assertEquals(
-            listOf("Chill", "Jazz", "Pop", "Rock", "Soul", "Folk"),
+            listOf("Chill", "Jazz", "Pop", "Rock", "Folk", "Metal"),
             curatedMoodCategories(categories).map { it.title }
+        )
+    }
+
+    @Test
+    fun spreadsLongAlphabeticalGenreListEvenly() {
+        val genres = (0 until 15).map { genre("G$it") }
+        val moods = listOf(mood("Chill"), mood("Focus"), mood("Party"))
+        assertEquals(
+            listOf("Chill", "G0", "Focus", "G5", "Party", "G10"),
+            curatedMoodCategories(moods + genres).map { it.title }
         )
     }
 

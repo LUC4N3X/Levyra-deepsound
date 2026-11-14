@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.ui
 
 import androidx.activity.compose.BackHandler
+import com.luc4n3x.levyra.data.toHit
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
