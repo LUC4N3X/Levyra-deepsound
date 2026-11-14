@@ -54,6 +54,13 @@ internal fun monoTop100Hue(slot: Int, global: Boolean): Color = if (global) Mono
 
 private fun monoInk(hue: Color): Color = if (hue.luminance() > 0.5f) Color(0xFF0B0F12) else Color.White
 
+internal fun monoCityInk(hue: Color): Color {
+    val brightest = lerp(hue, Color.White, 0.1f).luminance()
+    return if (1.05f / (brightest + 0.05f) >= LARGE_TEXT_CONTRAST) Color.White else Color(0xFF0B0F12)
+}
+
+private const val LARGE_TEXT_CONTRAST = 3f
+
 private fun monoLabelColor(hue: Color, ink: Color): Color = if (ink == Color.White) lerp(hue, Color.Black, 0.35f) else hue
 
 private fun Modifier.monoHueGradient(hue: Color): Modifier = drawBehind {
@@ -126,7 +133,7 @@ internal fun MonoTop100ChartScreen(
 @Composable
 internal fun MonoCityCard(chart: AppleCityChart, slot: Int, modifier: Modifier = Modifier) {
     val hue = monoTop100Hue(slot, false)
-    val ink = monoInk(hue)
+    val ink = monoCityInk(hue)
     val scale = 1f / LocalDensity.current.fontScale
     Box(
         modifier.clip(MonoDesign.cardShape)

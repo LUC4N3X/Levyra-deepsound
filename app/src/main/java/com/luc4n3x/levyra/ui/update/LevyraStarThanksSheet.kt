@@ -133,7 +133,10 @@ internal fun LevyraStarThanksSheet(onStar: () -> Unit, onDismiss: () -> Unit) {
     )
     val scope = rememberCoroutineScope()
     val closeThen: (() -> Unit) -> Unit = { action ->
-        scope.launch { sheetState.hide() }.invokeOnCompletion { action() }
+        scope.launch {
+            sheetState.hide()
+            action()
+        }.invokeOnCompletion { failure -> if (failure != null) onDismiss() }
     }
 
     ModalBottomSheet(

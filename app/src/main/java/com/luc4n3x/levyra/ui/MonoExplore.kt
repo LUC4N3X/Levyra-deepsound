@@ -3,8 +3,6 @@ package com.luc4n3x.levyra.ui
 import androidx.compose.animation.core.animateFloat
 import com.luc4n3x.levyra.ui.i18n.discoveryCopy
 import androidx.lifecycle.viewmodel.compose.viewModel
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.luc4n3x.levyra.viewmodel.YouTubeMusicHomeViewModel
 import com.luc4n3x.levyra.viewmodel.EXPLORE_BROWSE_ID
@@ -247,9 +245,7 @@ internal fun MonoExploreEntry(
         }
         MonoExploreBridge.pending = null
     }
-    val dailyCharts = viewModel<com.luc4n3x.levyra.viewmodel.DailyTop100ViewModel>()
-    val hasCityCharts by remember(dailyCharts) { dailyCharts.state.map { it.cities.isNotEmpty() }.distinctUntilChanged() }
-        .collectAsStateWithLifecycle(dailyCharts.state.value.cities.isNotEmpty())
+    val hasCityCharts = rememberHasCityCharts()
     val nothingLoaded = editorial?.news.isNullOrEmpty()
     val stillLoading = state.isNewReleasesLoading
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()

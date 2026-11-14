@@ -485,7 +485,7 @@ internal fun AtelierCityShelf(
                     chart.name, date, atelierChartHue(slots[index], false, AtelierDesign.accent),
                     Modifier.semantics(mergeDescendants = true) { contentDescription = "${copy.title}, ${chart.name}" }
                         .levyraPressable(onClick = { onOpen(chart) }, role = Role.Button, pressedScale = LevyraPressScale.Tile),
-                    numeral = chart.numeral
+                    badge = chart.badge
                 )
             }
         }
@@ -499,7 +499,7 @@ private fun AtelierChartSleeve(
     hue: Color,
     modifier: Modifier,
     side: Dp = AtelierChartSleeveSide,
-    numeral: String? = null
+    badge: String? = null
 ) {
     Box(modifier.width(side * 1.2f).height(side)) {
         AtelierVinyl(null, Modifier.align(Alignment.CenterEnd).size(side * 0.94f).graphicsLayer { rotationZ = 24f })
@@ -522,7 +522,7 @@ private fun AtelierChartSleeve(
                 }
                 .padding(12.dp)
         ) {
-            if (numeral == null) {
+            if (badge == null) {
                 Text("TOP", fontFamily = AtelierSerif, fontStyle = FontStyle.Italic, fontSize = 15.sp, color = AtelierInk, modifier = Modifier.align(Alignment.TopStart))
                 Text(
                     "100", fontFamily = AtelierSerif, fontWeight = FontWeight.Black, fontSize = 40.sp, lineHeight = 40.sp,
@@ -538,7 +538,7 @@ private fun AtelierChartSleeve(
             Column(Modifier.align(Alignment.BottomStart)) {
                 Text(date, style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.4.sp), color = AtelierInk.copy(alpha = 0.7f), maxLines = 1)
                 Text(
-                    if (numeral == null) atelierUppercase(label) else "TOP $numeral", fontFamily = AtelierSerif, fontWeight = FontWeight.Bold,
+                    atelierUppercase(badge ?: label), fontFamily = AtelierSerif, fontWeight = FontWeight.Bold,
                     fontSize = 16.sp, color = AtelierInk, maxLines = 1, overflow = TextOverflow.Ellipsis
                 )
             }
@@ -557,7 +557,7 @@ internal fun AtelierTop100ChartScreen(
     onRetry: () -> Unit,
     onPlay: (List<Track>, Track) -> Unit,
     onTrackActions: (Track) -> Unit,
-    numeral: String? = null
+    badge: String? = null
 ) {
     BackHandler(onBack = onBack)
     val strings = LocalLevyraStrings.current
@@ -582,7 +582,7 @@ internal fun AtelierTop100ChartScreen(
                     AtelierIconAction(Icons.AutoMirrored.Rounded.ArrowBack, strings.back, onBack, AtelierDesign.text)
                 }
                 Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
-                    AtelierChartSleeve(label, date, hue, Modifier.clearAndSetSemantics { }, side = 200.dp, numeral = numeral)
+                    AtelierChartSleeve(label, date, hue, Modifier.clearAndSetSemantics { }, side = 200.dp, badge = badge)
                 }
                 Text(
                     "${copy.title} · $label", fontFamily = AtelierSerif, fontWeight = FontWeight.Bold, fontSize = 26.sp,

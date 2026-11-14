@@ -58,11 +58,25 @@ import com.luc4n3x.levyra.ui.theme.LevyraIsTorque
 import com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic
 import com.luc4n3x.levyra.viewmodel.DailyChartRef
 import com.luc4n3x.levyra.viewmodel.DailyTop100ViewModel
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlin.random.Random
 
 private enum class CitySkin { Mono, Ivory, Torque, Prism, Spotify, YouTubeMusic, Atelier, Default }
 
 internal val AppleCityChart.numeral: String get() = badge.filter(Char::isDigit).ifEmpty { badge }
+
+@Composable
+internal fun rememberHasCityCharts(): Boolean {
+    val viewModel = viewModel<DailyTop100ViewModel>()
+    val code = LocalLevyraStrings.current.code
+    LaunchedEffect(code) {
+        viewModel.load(ChartsCatalog.defaultRegionForLanguage(code).country, code)
+    }
+    val hasCities by remember(viewModel) { viewModel.state.map { it.cities.isNotEmpty() }.distinctUntilChanged() }
+        .collectAsStateWithLifecycle(viewModel.state.value.cities.isNotEmpty())
+    return hasCities
+}
 
 @Composable
 internal fun ExploreCityCharts(

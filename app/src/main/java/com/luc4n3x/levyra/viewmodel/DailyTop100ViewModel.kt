@@ -9,6 +9,7 @@ import com.luc4n3x.levyra.data.apple.AppleDailyChart
 import com.luc4n3x.levyra.data.apple.AppleMusicEditorialRepository
 import com.luc4n3x.levyra.data.apple.AppleStorefronts
 import com.luc4n3x.levyra.domain.Track
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -73,12 +74,12 @@ class DailyTop100ViewModel(application: Application) : AndroidViewModel(applicat
         loadJob = viewModelScope.launch {
             joinAll(
                 launch {
-                    publish(key, top100 = repository.cachedDailyTop100(front, lang).ifEmpty { null })
-                    publish(key, top100 = repository.dailyTop100(front, lang).ifEmpty { null })
+                    publish(key, top100 = chartsOrNull { repository.cachedDailyTop100(front, lang) })
+                    publish(key, top100 = chartsOrNull { repository.dailyTop100(front, lang) })
                 },
                 launch {
-                    publish(key, cities = repository.cachedCityCharts(front, lang).ifEmpty { null })
-                    publish(key, cities = repository.cityCharts(front, lang).ifEmpty { null })
+                    publish(key, cities = chartsOrNull { repository.cachedCityCharts(front, lang) })
+                    publish(key, cities = chartsOrNull { repository.cityCharts(front, lang) })
                 }
             )
             _state.update { latest -> if (latest.key == key) latest.copy(loading = false) else latest }
@@ -113,6 +114,15 @@ class DailyTop100ViewModel(application: Application) : AndroidViewModel(applicat
         const val MAX_TRACKS = 100
     }
 }
+
+internal suspend fun <T> chartsOrNull(fetch: suspend () -> List<T>): List<T>? =
+    try {
+        fetch().ifEmpty { null }
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (_: Exception) {
+        null
+    }
 
 internal fun chartsSettled(state: DailyTop100UiState, key: String): Boolean =
     state.key == key && (state.loading || (state.charts.isNotEmpty() && state.cities.isNotEmpty()))

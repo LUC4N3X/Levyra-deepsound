@@ -252,11 +252,11 @@ internal fun DailyChartDialog(
             return@Dialog
         }
         if (com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) {
-            YouTubeMusicTop100ChartScreen(open, label, date, slot, screenCopy, viewModel::close, viewModel::retry, onPlay, chartTrackActions, city?.chart?.numeral)
+            YouTubeMusicTop100ChartScreen(open, label, date, slot, screenCopy, viewModel::close, viewModel::retry, onPlay, chartTrackActions, city?.chart?.badge)
             return@Dialog
         }
         if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) {
-            AtelierTop100ChartScreen(open, label, date, slot, screenCopy, viewModel::close, viewModel::retry, onPlay, chartTrackActions, city?.chart?.numeral)
+            AtelierTop100ChartScreen(open, label, date, slot, screenCopy, viewModel::close, viewModel::retry, onPlay, chartTrackActions, city?.chart?.badge)
             return@Dialog
         }
         if (city != null) {

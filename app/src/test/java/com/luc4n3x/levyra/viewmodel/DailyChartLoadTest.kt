@@ -3,11 +3,18 @@ package com.luc4n3x.levyra.viewmodel
 import com.luc4n3x.levyra.data.apple.AppleCityChart
 import com.luc4n3x.levyra.data.apple.AppleDailyChart
 import com.luc4n3x.levyra.domain.Track
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.IOException
 
 class DailyChartLoadTest {
     private val top100 = listOf(
@@ -63,5 +70,23 @@ class DailyChartLoadTest {
         assertEquals(listOf(track("a")), loaded.open?.tracks)
         assertEquals(false, loaded.open?.loading)
         assertEquals(true, publishOpen(state, chart, null).open?.failed)
+    }
+
+    @Test
+    fun cityFetchFailureDoesNotCancelTop100() = runBlocking {
+        val (charts, failedCities) = coroutineScope {
+            listOf(
+                async { chartsOrNull { top100 } },
+                async { chartsOrNull<AppleCityChart> { throw IOException("offline") } }
+            ).awaitAll()
+        }
+        assertEquals(top100, charts)
+        assertNull(failedCities)
+        assertNull(chartsOrNull { emptyList<AppleCityChart>() })
+    }
+
+    @Test(expected = CancellationException::class)
+    fun chartFetchCancellationPropagates() {
+        runBlocking { chartsOrNull<AppleCityChart> { throw CancellationException("left") } }
     }
 }
