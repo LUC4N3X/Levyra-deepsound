@@ -369,6 +369,12 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         write { it[KEY_YOUTUBE_MUSIC_INTRO_SEEN] = true }
     }
 
+    fun starThanksShown(): Boolean = read { it[KEY_STAR_THANKS_SHOWN] ?: false }
+
+    fun setStarThanksShown() {
+        write { it[KEY_STAR_THANKS_SHOWN] = true }
+    }
+
     fun tastes(): Set<String> = read { it[KEY_TASTES].orEmpty() }
 
     fun userName(): String = read { it[KEY_USER_NAME].orEmpty() }
@@ -1634,6 +1640,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_JAM_GUEST_ID = stringPreferencesKey("jam_guest_id")
         val KEY_ONBOARDED = booleanPreferencesKey("onboarded")
         val KEY_YOUTUBE_MUSIC_INTRO_SEEN = booleanPreferencesKey("youtube_music_intro_seen")
+        val KEY_STAR_THANKS_SHOWN = booleanPreferencesKey("star_thanks_shown")
         val KEY_TASTES = stringSetPreferencesKey("tastes")
         val KEY_SEARCH_HIDDEN_LISTENS = stringSetPreferencesKey("search_hidden_listens")
         val KEY_LAST_TRACK = stringPreferencesKey("last_track")
