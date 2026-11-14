@@ -3,7 +3,13 @@
 <path d="M 8 .8 C 4 .8 .8 4 .8 8 V 21 C .8 31 9 39.2 19 39.2 H 106 C 117 39.2 125.2 31 125.2 20 V 6 C 125.2 3 123 .8 120 .8 Z" fill="#40699B"/>
 <clipPath id="badge"><path d="M 8 .8 C 4 .8 .8 4 .8 8 V 21 C .8 31 9 39.2 19 39.2 H 106 C 117 39.2 125.2 31 125.2 20 V 6 C 125.2 3 123 .8 120 .8 Z"/></clipPath>
 <path d="M 0 0 H 24 C 42 8 48 20 37 31 C 38 38 24 40 H 0 Z" clip-path="url(#badge)" fill="#345C8E" opacity="0.26"/>
-<g transform="translate(7 7) scale(.65)" fill="none" stroke="#294A77" stroke-width="3"><rect x="1" y="1" width="38" height="27" rx="4"/><path d="M20 29v7m-10 0h20"/></g>
-<text x="43" y="18" font-family="system-ui,Arial,sans-serif" font-size="12" font-weight="690" fill="#294A77">Desktop</text>
-<text x="43" y="31" font-family="system-ui,Arial,sans-serif" font-size="8.5" font-weight="600" fill="#294A77">Windows / Linux</text>
+<g transform="translate(5 5) scale(0.66)">
+<g fill="#294A77"><rect x="2" y="13" width="13" height="13" rx="2.5"/><rect x="18" y="13" width="13" height="13" rx="2.5"/><rect x="2" y="29" width="13" height="13" rx="2.5"/><rect x="18" y="29" width="13" height="13" rx="2.5"/></g>
+<path d="M35 12c0-5 3-8 7-8s7 3 7 8v4c2 4 5 9 5 15 0 8-5 13-12 13s-12-5-12-13c0-6 3-11 5-15z" fill="#203D59"/>
+<ellipse cx="42" cy="31" rx="7.5" ry="10" fill="#F5F2DF"/>
+<ellipse cx="39" cy="14" rx="2.4" ry="3.5" fill="#F5F2DF"/><ellipse cx="45" cy="14" rx="2.4" ry="3.5" fill="#F5F2DF"/>
+<circle cx="39.6" cy="14.7" r="1" fill="#203D59"/><circle cx="44.4" cy="14.7" r="1" fill="#203D59"/>
+<path d="m37 19 5-2 5 2-5 4zM30 42c1-3 4-4 7-3l3 6H29zm14 3 3-6c3-1 6 0 7 3l1 3z" fill="#E8AF53"/>
+</g>
+<text x="45" y="26" font-family="system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif" font-size="10.5" font-weight="690" letter-spacing="-.35" fill="#294A77">Windows / Linux</text>
 </svg>
