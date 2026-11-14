@@ -286,4 +286,28 @@ class MoodJourneyTest {
         assertTrue(MoodStyle.NEW_AGE.categoryTitles.isEmpty() && MoodStyle.NEW_AGE.searchQueries.isNotEmpty())
         MoodStyle.entries.forEach { assertEquals(it, MoodStyle.from(it.storageId)) }
     }
+
+    @Test
+    fun `energy shift moves only the chosen points by one clamped delta`() {
+        val curve = MoodCurve(listOf(MoodPoint(0.2f, 0.3f), MoodPoint(0.5f, 0.6f), MoodPoint(0.8f, 0.4f), MoodPoint(0.4f, 0.9f)))
+
+        val raised = curve.withEnergyShift(setOf(0, 1), 0.25f)
+        assertEquals(0.45f, raised.points[0].energy, 1e-5f)
+        assertEquals(0.75f, raised.points[1].energy, 1e-5f)
+        assertEquals(curve.points[2], raised.points[2])
+        assertEquals(curve.points[3], raised.points[3])
+        assertEquals(0.3f, raised.points[0].valence, 0f)
+
+        val capped = curve.withEnergyShift(setOf(1, 2), 0.5f)
+        assertEquals(0.7f, capped.points[1].energy, 1e-5f)
+        assertEquals(1f, capped.points[2].energy, 1e-5f)
+
+        val floored = curve.withEnergyShift(setOf(0, 2), -0.9f)
+        assertEquals(0f, floored.points[0].energy, 1e-5f)
+        assertEquals(0.6f, floored.points[2].energy, 1e-5f)
+
+        assertEquals(curve, curve.withEnergyShift(emptySet(), 0.3f))
+        assertEquals(curve, curve.withEnergyShift(setOf(7), 0.3f))
+        assertEquals(curve, curve.withEnergyShift(setOf(1), Float.NaN))
+    }
 }

@@ -339,6 +339,16 @@ private fun CurveEditor(
     val select by rememberUpdatedState(onSelect)
     val move by rememberUpdatedState(onMove)
     val commit by rememberUpdatedState(onCommit)
+    val styleCopy = moodStyleCopy(LocalLevyraStrings.current.code)
+    var group by remember(curve.points.size) { mutableStateOf(emptySet<Int>()) }
+    val latestGroup by rememberUpdatedState(group)
+    val setGroup by rememberUpdatedState<(Set<Int>) -> Unit>({ group = it })
+    val shift: (Int, Float) -> Unit = { index, delta ->
+        val members = if (index in group) group else setOf(index)
+        val shifted = curve.withEnergyShift(members, delta)
+        members.forEach { onMove(it, shifted.points[it]) }
+        onCommit()
+    }
     val panel = scheme.surfaceContainerLow
     val steps = session.result?.steps.orEmpty()
     val peak = session.result?.peakIndex ?: -1
@@ -356,12 +366,19 @@ private fun CurveEditor(
                 Modifier
                     .fillMaxWidth()
                     .height(CurveHeight)
-                    .semantics { contentDescription = copy[SmartMusicText.MoodCurveDescription] }
+                    .semantics {
+                        contentDescription = copy[SmartMusicText.MoodCurveDescription]
+                        if (group.isNotEmpty()) {
+                            customActions = listOf(CustomAccessibilityAction(styleCopy.groupClear) { group = emptySet(); true })
+                        }
+                    }
                     .curveGestures(
                         curve = { curve },
+                        group = { latestGroup },
                         padPx = with(density) { CurvePadding.toPx() },
                         onHaptic = { haptics.perform(it) },
                         onSelect = { select(it) },
+                        onGroup = { setGroup(it) },
                         onMove = { index, point -> move(index, point) },
                         onCommit = { commit() }
                     )
@@ -403,12 +420,14 @@ private fun CurveEditor(
                         count = curve.points.size,
                         frame = ArcFrame(pad, widthPx - pad * 2, heightPx - pad * 2),
                         active = index == selected,
+                        grouped = index in group,
                         dimmed = steps.isNotEmpty(),
                         animated = animated,
                         copy = copy,
+                        styleCopy = styleCopy,
                         style = style,
-                        onMove = onMove,
-                        onCommit = onCommit
+                        onShift = shift,
+                        onToggleGroup = { group = if (index in group) group - index else group + index }
                     )
                 }
             }
@@ -458,24 +477,39 @@ private fun rememberArcReveal(steps: List<MoodJourneyStep>, animated: Boolean): 
 
 private fun Modifier.curveGestures(
     curve: () -> MoodCurve,
+    group: () -> Set<Int>,
     padPx: Float,
     onHaptic: (LevyraHapticAction) -> Unit,
     onSelect: (Int) -> Unit,
+    onGroup: (Set<Int>) -> Unit,
     onMove: (Int, MoodPoint) -> Unit,
     onCommit: () -> Unit
 ): Modifier = this
     .pointerInput(Unit) {
-        detectTapGestures { offset ->
+        detectTapGestures(
+            onLongPress = { offset ->
+                val index = nearestPoint(curve(), offset.x, size.width.toFloat(), padPx)
+                val current = group()
+                onHaptic(LevyraHapticAction.Reorder)
+                onGroup(if (index in current) current - index else current + index)
+                onSelect(index)
+            }
+        ) { offset ->
             onHaptic(LevyraHapticAction.Confirm)
+            if (group().isNotEmpty()) onGroup(emptySet())
             onSelect(nearestPoint(curve(), offset.x, size.width.toFloat(), padPx))
         }
     }
     .pointerInput(Unit) {
         var active = 0
         var lastBand = 0
+        var start = curve()
+        var members = emptySet<Int>()
         detectDragGestures(
             onDragStart = { offset ->
                 active = nearestPoint(curve(), offset.x, size.width.toFloat(), padPx)
+                start = curve()
+                members = group().takeIf { active in it }.orEmpty()
                 lastBand = (curve().points[active].energy * 4).toInt()
                 onHaptic(LevyraHapticAction.Confirm)
                 onSelect(active)
@@ -490,6 +524,12 @@ private fun Modifier.curveGestures(
             if (band != lastBand) {
                 lastBand = band
                 onHaptic(LevyraHapticAction.SeekSnap)
+            }
+            if (members.isNotEmpty()) {
+                val anchor = start.points.getOrNull(active)?.clamped() ?: return@detectDragGestures
+                val shifted = start.withEnergyShift(members, energy - anchor.energy)
+                members.forEach { onMove(it, shifted.points[it]) }
+                return@detectDragGestures
             }
             val current = curve().points.getOrNull(active) ?: return@detectDragGestures
             onMove(active, MoodPoint(energy, current.valence))
@@ -591,12 +631,14 @@ private fun CurveHandle(
     count: Int,
     frame: ArcFrame,
     active: Boolean,
+    grouped: Boolean,
     dimmed: Boolean,
     animated: Boolean,
     copy: SmartMusicCopy,
+    styleCopy: MoodStyleCopy,
     style: MoodArcStyle,
-    onMove: (Int, MoodPoint) -> Unit,
-    onCommit: () -> Unit
+    onShift: (Int, Float) -> Unit,
+    onToggleGroup: () -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
     val pointPx = with(LocalDensity.current) { PointSize.toPx() }
@@ -604,7 +646,7 @@ private fun CurveHandle(
     val targetY = frame.y(point.energy) - pointPx / 2f
     val y by animateFloatAsState(targetY, if (animated) spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessHigh) else snap(), label = "mood-point-y")
     val tone = style.toneColor(point.energy, point.valence)
-    val description = moodStyleCopy(LocalLevyraStrings.current.code).pointDescription
+    val description = styleCopy.pointDescription
         .replace("{n}", (index + 1).toString())
         .replace("{e}", (point.energy * 100).roundToInt().toString())
         .replace("{b}", (point.valence * 100).roundToInt().toString())
@@ -612,22 +654,24 @@ private fun CurveHandle(
         Modifier
             .offset { IntOffset(targetX.roundToInt(), y.roundToInt()) }
             .size(PointSize)
-            .clip(rememberSelectionMorph(active, animated, rotation = point.valence * 40f))
-            .background(if (active) tone else scheme.surfaceContainerHighest.copy(alpha = if (dimmed) 0.72f else 1f))
+            .clip(rememberSelectionMorph(active || grouped, animated, rotation = point.valence * 40f))
+            .background(if (active || grouped) tone else scheme.surfaceContainerHighest.copy(alpha = if (dimmed) 0.72f else 1f))
             .semantics {
                 contentDescription = description
-                this.selected = active
+                this.selected = active || grouped
                 customActions = listOf(
-                    CustomAccessibilityAction(copy[SmartMusicText.MoodRaise]) {
-                        onMove(index, MoodPoint((point.energy + 0.1f).coerceAtMost(1f), point.valence)); onCommit(); true
-                    },
-                    CustomAccessibilityAction(copy[SmartMusicText.MoodLower]) {
-                        onMove(index, MoodPoint((point.energy - 0.1f).coerceAtLeast(0f), point.valence)); onCommit(); true
-                    }
+                    CustomAccessibilityAction(copy[SmartMusicText.MoodRaise]) { onShift(index, 0.1f); true },
+                    CustomAccessibilityAction(copy[SmartMusicText.MoodLower]) { onShift(index, -0.1f); true },
+                    CustomAccessibilityAction(styleCopy.groupToggle) { onToggleGroup(); true }
                 )
             }
     ) {
-        Box(Modifier.align(Alignment.Center).size(10.dp).clip(CircleShape).background(if (active) scheme.surface else tone))
+        val dot = when {
+            grouped -> scheme.primary
+            active -> scheme.surface
+            else -> tone
+        }
+        Box(Modifier.align(Alignment.Center).size(10.dp).clip(CircleShape).background(dot))
     }
 }
 

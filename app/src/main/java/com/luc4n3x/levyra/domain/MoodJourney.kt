@@ -60,6 +60,17 @@ data class MoodCurve(val points: List<MoodPoint>) {
         return MoodCurve(points.toMutableList().also { it[index] = point.clamped() })
     }
 
+    fun withEnergyShift(indices: Set<Int>, delta: Float): MoodCurve {
+        val energies = points.indices.filter { it in indices }.map { points[it].clamped().energy }
+        if (energies.isEmpty() || !delta.isFinite()) return this
+        val safeDelta = delta.coerceIn(-energies.min(), 1f - energies.max())
+        return MoodCurve(
+            points.mapIndexed { index, point ->
+                if (index in indices) point.clamped().let { MoodPoint(it.energy + safeDelta, it.valence).clamped() } else point
+            }
+        )
+    }
+
     companion object {
         const val MIN_POINTS = 2
         const val MAX_POINTS = 9
