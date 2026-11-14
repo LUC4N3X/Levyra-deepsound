@@ -66,7 +66,7 @@ def main():
                 fixture.setframerate(8000)
                 fixture.writeframes(bytes(8000 * 2 * seconds))
             tracks.append({'id': f'local:linux-{index}', 'title': f'Linux native fixture {index}',
-                'artist': 'Fixture', 'offlinePath': str(audio), 'durationMs': seconds * 1000})
+                'artist': 'Fixture', 'videoUrl': '', 'offlinePath': str(audio), 'durationMs': seconds * 1000})
         data = root / 'data/Levyra'
         data.mkdir(parents=True)
         (data / 'settings.json').write_text(json.dumps({'globalMediaKeys': True, 'resumeOnStartup': True,

@@ -19,15 +19,20 @@ internal object LinuxDesktopIntegration {
             val applications = Files.createDirectories(dataHome.resolve("applications"))
             val target = applications.resolve("levyra-url.desktop")
             val content = desktopEntry(executable)
-            if (Files.exists(target) && Files.readString(target) == content) return
-            val temporary = Files.createTempFile(applications, ".levyra-", ".desktop")
-            try {
-                Files.writeString(temporary, content)
-                Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
-            } finally { Files.deleteIfExists(temporary) }
+            if (!Files.exists(target) || Files.readString(target) != content) {
+                val temporary = Files.createTempFile(applications, ".levyra-", ".desktop")
+                try {
+                    Files.writeString(temporary, content)
+                    Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+                } finally { Files.deleteIfExists(temporary) }
+            }
             val process = ProcessBuilder("xdg-mime", "default", "levyra-url.desktop", "x-scheme-handler/levyra")
                 .redirectOutput(ProcessBuilder.Redirect.DISCARD).redirectError(ProcessBuilder.Redirect.DISCARD).start()
-            if (!process.waitFor(5, TimeUnit.SECONDS)) process.destroyForcibly()
+            check(process.waitFor(5, TimeUnit.SECONDS)) {
+                process.destroyForcibly()
+                "Linux protocol association timed out"
+            }
+            check(process.exitValue() == 0) { "Linux protocol association failed" }
         }.onFailure { System.getLogger("Levyra.Desktop").log(System.Logger.Level.DEBUG, "Linux protocol registration unavailable", it) }
     }
 

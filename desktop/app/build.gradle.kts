@@ -54,6 +54,7 @@ kotlin {
             include("com/luc4n3x/levyra/ui/i18n/**/*.kt")
             include("com/luc4n3x/levyra/domain/LevyraAudio.kt")
             include("com/luc4n3x/levyra/domain/ParametricEqualizer.kt")
+            include("com/luc4n3x/levyra/domain/OrbitEqualizer.kt")
             include("com/luc4n3x/levyra/domain/PlaylistImportFailureKind.kt")
             include("com/luc4n3x/levyra/domain/DownloadQualityChoice.kt")
             include("com/luc4n3x/levyra/domain/NightListening.kt")
