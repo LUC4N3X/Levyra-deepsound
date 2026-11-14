@@ -46,6 +46,23 @@ class PlaybackResumeUiPolicyTest {
     }
 
     @Test
+    fun queueAdvanceFromServiceReplacesTheVisibleTrack() {
+        val previous = track("video123456")
+        val next = track("other123456").copy(streamUrl = "")
+
+        assertTrue(queueSyncReplacedTrack(previous, next))
+    }
+
+    @Test
+    fun sameTrackQueueSyncKeepsTheVisibleTrack() {
+        val playing = track("video123456")
+
+        assertFalse(queueSyncReplacedTrack(playing, playing.copy(streamUrl = "", isrc = "USRC17607839")))
+        assertFalse(queueSyncReplacedTrack(null, playing))
+        assertFalse(queueSyncReplacedTrack(playing, null))
+    }
+
+    @Test
     fun exitBeforePlaybackPreservesRestoredPosition() {
         assertEquals(122_342L, playbackPositionForExit(0L, 122_342L))
     }
