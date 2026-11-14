@@ -54,6 +54,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraIsTorque
 import com.luc4n3x.levyra.ui.theme.LevyraMotion
 import com.luc4n3x.levyra.viewmodel.DefaultCuratedCollectionsViewModel
 import com.luc4n3x.levyra.viewmodel.HomeViewModel
+import com.luc4n3x.levyra.viewmodel.withCuratedMoodShelves
 
 private const val CuratedPageHomeViewModelKey = "levyra-home"
 private const val CuratedPageCovers = 5
@@ -134,12 +135,14 @@ private fun rememberCuratedPageData(): CuratedPageData {
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { LevyraMonoHomeStrings.forCode(strings.code) }
     val curated = rememberCuratedPlaylistShelves(strings.code)
+    val moods = rememberCuratedMoodShelves(strings.code)
     val collections = rememberDefaultCuratedCollectionShelves(strings.code)
     val collectionsModel = viewModel<DefaultCuratedCollectionsViewModel>(key = "default-curated-collections")
     val collectionsLoading by collectionsModel.loading.collectAsStateWithLifecycle()
     val loading = collectionsLoading && collections.size < 2
-    return remember(curated, collections, loading, copy) {
-        CuratedPageData(copy.mixedForYou, glacierCuratedGroups(curated, collections, copy.rotationOverline), loading)
+    return remember(curated, moods, collections, loading, copy) {
+        val trailing = withCuratedMoodShelves(curated + collections, moods).drop(curated.size)
+        CuratedPageData(copy.mixedForYou, glacierCuratedGroups(curated, trailing, copy.rotationOverline), loading)
     }
 }
 
