@@ -674,7 +674,7 @@ internal fun QobuzShelfSkeleton(title: String, baseline: String, rows: Int) {
 }
 
 @Composable
-private fun QobuzBackBar(title: String, statusTop: Dp, onBack: () -> Unit) {
+internal fun QobuzBackBar(title: String, statusTop: Dp, onBack: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().background(QobuzDesign.surfacePrimary).padding(top = statusTop).height(QobuzDesign.topBarHeight).padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically

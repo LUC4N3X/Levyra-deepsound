@@ -235,6 +235,10 @@ internal fun DailyChartDialog(
         val city = chart as? DailyChartRef.City
         val numeral = city?.chart?.numeral ?: "100"
         val screenCopy = if (city != null) copy.copy(title = remember(strings.code) { cityChartsCopy(strings.code) }.title) else copy
+        if (com.luc4n3x.levyra.ui.theme.LevyraIsQobuz) {
+            QobuzChartScreen(open, label, numeral, screenCopy, viewModel::close, viewModel::retry, onPlay, chartTrackActions)
+            return@Dialog
+        }
         if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
             MonoTop100ChartScreen(open, label, date, slot, numeral, copy.failed, copy.retry, viewModel::close, viewModel::retry, onPlay, chartTrackActions)
             return@Dialog

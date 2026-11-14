@@ -26,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -46,11 +47,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.luc4n3x.levyra.data.qobuz.QobuzStore
 import com.luc4n3x.levyra.data.qobuz.QobuzStory
+import com.luc4n3x.levyra.domain.ChartsCatalog
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LevyraQobuzSkinStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.QobuzSkinCopy
+import com.luc4n3x.levyra.ui.i18n.cityChartsCopy
+import com.luc4n3x.levyra.ui.i18n.dailyTop100Copy
 import com.luc4n3x.levyra.ui.theme.QobuzDesign
+import com.luc4n3x.levyra.viewmodel.DailyChartRef
+import com.luc4n3x.levyra.viewmodel.DailyTop100ViewModel
 import com.luc4n3x.levyra.viewmodel.QobuzMagazineViewModel
 
 internal class QobuzMagazineInputs(
@@ -78,6 +84,16 @@ internal fun QobuzMagazineScreen(inputs: QobuzMagazineInputs, listState: LazyLis
     val state by magazine.state.collectAsStateWithLifecycle()
     val locale = remember(strings.code, inputs.chartCountry) { QobuzStore.locale(strings.code, inputs.chartCountry) }
     LaunchedEffect(locale) { magazine.load(locale) }
+    val dailyViewModel = viewModel<DailyTop100ViewModel>()
+    val daily by dailyViewModel.state.collectAsStateWithLifecycle()
+    val charts by remember { derivedStateOf { daily.charts } }
+    val cities by remember { derivedStateOf { daily.cities } }
+    val chartCopy = remember(strings.code) { dailyTop100Copy(strings.code) }
+    val cityCopy = remember(strings.code) { cityChartsCopy(strings.code) }
+    val chartDate = rememberTop100Date(strings.code)
+    LaunchedEffect(strings.code) {
+        dailyViewModel.load(ChartsCatalog.defaultRegionForLanguage(strings.code).country, strings.code)
+    }
     val uriHandler = LocalUriHandler.current
     val openStory: (QobuzStory) -> Unit = { story -> runCatching { uriHandler.openUri(story.url) } }
     val page = state.page
@@ -106,6 +122,13 @@ internal fun QobuzMagazineScreen(inputs: QobuzMagazineInputs, listState: LazyLis
                     Column(Modifier.padding(top = 16.dp)) { QobuzStoryCarousel(featured, copy, openStory) }
                 }
             }
+            if (state.section.isBlank()) {
+                qobuzChartRails(
+                    charts, cities, chartCopy, cityCopy, chartDate,
+                    { chart -> dailyViewModel.open(DailyChartRef.Country(chart)) },
+                    { chart -> dailyViewModel.open(DailyChartRef.City(chart)) }
+                )
+            }
             val stories = page?.stories.orEmpty()
             if (stories.isNotEmpty()) {
                 item(key = "mag-picked") {
@@ -133,6 +156,8 @@ internal fun QobuzMagazineScreen(inputs: QobuzMagazineInputs, listState: LazyLis
             }
         }
     }
+    DailyChartDialog(cities = false, onPlay = inputs.onPlay, onTrackActions = inputs.onTrackActions)
+    DailyChartDialog(cities = true, onPlay = inputs.onPlay, onTrackActions = inputs.onTrackActions)
 }
 
 @Composable
