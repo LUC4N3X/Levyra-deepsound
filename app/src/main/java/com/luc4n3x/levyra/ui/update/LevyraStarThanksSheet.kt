@@ -32,7 +32,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -63,7 +64,9 @@ import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.starThanksCopy
+import com.luc4n3x.levyra.ui.support.BUILT_IN_SUPPORT_ANNOUNCEMENT_ID
 import com.luc4n3x.levyra.ui.support.LEVYRA_REPOSITORY_URL
+import com.luc4n3x.levyra.ui.support.RemoteAnnouncementRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -75,9 +78,10 @@ internal fun shouldShowStarSheet(firstInstallTime: Long, lastUpdateTime: Long, a
     !alreadyShown && lastUpdateTime > firstInstallTime
 
 @Composable
-internal fun LevyraStarThanksGate(enabled: Boolean, languageCode: String) {
+internal fun LevyraStarThanksGate(enabled: Boolean, languageCode: String, onDecided: (Boolean) -> Unit) {
     val context = LocalContext.current.applicationContext
     val preferences = remember(context) { LevyraPreferences(context) }
+    val scope = rememberCoroutineScope()
     var visible by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(enabled) {
@@ -87,6 +91,7 @@ internal fun LevyraStarThanksGate(enabled: Boolean, languageCode: String) {
             preferences.isOnboarded() &&
                 shouldShowStarSheet(info.firstInstallTime, info.lastUpdateTime, preferences.starThanksShown())
         }
+        onDecided(eligible)
         if (!eligible) return@LaunchedEffect
         delay(STAR_SHEET_DELAY_MS)
         visible = true
@@ -97,6 +102,9 @@ internal fun LevyraStarThanksGate(enabled: Boolean, languageCode: String) {
     val layoutDirection = if (LevyraLanguageCatalog.isRtl(languageCode)) LayoutDirection.Rtl else LayoutDirection.Ltr
     val dismiss = {
         preferences.setStarThanksShown()
+        scope.launch(Dispatchers.IO) {
+            RemoteAnnouncementRepository(context).markCompleted(BUILT_IN_SUPPORT_ANNOUNCEMENT_ID)
+        }
         visible = false
     }
     CompositionLocalProvider(
@@ -121,7 +129,10 @@ internal fun LevyraStarThanksGate(enabled: Boolean, languageCode: String) {
 internal fun LevyraStarThanksSheet(onStar: () -> Unit, onDismiss: () -> Unit) {
     val copy = starThanksCopy(LocalLevyraStrings.current.code)
     val colors = MaterialTheme.colorScheme
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
+    )
     val scope = rememberCoroutineScope()
     val closeThen: (() -> Unit) -> Unit = { action ->
         scope.launch { sheetState.hide() }.invokeOnCompletion { action() }
