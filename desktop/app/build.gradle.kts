@@ -67,6 +67,7 @@ kotlin {
             exclude("com/luc4n3x/levyra/ui/i18n/LevyraSmartOfflineCount.kt")
             exclude("com/luc4n3x/levyra/ui/i18n/LevyraRadioLibraryStrings.kt")
             exclude("com/luc4n3x/levyra/ui/i18n/LevyraHomeCompositionStrings.kt")
+            exclude("com/luc4n3x/levyra/ui/i18n/LevyraHomeSubtitleStrings.kt")
             exclude("com/luc4n3x/levyra/ui/i18n/LevyraMoodStyleStrings.kt")
             exclude("com/luc4n3x/levyra/ui/i18n/LevyraFreshDiscoveryStrings.kt")
         }

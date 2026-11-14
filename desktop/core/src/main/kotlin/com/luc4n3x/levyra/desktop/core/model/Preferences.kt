@@ -56,13 +56,33 @@ enum class AppLanguage(
     FILIPINO("fil", "🇵🇭", "Filipino", "Filipino", "PH"),
     HEBREW("he", "🇮🇱", "עברית", "Hebrew", "IL", true),
     FINNISH("fi", "🇫🇮", "Suomi", "Finnish", "FI"),
-    ESTONIAN("et", "🇪🇪", "Eesti", "Estonian", "EE");
+    ESTONIAN("et", "🇪🇪", "Eesti", "Estonian", "EE"),
+    BRAZILIAN_PORTUGUESE("pt-BR", "🇧🇷", "Português (Brasil)", "Portuguese (Brazil)", "BR"),
+    TRADITIONAL_CHINESE("zh-Hant", "🇹🇼", "繁體中文", "Chinese (Traditional)", "TW"),
+    HUNGARIAN("hu", "🇭🇺", "Magyar", "Hungarian", "HU"),
+    BULGARIAN("bg", "🇧🇬", "Български", "Bulgarian", "BG"),
+    NORWEGIAN("nb", "🇳🇴", "Norsk bokmål", "Norwegian Bokmål", "NO"),
+    CATALAN("ca", "🇪🇸", "Català", "Catalan", "ES"),
+    BENGALI("bn", "🇧🇩", "বাংলা", "Bengali", "BD"),
+    KAZAKH("kk", "🇰🇿", "Қазақша", "Kazakh", "KZ"),
+    SERBIAN("sr", "🇷🇸", "Српски", "Serbian", "RS"),
+    ALBANIAN("sq", "🇦🇱", "Shqip", "Albanian", "AL"),
+    CROATIAN("hr", "🇭🇷", "Hrvatski", "Croatian", "HR"),
+    SLOVAK("sk", "🇸🇰", "Slovenčina", "Slovak", "SK"),
+    MALAY("ms", "🇲🇾", "Bahasa Melayu", "Malay", "MY"),
+    PERSIAN("fa", "🇮🇷", "فارسی", "Persian", "IR", true);
 
     val displayLabel: String get() = "$flag $nativeName"
 
     companion object {
         fun fromTag(tag: String): AppLanguage {
-            val normalized = tag
+            val rawTag = tag.trim().replace('_', '-').replace("-r", "-")
+            val locale = Locale.forLanguageTag(rawTag)
+            if (locale.language == "pt" && locale.country == "BR") return BRAZILIAN_PORTUGUESE
+            if (locale.language == "zh" && (locale.script == "Hant" || locale.country in setOf("TW", "HK", "MO"))) {
+                return TRADITIONAL_CHINESE
+            }
+            val normalized = rawTag
                 .trim()
                 .replace('_', '-')
                 .substringBefore('-')
@@ -76,7 +96,7 @@ enum class AppLanguage(
             return entries.firstOrNull { it.tag == canonical } ?: ENGLISH
         }
 
-        fun deviceDefault(): AppLanguage = fromTag(Locale.getDefault().language)
+        fun deviceDefault(): AppLanguage = fromTag(Locale.getDefault().toLanguageTag())
     }
 }
 
@@ -118,6 +138,7 @@ data class EqualizerSettings(
 data class DesktopSettings(
     val audioQuality: AudioQuality = AudioQuality.HIGH,
     val preferredCodec: PreferredCodec = PreferredCodec.AUTO,
+    val highQualityAudioMode: String = com.luc4n3x.levyra.domain.HighQualityAudioMode.DEFAULT.storageValue,
     val themeMode: ThemeMode = ThemeMode.DARK,
     val language: AppLanguage = AppLanguage.deviceDefault(),
     val contentCountry: String = AppLanguage.deviceDefault().defaultCountry,
@@ -139,6 +160,7 @@ data class DesktopSettings(
     val equalizer: EqualizerSettings = EqualizerSettings()
 ) {
     fun sanitized(): DesktopSettings = copy(
+        highQualityAudioMode = com.luc4n3x.levyra.domain.HighQualityAudioMode.fromStorage(highQualityAudioMode).storageValue,
         contentCountry = contentCountry.trim().uppercase(Locale.ROOT).take(2).ifBlank { language.defaultCountry },
         displayName = displayName.trim().take(MAX_DISPLAY_NAME_LENGTH),
         selectedTasteIds = selectedTasteIds.map { it.trim().lowercase(Locale.ROOT) }

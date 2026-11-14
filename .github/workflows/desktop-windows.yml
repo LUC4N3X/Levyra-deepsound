@@ -4,6 +4,13 @@ on:
   pull_request:
     paths:
       - "desktop/**"
+      - "app/src/main/java/com/luc4n3x/levyra/data/hqaudio/**"
+      - "app/src/main/java/com/luc4n3x/levyra/data/PlaybackConcurrency.kt"
+      - "app/src/main/java/com/luc4n3x/levyra/domain/HighQualityAudio.kt"
+      - "app/src/main/java/com/luc4n3x/levyra/domain/PlaybackManifest.kt"
+      - "app/src/main/java/com/luc4n3x/levyra/player/offline/TidalDashFlac.kt"
+      - "app/src/test/java/com/luc4n3x/levyra/data/hqaudio/**"
+      - "app/src/test/resources/**"
       - "third_party/LevyraExtractor/**"
       - ".github/workflows/desktop-windows.yml"
   push:

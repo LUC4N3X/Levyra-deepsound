@@ -46,6 +46,8 @@ import com.luc4n3x.levyra.desktop.core.model.EqualizerSettings
 import com.luc4n3x.levyra.desktop.core.model.PreferredCodec
 import com.luc4n3x.levyra.desktop.core.model.ThemeMode
 import com.luc4n3x.levyra.desktop.player.AudioOutputDevice
+import com.luc4n3x.levyra.domain.HighQualityAudioMode
+import com.luc4n3x.levyra.ui.i18n.LevyraStrings as SharedStrings
 
 @Composable
 fun SettingsScreen(
@@ -178,6 +180,18 @@ fun SettingsScreen(
 
         item {
             SettingsSection(title = strings.settingsAudio) {
+                val shared = SharedStrings.forCode(settings.language.tag)
+                ChoiceRow(
+                    title = shared.alternativeAudioTitle,
+                    selected = settings.highQualityAudioMode,
+                    options = listOf(
+                        HighQualityAudioMode.PREFER_320.storageValue to shared.alternativeAudioPrefer320,
+                        HighQualityAudioMode.PREFER_LOSSLESS.storageValue to shared.alternativeAudioPreferLossless,
+                        HighQualityAudioMode.AUTOMATIC.storageValue to shared.alternativeAudioAutomatic,
+                        HighQualityAudioMode.OFF.storageValue to shared.alternativeAudioOff
+                    ),
+                    onSelect = { value -> onUpdate { it.copy(highQualityAudioMode = value) } }
+                )
                 ChoiceRow(
                     title = strings.settingsAudioQuality,
                     selected = settings.audioQuality,

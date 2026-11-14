@@ -17,6 +17,9 @@ It shares the Android project's YouTube extractor (`third_party/LevyraExtractor`
 - Synced lyrics from LRCLIB, with the current line highlighted during playback
 - Queue with shuffle and repeat, plus automatic radio when the queue ends
 - Next-track preloading that resolves the upcoming stream before the current track ends
+- Android's default preference for matched JioSaavn 320 kbps audio, with bounded lookup and YouTube fallback
+- Optional lossless playback through the active Tidal and Kuwo providers, including original FLAC downloads
+- Editorial charts, Fresh Currents, genre collections, and a listening-based For You shelf
 - Playback speed between 0.75x and 2x, applied to the current track and kept across sessions
 - Sleep timer with presets or end-of-track mode, with the remaining time shown in the player
 - System-wide media keys on Windows, so playback stays controllable from the tray or the background
@@ -67,6 +70,8 @@ The download engine:
 - automatically prefers the local file during playback.
 
 Incomplete downloads remain available for resuming after the app is closed or restarted. Completed files can be played without resolving the online stream again.
+
+Matched high-quality downloads retain their original audio format and source quality. FLAC files are checked for valid STREAMINFO and matching duration before finalization. Tidal DASH downloads assemble the original FLAC frames using the Android exporter; an interrupted DASH assembly restarts, while progressive files resume from validated byte ranges. Expired sources are resolved again once before a failure is reported.
 
 ## Mini Player and Desktop Lifecycle
 
@@ -131,7 +136,7 @@ Desktop releases are created with `--latest=false`, so the Android release remai
 
 ## Languages
 
-The desktop version compiles the same localization catalog used by the Android APK. Twenty-six languages are supported:
+The desktop version compiles the same localization catalog used by the Android APK. All 42 selectable languages are supported:
 
 - English
 - Italiano
@@ -159,8 +164,24 @@ The desktop version compiles the same localization catalog used by the Android A
 - ไทย
 - Filipino
 - עברית
+- Suomi
+- Eesti
+- Português (Brasil)
+- 繁體中文
+- Magyar
+- Български
+- Norsk bokmål
+- Català
+- বাংলা
+- Қазақша
+- Српски
+- Shqip
+- Hrvatski
+- Slovenčina
+- Bahasa Melayu
+- فارسی
 
-Arabic and Hebrew enable RTL layout in both onboarding and the entire desktop interface.
+Arabic, Hebrew, and Persian enable RTL layout in both onboarding and the entire desktop interface. Traditional Chinese and Brazilian Portuguese retain their regional language tags.
 
 ## Requirements
 
@@ -224,6 +245,10 @@ When playback starts, Levyra looks for libvlc in this order:
 To distribute Levyra without requiring users to install VLC, copy `libvlc.dll`, `libvlccore.dll`, and the `plugins` directory from a 64-bit VLC installation into `desktop/app/resources/windows-x64/vlc/` before packaging.
 
 For online YouTube playback, the extractor still resolves the signed audio URL, but VLC reads it through a tokenized loopback session bound to `127.0.0.1`. The player bridge fetches the upstream stream in bounded byte ranges and forwards seek/range responses without buffering the whole track. Local files, offline downloads, and non-YouTube URLs bypass the bridge.
+
+The YouTube resolver first uses the active Android VisionOS client identity and an anonymous visitor session, then falls back to LevyraExtractor. Bridge failures reach the playback controller even when VLC remains in a playing state with a stalled clock. Recovery preserves the current position and cannot replace a newer track or override a user pause.
+
+High-quality matching, provider priority, validation, and provider implementations compile from the Android source tree. The Desktop build adapts the JVM transport, logging, mapping-storage boundary, and file URI handling, and adds targeted stream-cache eviction for URL refreshes without quarantining the accepted match. It does not modify APK sources. Source mappings currently persist only for the running Desktop session.
 
 ## Local Data
 

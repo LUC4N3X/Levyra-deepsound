@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -196,10 +197,10 @@ fun LevyraRoot(model: LevyraAppModel) {
         )
     }
 
-    LevyraTheme(themeMode = settings.themeMode) {
+    LevyraTheme(themeMode = settings.themeMode, accent = accent) {
         CompositionLocalProvider(
             LocalStrings provides strings,
-            LocalAccentColor provides accent,
+            LocalAccentColor provides MaterialTheme.colorScheme.primary,
             LocalLayoutDirection provides layoutDirection,
             LocalDownloadActions provides downloadActions
         ) {
@@ -227,11 +228,12 @@ fun LevyraRoot(model: LevyraAppModel) {
                         }
                     )
                 } else {
-                    Box(
+                    BoxWithConstraints(
                         modifier = Modifier
                             .fillMaxSize()
                             .background(MaterialTheme.colorScheme.background)
                     ) {
+                        val compactNavigation = maxWidth < 1_150.dp
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -247,14 +249,15 @@ fun LevyraRoot(model: LevyraAppModel) {
                                     destination = destination,
                                     hasActiveTrack = playback.current != null,
                                     isPlaying = playback.isPlaying,
-                                    onNavigate = model::navigate
+                                    onNavigate = model::navigate,
+                                    compact = compactNavigation
                                 )
 
                                 Surface(
                                     modifier = Modifier
                                         .weight(1f)
                                         .fillMaxHeight(),
-                                    shape = RoundedCornerShape(12.dp),
+                                    shape = MaterialTheme.shapes.large,
                                     color = MaterialTheme.colorScheme.surface
                                 ) {
                                     Box(
@@ -616,10 +619,13 @@ private fun NowPlayingHost(
     model: LevyraAppModel,
     actions: TrackActions
 ) {
-    val playback by model.playbackController.state.collectAsState()
+    val playback by remember(model) {
+        model.playbackController.state.map(PlaybackUiState::withoutTransientUiTicks).distinctUntilChanged()
+    }.collectAsState(initial = model.playbackController.state.value.withoutTransientUiTicks())
     val lyrics by model.lyricsController.lyrics.collectAsState()
     NowPlayingScreen(
         state = playback,
+        playbackStateFlow = model.playbackController.state,
         lyricsState = lyrics,
         actions = actions,
         onBack = model::back,

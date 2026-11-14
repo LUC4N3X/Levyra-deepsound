@@ -29,6 +29,7 @@ import com.luc4n3x.levyra.desktop.player.PrefetchPlanner
 import com.luc4n3x.levyra.desktop.player.RepeatMode
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -96,6 +97,8 @@ class PlaybackController(
     private val sponsorSegments = AtomicReference<List<SponsorSegment>>(emptyList())
 
     private var player: AudioPlayer? = null
+    private val playerLock = Any()
+    private val shutdownRequested = AtomicBoolean(false)
     private var companionPlayer: AudioPlayer? = null
     private var transitionJob: Job? = null
     private var transitionEventJob: Job? = null
@@ -114,6 +117,8 @@ class PlaybackController(
     private var outputDeviceJob: Job? = null
     private var prefetchedTrackId: String = ""
     private var retriedTrackId: String = ""
+    private val playbackGeneration = AtomicLong()
+    private var recoveryPending: Boolean = false
     private var consecutiveFailures: Int = 0
     private var pendingResumeMs: Long = 0L
     private var lastAudibleVolume: Int = settingsStore.current.volume.takeIf { it > 0 } ?: DEFAULT_VOLUME
@@ -265,19 +270,23 @@ class PlaybackController(
         val current = internalState.value
         if (current.queue.isEmpty) return
         when (current.status) {
-            PlaybackStatus.PLAYING, PlaybackStatus.BUFFERING -> {
+            PlaybackStatus.PLAYING, PlaybackStatus.BUFFERING, PlaybackStatus.OPENING -> {
                 cancelTransition()
+                playbackGeneration.incrementAndGet()
+                playbackJob?.cancel()
                 player?.pause()
                 internalState.update { state -> state.copy(status = PlaybackStatus.PAUSED) }
                 persistSession()
             }
 
             PlaybackStatus.PAUSED -> {
-                player?.resume()
-                internalState.update { state -> state.copy(status = PlaybackStatus.PLAYING) }
+                if (recoveryPending || current.preparingTrackId.isNotEmpty()) {
+                    startCurrent(current.positionMs)
+                } else {
+                    player?.resume()
+                    internalState.update { state -> state.copy(status = PlaybackStatus.PLAYING) }
+                }
             }
-
-            PlaybackStatus.OPENING -> Unit
 
             PlaybackStatus.IDLE, PlaybackStatus.ENDED, PlaybackStatus.FAILED -> startCurrent(pendingResumeMs)
         }
@@ -295,9 +304,8 @@ class PlaybackController(
             }
             return
         }
-        val repeatingSame = automatic && advanced.index == current.queue.index
         internalState.update { state -> state.copy(queue = advanced) }
-        startCurrent(0L, forceRestart = repeatingSame)
+        startCurrent(0L)
     }
 
     fun previous() {
@@ -398,6 +406,8 @@ class PlaybackController(
     }
 
     fun stop() {
+        playbackGeneration.incrementAndGet()
+        recoveryPending = false
         cancelTransition()
         clearSponsorBlockWatch()
         playbackJob?.cancel()
@@ -414,6 +424,8 @@ class PlaybackController(
     }
 
     fun shutdown() {
+        if (!shutdownRequested.compareAndSet(false, true)) return
+        playbackGeneration.incrementAndGet()
         clearSponsorBlockWatch()
         transitionJob?.cancel()
         transitionEventJob?.cancel()
@@ -428,14 +440,19 @@ class PlaybackController(
         runCatching { companionPlayer?.stop() }
         runCatching { companionPlayer?.close() }
         companionPlayer = null
-        runCatching { player?.stop() }
-        runCatching { player?.close() }
-        player = null
+        synchronized(playerLock) {
+            runCatching { player?.stop() }
+            runCatching { player?.close() }
+            player = null
+        }
         playerScope.cancel()
     }
 
-    private fun startCurrent(startAtMs: Long, forceRestart: Boolean = false) {
+    private fun startCurrent(startAtMs: Long, recovering: Boolean = false) {
         val track = internalState.value.queue.current ?: return
+        val generation = playbackGeneration.incrementAndGet()
+        if (!recovering) retriedTrackId = ""
+        recoveryPending = false
         cancelTransition()
         clearSponsorBlockWatch()
         playbackJob?.cancel()
@@ -453,20 +470,20 @@ class PlaybackController(
                 streamLabel = ""
             )
         }
-        playbackJob = playerScope.launch { runPlayback(track, startAtMs, forceRestart) }
+        playbackJob = playerScope.launch { runPlayback(track, startAtMs, generation) }
     }
 
-    private suspend fun runPlayback(track: Track, startAtMs: Long, forceRestart: Boolean) {
+    private suspend fun runPlayback(track: Track, startAtMs: Long, generation: Long) {
         val activePlayer = ensurePlayer()
+        currentCoroutineContext().ensureActive()
+        if (playbackGeneration.get() != generation) return
         if (activePlayer == null) {
             internalState.update { state ->
                 state.copy(preparingTrackId = "", status = PlaybackStatus.FAILED)
             }
             return
         }
-        if (forceRestart) {
-            activePlayer.stop()
-        }
+        activePlayer.stop()
         if (track.isLocalFile) {
             val localSource = resolveLocalSource(track)
             if (localSource == null) {
@@ -480,6 +497,8 @@ class PlaybackController(
         }
         val playable = resolvePlayable(track) ?: return
         val resolved = resolveStream(playable, track) ?: return
+        currentCoroutineContext().ensureActive()
+        if (playbackGeneration.get() != generation || internalState.value.current?.id != track.id) return
         beginPlayback(activePlayer, track, resolved, startAtMs)
     }
 
@@ -1132,8 +1151,10 @@ class PlaybackController(
     }
 
     private fun ensurePlayer(): AudioPlayer? {
-        player?.let { return it }
-        return try {
+        return synchronized(playerLock) {
+        if (shutdownRequested.get()) return@synchronized null
+        player?.let { return@synchronized it }
+        try {
             val created = playerFactory()
             player = created
             observeEvents(created)
@@ -1155,6 +1176,7 @@ class PlaybackController(
             messageFlow.tryEmit(reason)
             null
         }
+        }
     }
 
     private fun observeEvents(target: AudioPlayer) {
@@ -1174,7 +1196,6 @@ class PlaybackController(
             }
 
             is PlayerEvent.Playing -> {
-                retriedTrackId = ""
                 consecutiveFailures = 0
                 applySpeed(settingsStore.current.playbackSpeed)
                 internalState.update { state -> state.copy(status = PlaybackStatus.PLAYING) }
@@ -1216,12 +1237,17 @@ class PlaybackController(
 
     private fun handleFailure(reason: String) {
         val track = internalState.value.queue.current ?: return
+        if (internalState.value.status == PlaybackStatus.PAUSED) {
+            if (!recoveryPending && !track.isLocalFile) resolver.invalidate(track)
+            recoveryPending = true
+            return
+        }
         if (retriedTrackId != track.id) {
             retriedTrackId = track.id
             if (!track.isLocalFile) {
                 resolver.invalidate(track)
             }
-            startCurrent(0L)
+            startCurrent(internalState.value.positionMs, recovering = true)
             return
         }
         messageFlow.tryEmit(reason)

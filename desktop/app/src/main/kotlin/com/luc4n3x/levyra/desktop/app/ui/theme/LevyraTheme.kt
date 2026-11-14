@@ -9,7 +9,10 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -31,17 +34,17 @@ private val DarkColors = darkColorScheme(
     onSecondaryContainer = Color(0xFFFFFFFF),
     tertiary = Color(0xFF5EE0B6),
     onTertiary = Color(0xFF000000),
-    background = Color(0xFF000000),
+    background = Color(0xFF101418),
     onBackground = Color(0xFFFFFFFF),
-    surface = Color(0xFF1D1D1F),
+    surface = Color(0xFF171C21),
     onSurface = Color(0xFFFFFFFF),
-    surfaceVariant = Color(0xFF272729),
+    surfaceVariant = Color(0xFF252D34),
     onSurfaceVariant = Color(0xFFCCCCCC),
-    surfaceContainerLowest = Color(0xFF000000),
-    surfaceContainerLow = Color(0xFF1D1D1F),
-    surfaceContainer = Color(0xFF272729),
-    surfaceContainerHigh = Color(0xFF2A2A2C),
-    surfaceContainerHighest = Color(0xFF333333),
+    surfaceContainerLowest = Color(0xFF0B0F13),
+    surfaceContainerLow = Color(0xFF171C21),
+    surfaceContainer = Color(0xFF1D242B),
+    surfaceContainerHigh = Color(0xFF273039),
+    surfaceContainerHighest = Color(0xFF323C46),
     outline = Color(0xFF404040),
     outlineVariant = Color(0xFF333333),
     error = Color(0xFFFF453A),
@@ -61,7 +64,7 @@ private val LightColors = lightColorScheme(
     onSecondaryContainer = Color(0xFF1D1D1F),
     tertiary = Color(0xFF007A5D),
     onTertiary = Color.White,
-    background = Color(0xFFFFFFFF),
+    background = Color(0xFFF7FAFE),
     onBackground = Color(0xFF1D1D1F),
     surface = Color(0xFFF5F5F7), // Apple Parchment
     onSurface = Color(0xFF1D1D1F),
@@ -151,11 +154,11 @@ private val LevyraTypography = Typography(
 )
 
 private val LevyraShapes = Shapes(
-    extraSmall = RoundedCornerShape(5.dp),
-    small = RoundedCornerShape(8.dp),
-    medium = RoundedCornerShape(11.dp),
-    large = RoundedCornerShape(18.dp),
-    extraLarge = RoundedCornerShape(24.dp)
+    extraSmall = RoundedCornerShape(8.dp),
+    small = RoundedCornerShape(12.dp),
+    medium = RoundedCornerShape(16.dp),
+    large = RoundedCornerShape(24.dp),
+    extraLarge = RoundedCornerShape(32.dp)
 )
 
 object LevyraBrand {
@@ -172,14 +175,28 @@ object LevyraMotion {
 val LocalAccentColor = compositionLocalOf { LevyraCyan }
 
 @Composable
-fun LevyraTheme(themeMode: ThemeMode, content: @Composable () -> Unit) {
+fun LevyraTheme(themeMode: ThemeMode, accent: Color = LevyraCyan, content: @Composable () -> Unit) {
     val dark = when (themeMode) {
         ThemeMode.DARK -> true
         ThemeMode.LIGHT -> false
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
     }
+    val colors = remember(dark, accent) {
+        val base = if (dark) DarkColors else LightColors
+        val primary = lerp(accent, if (dark) Color.White else Color.Black, if (dark) 0.38f else 0.3f)
+        val onPrimary = if (primary.luminance() > 0.179f) Color.Black else Color.White
+        base.copy(
+            primary = primary,
+            onPrimary = onPrimary,
+            primaryContainer = lerp(base.surface, primary, if (dark) 0.23f else 0.12f),
+            onPrimaryContainer = base.onSurface,
+            surfaceTint = primary,
+            secondaryContainer = lerp(base.surface, primary, 0.09f),
+            onSecondaryContainer = base.onSurface
+        )
+    }
     MaterialTheme(
-        colorScheme = if (dark) DarkColors else LightColors,
+        colorScheme = colors,
         typography = LevyraTypography,
         shapes = LevyraShapes,
         content = content

@@ -10,6 +10,7 @@ import com.luc4n3x.levyra.desktop.app.state.OfflineDownloadController
 import com.luc4n3x.levyra.desktop.app.state.PlaybackController
 import com.luc4n3x.levyra.desktop.core.catalog.CatalogRepository
 import com.luc4n3x.levyra.desktop.core.charts.ChartsRepository
+import com.luc4n3x.levyra.desktop.core.charts.EditorialCatalog
 import com.luc4n3x.levyra.desktop.core.extractor.ExtractorRuntime
 import com.luc4n3x.levyra.desktop.core.localmusic.LocalLibraryStore
 import com.luc4n3x.levyra.desktop.core.lyrics.LyricsRepository
@@ -21,6 +22,8 @@ import com.luc4n3x.levyra.desktop.core.storage.SessionStore
 import com.luc4n3x.levyra.desktop.core.storage.SettingsStore
 import com.luc4n3x.levyra.desktop.core.storage.WindowPlacementStore
 import com.luc4n3x.levyra.desktop.core.stream.YoutubeStreamResolver
+import com.luc4n3x.levyra.desktop.core.stream.DesktopHighQualityResolver
+import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import com.luc4n3x.levyra.desktop.player.AudioPlayer
 import com.luc4n3x.levyra.desktop.player.VlcAudioPlayer
 import com.luc4n3x.levyra.desktop.player.VlcMp3Transcoder
@@ -46,8 +49,12 @@ class AppContainer {
         ExtractorRuntime.ensureInitialized(settings.language, settings.contentCountry)
     }
     private val catalogRepository = CatalogRepository()
-    private val streamResolver = YoutubeStreamResolver()
-    private val chartsRepository = ChartsRepository()
+    private val youtubeResolver = YoutubeStreamResolver()
+    private val streamResolver = DesktopHighQualityResolver.create(scope, youtubeResolver, paths.root.resolve("cache"),
+        { HighQualityAudioMode.fromStorage(settingsStore.current.highQualityAudioMode) })
+    private val downloadResolver = DesktopHighQualityResolver.create(scope, YoutubeStreamResolver(), paths.root.resolve("cache"),
+        { HighQualityAudioMode.fromStorage(settingsStore.current.highQualityAudioMode) }, forDownload = true)
+    private val chartsRepository = ChartsRepository(editorial = EditorialCatalog(paths.root.resolve("cache/editorial.json")))
     private val lyricsRepository = LyricsRepository()
     private val sponsorBlockRepository = SponsorBlockRepository()
 
@@ -70,7 +77,7 @@ class AppContainer {
     val downloadController: OfflineDownloadController = OfflineDownloadController(
         scope = scope,
         paths = paths,
-        resolver = streamResolver,
+        resolver = downloadResolver,
         catalog = catalogRepository,
         settingsStore = settingsStore,
         store = downloadStore,

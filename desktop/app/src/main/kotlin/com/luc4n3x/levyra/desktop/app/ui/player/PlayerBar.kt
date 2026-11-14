@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -92,245 +93,260 @@ fun PlayerBar(
     val downloadRecord by recordFlow.collectAsState(initial = initialRecord)
     val duration = state.durationMs.coerceAtLeast(0L)
 
+    val controls: @Composable () -> Unit = {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                PlayerIconButton(
+                    icon = LevyraIcons.Shuffle,
+                    description = strings.playbackShuffle,
+                    active = state.queue.shuffle,
+                    onClick = onToggleShuffle
+                )
+                IconButton(onClick = onPrevious, enabled = track != null) {
+                    Icon(
+                        imageVector = LevyraIcons.SkipPrevious,
+                        contentDescription = strings.playbackPrevious,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Surface(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clickable(enabled = track != null, onClick = onPlayPause),
+                    shape = if (state.isPlaying) MaterialTheme.shapes.medium else CircleShape,
+                    color = if (track != null) accent else MaterialTheme.colorScheme.surfaceContainerHighest,
+                    contentColor = if (track != null) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = if (state.isPlaying) LevyraIcons.Pause else LevyraIcons.Play,
+                            contentDescription = if (state.isPlaying) strings.playbackPause else strings.playbackPlay,
+                            modifier = Modifier.size(21.dp)
+                        )
+                    }
+                }
+                IconButton(onClick = onNext, enabled = track != null) {
+                    Icon(
+                        imageVector = LevyraIcons.SkipNext,
+                        contentDescription = strings.playbackNext,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                PlayerIconButton(
+                    icon = if (state.queue.repeat == RepeatMode.ONE) LevyraIcons.RepeatOne else LevyraIcons.Repeat,
+                    description = strings.playbackRepeat,
+                    active = state.queue.repeat != RepeatMode.OFF,
+                    onClick = onCycleRepeat
+                )
+            }
+
+            PlayerProgressBar(
+                playbackStateFlow = playbackStateFlow,
+                onSeek = onSeek,
+                accent = accent,
+                trackId = track?.id
+            )
+        }
+    }
+
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(15.dp),
+        shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         shadowElevation = 0.dp
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(3.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
+        BoxWithConstraints {
+            val compact = maxWidth < 1_000.dp
+            Column(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 Row(
-                    modifier = Modifier.width(315.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Artwork(
-                        url = track?.artworkUrl.orEmpty(),
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(RoundedCornerShape(9.dp))
-                            .clickable(enabled = track != null, onClick = onOpenNowPlaying),
-                        cornerRadius = 9.dp,
-                        iconSize = 20.dp
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = track?.title.orEmpty(),
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                    Row(
+                        modifier = if (compact) Modifier.weight(1f) else Modifier.width(315.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Artwork(
+                            url = track?.artworkUrl.orEmpty(),
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(RoundedCornerShape(9.dp))
+                                .clickable(enabled = track != null, onClick = onOpenNowPlaying),
+                            cornerRadius = 9.dp,
+                            iconSize = 20.dp
                         )
-                        Text(
-                            text = track?.displaySubtitle.orEmpty(),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                    IconButton(onClick = onToggleFavorite, enabled = track != null) {
-                        Icon(
-                            imageVector = if (isFavorite) LevyraIcons.HeartFilled else LevyraIcons.Heart,
-                            contentDescription = if (isFavorite) strings.removeFromFavorites else strings.addToFavorites,
-                            tint = if (isFavorite) accent else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                    if (track != null && downloadActions != null && !track.isLocalFile) {
-                        IconButton(
-                            onClick = {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = track?.title.orEmpty(),
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = track?.displaySubtitle.orEmpty(),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        if (state.streamLabel.isNotBlank()) {
+                            Text(state.streamLabel, style = MaterialTheme.typography.labelSmall,
+                                color = accent, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                        }
+                        IconButton(onClick = onToggleFavorite, enabled = track != null) {
+                            Icon(
+                                imageVector = if (isFavorite) LevyraIcons.HeartFilled else LevyraIcons.Heart,
+                                contentDescription = if (isFavorite) strings.removeFromFavorites else strings.addToFavorites,
+                                tint = if (isFavorite) accent else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        if (track != null && downloadActions != null && !track.isLocalFile) {
+                            IconButton(
+                                onClick = {
+                                    val record = downloadRecord
+                                    when (record?.status) {
+                                        DownloadStatus.QUEUED,
+                                        DownloadStatus.RESOLVING,
+                                        DownloadStatus.DOWNLOADING -> downloadActions.onCancel(record.id)
+                                        DownloadStatus.FAILED,
+                                        DownloadStatus.CANCELLED -> downloadActions.onRetry(record.id)
+                                        DownloadStatus.COMPLETED -> Unit
+                                        null -> downloadActions.onDownload(track)
+                                    }
+                                },
+                                enabled = downloadRecord?.status != DownloadStatus.COMPLETED
+                            ) {
                                 val record = downloadRecord
                                 when (record?.status) {
                                     DownloadStatus.QUEUED,
                                     DownloadStatus.RESOLVING,
-                                    DownloadStatus.DOWNLOADING -> downloadActions.onCancel(record.id)
+                                    DownloadStatus.DOWNLOADING -> CircularProgressIndicator(
+                                        progress = { record.progress },
+                                        modifier = Modifier.size(17.dp),
+                                        strokeWidth = 2.dp
+                                    )
+
+                                    DownloadStatus.COMPLETED -> Icon(
+                                        imageVector = OfflineIcons.Check,
+                                        contentDescription = strings.downloadOfflineBadge,
+                                        tint = accent,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+
                                     DownloadStatus.FAILED,
-                                    DownloadStatus.CANCELLED -> downloadActions.onRetry(record.id)
-                                    DownloadStatus.COMPLETED -> Unit
-                                    null -> downloadActions.onDownload(track)
+                                    DownloadStatus.CANCELLED -> Icon(
+                                        imageVector = LevyraIcons.Refresh,
+                                        contentDescription = strings.downloadRetry,
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+
+                                    null -> Icon(
+                                        imageVector = OfflineIcons.Download,
+                                        contentDescription = strings.downloadAction,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(18.dp)
+                                    )
                                 }
-                            },
-                            enabled = downloadRecord?.status != DownloadStatus.COMPLETED
-                        ) {
-                            val record = downloadRecord
-                            when (record?.status) {
-                                DownloadStatus.QUEUED,
-                                DownloadStatus.RESOLVING,
-                                DownloadStatus.DOWNLOADING -> CircularProgressIndicator(
-                                    progress = { record.progress },
-                                    modifier = Modifier.size(17.dp),
-                                    strokeWidth = 2.dp
-                                )
-
-                                DownloadStatus.COMPLETED -> Icon(
-                                    imageVector = OfflineIcons.Check,
-                                    contentDescription = strings.downloadOfflineBadge,
-                                    tint = accent,
-                                    modifier = Modifier.size(18.dp)
-                                )
-
-                                DownloadStatus.FAILED,
-                                DownloadStatus.CANCELLED -> Icon(
-                                    imageVector = LevyraIcons.Refresh,
-                                    contentDescription = strings.downloadRetry,
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(18.dp)
-                                )
-
-                                null -> Icon(
-                                    imageVector = OfflineIcons.Download,
-                                    contentDescription = strings.downloadAction,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(18.dp)
-                                )
                             }
                         }
                     }
-                }
 
-                Column(
-                    modifier = Modifier.weight(1f),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
+                    if (!compact) {
+                        Box(Modifier.weight(1f)) { controls() }
+                    }
+
                     Row(
+                        modifier = Modifier.width(285.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                        horizontalArrangement = Arrangement.End
                     ) {
-                        PlayerIconButton(
-                            icon = LevyraIcons.Shuffle,
-                            description = strings.playbackShuffle,
-                            active = state.queue.shuffle,
-                            onClick = onToggleShuffle
-                        )
-                        IconButton(onClick = onPrevious, enabled = track != null) {
-                            Icon(
-                                imageVector = LevyraIcons.SkipPrevious,
-                                contentDescription = strings.playbackPrevious,
-                                modifier = Modifier.size(20.dp)
+                        val statusLabel = playerStatusLabel(state)
+                        if (statusLabel.isNotBlank() && statusLabel != state.streamLabel) {
+                            Text(
+                                text = statusLabel,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (state.sleepTimer.active || state.speed != DesktopSettings.DEFAULT_SPEED) {
+                                    accent
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f).padding(end = 6.dp)
                             )
                         }
-                        Surface(
-                            modifier = Modifier
-                                .size(42.dp)
-                                .clickable(enabled = track != null, onClick = onPlayPause),
-                            shape = CircleShape,
-                            color = if (track != null) accent else MaterialTheme.colorScheme.surfaceContainerHighest,
-                            contentColor = if (track != null) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = if (state.isPlaying) LevyraIcons.Pause else LevyraIcons.Play,
-                                    contentDescription = if (state.isPlaying) strings.playbackPause else strings.playbackPlay,
-                                    modifier = Modifier.size(21.dp)
-                                )
-                            }
-                        }
-                        IconButton(onClick = onNext, enabled = track != null) {
+                        val muted = state.muted || state.volume == 0
+                        IconButton(onClick = onToggleMute) {
                             Icon(
-                                imageVector = LevyraIcons.SkipNext,
-                                contentDescription = strings.playbackNext,
-                                modifier = Modifier.size(20.dp)
+                                imageVector = if (muted) LevyraIcons.VolumeMuted else LevyraIcons.VolumeHigh,
+                                contentDescription = if (muted) strings.playbackUnmute else strings.playbackMute,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp)
                             )
                         }
+                        Slider(
+                            value = state.volume.toFloat(),
+                            onValueChange = { onVolumeChange(it.toInt()) },
+                            valueRange = 0f..100f,
+                            colors = SliderDefaults.colors(
+                                thumbColor = MaterialTheme.colorScheme.onSurface,
+                                activeTrackColor = MaterialTheme.colorScheme.onSurface,
+                                inactiveTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                            ),
+                            modifier = Modifier.width(82.dp)
+                        )
                         PlayerIconButton(
-                            icon = if (state.queue.repeat == RepeatMode.ONE) LevyraIcons.RepeatOne else LevyraIcons.Repeat,
-                            description = strings.playbackRepeat,
-                            active = state.queue.repeat != RepeatMode.OFF,
-                            onClick = onCycleRepeat
+                            icon = LevyraIcons.Queue,
+                            description = strings.queueTitle,
+                            active = queueVisible,
+                            onClick = onToggleQueue
                         )
-                    }
-
-                    PlayerProgressBar(
-                        playbackStateFlow = playbackStateFlow,
-                        onSeek = onSeek,
-                        accent = accent,
-                        trackId = track?.id
-                    )
-                }
-
-                Row(
-                    modifier = Modifier.width(285.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    val statusLabel = playerStatusLabel(state)
-                    if (statusLabel.isNotBlank()) {
-                        Text(
-                            text = statusLabel,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (state.sleepTimer.active || state.speed != DesktopSettings.DEFAULT_SPEED) {
-                                accent
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(end = 6.dp)
+                        PlaybackToolsMenu(
+                            state = state,
+                            onSpeedChange = onSpeedChange,
+                            onSleepTimerMinutes = onSleepTimerMinutes,
+                            onSleepAtEndOfTrack = onSleepAtEndOfTrack,
+                            onCancelSleepTimer = onCancelSleepTimer
                         )
-                    }
-                    val muted = state.muted || state.volume == 0
-                    IconButton(onClick = onToggleMute) {
-                        Icon(
-                            imageVector = if (muted) LevyraIcons.VolumeMuted else LevyraIcons.VolumeHigh,
-                            contentDescription = if (muted) strings.playbackUnmute else strings.playbackMute,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                    Slider(
-                        value = state.volume.toFloat(),
-                        onValueChange = { onVolumeChange(it.toInt()) },
-                        valueRange = 0f..100f,
-                        colors = SliderDefaults.colors(
-                            thumbColor = MaterialTheme.colorScheme.onSurface,
-                            activeTrackColor = MaterialTheme.colorScheme.onSurface,
-                            inactiveTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest
-                        ),
-                        modifier = Modifier.width(82.dp)
-                    )
-                    PlayerIconButton(
-                        icon = LevyraIcons.Queue,
-                        description = strings.queueTitle,
-                        active = queueVisible,
-                        onClick = onToggleQueue
-                    )
-                    PlaybackToolsMenu(
-                        state = state,
-                        onSpeedChange = onSpeedChange,
-                        onSleepTimerMinutes = onSleepTimerMinutes,
-                        onSleepAtEndOfTrack = onSleepAtEndOfTrack,
-                        onCancelSleepTimer = onCancelSleepTimer
-                    )
-                    IconButton(onClick = onClose) {
-                        Icon(
-                            imageVector = LevyraIcons.Close,
-                            contentDescription = strings.playbackClose,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(17.dp)
-                        )
+                        IconButton(onClick = onClose) {
+                            Icon(
+                                imageVector = LevyraIcons.Close,
+                                contentDescription = strings.playbackClose,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(17.dp)
+                            )
+                        }
                     }
                 }
-            }
 
-            if (state.unavailableReason.isNotBlank()) {
-                Text(
-                    text = state.unavailableReason,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.error,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                if (compact) controls()
+
+                if (state.unavailableReason.isNotBlank()) {
+                    Text(
+                        text = state.unavailableReason,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         }
     }

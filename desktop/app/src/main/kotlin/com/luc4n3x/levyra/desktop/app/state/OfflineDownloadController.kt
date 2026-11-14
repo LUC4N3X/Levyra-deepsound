@@ -11,9 +11,12 @@ import com.luc4n3x.levyra.desktop.core.storage.DownloadStore
 import com.luc4n3x.levyra.desktop.core.storage.SettingsStore
 import com.luc4n3x.levyra.desktop.core.stream.ResolvedAudio
 import com.luc4n3x.levyra.desktop.core.stream.StreamResolver
+import com.luc4n3x.levyra.desktop.core.stream.StreamSourceExpiredException as ExpiredDownloadSource
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
 import java.net.URI
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
@@ -114,6 +117,7 @@ class OfflineDownloadController(
 
     fun retry(id: String) {
         val record = store.record(id) ?: return
+        resolver.refresh(record.track)
         store.upsert(record.copy(status = DownloadStatus.QUEUED, error = ""))
         start(id)
     }
@@ -146,7 +150,7 @@ class OfflineDownloadController(
         }
     }
 
-    private suspend fun download(id: String) {
+    private suspend fun download(id: String, refreshExpired: Boolean = true) {
         val original = store.record(id) ?: return
         try {
             store.update(id) { it.copy(status = DownloadStatus.RESOLVING, error = "") }
@@ -167,6 +171,13 @@ class OfflineDownloadController(
                 store.update(id) { it.copy(status = DownloadStatus.CANCELLED) }
             }
             throw cancellation
+        } catch (error: ExpiredDownloadSource) {
+            if (refreshExpired) {
+                resolver.refresh(original.track)
+                download(id, refreshExpired = false)
+            } else {
+                store.update(id) { it.copy(status = DownloadStatus.FAILED, error = error.message.orEmpty()) }
+            }
         } catch (error: Throwable) {
             store.update(id) { record ->
                 record.copy(
@@ -179,8 +190,10 @@ class OfflineDownloadController(
 
     private suspend fun resolvePlayable(track: Track): Track {
         if (track.videoUrl.isNotBlank()) return track
-        return catalog.findPlayable(track)
+        val located = catalog.findPlayable(track)
             ?: throw IllegalStateException("Nessuna versione riproducibile trovata")
+        return track.copy(videoUrl = located.videoUrl,
+            durationMs = track.durationMs.takeIf { it > 0L } ?: located.durationMs)
     }
 
     private suspend fun writeResolvedDownload(
@@ -188,9 +201,19 @@ class OfflineDownloadController(
         track: Track,
         resolved: ResolvedAudio
     ) {
-        val sourceExtension = extensionFor(resolved.label)
+        if (resolved.deliveryMethod == com.luc4n3x.levyra.domain.PlaybackDeliveryMethod.DASH) {
+            writeDashDownload(id, track, resolved)
+            return
+        }
+        check(resolved.offlineAllowed) { "Questa sorgente non consente il download" }
+        val preserveSource = resolved.codec.isNotBlank()
+        val sourceExtension = when {
+            resolved.codec.equals("flac", true) -> "flac"
+            resolved.container.equals("mp3", true) -> "mp3"
+            else -> extensionFor(resolved.label)
+        }
         val baseName = OfflineFileName.baseName(track)
-        val target = paths.downloadsDirectory.resolve("$baseName.mp3")
+        val target = paths.downloadsDirectory.resolve("$baseName.${if (preserveSource) sourceExtension else "mp3"}")
         val sourceTemporary = paths.downloadsDirectory.resolve("$baseName.$sourceExtension.part")
         val parallelTemporary = paths.downloadsDirectory.resolve("$baseName.$sourceExtension.ranges.part")
         val mp3Temporary = paths.downloadsDirectory.resolve("$baseName.mp3.part")
@@ -205,7 +228,7 @@ class OfflineDownloadController(
             recordedIdentity = existingRecord.streamIdentity,
             currentIdentity = currentStreamIdentity
         )
-        val hintedLength = desktopAudioContentLength(resolved.url)
+        val hintedLength = resolved.contentLength.takeIf { it > 0L } ?: desktopAudioContentLength(resolved.url)
         val expectedLength = hintedLength.takeIf { it > 0L }
             ?: existingRecord.totalBytes.takeIf { resumedBytes > 0L && it >= resumedBytes }
             ?: -1L
@@ -285,12 +308,19 @@ class OfflineDownloadController(
             throw IOException("Download incompleto: $sourceSize/$expectedLength byte")
         }
 
-        Files.deleteIfExists(mp3Temporary)
-        transcodeToMp3(sourceTemporary, mp3Temporary)
-        if (!Files.isRegularFile(mp3Temporary) || Files.size(mp3Temporary) <= 0L) {
-            throw IOException("La conversione MP3 non ha prodotto un file valido")
+        if (preserveSource) {
+            if (sourceExtension == "flac") {
+                com.luc4n3x.levyra.desktop.core.stream.DownloadedAudioValidation.requireFlac(sourceTemporary, track.durationMs)
+            }
+            moveAtomically(sourceTemporary, target)
+        } else {
+            Files.deleteIfExists(mp3Temporary)
+            transcodeToMp3(sourceTemporary, mp3Temporary)
+            if (!Files.isRegularFile(mp3Temporary) || Files.size(mp3Temporary) <= 0L) {
+                throw IOException("La conversione MP3 non ha prodotto un file valido")
+            }
+            moveAtomically(mp3Temporary, target)
         }
-        moveAtomically(mp3Temporary, target)
         runCatching { Files.deleteIfExists(sourceTemporary) }
         runCatching { Files.deleteIfExists(parallelTemporary) }
 
@@ -303,11 +333,30 @@ class OfflineDownloadController(
                 temporaryPath = "",
                 bytesDownloaded = completedSize,
                 totalBytes = completedSize,
-                mediaLabel = MP3_MEDIA_LABEL,
+                mediaLabel = if (preserveSource) resolved.label else MP3_MEDIA_LABEL,
                 streamIdentity = currentStreamIdentity,
                 error = ""
             )
         }
+    }
+
+    private suspend fun writeDashDownload(id: String, track: Track, resolved: ResolvedAudio) {
+        check(resolved.offlineAllowed && resolved.codec.equals("flac", true))
+        val manifest = com.luc4n3x.levyra.desktop.core.localmusic.resolveLocalFile(resolved.url)
+            ?: throw IOException("FLAC manifest unavailable")
+        val baseName = OfflineFileName.baseName(track)
+        val partial = paths.downloadsDirectory.resolve("$baseName.flac.part")
+        val target = paths.downloadsDirectory.resolve("$baseName.flac")
+        store.update(id) { it.copy(track = track, status = DownloadStatus.DOWNLOADING,
+            temporaryPath = partial.toString(), bytesDownloaded = 0, totalBytes = 0, mediaLabel = resolved.label) }
+        com.luc4n3x.levyra.desktop.core.stream.DashFlacDownload.write(manifest, partial) { written ->
+            store.update(id) { it.copy(bytesDownloaded = written) }
+        }
+        currentCoroutineContext().ensureActive()
+        moveAtomically(partial, target)
+        val size = Files.size(target)
+        store.update(id) { it.copy(status = DownloadStatus.COMPLETED, temporaryPath = "", filePath = target.toString(),
+            bytesDownloaded = size, totalBytes = size, mediaLabel = resolved.label, error = "") }
     }
 
     private suspend fun downloadSerial(
@@ -329,17 +378,20 @@ class OfflineDownloadController(
         }
 
         client.newCall(requestBuilder.build()).awaitResponse().use { response ->
+            if (response.code == 403 || response.code == 410) throw ExpiredDownloadSource()
             if (!response.isSuccessful) {
                 throw IOException("Download non disponibile: HTTP ${response.code}")
             }
             val body = response.body
+            val validatedLength = serialDownloadLength(
+                response.code, response.header("Content-Range"), body.contentLength(), resumeOffset
+            )
             val append = resumeOffset > 0L && response.code == 206
             if (!append) {
                 resumeOffset = 0L
                 Files.deleteIfExists(output)
             }
-            val contentLength = body.contentLength().coerceAtLeast(0L)
-            val totalBytes = if (contentLength > 0L) resumeOffset + contentLength else 0L
+            val totalBytes = validatedLength
             val options = if (append) {
                 arrayOf(StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND)
             } else {
@@ -347,42 +399,55 @@ class OfflineDownloadController(
             }
             BufferedInputStream(body.byteStream(), BUFFER_SIZE).use { input ->
                 BufferedOutputStream(Files.newOutputStream(output, *options), BUFFER_SIZE).use { target ->
-                    val buffer = ByteArray(BUFFER_SIZE)
-                    var downloaded = resumeOffset
-                    var lastPersistedBytes = downloaded
-                    var lastPersistedAt = System.nanoTime()
-                    while (true) {
-                        currentCoroutineContext().ensureActive()
-                        val read = input.read(buffer)
-                        if (read < 0) break
-                        target.write(buffer, 0, read)
-                        downloaded += read
-                        val now = System.nanoTime()
-                        if (
-                            downloaded - lastPersistedBytes >= PROGRESS_BYTES_INTERVAL ||
-                            now - lastPersistedAt >= PROGRESS_TIME_INTERVAL_NANOS
-                        ) {
-                            store.update(id) { record ->
-                                record.copy(
-                                    status = DownloadStatus.DOWNLOADING,
-                                    bytesDownloaded = downloaded,
-                                    totalBytes = totalBytes
-                                )
-                            }
-                            lastPersistedBytes = downloaded
-                            lastPersistedAt = now
-                        }
-                    }
-                    target.flush()
-                    store.update(id) { record ->
-                        record.copy(
-                            status = DownloadStatus.DOWNLOADING,
-                            bytesDownloaded = downloaded,
-                            totalBytes = if (totalBytes > 0L) totalBytes else downloaded
-                        )
-                    }
+                    copySerialBody(id, input, target, resumeOffset, totalBytes)
                 }
             }
+        }
+    }
+
+    private suspend fun copySerialBody(
+        id: String,
+        input: InputStream,
+        target: OutputStream,
+        resumeOffset: Long,
+        totalBytes: Long
+    ) {
+        val buffer = ByteArray(BUFFER_SIZE)
+        var downloaded = resumeOffset
+        var lastPersistedBytes = downloaded
+        var lastPersistedAt = System.nanoTime()
+        while (true) {
+            currentCoroutineContext().ensureActive()
+            val read = input.read(buffer)
+            if (read < 0) break
+            target.write(buffer, 0, read)
+            downloaded += read
+            val now = System.nanoTime()
+            if (
+                downloaded - lastPersistedBytes >= PROGRESS_BYTES_INTERVAL ||
+                now - lastPersistedAt >= PROGRESS_TIME_INTERVAL_NANOS
+            ) {
+                store.update(id) { record ->
+                    record.copy(
+                        status = DownloadStatus.DOWNLOADING,
+                        bytesDownloaded = downloaded,
+                        totalBytes = totalBytes
+                    )
+                }
+                lastPersistedBytes = downloaded
+                lastPersistedAt = now
+            }
+        }
+        target.flush()
+        if (totalBytes > 0L && downloaded != totalBytes) {
+            throw IOException("Download incompleto: $downloaded/$totalBytes byte")
+        }
+        store.update(id) { record ->
+            record.copy(
+                status = DownloadStatus.DOWNLOADING,
+                bytesDownloaded = downloaded,
+                totalBytes = if (totalBytes > 0L) totalBytes else downloaded
+            )
         }
     }
 
@@ -421,6 +486,7 @@ class OfflineDownloadController(
         private const val PART_SUFFIX_LENGTH = 5
     }
 }
+
 
 internal object OfflinePartialFileMigration {
     fun prepare(
@@ -505,6 +571,9 @@ internal object OfflineStreamIdentity {
     private const val HASH_BYTES = 16
 
     fun from(track: Track, resolved: ResolvedAudio): String {
+        if (resolved.sourceIdentity.isNotBlank() && resolved.contentLength > 0L) {
+            return "provider:${resolved.sourceIdentity}:${resolved.contentLength}:${resolved.codec}"
+        }
         val query = runCatching { URI(resolved.url).rawQuery }.getOrNull().orEmpty()
         val parameters = query
             .split('&')

@@ -12,7 +12,10 @@ data class Track(
     val artworkUrl: String = "",
     val durationMs: Long = 0L,
     val offlinePath: String = "",
-    val offlineMediaLabel: String = ""
+    val offlineMediaLabel: String = "",
+    val explicit: Boolean? = null,
+    val isrc: String = "",
+    val musicVideo: Boolean = false
 ) {
     val hasArtwork: Boolean get() = artworkUrl.isNotBlank()
     val isOffline: Boolean get() = offlinePath.isNotBlank()

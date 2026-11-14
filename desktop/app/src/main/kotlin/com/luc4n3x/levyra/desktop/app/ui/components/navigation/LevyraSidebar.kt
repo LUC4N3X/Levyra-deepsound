@@ -12,6 +12,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -29,6 +31,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,6 +45,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.desktop.app.state.Destination
@@ -57,10 +62,38 @@ fun LevyraSidebar(
     hasActiveTrack: Boolean,
     isPlaying: Boolean,
     onNavigate: (Destination) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    compact: Boolean = false
 ) {
     val strings = LocalStrings.current
     val accent = LocalAccentColor.current
+    if (compact) {
+        NavigationRail(modifier = modifier.fillMaxHeight().width(88.dp), containerColor = MaterialTheme.colorScheme.background) {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Image(levyraIconPainter(), strings.appName, Modifier.size(48.dp).align(Alignment.CenterHorizontally).padding(8.dp))
+                val destinations = listOf(
+                    Triple(Destination.HOME, LevyraIcons.Home, strings.navHome),
+                    Triple(Destination.DISCOVER, LevyraIcons.Chart, strings.navDiscover),
+                    Triple(Destination.SEARCH, LevyraIcons.Search, strings.navSearch),
+                    Triple(Destination.LIBRARY, OfflineIcons.Library, strings.navLibrary),
+                    Triple(Destination.LOCAL_MUSIC, OfflineIcons.Folder, strings.localMusic),
+                    Triple(Destination.NOW_PLAYING, LevyraIcons.Disc, strings.navNowPlaying),
+                    Triple(Destination.SETTINGS, LevyraIcons.Settings, strings.navSettings)
+                )
+                destinations.forEach { (target, icon, label) ->
+                    NavigationRailItem(
+                        selected = destination == target || target == Destination.LIBRARY && destination == Destination.PLAYLIST ||
+                            target == Destination.SEARCH && destination == Destination.COLLECTION,
+                        onClick = { onNavigate(target) },
+                        icon = { Icon(icon, label) },
+                        label = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        alwaysShowLabel = false
+                    )
+                }
+            }
+        }
+        return
+    }
     val shellShape = RoundedCornerShape(20.dp)
     val shellBrush = Brush.verticalGradient(
         colors = listOf(

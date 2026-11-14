@@ -14,7 +14,8 @@ import okhttp3.Request
 class ChartsRepository(
     private val client: OkHttpClient = ExtractorHttp.client,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
-    private val nowMillis: () -> Long = System::currentTimeMillis
+    private val nowMillis: () -> Long = System::currentTimeMillis,
+    private val editorial: EditorialCatalog = EditorialCatalog()
 ) {
     private val cache = ConcurrentHashMap<String, CachedChart>()
 
@@ -23,6 +24,10 @@ class ChartsRepository(
         val size = limit.coerceIn(10, 100)
         val key = "$region|$size"
         cache[key]?.takeIf { nowMillis() - it.storedAt < CACHE_TTL_MS }?.let { return@withContext it.tracks }
+
+        editorial.load()?.charts?.get(region.uppercase(Locale.ROOT))?.takeIf { it.isNotEmpty() }?.let {
+            return@withContext it.take(size).also { tracks -> cache[key] = CachedChart(tracks, nowMillis()) }
+        }
 
         val modern = fetch(modernUrl(region, size))?.let { ChartFeedParser.modern(it, size) }.orEmpty()
         val tracks = modern.ifEmpty {
@@ -33,6 +38,13 @@ class ChartsRepository(
         }
         tracks
     }
+
+    suspend fun freshCurrents(country: String): List<Track> {
+        val releases = editorial.load()?.releases.orEmpty()
+        return releases[country.uppercase(Locale.ROOT)].orEmpty().ifEmpty { releases["US"].orEmpty() }.take(24)
+    }
+
+    suspend fun genres(): List<EditorialShelf> = editorial.load()?.genres.orEmpty()
 
     private fun fetch(url: String): String? {
         val request = Request.Builder()

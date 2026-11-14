@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.desktop.app.state
 
 import com.luc4n3x.levyra.desktop.core.charts.ChartsRepository
+import com.luc4n3x.levyra.desktop.core.charts.EditorialShelf
 import com.luc4n3x.levyra.desktop.core.model.Track
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -9,12 +10,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 data class DiscoverUiState(
     val country: String = "IT",
     val tracks: List<Track> = emptyList(),
     val loading: Boolean = false,
-    val error: String = ""
+    val error: String = "",
+    val freshCurrents: List<Track> = emptyList(),
+    val genres: List<EditorialShelf> = emptyList()
 )
 
 class DiscoverController(
@@ -35,8 +40,13 @@ class DiscoverController(
         job = scope.launch {
             try {
                 val tracks = charts.topSongs(region, ChartsRepository.DEFAULT_LIMIT)
+                val fresh = charts.freshCurrents(region)
+                val genres = charts.genres()
+                currentCoroutineContext().ensureActive()
                 state.value = state.value.copy(
                     tracks = tracks,
+                    freshCurrents = fresh,
+                    genres = genres,
                     loading = false,
                     error = if (tracks.isEmpty()) EMPTY_ERROR else ""
                 )

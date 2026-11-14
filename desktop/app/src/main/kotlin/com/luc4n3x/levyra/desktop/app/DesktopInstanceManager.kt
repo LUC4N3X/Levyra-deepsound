@@ -12,6 +12,8 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -30,6 +32,8 @@ internal class DesktopInstanceManager private constructor(
 ) : AutoCloseable {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val requestFlow = MutableSharedFlow<String>(replay = 1, extraBufferCapacity = 15)
+    private val closed = AtomicBoolean()
+    private val activeClient = AtomicReference<Socket?>()
 
     val requests: SharedFlow<String> = requestFlow.asSharedFlow()
 
@@ -38,24 +42,36 @@ internal class DesktopInstanceManager private constructor(
         scope.launch {
             while (isActive && !server.isClosed) {
                 val socket = runCatching { server.accept() }.getOrNull() ?: break
+                activeClient.set(socket)
                 socket.use { client ->
+                    client.soTimeout = CLIENT_TIMEOUT_MS
                     val line = runCatching {
-                        client.getInputStream().bufferedReader(StandardCharsets.UTF_8).readLine()
+                        client.getInputStream().bufferedReader(StandardCharsets.UTF_8).let { reader ->
+                            val message = StringBuilder()
+                            while (message.length <= MAX_MESSAGE_CHARS) {
+                                val next = reader.read()
+                                if (next < 0 || next == '\n'.code) return@let message.toString().trimEnd('\r')
+                                message.append(next.toChar())
+                            }
+                            ""
+                        }
                     }.getOrNull().orEmpty()
                     if (line.startsWith(MESSAGE_PREFIX)) {
                         requestFlow.tryEmit(line.removePrefix(MESSAGE_PREFIX))
                     }
                 }
+                activeClient.compareAndSet(socket, null)
             }
         }
     }
 
     override fun close() {
+        if (!closed.compareAndSet(false, true)) return
         scope.cancel()
         runCatching { server.close() }
+        runCatching { activeClient.getAndSet(null)?.close() }
         runCatching { lock.release() }
         runCatching { lockChannel.close() }
-        runCatching { Files.deleteIfExists(lockPath) }
     }
 
     private fun writePort(port: Int) {
@@ -67,8 +83,7 @@ internal class DesktopInstanceManager private constructor(
     }
 
     companion object {
-        fun acquire(payload: String = ""): DesktopInstanceManager? {
-            val root = AppPaths.defaultRoot()
+        fun acquire(payload: String = "", root: Path = AppPaths.defaultRoot()): DesktopInstanceManager? {
             Files.createDirectories(root)
             val lockPath = root.resolve(LOCK_FILE)
             val channel = FileChannel.open(
@@ -77,7 +92,7 @@ internal class DesktopInstanceManager private constructor(
                 StandardOpenOption.READ,
                 StandardOpenOption.WRITE
             )
-            val lock = runCatching { channel.tryLock() }.getOrNull()
+            val lock = runCatching { channel.tryLock(LOCK_OFFSET, 1L, false) }.getOrNull()
             if (lock != null) {
                 val server = ServerSocket().apply {
                     reuseAddress = false
@@ -125,5 +140,8 @@ internal class DesktopInstanceManager private constructor(
         private const val CONNECT_ATTEMPTS = 20
         private const val CONNECT_TIMEOUT_MS = 250
         private const val CONNECT_RETRY_MS = 100L
+        private const val CLIENT_TIMEOUT_MS = 1_000
+        private const val MAX_MESSAGE_CHARS = 16_384
+        private const val LOCK_OFFSET = 4_096L
     }
 }
