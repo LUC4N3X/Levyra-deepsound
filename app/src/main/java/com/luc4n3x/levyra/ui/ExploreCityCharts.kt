@@ -74,7 +74,7 @@ internal fun rememberHasCityCharts(): Boolean {
         viewModel.load(ChartsCatalog.defaultRegionForLanguage(code).country, code)
     }
     val hasCities by remember(viewModel) { viewModel.state.map { it.cities.isNotEmpty() }.distinctUntilChanged() }
-        .collectAsStateWithLifecycle(viewModel.state.value.cities.isNotEmpty())
+        .collectAsStateWithLifecycle(false)
     return hasCities
 }
 

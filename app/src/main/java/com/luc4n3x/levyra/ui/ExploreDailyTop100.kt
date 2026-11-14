@@ -212,7 +212,7 @@ internal fun DailyChartDialog(
 ) {
     val viewModel = viewModel<DailyTop100ViewModel>()
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val open = state.open?.takeIf { (it.chart is DailyChartRef.City) == cities } ?: return
+    val open = state.open?.takeIf { it.chart is DailyChartRef.City == cities } ?: return
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { dailyTop100Copy(strings.code) }
     val date = rememberTop100Date(strings.code)
