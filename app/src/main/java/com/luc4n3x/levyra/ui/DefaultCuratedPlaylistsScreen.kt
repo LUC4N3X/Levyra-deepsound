@@ -248,7 +248,6 @@ private fun DefaultMosaicPiece(shape: Shape, size: Dp, x: Dp, y: Dp, order: Int,
                 scaleX = 0.6f + 0.4f * progress
                 scaleY = scaleX
                 alpha = progress.coerceIn(0f, 1f)
-                shadowElevation = 10.dp.toPx()
                 this.shape = shape
                 clip = true
             }
