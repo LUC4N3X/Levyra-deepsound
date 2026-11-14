@@ -1806,6 +1806,7 @@ internal fun downloadToJson(value: DownloadEntity): JSONObject = JSONObject()
     .put("downloadQuality", value.downloadQuality)
     .put("savedAt", value.savedAt)
     .put("ownership", value.ownership)
+    .put("artworkUrl", value.artworkUrl)
 
 internal fun parseDownloads(array: JSONArray?): List<DownloadEntity> {
     if (array == null) return emptyList()
@@ -1828,7 +1829,8 @@ internal fun parseDownloads(array: JSONArray?): List<DownloadEntity> {
                     downloadPreset = json.optString("downloadPreset"),
                     downloadQuality = json.optString("downloadQuality"),
                     savedAt = json.optLong("savedAt").coerceAtLeast(0L),
-                    ownership = DownloadOwnership.fromStorage(json.optString("ownership")).name
+                    ownership = DownloadOwnership.fromStorage(json.optString("ownership")).name,
+                    artworkUrl = json.optString("artworkUrl").takeIf { it.startsWith("https://", ignoreCase = true) }.orEmpty()
                 )
             )
         }

@@ -105,7 +105,7 @@ internal object HomeOfflineContentBuilder {
             durationMs = durationMs,
             streamUrl = uri,
             videoUrl = "",
-            thumbnailUrl = reference?.thumbnailUrl.orEmpty().ifBlank { com.luc4n3x.levyra.data.locallibrary.downloadArtworkModel(uri) },
+            thumbnailUrl = reference?.thumbnailUrl.orEmpty().ifBlank { com.luc4n3x.levyra.data.locallibrary.downloadArtworkModel(uri, artworkUrl) },
             largeThumbnailUrl = reference?.largeThumbnailUrl.orEmpty(),
             source = "Offline",
             moodTags = emptySet(),

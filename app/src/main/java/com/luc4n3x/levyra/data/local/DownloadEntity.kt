@@ -29,5 +29,6 @@ data class DownloadEntity(
     val downloadPreset: String,
     val downloadQuality: String,
     val savedAt: Long,
-    @ColumnInfo(defaultValue = "'MANUAL'") val ownership: String = DownloadOwnership.MANUAL.name
+    @ColumnInfo(defaultValue = "'MANUAL'") val ownership: String = DownloadOwnership.MANUAL.name,
+    @ColumnInfo(defaultValue = "''") val artworkUrl: String = ""
 )

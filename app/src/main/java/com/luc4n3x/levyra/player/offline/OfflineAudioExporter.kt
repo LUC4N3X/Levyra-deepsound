@@ -1560,7 +1560,10 @@ class OfflineAudioExporter(
                     downloadPreset = settings.storedPresetKey,
                     downloadQuality = downloadQualityKey,
                     savedAt = System.currentTimeMillis(),
-                    ownership = ownership.name
+                    ownership = ownership.name,
+                    artworkUrl = listOf(resolved.largeThumbnailUrl, resolved.thumbnailUrl, original.largeThumbnailUrl, original.thumbnailUrl)
+                        .firstOrNull { it.startsWith("https://", ignoreCase = true) }
+                        .orEmpty()
                 )
             )
         } catch (error: CancellationException) {

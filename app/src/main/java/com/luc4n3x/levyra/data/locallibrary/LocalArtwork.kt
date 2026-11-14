@@ -20,6 +20,8 @@ import coil3.size.pxOrElse
 import com.luc4n3x.levyra.player.offline.isOfflineAudioStoreUri
 import java.io.FileNotFoundException
 import java.io.IOException
+import java.net.URLDecoder
+import java.net.URLEncoder
 import okio.Buffer
 import okio.buffer
 import okio.source
@@ -35,17 +37,29 @@ private val LEGACY_ALBUM_ART_URI by lazy(LazyThreadSafetyMode.NONE) {
     android.net.Uri.parse("content://media/external/audio/albumart")
 }
 
-fun localArtworkModel(contentUri: String, albumId: Long, revision: Long = 0L): String = buildString {
+fun localArtworkModel(contentUri: String, albumId: Long, revision: Long = 0L, fallbackUrl: String = ""): String = buildString {
     append(LOCAL_ARTWORK_PREFIX).append("a=").append(albumId.coerceAtLeast(0L))
     if (revision > 0L) append("&v=").append(revision)
+    if (isSecureArtworkUrl(fallbackUrl)) append("&f=").append(URLEncoder.encode(fallbackUrl, Charsets.UTF_8.name()))
     append("&u=").append(contentUri)
 }
+
+private fun isSecureArtworkUrl(value: String): Boolean = value.startsWith("https://", ignoreCase = true)
 
 fun isLocalArtworkModel(value: String): Boolean = value.startsWith(LOCAL_ARTWORK_PREFIX)
 
 fun downloadArtworkModel(downloadUri: String): String {
     val uri = downloadUri.trim()
     return if (isReadableArtworkSource(uri)) localArtworkModel(uri, 0L) else ""
+}
+
+fun downloadArtworkModel(downloadUri: String, fallbackArtworkUrl: String): String {
+    val uri = downloadUri.trim()
+    return when {
+        isReadableArtworkSource(uri) -> localArtworkModel(uri, 0L, fallbackUrl = fallbackArtworkUrl)
+        isSecureArtworkUrl(fallbackArtworkUrl) -> fallbackArtworkUrl
+        else -> ""
+    }
 }
 
 private fun isMediaStoreUri(uri: String): Boolean = uri.startsWith(MEDIA_STORE_URI_PREFIX, ignoreCase = true)
@@ -57,7 +71,12 @@ private fun isReadableArtworkSource(uri: String): Boolean {
         isOfflineAudioStoreUri(uri)
 }
 
-internal data class LocalArtworkReference(val contentUri: String, val albumId: Long, val revision: Long = 0L)
+internal data class LocalArtworkReference(
+    val contentUri: String,
+    val albumId: Long,
+    val revision: Long = 0L,
+    val fallbackUrl: String = ""
+)
 
 internal fun parseLocalArtworkModel(value: String): LocalArtworkReference? {
     if (!isLocalArtworkModel(value)) return null
@@ -69,14 +88,19 @@ internal fun parseLocalArtworkModel(value: String): LocalArtworkReference? {
         .associate { field -> field.substringBefore('=') to field.substringAfter('=', "") }
     val albumId = fields["a"]?.toLongOrNull() ?: 0L
     val revision = fields["v"]?.toLongOrNull() ?: 0L
-    return LocalArtworkReference(contentUri, albumId, revision)
+    val fallbackUrl = fields["f"]
+        ?.let { runCatching { URLDecoder.decode(it, Charsets.UTF_8.name()) }.getOrNull() }
+        ?.takeIf(::isSecureArtworkUrl)
+        .orEmpty()
+    return LocalArtworkReference(contentUri, albumId, revision, fallbackUrl)
 }
 
 fun mediaSessionArtworkUri(artwork: String): android.net.Uri? {
     if (artwork.isBlank()) return null
     if (!isLocalArtworkModel(artwork)) return android.net.Uri.parse(artwork)
     val reference = parseLocalArtworkModel(artwork) ?: return null
-    val albumId = reference.albumId.takeIf { it > 0L } ?: return null
+    val albumId = reference.albumId.takeIf { it > 0L }
+        ?: return reference.fallbackUrl.takeIf(String::isNotBlank)?.let(android.net.Uri::parse)
     val albumArt = ContentUris.withAppendedId(LEGACY_ALBUM_ART_URI, albumId)
     if (reference.revision <= 0L) return albumArt
     return albumArt.buildUpon().appendQueryParameter("v", reference.revision.toString()).build()
@@ -85,10 +109,26 @@ fun mediaSessionArtworkUri(artwork: String): android.net.Uri? {
 class LocalArtworkFetcher private constructor(
     private val reference: LocalArtworkReference,
     private val options: Options,
-    private val context: Context
+    private val context: Context,
+    private val imageLoader: ImageLoader
 ) : Fetcher {
 
-    override suspend fun fetch(): FetchResult {
+    override suspend fun fetch(): FetchResult = try {
+        fetchLocal()
+    } catch (error: IOException) {
+        fetchFallback() ?: throw error
+    } catch (error: SecurityException) {
+        fetchFallback() ?: throw error
+    }
+
+    private suspend fun fetchFallback(): FetchResult? {
+        if (reference.fallbackUrl.isBlank()) return null
+        val data = imageLoader.components.map(reference.fallbackUrl, options)
+        val fetcher = imageLoader.components.newFetcher(data, options, imageLoader)?.first ?: return null
+        return fetcher.fetch()
+    }
+
+    private fun fetchLocal(): FetchResult {
         if (!isMediaStoreUri(reference.contentUri)) return fetchEmbeddedPicture()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val target = targetPixels()
@@ -148,7 +188,7 @@ class LocalArtworkFetcher private constructor(
         override fun create(data: coil3.Uri, options: Options, imageLoader: ImageLoader): Fetcher? {
             if (data.scheme != LOCAL_ARTWORK_SCHEME) return null
             val reference = parseLocalArtworkModel(data.toString()) ?: return null
-            return LocalArtworkFetcher(reference, options, appContext)
+            return LocalArtworkFetcher(reference, options, appContext, imageLoader)
         }
     }
 }
