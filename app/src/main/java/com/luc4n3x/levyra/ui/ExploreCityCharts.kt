@@ -43,14 +43,16 @@ import com.luc4n3x.levyra.ui.i18n.LevyraMonoHomeStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.cityChartsCopy
 import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
+import com.luc4n3x.levyra.ui.theme.LevyraIsAtelier
 import com.luc4n3x.levyra.ui.theme.LevyraIsIvory
 import com.luc4n3x.levyra.ui.theme.LevyraIsMono
 import com.luc4n3x.levyra.ui.theme.LevyraIsSpotify
 import com.luc4n3x.levyra.ui.theme.LevyraIsTorque
+import com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic
 import com.luc4n3x.levyra.viewmodel.DailyChartRef
 import com.luc4n3x.levyra.viewmodel.DailyTop100ViewModel
 
-private enum class CitySkin { Mono, Ivory, Torque, Prism, Spotify, Default }
+private enum class CitySkin { Mono, Ivory, Torque, Prism, Spotify, YouTubeMusic, Atelier, Default }
 
 internal val AppleCityChart.numeral: String get() = badge.filter(Char::isDigit).ifEmpty { badge }
 
@@ -82,41 +84,48 @@ internal fun ExploreCityCharts(
             LevyraIsTorque -> CitySkin.Torque
             LevyraIsPrismOnly -> CitySkin.Prism
             LevyraIsSpotify -> CitySkin.Spotify
+            LevyraIsYouTubeMusic -> CitySkin.YouTubeMusic
+            LevyraIsAtelier -> CitySkin.Atelier
             else -> CitySkin.Default
         }
         val monoOverline = if (skin == CitySkin.Mono) LevyraMonoHomeStrings.forCode(code).chartsOverline else ""
-        Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            when (skin) {
-                CitySkin.Mono -> MonoSectionHeader(copy.title, overline = monoOverline)
-                CitySkin.Torque -> SkinSectionTitle(copy.title, TorqueGutter)
-                else -> LevyraSectionHeader(
-                    title = copy.title,
-                    subtitle = copy.subtitle,
-                    modifier = Modifier.padding(horizontal = LevyraHomeDesign.HorizontalInset)
-                )
-            }
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = LevyraHomeDesign.HorizontalInset),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                itemsIndexed(cities, key = { _, chart -> chart.playlistId }, contentType = { _, _ -> "city-chart" }) { index, chart ->
-                    val tap = Modifier
-                        .semantics(mergeDescendants = true) { contentDescription = "${copy.title}, ${chart.name}" }
-                        .levyraPressable(onClick = { viewModel.open(DailyChartRef.City(chart)) }, role = Role.Button, pressedScale = LevyraPressScale.Tile)
-                    when (skin) {
-                        CitySkin.Mono -> MonoCityCard(chart, slots[index], Modifier.size(Top100CoverSize).then(tap))
-                        CitySkin.Ivory -> IvoryCityCard(chart, Modifier.size(TorqueTop100Size).then(tap))
-                        CitySkin.Torque -> TorqueCityCard(chart, Modifier.size(TorqueTop100Size).then(tap))
-                        CitySkin.Prism -> PrismCityCard(chart, slots[index], Modifier.size(Top100CoverSize).then(tap))
-                        CitySkin.Spotify -> SpotifyCityCard(chart, slots[index], tap)
-                        CitySkin.Default -> CityChartCover(
-                            chart = chart,
-                            palette = palette,
-                            glyph = shapes[slots[index] % 4],
-                            rotation = slots[index] * 15f,
-                            largeText = largeText,
-                            modifier = Modifier.size(Top100CoverSize).then(tap)
-                        )
+        val openCity = { chart: AppleCityChart -> viewModel.open(DailyChartRef.City(chart)) }
+        when (skin) {
+            CitySkin.YouTubeMusic -> YouTubeMusicCityShelf(cities, slots, copy, rememberTop100Date(code), modifier, openCity)
+            CitySkin.Atelier -> AtelierCityShelf(cities, slots, copy, rememberTop100Date(code), openCity)
+            else -> Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                when (skin) {
+                    CitySkin.Mono -> MonoSectionHeader(copy.title, overline = monoOverline)
+                    CitySkin.Torque -> SkinSectionTitle(copy.title, TorqueGutter)
+                    else -> LevyraSectionHeader(
+                        title = copy.title,
+                        subtitle = copy.subtitle,
+                        modifier = Modifier.padding(horizontal = LevyraHomeDesign.HorizontalInset)
+                    )
+                }
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = LevyraHomeDesign.HorizontalInset),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    itemsIndexed(cities, key = { _, chart -> chart.playlistId }, contentType = { _, _ -> "city-chart" }) { index, chart ->
+                        val tap = Modifier
+                            .semantics(mergeDescendants = true) { contentDescription = "${copy.title}, ${chart.name}" }
+                            .levyraPressable(onClick = { openCity(chart) }, role = Role.Button, pressedScale = LevyraPressScale.Tile)
+                        when (skin) {
+                            CitySkin.Mono -> MonoCityCard(chart, slots[index], Modifier.size(Top100CoverSize).then(tap))
+                            CitySkin.Ivory -> IvoryCityCard(chart, Modifier.size(TorqueTop100Size).then(tap))
+                            CitySkin.Torque -> TorqueCityCard(chart, Modifier.size(TorqueTop100Size).then(tap))
+                            CitySkin.Prism -> PrismCityCard(chart, slots[index], Modifier.size(Top100CoverSize).then(tap))
+                            CitySkin.Spotify -> SpotifyCityCard(chart, slots[index], tap)
+                            else -> CityChartCover(
+                                chart = chart,
+                                palette = palette,
+                                glyph = shapes[slots[index] % 4],
+                                rotation = slots[index] * 15f,
+                                largeText = largeText,
+                                modifier = Modifier.size(Top100CoverSize).then(tap)
+                            )
+                        }
                     }
                 }
             }

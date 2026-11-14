@@ -247,6 +247,14 @@ internal fun DailyChartDialog(
             PrismTop100ChartScreen(open, label, date, slot, numeral, screenCopy, viewModel::close, viewModel::retry, onPlay, chartTrackActions)
             return@Dialog
         }
+        if (com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) {
+            YouTubeMusicTop100ChartScreen(open, label, date, slot, screenCopy, viewModel::close, viewModel::retry, onPlay, chartTrackActions, city?.chart?.numeral)
+            return@Dialog
+        }
+        if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) {
+            AtelierTop100ChartScreen(open, label, date, slot, screenCopy, viewModel::close, viewModel::retry, onPlay, chartTrackActions, city?.chart?.numeral)
+            return@Dialog
+        }
         if (city != null) {
             Top100ChartScreen(
                 open = open,
@@ -262,14 +270,6 @@ internal fun DailyChartDialog(
                 onPlay = onPlay,
                 onTrackActions = chartTrackActions
             )
-            return@Dialog
-        }
-        if (com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) {
-            YouTubeMusicTop100ChartScreen(open, label, date, slot, copy, viewModel::close, viewModel::retry, onPlay, chartTrackActions)
-            return@Dialog
-        }
-        if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) {
-            AtelierTop100ChartScreen(open, label, date, slot, copy, viewModel::close, viewModel::retry, onPlay, chartTrackActions)
             return@Dialog
         }
         Top100ChartScreen(
@@ -290,7 +290,7 @@ internal fun DailyChartDialog(
 }
 
 @Composable
-private fun rememberTop100Date(code: String): String = remember(code) {
+internal fun rememberTop100Date(code: String): String = remember(code) {
     val locale = Locale.forLanguageTag(code)
     LocalDate.now().format(DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, "dMMM"), locale)).uppercase(locale)
 }

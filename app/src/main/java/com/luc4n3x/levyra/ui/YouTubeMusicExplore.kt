@@ -60,11 +60,15 @@ internal fun YouTubeMusicExploreContent(
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { LevyraYouTubeMusicSkinStrings.forCode(strings.code) }
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val rows = remember(editorial?.news) {
+    val dailyCharts = viewModel<com.luc4n3x.levyra.viewmodel.DailyTop100ViewModel>()
+    val hasCityCharts by remember(dailyCharts) { dailyCharts.state.map { it.cities.isNotEmpty() }.distinctUntilChanged() }
+        .collectAsStateWithLifecycle(dailyCharts.state.value.cities.isNotEmpty())
+    val rows = remember(editorial?.news, hasCityCharts) {
         val news = editorial?.news.orEmpty()
         buildList {
             if (news.isNotEmpty()) add(ExploreRow.NewsHero)
             add(ExploreRow.DailyTop100)
+            if (hasCityCharts) add(ExploreRow.CityCharts)
             if (news.size > 1) add(ExploreRow.NewsList)
         }
     }

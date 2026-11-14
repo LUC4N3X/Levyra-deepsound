@@ -77,6 +77,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.data.fullResolutionArtworkUrl
 import com.luc4n3x.levyra.domain.AlbumHit
@@ -88,9 +90,12 @@ import com.luc4n3x.levyra.ui.i18n.LevyraAtelierStrings
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.AtelierDesign
+import com.luc4n3x.levyra.viewmodel.DailyTop100ViewModel
 import com.luc4n3x.levyra.viewmodel.ExploreViewModel
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import kotlin.random.Random
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 
 private const val AtelierExploreCollapsedCharts = 10
 private const val AtelierCrateSize = 4
@@ -282,6 +287,9 @@ internal fun AtelierExploreEntry(
     val crate = remember(cratePool, crateRoll) { atelierExploreCrateSelection(cratePool, crateRoll) }
     val nothingLoaded = releases.isEmpty() && fresh.isEmpty() && charts.isEmpty() && editorial?.news.isNullOrEmpty()
     val stillLoading = state.isExploreCategoriesLoading || state.isFreshCurrentsLoading || state.isNewReleasesLoading
+    val dailyCharts = viewModel<DailyTop100ViewModel>()
+    val hasCityCharts by remember(dailyCharts) { dailyCharts.state.map { it.cities.isNotEmpty() }.distinctUntilChanged() }
+        .collectAsStateWithLifecycle(dailyCharts.state.value.cities.isNotEmpty())
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val play: (List<Track>, Track) -> Unit = { list, track -> atelierExplorePlay(list, track, currentId, state, viewModel) }
     val openCrate: (AtelierCrateItem) -> Unit = { item -> atelierExploreOpenCrate(item, crateTracks, viewModel, play) }
@@ -301,6 +309,11 @@ internal fun AtelierExploreEntry(
             if (editorial != null) {
                 item(key = "atelier-explore-top100", contentType = "atelier-top100") {
                     ExploreDailyTop100(onPlay = editorial.onPlayChart, onTrackActions = editorial.onTrackMenu)
+                }
+                if (hasCityCharts) {
+                    item(key = "atelier-explore-city-charts", contentType = "atelier-city-charts") {
+                        ExploreCityCharts(onPlay = editorial.onPlayChart, onTrackActions = editorial.onTrackMenu)
+                    }
                 }
             }
             atelierExploreCrateAndCabinet(crate, crateRoll, { crateRoll += 1 }, openCrate)
