@@ -1925,6 +1925,7 @@ internal fun parametricProfileToJson(profile: ParametricEqProfile): JSONObject =
     .put("name", profile.name)
     .put("preampDb", profile.preampDb.toDouble())
     .put("bands", JSONArray().apply { profile.bands.forEach { put(parametricBandToJson(it)) } })
+    .apply { profile.orbitLayout?.let { put("orbitLayout", it.encoded()) } }
 
 internal fun parametricProfileFromJson(json: JSONObject): ParametricEqProfile? {
     val bandsArray = json.optJSONArray("bands") ?: return null
@@ -1937,7 +1938,8 @@ internal fun parametricProfileFromJson(json: JSONObject): ParametricEqProfile? {
         id = json.optString("id"),
         name = json.optString("name"),
         preampDb = json.optDouble("preampDb", Double.NaN).toFloat(),
-        bands = bands
+        bands = bands,
+        orbitLayout = OrbitLayout.decode(json.optString("orbitLayout"))
     ).normalized()
 }
 

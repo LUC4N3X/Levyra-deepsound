@@ -77,6 +77,7 @@ class OrbitEqualizerTest {
 
         assertNull(OrbitEqualizer.positionOf(ParametricEqualizer.defaultProfile))
         assertNull(OrbitEqualizer.positionOf(tweaked))
+        assertNull(OrbitEqualizer.restore(tweaked, null))
         assertNull(OrbitEqualizer.positionOf(null))
     }
 
@@ -147,6 +148,31 @@ class OrbitEqualizerTest {
         val shape = OrbitEqualizer.shape(puck, "x", angles)
         assertNotNull(shape.profile.normalized())
         assertTrue(shape.profile.preampDb < 0f)
+    }
+
+    @Test
+    fun `a one degree pole move changes the response by less than one decibel`() {
+        val puck = OrbitPosition(-1f, 0f)
+        val legacy = OrbitEqualizer.bandGains(puck)
+        listOf(listOf(181f, 0f, 90f, 270f), listOf(180f, 0f, 90f, 271f), listOf(180f, 359f, 90f, 270f)).forEach { angles ->
+            val moved = OrbitEqualizer.bandGains(puck, angles)
+            legacy.indices.forEach { assertEquals("angles=$angles band=$it", legacy[it], moved[it], 1f) }
+        }
+        assertEquals(-7f, legacy[4], 1e-4f)
+    }
+
+    @Test
+    fun `poles moved thirty degrees or more give the pure boost only sum`() {
+        val puck = OrbitPosition(-0.4f, 0.8f)
+        val vectors = listOf(tiltWeights.map { maxOf(0f, -it) }, tiltWeights.map { maxOf(0f, it) }, contourWeights.map { maxOf(0f, it) }, contourWeights.map { maxOf(0f, -it) })
+        listOf(listOf(150f, 0f, 90f, 270f), listOf(180f, 0f, 90f, 200f), listOf(10f, 200f, 300f, 45f)).forEach { angles ->
+            val weights = OrbitEqualizer.poleWeights(puck, angles)
+            val gains = OrbitEqualizer.bandGains(puck, angles)
+            gains.indices.forEach { band ->
+                val expected = OrbitEqualizer.DEPTH_DB * weights.indices.sumOf { (weights[it] * vectors[it][band]).toDouble() }.toFloat()
+                assertEquals("angles=$angles band=$band", expected, gains[band], 1e-4f)
+            }
+        }
     }
 
     @Test

@@ -59,6 +59,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -66,13 +67,16 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -102,6 +106,7 @@ import kotlinx.coroutines.launch
 private const val CENTER_SNAP = 0.06f
 private const val POLE_REACH = 0.75f
 private const val NUDGE = 0.1f
+private const val LABEL_GAP_DEGREES = 24f
 private val GRAB_RADIUS = 40.dp
 private val FIELD_INSET = 36.dp
 
@@ -233,7 +238,8 @@ internal fun OrbitEqualizerCard(
                 onComparing = { orbit.comparing = it },
                 onSave = {
                     val name = ParametricProfiles.availableName(copy.title, copy.title, customProfiles) { stem, number -> "$stem $number" }
-                    onSave(name, shape.profile)
+                    val saved = OrbitLayout(poleAngles, live).takeIf { poleAngles != OrbitEqualizer.DEFAULT_POLE_ANGLES }
+                    onSave(name, shape.profile.copy(orbitLayout = saved))
                 }
             )
 
@@ -400,7 +406,7 @@ private fun OrbitSavedProfiles(
     activeId: String?,
     onActivate: (String) -> Unit
 ) {
-    val saved = remember(customProfiles) { customProfiles.filter { OrbitEqualizer.positionOf(it) != null } }
+    val saved = remember(customProfiles) { customProfiles.filter { OrbitEqualizer.restore(it, it.orbitLayout) != null } }
     if (saved.isEmpty()) return
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(title, color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.Black)
@@ -458,44 +464,13 @@ private fun OrbitField(
             .widthIn(max = 380.dp)
             .fillMaxWidth()
             .aspectRatio(1f)
-            .pointerInput(Unit) {
-                awaitEachGesture {
-                    val down = awaitFirstDown()
-                    val inset = FIELD_INSET.toPx()
-                    val center = Offset(size.width / 2f, size.height / 2f)
-                    val radius = size.width / 2f - inset
-                    fun unit(point: Offset) = OrbitPosition(
-                        (point.x - center.x) / radius,
-                        (center.y - point.y) / radius
-                    ).clamped()
-                    val current = latestPosition
-                    val handle = Offset(center.x + current.tilt * radius, center.y - current.contour * radius)
-                    if ((down.position - handle).getDistance() > GRAB_RADIUS.toPx()) {
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            val change = event.changes.firstOrNull { it.id == down.id } ?: return@awaitEachGesture
-                            if (change.isConsumed || (change.position - down.position).getDistance() > viewConfiguration.touchSlop) {
-                                return@awaitEachGesture
-                            }
-                            if (!change.pressed) {
-                                change.consume()
-                                if ((down.position - center).getDistance() <= radius + viewConfiguration.touchSlop) latestTap(unit(down.position))
-                                return@awaitEachGesture
-                            }
-                        }
-                    }
-                    down.consume()
-                    latestStart()
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                        if (!change.pressed) break
-                        change.consume()
-                        latestDrag(unit(change.position))
-                    }
-                    latestEnd()
-                }
-            }
+            .orbitPadGestures(
+                position = { latestPosition },
+                onTap = { latestTap(it) },
+                onStart = { latestStart() },
+                onDrag = { latestDrag(it) },
+                onEnd = { latestEnd() }
+            )
     ) {
         Canvas(
             modifier = Modifier
@@ -514,47 +489,14 @@ private fun OrbitField(
                     )
                 }
         ) {
-            val radius = size.minDimension / 2f
-            val center = Offset(size.width / 2f, size.height / 2f)
-            val point = Offset(center.x + position.tilt * radius, center.y - position.contour * radius)
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(accent.copy(alpha = 0.10f + 0.22f * position.radius), Color.Transparent),
-                    center = point,
-                    radius = radius * 1.25f
-                ),
-                radius = radius,
-                center = center
-            )
-            listOf(1f / 3f, 2f / 3f).forEach { fraction ->
-                drawCircle(hairline, radius = radius * fraction, center = center, style = Stroke(1.dp.toPx()))
-            }
-            drawCircle(accent.copy(alpha = 0.55f), radius = radius, center = center, style = Stroke(1.5.dp.toPx()))
-            drawLine(hairline, Offset(center.x - radius, center.y), Offset(center.x + radius, center.y), 1.dp.toPx())
-            drawLine(hairline, Offset(center.x, center.y - radius), Offset(center.x, center.y + radius), 1.dp.toPx())
-            poleAngles.forEach { angle ->
-                val direction = OrbitEqualizer.poleDirection(angle)
-                val anchor = Offset(center.x + direction.tilt * radius, center.y - direction.contour * radius)
-                drawCircle(surface, radius = 5.dp.toPx(), center = anchor)
-                drawCircle(accent.copy(alpha = 0.7f), radius = 3.5.dp.toPx(), center = anchor)
-            }
-            drawLine(
-                brush = Brush.linearGradient(listOf(accent.copy(alpha = 0.05f), accent.copy(alpha = 0.75f)), center, point),
-                start = center,
-                end = point,
-                strokeWidth = 2.dp.toPx(),
-                cap = StrokeCap.Round
-            )
-            drawCircle(muted, radius = 2.5.dp.toPx(), center = center)
-            drawCircle(accent.copy(alpha = 0.2f), radius = 20.dp.toPx() * halo, center = point)
-            drawCircle(surface, radius = 11.dp.toPx(), center = point)
-            drawCircle(accent, radius = 8.dp.toPx(), center = point)
+            drawOrbitField(position, poleAngles, accent, halo, hairline, muted, surface)
         }
         labels.forEachIndexed { pole, label ->
             val vertical = abs(OrbitEqualizer.poleDirection(poleAngles[pole]).contour) > 0.7f
             OrbitPoleLabel(
                 label = label,
                 angle = { latestAngles[pole] },
+                stack = { latestAngles.take(pole).count { angularGap(it, latestAngles[pole]) < LABEL_GAP_DEGREES } },
                 maxWidth = if (vertical) 168.dp else 96.dp,
                 resetLabel = copy.resetPoles,
                 onTap = { onPole(poleTarget(poleAngles[pole])) },
@@ -565,6 +507,97 @@ private fun OrbitField(
             )
         }
     }
+}
+
+private fun Modifier.orbitPadGestures(
+    position: () -> OrbitPosition,
+    onTap: (OrbitPosition) -> Unit,
+    onStart: () -> Unit,
+    onDrag: (OrbitPosition) -> Unit,
+    onEnd: () -> Unit
+): Modifier = pointerInput(Unit) {
+    awaitEachGesture {
+        val down = awaitFirstDown()
+        val inset = FIELD_INSET.toPx()
+        val center = Offset(size.width / 2f, size.height / 2f)
+        val radius = size.width / 2f - inset
+        fun unit(point: Offset) = OrbitPosition(
+            (point.x - center.x) / radius,
+            (center.y - point.y) / radius
+        ).clamped()
+        val current = position()
+        val handle = Offset(center.x + current.tilt * radius, center.y - current.contour * radius)
+        if ((down.position - handle).getDistance() > GRAB_RADIUS.toPx()) {
+            while (true) {
+                val event = awaitPointerEvent()
+                val change = event.changes.firstOrNull { it.id == down.id } ?: return@awaitEachGesture
+                if (change.isConsumed || (change.position - down.position).getDistance() > viewConfiguration.touchSlop) {
+                    return@awaitEachGesture
+                }
+                if (!change.pressed) {
+                    change.consume()
+                    if ((down.position - center).getDistance() <= radius + viewConfiguration.touchSlop) onTap(unit(down.position))
+                    return@awaitEachGesture
+                }
+            }
+        }
+        down.consume()
+        onStart()
+        while (true) {
+            val event = awaitPointerEvent()
+            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+            if (!change.pressed) break
+            change.consume()
+            onDrag(unit(change.position))
+        }
+        onEnd()
+    }
+}
+
+private fun DrawScope.drawOrbitField(
+    position: OrbitPosition,
+    poleAngles: List<Float>,
+    accent: Color,
+    halo: Float,
+    hairline: Color,
+    muted: Color,
+    surface: Color
+) {
+    val radius = size.minDimension / 2f
+    val center = Offset(size.width / 2f, size.height / 2f)
+    val point = Offset(center.x + position.tilt * radius, center.y - position.contour * radius)
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(accent.copy(alpha = 0.10f + 0.22f * position.radius), Color.Transparent),
+            center = point,
+            radius = radius * 1.25f
+        ),
+        radius = radius,
+        center = center
+    )
+    listOf(1f / 3f, 2f / 3f).forEach { fraction ->
+        drawCircle(hairline, radius = radius * fraction, center = center, style = Stroke(1.dp.toPx()))
+    }
+    drawCircle(accent.copy(alpha = 0.55f), radius = radius, center = center, style = Stroke(1.5.dp.toPx()))
+    drawLine(hairline, Offset(center.x - radius, center.y), Offset(center.x + radius, center.y), 1.dp.toPx())
+    drawLine(hairline, Offset(center.x, center.y - radius), Offset(center.x, center.y + radius), 1.dp.toPx())
+    poleAngles.forEach { angle ->
+        val direction = OrbitEqualizer.poleDirection(angle)
+        val anchor = Offset(center.x + direction.tilt * radius, center.y - direction.contour * radius)
+        drawCircle(surface, radius = 5.dp.toPx(), center = anchor)
+        drawCircle(accent.copy(alpha = 0.7f), radius = 3.5.dp.toPx(), center = anchor)
+    }
+    drawLine(
+        brush = Brush.linearGradient(listOf(accent.copy(alpha = 0.05f), accent.copy(alpha = 0.75f)), center, point),
+        start = center,
+        end = point,
+        strokeWidth = 2.dp.toPx(),
+        cap = StrokeCap.Round
+    )
+    drawCircle(muted, radius = 2.5.dp.toPx(), center = center)
+    drawCircle(accent.copy(alpha = 0.2f), radius = 20.dp.toPx() * halo, center = point)
+    drawCircle(surface, radius = 11.dp.toPx(), center = point)
+    drawCircle(accent, radius = 8.dp.toPx(), center = point)
 }
 
 private fun poleState(position: OrbitPosition, poleAngles: List<Float>, labels: List<String>): String {
@@ -579,7 +612,9 @@ private class RingSlot {
     var fieldHeight = 0
 }
 
-private fun Modifier.ringAnchor(angle: () -> Float, slot: RingSlot): Modifier = layout { measurable, constraints ->
+private fun angularGap(first: Float, second: Float): Float = abs(((first - second) % 360f + 540f) % 360f - 180f)
+
+private fun Modifier.ringAnchor(angle: () -> Float, stack: () -> Int, slot: RingSlot): Modifier = layout { measurable, constraints ->
     val placeable = measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
     val width = constraints.maxWidth
     val height = constraints.maxHeight
@@ -587,7 +622,8 @@ private fun Modifier.ringAnchor(angle: () -> Float, slot: RingSlot): Modifier = 
         val direction = OrbitEqualizer.poleDirection(angle())
         val distance = width / 2f - FIELD_INSET.toPx() / 2f
         val x = (width / 2f + direction.tilt * distance - placeable.width / 2f).roundToInt()
-        val y = (height / 2f - direction.contour * distance - placeable.height / 2f).roundToInt()
+        val lift = stack() * placeable.height * (if (direction.contour >= 0f) 1 else -1)
+        val y = (height / 2f - direction.contour * distance - placeable.height / 2f).roundToInt() + lift
         slot.x = x.coerceIn(0, (width - placeable.width).coerceAtLeast(0))
         slot.y = y.coerceIn(0, (height - placeable.height).coerceAtLeast(0))
         slot.fieldWidth = width
@@ -600,6 +636,7 @@ private fun Modifier.ringAnchor(angle: () -> Float, slot: RingSlot): Modifier = 
 private fun OrbitPoleLabel(
     label: String,
     angle: () -> Float,
+    stack: () -> Int,
     maxWidth: Dp,
     resetLabel: String,
     onTap: () -> Unit,
@@ -616,7 +653,7 @@ private fun OrbitPoleLabel(
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .fillMaxSize()
-            .ringAnchor(angle, slot)
+            .ringAnchor(angle, stack, slot)
             .sizeIn(minWidth = 48.dp, minHeight = 48.dp, maxWidth = maxWidth)
             .pointerInput(Unit) {
                 detectDragGestures(
@@ -631,6 +668,17 @@ private fun OrbitPoleLabel(
                 }
             }
             .combinedClickable(role = Role.Button, onLongClickLabel = resetLabel, onLongClick = onReset, onClick = onTap)
+            .semantics {
+                val degrees = angle()
+                progressBarRangeInfo = ProgressBarRangeInfo(degrees, 0f..360f)
+                stateDescription = "${degrees.roundToInt()}°"
+                setProgress { target ->
+                    latestDragStart()
+                    latestDrag(target)
+                    latestDragEnd()
+                    true
+                }
+            }
     ) {
         BasicText(
             text = label,

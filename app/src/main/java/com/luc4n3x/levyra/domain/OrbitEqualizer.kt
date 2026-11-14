@@ -53,6 +53,7 @@ object OrbitEqualizer {
     const val SAFETY_MARGIN_DB = 0.3f
     const val POSITION_STEPS = 100f
     val DEFAULT_POLE_ANGLES = listOf(180f, 0f, 90f, 270f)
+    const val POLE_BLEND_DEGREES = 30f
 
     private val frequencies = floatArrayOf(105f, 260f, 1_150f, 3_300f, 9_500f)
     private val qValues = floatArrayOf(0.71f, 0.9f, 0.75f, 1.0f, 0.71f)
@@ -95,16 +96,24 @@ object OrbitEqualizer {
     }
 
     fun bandGains(position: OrbitPosition, poleAngles: List<Float> = DEFAULT_POLE_ANGLES): FloatArray {
-        if (poleAngles == DEFAULT_POLE_ANGLES) {
-            val clamped = position.clamped()
-            return FloatArray(frequencies.size) { index ->
-                DEPTH_DB * (clamped.tilt * tiltWeights[index] + clamped.contour * contourWeights[index])
-            }
+        val clamped = position.clamped()
+        val legacy = FloatArray(frequencies.size) { index ->
+            DEPTH_DB * (clamped.tilt * tiltWeights[index] + clamped.contour * contourWeights[index])
         }
+        val blend = poleShift(poleAngles)
+        if (blend == 0f) return legacy
         val weights = poleWeights(position, poleAngles)
         return FloatArray(frequencies.size) { index ->
-            DEPTH_DB * poleVectors.indices.sumOf { pole -> (weights[pole] * poleVectors[pole][index]).toDouble() }.toFloat()
+            val boost = DEPTH_DB * poleVectors.indices.sumOf { pole -> (weights[pole] * poleVectors[pole][index]).toDouble() }.toFloat()
+            (1f - blend) * legacy[index] + blend * boost
         }
+    }
+
+    private fun poleShift(poleAngles: List<Float>): Float {
+        val farthest = poleAngles.indices.maxOfOrNull { pole ->
+            abs(((poleAngles[pole] - DEFAULT_POLE_ANGLES[pole]) % 360f + 540f) % 360f - 180f)
+        } ?: 0f
+        return (farthest / POLE_BLEND_DEGREES).coerceIn(0f, 1f)
     }
 
     fun shape(position: OrbitPosition, name: String, poleAngles: List<Float> = DEFAULT_POLE_ANGLES): OrbitShape {

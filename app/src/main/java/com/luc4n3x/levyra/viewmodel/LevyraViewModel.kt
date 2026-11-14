@@ -5457,7 +5457,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun selectParametricProfile(profileId: String) {
         val profile = _state.value.audioSettings.customParametricProfiles.firstOrNull { it.id == profileId } ?: return
-        applyParametricAutoEq(profile)
+        val layout = profile.orbitLayout ?: return applyParametricAutoEq(profile)
+        applyOrbitEqualizer(profile, layout)
     }
 
     fun saveParametricProfile(name: String, profile: ParametricEqProfile): Boolean {

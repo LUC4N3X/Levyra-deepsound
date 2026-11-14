@@ -41,7 +41,8 @@ data class ParametricEqProfile(
     val id: String,
     val name: String,
     val preampDb: Float,
-    val bands: List<ParametricEqBand>
+    val bands: List<ParametricEqBand>,
+    val orbitLayout: OrbitLayout? = null
 ) {
     fun normalized(): ParametricEqProfile? {
         val cleanId = id.trim().take(ParametricEqualizer.MAX_ID_CHARS)
