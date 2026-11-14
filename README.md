@@ -8,7 +8,7 @@
 
 # Levyra
 
-**A music player for Android and Windows that plays what you stream and what you already own.**
+**A music player for Android, Windows and Linux that plays what you stream and what you already own.**
 
 Keep streamed tracks and local files in one library, save music for offline listening, and follow synced lyrics. You don't need a Levyra account. There are no ads or telemetry.
 
@@ -24,7 +24,7 @@ Keep streamed tracks and local files in one library, save music for offline list
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-github-download-mobile-light.svg?v=m3-cool-tonal-6"><source media="(max-width: 600px)" srcset="docs/assets/levyra-github-download-mobile.svg?v=m3-cool-tonal-6"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-github-download-light.svg?v=m3-cool-tonal-6"><img src="docs/assets/levyra-github-download.svg?v=m3-cool-tonal-6" width="185" height="56" alt="Download Levyra from GitHub Releases"></picture></a>
   <a href="https://f-droid.org/packages/com.luc4n3x.levyra/"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-fdroid-mobile-light.svg?v=m3-cool-tonal-6"><source media="(max-width: 600px)" srcset="docs/assets/levyra-fdroid-mobile.svg?v=m3-cool-tonal-6"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-fdroid-light.svg?v=m3-cool-tonal-6"><img src="docs/assets/levyra-fdroid.svg?v=m3-cool-tonal-6" width="185" height="56" alt="Get Levyra on F-Droid"></picture></a>
   <a href="https://www.openapk.net/levyra/com.luc4n3x.levyra/"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-openapk-mobile-light.svg?v=m3-cool-tonal-6"><source media="(max-width: 600px)" srcset="docs/assets/levyra-openapk-mobile.svg?v=m3-cool-tonal-6"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-openapk-light.svg?v=m3-cool-tonal-6"><img src="docs/assets/levyra-openapk.svg?v=m3-cool-tonal-6" width="185" height="56" alt="Get Levyra on OpenAPK"></picture></a>
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/tag/desktop-v1.2.2"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-windows-download-mobile-light.svg?v=m3-cool-tonal-6"><source media="(max-width: 600px)" srcset="docs/assets/levyra-windows-download-mobile.svg?v=m3-cool-tonal-6"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-windows-download-light.svg?v=m3-cool-tonal-6"><img src="docs/assets/levyra-windows-download.svg?v=m3-cool-tonal-6" width="185" height="56" alt="Download Levyra for Windows"></picture></a>
+  <a href="docs/desktop-downloads.md"><picture><source media="(prefers-color-scheme: light) and (max-width: 600px)" srcset="docs/assets/levyra-desktop-download-mobile-light.svg?v=desktop-expressive-5"><source media="(max-width: 600px)" srcset="docs/assets/levyra-desktop-download-mobile.svg?v=desktop-expressive-5"><source media="(prefers-color-scheme: light)" srcset="docs/assets/levyra-desktop-download-light.svg?v=desktop-expressive-5"><img src="docs/assets/levyra-desktop-download.svg?v=desktop-expressive-5" width="185" height="56" alt="Download Levyra for Windows and Linux"></picture></a>
 </p>
 
 <details>
@@ -101,7 +101,7 @@ I don't host FLAC audio on Levyra's servers. On Android, experimental FLAC playb
 
 ## Features
 
-- **Native playback.** Play gapless albums, use crossfade, change pitch and speed, or tune the sound with a 10-band EQ and AutoEQ headphone profiles. Android uses Media3 and ExoPlayer and also has ReplayGain. Windows uses libVLC.
+- **Native playback.** Play gapless albums, use crossfade, change pitch and speed, or tune the sound with a 10-band EQ and AutoEQ headphone profiles. Android uses Media3 and ExoPlayer and also has ReplayGain. Windows and Linux use libVLC.
 - **One library.** Keep local files and streamed tracks in the same playlists, favorites and queues. Queue Spaces let you keep several listening sessions without losing your place.
 - **Playlist import and export (Android).** Bring over playlists from services such as YouTube Music, Spotify, Apple Music and Deezer, or import a playlist file. Review track matches before saving, and export your playlists to files.
 - **Offline downloads.** Save tracks to your storage as standard audio files, with metadata, artwork and lyrics.
@@ -148,9 +148,9 @@ Volunteers have helped me translate Levyra into 42 languages. If a string reads 
 
 If you find a bug, open an [issue](https://github.com/LUC4N3X/Levyra-deepsound/issues) with your Levyra version, device and the steps to reproduce it. I also welcome pull requests. Start with the [contributing guide](.github/CONTRIBUTING.md). For questions and ideas, use [GitHub Discussions](https://github.com/LUC4N3X/Levyra-deepsound/discussions). Report security vulnerabilities privately through the [security policy](.github/SECURITY.md).
 
-The Android app needs Android 8.0 or later and builds with JDK 17. The Windows app lives in `desktop/` and builds with JDK 21. [desktop/README.md](desktop/README.md) has its build steps.
+The Android app needs Android 8.0 or later and builds with JDK 17. The Windows and Linux app lives in `desktop/` and builds with JDK 21. [desktop/README.md](desktop/README.md) has its build steps.
 
-Android uses Kotlin, Jetpack Compose and Media3. Windows uses Compose Multiplatform and libVLC. Both apps share `LevyraExtractor` for stream resolution.
+Android uses Kotlin, Jetpack Compose and Media3. Windows and Linux use Compose Multiplatform and libVLC. Both apps share `LevyraExtractor` for stream resolution.
 
 ```bash
 ./gradlew :app:assembleDebug

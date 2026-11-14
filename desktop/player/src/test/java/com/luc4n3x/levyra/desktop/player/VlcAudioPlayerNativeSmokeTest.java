@@ -10,7 +10,7 @@ import java.util.function.BooleanSupplier;
 public final class VlcAudioPlayerNativeSmokeTest {
     @org.junit.Test
     public void localPlaybackSeekPauseResumeAndClose() throws Exception {
-        org.junit.Assume.assumeTrue("Set LEVYRA_NATIVE_SMOKE=1 on Windows with VLC installed",
+        org.junit.Assume.assumeTrue("Set LEVYRA_NATIVE_SMOKE=1 with VLC installed",
                 "1".equals(System.getenv("LEVYRA_NATIVE_SMOKE")));
         Path directory = Files.createDirectories(Path.of("build", "native-smoke"));
         Path fixture = Files.createTempFile(directory, "silence-", ".wav");
@@ -24,7 +24,7 @@ public final class VlcAudioPlayerNativeSmokeTest {
         Files.write(fixture, wave.array());
         VlcAudioPlayer player = null;
         try {
-            player = VlcAudioPlayer.Companion.create("C:/Program Files/VideoLAN/VLC", null);
+            player = VlcAudioPlayer.Companion.create("", null);
             final VlcAudioPlayer active = player;
             player.setMuted(true);
             player.play(fixture.toUri().toASCIIString(), 0L);

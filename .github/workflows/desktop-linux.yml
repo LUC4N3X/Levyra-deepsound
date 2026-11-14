@@ -1,0 +1,84 @@
+name: Desktop Linux Build
+
+on:
+  pull_request:
+    paths:
+      - "desktop/**"
+      - "app/src/main/java/com/luc4n3x/levyra/data/hqaudio/**"
+      - "app/src/main/java/com/luc4n3x/levyra/data/PlaybackConcurrency.kt"
+      - "app/src/main/java/com/luc4n3x/levyra/domain/**"
+      - "app/src/main/java/com/luc4n3x/levyra/ui/i18n/**"
+      - "app/src/main/java/com/luc4n3x/levyra/player/offline/TidalDashFlac.kt"
+      - "app/src/test/java/com/luc4n3x/levyra/data/hqaudio/**"
+      - "app/src/test/resources/**"
+      - "third_party/**"
+      - ".github/workflows/desktop-linux.yml"
+  push:
+    branches: [main]
+    paths:
+      - "desktop/**"
+      - ".github/workflows/desktop-linux.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-linux-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    name: Linux x64 packages and native playback
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install Linux runtime and packaging dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm fakeroot libvlc5 vlc-bin vlc-plugin-base xvfb dbus-x11 pulseaudio pulseaudio-utils desktop-file-utils libglib2.0-bin fonts-noto-core fonts-noto-cjk
+          pulseaudio --start --exit-idle-time=-1
+          pactl load-module module-null-sink sink_name=levyra_test
+      - name: Test the shared app with native Linux audio
+        working-directory: desktop
+        env:
+          LEVYRA_NATIVE_SMOKE: "1"
+          LEVYRA_RENDER_PREVIEWS: "1"
+        run: dbus-run-session -- xvfb-run -a ./gradlew --stacktrace assemble check
+      - name: Build DEB, RPM and portable app image
+        working-directory: desktop
+        run: ./gradlew --stacktrace createReleaseDistributable packageReleaseDeb packageReleaseRpm
+      - name: Prepare checksummed Linux downloads
+        run: python3 desktop/packaging/linux/prepare_assets.py
+      - name: Install and smoke test the actual DEB
+        run: |
+          sudo apt-get install -y ./desktop/build/linux-assets/*.deb
+          dpkg-query -W levyra
+          rpm -qp --info desktop/build/linux-assets/*.rpm
+          dbus-run-session -- xvfb-run -a python3 desktop/packaging/linux/smoke_installed.py
+      - name: Upload Linux packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: Levyra-Linux-x64
+          path: desktop/build/linux-assets/*
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload test evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: Levyra-Linux-test-evidence
+          path: |
+            desktop/core/build/reports/tests/
+            desktop/player/build/reports/tests/
+            desktop/app/build/reports/tests/
+            desktop/app/build/previews/
+            desktop/build/linux-smoke.log
+          retention-days: 14

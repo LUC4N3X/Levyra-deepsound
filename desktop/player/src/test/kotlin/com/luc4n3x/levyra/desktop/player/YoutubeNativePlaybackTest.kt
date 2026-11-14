@@ -25,7 +25,7 @@ class YoutubeNativePlaybackTest {
         val audio = YoutubeStreamResolver().resolve(track, AudioQuality.HIGH, PreferredCodec.AUTO)
         val source = audio.url.toHttpUrl()
         println("YouTube client=${source.queryParameter("c")} itag=${source.queryParameter("itag")} bytes=${source.queryParameter("clen")}")
-        VlcAudioPlayer.create("C:/Program Files/VideoLAN/VLC", null).use { player ->
+        VlcAudioPlayer.create("", null).use { player ->
             val terminalFailure = AtomicReference<String?>()
             val eventJob = CoroutineScope(Dispatchers.Default).launch(start = CoroutineStart.UNDISPATCHED) {
                 player.events.collect { event ->

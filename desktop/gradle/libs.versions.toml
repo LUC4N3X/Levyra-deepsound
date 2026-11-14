@@ -13,8 +13,11 @@ slf4j = "2.0.18"
 json = "20260719"
 levyraExtractor = "v1.0.0-levyra.10"
 junit = "4.13.2"
+dbus = "5.2.2"
 
 [libraries]
+dbus-core = { group = "com.github.hypfvieh", name = "dbus-java-core", version.ref = "dbus" }
+dbus-unixsocket = { group = "com.github.hypfvieh", name = "dbus-java-transport-native-unixsocket", version.ref = "dbus" }
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-swing = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-swing", version.ref = "coroutines" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
