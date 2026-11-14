@@ -76,6 +76,7 @@ fun main(args: Array<String>) {
         var windowVisible by remember { mutableStateOf(true) }
         var miniPlayerVisible by remember { mutableStateOf(false) }
         var restorePulse by remember { mutableIntStateOf(0) }
+        val trayAvailable = remember { !java.awt.GraphicsEnvironment.isHeadless() && java.awt.SystemTray.isSupported() }
         val settings by container.settingsStore.settings.collectAsState()
         val library by container.libraryStore.library.collectAsState()
         val chromePlaybackFlow = remember(container) {
@@ -125,7 +126,7 @@ fun main(args: Array<String>) {
         }
 
         fun closeWindow() {
-            if (settings.minimizeToTray) {
+            if (settings.minimizeToTray && trayAvailable) {
                 persistWindow()
                 windowVisible = false
             } else {
@@ -158,6 +159,12 @@ fun main(args: Array<String>) {
         }
 
         DisposableEffect(settings.globalMediaKeys) {
+            val linuxMedia = if (settings.globalMediaKeys && DesktopPlatform.isLinux) {
+                LinuxMprisService(container.playbackController, ::showMainWindow, ::quit, onOpen = { payload ->
+                    showMainWindow()
+                    DesktopLinkRouter.route(payload, container.appModel)
+                }).also { it.start() }
+            } else null
             val mediaKeys = if (settings.globalMediaKeys) {
                 WindowsMediaKeys { action ->
                     when (action) {
@@ -170,7 +177,7 @@ fun main(args: Array<String>) {
             } else {
                 null
             }
-            onDispose { mediaKeys?.stop() }
+            onDispose { mediaKeys?.stop(); linuxMedia?.close() }
         }
 
         LevyraTray(
@@ -293,6 +300,7 @@ private fun ApplicationScope.LevyraTray(
     onToggleMiniPlayer: () -> Unit,
     onQuit: () -> Unit
 ) {
+    if (!java.awt.SystemTray.isSupported()) return
     Tray(
         icon = levyraIconPainter(),
         tooltip = trackTooltip?.let { "${strings.appName} · $it" } ?: strings.appName,

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="126" height="40" viewBox="0 0 126 40" role="img" aria-label="Download Levyra for Windows and Linux">
+<title>Download Levyra for Windows and Linux</title>
+<path d="M 8 .8 C 4 .8 .8 4 .8 8 V 21 C .8 31 9 39.2 19 39.2 H 106 C 117 39.2 125.2 31 125.2 20 V 6 C 125.2 3 123 .8 120 .8 Z" fill="#B8D0F1"/>
+<clipPath id="badge"><path d="M 8 .8 C 4 .8 .8 4 .8 8 V 21 C .8 31 9 39.2 19 39.2 H 106 C 117 39.2 125.2 31 125.2 20 V 6 C 125.2 3 123 .8 120 .8 Z"/></clipPath>
+<path d="M 0 0 H 24 C 42 8 48 20 37 31 C 38 38 24 40 H 0 Z" clip-path="url(#badge)" fill="#A8C4EB" opacity="0.55"/>
+<g transform="translate(7 7) scale(.65)" fill="none" stroke="#294A77" stroke-width="3"><rect x="1" y="1" width="38" height="27" rx="4"/><path d="M20 29v7m-10 0h20"/></g>
+<text x="43" y="18" font-family="system-ui,Arial,sans-serif" font-size="12" font-weight="690" fill="#294A77">Desktop</text>
+<text x="43" y="31" font-family="system-ui,Arial,sans-serif" font-size="8.5" font-weight="600" fill="#294A77">Windows / Linux</text>
+</svg>

@@ -33,7 +33,7 @@ class HighQualityNativePlaybackTest {
             val audio = resolver.resolve(track, AudioQuality.HIGH, PreferredCodec.AUTO)
             println("Lossless download source: ${audio.label}; codec=${audio.codec}; bytes=${audio.contentLength}")
             assertEquals("flac", audio.codec.lowercase())
-            VlcAudioPlayer.create("C:/Program Files/VideoLAN/VLC", null).use { player ->
+            VlcAudioPlayer.create("", null).use { player ->
                 player.setMuted(true)
                 player.play(audio.url)
                 delay(3_000)
@@ -59,7 +59,7 @@ class HighQualityNativePlaybackTest {
             }
             val offline = resolver.resolve(track.copy(offlinePath = file.toString(), offlineMediaLabel = audio.label), AudioQuality.HIGH, PreferredCodec.AUTO)
             assertTrue(offline.url.startsWith("file:"))
-            VlcAudioPlayer.create("C:/Program Files/VideoLAN/VLC", null).use { player ->
+            VlcAudioPlayer.create("", null).use { player ->
                 player.setMuted(true)
                 player.play(offline.url)
                 delay(2_000)
@@ -92,7 +92,7 @@ class HighQualityNativePlaybackTest {
             println("HQ source: ${resolved.label}; codec=${resolved.codec}; bytes=${resolved.contentLength}")
             assertTrue(resolved.label.contains("320 kbps"))
             assertEquals(track.title, resolved.title)
-            VlcAudioPlayer.create("C:/Program Files/VideoLAN/VLC", null).use { player ->
+            VlcAudioPlayer.create("", null).use { player ->
                 player.setMuted(true)
                 player.play(resolved.url)
                 val deadline = System.nanoTime() + 90_000_000_000L

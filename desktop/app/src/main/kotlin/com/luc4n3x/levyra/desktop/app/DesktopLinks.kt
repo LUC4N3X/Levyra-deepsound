@@ -14,6 +14,10 @@ internal object DesktopProtocolRegistrar {
     private const val REGISTRY_KEY = "HKCU\\Software\\Classes\\$SCHEME"
 
     fun register() {
+        if (DesktopPlatform.isLinux) {
+            LinuxDesktopIntegration.register()
+            return
+        }
         if (!isWindows()) return
         val executable = resolveExecutable() ?: return
         val current = queryDefault("$REGISTRY_KEY\\shell\\open\\command")

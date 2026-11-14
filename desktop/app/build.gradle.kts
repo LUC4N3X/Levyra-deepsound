@@ -100,6 +100,8 @@ dependencies {
     implementation(libs.okio)
     implementation(libs.jna)
     implementation(libs.jna.platform)
+    implementation(libs.dbus.core)
+    runtimeOnly(libs.dbus.unixsocket)
 
     implementation(libs.slf4j.api)
 
@@ -124,7 +126,7 @@ compose.desktop {
         }
 
         nativeDistributions {
-            targetFormats(TargetFormat.Msi, TargetFormat.Exe)
+            targetFormats(TargetFormat.Msi, TargetFormat.Exe, TargetFormat.Deb, TargetFormat.Rpm)
             packageName = "Levyra"
             packageVersion = levyraDesktopVersion
             description = "Levyra Desktop"
@@ -133,6 +135,16 @@ compose.desktop {
             licenseFile.set(rootProject.file("../LICENSE"))
             includeAllModules = true
             appResourcesRootDir.set(project.layout.projectDirectory.dir("resources"))
+
+            linux {
+                iconFile.set(layout.projectDirectory.file("src/main/resources/icons/levyra.png"))
+                packageName = "levyra"
+                shortcut = true
+                menuGroup = "AudioVideo"
+                appCategory = "AudioVideo"
+                debMaintainer = "LUC4N3X"
+                rpmLicenseType = "GPL-3.0-only"
+            }
 
             windows {
                 iconFile.set(rootProject.file("packaging/windows/levyra.ico"))
