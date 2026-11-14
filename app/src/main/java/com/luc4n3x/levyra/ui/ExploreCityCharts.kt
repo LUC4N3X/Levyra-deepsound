@@ -2,9 +2,9 @@ package com.luc4n3x.levyra.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -22,9 +22,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -85,7 +90,7 @@ internal fun ExploreCityCharts(
             LevyraIsAtelier -> CitySkin.Atelier
             else -> CitySkin.Default
         }
-        val monoOverline = if (skin == CitySkin.Mono) LevyraMonoHomeStrings.forCode(code).chartsOverline else ""
+        val monoOverline = remember(skin, code) { if (skin == CitySkin.Mono) LevyraMonoHomeStrings.forCode(code).chartsOverline else "" }
         val openCity = { chart: AppleCityChart -> viewModel.open(DailyChartRef.City(chart)) }
         when (skin) {
             CitySkin.YouTubeMusic -> YouTubeMusicCityShelf(cities, slots, copy, rememberTop100Date(code), modifier, openCity)
@@ -100,6 +105,7 @@ internal fun ExploreCityCharts(
                         modifier = Modifier.padding(horizontal = LevyraHomeDesign.HorizontalInset)
                     )
                 }
+                val markers = coverShapes()
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = LevyraHomeDesign.HorizontalInset),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -117,7 +123,7 @@ internal fun ExploreCityCharts(
                             else -> CityChartCover(
                                 chart = chart,
                                 palette = rememberTop100Palette(global = false, slot = slots[index]),
-                                marker = coverShapes()[slots[index] % 4],
+                                marker = markers[slots[index] % 4],
                                 modifier = Modifier.size(Top100CoverSize).then(tap)
                             )
                         }
@@ -137,41 +143,10 @@ private fun CityChartCover(
     modifier: Modifier = Modifier
 ) {
     val seed = chart.name.hashCode()
-    Box(
+    Column(
         modifier
             .clip(RoundedCornerShape(Top100CoverCorner))
             .background(palette.canvas)
-            .drawWithCache {
-                val random = Random(seed)
-                val count = 6 + random.nextInt(4)
-                val gap = 3.dp.toPx()
-                val radius = CornerRadius(6.dp.toPx())
-                val shades = arrayOf(palette.glyph, palette.accent.copy(alpha = 0.3f), palette.ink.copy(alpha = 0.14f))
-                val low = count / 2 + random.nextInt(count - count / 2)
-                val weights = FloatArray(count) { if (it == low) 1.5f else 0.7f + random.nextFloat() * 0.6f }
-                val unit = (size.width - gap * (count + 1)) / weights.sum()
-                val widths = FloatArray(count) { weights[it] * unit }
-                val lefts = FloatArray(count)
-                var x = gap
-                for (i in 0 until count) {
-                    lefts[i] = x
-                    x += widths[i] + gap
-                }
-                val tops = FloatArray(count) {
-                    size.height * (1f - if (it == low) 0.16f + random.nextFloat() * 0.05f else 0.2f + random.nextFloat() * 0.2f)
-                }
-                val tones = IntArray(count) { random.nextInt(shades.size) }
-                val markerSide = minOf(22.dp.toPx(), widths[low])
-                val markerOutline = marker.createOutline(Size(markerSide, markerSide), layoutDirection, this)
-                val markerLeft = lefts[low] + (widths[low] - markerSide) / 2f
-                val markerTop = tops[low] - gap * 2 - markerSide
-                onDrawBehind {
-                    for (i in 0 until count) {
-                        drawRoundRect(shades[tones[i]], Offset(lefts[i], tops[i]), Size(widths[i], size.height - tops[i] + radius.y), radius)
-                    }
-                    translate(markerLeft, markerTop) { drawOutline(markerOutline, palette.accent) }
-                }
-            }
     ) {
         Column(Modifier.padding(start = 14.dp, top = 14.dp, end = 12.dp)) {
             Text(
@@ -195,5 +170,103 @@ private fun CityChartCover(
                 modifier = Modifier.padding(top = 2.dp)
             )
         }
+        Spacer(
+            Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(top = 6.dp)
+                .drawWithCache {
+                    val random = Random(seed)
+                    val unit = 3.dp.toPx()
+                    val water = size.height * 0.12f
+                    val ground = size.height - water
+                    val back = Path()
+                    val front = Path()
+                    val windows = Path()
+                    skylineRow(back, null, random, size.width, ground, 0.45f, 0.85f, unit)
+                    skylineRow(front, windows, random, size.width, ground, 0.2f, 0.55f, unit)
+                    val sunSide = minOf(22.dp.toPx(), size.height * 0.32f)
+                    val sun = marker.createOutline(Size(sunSide, sunSide), layoutDirection, this)
+                    val sunLeft = size.width * (0.55f + random.nextFloat() * 0.25f)
+                    val backColor = lerp(palette.canvas, palette.accent, 0.3f)
+                    val frontColor = lerp(palette.canvas, Color.Black, 0.4f)
+                    val waterColor = lerp(palette.canvas, Color.Black, 0.22f)
+                    val ripple = palette.accent.copy(alpha = 0.32f)
+                    val rippleStroke = unit * 0.5f
+                    val ripples = List(2) { row ->
+                        val y = ground + water * (0.4f + row * 0.35f)
+                        val start = size.width * (0.08f + random.nextFloat() * 0.5f)
+                        Offset(start, y) to Offset(start + size.width * (0.15f + random.nextFloat() * 0.2f), y)
+                    }
+                    onDrawBehind {
+                        translate(sunLeft, unit * 0.5f) { drawOutline(sun, palette.accent) }
+                        drawPath(back, backColor)
+                        drawRect(waterColor, Offset(0f, ground), Size(size.width, water))
+                        ripples.forEach { (start, end) -> drawLine(ripple, start, end, rippleStroke, StrokeCap.Round) }
+                        drawPath(front, frontColor)
+                        drawPath(windows, palette.accent)
+                    }
+                }
+        )
+    }
+}
+
+private fun skylineRow(
+    path: Path,
+    windows: Path?,
+    random: Random,
+    width: Float,
+    ground: Float,
+    minRise: Float,
+    maxRise: Float,
+    unit: Float
+) {
+    val room = ground - unit * 5f
+    val roof = CornerRadius(unit * 0.8f)
+    var x = -unit * 2f * random.nextFloat()
+    while (x < width) {
+        val w = unit * (5 + random.nextInt(5))
+        val top = ground - room * (minRise + random.nextFloat() * (maxRise - minRise))
+        val bodyTop = when (random.nextInt(4)) {
+            0 -> {
+                path.addRoundRect(RoundRect(x, top, x + w, ground, topLeftCornerRadius = roof, topRightCornerRadius = roof))
+                top
+            }
+            1 -> {
+                val step = unit * 3f
+                val inset = w * 0.22f
+                path.addRoundRect(
+                    RoundRect(x + inset, top, x + w - inset, top + step + roof.y, topLeftCornerRadius = roof, topRightCornerRadius = roof)
+                )
+                path.addRoundRect(RoundRect(x, top + step, x + w, ground, topLeftCornerRadius = roof, topRightCornerRadius = roof))
+                top + step
+            }
+            2 -> {
+                val mast = unit * 0.35f
+                path.addRoundRect(RoundRect(x + w / 2f - mast, top - unit * 4f, x + w / 2f + mast, top + roof.y, CornerRadius(mast)))
+                path.addRoundRect(RoundRect(x, top, x + w, ground, topLeftCornerRadius = roof, topRightCornerRadius = roof))
+                top
+            }
+            else -> {
+                val dome = CornerRadius(w / 2f)
+                path.addRoundRect(RoundRect(x, top, x + w, ground, topLeftCornerRadius = dome, topRightCornerRadius = dome))
+                top + w / 2f
+            }
+        }
+        if (windows != null && random.nextFloat() < 0.7f) {
+            val cell = unit * 1.4f
+            val pane = unit * 0.8f
+            val glow = CornerRadius(unit * 0.25f)
+            var wy = bodyTop + unit * 1.5f
+            while (wy + pane < ground - unit) {
+                var wx = x + unit * 1.2f
+                while (wx + pane < x + w - unit) {
+                    if (random.nextFloat() < 0.3f) windows.addRoundRect(RoundRect(wx, wy, wx + pane, wy + pane, glow))
+                    wx += cell
+                }
+                wy += cell
+            }
+        }
+        x += w + unit * 0.7f
     }
 }

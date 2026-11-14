@@ -23,9 +23,9 @@ class LevyraStarThanksStringsTest {
         assertEquals(
             StarThanksCopy(
                 title = "Levyra is free",
-                body = "Fixing everything takes a lot of time and effort. I'm not asking for money. " +
-                    "If you want to say thanks, leave a star on the GitHub repository. " +
-                    "If you already have, thank you very much. Happy listening.",
+                body = "Every update takes a lot of time and work. I'm not asking for money: " +
+                    "if you'd like to say thanks, leave a star on GitHub. " +
+                    "If you already have, thank you so much. Happy listening.",
                 star = "Leave a star",
                 done = "I already did, thanks",
                 logoDescription = "Levyra logo"
@@ -34,10 +34,10 @@ class LevyraStarThanksStringsTest {
         )
         assertEquals(
             StarThanksCopy(
-                title = "Levyra è gratuita",
-                body = "Sistemare tutto richiede molto tempo e fatica. Non ti chiedo soldi. " +
-                    "Se vuoi dirmi grazie, lascia una stella al repository su GitHub. " +
-                    "Se l'hai già fatto, ti ringrazio molto. Buon ascolto.",
+                title = "Levyra è gratis",
+                body = "Ogni aggiornamento richiede tanto tempo e lavoro. Non ti chiedo soldi: " +
+                    "se vuoi dirmi grazie, lasciami una stella su GitHub. " +
+                    "Se l'hai già fatto, grazie di cuore. Buon ascolto.",
                 star = "Lascia una stella",
                 done = "L'ho già fatto, grazie",
                 logoDescription = "Logo di Levyra"

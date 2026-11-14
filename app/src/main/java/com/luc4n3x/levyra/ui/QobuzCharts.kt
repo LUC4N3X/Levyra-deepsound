@@ -38,7 +38,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -61,8 +60,6 @@ import com.luc4n3x.levyra.viewmodel.DailyTop100ChartUiState
 
 private val QobuzTop100Ink = Color(0xFF1A1A1A)
 
-private fun qobuzFixedSp(value: Float, fontScale: Float) = (value / fontScale).sp
-
 internal fun LazyListScope.qobuzChartRails(
     charts: List<AppleDailyChart>,
     cities: List<AppleCityChart>,
@@ -74,7 +71,6 @@ internal fun LazyListScope.qobuzChartRails(
 ) {
     if (charts.isNotEmpty()) {
         item(key = "qobuz-top100", contentType = "qobuz-chart-rail") {
-            val fontScale = LocalDensity.current.fontScale
             Column(Modifier.padding(top = 32.dp)) {
                 QobuzSectionHeader(chartCopy.title, chartCopy.subtitle, "", null)
                 Spacer(Modifier.height(QobuzDesign.headerToContent))
@@ -82,7 +78,7 @@ internal fun LazyListScope.qobuzChartRails(
                     items(charts, key = { it.playlistId }, contentType = { "qobuz-top100-card" }) { chart ->
                         val label = if (chart.global) chartCopy.global else chart.label
                         QobuzTop100Card(
-                            label, chartCopy.title, date, fontScale,
+                            label, chartCopy.title, date,
                             Modifier
                                 .semantics(mergeDescendants = true) { contentDescription = "${chartCopy.title}, $label" }
                                 .clickable(role = Role.Button) { onOpenChart(chart) }
@@ -94,14 +90,13 @@ internal fun LazyListScope.qobuzChartRails(
     }
     if (cities.isNotEmpty()) {
         item(key = "qobuz-city-charts", contentType = "qobuz-chart-rail") {
-            val fontScale = LocalDensity.current.fontScale
             Column(Modifier.padding(top = 32.dp)) {
                 QobuzSectionHeader(cityCopy.title, cityCopy.subtitle, "", null)
                 Spacer(Modifier.height(QobuzDesign.headerToContent))
                 LazyRow(contentPadding = QobuzRowPadding, horizontalArrangement = Arrangement.spacedBy(QobuzDesign.itemGap)) {
                     items(cities, key = { it.playlistId }, contentType = { "qobuz-city-card" }) { chart ->
                         QobuzCityCard(
-                            chart.name, chart.badge, qobuzTagPalette(chart.playlistId), fontScale,
+                            chart.name, chart.badge, qobuzTagPalette(chart.playlistId),
                             Modifier
                                 .semantics(mergeDescendants = true) { contentDescription = "${cityCopy.title}, ${chart.name}" }
                                 .clickable(role = Role.Button) { onOpenCity(chart) }
@@ -114,16 +109,16 @@ internal fun LazyListScope.qobuzChartRails(
 }
 
 @Composable
-internal fun QobuzTop100Card(label: String, title: String, date: String, fontScale: Float, modifier: Modifier = Modifier) {
+internal fun QobuzTop100Card(label: String, title: String, date: String, modifier: Modifier = Modifier) {
     Column(modifier.width(QobuzDesign.gridCard)) {
         Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(QobuzDesign.cardShape).background(QobuzTop100Ink)) {
             Text(
-                date, color = QobuzDesign.hiResGold, fontSize = qobuzFixedSp(11f, fontScale), fontWeight = FontWeight.Bold, letterSpacing = 1.sp,
+                date, color = QobuzDesign.hiResGold, fontSize = fixedSp(11f), fontWeight = FontWeight.Bold, letterSpacing = 1.sp,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.align(Alignment.TopStart).padding(start = 14.dp, top = 14.dp, end = 14.dp)
             )
             Text(
-                "100", color = QobuzDesign.hiResGold, fontSize = qobuzFixedSp(64f, fontScale), lineHeight = qobuzFixedSp(64f, fontScale),
+                "100", color = QobuzDesign.hiResGold, fontSize = fixedSp(64f), lineHeight = fixedSp(64f),
                 fontWeight = FontWeight.Medium, maxLines = 1, softWrap = false,
                 modifier = Modifier.align(Alignment.BottomStart).padding(start = 14.dp, bottom = 12.dp)
             )
@@ -135,18 +130,18 @@ internal fun QobuzTop100Card(label: String, title: String, date: String, fontSca
 }
 
 @Composable
-internal fun QobuzCityCard(name: String, badge: String, colors: Pair<Color, Color>, fontScale: Float, modifier: Modifier = Modifier) {
+internal fun QobuzCityCard(name: String, badge: String, colors: Pair<Color, Color>, modifier: Modifier = Modifier) {
     Box(
         modifier.width(QobuzDesign.gridCard).aspectRatio(1f).clip(QobuzDesign.cardShape)
             .background(Brush.linearGradient(listOf(colors.first, colors.second)))
     ) {
         Text(
-            badge, color = Color.White, fontSize = qobuzFixedSp(12f, fontScale), fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            badge, color = Color.White, fontSize = fixedSp(12f), fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.align(Alignment.TopStart).padding(12.dp).clip(QobuzDesign.buttonShape).background(Color(0x33000000))
                 .padding(horizontal = 10.dp, vertical = 4.dp)
         )
         Text(
-            name, color = Color.White, fontSize = qobuzFixedSp(20f, fontScale), lineHeight = qobuzFixedSp(24f, fontScale), fontWeight = FontWeight.SemiBold,
+            name, color = Color.White, fontSize = fixedSp(20f), lineHeight = fixedSp(24f), fontWeight = FontWeight.SemiBold,
             maxLines = 2, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.align(Alignment.BottomStart).padding(start = 14.dp, end = 14.dp, bottom = 14.dp)
         )
@@ -167,7 +162,6 @@ internal fun QobuzChartScreen(
     BackHandler(onBack = onBack)
     val strings = LocalLevyraStrings.current
     val qobuz = remember(strings.code) { LevyraQobuzSkinStrings.forCode(strings.code) }
-    val fontScale = LocalDensity.current.fontScale
     val view = LocalView.current
     val lightBars = QobuzDesign.surfacePrimary.luminance() > 0.5f
     SideEffect {
@@ -187,7 +181,7 @@ internal fun QobuzChartScreen(
                 Column(Modifier.fillMaxWidth().padding(horizontal = QobuzDesign.gutter, vertical = 8.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         Text(
-                            badge, color = QobuzDesign.textAccent, fontSize = qobuzFixedSp(56f, fontScale), lineHeight = qobuzFixedSp(60f, fontScale),
+                            badge, color = QobuzDesign.textAccent, fontSize = fixedSp(56f), lineHeight = fixedSp(60f),
                             fontWeight = FontWeight.Medium, maxLines = 1, softWrap = false
                         )
                         Text(

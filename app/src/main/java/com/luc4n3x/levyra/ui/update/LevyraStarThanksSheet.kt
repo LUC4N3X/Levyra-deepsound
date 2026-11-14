@@ -81,7 +81,6 @@ internal fun shouldShowStarSheet(firstInstallTime: Long, lastUpdateTime: Long, a
 internal fun LevyraStarThanksGate(enabled: Boolean, languageCode: String, onDecided: (Boolean) -> Unit) {
     val context = LocalContext.current.applicationContext
     val preferences = remember(context) { LevyraPreferences(context) }
-    val scope = rememberCoroutineScope()
     var visible by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(enabled) {
@@ -100,11 +99,10 @@ internal fun LevyraStarThanksGate(enabled: Boolean, languageCode: String, onDeci
     if (!visible || !enabled) return
     val strings = remember(languageCode) { LevyraStrings.forCode(languageCode) }
     val layoutDirection = if (LevyraLanguageCatalog.isRtl(languageCode)) LayoutDirection.Rtl else LayoutDirection.Ltr
+    val announcements = remember(context) { RemoteAnnouncementRepository(context) }
     val dismiss = {
         preferences.setStarThanksShown()
-        scope.launch(Dispatchers.IO) {
-            RemoteAnnouncementRepository(context).markCompleted(BUILT_IN_SUPPORT_ANNOUNCEMENT_ID)
-        }
+        announcements.markCompleted(BUILT_IN_SUPPORT_ANNOUNCEMENT_ID)
         visible = false
     }
     CompositionLocalProvider(
