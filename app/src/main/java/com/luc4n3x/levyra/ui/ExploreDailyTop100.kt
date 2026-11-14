@@ -73,6 +73,7 @@ import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.luc4n3x.levyra.data.apple.AppleCityChart
 import com.luc4n3x.levyra.domain.ChartsCatalog
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
@@ -231,14 +232,28 @@ internal fun DailyChartDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
     ) {
         val chart = open.chart
-        if (chart is DailyChartRef.City) {
-            val cityCopy = remember(strings.code) { cityChartsCopy(strings.code) }
+        val city = chart as? DailyChartRef.City
+        val numeral = city?.chart?.numeral ?: "100"
+        val screenCopy = if (city != null) copy.copy(title = remember(strings.code) { cityChartsCopy(strings.code) }.title) else copy
+        if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+            MonoTop100ChartScreen(open, label, date, slot, numeral, copy.failed, copy.retry, viewModel::close, viewModel::retry, onPlay, chartTrackActions)
+            return@Dialog
+        }
+        if (com.luc4n3x.levyra.ui.theme.LevyraIsTorque) {
+            TorqueTop100ChartScreen(open, label, date, numeral, screenCopy, viewModel::close, viewModel::retry, onPlay, chartTrackActions)
+            return@Dialog
+        }
+        if (LevyraIsPrismOnly) {
+            PrismTop100ChartScreen(open, label, date, slot, numeral, screenCopy, viewModel::close, viewModel::retry, onPlay, chartTrackActions)
+            return@Dialog
+        }
+        if (city != null) {
             Top100ChartScreen(
                 open = open,
                 label = label,
                 date = date,
-                numeral = chart.chart.badge.filter(Char::isDigit).ifEmpty { chart.chart.badge },
-                copy = copy.copy(title = cityCopy.title),
+                numeral = numeral,
+                copy = screenCopy,
                 palette = cityChartPalette(MaterialTheme.colorScheme),
                 glyph = coverShapes()[slot % 4],
                 rotation = slot * 15f,
@@ -247,18 +262,6 @@ internal fun DailyChartDialog(
                 onPlay = onPlay,
                 onTrackActions = chartTrackActions
             )
-            return@Dialog
-        }
-        if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
-            MonoTop100ChartScreen(open, label, date, slot, copy.failed, copy.retry, viewModel::close, viewModel::retry, onPlay, chartTrackActions)
-            return@Dialog
-        }
-        if (com.luc4n3x.levyra.ui.theme.LevyraIsTorque) {
-            TorqueTop100ChartScreen(open, label, date, copy, viewModel::close, viewModel::retry, onPlay, chartTrackActions)
-            return@Dialog
-        }
-        if (LevyraIsPrismOnly) {
-            PrismTop100ChartScreen(open, label, date, slot, copy, viewModel::close, viewModel::retry, onPlay, chartTrackActions)
             return@Dialog
         }
         if (com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) {
@@ -589,6 +592,30 @@ private fun SpotifyTop100Card(label: String, title: String, subtitle: String, sl
             overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp)
         )
         Text("$label: $subtitle", color = com.luc4n3x.levyra.ui.theme.SpotifyDesign.subdued, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+internal fun SpotifyCityCard(chart: AppleCityChart, slot: Int, modifier: Modifier = Modifier) {
+    val colors = SpotifyTop100Gradients[(slot + 1) % SpotifyTop100Gradients.size]
+    Column(modifier.width(SpotifyTop100Size)) {
+        Box(
+            Modifier.size(SpotifyTop100Size).clip(RoundedCornerShape(4.dp))
+                .background(androidx.compose.ui.graphics.Brush.verticalGradient(colors.map(::Color)))
+        ) {
+            Text(
+                chart.name, color = Color.White, fontSize = 22.sp, lineHeight = 26.sp, fontWeight = FontWeight.Bold, maxLines = 2,
+                overflow = TextOverflow.Ellipsis, modifier = Modifier.align(Alignment.TopStart).padding(start = 12.dp, top = 12.dp, end = 12.dp)
+            )
+            Text(
+                chart.badge.uppercase(), color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.6.sp, maxLines = 1,
+                overflow = TextOverflow.Ellipsis, modifier = Modifier.align(Alignment.BottomStart).padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
+            )
+        }
+        Text(
+            chart.name, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1,
+            overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp)
+        )
     }
 }
 

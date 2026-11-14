@@ -39,11 +39,20 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.LevyraSectionHeader
 import com.luc4n3x.levyra.ui.components.levyraPressable
+import com.luc4n3x.levyra.ui.i18n.LevyraMonoHomeStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.cityChartsCopy
 import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
+import com.luc4n3x.levyra.ui.theme.LevyraIsIvory
+import com.luc4n3x.levyra.ui.theme.LevyraIsMono
+import com.luc4n3x.levyra.ui.theme.LevyraIsSpotify
+import com.luc4n3x.levyra.ui.theme.LevyraIsTorque
 import com.luc4n3x.levyra.viewmodel.DailyChartRef
 import com.luc4n3x.levyra.viewmodel.DailyTop100ViewModel
+
+private enum class CitySkin { Mono, Ivory, Torque, Prism, Spotify, Default }
+
+internal val AppleCityChart.numeral: String get() = badge.filter(Char::isDigit).ifEmpty { badge }
 
 internal fun cityChartPalette(scheme: ColorScheme): Top100Palette =
     Top100Palette(scheme.tertiaryContainer, scheme.onTertiaryContainer, scheme.tertiary, scheme.tertiary.copy(alpha = 0.16f))
@@ -67,28 +76,48 @@ internal fun ExploreCityCharts(
         val palette = cityChartPalette(MaterialTheme.colorScheme)
         val shapes = coverShapes()
         val largeText = LocalDensity.current.fontScale > 1.3f
+        val skin = when {
+            LevyraIsMono -> CitySkin.Mono
+            LevyraIsIvory -> CitySkin.Ivory
+            LevyraIsTorque -> CitySkin.Torque
+            LevyraIsPrismOnly -> CitySkin.Prism
+            LevyraIsSpotify -> CitySkin.Spotify
+            else -> CitySkin.Default
+        }
+        val monoOverline = if (skin == CitySkin.Mono) LevyraMonoHomeStrings.forCode(code).chartsOverline else ""
         Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            LevyraSectionHeader(
-                title = copy.title,
-                subtitle = copy.subtitle,
-                modifier = Modifier.padding(horizontal = LevyraHomeDesign.HorizontalInset)
-            )
+            when (skin) {
+                CitySkin.Mono -> MonoSectionHeader(copy.title, overline = monoOverline)
+                CitySkin.Torque -> SkinSectionTitle(copy.title, TorqueGutter)
+                else -> LevyraSectionHeader(
+                    title = copy.title,
+                    subtitle = copy.subtitle,
+                    modifier = Modifier.padding(horizontal = LevyraHomeDesign.HorizontalInset)
+                )
+            }
             LazyRow(
                 contentPadding = PaddingValues(horizontal = LevyraHomeDesign.HorizontalInset),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 itemsIndexed(cities, key = { _, chart -> chart.playlistId }, contentType = { _, _ -> "city-chart" }) { index, chart ->
-                    CityChartCover(
-                        chart = chart,
-                        palette = palette,
-                        glyph = shapes[slots[index] % 4],
-                        rotation = slots[index] * 15f,
-                        largeText = largeText,
-                        modifier = Modifier
-                            .size(Top100CoverSize)
-                            .semantics(mergeDescendants = true) { contentDescription = "${copy.title}, ${chart.name}" }
-                            .levyraPressable(onClick = { viewModel.open(DailyChartRef.City(chart)) }, role = Role.Button, pressedScale = LevyraPressScale.Tile)
-                    )
+                    val tap = Modifier
+                        .semantics(mergeDescendants = true) { contentDescription = "${copy.title}, ${chart.name}" }
+                        .levyraPressable(onClick = { viewModel.open(DailyChartRef.City(chart)) }, role = Role.Button, pressedScale = LevyraPressScale.Tile)
+                    when (skin) {
+                        CitySkin.Mono -> MonoCityCard(chart, slots[index], Modifier.size(Top100CoverSize).then(tap))
+                        CitySkin.Ivory -> IvoryCityCard(chart, Modifier.size(TorqueTop100Size).then(tap))
+                        CitySkin.Torque -> TorqueCityCard(chart, Modifier.size(TorqueTop100Size).then(tap))
+                        CitySkin.Prism -> PrismCityCard(chart, slots[index], Modifier.size(Top100CoverSize).then(tap))
+                        CitySkin.Spotify -> SpotifyCityCard(chart, slots[index], tap)
+                        CitySkin.Default -> CityChartCover(
+                            chart = chart,
+                            palette = palette,
+                            glyph = shapes[slots[index] % 4],
+                            rotation = slots[index] * 15f,
+                            largeText = largeText,
+                            modifier = Modifier.size(Top100CoverSize).then(tap)
+                        )
+                    }
                 }
             }
         }

@@ -44,6 +44,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.luc4n3x.levyra.data.apple.AppleCityChart
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
@@ -294,6 +295,7 @@ internal fun PrismTop100ChartScreen(
     label: String,
     date: String,
     slot: Int,
+    numeral: String,
     copy: DailyTop100Copy,
     onBack: () -> Unit,
     onRetry: () -> Unit,
@@ -308,7 +310,7 @@ internal fun PrismTop100ChartScreen(
         item(key = "prism-top100-hero") {
             Column(Modifier.fillMaxWidth().statusBarsPadding()) {
                 IconButton(onClick = onBack, modifier = Modifier.padding(8.dp).size(48.dp)) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, strings.back, tint = LevyraText) }
-                PrismTop100Card(label, date, slot, open.chart.global, Modifier.padding(horizontal = PrismDestinationGutter).fillMaxWidth().aspectRatio(1.35f))
+                PrismTop100Card(label, date, slot, open.chart.global, Modifier.padding(horizontal = PrismDestinationGutter).fillMaxWidth().aspectRatio(1.35f), numeral)
                 Row(Modifier.fillMaxWidth().padding(horizontal = PrismDestinationGutter, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(copy.title, color = LevyraText, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f).semantics { heading() })
                     if (tracks.isNotEmpty()) {
@@ -344,7 +346,27 @@ private val PrismChartHues = listOf(
 )
 
 @Composable
-internal fun PrismTop100Card(label: String, date: String, slot: Int, global: Boolean, modifier: Modifier) {
+internal fun PrismCityCard(chart: AppleCityChart, slot: Int, modifier: Modifier) {
+    val (start, end) = PrismChartHues[slot.mod(PrismChartHues.size)]
+    Box(
+        modifier.clip(PrismDesign.cut(22.dp)).background(Color(0xFF0B090D))
+            .background(Brush.linearGradient(listOf(start.copy(alpha = 0.92f), end.copy(alpha = 0.55f), Color(0xFF0B090D))))
+            .padding(16.dp)
+    ) {
+        Text(
+            chart.name, color = Color.White, style = MaterialTheme.typography.headlineSmall, maxLines = 2, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.align(Alignment.TopStart)
+        )
+        Column(Modifier.align(Alignment.BottomStart)) {
+            Box(Modifier.width(22.dp).height(3.dp).clip(CircleShape).background(Color.White))
+            Spacer(Modifier.height(8.dp))
+            Text(chart.badge, color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.labelLarge, letterSpacing = 1.4.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+@Composable
+internal fun PrismTop100Card(label: String, date: String, slot: Int, global: Boolean, modifier: Modifier, numeral: String = "100") {
     val (start, end) = if (global) PrismChartHues[0] else PrismChartHues[slot.mod(PrismChartHues.size)]
     Box(
         modifier.clip(PrismDesign.cut(22.dp)).background(Color(0xFF0B090D))
@@ -353,7 +375,7 @@ internal fun PrismTop100Card(label: String, date: String, slot: Int, global: Boo
     ) {
         Text(date, color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.labelMedium, letterSpacing = 1.4.sp, modifier = Modifier.align(Alignment.TopStart))
         Text(
-            "100", color = Color.White, fontSize = 64.sp, lineHeight = 64.sp, fontWeight = FontWeight.Light, letterSpacing = (-3).sp,
+            numeral, color = Color.White, fontSize = 64.sp, lineHeight = 64.sp, fontWeight = FontWeight.Light, letterSpacing = (-3).sp,
             modifier = Modifier.align(Alignment.CenterStart)
         )
         Column(Modifier.align(Alignment.BottomStart)) {
