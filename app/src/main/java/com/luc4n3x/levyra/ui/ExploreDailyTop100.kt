@@ -231,64 +231,56 @@ internal fun DailyChartDialog(
         onDismissRequest = viewModel::close,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
     ) {
-        val chart = open.chart
-        val city = chart as? DailyChartRef.City
-        val numeral = city?.chart?.numeral ?: "100"
+        val city = (open.chart as? DailyChartRef.City)?.chart
         val screenCopy = if (city != null) copy.copy(title = remember(strings.code) { cityChartsCopy(strings.code) }.title) else copy
-        if (com.luc4n3x.levyra.ui.theme.LevyraIsQobuz) {
-            QobuzChartScreen(open, label, numeral, screenCopy, viewModel::close, viewModel::retry, onPlay, chartTrackActions)
-            return@Dialog
-        }
-        if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
-            MonoTop100ChartScreen(open, label, date, slot, numeral, copy.failed, copy.retry, viewModel::close, viewModel::retry, onPlay, chartTrackActions)
-            return@Dialog
-        }
-        if (com.luc4n3x.levyra.ui.theme.LevyraIsTorque) {
-            TorqueTop100ChartScreen(open, label, date, numeral, screenCopy, viewModel::close, viewModel::retry, onPlay, chartTrackActions)
-            return@Dialog
-        }
-        if (LevyraIsPrismOnly) {
-            PrismTop100ChartScreen(open, label, date, slot, numeral, screenCopy, viewModel::close, viewModel::retry, onPlay, chartTrackActions)
-            return@Dialog
-        }
-        if (com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) {
-            YouTubeMusicTop100ChartScreen(open, label, date, slot, screenCopy, viewModel::close, viewModel::retry, onPlay, chartTrackActions, city?.chart?.badge)
-            return@Dialog
-        }
-        if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) {
-            AtelierTop100ChartScreen(open, label, date, slot, screenCopy, viewModel::close, viewModel::retry, onPlay, chartTrackActions, city?.chart?.badge)
-            return@Dialog
-        }
-        if (city != null) {
-            Top100ChartScreen(
-                open = open,
-                label = label,
-                date = date,
-                numeral = numeral,
-                copy = screenCopy,
-                palette = rememberTop100Palette(global = false, slot = slot),
-                glyph = coverShapes()[slot % 4],
-                rotation = slot * 15f,
-                onBack = viewModel::close,
-                onRetry = viewModel::retry,
-                onPlay = onPlay,
-                onTrackActions = chartTrackActions
-            )
-            return@Dialog
-        }
-        Top100ChartScreen(
+        DailyChartScreen(
+            open, label, date, slot, city, copy, screenCopy,
+            viewModel::close, viewModel::retry, onPlay, chartTrackActions
+        )
+    }
+}
+
+@Composable
+private fun DailyChartScreen(
+    open: DailyTop100ChartUiState,
+    label: String,
+    date: String,
+    slot: Int,
+    city: AppleCityChart?,
+    copy: DailyTop100Copy,
+    screenCopy: DailyTop100Copy,
+    onBack: () -> Unit,
+    onRetry: () -> Unit,
+    onPlay: (List<Track>, Track) -> Unit,
+    onTrackActions: (Track) -> Unit
+) {
+    val numeral = city?.numeral ?: "100"
+    when {
+        com.luc4n3x.levyra.ui.theme.LevyraIsQobuz ->
+            QobuzChartScreen(open, label, numeral, screenCopy, onBack, onRetry, onPlay, onTrackActions)
+        com.luc4n3x.levyra.ui.theme.LevyraIsMono ->
+            MonoTop100ChartScreen(open, label, date, slot, numeral, copy.failed, copy.retry, onBack, onRetry, onPlay, onTrackActions)
+        com.luc4n3x.levyra.ui.theme.LevyraIsTorque ->
+            TorqueTop100ChartScreen(open, label, date, numeral, screenCopy, onBack, onRetry, onPlay, onTrackActions)
+        LevyraIsPrismOnly ->
+            PrismTop100ChartScreen(open, label, date, slot, numeral, screenCopy, onBack, onRetry, onPlay, onTrackActions)
+        com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic ->
+            YouTubeMusicTop100ChartScreen(open, label, date, slot, screenCopy, onBack, onRetry, onPlay, onTrackActions, city?.badge)
+        com.luc4n3x.levyra.ui.theme.LevyraIsAtelier ->
+            AtelierTop100ChartScreen(open, label, date, slot, screenCopy, onBack, onRetry, onPlay, onTrackActions, city?.badge)
+        else -> Top100ChartScreen(
             open = open,
             label = label,
             date = date,
-            numeral = "100",
-            copy = copy,
+            numeral = numeral,
+            copy = screenCopy,
             palette = rememberTop100Palette(open.chart.global, slot),
             glyph = coverShapes()[slot % 4],
             rotation = slot * 15f,
-            onBack = viewModel::close,
-            onRetry = viewModel::retry,
+            onBack = onBack,
+            onRetry = onRetry,
             onPlay = onPlay,
-            onTrackActions = chartTrackActions
+            onTrackActions = onTrackActions
         )
     }
 }
