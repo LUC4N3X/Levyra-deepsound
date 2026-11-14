@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
 import coil3.compose.AsyncImage
+import com.luc4n3x.levyra.data.apple.AppleCityChart
 import com.luc4n3x.levyra.data.apple.AppleDailyChart
 import com.luc4n3x.levyra.data.news.MusicNewsStory
 import com.luc4n3x.levyra.domain.ExploreCategory
@@ -73,6 +74,7 @@ import com.luc4n3x.levyra.domain.YoutubeMusicHomeShelf
 import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
+import com.luc4n3x.levyra.ui.i18n.CityChartsCopy
 import com.luc4n3x.levyra.ui.i18n.DailyTop100Copy
 import com.luc4n3x.levyra.ui.i18n.LevyraAtelierStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
@@ -463,7 +465,42 @@ internal fun AtelierTop100Shelf(
 }
 
 @Composable
-private fun AtelierChartSleeve(label: String, date: String, hue: Color, modifier: Modifier, side: Dp = AtelierChartSleeveSide) {
+internal fun AtelierCityShelf(
+    cities: List<AppleCityChart>,
+    slots: List<Int>,
+    copy: CityChartsCopy,
+    date: String,
+    onOpen: (AppleCityChart) -> Unit
+) {
+    Column(Modifier.fillMaxWidth()) {
+        AtelierSectionLabel(copy.title)
+        Text(
+            copy.subtitle, fontFamily = AtelierSerif, fontStyle = FontStyle.Italic, fontSize = 14.sp,
+            color = AtelierDesign.textSecondary,
+            modifier = Modifier.padding(horizontal = AtelierDesign.gutter).padding(bottom = 14.dp)
+        )
+        LazyRow(contentPadding = AtelierRowPadding, horizontalArrangement = Arrangement.spacedBy(AtelierDesign.itemGap)) {
+            itemsIndexed(cities, key = { _, chart -> chart.playlistId }, contentType = { _, _ -> "atelier-city-chart" }) { index, chart ->
+                AtelierChartSleeve(
+                    chart.name, date, atelierChartHue(slots[index], false, AtelierDesign.accent),
+                    Modifier.semantics(mergeDescendants = true) { contentDescription = "${copy.title}, ${chart.name}" }
+                        .levyraPressable(onClick = { onOpen(chart) }, role = Role.Button, pressedScale = LevyraPressScale.Tile),
+                    badge = chart.badge
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AtelierChartSleeve(
+    label: String,
+    date: String,
+    hue: Color,
+    modifier: Modifier,
+    side: Dp = AtelierChartSleeveSide,
+    badge: String? = null
+) {
     Box(modifier.width(side * 1.2f).height(side)) {
         AtelierVinyl(null, Modifier.align(Alignment.CenterEnd).size(side * 0.94f).graphicsLayer { rotationZ = 24f })
         Box(
@@ -485,16 +522,24 @@ private fun AtelierChartSleeve(label: String, date: String, hue: Color, modifier
                 }
                 .padding(12.dp)
         ) {
-            Text("TOP", fontFamily = AtelierSerif, fontStyle = FontStyle.Italic, fontSize = 15.sp, color = AtelierInk, modifier = Modifier.align(Alignment.TopStart))
-            Text(
-                "100", fontFamily = AtelierSerif, fontWeight = FontWeight.Black, fontSize = 40.sp, lineHeight = 40.sp,
-                color = AtelierInk, modifier = Modifier.align(Alignment.TopStart).padding(top = 16.dp)
-            )
+            if (badge == null) {
+                Text("TOP", fontFamily = AtelierSerif, fontStyle = FontStyle.Italic, fontSize = 15.sp, color = AtelierInk, modifier = Modifier.align(Alignment.TopStart))
+                Text(
+                    "100", fontFamily = AtelierSerif, fontWeight = FontWeight.Black, fontSize = 40.sp, lineHeight = 40.sp,
+                    color = AtelierInk, modifier = Modifier.align(Alignment.TopStart).padding(top = 16.dp)
+                )
+            } else {
+                Text(
+                    label, fontFamily = AtelierSerif, fontWeight = FontWeight.Black, fontSize = 22.sp, lineHeight = 24.sp,
+                    color = AtelierInk, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.align(Alignment.TopStart).padding(end = side * 0.28f - 12.dp)
+                )
+            }
             Column(Modifier.align(Alignment.BottomStart)) {
                 Text(date, style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.4.sp), color = AtelierInk.copy(alpha = 0.7f), maxLines = 1)
                 Text(
-                    atelierUppercase(label), fontFamily = AtelierSerif, fontWeight = FontWeight.Bold, fontSize = 16.sp,
-                    color = AtelierInk, maxLines = 1, overflow = TextOverflow.Ellipsis
+                    atelierUppercase(badge ?: label), fontFamily = AtelierSerif, fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp, color = AtelierInk, maxLines = 1, overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -511,7 +556,8 @@ internal fun AtelierTop100ChartScreen(
     onBack: () -> Unit,
     onRetry: () -> Unit,
     onPlay: (List<Track>, Track) -> Unit,
-    onTrackActions: (Track) -> Unit
+    onTrackActions: (Track) -> Unit,
+    badge: String? = null
 ) {
     BackHandler(onBack = onBack)
     val strings = LocalLevyraStrings.current
@@ -536,7 +582,7 @@ internal fun AtelierTop100ChartScreen(
                     AtelierIconAction(Icons.AutoMirrored.Rounded.ArrowBack, strings.back, onBack, AtelierDesign.text)
                 }
                 Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
-                    AtelierChartSleeve(label, date, hue, Modifier.clearAndSetSemantics { }, side = 200.dp)
+                    AtelierChartSleeve(label, date, hue, Modifier.clearAndSetSemantics { }, side = 200.dp, badge = badge)
                 }
                 Text(
                     "${copy.title} · $label", fontFamily = AtelierSerif, fontWeight = FontWeight.Bold, fontSize = 26.sp,

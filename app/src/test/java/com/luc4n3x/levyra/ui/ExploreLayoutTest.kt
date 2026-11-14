@@ -1,5 +1,8 @@
 package com.luc4n3x.levyra.ui
 
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import com.luc4n3x.levyra.data.news.MusicNewsStory
 import com.luc4n3x.levyra.domain.ExploreCatalog
 import com.luc4n3x.levyra.domain.ExploreCategory
@@ -18,6 +21,17 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ExploreLayoutTest {
+    @Test
+    fun monoCityInkReadsOnEveryHue() {
+        assertEquals(Color(0xFF0B0F12), monoCityInk(Color(0xFFFF8A00)))
+        assertEquals(Color.White, monoCityInk(Color(0xFF2B1A66)))
+        MonoTop100Hues.forEach { hue ->
+            val ink = monoCityInk(hue).luminance() + 0.05f
+            val background = lerp(hue, Color.White, 0.1f).luminance() + 0.05f
+            assertTrue(maxOf(ink, background) / minOf(ink, background) >= 3f)
+        }
+    }
+
     @Test
     fun emotionalJourneyReplacesDuplicatedMoodsAndStaysAvailableWithoutCatalog() {
         listOf(emptyList(), zones(4)).forEach { catalog ->
@@ -39,6 +53,20 @@ class ExploreLayoutTest {
 
         assertEquals(1, withJourney.count { it == ExploreRow.MoodJourney })
         assertTrue(withoutJourney.none { it == ExploreRow.MoodJourney })
+    }
+
+    @Test
+    fun editorialRowsPlaceCityChartsAfterTop100() {
+        val rows = buildExploreRows(zones(4), false, true, editorial = true, hasNews = true, editorialJourney = true, hasCityCharts = true)
+
+        assertEquals(rows.indexOf(ExploreRow.DailyTop100) + 1, rows.indexOf(ExploreRow.CityCharts))
+    }
+
+    @Test
+    fun editorialRowsWithoutCityChartsLeaveNoEmptyRow() {
+        val rows = buildExploreRows(zones(4), false, true, editorial = true, hasNews = true)
+
+        assertTrue(ExploreRow.CityCharts !in rows)
     }
 
     @Test

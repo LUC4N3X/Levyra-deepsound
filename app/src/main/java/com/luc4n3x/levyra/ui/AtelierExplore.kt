@@ -282,6 +282,7 @@ internal fun AtelierExploreEntry(
     val crate = remember(cratePool, crateRoll) { atelierExploreCrateSelection(cratePool, crateRoll) }
     val nothingLoaded = releases.isEmpty() && fresh.isEmpty() && charts.isEmpty() && editorial?.news.isNullOrEmpty()
     val stillLoading = state.isExploreCategoriesLoading || state.isFreshCurrentsLoading || state.isNewReleasesLoading
+    val hasCityCharts = rememberHasCityCharts()
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val play: (List<Track>, Track) -> Unit = { list, track -> atelierExplorePlay(list, track, currentId, state, viewModel) }
     val openCrate: (AtelierCrateItem) -> Unit = { item -> atelierExploreOpenCrate(item, crateTracks, viewModel, play) }
@@ -301,6 +302,11 @@ internal fun AtelierExploreEntry(
             if (editorial != null) {
                 item(key = "atelier-explore-top100", contentType = "atelier-top100") {
                     ExploreDailyTop100(onPlay = editorial.onPlayChart, onTrackActions = editorial.onTrackMenu)
+                }
+                if (hasCityCharts) {
+                    item(key = "atelier-explore-city-charts", contentType = "atelier-city-charts") {
+                        ExploreCityCharts(onPlay = editorial.onPlayChart, onTrackActions = editorial.onTrackMenu)
+                    }
                 }
             }
             atelierExploreCrateAndCabinet(crate, crateRoll, { crateRoll += 1 }, openCrate)

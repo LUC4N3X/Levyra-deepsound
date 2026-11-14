@@ -40,6 +40,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.luc4n3x.levyra.data.apple.AppleCityChart
 import com.luc4n3x.levyra.ui.theme.MonoCodeFont
 import com.luc4n3x.levyra.ui.theme.MonoDesign
 import com.luc4n3x.levyra.ui.theme.MonoFont
@@ -51,29 +52,42 @@ internal val MonoTop100Hues = listOf(
 
 internal fun monoTop100Hue(slot: Int, global: Boolean): Color = if (global) MonoDesign.accent else MonoTop100Hues[slot % MonoTop100Hues.size]
 
+private fun monoInk(hue: Color): Color = if (hue.luminance() > 0.5f) Color(0xFF0B0F12) else Color.White
+
+internal fun monoCityInk(hue: Color): Color {
+    val brightest = lerp(hue, Color.White, 0.1f).luminance()
+    return if (1.05f / (brightest + 0.05f) >= LARGE_TEXT_CONTRAST) Color.White else Color(0xFF0B0F12)
+}
+
+private const val LARGE_TEXT_CONTRAST = 3f
+
+private fun monoLabelColor(hue: Color, ink: Color): Color = if (ink == Color.White) lerp(hue, Color.Black, 0.35f) else hue
+
+private fun Modifier.monoHueGradient(hue: Color): Modifier = drawBehind {
+    drawRect(Brush.linearGradient(listOf(lerp(hue, Color.White, 0.1f), lerp(hue, Color.Black, 0.28f)), Offset.Zero, Offset(size.width, size.height)))
+}
+
 @Composable
-internal fun MonoTop100Cover(label: String, date: String, slot: Int, global: Boolean, size: Dp, modifier: Modifier = Modifier) {
+internal fun MonoTop100Cover(label: String, date: String, slot: Int, global: Boolean, size: Dp, modifier: Modifier = Modifier, numeral: String = "100") {
     val hue = monoTop100Hue(slot, global)
-    val ink = if (hue.luminance() > 0.5f) Color(0xFF0B0F12) else Color.White
+    val ink = monoInk(hue)
     val scale = 1f / LocalDensity.current.fontScale
     Box(
         modifier.size(size).clip(MonoDesign.cardShape)
-            .drawBehind {
-                drawRect(Brush.linearGradient(listOf(lerp(hue, Color.White, 0.1f), lerp(hue, Color.Black, 0.28f)), Offset.Zero, Offset(this.size.width, this.size.height)))
-            }
+            .monoHueGradient(hue)
             .clearAndSetSemantics { }
     ) {
         Text(date, color = ink.copy(alpha = 0.75f), fontFamily = MonoCodeFont, fontSize = (9.5f * scale).sp, letterSpacing = 1.2.sp, maxLines = 1,
             modifier = Modifier.align(Alignment.TopEnd).padding(top = 14.dp, end = 14.dp))
         Column(Modifier.align(Alignment.TopStart).padding(start = 14.dp, top = 10.dp)) {
             Text("TOP", color = ink, fontFamily = MonoFont, fontWeight = FontWeight.Bold, fontSize = (20f * scale).sp, lineHeight = (22f * scale).sp, letterSpacing = 1.sp)
-            Text("100", color = ink, fontFamily = MonoFont, fontWeight = FontWeight.Bold, fontSize = (64f * scale).sp, lineHeight = (62f * scale).sp, letterSpacing = (-3).sp, maxLines = 1, softWrap = false)
+            Text(numeral, color = ink, fontFamily = MonoFont, fontWeight = FontWeight.Bold, fontSize = (64f * scale).sp, lineHeight = (62f * scale).sp, letterSpacing = (-3).sp, maxLines = 1, softWrap = false)
         }
         Box(
             Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(10.dp).clip(RoundedCornerShape(8.dp)).background(ink)
                 .padding(horizontal = 10.dp, vertical = 7.dp)
         ) {
-            Text(label.uppercase(), color = hue.let { if (ink == Color.White) lerp(it, Color.Black, 0.35f) else it }, fontFamily = MonoFont, fontWeight = FontWeight.Bold,
+            Text(label.uppercase(), color = monoLabelColor(hue, ink), fontFamily = MonoFont, fontWeight = FontWeight.Bold,
                 fontSize = (13f * scale).sp, letterSpacing = 0.6.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
@@ -85,6 +99,7 @@ internal fun MonoTop100ChartScreen(
     label: String,
     date: String,
     slot: Int,
+    numeral: String,
     failedLabel: String,
     retryLabel: String,
     onBack: () -> Unit,
@@ -109,8 +124,30 @@ internal fun MonoTop100ChartScreen(
         onPlayAll = { tracks.firstOrNull()?.let { onPlay(tracks, it) } },
         onShuffle = { tracks.shuffled().let { shuffled -> shuffled.firstOrNull()?.let { onPlay(shuffled, it) } } },
         onTrackActions = onTrackActions, bottomInset = bottom,
-        byline = "Top 100 · $date", loading = open.loading, glow = monoTop100Hue(slot, open.chart.global), ranked = true,
+        byline = "${(open.chart as? com.luc4n3x.levyra.viewmodel.DailyChartRef.City)?.chart?.badge ?: "Top $numeral"} · $date", loading = open.loading, glow = monoTop100Hue(slot, open.chart.global), ranked = true,
         failedLabel = failedLabel.takeIf { open.failed }, retryLabel = retryLabel, onRetry = onRetry,
-        cover = { MonoTop100Cover(label, date, slot, open.chart.global, 248.dp) }
+        cover = { MonoTop100Cover(label, date, slot, open.chart.global, 248.dp, numeral = numeral) }
     )
+}
+
+@Composable
+internal fun MonoCityCard(chart: AppleCityChart, slot: Int, modifier: Modifier = Modifier) {
+    val hue = monoTop100Hue(slot, false)
+    val ink = monoCityInk(hue)
+    val scale = 1f / LocalDensity.current.fontScale
+    Box(
+        modifier.clip(MonoDesign.cardShape)
+            .monoHueGradient(hue)
+            .clearAndSetSemantics { }
+    ) {
+        Text(chart.name.uppercase(), color = ink, fontFamily = MonoFont, fontWeight = FontWeight.Bold, fontSize = (22f * scale).sp, lineHeight = (24f * scale).sp,
+            letterSpacing = 0.4.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.align(Alignment.TopStart).padding(start = 14.dp, top = 14.dp, end = 14.dp))
+        Box(
+            Modifier.align(Alignment.BottomStart).padding(10.dp).clip(RoundedCornerShape(8.dp)).background(ink)
+                .padding(horizontal = 10.dp, vertical = 7.dp)
+        ) {
+            Text(chart.badge.uppercase(), color = monoLabelColor(hue, ink), fontFamily = MonoCodeFont, fontWeight = FontWeight.Bold,
+                fontSize = (12f * scale).sp, letterSpacing = 0.6.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
 }

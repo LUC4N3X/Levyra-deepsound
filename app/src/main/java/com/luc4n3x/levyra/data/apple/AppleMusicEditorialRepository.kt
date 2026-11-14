@@ -181,6 +181,12 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
     suspend fun cachedDailyTop100(storefront: String, language: String): List<AppleDailyChart> =
         AppleDailyTop100.charts(cachedPage(AppleCatalogPath.DailyTop100, storefront, language)?.page, storefront)
 
+    suspend fun cityCharts(storefront: String, language: String): List<AppleCityChart> =
+        AppleCityCharts.charts(page(AppleCatalogPath.New, storefront, language)?.page)
+
+    suspend fun cachedCityCharts(storefront: String, language: String): List<AppleCityChart> =
+        AppleCityCharts.charts(cachedPage(AppleCatalogPath.New, storefront, language)?.page)
+
     suspend fun cachedNewMusic(storefront: String, language: String): AppleCatalogResult? = cachedPage(AppleCatalogPath.New, storefront, language)
 
     suspend fun cachedTopCharts(storefront: String, language: String): AppleCatalogResult? = cachedPage(AppleCatalogPath.TopCharts, storefront, language)

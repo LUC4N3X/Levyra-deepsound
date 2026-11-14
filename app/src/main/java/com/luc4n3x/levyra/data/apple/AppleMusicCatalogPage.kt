@@ -190,6 +190,29 @@ internal object AppleDailyTop100 {
         val trimmed = title.trim()
         return trimmed.replaceFirst(titlePrefix, "").trim().ifEmpty { trimmed }.replaceFirstChar { it.titlecase(java.util.Locale.ROOT) }
     }
+
+    fun isCountryChart(playlistId: String): Boolean = playlistId == GLOBAL_PLAYLIST_ID || playlistId in knownCharts
+}
+
+data class AppleCityChart(val playlistId: String, val badge: String, val name: String)
+
+internal object AppleCityCharts {
+    private const val MAX_CHARTS = 30
+    private const val COUNTRY_CHART_SIZE = "100"
+
+    fun charts(page: AppleCatalogPage?): List<AppleCityChart> =
+        page?.shelves.orEmpty().asSequence()
+            .flatMap { shelf -> shelf.items.asSequence() }
+            .filter { item -> item.kind == AppleCatalogItemKind.Playlist }
+            .mapNotNull { item ->
+                val id = AppleCatalogIds.playlist(item.id) ?: AppleCatalogIds.playlistIdFromUrl(item.url) ?: return@mapNotNull null
+                val (badge, name) = AppleMusicHomeShelves.chartParts(item.title) ?: return@mapNotNull null
+                if (badge.filter(Char::isDigit) == COUNTRY_CHART_SIZE || AppleDailyTop100.isCountryChart(id)) return@mapNotNull null
+                AppleCityChart(id, badge, name)
+            }
+            .distinctBy { it.playlistId }
+            .take(MAX_CHARTS)
+            .toList()
 }
 
 data class AppleCatalogShelf(

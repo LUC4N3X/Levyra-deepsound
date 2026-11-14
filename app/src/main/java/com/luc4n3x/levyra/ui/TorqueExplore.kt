@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.luc4n3x.levyra.data.apple.AppleCityChart
 import com.luc4n3x.levyra.data.news.MusicNewsStory
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
@@ -285,12 +286,12 @@ private fun TorqueReleaseCard(
 }
 
 @Composable
-internal fun TorqueTop100Card(label: String, date: String, global: Boolean, modifier: Modifier) {
+internal fun TorqueTop100Card(label: String, date: String, global: Boolean, modifier: Modifier, numeral: String = "100") {
     val band = if (global) Color.White else LevyraActivePalette.blue
     val onBand = if (global) Color.Black else Color.White
     Box(modifier.background(LevyraPanel)) {
         Text(
-            "100", color = LevyraPanelSoft, fontSize = 120.sp, lineHeight = 120.sp, fontWeight = FontWeight.Black, letterSpacing = (-6).sp,
+            numeral, color = LevyraPanelSoft, fontSize = 120.sp, lineHeight = 120.sp, fontWeight = FontWeight.Black, letterSpacing = (-6).sp,
             modifier = Modifier.align(Alignment.TopEnd).offset(x = 10.dp, y = (-14).dp).clearAndSetSemantics { }
         )
         Text(
@@ -305,10 +306,30 @@ internal fun TorqueTop100Card(label: String, date: String, global: Boolean, modi
 }
 
 @Composable
+internal fun TorqueCityCard(chart: AppleCityChart, modifier: Modifier) {
+    Box(modifier.background(LevyraPanel)) {
+        Text(
+            chart.numeral, color = LevyraPanelSoft, fontSize = 120.sp, lineHeight = 120.sp, fontWeight = FontWeight.Black, letterSpacing = (-6).sp,
+            modifier = Modifier.align(Alignment.TopEnd).offset(x = 10.dp, y = (-14).dp).clearAndSetSemantics { }
+        )
+        Box(Modifier.fillMaxSize().clip(TorqueStripShape).background(LevyraActivePalette.blue))
+        Text(
+            chart.badge.uppercase(), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, maxLines = 1,
+            modifier = Modifier.align(Alignment.TopStart).background(Color.Black).padding(horizontal = 10.dp, vertical = 6.dp)
+        )
+        Text(
+            chart.name.uppercase(), color = Color.White, fontSize = 20.sp, lineHeight = 24.sp, fontWeight = FontWeight.Black, letterSpacing = 1.6.sp,
+            maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(16.dp)
+        )
+    }
+}
+
+@Composable
 internal fun TorqueTop100ChartScreen(
     open: DailyTop100ChartUiState,
     label: String,
     date: String,
+    numeral: String,
     copy: DailyTop100Copy,
     onBack: () -> Unit,
     onRetry: () -> Unit,
@@ -323,7 +344,7 @@ internal fun TorqueTop100ChartScreen(
         item(key = "torque-top100-hero") {
             Column(Modifier.fillMaxWidth().statusBarsPadding()) {
                 IconButton(onClick = onBack, modifier = Modifier.padding(8.dp).size(48.dp)) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, strings.back, tint = LevyraText) }
-                TorqueTop100Card(label, date, open.chart.global, Modifier.padding(horizontal = TorqueGutter).fillMaxWidth().aspectRatio(1.3f))
+                TorqueTop100Card(label, date, open.chart.global, Modifier.padding(horizontal = TorqueGutter).fillMaxWidth().aspectRatio(1.3f), numeral)
                 Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = TorqueGutter, top = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.weight(1f)) { SkinSectionTitle(copy.title, 16.dp) }
                     if (tracks.isNotEmpty()) {

@@ -63,7 +63,8 @@ internal class YouTubeMusicCardModel(
     val track: Track? = null,
     val onClick: () -> Unit,
     val onLongClick: (() -> Unit)? = null,
-    val cover: (@Composable (androidx.compose.ui.graphics.Shape) -> Unit)? = null
+    val cover: (@Composable (androidx.compose.ui.graphics.Shape) -> Unit)? = null,
+    val contentDescription: String? = null
 )
 
 @Immutable
@@ -387,7 +388,9 @@ internal fun YouTubeMusicCard(card: YouTubeMusicCardModel, modifier: Modifier = 
     val shape = if (card.circular) CircleShape else YouTubeMusicDesign.cardShape
     val artHeight = if (card.wide) width * 9f / 16f else width
     Column(
-        modifier.width(width).levyraPressable(onClick = card.onClick, onLongClick = card.onLongClick, role = Role.Button, pressedScale = LevyraPressScale.Surface)
+        modifier.width(width)
+            .then(card.contentDescription?.let { description -> Modifier.semantics(mergeDescendants = true) { contentDescription = description } } ?: Modifier)
+            .levyraPressable(onClick = card.onClick, onLongClick = card.onLongClick, role = Role.Button, pressedScale = LevyraPressScale.Surface)
     ) {
         Box(Modifier.size(width, artHeight).clip(shape).background(YouTubeMusicDesign.placeholder)) {
             val track = card.track

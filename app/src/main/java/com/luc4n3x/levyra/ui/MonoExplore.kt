@@ -245,6 +245,7 @@ internal fun MonoExploreEntry(
         }
         MonoExploreBridge.pending = null
     }
+    val hasCityCharts = rememberHasCityCharts()
     val nothingLoaded = editorial?.news.isNullOrEmpty()
     val stillLoading = state.isNewReleasesLoading
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -261,6 +262,9 @@ internal fun MonoExploreEntry(
         }
         if (editorial != null) {
             item(key = "mono-explore-top100", contentType = "mono-explore-top100") { ExploreEditorialRow(ExploreRow.DailyTop100, editorial) }
+        }
+        if (editorial != null && hasCityCharts) {
+            item(key = "mono-explore-city-charts", contentType = "mono-explore-city-charts") { ExploreEditorialRow(ExploreRow.CityCharts, editorial) }
         }
         if (freshTracks.isNotEmpty()) {
             item(key = "mono-explore-week-releases", contentType = "mono-rail") {

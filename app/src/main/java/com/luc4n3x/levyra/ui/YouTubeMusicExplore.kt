@@ -11,8 +11,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
 import com.luc4n3x.levyra.ui.components.levyraPressable
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -35,8 +33,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.YoutubeMusicHomeButton
 import com.luc4n3x.levyra.domain.YoutubeMusicHomeShelf
@@ -60,11 +56,13 @@ internal fun YouTubeMusicExploreContent(
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { LevyraYouTubeMusicSkinStrings.forCode(strings.code) }
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val rows = remember(editorial?.news) {
+    val hasCityCharts = rememberHasCityCharts()
+    val rows = remember(editorial?.news, hasCityCharts) {
         val news = editorial?.news.orEmpty()
         buildList {
             if (news.isNotEmpty()) add(ExploreRow.NewsHero)
             add(ExploreRow.DailyTop100)
+            if (hasCityCharts) add(ExploreRow.CityCharts)
             if (news.size > 1) add(ExploreRow.NewsList)
         }
     }

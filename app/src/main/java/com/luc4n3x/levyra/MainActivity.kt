@@ -66,6 +66,7 @@ import com.luc4n3x.levyra.ui.support.RemoteAnnouncementPromptPolicy
 import com.luc4n3x.levyra.ui.theme.LevyraTheme
 import com.luc4n3x.levyra.ui.theme.LevyraThemeController
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
+import com.luc4n3x.levyra.ui.update.LevyraStarThanksGate
 import com.luc4n3x.levyra.ui.update.LevyraUpdateBanner
 import com.luc4n3x.levyra.ui.update.LevyraUpdatePhase
 import com.luc4n3x.levyra.ui.update.LevyraUpdateScreen
@@ -180,6 +181,7 @@ class MainActivity : ComponentActivity() {
                 animationsEnabled = activityUiState.animationsEnabled
             ) {
                 var listenedPlaybackMs by rememberSaveable { mutableLongStateOf(0L) }
+                var starSheetThisLaunch by rememberSaveable { mutableStateOf<Boolean?>(null) }
                 var previousLanguageCode by remember { mutableStateOf(activityUiState.languageCode) }
 
                 LaunchedEffect(activityUiState.languageCode) {
@@ -221,12 +223,19 @@ class MainActivity : ComponentActivity() {
                     )
                 }
                 RemoteAnnouncementGate(
-                    enabled = !activityUiState.showOnboarding && !pipMode.value && !activityUiState.showSettings,
+                    enabled = !activityUiState.showOnboarding && !pipMode.value && !activityUiState.showSettings &&
+                        starSheetThisLaunch == false,
                     languageCode = activityUiState.languageCode,
                     hasPositiveListeningMoment = RemoteAnnouncementPromptPolicy.hasPositiveListeningMoment(
                         recentListenCount = activityUiState.recentListenCount,
                         listenedPlaybackMs = listenedPlaybackMs
                     )
+                )
+                LevyraStarThanksGate(
+                    enabled = !activityUiState.showOnboarding && !pipMode.value && !activityUiState.showSettings,
+                    languageCode = activityUiState.languageCode,
+                    onDecided = { show -> if (starSheetThisLaunch != true) starSheetThisLaunch = show },
+                    onClosed = { starSheetThisLaunch = false }
                 )
                 if (
                     BuildConfig.UPSTREAM_UPDATES_ENABLED &&

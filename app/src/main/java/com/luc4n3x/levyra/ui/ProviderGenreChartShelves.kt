@@ -222,19 +222,33 @@ private val YouTubeMusicChartTones = listOf(
 private val YouTubeMusicChartInk = androidx.compose.ui.graphics.Color(0xFF111111)
 
 @Composable
-private fun YouTubeMusicTop100Cover(label: String, date: String, tone: androidx.compose.ui.graphics.Color, shape: androidx.compose.ui.graphics.Shape) {
+private fun YouTubeMusicTop100Cover(
+    label: String,
+    date: String,
+    tone: androidx.compose.ui.graphics.Color,
+    shape: androidx.compose.ui.graphics.Shape,
+    badge: String? = null
+) {
     Box(Modifier.fillMaxSize().clip(shape).background(tone).padding(14.dp)) {
         Text(
             date, color = YouTubeMusicChartInk, fontSize = 13.sp, letterSpacing = 1.2.sp, maxLines = 1,
             modifier = Modifier.align(Alignment.TopCenter)
         )
-        Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("TOP", color = YouTubeMusicChartInk, fontSize = 34.sp, lineHeight = 34.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium, maxLines = 1)
-            Text("100", color = YouTubeMusicChartInk, fontSize = 56.sp, lineHeight = 56.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium, maxLines = 1)
+        if (badge == null) {
+            Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("TOP", color = YouTubeMusicChartInk, fontSize = 34.sp, lineHeight = 34.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium, maxLines = 1)
+                Text("100", color = YouTubeMusicChartInk, fontSize = 56.sp, lineHeight = 56.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium, maxLines = 1)
+            }
+        } else {
+            Text(
+                label, color = YouTubeMusicChartInk, fontSize = 24.sp, lineHeight = 28.sp,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.align(Alignment.Center)
+            )
         }
         Text(
-            label.uppercase(), color = YouTubeMusicChartInk, fontSize = 15.sp, letterSpacing = 1.4.sp, maxLines = 1,
-            overflow = TextOverflow.Ellipsis, modifier = Modifier.align(Alignment.BottomCenter)
+            (badge ?: label).uppercase(), color = YouTubeMusicChartInk, fontSize = 15.sp, letterSpacing = 1.4.sp,
+            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.align(Alignment.BottomCenter)
         )
     }
 }
@@ -255,12 +269,40 @@ internal fun YouTubeMusicTop100Shelf(
             YouTubeMusicCardModel(
                 "ytm-top100-${chart.playlistId}", label, copy.title, "",
                 onClick = { onOpen(chart) },
-                cover = { shape -> YouTubeMusicTop100Cover(label, date, tone, shape) }
+                cover = { shape -> YouTubeMusicTop100Cover(label, date, tone, shape) },
+                contentDescription = "${copy.title}, $label"
             )
         }
     }
     Column(modifier.fillMaxWidth()) {
         YouTubeMusicSectionHeader(copy.title, strapline = date)
+        Spacer(Modifier.height(8.dp))
+        YouTubeMusicCardCarousel(cards)
+    }
+}
+
+@Composable
+internal fun YouTubeMusicCityShelf(
+    cities: List<com.luc4n3x.levyra.data.apple.AppleCityChart>,
+    slots: List<Int>,
+    copy: com.luc4n3x.levyra.ui.i18n.CityChartsCopy,
+    date: String,
+    modifier: Modifier,
+    onOpen: (com.luc4n3x.levyra.data.apple.AppleCityChart) -> Unit
+) {
+    val cards = remember(cities, slots, copy, date) {
+        cities.mapIndexed { index, chart ->
+            val tone = youTubeMusicChartTone(slots.getOrNull(index) ?: index)
+            YouTubeMusicCardModel(
+                "ytm-city-${chart.playlistId}", chart.name, copy.title, "",
+                onClick = { onOpen(chart) },
+                cover = { shape -> YouTubeMusicTop100Cover(chart.name, date, tone, shape, chart.badge) },
+                contentDescription = "${copy.title}, ${chart.name}"
+            )
+        }
+    }
+    Column(modifier.fillMaxWidth()) {
+        YouTubeMusicSectionHeader(copy.title, strapline = copy.subtitle)
         Spacer(Modifier.height(8.dp))
         YouTubeMusicCardCarousel(cards)
     }
@@ -367,7 +409,8 @@ internal fun YouTubeMusicTop100ChartScreen(
     onBack: () -> Unit,
     onRetry: () -> Unit,
     onPlay: (List<com.luc4n3x.levyra.domain.Track>, com.luc4n3x.levyra.domain.Track) -> Unit,
-    onTrackActions: (com.luc4n3x.levyra.domain.Track) -> Unit
+    onTrackActions: (com.luc4n3x.levyra.domain.Track) -> Unit,
+    badge: String? = null
 ) {
     androidx.activity.compose.BackHandler(onBack = onBack)
     val strings = LocalLevyraStrings.current
@@ -386,7 +429,7 @@ internal fun YouTubeMusicTop100ChartScreen(
             item(key = "ytm-top100-hero", contentType = "ytm-top100-hero") {
                 Column(Modifier.fillMaxWidth().padding(horizontal = YouTubeMusicDesign.gutter), horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(Modifier.padding(top = 8.dp).size(240.dp)) {
-                        YouTubeMusicTop100Cover(label, date, tone, androidx.compose.foundation.shape.RoundedCornerShape(6.dp))
+                        YouTubeMusicTop100Cover(label, date, tone, androidx.compose.foundation.shape.RoundedCornerShape(6.dp), badge)
                     }
                     Text(
                         "${copy.title} · $label", color = YouTubeMusicDesign.text, fontSize = 28.sp, lineHeight = 34.sp,

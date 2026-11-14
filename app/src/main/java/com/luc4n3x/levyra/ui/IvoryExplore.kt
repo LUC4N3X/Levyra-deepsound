@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.luc4n3x.levyra.data.apple.AppleCityChart
 import com.luc4n3x.levyra.data.news.MusicNewsStory
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
@@ -85,6 +86,22 @@ internal fun IvoryNewsFront(stories: List<MusicNewsStory>, onOpen: (MusicNewsSto
                 }
                 if (front.secondary.size < ExploreNewsSecondaryCount) Spacer(Modifier.weight(1f))
             }
+        }
+    }
+}
+
+@Composable
+internal fun IvoryCityCard(chart: AppleCityChart, modifier: Modifier) {
+    Box(modifier.clip(RoundedCornerShape(IvoryDesign.coverCorner)).background(LevyraPanel)) {
+        Text(
+            chart.name, color = LevyraText, style = MaterialTheme.typography.headlineSmall, fontSize = fixedSp(24f), lineHeight = fixedSp(30f),
+            fontWeight = FontWeight.Light, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.align(Alignment.TopStart).fillMaxWidth().padding(start = 18.dp, top = 18.dp, end = 18.dp)
+        )
+        IvoryInkTab(start = true, Modifier.align(Alignment.BottomStart).padding(bottom = 16.dp).fillMaxWidth(0.72f).height(44.dp)) {
+            Text(chart.badge, color = IvoryDesign.onInk, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 18.dp))
+        }
+        IvoryCornerBadge(52.dp, Modifier.align(Alignment.BottomEnd)) {
+            Icon(Icons.Rounded.PlayArrow, null, tint = IvoryDesign.onInk, modifier = Modifier.size(20.dp))
         }
     }
 }
