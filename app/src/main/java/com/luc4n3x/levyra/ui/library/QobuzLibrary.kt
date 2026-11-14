@@ -167,7 +167,7 @@ internal fun QobuzLibraryScreen(
             onSortOpen = { sortOpen = it },
             onSort = { viewModel.setLibrarySort(it, it.defaultDirection) }
         )
-        QobuzLibraryContent(viewModel, state, catalog, copy, rows, grid)
+        QobuzLibraryContent(viewModel, state, catalog, copy, rows, grid, showPulse = filter == null && query.isBlank())
     }
     if (creating) QobuzCreatePlaylistDialog(strings, { creating = false }, viewModel::createPlaylist)
 }
@@ -304,7 +304,8 @@ private fun QobuzLibraryContent(
     catalog: LibraryCatalog,
     copy: QobuzSkinCopy,
     rows: List<QobuzLibraryRow>,
-    grid: Boolean
+    grid: Boolean,
+    showPulse: Boolean
 ) {
     val bottom = levyraTabContentBottomPadding(state.currentTrack != null) + 16.dp
     LazyVerticalGrid(
@@ -314,6 +315,15 @@ private fun QobuzLibraryContent(
         verticalArrangement = Arrangement.spacedBy(if (grid) 20.dp else 0.dp),
         modifier = Modifier.fillMaxSize()
     ) {
+        if (showPulse) {
+            item(key = "qobuz-pulse", span = { GridItemSpan(maxLineSpan) }, contentType = "qobuz-pulse") {
+                QobuzLibraryPulseCard(
+                    pulse = state.listeningPulse,
+                    onOpen = viewModel::openListeningInsights,
+                    modifier = Modifier.padding(end = if (grid) 0.dp else QobuzDesign.gutter - 4.dp)
+                )
+            }
+        }
         items(rows, key = { it.key }) { row ->
             val open = { openRow(row, viewModel, catalog, rows) }
             if (grid) QobuzLibraryCard(row, open) else QobuzLibraryListRow(row, state, copy.explicit, open, { viewModel.toggleFollowArtistRow(row) })

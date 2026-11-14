@@ -117,6 +117,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.size.Size as CoilSize
+import com.luc4n3x.levyra.domain.ListeningPulse
 import com.luc4n3x.levyra.domain.playableTrackCount
 import com.luc4n3x.levyra.domain.DownloadOwnership
 import com.luc4n3x.levyra.domain.DownloadedTrack
@@ -392,7 +393,9 @@ internal fun AtelierLibraryScreen(
                 onOpenTools = onOpenTools,
                 onImport = { viewModel.openPlaylistImport() },
                 onOpenSearch = viewModel::openSearch,
-                onOpenJam = viewModel::openJam
+                onOpenJam = viewModel::openJam,
+                pulse = state.listeningPulse,
+                onOpenPulse = viewModel::openListeningInsights
             )
             AtelierLibraryTabs(tab, strings, selectTab)
             if (searching) {
@@ -652,7 +655,9 @@ private fun AtelierLibraryMasthead(
     onOpenTools: () -> Unit,
     onImport: () -> Unit,
     onOpenSearch: () -> Unit,
-    onOpenJam: () -> Unit
+    onOpenJam: () -> Unit,
+    pulse: ListeningPulse,
+    onOpenPulse: () -> Unit
 ) {
     val hour by rememberCurrentGreetingHour()
     val greeting = remember(strings.code, userName, hour) { strings.formatGreeting(userName, hour) }
@@ -687,13 +692,16 @@ private fun AtelierLibraryMasthead(
             AtelierLibraryIconTarget(Icons.Rounded.Add, strings.newPlaylist, onCreate)
         }
         AtelierLibraryRack(rack, strings.code, Modifier.padding(start = AtelierDesign.gutter, end = AtelierDesign.gutter, top = 14.dp))
-        AtelierLibraryJamStrip(strings.jamTitle, onOpenJam)
+        Column(Modifier.padding(bottom = 10.dp)) {
+            AtelierLibraryJamStrip(strings.jamTitle, onOpenJam)
+            AtelierLibraryPulseStrip(pulse, onOpenPulse)
+        }
     }
 }
 
 @Composable
 private fun AtelierLibraryJamStrip(label: String, onOpen: () -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = AtelierDesign.gutter).padding(bottom = 10.dp)) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = AtelierDesign.gutter)) {
         Box(Modifier.fillMaxWidth().height(1.dp).background(AtelierDesign.hairline))
         Row(
             Modifier.fillMaxWidth().heightIn(min = 60.dp)
