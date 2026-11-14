@@ -212,18 +212,7 @@ internal class YoutubeLocalStreamBridge(
                     }
                     exchange.sendResponseHeaders(if (range == null) 200 else 206, contentLength)
                     exchange.responseBody.use { output ->
-                        copySlice(initial, output, finalEnd)
-                        var next = initial.endInclusive + 1L
-                        while (next <= finalEnd && !closed.get()) {
-                            val end = next + minOf(upstreamChunkBytes - 1L, finalEnd - next)
-                            openSlice(next, end)?.use { slice ->
-                                if (slice.start != next || slice.endInclusive > end || slice.totalBytes != total) {
-                                    throw UpstreamFailure("BRIDGE_UPSTREAM_CHANGED")
-                                }
-                                copySlice(slice, output, finalEnd)
-                                next = slice.endInclusive + 1L
-                            } ?: throw UpstreamFailure(failureReason.get() ?: "BRIDGE_UPSTREAM_FAILED")
-                        }
+                        copyResponseBody(initial, output, finalEnd, total)
                     }
                 }
             } catch (failure: UpstreamFailure) {
@@ -231,6 +220,21 @@ internal class YoutubeLocalStreamBridge(
                 System.getLogger("Levyra.StreamBridge").log(System.Logger.Level.WARNING, failureReason.get())
                 publishFailure()
                 throw failure
+            }
+        }
+
+        private fun copyResponseBody(initial: UpstreamSlice, output: OutputStream, finalEnd: Long, total: Long) {
+            copySlice(initial, output, finalEnd)
+            var next = initial.endInclusive + 1L
+            while (next <= finalEnd && !closed.get()) {
+                val end = next + minOf(upstreamChunkBytes - 1L, finalEnd - next)
+                openSlice(next, end)?.use { slice ->
+                    if (slice.start != next || slice.endInclusive > end || slice.totalBytes != total) {
+                        throw UpstreamFailure("BRIDGE_UPSTREAM_CHANGED")
+                    }
+                    copySlice(slice, output, finalEnd)
+                    next = slice.endInclusive + 1L
+                } ?: throw UpstreamFailure(failureReason.get() ?: "BRIDGE_UPSTREAM_FAILED")
             }
         }
 

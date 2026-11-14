@@ -15,6 +15,8 @@ import com.luc4n3x.levyra.desktop.core.stream.StreamSourceExpiredException as Ex
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
 import java.net.URI
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
@@ -397,45 +399,55 @@ class OfflineDownloadController(
             }
             BufferedInputStream(body.byteStream(), BUFFER_SIZE).use { input ->
                 BufferedOutputStream(Files.newOutputStream(output, *options), BUFFER_SIZE).use { target ->
-                    val buffer = ByteArray(BUFFER_SIZE)
-                    var downloaded = resumeOffset
-                    var lastPersistedBytes = downloaded
-                    var lastPersistedAt = System.nanoTime()
-                    while (true) {
-                        currentCoroutineContext().ensureActive()
-                        val read = input.read(buffer)
-                        if (read < 0) break
-                        target.write(buffer, 0, read)
-                        downloaded += read
-                        val now = System.nanoTime()
-                        if (
-                            downloaded - lastPersistedBytes >= PROGRESS_BYTES_INTERVAL ||
-                            now - lastPersistedAt >= PROGRESS_TIME_INTERVAL_NANOS
-                        ) {
-                            store.update(id) { record ->
-                                record.copy(
-                                    status = DownloadStatus.DOWNLOADING,
-                                    bytesDownloaded = downloaded,
-                                    totalBytes = totalBytes
-                                )
-                            }
-                            lastPersistedBytes = downloaded
-                            lastPersistedAt = now
-                        }
-                    }
-                    target.flush()
-                    if (totalBytes > 0L && downloaded != totalBytes) {
-                        throw IOException("Download incompleto: $downloaded/$totalBytes byte")
-                    }
-                    store.update(id) { record ->
-                        record.copy(
-                            status = DownloadStatus.DOWNLOADING,
-                            bytesDownloaded = downloaded,
-                            totalBytes = if (totalBytes > 0L) totalBytes else downloaded
-                        )
-                    }
+                    copySerialBody(id, input, target, resumeOffset, totalBytes)
                 }
             }
+        }
+    }
+
+    private suspend fun copySerialBody(
+        id: String,
+        input: InputStream,
+        target: OutputStream,
+        resumeOffset: Long,
+        totalBytes: Long
+    ) {
+        val buffer = ByteArray(BUFFER_SIZE)
+        var downloaded = resumeOffset
+        var lastPersistedBytes = downloaded
+        var lastPersistedAt = System.nanoTime()
+        while (true) {
+            currentCoroutineContext().ensureActive()
+            val read = input.read(buffer)
+            if (read < 0) break
+            target.write(buffer, 0, read)
+            downloaded += read
+            val now = System.nanoTime()
+            if (
+                downloaded - lastPersistedBytes >= PROGRESS_BYTES_INTERVAL ||
+                now - lastPersistedAt >= PROGRESS_TIME_INTERVAL_NANOS
+            ) {
+                store.update(id) { record ->
+                    record.copy(
+                        status = DownloadStatus.DOWNLOADING,
+                        bytesDownloaded = downloaded,
+                        totalBytes = totalBytes
+                    )
+                }
+                lastPersistedBytes = downloaded
+                lastPersistedAt = now
+            }
+        }
+        target.flush()
+        if (totalBytes > 0L && downloaded != totalBytes) {
+            throw IOException("Download incompleto: $downloaded/$totalBytes byte")
+        }
+        store.update(id) { record ->
+            record.copy(
+                status = DownloadStatus.DOWNLOADING,
+                bytesDownloaded = downloaded,
+                totalBytes = if (totalBytes > 0L) totalBytes else downloaded
+            )
         }
     }
 
