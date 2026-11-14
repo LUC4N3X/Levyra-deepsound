@@ -60,6 +60,8 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.AwaitPointerEventScope
+import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -499,18 +501,10 @@ private fun OrbitField(
                         return@awaitEachGesture
                     }
                     if (pole != null) down.consume()
-                    val outcome = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
-                        var result: PressOutcome? = null
-                        while (result == null) {
-                            val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id }
-                            result = when {
-                                change == null || (pole == null && change.isConsumed) -> PressOutcome.CANCELLED
-                                !change.pressed -> PressOutcome.TAPPED.also { change.consume() }
-                                (change.position - down.position).getDistance() > viewConfiguration.touchSlop -> PressOutcome.MOVED
-                                else -> null
-                            }
-                        }
-                        result
+                    val outcome = if (pole == null) {
+                        pressOutcome(down, yieldToConsumers = true)
+                    } else {
+                        withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) { pressOutcome(down, yieldToConsumers = false) }
                     }
                     when {
                         outcome == null -> {
@@ -603,6 +597,20 @@ private fun OrbitField(
 }
 
 private enum class PressOutcome { TAPPED, MOVED, CANCELLED }
+
+private suspend fun AwaitPointerEventScope.pressOutcome(down: PointerInputChange, yieldToConsumers: Boolean): PressOutcome {
+    while (true) {
+        val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: return PressOutcome.CANCELLED
+        when {
+            yieldToConsumers && change.isConsumed -> return PressOutcome.CANCELLED
+            !change.pressed -> {
+                change.consume()
+                return PressOutcome.TAPPED
+            }
+            (change.position - down.position).getDistance() > viewConfiguration.touchSlop -> return PressOutcome.MOVED
+        }
+    }
+}
 
 private fun poleState(position: OrbitPosition, poleAngles: List<Float>, labels: List<String>): String {
     val weights = OrbitEqualizer.poleWeights(position, poleAngles)

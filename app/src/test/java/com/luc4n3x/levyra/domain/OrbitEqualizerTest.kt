@@ -28,8 +28,8 @@ class OrbitEqualizerTest {
         val forward = response(OrbitEqualizer.shape(OrbitPosition(0f, 1f), "f").profile)
         val open = response(OrbitEqualizer.shape(OrbitPosition(0f, -1f), "o").profile)
 
-        assertTrue(warm[1] > warm[4] + 10f)
-        assertTrue(bright[4] > bright[1] + 10f)
+        assertTrue(warm[0] > warm[4] + 4f)
+        assertTrue(bright[4] > bright[1] + 4f)
         assertTrue(forward[2] > forward[0] && forward[2] > forward[4])
         assertTrue(open[2] < open[0] && open[2] < open[4])
     }
@@ -95,35 +95,50 @@ class OrbitEqualizerTest {
     private val contourWeights = floatArrayOf(-0.45f, -0.1f, 0.85f, 0.55f, -0.4f)
 
     @Test
-    fun `default pole angles reproduce the two axis orbit everywhere`() {
-        for (tiltStep in -12..12) {
-            for (contourStep in -12..12) {
-                val position = OrbitPosition(tiltStep / 10f, contourStep / 10f)
-                val clamped = position.clamped()
-                val gains = OrbitEqualizer.bandGains(position)
-                gains.indices.forEach { band ->
-                    val legacy = OrbitEqualizer.DEPTH_DB * (clamped.tilt * tiltWeights[band] + clamped.contour * contourWeights[band])
-                    assertEquals("p=$position band=$band", legacy, gains[band], 1e-4f)
-                }
-            }
-        }
+    fun `puck at a pole raises only that pole and never the opposite exclusive bands`() {
+        val warm = OrbitEqualizer.bandGains(OrbitPosition(-1f, 0f))
+        val bright = OrbitEqualizer.bandGains(OrbitPosition(1f, 0f))
+        val forward = OrbitEqualizer.bandGains(OrbitPosition(0f, 1f))
+
+        assertTrue(warm[0] > 0f && warm[1] > 0f)
+        assertEquals(0f, warm[3], 0f)
+        assertEquals(0f, warm[4], 0f)
+        assertTrue(bright[3] > 0f && bright[4] > 0f)
+        assertEquals(0f, bright[0], 0f)
+        assertEquals(0f, bright[1], 0f)
+        assertTrue(forward[2] > 0f && forward[3] > 0f)
+        assertEquals(0f, forward[0], 0f)
+        assertEquals(0f, forward[4], 0f)
+        assertTrue((warm + bright + forward).all { it >= 0f })
     }
 
     @Test
-    fun `grouped poles all rise together toward the puck`() {
-        val angles = listOf(180f, 40f, 45f, 50f)
+    fun `grouped warm bright and forward poles add up across the spectrum`() {
+        val angles = listOf(40f, 45f, 50f, 270f)
         val puck = OrbitPosition(0.7f, 0.7f)
         val weights = OrbitEqualizer.poleWeights(puck, angles)
-
-        assertEquals(0f, weights[0], 0f)
-        (1..3).forEach { assertTrue("pole $it", weights[it] > 0.9f) }
-        val vectors = listOf(tiltWeights.map { -it }, tiltWeights.toList(), contourWeights.toList(), contourWeights.map { -it })
         val gains = OrbitEqualizer.bandGains(puck, angles)
+
+        (0..2).forEach { assertTrue("pole $it", weights[it] > 0.9f) }
+        assertEquals(0f, weights[3], 0f)
+        assertTrue("bass ${gains[0]}", gains[0] > 5f)
+        assertTrue("mids ${gains[2]}", gains[2] > 5f)
+        assertTrue("treble ${gains[4]}", gains[4] > 5f)
+        val vectors = listOf(tiltWeights.map { maxOf(0f, -it) }, tiltWeights.map { maxOf(0f, it) }, contourWeights.map { maxOf(0f, it) }, contourWeights.map { maxOf(0f, -it) })
         gains.indices.forEach { band ->
             val expected = OrbitEqualizer.DEPTH_DB * weights.indices.sumOf { (weights[it] * vectors[it][band]).toDouble() }.toFloat()
             assertEquals(expected, gains[band], 1e-4f)
         }
-        assertNotNull(OrbitEqualizer.shape(puck, "x", angles).profile.normalized())
+        val shape = OrbitEqualizer.shape(puck, "x", angles)
+        assertNotNull(shape.profile.normalized())
+        assertTrue(shape.profile.preampDb < 0f)
+    }
+
+    @Test
+    fun `centre is flat for any pole layout`() {
+        listOf(OrbitEqualizer.DEFAULT_POLE_ANGLES, listOf(40f, 45f, 50f, 270f), listOf(0f, 0f, 0f, 0f)).forEach { angles ->
+            assertTrue(OrbitEqualizer.bandGains(OrbitPosition.Center, angles).all { it == 0f })
+        }
     }
 
     @Test

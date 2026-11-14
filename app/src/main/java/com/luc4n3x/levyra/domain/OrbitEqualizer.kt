@@ -66,10 +66,10 @@ object OrbitEqualizer {
     private val tiltWeights = floatArrayOf(-1f, -0.45f, 0f, 0.55f, 1f)
     private val contourWeights = floatArrayOf(-0.45f, -0.1f, 0.85f, 0.55f, -0.4f)
     private val poleVectors = listOf(
-        FloatArray(tiltWeights.size) { -tiltWeights[it] },
-        tiltWeights,
-        contourWeights,
-        FloatArray(contourWeights.size) { -contourWeights[it] }
+        FloatArray(tiltWeights.size) { (-tiltWeights[it]).coerceAtLeast(0f) },
+        FloatArray(tiltWeights.size) { tiltWeights[it].coerceAtLeast(0f) },
+        FloatArray(contourWeights.size) { contourWeights[it].coerceAtLeast(0f) },
+        FloatArray(contourWeights.size) { (-contourWeights[it]).coerceAtLeast(0f) }
     )
     private const val ANALYSIS_SAMPLE_RATE = 48_000
     private val analysisFrequencies = FloatArray(160) { index ->
@@ -81,8 +81,10 @@ object OrbitEqualizer {
 
     fun poleDirection(degrees: Float): OrbitPosition {
         val radians = Math.toRadians(degrees.toDouble())
-        return OrbitPosition(cos(radians).toFloat(), sin(radians).toFloat())
+        return OrbitPosition(cardinal(cos(radians)), cardinal(sin(radians)))
     }
+
+    private fun cardinal(value: Double): Float = if (abs(value) < 1e-9) 0f else value.toFloat()
 
     fun poleWeights(position: OrbitPosition, poleAngles: List<Float> = DEFAULT_POLE_ANGLES): FloatArray {
         val clamped = position.clamped()
@@ -145,22 +147,35 @@ object OrbitEqualizer {
     fun positionOf(profile: ParametricEqProfile?): OrbitPosition? {
         val bands = profile?.bands ?: return null
         if (!isOrbitShape(bands)) return null
-        var tt = 0f
-        var tc = 0f
-        var cc = 0f
-        var tg = 0f
-        var cg = 0f
+        return quadrants.firstNotNullOfOrNull { (horizontal, vertical) -> quadrantFit(bands, horizontal, vertical) }
+    }
+
+    private val quadrants = listOf(1 to 2, 0 to 2, 0 to 3, 1 to 3)
+
+    private fun quadrantFit(bands: List<ParametricEqBand>, horizontal: Int, vertical: Int): OrbitPosition? {
+        val h = poleVectors[horizontal]
+        val v = poleVectors[vertical]
+        var hh = 0f
+        var hv = 0f
+        var vv = 0f
+        var hg = 0f
+        var vg = 0f
         bands.forEachIndexed { index, band ->
             val gain = band.gainDb / DEPTH_DB
-            tt += tiltWeights[index] * tiltWeights[index]
-            tc += tiltWeights[index] * contourWeights[index]
-            cc += contourWeights[index] * contourWeights[index]
-            tg += tiltWeights[index] * gain
-            cg += contourWeights[index] * gain
+            hh += h[index] * h[index]
+            hv += h[index] * v[index]
+            vv += v[index] * v[index]
+            hg += h[index] * gain
+            vg += v[index] * gain
         }
-        val determinant = tt * cc - tc * tc
+        val determinant = hh * vv - hv * hv
         if (abs(determinant) < 1e-6f) return null
-        val position = OrbitPosition((tg * cc - cg * tc) / determinant, (cg * tt - tg * tc) / determinant)
+        val a = (hg * vv - vg * hv) / determinant
+        val b = (vg * hh - hg * hv) / determinant
+        if (a < -1e-3f || b < -1e-3f) return null
+        val horizontalSign = if (horizontal == 1) 1f else -1f
+        val verticalSign = if (vertical == 2) 1f else -1f
+        val position = OrbitPosition(horizontalSign * a.coerceAtLeast(0f), verticalSign * b.coerceAtLeast(0f))
         val expected = bandGains(position)
         val fits = bands.indices.all { abs(expected[it] - bands[it].gainDb) < 0.05f }
         return if (fits) position.clamped().quantized() else null
