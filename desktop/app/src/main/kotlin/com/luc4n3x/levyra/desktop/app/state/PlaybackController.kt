@@ -88,6 +88,9 @@ class PlaybackController(
         )
     )
     private val messageFlow = MutableSharedFlow<String>(extraBufferCapacity = 16)
+    private val seekFlow = MutableSharedFlow<Long>(extraBufferCapacity = 16,
+        onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST)
+    val seekEvents = seekFlow.asSharedFlow()
     private val outputDevicesState = MutableStateFlow<List<AudioOutputDevice>>(emptyList())
     private val outputDeviceMissingState = MutableStateFlow(false)
 
@@ -333,6 +336,7 @@ class PlaybackController(
         pendingResumeMs = safe
         player?.seekTo(safe)
         internalState.update { state -> state.copy(positionMs = safe) }
+        seekFlow.tryEmit(safe)
     }
 
     fun setVolume(volume: Int) {

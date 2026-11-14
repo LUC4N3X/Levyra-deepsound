@@ -64,6 +64,11 @@ internal class LinuxMprisService(
             try {
                 bus.exportObject(PATH, this@LinuxMprisService)
                 bus.requestBusName("org.mpris.MediaPlayer2.levyra")
+                launch {
+                    controller.seekEvents.collect { position ->
+                        bus.sendMessage(MprisPlayer.Seeked(PATH, position.coerceIn(0, Long.MAX_VALUE / 1_000L) * 1_000L))
+                    }
+                }
                 controller.state.map { it.copy(positionMs = 0, sleepRemainingMs = 0) }.distinctUntilChanged().collect { state ->
                     bus.sendMessage(Properties.PropertiesChanged(PATH, PLAYER, playerProperties(state) - "Position", emptyList()))
                 }
@@ -89,7 +94,7 @@ internal class LinuxMprisService(
     override fun Quit() = dispatch(onQuit)
     override fun PlayPause() = dispatch(controller::togglePlayPause)
     override fun Stop() = dispatch(controller::stop)
-    override fun Next() = dispatch { advance { controller.next() } }
+    override fun Next() = dispatch { if (controller.state.value.queue.hasNext) advance { controller.next() } }
     override fun Previous() = dispatch { advance(controller::previous) }
     override fun Pause() = dispatch { if (controller.state.value.status in ACTIVE) controller.togglePlayPause() }
     override fun Play() = dispatch { if (controller.state.value.status !in ACTIVE) controller.togglePlayPause() }
@@ -115,12 +120,11 @@ internal class LinuxMprisService(
         if (state.current == null || state.durationMs <= 0L) return
         val bounded = position.coerceIn(0, state.durationMs)
         controller.seekTo(bounded)
-        connection.get()?.sendMessage(MprisPlayer.Seeked(PATH, bounded * 1_000L))
     }
 
     @Suppress("UNCHECKED_CAST")
     override fun <A> Get(interfaceName: String, propertyName: String): A =
-        (GetAll(interfaceName)[propertyName]?.value ?: throw DBusExecutionException("Unknown property")) as A
+        (GetAll(interfaceName)[propertyName] ?: throw DBusExecutionException("Unknown property")) as A
 
     override fun GetAll(interfaceName: String): Map<String, Variant<*>> = when (interfaceName) {
         ROOT -> mapOf(

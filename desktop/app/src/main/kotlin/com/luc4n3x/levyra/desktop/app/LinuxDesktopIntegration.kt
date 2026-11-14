@@ -34,8 +34,15 @@ internal object LinuxDesktopIntegration {
     fun desktopEntry(executable: Path): String {
         val command = executable.toAbsolutePath().toString()
         require(command.none { it == '\n' || it == '\r' })
-        val quoted = command.replace("\\", "\\\\\\\\").replace("\"", "\\\"")
-            .replace("$", "\\$").replace("`", "\\`").replace("%", "%%")
+        val argument = buildString {
+            for (character in command) {
+                if (character == '%') append("%%") else {
+                    if (character in setOf('"', '$', '`', '\\')) append('\\')
+                    append(character)
+                }
+            }
+        }
+        val quoted = argument.replace("\\", "\\\\")
         return "[Desktop Entry]\nType=Application\nName=Levyra\nExec=\"$quoted\" %u\nTerminal=false\nNoDisplay=true\nMimeType=x-scheme-handler/levyra;\n"
     }
 }
