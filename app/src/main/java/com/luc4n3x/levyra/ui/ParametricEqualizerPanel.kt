@@ -88,6 +88,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.luc4n3x.levyra.data.parametricProfileFromJsonText
 import com.luc4n3x.levyra.data.parametricProfileToJson
 import com.luc4n3x.levyra.domain.OrbitEqualizer
+import com.luc4n3x.levyra.domain.OrbitLayout
 import com.luc4n3x.levyra.domain.ParametricBiquad
 import com.luc4n3x.levyra.domain.ParametricEqBand
 import com.luc4n3x.levyra.domain.ParametricEqProfile
@@ -152,7 +153,8 @@ internal data class ParametricProfileActions(
     val onDuplicate: (ParametricEqProfile, String) -> ParametricEqProfile?,
     val onRename: (String, String) -> Boolean,
     val onDelete: (String) -> Unit,
-    val onAudition: (ParametricEqProfile?) -> Unit
+    val onAudition: (ParametricEqProfile?) -> Unit,
+    val onApplyOrbit: (ParametricEqProfile, OrbitLayout) -> Unit
 )
 
 private sealed interface ParametricProfileDialog {

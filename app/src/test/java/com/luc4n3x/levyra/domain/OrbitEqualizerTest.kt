@@ -90,4 +90,64 @@ class OrbitEqualizerTest {
         assertTrue(compare.preampDb <= 0f)
         assertEquals(OrbitEqualizer.positionOf(compare), OrbitPosition.Center)
     }
+
+    private val tiltWeights = floatArrayOf(-1f, -0.45f, 0f, 0.55f, 1f)
+    private val contourWeights = floatArrayOf(-0.45f, -0.1f, 0.85f, 0.55f, -0.4f)
+
+    @Test
+    fun `default pole angles reproduce the two axis orbit everywhere`() {
+        for (tiltStep in -12..12) {
+            for (contourStep in -12..12) {
+                val position = OrbitPosition(tiltStep / 10f, contourStep / 10f)
+                val clamped = position.clamped()
+                val gains = OrbitEqualizer.bandGains(position)
+                gains.indices.forEach { band ->
+                    val legacy = OrbitEqualizer.DEPTH_DB * (clamped.tilt * tiltWeights[band] + clamped.contour * contourWeights[band])
+                    assertEquals("p=$position band=$band", legacy, gains[band], 1e-4f)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `grouped poles all rise together toward the puck`() {
+        val angles = listOf(180f, 40f, 45f, 50f)
+        val puck = OrbitPosition(0.7f, 0.7f)
+        val weights = OrbitEqualizer.poleWeights(puck, angles)
+
+        assertEquals(0f, weights[0], 0f)
+        (1..3).forEach { assertTrue("pole $it", weights[it] > 0.9f) }
+        val vectors = listOf(tiltWeights.map { -it }, tiltWeights.toList(), contourWeights.toList(), contourWeights.map { -it })
+        val gains = OrbitEqualizer.bandGains(puck, angles)
+        gains.indices.forEach { band ->
+            val expected = OrbitEqualizer.DEPTH_DB * weights.indices.sumOf { (weights[it] * vectors[it][band]).toDouble() }.toFloat()
+            assertEquals(expected, gains[band], 1e-4f)
+        }
+        assertNotNull(OrbitEqualizer.shape(puck, "x", angles).profile.normalized())
+    }
+
+    @Test
+    fun `custom layout is restored from its own profile and legacy profiles still restore`() {
+        val layout = OrbitLayout(listOf(120f, 30f, 60f, 270f), OrbitPosition(0.5f, 0.6f))
+        val profile = OrbitEqualizer.shape(layout.puck, "Orbit", layout.poleAngles).profile
+
+        assertEquals(layout, OrbitEqualizer.restore(profile, layout))
+        val legacy = OrbitEqualizer.shape(OrbitPosition(0.42f, -0.37f), "Orbit").profile
+        assertEquals(OrbitLayout(puck = OrbitPosition(0.42f, -0.37f)), OrbitEqualizer.restore(legacy, null))
+        assertEquals(OrbitLayout(puck = OrbitPosition(0.42f, -0.37f)), OrbitEqualizer.restore(legacy, layout))
+        assertNull(OrbitEqualizer.restore(ParametricEqualizer.defaultProfile, layout))
+    }
+
+    @Test
+    fun `layout survives an encode decode round trip and rejects garbage`() {
+        val layout = OrbitLayout(listOf(181.5f, 0f, 92.25f, 359f), OrbitPosition(-0.31f, 0.44f))
+
+        assertEquals(layout, OrbitLayout.decode(layout.encoded()))
+        assertEquals(listOf(180f, 0f, 90f, 270f), OrbitLayout.decode("540,-360,450,-90;0,0")?.poleAngles)
+        assertNull(OrbitLayout.decode(null))
+        assertNull(OrbitLayout.decode(""))
+        assertNull(OrbitLayout.decode("1,2,3;0,0"))
+        assertNull(OrbitLayout.decode("1,2,3,NaN;0,0"))
+        assertNull(OrbitLayout.decode("1,2,3,4;x,0"))
+    }
 }

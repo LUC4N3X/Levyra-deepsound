@@ -59,6 +59,7 @@ import com.luc4n3x.levyra.domain.PlayerVerticalSwipeAction
 import com.luc4n3x.levyra.domain.PlayerVisualMode
 import com.luc4n3x.levyra.domain.ParametricEqBand
 import com.luc4n3x.levyra.domain.NightListeningPreset
+import com.luc4n3x.levyra.domain.OrbitLayout
 import com.luc4n3x.levyra.domain.ParametricEqProfile
 import com.luc4n3x.levyra.domain.ParametricFilterType
 import com.luc4n3x.levyra.domain.AudioOffloadPreference
@@ -247,6 +248,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_AUDIO_PARAMETRIC_ENABLED] = normalizedAudio.parametricEqualizerEnabled
             mutable[KEY_AUDIO_PARAMETRIC_ACTIVE] = normalizedAudio.activeParametricProfile?.let(::parametricProfileToJson)?.toString().orEmpty()
             mutable[KEY_AUDIO_PARAMETRIC_PROFILES] = parametricProfilesToJson(normalizedAudio.customParametricProfiles)
+            mutable[KEY_AUDIO_ORBIT_LAYOUT] = normalizedAudio.orbitLayout?.encoded().orEmpty()
             mutable[KEY_AUDIO_ENHANCED_AUDIO] = normalizedAudio.enhancedAudioEnabled
             mutable[KEY_AUDIO_OFFLOAD_PREFERENCE] = normalizedAudio.audioOffloadPreference.storageValue
             mutable[KEY_AUDIO_NIGHT_ENABLED] = normalizedAudio.nightListeningEnabled
@@ -665,6 +667,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             it[KEY_AUDIO_PARAMETRIC_ENABLED] = normalized.parametricEqualizerEnabled
             it[KEY_AUDIO_PARAMETRIC_ACTIVE] = normalized.activeParametricProfile?.let(::parametricProfileToJson)?.toString().orEmpty()
             it[KEY_AUDIO_PARAMETRIC_PROFILES] = parametricProfilesToJson(normalized.customParametricProfiles)
+            it[KEY_AUDIO_ORBIT_LAYOUT] = normalized.orbitLayout?.encoded().orEmpty()
             it[KEY_AUDIO_ENHANCED_AUDIO] = normalized.enhancedAudioEnabled
             it[KEY_AUDIO_OFFLOAD_PREFERENCE] = normalized.audioOffloadPreference.storageValue
             it[KEY_AUDIO_NIGHT_ENABLED] = normalized.nightListeningEnabled
@@ -1231,6 +1234,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             parametricEqualizerEnabled = preferences[KEY_AUDIO_PARAMETRIC_ENABLED] ?: false,
             activeParametricProfile = activeParametricProfile,
             customParametricProfiles = customParametricProfiles,
+            orbitLayout = OrbitLayout.decode(preferences[KEY_AUDIO_ORBIT_LAYOUT]),
             enhancedAudioEnabled = preferences[KEY_AUDIO_ENHANCED_AUDIO] ?: true,
             audioOffloadPreference = AudioOffloadPreference.fromStorage(preferences[KEY_AUDIO_OFFLOAD_PREFERENCE]),
             nightListeningEnabled = preferences[KEY_AUDIO_NIGHT_ENABLED] ?: false,
@@ -1714,6 +1718,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_AUDIO_PARAMETRIC_ENABLED = booleanPreferencesKey("audio_parametric_equalizer_enabled")
         val KEY_AUDIO_PARAMETRIC_ACTIVE = stringPreferencesKey("audio_parametric_active_profile")
         val KEY_AUDIO_PARAMETRIC_PROFILES = stringPreferencesKey("audio_parametric_profiles")
+        val KEY_AUDIO_ORBIT_LAYOUT = stringPreferencesKey("audio_orbit_layout")
         val KEY_AUDIO_ENHANCED_AUDIO = booleanPreferencesKey("audio_enhanced_audio_enabled")
         val KEY_AUDIO_OFFLOAD_PREFERENCE = stringPreferencesKey("audio_offload_preference")
         val KEY_AUDIO_NIGHT_ENABLED = booleanPreferencesKey("audio_night_listening_enabled")

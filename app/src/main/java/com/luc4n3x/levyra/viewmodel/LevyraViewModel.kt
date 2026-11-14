@@ -215,6 +215,7 @@ import com.luc4n3x.levyra.domain.queuePrefetchAllowed
 import com.luc4n3x.levyra.domain.ReplayGainMode
 import com.luc4n3x.levyra.domain.AutoEqCatalogEntry
 import com.luc4n3x.levyra.domain.AutoEqImporter
+import com.luc4n3x.levyra.domain.OrbitLayout
 import com.luc4n3x.levyra.domain.ParametricEqProfile
 import com.luc4n3x.levyra.domain.ParametricEqualizer
 import com.luc4n3x.levyra.domain.ParametricProfiles
@@ -5438,6 +5439,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 equalizerEnabled = false,
                 parametricEqualizerEnabled = true,
                 activeParametricProfile = normalized
+            )
+        )
+    }
+
+    fun applyOrbitEqualizer(profile: ParametricEqProfile, layout: OrbitLayout) {
+        val normalized = profile.normalized() ?: return
+        updateAudioSettings(
+            _state.value.audioSettings.copy(
+                equalizerEnabled = false,
+                parametricEqualizerEnabled = true,
+                activeParametricProfile = normalized,
+                orbitLayout = layout
             )
         )
     }

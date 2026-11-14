@@ -7,7 +7,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -51,7 +50,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -63,6 +61,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
@@ -80,6 +79,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.OrbitEqualizer
+import com.luc4n3x.levyra.domain.OrbitLayout
 import com.luc4n3x.levyra.domain.OrbitPosition
 import com.luc4n3x.levyra.domain.ParametricEqProfile
 import com.luc4n3x.levyra.domain.ParametricProfiles
@@ -91,6 +91,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraPink
 import com.luc4n3x.levyra.ui.theme.LevyraText
 import java.util.Locale
 import kotlin.math.abs
+import kotlin.math.atan2
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
@@ -100,24 +101,29 @@ private const val CENTER_SNAP = 0.06f
 private const val POLE_REACH = 0.75f
 private const val NUDGE = 0.1f
 private val GRAB_RADIUS = 40.dp
+private val POLE_GRAB_RADIUS = 32.dp
+private val FIELD_INSET = 36.dp
 
 @Composable
 internal fun OrbitEqualizerCard(
     enabled: Boolean,
     activeProfile: ParametricEqProfile?,
+    layout: OrbitLayout?,
     customProfiles: List<ParametricEqProfile>,
     copy: OrbitEqCopy,
     savedTitle: String,
     actions: ParametricProfileActions,
-    onApply: (ParametricEqProfile) -> Unit,
     onSave: (String, ParametricEqProfile) -> Boolean
 ) {
     val scope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
-    val latestApply by rememberUpdatedState(onApply)
-    val committed = remember(activeProfile) { OrbitEqualizer.positionOf(activeProfile) ?: OrbitPosition.Center }
+    val latestApply by rememberUpdatedState(actions.onApplyOrbit)
+    val committed = remember(activeProfile, layout) { OrbitEqualizer.restore(activeProfile, layout) ?: OrbitLayout() }
     val orbit = remember { OrbitEqualizerState(committed) }
-    fun commit(position: OrbitPosition) = latestApply(OrbitEqualizer.shape(position, copy.title).profile)
+    fun commit(position: OrbitPosition) {
+        val angles = orbit.poleAngles
+        latestApply(OrbitEqualizer.shape(position, copy.title, angles).profile, OrbitLayout(angles, position))
+    }
     fun glideTo(position: OrbitPosition) {
         scope.launch { commit(orbit.glideTo(position)) }
     }
@@ -126,7 +132,8 @@ internal fun OrbitEqualizerCard(
     val dragging = orbit.dragging
     val comparing = orbit.comparing
     val live = orbit.positionNow()
-    val shape = remember(live) { OrbitEqualizer.shape(live, copy.title) }
+    val poleAngles = orbit.poleAngles
+    val shape = remember(live, poleAngles) { OrbitEqualizer.shape(live, copy.title, poleAngles) }
     val accent = lerp(LevyraPink, LevyraCyan, ((live.tilt + 1f) / 2f).coerceIn(0f, 1f))
 
     Surface(
@@ -157,6 +164,7 @@ internal fun OrbitEqualizerCard(
 
             OrbitField(
                 position = live,
+                poleAngles = poleAngles,
                 accent = accent,
                 active = enabled || dragging,
                 dragging = dragging,
@@ -174,7 +182,21 @@ internal fun OrbitEqualizerCard(
                     commit(final)
                     scope.launch { orbit.endDrag(final) }
                 },
-                onNudge = { dx, dy -> glideTo(OrbitPosition(live.tilt + dx, live.contour + dy)) }
+                onNudge = { dx, dy -> glideTo(OrbitPosition(live.tilt + dx, live.contour + dy)) },
+                onPoleDragStart = { pole ->
+                    orbit.beginPoleDrag(pole)
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                },
+                onPoleDrag = orbit::movePole,
+                onPoleDragEnd = {
+                    orbit.endPoleDrag()
+                    commit(orbit.positionNow())
+                },
+                onResetPoles = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    orbit.resetPoles()
+                    commit(orbit.positionNow())
+                }
             )
 
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -225,18 +247,40 @@ internal fun OrbitEqualizerCard(
 }
 
 @Stable
-private class OrbitEqualizerState(initial: OrbitPosition) {
-    private val satellite = Animatable(Offset(initial.tilt, initial.contour), Offset.VectorConverter)
+private class OrbitEqualizerState(initial: OrbitLayout) {
+    private val satellite = Animatable(Offset(initial.puck.tilt, initial.puck.contour), Offset.VectorConverter)
     private var dragTarget by mutableStateOf<OrbitPosition?>(null)
+    private var draggingPole by mutableStateOf(false)
+    var poleAngles by mutableStateOf(initial.poleAngles)
+        private set
     var dragging by mutableStateOf(false)
         private set
     var comparing by mutableStateOf(false)
     var auditioning = false
 
-    val moving: Boolean get() = dragging || satellite.isRunning
+    val moving: Boolean get() = dragging || draggingPole || satellite.isRunning
 
     fun positionNow(): OrbitPosition =
         (dragTarget ?: OrbitPosition(satellite.value.x, satellite.value.y)).clamped().quantized()
+
+    fun layoutNow(): OrbitLayout = OrbitLayout(poleAngles, positionNow())
+
+    fun beginPoleDrag(pole: Int) {
+        if (pole in poleAngles.indices) draggingPole = true
+    }
+
+    fun movePole(pole: Int, degrees: Float) {
+        if (pole !in poleAngles.indices) return
+        poleAngles = poleAngles.toMutableList().also { it[pole] = OrbitEqualizer.normalizedAngle(degrees) }
+    }
+
+    fun endPoleDrag() {
+        draggingPole = false
+    }
+
+    fun resetPoles() {
+        poleAngles = OrbitEqualizer.DEFAULT_POLE_ANGLES
+    }
 
     suspend fun glideTo(position: OrbitPosition): OrbitPosition {
         val target = position.clamped()
@@ -244,8 +288,10 @@ private class OrbitEqualizerState(initial: OrbitPosition) {
         return target.quantized()
     }
 
-    suspend fun settle(position: OrbitPosition) {
-        if (!moving) satellite.snapTo(Offset(position.tilt, position.contour))
+    suspend fun settle(layout: OrbitLayout) {
+        if (moving) return
+        poleAngles = layout.poleAngles
+        satellite.snapTo(Offset(layout.puck.tilt, layout.puck.contour))
     }
 
     fun beginDrag() {
@@ -273,19 +319,19 @@ private class OrbitEqualizerState(initial: OrbitPosition) {
 @Composable
 private fun OrbitAuditionEffects(
     orbit: OrbitEqualizerState,
-    committed: OrbitPosition,
+    committed: OrbitLayout,
     title: String,
     onAudition: (ParametricEqProfile?) -> Unit
 ) {
     val latestAudition by rememberUpdatedState(onAudition)
     LaunchedEffect(committed) { orbit.settle(committed) }
     LaunchedEffect(orbit) {
-        snapshotFlow { if (orbit.moving) orbit.positionNow() else null }
+        snapshotFlow { if (orbit.moving) orbit.layoutNow() else null }
             .filterNotNull()
             .distinctUntilChanged()
-            .collect { position ->
+            .collect { layout ->
                 orbit.auditioning = true
-                latestAudition(OrbitEqualizer.shape(position, title).profile)
+                latestAudition(OrbitEqualizer.shape(layout.puck, title, layout.poleAngles).profile)
             }
     }
     DisposableEffect(orbit) {
@@ -293,7 +339,7 @@ private fun OrbitAuditionEffects(
     }
     LaunchedEffect(orbit.comparing) {
         if (orbit.comparing) {
-            latestAudition(OrbitEqualizer.comparisonProfile(OrbitEqualizer.shape(orbit.positionNow(), title)))
+            latestAudition(OrbitEqualizer.comparisonProfile(OrbitEqualizer.shape(orbit.positionNow(), title, orbit.poleAngles)))
             orbit.auditioning = true
         } else if (orbit.auditioning) {
             latestAudition(null)
@@ -372,6 +418,7 @@ private fun OrbitSavedProfiles(
 @Composable
 private fun OrbitField(
     position: OrbitPosition,
+    poleAngles: List<Float>,
     accent: Color,
     active: Boolean,
     dragging: Boolean,
@@ -380,7 +427,11 @@ private fun OrbitField(
     onDragStart: () -> Unit,
     onDrag: (OrbitPosition) -> Unit,
     onDragEnd: () -> Unit,
-    onNudge: (Float, Float) -> Unit
+    onNudge: (Float, Float) -> Unit,
+    onPoleDragStart: (Int) -> Unit,
+    onPoleDrag: (Int, Float) -> Unit,
+    onPoleDragEnd: () -> Unit,
+    onResetPoles: () -> Unit
 ) {
     val halo by animateFloatAsState(if (dragging) 1.35f else 1f, spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium), label = "orbit-halo")
     val hairline = LevyraAdaptiveHairline
@@ -390,8 +441,18 @@ private fun OrbitField(
     val latestDrag by rememberUpdatedState(onDrag)
     val latestEnd by rememberUpdatedState(onDragEnd)
     val latestTap by rememberUpdatedState(onPole)
+    val latestPoleStart by rememberUpdatedState(onPoleDragStart)
+    val latestPoleDrag by rememberUpdatedState(onPoleDrag)
+    val latestPoleEnd by rememberUpdatedState(onPoleDragEnd)
+    val latestReset by rememberUpdatedState(onResetPoles)
     val latestPosition by rememberUpdatedState(position)
-    val state = poleState(position, copy)
+    val latestAngles by rememberUpdatedState(poleAngles)
+    val labels = listOf(copy.warm, copy.bright, copy.forward, copy.open)
+    val state = poleState(position, poleAngles, labels)
+    fun poleTarget(angle: Float): OrbitPosition {
+        val direction = OrbitEqualizer.poleDirection(angle)
+        return OrbitPosition(direction.tilt * POLE_REACH, direction.contour * POLE_REACH)
+    }
 
     Box(
         modifier = Modifier
@@ -400,47 +461,31 @@ private fun OrbitField(
             .widthIn(max = 380.dp)
             .fillMaxWidth()
             .aspectRatio(1f)
-    ) {
-        Canvas(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(36.dp)
-                .alpha(if (active) 1f else 0.55f)
-                .semantics {
-                    contentDescription = copy.padDescription
-                    stateDescription = state
-                    customActions = listOf(
-                        CustomAccessibilityAction(copy.warm) { onNudge(-NUDGE, 0f); true },
-                        CustomAccessibilityAction(copy.bright) { onNudge(NUDGE, 0f); true },
-                        CustomAccessibilityAction(copy.forward) { onNudge(0f, NUDGE); true },
-                        CustomAccessibilityAction(copy.open) { onNudge(0f, -NUDGE); true },
-                        CustomAccessibilityAction(copy.center) { onPole(OrbitPosition.Center); true }
-                    )
-                }
-                .pointerInput(Unit) {
-                    awaitEachGesture {
-                        val down = awaitFirstDown()
-                        val radius = size.width / 2f
-                        fun unit(point: Offset) = OrbitPosition(
-                            (point.x - radius) / radius,
-                            (radius - point.y) / radius
-                        ).clamped()
-                        val current = latestPosition
-                        val handle = Offset(radius + current.tilt * radius, radius - current.contour * radius)
-                        if ((down.position - handle).getDistance() > GRAB_RADIUS.toPx()) {
-                            while (true) {
-                                val event = awaitPointerEvent()
-                                val change = event.changes.firstOrNull { it.id == down.id } ?: return@awaitEachGesture
-                                if (change.isConsumed || (change.position - down.position).getDistance() > viewConfiguration.touchSlop) {
-                                    return@awaitEachGesture
-                                }
-                                if (!change.pressed) {
-                                    change.consume()
-                                    latestTap(unit(down.position))
-                                    return@awaitEachGesture
-                                }
-                            }
-                        }
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    val down = awaitFirstDown()
+                    val inset = FIELD_INSET.toPx()
+                    val center = Offset(size.width / 2f, size.height / 2f)
+                    val radius = size.width / 2f - inset
+                    fun unit(point: Offset) = OrbitPosition(
+                        (point.x - center.x) / radius,
+                        (center.y - point.y) / radius
+                    ).clamped()
+                    fun degreesAt(point: Offset) =
+                        Math.toDegrees(atan2((center.y - point.y).toDouble(), (point.x - center.x).toDouble())).toFloat()
+                    val current = latestPosition
+                    val handle = Offset(center.x + current.tilt * radius, center.y - current.contour * radius)
+                    val puckDistance = (down.position - handle).getDistance()
+                    val angles = latestAngles
+                    val poleDistances = angles.map { angle ->
+                        val direction = OrbitEqualizer.poleDirection(angle)
+                        val reach = radius + inset / 2f
+                        (down.position - Offset(center.x + direction.tilt * reach, center.y - direction.contour * reach)).getDistance()
+                    }
+                    val pole = poleDistances.indices
+                        .minByOrNull { poleDistances[it] }
+                        ?.takeIf { poleDistances[it] <= POLE_GRAB_RADIUS.toPx() && poleDistances[it] < puckDistance }
+                    if (pole == null && puckDistance <= GRAB_RADIUS.toPx()) {
                         down.consume()
                         latestStart()
                         while (true) {
@@ -451,7 +496,63 @@ private fun OrbitField(
                             latestDrag(unit(change.position))
                         }
                         latestEnd()
+                        return@awaitEachGesture
                     }
+                    if (pole != null) down.consume()
+                    val outcome = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+                        var result: PressOutcome? = null
+                        while (result == null) {
+                            val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id }
+                            result = when {
+                                change == null || (pole == null && change.isConsumed) -> PressOutcome.CANCELLED
+                                !change.pressed -> PressOutcome.TAPPED.also { change.consume() }
+                                (change.position - down.position).getDistance() > viewConfiguration.touchSlop -> PressOutcome.MOVED
+                                else -> null
+                            }
+                        }
+                        result
+                    }
+                    when {
+                        outcome == null -> {
+                            latestReset()
+                            while (true) {
+                                val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
+                                change.consume()
+                                if (!change.pressed) break
+                            }
+                        }
+                        outcome == PressOutcome.TAPPED && pole != null -> latestTap(poleTarget(angles[pole]))
+                        outcome == PressOutcome.TAPPED && (down.position - center).getDistance() <= radius + viewConfiguration.touchSlop ->
+                            latestTap(unit(down.position))
+                        outcome == PressOutcome.MOVED && pole != null -> {
+                            latestPoleStart(pole)
+                            while (true) {
+                                val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
+                                if (!change.pressed) break
+                                change.consume()
+                                latestPoleDrag(pole, degreesAt(change.position))
+                            }
+                            latestPoleEnd()
+                        }
+                    }
+                }
+            }
+    ) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(FIELD_INSET)
+                .alpha(if (active) 1f else 0.55f)
+                .semantics {
+                    contentDescription = copy.padDescription
+                    stateDescription = state
+                    customActions = labels.indices.map { pole ->
+                        val direction = OrbitEqualizer.poleDirection(poleAngles[pole])
+                        CustomAccessibilityAction(labels[pole]) { onNudge(direction.tilt * NUDGE, direction.contour * NUDGE); true }
+                    } + listOf(
+                        CustomAccessibilityAction(copy.center) { onPole(OrbitPosition.Center); true },
+                        CustomAccessibilityAction(copy.resetPoles) { onResetPoles(); true }
+                    )
                 }
         ) {
             val radius = size.minDimension / 2f
@@ -472,6 +573,12 @@ private fun OrbitField(
             drawCircle(accent.copy(alpha = 0.55f), radius = radius, center = center, style = Stroke(1.5.dp.toPx()))
             drawLine(hairline, Offset(center.x - radius, center.y), Offset(center.x + radius, center.y), 1.dp.toPx())
             drawLine(hairline, Offset(center.x, center.y - radius), Offset(center.x, center.y + radius), 1.dp.toPx())
+            poleAngles.forEach { angle ->
+                val direction = OrbitEqualizer.poleDirection(angle)
+                val anchor = Offset(center.x + direction.tilt * radius, center.y - direction.contour * radius)
+                drawCircle(surface, radius = 5.dp.toPx(), center = anchor)
+                drawCircle(accent.copy(alpha = 0.7f), radius = 3.5.dp.toPx(), center = anchor)
+            }
             drawLine(
                 brush = Brush.linearGradient(listOf(accent.copy(alpha = 0.05f), accent.copy(alpha = 0.75f)), center, point),
                 start = center,
@@ -484,27 +591,49 @@ private fun OrbitField(
             drawCircle(surface, radius = 11.dp.toPx(), center = point)
             drawCircle(accent, radius = 8.dp.toPx(), center = point)
         }
-        OrbitPoleLabel(copy.forward, Modifier.align(Alignment.TopCenter), maxWidth = 168.dp) { onPole(OrbitPosition(0f, POLE_REACH)) }
-        OrbitPoleLabel(copy.open, Modifier.align(Alignment.BottomCenter), maxWidth = 168.dp) { onPole(OrbitPosition(0f, -POLE_REACH)) }
-        OrbitPoleLabel(copy.warm, Modifier.align(AbsoluteAlignment.CenterLeft)) { onPole(OrbitPosition(-POLE_REACH, 0f)) }
-        OrbitPoleLabel(copy.bright, Modifier.align(AbsoluteAlignment.CenterRight)) { onPole(OrbitPosition(POLE_REACH, 0f)) }
+        labels.forEachIndexed { pole, label ->
+            val vertical = abs(OrbitEqualizer.poleDirection(poleAngles[pole]).contour) > 0.7f
+            OrbitPoleLabel(
+                label = label,
+                angle = { latestAngles[pole] },
+                maxWidth = if (vertical) 168.dp else 96.dp
+            ) { onPole(poleTarget(poleAngles[pole])) }
+        }
     }
 }
 
-private fun poleState(position: OrbitPosition, copy: OrbitEqCopy): String {
-    fun percent(value: Float) = (abs(value) * 100).roundToInt()
-    val tilt = if (position.tilt < 0f) copy.warm else copy.bright
-    val contour = if (position.contour < 0f) copy.open else copy.forward
-    return "$tilt ${percent(position.tilt)}%, $contour ${percent(position.contour)}%"
+private enum class PressOutcome { TAPPED, MOVED, CANCELLED }
+
+private fun poleState(position: OrbitPosition, poleAngles: List<Float>, labels: List<String>): String {
+    val weights = OrbitEqualizer.poleWeights(position, poleAngles)
+    return labels.indices.joinToString(", ") { pole -> "${labels[pole]} ${(weights[pole] * 100).roundToInt()}%" }
+}
+
+private fun Modifier.ringAnchor(angle: () -> Float): Modifier = layout { measurable, constraints ->
+    val placeable = measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
+    val width = constraints.maxWidth
+    val height = constraints.maxHeight
+    layout(width, height) {
+        val direction = OrbitEqualizer.poleDirection(angle())
+        val distance = width / 2f - FIELD_INSET.toPx() / 2f
+        val x = (width / 2f + direction.tilt * distance - placeable.width / 2f).roundToInt()
+        val y = (height / 2f - direction.contour * distance - placeable.height / 2f).roundToInt()
+        placeable.place(x.coerceIn(0, (width - placeable.width).coerceAtLeast(0)), y.coerceIn(0, (height - placeable.height).coerceAtLeast(0)))
+    }
 }
 
 @Composable
-private fun OrbitPoleLabel(label: String, modifier: Modifier, maxWidth: Dp = 96.dp, onClick: () -> Unit) {
+private fun OrbitPoleLabel(label: String, angle: () -> Float, maxWidth: Dp, onTap: () -> Unit) {
     Box(
         contentAlignment = Alignment.Center,
-        modifier = modifier
+        modifier = Modifier
+            .fillMaxSize()
+            .ringAnchor(angle)
             .sizeIn(minWidth = 48.dp, minHeight = 48.dp, maxWidth = maxWidth)
-            .clickable(role = Role.Button, onClick = onClick)
+            .semantics(mergeDescendants = true) {
+                role = Role.Button
+                onClick { onTap(); true }
+            }
     ) {
         BasicText(
             text = label,
