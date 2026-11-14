@@ -320,7 +320,7 @@ private fun QobuzLibraryContent(
                 QobuzLibraryPulseCard(
                     pulse = state.listeningPulse,
                     onOpen = viewModel::openListeningInsights,
-                    modifier = Modifier.padding(end = if (grid) 0.dp else QobuzDesign.gutter - 4.dp)
+                    modifier = Modifier.padding(top = 8.dp, bottom = if (grid) 0.dp else 16.dp, end = if (grid) 0.dp else QobuzDesign.gutter - 4.dp)
                 )
             }
         }

@@ -35,13 +35,18 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.ListeningPulse
 import com.luc4n3x.levyra.domain.PulseDay
+import com.luc4n3x.levyra.ui.components.LevyraPressScale
+import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.formatLibraryDuration
@@ -55,8 +60,8 @@ private val SpotifyPulseTileBottom = Color(0xFF0B3D20)
 internal val YouTubeMusicPulseColors = listOf(Color(0xFF8E0E2B), Color(0xFFFF4E45))
 
 internal fun pulseWeekSummary(pulse: ListeningPulse, strings: LevyraStrings): String =
-    if (pulse.last7Days.plays == 0) strings.pulseEmpty
-    else "${strings.pulseWeek} · ${strings.formatLibraryDuration(pulse.last7Days.totalListenMs)}"
+    if (pulse.last7Days.totalListenMs <= 0L) strings.pulseEmpty
+    else "${strings.formatLibraryDuration(pulse.last7Days.totalListenMs)} · ${strings.pulseWeek}"
 
 @Composable
 private fun PulseWeekBars(
@@ -91,7 +96,7 @@ private fun PulseWeekBars(
 internal fun AtelierLibraryPulseStrip(pulse: ListeningPulse, onOpen: () -> Unit) {
     val strings = LocalLevyraStrings.current
     val locale = remember(strings.code) { Locale.forLanguageTag(strings.code) }
-    val active = pulse.last7Days.plays > 0
+    val active = pulse.last7Days.totalListenMs > 0L
     val duration = strings.formatLibraryDuration(pulse.last7Days.totalListenMs)
     val summary = pulseWeekSummary(pulse, strings)
     Column(Modifier.fillMaxWidth().padding(horizontal = AtelierDesign.gutter)) {
@@ -121,20 +126,19 @@ internal fun AtelierLibraryPulseStrip(pulse: ListeningPulse, onOpen: () -> Unit)
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    (if (active) strings.pulseWeek else strings.pulseEmpty).uppercase(locale),
+                    buildAnnotatedString {
+                        if (active) {
+                            withStyle(SpanStyle(color = AtelierDesign.accentBright)) { append(duration.uppercase(locale)) }
+                            append("  ·  ")
+                            append(strings.pulseWeek.uppercase(locale))
+                        } else {
+                            append(strings.pulseEmpty.uppercase(locale))
+                        }
+                    },
                     style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.6.sp),
                     color = AtelierDesign.textFaint,
-                    maxLines = 1,
+                    maxLines = if (active) 1 else 2,
                     overflow = TextOverflow.Ellipsis
-                )
-            }
-            if (active) {
-                Text(
-                    duration,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Light),
-                    color = AtelierDesign.accentBright,
-                    maxLines = 1,
-                    modifier = Modifier.padding(start = 10.dp).clearAndSetSemantics { }
                 )
             }
             Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = AtelierDesign.accent, modifier = Modifier.padding(start = 4.dp).size(22.dp))
@@ -147,11 +151,10 @@ internal fun AtelierLibraryPulseStrip(pulse: ListeningPulse, onOpen: () -> Unit)
 internal fun QobuzLibraryPulseCard(pulse: ListeningPulse, onOpen: () -> Unit, modifier: Modifier = Modifier) {
     val strings = LocalLevyraStrings.current
     val locale = remember(strings.code) { Locale.forLanguageTag(strings.code) }
-    val active = pulse.last7Days.plays > 0
+    val active = pulse.last7Days.totalListenMs > 0L
     val shape = RoundedCornerShape(4.dp)
     Column(
         modifier.fillMaxWidth()
-            .padding(top = 8.dp, bottom = 16.dp)
             .clip(shape)
             .background(QobuzDesign.surfaceSecondary)
             .clickable(role = Role.Button, onClick = onOpen)
@@ -206,7 +209,7 @@ internal fun SpotifyLibraryPulseRow(pulse: ListeningPulse, onOpen: () -> Unit) {
     val summary = pulseWeekSummary(pulse, strings)
     Row(
         Modifier.fillMaxWidth()
-            .clickable(role = Role.Button, onClick = onOpen)
+            .levyraPressable(onClick = onOpen, pressedScale = LevyraPressScale.Control, role = Role.Button, onClickLabel = strings.pulseTitle)
             .semantics(mergeDescendants = true) { contentDescription = "${strings.pulseTitle}, $summary" }
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
