@@ -142,14 +142,15 @@ internal fun buildExploreRows(
     editorial: Boolean = false,
     hasNews: Boolean = false,
     hasNewsDesk: Boolean = hasNews,
-    editorialJourney: Boolean = false
+    editorialJourney: Boolean = false,
+    hasCityCharts: Boolean = false
 ): List<ExploreRow> {
     val rows = mutableListOf<ExploreRow>()
     if (editorial) {
         if (hasNews) rows += ExploreRow.NewsHero
         rows += exploreFreshRows(isFreshLoading, hasFreshTracks, hasFreshScopes, hasFreshMoment = false)
         rows += ExploreRow.DailyTop100
-        rows += ExploreRow.CityCharts
+        if (hasCityCharts) rows += ExploreRow.CityCharts
         if (editorialJourney) rows += ExploreRow.MoodJourney
         if (hasNews && hasNewsDesk) rows += ExploreRow.NewsList
         return rows

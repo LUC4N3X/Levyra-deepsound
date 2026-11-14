@@ -895,6 +895,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -24865,6 +24866,9 @@ private fun ExploreScreen(
     val editorialExplore = LevyraIsSpotify || LevyraIsMono || LevyraIsAtelier || levyraSearchOwnsBrowse(false, LevyraIsAppleMusic, LevyraIsAtelier || LevyraIsQobuz || LevyraIsYouTubeMusic)
     LaunchedEffect(strings.code, editorialExplore) { if (editorialExplore || LevyraIsYouTubeMusic) viewModel.ensureNews(strings.code) }
     val news by viewModel.news.collectAsStateWithLifecycle()
+    val dailyCharts = composeViewModel<com.luc4n3x.levyra.viewmodel.DailyTop100ViewModel>()
+    val hasCityCharts by remember(dailyCharts) { dailyCharts.state.map { it.cities.isNotEmpty() }.distinctUntilChanged() }
+        .collectAsStateWithLifecycle(dailyCharts.state.value.cities.isNotEmpty())
     val context = LocalContext.current
     val listState = rememberLazyListState()
     var addToPlaylistTarget by remember { mutableStateOf<Track?>(null) }
@@ -24942,7 +24946,8 @@ private fun ExploreScreen(
         momentPages.isNotEmpty(),
         editorialExplore,
         news.isNotEmpty(),
-        news.size > ExploreNewsFrontSize
+        news.size > ExploreNewsFrontSize,
+        hasCityCharts
     ) {
         buildExploreRows(
             zones = zones,
@@ -24956,7 +24961,8 @@ private fun ExploreScreen(
             editorial = editorialExplore,
             hasNews = news.isNotEmpty(),
             hasNewsDesk = news.size > ExploreNewsFrontSize,
-            editorialJourney = spotifyExplore
+            editorialJourney = spotifyExplore,
+            hasCityCharts = hasCityCharts
         )
     }
     val availableAnchors = remember(rows) { exploreAvailableAnchors(rows) }

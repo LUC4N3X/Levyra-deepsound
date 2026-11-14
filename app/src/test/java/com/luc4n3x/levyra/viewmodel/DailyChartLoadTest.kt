@@ -4,7 +4,9 @@ import com.luc4n3x.levyra.data.apple.AppleCityChart
 import com.luc4n3x.levyra.data.apple.AppleDailyChart
 import com.luc4n3x.levyra.domain.Track
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DailyChartLoadTest {
@@ -37,6 +39,14 @@ class DailyChartLoadTest {
     fun staleKeyIgnored() {
         val state = DailyTop100UiState(key = "it:it", charts = top100, cities = cities)
         assertSame(state, mergeCharts(state, "fr:fr", top100 = emptyList(), cities = emptyList()))
+    }
+
+    @Test
+    fun emptyCitiesStillReload() {
+        assertFalse(chartsSettled(DailyTop100UiState(key = "it:it", charts = top100), "it:it"))
+        assertTrue(chartsSettled(DailyTop100UiState(key = "it:it", charts = top100, cities = cities), "it:it"))
+        assertTrue(chartsSettled(DailyTop100UiState(key = "it:it", loading = true), "it:it"))
+        assertFalse(chartsSettled(DailyTop100UiState(key = "fr:fr", charts = top100, cities = cities), "it:it"))
     }
 
     @Test

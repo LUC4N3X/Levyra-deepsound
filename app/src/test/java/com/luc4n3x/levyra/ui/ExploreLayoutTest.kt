@@ -43,9 +43,16 @@ class ExploreLayoutTest {
 
     @Test
     fun editorialRowsPlaceCityChartsAfterTop100() {
-        val rows = buildExploreRows(zones(4), false, true, editorial = true, hasNews = true, editorialJourney = true)
+        val rows = buildExploreRows(zones(4), false, true, editorial = true, hasNews = true, editorialJourney = true, hasCityCharts = true)
 
         assertEquals(rows.indexOf(ExploreRow.DailyTop100) + 1, rows.indexOf(ExploreRow.CityCharts))
+    }
+
+    @Test
+    fun editorialRowsWithoutCityChartsLeaveNoEmptyRow() {
+        val rows = buildExploreRows(zones(4), false, true, editorial = true, hasNews = true)
+
+        assertTrue(ExploreRow.CityCharts !in rows)
     }
 
     @Test
@@ -516,7 +523,6 @@ class ExploreLayoutTest {
                 ExploreRow.Header(ExploreAnchor.Fresh),
                 ExploreRow.FreshSpotlight,
                 ExploreRow.DailyTop100,
-                ExploreRow.CityCharts,
                 ExploreRow.NewsList
             ),
             rows
@@ -527,7 +533,7 @@ class ExploreLayoutTest {
     fun editorialExploreWithoutNewsStillShowsReleasesAndCharts() {
         val rows = buildExploreRows(emptyList(), false, false, editorial = true, hasNews = false)
 
-        assertEquals(listOf(ExploreRow.Header(ExploreAnchor.Fresh), ExploreRow.FreshEmpty, ExploreRow.DailyTop100, ExploreRow.CityCharts), rows)
+        assertEquals(listOf(ExploreRow.Header(ExploreAnchor.Fresh), ExploreRow.FreshEmpty, ExploreRow.DailyTop100), rows)
     }
 
     @Test

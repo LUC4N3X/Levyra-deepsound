@@ -61,8 +61,7 @@ class DailyTop100ViewModel(application: Application) : AndroidViewModel(applicat
         val front = AppleStorefronts.normalize(storefront)
         val lang = AppleStorefronts.language(language)
         val key = "$front:$lang"
-        val current = _state.value
-        if (!force && current.key == key && (current.loading || current.charts.isNotEmpty())) return
+        if (!force && chartsSettled(_state.value, key)) return
         loadJob?.cancel()
         _state.update {
             val sameKey = it.key == key
@@ -114,6 +113,9 @@ class DailyTop100ViewModel(application: Application) : AndroidViewModel(applicat
         const val MAX_TRACKS = 100
     }
 }
+
+internal fun chartsSettled(state: DailyTop100UiState, key: String): Boolean =
+    state.key == key && (state.loading || (state.charts.isNotEmpty() && state.cities.isNotEmpty()))
 
 internal fun mergeCharts(
     state: DailyTop100UiState,
