@@ -622,7 +622,7 @@ private fun Modifier.ringAnchor(angle: () -> Float, stack: () -> Int, slot: Ring
         val direction = OrbitEqualizer.poleDirection(angle())
         val distance = width / 2f - FIELD_INSET.toPx() / 2f
         val x = (width / 2f + direction.tilt * distance - placeable.width / 2f).roundToInt()
-        val lift = stack() * placeable.height * (if (direction.contour >= 0f) 1 else -1)
+        val lift = stack() * placeable.height * if (direction.contour >= 0f) 1 else -1
         val y = (height / 2f - direction.contour * distance - placeable.height / 2f).roundToInt() + lift
         slot.x = x.coerceIn(0, (width - placeable.width).coerceAtLeast(0))
         slot.y = y.coerceIn(0, (height - placeable.height).coerceAtLeast(0))
