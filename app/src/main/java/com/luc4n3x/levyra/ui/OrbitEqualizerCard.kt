@@ -610,7 +610,14 @@ private class RingSlot {
     var y = 0
     var fieldWidth = 0
     var fieldHeight = 0
+
+    fun fieldOffset(local: Offset): Offset = Offset(x + local.x - fieldWidth / 2f, fieldHeight / 2f - (y + local.y))
 }
+
+internal fun draggedPoleAngle(startPole: Float, startFinger: Offset, finger: Offset): Float =
+    OrbitEqualizer.normalizedAngle(startPole + fingerDegrees(finger) - fingerDegrees(startFinger))
+
+private fun fingerDegrees(point: Offset): Float = Math.toDegrees(atan2(point.y.toDouble(), point.x.toDouble())).toFloat()
 
 private fun angularGap(first: Float, second: Float): Float = abs(((first - second) % 360f + 540f) % 360f - 180f)
 
@@ -656,15 +663,19 @@ private fun OrbitPoleLabel(
             .ringAnchor(angle, stack, slot)
             .sizeIn(minWidth = 48.dp, minHeight = 48.dp, maxWidth = maxWidth)
             .pointerInput(Unit) {
+                var startPole = 0f
+                var startFinger = Offset.Zero
                 detectDragGestures(
-                    onDragStart = { latestDragStart() },
+                    onDragStart = { start ->
+                        startPole = angle()
+                        startFinger = slot.fieldOffset(start)
+                        latestDragStart()
+                    },
                     onDragEnd = { latestDragEnd() },
                     onDragCancel = { latestDragEnd() }
                 ) { change, _ ->
                     change.consume()
-                    val x = slot.x + change.position.x - slot.fieldWidth / 2f
-                    val y = slot.fieldHeight / 2f - (slot.y + change.position.y)
-                    latestDrag(Math.toDegrees(atan2(y.toDouble(), x.toDouble())).toFloat())
+                    latestDrag(draggedPoleAngle(startPole, startFinger, slot.fieldOffset(change.position)))
                 }
             }
             .combinedClickable(role = Role.Button, onLongClickLabel = resetLabel, onLongClick = onReset, onClick = onTap)
