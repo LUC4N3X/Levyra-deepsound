@@ -2143,6 +2143,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 if ((!_state.value.isPlaying || externalSelectionChanged) && !_state.value.isResolving && currentPersisted != null) {
                     pendingSeekMs = queueSnapshot.positionMs
                 }
+                val previousTrack = _state.value.currentTrack
                 _state.update { current ->
                     val synchronizeCurrent = !current.isResolving && (!current.isPlaying || externalSelectionChanged)
                     current.copy(
@@ -2158,6 +2159,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         positionMs = if (synchronizeCurrent) queueSnapshot.positionMs else current.positionMs,
                         durationMs = if (synchronizeCurrent) currentPersisted?.durationMs ?: current.durationMs else current.durationMs
                     )
+                }
+                val syncedTrack = _state.value.currentTrack
+                if (syncedTrack != null && queueSyncReplacedTrack(previousTrack, syncedTrack)) {
+                    _state.update {
+                        it.copy(motionArtwork = null, motionArtworkLoading = it.animationsEnabled && !it.isVideoMode)
+                    }
+                    refreshMotionArtworkAround(syncedTrack)
                 }
                 queueRestored.complete(Unit)
             }
@@ -16324,6 +16332,9 @@ internal fun playbackTrackAfterQueueSync(current: Track?, queued: Track?): Track
         playbackQueueIdentity(it) == playbackQueueIdentity(queued) && it.streamUrl.isNotBlank()
     } ?: queued
 }
+
+internal fun queueSyncReplacedTrack(previous: Track?, synced: Track?): Boolean =
+    previous != null && synced != null && playbackQueueIdentity(previous) != playbackQueueIdentity(synced)
 
 internal fun playbackPositionForExit(
     playerPositionMs: Long?,
