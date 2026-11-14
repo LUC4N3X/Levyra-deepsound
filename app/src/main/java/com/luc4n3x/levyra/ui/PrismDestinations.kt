@@ -354,8 +354,8 @@ internal fun PrismCityCard(chart: AppleCityChart, slot: Int, modifier: Modifier)
             .padding(16.dp)
     ) {
         Text(
-            chart.name, color = Color.White, style = MaterialTheme.typography.headlineSmall, maxLines = 2, overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.align(Alignment.TopStart)
+            chart.name, color = Color.White, style = MaterialTheme.typography.headlineSmall, fontSize = fixedSp(24f), lineHeight = fixedSp(30f),
+            maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.align(Alignment.TopStart)
         )
         Column(Modifier.align(Alignment.BottomStart)) {
             Box(Modifier.width(22.dp).height(3.dp).clip(CircleShape).background(Color.White))

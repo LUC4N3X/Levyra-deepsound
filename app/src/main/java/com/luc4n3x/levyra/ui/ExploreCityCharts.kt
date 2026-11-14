@@ -52,6 +52,8 @@ import com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic
 import com.luc4n3x.levyra.viewmodel.DailyChartRef
 import com.luc4n3x.levyra.viewmodel.DailyTop100ViewModel
 
+private class CityCoverStyle(val palette: Top100Palette, val shapes: List<Shape>, val largeText: Boolean)
+
 private enum class CitySkin { Mono, Ivory, Torque, Prism, Spotify, YouTubeMusic, Atelier, Default }
 
 internal val AppleCityChart.numeral: String get() = badge.filter(Char::isDigit).ifEmpty { badge }
@@ -75,9 +77,6 @@ internal fun ExploreCityCharts(
     if (cities.isNotEmpty()) {
         val copy = remember(code) { cityChartsCopy(code) }
         val slots = remember(cities) { dailyTop100HueSlots(cities.map { it.playlistId }) }
-        val palette = cityChartPalette(MaterialTheme.colorScheme)
-        val shapes = coverShapes()
-        val largeText = LocalDensity.current.fontScale > 1.3f
         val skin = when {
             LevyraIsMono -> CitySkin.Mono
             LevyraIsIvory -> CitySkin.Ivory
@@ -87,6 +86,11 @@ internal fun ExploreCityCharts(
             LevyraIsYouTubeMusic -> CitySkin.YouTubeMusic
             LevyraIsAtelier -> CitySkin.Atelier
             else -> CitySkin.Default
+        }
+        val defaultStyle = if (skin == CitySkin.Default) {
+            CityCoverStyle(cityChartPalette(MaterialTheme.colorScheme), coverShapes(), LocalDensity.current.fontScale > 1.3f)
+        } else {
+            null
         }
         val monoOverline = if (skin == CitySkin.Mono) LevyraMonoHomeStrings.forCode(code).chartsOverline else ""
         val openCity = { chart: AppleCityChart -> viewModel.open(DailyChartRef.City(chart)) }
@@ -117,14 +121,16 @@ internal fun ExploreCityCharts(
                             CitySkin.Torque -> TorqueCityCard(chart, Modifier.size(TorqueTop100Size).then(tap))
                             CitySkin.Prism -> PrismCityCard(chart, slots[index], Modifier.size(Top100CoverSize).then(tap))
                             CitySkin.Spotify -> SpotifyCityCard(chart, slots[index], tap)
-                            else -> CityChartCover(
-                                chart = chart,
-                                palette = palette,
-                                glyph = shapes[slots[index] % 4],
-                                rotation = slots[index] * 15f,
-                                largeText = largeText,
-                                modifier = Modifier.size(Top100CoverSize).then(tap)
-                            )
+                            else -> defaultStyle?.let { style ->
+                                CityChartCover(
+                                    chart = chart,
+                                    palette = style.palette,
+                                    glyph = style.shapes[slots[index] % 4],
+                                    rotation = slots[index] * 15f,
+                                    largeText = style.largeText,
+                                    modifier = Modifier.size(Top100CoverSize).then(tap)
+                                )
+                            }
                         }
                     }
                 }

@@ -94,8 +94,8 @@ internal fun IvoryNewsFront(stories: List<MusicNewsStory>, onOpen: (MusicNewsSto
 internal fun IvoryCityCard(chart: AppleCityChart, modifier: Modifier) {
     Box(modifier.clip(RoundedCornerShape(IvoryDesign.coverCorner)).background(LevyraPanel)) {
         Text(
-            chart.name, color = LevyraText, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Light, maxLines = 2,
-            overflow = TextOverflow.Ellipsis, modifier = Modifier.align(Alignment.TopStart).fillMaxWidth().padding(start = 18.dp, top = 18.dp, end = 18.dp)
+            chart.name, color = LevyraText, style = MaterialTheme.typography.headlineSmall, fontSize = fixedSp(24f), lineHeight = fixedSp(30f),
+            fontWeight = FontWeight.Light, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.align(Alignment.TopStart).fillMaxWidth().padding(start = 18.dp, top = 18.dp, end = 18.dp)
         )
         IvoryInkTab(start = true, Modifier.align(Alignment.BottomStart).padding(bottom = 16.dp).fillMaxWidth(0.72f).height(44.dp)) {
             Text(chart.badge, color = IvoryDesign.onInk, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 18.dp))

@@ -52,16 +52,22 @@ internal val MonoTop100Hues = listOf(
 
 internal fun monoTop100Hue(slot: Int, global: Boolean): Color = if (global) MonoDesign.accent else MonoTop100Hues[slot % MonoTop100Hues.size]
 
+private fun monoInk(hue: Color): Color = if (hue.luminance() > 0.5f) Color(0xFF0B0F12) else Color.White
+
+private fun monoLabelColor(hue: Color, ink: Color): Color = if (ink == Color.White) lerp(hue, Color.Black, 0.35f) else hue
+
+private fun Modifier.monoHueGradient(hue: Color): Modifier = drawBehind {
+    drawRect(Brush.linearGradient(listOf(lerp(hue, Color.White, 0.1f), lerp(hue, Color.Black, 0.28f)), Offset.Zero, Offset(size.width, size.height)))
+}
+
 @Composable
 internal fun MonoTop100Cover(label: String, date: String, slot: Int, global: Boolean, size: Dp, modifier: Modifier = Modifier, numeral: String = "100") {
     val hue = monoTop100Hue(slot, global)
-    val ink = if (hue.luminance() > 0.5f) Color(0xFF0B0F12) else Color.White
+    val ink = monoInk(hue)
     val scale = 1f / LocalDensity.current.fontScale
     Box(
         modifier.size(size).clip(MonoDesign.cardShape)
-            .drawBehind {
-                drawRect(Brush.linearGradient(listOf(lerp(hue, Color.White, 0.1f), lerp(hue, Color.Black, 0.28f)), Offset.Zero, Offset(this.size.width, this.size.height)))
-            }
+            .monoHueGradient(hue)
             .clearAndSetSemantics { }
     ) {
         Text(date, color = ink.copy(alpha = 0.75f), fontFamily = MonoCodeFont, fontSize = (9.5f * scale).sp, letterSpacing = 1.2.sp, maxLines = 1,
@@ -74,7 +80,7 @@ internal fun MonoTop100Cover(label: String, date: String, slot: Int, global: Boo
             Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(10.dp).clip(RoundedCornerShape(8.dp)).background(ink)
                 .padding(horizontal = 10.dp, vertical = 7.dp)
         ) {
-            Text(label.uppercase(), color = hue.let { if (ink == Color.White) lerp(it, Color.Black, 0.35f) else it }, fontFamily = MonoFont, fontWeight = FontWeight.Bold,
+            Text(label.uppercase(), color = monoLabelColor(hue, ink), fontFamily = MonoFont, fontWeight = FontWeight.Bold,
                 fontSize = (13f * scale).sp, letterSpacing = 0.6.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
@@ -111,7 +117,7 @@ internal fun MonoTop100ChartScreen(
         onPlayAll = { tracks.firstOrNull()?.let { onPlay(tracks, it) } },
         onShuffle = { tracks.shuffled().let { shuffled -> shuffled.firstOrNull()?.let { onPlay(shuffled, it) } } },
         onTrackActions = onTrackActions, bottomInset = bottom,
-        byline = "Top $numeral · $date", loading = open.loading, glow = monoTop100Hue(slot, open.chart.global), ranked = true,
+        byline = "${(open.chart as? com.luc4n3x.levyra.viewmodel.DailyChartRef.City)?.chart?.badge ?: "Top $numeral"} · $date", loading = open.loading, glow = monoTop100Hue(slot, open.chart.global), ranked = true,
         failedLabel = failedLabel.takeIf { open.failed }, retryLabel = retryLabel, onRetry = onRetry,
         cover = { MonoTop100Cover(label, date, slot, open.chart.global, 248.dp, numeral = numeral) }
     )
@@ -120,13 +126,11 @@ internal fun MonoTop100ChartScreen(
 @Composable
 internal fun MonoCityCard(chart: AppleCityChart, slot: Int, modifier: Modifier = Modifier) {
     val hue = monoTop100Hue(slot, false)
-    val ink = if (hue.luminance() > 0.5f) Color(0xFF0B0F12) else Color.White
+    val ink = monoInk(hue)
     val scale = 1f / LocalDensity.current.fontScale
     Box(
         modifier.clip(MonoDesign.cardShape)
-            .drawBehind {
-                drawRect(Brush.linearGradient(listOf(lerp(hue, Color.White, 0.1f), lerp(hue, Color.Black, 0.28f)), Offset.Zero, Offset(this.size.width, this.size.height)))
-            }
+            .monoHueGradient(hue)
             .clearAndSetSemantics { }
     ) {
         Text(chart.name.uppercase(), color = ink, fontFamily = MonoFont, fontWeight = FontWeight.Bold, fontSize = (22f * scale).sp, lineHeight = (24f * scale).sp,
@@ -135,7 +139,7 @@ internal fun MonoCityCard(chart: AppleCityChart, slot: Int, modifier: Modifier =
             Modifier.align(Alignment.BottomStart).padding(10.dp).clip(RoundedCornerShape(8.dp)).background(ink)
                 .padding(horizontal = 10.dp, vertical = 7.dp)
         ) {
-            Text(chart.badge.uppercase(), color = hue.let { if (ink == Color.White) lerp(it, Color.Black, 0.35f) else it }, fontFamily = MonoCodeFont, fontWeight = FontWeight.Bold,
+            Text(chart.badge.uppercase(), color = monoLabelColor(hue, ink), fontFamily = MonoCodeFont, fontWeight = FontWeight.Bold,
                 fontSize = (12f * scale).sp, letterSpacing = 0.6.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }

@@ -320,7 +320,7 @@ private fun rememberTop100Palette(global: Boolean, slot: Int): Top100Palette {
 }
 
 @Composable
-private fun fixedSp(value: Float): TextUnit = (value / LocalDensity.current.fontScale).sp
+internal fun fixedSp(value: Float): TextUnit = (value / LocalDensity.current.fontScale).sp
 
 @Composable
 private fun Top100Numeral(numeral: String, palette: Top100Palette, size: TextUnit) {
@@ -604,12 +604,8 @@ internal fun SpotifyCityCard(chart: AppleCityChart, slot: Int, modifier: Modifie
                 .background(androidx.compose.ui.graphics.Brush.verticalGradient(colors.map(::Color)))
         ) {
             Text(
-                chart.name, color = Color.White, fontSize = 22.sp, lineHeight = 26.sp, fontWeight = FontWeight.Bold, maxLines = 2,
-                overflow = TextOverflow.Ellipsis, modifier = Modifier.align(Alignment.TopStart).padding(start = 12.dp, top = 12.dp, end = 12.dp)
-            )
-            Text(
-                chart.badge.uppercase(), color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.6.sp, maxLines = 1,
-                overflow = TextOverflow.Ellipsis, modifier = Modifier.align(Alignment.BottomStart).padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
+                chart.badge, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false,
+                overflow = TextOverflow.Ellipsis, modifier = Modifier.align(Alignment.Center).padding(horizontal = 10.dp)
             )
         }
         Text(

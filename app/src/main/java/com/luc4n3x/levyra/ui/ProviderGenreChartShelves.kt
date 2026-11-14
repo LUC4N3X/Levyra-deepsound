@@ -269,7 +269,8 @@ internal fun YouTubeMusicTop100Shelf(
             YouTubeMusicCardModel(
                 "ytm-top100-${chart.playlistId}", label, copy.title, "",
                 onClick = { onOpen(chart) },
-                cover = { shape -> YouTubeMusicTop100Cover(label, date, tone, shape) }
+                cover = { shape -> YouTubeMusicTop100Cover(label, date, tone, shape) },
+                contentDescription = "${copy.title}, $label"
             )
         }
     }
@@ -295,7 +296,8 @@ internal fun YouTubeMusicCityShelf(
             YouTubeMusicCardModel(
                 "ytm-city-${chart.playlistId}", chart.name, copy.title, "",
                 onClick = { onOpen(chart) },
-                cover = { shape -> YouTubeMusicTop100Cover(chart.name, date, tone, shape, chart.numeral) }
+                cover = { shape -> YouTubeMusicTop100Cover(chart.name, date, tone, shape, chart.numeral) },
+                contentDescription = "${copy.title}, ${chart.name}"
             )
         }
     }
