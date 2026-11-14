@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-13T19:46:44Z",
+  "generatedAt": "2026-11-14T06:31:40Z",
   "items": [
     {
       "song": "Sentire La Musica",
@@ -1858,13 +1858,6 @@
       "scope": "track"
     },
     {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "The Art of Loving",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Bare Minimum (Starboy)",
       "artist": "Frsh, KM, LA$$A",
       "album": "Therapy",
@@ -2548,6 +2541,13 @@
       "artist": "Humlan Djojj, Josefine Götestam",
       "album": "Sov med Humlan Djojj",
       "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/a744e9eff47e44d8b5409567c2a71126.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "The Art of Loving",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4826,6 +4826,13 @@
       "scope": "track"
     },
     {
+      "song": "Iris",
+      "artist": "The Goo Goo Dolls",
+      "album": "Stay with You",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/4ab38c8ea56645c5ab7d8ebfb5e4edc2.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Yellow",
       "artist": "Coldplay",
       "album": "Parachutes",
@@ -4837,6 +4844,13 @@
       "artist": "The Police",
       "album": "Synchronicity (Remastered 2003)",
       "url": "https://canvaz.scdn.co/upload/artist/5NGO30tJxFlKixkPSgXcFE/video/1edc59b0815f47878a447702e6751fb7.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Bring Me To Life",
+      "artist": "Evanescence",
+      "album": "Festival Rock Hits",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/7b03bbea08e8438895ac6334a13a383f.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -5003,7 +5017,7 @@
     {
       "song": "El Teléfono",
       "artist": "Héctor \"El Father\", Wisin & Yandel",
-      "album": "The Bad Boy",
+      "album": "Machete Music Chronicles: Vol. I",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/b23b719ccbb445188126f29f094d154a.cnvs.mp4",
       "scope": "track"
     },
@@ -5400,13 +5414,6 @@
       "scope": "track"
     },
     {
-      "song": "El Teléfono",
-      "artist": "Héctor \"El Father\", Wisin & Yandel",
-      "album": "Machete Music Chronicles: Vol. I",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/b23b719ccbb445188126f29f094d154a.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "No Contesta",
       "artist": "Ele A El Dominio",
       "album": "No Contesta",
@@ -5495,6 +5502,13 @@
       "artist": "J Balvin, Bad Bunny",
       "album": "OASIS",
       "url": "https://canvaz.scdn.co/upload/artist/1vyhD5VmyZ7KMfW5gqLgo5/video/146e1d380a254754a481eddbe30d3d90.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "El Teléfono",
+      "artist": "Héctor \"El Father\", Wisin & Yandel",
+      "album": "The Bad Boy",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/b23b719ccbb445188126f29f094d154a.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -6142,13 +6156,6 @@
       "scope": "track"
     },
     {
-      "song": "Ya Hit (feat. Drake, Travis Scott & Loe Shimmy)",
-      "artist": "Future, Drake, Travis Scott, Loe Shimmy",
-      "album": "Ya Hit (feat. Drake, Travis Scott & Loe Shimmy)",
-      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/12b78321ca9d4d1cb19bff31346299d7.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Girl of the moment",
       "artist": "Say Now",
       "album": "Say what you see",
@@ -6366,6 +6373,13 @@
       "scope": "track"
     },
     {
+      "song": "Departamento",
+      "artist": "LATIN MAFIA",
+      "album": "Departamento",
+      "url": "https://canvaz.scdn.co/upload/artist/6XTGKOV9jceQ6f67lnhpbF/video/5edcb82e80f845c9b4d16c6a09b0aef4.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Migajas",
       "artist": "Yami Safdie",
       "album": "Bienvenida de Soltera",
@@ -6534,6 +6548,13 @@
       "scope": "track"
     },
     {
+      "song": "UP",
+      "artist": "ATEEZ",
+      "album": "GOLDEN HOUR : Part.6",
+      "url": "https://canvaz.scdn.co/upload/artist/68KmkJeZGfwe1OUaivBa2L/video/9b512fa968064f4eb1fd5f56245fa5dd.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "ŁASKI BEZ",
       "artist": "GENZIE, Diiya",
       "album": "404",
@@ -6565,7 +6586,7 @@
       "song": "MEGAN FOX",
       "artist": "Young Igi, Mercury, Worek",
       "album": "MEGAN FOX",
-      "url": "https://canvaz.scdn.co/upload/artist/1yq2JzsqbzFbJ1B7wGOXLc/video/bde2b4d5ca3f464d934ab2158a388d02.cnvs.mp4",
+      "url": "https://canvaz.scdn.co/upload/artist/1yq2JzsqbzFbJ1B7wGOXLc/video/9d40240f09bb4b109d09025e16fd5e2c.cnvs.mp4",
       "scope": "track"
     },
     {
