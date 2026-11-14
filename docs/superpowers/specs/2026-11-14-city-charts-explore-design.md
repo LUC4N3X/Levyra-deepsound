@@ -106,3 +106,31 @@ The Apple Music Style skin shows Apple's city charts ("Top 25: Milano", "Top 25:
 - Qobuz gets its own variants in its existing tokens (`QobuzDesign`, `QobuzText`, `QobuzRowPadding`): a Top 100 card, a city card and a chart screen built from Qobuz components and track rows. Same rules as the other skins: city card visibly different from the country card, same rail metrics.
 - `QobuzMagazineInputs` must carry `onPlay` / `onTrackActions` for the chart screen if it does not already.
 - Both rails hide when their list is empty, as everywhere else.
+
+## Addendum (approved 2026-11-14): one-time star sheet
+
+
+### Intent
+Users who update Levyra see once, right after installing the update, a polished thank-you: Levyra is free and takes a lot of time and work; no money is asked; the only thanks requested is a star on the GitHub repository if not given yet; if already given, thank you and good listening.
+
+### Behaviour
+- Shown once in the app's lifetime, on the first launch after an update. Never on a fresh install.
+- Update detection: `PackageInfo.lastUpdateTime > PackageInfo.firstInstallTime` (works for users coming from versions that never stored anything). Persist a "shown" flag in the existing preferences owner; once set, never show again.
+- Any dismissal (primary button, secondary button, swipe down, back) sets the flag.
+- Appears over Home about 500 ms after Home is first composed; never delays startup, playback or onboarding. Not shown while onboarding is visible.
+- Primary button "Lascia una stella" opens `https://github.com/LUC4N3X/Levyra-deepsound` in the browser (ACTION_VIEW), then closes the sheet. Secondary tonal button "L'ho già fatto, grazie" closes it. The app cannot know whether the star was given and always thanks.
+
+### Design (option 1, one Levyra design)
+- Full-height M3 Expressive modal bottom sheet, colors from the active theme so it fits every skin.
+- Content top to bottom: drag handle, Levyra logo in an expressive shape, large title, short warm body text, filled primary button with a star icon, tonal secondary button.
+- Accessibility: screen-reader text, 48dp targets, text scales with large fonts, no clipping in long languages, RTL safe, edge-to-edge insets respected (edge-to-edge skill).
+
+### Copy
+- 42 languages (same keys as `LevyraDailyTop100Strings.kt`), via the existing catalog pattern: title, body, primary, secondary, content description for the logo.
+- Written with the unslop skill: plain, warm, specific, no hype, no guilt. Italian and English written first, then the others adapted (not literal).
+- Draft tone (Italian, not final): "Levyra è e resterà gratis. Dietro ogni aggiornamento ci sono tante ore di lavoro. Non ti chiedo soldi: se ti piace, lascia una stella su GitHub. Se l'hai già fatto, grazie davvero. Buon ascolto."
+
+### Tests
+- Unit: pure decision `shouldShowStarSheet(firstInstallTime, lastUpdateTime, alreadyShown): Boolean`: fresh install false, update true, already shown false.
+- Strings test like `LevyraCityChartsStringsTest`.
+- Runtime (Task 7 Maestro flow): simulate update with `adb install -r` of the new build over the previous one; sheet appears once; relaunch does not show it; fresh install does not show it.

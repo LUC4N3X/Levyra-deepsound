@@ -149,3 +149,23 @@
 - [ ] **Step 3:** Install a debug build with `-PlevyraFdroidBuild=true` on the owner-started emulator. One sweep across Default, Nocturne 78, Prism, Torque, Ivory, Spotify, Mono, YouTube Music, Atelier, Qobuz: city rail right after Top 100, tap opens a chart showing "25", play works, track menu works, back closes. A storefront without city shelves (e.g. `ru`): rail absent. Default at font scale 2.0, in a long language, in light and dark.
 - [ ] **Step 4:** Review the whole branch with `git diff`, run `git diff --check`, then local CodeRabbit CLI; fix findings.
 - [ ] **Step 5:** Report PASS/FAIL/BLOCKED/UNRUN per check; stop the debug app on the emulator.
+
+### Task 8: One-time post-update star sheet (runs before Task 7)
+
+**Files:**
+- Create: `app/src/main/java/com/luc4n3x/levyra/ui/update/LevyraStarThanksSheet.kt`
+- Create: `app/src/main/java/com/luc4n3x/levyra/ui/i18n/LevyraStarThanksStrings.kt`
+- Modify: the existing preferences owner (`app/src/main/java/com/luc4n3x/levyra/data/LevyraPreferences.kt`) for one boolean "star sheet shown" flag
+- Modify: the Home host that already shows one-shot overlays (find with `rtk grep "LevyraUpdateBanner(" app/src/main`)
+- Test: `app/src/test/java/com/luc4n3x/levyra/ui/update/StarThanksDecisionTest.kt`, `app/src/test/java/com/luc4n3x/levyra/ui/i18n/LevyraStarThanksStringsTest.kt`
+
+**Interfaces:**
+- Produces: `internal fun shouldShowStarSheet(firstInstallTime: Long, lastUpdateTime: Long, alreadyShown: Boolean): Boolean`; `internal data class StarThanksCopy(val title: String, val body: String, val star: String, val done: String, val logoDescription: String)`; `internal fun starThanksCopy(code: String): StarThanksCopy`; `@Composable internal fun LevyraStarThanksSheet(onStar: () -> Unit, onDismiss: () -> Unit)`.
+
+- [ ] **Step 1: Write failing tests:** `freshInstallHides` (`shouldShowStarSheet(1000, 1000, false) == false`), `updateShows` (`(1000, 5000, false) == true`), `alreadyShownHides` (`(1000, 5000, true) == false`); strings test as `LevyraCityChartsStringsTest` (42 codes, en/it exact).
+- [ ] **Step 2: Run** the two test classes — Expected: FAIL.
+- [ ] **Step 3: Implement** per spec Addendum: decision function; flag; sheet (full-height M3 Expressive `ModalBottomSheet`, theme colors, logo in expressive shape, title, body, filled star button opening `https://github.com/LUC4N3X/Levyra-deepsound` via ACTION_VIEW, tonal "done" button); show ~500 ms after Home first composes, never during onboarding; every dismissal sets the flag. Copy in 42 languages written with the unslop skill (it/en first, others adapted).
+- [ ] **Step 4: Run** the two test classes + `./gradlew :app:compileDebugKotlin` — Expected: PASS / BUILD SUCCESSFUL.
+- [ ] **Step 5: Commit** `feat(update): one-time thank-you sheet after updating`.
+
+Task 7 Step 3 also covers: install the previous build, then `adb install -r` the new one; sheet shows once; relaunch hides it; fresh install never shows it.
