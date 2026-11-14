@@ -11,6 +11,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.DpSize
@@ -43,6 +44,7 @@ import com.luc4n3x.levyra.desktop.core.model.ThemeMode
 import com.luc4n3x.levyra.desktop.core.storage.LibraryData
 import com.luc4n3x.levyra.desktop.core.storage.WindowPlacement as StoredPlacement
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
@@ -55,6 +57,8 @@ fun main(args: Array<String>) {
 
     application {
         val container = remember { AppContainer() }
+        val lifecycleScope = rememberCoroutineScope()
+        var quitting by remember { mutableStateOf(false) }
         val stored = remember { container.windowPlacementStore.read() }
         val windowState = rememberWindowState(
             size = DpSize(stored.width.dp, stored.height.dp),
@@ -105,10 +109,19 @@ fun main(args: Array<String>) {
         }
 
         fun quit() {
-            persistWindow()
-            instanceManager.close()
-            container.shutdown()
-            exitApplication()
+            if (quitting) return
+            quitting = true
+            lifecycleScope.launch {
+                try {
+                    withContext(Dispatchers.IO) {
+                        persistWindow()
+                        container.shutdown()
+                    }
+                } finally {
+                    instanceManager.close()
+                    exitApplication()
+                }
+            }
         }
 
         fun closeWindow() {

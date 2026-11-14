@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.desktop.player
 
 import com.luc4n3x.levyra.desktop.core.extractor.ExtractorHttp
 import com.luc4n3x.levyra.desktop.core.stream.YoutubeStreamNetworkPolicy
+import com.luc4n3x.levyra.desktop.core.stream.YoutubeStreamIdentity
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import java.io.IOException
@@ -17,6 +18,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 import okhttp3.Call
 import okhttp3.HttpUrl
@@ -34,7 +36,8 @@ internal class YoutubeLocalStreamBridge(
     private val upstreamAddressResolver: (String) -> List<InetAddress> = YoutubeStreamNetworkPolicy::resolveAddresses,
     private val upstreamAddressValidator: (InetAddress) -> Boolean = YoutubeStreamNetworkPolicy::isPublicInternetAddress,
     private val tokenGenerator: () -> String = ::newSessionToken,
-    private val upstreamChunkBytes: Long = DEFAULT_UPSTREAM_CHUNK_BYTES
+    private val upstreamChunkBytes: Long = DEFAULT_UPSTREAM_CHUNK_BYTES,
+    private val onStreamFailure: (String, String) -> Unit = { _, _ -> }
 ) : AutoCloseable {
     internal val bindAddress: InetAddress = InetAddress.getByName(LOOPBACK_ADDRESS)
     private val securedUpstreamClient = upstreamClient.newBuilder()
@@ -53,6 +56,7 @@ internal class YoutubeLocalStreamBridge(
     private val sessions = ConcurrentHashMap<String, StreamSession>()
     private val closed = AtomicBoolean(false)
     private val lifecycleLock = Any()
+    private val requestNumber = AtomicLong()
 
     internal val port: Int get() = server.address.port
 
@@ -71,7 +75,7 @@ internal class YoutubeLocalStreamBridge(
         repeat(MAX_TOKEN_ATTEMPTS) {
             val sessionId = tokenGenerator().takeIf { it.isNotBlank() }
                 ?: throw IllegalStateException("Empty bridge token")
-            if (sessions.putIfAbsent(sessionId, StreamSession(parsed)) == null) {
+            if (sessions.putIfAbsent(sessionId, StreamSession(parsed, sessionId)) == null) {
                 return@synchronized "http://$LOOPBACK_ADDRESS:$port$STREAM_PATH/$sessionId"
             }
         }
@@ -138,7 +142,7 @@ internal class YoutubeLocalStreamBridge(
         return segments[1].takeIf { it.isNotBlank() }
     }
 
-    private inner class StreamSession(initialUrl: HttpUrl) : AutoCloseable {
+    private inner class StreamSession(initialUrl: HttpUrl, private val sessionId: String) : AutoCloseable {
         private val effectiveUrl = AtomicReference(initialUrl)
         private val calls = ConcurrentHashMap.newKeySet<Call>()
         private val callLock = Any()
@@ -146,6 +150,14 @@ internal class YoutubeLocalStreamBridge(
         private val failureContentRange = AtomicReference<String?>(null)
         val upstreamOpened = AtomicBoolean(false)
         val closed = AtomicBoolean(false)
+        private val failurePublished = AtomicBoolean(false)
+
+        private fun publishFailure() {
+            val reason = failureReason.get() ?: return
+            if (!closed.get() && failurePublished.compareAndSet(false, true)) {
+                onStreamFailure("http://$LOOPBACK_ADDRESS:$port$STREAM_PATH/$sessionId", reason)
+            }
+        }
 
         fun serve(exchange: HttpExchange, headOnly: Boolean) {
             if (closed.get()) {
@@ -160,14 +172,20 @@ internal class YoutubeLocalStreamBridge(
             }
             val range = requested as? ByteRange
             val start = range?.start ?: 0L
-            val firstEnd = range?.endInclusive
-                ?.coerceAtMost(start + upstreamChunkBytes - 1L)
-                ?: start + upstreamChunkBytes - 1L
+            val knownTotal = effectiveUrl.get().queryParameter("clen")?.toLongOrNull()?.takeIf { it > 0L }
+            if (knownTotal != null && start >= knownTotal) {
+                exchange.responseHeaders.set("Content-Range", "bytes */$knownTotal")
+                exchange.sendResponseHeaders(416, -1L)
+                return
+            }
+            val chunkEnd = start + minOf(upstreamChunkBytes - 1L, Long.MAX_VALUE - start)
+            val firstEnd = minOf(range?.endInclusive ?: chunkEnd, chunkEnd, knownTotal?.minus(1L) ?: Long.MAX_VALUE)
             val first = openSlice(start, firstEnd)
             if (first == null) {
                 val status = upstreamStatus(failureReason.get())
                 failureContentRange.get()?.let { exchange.responseHeaders.set("Content-Range", it) }
                 exchange.sendResponseHeaders(status, -1L)
+                publishFailure()
                 return
             }
             try {
@@ -197,10 +215,10 @@ internal class YoutubeLocalStreamBridge(
                         copySlice(initial, output, finalEnd)
                         var next = initial.endInclusive + 1L
                         while (next <= finalEnd && !closed.get()) {
-                            val end = (next + upstreamChunkBytes - 1L).coerceAtMost(finalEnd)
+                            val end = next + minOf(upstreamChunkBytes - 1L, finalEnd - next)
                             openSlice(next, end)?.use { slice ->
-                                require(slice.start == next && slice.endInclusive <= end) {
-                                    "Non-contiguous upstream range"
+                                if (slice.start != next || slice.endInclusive > end || slice.totalBytes != total) {
+                                    throw UpstreamFailure("BRIDGE_UPSTREAM_CHANGED")
                                 }
                                 copySlice(slice, output, finalEnd)
                                 next = slice.endInclusive + 1L
@@ -210,6 +228,8 @@ internal class YoutubeLocalStreamBridge(
                 }
             } catch (failure: UpstreamFailure) {
                 failureReason.compareAndSet(null, failure.message ?: "BRIDGE_UPSTREAM_FAILED")
+                System.getLogger("Levyra.StreamBridge").log(System.Logger.Level.WARNING, failureReason.get())
+                publishFailure()
                 throw failure
             }
         }
@@ -218,7 +238,7 @@ internal class YoutubeLocalStreamBridge(
             val expected = (slice.endInclusive.coerceAtMost(finalEnd) - slice.start + 1L)
                 .coerceAtLeast(0L)
             val copied = copyExactly(slice.response.body.byteStream(), output, expected)
-            if (copied != expected) throw UpstreamFailure("BRIDGE_UPSTREAM_FAILED")
+            if (copied != expected) throw UpstreamFailure("BRIDGE_UPSTREAM_TRUNCATED")
         }
 
         private fun openSlice(start: Long, endInclusive: Long): UpstreamSlice? {
@@ -226,13 +246,20 @@ internal class YoutubeLocalStreamBridge(
             repeat(MAX_REDIRECTS + 1) { redirectCount ->
                 if (closed.get()) return null
                 validateTarget(target)
+                val googleVideo = target.host == "googlevideo.com" || target.host.endsWith(".googlevideo.com")
+                val requestUrl = if (googleVideo) target.newBuilder()
+                    .setQueryParameter("rn", requestNumber.incrementAndGet().toString())
+                    .setQueryParameter("range", "$start-$endInclusive")
+                    .build() else target
+                val identity = YoutubeStreamIdentity.forUrl(target.toString())
                 val request = Request.Builder()
-                    .url(target)
+                    .url(requestUrl)
                     .get()
-                    .header("Range", "bytes=$start-$endInclusive")
+                    .apply { if (!googleVideo) header("Range", "bytes=$start-$endInclusive") }
                     .header("Accept", "*/*")
                     .header("Accept-Encoding", "identity")
-                    .header("User-Agent", ExtractorHttp.YOUTUBE_STREAM_USER_AGENT)
+                    .header("User-Agent", identity?.userAgent ?: ExtractorHttp.YOUTUBE_STREAM_USER_AGENT)
+                    .apply { identity?.referrer?.let { header("Referer", it) } }
                     .build()
                 val call = securedUpstreamClient.newCall(request)
                 if (!registerCall(call)) return null
@@ -268,6 +295,10 @@ internal class YoutubeLocalStreamBridge(
                     return null
                 }
                 val contentType = response.header("Content-Type")
+                System.getLogger("Levyra.StreamBridge").log(
+                    System.Logger.Level.DEBUG,
+                    "range=$start-$endInclusive status=${response.code} bytes=${response.body.contentLength()} contentRange=${response.header("Content-Range").orEmpty()}"
+                )
                 if (isExplicitlyNonMedia(contentType)) {
                     calls -= call
                     failureReason.set("BRIDGE_UPSTREAM_FAILED")
@@ -275,21 +306,30 @@ internal class YoutubeLocalStreamBridge(
                     return null
                 }
                 val parsedRange = response.header("Content-Range")?.let(::parseContentRange)
-                val sliceStart = parsedRange?.start ?: 0L
-                val sliceEnd = parsedRange?.endInclusive
-                    ?: response.body.contentLength().takeIf { it >= 0L }?.let { it - 1L }
+                val queryTotal = if (googleVideo) target.queryParameter("clen")?.toLongOrNull() else null
+                val querySlice = googleVideo && queryTotal != null && queryTotal > endInclusive &&
+                    response.body.contentLength() == endInclusive - start + 1L &&
+                    (parsedRange == null ||
+                        parsedRange.start == start && parsedRange.endInclusive == endInclusive && parsedRange.totalBytes == queryTotal ||
+                        parsedRange.start == 0L && parsedRange.endInclusive == endInclusive - start &&
+                        parsedRange.totalBytes == endInclusive - start + 1L)
+                val sliceStart = if (querySlice) start else parsedRange?.start ?: 0L
+                val sliceEnd = (if (querySlice) endInclusive else parsedRange?.endInclusive)
+                    ?: response.body.contentLength().takeIf { it > 0L }?.let { sliceStart + it - 1L }
                     ?: run {
                         calls -= call
                         failureReason.set("BRIDGE_UPSTREAM_FAILED")
                         response.close()
                         return null
                     }
-                val total = parsedRange?.totalBytes
+                val total = (if (querySlice) queryTotal else parsedRange?.totalBytes)
                     ?: response.body.contentLength().takeIf { it >= 0L }
                 if (
-                    response.code == 206 &&
+                    !querySlice && response.code == 206 &&
                     (parsedRange == null || sliceStart != start || sliceEnd > endInclusive) ||
-                    response.code == 200 && start > 0L
+                    !querySlice && response.code == 200 && start > 0L ||
+                    sliceEnd - sliceStart + 1L > upstreamChunkBytes ||
+                    response.body.contentLength() >= 0L && response.body.contentLength() != sliceEnd - sliceStart + 1L
                 ) {
                     calls -= call
                     failureReason.set("BRIDGE_UPSTREAM_FAILED")
@@ -361,7 +401,7 @@ internal class YoutubeLocalStreamBridge(
             if (',' in raw) return InvalidRange
             val match = RANGE_PATTERN.matchEntire(raw.trim()) ?: return InvalidRange
             val start = match.groupValues[1].toLongOrNull() ?: return InvalidRange
-            val end = match.groupValues[2].takeIf(String::isNotBlank)?.toLongOrNull()
+            val end = match.groupValues[2].takeIf(String::isNotBlank)?.let { it.toLongOrNull() ?: return InvalidRange }
             if (end != null && end < start) return InvalidRange
             return ByteRange(start, end)
         }
@@ -380,7 +420,11 @@ internal class YoutubeLocalStreamBridge(
             var remaining = limit
             var copied = 0L
             while (remaining > 0L) {
-                val read = input.read(buffer, 0, minOf(buffer.size.toLong(), remaining).toInt())
+                val read = try {
+                    input.read(buffer, 0, minOf(buffer.size.toLong(), remaining).toInt())
+                } catch (_: IOException) {
+                    throw UpstreamFailure("BRIDGE_UPSTREAM_TRUNCATED")
+                }
                 if (read < 0) break
                 output.write(buffer, 0, read)
                 copied += read

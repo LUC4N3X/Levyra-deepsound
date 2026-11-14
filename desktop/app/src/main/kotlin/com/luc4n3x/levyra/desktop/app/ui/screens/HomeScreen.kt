@@ -47,6 +47,9 @@ import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.desktop.app.state.DiscoverUiState
 import com.luc4n3x.levyra.desktop.app.ui.components.Artwork
 import com.luc4n3x.levyra.desktop.app.ui.components.SectionHeader
+import com.luc4n3x.levyra.desktop.app.ui.components.horizontalShelfBleed
+import com.luc4n3x.levyra.ui.i18n.LevyraStrings as SharedStrings
+import com.luc4n3x.levyra.ui.i18n.exploreForYouCopy
 import com.luc4n3x.levyra.desktop.app.ui.components.ScrollableColumn
 import com.luc4n3x.levyra.desktop.app.ui.components.TrackActions
 import com.luc4n3x.levyra.desktop.app.ui.components.hoverScale
@@ -215,6 +218,32 @@ fun HomeScreen(
                     onPlayAll = { actions.onPlay(orbitTracks, 0) },
                     onPlayTrack = { index -> actions.onPlay(orbitTracks, index) }
                 )
+            }
+        }
+
+        if (mixTracks.isNotEmpty()) {
+            item { SectionHeader(title = exploreForYouCopy(strings.languageCode).title) }
+            item {
+                LazyRow(modifier = Modifier.horizontalShelfBleed(30.dp), contentPadding = PaddingValues(horizontal = 30.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(mixTracks.take(14), key = { it.id }) { track ->
+                        MusicCard(track = track, onClick = { actions.onPlay(mixTracks, mixTracks.indexOfFirst { it.id == track.id }.coerceAtLeast(0)) })
+                    }
+                }
+            }
+        }
+
+        if (discover.freshCurrents.isNotEmpty()) {
+            item { SectionHeader(title = SharedStrings.forCode(strings.languageCode).freshMomentTitle) }
+            item {
+                LazyRow(modifier = Modifier.horizontalShelfBleed(30.dp), contentPadding = PaddingValues(horizontal = 30.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(discover.freshCurrents, key = { it.id }) { track ->
+                        MusicCard(track = track, onClick = {
+                            actions.onPlay(discover.freshCurrents, discover.freshCurrents.indexOfFirst { it.id == track.id }.coerceAtLeast(0))
+                        })
+                    }
+                }
             }
         }
 

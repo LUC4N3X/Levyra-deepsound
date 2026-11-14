@@ -59,6 +59,7 @@ class YoutubeStreamResolver(
     private val cache = ConcurrentHashMap<String, ResolvedAudio>()
     private val locks = ConcurrentHashMap<String, Mutex>()
     private val rejectedUrls = ConcurrentHashMap<String, Long>()
+    private val visionOs = VisionOsStreamSource()
     private val streamProbeClient: OkHttpClient = ExtractorHttp.client.newBuilder()
         .followRedirects(false)
         .followSslRedirects(false)
@@ -118,6 +119,12 @@ class YoutubeStreamResolver(
     }
 
     private fun fetch(track: Track, quality: AudioQuality, codec: PreferredCodec): ResolvedAudio {
+        try {
+            visionOs.resolve(track, quality, codec) { !isRejected(it) && verifyDirectAudioUrlFast(it) }?.let { return it }
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (_: Exception) {
+        }
         val info = try {
             StreamInfo.getInfo(ServiceList.YouTube, track.videoUrl)
         } catch (cancellation: CancellationException) {
@@ -165,11 +172,16 @@ class YoutubeStreamResolver(
     }
 
     private fun verifyDirectAudioUrlFast(url: String): Boolean {
-        return probeDirectAudioUrlFast(
+        val initial = probeDirectAudioUrlFast(
             url = url,
             client = streamProbeClient,
             isFresh = ::isFreshPlaybackUrl
         )
+        if (!initial) return false
+        val parsed = url.toHttpUrlOrNull() ?: return false
+        val length = parsed.queryParameter("clen")?.toLongOrNull() ?: return true
+        if (length <= 1_048_576L) return true
+        return probeDirectAudioUrlFast(url, streamProbeClient, ::isFreshPlaybackUrl, startOffset = 1_048_576L)
     }
 
     private fun isFreshPlaybackUrl(url: String): Boolean {
@@ -217,7 +229,8 @@ internal fun probeDirectAudioUrlFast(
     url: String,
     client: OkHttpClient,
     isFresh: (String) -> Boolean,
-    isAllowed: (HttpUrl) -> Boolean = YoutubeStreamNetworkPolicy::isAllowedUrl
+    isAllowed: (HttpUrl) -> Boolean = YoutubeStreamNetworkPolicy::isAllowedUrl,
+    startOffset: Long = 0L
 ): Boolean {
     var target = url.toHttpUrlOrNull() ?: return false
     repeat(MAX_PROBE_REDIRECTS + 1) { redirectCount ->
@@ -225,10 +238,11 @@ internal fun probeDirectAudioUrlFast(
         val request = Request.Builder()
             .url(target)
             .get()
-            .header("Range", "bytes=0-8191")
+            .header("Range", "bytes=$startOffset-${startOffset + 8191L}")
             .header("Accept", "*/*")
             .header("Accept-Encoding", "identity")
-            .header("User-Agent", ExtractorHttp.YOUTUBE_STREAM_USER_AGENT)
+            .header("User-Agent", YoutubeStreamIdentity.forUrl(target.toString())?.userAgent ?: ExtractorHttp.YOUTUBE_STREAM_USER_AGENT)
+            .apply { YoutubeStreamIdentity.forUrl(target.toString())?.referrer?.let { header("Referer", it) } }
             .build()
         val response = try {
             client.newCall(request).execute()

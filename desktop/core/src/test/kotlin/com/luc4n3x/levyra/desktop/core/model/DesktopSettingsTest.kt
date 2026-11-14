@@ -34,7 +34,7 @@ class DesktopSettingsTest {
 
     @Test
     fun languageCatalogMatchesAndroidSupportedLanguages() {
-        assertEquals(28, AppLanguage.entries.size)
+        assertEquals(42, AppLanguage.entries.size)
         assertEquals(
             setOf(
                 "en",
@@ -64,7 +64,7 @@ class DesktopSettingsTest {
                 "fil",
                 "he",
                 "fi",
-                "et"
+                "et", "pt-BR", "zh-Hant", "hu", "bg", "nb", "ca", "bn", "kk", "sr", "sq", "hr", "sk", "ms", "fa"
             ),
             AppLanguage.entries.map { it.tag }.toSet()
         )
@@ -75,12 +75,16 @@ class DesktopSettingsTest {
         assertEquals(AppLanguage.INDONESIAN, AppLanguage.fromTag("in-ID"))
         assertEquals(AppLanguage.FILIPINO, AppLanguage.fromTag("tl_PH"))
         assertEquals(AppLanguage.HEBREW, AppLanguage.fromTag("iw-IL"))
+        assertEquals(AppLanguage.BRAZILIAN_PORTUGUESE, AppLanguage.fromTag("pt_BR"))
+        assertEquals(AppLanguage.TRADITIONAL_CHINESE, AppLanguage.fromTag("zh-TW"))
+        assertEquals(AppLanguage.TRADITIONAL_CHINESE, AppLanguage.fromTag("zh-Hant"))
     }
 
     @Test
     fun rtlLanguagesAreExplicit() {
         assertTrue(AppLanguage.ARABIC.isRtl)
         assertTrue(AppLanguage.HEBREW.isRtl)
+        assertTrue(AppLanguage.PERSIAN.isRtl)
         assertFalse(AppLanguage.ITALIAN.isRtl)
     }
 

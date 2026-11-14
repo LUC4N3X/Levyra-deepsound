@@ -22,31 +22,17 @@ object LevyraLanguageCatalog {
         )
     }
 
-    private val supportedCodes = languages.map { it.code }.toSet()
     private val rtlCodes = AppLanguage.entries.filter { it.isRtl }.map { it.tag }.toSet()
 
     fun normalize(code: String): String {
-        val tag = code.trim().replace('_', '-')
-        if (tag.equals(BRAZILIAN_PORTUGUESE, ignoreCase = true) ||
-            tag.equals("pt-rBR", ignoreCase = true)
-        ) return BRAZILIAN_PORTUGUESE
-        val normalized = tag
-            .substringBefore('-')
-            .lowercase(Locale.ROOT)
-        val canonical = when (normalized) {
-            "in" -> "id"
-            "tl" -> "fil"
-            "iw" -> "he"
-            else -> normalized
-        }
-        return if (canonical in supportedCodes) canonical else "en"
+        return AppLanguage.fromTag(code).tag
     }
 
     fun translationCode(code: String): String = normalize(code).let { normalized ->
         if (normalized == BRAZILIAN_PORTUGUESE) "pt" else normalized
     }
 
-    fun deviceDefault(): String = normalize(Locale.getDefault().language)
+    fun deviceDefault(): String = normalize(Locale.getDefault().toLanguageTag())
 
     fun displayName(code: String): String {
         val language = languages.firstOrNull { it.code == normalize(code) }

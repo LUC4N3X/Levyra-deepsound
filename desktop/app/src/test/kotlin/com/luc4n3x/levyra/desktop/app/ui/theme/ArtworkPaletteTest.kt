@@ -26,7 +26,7 @@ class ArtworkPaletteTest {
 
     @Test
     fun localArtworkIsDecodedFromPathAndFileUri() = runBlocking {
-        val cover = writeCover(Files.createTempFile("levyra-cover", ".png"))
+        val cover = writeCover(Files.createTempFile("levyra cover città हिन्दी ", ".png"))
         try {
             assertNotNull(ArtworkPalette.accentFor(cover.toString()))
             assertNotNull(ArtworkPalette.accentFor(cover.toUri().toString()))

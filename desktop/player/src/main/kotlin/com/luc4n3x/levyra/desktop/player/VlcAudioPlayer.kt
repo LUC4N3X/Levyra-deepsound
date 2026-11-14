@@ -4,6 +4,7 @@ import com.luc4n3x.levyra.desktop.core.extractor.ExtractorHttp
 import com.luc4n3x.levyra.desktop.core.localmusic.matchesMediaUrl
 import com.luc4n3x.levyra.desktop.core.localmusic.resolveLocalFile
 import com.luc4n3x.levyra.desktop.core.model.DesktopSettings
+import com.luc4n3x.levyra.desktop.core.stream.YoutubeStreamIdentity
 import java.net.URI
 import java.nio.file.Path
 import java.util.Locale
@@ -25,34 +26,9 @@ internal data class YoutubePlaybackHttpOptions(
 )
 
 internal fun youtubePlaybackHttpOptions(url: String): YoutubePlaybackHttpOptions? {
-    val host = runCatching { URI(url).host.orEmpty().lowercase(Locale.ROOT) }.getOrDefault("")
-    val youtubeMedia = host.endsWith("googlevideo.com") ||
-        host.endsWith("youtube.com") ||
-        host.endsWith("youtube-nocookie.com") ||
-        host.endsWith("ytimg.com")
-    if (!youtubeMedia) return null
-
-    val userAgent = when {
-        runCatching { YoutubeParsingHelper.isIosStreamingUrl(url) }.getOrDefault(false) ->
-            YoutubeParsingHelper.getIosUserAgent(null)
-        runCatching { YoutubeParsingHelper.isAndroidStreamingUrl(url) }.getOrDefault(false) ->
-            YoutubeParsingHelper.getAndroidUserAgent(null)
-        else -> YOUTUBE_MOBILE_WEB_USER_AGENT
-    }
-    val web = runCatching { YoutubeParsingHelper.isWebStreamingUrl(url) }.getOrDefault(false)
-    val embedded = runCatching {
-        YoutubeParsingHelper.isTvHtml5SimplyEmbeddedPlayerStreamingUrl(url)
-    }.getOrDefault(false)
-    val referrer = when {
-        embedded -> "https://www.youtube.com/embed/"
-        web -> "https://www.youtube.com/"
-        else -> null
-    }
-    return YoutubePlaybackHttpOptions(userAgent, referrer)
+    val identity = YoutubeStreamIdentity.forUrl(url) ?: return null
+    return YoutubePlaybackHttpOptions(identity.userAgent, identity.referrer)
 }
-
-private const val YOUTUBE_MOBILE_WEB_USER_AGENT =
-    "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Mobile Safari/537.36"
 
 private val youtubeRequestNumber = AtomicLong(1L)
 
@@ -174,11 +150,12 @@ class VlcAudioPlayer private constructor(
             override fun finished(mediaPlayer: MediaPlayer) {
                 if (shouldIgnoreTerminalEvent(mediaPlayer)) return
                 val finishedUrl = loadedUrl
+                val failure = streamBridge?.failureReason(finishedUrl)
                 loadedUrl = ""
                 requestedPaused = false
                 playbackStarted = false
                 closeBridgeSession(finishedUrl)
-                emit(PlayerEvent.Finished)
+                emit(if (failure == null) PlayerEvent.Finished else PlayerEvent.Failed(failure))
             }
 
             override fun error(mediaPlayer: MediaPlayer) {
@@ -503,13 +480,13 @@ class VlcAudioPlayer private constructor(
     }
 
     private fun shouldIgnoreTerminalEvent(eventPlayer: MediaPlayer): Boolean {
-        if (released.get()) return true
+        if (released.get() || loadedUrl.isBlank()) return true
         if (eventTargetsLoadedMedia(eventPlayer)) return false
         return replacementGuard.shouldSuppressTerminalEvent()
     }
 
     private fun shouldIgnoreReplacementEvent(eventPlayer: MediaPlayer): Boolean =
-        replacementGuard.shouldSuppressTerminalEvent() &&
+        loadedUrl.isBlank() || replacementGuard.shouldSuppressTerminalEvent() &&
             !eventTargetsLoadedMedia(eventPlayer, allowUnknownMrl = false)
 
     private fun eventTargetsLoadedMedia(
@@ -526,7 +503,13 @@ class VlcAudioPlayer private constructor(
 
     private fun bridge(): YoutubeLocalStreamBridge = synchronized(bridgeLock) {
         check(!released.get()) { "Player already closed" }
-        streamBridge ?: YoutubeLocalStreamBridge().also { streamBridge = it }
+        streamBridge ?: YoutubeLocalStreamBridge(onStreamFailure = { localUrl, reason ->
+            if (!released.get() && loadedUrl == localUrl) {
+                loadedUrl = ""
+                playbackStarted = false
+                emit(PlayerEvent.Failed(reason))
+            }
+        }).also { streamBridge = it }
     }
 
     private fun closeBridgeSession(localUrl: String) {

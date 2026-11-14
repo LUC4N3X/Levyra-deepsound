@@ -4,6 +4,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -24,6 +25,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.collectAsState
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -48,6 +54,7 @@ import com.luc4n3x.levyra.desktop.app.ui.theme.LocalAccentColor
 @Composable
 fun NowPlayingScreen(
     state: PlaybackUiState,
+    playbackStateFlow: StateFlow<PlaybackUiState>,
     lyricsState: LyricsUiState,
     actions: TrackActions,
     onBack: () -> Unit,
@@ -58,7 +65,8 @@ fun NowPlayingScreen(
     val accent = LocalAccentColor.current
     val track = state.current
 
-    Box(modifier = modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val artworkWidth = (maxWidth * 0.42f).coerceIn(180.dp, 400.dp)
         if (track != null && track.hasArtwork) {
             Artwork(
                 url = track.artworkUrl,
@@ -106,14 +114,14 @@ fun NowPlayingScreen(
                     horizontalArrangement = Arrangement.spacedBy(36.dp)
                 ) {
                     Column(
-                        modifier = Modifier.width(380.dp),
+                        modifier = Modifier.width(artworkWidth),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(18.dp)
                     ) {
                         Artwork(
                             url = track.artworkUrl,
                             modifier = Modifier
-                                .size(340.dp)
+                                .size((artworkWidth - 40.dp).coerceAtMost(340.dp))
                                 .clip(RoundedCornerShape(26.dp))
                                 .background(
                                     Brush.linearGradient(
@@ -149,7 +157,7 @@ fun NowPlayingScreen(
                     Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
                         LyricsPanel(
                             lyricsState = lyricsState,
-                            positionMs = state.positionMs,
+                            playbackStateFlow = playbackStateFlow,
                             modifier = Modifier.weight(1f)
                         )
                         if (state.queue.upcoming.isNotEmpty()) {
@@ -184,14 +192,16 @@ fun NowPlayingScreen(
 @Composable
 private fun LyricsPanel(
     lyricsState: LyricsUiState,
-    positionMs: Long,
+    playbackStateFlow: StateFlow<PlaybackUiState>,
     modifier: Modifier = Modifier
 ) {
     val strings = LocalStrings.current
     val accent = LocalAccentColor.current
     val lyrics = lyricsState.lyrics
     val listState = rememberLazyListState()
-    val activeIndex = lyrics?.activeIndex(positionMs) ?: -1
+    val activeIndex by remember(lyrics, playbackStateFlow) {
+        playbackStateFlow.map { lyrics?.activeIndex(it.positionMs) ?: -1 }.distinctUntilChanged()
+    }.collectAsState(initial = lyrics?.activeIndex(playbackStateFlow.value.positionMs) ?: -1)
 
     LaunchedEffect(activeIndex) {
         if (activeIndex >= 0 && !listState.isScrollInProgress) {

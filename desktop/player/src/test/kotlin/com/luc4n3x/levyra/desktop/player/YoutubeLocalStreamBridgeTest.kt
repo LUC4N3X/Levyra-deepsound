@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.desktop.player
 import com.sun.net.httpserver.HttpServer
 import java.net.InetAddress
 import java.net.InetSocketAddress
+import java.io.IOException
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
@@ -10,6 +11,7 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.net.Proxy
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -88,6 +90,44 @@ class YoutubeLocalStreamBridgeTest {
             listOf("bytes=1000-2023", "bytes=2024-2499"),
             upstream.ranges.toList()
         )
+    }
+
+    @Test
+    fun queryRangesNearEofAreClampedBeforeOpeningUpstream() {
+        val requestedRanges = CopyOnWriteArrayList<String>()
+        val media = ByteArray(2048) { (it % 251).toByte() }
+        val server = loopbackServer { exchange ->
+            val range = exchange.requestURI.query.split('&').first { it.startsWith("range=") }.substringAfter('=')
+            requestedRanges += range
+            val start = range.substringBefore('-').toInt()
+            val end = range.substringAfter('-').toInt().coerceAtMost(media.lastIndex)
+            val length = end - start + 1
+            exchange.responseHeaders.set("Content-Type", "audio/webm")
+            exchange.responseHeaders.set("Content-Range", "bytes 0-${length - 1}/$length")
+            exchange.sendResponseHeaders(200, length.toLong())
+            exchange.responseBody.use { it.write(media, start, length) }
+        }
+        closeables += AutoCloseable { server.stop(0) }
+        val bridge = YoutubeLocalStreamBridge(
+            upstreamClient = OkHttpClient.Builder().proxy(Proxy.NO_PROXY).build(),
+            upstreamUrlValidator = { true },
+            upstreamAddressResolver = { listOf(InetAddress.getByName("127.0.0.1")) },
+            upstreamAddressValidator = { true }, upstreamChunkBytes = 1024
+        ).also(closeables::add)
+        val local = bridge.openSession("http://r1.googlevideo.com:${server.address.port}/audio?clen=2048")
+        val client = OkHttpClient.Builder().proxy(Proxy.NO_PROXY).build()
+        client.newCall(Request.Builder().url(local).header("Range", "bytes=1536-").build()).execute().use {
+            assertEquals(206, it.code)
+            assertEquals("bytes 1536-2047/2048", it.header("Content-Range"))
+            assertArrayEquals(media.copyOfRange(1536, 2048), it.body.bytes())
+        }
+        for (offset in listOf("2048", Long.MAX_VALUE.toString())) {
+            client.newCall(Request.Builder().url(local).header("Range", "bytes=$offset-").build()).execute().use {
+                assertEquals(416, it.code)
+                assertEquals("bytes */2048", it.header("Content-Range"))
+            }
+        }
+        assertEquals(listOf("1536-2047"), requestedRanges.toList())
     }
 
     @Test
@@ -227,6 +267,28 @@ class YoutubeLocalStreamBridgeTest {
             assertEquals(502, it.code)
         }
         assertEquals("BRIDGE_UPSTREAM_FAILED", bridge.failureReason(localUrl))
+    }
+
+    @Test
+    fun truncatedBodyIsRecordedBeforeNativePlayerCanTreatItAsFinished() {
+        val failure = CompletableFuture<String>()
+        val upstream = loopbackServer { exchange ->
+            exchange.responseHeaders.set("Content-Type", "audio/webm")
+            exchange.responseHeaders.set("Content-Range", "bytes 0-1023/2048")
+            exchange.sendResponseHeaders(206, 1024)
+            runCatching { exchange.responseBody.use { it.write(ByteArray(128)) } }
+            exchange.close()
+        }
+        closeables.add(AutoCloseable { upstream.stop(0) })
+        val bridge = YoutubeLocalStreamBridge(
+            upstreamClient = OkHttpClient.Builder().readTimeout(300, TimeUnit.MILLISECONDS).build(),
+            upstreamUrlValidator = { true }, upstreamAddressValidator = { true }, upstreamChunkBytes = 1024,
+            onStreamFailure = { _, reason -> failure.complete(reason) }
+        ).also(closeables::add)
+        val url = bridge.openSession("http://127.0.0.1:${upstream.address.port}/audio")
+        assertThrows(IOException::class.java) { readAll(url) }
+        assertEquals("BRIDGE_UPSTREAM_TRUNCATED", bridge.failureReason(url))
+        assertEquals("BRIDGE_UPSTREAM_TRUNCATED", failure.get(2, TimeUnit.SECONDS))
     }
 
     private fun readAll(url: String): ByteArray = OkHttpClient().newCall(

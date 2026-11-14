@@ -81,6 +81,7 @@ internal object DesktopExtras {
     private fun readEntries(): Properties = Properties().apply {
         loadResource(RESOURCE, required = true)
         loadResource(PRESET_TRANSLATIONS_RESOURCE, required = true)
+        loadResource("/i18n/desktop-expanded-translations.properties", required = true)
     }
 
     private fun Properties.loadResource(resource: String, required: Boolean) {

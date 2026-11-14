@@ -14,12 +14,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,6 +39,8 @@ import com.luc4n3x.levyra.desktop.app.ui.components.Artwork
 import com.luc4n3x.levyra.desktop.app.ui.components.CountryPicker
 import com.luc4n3x.levyra.desktop.app.ui.components.EmptyState
 import com.luc4n3x.levyra.desktop.app.ui.components.LoadingRow
+import com.luc4n3x.levyra.desktop.app.ui.components.LevyraChip
+import com.luc4n3x.levyra.desktop.app.ui.components.horizontalShelfBleed
 import com.luc4n3x.levyra.desktop.app.ui.components.ScrollableColumn
 import com.luc4n3x.levyra.desktop.app.ui.components.TrackActions
 import com.luc4n3x.levyra.desktop.app.ui.components.TrackRow
@@ -55,8 +63,11 @@ fun DiscoverScreen(
 ) {
     val strings = LocalStrings.current
     val accent = LocalAccentColor.current
-    val podium = state.tracks.take(3)
-    val rest = state.tracks.drop(3)
+    var selectedGenre by rememberSaveable(state.country) { mutableStateOf("") }
+    val genre = state.genres.firstOrNull { it.id == selectedGenre }
+    val displayedTracks = genre?.tracks ?: state.tracks
+    val podium = displayedTracks.take(3)
+    val rest = displayedTracks.drop(3)
 
     ScrollableColumn(
         modifier = modifier.fillMaxSize(),
@@ -81,7 +92,7 @@ fun DiscoverScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text(
-                    text = strings.chartsTitle,
+                    text = genre?.title ?: strings.chartsTitle,
                     style = MaterialTheme.typography.displaySmall,
                     fontWeight = FontWeight.Bold
                 )
@@ -95,10 +106,10 @@ fun DiscoverScreen(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Button(onClick = onPlayAll, enabled = state.tracks.isNotEmpty()) {
+                    Button(onClick = { if (genre == null) onPlayAll() else actions.onPlay(displayedTracks, 0) }, enabled = displayedTracks.isNotEmpty()) {
                         Text(strings.playAll)
                     }
-                    OutlinedButton(onClick = onShuffleAll, enabled = state.tracks.isNotEmpty()) {
+                    OutlinedButton(onClick = { if (genre == null) onShuffleAll() else actions.onPlay(displayedTracks.shuffled(), 0) }, enabled = displayedTracks.isNotEmpty()) {
                         Text(strings.shufflePlay)
                     }
                     OutlinedButton(onClick = onRefresh) {
@@ -110,6 +121,18 @@ fun DiscoverScreen(
                         contentDescription = strings.chartsSelectCountry,
                         onSelected = onCountryChange
                     )
+                }
+            }
+        }
+
+        if (state.genres.isNotEmpty()) {
+            item {
+                LazyRow(modifier = Modifier.horizontalShelfBleed(28.dp), contentPadding = PaddingValues(horizontal = 28.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    item { LevyraChip(strings.homeTop50, genre == null, { selectedGenre = "" }) }
+                    items(state.genres, key = { it.id }) { shelf ->
+                        LevyraChip(shelf.title, shelf.id == selectedGenre, { selectedGenre = shelf.id })
+                    }
                 }
             }
         }
@@ -139,7 +162,7 @@ fun DiscoverScreen(
                             rank = index + 1,
                             track = track,
                             accent = accent,
-                            onPlay = { actions.onPlay(state.tracks, index) },
+                            onPlay = { actions.onPlay(displayedTracks, index) },
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -153,7 +176,7 @@ fun DiscoverScreen(
                 track = track,
                 isCurrent = track.id == actions.currentTrackId,
                 isFavorite = actions.isFavorite(track),
-                onPlay = { actions.onPlay(state.tracks, position) },
+                onPlay = { actions.onPlay(displayedTracks, position) },
                 onPlayNext = { actions.onPlayNext(track) },
                 onEnqueue = { actions.onEnqueue(track) },
                 onToggleFavorite = { actions.onToggleFavorite(track) },
