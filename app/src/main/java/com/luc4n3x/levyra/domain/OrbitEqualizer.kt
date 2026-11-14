@@ -95,6 +95,12 @@ object OrbitEqualizer {
     }
 
     fun bandGains(position: OrbitPosition, poleAngles: List<Float> = DEFAULT_POLE_ANGLES): FloatArray {
+        if (poleAngles == DEFAULT_POLE_ANGLES) {
+            val clamped = position.clamped()
+            return FloatArray(frequencies.size) { index ->
+                DEPTH_DB * (clamped.tilt * tiltWeights[index] + clamped.contour * contourWeights[index])
+            }
+        }
         val weights = poleWeights(position, poleAngles)
         return FloatArray(frequencies.size) { index ->
             DEPTH_DB * poleVectors.indices.sumOf { pole -> (weights[pole] * poleVectors[pole][index]).toDouble() }.toFloat()
@@ -147,35 +153,22 @@ object OrbitEqualizer {
     fun positionOf(profile: ParametricEqProfile?): OrbitPosition? {
         val bands = profile?.bands ?: return null
         if (!isOrbitShape(bands)) return null
-        return quadrants.firstNotNullOfOrNull { (horizontal, vertical) -> quadrantFit(bands, horizontal, vertical) }
-    }
-
-    private val quadrants = listOf(1 to 2, 0 to 2, 0 to 3, 1 to 3)
-
-    private fun quadrantFit(bands: List<ParametricEqBand>, horizontal: Int, vertical: Int): OrbitPosition? {
-        val h = poleVectors[horizontal]
-        val v = poleVectors[vertical]
-        var hh = 0f
-        var hv = 0f
-        var vv = 0f
-        var hg = 0f
-        var vg = 0f
+        var tt = 0f
+        var tc = 0f
+        var cc = 0f
+        var tg = 0f
+        var cg = 0f
         bands.forEachIndexed { index, band ->
             val gain = band.gainDb / DEPTH_DB
-            hh += h[index] * h[index]
-            hv += h[index] * v[index]
-            vv += v[index] * v[index]
-            hg += h[index] * gain
-            vg += v[index] * gain
+            tt += tiltWeights[index] * tiltWeights[index]
+            tc += tiltWeights[index] * contourWeights[index]
+            cc += contourWeights[index] * contourWeights[index]
+            tg += tiltWeights[index] * gain
+            cg += contourWeights[index] * gain
         }
-        val determinant = hh * vv - hv * hv
+        val determinant = tt * cc - tc * tc
         if (abs(determinant) < 1e-6f) return null
-        val a = (hg * vv - vg * hv) / determinant
-        val b = (vg * hh - hg * hv) / determinant
-        if (a < -1e-3f || b < -1e-3f) return null
-        val horizontalSign = if (horizontal == 1) 1f else -1f
-        val verticalSign = if (vertical == 2) 1f else -1f
-        val position = OrbitPosition(horizontalSign * a.coerceAtLeast(0f), verticalSign * b.coerceAtLeast(0f))
+        val position = OrbitPosition((tg * cc - cg * tc) / determinant, (cg * tt - tg * tc) / determinant)
         val expected = bandGains(position)
         val fits = bands.indices.all { abs(expected[it] - bands[it].gainDb) < 0.05f }
         return if (fits) position.clamped().quantized() else null

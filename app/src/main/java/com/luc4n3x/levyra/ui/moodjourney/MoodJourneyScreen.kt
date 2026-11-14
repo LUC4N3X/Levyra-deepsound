@@ -73,6 +73,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -340,7 +341,7 @@ private fun CurveEditor(
     val move by rememberUpdatedState(onMove)
     val commit by rememberUpdatedState(onCommit)
     val styleCopy = moodStyleCopy(LocalLevyraStrings.current.code)
-    var group by remember(curve.points.size) { mutableStateOf(emptySet<Int>()) }
+    var group by rememberSaveable(curve.points.size, stateSaver = GroupSaver) { mutableStateOf(emptySet<Int>()) }
     val latestGroup by rememberUpdatedState(group)
     val setGroup by rememberUpdatedState<(Set<Int>) -> Unit>({ group = it })
     val shift: (Int, Float) -> Unit = { index, delta ->
@@ -474,6 +475,8 @@ private fun rememberArcReveal(steps: List<MoodJourneyStep>, animated: Boolean): 
     }
     return reveal
 }
+
+private val GroupSaver = listSaver<Set<Int>, Int>(save = { it.toList() }, restore = { it.toSet() })
 
 private fun Modifier.curveGestures(
     curve: () -> MoodCurve,

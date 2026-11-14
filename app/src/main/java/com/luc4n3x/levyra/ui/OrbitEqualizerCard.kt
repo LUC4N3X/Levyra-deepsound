@@ -7,10 +7,12 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -60,8 +62,6 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.pointer.AwaitPointerEventScope
-import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -103,7 +103,6 @@ private const val CENTER_SNAP = 0.06f
 private const val POLE_REACH = 0.75f
 private const val NUDGE = 0.1f
 private val GRAB_RADIUS = 40.dp
-private val POLE_GRAB_RADIUS = 32.dp
 private val FIELD_INSET = 36.dp
 
 @Composable
@@ -273,7 +272,7 @@ private class OrbitEqualizerState(initial: OrbitLayout) {
 
     fun movePole(pole: Int, degrees: Float) {
         if (pole !in poleAngles.indices) return
-        poleAngles = poleAngles.toMutableList().also { it[pole] = OrbitEqualizer.normalizedAngle(degrees) }
+        poleAngles = poleAngles.toMutableList().also { it[pole] = OrbitEqualizer.normalizedAngle(degrees.roundToInt().toFloat()) }
     }
 
     fun endPoleDrag() {
@@ -443,10 +442,6 @@ private fun OrbitField(
     val latestDrag by rememberUpdatedState(onDrag)
     val latestEnd by rememberUpdatedState(onDragEnd)
     val latestTap by rememberUpdatedState(onPole)
-    val latestPoleStart by rememberUpdatedState(onPoleDragStart)
-    val latestPoleDrag by rememberUpdatedState(onPoleDrag)
-    val latestPoleEnd by rememberUpdatedState(onPoleDragEnd)
-    val latestReset by rememberUpdatedState(onResetPoles)
     val latestPosition by rememberUpdatedState(position)
     val latestAngles by rememberUpdatedState(poleAngles)
     val labels = listOf(copy.warm, copy.bright, copy.forward, copy.open)
@@ -473,62 +468,32 @@ private fun OrbitField(
                         (point.x - center.x) / radius,
                         (center.y - point.y) / radius
                     ).clamped()
-                    fun degreesAt(point: Offset) =
-                        Math.toDegrees(atan2((center.y - point.y).toDouble(), (point.x - center.x).toDouble())).toFloat()
                     val current = latestPosition
                     val handle = Offset(center.x + current.tilt * radius, center.y - current.contour * radius)
-                    val puckDistance = (down.position - handle).getDistance()
-                    val angles = latestAngles
-                    val poleDistances = angles.map { angle ->
-                        val direction = OrbitEqualizer.poleDirection(angle)
-                        val reach = radius + inset / 2f
-                        (down.position - Offset(center.x + direction.tilt * reach, center.y - direction.contour * reach)).getDistance()
-                    }
-                    val pole = poleDistances.indices
-                        .minByOrNull { poleDistances[it] }
-                        ?.takeIf { poleDistances[it] <= POLE_GRAB_RADIUS.toPx() && poleDistances[it] < puckDistance }
-                    if (pole == null && puckDistance <= GRAB_RADIUS.toPx()) {
-                        down.consume()
-                        latestStart()
+                    if ((down.position - handle).getDistance() > GRAB_RADIUS.toPx()) {
                         while (true) {
                             val event = awaitPointerEvent()
-                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                            if (!change.pressed) break
-                            change.consume()
-                            latestDrag(unit(change.position))
-                        }
-                        latestEnd()
-                        return@awaitEachGesture
-                    }
-                    if (pole != null) down.consume()
-                    val outcome = if (pole == null) {
-                        pressOutcome(down, yieldToConsumers = true)
-                    } else {
-                        withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) { pressOutcome(down, yieldToConsumers = false) }
-                    }
-                    when {
-                        outcome == null -> {
-                            latestReset()
-                            while (true) {
-                                val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
+                            val change = event.changes.firstOrNull { it.id == down.id } ?: return@awaitEachGesture
+                            if (change.isConsumed || (change.position - down.position).getDistance() > viewConfiguration.touchSlop) {
+                                return@awaitEachGesture
+                            }
+                            if (!change.pressed) {
                                 change.consume()
-                                if (!change.pressed) break
+                                if ((down.position - center).getDistance() <= radius + viewConfiguration.touchSlop) latestTap(unit(down.position))
+                                return@awaitEachGesture
                             }
                         }
-                        outcome == PressOutcome.TAPPED && pole != null -> latestTap(poleTarget(angles[pole]))
-                        outcome == PressOutcome.TAPPED && (down.position - center).getDistance() <= radius + viewConfiguration.touchSlop ->
-                            latestTap(unit(down.position))
-                        outcome == PressOutcome.MOVED && pole != null -> {
-                            latestPoleStart(pole)
-                            while (true) {
-                                val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
-                                if (!change.pressed) break
-                                change.consume()
-                                latestPoleDrag(pole, degreesAt(change.position))
-                            }
-                            latestPoleEnd()
-                        }
                     }
+                    down.consume()
+                    latestStart()
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                        if (!change.pressed) break
+                        change.consume()
+                        latestDrag(unit(change.position))
+                    }
+                    latestEnd()
                 }
             }
     ) {
@@ -590,24 +555,14 @@ private fun OrbitField(
             OrbitPoleLabel(
                 label = label,
                 angle = { latestAngles[pole] },
-                maxWidth = if (vertical) 168.dp else 96.dp
-            ) { onPole(poleTarget(poleAngles[pole])) }
-        }
-    }
-}
-
-private enum class PressOutcome { TAPPED, MOVED, CANCELLED }
-
-private suspend fun AwaitPointerEventScope.pressOutcome(down: PointerInputChange, yieldToConsumers: Boolean): PressOutcome {
-    while (true) {
-        val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: return PressOutcome.CANCELLED
-        when {
-            yieldToConsumers && change.isConsumed -> return PressOutcome.CANCELLED
-            !change.pressed -> {
-                change.consume()
-                return PressOutcome.TAPPED
-            }
-            (change.position - down.position).getDistance() > viewConfiguration.touchSlop -> return PressOutcome.MOVED
+                maxWidth = if (vertical) 168.dp else 96.dp,
+                resetLabel = copy.resetPoles,
+                onTap = { onPole(poleTarget(poleAngles[pole])) },
+                onReset = onResetPoles,
+                onDragStart = { onPoleDragStart(pole) },
+                onDrag = { degrees -> onPoleDrag(pole, degrees) },
+                onDragEnd = onPoleDragEnd
+            )
         }
     }
 }
@@ -617,7 +572,14 @@ private fun poleState(position: OrbitPosition, poleAngles: List<Float>, labels: 
     return labels.indices.joinToString(", ") { pole -> "${labels[pole]} ${(weights[pole] * 100).roundToInt()}%" }
 }
 
-private fun Modifier.ringAnchor(angle: () -> Float): Modifier = layout { measurable, constraints ->
+private class RingSlot {
+    var x = 0
+    var y = 0
+    var fieldWidth = 0
+    var fieldHeight = 0
+}
+
+private fun Modifier.ringAnchor(angle: () -> Float, slot: RingSlot): Modifier = layout { measurable, constraints ->
     val placeable = measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
     val width = constraints.maxWidth
     val height = constraints.maxHeight
@@ -626,22 +588,49 @@ private fun Modifier.ringAnchor(angle: () -> Float): Modifier = layout { measura
         val distance = width / 2f - FIELD_INSET.toPx() / 2f
         val x = (width / 2f + direction.tilt * distance - placeable.width / 2f).roundToInt()
         val y = (height / 2f - direction.contour * distance - placeable.height / 2f).roundToInt()
-        placeable.place(x.coerceIn(0, (width - placeable.width).coerceAtLeast(0)), y.coerceIn(0, (height - placeable.height).coerceAtLeast(0)))
+        slot.x = x.coerceIn(0, (width - placeable.width).coerceAtLeast(0))
+        slot.y = y.coerceIn(0, (height - placeable.height).coerceAtLeast(0))
+        slot.fieldWidth = width
+        slot.fieldHeight = height
+        placeable.place(slot.x, slot.y)
     }
 }
 
 @Composable
-private fun OrbitPoleLabel(label: String, angle: () -> Float, maxWidth: Dp, onTap: () -> Unit) {
+private fun OrbitPoleLabel(
+    label: String,
+    angle: () -> Float,
+    maxWidth: Dp,
+    resetLabel: String,
+    onTap: () -> Unit,
+    onReset: () -> Unit,
+    onDragStart: () -> Unit,
+    onDrag: (Float) -> Unit,
+    onDragEnd: () -> Unit
+) {
+    val slot = remember { RingSlot() }
+    val latestDragStart by rememberUpdatedState(onDragStart)
+    val latestDrag by rememberUpdatedState(onDrag)
+    val latestDragEnd by rememberUpdatedState(onDragEnd)
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .fillMaxSize()
-            .ringAnchor(angle)
+            .ringAnchor(angle, slot)
             .sizeIn(minWidth = 48.dp, minHeight = 48.dp, maxWidth = maxWidth)
-            .semantics(mergeDescendants = true) {
-                role = Role.Button
-                onClick { onTap(); true }
+            .pointerInput(Unit) {
+                detectDragGestures(
+                    onDragStart = { latestDragStart() },
+                    onDragEnd = { latestDragEnd() },
+                    onDragCancel = { latestDragEnd() }
+                ) { change, _ ->
+                    change.consume()
+                    val x = slot.x + change.position.x - slot.fieldWidth / 2f
+                    val y = slot.fieldHeight / 2f - (slot.y + change.position.y)
+                    latestDrag(Math.toDegrees(atan2(y.toDouble(), x.toDouble())).toFloat())
+                }
             }
+            .combinedClickable(role = Role.Button, onLongClickLabel = resetLabel, onLongClick = onReset, onClick = onTap)
     ) {
         BasicText(
             text = label,

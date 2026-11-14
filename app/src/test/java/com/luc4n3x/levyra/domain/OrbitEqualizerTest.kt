@@ -28,8 +28,8 @@ class OrbitEqualizerTest {
         val forward = response(OrbitEqualizer.shape(OrbitPosition(0f, 1f), "f").profile)
         val open = response(OrbitEqualizer.shape(OrbitPosition(0f, -1f), "o").profile)
 
-        assertTrue(warm[0] > warm[4] + 4f)
-        assertTrue(bright[4] > bright[1] + 4f)
+        assertTrue(warm[1] > warm[4] + 10f)
+        assertTrue(bright[4] > bright[1] + 10f)
         assertTrue(forward[2] > forward[0] && forward[2] > forward[4])
         assertTrue(open[2] < open[0] && open[2] < open[4])
     }
@@ -94,22 +94,37 @@ class OrbitEqualizerTest {
     private val tiltWeights = floatArrayOf(-1f, -0.45f, 0f, 0.55f, 1f)
     private val contourWeights = floatArrayOf(-0.45f, -0.1f, 0.85f, 0.55f, -0.4f)
 
-    @Test
-    fun `puck at a pole raises only that pole and never the opposite exclusive bands`() {
-        val warm = OrbitEqualizer.bandGains(OrbitPosition(-1f, 0f))
-        val bright = OrbitEqualizer.bandGains(OrbitPosition(1f, 0f))
-        val forward = OrbitEqualizer.bandGains(OrbitPosition(0f, 1f))
+    private fun legacyGains(position: OrbitPosition): FloatArray {
+        val clamped = position.clamped()
+        return FloatArray(tiltWeights.size) { band ->
+            OrbitEqualizer.DEPTH_DB * (clamped.tilt * tiltWeights[band] + clamped.contour * contourWeights[band])
+        }
+    }
 
-        assertTrue(warm[0] > 0f && warm[1] > 0f)
-        assertEquals(0f, warm[3], 0f)
-        assertEquals(0f, warm[4], 0f)
-        assertTrue(bright[3] > 0f && bright[4] > 0f)
-        assertEquals(0f, bright[0], 0f)
-        assertEquals(0f, bright[1], 0f)
-        assertTrue(forward[2] > 0f && forward[3] > 0f)
-        assertEquals(0f, forward[0], 0f)
-        assertEquals(0f, forward[4], 0f)
-        assertTrue((warm + bright + forward).all { it >= 0f })
+    @Test
+    fun `default pole angles reproduce the legacy two axis orbit exactly`() {
+        for (tiltStep in -12..12) {
+            for (contourStep in -12..12) {
+                val position = OrbitPosition(tiltStep / 10f, contourStep / 10f)
+                val expected = legacyGains(position)
+                val gains = OrbitEqualizer.bandGains(position)
+                gains.indices.forEach { band -> assertEquals("p=$position band=$band", expected[band], gains[band], 0f) }
+            }
+        }
+    }
+
+    @Test
+    fun `profiles saved with the legacy math restore unchanged`() {
+        val position = OrbitPosition(-0.55f, 0.35f)
+        val template = OrbitEqualizer.shape(OrbitPosition.Center, "Orbit").profile
+        val gains = legacyGains(position)
+        val stored = template.copy(id = "parametric_custom_old", preampDb = -6.4f, bands = template.bands.mapIndexed { index, band -> band.copy(gainDb = gains[index]) })
+        val stale = OrbitLayout(listOf(40f, 45f, 50f, 270f), OrbitPosition(0.7f, 0.7f))
+
+        assertEquals(OrbitLayout(puck = position), OrbitEqualizer.restore(stored, null))
+        assertEquals(OrbitLayout(puck = position), OrbitEqualizer.restore(stored, stale))
+        val replayed = OrbitEqualizer.shape(position, "Orbit").profile
+        stored.bands.indices.forEach { assertEquals(stored.bands[it].gainDb, replayed.bands[it].gainDb, 0f) }
     }
 
     @Test
