@@ -234,7 +234,8 @@ class MainActivity : ComponentActivity() {
                 LevyraStarThanksGate(
                     enabled = !activityUiState.showOnboarding && !pipMode.value && !activityUiState.showSettings,
                     languageCode = activityUiState.languageCode,
-                    onDecided = { show -> if (starSheetThisLaunch != true) starSheetThisLaunch = show }
+                    onDecided = { show -> if (starSheetThisLaunch != true) starSheetThisLaunch = show },
+                    onClosed = { starSheetThisLaunch = false }
                 )
                 if (
                     BuildConfig.UPSTREAM_UPDATES_ENABLED &&

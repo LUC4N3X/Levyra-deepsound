@@ -78,7 +78,7 @@ internal fun shouldShowStarSheet(firstInstallTime: Long, lastUpdateTime: Long, a
     !alreadyShown && lastUpdateTime > firstInstallTime
 
 @Composable
-internal fun LevyraStarThanksGate(enabled: Boolean, languageCode: String, onDecided: (Boolean) -> Unit) {
+internal fun LevyraStarThanksGate(enabled: Boolean, languageCode: String, onDecided: (Boolean) -> Unit, onClosed: () -> Unit = {}) {
     val context = LocalContext.current.applicationContext
     val preferences = remember(context) { LevyraPreferences(context) }
     var visible by rememberSaveable { mutableStateOf(false) }
@@ -104,6 +104,7 @@ internal fun LevyraStarThanksGate(enabled: Boolean, languageCode: String, onDeci
         preferences.setStarThanksShown()
         announcements.markCompleted(BUILT_IN_SUPPORT_ANNOUNCEMENT_ID)
         visible = false
+        onClosed()
     }
     CompositionLocalProvider(
         LocalLevyraStrings provides strings,
