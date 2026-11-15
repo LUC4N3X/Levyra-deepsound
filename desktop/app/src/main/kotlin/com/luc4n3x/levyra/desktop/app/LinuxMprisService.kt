@@ -94,19 +94,29 @@ internal class LinuxMprisService(
     override fun Quit() = dispatch(onQuit)
     override fun PlayPause() = dispatch(controller::togglePlayPause)
     override fun Stop() = dispatch(controller::stop)
-    override fun Next() = dispatch { if (controller.state.value.queue.hasNext) advance { controller.next() } }
+    override fun Next() = dispatch(::nextTrack)
     override fun Previous() = dispatch { advance(controller::previous) }
     override fun Pause() = dispatch { if (controller.state.value.status in ACTIVE) controller.togglePlayPause() }
     override fun Play() = dispatch { if (controller.state.value.status !in ACTIVE) controller.togglePlayPause() }
     override fun OpenUri(uri: String) = dispatch { if (DesktopLinkRouter.launchPayload(arrayOf(uri)).isNotBlank()) onOpen(uri) }
     override fun Seek(offset: Long) = dispatch {
         val state = controller.state.value
+        if (state.current == null || state.durationMs <= 0L) return@dispatch
         val remaining = (state.durationMs - state.positionMs).coerceAtLeast(0L)
-        seek(state.positionMs + (offset / 1_000L).coerceIn(-state.positionMs, remaining))
+        val deltaMs = offset / 1_000L
+        if (deltaMs > remaining || (deltaMs == remaining && offset % 1_000L > 0L)) {
+            nextTrack()
+        } else {
+            seek(state.positionMs + deltaMs.coerceIn(-state.positionMs, remaining))
+        }
     }
     override fun SetPosition(trackId: DBusPath, position: Long) = dispatch {
         val state = controller.state.value
         if (trackId == trackPath(state) && position >= 0 && position / 1_000L <= state.durationMs) seek(position / 1_000L)
+    }
+
+    private fun nextTrack() {
+        if (controller.state.value.queue.hasNext) advance { controller.next() }
     }
 
     private fun advance(action: () -> Unit) {
