@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMarqueeSpec
 import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import com.luc4n3x.levyra.ui.theme.*
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
@@ -1125,7 +1126,7 @@ private fun MiniStyledMetadata(
                 )
             }
             LevyraMediaTitle(
-                text = track.title, explicit = track.explicit, marqueeEnabled = animated, repeatDelayMillis = 3_200,
+                text = track.title, explicit = track.explicit, marqueeEnabled = animated, iterations = LevyraMarqueeSpec.PlayerIterations, initialDelayMillis = LevyraMarqueeSpec.PlayerInitialDelayMillis, velocity = LevyraMarqueeSpec.PlayerVelocity,
                 color = palette.content,
                 style = miniStyledTitleTextStyle(tuning.typography, compact),
                 maxLines = 1,

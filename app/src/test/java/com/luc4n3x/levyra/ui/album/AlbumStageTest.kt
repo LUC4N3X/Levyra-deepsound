@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.ui.album
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.ui.PlayerMinimumContrast
 import com.luc4n3x.levyra.ui.playerContrastRatio
@@ -31,6 +32,18 @@ class AlbumStageTest {
         artworkPalettes.forEach { (primary, secondary) ->
             assertReadable(albumStageColors(primary, secondary, lightTheme = true))
         }
+    }
+
+    @Test
+    fun coverStageStaysReadableAndKeepsArtworkHue() {
+        artworkPalettes.forEach { (primary, secondary) ->
+            val stage = albumCoverStageColors(primary, secondary)
+            assertReadable(stage)
+            assertTrue(stage.base.luminance() <= 0.09f)
+            assertTrue(playerContrastRatio(stage.actionContent, stage.actionStart) >= PlayerMinimumContrast)
+        }
+        val red = albumCoverStageColors(Color(0xFFE0161E), Color(0xFF7A0A10)).base
+        assertTrue(red.red > red.green && red.red > red.blue)
     }
 
     @Test

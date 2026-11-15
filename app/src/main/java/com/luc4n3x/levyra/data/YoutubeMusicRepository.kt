@@ -8,6 +8,7 @@ import com.luc4n3x.levyra.data.security.GoogleApiKeyHeaders
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.AlbumRecommendationSeed
 import com.luc4n3x.levyra.domain.AlbumDetail
+import com.luc4n3x.levyra.domain.AlbumSuggestionShelf
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.CacheReport
 import com.luc4n3x.levyra.domain.ExploreCategory
@@ -1932,6 +1933,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             description = description,
             tracks = enrichedTracks,
             otherVersions = root?.let { parseOtherAlbumVersions(it, finalAlbum) }.orEmpty(),
+            suggestionShelves = root?.let { parseAlbumSuggestionShelves(it, finalAlbum) }.orEmpty(),
             trackCount = enrichedTracks.size,
             durationMs = enrichedTracks.sumOf { it.durationMs }
         )
@@ -2246,9 +2248,9 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             levyraReleaseType(token).takeUnless { it == ReleaseType.Unknown }
         } ?: ReleaseType.Unknown
         val artist = tokens.firstOrNull { token ->
-            levyraReleaseType(token) == ReleaseType.Unknown && !token.matches(Regex("""\b(?:19|20)\d{2}\b"""))
+            levyraReleaseType(token) == ReleaseType.Unknown && !token.matches(ExploreYearPattern)
         }.orEmpty()
-        val year = tokens.firstNotNullOfOrNull { Regex("\\b(?:19|20)\\d{2}\\b").find(it)?.value }.orEmpty()
+        val year = tokens.firstNotNullOfOrNull { ExploreYearPattern.find(it)?.value }.orEmpty()
         val browseEndpoint = card.optJSONObject("navigationEndpoint")?.optJSONObject("browseEndpoint")
         val browseId = browseEndpoint?.optString("browseId").orEmpty()
         if (browseId.isBlank()) return null
@@ -2924,6 +2926,21 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             versions.putIfAbsent(parsed.browseId.ifBlank { "${parsed.title}|${parsed.artist}" }, parsed)
         }
         return versions.values.take(20).toList()
+    }
+
+    internal fun parseAlbumSuggestionShelves(root: JSONObject, current: AlbumHit): List<AlbumSuggestionShelf> {
+        val carousels = mutableListOf<JSONObject>()
+        collectObjectsByKey(root, "musicCarouselShelfRenderer", carousels)
+        return carousels.mapNotNull { shelf ->
+            val title = shelf.optJSONObject("header")?.optJSONObject("musicCarouselShelfBasicHeaderRenderer")
+                ?.optJSONObject("title")?.optJSONArray("runs")?.joinText().orEmpty().trim()
+            val contents = shelf.optJSONArray("contents") ?: return@mapNotNull null
+            val albums = (0 until contents.length())
+                .mapNotNull { index -> parseAlbumFromExploreItem(contents.optJSONObject(index)) }
+                .filter { it.browseId.startsWith("MPRE") && it.browseId != current.browseId }
+                .distinctBy { it.browseId }
+            if (title.isBlank() || albums.isEmpty()) null else AlbumSuggestionShelf(title, albums)
+        }
     }
 
     private fun parseAlbumDescription(root: JSONObject): String {
@@ -4037,3 +4054,5 @@ private val ALBUM_DESCRIPTION_ATTRIBUTION_PATTERNS = listOf(
     Regex("\\bcreativecommons\\.org\\b", RegexOption.IGNORE_CASE),
     Regex("\\bcc[- ]?by(?:[- ]?sa)?\\b", RegexOption.IGNORE_CASE)
 )
+
+private val ExploreYearPattern = Regex("""\b(?:19|20)\d{2}\b""")

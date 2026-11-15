@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.player
 
+import com.luc4n3x.levyra.ui.components.LevyraMarqueeSpec
 import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 
 import com.luc4n3x.levyra.ui.theme.*
@@ -57,7 +58,6 @@ import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
 
 private const val FavoritePopScale = 1.14f
-private const val TitleMarqueeDelayMs = 3_200
 
 @Composable
 internal fun PlayerTrackMetadata(
@@ -108,7 +108,9 @@ internal fun PlayerTrackMetadata(
                     maxLines = if (animationsEnabled) 1 else 2,
                     overflow = TextOverflow.Ellipsis,
                     marqueeEnabled = animationsEnabled,
-                    repeatDelayMillis = TitleMarqueeDelayMs
+                    iterations = LevyraMarqueeSpec.PlayerIterations,
+                    initialDelayMillis = LevyraMarqueeSpec.PlayerInitialDelayMillis,
+                    velocity = LevyraMarqueeSpec.PlayerVelocity
                 )
                 PlayerArtistText(
                     track = shown,

@@ -211,7 +211,7 @@ private fun SettingsChoiceSheet(
                     }
                 }
             }
-            itemsIndexed(options, key = { _, option -> option.first }) { index, option ->
+            itemsIndexed(options, key = { _, option -> option.first }, contentType = { _, _ -> "SettingsControls-options" }) { index, option ->
                 SettingsChoiceOption(
                     label = option.second,
                     active = option.first == selected,

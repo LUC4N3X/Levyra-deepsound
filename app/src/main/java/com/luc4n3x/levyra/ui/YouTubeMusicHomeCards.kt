@@ -68,7 +68,7 @@ internal fun YouTubeMusicCommunityCarousel(
         contentPadding = PaddingValues(horizontal = YouTubeMusicDesign.gutter),
         horizontalArrangement = Arrangement.spacedBy(YouTubeMusicDesign.itemGap)
     ) {
-        items(items, key = { it.key }) { item ->
+        items(items, key = { it.key }, contentType = { "YouTubeMusicHomeCards-items" }) { item ->
             val playlistId = item.playlist?.playlistId.orEmpty()
             LaunchedEffect(playlistId) { actions.requestPreview(playlistId) }
             YouTubeMusicCommunityCard(item, previews(playlistId), width, explicitLabel, labels, actions)
@@ -175,7 +175,7 @@ internal fun YouTubeMusicDiscoveryCarousel(cards: List<YouTubeMusicDiscoveryCard
         contentPadding = PaddingValues(horizontal = YouTubeMusicDesign.gutter),
         horizontalArrangement = Arrangement.spacedBy(YouTubeMusicDesign.itemGap)
     ) {
-        items(cards, key = { it.key }) { card ->
+        items(cards, key = { it.key }, contentType = { "YouTubeMusicHomeCards-cards" }) { card ->
             val track = card.track
             Box(
                 Modifier.size(width).clip(shape).background(YouTubeMusicDesign.placeholder)

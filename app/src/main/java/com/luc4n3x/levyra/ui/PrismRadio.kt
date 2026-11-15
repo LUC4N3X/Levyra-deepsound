@@ -184,7 +184,7 @@ internal fun PrismRadioScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(top = 22.dp)
             ) {
-                items(RadioCategory.entries, key = { it.name }) { category ->
+                items(RadioCategory.entries, key = { it.name }, contentType = { "PrismRadio-entries" }) { category ->
                     PrismCategoryChip(radioStrings.category(category), state.category == category) { viewModel.selectCategory(category) }
                 }
             }
@@ -209,7 +209,7 @@ internal fun PrismRadioScreen(
                     Column {
                         PrismRadioHeader(sectionTitle)
                         LazyRow(contentPadding = PaddingValues(horizontal = PrismRadioGutter), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                            items(stations, key = { "$section-${it.uuid}" }) { station ->
+                            items(stations, key = { "$section-${it.uuid}" }, contentType = { "PrismRadio-stations" }) { station ->
                                 PrismPreset(station, currentStationId == station.uuid && isPlaying) { tuneAndPlay(station) }
                             }
                         }

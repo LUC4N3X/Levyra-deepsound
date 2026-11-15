@@ -256,7 +256,7 @@ internal fun NavigationStudioOverlay(
                 }
                 item(key = "nav-styles", contentType = "styles") {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        items(NavStyle.studioOrder, key = { it.storageId }) { option ->
+                        items(NavStyle.studioOrder, key = { it.storageId }, contentType = { "NavigationStudioScreen-studioOrder" }) { option ->
                             NavStyleCard(
                                 style = option,
                                 selected = option == style,

@@ -82,14 +82,14 @@ private fun HomeFavoriteRadio(radio: HomeRadioState) {
             LevyraIsNocturne || LevyraIsTorque || LevyraIsIvory -> LazyRow(
                 contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(radio.stations.chunked(3), key = { it.first().uuid }) { group ->
+                items(radio.stations.chunked(3), key = { it.first().uuid }, contentType = { "HomeFavoriteRadio-chunked" }) { group ->
                     Column(Modifier.width(300.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         group.forEach { station -> CompactHomeRadio(station, radio) }
                     }
                 }
             }
             else -> LazyRow(contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(if (LevyraIsYouTubeMusic) 16.dp else 12.dp)) {
-                items(radio.stations, key = RadioStation::uuid) { station ->
+                items(radio.stations, key = RadioStation::uuid, contentType = { "HomeFavoriteRadio-stations" }) { station ->
                     if (LevyraSkinManagesLayout) SkinHomeRadio(station, radio) else ExpressiveHomeRadio(station, radio)
                 }
             }

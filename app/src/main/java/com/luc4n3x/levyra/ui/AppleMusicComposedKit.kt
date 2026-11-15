@@ -108,7 +108,7 @@ internal class AppleMusicComposedKit(
             contentPadding = PaddingValues(horizontal = AppleMusicDesign.gutter),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            itemsIndexed(labels, key = { index, label -> "chip-$index-$label" }) { index, label ->
+            itemsIndexed(labels, key = { index, label -> "chip-$index-$label" }, contentType = { _, _ -> "AppleMusicComposedKit-labels" }) { index, label ->
                 AppleMusicComposedChip(label) { onSelect(index) }
             }
         }
@@ -134,7 +134,7 @@ internal class AppleMusicComposedKit(
                 contentPadding = PaddingValues(horizontal = AppleMusicDesign.gutter),
                 horizontalArrangement = Arrangement.spacedBy(AppleMusicDesign.itemGap)
             ) {
-                items(unique, key = { it.key }) { quote ->
+                items(unique, key = { it.key }, contentType = { "AppleMusicComposedKit-unique" }) { quote ->
                     AppleMusicQuoteCard(quote, showMeta, Modifier.width(width))
                 }
             }
@@ -205,7 +205,7 @@ private fun AppleMusicRankedColumns(
         contentPadding = PaddingValues(horizontal = AppleMusicDesign.gutter),
         horizontalArrangement = Arrangement.spacedBy(AppleMusicDesign.itemGap)
     ) {
-        itemsIndexed(columns, key = { index, _ -> "rank-column-$index" }) { columnIndex, column ->
+        itemsIndexed(columns, key = { index, _ -> "rank-column-$index" }, contentType = { _, _ -> "AppleMusicComposedKit-columns" }) { columnIndex, column ->
             Column(Modifier.width(width)) {
                 column.forEachIndexed { index, track ->
                     val rank = columnIndex * AppleComposedSongRows + index + 1
@@ -245,7 +245,7 @@ private fun AppleMusicWideCarousel(cards: List<ComposedCard>, explicitLabel: Str
         contentPadding = PaddingValues(horizontal = AppleMusicDesign.gutter),
         horizontalArrangement = Arrangement.spacedBy(AppleMusicDesign.itemGap)
     ) {
-        items(cards, key = { it.key }) { card -> AppleMusicWideCard(card, explicitLabel, width) }
+        items(cards, key = { it.key }, contentType = { "AppleMusicComposedKit-cards" }) { card -> AppleMusicWideCard(card, explicitLabel, width) }
     }
 }
 
@@ -409,7 +409,7 @@ private fun AppleMusicSkeletonCarousel(progress: State<Float>? = rememberLevyraS
         contentPadding = PaddingValues(horizontal = AppleMusicDesign.gutter),
         horizontalArrangement = Arrangement.spacedBy(AppleMusicDesign.itemGap)
     ) {
-        items(AppleComposedSkeletonCards, key = { "apple-skeleton-$it" }) {
+        items(AppleComposedSkeletonCards, key = { "apple-skeleton-$it" }, contentType = { "AppleMusicComposedKit-AppleComposedSkeletonCards" }) {
             Column(Modifier.width(width)) {
                 Box(
                     Modifier.fillMaxWidth().aspectRatio(1f).clip(AppleMusicDesign.artworkShape)

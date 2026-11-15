@@ -211,7 +211,7 @@ private fun ReviewList(
                     }
                 }
             }
-            items(visible, key = { state.entries[it].identity.position }) { position ->
+            items(visible, key = { state.entries[it].identity.position }, contentType = { "PlaylistImportReviewScreen-visible" }) { position ->
                 ReviewRow(state.entries[position], copy) { controller.openEntry(position) }
             }
         }
@@ -452,7 +452,7 @@ internal fun TrackReviewContent(
         val alternatives = entry.alternatives.filter { it.candidate.id != entry.selected?.candidate?.id }
         if (alternatives.isNotEmpty()) {
             item(key = "alternatives-label") { SectionLabel(copy["sheetAlternatives"]) }
-            items(alternatives, key = { "alt-${it.candidate.id}" }) { evaluation ->
+            items(alternatives, key = { "alt-${it.candidate.id}" }, contentType = { "PlaylistImportReviewScreen-alternatives" }) { evaluation ->
                 EvaluationCard(evaluation, copy, isSelected = false) {
                     controller.chooseCandidate(position, evaluation.candidate.id)
                     controller.closeEntry()
@@ -503,7 +503,7 @@ internal fun TrackReviewContent(
             } else if (manual.results.isEmpty()) {
                 item(key = "manual-empty") { Text(copy["noResults"], color = LevyraMuted, fontSize = 13.sp) }
             } else {
-                items(manual.results, key = { "manual-${it.candidate.id}" }) { evaluation ->
+                items(manual.results, key = { "manual-${it.candidate.id}" }, contentType = { "PlaylistImportReviewScreen-results" }) { evaluation ->
                     EvaluationCard(evaluation, copy, isSelected = false) {
                         controller.chooseManual(position, evaluation.candidate)
                         controller.closeEntry()

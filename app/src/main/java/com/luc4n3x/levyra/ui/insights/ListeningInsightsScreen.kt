@@ -1190,7 +1190,7 @@ private fun TopArtistsRail(
         contentPadding = PaddingValues(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        itemsIndexed(artists, key = { _, artist -> "artist-${artist.name.lowercase(Locale.ROOT)}" }) { index, artist ->
+        itemsIndexed(artists, key = { _, artist -> "artist-${artist.name.lowercase(Locale.ROOT)}" }, contentType = { _, _ -> "ListeningInsightsScreen-artists" }) { index, artist ->
             Column(
                 modifier = Modifier
                     .width(if (index == 0) 124.dp else 108.dp)

@@ -133,7 +133,7 @@ private fun BoxScope.QobuzLyricsBody(
     val strings = LocalLevyraStrings.current
     when {
         lines.isNotEmpty() -> LazyColumn(state = listState, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 240.dp)) {
-            itemsIndexed(lines, key = { index, line -> "${line.startMs}-$index" }) { index, line ->
+            itemsIndexed(lines, key = { index, line -> "${line.startMs}-$index" }, contentType = { _, _ -> "QobuzLyrics-lines" }) { index, line ->
                 val current = index == active
                 val text = line.text.ifBlank { "~ ~ ~" }
                 Text(

@@ -534,7 +534,8 @@ private fun LazyListScope.exploreFeaturedItems(
         ) {
             items(
                 items = tracks,
-                key = { track -> "explore-featured-${track.id}" }
+                key = { track -> "explore-featured-${track.id}" },
+                contentType = { "ExploreDestinationScreens-tracks" }
             ) { track ->
                 LaunchedEffect(track.id) {
                     onRequestTrackArtwork(track)
@@ -571,7 +572,8 @@ private fun LazyListScope.exploreEssentialItems(
     }
     itemsIndexed(
         items = tracks,
-        key = { _, track -> "explore-destination-track-${track.id}" }
+        key = { _, track -> "explore-destination-track-${track.id}" },
+        contentType = { _, _ -> "ExploreDestinationScreens-tracks" }
     ) { index, track ->
         LaunchedEffect(track.id) {
             onRequestTrackArtwork(track)
@@ -626,7 +628,8 @@ private fun LazyListScope.exploreChartItems(
     val visible = chart.take(ExploreChartCollapsedCount)
     itemsIndexed(
         items = visible,
-        key = { _, track -> "explore-chart-${track.id}" }
+        key = { _, track -> "explore-chart-${track.id}" },
+        contentType = { _, _ -> "ExploreDestinationScreens-visible" }
     ) { index, track ->
         LaunchedEffect(track.id) {
             onRequestTrackArtwork(track)
@@ -1264,7 +1267,8 @@ internal fun ExploreNewReleasesDestinationScreen(
             ) {
                 items(
                     items = releases,
-                    key = { release -> "ytm-release-${release.browseId.ifBlank { release.title + release.artist }}" }
+                    key = { release -> "ytm-release-${release.browseId.ifBlank { release.title + release.artist }}" },
+                    contentType = { "ExploreDestinationScreens-releases" }
                 ) { release ->
                     ExploreDestinationReleaseRow(
                         release = release,
@@ -1531,7 +1535,8 @@ private fun LazyListScope.exploreMoodLoadingItems(
     }
     items(
         count = 2,
-        key = { index -> "provider-mood-loading-row-$index" }
+        key = { index -> "provider-mood-loading-row-$index" },
+        contentType = { "ExploreDestinationScreens-count" }
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().height(108.dp),
@@ -1589,7 +1594,8 @@ private fun LazyListScope.exploreProviderCategorySection(
     val pairs = section.categories.chunked(2)
     items(
         count = pairs.size,
-        key = { index -> "${section.key}-pair-$index" }
+        key = { index -> "${section.key}-pair-$index" },
+        contentType = { "ExploreDestinationScreens-count" }
     ) { index ->
         val pair = pairs[index]
         ExploreProviderCategoryRow(
@@ -1670,7 +1676,8 @@ private fun LazyListScope.exploreFallbackGenreItems(
     if (fallbackGenres.isEmpty()) return
     items(
         items = fallbackGenres.chunked(2),
-        key = { pair -> "editorial-genres-${pair.joinToString("|") { it.id }}" }
+        key = { pair -> "editorial-genres-${pair.joinToString("|") { it.id }}" },
+        contentType = { "ExploreDestinationScreens-chunked" }
     ) { pair ->
         ExploreFallbackGenreRow(pair = pair, onOpenZone = onOpenZone)
     }

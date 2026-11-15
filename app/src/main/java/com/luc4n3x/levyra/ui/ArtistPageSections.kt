@@ -49,6 +49,7 @@ import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.ArtistRelease
 import com.luc4n3x.levyra.domain.PlaylistHit
 import com.luc4n3x.levyra.domain.artistBiographyEditorial
+import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.appleArtistInfoCopy
@@ -205,7 +206,7 @@ private fun artistBiographyBody(biography: ArtistBiography): String {
 private fun ArtistReleaseRow(releases: List<ArtistRelease>, artistName: String, onOpen: (ArtistRelease, String) -> Unit) {
     val width = artistShelfCardWidth()
     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        items(releases, key = { "rel-${it.browseId.ifBlank { it.title }}" }) { release ->
+        items(releases, key = { "rel-${it.browseId.ifBlank { it.title }}" }, contentType = { "ArtistPageSections-releases" }) { release ->
             ArtistShelfCard(
                 title = release.title,
                 subtitle = release.year.ifBlank { release.subtitle },
@@ -222,7 +223,7 @@ private fun ArtistReleaseRow(releases: List<ArtistRelease>, artistName: String, 
 private fun ArtistPlaylistRow(playlists: List<PlaylistHit>, onOpen: (PlaylistHit) -> Unit) {
     val width = artistShelfCardWidth()
     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        items(playlists, key = { "playlist-${it.playlistId.ifBlank { it.browseId.ifBlank { it.title } }}" }) { playlist ->
+        items(playlists, key = { "playlist-${it.playlistId.ifBlank { it.browseId.ifBlank { it.title } }}" }, contentType = { "ArtistPageSections-playlists" }) { playlist ->
             ArtistShelfCard(
                 title = playlist.title,
                 subtitle = listOf(playlist.author, playlist.trackCountLabel).filter(String::isNotBlank).joinToString(" • "),
@@ -268,7 +269,7 @@ private fun ArtistShelfCard(title: String, subtitle: String, imageUrl: String, p
             Text(title, color = AppleMusicDesign.label, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(subtitle, color = AppleMusicDesign.secondaryLabel, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
         } else {
-            Text(title, color = LevyraText, style = LevyraType.cardTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            LevyraMediaTitle(title, color = LevyraText, style = LevyraType.cardTitle)
             Text(subtitle, color = LevyraMuted, style = LevyraType.caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }

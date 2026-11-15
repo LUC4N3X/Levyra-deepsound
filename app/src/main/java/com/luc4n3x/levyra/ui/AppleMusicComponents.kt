@@ -147,7 +147,7 @@ internal fun AppleMusicHeroCarousel(items: List<AppleMusicHeroModel>) {
         contentPadding = PaddingValues(horizontal = AppleMusicDesign.gutter),
         horizontalArrangement = Arrangement.spacedBy(AppleMusicDesign.itemGap)
     ) {
-        items(items, key = { it.key }) { hero -> AppleMusicHeroCard(hero, Modifier.width(width)) }
+        items(items, key = { it.key }, contentType = { "AppleMusicComponents-items" }) { hero -> AppleMusicHeroCard(hero, Modifier.width(width)) }
     }
 }
 
@@ -222,7 +222,7 @@ internal fun AppleMusicSongColumns(
         contentPadding = PaddingValues(horizontal = AppleMusicDesign.gutter),
         horizontalArrangement = Arrangement.spacedBy(AppleMusicDesign.itemGap)
     ) {
-        items(columns, key = { column -> column.first().id + ":" + column.size }) { column ->
+        items(columns, key = { column -> column.first().id + ":" + column.size }, contentType = { "AppleMusicComponents-columns" }) { column ->
             Column(Modifier.width(width)) {
                 column.forEachIndexed { index, track ->
                     AppleMusicSongRow(track, track.id == currentId, explicitLabel, index < column.lastIndex, { onPlay(track) }, { onMore(track) })
@@ -307,7 +307,7 @@ internal fun AppleMusicCardCarousel(cards: List<AppleMusicCardModel>, rows: Int 
         contentPadding = PaddingValues(horizontal = AppleMusicDesign.gutter),
         horizontalArrangement = Arrangement.spacedBy(AppleMusicDesign.itemGap)
     ) {
-        items(columns, key = { column -> column.first().key }) { column ->
+        items(columns, key = { column -> column.first().key }, contentType = { "AppleMusicComponents-columns" }) { column ->
             Column(Modifier.width(width), verticalArrangement = Arrangement.spacedBy(AppleMusicDesign.itemGap)) {
                 column.forEach { card -> AppleMusicSquareCard(card, explicitLabel) }
             }
@@ -358,7 +358,7 @@ internal fun AppleMusicChartCarousel(cards: List<AppleMusicChartCardModel>) {
         contentPadding = PaddingValues(horizontal = AppleMusicDesign.gutter),
         horizontalArrangement = Arrangement.spacedBy(AppleMusicDesign.itemGap)
     ) {
-        items(cards, key = { it.key }) { card -> AppleMusicChartCard(card, Modifier.width(width)) }
+        items(cards, key = { it.key }, contentType = { "AppleMusicComponents-cards" }) { card -> AppleMusicChartCard(card, Modifier.width(width)) }
     }
 }
 

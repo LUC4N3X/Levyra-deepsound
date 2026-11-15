@@ -252,7 +252,8 @@ internal fun HomeCollectionScreen(
                 }
                 itemsIndexed(
                     items = tracks,
-                    key = { index, track -> "collection-track-$index-${track.id}" }
+                    key = { index, track -> "collection-track-$index-${track.id}" },
+                    contentType = { _, _ -> "HomeCollectionScreen-tracks" }
                 ) { index, track ->
                     val active = track.id == currentId
                     CollectionTrackRow(

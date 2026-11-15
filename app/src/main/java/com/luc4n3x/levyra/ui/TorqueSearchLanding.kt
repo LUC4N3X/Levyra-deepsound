@@ -55,7 +55,7 @@ internal fun TorqueRecentSearchesRail(
             contentPadding = PaddingValues(horizontal = RecentSearchGutter),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            itemsIndexed(tracks, key = { _, track -> "torque-recent-${track.id}" }) { index, track ->
+            itemsIndexed(tracks, key = { _, track -> "torque-recent-${track.id}" }, contentType = { _, _ -> "TorqueSearchLanding-tracks" }) { index, track ->
                 var menuExpanded by remember(track.id) { mutableStateOf(false) }
                 val description = trackContentDescription(track)
                 Row(
@@ -92,7 +92,7 @@ internal fun TorqueSearchSamplesRail(title: String, samples: List<Track>, previe
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(horizontal = RecentSearchGutter)
         ) {
-            itemsIndexed(samples, key = { _, track -> "torque-sample-${track.id}" }) { index, track ->
+            itemsIndexed(samples, key = { _, track -> "torque-sample-${track.id}" }, contentType = { _, _ -> "TorqueSearchLanding-samples" }) { index, track ->
                 val description = trackContentDescription(track)
                 Box(
                     Modifier.size(width = 148.dp, height = 208.dp).clipToBounds().background(LevyraPanel)

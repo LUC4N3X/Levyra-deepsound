@@ -211,7 +211,7 @@ internal fun DefaultRecentSearchesRail(
             contentPadding = PaddingValues(horizontal = RecentSearchGutter),
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            itemsIndexed(tracks, key = { _, track -> "default-recent-${track.id}" }) { _, track ->
+            itemsIndexed(tracks, key = { _, track -> "default-recent-${track.id}" }, contentType = { _, _ -> "DefaultSearchLanding-tracks" }) { _, track ->
                 var menuExpanded by remember(track.id) { mutableStateOf(false) }
                 val description = trackContentDescription(track)
                 Column(

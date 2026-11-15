@@ -129,7 +129,7 @@ internal fun QobuzMixRow(mixes: List<QobuzMix>, copy: QobuzSkinCopy, onOpen: (Qo
         QobuzSectionHeader(copy.mixes, copy.mixesBaseline, copy.seeAll, null)
         Spacer(Modifier.height(QobuzDesign.headerToContent + 4.dp))
         LazyRow(contentPadding = QobuzRowPadding, horizontalArrangement = Arrangement.spacedBy(QobuzDesign.itemGap)) {
-            items(mixes, key = { it.id }) { mix -> QobuzMixCard(mix, 252.dp) { onOpen(mix) } }
+            items(mixes, key = { it.id }, contentType = { "QobuzMixes-mixes" }) { mix -> QobuzMixCard(mix, 252.dp) { onOpen(mix) } }
         }
     }
 }
@@ -188,7 +188,7 @@ internal fun QobuzMixScreen(
                 Box(Modifier.padding(top = 36.dp, start = 4.dp)) { QobuzMixIcon(Icons.AutoMirrored.Rounded.ArrowBack, strings.back, onBack) }
             }
         }
-        items(mix.tracks, key = { "mix-${mix.id}-${it.id}" }) { track ->
+        items(mix.tracks, key = { "mix-${mix.id}-${it.id}" }, contentType = { "QobuzMixes-tracks" }) { track ->
             QobuzTrackRow(track, track.id == currentId, copy, { onPlay(mix.tracks, track) }, { onTrackActions(track) })
         }
     }

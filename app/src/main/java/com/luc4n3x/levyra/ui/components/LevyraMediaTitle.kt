@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.components
 
+import androidx.compose.foundation.MarqueeDefaults
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -23,6 +24,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
@@ -52,8 +54,10 @@ internal fun LevyraMediaTitle(
     overflow: TextOverflow = TextOverflow.Ellipsis,
     style: TextStyle = LocalTextStyle.current,
     marqueeEnabled: Boolean = true,
-    repeatDelayMillis: Int = 3_200,
-    initialDelayMillis: Int = repeatDelayMillis
+    repeatDelayMillis: Int = LevyraMarqueeSpec.ListDelayMillis,
+    initialDelayMillis: Int = repeatDelayMillis,
+    iterations: Int = LevyraMarqueeSpec.ListIterations,
+    velocity: Dp = MarqueeDefaults.Velocity
 ) {
     val animationsEnabled = LocalAnimationsEnabled.current
     val strings = LocalLevyraStrings.current
@@ -83,7 +87,7 @@ internal fun LevyraMediaTitle(
                 .then(if (explicit) Modifier.padding(start = 5.dp) else Modifier)
                 .then(
                     if (animationsEnabled && marqueeEnabled && maxLines == 1) {
-                        Modifier.basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = repeatDelayMillis, initialDelayMillis = initialDelayMillis)
+                        Modifier.basicMarquee(iterations = iterations, repeatDelayMillis = repeatDelayMillis, initialDelayMillis = initialDelayMillis, velocity = velocity)
                     } else Modifier
                 ),
             color = color,

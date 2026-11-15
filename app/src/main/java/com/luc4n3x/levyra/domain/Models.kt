@@ -432,7 +432,8 @@ data class ArtistProfile(
     val videosParams: String = "",
     val compilations: List<ArtistRelease> = emptyList(),
     val featuredPlaylists: List<PlaylistHit> = emptyList(),
-    val artistPlaylists: List<PlaylistHit> = emptyList()
+    val artistPlaylists: List<PlaylistHit> = emptyList(),
+    val views: String = ""
 ) {
     val bio: String
         get() = biography?.text.orEmpty()
@@ -533,8 +534,11 @@ data class AlbumDetail(
     val trackCount: Int = tracks.size,
     val durationMs: Long = tracks.sumOf { it.durationMs },
     val footer: String = "",
-    val relatedShelves: List<AlbumRelatedShelf> = emptyList()
+    val relatedShelves: List<AlbumRelatedShelf> = emptyList(),
+    val suggestionShelves: List<AlbumSuggestionShelf> = emptyList()
 )
+
+data class AlbumSuggestionShelf(val title: String, val albums: List<AlbumHit>)
 
 data class AlbumRelatedShelf(val title: String, val items: List<AlbumRelatedItem>)
 

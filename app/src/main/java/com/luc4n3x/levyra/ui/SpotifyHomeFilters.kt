@@ -113,7 +113,7 @@ internal fun SpotifyHomeFilterBar(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            items(filters, key = { "spotify-filter-${it.name}" }) { filter ->
+            items(filters, key = { "spotify-filter-${it.name}" }, contentType = { "SpotifyHomeFilters-filters" }) { filter ->
                 if (filter == SpotifyHomeFilter.Music) {
                     SpotifyFilterGroup(
                         parent = label(filter),

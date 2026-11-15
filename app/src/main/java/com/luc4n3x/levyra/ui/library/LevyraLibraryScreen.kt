@@ -912,7 +912,7 @@ internal fun LevyraLibraryScreen(
                     contentPadding = PaddingValues(horizontal = LibraryCategoriesGutter),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(LibraryBrowseCategories, key = { "category-${it.name}" }) { item ->
+                    items(LibraryBrowseCategories, key = { "category-${it.name}" }, contentType = { "LevyraLibraryScreen-LibraryBrowseCategories" }) { item ->
                         LibraryCategoryChip(
                             label = item.libraryLabel(strings),
                             selected = item == category,
@@ -1197,7 +1197,7 @@ internal fun LevyraLibraryScreen(
                             }
                         }
                     } else if (layout == LibraryLayout.List) {
-                        items(visiblePlaylists, key = { "playlist-${it.id}" }) { playlist ->
+                        items(visiblePlaylists, key = { "playlist-${it.id}" }, contentType = { "LevyraLibraryScreen-visiblePlaylists" }) { playlist ->
                             val key = "playlist:${playlist.id}"
                             LibraryPlaylistRow(
                                 playlist = playlist,
@@ -1214,7 +1214,8 @@ internal fun LevyraLibraryScreen(
                     } else {
                         items(
                             items = visiblePlaylists.chunked(2),
-                            key = { row -> "playlist-grid-row-${row.joinToString("-") { it.id }}" }
+                            key = { row -> "playlist-grid-row-${row.joinToString("-") { it.id }}" },
+                            contentType = { "LevyraLibraryScreen-chunked" }
                         ) { rowItems ->
                             LibraryPlaylistGridRow(
                                 playlists = rowItems,
@@ -1233,7 +1234,7 @@ internal fun LevyraLibraryScreen(
                         item(key = "saved-playlists-title") {
                             LibrarySectionTitle(savedPlaylistCopy.section, "${visibleSavedPlaylists.size} ${strings.playlistsPlain}")
                         }
-                        items(visibleSavedPlaylists, key = { "saved-playlist-${it.key}" }) { saved ->
+                        items(visibleSavedPlaylists, key = { "saved-playlist-${it.key}" }, contentType = { "LevyraLibraryScreen-visibleSavedPlaylists" }) { saved ->
                             LibrarySavedPlaylistRow(
                                 saved = saved,
                                 removeLabel = savedPlaylistCopy.remove,
@@ -1256,7 +1257,8 @@ internal fun LevyraLibraryScreen(
                     } else if (layout == LibraryLayout.Grid) {
                         items(
                             items = visibleAlbums.chunked(2),
-                            key = { row -> "album-grid-row-${row.joinToString("-") { it.key }}" }
+                            key = { row -> "album-grid-row-${row.joinToString("-") { it.key }}" },
+                            contentType = { "LevyraLibraryScreen-chunked" }
                         ) { rowItems ->
                             LibraryAlbumGridRow(
                                 albums = rowItems,
@@ -1271,7 +1273,7 @@ internal fun LevyraLibraryScreen(
                             )
                         }
                     } else {
-                        items(visibleAlbums, key = { "album-${it.key}" }) { album ->
+                        items(visibleAlbums, key = { "album-${it.key}" }, contentType = { "LevyraLibraryScreen-visibleAlbums" }) { album ->
                             val key = "album:${album.key}"
                             LibraryAlbumRow(
                                 album = album,
@@ -1300,7 +1302,8 @@ internal fun LevyraLibraryScreen(
                     } else if (layout == LibraryLayout.Grid) {
                         items(
                             items = visibleArtists.chunked(2),
-                            key = { row -> "artist-grid-row-${row.joinToString("-") { it.key }}" }
+                            key = { row -> "artist-grid-row-${row.joinToString("-") { it.key }}" },
+                            contentType = { "LevyraLibraryScreen-chunked" }
                         ) { rowItems ->
                             LibraryArtistGridRow(
                                 artists = rowItems,
@@ -1315,7 +1318,7 @@ internal fun LevyraLibraryScreen(
                             )
                         }
                     } else {
-                        items(visibleArtists, key = { "artist-${it.key}" }) { artist ->
+                        items(visibleArtists, key = { "artist-${it.key}" }, contentType = { "LevyraLibraryScreen-visibleArtists" }) { artist ->
                             val key = "artist:${artist.key}"
                             LibraryArtistRow(
                                 artist = artist,
@@ -1342,7 +1345,7 @@ internal fun LevyraLibraryScreen(
                             )
                         }
                     } else {
-                        items(visibleTracks, key = { "song-${libraryTrackKey(it)}" }) { track ->
+                        items(visibleTracks, key = { "song-${libraryTrackKey(it)}" }, contentType = { "LevyraLibraryScreen-visibleTracks" }) { track ->
                             val key = libraryTrackKey(track)
                             LibraryTrackRow(
                                 track = track,
@@ -1430,7 +1433,7 @@ internal fun LevyraLibraryScreen(
                             LibrarySectionTitle(strings.downloadsInProgress, strings.downloadInProgress)
                         }
                     }
-                    items(activeBatches, key = { "batch-${it.key}" }) { batch ->
+                    items(activeBatches, key = { "batch-${it.key}" }, contentType = { "LevyraLibraryScreen-activeBatches" }) { batch ->
                         LibraryBatchDownloadRow(
                             batch = batch,
                             onRetry = { viewModel.retryBatchDownload(batch.key) },
@@ -1464,7 +1467,7 @@ internal fun LevyraLibraryScreen(
                             )
                         }
                     } else {
-                        items(visibleOffline, key = { "offline-${it.key}" }) { item ->
+                        items(visibleOffline, key = { "offline-${it.key}" }, contentType = { "LevyraLibraryScreen-visibleOffline" }) { item ->
                             val track = item.track
                             val key = item.key
                             LibraryTrackRow(
@@ -2014,7 +2017,7 @@ internal fun LevyraPlaylistDetailScreen(
                     }
                 }
             } else if (reorderMode) {
-                items(orderedItems, key = { "reorder-${it.key}" }) { item ->
+                items(orderedItems, key = { "reorder-${it.key}" }, contentType = { "LevyraLibraryScreen-orderedItems" }) { item ->
                     val entryKey = item.key
                     val index = orderedItems.indexOfFirst { it.key == entryKey }
                     if (index < 0) return@items
@@ -2069,7 +2072,7 @@ internal fun LevyraPlaylistDetailScreen(
                     }
                 }
             } else {
-                items(visibleItems, key = { "playlist-item-${it.key}" }) { item ->
+                items(visibleItems, key = { "playlist-item-${it.key}" }, contentType = { "LevyraLibraryScreen-visibleItems" }) { item ->
                     val key = item.key
                     val toggleSelection = { selectedKeys = togglePlaylistTrackSelection(selectedKeys, key) }
                     val startSelection = {

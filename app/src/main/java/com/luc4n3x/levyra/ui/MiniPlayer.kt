@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMarqueeSpec
 import androidx.compose.runtime.getValue
 import com.luc4n3x.levyra.ui.player.*
 import com.luc4n3x.levyra.ui.theme.*
@@ -249,7 +250,7 @@ internal fun MiniPlayer(
                                 letterSpacing = (-0.2).sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.levyraMarquee(enabled = animated, repeatDelayMillis = 3_200)
+                                modifier = Modifier.levyraMarquee(enabled = animated, repeatDelayMillis = LevyraMarqueeSpec.ListDelayMillis, iterations = LevyraMarqueeSpec.PlayerIterations, initialDelayMillis = LevyraMarqueeSpec.PlayerInitialDelayMillis, velocity = LevyraMarqueeSpec.PlayerVelocity)
                             )
                             Text(
                                 text = if (liveRadio) {

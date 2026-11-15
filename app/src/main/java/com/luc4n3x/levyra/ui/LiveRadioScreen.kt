@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraMarqueeSpec
 import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -193,7 +194,7 @@ internal fun LiveRadioScreen(
 
             if (state.query.isBlank() && state.customStations.isNotEmpty()) {
                 item(key = "live-radio-custom-title") { RadioSectionTitle(libraryCopy.custom) }
-                items(state.customStations, key = { "custom-${it.uuid}" }) { station ->
+                items(state.customStations, key = { "custom-${it.uuid}" }, contentType = { "LiveRadioScreen-customStations" }) { station ->
                     var menuOpen by remember { mutableStateOf(false) }
                     RadioStationRow(0, 1, station, station.uuid in favoriteIds, currentStationId == station.uuid && isPlaying,
                         radioStrings.live, strings.play, strings.addToFavorites, strings.removeFromFavorites,
@@ -217,7 +218,7 @@ internal fun LiveRadioScreen(
                     contentPadding = PaddingValues(horizontal = 24.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(RadioCategory.entries, key = { it.name }) { category ->
+                    items(RadioCategory.entries, key = { it.name }, contentType = { "LiveRadioScreen-entries" }) { category ->
                         RadioChoiceChip(
                             label = radioStrings.category(category),
                             selected = state.category == category,
@@ -264,7 +265,7 @@ internal fun LiveRadioScreen(
                         }
                     }
                     if (state.stationListMode) {
-                        itemsIndexed(stations, key = { _, station -> "live-radio-$section-row-${station.uuid}" }) { index, station ->
+                        itemsIndexed(stations, key = { _, station -> "live-radio-$section-row-${station.uuid}" }, contentType = { _, _ -> "LiveRadioScreen-stations" }) { index, station ->
                             RadioStationRow(
                                 index, stations.size, station, station.uuid.lowercase(Locale.ROOT) in favoriteIds,
                                 currentStationId == station.uuid && isPlaying,
@@ -1018,7 +1019,7 @@ internal fun RadioStationName(
         maxLines = if (marquee) 1 else 2,
         minLines = if (marquee) 1 else minLines,
         overflow = if (marquee) TextOverflow.Clip else TextOverflow.Ellipsis,
-        modifier = modifier.then(if (marquee) Modifier.basicMarquee(iterations = Int.MAX_VALUE) else Modifier)
+        modifier = modifier.then(if (marquee) Modifier.basicMarquee(iterations = LevyraMarqueeSpec.PlayerIterations, initialDelayMillis = LevyraMarqueeSpec.PlayerInitialDelayMillis, velocity = LevyraMarqueeSpec.PlayerVelocity) else Modifier)
     )
 }
 
@@ -1087,7 +1088,7 @@ private fun RadioStationRail(
         MaterialShapes.SoftBurst.toShape()
     )
     LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        itemsIndexed(stations, key = { _, station -> "rail-${station.uuid}" }) { index, station ->
+        itemsIndexed(stations, key = { _, station -> "rail-${station.uuid}" }, contentType = { _, _ -> "LiveRadioScreen-stations" }) { index, station ->
             val favorite = station.uuid.lowercase(Locale.ROOT) in favoriteIds
             val playing = currentStationId == station.uuid && isPlaying
             val place = remember(station.countryCode, station.country, languageCode) {
@@ -1260,7 +1261,7 @@ internal fun RadioDirectoryDialog(
             Column(modifier = Modifier.fillMaxWidth()) {
                 RadioDirectoryDialogRow(allLabel, selected == null) { onSelect(null) }
                 LazyColumn(state = listState, modifier = Modifier.fillMaxWidth().heightIn(max = 370.dp)) {
-                    items(rows, key = { (entry, _) -> "${entry.code}:${entry.name}" }) { (entry, label) ->
+                    items(rows, key = { (entry, _) -> "${entry.code}:${entry.name}" }, contentType = { "LiveRadioScreen-rows" }) { (entry, label) ->
                         val itemValue = value(entry)
                         RadioDirectoryDialogRow(label, selected == itemValue) { onSelect(itemValue) }
                     }

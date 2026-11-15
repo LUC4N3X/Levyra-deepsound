@@ -204,7 +204,7 @@ internal fun PrismCollectionDestination(
         if (discoveryActions != null) genreDiscoveryItems(discovery, discoveryCopy, PrismDiscoverySkin, discoveryActions)
         if (editorial.essentials.isNotEmpty()) {
             item(key = "prism-destination-essentials") { PrismDestinationHeader(strings.songsPlain) }
-            itemsIndexed(editorial.essentials, key = { _, t -> "essential-${t.id}" }) { index, track ->
+            itemsIndexed(editorial.essentials, key = { _, t -> "essential-${t.id}" }, contentType = { _, _ -> "PrismDestinations-essentials" }) { index, track ->
                 LaunchedEffect(track.id) { onRequestTrackArtwork(track) }
                 PrismTrackRow(index + 1, track, track.id == currentTrackId, strings.songOptions, { onPlayTrack(track) })
             }
@@ -245,7 +245,7 @@ private fun LazyListScope.prismGenreChart(
         }
         return
     }
-    itemsIndexed(chart.take(if (expanded) 50 else 10), key = { _, track -> "prism-chart-${track.id}" }) { index, track ->
+    itemsIndexed(chart.take(if (expanded) 50 else 10), key = { _, track -> "prism-chart-${track.id}" }, contentType = { _, _ -> "PrismDestinations-take" }) { index, track ->
         LaunchedEffect(track.id) { onRequestTrackArtwork(track) }
         PrismTrackRow(index + 1, track, track.id == currentTrackId, actionLabel, { onPlayTrack(track) })
     }
@@ -272,7 +272,7 @@ private fun LazyListScope.prismCoverRail(
         Column {
             PrismDestinationHeader(title)
             LazyRow(contentPadding = PaddingValues(horizontal = PrismDestinationGutter), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                items(entries, key = { it.third.id + key }) { (name, artist, track) ->
+                items(entries, key = { it.third.id + key }, contentType = { "PrismDestinations-entries" }) { (name, artist, track) ->
                     LaunchedEffect(track.id) { onRequestTrackArtwork(track) }
                     Column(
                         Modifier.width(150.dp)

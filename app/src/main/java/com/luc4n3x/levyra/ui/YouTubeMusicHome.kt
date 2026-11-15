@@ -411,7 +411,7 @@ internal fun YouTubeMusicFeedShelf(
                     contentPadding = PaddingValues(horizontal = YouTubeMusicDesign.gutter),
                     horizontalArrangement = Arrangement.spacedBy(YouTubeMusicDesign.itemGap)
                 ) {
-                    items(cards.size, key = { cards[it].key }) { index ->
+                    items(cards.size, key = { cards[it].key }, contentType = { "YouTubeMusicHome-size" }) { index ->
                         val card = cards[index]
                         YouTubeMusicCard(card, width = if (card.wide) 300.dp else cardWidth)
                     }

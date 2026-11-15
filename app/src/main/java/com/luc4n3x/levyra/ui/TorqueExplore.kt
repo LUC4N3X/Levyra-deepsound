@@ -193,7 +193,7 @@ internal fun TorqueNewsDesk(stories: List<MusicNewsStory>, onOpen: (MusicNewsSto
         if (sources.size > 1) {
             LazyRow(contentPadding = PaddingValues(horizontal = TorqueGutter), horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 8.dp)) {
                 item(key = "torque-news-all") { TorqueSlantChip(strings.all, source == null) { selectedSource = "" } }
-                items(sources, key = { "torque-news-$it" }) { name -> TorqueSlantChip(name, name == source) { selectedSource = name } }
+                items(sources, key = { "torque-news-$it" }, contentType = { "TorqueExplore-sources" }) { name -> TorqueSlantChip(name, name == source) { selectedSource = name } }
             }
         }
         desk.forEachIndexed { index, story ->

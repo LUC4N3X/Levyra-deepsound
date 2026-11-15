@@ -8,6 +8,37 @@ import org.junit.Test
 
 class YoutubeMusicRepositoryTest {
     @Test
+    fun albumSuggestionShelvesKeepTitledAlbumCarouselsOnly() {
+        fun card(title: String, subtitle: String, browseId: String) = """
+            {"musicTwoRowItemRenderer":{
+              "title":{"runs":[{"text":"$title"}]},
+              "subtitle":{"runs":[{"text":"$subtitle"}]},
+              "thumbnailRenderer":{"musicThumbnailRenderer":{"thumbnail":{"thumbnails":[{"url":"https://lh3.googleusercontent.com/$browseId=w226-h226","width":226,"height":226}]}}},
+              "navigationEndpoint":{"browseEndpoint":{"browseId":"$browseId"}}
+            }}
+        """.trimIndent()
+        val root = JSONObject(
+            """
+            {"contents":[
+              {"musicCarouselShelfRenderer":{
+                "header":{"musicCarouselShelfBasicHeaderRenderer":{"title":{"runs":[{"text":"Releases for you"}]}}},
+                "contents":[${card("Drunk Call", "Single • Emily Hollingshed", "MPREb_drunk")},${card("Excuse The Mess", "Album • Ella Langley", "MPREb_current")},${card("A Playlist", "Playlist • YouTube Music", "VLPL123")}]
+              }},
+              {"musicCarouselShelfRenderer":{"header":{"musicCarouselShelfBasicHeaderRenderer":{"title":{"runs":[{"text":"Only playlists"}]}}},
+                "contents":[${card("Mix", "Playlist • YouTube Music", "VLPL456")}]}}
+            ]}
+            """.trimIndent()
+        )
+        val current = AlbumHit("Excuse The Mess", "Ella Langley", "2023", "", "", browseId = "MPREb_current")
+
+        val shelves = YoutubeMusicRepository().parseAlbumSuggestionShelves(root, current)
+
+        assertEquals(listOf("Releases for you"), shelves.map { it.title })
+        assertEquals(listOf("MPREb_drunk"), shelves.single().albums.map { it.browseId })
+        assertEquals("Emily Hollingshed", shelves.single().albums.single().artist)
+    }
+
+    @Test
     fun cleanAlbumDescriptionRemovesWikipediaAttribution() {
         val raw = """
             Mediterraneo è il terzo album in studio del cantautore italiano Bresh, pubblicato il 6 giugno 2025 dalla Epic.

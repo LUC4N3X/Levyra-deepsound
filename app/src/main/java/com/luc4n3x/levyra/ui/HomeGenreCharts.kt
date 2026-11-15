@@ -41,7 +41,7 @@ internal fun HomeGenreChartCarousel(
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         modifier = modifier
     ) {
-        items(items = zones, key = { zone -> "home-genre-chart-${zone.id}" }) { zone ->
+        items(items = zones, key = { zone -> "home-genre-chart-${zone.id}" }, contentType = { "HomeGenreCharts-zones" }) { zone ->
             val cover = rememberGenreChartCover(zone)
             Column(
                 modifier = Modifier

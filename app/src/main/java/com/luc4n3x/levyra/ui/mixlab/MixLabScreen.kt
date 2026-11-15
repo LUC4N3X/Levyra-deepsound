@@ -845,7 +845,8 @@ private fun MixLabPreviewContent(
 
         itemsIndexed(
             items = result.tracks,
-            key = { index, track -> "${index}_${track.id}" }
+            key = { index, track -> "${index}_${track.id}" },
+            contentType = { _, _ -> "MixLabScreen-tracks" }
         ) { _, track ->
             MixLabTrackRow(track = track)
         }

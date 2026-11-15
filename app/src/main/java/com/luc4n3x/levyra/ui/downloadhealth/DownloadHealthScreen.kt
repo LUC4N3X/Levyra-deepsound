@@ -125,7 +125,7 @@ internal fun DownloadHealthPresentation(state: DownloadHealthState, onClose: () 
             item(key = "actions") { HealthScanControls(state, style, number, strings, actions) }
             if (state.tasks.isNotEmpty()) {
                 item(key = "tasks-heading") { Text(strings.downloadsInProgress, style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() }) }
-                items(state.tasks, key = { "task:${it.taskKey}" }) { task -> HealthTaskRow(task, style, strings, actions) }
+                items(state.tasks, key = { "task:${it.taskKey}" }, contentType = { "DownloadHealthScreen-tasks" }) { task -> HealthTaskRow(task, style, strings, actions) }
             }
             if (state.finished) {
                 item(key = "filters") {
@@ -141,7 +141,7 @@ internal fun DownloadHealthPresentation(state: DownloadHealthState, onClose: () 
                 if (state.results.isEmpty()) item(key = "empty") {
                     Text(strings.noOfflineDownloads, style = MaterialTheme.typography.titleLarge)
                 }
-                items(visible, key = { "download:${it.download.id}" }) { result ->
+                items(visible, key = { "download:${it.download.id}" }, contentType = { "DownloadHealthScreen-visible" }) { result ->
                     HealthResultRow(result, style, strings, enabled = !state.scanning && !state.repairing,
                         onRepair = { repairIds = listOf(result.download.id) }, onSettings = onSettings,
                         onRestoreAccess = actions.restoreFolderAccess)

@@ -181,7 +181,7 @@ internal fun SpotifyFansAlsoLike(artists: List<ArtistHit>, onOpen: (ArtistHit) -
         SpotifyArtistSectionTitle(copy.fansAlsoLike)
         Spacer(Modifier.height(12.dp))
         LazyRow(contentPadding = PaddingValues(horizontal = SpotifyDesign.gutter), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            itemsIndexed(artists, key = { index, artist -> "spotify-fan-$index-${artist.browseId.ifBlank { artist.name }}" }) { _, artist ->
+            itemsIndexed(artists, key = { index, artist -> "spotify-fan-$index-${artist.browseId.ifBlank { artist.name }}" }, contentType = { _, _ -> "SpotifyArtist-artists" }) { _, artist ->
                 Column(
                     Modifier.width(140.dp).levyraPressable(onClick = { onOpen(artist) }, onClickLabel = artist.name, role = Role.Button),
                     horizontalAlignment = Alignment.CenterHorizontally,

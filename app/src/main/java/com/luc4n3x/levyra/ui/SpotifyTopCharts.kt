@@ -130,7 +130,7 @@ internal fun SpotifyTopChartsShelf(title: String, inset: Dp) {
             modifier = Modifier.padding(horizontal = inset).semantics { heading() }
         )
         LazyRow(contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            items(markets, key = { "spotify-top50-$it" }) { market ->
+            items(markets, key = { "spotify-top50-$it" }, contentType = { "SpotifyTopCharts-markets" }) { market ->
                 val description = copy.chartDescription.format(spotifyTopChartCountry(market, strings.code))
                 Column(
                     Modifier.width(SpotifyTopChartCardSize)
@@ -299,7 +299,7 @@ internal fun SpotifyPlaylistPage(
                     SpotifyPlaylistActions(thumbUrl, tracks, pinned, onPlay, playTracks) { playRowY = it }
                 }
             }
-            itemsIndexed(tracks, key = { index, track -> "chart-row-$index-${track.id}" }) { index, track ->
+            itemsIndexed(tracks, key = { index, track -> "chart-row-$index-${track.id}" }, contentType = { _, _ -> "SpotifyTopCharts-tracks" }) { index, track ->
                 val active = track.id == currentId
                 SpotifyPlaylistTrackRow(index, track, active, isPlaying, onPlay = { onPlay(tracks, track) }, onActions = { onTrackActions(track) })
             }

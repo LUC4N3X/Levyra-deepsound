@@ -258,7 +258,7 @@ internal fun SmartAudioProfilesScreen(
                     }
                 }
             }
-            items(devices, key = SmartAudioDeviceUi::key) { device ->
+            items(devices, key = SmartAudioDeviceUi::key, contentType = { "SmartAudioProfilesScreen-devices" }) { device ->
                 SmartAudioDeviceCard(
                     device = device,
                     copy = copy,

@@ -51,7 +51,7 @@ internal fun SkinOrbitTracks(
         Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        itemsIndexed(tracks, key = { index, track -> "$index-${LevyraPersonalOrbit.identityKey(track)}" }) { _, track ->
+        itemsIndexed(tracks, key = { index, track -> "$index-${LevyraPersonalOrbit.identityKey(track)}" }, contentType = { _, _ -> "SkinOrbitTracks-tracks" }) { _, track ->
             val current = track.id == currentId
             Column(
                 Modifier.width(156.dp).levyraPressable(
@@ -90,7 +90,7 @@ private fun TorqueOrbitTracks(
         Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        itemsIndexed(pages, key = { pageIndex, page -> "$pageIndex-${LevyraPersonalOrbit.identityKey(page.first().value)}" }) { _, page ->
+        itemsIndexed(pages, key = { pageIndex, page -> "$pageIndex-${LevyraPersonalOrbit.identityKey(page.first().value)}" }, contentType = { _, _ -> "SkinOrbitTracks-pages" }) { _, page ->
             Column(Modifier.width(316.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 page.forEach { (index, track) ->
                     TorqueOrbitRow(index, track, track.id == currentId, playing, resolving, onPlay, onActions)

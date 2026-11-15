@@ -75,7 +75,7 @@ internal fun CrashReportsScreen(
                 if (state.loading) item { CircularProgressIndicator() }
                 if (state.failed) item { Text(words.failed) }
                 if (!state.loading && state.reports.isEmpty()) item { Text(words.empty) }
-                items(state.reports, key = { it.id }) { report ->
+                items(state.reports, key = { it.id }, contentType = { "CrashReportsScreen-reports" }) { report ->
                     TextButton(onClick = { onSelect(report.id) }) {
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(report.title, color = if (state.selectedId == report.id) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
@@ -96,7 +96,7 @@ internal fun CrashReportsScreen(
                             }
                         }
                     }
-                    items(state.preview) { chunk ->
+                    items(state.preview, contentType = { "CrashReportsScreen-preview" }) { chunk ->
                         Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainer) {
                             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
                                 SelectionContainer {

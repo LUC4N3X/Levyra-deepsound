@@ -4,7 +4,6 @@ import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
@@ -22,7 +21,7 @@ fun Modifier.glassmorphism(
         )
     ),
     borderWidth: Float = 1f
-): Modifier = composed {
+): Modifier =
     this
         .clip(shape)
         .background(overlayColor)
@@ -31,4 +30,3 @@ fun Modifier.glassmorphism(
             brush = borderGradient,
             shape = shape
         )
-}

@@ -228,7 +228,7 @@ private fun AppleMusicGenreVideos(shelf: AppleCatalogShelf, openItem: (AppleCata
             contentPadding = PaddingValues(horizontal = AppleMusicDesign.gutter),
             horizontalArrangement = Arrangement.spacedBy(AppleMusicDesign.itemGap)
         ) {
-            items(shelf.items, key = { "${it.kind}:${it.id}" }) { item ->
+            items(shelf.items, key = { "${it.kind}:${it.id}" }, contentType = { "AppleMusicGenre-items" }) { item ->
                 Column(Modifier.width(width).clickable(role = Role.Button) { openItem(item, emptyList()) }) {
                     StableRemoteArtwork(
                         item.heroUrl(600), item.title,

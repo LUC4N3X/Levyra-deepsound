@@ -285,7 +285,7 @@ private fun SpotifyLibraryFilters(
                 }
             }
         }
-        items(SpotifyLibraryFilter.entries.filter { filter == null || it == filter }, key = { it.name }) { option ->
+        items(SpotifyLibraryFilter.entries.filter { filter == null || it == filter }, key = { it.name }, contentType = { "SpotifyLibraryOverview-filter" }) { option ->
             val selected = option == filter
             Box(
                 Modifier.height(SpotifyDesign.chipHeight).clip(CircleShape)

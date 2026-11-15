@@ -72,7 +72,7 @@ private fun AppleAlbumShelf(shelf: AlbumRelatedShelf, colors: ImmersiveMediaColo
             contentPadding = PaddingValues(horizontal = AppleAlbumTailGutter),
             horizontalArrangement = Arrangement.spacedBy(AppleMusicDesign.itemGap)
         ) {
-            items(shelf.items, key = { "${shelf.title}-${it.id}-${it.url}" }) { item ->
+            items(shelf.items, key = { "${shelf.title}-${it.id}-${it.url}" }, contentType = { "AppleAlbumTail-items" }) { item ->
                 Column(Modifier.width(AppleAlbumCardWidth).clickable(role = Role.Button) { onOpen(item) }) {
                     AsyncImage(
                         model = item.artworkUrl, contentDescription = null, contentScale = ContentScale.Crop,

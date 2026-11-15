@@ -217,7 +217,7 @@ internal fun GlacierCollectionScreen(
                     }
                 }
             }
-            itemsIndexed(tracks, key = { index, track -> "glacier-collection-$index-${track.id}" }) { index, track ->
+            itemsIndexed(tracks, key = { index, track -> "glacier-collection-$index-${track.id}" }, contentType = { _, _ -> "GlacierCollection-tracks" }) { index, track ->
                 MonoCompactRow(
                     track = track,
                     isCurrent = track.id == currentId,

@@ -157,7 +157,7 @@ import com.luc4n3x.levyra.viewmodel.LevyraUiState
 internal val MonoRailPadding = PaddingValues(horizontal = MonoDesign.gutter)
 private val MonoCurrentScrim = Color.Black.copy(alpha = 0.55f)
 private val MonoRankWidth = 40.dp
-private val MonoAlbumTile = 140.dp
+internal val MonoAlbumTile = 140.dp
 private const val MonoQuickRows = 4
 private const val MonoQuickColumns = 5
 private val MonoSegmentWidth = 76.dp
@@ -663,7 +663,7 @@ private fun MonoHomeTopBar(listener: HomeListener, page: Int, copy: MonoHomeCopy
         ) {
             item(key = "segment") { MonoPageSegment(listOf(copy.all, copy.mood), page, onPage) }
             item(key = "divider") { Box(Modifier.padding(horizontal = 4.dp).width(1.dp).height(22.dp).background(MonoDesign.hairlineStrong)) }
-            items(shortcuts, key = { it.first.name }) { (shortcut, icon, label) ->
+            items(shortcuts, key = { it.first.name }, contentType = { "MonoHome-shortcuts" }) { (shortcut, icon, label) ->
                 Row(
                     Modifier.clip(MonoDesign.pillShape)
                         .background(MonoDesign.surface)

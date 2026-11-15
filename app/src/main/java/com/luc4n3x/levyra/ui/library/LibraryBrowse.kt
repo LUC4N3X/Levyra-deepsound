@@ -506,7 +506,7 @@ internal fun LazyListScope.libraryOverviewSearch(
         item(key = "overview-search-songs-title") {
             LibrarySearchSectionTitle(strings.songsPlain, tracks.size, LibraryCategory.Songs, OverviewSearchTrackLimit, actions)
         }
-        items(tracks.take(OverviewSearchTrackLimit), key = { "overview-search-song-${libraryTrackKey(it)}" }) { track ->
+        items(tracks.take(OverviewSearchTrackLimit), key = { "overview-search-song-${libraryTrackKey(it)}" }, contentType = { "LibraryBrowse-take" }) { track ->
             actions.trackRow(track, Modifier.animateItem())
         }
     }
@@ -514,7 +514,7 @@ internal fun LazyListScope.libraryOverviewSearch(
         item(key = "overview-search-playlists-title") {
             LibrarySearchSectionTitle(strings.playlists, playlists.size, LibraryCategory.Playlists, OverviewSearchCollectionLimit, actions)
         }
-        items(playlists.take(OverviewSearchCollectionLimit), key = { "overview-search-playlist-${it.id}" }) { playlist ->
+        items(playlists.take(OverviewSearchCollectionLimit), key = { "overview-search-playlist-${it.id}" }, contentType = { "LibraryBrowse-take" }) { playlist ->
             LibraryPlaylistRow(
                 playlist = playlist,
                 selected = false,
@@ -529,7 +529,7 @@ internal fun LazyListScope.libraryOverviewSearch(
         item(key = "overview-search-saved-playlists-title") {
             LibrarySearchSectionTitle(saved.section, savedPlaylists.size, LibraryCategory.Playlists, OverviewSearchCollectionLimit, actions)
         }
-        items(savedPlaylists.take(OverviewSearchCollectionLimit), key = { "overview-search-saved-${it.key}" }) { playlist ->
+        items(savedPlaylists.take(OverviewSearchCollectionLimit), key = { "overview-search-saved-${it.key}" }, contentType = { "LibraryBrowse-take" }) { playlist ->
             LibrarySavedPlaylistRow(playlist, saved.remove, onOpen = { saved.onOpen(playlist) }, onRemove = { saved.onRemove(playlist) })
         }
     }
@@ -537,7 +537,7 @@ internal fun LazyListScope.libraryOverviewSearch(
         item(key = "overview-search-albums-title") {
             LibrarySearchSectionTitle(strings.albumsPlain, albums.size, LibraryCategory.Albums, OverviewSearchCollectionLimit, actions)
         }
-        items(albums.take(OverviewSearchCollectionLimit), key = { "overview-search-album-${it.key}" }) { album ->
+        items(albums.take(OverviewSearchCollectionLimit), key = { "overview-search-album-${it.key}" }, contentType = { "LibraryBrowse-take" }) { album ->
             LibraryAlbumRow(
                 album = album,
                 selected = false,
@@ -552,7 +552,7 @@ internal fun LazyListScope.libraryOverviewSearch(
         item(key = "overview-search-artists-title") {
             LibrarySearchSectionTitle(strings.artists, artists.size, LibraryCategory.Artists, OverviewSearchCollectionLimit, actions)
         }
-        items(artists.take(OverviewSearchCollectionLimit), key = { "overview-search-artist-${it.key}" }) { artist ->
+        items(artists.take(OverviewSearchCollectionLimit), key = { "overview-search-artist-${it.key}" }, contentType = { "LibraryBrowse-take" }) { artist ->
             LibraryArtistRow(
                 artist = artist,
                 selected = false,

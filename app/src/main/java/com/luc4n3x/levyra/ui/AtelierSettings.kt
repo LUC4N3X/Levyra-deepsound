@@ -268,7 +268,7 @@ internal fun AtelierStudioShelf(title: String, subtitle: String, entries: List<S
             modifier = Modifier.padding(start = 4.dp, top = 2.dp, bottom = 14.dp)
         )
         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            itemsIndexed(entries, key = { _, entry -> entry.id }) { index, entry ->
+            itemsIndexed(entries, key = { _, entry -> entry.id }, contentType = { _, _ -> "AtelierSettings-entries" }) { index, entry ->
                 Column(
                     Modifier.width(140.dp).heightIn(min = 132.dp)
                         .graphicsLayer {

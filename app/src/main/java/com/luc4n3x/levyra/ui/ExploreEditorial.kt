@@ -370,7 +370,7 @@ private fun ExploreNewsDesk(stories: List<MusicNewsStory>, onOpen: (MusicNewsSto
                 item(key = "explore-news-source-all") {
                     LevyraFilterPill(label = strings.all, selected = source == null, onClick = { selectedSource = "" })
                 }
-                items(sources, key = { name -> "explore-news-source-$name" }) { name ->
+                items(sources, key = { name -> "explore-news-source-$name" }, contentType = { "ExploreEditorial-sources" }) { name ->
                     LevyraFilterPill(label = name, selected = name == source, onClick = { selectedSource = name })
                 }
             }
