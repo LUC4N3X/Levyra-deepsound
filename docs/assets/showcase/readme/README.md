@@ -2,8 +2,10 @@
 
 The root README uses six desktop panels (four cards each) and six mobile panels
 (the same cards in a two-by-two grid). The mobile source is selected at 600px.
-Pearl-to-ice-blue backgrounds, teal headings and soft phone shadows keep the
-gallery light. Transparent gutters and rounded corners work on both GitHub themes.
+Near-white backgrounds with a faint ice-blue tint, smaller teal headings and
+subtle phone shadows keep every card light. The outer cards have square corners
+and no borders. Only the original phone frames retain their rounded corners.
+Transparent, narrow gutters work on both GitHub themes.
 
 `scripts/render_readme_showcase.mjs` composes all 24 cards from the existing,
 tracked `../editorial-cards/*.webp` assets. The first four preserve their original
@@ -28,14 +30,17 @@ node scripts/render_readme_showcase.mjs --sharp-module ./.levyra-tools/readme-sh
 Use `--output build/readme-showcase-preview` to inspect a regeneration before
 replacing the published panels. The renderer always reads its screenshot
 sources and backdrop from the repository, regardless of the working directory.
-It writes only the twelve panel files in the selected output directory.
+It writes only the twelve `row-*-pearl-square*.webp` panel files in the selected
+output directory. The README references these distinct filenames so cached
+images from the earlier dark gallery cannot be reused for the new cards.
 
 ## Backdrop provenance
 
 `studio-backdrop.webp` was created for this redesign using the built-in
 `image_gen` tool, then resized and encoded as WebP. It contains no app interface,
 people, artwork, logos or text. All cards share the same delicate light backdrop.
-Regeneration uses this checked-in backdrop and does not call an image service.
+The renderer adds a 45% white wash to soften the tint. Regeneration uses this
+checked-in backdrop and does not call an image service.
 
 Generation prompt:
 
