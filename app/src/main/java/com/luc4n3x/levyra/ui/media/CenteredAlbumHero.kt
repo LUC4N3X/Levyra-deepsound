@@ -20,6 +20,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Shuffle
+import com.luc4n3x.levyra.ui.components.PlayerGlassIconButton
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -225,3 +228,18 @@ private fun PrimaryAction(primary: ImmersiveMediaPrimaryAction, colors: Immersiv
 private val RingActionSize: Dp = 52.dp
 private val PrimaryActionSize: Dp = 72.dp
 private val PrimaryActionPressedCorner: Dp = 24.dp
+
+@Composable
+internal fun CenteredAlbumDownloadAction(label: String, enabled: Boolean, onDownload: () -> Unit) {
+    PlayerGlassIconButton(
+        icon = Icons.Rounded.Download,
+        contentDescription = label,
+        onClick = { if (enabled) onDownload() },
+        size = ImmersiveTopBarButtonSize,
+        tint = if (enabled) Color.White else Color.White.copy(alpha = 0.45f),
+        fill = ImmersiveTopBarButtonFill,
+        borderTop = Color.Transparent,
+        borderBottom = Color.Transparent
+    )
+    Spacer(Modifier.width(8.dp))
+}

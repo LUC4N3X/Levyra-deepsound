@@ -1,5 +1,14 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.theme.Nocturne78Palette
+import com.luc4n3x.levyra.ui.album.coverFieldTone
+import com.luc4n3x.levyra.ui.media.ImmersiveTopBarButtonSize
+import com.luc4n3x.levyra.ui.media.ImmersiveTopBarButtonFill
+import com.luc4n3x.levyra.ui.components.PlayerGlassIconButton
+import kotlinx.coroutines.delay
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.material.icons.rounded.MoreVert
 import com.luc4n3x.levyra.ui.components.LevyraShortPlayLabel
 import android.content.Intent
 import android.net.Uri
@@ -98,6 +107,66 @@ internal fun defaultArtistHeroHeight(width: Dp, height: Dp, canvasAspect: Float?
     val aspect = canvasAspect?.takeIf { it.isFinite() && it > 0f } ?: return base
     val upper = max(base, height * 0.8f)
     return (width / aspect).coerceIn(minOf(width * 0.56f, upper), upper)
+}
+
+internal fun artistAtmosphereTargets(
+    nocturne: Boolean,
+    defaultSkin: Boolean,
+    settledTone: Color?,
+    neutralTone: Color,
+    paletteStart: Color,
+    paletteEnd: Color
+): Pair<Color, Color> {
+    if (nocturne) return Nocturne78Palette.black to Nocturne78Palette.cyan
+    val source = if (defaultSkin) settledTone ?: neutralTone else null
+    val pair = harmonizePlayerAccents(source ?: paletteStart, source ?: paletteEnd)
+    return playerAmbienceOf(pair.primary, pair.secondary).tint to playerHighlightOf(pair.primary, pair.secondary)
+}
+
+internal fun defaultArtistPageBase(tone: Color?, neutral: Color): Color =
+    tone?.let { coverFieldTone(it, DefaultArtistFieldMaxLuminance) } ?: neutral
+
+@Composable
+internal fun SettleDefaultArtistTone(key: Any?, enabled: Boolean, photoReady: Boolean, settled: () -> Boolean, onSettle: () -> Unit) {
+    val currentSettled by rememberUpdatedState(settled)
+    val currentOnSettle by rememberUpdatedState(onSettle)
+    LaunchedEffect(key, enabled, photoReady) {
+        if (!enabled || !photoReady || currentSettled()) return@LaunchedEffect
+        delay(DefaultArtistToneSettleMs)
+        if (!currentSettled()) currentOnSettle()
+    }
+}
+
+@Composable
+internal fun DefaultArtistTopActions(
+    identity: String,
+    isExcluded: Boolean,
+    onToggleExclude: () -> Unit,
+    isPinnedToHome: Boolean,
+    onTogglePinToHome: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    var expanded by remember(identity) { mutableStateOf(false) }
+    Box {
+        PlayerGlassIconButton(
+            icon = Icons.Rounded.MoreVert,
+            contentDescription = strings.options,
+            onClick = { expanded = true },
+            size = ImmersiveTopBarButtonSize,
+            tint = Color.White,
+            fill = ImmersiveTopBarButtonFill,
+            borderTop = Color.Transparent,
+            borderBottom = Color.Transparent
+        )
+        ArtistOptionsMenu(
+            expanded = expanded,
+            onDismiss = { expanded = false },
+            isExcluded = isExcluded,
+            onToggleExclude = onToggleExclude,
+            isPinnedToHome = isPinnedToHome,
+            onTogglePinToHome = onTogglePinToHome
+        )
+    }
 }
 
 internal fun artistCountLabel(label: String, count: Int, more: Boolean): String =

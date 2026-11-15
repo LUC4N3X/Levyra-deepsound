@@ -116,9 +116,8 @@ import com.luc4n3x.levyra.ui.album.AlbumNeutralPaletteEnd
 import com.luc4n3x.levyra.ui.album.AlbumNeutralPaletteStart
 import com.luc4n3x.levyra.ui.album.AlbumStageColors
 import com.luc4n3x.levyra.ui.album.albumContentGutter
-import com.luc4n3x.levyra.ui.album.albumCoverStageColors
+import com.luc4n3x.levyra.ui.album.albumPageColors
 import com.luc4n3x.levyra.ui.album.coverFieldTone
-import com.luc4n3x.levyra.ui.album.albumStageColors
 import com.luc4n3x.levyra.ui.components.LevyraCardCaption
 import com.luc4n3x.levyra.ui.components.LevyraDockProgress
 import com.luc4n3x.levyra.ui.components.LevyraRowText
@@ -127,6 +126,7 @@ import com.luc4n3x.levyra.ui.media.ImmersiveMediaActionRow
 import com.luc4n3x.levyra.ui.media.ImmersiveMediaHero
 import com.luc4n3x.levyra.ui.media.ImmersiveMediaPrimaryAction
 import com.luc4n3x.levyra.ui.media.ImmersiveMediaQuietAction
+import com.luc4n3x.levyra.ui.media.CenteredAlbumDownloadAction
 import com.luc4n3x.levyra.ui.media.ImmersiveBackButton
 import com.luc4n3x.levyra.ui.media.ImmersiveTopBarButtonFill
 import com.luc4n3x.levyra.ui.media.ImmersiveTopBarButtonSize
@@ -4779,11 +4779,7 @@ private fun AlbumOverlay(
     val nocturne = LevyraIsNocturne
     val albumPureBlack = LevyraIsPureBlack
     val stageTarget = remember(albumPalette, lightTheme, nocturne, albumPureBlack) {
-        if (LevyraIsDefaultSkin && !albumPureBlack && !lightTheme) {
-            albumCoverStageColors(Color(albumPalette.start), Color(albumPalette.end))
-        } else {
-            albumStageColors(Color(albumPalette.start), Color(albumPalette.end), lightTheme)
-        }
+        albumPageColors(Color(albumPalette.start), Color(albumPalette.end), lightTheme, coverTint = LevyraIsDefaultSkin && !albumPureBlack)
     }
     val stage = animatedImmersiveMediaColors(
         target = stageTarget,
@@ -5076,19 +5072,7 @@ private fun AlbumOverlay(
             backLabel = strings.back,
             onBack = onClose,
             actions = {
-                if (album != null && centeredHero) {
-                    PlayerGlassIconButton(
-                        icon = Icons.Rounded.Download,
-                        contentDescription = strings.download,
-                        onClick = { if (tracks.isNotEmpty()) onDownloadAlbum() },
-                        size = ImmersiveTopBarButtonSize,
-                        tint = if (tracks.isNotEmpty()) Color.White else Color.White.copy(alpha = 0.45f),
-                        fill = ImmersiveTopBarButtonFill,
-                        borderTop = Color.Transparent,
-                        borderBottom = Color.Transparent
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
+                if (album != null && centeredHero) CenteredAlbumDownloadAction(strings.download, tracks.isNotEmpty(), onDownloadAlbum)
                 if (album != null) {
                     Box {
                         PlayerGlassIconButton(
@@ -5692,18 +5676,15 @@ private fun ArtistOverlay(
     )
     val nocturne = LevyraIsNocturne
     var artistCanvasTone by remember(profile?.browseId, profile?.name) { mutableStateOf<Color?>(null) }
-    val artistPhotoReady = artistPalette != fallbackPalette
-    LaunchedEffect(profile?.browseId, profile?.name, artistPhotoReady) {
-        if (!LevyraIsDefaultSkin || !artistPhotoReady || artistCanvasTone != null) return@LaunchedEffect
-        delay(DefaultArtistToneSettleMs)
-        if (artistCanvasTone == null) artistCanvasTone = Color(artistPalette.start)
-    }
+    SettleDefaultArtistTone(
+        key = profile?.browseId to profile?.name,
+        enabled = LevyraIsDefaultSkin,
+        photoReady = artistPalette != fallbackPalette,
+        settled = { artistCanvasTone != null },
+        onSettle = { artistCanvasTone = Color(artistPalette.start) }
+    )
     val atmosphereTargets = remember(artistPalette, nocturne, artistCanvasTone) {
-        if (nocturne) Nocturne78Palette.black to Nocturne78Palette.cyan else {
-        val settledSource = if (LevyraIsDefaultSkin) artistCanvasTone ?: Color(fallbackPalette.start) else null
-        val pair = harmonizePlayerAccents(settledSource ?: Color(artistPalette.start), settledSource ?: Color(artistPalette.end))
-        playerAmbienceOf(pair.primary, pair.secondary).tint to playerHighlightOf(pair.primary, pair.secondary)
-        }
+        artistAtmosphereTargets(nocturne, LevyraIsDefaultSkin, artistCanvasTone, Color(fallbackPalette.start), Color(artistPalette.start), Color(artistPalette.end))
     }
     val atmosphere by animateColorAsState(
         targetValue = atmosphereTargets.first,
@@ -5733,8 +5714,7 @@ private fun ArtistOverlay(
     val pureBlack = LevyraIsPureBlack
     val neutralBase = LevyraBlack
     val defaultFieldTarget = remember(defaultArtistPage, artistCanvasTone, lightTheme, pureBlack, neutralBase) {
-        val tone = artistCanvasTone
-        if (defaultArtistPage && !lightTheme && !pureBlack && tone != null) coverFieldTone(tone, DefaultArtistFieldMaxLuminance) else neutralBase
+        defaultArtistPageBase(artistCanvasTone.takeIf { defaultArtistPage && !lightTheme && !pureBlack }, neutralBase)
     }
     val pageBase by animateColorAsState(
         targetValue = defaultFieldTarget,
@@ -6096,27 +6076,13 @@ private fun ArtistOverlay(
                         )
                     }
                 } else if (defaultArtistPage && profile != null) {
-                    var defaultMenuExpanded by remember(profile.browseId, profile.name) { mutableStateOf(false) }
-                    Box {
-                        PlayerGlassIconButton(
-                            icon = Icons.Rounded.MoreVert,
-                            contentDescription = strings.options,
-                            onClick = { defaultMenuExpanded = true },
-                            size = ImmersiveTopBarButtonSize,
-                            tint = Color.White,
-                            fill = ImmersiveTopBarButtonFill,
-                            borderTop = Color.Transparent,
-                            borderBottom = Color.Transparent
-                        )
-                        ArtistOptionsMenu(
-                            expanded = defaultMenuExpanded,
-                            onDismiss = { defaultMenuExpanded = false },
-                            isExcluded = isExcluded,
-                            onToggleExclude = { onToggleExclude(profile.browseId, profile.name) },
-                            isPinnedToHome = pinnedToHome,
-                            onTogglePinToHome = { onTogglePinToHome(profile) }
-                        )
-                    }
+                    DefaultArtistTopActions(
+                        identity = profile.browseId.ifBlank { profile.name },
+                        isExcluded = isExcluded,
+                        onToggleExclude = { onToggleExclude(profile.browseId, profile.name) },
+                        isPinnedToHome = pinnedToHome,
+                        onTogglePinToHome = { onTogglePinToHome(profile) }
+                    )
                 }
             }
         )
