@@ -60,6 +60,17 @@ data class MoodCurve(val points: List<MoodPoint>) {
         return MoodCurve(points.toMutableList().also { it[index] = point.clamped() })
     }
 
+    fun withEnergyShift(indices: Set<Int>, delta: Float): MoodCurve {
+        val energies = points.indices.filter { it in indices }.map { points[it].clamped().energy }
+        if (energies.isEmpty() || !delta.isFinite()) return this
+        val safeDelta = delta.coerceIn(-energies.min(), 1f - energies.max())
+        return MoodCurve(
+            points.mapIndexed { index, point ->
+                if (index in indices) point.clamped().let { MoodPoint(it.energy + safeDelta, it.valence).clamped() } else point
+            }
+        )
+    }
+
     companion object {
         const val MIN_POINTS = 2
         const val MAX_POINTS = 9
@@ -204,7 +215,13 @@ enum class MoodStyle(
     NEW_AGE("new_age", emptySet(), listOf("new age music", "new age relaxation", "new age meditation", "new age piano", "new age ambient"), 0.16f, 0.56f),
     LATIN("latin", setOf("latin"), listOf("latin hits", "latin party", "chill latin", "latin love songs"), 0.74f, 0.78f),
     METAL("metal", setOf("metal"), listOf("metal essentials", "metal workout", "melodic metal", "metal ballads"), 0.92f, 0.32f),
-    BLUES("blues", setOf("blues"), listOf("blues classics", "chill blues", "blues rock", "sad blues"), 0.4f, 0.38f);
+    BLUES("blues", setOf("blues"), listOf("blues classics", "chill blues", "blues rock", "sad blues"), 0.4f, 0.38f),
+    K_POP("k_pop", setOf("k-pop"), listOf("k-pop hits", "k-pop dance", "chill k-pop", "k-pop ballads"), 0.74f, 0.74f),
+    AFROBEATS("afrobeats", setOf("afrobeats", "african"), listOf("afrobeats hits", "afrobeats party", "chill afrobeats", "amapiano"), 0.72f, 0.8f),
+    INDIE("indie", setOf("indie & alternative", "indie"), listOf("indie hits", "chill indie", "indie rock", "sad indie songs"), 0.5f, 0.52f),
+    PUNK("punk", setOf("punk"), listOf("punk rock classics", "pop punk", "punk workout", "melodic punk"), 0.9f, 0.5f),
+    SOUL_FUNK("soul_funk", setOf("soul", "funk"), listOf("soul classics", "funk classics", "funk party", "neo soul"), 0.64f, 0.72f),
+    AMBIENT("ambient", emptySet(), listOf("ambient music", "ambient chill", "ambient sleep", "dark ambient"), 0.12f, 0.5f);
 
     fun matchesCategory(title: String): Boolean = title.trim().lowercase(Locale.ROOT) in categoryTitles
 
@@ -225,6 +242,12 @@ enum class MoodStyle(
             LATIN -> listOf("Latin")
             METAL -> listOf("Metal", "Hard Rock")
             BLUES -> listOf("Blues")
+            K_POP -> listOf("K-Pop")
+            AFROBEATS -> listOf("Afrobeats", "African")
+            INDIE -> listOf("Alternative", "Indie Pop")
+            PUNK -> listOf("Punk")
+            SOUL_FUNK -> listOf("Soul", "Funk")
+            AMBIENT -> listOf("Ambient")
         }
 
     companion object {

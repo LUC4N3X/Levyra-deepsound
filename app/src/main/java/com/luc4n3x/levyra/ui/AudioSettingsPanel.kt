@@ -269,7 +269,7 @@ internal fun AudioSettingsPanel(
     val tabsCopy = remember(strings.code) { audioTabsCopy(strings.code) }
     var panelTab by rememberSaveable { mutableStateOf(AudioPanelTab.SOUND) }
     val orbitActive = audioSettings.parametricEqualizerEnabled &&
-        OrbitEqualizer.positionOf(audioSettings.activeParametricProfile) != null
+        OrbitEqualizer.restore(audioSettings.activeParametricProfile, audioSettings.orbitLayout) != null
     var equalizerMode by rememberSaveable {
         mutableStateOf(activeEqualizerMode(audioSettings.parametricEqualizerEnabled, orbitActive))
     }
@@ -473,11 +473,11 @@ internal fun AudioSettingsPanel(
                         OrbitEqualizerCard(
                             enabled = orbitActive,
                             activeProfile = audioSettings.activeParametricProfile,
+                            layout = audioSettings.orbitLayout,
                             customProfiles = audioSettings.customParametricProfiles,
                             copy = orbitCopy,
                             savedTitle = parametricProfileCopy.yourProfiles,
                             actions = parametricActions,
-                            onApply = onApplyParametricAutoEq,
                             onSave = onSaveParametricProfile
                         )
                     }

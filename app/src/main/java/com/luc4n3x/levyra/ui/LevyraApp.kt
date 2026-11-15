@@ -3296,7 +3296,8 @@ fun LevyraApp(
                             onDuplicate = viewModel::duplicateParametricProfile,
                             onRename = viewModel::renameParametricProfile,
                             onDelete = viewModel::deleteParametricProfile,
-                            onAudition = viewModel::auditionParametricProfile
+                            onAudition = viewModel::auditionParametricProfile,
+                            onApplyOrbit = viewModel::applyOrbitEqualizer
                         )
                     },
                     onApplyParametricAutoEq = viewModel::applyParametricAutoEq,

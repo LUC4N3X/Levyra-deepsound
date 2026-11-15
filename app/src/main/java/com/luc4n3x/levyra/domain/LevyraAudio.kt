@@ -153,6 +153,7 @@ data class LevyraAudioSettings(
     val parametricEqualizerEnabled: Boolean = false,
     val activeParametricProfile: ParametricEqProfile? = null,
     val customParametricProfiles: List<ParametricEqProfile> = emptyList(),
+    val orbitLayout: OrbitLayout? = null,
     val enhancedAudioEnabled: Boolean = true,
     val audioOffloadPreference: AudioOffloadPreference = AudioOffloadPreference.AUTOMATIC,
     val playbackBuffer: PlaybackBufferSettings = PlaybackBufferSettings(),

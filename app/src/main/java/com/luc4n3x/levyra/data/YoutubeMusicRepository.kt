@@ -64,6 +64,14 @@ data class YoutubeMusicMoodPlaylist(
     val thumbnailUrl: String
 )
 
+internal fun YoutubeMusicMoodPlaylist.toHit() = PlaylistHit(
+    title = title,
+    author = description,
+    thumbnailUrl = thumbnailUrl,
+    playlistId = playlistId,
+    browseId = browseId
+)
+
 data class YoutubeMusicMoodSection(
     val title: String,
     val playlists: List<YoutubeMusicMoodPlaylist>

@@ -1,6 +1,9 @@
 package com.luc4n3x.levyra.data
 
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
+import com.luc4n3x.levyra.domain.OrbitEqualizer
+import com.luc4n3x.levyra.domain.OrbitLayout
+import com.luc4n3x.levyra.domain.OrbitPosition
 import com.luc4n3x.levyra.domain.ParametricEqBand
 import com.luc4n3x.levyra.domain.ParametricEqProfile
 import com.luc4n3x.levyra.domain.ParametricEqualizer
@@ -28,6 +31,31 @@ class ParametricEqPersistenceTest {
     fun `profile json round trip preserves every dsp parameter`() {
         assertEquals(profile, parametricProfileFromJson(parametricProfileToJson(profile)))
         assertEquals(listOf(profile), parametricProfilesFromJson(parametricProfilesToJson(listOf(profile))))
+    }
+
+    @Test
+    fun `legacy saved profile without an orbit layout loads and saves unchanged`() {
+        val legacy = OrbitEqualizer.shape(OrbitPosition(0.4f, -0.3f), "Orbit").profile.copy(id = "parametric_custom_old", name = "Orbit")
+        val json = parametricProfileToJson(legacy).toString()
+        val loaded = parametricProfileFromJsonText(json)
+
+        assertFalse(json.contains("orbitLayout"))
+        assertEquals(legacy, loaded)
+        assertNull(loaded?.orbitLayout)
+        assertEquals(json, parametricProfileToJson(loaded!!).toString())
+        assertEquals(OrbitLayout(puck = OrbitPosition(0.4f, -0.3f)), OrbitEqualizer.restore(loaded, loaded.orbitLayout))
+    }
+
+    @Test
+    fun `grouped orbit profile keeps its layout through a save and restore`() {
+        val layout = OrbitLayout(listOf(40f, 45f, 50f, 270f), OrbitPosition(0.7f, 0.7f))
+        val saved = OrbitEqualizer.shape(layout.puck, "Orbit", layout.poleAngles).profile
+            .copy(id = "parametric_custom_grouped", name = "Grouped", orbitLayout = layout)
+        val loaded = parametricProfilesFromJson(parametricProfilesToJson(listOf(saved))).single()
+
+        assertEquals(saved, loaded)
+        assertNull(OrbitEqualizer.positionOf(loaded))
+        assertEquals(layout, OrbitEqualizer.restore(loaded, loaded.orbitLayout))
     }
 
     @Test

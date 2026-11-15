@@ -43,6 +43,7 @@ import com.luc4n3x.levyra.domain.PlaylistCoverMode
 import com.luc4n3x.levyra.domain.isExcludableArtist
 import com.luc4n3x.levyra.domain.normalizePlaylistTagName
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
+import com.luc4n3x.levyra.domain.OrbitLayout
 import com.luc4n3x.levyra.domain.AudioOffloadPreference
 import com.luc4n3x.levyra.domain.DEFAULT_GENTLE_WAKE_DAYS
 import com.luc4n3x.levyra.domain.GentleWakeSettings
@@ -1954,6 +1955,7 @@ internal fun backupAudioSettingsToJson(value: LevyraAudioSettings): JSONObject =
     .put("customParametricProfiles", JSONArray().apply {
         value.customParametricProfiles.forEach { put(parametricProfileToJson(it)) }
     })
+    .put("orbitLayout", value.orbitLayout?.encoded())
     .put("enhancedAudioEnabled", value.enhancedAudioEnabled)
     .put("audioOffloadPreference", value.audioOffloadPreference.storageValue)
     .put("nightListeningEnabled", value.nightListeningEnabled)
@@ -2046,6 +2048,7 @@ internal fun backupAudioSettingsFromJson(json: JSONObject?): LevyraAudioSettings
         parametricEqualizerEnabled = json.optBoolean("parametricEqualizerEnabled", false),
         activeParametricProfile = json.optJSONObject("activeParametricProfile")?.let(::parametricProfileFromJson),
         customParametricProfiles = customParametricProfiles,
+        orbitLayout = OrbitLayout.decode(json.optString("orbitLayout")),
         enhancedAudioEnabled = json.optBoolean("enhancedAudioEnabled", true),
         audioOffloadPreference = AudioOffloadPreference.fromStorage(json.optString("audioOffloadPreference")),
         nightListeningEnabled = json.optBoolean("nightListeningEnabled", false),
