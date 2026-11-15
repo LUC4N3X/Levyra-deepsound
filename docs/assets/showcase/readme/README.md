@@ -10,7 +10,7 @@ both GitHub Light and Dark themes.
 
 `scripts/render_readme_showcase.mjs` composes all 24 cards from the existing,
 tracked `../editorial-cards/*.webp` assets. The first four preserve their original
-phone angles while isolating each device cleanly; the other twenty retain the
+phone positions, angles, and card 01-to-02 diptych spillover; the other twenty retain the
 complete phone frame. Only the surrounding card design and copy are rendered.
 The screenshots and their third-party artwork are not generated or repainted.
 
