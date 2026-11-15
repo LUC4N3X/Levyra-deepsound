@@ -1,18 +1,17 @@
 # Exact repository-relative binary or generated paths explicitly approved by
 # the owner may be listed here, one per line. Keep this empty by default.
-docs/assets/showcase/readme/row-01-pearl-square.webp
-docs/assets/showcase/readme/row-01-pearl-square-mobile.webp
-docs/assets/showcase/readme/row-02-pearl-square.webp
-docs/assets/showcase/readme/row-02-pearl-square-mobile.webp
-docs/assets/showcase/readme/row-03-pearl-square.webp
-docs/assets/showcase/readme/row-03-pearl-square-mobile.webp
-docs/assets/showcase/readme/row-04-pearl-square.webp
-docs/assets/showcase/readme/row-04-pearl-square-mobile.webp
-docs/assets/showcase/readme/row-05-pearl-square.webp
-docs/assets/showcase/readme/row-05-pearl-square-mobile.webp
-docs/assets/showcase/readme/row-06-pearl-square.webp
-docs/assets/showcase/readme/row-06-pearl-square-mobile.webp
-docs/assets/showcase/readme/studio-backdrop.webp
+docs/assets/showcase/readme/row-01-expressive.webp
+docs/assets/showcase/readme/row-01-expressive-mobile.webp
+docs/assets/showcase/readme/row-02-expressive.webp
+docs/assets/showcase/readme/row-02-expressive-mobile.webp
+docs/assets/showcase/readme/row-03-expressive.webp
+docs/assets/showcase/readme/row-03-expressive-mobile.webp
+docs/assets/showcase/readme/row-04-expressive.webp
+docs/assets/showcase/readme/row-04-expressive-mobile.webp
+docs/assets/showcase/readme/row-05-expressive.webp
+docs/assets/showcase/readme/row-05-expressive-mobile.webp
+docs/assets/showcase/readme/row-06-expressive.webp
+docs/assets/showcase/readme/row-06-expressive-mobile.webp
 app/src/main/res/drawable-nodpi/onboarding_levyra_brand.webp
 docs/assets/levyra-github-banner.webp
 docs/assets/levyra-github-banner-light.webp
