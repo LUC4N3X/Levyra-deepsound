@@ -106,10 +106,10 @@ class HomePremiumLayoutContractTest {
         val header = functionBlock("private fun HomeOrbitHeader(")
         val title = header.substring(header.indexOf("text = strings.personalOrbitTitle"))
 
-        assertTrue(header.contains("Row("))
-        assertTrue(title.contains("maxLines = 1"))
+        assertTrue(header.contains("LevyraAdaptiveSectionHeader("))
+        assertTrue(header.contains("gap = 6.dp"))
+        assertTrue(title.contains("maxLines = 2"))
         assertTrue(title.contains("overflow = TextOverflow.Ellipsis"))
-        assertTrue(header.contains("Spacer(modifier = Modifier.width(6.dp))"))
         assertTrue(header.contains("LevyraSectionPlayAll(onClick = onPlayAll)"))
         assertFalse(header.contains("stackPlayAll"))
         assertFalse(header.contains("BoxWithConstraints("))
