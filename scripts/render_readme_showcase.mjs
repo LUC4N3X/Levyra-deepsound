@@ -16,7 +16,7 @@ const output = values.output ? resolve(values.output) : resolve(root, 'docs/asse
 
 const width = 900;
 const height = 1800;
-const gap = 26;
+const gap = 32;
 const cardRadius = 48;
 const clear = { r: 0, g: 0, b: 0, alpha: 0 };
 const svg = (content, w = width, h = height) => Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">${content}</svg>`);
@@ -236,7 +236,7 @@ function phoneGeometry(outerWidth, angle, x, y) {
 function heroShape(index) {
   const paths = [
     phoneGeometry(725, 12.5, 215, -185),
-    phoneGeometry(725, -8.5, 195, 415),
+    phoneGeometry(725, 12.5, 215 - 932, -185) + phoneGeometry(725, -8.5, 195, 415),
     phoneGeometry(720, -8, 105, 395),
     phoneGeometry(720, 8, 'right', 395),
   ];
