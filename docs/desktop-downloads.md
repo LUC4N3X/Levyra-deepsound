@@ -20,3 +20,5 @@ tray availability depends on the desktop environment. Without a supported tray,
 closing the window exits the app rather than leaving an inaccessible window.
 
 See [Desktop setup and build instructions](../desktop/README.md) for details.
+
+The download badge uses [Tux](https://commons.wikimedia.org/wiki/File:Tux.png) by Larry Ewing and The GIMP, paired with the Windows symbol.
