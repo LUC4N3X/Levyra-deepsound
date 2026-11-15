@@ -18,6 +18,9 @@ def prepare(root: Path) -> None:
     deb_target = output / f'LEVYRA-Linux-{version}-x64.deb'
     with tempfile.TemporaryDirectory(prefix='levyra-deb-') as temporary:
         subprocess.run(['dpkg-deb', '--raw-extract', str(deb), temporary], check=True)
+        (Path(temporary) / 'usr/share/desktop-directories').mkdir(
+            mode=0o755, parents=True, exist_ok=True
+        )
         control = Path(temporary) / 'DEBIAN/control'
         text = control.read_text()
         dependencies = re.search(r'(?m)^Depends:[^\n]*(?:\n[ \t][^\n]*)*', text)
