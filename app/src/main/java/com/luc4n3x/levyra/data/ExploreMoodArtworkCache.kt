@@ -5,7 +5,7 @@ import android.util.LruCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-internal data class ExploreMoodArtwork(val url: String, val rotation: Long)
+internal data class ExploreMoodArtwork(val url: String, val rotation: Long, val artist: String = "")
 
 internal object ExploreMoodArtworkCache {
     private val memory = LruCache<String, ExploreMoodArtwork>(128)
@@ -17,7 +17,7 @@ internal object ExploreMoodArtworkCache {
         val preferences = context.getSharedPreferences("explore_mood_artwork", Context.MODE_PRIVATE)
         val url = preferences.getString("$key.url", "").orEmpty()
         if (url.isBlank()) return@withContext null
-        val entry = ExploreMoodArtwork(url, preferences.getLong("$key.rotation", Long.MIN_VALUE))
+        val entry = ExploreMoodArtwork(url, preferences.getLong("$key.rotation", Long.MIN_VALUE), preferences.getString("$key.artist", "").orEmpty())
         memory.put(key, entry)
         entry
     }
@@ -26,6 +26,6 @@ internal object ExploreMoodArtworkCache {
         if (artwork.url.isBlank()) return@withContext
         memory.put(key, artwork)
         context.getSharedPreferences("explore_mood_artwork", Context.MODE_PRIVATE).edit()
-            .putString("$key.url", artwork.url).putLong("$key.rotation", artwork.rotation).apply()
+            .putString("$key.url", artwork.url).putLong("$key.rotation", artwork.rotation).putString("$key.artist", artwork.artist).apply()
     }
 }

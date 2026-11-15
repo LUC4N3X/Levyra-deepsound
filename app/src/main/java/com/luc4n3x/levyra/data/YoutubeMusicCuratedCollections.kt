@@ -21,7 +21,8 @@ internal data class CuratedCollectionCard(
     val title: String,
     val subtitle: String,
     val playlistId: String,
-    val thumbnailUrl: String
+    val thumbnailUrl: String,
+    val categoryParams: String = ""
 )
 
 internal data class CuratedCollectionSnapshot(val savedAtMs: Long, val cards: List<CuratedCollectionCard>) {
@@ -31,8 +32,8 @@ internal data class CuratedCollectionSnapshot(val savedAtMs: Long, val cards: Li
 
 internal object YoutubeMusicDecades {
     const val PARAMS = "ggMPOg1uX1V4cTVVT0JjY0xI"
-    private const val FIRST_DECADE = 1960
-    private const val LAST_DECADE = 2010
+    private const val FIRST_DECADE = 1950
+    private const val LAST_DECADE = 2020
 
     fun decadeOf(title: String): Int? {
         val runs = mutableListOf<String>()
@@ -61,7 +62,7 @@ internal object YoutubeMusicDecades {
             val decade = decadeOf(section.title)?.takeIf { it in FIRST_DECADE..LAST_DECADE } ?: return@forEach
             if (decade in byDecade) return@forEach
             val playlist = section.playlists.firstOrNull { it.isCardReady() && used.add(it.playlistId) } ?: return@forEach
-            byDecade[decade] = playlist.toCard(section.title.trim())
+            byDecade[decade] = playlist.toCard(section.title.trim()).copy(categoryParams = section.moreParams)
         }
         return byDecade.values.toList()
     }
@@ -87,7 +88,7 @@ internal object YoutubeMusicEverydayMoods {
         val used = HashSet<String>()
         return params.mapNotNull { param ->
             val title = titles[param] ?: return@mapNotNull null
-            playlists[param].orEmpty().firstOrNull { it.isCardReady() && used.add(it.playlistId) }?.toCard(title)
+            playlists[param].orEmpty().firstOrNull { it.isCardReady() && used.add(it.playlistId) }?.toCard(title)?.copy(categoryParams = param)
         }
     }
 }
@@ -110,6 +111,7 @@ internal fun encodeCuratedCollection(snapshot: CuratedCollectionSnapshot): Strin
                         .put("subtitle", card.subtitle)
                         .put("playlistId", card.playlistId)
                         .put("thumbnailUrl", card.thumbnailUrl)
+                        .put("categoryParams", card.categoryParams)
                 )
             }
         })
@@ -125,7 +127,8 @@ internal fun decodeCuratedCollection(raw: String): CuratedCollectionSnapshot? = 
             title = item.optString("title").trim(),
             subtitle = item.optString("subtitle").trim(),
             playlistId = item.optString("playlistId").trim(),
-            thumbnailUrl = item.optString("thumbnailUrl").trim()
+            thumbnailUrl = item.optString("thumbnailUrl").trim(),
+            categoryParams = item.optString("categoryParams").trim()
         ).takeIf { it.title.isNotBlank() && it.playlistId.isNotBlank() && it.thumbnailUrl.startsWith("https://") }
     }
     CuratedCollectionSnapshot(root.optLong("savedAtMs", 0L), cards).takeIf { it.cards.isNotEmpty() }
@@ -197,5 +200,5 @@ internal class YoutubeMusicCuratedCollectionRepository(context: Context, private
 }
 
 internal const val CURATED_COLLECTION_TTL_MS = 24L * 60L * 60L * 1000L
-private const val CURATED_COLLECTION_SCHEMA = 1
+private const val CURATED_COLLECTION_SCHEMA = 2
 private const val CURATED_COLLECTION_MAX_CARDS = 24

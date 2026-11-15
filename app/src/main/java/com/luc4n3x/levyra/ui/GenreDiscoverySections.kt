@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.ui
 
 import androidx.compose.foundation.background
+import com.luc4n3x.levyra.data.toHit
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -71,7 +72,8 @@ internal class GenreDiscoveryActions(
     val playVideo: (List<Track>, Track) -> Unit,
     val openAlbum: (AlbumHit) -> Unit,
     val openPlaylist: (PlaylistHit) -> Unit,
-    val openArtist: (String) -> Unit
+    val openArtist: (String) -> Unit,
+    val openProviderPlaylist: (PlaylistHit) -> Unit = {}
 ) {
     fun open(item: AppleCatalogItem, shelf: AppleCatalogShelf) {
         when (item.kind) {
@@ -119,7 +121,8 @@ internal fun rememberExploreGenreDiscovery(
             playVideo = { tracks, track -> viewModel.playVideoFrom(tracks, track) },
             openAlbum = viewModel::openAlbum,
             openPlaylist = { playlist -> viewModel.openApplePlaylist(playlist, state.storefront) },
-            openArtist = viewModel::openArtistByName
+            openArtist = viewModel::openArtistByName,
+            openProviderPlaylist = viewModel::openPlaylistHit
         )
     }
     return GenreDiscoveryBinding(state, actions)
@@ -161,6 +164,20 @@ internal fun LazyListScope.genreDiscoveryItems(
             Column {
                 skin.header(copy.aboutTitle)
                 skin.about(about, copy)
+            }
+        }
+    }
+    discovery.playlists.forEachIndexed { sectionIndex, section ->
+        item(key = "$prefix-discovery-playlists-$sectionIndex", contentType = "$prefix-discovery-playlists") {
+            Column {
+                skin.header(section.title)
+                GenreDiscoveryRow(skin, section.playlists, { playlist -> playlist.playlistId.ifBlank { playlist.browseId } }) { index, playlist ->
+                    skin.cover(
+                        GenreDiscoveryTile(playlist.playlistId.ifBlank { playlist.browseId }, index, playlist.title, playlist.description, playlist.thumbnailUrl) {
+                            actions.openProviderPlaylist(playlist.toHit())
+                        }
+                    )
+                }
             }
         }
     }

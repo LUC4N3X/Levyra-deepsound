@@ -373,7 +373,8 @@ private fun MonoSearchIdle(
     val recentPreview = remember(recent) { recent.take(MonoSearchIdleRecent) }
     LaunchedEffect(strings.code) { viewModel.ensureExplore(strings) }
     val zones = remember(strings) { ExploreCatalog.getZones(strings) }
-    val browseSource = remember(state.exploreCategories, zones) { monoBrowseTiles(state.exploreCategories, zones) }
+    val browseCategories = rememberCategoriesWithDecades(state.exploreCategories, LocalLevyraStrings.current.code)
+    val browseSource = remember(browseCategories, zones) { monoBrowseTiles(browseCategories, zones) }
     val browse = remember(browseSource, state.isExploreCategoriesLoading, state.exploreCategoryArtwork) {
         monoBrowseEntries(
             browseSource, state.isExploreCategoriesLoading, viewModel::openExploreCategory, viewModel::openExploreZone,

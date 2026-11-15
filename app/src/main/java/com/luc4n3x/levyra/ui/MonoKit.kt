@@ -1,5 +1,8 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.LevyraAdaptiveSectionHeader
+import com.luc4n3x.levyra.ui.components.LocalSectionActionIconOnly
+
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -18,6 +21,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,6 +40,8 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -110,24 +119,41 @@ internal fun MonoSectionHeader(
     overlineColor: Color = MonoDesign.textSecondary,
     onAction: (() -> Unit)? = null
 ) {
-    Row(
-        modifier.fillMaxWidth().padding(horizontal = MonoDesign.gutter),
+    LevyraAdaptiveSectionHeader(
+        modifier = modifier.fillMaxWidth().padding(horizontal = MonoDesign.gutter),
         verticalAlignment = Alignment.Bottom,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            if (overline != null) MonoOverline(overline, color = overlineColor)
-            Text(
-                title, style = MaterialTheme.typography.titleLarge, color = MonoDesign.text, maxLines = 1,
-                overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() }
-            )
+        title = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (overline != null) MonoOverline(overline, color = overlineColor)
+                Text(
+                    title, style = MaterialTheme.typography.titleLarge, color = MonoDesign.text, maxLines = 2,
+                    overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() }
+                )
+            }
+        },
+        action = if (action != null && onAction != null) {
+            { MonoSectionAction(action, onAction) }
+        } else {
+            null
         }
-        if (action != null && onAction != null) {
-            Text(
-                "$action ›", style = MaterialTheme.typography.labelLarge, color = MonoDesign.textSecondary,
-                modifier = Modifier.clip(MonoDesign.pillShape).clickable(onClick = onAction).heightIn(min = 32.dp).padding(horizontal = 4.dp, vertical = 7.dp)
-            )
+    )
+}
+
+@Composable
+private fun MonoSectionAction(label: String, onClick: () -> Unit) {
+    if (LocalSectionActionIconOnly.current) {
+        Box(
+            Modifier.size(48.dp).clip(MonoDesign.pillShape).clickable(onClickLabel = label, role = Role.Button, onClick = onClick)
+                .semantics { contentDescription = label },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = MonoDesign.textSecondary, modifier = Modifier.size(22.dp))
         }
+    } else {
+        Text(
+            "$label ›", style = MaterialTheme.typography.labelLarge, color = MonoDesign.textSecondary, maxLines = 1,
+            modifier = Modifier.clip(MonoDesign.pillShape).clickable(onClick = onClick).heightIn(min = 32.dp).padding(horizontal = 4.dp, vertical = 7.dp)
+        )
     }
 }
 

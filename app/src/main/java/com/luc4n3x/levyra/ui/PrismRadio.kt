@@ -440,7 +440,7 @@ private fun PrismStationTile(station: RadioStation, tuned: Boolean, playing: Boo
 }
 
 @Composable
-private fun PrismCategoryChip(label: String, selected: Boolean, onClick: () -> Unit) {
+internal fun PrismCategoryChip(label: String, selected: Boolean, onClick: () -> Unit) {
     val shape = PrismDesign.cut(12.dp)
     Box(
         Modifier.heightIn(min = 40.dp).clip(shape)

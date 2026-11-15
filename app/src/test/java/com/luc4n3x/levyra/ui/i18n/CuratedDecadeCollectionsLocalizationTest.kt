@@ -20,14 +20,15 @@ class CuratedDecadeCollectionsLocalizationTest {
         val english = curatedCollectionsCopy("en")
         requiredCodes.forEach { code ->
             val copy = curatedCollectionsCopy(code)
-            listOf(copy.decadesTitle, copy.decadesSubtitle, copy.everydayTitle, copy.everydaySubtitle).forEach { value ->
+            listOf(copy.decadesTitle, copy.decadesSubtitle, copy.everydayTitle, copy.everydaySubtitle, copy.browseTitle, copy.browseSubtitle).forEach { value ->
                 assertTrue("$code $value", value.isNotBlank() && value == value.trim())
                 assertTrue("$code $value", value.codePointCount(0, value.length) <= 32)
             }
-            assertEquals(code, 4, setOf(copy.decadesTitle, copy.decadesSubtitle, copy.everydayTitle, copy.everydaySubtitle).size)
+            assertEquals(code, 6, setOf(copy.decadesTitle, copy.decadesSubtitle, copy.everydayTitle, copy.everydaySubtitle, copy.browseTitle, copy.browseSubtitle).size)
             if (code != "en") {
                 assertNotEquals(code, english.decadesSubtitle, copy.decadesSubtitle)
                 assertNotEquals(code, english.everydaySubtitle, copy.everydaySubtitle)
+                assertNotEquals(code, english.browseSubtitle, copy.browseSubtitle)
             }
         }
     }

@@ -479,7 +479,7 @@ private fun TorqueStationTile(number: Int, station: RadioStation, tuned: Boolean
 }
 
 @Composable
-private fun TorqueCategoryChip(label: String, selected: Boolean, onClick: () -> Unit) {
+internal fun TorqueCategoryChip(label: String, selected: Boolean, onClick: () -> Unit) {
     Box(
         Modifier.heightIn(min = 48.dp).clip(TorqueTagShape)
             .background(if (selected) LevyraActivePalette.blue else LevyraPanel)

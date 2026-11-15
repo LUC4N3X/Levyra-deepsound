@@ -45,7 +45,8 @@ import com.luc4n3x.levyra.viewmodel.YouTubeMusicHomeViewModel
 internal class YouTubeMusicHomeActions(
     val home: AppleMusicHomeActions,
     val openPlaylist: (PlaylistHit) -> Unit,
-    val openSearch: () -> Unit
+    val openSearch: () -> Unit,
+    val openInsights: (() -> Unit)? = null
 )
 
 private typealias YouTubeMusicHomeBlock = Pair<String, @Composable () -> Unit>
@@ -76,7 +77,7 @@ internal fun YouTubeMusicHomeContent(
     val allShelves = remember(feed.shelves, feed.discovery) { feed.allShelves.filter(::isYouTubeMusicHomeShelf) }
     LaunchedEffect(strings.code, showsFeed) { if (showsFeed) homeViewModel.load(strings.code) }
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val levyraBlocks = if (composition == null) youTubeMusicLevyraBlocks(data, actions.home, copy, strings, actions.openPlaylist) else emptyList()
+    val levyraBlocks = if (composition == null) youTubeMusicLevyraBlocks(data, actions.home, copy, strings, actions.openPlaylist, actions.openInsights) else emptyList()
     val seed = remember(feed.shelves, showsFeed, data.personalTracks, data.charts) { youTubeMusicBackdropSeed(feed.shelves, showsFeed, data) }
     val composedFeedEndKey = remember(allShelves, composition == null) {
         if (composition == null) null else youTubeMusicLeadingOrder(allShelves).lastOrNull()?.let { "ytm-${it.key}" }
@@ -444,9 +445,15 @@ private fun youTubeMusicLevyraBlocks(
     actions: AppleMusicHomeActions,
     copy: YouTubeMusicSkinCopy,
     strings: com.luc4n3x.levyra.ui.i18n.LevyraStrings,
-    openPlaylist: (com.luc4n3x.levyra.domain.PlaylistHit) -> Unit
+    openPlaylist: (com.luc4n3x.levyra.domain.PlaylistHit) -> Unit,
+    openInsights: (() -> Unit)?
 ): List<YouTubeMusicHomeBlock> = listOfNotNull(
     "levyra-curated" to @Composable { YouTubeMusicCuratedShelves(openPlaylist) },
+    openInsights?.let { open ->
+        "levyra-insights" to @Composable {
+            com.luc4n3x.levyra.ui.library.YouTubeMusicInsightsShelf(strings.pulseTitle, strings.listeningInsights, strings.listeningInsightsSubtitle, open)
+        }
+    },
     chartBlock(data, copy, actions),
     if (data.charts.isEmpty()) null else "levyra-genre-hits" to @Composable { YouTubeMusicGenreHitsShelf(actions.openGenreChart) },
     dailyDiscoveryBlock(data, copy, actions),
@@ -454,7 +461,7 @@ private fun youTubeMusicLevyraBlocks(
         YouTubeMusicMostDiscussedShelf(data.resonanceTracks, data.resonanceComments, copy.explicit, actions)
     },
     cardsBlock("levyra-artists", strings.trendingArtists, data.artists.takeIf { data.showArtists }.orEmpty().map { artist ->
-        YouTubeMusicCardModel("artist-${artist.browseId.ifBlank { artist.name }}", artist.name, artistAudienceLabel(artist.subscribers, strings.code, strings.monthlyListeners), artist.thumbnailUrl, circular = true, onClick = { actions.openArtist(artist) })
+        YouTubeMusicCardModel("artist-${artist.browseId.ifBlank { artist.name }}", artist.name, artistAudienceLabel(artist, strings.code, strings.monthlyListeners), artist.thumbnailUrl, circular = true, onClick = { actions.openArtist(artist) })
     }),
     songColumnsBlock("levyra-forgotten", strings.forgottenFavorites, data.forgottenFavorites, data.currentId, copy, actions)
 )
@@ -489,7 +496,8 @@ private fun chartBlock(data: AppleMusicHomeData, copy: YouTubeMusicSkinCopy, act
             YouTubeMusicSectionHeader(
                 data.chartsTitle,
                 actionLabel = data.countryLabel.ifBlank { null }?.let { "$it ▾" },
-                onAction = actions.pickCountry
+                onAction = actions.pickCountry,
+                actionIcon = null
             )
             Spacer(Modifier.height(4.dp))
             YouTubeMusicSongColumns(

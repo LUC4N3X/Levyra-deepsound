@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -47,6 +48,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -86,6 +88,14 @@ import kotlinx.coroutines.launch
 
 private class CuratedSkinLayout(val gutter: Dp, val gap: Dp, val rowGap: Dp, val cellMin: Dp, val skeleton: Shape, val skeletonBase: Color)
 
+private class CuratedSkinPicker(
+    val accent: Brush,
+    val text: Color,
+    val muted: Color,
+    val font: FontFamily? = null,
+    val pill: @Composable (label: String, selected: Boolean, onClick: () -> Unit) -> Unit
+)
+
 @Composable
 private fun SkinCuratedScaffold(
     page: CuratedPageData,
@@ -96,6 +106,7 @@ private fun SkinCuratedScaffold(
     intro: @Composable (jump: (Int) -> Unit) -> Unit,
     header: @Composable (CuratedPageRow.Header) -> Unit,
     cell: @Composable (item: YoutubeMusicHomeItem, number: Int, modifier: Modifier) -> Unit,
+    picker: CuratedSkinPicker,
     top: @Composable () -> Unit = {}
 ) {
     val animated = LocalAnimationsEnabled.current
@@ -107,7 +118,7 @@ private fun SkinCuratedScaffold(
             top()
             BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
                 val columns = curatedPageColumns(maxWidth, layout.gutter, layout.gap, layout.cellMin)
-                val rows = remember(page.groups, columns) { curatedPageRows(page.groups, columns) }
+                val rows = remember(page.groups, page.browse, columns) { curatedPageRows(page.groups, columns, page.browse) }
                 val sticky = jumpPills && page.groups.size > 1
                 val focused by rememberCuratedFocusedGroup(listState, rows) { stickyPx }
                 val jump: (Int) -> Unit = { group ->
@@ -138,7 +149,8 @@ private fun SkinCuratedScaffold(
                             LocalLevyraStrings.current.exploreEmpty, style = MaterialTheme.typography.bodyLarge, color = LevyraMuted,
                             modifier = Modifier.fillMaxWidth().padding(horizontal = layout.gutter, vertical = 40.dp)
                         )
-                    }
+                    },
+                    picker = { browse -> CuratedBrowsePicker(browse, layout.gutter, picker.accent, picker.text, picker.muted, tabFont = picker.font, pill = picker.pill) }
                 )
             }
         }
@@ -168,6 +180,31 @@ private fun SkinCuratedJumpPills(page: CuratedPageData, selected: Int, backgroun
 private fun curatedCountLabel(count: Int, plural: String): String = "$count · $plural"
 
 @Composable
+private fun AtelierBrowsePill(label: String, selected: Boolean, onClick: () -> Unit) {
+    Box(Modifier.heightIn(min = 48.dp).selectable(selected = selected, role = Role.Tab, onClick = onClick), contentAlignment = Alignment.Center) {
+        Text(
+            label, fontFamily = AtelierSerif, fontStyle = if (selected) FontStyle.Normal else FontStyle.Italic, fontSize = 15.sp,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal, color = if (selected) AtelierDesign.room else AtelierDesign.text, maxLines = 1,
+            modifier = Modifier.clip(CircleShape).background(if (selected) AtelierDesign.text else Color.Transparent)
+                .border(1.dp, if (selected) AtelierDesign.text else AtelierDesign.hairline, CircleShape).padding(horizontal = 16.dp, vertical = 7.dp)
+        )
+    }
+}
+
+@Composable
+private fun NocturneBrowsePill(label: String, selected: Boolean, onClick: () -> Unit) {
+    val p = Nocturne78Palette
+    val shape = RoundedCornerShape(Nocturne78Design.artworkCorner)
+    Box(Modifier.heightIn(min = 48.dp).selectable(selected = selected, role = Role.Tab, onClick = onClick), contentAlignment = Alignment.Center) {
+        Text(
+            label, color = if (selected) p.black else p.text, style = MaterialTheme.typography.labelLarge, maxLines = 1,
+            modifier = Modifier.clip(shape).background(if (selected) p.blue else p.panel).border(1.dp, if (selected) p.blue else p.outline, shape)
+                .padding(horizontal = 14.dp, vertical = 8.dp)
+        )
+    }
+}
+
+@Composable
 internal fun TorqueCuratedPlaylistsPage(page: CuratedPageData, onOpen: (PlaylistHit) -> Unit, onDismiss: () -> Unit, bottomInset: Dp) {
     val strings = LocalLevyraStrings.current
     SkinCuratedScaffold(
@@ -176,6 +213,7 @@ internal fun TorqueCuratedPlaylistsPage(page: CuratedPageData, onOpen: (Playlist
         layout = CuratedSkinLayout(TorqueGutter, 12.dp, 12.dp, 150.dp, RectangleShape, LevyraPanel),
         bottomInset = bottomInset,
         jumpPills = true,
+        picker = CuratedSkinPicker(SolidColor(LevyraActivePalette.blue), Color.White, LevyraMuted) { label, selected, onClick -> TorqueCategoryChip(label, selected, onClick) },
         intro = {
             Box(Modifier.fillMaxWidth().aspectRatio(1.1f).background(LevyraPanel)) {
                 AsyncImage(page.covers.firstOrNull(), null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().clearAndSetSemantics { })
@@ -234,6 +272,7 @@ internal fun IvoryCuratedPlaylistsPage(page: CuratedPageData, onOpen: (PlaylistH
         layout = CuratedSkinLayout(gutter, 14.dp, 20.dp, 150.dp, IvoryDesign.coverShape, LevyraPanel),
         bottomInset = bottomInset,
         jumpPills = true,
+        picker = CuratedSkinPicker(SolidColor(IvoryDesign.ink), LevyraText, LevyraMuted) { label, selected, onClick -> IvoryCategoryChip(label, selected, onClick) },
         intro = {
             Column(Modifier.fillMaxWidth().padding(horizontal = gutter).padding(top = 8.dp, bottom = 16.dp)) {
                 IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp).clip(CircleShape).background(IvoryDesign.onInk)) {
@@ -312,6 +351,7 @@ internal fun PrismCuratedPlaylistsPage(page: CuratedPageData, onOpen: (PlaylistH
         layout = CuratedSkinLayout(gutter, 14.dp, 14.dp, 150.dp, PrismDesign.cut(22.dp), PrismAccent.Tint),
         bottomInset = bottomInset,
         jumpPills = true,
+        picker = CuratedSkinPicker(PrismAccent.gradient(), LevyraText, LevyraMuted) { label, selected, onClick -> PrismCategoryChip(label, selected, onClick) },
         intro = {
             Box(Modifier.fillMaxWidth().aspectRatio(1.05f)) {
                 Row(Modifier.fillMaxSize().clearAndSetSemantics { }, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -367,6 +407,9 @@ internal fun AtelierCuratedPlaylistsPage(page: CuratedPageData, onOpen: (Playlis
         layout = CuratedSkinLayout(gutter, AtelierDesign.itemGap, 22.dp, 140.dp, AtelierDesign.sleeveShape, AtelierDesign.panel),
         bottomInset = bottomInset,
         jumpPills = false,
+        picker = CuratedSkinPicker(SolidColor(AtelierDesign.accent), AtelierDesign.text, AtelierDesign.textSecondary, AtelierSerif) { label, selected, onClick ->
+            AtelierBrowsePill(label, selected, onClick)
+        },
         top = { AtelierDestinationTopBar(null, strings.back, onDismiss) },
         intro = { jump ->
             Column(Modifier.fillMaxWidth().padding(horizontal = gutter).padding(top = 6.dp, bottom = 4.dp)) {
@@ -430,6 +473,7 @@ internal fun NocturneCuratedPlaylistsPage(page: CuratedPageData, onOpen: (Playli
         layout = CuratedSkinLayout(gutter, 16.dp, 22.dp, 140.dp, corner, p.panel),
         bottomInset = bottomInset,
         jumpPills = false,
+        picker = CuratedSkinPicker(SolidColor(p.blue), p.text, p.muted) { label, selected, onClick -> NocturneBrowsePill(label, selected, onClick) },
         top = {
             Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 LevyraBackButton(onClick = onDismiss, contentDescription = strings.back)

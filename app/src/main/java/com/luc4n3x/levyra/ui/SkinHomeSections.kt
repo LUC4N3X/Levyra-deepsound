@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.ui
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.lazy.rememberLazyListState
 import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
+import com.luc4n3x.levyra.ui.components.LevyraAdaptiveSectionHeader
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -63,16 +64,22 @@ internal fun SkinSectionTitle(title: String, inset: Dp, actions: @Composable Row
         return
     }
     val torque = LevyraIsTorque
-    Row(Modifier.fillMaxWidth().padding(horizontal = inset).heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (torque) Box(Modifier.width(4.dp).height(22.dp).background(LevyraActivePalette.blue))
-        Text(
-            if (torque) title.uppercase() else title, color = LevyraText, style = MaterialTheme.typography.titleLarge,
-            fontSize = if (torque) 18.sp else 22.sp, fontWeight = if (torque) FontWeight.Bold else FontWeight.Normal,
-            letterSpacing = if (torque) 2.sp else (-0.4).sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f).semantics { heading() }
-        )
-        actions()
-    }
+    LevyraAdaptiveSectionHeader(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = inset).heightIn(min = 56.dp),
+        gap = 8.dp,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (torque) Box(Modifier.width(4.dp).height(22.dp).background(LevyraActivePalette.blue))
+                Text(
+                    if (torque) title.uppercase() else title, color = LevyraText, style = MaterialTheme.typography.titleLarge,
+                    fontSize = if (torque) 18.sp else 22.sp, fontWeight = if (torque) FontWeight.Bold else FontWeight.Normal,
+                    letterSpacing = if (torque) 2.sp else (-0.4).sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.semantics { heading() }
+                )
+            }
+        },
+        action = actions
+    )
 }
 
 @Composable

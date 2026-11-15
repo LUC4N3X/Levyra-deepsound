@@ -12,6 +12,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -54,7 +55,6 @@ import com.luc4n3x.levyra.ui.theme.LevyraIsTorque
 import com.luc4n3x.levyra.ui.theme.LevyraMotion
 import com.luc4n3x.levyra.viewmodel.DefaultCuratedCollectionsViewModel
 import com.luc4n3x.levyra.viewmodel.HomeViewModel
-import com.luc4n3x.levyra.viewmodel.withCuratedMoodShelves
 
 private const val CuratedPageHomeViewModelKey = "levyra-home"
 private const val CuratedPageCovers = 5
@@ -62,9 +62,10 @@ private const val CuratedPageMaxColumns = 6
 
 internal val LocalCuratedPlaylistsOpener = staticCompositionLocalOf<(() -> Unit)?> { null }
 
-internal class CuratedPageData(val title: String, val groups: List<YoutubeMusicHomeShelf>, val loading: Boolean) {
-    val total: Int = groups.sumOf { it.items.size }
-    val covers: List<String> = groups.asSequence().flatMap { it.items }.map { it.thumbnailUrl }
+internal class CuratedPageData(val title: String, val groups: List<YoutubeMusicHomeShelf>, val loading: Boolean, val browse: CuratedBrowse? = null) {
+    private val curated = groups.filter { it.key != CuratedBrowseShelfKey }
+    val total: Int = curated.sumOf { it.items.size }
+    val covers: List<String> = curated.asSequence().flatMap { it.items }.map { it.thumbnailUrl }
         .filter(String::isNotBlank).distinct().take(CuratedPageCovers).toList()
     val empty: Boolean get() = groups.isEmpty() && !loading
 }
@@ -74,12 +75,15 @@ internal sealed interface CuratedPageRow {
     val group: Int
     data class Header(override val key: String, override val group: Int, val shelf: YoutubeMusicHomeShelf) : CuratedPageRow
     data class Cells(override val key: String, override val group: Int, val offset: Int, val items: List<YoutubeMusicHomeItem>) : CuratedPageRow
+    data class Picker(override val key: String, override val group: Int, val browse: CuratedBrowse, val empty: Boolean) : CuratedPageRow
 }
 
-internal fun curatedPageRows(groups: List<YoutubeMusicHomeShelf>, columns: Int): List<CuratedPageRow> {
+internal fun curatedPageRows(groups: List<YoutubeMusicHomeShelf>, columns: Int, browse: CuratedBrowse? = null): List<CuratedPageRow> {
     val span = columns.coerceAtLeast(1)
     return groups.flatMapIndexed { index, shelf ->
-        listOf(CuratedPageRow.Header("curated-page-head-${shelf.key}", index, shelf)) +
+        val picker = browse?.takeIf { shelf.key == CuratedBrowseShelfKey }
+            ?.let { CuratedPageRow.Picker("curated-page-picker", index, it, shelf.items.isEmpty()) }
+        listOfNotNull(CuratedPageRow.Header("curated-page-head-${shelf.key}", index, shelf), picker) +
             shelf.items.chunked(span).mapIndexed { row, items ->
                 CuratedPageRow.Cells("curated-page-row-${shelf.key}-$row-$span", index, row * span, items)
             }
@@ -125,7 +129,8 @@ internal fun CuratedPlaylistsHost(
         AnimatedVisibility(visible = open, enter = curatedPageEnter(animated), exit = curatedPageExit(animated)) {
             BackHandler(enabled = backEnabled && open) { open = false }
             val home: HomeViewModel = viewModel(key = CuratedPageHomeViewModelKey, factory = factory)
-            CuratedPlaylistsPage(rememberCuratedPageData(), home::openPlaylistHit, { open = false }, bottomInset)
+            val openCard = rememberCuratedCollectionOpener(LocalLevyraStrings.current.code, home::openPlaylistHit, home::openExploreCategoryPage)
+            CuratedPlaylistsPage(rememberCuratedPageData(), openCard, { open = false }, bottomInset)
         }
     }
 }
@@ -135,14 +140,14 @@ private fun rememberCuratedPageData(): CuratedPageData {
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { LevyraMonoHomeStrings.forCode(strings.code) }
     val curated = rememberCuratedPlaylistShelves(strings.code)
-    val moods = rememberCuratedMoodShelves(strings.code)
     val collections = rememberDefaultCuratedCollectionShelves(strings.code)
+    val browse = rememberCuratedBrowseSection(strings.code)
     val collectionsModel = viewModel<DefaultCuratedCollectionsViewModel>(key = "default-curated-collections")
     val collectionsLoading by collectionsModel.loading.collectAsStateWithLifecycle()
     val loading = collectionsLoading && collections.size < 2
-    return remember(curated, moods, collections, loading, copy) {
-        val trailing = withCuratedMoodShelves(curated + collections, moods).drop(curated.size)
-        CuratedPageData(copy.mixedForYou, glacierCuratedGroups(curated, trailing, copy.rotationOverline), loading)
+    return remember(curated, collections, browse, loading, copy) {
+        val groups = glacierCuratedGroups(curated, collections, copy.rotationOverline)
+        CuratedPageData(copy.mixedForYou, groups + listOfNotNull(browse?.shelf?.let { curatedBrowseDistinct(it, groups) }), loading, browse?.browse)
     }
 }
 
@@ -196,12 +201,13 @@ internal fun CuratedGroupedList(
     header: @Composable (CuratedPageRow.Header) -> Unit,
     cell: @Composable (item: YoutubeMusicHomeItem, number: Int, modifier: Modifier) -> Unit,
     placeholder: @Composable () -> Unit,
-    empty: @Composable () -> Unit
+    empty: @Composable () -> Unit,
+    picker: @Composable (CuratedBrowse) -> Unit = {}
 ) {
     LazyColumn(state = listState, modifier = modifier.fillMaxSize(), contentPadding = contentPadding) {
         item(key = "curated-page-intro", contentType = "curated-page-intro") { intro() }
         if (sticky != null) stickyHeader(key = "curated-page-sticky", contentType = "curated-page-sticky") { sticky() }
-        curatedRowItems(rows, columns, gutter, itemGap, rowGap, header, cell)
+        curatedRowItems(rows, columns, gutter, itemGap, rowGap, header, cell, picker, placeholder, empty)
         when {
             page.loading -> item(key = "curated-page-loading", contentType = "curated-page-loading") { placeholder() }
             page.empty -> item(key = "curated-page-empty", contentType = "curated-page-empty") { empty() }
@@ -218,11 +224,23 @@ private fun LazyListScope.curatedRowItems(
     itemGap: Dp,
     rowGap: Dp,
     header: @Composable (CuratedPageRow.Header) -> Unit,
-    cell: @Composable (item: YoutubeMusicHomeItem, number: Int, modifier: Modifier) -> Unit
+    cell: @Composable (item: YoutubeMusicHomeItem, number: Int, modifier: Modifier) -> Unit,
+    picker: @Composable (CuratedBrowse) -> Unit,
+    placeholder: @Composable () -> Unit,
+    empty: @Composable () -> Unit
 ) {
     rows.forEach { row ->
         when (row) {
             is CuratedPageRow.Header -> item(key = row.key, contentType = "curated-page-head") { header(row) }
+            is CuratedPageRow.Picker -> item(key = row.key, contentType = "curated-page-picker") {
+                Column {
+                    picker(row.browse)
+                    when {
+                        row.empty && row.browse.loading -> Box(Modifier.padding(bottom = rowGap)) { placeholder() }
+                        row.empty -> empty()
+                    }
+                }
+            }
             is CuratedPageRow.Cells -> item(key = row.key, contentType = "curated-page-cells") {
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = gutter).padding(bottom = rowGap),

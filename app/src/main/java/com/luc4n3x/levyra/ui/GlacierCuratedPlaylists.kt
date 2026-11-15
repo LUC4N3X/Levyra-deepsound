@@ -48,6 +48,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -96,11 +97,13 @@ private sealed interface GlacierCuratedRow {
     val key: String
     data class Header(override val key: String, val index: Int, val shelf: YoutubeMusicHomeShelf) : GlacierCuratedRow
     data class Cells(override val key: String, val offset: Int, val items: List<YoutubeMusicHomeItem>) : GlacierCuratedRow
+    data class Picker(override val key: String, val browse: CuratedBrowse, val empty: Boolean) : GlacierCuratedRow
 }
 
-private fun glacierCuratedRows(groups: List<YoutubeMusicHomeShelf>, columns: Int): List<GlacierCuratedRow> =
+private fun glacierCuratedRows(groups: List<YoutubeMusicHomeShelf>, columns: Int, browse: CuratedBrowse?): List<GlacierCuratedRow> =
     groups.flatMapIndexed { index, shelf ->
-        listOf(GlacierCuratedRow.Header("glacier-curated-head-${shelf.key}", index, shelf)) +
+        val picker = browse?.takeIf { shelf.key == CuratedBrowseShelfKey }?.let { GlacierCuratedRow.Picker("glacier-curated-picker", it, shelf.items.isEmpty()) }
+        listOfNotNull(GlacierCuratedRow.Header("glacier-curated-head-${shelf.key}", index, shelf), picker) +
             shelf.items.chunked(columns).mapIndexed { row, items ->
                 GlacierCuratedRow.Cells("glacier-curated-row-${shelf.key}-$row-$columns", row * columns, items)
             }
@@ -120,11 +123,13 @@ internal fun GlacierCuratedPlaylistsScreen(
     val collections = rememberDefaultCuratedCollectionShelves(strings.code)
     val collectionsModel = viewModel<DefaultCuratedCollectionsViewModel>(key = "default-curated-collections")
     val collectionsLoading by collectionsModel.loading.collectAsStateWithLifecycle()
-    val groups = remember(curatedShelves, collections, leadTitle) { glacierCuratedGroups(curatedShelves, collections, leadTitle) }
-    val covers = remember(groups) {
-        groups.flatMap { it.items }.map { it.thumbnailUrl }.filter(String::isNotBlank).distinct().take(GlacierCuratedSheetCovers)
+    val browse = rememberCuratedBrowseSection(strings.code)
+    val curated = remember(curatedShelves, collections, leadTitle) { glacierCuratedGroups(curatedShelves, collections, leadTitle) }
+    val groups = remember(curated, browse) { curated + listOfNotNull(browse?.shelf?.let { curatedBrowseDistinct(it, curated) }) }
+    val covers = remember(curated) {
+        curated.flatMap { it.items }.map { it.thumbnailUrl }.filter(String::isNotBlank).distinct().take(GlacierCuratedSheetCovers)
     }
-    val total = remember(groups) { groups.sumOf { it.items.size } }
+    val total = remember(curated) { curated.sumOf { it.items.size } }
     val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -141,7 +146,7 @@ internal fun GlacierCuratedPlaylistsScreen(
         }.background(MonoDesign.base)
     ) {
         val columns = ((maxWidth - MonoDesign.gutter * 2 + MonoDesign.itemGap) / (GlacierCuratedCellMin + MonoDesign.itemGap)).toInt().coerceIn(2, 6)
-        val rows = remember(groups, columns) { glacierCuratedRows(groups, columns) }
+        val rows = remember(groups, columns, browse) { glacierCuratedRows(groups, columns, browse?.browse) }
         val headerIndices = remember(rows) { rows.withIndex().filter { it.value is GlacierCuratedRow.Header }.map { it.index + 2 } }
         Box(
             Modifier.fillMaxWidth().height(460.dp).drawBehind {
@@ -176,6 +181,20 @@ internal fun GlacierCuratedPlaylistsScreen(
                 when (row) {
                     is GlacierCuratedRow.Header -> item(key = row.key, contentType = "glacier-curated-head") {
                         GlacierCuratedGroupHeader(row.index, row.shelf)
+                    }
+                    is GlacierCuratedRow.Picker -> item(key = row.key, contentType = "glacier-curated-picker") {
+                        Column {
+                            CuratedBrowsePicker(row.browse, MonoDesign.gutter, SolidColor(MonoDesign.accent), MonoDesign.text, MonoDesign.textSecondary) { label, selected, onClick ->
+                                MonoPill(label, selected, onClick)
+                            }
+                            when {
+                                row.empty && row.browse.loading -> MonoWaveSkeleton(Modifier.padding(bottom = 20.dp), tile = GlacierCuratedSheetTile, tiles = columns)
+                                row.empty -> Text(
+                                    strings.exploreEmpty, style = MaterialTheme.typography.bodyLarge, color = MonoDesign.textSecondary,
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = MonoDesign.gutter, vertical = 20.dp)
+                                )
+                            }
+                        }
                     }
                     is GlacierCuratedRow.Cells -> item(key = row.key, contentType = "glacier-curated-cells") {
                         Row(

@@ -8,6 +8,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.luc4n3x.levyra.data.CuratedCollection
 import com.luc4n3x.levyra.data.CuratedCollectionCard
+import com.luc4n3x.levyra.domain.ExploreCategory
 import com.luc4n3x.levyra.domain.PlaylistHit
 import com.luc4n3x.levyra.domain.YoutubeMusicHomeItem
 import com.luc4n3x.levyra.domain.YoutubeMusicHomeItemKind
@@ -24,11 +25,71 @@ internal fun rememberDefaultCuratedCollectionShelves(code: String): List<Youtube
     return remember(collections, code) {
         val copy = curatedCollectionsCopy(code)
         listOfNotNull(
-            curatedCollectionShelf(CuratedCollection.Everyday, copy.everydayTitle, copy.everydaySubtitle, collections[CuratedCollection.Everyday].orEmpty()),
-            curatedCollectionShelf(CuratedCollection.Decades, copy.decadesTitle, copy.decadesSubtitle, collections[CuratedCollection.Decades].orEmpty())
+            curatedCollectionShelf(CuratedCollection.Decades, copy.decadesTitle, copy.decadesSubtitle, collections[CuratedCollection.Decades].orEmpty()),
+            curatedCollectionShelf(CuratedCollection.Everyday, copy.everydayTitle, copy.everydaySubtitle, collections[CuratedCollection.Everyday].orEmpty())
         )
     }
 }
+
+@Composable
+internal fun rememberDecadeCategories(code: String): List<ExploreCategory> {
+    val collectionsModel = viewModel<DefaultCuratedCollectionsViewModel>(key = "default-curated-collections")
+    val collections by collectionsModel.collections.collectAsStateWithLifecycle()
+    LaunchedEffect(code) { collectionsModel.load(code) }
+    val decades = collections[CuratedCollection.Decades].orEmpty()
+    return remember(decades, code) { decadeCategories(decades, curatedCollectionsCopy(code).decadesTitle) }
+}
+
+@Composable
+internal fun rememberCategoriesWithDecades(categories: List<ExploreCategory>, code: String): List<ExploreCategory> {
+    val decades = rememberDecadeCategories(code)
+    return remember(categories, decades) { withDecadesAfterMoods(categories, decades) }
+}
+
+internal fun withDecadesAfterMoods(categories: List<ExploreCategory>, decades: List<ExploreCategory>): List<ExploreCategory> {
+    if (categories.isEmpty() || decades.isEmpty()) return categories
+    val split = categories.indexOfLast { it.sectionIndex == 0 } + 1
+    return categories.take(split) + decades + categories.drop(split)
+}
+
+@Composable
+internal fun rememberArtworkWithDecades(artwork: Map<String, String>, code: String): Map<String, String> {
+    val collectionsModel = viewModel<DefaultCuratedCollectionsViewModel>(key = "default-curated-collections")
+    val collections by collectionsModel.collections.collectAsStateWithLifecycle()
+    val decades = collections[CuratedCollection.Decades].orEmpty()
+    return remember(artwork, decades) {
+        val covers = decades.filter { it.categoryParams.isNotBlank() && it.categoryParams !in artwork }.associate { it.categoryParams to it.thumbnailUrl }
+        if (covers.isEmpty()) artwork else artwork + covers
+    }
+}
+
+@Composable
+internal fun rememberCuratedCollectionOpener(code: String, openPlaylist: (PlaylistHit) -> Unit, openCategory: (ExploreCategory) -> Unit): (PlaylistHit) -> Unit {
+    val collectionsModel = viewModel<DefaultCuratedCollectionsViewModel>(key = "default-curated-collections")
+    val collections by collectionsModel.collections.collectAsStateWithLifecycle()
+    val categories = remember(collections, code) {
+        val copy = curatedCollectionsCopy(code)
+        curatedCollectionCategories(collections[CuratedCollection.Decades].orEmpty(), copy.decadesTitle) +
+            curatedCollectionCategories(collections[CuratedCollection.Everyday].orEmpty(), copy.everydayTitle)
+    }
+    return remember(categories, openPlaylist, openCategory) {
+        { hit -> categories[hit]?.let(openCategory) ?: openPlaylist(hit) }
+    }
+}
+
+internal fun curatedCollectionCategories(cards: List<CuratedCollectionCard>, section: String): Map<PlaylistHit, ExploreCategory> =
+    cards.filter { it.categoryParams.isNotBlank() && it.subtitle.isNotBlank() }
+        .associate { it.toPlaylistHit() to ExploreCategory(title = it.subtitle, params = it.categoryParams, section = section) }
+
+private fun CuratedCollectionCard.toPlaylistHit() =
+    PlaylistHit(title = title, author = subtitle, thumbnailUrl = thumbnailUrl, playlistId = playlistId)
+
+internal fun decadeCategories(cards: List<CuratedCollectionCard>, sectionTitle: String): List<ExploreCategory> =
+    cards.filter { it.categoryParams.isNotBlank() && it.subtitle.isNotBlank() }
+        .map { ExploreCategory(title = it.subtitle, params = it.categoryParams, section = sectionTitle, sectionIndex = DECADE_SECTION_INDEX) }
+        .distinctBy { it.params }
+
+private const val DECADE_SECTION_INDEX = -1
 
 internal fun curatedCollectionShelf(collection: CuratedCollection, title: String, subtitle: String, cards: List<CuratedCollectionCard>): YoutubeMusicHomeShelf? {
     if (cards.isEmpty()) return null
@@ -45,7 +106,7 @@ internal fun curatedCollectionShelf(collection: CuratedCollection, title: String
                 title = card.title,
                 subtitle = card.subtitle,
                 thumbnailUrl = card.thumbnailUrl,
-                playlist = PlaylistHit(title = card.title, author = card.subtitle, thumbnailUrl = card.thumbnailUrl, playlistId = card.playlistId)
+                playlist = card.toPlaylistHit()
             )
         }
     )

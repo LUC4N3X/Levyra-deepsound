@@ -478,7 +478,7 @@ private fun IvoryStationTile(number: Int, station: RadioStation, tuned: Boolean,
 }
 
 @Composable
-private fun IvoryCategoryChip(label: String, selected: Boolean, onClick: () -> Unit) {
+internal fun IvoryCategoryChip(label: String, selected: Boolean, onClick: () -> Unit) {
     Box(
         Modifier.heightIn(min = 48.dp).clip(CircleShape)
             .background(if (selected) IvoryDesign.ink else LevyraPanel)

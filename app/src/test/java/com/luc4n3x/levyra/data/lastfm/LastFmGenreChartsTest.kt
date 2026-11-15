@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.data.lastfm
 
+import com.luc4n3x.levyra.domain.ExploreCategory
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.feature.discovery.track
 import com.luc4n3x.levyra.ui.i18n.genreChartCopy
@@ -13,6 +14,18 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LastFmGenreChartsTest {
+
+    @Test
+    fun decadeCategoriesUseLastFmDecadeTags() {
+        fun decade(title: String) = LastFmGenreTags.forCategory(ExploreCategory(title = title, params = "p", sectionIndex = -1))
+        assertEquals(listOf("50s"), decade("1950s"))
+        assertEquals(listOf("80s"), decade("1980-е"))
+        assertEquals(listOf("00s"), decade("2000s"))
+        assertEquals(listOf("2010s"), decade("Anni 2010"))
+        assertEquals(listOf("hip-hop"), LastFmGenreTags.forCategory(ExploreCategory(title = "Hip-hop", params = "p", sectionIndex = 1)))
+        assertNull(LastFmGenreTags.decadeOf(ExploreCategory(title = "1980s", params = "p", sectionIndex = 2)))
+        assertNull(LastFmGenreTags.decadeOf(ExploreCategory(title = "1940s", params = "p", sectionIndex = -1)))
+    }
 
     @Test
     fun parsesTopTracksInRankOrderWithDurations() {

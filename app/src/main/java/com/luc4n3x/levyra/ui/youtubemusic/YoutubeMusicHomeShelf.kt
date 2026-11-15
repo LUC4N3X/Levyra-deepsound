@@ -5,11 +5,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -36,6 +38,7 @@ import com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicLibraryEntry
 import com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicLibraryShelf
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ReleaseType
+import com.luc4n3x.levyra.ui.components.LevyraAdaptiveSectionHeader
 import com.luc4n3x.levyra.ui.components.LevyraSectionShowAll
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.youtubeMusicHomeCopy
@@ -82,43 +85,47 @@ internal fun YoutubeMusicHomeFooter(ui: YoutubeMusicHomeShelfUi, inset: Dp) {
     val copy = youtubeMusicHomeCopy(LocalLevyraStrings.current.code)
     val upper = LevyraIsTorque || LevyraIsNocturne
     val avatarShape = if (LevyraIsTorque) RoundedCornerShape(2.dp) else CircleShape
-    Row(
+    LevyraAdaptiveSectionHeader(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = inset)
             .heightIn(min = 48.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Box(
-            modifier = Modifier.size(24.dp).clip(avatarShape).background(LevyraPanelSoft),
-            contentAlignment = Alignment.Center
-        ) {
-            if (ui.avatarUrl.isNotBlank()) {
-                AsyncImage(
-                    model = ui.avatarUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
+        gap = 10.dp,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(
+                    modifier = Modifier.size(24.dp).clip(avatarShape).background(LevyraPanelSoft),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (ui.avatarUrl.isNotBlank()) {
+                        AsyncImage(
+                            model = ui.avatarUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
+                Text(
+                    text = listOf(YOUTUBE_MUSIC_LABEL, ui.accountName).filter(String::isNotBlank).joinToString(" · ")
+                        .let { if (upper) it.uppercase(LocalLocale.current.platformLocale) else it },
+                    color = LevyraMuted,
+                    style = MaterialTheme.typography.labelMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .semantics { contentDescription = listOf(copy.source, ui.accountName).filter(String::isNotBlank).joinToString(", ") }
                 )
             }
+        },
+        action = {
+            IconButton(onClick = ui.onRefresh, enabled = !ui.loading) {
+                Icon(Icons.Rounded.Refresh, contentDescription = copy.refresh, tint = LevyraMuted)
+            }
+            Spacer(Modifier.width(10.dp))
+            LevyraSectionShowAll(onClick = ui.onShowAll)
         }
-        Text(
-            text = listOf(YOUTUBE_MUSIC_LABEL, ui.accountName).filter(String::isNotBlank).joinToString(" · ")
-                .let { if (upper) it.uppercase(LocalLocale.current.platformLocale) else it },
-            color = LevyraMuted,
-            style = MaterialTheme.typography.labelMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .weight(1f)
-                .semantics { contentDescription = listOf(copy.source, ui.accountName).filter(String::isNotBlank).joinToString(", ") }
-        )
-        IconButton(onClick = ui.onRefresh, enabled = !ui.loading) {
-            Icon(Icons.Rounded.Refresh, contentDescription = copy.refresh, tint = LevyraMuted)
-        }
-        LevyraSectionShowAll(onClick = ui.onShowAll)
-    }
+    )
 }
 
 @Composable

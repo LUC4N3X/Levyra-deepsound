@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.ui
 
 import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
+import com.luc4n3x.levyra.ui.components.LevyraAdaptiveSectionHeader
+import com.luc4n3x.levyra.ui.components.LocalSectionActionIconOnly
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,6 +22,8 @@ import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -192,45 +196,70 @@ internal fun YouTubeMusicSectionHeader(
     thumbnailUrl: String = "",
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
-    onOpen: (() -> Unit)? = null
+    onOpen: (() -> Unit)? = null,
+    actionIcon: ImageVector? = Icons.Rounded.PlayArrow
 ) {
-    Row(
-        modifier.fillMaxWidth().padding(horizontal = YouTubeMusicDesign.gutter).heightIn(min = 48.dp)
+    val hasAction = actionLabel != null && onAction != null
+    LevyraAdaptiveSectionHeader(
+        modifier = modifier.fillMaxWidth().padding(horizontal = YouTubeMusicDesign.gutter).heightIn(min = 48.dp)
             .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (thumbnailUrl.isNotBlank()) {
-            Box(Modifier.size(40.dp).clip(CircleShape).background(YouTubeMusicDesign.placeholder)) {
-                StableRemoteArtwork(thumbnailUrl, null, Modifier.fillMaxSize(), ContentScale.Crop)
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (thumbnailUrl.isNotBlank()) {
+                    Box(Modifier.size(40.dp).clip(CircleShape).background(YouTubeMusicDesign.placeholder)) {
+                        StableRemoteArtwork(thumbnailUrl, null, Modifier.fillMaxSize(), ContentScale.Crop)
+                    }
+                    Spacer(Modifier.width(16.dp))
+                }
+                Column {
+                    if (strapline.isNotBlank()) {
+                        Text(
+                            strapline.uppercase(), color = YouTubeMusicDesign.textTranslucent, style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    Text(
+                        title, color = YouTubeMusicDesign.text, style = MaterialTheme.typography.headlineMedium,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() }
+                    )
+                }
             }
-            Spacer(Modifier.width(16.dp))
-        }
-        Column(Modifier.weight(1f)) {
-            if (strapline.isNotBlank()) {
-                Text(
-                    strapline.uppercase(), color = YouTubeMusicDesign.textTranslucent, style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis
-                )
+        },
+        action = if (hasAction || onOpen != null) {
+            {
+                if (actionLabel != null && onAction != null) YouTubeMusicHeaderAction(actionLabel, actionIcon, onAction)
+                if (onOpen != null) YouTubeMusicIconAction(Icons.AutoMirrored.Rounded.KeyboardArrowRight, title, onOpen, iconSize = 28.dp)
             }
-            Text(
-                title, color = YouTubeMusicDesign.text, style = MaterialTheme.typography.headlineMedium,
-                maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() }
-            )
+        } else {
+            null
         }
-        if (actionLabel != null && onAction != null) {
+    )
+}
+
+@Composable
+private fun YouTubeMusicHeaderAction(label: String, icon: ImageVector?, onClick: () -> Unit) {
+    if (icon != null && LocalSectionActionIconOnly.current) {
+        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
             Box(
-                Modifier.padding(start = 12.dp).height(36.dp).clip(YouTubeMusicDesign.pillShape)
+                Modifier.size(36.dp).clip(YouTubeMusicDesign.pillShape)
                     .border(1.dp, YouTubeMusicDesign.outline, YouTubeMusicDesign.pillShape)
-                    .levyraPressable(onClick = onAction, role = Role.Button, pressedScale = LevyraPressScale.Control)
-                    .padding(horizontal = 16.dp),
+                    .levyraPressable(onClick = onClick, onClickLabel = label, role = Role.Button, pressedScale = LevyraPressScale.Control)
+                    .semantics { contentDescription = label },
                 contentAlignment = Alignment.Center
             ) {
-                Text(actionLabel, color = YouTubeMusicDesign.text, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+                Icon(icon, contentDescription = null, tint = YouTubeMusicDesign.text, modifier = Modifier.size(20.dp))
             }
         }
-        if (onOpen != null) {
-            YouTubeMusicIconAction(Icons.AutoMirrored.Rounded.KeyboardArrowRight, title, onOpen, iconSize = 28.dp)
-        }
+        return
+    }
+    Box(
+        Modifier.height(36.dp).clip(YouTubeMusicDesign.pillShape)
+            .border(1.dp, YouTubeMusicDesign.outline, YouTubeMusicDesign.pillShape)
+            .levyraPressable(onClick = onClick, role = Role.Button, pressedScale = LevyraPressScale.Control)
+            .padding(horizontal = 16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(label, color = YouTubeMusicDesign.text, style = MaterialTheme.typography.labelMedium, maxLines = 1)
     }
 }
 

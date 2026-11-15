@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.ui
 
 import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
+import com.luc4n3x.levyra.ui.components.LevyraAdaptiveSectionHeader
+import com.luc4n3x.levyra.ui.components.LocalSectionActionIconOnly
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,6 +27,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
@@ -124,14 +127,17 @@ internal fun QobuzSectionHeader(
     modifier: Modifier = Modifier
 ) {
     Column(modifier.fillMaxWidth().padding(horizontal = QobuzDesign.gutter)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(title, style = QobuzText.sectionTitle, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f).semantics { heading() })
-            if (onSeeAll != null) {
-                Spacer(Modifier.width(12.dp))
-                QobuzSeeAll(seeAllLabel, onSeeAll)
+        LevyraAdaptiveSectionHeader(
+            title = {
+                Text(title, style = QobuzText.sectionTitle, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.semantics { heading() })
+            },
+            action = if (onSeeAll != null) {
+                { QobuzSeeAll(seeAllLabel, onSeeAll) }
+            } else {
+                null
             }
-        }
+        )
         if (!baseline.isNullOrBlank()) {
             Spacer(Modifier.height(6.dp))
             Text(baseline, style = QobuzText.baseline)
@@ -141,18 +147,25 @@ internal fun QobuzSectionHeader(
 
 @Composable
 private fun QobuzSeeAll(label: String, onClick: () -> Unit) {
+    val iconOnly = LocalSectionActionIconOnly.current
     Row(
         Modifier
             .heightIn(min = 48.dp)
-            .clickable(role = Role.Button, onClick = onClick),
-        verticalAlignment = Alignment.CenterVertically
+            .then(if (iconOnly) Modifier.widthIn(min = 48.dp) else Modifier)
+            .clickable(onClickLabel = label, role = Role.Button, onClick = onClick)
+            .then(if (iconOnly) Modifier.semantics { contentDescription = label } else Modifier),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
     ) {
         Row(
             Modifier.height(QobuzDesign.seeAllHeight).clip(QobuzDesign.buttonShape).background(QobuzDesign.surfaceSecondary)
-                .border(1.dp, QobuzDesign.border, QobuzDesign.buttonShape).padding(start = 10.dp, end = 6.dp),
+                .border(1.dp, QobuzDesign.border, QobuzDesign.buttonShape)
+                .padding(start = if (iconOnly) 6.dp else 10.dp, end = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(label, style = MaterialTheme.typography.labelLarge.copy(fontSize = 15.sp, fontWeight = FontWeight.Medium), color = QobuzDesign.textPrimary)
+            if (!iconOnly) {
+                Text(label, style = MaterialTheme.typography.labelLarge.copy(fontSize = 15.sp, fontWeight = FontWeight.Medium), color = QobuzDesign.textPrimary, maxLines = 1)
+            }
             Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = QobuzDesign.textPrimary, modifier = Modifier.size(18.dp))
         }
     }
@@ -308,7 +321,10 @@ internal fun QobuzArtistCard(artist: ArtistHit, copy: QobuzSkinCopy, followed: B
             ) {
                 val tint = if (followed) QobuzDesign.buttonPrimaryContent else QobuzDesign.textPrimary
                 Icon(if (followed) Icons.Rounded.HowToReg else Icons.Rounded.PersonAdd, null, tint = tint, modifier = Modifier.size(18.dp))
-                Text(if (followed) copy.following else copy.follow, style = MaterialTheme.typography.labelLarge.copy(fontSize = 15.sp, fontWeight = FontWeight.Medium), color = tint)
+                Text(
+                    if (followed) copy.following else copy.follow, style = MaterialTheme.typography.labelLarge.copy(fontSize = 15.sp, fontWeight = FontWeight.Medium), color = tint,
+                    maxLines = 1, autoSize = TextAutoSize.StepBased(minFontSize = 11.sp, maxFontSize = 15.sp), modifier = Modifier.weight(1f, fill = false)
+                )
             }
         }
     }

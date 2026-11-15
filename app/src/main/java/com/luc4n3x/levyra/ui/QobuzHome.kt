@@ -824,7 +824,7 @@ internal fun QobuzHomeEntry(
             languageCode = state.languageCode,
             addToQueue = viewModel::addToQueue
         ),
-        extras = QobuzHomeExtras(state.exploreCategories, state.followedArtistKeys, state.selectedChartId, pinnedCards),
+        extras = QobuzHomeExtras(rememberCategoriesWithDecades(state.exploreCategories, strings.code), state.followedArtistKeys, state.selectedChartId, pinnedCards),
         homeListState = homeListState,
         homeBottomInset = homeBottomInset,
         homeRefreshing = homeRefreshing,

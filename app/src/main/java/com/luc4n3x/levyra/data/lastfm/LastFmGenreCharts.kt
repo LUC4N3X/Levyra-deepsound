@@ -3,8 +3,10 @@ package com.luc4n3x.levyra.data.lastfm
 import android.content.Context
 import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.TrackJson
+import com.luc4n3x.levyra.data.YoutubeMusicDecades
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatcher
+import com.luc4n3x.levyra.domain.ExploreCategory
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -114,6 +116,17 @@ internal object LastFmGenreTags {
     )
 
     fun forZone(zoneId: String): List<String> = zoneTags[zoneId].orEmpty()
+
+    fun forCategory(category: ExploreCategory): List<String> =
+        decadeOf(category)?.let { decade -> listOfNotNull(decadeTags[decade]) } ?: forCategoryTitle(category.title)
+
+    fun decadeOf(category: ExploreCategory): Int? =
+        category.takeIf { it.sectionIndex < 0 }?.let { YoutubeMusicDecades.decadeOf(it.title) }?.takeIf { it in decadeTags }
+
+    private val decadeTags = mapOf(
+        1950 to "50s", 1960 to "60s", 1970 to "70s", 1980 to "80s",
+        1990 to "90s", 2000 to "00s", 2010 to "2010s", 2020 to "2020s"
+    )
 
     fun forCategoryTitle(title: String): List<String> {
         val text = normalize(title)

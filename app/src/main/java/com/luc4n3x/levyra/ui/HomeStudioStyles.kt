@@ -135,8 +135,10 @@ import com.luc4n3x.levyra.ui.components.levyraMarquee
 import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
 import com.luc4n3x.levyra.ui.components.LevyraPlayingIndicator
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
+import com.luc4n3x.levyra.ui.components.LevyraAdaptiveSectionHeader
 import com.luc4n3x.levyra.ui.components.LevyraSectionHeader
 import com.luc4n3x.levyra.ui.components.LevyraSectionPlayAll
+import com.luc4n3x.levyra.ui.components.LocalSectionActionIconOnly
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.components.rememberLevyraPlayMorphShape
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
@@ -266,7 +268,7 @@ internal fun rememberArtistShelfItems(artists: List<ArtistHit>, onOpen: (ArtistH
             StudioShelfItem(
                 key = "$index-${artist.browseId.ifBlank { artist.name }}",
                 title = artist.name,
-                subtitle = artistAudienceLabel(artist.subscribers, strings.code, strings.monthlyListeners),
+                subtitle = artistAudienceLabel(artist, strings.code, strings.monthlyListeners),
                 current = false,
                 round = true,
                 artwork = { modifier, highRes -> StudioRemoteArtwork(artist.thumbnailUrl, artist.name, modifier, highRes) },
@@ -398,60 +400,64 @@ internal fun StudioSectionHeader(
         }
         HomeStyle.Editorial -> Column(modifier = headerModifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f).semantics { heading() }) {
-                    if (featured) {
+            LevyraAdaptiveSectionHeader(
+                title = {
+                    Column(modifier = Modifier.semantics { heading() }) {
+                        if (featured) {
+                            Text(
+                                text = copy.featured.uppercase(),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                         Text(
-                            text = copy.featured.uppercase(),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary
+                            text = title,
+                            style = MaterialTheme.typography.headlineSmall.copy(fontFamily = FontFamily.Serif),
+                            color = LevyraText,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.headlineSmall.copy(fontFamily = FontFamily.Serif),
-                        color = LevyraText,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                onPlayAll?.let { action ->
-                    TextButton(onClick = action) { Text(strings.playAll) }
-                }
-            }
+                },
+                gap = 0.dp,
+                action = if (onPlayAll != null) { { StudioPlayAllButton(style, strings.playAll, onPlayAll) } } else null
+            )
         }
-        else -> Row(
+        else -> LevyraAdaptiveSectionHeader(
             modifier = headerModifier.heightIn(min = 48.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (style == HomeStyle.Flow) {
-                Box(
-                    modifier = Modifier
-                        .padding(end = 12.dp)
-                        .width(4.dp)
-                        .height(32.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary)
-                )
-            }
-            Column(modifier = Modifier.weight(1f).semantics { heading() }) {
-                if (featured) {
-                    Text(
-                        text = copy.featured,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (style == HomeStyle.Flow) {
+                        Box(
+                            modifier = Modifier
+                                .padding(end = 12.dp)
+                                .width(4.dp)
+                                .height(32.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primary)
+                        )
+                    }
+                    Column(modifier = Modifier.semantics { heading() }) {
+                        if (featured) {
+                            Text(
+                                text = copy.featured,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Text(
+                            text = title,
+                            style = studioSectionTitleStyle(style),
+                            color = LevyraText,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
-                Text(
-                    text = title,
-                    style = studioSectionTitleStyle(style),
-                    color = LevyraText,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            onPlayAll?.let { action -> StudioPlayAllButton(style, strings.playAll, action) }
-        }
+            },
+            gap = 0.dp,
+            action = if (onPlayAll != null) { { StudioPlayAllButton(style, strings.playAll, onPlayAll) } } else null
+        )
     }
 }
 
@@ -466,7 +472,13 @@ private fun StudioPlayAllButton(style: HomeStyle, label: String, onClick: () -> 
         ) {
             Icon(Icons.Rounded.PlayArrow, contentDescription = label)
         }
-        HomeStyle.Flow -> TextButton(onClick = onClick) { Text(label) }
+        HomeStyle.Flow, HomeStyle.Editorial -> if (LocalSectionActionIconOnly.current) {
+            IconButton(onClick = onClick) {
+                Icon(Icons.Rounded.PlayArrow, contentDescription = label, tint = MaterialTheme.colorScheme.primary)
+            }
+        } else {
+            TextButton(onClick = onClick) { Text(label, maxLines = 1) }
+        }
         HomeStyle.Immersive -> FilledIconButton(onClick = onClick, modifier = Modifier.size(48.dp)) {
             Icon(Icons.Rounded.PlayArrow, contentDescription = label)
         }
@@ -2438,31 +2450,36 @@ private fun StudioExpressiveMaxChart(
 ) {
     val scheme = MaterialTheme.colorScheme
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        Row(
+        LevyraAdaptiveSectionHeader(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(54.dp)
-                    .clip(MaterialShapes.SoftBurst.toShape())
-                    .background(scheme.primaryContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("50", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black), color = scheme.onPrimaryContainer)
+            gap = 10.dp,
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .size(54.dp)
+                            .clip(MaterialShapes.SoftBurst.toShape())
+                            .background(scheme.primaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("50", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black), color = scheme.onPrimaryContainer)
+                    }
+                    Column {
+                        Text(title, style = MaterialTheme.typography.headlineSmallEmphasized, color = LevyraText, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() })
+                        Text("THE SHAPE OF NOW", style = MaterialTheme.typography.labelSmall, color = scheme.primary, letterSpacing = 1.8.sp)
+                    }
+                }
+            },
+            action = {
+                FilledTonalIconButton(onClick = onChangeMarket, shapes = IconButtonDefaults.shapes()) {
+                    Icon(Icons.Rounded.Public, contentDescription = changeMarketLabel)
+                }
+                Spacer(Modifier.width(10.dp))
+                FilledIconButton(onClick = onPlayAll, shapes = IconButtonDefaults.shapes()) {
+                    Icon(Icons.Rounded.PlayArrow, contentDescription = playAllLabel)
+                }
             }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.headlineSmallEmphasized, color = LevyraText, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() })
-                Text("THE SHAPE OF NOW", style = MaterialTheme.typography.labelSmall, color = scheme.primary, letterSpacing = 1.8.sp)
-            }
-            FilledTonalIconButton(onClick = onChangeMarket, shapes = IconButtonDefaults.shapes()) {
-                Icon(Icons.Rounded.Public, contentDescription = changeMarketLabel)
-            }
-            FilledIconButton(onClick = onPlayAll, shapes = IconButtonDefaults.shapes()) {
-                Icon(Icons.Rounded.PlayArrow, contentDescription = playAllLabel)
-            }
-        }
+        )
         StudioExpressiveMaxChartBody(tracks, StudioChartRowState(currentId, isPlaying, onPlay))
     }
 }
@@ -2477,31 +2494,34 @@ private fun StudioChartHeader(
     onPlayAll: () -> Unit,
     onChangeMarket: () -> Unit
 ) {
-    Row(
+    LevyraAdaptiveSectionHeader(
         modifier = Modifier.fillMaxWidth().padding(horizontal = inset),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Text(
-            text = title,
-            style = when (style) {
-                HomeStyle.Editorial -> MaterialTheme.typography.headlineMedium.copy(fontFamily = FontFamily.Serif)
-                HomeStyle.Immersive -> MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black)
-                HomeStyle.Minimal -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Medium)
-                else -> MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
-            },
-            color = LevyraText,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f).semantics { heading() }
-        )
-        IconButton(onClick = onChangeMarket) {
-            Icon(Icons.Rounded.Public, contentDescription = changeMarketLabel, tint = LevyraText)
+        gap = 8.dp,
+        title = {
+            Text(
+                text = title,
+                style = when (style) {
+                    HomeStyle.Editorial -> MaterialTheme.typography.headlineMedium.copy(fontFamily = FontFamily.Serif)
+                    HomeStyle.Immersive -> MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black)
+                    HomeStyle.Minimal -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Medium)
+                    else -> MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
+                },
+                color = LevyraText,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.semantics { heading() }
+            )
+        },
+        action = {
+            IconButton(onClick = onChangeMarket) {
+                Icon(Icons.Rounded.Public, contentDescription = changeMarketLabel, tint = LevyraText)
+            }
+            Spacer(Modifier.width(8.dp))
+            FilledIconButton(onClick = onPlayAll, modifier = Modifier.size(48.dp)) {
+                Icon(Icons.Rounded.PlayArrow, contentDescription = playAllLabel)
+            }
         }
-        FilledIconButton(onClick = onPlayAll, modifier = Modifier.size(48.dp)) {
-            Icon(Icons.Rounded.PlayArrow, contentDescription = playAllLabel)
-        }
-    }
+    )
 }
 
 @Composable
@@ -3872,45 +3892,56 @@ private fun MxSectionHeader(
     modifier: Modifier
 ) {
     val scheme = MaterialTheme.colorScheme
-    Row(
+    LevyraAdaptiveSectionHeader(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = spec.inset)
             .heightIn(min = 48.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(28.dp)
-                .clip(MaterialShapes.Sunny.toShape())
-                .background(if (featured) scheme.tertiary else scheme.secondaryContainer)
-        )
-        Column(modifier = Modifier.weight(1f).semantics { heading() }) {
-            if (featured) {
-                Text(text = featuredLabel, style = MaterialTheme.typography.labelLargeEmphasized, color = scheme.tertiary)
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(MaterialShapes.Sunny.toShape())
+                        .background(if (featured) scheme.tertiary else scheme.secondaryContainer)
+                )
+                Column(modifier = Modifier.semantics { heading() }) {
+                    if (featured) {
+                        Text(text = featuredLabel, style = MaterialTheme.typography.labelLargeEmphasized, color = scheme.tertiary)
+                    }
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleLargeEmphasized,
+                        color = LevyraText,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLargeEmphasized,
-                color = LevyraText,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        onPlayAll?.let { action ->
-            FilledTonalButton(
-                onClick = action,
-                shapes = ButtonDefaults.shapes(),
-                contentPadding = PaddingValues(horizontal = 14.dp),
-                modifier = Modifier.heightIn(min = 40.dp)
-            ) {
-                Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(playAllLabel, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        },
+        action = if (onPlayAll != null) {
+            {
+                if (LocalSectionActionIconOnly.current) {
+                    FilledTonalIconButton(onClick = onPlayAll, shapes = IconButtonDefaults.shapes(), modifier = Modifier.size(48.dp)) {
+                        Icon(Icons.Rounded.PlayArrow, contentDescription = playAllLabel)
+                    }
+                } else {
+                    FilledTonalButton(
+                        onClick = onPlayAll,
+                        shapes = ButtonDefaults.shapes(),
+                        contentPadding = PaddingValues(horizontal = 14.dp),
+                        modifier = Modifier.heightIn(min = 40.dp)
+                    ) {
+                        Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(playAllLabel, maxLines = 1)
+                    }
+                }
             }
+        } else {
+            null
         }
-    }
+    )
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)

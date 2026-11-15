@@ -494,7 +494,8 @@ data class ArtistHit(
     val accentStart: Int,
     val accentEnd: Int,
     val browseId: String = "",
-    val officialArtwork: Boolean = false
+    val officialArtwork: Boolean = false,
+    val audienceIsSubscribers: Boolean = false
 )
 
 data class AlbumHit(
