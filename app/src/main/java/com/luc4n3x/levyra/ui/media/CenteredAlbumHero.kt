@@ -1,5 +1,9 @@
 package com.luc4n3x.levyra.ui.media
 
+import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
+import androidx.compose.animation.core.snap
+import com.luc4n3x.levyra.ui.artwork.ArtworkBackdropWash
+import com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.shape.CircleShape
@@ -71,7 +75,7 @@ internal fun CenteredAlbumHero(
     val gutter = immersiveMediaGutter(viewportWidth)
     val heroHeight by animateDpAsState(
         centeredHeroHeight(viewportWidth, viewportHeight, artworkAspect),
-        tween(LevyraPlayerDesign.PaletteMillis),
+        if (LocalAnimationsEnabled.current) tween(LevyraPlayerDesign.PaletteMillis) else snap(),
         label = "album-hero-height"
     )
     val fade = remember(colors.base) {
@@ -229,8 +233,16 @@ private val RingActionSize: Dp = 52.dp
 private val PrimaryActionSize: Dp = 72.dp
 private val PrimaryActionPressedCorner: Dp = 24.dp
 
+internal fun albumUsesCenteredHero(split: Boolean): Boolean = LevyraIsDefaultSkin && !split
+
 @Composable
-internal fun CenteredAlbumDownloadAction(label: String, enabled: Boolean, onDownload: () -> Unit) {
+internal fun AlbumArtworkWash(visible: Boolean, artworkUrl: String, tint: Color, base: Color, modifier: Modifier = Modifier) {
+    if (visible) ArtworkBackdropWash(artworkUrl = artworkUrl, tint = tint, base = base, modifier = modifier)
+}
+
+@Composable
+internal fun CenteredAlbumDownloadAction(hasAlbum: Boolean, centered: Boolean, label: String, enabled: Boolean, onDownload: () -> Unit) {
+    if (!hasAlbum || !centered) return
     PlayerGlassIconButton(
         icon = Icons.Rounded.Download,
         contentDescription = label,

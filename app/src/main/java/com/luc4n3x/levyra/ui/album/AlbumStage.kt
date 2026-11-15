@@ -23,8 +23,8 @@ internal fun albumStageColors(primary: Color, secondary: Color, lightTheme: Bool
     return immersiveMediaColors(primary, secondary, lightTheme, LevyraIsNocturne)
 }
 
-internal fun albumPageColors(primary: Color, secondary: Color, lightTheme: Boolean, coverTint: Boolean): AlbumStageColors =
-    if (coverTint && !lightTheme) albumCoverStageColors(primary, secondary) else albumStageColors(primary, secondary, lightTheme)
+internal fun albumPageColors(primary: Color, secondary: Color, lightTheme: Boolean, defaultSkin: Boolean, pureBlack: Boolean): AlbumStageColors =
+    if (defaultSkin && !pureBlack && !lightTheme) albumCoverStageColors(primary, secondary) else albumStageColors(primary, secondary, lightTheme)
 
 internal fun albumCoverStageColors(primary: Color, secondary: Color): AlbumStageColors {
     val field = coverFieldTone(primary, AlbumCoverFieldMaxLuminance)

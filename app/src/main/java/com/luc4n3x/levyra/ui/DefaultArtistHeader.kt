@@ -1,6 +1,11 @@
 package com.luc4n3x.levyra.ui
 
-import com.luc4n3x.levyra.ui.theme.Nocturne78Palette
+import com.luc4n3x.levyra.ui.components.levyraMarquee
+import androidx.compose.animation.core.snap
+import com.luc4n3x.levyra.domain.Track
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.foundation.lazy.LazyListScope
 import com.luc4n3x.levyra.ui.album.coverFieldTone
 import com.luc4n3x.levyra.ui.media.ImmersiveTopBarButtonSize
 import com.luc4n3x.levyra.ui.media.ImmersiveTopBarButtonFill
@@ -15,7 +20,6 @@ import android.net.Uri
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -110,21 +114,81 @@ internal fun defaultArtistHeroHeight(width: Dp, height: Dp, canvasAspect: Float?
 }
 
 internal fun artistAtmosphereTargets(
-    nocturne: Boolean,
     defaultSkin: Boolean,
     settledTone: Color?,
     neutralTone: Color,
     paletteStart: Color,
     paletteEnd: Color
 ): Pair<Color, Color> {
-    if (nocturne) return Nocturne78Palette.black to Nocturne78Palette.cyan
     val source = if (defaultSkin) settledTone ?: neutralTone else null
     val pair = harmonizePlayerAccents(source ?: paletteStart, source ?: paletteEnd)
     return playerAmbienceOf(pair.primary, pair.secondary).tint to playerHighlightOf(pair.primary, pair.secondary)
 }
 
-internal fun defaultArtistPageBase(tone: Color?, neutral: Color): Color =
-    tone?.let { coverFieldTone(it, DefaultArtistFieldMaxLuminance) } ?: neutral
+internal fun defaultArtistPageBase(tone: Color?, defaultPage: Boolean, lightTheme: Boolean, pureBlack: Boolean, neutral: Color): Color =
+    if (tone != null && defaultPage && !lightTheme && !pureBlack) coverFieldTone(tone, DefaultArtistFieldMaxLuminance) else neutral
+
+internal fun defaultArtistArtworkHeightPx(defaultPage: Boolean, width: Dp, height: Dp, density: Density, heroHeightPx: Float): Float =
+    if (defaultPage) with(density) { defaultArtistHeroHeight(width, height, null).toPx() } else heroHeightPx
+
+internal fun LazyListScope.defaultArtistAboutItem(defaultPage: Boolean, artist: ArtistProfile, imageUrl: String, accent: Color) {
+    val biography = artist.biography
+    if (!defaultPage || !artist.hasBio || biography == null) return
+    item(key = "artist-about", contentType = "artist-about") {
+        DefaultArtistAbout(artist, biography, imageUrl, accent, Modifier.padding(top = 8.dp))
+    }
+}
+
+@Composable
+internal fun DefaultArtistHeroSection(
+    artist: ArtistProfile,
+    artworkUrl: String,
+    height: Dp,
+    pageBase: Color,
+    highlight: Color,
+    motionArtwork: MotionArtwork?,
+    animationsEnabled: Boolean,
+    motionArtworkEnabled: Boolean,
+    canvasQuality: LevyraCanvasQuality,
+    scroll: () -> Float,
+    collapse: () -> Float,
+    awaitingArtwork: Boolean,
+    isFollowed: Boolean,
+    canvasToneSettled: Boolean,
+    onVideoAspect: (Float?) -> Unit,
+    onCanvasTone: (Color) -> Unit,
+    onPlay: (Track) -> Unit,
+    onPlayAll: (List<Track>) -> Unit,
+    onToggleFollow: () -> Unit,
+    onOpenRelease: (ArtistRelease, String) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        DefaultArtistHero(
+            profile = artist,
+            artworkUrl = artworkUrl,
+            height = height,
+            base = pageBase,
+            motionArtwork = motionArtwork,
+            motionEnabled = animationsEnabled && motionArtworkEnabled,
+            canvasQuality = canvasQuality,
+            scroll = scroll,
+            collapse = collapse,
+            awaitingArtwork = awaitingArtwork,
+            onVideoAspect = onVideoAspect,
+            onCanvasTone = { tone -> if (tone != null && !canvasToneSettled) onCanvasTone(tone) }
+        )
+        DefaultArtistSummary(
+            profile = artist,
+            isFollowed = isFollowed,
+            base = lerp(pageBase, Color.White, 0.05f),
+            highlight = highlight,
+            onPlay = artist.topSongs.firstOrNull()?.let { track -> { onPlay(track) } },
+            onShuffle = artist.topSongs.takeIf { it.size > 1 }?.let { songs -> { onPlayAll(songs.shuffled()) } },
+            onToggleFollow = onToggleFollow,
+            onOpenRelease = onOpenRelease
+        )
+    }
+}
 
 @Composable
 internal fun SettleDefaultArtistTone(key: Any?, enabled: Boolean, photoReady: Boolean, settled: () -> Boolean, onSettle: () -> Unit) {
@@ -139,14 +203,16 @@ internal fun SettleDefaultArtistTone(key: Any?, enabled: Boolean, photoReady: Bo
 
 @Composable
 internal fun DefaultArtistTopActions(
-    identity: String,
+    visible: Boolean,
+    profile: ArtistProfile?,
     isExcluded: Boolean,
-    onToggleExclude: () -> Unit,
+    onToggleExclude: (String, String) -> Unit,
     isPinnedToHome: Boolean,
-    onTogglePinToHome: () -> Unit
+    onTogglePinToHome: (ArtistProfile) -> Unit
 ) {
+    if (!visible || profile == null) return
     val strings = LocalLevyraStrings.current
-    var expanded by remember(identity) { mutableStateOf(false) }
+    var expanded by remember(profile.browseId, profile.name) { mutableStateOf(false) }
     Box {
         PlayerGlassIconButton(
             icon = Icons.Rounded.MoreVert,
@@ -162,11 +228,19 @@ internal fun DefaultArtistTopActions(
             expanded = expanded,
             onDismiss = { expanded = false },
             isExcluded = isExcluded,
-            onToggleExclude = onToggleExclude,
+            onToggleExclude = { onToggleExclude(profile.browseId, profile.name) },
             isPinnedToHome = isPinnedToHome,
-            onTogglePinToHome = onTogglePinToHome
+            onTogglePinToHome = { onTogglePinToHome(profile) }
         )
     }
+}
+
+internal fun defaultArtistHeroHeightOr(defaultPage: Boolean, width: Dp, height: Dp, canvasAspect: Float?, fallback: Dp): Dp =
+    if (defaultPage) defaultArtistHeroHeight(width, height, canvasAspect) else fallback
+
+@Composable
+internal fun ArtistHeroSlot(defaultPage: Boolean, defaultContent: @Composable () -> Unit, content: @Composable () -> Unit) {
+    if (defaultPage) defaultContent() else content()
 }
 
 internal fun artistCountLabel(label: String, count: Int, more: Boolean): String =
@@ -187,7 +261,7 @@ internal fun DefaultArtistHero(
     onVideoAspect: (Float?) -> Unit,
     onCanvasTone: (Color?) -> Unit
 ) {
-    val animatedHeight by animateDpAsState(height, tween(LevyraPlayerDesign.PaletteMillis), label = "artist-hero-height")
+    val animatedHeight by animateDpAsState(height, if (LocalAnimationsEnabled.current) tween(LevyraPlayerDesign.PaletteMillis) else snap(), label = "artist-hero-height")
     val fade = remember(base) {
         Brush.verticalGradient(
             0f to Color.Black.copy(alpha = 0.34f),
@@ -290,7 +364,7 @@ internal fun DefaultArtistSummary(
                 style = LevyraType.metadata.copy(fontSize = 14.sp),
                 textAlign = TextAlign.Center,
                 maxLines = 1,
-                modifier = Modifier.padding(top = 2.dp).basicMarquee()
+                modifier = Modifier.padding(top = 2.dp).levyraMarquee()
             )
         }
         Spacer(Modifier.height(18.dp))

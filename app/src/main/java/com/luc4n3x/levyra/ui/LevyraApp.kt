@@ -1,7 +1,8 @@
 @file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.ui
 
-import com.luc4n3x.levyra.ui.components.LevyraShortShuffleLabel
+import com.luc4n3x.levyra.ui.media.albumUsesCenteredHero
+import com.luc4n3x.levyra.ui.media.AlbumArtworkWash
 import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import com.luc4n3x.levyra.ui.theme.*
 import com.luc4n3x.levyra.domain.playableTrackCount
@@ -4779,7 +4780,7 @@ private fun AlbumOverlay(
     val nocturne = LevyraIsNocturne
     val albumPureBlack = LevyraIsPureBlack
     val stageTarget = remember(albumPalette, lightTheme, nocturne, albumPureBlack) {
-        albumPageColors(Color(albumPalette.start), Color(albumPalette.end), lightTheme, coverTint = LevyraIsDefaultSkin && !albumPureBlack)
+        albumPageColors(Color(albumPalette.start), Color(albumPalette.end), lightTheme, LevyraIsDefaultSkin, albumPureBlack)
     }
     val stage = animatedImmersiveMediaColors(
         target = stageTarget,
@@ -4824,7 +4825,7 @@ private fun AlbumOverlay(
         }
     }
     val appleTail = state.albumDetail?.takeIf { LevyraIsAppleMusic && tracks.isNotEmpty() && (it.footer.isNotBlank() || it.relatedShelves.isNotEmpty()) }
-    val suggestionShelves = detail?.suggestionShelves.orEmpty().takeIf { tracks.isNotEmpty() && albumSuggestionsSupported }.orEmpty()
+    val suggestionShelves = albumSuggestionShelvesFor(detail, tracks)
     val albumTrackItems: LazyListScope.(Dp) -> Unit = { gutter ->
         when {
             tracksLoading -> items(
@@ -4887,9 +4888,7 @@ private fun AlbumOverlay(
                 if (related.playlist) onOpenRelatedPlaylist(item.toApplePlaylistHit()) else onOpenRelatedAlbum(item.toArtistAlbumHit(related.subtitle))
             })
         }
-        if (suggestionShelves.isNotEmpty()) item(key = "album-suggestions", contentType = "album-suggestions") {
-            AlbumSuggestionsTail(suggestionShelves, gutter, stage, onOpenRelatedAlbum)
-        }
+        albumSuggestionsItem(suggestionShelves, gutter, stage, onOpenRelatedAlbum)
     }
 
     BoxWithConstraints(
@@ -4899,7 +4898,7 @@ private fun AlbumOverlay(
             .windowInsetsPadding(LevyraHorizontalSafeInsets)
     ) {
         val split = resolvePlayerPane(maxWidth.value, maxHeight.value) == LevyraPlayerPane.SideBySide
-        val centeredHero = LevyraIsDefaultSkin && !split
+        val centeredHero = albumUsesCenteredHero(split)
         val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
         val topBarHeight = statusTop + ALBUM_TOP_BAR_HEIGHT
         val topBarPx = with(density) { topBarHeight.toPx() }
@@ -4933,7 +4932,8 @@ private fun AlbumOverlay(
             }
             else -> {
                 val gutter = albumContentGutter(maxWidth)
-                if (!centeredHero) ArtworkBackdropWash(
+                AlbumArtworkWash(
+                    visible = !centeredHero,
                     artworkUrl = cover,
                     tint = stage.fieldTop,
                     base = stage.base,
@@ -5072,7 +5072,7 @@ private fun AlbumOverlay(
             backLabel = strings.back,
             onBack = onClose,
             actions = {
-                if (album != null && centeredHero) CenteredAlbumDownloadAction(strings.download, tracks.isNotEmpty(), onDownloadAlbum)
+                CenteredAlbumDownloadAction(hasAlbum = album != null, centered = centeredHero, label = strings.download, enabled = tracks.isNotEmpty(), onDownload = onDownloadAlbum)
                 if (album != null) {
                     Box {
                         PlayerGlassIconButton(
@@ -5371,20 +5371,12 @@ private fun AlbumTrackRow(
     val showArtist = remember(track.artist, albumArtist, spotify) { albumTrackShowsArtist(track.artist, albumArtist, spotify) }
     val subtitle = albumTrackSubtitle(track.artist.takeIf { showArtist }.orEmpty(), albumTrackDownloadStatus(presentation, strings))
     val duration = albumTrackDuration(track, spotify)
-    val flush = LevyraIsDefaultSkin
-    val divider = stage.hairline
-    val dividerInset = with(LocalDensity.current) { (LevyraCardDesign.RowHorizontalPadding + ALBUM_TRACK_INDEX_WIDTH + LevyraPlayerDesign.SpaceMd).toPx() }
-    val showDivider = flush && index < count - 1 && !presentation.isCurrent && !presentation.selected
     Row(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 1.dp)
             .heightIn(min = ALBUM_TRACK_ROW_HEIGHT)
-            .clip(if (flush) ALBUM_FLUSH_ROW_SHAPE else levyraGroupedListShape(index, count))
-            .background(if (flush) albumFlushRowBackground(presentation, stage) else albumTrackRowBackground(presentation, stage, spotify))
-            .drawBehind {
-                if (showDivider) drawLine(divider, Offset(dividerInset, size.height - 0.5f), Offset(size.width, size.height - 0.5f), strokeWidth = 1f)
-            }
+            .albumTrackRowSurface(index, count, presentation, stage, spotify)
             .semantics { this.selected = presentation.selected }
             .combinedClickable(onClick = actions.onPlay, onLongClick = actions.onLongClick)
             .padding(start = LevyraCardDesign.RowHorizontalPadding, top = 8.dp, bottom = 8.dp),
@@ -5570,6 +5562,26 @@ private val ALBUM_TRACK_ROW_HEIGHT = LevyraCardDesign.RowHeight
 private val ALBUM_TRACK_INDEX_WIDTH = 30.dp
 private val ALBUM_FLUSH_ROW_SHAPE = RoundedCornerShape(18.dp)
 
+private fun Modifier.albumTrackRowSurface(
+    index: Int,
+    count: Int,
+    presentation: AlbumTrackRowPresentation,
+    stage: AlbumStageColors,
+    spotify: Boolean
+): Modifier {
+    if (!LevyraIsDefaultSkin) return clip(levyraGroupedListShape(index, count)).background(albumTrackRowBackground(presentation, stage, spotify))
+    val showDivider = index < count - 1 && !presentation.isCurrent && !presentation.selected
+    val divider = stage.hairline
+    return clip(ALBUM_FLUSH_ROW_SHAPE)
+        .background(albumFlushRowBackground(presentation, stage))
+        .drawBehind {
+            if (showDivider) {
+                val inset = (LevyraCardDesign.RowHorizontalPadding + ALBUM_TRACK_INDEX_WIDTH + LevyraPlayerDesign.SpaceMd).toPx()
+                drawLine(divider, Offset(inset, size.height - 0.5f), Offset(size.width, size.height - 0.5f), strokeWidth = 1f)
+            }
+        }
+}
+
 private fun albumFlushRowBackground(presentation: AlbumTrackRowPresentation, stage: AlbumStageColors): Color = when {
     presentation.selected -> stage.accent.copy(alpha = 0.26f)
     presentation.isCurrent -> stage.accent.copy(alpha = 0.16f)
@@ -5684,7 +5696,7 @@ private fun ArtistOverlay(
         onSettle = { artistCanvasTone = Color(artistPalette.start) }
     )
     val atmosphereTargets = remember(artistPalette, nocturne, artistCanvasTone) {
-        artistAtmosphereTargets(nocturne, LevyraIsDefaultSkin, artistCanvasTone, Color(fallbackPalette.start), Color(artistPalette.start), Color(artistPalette.end))
+        if (nocturne) Nocturne78Palette.black to Nocturne78Palette.cyan else artistAtmosphereTargets(LevyraIsDefaultSkin, artistCanvasTone, Color(fallbackPalette.start), Color(artistPalette.start), Color(artistPalette.end))
     }
     val atmosphere by animateColorAsState(
         targetValue = atmosphereTargets.first,
@@ -5714,7 +5726,7 @@ private fun ArtistOverlay(
     val pureBlack = LevyraIsPureBlack
     val neutralBase = LevyraBlack
     val defaultFieldTarget = remember(defaultArtistPage, artistCanvasTone, lightTheme, pureBlack, neutralBase) {
-        defaultArtistPageBase(artistCanvasTone.takeIf { defaultArtistPage && !lightTheme && !pureBlack }, neutralBase)
+        defaultArtistPageBase(artistCanvasTone, defaultArtistPage, lightTheme, pureBlack, neutralBase)
     }
     val pageBase by animateColorAsState(
         targetValue = defaultFieldTarget,
@@ -5730,10 +5742,10 @@ private fun ArtistOverlay(
     ) {
         val density = LocalDensity.current
         val heroCap = minOf(ArtistHeroMaxHeight, maxHeight * ArtistHeroViewportShare)
-        val heroHeight = if (defaultArtistPage) defaultArtistHeroHeight(maxWidth, maxHeight, artistCanvasAspect) else if (LevyraIsAppleMusic) (maxWidth / AppleMusicDesign.artistHeroAspect).coerceAtMost(heroCap) else (maxWidth * ArtistHeroAspect).coerceAtMost(heroCap).coerceAtLeast(minOf(ArtistHeroMinHeight, heroCap))
+        val heroHeight = defaultArtistHeroHeightOr(defaultArtistPage, maxWidth, maxHeight, artistCanvasAspect, if (LevyraIsAppleMusic) (maxWidth / AppleMusicDesign.artistHeroAspect).coerceAtMost(heroCap) else (maxWidth * ArtistHeroAspect).coerceAtMost(heroCap).coerceAtLeast(minOf(ArtistHeroMinHeight, heroCap)))
         val heroHeightPx = with(density) { heroHeight.toPx() }
         val heroWidthPx = with(density) { maxWidth.roundToPx() }
-        val artworkHeightPx = if (defaultArtistPage) with(density) { defaultArtistHeroHeight(maxWidth, maxHeight, null).toPx() } else heroHeightPx
+        val artworkHeightPx = defaultArtistArtworkHeightPx(defaultArtistPage, maxWidth, maxHeight, density, heroHeightPx)
         var appleHeroTimedOut by remember(state.artistListStateKey) { mutableStateOf(false) }
         val appleHeroEnabled = LevyraUsesAppleArtistHero
         val heroVisible = profile != null
@@ -5798,34 +5810,31 @@ private fun ArtistOverlay(
                 }
                 else -> {
                     val artist = requireNotNull(profile) { "Artist profile required outside loading and error states" }
-                    if (defaultArtistPage) item(key = "artist-hero", contentType = "artist-hero") {
-                        Column(modifier = Modifier.fillMaxWidth()) {
-                            DefaultArtistHero(
-                                profile = artist,
-                                artworkUrl = fittedHeroArtwork,
-                                height = heroHeight,
-                                base = pageBase,
-                                motionArtwork = heroMotion,
-                                motionEnabled = state.animationsEnabled && state.motionArtworkEnabled,
-                                canvasQuality = state.interfaceSettings.canvasQuality,
-                                scroll = heroScroll,
-                                collapse = collapse,
-                                awaitingArtwork = awaitingAppleHero,
-                                onVideoAspect = { artistCanvasAspect = it },
-                                onCanvasTone = { tone -> if (tone != null && artistCanvasTone == null) artistCanvasTone = tone }
-                            )
-                            DefaultArtistSummary(
-                                profile = artist,
-                                isFollowed = isFollowed,
-                                base = lerp(pageBase, Color.White, 0.05f),
-                                highlight = highlight,
-                                onPlay = artist.topSongs.firstOrNull()?.let { track -> { onPlay(track) } },
-                                onShuffle = artist.topSongs.takeIf { it.size > 1 }?.let { songs -> { onPlayAll(songs.shuffled()) } },
-                                onToggleFollow = onToggleFollow,
-                                onOpenRelease = onOpenRelease
-                            )
-                        }
-                    } else item(key = "artist-hero", contentType = "artist-hero") {
+                    item(key = "artist-hero", contentType = "artist-hero") {
+                        ArtistHeroSlot(defaultArtistPage, defaultContent = {
+                        DefaultArtistHeroSection(
+                            artist = artist,
+                            artworkUrl = fittedHeroArtwork,
+                            height = heroHeight,
+                            pageBase = pageBase,
+                            highlight = highlight,
+                            motionArtwork = heroMotion,
+                            animationsEnabled = state.animationsEnabled,
+                            motionArtworkEnabled = state.motionArtworkEnabled,
+                            canvasQuality = state.interfaceSettings.canvasQuality,
+                            scroll = heroScroll,
+                            collapse = collapse,
+                            awaitingArtwork = awaitingAppleHero,
+                            isFollowed = isFollowed,
+                            canvasToneSettled = artistCanvasTone != null,
+                            onVideoAspect = { artistCanvasAspect = it },
+                            onCanvasTone = { artistCanvasTone = it },
+                            onPlay = onPlay,
+                            onPlayAll = onPlayAll,
+                            onToggleFollow = onToggleFollow,
+                            onOpenRelease = onOpenRelease
+                        )
+                        }) {
                         Column(modifier = Modifier.fillMaxWidth()) {
                             ArtistHero(
                                 profile = artist,
@@ -5889,6 +5898,7 @@ private fun ArtistOverlay(
                                 )
                             }
                         }
+                    }
                     }
                     if (state.artistLoading && artist.topSongs.isEmpty()) {
                         item(key = "artist-loading", contentType = "artist-loading") {
@@ -5986,12 +5996,7 @@ private fun ArtistOverlay(
                         artistReleaseItems(artist, strings, onOpenRelease)
                         artistPlaylistItems(artist, strings, onOpenPlaylist)
                         videoItems()
-                        val biography = artist.biography
-                        if (defaultArtistPage && artist.hasBio && biography != null) {
-                            item(key = "artist-about", contentType = "artist-about") {
-                                DefaultArtistAbout(artist, biography, heroArtwork, highlight, Modifier.padding(top = 8.dp))
-                            }
-                        }
+                        defaultArtistAboutItem(defaultArtistPage, artist, heroArtwork, highlight)
                     }
                     artistClosingItems(artist, heroArtwork, strings, onOpenArtist, appleArtist, onOpenArtistByName, artistBottomPadding)
                 }
@@ -6075,13 +6080,14 @@ private fun ArtistOverlay(
                             onShuffle = profile.topSongs.takeIf { it.size > 1 }?.let { songs -> { onPlayAll(songs.shuffled()) } }
                         )
                     }
-                } else if (defaultArtistPage && profile != null) {
+                } else {
                     DefaultArtistTopActions(
-                        identity = profile.browseId.ifBlank { profile.name },
+                        visible = defaultArtistPage,
+                        profile = profile,
                         isExcluded = isExcluded,
-                        onToggleExclude = { onToggleExclude(profile.browseId, profile.name) },
+                        onToggleExclude = onToggleExclude,
                         isPinnedToHome = pinnedToHome,
-                        onTogglePinToHome = { onTogglePinToHome(profile) }
+                        onTogglePinToHome = onTogglePinToHome
                     )
                 }
             }
@@ -23601,14 +23607,12 @@ private fun TopResultActions(
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = LevyraShortShuffleLabel,
+                LevyraMediaTitle(
+                    text = strings.shuffle,
                     color = shuffleFg,
                     fontSize = 14.sp,
                     lineHeight = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    fontWeight = FontWeight.SemiBold
                 )
             }
         }

@@ -484,6 +484,9 @@ internal fun ImmersiveMediaActionRow(
     }
 }
 
+private fun primaryActionText(primary: ImmersiveMediaPrimaryAction): String =
+    if (primary.icon == Icons.Rounded.PlayArrow) LevyraShortPlayLabel else primary.label
+
 @Composable
 private fun ImmersiveMediaPlayButton(
     primary: ImmersiveMediaPrimaryAction,
@@ -539,7 +542,7 @@ private fun ImmersiveMediaPlayButton(
             }
             if (showLabel) {
                 Text(
-                    text = if (primary.icon == Icons.Rounded.PlayArrow) LevyraShortPlayLabel else primary.label,
+                    text = primaryActionText(primary),
                     color = content,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,

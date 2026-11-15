@@ -1,5 +1,8 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.AlbumDetail
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -47,6 +50,21 @@ import com.luc4n3x.levyra.ui.theme.LevyraSkinManagesLayout
 
 internal val albumSuggestionsSupported: Boolean
     get() = !LevyraIsYouTubeMusic && !LevyraIsSpotify && !LevyraIsAppleMusic && !LevyraIsQobuz
+
+internal fun albumSuggestionShelvesFor(detail: AlbumDetail?, tracks: List<Track>): List<AlbumSuggestionShelf> =
+    if (tracks.isNotEmpty() && albumSuggestionsSupported) detail?.suggestionShelves.orEmpty() else emptyList()
+
+internal fun LazyListScope.albumSuggestionsItem(
+    shelves: List<AlbumSuggestionShelf>,
+    gutter: Dp,
+    colors: ImmersiveMediaColors,
+    onOpen: (AlbumHit) -> Unit
+) {
+    if (shelves.isEmpty()) return
+    item(key = "album-suggestions", contentType = "album-suggestions") {
+        AlbumSuggestionsTail(shelves, gutter, colors, onOpen)
+    }
+}
 
 @Composable
 internal fun AlbumSuggestionsTail(
