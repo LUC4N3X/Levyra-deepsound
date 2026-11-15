@@ -79,20 +79,49 @@ I don't host FLAC audio on Levyra's servers. On Android, experimental FLAC playb
 
 <a href="docs/assets/showcase/levyra_street_banner_2160x810.webp"><img src="docs/assets/showcase/levyra_street_banner_2160x810.webp?v=20261102-suono-in-movimento" width="100%" alt="Levyra music player for Android and Windows" /></a>
 
-<div align="center">
-<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-01-spaced.webp?v=editorial-campaign-v9" width="900" align="top" alt="Levyra screens: radio, now playing, light theme, and dark theme" /></div>
+<p><sub>A closer look at Levyra for Android. Select a panel to view it full size.</sub></p>
 
-<br />
-<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-02-spaced.webp?v=editorial-campaign-v9" width="900" align="top" alt="Levyra screens: discovery, player styles, moods, and audio controls" /></div>
-<br />
-<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-03-spaced.webp?v=editorial-campaign-v9" width="900" align="top" alt="Levyra screens: library, curated search, listening insights, and collections" /></div>
-<br />
-<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-04-spaced.webp?v=editorial-campaign-v9" width="900" align="top" alt="Levyra screens: settings, new releases, artists, and Jam" /></div>
-<br />
-<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-05-spaced.webp?v=editorial-campaign-v9" width="900" align="top" alt="Levyra screens: synced lyrics, offline albums, discovery, and Year in Music" /></div>
-<br />
-<div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-06-skins-spaced.webp?v=editorial-campaign-v9" width="900" align="top" alt="Levyra screens: Spotify Style, Apple Music Style, YouTube Music Style, and Qobuz Style" /></div>
-</div>
+<p>
+  <a href="docs/assets/showcase/readme/row-01-pearl-square.webp"><picture>
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-01-pearl-square-mobile.webp">
+    <img src="docs/assets/showcase/readme/row-01-pearl-square.webp" width="900" alt="Levyra for Android: personalized home, Now Playing, light theme and dark theme">
+  </picture></a>
+</p>
+
+<p>
+  <a href="docs/assets/showcase/readme/row-02-pearl-square.webp"><picture>
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-02-pearl-square-mobile.webp">
+    <img src="docs/assets/showcase/readme/row-02-pearl-square.webp" width="900" alt="Discover and listen: search suggestions, music playback, moods and genres, and audio output settings">
+  </picture></a>
+</p>
+
+<p>
+  <a href="docs/assets/showcase/readme/row-03-pearl-square.webp"><picture>
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-03-pearl-square-mobile.webp">
+    <img src="docs/assets/showcase/readme/row-03-pearl-square.webp" width="900" alt="Your music library: local and streamed tracks, search results, on-device listening insights and personal collections">
+  </picture></a>
+</p>
+
+<p>
+  <a href="docs/assets/showcase/readme/row-04-pearl-square.webp"><picture>
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-04-pearl-square-mobile.webp">
+    <img src="docs/assets/showcase/readme/row-04-pearl-square.webp" width="900" alt="Make Levyra yours: skin selection, live radio, artist pages and shared listening with Jam over Wi-Fi">
+  </picture></a>
+</p>
+
+<p>
+  <a href="docs/assets/showcase/readme/row-05-pearl-square.webp"><picture>
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-05-pearl-square-mobile.webp">
+    <img src="docs/assets/showcase/readme/row-05-pearl-square.webp" width="900" alt="Keep the music close: synced lyrics, albums with offline downloads, swipe discovery and Your Year in Music">
+  </picture></a>
+</p>
+
+<p>
+  <a href="docs/assets/showcase/readme/row-06-pearl-square.webp"><picture>
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-06-pearl-square-mobile.webp">
+    <img src="docs/assets/showcase/readme/row-06-pearl-square.webp" width="900" alt="Four Levyra skins: Spotify Style, Apple Music Style, YouTube Music Style and Qobuz Style">
+  </picture></a>
+</p>
 
 </div>
 
