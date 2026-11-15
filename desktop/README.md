@@ -1,6 +1,6 @@
 # Levyra Desktop
 
-Levyra's desktop client for Windows, written in Kotlin with Compose Multiplatform.
+Levyra's shared desktop client for Windows and Linux, written in Kotlin with Compose Multiplatform.
 
 It shares the Android project's YouTube extractor (`third_party/LevyraExtractor`), reuses the same localization catalog, and plays audio through libvlc.
 
@@ -298,3 +298,46 @@ The Desktop lifecycle hardening used the GPL-3.0 SimpMusic project as an archite
 The interface preserves the official Levyra icon, localized onboarding, country menus with real flags and native country names, RTL layout for Arabic and Hebrew, the integrated Library, and a closable player.
 
 It does not introduce manual country-code fields. Every string shared with the Android APK keeps coming from the shared localization catalog; the Desktop module only owns the labels for features that exist on Windows alone (sleep timer, playback speed, global media keys, keyboard shortcuts), so no shared text can drift between the two clients.
+
+## Linux packages
+
+Linux x64 uses the same application, UI, translations and playback owners as Windows.
+Build on Linux with JDK 21, libVLC and the DEB/RPM packaging tools:
+
+```bash
+sudo apt install libvlc5 vlc-plugin-base rpm fakeroot
+cd desktop
+./gradlew assemble check
+./gradlew createReleaseDistributable packageReleaseDeb packageReleaseRpm
+cd ..
+python3 desktop/packaging/linux/prepare_assets.py
+```
+
+The DEB declares libVLC and codec-plugin dependencies. RPM and portable users must
+install VLC from their distribution before starting Levyra. Install the DEB with
+`sudo apt install ./desktop/build/linux-assets/LEVYRA-Linux-*-x64.deb`.
+Portable archives include Java; extract and run `Levyra/bin/Levyra`.
+All three packages and SHA-256 sidecars are uploaded by `desktop-linux.yml`.
+This workflow builds artifacts and does not publish a release.
+
+Linux data lives in `$XDG_DATA_HOME/Levyra`, defaulting to
+`~/.local/share/Levyra`. Copying an existing library preserves its schema;
+local-file and offline paths must refer to files on the Linux machine.
+MPRIS exposes the same playback session to desktop media controls, including
+metadata, volume, speed, shuffle, repeat, seek, pause, skip, raise and quit.
+It is unavailable when the graphical session has no D-Bus session bus.
+The `levyra://` handler is registered per user on first packaged launch.
+The app exits normally on close when the desktop has no supported system tray.
+GNOME may require a tray extension for background tray controls.
+
+Update checks select the distribution's DEB or RPM and only
+`desktop-linux-v<version>` releases, verify SHA-256, then open the verified file
+in the system package manager. They never start a Windows installer on Linux.
+Other distributions use the portable archive and manual updates.
+Linux and Windows retain independent release tags; Android is unchanged.
+
+The Linux CI runs native libVLC tests and rendered UI previews, installs the real
+DEB, and checks the installed app through MPRIS: local WAV playback, seek,
+pause/resume, track switching, second launch, exit and reopening. Real GNOME/KDE
+Wayland, tray extensions, hardware media keys and RPM installation still need
+desktop-session acceptance checks.

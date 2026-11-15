@@ -427,7 +427,7 @@ fun stringsFor(
         settingsStorageBody = shared.createDataBackupSubtitle,
         settingsOpenFolder = shared.open,
         settingsAbout = shared.app,
-        settingsAboutBody = "Levyra Desktop · Windows",
+        settingsAboutBody = "Levyra Desktop · ${com.luc4n3x.levyra.desktop.app.DesktopPlatform.displayName}",
         trayShow = "Levyra · ${shared.open}",
         trayPlayPause = "${shared.play} / ${shared.pause}",
         trayNext = shared.next,

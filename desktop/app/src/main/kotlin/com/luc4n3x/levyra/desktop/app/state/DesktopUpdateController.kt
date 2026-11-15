@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.desktop.app.state
 
 import com.luc4n3x.levyra.desktop.app.AppInfo
+import com.luc4n3x.levyra.desktop.app.DesktopPlatform
 import com.luc4n3x.levyra.desktop.core.storage.AppPaths
 import java.io.IOException
 import java.net.URI
@@ -110,6 +111,7 @@ internal class DesktopUpdateController(
     val state: StateFlow<DesktopUpdateUiState> = internalState.asStateFlow()
 
     fun check() {
+        if (DesktopPlatform.updateTarget() == null) return
         if (checkJob?.isActive == true || installJob?.isActive == true) return
         checkJob = scope.launch {
             internalState.value = DesktopUpdateUiState(phase = DesktopUpdatePhase.CHECKING)
@@ -148,9 +150,9 @@ internal class DesktopUpdateController(
                     totalBytes = release.installer.size
                 )
                 val installer = downloadInstaller(release)
-                launchInstaller(release, installer)
-                internalState.update { it.copy(phase = DesktopUpdatePhase.INSTALLING) }
-                withContext(Dispatchers.Swing) { onReadyToExit() }
+                val exitRequired = withContext(Dispatchers.IO) { launchInstaller(release, installer) }
+                internalState.update { it.copy(phase = if (exitRequired) DesktopUpdatePhase.INSTALLING else DesktopUpdatePhase.IDLE) }
+                if (exitRequired) withContext(Dispatchers.Swing) { onReadyToExit() }
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (error: Throwable) {
@@ -197,9 +199,10 @@ internal class DesktopUpdateController(
             ?.contentOrNull
             .orEmpty()
             .trim()
-        if (!tag.startsWith(DESKTOP_RELEASE_TAG_PREFIX)) return null
+        val target = DesktopPlatform.updateTarget() ?: return null
+        if (!tag.startsWith(target.tagPrefix)) return null
 
-        val version = tag.removePrefix(DESKTOP_RELEASE_TAG_PREFIX).trim()
+        val version = tag.removePrefix(target.tagPrefix).trim()
         if (version.isBlank()) return null
 
         val assets = root["assets"]?.jsonArray.orEmpty().mapNotNull { element ->
@@ -218,7 +221,7 @@ internal class DesktopUpdateController(
                 )
             }
         }
-        val expectedName = "LEVYRA-Windows-$version-x64.msi"
+        val expectedName = target.assetName(version)
         val installer = assets.firstOrNull { it.name.equals(expectedName, ignoreCase = true) }
             ?: return null
         val checksum = assets.firstOrNull {
@@ -358,7 +361,14 @@ internal class DesktopUpdateController(
         uri.toASCIIString()
     }.getOrNull()
 
-    private fun launchInstaller(release: DesktopRelease, installer: Path) {
+    private fun launchInstaller(release: DesktopRelease, installer: Path): Boolean {
+        if (DesktopPlatform.isLinux) {
+            check(java.awt.Desktop.isDesktopSupported() && java.awt.Desktop.getDesktop().isSupported(java.awt.Desktop.Action.OPEN)) {
+                "Open the verified package from ${installer.parent} with your package manager"
+            }
+            java.awt.Desktop.getDesktop().open(installer.toFile())
+            return false
+        }
         val osName = System.getProperty("os.name").orEmpty().lowercase(Locale.ROOT)
         if (!osName.contains("win")) {
             throw IllegalStateException("Aggiornamento automatico disponibile solo su Windows")
@@ -392,6 +402,7 @@ internal class DesktopUpdateController(
             .redirectErrorStream(true)
             .redirectOutput(updaterLog.toFile())
             .start()
+        return true
     }
 
     private fun updaterScript(): String = """
