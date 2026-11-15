@@ -24,7 +24,6 @@ const xml = value => value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').repl
 const blank = (w, h) => sharp({ create: { width: w, height: h, channels: 4, background: clear } });
 const cardMask = svg(`<rect width="${width}" height="${height}" rx="${cardRadius}" fill="white"/>`);
 
-// Whisper-light, delicate Material 3 Expressive pastel palettes tailored to Levyra.
 const palettes = {
   cobalt: {
     top: '#F9FBFF', mid: '#F4F7FE', bot: '#EDF2FD',
