@@ -1319,10 +1319,7 @@ class PlaybackService : MediaLibraryService() {
             }
 
             override fun onPositionDiscontinuity(oldPosition: Player.PositionInfo, newPosition: Player.PositionInfo, reason: Int) {
-                if (reason == Player.DISCONTINUITY_REASON_SEEK) {
-                    playbackRecoveryGuard.invalidate()
-                    if (!player.playWhenReady) smartResumeTracker.onUserTookControl()
-                }
+                if (reason == Player.DISCONTINUITY_REASON_SEEK && !player.playWhenReady) smartResumeTracker.onUserTookControl()
             }
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -1939,7 +1936,7 @@ class PlaybackService : MediaLibraryService() {
         respectRepeatOne: Boolean,
         autoAdvance: Boolean = false,
         allowRewind: Boolean = true,
-        onAdvanced: (() -> Unit)? = null
+        onAdvanced: ((playing: Boolean) -> Unit)? = null
     ) {
         val activeMediaItem = activePlayer?.currentMediaItem ?: mediaSession?.player?.currentMediaItem
         if (isLiveRadioMediaItem(activeMediaItem)) return
@@ -1959,10 +1956,11 @@ class PlaybackService : MediaLibraryService() {
                     ?: return@launch
                 val request = captureRecoveryRequest()
                 val resolved = withContext(Dispatchers.IO) { resolveSkipTarget(target, autoAdvance) }
-                if (!isRecoveryRequestCurrent(request)) return@launch
+                if (recoveryQueueKey() != request.queueKey) return@launch
                 if (resolved != null) {
-                    playSkipTarget(player, resolved)
-                    onAdvanced?.invoke()
+                    val play = isRecoveryRequestCurrent(request) || player.playWhenReady
+                    playSkipTarget(player, resolved, play)
+                    onAdvanced?.invoke(play)
                     return@launch
                 }
                 if (autoAdvance) {
@@ -2078,20 +2076,20 @@ class PlaybackService : MediaLibraryService() {
         releasePlaybackWakeLock()
     }
 
-    private fun playSkipTarget(player: ExoPlayer, resolved: com.luc4n3x.levyra.domain.Track) {
+    private fun playSkipTarget(player: ExoPlayer, resolved: com.luc4n3x.levyra.domain.Track, play: Boolean) {
         queueEngine.updateTrackAt(queueEngine.state.value.currentIndex, resolved)
         player.setMediaItem(LevyraMediaItemFactory.build(resolved))
         RuntimeHooks.player(RuntimeSignal.PLAYER_PREPARE)
         RuntimeHooks.hot(RuntimeSignal.HOT_PLAYER_PREPARE)
         player.prepare()
-        player.play()
+        if (play) player.play()
         queueEngine.updatePosition(0L)
         LevyraWidgetCenter.update(
             this,
             resolved.title,
             resolved.artist,
             resolved.largeThumbnailUrl.ifBlank { resolved.thumbnailUrl },
-            true
+            play
         )
         if (!isLocalPlaybackTrack(resolved)) prefetchServiceQueueNext()
     }
@@ -3016,10 +3014,10 @@ class PlaybackService : MediaLibraryService() {
             return
         }
         Timber.w("Skipping track after unrecoverable playback error")
-        skipQueue(forward = true, respectRepeatOne = false, autoAdvance = true) {
+        skipQueue(forward = true, respectRepeatOne = false, autoAdvance = true) { playing ->
             serviceRecoveryExhausted = false
             serviceRecoveryAttempts = 0
-            markPlaybackExpected(true, force = true)
+            markPlaybackExpected(playing, force = true)
         }
     }
 
@@ -3687,8 +3685,6 @@ class PlaybackService : MediaLibraryService() {
 
     private fun cancelPendingPlaybackRecovery() {
         playbackRecoveryGuard.invalidate()
-        queueSkipJob?.cancel()
-        queueSkipJob = null
         serviceRecoveryJob?.cancel()
         serviceRecoveryJob = null
         stickyRestoreJob?.cancel()
@@ -4057,8 +4053,9 @@ class PlaybackService : MediaLibraryService() {
         if (!activeRecovery && isStickyRestoreExpired()) return false
         resolvedTrack?.let { queueEngine.updateTrackAt(queueEngine.state.value.currentIndex, it) }
         (player as? ExoPlayer)?.let { updatePlayerWakeMode(it, mediaItem) }
+        val restorePositionMs = if (player.currentMediaItem != null) player.currentPosition else positionMs
         acquirePlaybackWakeLock()
-        player.setMediaItem(mediaItem, positionMs.coerceAtLeast(0L))
+        player.setMediaItem(mediaItem, restorePositionMs.coerceAtLeast(0L))
         RuntimeHooks.player(
             action = RuntimeSignal.PLAYER_PREPARE,
             mode = if (mediaItem.mediaMetadata.extras?.getBoolean(EXTRA_VIDEO_MODE, false) == true) {
