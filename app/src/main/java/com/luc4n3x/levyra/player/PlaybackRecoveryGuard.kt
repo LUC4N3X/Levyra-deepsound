@@ -12,6 +12,9 @@ internal class PlaybackRecoveryGuard {
     fun capture(queueKey: String): PlaybackRecoveryRequest =
         PlaybackRecoveryRequest(playbackGeneration, queueKey)
 
+    fun isCurrentGeneration(request: PlaybackRecoveryRequest): Boolean =
+        request.playbackGeneration == playbackGeneration
+
     fun isCurrent(request: PlaybackRecoveryRequest, queueKey: String): Boolean =
-        request.playbackGeneration == playbackGeneration && request.queueKey == queueKey
+        isCurrentGeneration(request) && request.queueKey == queueKey
 }

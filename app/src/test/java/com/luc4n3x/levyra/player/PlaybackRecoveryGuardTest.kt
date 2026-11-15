@@ -85,4 +85,16 @@ class PlaybackRecoveryGuardTest {
 
         assertEquals("refreshed", stream)
     }
+
+    @Test
+    fun pauseDuringSkipSurvivesLaterRetries() {
+        val guard = PlaybackRecoveryGuard()
+        val playIntent = guard.capture("space:first")
+
+        guard.invalidate()
+        val retry = guard.capture("space:second")
+
+        assertFalse(guard.isCurrentGeneration(playIntent))
+        assertTrue(guard.isCurrentGeneration(retry))
+    }
 }
