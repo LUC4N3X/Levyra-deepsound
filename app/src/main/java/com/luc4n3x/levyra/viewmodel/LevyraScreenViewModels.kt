@@ -218,6 +218,10 @@ class HomeViewModel internal constructor(
     }
     fun openExploreCategoryPage(category: ExploreCategory) = root.openExploreCategory(category)
     fun ensureExplore(strings: com.luc4n3x.levyra.ui.i18n.LevyraStrings) = root.ensureExplore(strings)
+    fun openListeningInsights() {
+        root.selectTab(LevyraTab.Library)
+        root.openListeningInsights()
+    }
     fun openExploreTab() = root.selectTab(LevyraTab.Explore)
     fun startSongRadioFrom(track: Track) = root.startSongRadioFrom(track)
     suspend fun artistRadioTracks(track: Track) = root.artistRadioTracks(track)

@@ -1,6 +1,9 @@
 package com.luc4n3x.levyra.data
 
 import com.luc4n3x.levyra.domain.ExploreCategory
+import com.luc4n3x.levyra.domain.PlaylistHit
+import com.luc4n3x.levyra.ui.curatedCollectionCategories
+import com.luc4n3x.levyra.ui.decadeCategories
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -31,13 +34,16 @@ class CuratedDecadeCollectionsTest {
             section("1980s", playlist("A80", thumbnail = ""), playlist("B80")),
             section("1970s", playlist("A70")),
             section("1960s", playlist("A60")),
-            section("1950s", playlist("A50")),
+            section("1950s", playlist("A50"), moreParams = "decade-50"),
+            section("1940s", playlist("A40")),
             section("Genres", playlist("G1"))
         )
         val cards = YoutubeMusicDecades.cards(sections)
-        assertEquals(listOf("A60", "A70", "B80", "A90", "A00", "A10"), cards.map { it.playlistId })
-        assertEquals("Anni '90", cards[3].subtitle)
-        assertEquals("Title A90", cards[3].title)
+        assertEquals(listOf("A50", "A60", "A70", "B80", "A90", "A00", "A10"), cards.map { it.playlistId })
+        assertEquals("Anni '90", cards[4].subtitle)
+        assertEquals("Title A90", cards[4].title)
+        assertEquals("decade-50", cards[0].categoryParams)
+        assertEquals("", cards[1].categoryParams)
         assertTrue(YoutubeMusicDecades.cards(emptyList()).isEmpty())
     }
 
@@ -67,11 +73,26 @@ class CuratedDecadeCollectionsTest {
         )
         assertEquals(listOf("W1", "Shared", "F2"), cards.map { it.playlistId })
         assertEquals(listOf("Allenamento", "Viaggi", "Buonumore"), cards.map { it.subtitle })
+        assertEquals(listOf(workout, commute, feelGood), cards.map { it.categoryParams })
+    }
+
+    @Test
+    fun `collection cards open their category page only when the provider category is known`() {
+        val cards = listOf(
+            CuratedCollectionCard("The Hits: '80s", "1980s", "RDCLAK_80", "https://yt3.googleusercontent.com/80", "decade-80"),
+            CuratedCollectionCard("Legacy", "1990s", "RDCLAK_90", "https://yt3.googleusercontent.com/90")
+        )
+        val opened = curatedCollectionCategories(cards, "Decades")
+        val decadeHit = PlaylistHit(title = "The Hits: '80s", author = "1980s", thumbnailUrl = "https://yt3.googleusercontent.com/80", playlistId = "RDCLAK_80")
+        assertEquals(setOf(decadeHit), opened.keys)
+        assertEquals(ExploreCategory(title = "1980s", params = "decade-80", section = "Decades"), opened[decadeHit])
+        assertNull(opened[decadeHit.copy(author = "YouTube Music")])
+        assertEquals(listOf("decade-80"), decadeCategories(cards, "Decades").map { it.params })
     }
 
     @Test
     fun `cache round trip keeps valid cards and rejects invalid data`() {
-        val snapshot = CuratedCollectionSnapshot(1_000L, listOf(CuratedCollectionCard("The Hits: '80s", "1980s", "RDCLAK5uy_a", "https://yt3.googleusercontent.com/a")))
+        val snapshot = CuratedCollectionSnapshot(1_000L, listOf(CuratedCollectionCard("The Hits: '80s", "1980s", "RDCLAK5uy_a", "https://yt3.googleusercontent.com/a", "ggMPOg1uX2ZPSDB5czBudnNW")))
         assertEquals(snapshot, decodeCuratedCollection(encodeCuratedCollection(snapshot)))
         val unsafe = snapshot.copy(cards = listOf(snapshot.cards[0].copy(thumbnailUrl = "http://example.com/a")))
         assertNull(decodeCuratedCollection(encodeCuratedCollection(unsafe)))
@@ -80,7 +101,8 @@ class CuratedDecadeCollectionsTest {
         assertFalse(snapshot.isFresh(1_000L + CURATED_COLLECTION_TTL_MS))
     }
 
-    private fun section(title: String, vararg playlists: YoutubeMusicMoodPlaylist) = YoutubeMusicMoodSection(title, playlists.toList())
+    private fun section(title: String, vararg playlists: YoutubeMusicMoodPlaylist, moreParams: String = "") =
+        YoutubeMusicMoodSection(title, playlists.toList(), moreParams)
 
     private fun playlist(id: String, thumbnail: String = "https://yt3.googleusercontent.com/$id") =
         YoutubeMusicMoodPlaylist(title = "Title $id", playlistId = id, browseId = "VL$id", description = "Playlist • YouTube Music", thumbnailUrl = thumbnail)

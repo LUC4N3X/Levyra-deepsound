@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Insights
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.ThumbUp
@@ -31,6 +32,7 @@ import com.luc4n3x.levyra.ui.CoverImage
 import com.luc4n3x.levyra.ui.StableRemoteArtwork
 import com.luc4n3x.levyra.ui.YouTubeMusicChipRow
 import com.luc4n3x.levyra.ui.YouTubeMusicIconAction
+import com.luc4n3x.levyra.ui.YouTubeMusicSectionHeader
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.theme.YouTubeMusicDesign
@@ -159,6 +161,23 @@ internal fun YouTubeMusicLibraryOverview(
                 artwork = { YouTubeMusicLibraryCover(artist.artworkUrl, artist.tracks.firstOrNull()) }
             )
         }
+    }
+}
+
+@Composable
+internal fun YouTubeMusicInsightsShelf(header: String, title: String, subtitle: String, onOpen: () -> Unit) {
+    Column {
+        YouTubeMusicSectionHeader(header)
+        YouTubeMusicLibraryRow(
+            title = title,
+            subtitle = subtitle,
+            onClick = onOpen,
+            artwork = {
+                Box(Modifier.fillMaxSize().background(Brush.linearGradient(YouTubeMusicPulseColors)), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.Insights, null, tint = Color.White, modifier = Modifier.size(28.dp))
+                }
+            }
+        )
     }
 }
 

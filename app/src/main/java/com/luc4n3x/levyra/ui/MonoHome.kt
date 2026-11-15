@@ -926,7 +926,10 @@ private fun MonoHomeContent(
     val feed = rememberMonoHomeFeed(model, copy) { orbitOpen = true }
     val zones = remember(strings) { ExploreCatalog.getZones(strings) }
     val genreZones = remember(zones, strings.code) { exploreGenreChartZones(zones, strings.code) }
-    val browse = remember(state.exploreCategories, zones) { monoBrowseTiles(state.exploreCategories, zones) }
+    val decades = rememberDecadeCategories(strings.code)
+    val browse = remember(state.exploreCategories, zones, decades) {
+        monoBrowseTiles(if (state.exploreCategories.isEmpty()) state.exploreCategories else state.exploreCategories + decades, zones)
+    }
     val viewModel = model.viewModel
     val categoriesLoading = state.isExploreCategoriesLoading
     val categoryArtwork = if (page == MonoPageMood) viewModel.exploreCategoryArtwork.collectAsStateWithLifecycle().value else emptyMap()
@@ -1016,9 +1019,10 @@ private fun MonoHomeContent(
             )
         }
         if (curatedOpen) {
+            val openCard = rememberCuratedCollectionOpener(strings.code, viewModel::openPlaylistHit, viewModel::openExploreCategoryPage)
             GlacierCuratedPlaylistsScreen(
                 title = copy.mixedForYou, leadTitle = copy.rotationOverline, curatedShelves = playlistShelves,
-                onOpen = viewModel::openPlaylistHit, onDismiss = { curatedOpen = false }, bottomInset = homeBottomInset
+                onOpen = openCard, onDismiss = { curatedOpen = false }, bottomInset = homeBottomInset
             )
         }
     }

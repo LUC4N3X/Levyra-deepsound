@@ -74,7 +74,8 @@ internal fun YoutubeMusicMoodPlaylist.toHit() = PlaylistHit(
 
 data class YoutubeMusicMoodSection(
     val title: String,
-    val playlists: List<YoutubeMusicMoodPlaylist>
+    val playlists: List<YoutubeMusicMoodPlaylist>,
+    val moreParams: String = ""
 )
 
 data class YoutubeMusicExplore(
@@ -2145,8 +2146,16 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             collectObjectsByKey(shelf.optJSONArray("items") ?: shelf.optJSONArray("contents"), "musicTwoRowItemRenderer", cards)
             val playlists = cards.mapNotNull(::parseMoodPlaylistCard)
                 .filter { playlist -> seen.add(title + "|" + playlist.playlistId.ifBlank { playlist.browseId }) }
-            playlists.takeIf { it.isNotEmpty() }?.let { YoutubeMusicMoodSection(title, it) }
+            playlists.takeIf { it.isNotEmpty() }?.let { YoutubeMusicMoodSection(title, it, moodSectionMoreParams(header)) }
         }
+    }
+
+    private fun moodSectionMoreParams(header: JSONObject?): String {
+        val endpoints = mutableListOf<JSONObject>()
+        collectObjectsByKey(header, "browseEndpoint", endpoints)
+        return endpoints.firstNotNullOfOrNull { endpoint ->
+            endpoint.optString("params").takeIf { endpoint.optString("browseId") == "FEmusic_moods_and_genres_category" && it.isNotBlank() }
+        }.orEmpty()
     }
 
     private fun parseMoodPlaylistCard(card: JSONObject): YoutubeMusicMoodPlaylist? {

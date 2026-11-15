@@ -10023,7 +10023,8 @@ private fun StudioHomeScreen(
                 actions = YouTubeMusicHomeActions(
                     home = skinHomeActions,
                     openPlaylist = homeContext.viewModel::openPlaylistHit,
-                    openSearch = homeContext.viewModel::openSearch
+                    openSearch = homeContext.viewModel::openSearch,
+                    openInsights = homeContext.viewModel::openListeningInsights
                 ),
                 homeListState = homeListState,
                 homeBottomInset = homeBottomInset,
