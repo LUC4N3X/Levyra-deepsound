@@ -46,12 +46,15 @@ private object GenreChartLastFmSource {
         }
 }
 
+private const val GenreChartClaimScopes = 2
+
 internal object GenreChartPortraitClaims {
-    private val owners = HashMap<String, String>()
+    private val scopes = LinkedHashMap<String, HashMap<String, String>>()
 
     @Synchronized
     fun claim(scope: String, zoneId: String, artist: String?, url: String): Boolean {
-        val keys = listOfNotNull(artist?.let { "$scope:artist:${it.trim().lowercase(Locale.ROOT)}" }, "$scope:url:$url")
+        val owners = owners(scope)
+        val keys = listOfNotNull(artist?.takeIf(String::isNotBlank)?.let(::artistKey), "url:$url")
         if (keys.any { key -> owners[key]?.let { it != zoneId } == true }) return false
         keys.forEach { key -> owners[key] = zoneId }
         return true
@@ -59,10 +62,18 @@ internal object GenreChartPortraitClaims {
 
     @Synchronized
     fun isTakenByOther(scope: String, zoneId: String, artist: String): Boolean =
-        owners["$scope:artist:${artist.trim().lowercase(Locale.ROOT)}"]?.let { it != zoneId } == true
+        owners(scope)[artistKey(artist)]?.let { it != zoneId } == true
 
     @Synchronized
-    internal fun clear() = owners.clear()
+    internal fun clear() = scopes.clear()
+
+    private fun owners(scope: String): HashMap<String, String> {
+        val owners = scopes.getOrPut(scope) { HashMap() }
+        while (scopes.size > GenreChartClaimScopes) scopes.remove(scopes.keys.first())
+        return owners
+    }
+
+    private fun artistKey(artist: String) = "artist:${artist.trim().lowercase(Locale.ROOT)}"
 }
 
 internal fun genreChartPortraitCandidates(artists: List<String>, rotationBucket: Long): List<String> {
@@ -83,7 +94,7 @@ internal fun rememberGenreChartCover(zone: ExploreZone): GenreChartCoverData {
     var portrait by remember(cacheKey) {
         mutableStateOf(
             ExploreMoodArtworkCache.peek(cacheKey)?.url
-                ?.takeIf { url -> GenreChartPortraitClaims.claim(claimScope, zone.id, null, url) }
+                ?.takeIf { url -> GenreChartPortraitClaims.claim(claimScope, zone.id, ExploreMoodArtworkCache.peek(cacheKey)?.artist, url) }
                 .orEmpty()
         )
     }
@@ -91,7 +102,7 @@ internal fun rememberGenreChartCover(zone: ExploreZone): GenreChartCoverData {
     LaunchedEffect(cacheKey, rotationBucket) {
         val app = context.applicationContext
         val cached = ExploreMoodArtworkCache.load(app, cacheKey)
-            ?.takeIf { stored -> GenreChartPortraitClaims.claim(claimScope, zone.id, null, stored.url) }
+            ?.takeIf { stored -> GenreChartPortraitClaims.claim(claimScope, zone.id, stored.artist, stored.url) }
         if (cached != null) portrait = cached.url
         val tags = LastFmGenreTags.forZone(zone.id)
         if (tags.isEmpty()) return@LaunchedEffect
@@ -127,26 +138,28 @@ internal fun rememberGenreChartCover(zone: ExploreZone): GenreChartCoverData {
         val resolved = ExploreMoodPortraitLookupSemaphore.withPermit {
             resolveDistinctGenreChartPortrait(candidates, providers, claimScope, zone.id)
         }
-        if (resolved.isNotBlank()) {
-            ExploreMoodArtworkCache.store(app, cacheKey, ExploreMoodArtwork(resolved, rotationBucket))
-            portrait = resolved
+        if (resolved != null) {
+            ExploreMoodArtworkCache.store(app, cacheKey, ExploreMoodArtwork(resolved.url, rotationBucket, resolved.artist))
+            portrait = resolved.url
         }
     }
     return GenreChartCoverData(portrait.ifBlank { fallback }, artists.take(GenreChartCaptionArtists))
 }
+
+internal class GenreChartPortrait(val artist: String, val url: String)
 
 internal suspend fun resolveDistinctGenreChartPortrait(
     candidates: List<String>,
     providers: List<suspend (String) -> String>,
     claimScope: String,
     zoneId: String
-): String {
+): GenreChartPortrait? {
     for (provider in providers) {
         for (artist in candidates) {
             if (GenreChartPortraitClaims.isTakenByOther(claimScope, zoneId, artist)) continue
             val portrait = provider(artist)
-            if (portrait.isNotBlank() && GenreChartPortraitClaims.claim(claimScope, zoneId, artist, portrait)) return portrait
+            if (portrait.isNotBlank() && GenreChartPortraitClaims.claim(claimScope, zoneId, artist, portrait)) return GenreChartPortrait(artist, portrait)
         }
     }
-    return ""
+    return null
 }

@@ -43,7 +43,13 @@ internal fun rememberDecadeCategories(code: String): List<ExploreCategory> {
 @Composable
 internal fun rememberCategoriesWithDecades(categories: List<ExploreCategory>, code: String): List<ExploreCategory> {
     val decades = rememberDecadeCategories(code)
-    return remember(categories, decades) { if (categories.isEmpty()) categories else categories + decades }
+    return remember(categories, decades) { withDecadesAfterMoods(categories, decades) }
+}
+
+internal fun withDecadesAfterMoods(categories: List<ExploreCategory>, decades: List<ExploreCategory>): List<ExploreCategory> {
+    if (categories.isEmpty() || decades.isEmpty()) return categories
+    val split = categories.indexOfLast { it.sectionIndex == 0 } + 1
+    return categories.take(split) + decades + categories.drop(split)
 }
 
 @Composable

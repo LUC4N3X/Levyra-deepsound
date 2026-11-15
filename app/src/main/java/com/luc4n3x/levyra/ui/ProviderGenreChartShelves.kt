@@ -173,6 +173,29 @@ private fun YouTubeMusicCuratedRow(shelf: YoutubeMusicHomeShelf, title: String, 
 }
 
 @Composable
+private fun YouTubeMusicCuratedBrowse(shelf: YoutubeMusicHomeShelf, browse: CuratedBrowse, onOpen: (PlaylistHit) -> Unit) {
+    val cards = remember(shelf, onOpen) { youTubeMusicCuratedCards(shelf, onOpen) }
+    Column {
+        YouTubeMusicSectionHeader(shelf.title, strapline = shelf.strapline, onOpen = null)
+        CuratedBrowsePicker(
+            browse, YouTubeMusicDesign.gutter, androidx.compose.ui.graphics.SolidColor(YouTubeMusicDesign.text),
+            YouTubeMusicDesign.text, YouTubeMusicDesign.textSecondary
+        ) { label, selected, onClick -> YouTubeMusicChip(label, selected, onClick) }
+        when {
+            cards.isNotEmpty() -> YouTubeMusicCardCarousel(cards)
+            browse.loading -> CuratedSkeletonRow(
+                2, YouTubeMusicDesign.gutter, 12.dp, androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                YouTubeMusicDesign.textTertiary.copy(alpha = 0.25f)
+            )
+            else -> Text(
+                LocalLevyraStrings.current.exploreEmpty, color = YouTubeMusicDesign.textSecondary, style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(horizontal = YouTubeMusicDesign.gutter)
+            )
+        }
+    }
+}
+
+@Composable
 internal fun YouTubeMusicCuratedShelves(onOpen: (PlaylistHit) -> Unit) {
     val code = LocalLevyraStrings.current.code
     val shelves = rememberCuratedPlaylistShelves(code)
@@ -206,7 +229,9 @@ internal fun YouTubeMusicCuratedPlaylistsPage(page: CuratedPageData, onOpen: (Pl
             }
         }
         items(page.groups, key = { "ytm-curated-${it.key}" }, contentType = { "ytm-curated-group" }) { shelf ->
-            YouTubeMusicCuratedRow(shelf, shelf.title, onOpen, null)
+            val browse = page.browse
+            if (browse != null && shelf.key == CuratedBrowseShelfKey) YouTubeMusicCuratedBrowse(shelf, browse, onOpen)
+            else YouTubeMusicCuratedRow(shelf, shelf.title, onOpen, null)
         }
     }
 }
