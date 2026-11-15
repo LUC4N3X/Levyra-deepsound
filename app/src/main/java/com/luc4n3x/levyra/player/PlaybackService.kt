@@ -193,6 +193,7 @@ class PlaybackService : MediaLibraryService() {
     private var servicePrefetchRequestToken = 0L
     @Volatile private var preparedQueueNext: PreparedQueueNext? = null
     private var serviceRecoveryJob: Job? = null
+    private var serviceRecoveryRequest: PlaybackRecoveryRequest? = null
     private val playbackRecoveryGuard = PlaybackRecoveryGuard()
     private var stickyRestoreJob: Job? = null
     private var playbackWatchdogJob: Job? = null
@@ -3791,13 +3792,25 @@ class PlaybackService : MediaLibraryService() {
     private fun scheduleServiceRecovery(error: PlaybackException) {
         val plan = serviceRecoveryPlan() ?: return
         RuntimeHooks.player(RuntimeSignal.PLAYER_RECOVERY)
+        serviceRecoveryRequest = plan.request
         serviceRecoveryJob = serviceScope.launch {
             runServiceRecovery(error, plan)
         }
     }
 
+    private fun hasCurrentServiceRecovery(): Boolean {
+        if (serviceRecoveryJob?.isActive != true) return false
+        if (serviceRecoveryRequest?.let(::isRecoveryRequestCurrent) == true) return true
+        serviceRecoveryJob?.cancel()
+        serviceRecoveryJob = null
+        serviceRecoveryAttempts = 0
+        serviceRecoveryExhausted = false
+        releasePlaybackWakeLock()
+        return false
+    }
+
     private fun serviceRecoveryPlan(): ServiceRecoveryPlan? {
-        if (serviceRecoveryJob?.isActive == true) return null
+        if (hasCurrentServiceRecovery()) return null
         if (!isPlaybackRecoveryExpected()) return null
         val localPlayback = isCurrentPlaybackLocal()
         return ServiceRecoveryPlan(
@@ -4174,7 +4187,7 @@ class PlaybackService : MediaLibraryService() {
         now - watchdogAdvancedAtMs >= WATCHDOG_STALL_TIMEOUT_MS
 
     private fun scheduleWatchdogRecovery(positionMs: Long) {
-        if (serviceRecoveryJob?.isActive == true) return
+        if (hasCurrentServiceRecovery()) return
         if (isLiveRadioMediaItem(mediaSession?.player?.currentMediaItem)) return
         if (!watchdogRecoveryAllowance.isAvailable()) {
             Timber.d("Playback watchdog recovery deferred to load retries at %d ms", positionMs)
@@ -4186,6 +4199,7 @@ class PlaybackService : MediaLibraryService() {
         }
         Timber.w("Playback watchdog detected a stalled player at %d ms", positionMs)
         val request = captureRecoveryRequest()
+        serviceRecoveryRequest = request
         serviceRecoveryJob = serviceScope.launch {
             val restored = restoreCurrentPlayback(
                 positionMs,
