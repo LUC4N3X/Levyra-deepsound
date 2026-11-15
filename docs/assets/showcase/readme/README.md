@@ -2,10 +2,11 @@
 
 The root README uses six desktop panels (four cards each) and six mobile panels
 (the same cards in a two-by-two grid). The mobile source is selected at 600px.
-Each card uses a delicate pastel Material 3 Expressive surface, large rounded
-corners (`48px` on the `900x1800` card canvas), tonal blooming-rosette and
-wavy motifs matching Levyra's in-app geometry, and asymmetric pill eyebrows with
-subtle phone shadows. Transparent gutters work on both GitHub Light and Dark themes.
+Each card uses a whisper-light pastel Material 3 Expressive surface, large rounded
+corners (`48px` on the `900x1800` card canvas), soft tonal blooming-rosette,
+clover, squircle, and wavy motifs matching Levyra's in-app geometry, clean
+badge-free typography, and subtle phone shadows. Transparent gutters work on
+both GitHub Light and Dark themes.
 
 `scripts/render_readme_showcase.mjs` composes all 24 cards from the existing,
 tracked `../editorial-cards/*.webp` assets. The first four preserve their original

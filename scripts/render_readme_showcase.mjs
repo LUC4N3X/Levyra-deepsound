@@ -24,94 +24,85 @@ const xml = value => value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').repl
 const blank = (w, h) => sharp({ create: { width: w, height: h, channels: 4, background: clear } });
 const cardMask = svg(`<rect width="${width}" height="${height}" rx="${cardRadius}" fill="white"/>`);
 
-// Delicate Material 3 Expressive pastel tonal palettes aligned with Levyra's UI & badges.
+// Whisper-light, delicate Material 3 Expressive pastel palettes tailored to Levyra.
 const palettes = {
   cobalt: {
-    top: '#F6F9FF', mid: '#EFF4FE', bot: '#E5EEFD',
-    motif: '#DCE7FC', motifAlt: '#E2ECFD',
-    pillBg: '#E1EAFC', pillStroke: '#3558B8', pillText: '#2A4AA3',
-    ink: '#182035', sub: '#4C5A78', shadow: '#1D2F5C', border: '#3558B8',
+    top: '#F9FBFF', mid: '#F4F7FE', bot: '#EDF2FD',
+    motif: '#E3ECFC', motifAlt: '#E9F0FD',
+    ink: '#1F2A44', sub: '#5A6884', shadow: '#1D2F5C', border: '#3558B8',
   },
   orchid: {
-    top: '#FDF7FA', mid: '#F9EFF5', bot: '#F4E5EE',
-    motif: '#EDD7E5', motifAlt: '#F1DFEB',
-    pillBg: '#F1DCE9', pillStroke: '#8D3E70', pillText: '#7D3262',
-    ink: '#261822', sub: '#614A59', shadow: '#4A1F3A', border: '#8D3E70',
+    top: '#FEFAFC', mid: '#FBF4F8', bot: '#F6ECF2',
+    motif: '#F0DFEA', motifAlt: '#F4E7EF',
+    ink: '#301E2B', sub: '#6E5566', shadow: '#4A1F3A', border: '#8D3E70',
   },
   ivory: {
-    top: '#FDF9F3', mid: '#F9F2E7', bot: '#F3E9DA',
-    motif: '#EBDCCB', motifAlt: '#EFE3D5',
-    pillBg: '#EFE2D1', pillStroke: '#87582C', pillText: '#754920',
-    ink: '#282017', sub: '#645646', shadow: '#4A3620', border: '#87582C',
+    top: '#FEFCF8', mid: '#FBF6EE', bot: '#F6EFE3',
+    motif: '#EFE4D4', motifAlt: '#F3EAE0',
+    ink: '#30271D', sub: '#6E6050', shadow: '#4A3620', border: '#87582C',
   },
   sky: {
-    top: '#F4FAFD', mid: '#ECF5FA', bot: '#E1EEF6',
-    motif: '#D3E6F2', motifAlt: '#DCECF5',
-    pillBg: '#D9ECF6', pillStroke: '#246384', pillText: '#1D5472',
-    ink: '#15242E', sub: '#486070', shadow: '#193C52', border: '#246384',
+    top: '#F8FCFE', mid: '#F2F8FC', bot: '#E9F3F9',
+    motif: '#DCEBF4', motifAlt: '#E4F0F7',
+    ink: '#1A2D38', sub: '#526B7A', shadow: '#193C52', border: '#246384',
   },
   sage: {
-    top: '#F4FBF8', mid: '#ECF6F1', bot: '#E2F0E9',
-    motif: '#D3E8DE', motifAlt: '#DCEEE5',
-    pillBg: '#D9EDE3', pillStroke: '#276B55', pillText: '#1F5B48',
-    ink: '#152620', sub: '#456157', shadow: '#184234', border: '#276B55',
+    top: '#F8FDFB', mid: '#F1F9F5', bot: '#E8F4EE',
+    motif: '#DCEEE5', motifAlt: '#E4F2EB',
+    ink: '#1A2E27', sub: '#4E6B60', shadow: '#184234', border: '#276B55',
   },
   iris: {
-    top: '#F8F6FE', mid: '#F2EEFC', bot: '#EAE3FA',
-    motif: '#DFD5F7', motifAlt: '#E6DDF8',
-    pillBg: '#E6DFF8', pillStroke: '#5B45A8', pillText: '#4D3996',
-    ink: '#1E1932', sub: '#534C70', shadow: '#322563', border: '#5B45A8',
+    top: '#FAF9FE', mid: '#F5F2FD', bot: '#EFEAFC',
+    motif: '#E5DDF9', motifAlt: '#ECE6FA',
+    ink: '#26203D', sub: '#5E577B', shadow: '#322563', border: '#5B45A8',
   },
   coral: {
-    top: '#FDF6F7', mid: '#F9ECEE', bot: '#F4E0E4',
-    motif: '#EED3D8', motifAlt: '#F2DCE0',
-    pillBg: '#F4DCE1', pillStroke: '#A03F54', pillText: '#8C3246',
-    ink: '#29171B', sub: '#664A50', shadow: '#521E29', border: '#A03F54',
+    top: '#FEFAFB', mid: '#FBF2F4', bot: '#F7E9EC',
+    motif: '#F2DCE1', motifAlt: '#F5E4E8',
+    ink: '#331D22', sub: '#70535A', shadow: '#521E29', border: '#A03F54',
   },
   terracotta: {
-    top: '#FDF7F3', mid: '#F8EEE7', bot: '#F2E3D8',
-    motif: '#EAD5C6', motifAlt: '#EFE0D4',
-    pillBg: '#F2DFD1', pillStroke: '#9A512E', pillText: '#854222',
-    ink: '#2A1C15', sub: '#685043', shadow: '#4F2B19', border: '#9A512E',
+    top: '#FEFAF8', mid: '#FAF3EE', bot: '#F6EAE2',
+    motif: '#EFE0D5', motifAlt: '#F3E7DE',
+    ink: '#33231A', sub: '#70584B', shadow: '#4F2B19', border: '#9A512E',
   },
   amber: {
-    top: '#FDF9F1', mid: '#F9F2E3', bot: '#F3E8D1',
-    motif: '#ECDCB9', motifAlt: '#F0E3C7',
-    pillBg: '#F1E3C3', pillStroke: '#8F621B', pillText: '#7A5212',
-    ink: '#282012', sub: '#66583D', shadow: '#4D3812', border: '#8F621B',
+    top: '#FEFCF7', mid: '#FBF6EB', bot: '#F6EEDF',
+    motif: '#EFE2C8', motifAlt: '#F3E9D6',
+    ink: '#302717', sub: '#6E6044', shadow: '#4D3812', border: '#8F621B',
   },
 };
 
 const cards = [
-  ['01_pure_listening', 'cobalt', 'rosette', 'NO ACCOUNT', ['Just press', 'play.'], ['No Levyra account. No ads or telemetry.']],
-  ['02_stay_with_the_song', 'orchid', 'scallopWave', 'NOW PLAYING', ['Stay with', 'the song.'], ['Audio, video & motion artwork.']],
-  ['03_daylight_expressive', 'ivory', 'squircleOrb', 'LIGHT THEME', ['A brighter', 'kind of play.'], ['Material 3 Expressive.']],
-  ['04_midnight_obsidian', 'sky', 'clover', 'DARK THEME', ['Made for', 'after dark.'], ['Dark surfaces. Vivid artwork.']],
+  ['01_pure_listening', 'cobalt', 'rosette', ['Just press', 'play.'], ['No Levyra account.', 'No ads or telemetry.']],
+  ['02_stay_with_the_song', 'orchid', 'scallopWave', ['Stay with', 'the song.'], ['Audio, video & motion artwork.']],
+  ['03_daylight_expressive', 'ivory', 'squircleOrb', ['A brighter', 'kind of play.'], ['Material 3 Expressive.']],
+  ['04_midnight_obsidian', 'sky', 'clover', ['Made for', 'after dark.'], ['Dark surfaces. Vivid artwork.']],
 
-  ['05_fresh_currents', 'cobalt', 'rosette', 'DISCOVERY', ['Discover more'], ['Search, revisit & explore.']],
-  ['06_built_for_your_taste', 'terracotta', 'scallopWave', 'PLAYBACK', ['Keep listening'], ['Gapless playback & crossfade.']],
-  ['07_every_genre', 'sage', 'clover', 'EXPLORE', ['Moods & genres'], ['Find music for the moment.']],
-  ['08_acoustic_precision', 'sky', 'squircleOrb', 'AUDIO', ['Your sound'], ['Output, quality & audio options.']],
+  ['05_fresh_currents', 'cobalt', 'rosette', ['Discover more'], ['Search, revisit & explore.']],
+  ['06_built_for_your_taste', 'terracotta', 'scallopWave', ['Keep listening'], ['Gapless playback & crossfade.']],
+  ['07_every_genre', 'sage', 'clover', ['Moods & genres'], ['Find music for the moment.']],
+  ['08_acoustic_precision', 'sky', 'squircleOrb', ['Your sound'], ['Output, quality & audio options.']],
 
-  ['09_keep_it_personal', 'iris', 'squircleOrb', 'LIBRARY', ['One library'], ['Local files meet streamed music.']],
-  ['10_curated_for_you', 'ivory', 'rosette', 'SEARCH', ['Find your next favorite'], ['Songs, artists & albums.']],
-  ['11_your_rhythm', 'sky', 'clover', 'INSIGHTS', ['Listening insights'], ['Stats calculated on your device.']],
-  ['12_in_your_orbit', 'orchid', 'scallopWave', 'COLLECTIONS', ['Made for you'], ['Mixes from your listening history.']],
+  ['09_keep_it_personal', 'iris', 'squircleOrb', ['One library'], ['Local files meet streamed music.']],
+  ['10_curated_for_you', 'ivory', 'rosette', ['Find your next favorite'], ['Songs, artists & albums.']],
+  ['11_your_rhythm', 'sky', 'clover', ['Listening insights'], ['Stats calculated on your device.']],
+  ['12_in_your_orbit', 'orchid', 'scallopWave', ['Made for you'], ['Mixes from your listening history.']],
 
-  ['13_tailor_every_detail', 'iris', 'clover', 'PERSONALIZATION', ['Make it yours'], ['Skins, themes & studios.']],
-  ['14_fresh_off_the_stage', 'coral', 'scallopWave', 'LIVE RADIO', ['Live radio'], ['Tune in to stations worldwide.']],
-  ['15_meet_the_artist', 'ivory', 'rosette', 'ARTISTS', ['Meet the artist'], ['Albums, top tracks & more.']],
-  ['16_listen_together', 'sage', 'squircleOrb', 'LEVYRA JAM', ['Listen together'], ['One queue. The same Wi-Fi.']],
+  ['13_tailor_every_detail', 'iris', 'clover', ['Make it yours'], ['Skins, themes & studios.']],
+  ['14_fresh_off_the_stage', 'coral', 'scallopWave', ['Live radio'], ['Tune in to stations worldwide.']],
+  ['15_meet_the_artist', 'ivory', 'rosette', ['Meet the artist'], ['Albums, top tracks & more.']],
+  ['16_listen_together', 'sage', 'squircleOrb', ['Listen together'], ['One queue. The same Wi-Fi.']],
 
-  ['17_sing_along', 'amber', 'scallopWave', 'SYNCED LYRICS', ['Follow every word'], ['Follow along with synced lyrics.']],
-  ['18_open_the_album', 'sky', 'rosette', 'OFFLINE', ['Music to go'], ['Save music for offline listening.']],
-  ['19_discover_for_you', 'cobalt', 'clover', 'SWIPE DISCOVERY', ['Hear it. Keep it.'], ['Preview tracks. Save your finds.']],
-  ['20_your_year_in_music', 'orchid', 'squircleOrb', 'YOUR YEAR', ['Your year in music'], ['Your listening story, on device.']],
+  ['17_sing_along', 'amber', 'scallopWave', ['Follow every word'], ['Follow along with synced lyrics.']],
+  ['18_open_the_album', 'sky', 'rosette', ['Music to go'], ['Save music for offline listening.']],
+  ['19_discover_for_you', 'cobalt', 'clover', ['Hear it. Keep it.'], ['Preview tracks. Save your finds.']],
+  ['20_your_year_in_music', 'orchid', 'squircleOrb', ['Your year in music'], ['Your listening story, on device.']],
 
-  ['21_spotify_style', 'sage', 'rosette', 'LEVYRA SKINS', ['Spotify Style'], ['Browse genres & new releases.']],
-  ['22_apple_music_style', 'coral', 'squircleOrb', 'LEVYRA SKINS', ['Apple Music Style'], ['Light surfaces & bold type.']],
-  ['23_youtube_music_style', 'iris', 'scallopWave', 'LEVYRA SKINS', ['YouTube Music Style'], ['Mood chips & music discovery.']],
-  ['24_qobuz_style', 'sky', 'clover', 'LEVYRA SKINS', ['Qobuz Style'], ['An editorial take on your library.']],
+  ['21_spotify_style', 'sage', 'rosette', ['Spotify Style'], ['Browse genres & new releases.']],
+  ['22_apple_music_style', 'coral', 'squircleOrb', ['Apple Music Style'], ['Light surfaces & bold type.']],
+  ['23_youtube_music_style', 'iris', 'scallopWave', ['YouTube Music Style'], ['Mood chips & music discovery.']],
+  ['24_qobuz_style', 'sky', 'clover', ['Qobuz Style'], ['An editorial take on your library.']],
 ];
 
 function makeFlowerPath(cx, cy, rValley, rPeak, lobes) {
@@ -159,45 +150,45 @@ function makeWavyPath(xStart, yCenter, totalW, amplitude, halfCycles) {
 function motifMarkup(index, kind, p) {
   if (index === 0) {
     return [
-      `<path d="${makeFlowerPath(760, 1460, 210, 255, 12)}" fill="${p.motif}" opacity="0.62"/>`,
-      `<circle cx="130" cy="480" r="145" fill="${p.motifAlt}" opacity="0.52"/>`,
+      `<path d="${makeFlowerPath(760, 1460, 210, 255, 12)}" fill="${p.motif}" opacity="0.46"/>`,
+      `<circle cx="130" cy="480" r="145" fill="${p.motifAlt}" opacity="0.40"/>`,
     ].join('');
   }
   if (index === 1) {
     return [
-      `<path d="${makeFlowerPath(150, 560, 180, 224, 8)}" fill="${p.motif}" opacity="0.62"/>`,
-      `<path d="${makeWavyPath(35, 1520, 420, 26, 6)}" fill="none" stroke="${p.motif}" stroke-width="18" stroke-linecap="round" opacity="0.72"/>`,
+      `<path d="${makeFlowerPath(150, 560, 180, 224, 8)}" fill="${p.motif}" opacity="0.46"/>`,
+      `<path d="${makeWavyPath(35, 1520, 420, 26, 6)}" fill="none" stroke="${p.motif}" stroke-width="16" stroke-linecap="round" opacity="0.54"/>`,
     ].join('');
   }
   if (index === 2) {
     return [
-      `<path d="${makeAsymmetricSquircle(510, 320, 340, 380, 140, 44)}" fill="${p.motif}" opacity="0.58"/>`,
-      `<circle cx="780" cy="1440" r="170" fill="${p.motifAlt}" opacity="0.52"/>`,
+      `<path d="${makeAsymmetricSquircle(510, 320, 340, 380, 140, 44)}" fill="${p.motif}" opacity="0.45"/>`,
+      `<circle cx="780" cy="1440" r="170" fill="${p.motifAlt}" opacity="0.40"/>`,
     ].join('');
   }
   if (index === 3) {
     return [
-      `<path d="${makeFlowerPath(155, 620, 175, 232, 4)}" fill="${p.motif}" opacity="0.64"/>`,
-      `<circle cx="150" cy="1510" r="155" fill="${p.motifAlt}" opacity="0.50"/>`,
+      `<path d="${makeFlowerPath(155, 620, 175, 232, 4)}" fill="${p.motif}" opacity="0.46"/>`,
+      `<circle cx="150" cy="1510" r="155" fill="${p.motifAlt}" opacity="0.38"/>`,
     ].join('');
   }
   const presets = {
     rosette: [
-      `<path d="${makeFlowerPath(765, 495, 200, 248, 12)}" fill="${p.motif}" opacity="0.60"/>`,
-      `<circle cx="115" cy="1475" r="185" fill="${p.motifAlt}" opacity="0.52"/>`,
+      `<path d="${makeFlowerPath(765, 495, 200, 248, 12)}" fill="${p.motif}" opacity="0.46"/>`,
+      `<circle cx="115" cy="1475" r="185" fill="${p.motifAlt}" opacity="0.40"/>`,
     ].join(''),
     scallopWave: [
-      `<path d="${makeFlowerPath(135, 515, 175, 218, 8)}" fill="${p.motif}" opacity="0.60"/>`,
-      `<circle cx="775" cy="1475" r="155" fill="${p.motifAlt}" opacity="0.50"/>`,
-      `<path d="${makeWavyPath(640, 1475, 250, 22, 4)}" fill="none" stroke="${p.motif}" stroke-width="18" stroke-linecap="round" opacity="0.72"/>`,
+      `<path d="${makeFlowerPath(135, 515, 175, 218, 8)}" fill="${p.motif}" opacity="0.46"/>`,
+      `<circle cx="775" cy="1475" r="155" fill="${p.motifAlt}" opacity="0.38"/>`,
+      `<path d="${makeWavyPath(640, 1475, 250, 22, 4)}" fill="none" stroke="${p.motif}" stroke-width="16" stroke-linecap="round" opacity="0.54"/>`,
     ].join(''),
     clover: [
-      `<path d="${makeFlowerPath(760, 520, 170, 226, 4)}" fill="${p.motif}" opacity="0.62"/>`,
-      `<path d="${makeAsymmetricSquircle(48, 1260, 250, 340, 110, 36)}" fill="${p.motifAlt}" opacity="0.52"/>`,
+      `<path d="${makeFlowerPath(760, 520, 170, 226, 4)}" fill="${p.motif}" opacity="0.46"/>`,
+      `<path d="${makeAsymmetricSquircle(48, 1260, 250, 340, 110, 36)}" fill="${p.motifAlt}" opacity="0.40"/>`,
     ].join(''),
     squircleOrb: [
-      `<path d="${makeAsymmetricSquircle(565, 365, 285, 345, 124, 42)}" fill="${p.motif}" opacity="0.58"/>`,
-      `<path d="${makeFlowerPath(120, 1490, 150, 186, 10)}" fill="${p.motifAlt}" opacity="0.54"/>`,
+      `<path d="${makeAsymmetricSquircle(565, 365, 285, 345, 124, 42)}" fill="${p.motif}" opacity="0.45"/>`,
+      `<path d="${makeFlowerPath(120, 1490, 150, 186, 10)}" fill="${p.motifAlt}" opacity="0.42"/>`,
     ].join(''),
   };
   return presets[kind] || presets.rosette;
@@ -212,7 +203,7 @@ function backdropSvg(index, kind, p) {
         <stop offset="100%" stop-color="${p.bot}"/>
       </linearGradient>
       <radialGradient id="glow" cx="50%" cy="60%" r="54%">
-        <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.72"/>
+        <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.78"/>
         <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
       </radialGradient>
     </defs>
@@ -224,8 +215,8 @@ function backdropSvg(index, kind, p) {
 
 function frameOverlaySvg(p) {
   return svg(`
-    <rect x="1.5" y="1.5" width="${width - 3}" height="${height - 3}" rx="${cardRadius - 1.5}" fill="none" stroke="#FFFFFF" stroke-opacity="0.86" stroke-width="2.5"/>
-    <rect x="0.75" y="0.75" width="${width - 1.5}" height="${height - 1.5}" rx="${cardRadius - 0.75}" fill="none" stroke="${p.border}" stroke-opacity="0.16" stroke-width="1.5"/>
+    <rect x="1.5" y="1.5" width="${width - 3}" height="${height - 3}" rx="${cardRadius - 1.5}" fill="none" stroke="#FFFFFF" stroke-opacity="0.90" stroke-width="2.5"/>
+    <rect x="0.75" y="0.75" width="${width - 1.5}" height="${height - 1.5}" rx="${cardRadius - 0.75}" fill="none" stroke="${p.border}" stroke-opacity="0.11" stroke-width="1.5"/>
   `);
 }
 
@@ -258,82 +249,60 @@ function shadowLayer(shape, shadowColor) {
       <filter id="sWide" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="26"/></filter>
       <filter id="sNear" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="8"/></filter>
     </defs>
-    <g transform="translate(0 18)" opacity="0.11" filter="url(#sWide)">${shape.replaceAll('fill="white"', `fill="${shadowColor}"`)}</g>
-    <g transform="translate(0 6)" opacity="0.07" filter="url(#sNear)">${shape.replaceAll('fill="white"', `fill="${shadowColor}"`)}</g>
+    <g transform="translate(0 16)" opacity="0.09" filter="url(#sWide)">${shape.replaceAll('fill="white"', `fill="${shadowColor}"`)}</g>
+    <g transform="translate(0 5)" opacity="0.05" filter="url(#sNear)">${shape.replaceAll('fill="white"', `fill="${shadowColor}"`)}</g>
   `);
 }
 
-const pillWidthCache = new Map();
+const widthCache = new Map();
 async function measureTextWidth(label, size, weight, spacing) {
   const key = `${label}|${size}|${weight}|${spacing}`;
-  if (pillWidthCache.has(key)) return pillWidthCache.get(key);
+  if (widthCache.has(key)) return widthCache.get(key);
   const probe = svg(
     `<text x="40" y="70" font-family="Rubik, Segoe UI, DejaVu Sans, sans-serif" font-size="${size}" font-weight="${weight}" letter-spacing="${spacing}" fill="#000000">${xml(label)}</text>`,
     900,
     120,
   );
   const { info } = await sharp(probe).trim().toBuffer({ resolveWithObject: true });
-  pillWidthCache.set(key, info.width);
+  widthCache.set(key, info.width);
   return info.width;
 }
 
-const miniFlowerPath = makeFlowerPath(0, 0, 7.2, 9.5, 8);
-
-function pillSvg(x, y, w, h, p, label) {
-  const path = makeAsymmetricSquircle(x, y, w, h, 20, 10);
-  const iconCx = x + 26;
-  const iconCy = y + h / 2;
-  const textX = x + 44;
-  const textY = y + h / 2 + 6.2;
-  return `
-    <path d="${path}" fill="${p.pillBg}" stroke="${p.pillStroke}" stroke-opacity="0.22" stroke-width="1.3"/>
-    <g transform="translate(${iconCx} ${iconCy})"><path d="${miniFlowerPath}" fill="${p.pillText}"/></g>
-    <text x="${textX}" y="${textY}" font-family="Rubik, Segoe UI, DejaVu Sans, sans-serif" font-size="17.5" font-weight="700" letter-spacing="1.6" fill="${p.pillText}">${xml(label)}</text>
-  `;
-}
-
 async function headerLayer(index, spec, p) {
-  const [, , , eyebrow, titleLines, subLines] = spec;
-  const labelW = await measureTextWidth(eyebrow, 17.5, 700, 1.6);
-  const pillH = 40;
-  const pillW = Math.ceil(44 + labelW + 19);
+  const [, , , titleLines, subLines] = spec;
+  const font = "Rubik, Segoe UI, DejaVu Sans, sans-serif";
 
   if (index >= 4) {
     const title = titleLines[0];
-    const titleW = await measureTextWidth(title, 60, 700, -1.4);
+    const titleW = await measureTextWidth(title, 60, 500, -1.2);
     let titleSize = 60;
     if (titleW > width - 116) {
-      const w56 = await measureTextWidth(title, 56, 700, -1.4);
+      const w56 = await measureTextWidth(title, 56, 500, -1.2);
       titleSize = w56 > width - 104 ? 52 : 56;
     }
-    const pillX = Math.round((width - pillW) / 2);
     return svg(`
-      ${pillSvg(pillX, 64, pillW, pillH, p, eyebrow)}
-      <text x="${width / 2}" y="176" text-anchor="middle" font-family="Rubik, Segoe UI, DejaVu Sans, sans-serif" font-size="${titleSize}" font-weight="700" letter-spacing="-1.4" fill="${p.ink}">${xml(title)}</text>
-      ${subLines.map((line, i) => `<text x="${width / 2}" y="${226 + i * 38}" text-anchor="middle" font-family="Rubik, Segoe UI, DejaVu Sans, sans-serif" font-size="29.5" font-weight="400" fill="${p.sub}">${xml(line)}</text>`).join('')}
+      <text x="${width / 2}" y="142" text-anchor="middle" font-family="${font}" font-size="${titleSize}" font-weight="500" letter-spacing="-1.2" fill="${p.ink}">${xml(title)}</text>
+      ${subLines.map((line, i) => `<text x="${width / 2}" y="${200 + i * 38}" text-anchor="middle" font-family="${font}" font-size="30" font-weight="400" fill="${p.sub}">${xml(line)}</text>`).join('')}
     `);
   }
 
   const right = index === 1 || index === 3;
   const margin = 64;
-  const top = index === 0 ? 1365 : 64;
+  const top = index === 0 ? 1390 : 88;
   const align = right ? 'end' : 'start';
   const anchorX = right ? width - margin : margin;
-  const pillX = right ? width - margin - pillW : margin;
   const titleSize = 74;
-  const titleStart = top + 122;
-  const subStart = top + 122 + titleLines.length * 88 + 6;
-  const subText = index === 0 ? ['No Levyra account.', 'No ads or telemetry.'] : subLines;
+  const titleStart = top + 64;
+  const subStart = top + 64 + titleLines.length * 90 + 10;
 
   return svg(`
-    ${pillSvg(pillX, top, pillW, pillH, p, eyebrow)}
-    ${titleLines.map((line, i) => `<text x="${anchorX}" y="${titleStart + i * 88}" text-anchor="${align}" font-family="Rubik, Segoe UI, DejaVu Sans, sans-serif" font-size="${titleSize}" font-weight="700" letter-spacing="-1.8" fill="${p.ink}">${xml(line)}</text>`).join('')}
-    ${subText.map((line, i) => `<text x="${anchorX}" y="${subStart + i * 40}" text-anchor="${align}" font-family="Rubik, Segoe UI, DejaVu Sans, sans-serif" font-size="30" font-weight="400" fill="${p.sub}">${xml(line)}</text>`).join('')}
+    ${titleLines.map((line, i) => `<text x="${anchorX}" y="${titleStart + i * 90}" text-anchor="${align}" font-family="${font}" font-size="${titleSize}" font-weight="500" letter-spacing="-1.6" fill="${p.ink}">${xml(line)}</text>`).join('')}
+    ${subLines.map((line, i) => `<text x="${anchorX}" y="${subStart + i * 40}" text-anchor="${align}" font-family="${font}" font-size="30" font-weight="400" fill="${p.sub}">${xml(line)}</text>`).join('')}
   `);
 }
 
 const uprightRawH = Math.round((684 * 2993) / 1440) + 24;
-const uprightRawW = 711; // Includes 708px chassis + 3px right hardware keys
+const uprightRawW = 711;
 const uprightMask = svg(`
   <rect x="0" y="0" width="708" height="${uprightRawH}" rx="34" fill="white"/>
   <rect x="707" y="${Math.round(uprightRawH * 0.21)}" width="4" height="${Math.round(uprightRawH * 0.11)}" rx="1.5" fill="white"/>
@@ -353,10 +322,10 @@ async function renderCard(index, spec) {
     layers.push({ input: shadowLayer(shape, p.shadow) });
     layers.push({ input: await sharp(input).composite([{ input: svg(shape), blend: 'dest-in' }]).png().toBuffer() });
   } else {
-    const phoneW = 650;
+    const phoneW = 656;
     const phoneH = Math.round((uprightRawH * phoneW) / uprightRawW);
     const phoneX = Math.round((width - (708 * phoneW) / uprightRawW) / 2);
-    const phoneY = 330;
+    const phoneY = 316;
     const extracted = await sharp(input)
       .extract({ left: 96, top: 264, width: uprightRawW, height: uprightRawH })
       .composite([{ input: uprightMask, blend: 'dest-in' }])
