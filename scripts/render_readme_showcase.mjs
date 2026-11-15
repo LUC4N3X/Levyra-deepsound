@@ -62,31 +62,34 @@ function phoneGeometry(outerWidth, angle, x, y) {
   return `<g transform="translate(${left + rotatedWidth / 2} ${y + rotatedHeight / 2}) rotate(${-angle}) translate(${-w / 2} ${-h / 2})"><rect x="37" y="37" width="${outerWidth - 3}" height="${outerHeight - 3}" rx="33" fill="white"/></g>`;
 }
 
-async function heroPhone(index, input) {
+function heroShape(index) {
   const paths = [
     phoneGeometry(725, 12.5, 215, -185),
     phoneGeometry(725, 12.5, 215 - 932, -185) + phoneGeometry(725, -8.5, 195, 415),
     phoneGeometry(720, -8, 105, 395),
     phoneGeometry(720, 8, 'right', 395),
   ];
-  return sharp(input).composite([{ input: svg(paths[index]), blend: 'dest-in' }]).png().toBuffer();
+  return paths[index];
+}
+
+function shadow(shape) {
+  return svg(`<defs><filter id="shadow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="20"/></filter></defs><g transform="translate(0 18)" opacity=".16" filter="url(#shadow)">${shape.replaceAll('fill="white"', 'fill="#244b62"')}</g>`);
 }
 
 function type(index, spec) {
-  const light = index === 2;
-  const ink = light ? '#19232f' : '#f4f6f8';
-  const accent = light ? '#346e79' : '#a6c9e9';
-  const muted = light ? '#4e5e68' : '#bdc6d0';
+  const ink = '#285363';
+  const accent = '#4a7786';
+  const muted = '#4f707b';
   const y = index === 0 ? 1390 : 76;
   const right = index === 1 || index === 3;
-  const x = right ? 836 : 64;
-  const align = right ? 'end' : 'start';
-  const titleSize = index === 22 ? 82 : 92;
+  const x = index >= 4 ? width / 2 : right ? 836 : 64;
+  const align = index >= 4 ? 'middle' : right ? 'end' : 'start';
+  const titleSize = index < 4 ? 86 : 76;
   const label = `${String(index + 1).padStart(2, '0')} / ${spec[1]}`;
   const text = (value, top, size, fill, weight = 400, spacing = 0) => `<text x="${x}" y="${top}" text-anchor="${align}" font-family="Rubik, DejaVu Sans, sans-serif" font-size="${size}" font-weight="${weight}" letter-spacing="${spacing}" fill="${fill}">${xml(value)}</text>`;
   return svg([
-    text(label, y + 24, 24, accent, 500, 2.7),
-    ...spec[2].map((line, i) => text(line, y + 136 + i * 101, titleSize, ink, 700, -3)),
+    text(label, y + 24, 22, accent, 500, 1.8),
+    ...spec[2].map((line, i) => text(line, y + 136 + i * 101, titleSize, ink, 600, -2)),
     ...spec[3].map((line, i) => text(line, y + 300 + i * 42, 32, muted)),
   ].join(''));
 }
@@ -95,21 +98,21 @@ async function renderCard(index, spec, backdrop) {
   const input = await readFile(resolve(source, `${spec[0]}.webp`));
   const metadata = await sharp(input).metadata();
   if (metadata.width !== width || metadata.height !== height) throw new Error(`Unexpected source dimensions: ${spec[0]}`);
-  let background = index === 2
-    ? await sharp({ create: { width, height, channels: 4, background: '#e9efec' } }).png().toBuffer()
-    : backdrop;
   const layers = [];
   if (index < 4) {
-    layers.push({ input: await heroPhone(index, input) });
+    const shape = heroShape(index);
+    layers.push({ input: shadow(shape) });
+    layers.push({ input: await sharp(input).composite([{ input: svg(shape), blend: 'dest-in' }]).png().toBuffer() });
   } else {
     const phoneHeight = Math.round(684 * 2993 / 1440) + 24;
     const phone = await sharp(input).extract({ left: 96, top: 264, width: 708, height: phoneHeight })
       .composite([{ input: rounded(708, phoneHeight, 34), blend: 'dest-in' }]).png().toBuffer();
+    layers.push({ input: shadow(`<rect x="120" y="408" width="660" height="${Math.round(phoneHeight * 660 / 708)}" rx="32" fill="white"/>`) });
     layers.push({ input: await sharp(phone).resize({ width: 660 }).png().toBuffer(), left: 120, top: 408 });
   }
   layers.push({ input: type(index, spec) });
-  layers.push({ input: svg(`<rect x="1" y="1" width="898" height="1798" rx="38" fill="none" stroke="${index === 2 ? '#b4c4c0' : '#617384'}" stroke-opacity=".4" stroke-width="2"/>`) });
-  background = await sharp(background).composite(layers).png().toBuffer();
+  layers.push({ input: svg('<rect x="1" y="1" width="898" height="1798" rx="38" fill="none" stroke="#b0cdda" stroke-opacity=".25" stroke-width="2"/>') });
+  const background = await sharp(backdrop).composite(layers).png().toBuffer();
   return sharp(background).composite([{ input: rounded(width, height, 38), blend: 'dest-in' }]).png().toBuffer();
 }
 

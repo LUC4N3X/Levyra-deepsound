@@ -2,7 +2,8 @@
 
 The root README uses six desktop panels (four cards each) and six mobile panels
 (the same cards in a two-by-two grid). The mobile source is selected at 600px.
-Transparent gutters and rounded corners work on both GitHub themes.
+Pearl-to-ice-blue backgrounds, teal headings and soft phone shadows keep the
+gallery light. Transparent gutters and rounded corners work on both GitHub themes.
 
 `scripts/render_readme_showcase.mjs` composes all 24 cards from the existing,
 tracked `../editorial-cards/*.webp` assets. The first four preserve their original
@@ -33,23 +34,24 @@ It writes only the twelve panel files in the selected output directory.
 
 `studio-backdrop.webp` was created for this redesign using the built-in
 `image_gen` tool, then resized and encoded as WebP. It contains no app interface,
-people, artwork, logos or text. The light-theme card uses a solid pale surface.
+people, artwork, logos or text. All cards share the same delicate light backdrop.
 Regeneration uses this checked-in backdrop and does not call an image service.
 
 Generation prompt:
 
-> Use case: product-mockup. Asset type: background texture ONLY for the existing
-> Levyra Android app screenshot cards in its GitHub README. Generate a restrained,
-> premium studio backdrop, portrait 1024x1536. Nearly black graphite anodized
-> aluminum, subtle fine satin grain, very soft cool silver studio illumination
-> falling diagonally from upper left to lower right. Mostly uniform charcoal
-> (#14191f to #242c35), enough separation for a black phone frame to sit above.
-> Quiet, tactile, realistic and understated like an audio equipment catalog. Top
-> third dark and clean for white headings to be added later. Edge to edge
-> continuous surface, no horizon. No objects, no phones, no typography, no logos,
-> no circles, no waveforms, no neon, no purple, no colorful gradients, no panels,
-> no borders. This image will be used as a real backdrop under deterministic
-> typography and unmodified app screenshots, so do not include any UI.
+> Use case: precise-object-edit. Asset type: background ONLY for professional
+> music app screenshot cards in a GitHub README. Replace this dark graphite
+> backdrop with a VERY DELICATE LIGHT background. Portrait 1024x1536. Smooth
+> luminous pearl white on the left (#f8fcff), gently fading horizontally into pale
+> ice blue on the right (#cee8f3), with very subtle soft cyan at bottom right. A
+> clean airy satin-paper surface, almost flat, extremely understated, no visible
+> grain. Overall very light, low saturation, calm and refined. The top must remain
+> very light as dark teal headings will be added separately. One continuous
+> near-white to pastel-blue gradient, no bands, no patches, no vignette.
+> Constraints: background only; no phones, no interfaces, no text, no logos, no
+> objects, no circles, no waves, no frames, no shadows, no dark areas. This will
+> sit behind authentic unmodified screenshots. Entire image should feel soft
+> and delicate, like a minimal premium product sheet.
 
 Existing artwork and service names remain subject to the repository's
 [third-party rights notice](../../../legal/LEGAL.md#3-third-party-services-and-rights).
