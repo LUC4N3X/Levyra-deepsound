@@ -878,16 +878,6 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/c235ae094c8f54c91f24e1f68c13ed83e0992bab"
   },
   {
-   "id": "levyra-932f3bbf987a271def9f",
-   "genre": "dance-party",
-   "title": "Loco Loco",
-   "artist": "Gordo, Reinier Zonneveld",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273dfb479c38656c105a1580655",
-   "canvasUrl": "https://canvaz.scdn.co/upload/artist/4Ge9GwmWnOQsohwPTrXyHc/video/a2ac6b3aa5654ed68fce51419dd230fa.cnvs.mp4",
-   "spotifyTrackId": "1mZnxNzp17JrPyzDzkoiiC",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/9c5fc4fab1e2518e2c8048abc9c094bbcff0971b"
-  },
-  {
    "id": "levyra-9828b5bdff66418cf9a6",
    "genre": "dance-party",
    "title": "Talk To You (ft. 54 Ultra)",
@@ -896,6 +886,16 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/4p5WgeiPSPpqPDs7T6OkWf/video/e4610477aa0e4044b1c3668dabdec012.cnvs.mp4",
    "spotifyTrackId": "0kl6Ozan3fuUdCl6TlB15v",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/b55c8fa4e31192a3e35ad53d3e889733f9cd9da1"
+  },
+  {
+   "id": "levyra-932f3bbf987a271def9f",
+   "genre": "dance-party",
+   "title": "Loco Loco",
+   "artist": "Gordo, Reinier Zonneveld",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273dfb479c38656c105a1580655",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/4Ge9GwmWnOQsohwPTrXyHc/video/a2ac6b3aa5654ed68fce51419dd230fa.cnvs.mp4",
+   "spotifyTrackId": "1mZnxNzp17JrPyzDzkoiiC",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/9c5fc4fab1e2518e2c8048abc9c094bbcff0971b"
   },
   {
    "id": "levyra-8fd31c8881546d288f6a",
@@ -978,16 +978,6 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/f842f4032e4b7aa6d88e8b877d4216f8ddb8381f"
   },
   {
-   "id": "levyra-d0c6a3df6261d6950c9d",
-   "genre": "dance-party",
-   "title": "Pump It Up",
-   "artist": "Endor",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27378d4155e29b25c36a3d5a470",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/0sACyypRn7jYbvuybT4flG/video/3283102a172b4c00a1f33209c3e87506.cnvs.mp4",
-   "spotifyTrackId": "6e2OwnkapOwUDfhz6AP9iC",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/fbba6422f5d54ca1c3fab33ae59bbd4e842acddb"
-  },
-  {
    "id": "levyra-ec81c9a2aa0e07366fc4",
    "genre": "dance-party",
    "title": "Good Girl",
@@ -1006,6 +996,16 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/7btR5VXutQv39SDEzcfXEk/video/52d674056ff1432da4703e2a74c87962.cnvs.mp4",
    "spotifyTrackId": "4FOTUoZP8r4mYZ8H7aUVsu",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/80c0bd68e652b85b6dfeac9c51da3c6e712116d7"
+  },
+  {
+   "id": "levyra-d0c6a3df6261d6950c9d",
+   "genre": "dance-party",
+   "title": "Pump It Up",
+   "artist": "Endor",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27378d4155e29b25c36a3d5a470",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/0sACyypRn7jYbvuybT4flG/video/3283102a172b4c00a1f33209c3e87506.cnvs.mp4",
+   "spotifyTrackId": "6e2OwnkapOwUDfhz6AP9iC",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/fbba6422f5d54ca1c3fab33ae59bbd4e842acddb"
   },
   {
    "id": "levyra-abcefdcdd14811510835",
@@ -1098,16 +1098,6 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/ec2aa978d0aa75eb24054af59554e0e63d44537e"
   },
   {
-   "id": "levyra-e32935668cb20681852b",
-   "genre": "dance-party",
-   "title": "Prada",
-   "artist": "cassö, RAYE, D-Block Europe",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273e4b7dccdfd54375ded9ccc5c",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/bcb5bcd55e5549759ae03392df3a8b12.cnvs.mp4",
-   "spotifyTrackId": "59NraMJsLaMCVtwXTSia8i",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/07ca5d41f53802807fd40d2778e66f633a2f3b8b"
-  },
-  {
    "id": "levyra-3694cc14be3c6267960e",
    "genre": "dance-party",
    "title": "Victory Lap",
@@ -1116,6 +1106,16 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/4oLeXFyACqeem2VImYeBFe/video/9c078aa3c74646069b43d64e4db84b9d.cnvs.mp4",
    "spotifyTrackId": "1lbNgoJ5iMrMluCyhI4OQP",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/7a52939c36a748786e19a2a4d640c5852d4ae55b"
+  },
+  {
+   "id": "levyra-e32935668cb20681852b",
+   "genre": "dance-party",
+   "title": "Prada",
+   "artist": "cassö, RAYE, D-Block Europe",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273e4b7dccdfd54375ded9ccc5c",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/bcb5bcd55e5549759ae03392df3a8b12.cnvs.mp4",
+   "spotifyTrackId": "59NraMJsLaMCVtwXTSia8i",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/07ca5d41f53802807fd40d2778e66f633a2f3b8b"
   },
   {
    "id": "levyra-47404e9cd417bf51332d",
@@ -1984,8 +1984,7 @@
    "artist": "BNXN",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273c304f82b70048ac2b0d1b936",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/3zaDigUwjHvjOkSn0NDf9x/video/8d41e01a3e5d44b29da4765e1dc11375.cnvs.mp4",
-   "spotifyTrackId": "6d4YQtaZ7M4WwoYiTC2U06",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/5d446d841f38ace30d7277e8635564868d3d009d"
+   "spotifyTrackId": "6d4YQtaZ7M4WwoYiTC2U06"
   },
   {
    "id": "levyra-df7b5ddd105fdf57e7ba",
@@ -1994,8 +1993,7 @@
    "artist": "Joshua Baraka, Mr Eazi",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2737905cb89733adb4f0b18236f",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/0sACyypRn7jYbvuybT4flG/video/3d8e80d0fd94475bae34f22f22456319.cnvs.mp4",
-   "spotifyTrackId": "5GZTusIWd5rWT6QlQ3RVb3",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/42e3f618af36622fdff9fbbcefa20e98e343bc79"
+   "spotifyTrackId": "5GZTusIWd5rWT6QlQ3RVb3"
   },
   {
    "id": "levyra-2203a6ee93d91fccdf3a",

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-14T22:29:50Z",
+  "generatedAt": "2026-11-15T06:41:13Z",
   "items": [
     {
       "song": "Sentire La Musica",
@@ -334,7 +334,7 @@
     {
       "song": "Man I Need",
       "artist": "Olivia Dean",
-      "album": "The Art of Loving",
+      "album": "Man I Need",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
@@ -532,13 +532,6 @@
       "artist": "Sam Fender, Olivia Dean",
       "album": "People Watching (Deluxe Edition)",
       "url": "https://canvaz.scdn.co/upload/artist/6zlR5ttMfMNmwf2lecU9Cc/video/c376916e9524470db551c735393b9866.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "Man I Need",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -1887,7 +1880,7 @@
     },
     {
       "song": "LEJ MI BBY",
-      "artist": "maja janowska, Young Leosia",
+      "artist": "maja janowska, Young Leosia, YEEGOR",
       "album": "no luv",
       "url": "https://canvaz.scdn.co/upload/artist/7qAu2kYGjO28g0CJERiQhM/video/6cb7365c2bf649099323cfa783961f49.cnvs.mp4",
       "scope": "track"
@@ -2401,6 +2394,13 @@
       "artist": "Anis Don Demina",
       "album": "SPRING!",
       "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/3da9189227af4588b279d5026d695e63.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "The Art of Loving",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4913,7 +4913,7 @@
       "song": "TÚ SIN YO",
       "artist": "Maria Becerra, Big One",
       "album": "TÚ SIN YO",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/1e713da147ef4d57a3686fabdd551530.cnvs.mp4",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/42d866c1dc034527b9f70967e10354d2.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -5327,13 +5327,6 @@
       "artist": "Ele A El Dominio",
       "album": "Hace Mucho Tiempo",
       "url": "https://canvaz.scdn.co/upload/artist/4SzD0wClEg9NKVJZbCRFqS/video/1d146c88deb94499ab6070566877bb68.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "El Teléfono",
-      "artist": "Héctor \"El Father\", Wisin & Yandel",
-      "album": "Machete Music Chronicles: Vol. I",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/b23b719ccbb445188126f29f094d154a.cnvs.mp4",
       "scope": "track"
     },
     {
