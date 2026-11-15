@@ -1012,6 +1012,7 @@ data class ExploreGenreDiscoveryState(
     val storefront: String = "",
     val apple: List<com.luc4n3x.levyra.data.apple.AppleCatalogShelf> = emptyList(),
     val lastFm: com.luc4n3x.levyra.data.lastfm.LastFmGenreDiscovery? = null,
+    val playlists: List<com.luc4n3x.levyra.data.YoutubeMusicMoodSection> = emptyList(),
     val isLoading: Boolean = false
 )
 
@@ -12590,7 +12591,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val params = category.params
         if (params.isBlank() || category.title.isBlank()) return
         exploreJob?.cancel()
-        loadExploreGenreChart("category:$params", LastFmGenreTags.forCategoryTitle(category.title))
+        loadExploreGenreChart("category:$params", LastFmGenreTags.forCategory(category))
         val languageCode = _state.value.languageCode
         val cacheKey = "provider:$languageCode:$params"
         val cached = exploreCache[cacheKey]
@@ -12655,7 +12656,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun openExploreCategoryChart(category: ExploreCategory) {
-        loadExploreGenreChart("category:${category.params}", LastFmGenreTags.forCategoryTitle(category.title))
+        loadExploreGenreChart("category:${category.params}", LastFmGenreTags.forCategory(category))
     }
 
     fun openExploreZoneChart(zone: ExploreZone) {
@@ -12712,7 +12713,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun loadExploreCategoryDiscovery(category: ExploreCategory) {
         val curators = listOfNotNull(AppleExploreCatalog.curatorId(category.params))
-        loadExploreGenreDiscovery("category:${category.params}", LastFmGenreTags.forCategoryTitle(category.title), curators) { apple, front, lang ->
+        val playlistParams = category.params.takeIf { LastFmGenreTags.decadeOf(category) != null }
+        loadExploreGenreDiscovery("category:${category.params}", LastFmGenreTags.forCategory(category), curators, playlistParams) { apple, front, lang ->
             apple.genre(category.title, category.params, front, lang)
         }
     }
@@ -12761,6 +12763,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         identity: String,
         tags: List<String>,
         cachedCurators: List<String>,
+        playlistParams: String? = null,
         fetchApple: suspend (AppleMusicEditorialRepository, String, String) -> AppleCatalogPage?
     ) {
         val languageCode = _state.value.languageCode
@@ -12782,9 +12785,23 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             coroutineScope {
                 launch { loadAppleGenreShelves(apple, identity, cachedCurators, storefront, appleLanguage, fetchApple, ::publish) }
                 launch { loadLastFmGenreDiscovery(identity, tags, languageCode, ::publish) }
+                playlistParams?.let { params -> launch { loadProviderGenrePlaylists(identity, params, languageCode, ::publish) } }
             }
             publish { state -> state.copy(isLoading = false) }
         }
+    }
+
+    private suspend fun loadProviderGenrePlaylists(
+        identity: String,
+        params: String,
+        languageCode: String,
+        publish: ((ExploreGenreDiscoveryState) -> ExploreGenreDiscoveryState) -> Unit
+    ) {
+        val sections = runCatchingPreservingCancellation { repository.moodPlaylistSections(params, languageCode) }
+            .onFailure { Timber.w(it, "Provider genre playlists failed for %s", identity) }
+            .getOrDefault(emptyList())
+            .filter { section -> section.playlists.any { it.thumbnailUrl.isNotBlank() } }
+        if (sections.isNotEmpty()) publish { state -> state.copy(playlists = sections) }
     }
 
     fun ensureExploreTrackArtwork(track: Track) {

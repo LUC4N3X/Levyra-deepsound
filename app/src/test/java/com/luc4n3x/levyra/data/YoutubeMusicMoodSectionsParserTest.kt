@@ -36,6 +36,13 @@ class YoutubeMusicMoodSectionsParserTest {
     }
 
     @Test
+    fun keepsTheSectionMoreLinkOnlyForCategoryPages() {
+        val sections = repository.parseMoodPlaylistSections(JSONObject(categoryPage))
+
+        assertEquals(listOf("", "decade-params"), sections.map { it.moreParams })
+    }
+
+    @Test
     fun emptyPayloadReturnsNoSections() {
         assertTrue(repository.parseMoodPlaylistSections(JSONObject("""{"contents":{}}""")).isEmpty())
     }
@@ -57,7 +64,7 @@ class YoutubeMusicMoodSectionsParserTest {
               "tabs": [ { "tabRenderer": { "content": { "sectionListRenderer": { "contents": [
                 {
                   "gridRenderer": {
-                    "header": { "gridHeaderRenderer": { "title": { "runs": [ { "text": "Rap italiano: le playlist" } ] } } },
+                    "header": { "gridHeaderRenderer": { "title": { "runs": [ { "text": "Rap italiano: le playlist", "navigationEndpoint": { "browseEndpoint": { "browseId": "VLRDCLAK_other", "params": "ignored" } } } ] } } },
                     "items": [
                       ${card("Ultra", "VLRDCLAK_ultra", "Geolier, Sfera Ebbasta, Shiva")},
                       ${card("Street culto", "VLRDCLAK_street", "Shiva, Nerissima Serpe")}
@@ -77,7 +84,9 @@ class YoutubeMusicMoodSectionsParserTest {
                 },
                 {
                   "musicCarouselShelfRenderer": {
-                    "header": { "musicCarouselShelfBasicHeaderRenderer": { "title": { "runs": [ { "text": "Playlist popolari Hip Hop" } ] } } },
+                    "header": { "musicCarouselShelfBasicHeaderRenderer": {
+                      "title": { "runs": [ { "text": "Playlist popolari Hip Hop", "navigationEndpoint": { "browseEndpoint": { "browseId": "FEmusic_moods_and_genres_category", "params": "decade-params" } } } ] }
+                    } },
                     "contents": [ ${card("Hit Rap Italiane", "VLRDCLAK_hit", "Sfera Ebbasta, Guè")} ]
                   }
                 }

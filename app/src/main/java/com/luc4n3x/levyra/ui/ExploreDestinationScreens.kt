@@ -1347,7 +1347,8 @@ internal fun ExploreMoodsDestinationScreen(
     bottomInset: Dp = ExploreDestinationBottomInset
 ) {
     BackHandler(enabled = backEnabled, onBack = onBack)
-    val sections = remember(categories) { buildExploreCategorySections(categories) }
+    val browseCategories = rememberCategoriesWithDecades(categories, strings.code)
+    val sections = remember(browseCategories) { buildExploreCategorySections(browseCategories) }
     if (com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) {
         YouTubeMusicMoodsPage(sections, destinationCuratedExploreZones(zones), isLoading, strings, bottomInset, onBack, onOpenCategory, onOpenZone)
         return

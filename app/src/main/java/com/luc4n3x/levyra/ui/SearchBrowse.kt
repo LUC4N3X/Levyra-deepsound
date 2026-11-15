@@ -183,7 +183,7 @@ internal fun rememberLevyraSearchBrowse(state: LevyraUiState, viewModel: SearchV
         viewModel.ensureExploreSamples()
     }
     val zones = remember(strings) { ExploreCatalog.getZones(strings) }
-    val categories = state.exploreCategories
+    val categories = rememberCategoriesWithDecades(state.exploreCategories, strings.code)
     val sections = remember(zones, categories) { levyraSearchBrowseSections(zones, categories) }
     val categoryArtwork = state.exploreCategoryArtwork
     val localFresh = state.exploreFreshTracks

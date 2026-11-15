@@ -39,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
@@ -108,7 +109,7 @@ internal fun DefaultCuratedPlaylistsScreen(page: CuratedPageData, onOpen: (Playl
             BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
                 val inset = LevyraHomeDesign.HorizontalInset
                 val columns = curatedPageColumns(maxWidth, inset, DefaultCuratedGap, DefaultCuratedCellMin)
-                val rows = remember(page.groups, columns) { curatedPageRows(page.groups, columns) }
+                val rows = remember(page.groups, page.browse, columns) { curatedPageRows(page.groups, columns, page.browse) }
                 val chips = page.groups.size > 1
                 val focused by rememberCuratedFocusedGroup(listState, rows) { stickyPx }
                 val jump: (Int) -> Unit = { group ->
@@ -148,7 +149,12 @@ internal fun DefaultCuratedPlaylistsScreen(page: CuratedPageData, onOpen: (Playl
                             Modifier.padding(top = 28.dp)
                         )
                     },
-                    empty = { DefaultCuratedEmpty() }
+                    empty = { DefaultCuratedEmpty() },
+                    picker = { browse ->
+                        CuratedBrowsePicker(browse, inset, SolidColor(scheme.primary), LevyraText, LevyraMuted) { label, selected, onClick ->
+                            LevyraFilterPill(label = label, selected = selected, onClick = onClick)
+                        }
+                    }
                 )
             }
         }

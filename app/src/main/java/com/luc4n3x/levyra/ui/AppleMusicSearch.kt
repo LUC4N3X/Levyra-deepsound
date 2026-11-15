@@ -166,8 +166,9 @@ internal fun rememberAppleMusicSearchCatalog(state: LevyraUiState, ensureExplore
     LaunchedEffect(storefront, strings.code) { editorial.loadBrowse(storefront, strings.code) }
     LaunchedEffect(strings) { ensureExplore(strings) }
     val zones = remember(strings) { ExploreCatalog.getZones(strings) }
-    val tiles = remember(editorialState.browse, state.exploreCategories, state.exploreCategoryArtwork, zones) {
-        appleSearchTiles(editorialState.browse, state.exploreCategories, state.exploreCategoryArtwork, zones)
+    val categories = rememberCategoriesWithDecades(state.exploreCategories, strings.code)
+    val tiles = remember(editorialState.browse, categories, state.exploreCategoryArtwork, zones) {
+        appleSearchTiles(editorialState.browse, categories, state.exploreCategoryArtwork, zones)
     }
     return AppleMusicSearchCatalog(tiles, editorialState.browseLoading)
 }

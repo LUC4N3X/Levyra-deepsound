@@ -467,16 +467,6 @@ internal fun rememberCuratedPlaylistShelves(code: String): List<YoutubeMusicHome
     }
 }
 
-@Composable
-internal fun rememberCuratedMoodShelves(code: String): List<YoutubeMusicHomeShelf> {
-    val mixedHome = viewModel<YouTubeMusicHomeViewModel>(key = "mono-mixed-for-you")
-    val mixedState by mixedHome.state.collectAsStateWithLifecycle()
-    val settled = mixedState.language == code && !mixedState.loading
-    LaunchedEffect(code, settled) { if (settled) mixedHome.requestMoodShelves(code) }
-    val moodShelves by mixedHome.moodShelves.collectAsStateWithLifecycle()
-    return moodShelves[code].orEmpty()
-}
-
 internal fun newReleaseMixItem(shelves: List<YoutubeMusicHomeShelf>): YoutubeMusicHomeItem? =
     shelves.asSequence()
         .filter { it.headerBrowseId.startsWith("FEmusic_new_releases") }
@@ -926,7 +916,8 @@ private fun MonoHomeContent(
     val feed = rememberMonoHomeFeed(model, copy) { orbitOpen = true }
     val zones = remember(strings) { ExploreCatalog.getZones(strings) }
     val genreZones = remember(zones, strings.code) { exploreGenreChartZones(zones, strings.code) }
-    val browse = remember(state.exploreCategories, zones) { monoBrowseTiles(state.exploreCategories, zones) }
+    val categories = rememberCategoriesWithDecades(state.exploreCategories, strings.code)
+    val browse = remember(categories, zones) { monoBrowseTiles(categories, zones) }
     val viewModel = model.viewModel
     val categoriesLoading = state.isExploreCategoriesLoading
     val categoryArtwork = if (page == MonoPageMood) viewModel.exploreCategoryArtwork.collectAsStateWithLifecycle().value else emptyMap()
@@ -1016,9 +1007,10 @@ private fun MonoHomeContent(
             )
         }
         if (curatedOpen) {
+            val openCard = rememberCuratedCollectionOpener(strings.code, viewModel::openPlaylistHit, viewModel::openExploreCategoryPage)
             GlacierCuratedPlaylistsScreen(
                 title = copy.mixedForYou, leadTitle = copy.rotationOverline, curatedShelves = playlistShelves,
-                onOpen = viewModel::openPlaylistHit, onDismiss = { curatedOpen = false }, bottomInset = homeBottomInset
+                onOpen = openCard, onDismiss = { curatedOpen = false }, bottomInset = homeBottomInset
             )
         }
     }

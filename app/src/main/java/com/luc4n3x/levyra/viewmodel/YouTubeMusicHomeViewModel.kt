@@ -58,10 +58,6 @@ internal const val CHARTS_BROWSE_ID = "FEmusic_charts"
 internal const val NEW_VIDEOS_BROWSE_ID = "FEmusic_new_releases_videos"
 private const val PREVIEW_TRACK_LIMIT = 25
 private const val MAX_CACHED_PREVIEWS = 24
-private const val CURATED_MOOD_SHELVES = 6
-private const val CURATED_MOOD_GROUP_QUOTA = 3
-private const val CURATED_MOOD_PLAYLISTS = 10
-private const val CURATED_MOOD_FETCH_LIMIT = 40
 
 internal fun featuredPlaylistKey(playlistId: String, language: String): String = "$language|$playlistId"
 
@@ -83,11 +79,6 @@ class YouTubeMusicHomeViewModel(application: Application) : AndroidViewModel(app
     private val featuredRequests = HashSet<String>()
     private var job: Job? = null
     private var generation = 0L
-    private val _moodShelves = MutableStateFlow<Map<String, List<YoutubeMusicHomeShelf>>>(emptyMap())
-    val moodShelves: StateFlow<Map<String, List<YoutubeMusicHomeShelf>>> = _moodShelves.asStateFlow()
-    private val moodLoaded = HashSet<String>()
-    private var moodJob: Job? = null
-    private var moodLanguage = ""
 
     fun load(language: String, force: Boolean = false, browseId: String = HOME_BROWSE_ID) {
         val current = _state.value
@@ -121,42 +112,6 @@ class YouTubeMusicHomeViewModel(application: Application) : AndroidViewModel(app
                 playlist = hit
             )
             _featuredPlaylists.update { it + (cacheKey to item) }
-        }
-    }
-
-    fun requestMoodShelves(language: String) {
-        if (language.isBlank() || language in moodLoaded || (moodLanguage == language && moodJob?.isActive == true)) return
-        moodJob?.cancel()
-        moodLanguage = language
-        val cached = language in _moodShelves.value
-        moodJob = viewModelScope.launch {
-            val categories = try {
-                repository.moodCategories(language)
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Exception) {
-                Timber.w(error, "Curated moods and genres lookup failed")
-                return@launch
-            }
-            val selected = curatedMoodCategories(categories)
-            val previous = _moodShelves.value[language].orEmpty().associateBy { it.key }
-            val shelves = mutableListOf<YoutubeMusicHomeShelf>()
-            for (category in selected) {
-                previous[curatedMoodShelfKey(category)]?.let { shelves += it; continue }
-                val playlists = try {
-                    repository.moodPlaylists(category.params, language, CURATED_MOOD_FETCH_LIMIT)
-                } catch (error: CancellationException) {
-                    throw error
-                } catch (error: Exception) {
-                    Timber.w(error, "Curated mood shelf lookup failed")
-                    continue
-                }
-                val shelf = curatedMoodShelf(category, playlists) ?: continue
-                shelves += shelf
-                if (!cached) _moodShelves.update { it + (language to shelves.toList()) }
-            }
-            if (shelves.isNotEmpty()) _moodShelves.update { it + (language to shelves.toList()) }
-            if (selected.isNotEmpty() && shelves.size == selected.size) moodLoaded += language
         }
     }
 
@@ -283,20 +238,6 @@ class YouTubeMusicHomeViewModel(application: Application) : AndroidViewModel(app
     }
 }
 
-internal fun curatedMoodCategories(categories: List<ExploreCategory>): List<ExploreCategory> {
-    val (allMoods, allGenres) = categories.partition { it.sectionIndex == 0 }
-    val moodQuota = minOf(allMoods.size, CURATED_MOOD_GROUP_QUOTA)
-    val genreQuota = minOf(allGenres.size, CURATED_MOOD_GROUP_QUOTA)
-    val moods = evenlySpaced(allMoods, minOf(allMoods.size, moodQuota + CURATED_MOOD_GROUP_QUOTA - genreQuota))
-    val genres = evenlySpaced(allGenres, minOf(allGenres.size, genreQuota + CURATED_MOOD_GROUP_QUOTA - moodQuota))
-    return (0 until maxOf(moods.size, genres.size))
-        .flatMap { index -> listOfNotNull(moods.getOrNull(index), genres.getOrNull(index)) }
-        .take(CURATED_MOOD_SHELVES)
-}
-
-private fun <T> evenlySpaced(list: List<T>, count: Int): List<T> =
-    if (list.size > count) List(count) { list[it * list.size / count] } else list
-
 private fun curatedMoodShelfKey(category: ExploreCategory): String = "mood-${category.params}"
 
 internal fun curatedMoodShelf(category: ExploreCategory, playlists: List<YoutubeMusicMoodPlaylist>): YoutubeMusicHomeShelf? {
@@ -319,17 +260,4 @@ internal fun curatedMoodShelf(category: ExploreCategory, playlists: List<Youtube
         style = YoutubeMusicHomeShelfStyle.Cards,
         items = items
     )
-}
-
-internal fun withCuratedMoodShelves(curated: List<YoutubeMusicHomeShelf>, moods: List<YoutubeMusicHomeShelf>): List<YoutubeMusicHomeShelf> {
-    if (moods.isEmpty()) return curated
-    val seen = curated.flatMapTo(HashSet()) { shelf -> shelf.items.mapNotNull { it.playlist?.playlistId?.takeIf(String::isNotBlank) } }
-    val keys = curated.mapTo(HashSet()) { it.key }
-    return curated + moods.filter { keys.add(it.key) }.mapNotNull { shelf ->
-        val items = shelf.items.asSequence()
-            .filter { item -> item.kind == YoutubeMusicHomeItemKind.Playlist && item.playlist?.playlistId?.takeIf(String::isNotBlank)?.let(seen::add) == true }
-            .take(CURATED_MOOD_PLAYLISTS)
-            .toList()
-        if (items.isEmpty()) null else shelf.copy(items = items)
-    }
 }
