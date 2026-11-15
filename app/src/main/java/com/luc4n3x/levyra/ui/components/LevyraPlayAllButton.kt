@@ -45,7 +45,11 @@ internal fun LevyraPlayAllButton(
     label: String = LocalLevyraStrings.current.playAll
 ) {
     if (com.luc4n3x.levyra.ui.theme.LevyraIsSpotify) {
-        SpotifyTextAction(label, onClick, modifier, enabled)
+        SpotifyTextAction(label, onClick, modifier, enabled, iconOnlyIcon = Icons.Rounded.PlayArrow)
+        return
+    }
+    if (LocalSectionActionIconOnly.current) {
+        LevyraPlayAllIconButton(onClick = onClick, modifier = modifier, enabled = enabled, contentDescription = label)
         return
     }
     val colors = MaterialTheme.colorScheme
@@ -100,6 +104,7 @@ internal fun LevyraPlayAllIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     size: Dp = PlayAllVisualHeight,
+    enabled: Boolean = true,
     contentDescription: String = LocalLevyraStrings.current.playAll
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -111,6 +116,7 @@ internal fun LevyraPlayAllIconButton(
                 onClick = onClick,
                 interactionSource = interaction,
                 role = Role.Button,
+                enabled = enabled,
                 pressedScale = LevyraPressScale.Control
             )
             .semantics { this.contentDescription = contentDescription },

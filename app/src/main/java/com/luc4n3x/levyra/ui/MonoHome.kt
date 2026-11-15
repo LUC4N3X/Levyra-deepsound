@@ -389,7 +389,7 @@ private fun MonoArtistRail(artists: List<ArtistHit>, onOpen: (ArtistHit) -> Unit
             MonoCard(
                 modifier = Modifier.glacierRailItemMotion(railMotion, railState, artist.browseId.ifBlank { artist.name }),
                 title = artist.name,
-                subtitle = artistAudienceLabel(artist.subscribers, strings.code, strings.monthlyListeners),
+                subtitle = artistAudienceLabel(artist, strings.code, strings.monthlyListeners),
                 subtitleLines = 2,
                 width = MonoDesign.artistCircle,
                 onClick = { onOpen(artist) },

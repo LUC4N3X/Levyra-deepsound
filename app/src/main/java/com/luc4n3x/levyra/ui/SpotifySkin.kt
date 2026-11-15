@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.ui
 import androidx.compose.ui.text.TextStyle
 import com.luc4n3x.levyra.ui.components.LevyraTabLabel
 import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
+import com.luc4n3x.levyra.ui.components.LevyraAdaptiveSectionHeader
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -71,16 +72,17 @@ internal fun spotifyBrowseColor(seed: String): Color = SpotifyBrowseColors[abs(s
 
 @Composable
 internal fun SpotifySectionTitle(title: String, inset: Dp, actions: @Composable RowScope.() -> Unit = {}) {
-    Row(
-        Modifier.fillMaxWidth().padding(start = inset, end = (inset - 8.dp).coerceAtLeast(0.dp)).heightIn(min = 48.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            title, color = SpotifyDesign.text, style = MaterialTheme.typography.headlineSmall,
-            maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).semantics { heading() }
-        )
-        actions()
-    }
+    LevyraAdaptiveSectionHeader(
+        modifier = Modifier.fillMaxWidth().padding(start = inset, end = (inset - 8.dp).coerceAtLeast(0.dp)).heightIn(min = 48.dp),
+        gap = 4.dp,
+        title = {
+            Text(
+                title, color = SpotifyDesign.text, style = MaterialTheme.typography.headlineSmall,
+                maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() }
+            )
+        },
+        action = actions
+    )
 }
 
 @Composable
@@ -114,12 +116,7 @@ internal fun SpotifyHomeHeader(hero: StudioHero?, inset: Dp) {
 internal fun SpotifyOrbitHeader(onPlayAll: (() -> Unit)?) {
     val strings = LocalLevyraStrings.current
     SpotifySectionTitle(strings.personalOrbitTitle, SpotifyDesign.gutter) {
-        if (onPlayAll != null) Box(
-            Modifier.heightIn(min = 48.dp).levyraPressable(onClick = onPlayAll, onClickLabel = strings.playAll, role = Role.Button).padding(horizontal = 8.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(strings.playAll, color = SpotifyDesign.subdued, style = MaterialTheme.typography.titleSmall, maxLines = 1)
-        }
+        if (onPlayAll != null) com.luc4n3x.levyra.ui.components.SpotifyTextAction(strings.playAll, onPlayAll, iconOnlyIcon = Icons.Rounded.PlayArrow)
     }
 }
 

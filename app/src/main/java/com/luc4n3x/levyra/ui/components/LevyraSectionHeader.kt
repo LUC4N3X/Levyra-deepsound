@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
@@ -26,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -54,71 +56,70 @@ internal fun LevyraSectionHeader(
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     val detail = subtitle?.trim().orEmpty()
-    Row(
+    LevyraAdaptiveSectionHeader(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = SectionHeaderMinHeight),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .then(
-                    if (onTitleClick != null) {
-                        Modifier
-                            .heightIn(min = SectionHeaderMinHeight)
-                            .levyraPressable(
-                                onClick = onTitleClick,
-                                onClickLabel = title,
-                                role = Role.Button,
-                                pressedScale = LevyraPressScale.Row
-                            )
-                    } else {
-                        Modifier
+        title = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (onTitleClick != null) {
+                            Modifier
+                                .heightIn(min = SectionHeaderMinHeight)
+                                .levyraPressable(
+                                    onClick = onTitleClick,
+                                    onClickLabel = title,
+                                    role = Role.Button,
+                                    pressedScale = LevyraPressScale.Row
+                                )
+                        } else {
+                            Modifier
+                        }
+                    ),
+                verticalArrangement = Arrangement.spacedBy(LevyraCardDesign.CaptionLineGap, Alignment.CenterVertically)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val torque = com.luc4n3x.levyra.ui.theme.LevyraIsTorque
+                    if (torque) {
+                        androidx.compose.foundation.layout.Box(
+                            Modifier.size(width = 4.dp, height = 22.dp).background(com.luc4n3x.levyra.ui.theme.LevyraActivePalette.blue)
+                        )
+                        androidx.compose.foundation.layout.Spacer(Modifier.size(10.dp))
                     }
-                ),
-            verticalArrangement = Arrangement.spacedBy(LevyraCardDesign.CaptionLineGap, Alignment.CenterVertically)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                val torque = com.luc4n3x.levyra.ui.theme.LevyraIsTorque
-                if (torque) {
-                    androidx.compose.foundation.layout.Box(
-                        Modifier.size(width = 4.dp, height = 22.dp).background(com.luc4n3x.levyra.ui.theme.LevyraActivePalette.blue)
+                    Text(
+                        text = if (torque) title.uppercase() else title,
+                        color = titleColor,
+                        style = if (torque) LevyraType.sectionTitle.copy(fontSize = 18.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, letterSpacing = 2.sp) else LevyraType.sectionTitle,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .weight(1f, fill = onTitleClick == null)
+                            .semantics { heading() }
                     )
-                    androidx.compose.foundation.layout.Spacer(Modifier.size(10.dp))
+                    if (onTitleClick != null) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = subtitleColor,
+                            modifier = Modifier.size(26.dp)
+                        )
+                    }
                 }
-                Text(
-                    text = if (torque) title.uppercase() else title,
-                    color = titleColor,
-                    style = if (torque) LevyraType.sectionTitle.copy(fontSize = 18.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, letterSpacing = 2.sp) else LevyraType.sectionTitle,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .weight(1f, fill = onTitleClick == null)
-                        .semantics { heading() }
-                )
-                if (onTitleClick != null) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                        contentDescription = null,
-                        tint = subtitleColor,
-                        modifier = Modifier.size(26.dp)
+                if (detail.isNotEmpty()) {
+                    Text(
+                        text = detail,
+                        color = subtitleColor,
+                        style = LevyraType.caption,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
-            if (detail.isNotEmpty()) {
-                Text(
-                    text = detail,
-                    color = subtitleColor,
-                    style = LevyraType.caption,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-        actions()
-    }
+        },
+        action = actions
+    )
 }
 
 @Composable
@@ -131,8 +132,9 @@ internal fun LevyraSectionAction(
     compact: Boolean = false,
     tonal: Boolean = false
 ) {
+    val iconOnlyIcon = trailingIcon ?: leadingIcon ?: Icons.AutoMirrored.Rounded.KeyboardArrowRight
     if (com.luc4n3x.levyra.ui.theme.LevyraIsSpotify) {
-        SpotifyTextAction(label, onClick, modifier)
+        SpotifyTextAction(label, onClick, modifier, iconOnlyIcon = iconOnlyIcon)
         return
     }
     val palette = sectionActionPalette(tonal)
@@ -144,18 +146,31 @@ internal fun LevyraSectionAction(
         label = "section-action-corner"
     )
     val shape = RoundedCornerShape(corner)
+    val iconOnly = LocalSectionActionIconOnly.current
     Box(
         modifier = modifier
             .heightIn(min = SectionHeaderMinHeight)
+            .then(if (iconOnly) Modifier.widthIn(min = SectionHeaderMinHeight) else Modifier)
             .levyraPressable(
                 onClick = onClick,
                 interactionSource = interaction,
                 role = Role.Button,
                 pressedScale = LevyraPressScale.Control
-            ),
+            )
+            .then(if (iconOnly) Modifier.semantics { contentDescription = label } else Modifier),
         contentAlignment = Alignment.Center
     ) {
-        Row(
+        if (iconOnly) {
+            Box(
+                modifier = Modifier
+                    .size(SectionActionVisualHeight)
+                    .clip(shape)
+                    .background(palette.container),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(iconOnlyIcon, contentDescription = null, tint = palette.content, modifier = Modifier.size(20.dp))
+            }
+        } else Row(
             modifier = Modifier
                 .heightIn(min = if (compact) 30.dp else SectionActionVisualHeight)
                 .clip(shape)

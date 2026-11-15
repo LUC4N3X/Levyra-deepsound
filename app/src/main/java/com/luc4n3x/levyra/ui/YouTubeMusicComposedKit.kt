@@ -85,7 +85,8 @@ internal class YouTubeMusicComposedKit(
             YouTubeMusicSectionHeader(
                 title,
                 actionLabel = if (picksCountry) "$countryLabel ▾" else copy.playAll,
-                onAction = if (picksCountry) onPickCountry else onPlayAll
+                onAction = if (picksCountry) onPickCountry else onPlayAll,
+                actionIcon = if (picksCountry) null else Icons.Rounded.PlayArrow
             )
             Spacer(Modifier.height(4.dp))
             YouTubeMusicSongColumns(rows, currentId, copy.explicit)

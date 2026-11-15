@@ -31,6 +31,12 @@ import com.luc4n3x.levyra.ui.components.levyraGroupedListShape
 import com.luc4n3x.levyra.ui.components.rememberLevyraAvatarPressShape
 import androidx.compose.foundation.text.BasicText
 import com.luc4n3x.levyra.ui.components.LevyraFilterPill
+import com.luc4n3x.levyra.ui.components.LevyraAdaptiveSectionHeader
+import com.luc4n3x.levyra.ui.components.LevyraFirstFitting
+import com.luc4n3x.levyra.ui.components.LevyraWrappingHeaderRow
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.runtime.ReadOnlyComposable
+import com.luc4n3x.levyra.ui.components.LevyraWordSafeAutoSize
 import com.luc4n3x.levyra.ui.components.LevyraSectionAction
 import com.luc4n3x.levyra.ui.components.LevyraSectionHeader
 import com.luc4n3x.levyra.ui.components.LevyraSectionPlayAll
@@ -1446,14 +1452,11 @@ private fun ChartMarketHeader(
 ) {
     val strings = LocalLevyraStrings.current
     val subtitle = defaultHomeSubtitle(HOME_SUBTITLE_CHART_MARKET, "")
-    Row(
+    LevyraAdaptiveSectionHeader(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) { Column(
+        title = { Column(
             modifier = Modifier
                 .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
                 .levyraPressable(
@@ -1504,11 +1507,9 @@ private fun ChartMarketHeader(
                 }
             }
             subtitle?.let { Text(it, color = LevyraMuted, style = LevyraType.caption, maxLines = 2, overflow = TextOverflow.Ellipsis) }
-        } }
-        onPlayAll?.let { action ->
-            LevyraSectionPlayAll(onClick = action)
-        }
-    }
+        } },
+        action = if (onPlayAll != null) { { LevyraSectionPlayAll(onClick = onPlayAll) } } else null
+    )
 }
 
 @Composable
@@ -12053,50 +12054,50 @@ private fun HomeOrbitHeader(
     val displayName = userName.trim()
     val initial = remember(displayName) { homePersonalOrbitInitial(displayName) }
 
-    Row(
+    LevyraAdaptiveSectionHeader(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (initial != null) {
-            HomeOrbitAvatar(
-                initial = initial,
-                photoPath = profilePhotoPath,
-                photoVersion = profilePhotoVersion,
-                accountAvatarUrl = accountAvatarUrl
-            )
-            Spacer(modifier = Modifier.width(LevyraHomeDesign.OrbitAvatarGap))
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            if (initial != null) {
-                Text(
-                    text = displayName.uppercase(),
-                    color = LevyraMuted,
-                    fontSize = LevyraHomeDesign.OrbitHeaderNameSize,
-                    lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitHeaderNameSize),
-                    fontWeight = FontWeight.Normal,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+        gap = 6.dp,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (initial != null) {
+                    HomeOrbitAvatar(
+                        initial = initial,
+                        photoPath = profilePhotoPath,
+                        photoVersion = profilePhotoVersion,
+                        accountAvatarUrl = accountAvatarUrl
+                    )
+                    Spacer(modifier = Modifier.width(LevyraHomeDesign.OrbitAvatarGap))
+                }
+                Column {
+                    if (initial != null) {
+                        Text(
+                            text = displayName.uppercase(),
+                            color = LevyraMuted,
+                            fontSize = LevyraHomeDesign.OrbitHeaderNameSize,
+                            lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitHeaderNameSize),
+                            fontWeight = FontWeight.Normal,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    Text(
+                        text = strings.personalOrbitTitle,
+                        color = LevyraText,
+                        fontSize = LevyraHomeDesign.OrbitHeaderTitleSize,
+                        lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitHeaderTitleSize),
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.semantics { heading() }
+                    )
+                    if (initial == null) defaultHomeSubtitle(HOME_SUBTITLE_ORBIT, "")?.let { Text(it, color = LevyraMuted, style = LevyraType.caption, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+                }
             }
-            Text(
-                text = strings.personalOrbitTitle,
-                color = LevyraText,
-                fontSize = LevyraHomeDesign.OrbitHeaderTitleSize,
-                lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitHeaderTitleSize),
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.semantics { heading() }
-            )
-            if (initial == null) defaultHomeSubtitle(HOME_SUBTITLE_ORBIT, "")?.let { Text(it, color = LevyraMuted, style = LevyraType.caption, maxLines = 2, overflow = TextOverflow.Ellipsis) }
-        }
-        if (onPlayAll != null) {
-            Spacer(modifier = Modifier.width(6.dp))
-            LevyraSectionPlayAll(onClick = onPlayAll)
-        }
-    }
+        },
+        action = if (onPlayAll != null) { { LevyraSectionPlayAll(onClick = onPlayAll) } } else null
+    )
 }
 
 @Composable
@@ -12902,7 +12903,7 @@ private fun TrendingArtistsShelf(
                     ArtistHitShelfItem(
                         artist = artist,
                         onClick = { onArtistClick(artist) },
-                        audience = if (plainDefault) artistAudienceLabel(artist.subscribers, strings.code, strings.monthlyListeners) else "",
+                        audience = if (plainDefault) artistAudienceLabel(artist, strings.code, strings.monthlyListeners) else "",
                         reserveAudience = plainDefault,
                         artworkMotion = Modifier.defaultRailParallax(railMotion, artistRowState, motionKey)
                     )
@@ -13657,7 +13658,7 @@ private fun StudioHomeOrbitHeader(
     val initial = remember(displayName) { homePersonalOrbitInitial(displayName) }
     val compactPlayAll = style != HomeStyle.Original && style != HomeStyle.MaterialExpressive
 
-    Row(
+    LevyraAdaptiveSectionHeader(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
@@ -13680,59 +13681,65 @@ private fun StudioHomeOrbitHeader(
                     else -> Modifier
                 }
             ),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (initial != null) {
-            HomeOrbitAvatar(
-                initial = initial,
-                photoPath = profilePhotoPath,
-                photoVersion = profilePhotoVersion,
-                accountAvatarUrl = accountAvatarUrl
-            )
-            Spacer(modifier = Modifier.width(LevyraHomeDesign.OrbitAvatarGap))
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            if (initial != null) {
-                Text(
-                    text = displayName.uppercase(),
-                    color = LevyraMuted,
-                    fontSize = LevyraHomeDesign.OrbitHeaderNameSize,
-                    lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitHeaderNameSize),
-                    fontWeight = FontWeight.Normal,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            Text(
-                text = if (LevyraIsTorque) strings.personalOrbitTitle.uppercase() else strings.personalOrbitTitle,
-                color = LevyraText,
-                style = if (LevyraIsTorque) MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, letterSpacing = 2.sp) else when (style) {
-                    HomeStyle.Editorial -> MaterialTheme.typography.headlineSmall.copy(fontFamily = FontFamily.Serif)
-                    HomeStyle.Minimal -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Medium)
-                    HomeStyle.Immersive -> MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black)
-                    HomeStyle.ExpressiveMax, HomeStyle.Flow -> MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
-                    HomeStyle.Original, HomeStyle.MaterialExpressive -> TextStyle(
-                        fontSize = LevyraHomeDesign.OrbitHeaderTitleSize,
-                        lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitHeaderTitleSize),
-                        fontWeight = FontWeight.Bold
+        gap = 6.dp,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (initial != null) {
+                    HomeOrbitAvatar(
+                        initial = initial,
+                        photoPath = profilePhotoPath,
+                        photoVersion = profilePhotoVersion,
+                        accountAvatarUrl = accountAvatarUrl
                     )
-                },
-                maxLines = if (compactPlayAll) 2 else 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.semantics { heading() }
-            )
-        }
-        if (onPlayAll != null) {
-            Spacer(modifier = Modifier.width(6.dp))
-            if (compactPlayAll) {
-                FilledIconButton(onClick = onPlayAll, modifier = Modifier.size(LevyraPlayerDesign.MinimumTouchTarget)) {
-                    Icon(Icons.Rounded.PlayArrow, contentDescription = strings.playAll)
+                    Spacer(modifier = Modifier.width(LevyraHomeDesign.OrbitAvatarGap))
                 }
-            } else {
-                LevyraSectionPlayAll(onClick = onPlayAll)
+                Column {
+                    if (initial != null) {
+                        Text(
+                            text = displayName.uppercase(),
+                            color = LevyraMuted,
+                            fontSize = LevyraHomeDesign.OrbitHeaderNameSize,
+                            lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitHeaderNameSize),
+                            fontWeight = FontWeight.Normal,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    Text(
+                        text = if (LevyraIsTorque) strings.personalOrbitTitle.uppercase() else strings.personalOrbitTitle,
+                        color = LevyraText,
+                        style = if (LevyraIsTorque) MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, letterSpacing = 2.sp) else when (style) {
+                            HomeStyle.Editorial -> MaterialTheme.typography.headlineSmall.copy(fontFamily = FontFamily.Serif)
+                            HomeStyle.Minimal -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Medium)
+                            HomeStyle.Immersive -> MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black)
+                            HomeStyle.ExpressiveMax, HomeStyle.Flow -> MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
+                            HomeStyle.Original, HomeStyle.MaterialExpressive -> TextStyle(
+                                fontSize = LevyraHomeDesign.OrbitHeaderTitleSize,
+                                lineHeight = LevyraTypeRhythm.lineHeight(LevyraHomeDesign.OrbitHeaderTitleSize),
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.semantics { heading() }
+                    )
+                }
             }
+        },
+        action = if (onPlayAll != null) {
+            {
+                if (compactPlayAll) {
+                    FilledIconButton(onClick = onPlayAll, modifier = Modifier.size(LevyraPlayerDesign.MinimumTouchTarget)) {
+                        Icon(Icons.Rounded.PlayArrow, contentDescription = strings.playAll)
+                    }
+                } else {
+                    LevyraSectionPlayAll(onClick = onPlayAll)
+                }
+            }
+        } else {
+            null
         }
-    }
+    )
 }
 
 @Composable
@@ -20947,7 +20954,7 @@ private fun SettingsStudioShelf(title: String, subtitle: String, entries: List<S
                     onClick = entry.onClick,
                     shape = RoundedCornerShape(if (SkinChrome.active) SkinChrome.outerCorner else 22.dp),
                     color = LevyraAdaptiveCard,
-                    modifier = Modifier.width(180.dp).heightIn(min = 80.dp)
+                    modifier = Modifier.widthIn(min = 180.dp).width(IntrinsicSize.Min).heightIn(min = 80.dp)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
@@ -22037,55 +22044,70 @@ private fun GreetingBar(
     val greeting = remember(userName, strings, greetingHour) { strings.formatGreeting(userName, greetingHour) }
     val today = remember(strings.code, greetingHour) {
         val locale = Locale.forLanguageTag(strings.code)
-        android.icu.text.DateFormat.getInstanceForSkeleton("EEEEMMMMd", locale).format(java.util.Date())
-            .replaceFirstChar { it.titlecase(locale) }
+        listOf("EEEEMMMMd", "EEEMMMd").map { skeleton ->
+            android.icu.text.DateFormat.getInstanceForSkeleton(skeleton, locale).format(java.util.Date())
+                .replaceFirstChar { it.titlecase(locale) }
+        }
     }
 
-    Row(
+    val textMeasurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val captionStyle = greetingCaptionStyle()
+    val nameStyle = greetingTitleStyle(GREETING_NAME_SIZE)
+    val smallestTitleStyle = greetingTitleStyle(GREETING_TITLE_MIN_SIZE)
+    val greetingMinWidth = remember(dayPart, name, today, textMeasurer, density, captionStyle, nameStyle, smallestTitleStyle) {
+        fun widestWord(text: String, style: TextStyle) = textMeasurer.measure(text, style).multiParagraph.intrinsics.minIntrinsicWidth
+        fun singleLine(text: String, style: TextStyle) = textMeasurer.measure(text, style).multiParagraph.intrinsics.maxIntrinsicWidth
+        val widthPx = if (name.isNotBlank()) {
+            maxOf(singleLine(dayPart, captionStyle), widestWord(name, nameStyle))
+        } else {
+            maxOf(singleLine(today.last(), captionStyle), widestWord(dayPart, smallestTitleStyle))
+        }
+        with(density) { kotlin.math.ceil(widthPx).toDp() }
+    }
+
+    LevyraWrappingHeaderRow(
+        middleMinWidth = greetingMinWidth,
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = LevyraHomeDesign.SettingsControlHeight)
             .padding(horizontal = 2.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Row(
-            modifier = Modifier.weight(1f),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            HomeLogoBadge()
+        lead = { HomeLogoBadge() },
+        middle = {
             HomeGreeting(
                 dayPart = dayPart,
                 name = name,
                 today = today,
                 greeting = greeting,
-                animationsEnabled = animationsEnabled,
-                modifier = Modifier.weight(1f)
+                animationsEnabled = animationsEnabled
             )
+        },
+        trailing = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                RewindEntry()
+                HomeHeaderIconButton(
+                    icon = Icons.Rounded.Search,
+                    contentDescription = strings.search,
+                    polygon = MaterialShapes.Cookie4Sided,
+                    onClick = onSearch
+                )
+                HomeHeaderIconButton(
+                    icon = Icons.Rounded.Settings,
+                    contentDescription = strings.settings,
+                    polygon = MaterialShapes.Cookie4Sided,
+                    loading = isResolving,
+                    onClick = onSettings
+                )
+            }
         }
-        RewindEntry()
-        HomeHeaderIconButton(
-            icon = Icons.Rounded.Search,
-            contentDescription = strings.search,
-            polygon = MaterialShapes.Cookie4Sided,
-            onClick = onSearch
-        )
-        HomeHeaderIconButton(
-            icon = Icons.Rounded.Settings,
-            contentDescription = strings.settings,
-            polygon = MaterialShapes.Cookie4Sided,
-            loading = isResolving,
-            onClick = onSettings
-        )
-    }
+    )
 }
 
 @Composable
 private fun HomeGreeting(
     dayPart: String,
     name: String,
-    today: String,
+    today: List<String>,
     greeting: String,
     animationsEnabled: Boolean,
     modifier: Modifier = Modifier
@@ -22121,7 +22143,7 @@ private fun HomeGreeting(
             )
             HomeGreetingName(name = name, reveal = { nameReveal.value })
         } else {
-            HomeGreetingCaption(text = today, reveal = { dayPartReveal.value })
+            LevyraFirstFitting(today.map { text -> { HomeGreetingCaption(text = text, reveal = { dayPartReveal.value }) } })
             HomeGreetingDayPart(
                 dayPart = dayPart,
                 prominent = true,
@@ -22137,7 +22159,7 @@ private fun HomeGreetingCaption(text: String, reveal: () -> Float) {
     Text(
         text = text,
         color = if (LevyraIsLight) LevyraMuted else Color.White.copy(alpha = 0.72f),
-        style = LevyraType.metadata.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.1.sp),
+        style = greetingCaptionStyle(),
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         modifier = Modifier.graphicsLayer {
@@ -22161,16 +22183,7 @@ private fun HomeGreetingDayPart(
         LevyraIsLight -> LevyraMuted
         else -> Color.White.copy(alpha = 0.72f)
     }
-    val style = if (prominent) {
-        LevyraType.screenTitle.copy(
-            fontSize = GREETING_TITLE_MAX_SIZE,
-            lineHeight = 29.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = (-0.9).sp
-        )
-    } else {
-        LevyraType.metadata.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.1.sp)
-    }
+    val style = if (prominent) greetingTitleStyle(GREETING_TITLE_MAX_SIZE) else greetingCaptionStyle()
     Crossfade(
         targetState = dayPart,
         animationSpec = if (animationsEnabled) tween(240, easing = FastOutSlowInEasing) else snap(),
@@ -22180,10 +22193,10 @@ private fun HomeGreetingDayPart(
             text = visibleDayPart,
             color = color,
             style = style,
-            maxLines = 1,
+            maxLines = if (prominent) 2 else 1,
             overflow = TextOverflow.Ellipsis,
             autoSize = if (prominent) {
-                TextAutoSize.StepBased(minFontSize = GREETING_TITLE_MIN_SIZE, maxFontSize = GREETING_TITLE_MAX_SIZE)
+                LevyraWordSafeAutoSize(minFontSize = GREETING_TITLE_MIN_SIZE, maxFontSize = GREETING_TITLE_MAX_SIZE)
             } else {
                 null
             },
@@ -22201,12 +22214,7 @@ private fun HomeGreetingName(name: String, reveal: () -> Float) {
     Text(
         text = name,
         color = if (LevyraIsLight) LevyraText else Color.White,
-        style = LevyraType.screenTitle.copy(
-            fontSize = 26.sp,
-            lineHeight = 29.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = (-0.9).sp
-        ),
+        style = greetingTitleStyle(GREETING_NAME_SIZE),
         maxLines = 2,
         softWrap = true,
         modifier = Modifier
@@ -22227,6 +22235,15 @@ private const val GREETING_NAME_STAGGER_MS = 90L
 private val GREETING_RISE = 14.dp
 private val GREETING_TITLE_MAX_SIZE = 26.sp
 private val GREETING_TITLE_MIN_SIZE = 17.sp
+private val GREETING_NAME_SIZE = 26.sp
+@Composable
+@ReadOnlyComposable
+private fun greetingCaptionStyle() = LevyraType.metadata.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.1.sp)
+
+@Composable
+@ReadOnlyComposable
+private fun greetingTitleStyle(size: TextUnit) =
+    LevyraType.screenTitle.copy(fontSize = size, lineHeight = 29.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.9).sp)
 
 @Composable
 internal fun rememberCurrentGreetingHour() = produceState(
