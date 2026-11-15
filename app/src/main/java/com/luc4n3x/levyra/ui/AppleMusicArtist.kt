@@ -371,7 +371,7 @@ private fun AppleMusicArtistShelfRow(shelf: AppleArtistShelf, actions: AppleArti
         contentPadding = PaddingValues(horizontal = AppleMusicDesign.gutter),
         horizontalArrangement = Arrangement.spacedBy(AppleMusicDesign.itemGap)
     ) {
-        items(shelf.items, key = { "${shelf.id}-${it.kind}-${it.id}" }) { item ->
+        items(shelf.items, key = { "${shelf.id}-${it.kind}-${it.id}" }, contentType = { "AppleMusicArtist-items" }) { item ->
             val onClick = {
                 when (item.kind) {
                     AppleCatalogItemKind.Album -> actions.openAlbum(item)
@@ -433,7 +433,7 @@ internal fun AppleMusicArtistBubbles(artists: List<AppleArtistBubble>, onOpen: (
         contentPadding = PaddingValues(horizontal = AppleMusicDesign.gutter),
         horizontalArrangement = Arrangement.spacedBy(AppleMusicDesign.itemGap)
     ) {
-        items(artists, key = { "apple-bubble-${it.name}" }) { artist ->
+        items(artists, key = { "apple-bubble-${it.name}" }, contentType = { "AppleMusicArtist-artists" }) { artist ->
             Column(
                 modifier = Modifier
                     .width(AppleMusicArtistBubbleSize)

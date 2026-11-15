@@ -404,7 +404,7 @@ internal fun AudioSettingsPanel(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 contentPadding = PaddingValues(end = 4.dp)
                             ) {
-                                items(audioSettings.customPresets, key = { "custom:${it.id}" }) { preset ->
+                                items(audioSettings.customPresets, key = { "custom:${it.id}" }, contentType = { "AudioSettingsPanel-customPresets" }) { preset ->
                                     AudioPresetChip(
                                         label = preset.fallbackLabel,
                                         selected = audioSettings.presetId == preset.id,
@@ -412,7 +412,7 @@ internal fun AudioSettingsPanel(
                                         onClick = { onPreset(preset.id) }
                                     )
                                 }
-                                items(LevyraAudioPresets.presets, key = { it.id }) { preset ->
+                                items(LevyraAudioPresets.presets, key = { it.id }, contentType = { "AudioSettingsPanel-presets" }) { preset ->
                                     AudioPresetChip(
                                         label = strings.localizedAudioPresetLabel(preset.id, preset.fallbackLabel),
                                         selected = selectedCustomPreset == null &&
@@ -936,7 +936,7 @@ internal fun AutoEqCatalogDialog(
                             .heightIn(max = 360.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(state.results, key = { it.key }) { entry ->
+                        items(state.results, key = { it.key }, contentType = { "AudioSettingsPanel-results" }) { entry ->
                             AutoEqCatalogRow(
                                 entry = entry,
                                 loading = state.loadingKey == entry.key,
@@ -1697,7 +1697,7 @@ private fun PlaybackBufferPresetCard(
                     copy.balanced to PlaybackBufferSettings.Balanced,
                     copy.high to PlaybackBufferSettings.High
                 )
-                items(presets, key = { it.first }) { (label, preset) ->
+                items(presets, key = { it.first }, contentType = { "AudioSettingsPanel-presets" }) { (label, preset) ->
                     AudioPresetChip(
                         label = label,
                         selected = settings.normalized() == preset,

@@ -1009,7 +1009,7 @@ private fun LazyListScope.homeStudioAppearanceItems(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(horizontal = 0.dp)
         ) {
-            items(HomeStyle.entries, key = { it.storageId }) { option ->
+            items(HomeStyle.entries, key = { it.storageId }, contentType = { "HomeStudioScreen-entries" }) { option ->
                 HomeStyleCard(
                     style = option,
                     selected = option == style,

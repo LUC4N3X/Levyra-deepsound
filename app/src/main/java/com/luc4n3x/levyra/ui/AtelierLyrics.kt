@@ -163,7 +163,7 @@ private fun BoxScope.AtelierLyricsBody(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(start = AtelierDesign.gutter, end = AtelierDesign.gutter, top = 28.dp, bottom = 240.dp)
         ) {
-            itemsIndexed(lines, key = { index, line -> "${line.startMs}-$index" }) { index, line ->
+            itemsIndexed(lines, key = { index, line -> "${line.startMs}-$index" }, contentType = { _, _ -> "AtelierLyrics-lines" }) { index, line ->
                 AtelierLyricLineRow(
                     line, index == active, state.lyricsSynced || selectionMode, selectedRange?.contains(index) == true, animations,
                     { onLineLongClick(index, line) }

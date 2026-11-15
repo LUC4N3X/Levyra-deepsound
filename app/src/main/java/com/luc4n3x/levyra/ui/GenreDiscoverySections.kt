@@ -279,7 +279,7 @@ private fun <T> GenreDiscoveryRow(
         contentPadding = skin.rowPadding,
         horizontalArrangement = Arrangement.spacedBy(skin.itemGap)
     ) {
-        itemsIndexed(entries, key = { _, entry -> key(entry) }) { index, entry ->
+        itemsIndexed(entries, key = { _, entry -> key(entry) }, contentType = { _, _ -> "GenreDiscoverySections-entries" }) { index, entry ->
             if (skin.carouselDepth) {
                 Box(Modifier.levyraCarouselDepth(state, key(entry), depth)) { content(index, entry) }
             } else {

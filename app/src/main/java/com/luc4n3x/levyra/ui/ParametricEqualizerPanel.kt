@@ -657,7 +657,7 @@ private fun ParametricProfileEditor(
                             }
                         }
                     }
-                    items(session.bands, key = { it.key }) { entry ->
+                    items(session.bands, key = { it.key }, contentType = { "ParametricEqualizerPanel-bands" }) { entry ->
                         ParametricBandEditor(
                             number = session.bands.indexOf(entry) + 1,
                             band = entry.band,

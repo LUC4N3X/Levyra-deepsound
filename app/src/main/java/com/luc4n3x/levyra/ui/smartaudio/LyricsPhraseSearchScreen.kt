@@ -301,7 +301,7 @@ private fun PhraseResults(state: LyricsPhraseSearchUiState, copy: SmartAudioCopy
                 Text(copy[SmartAudioText.LyricsUnverifiedBanner], style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp))
             }
         }
-        itemsIndexed(state.hits, key = { _, hit -> hit.track.id }) { index, hit ->
+        itemsIndexed(state.hits, key = { _, hit -> hit.track.id }, contentType = { _, _ -> "LyricsPhraseSearchScreen-hits" }) { index, hit ->
             PhraseHitRow(hit, copy, first = index == 0) { onPlay(hit.track) }
         }
     }

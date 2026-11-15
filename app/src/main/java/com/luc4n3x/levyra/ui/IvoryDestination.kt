@@ -116,7 +116,7 @@ internal fun IvoryCollectionDestination(
         if (discoveryActions != null) genreDiscoveryItems(discovery, discoveryCopy, IvoryDiscoverySkin, discoveryActions)
         if (editorial.essentials.isNotEmpty()) {
             item(key = "ivory-destination-essentials") { Box(Modifier.padding(top = 18.dp)) { SkinSectionTitle(strings.songsPlain, IvoryDestinationGutter) } }
-            itemsIndexed(editorial.essentials, key = { _, t -> "essential-${t.id}" }) { index, track ->
+            itemsIndexed(editorial.essentials, key = { _, t -> "essential-${t.id}" }, contentType = { _, _ -> "IvoryDestination-essentials" }) { index, track ->
                 LaunchedEffect(track.id) { onRequestTrackArtwork(track) }
                 IvoryEssentialRow(index, track, track.id == currentTrackId) { onPlayTrack(track) }
             }
@@ -184,7 +184,7 @@ private fun LazyListScope.ivoryCoverRail(
         Column(Modifier.padding(top = 18.dp)) {
             SkinSectionTitle(title, IvoryDestinationGutter)
             LazyRow(contentPadding = PaddingValues(horizontal = IvoryDestinationGutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                itemsIndexed(entries, key = { _, entry -> entry.third.id + key }) { index, (name, artist, track) ->
+                itemsIndexed(entries, key = { _, entry -> entry.third.id + key }, contentType = { _, _ -> "IvoryDestination-entries" }) { index, (name, artist, track) ->
                     LaunchedEffect(track.id) { onRequestTrackArtwork(track) }
                     Column(
                         Modifier.width(156.dp)
@@ -239,7 +239,7 @@ private fun LazyListScope.ivoryGenreChart(
         }
         return
     }
-    itemsIndexed(chart.take(if (expanded) 50 else 10), key = { _, track -> "ivory-chart-${track.id}" }) { index, track ->
+    itemsIndexed(chart.take(if (expanded) 50 else 10), key = { _, track -> "ivory-chart-${track.id}" }, contentType = { _, _ -> "IvoryDestination-take" }) { index, track ->
         LaunchedEffect(track.id) { onRequestTrackArtwork(track) }
         IvoryEssentialRow(index, track, track.id == currentTrackId) { onPlayTrack(track) }
     }

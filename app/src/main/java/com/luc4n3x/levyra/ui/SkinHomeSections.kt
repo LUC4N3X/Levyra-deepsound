@@ -122,7 +122,7 @@ internal fun SkinChartSection(
         }
         if (LevyraIsIvory) IvoryChartShelf(ranked, currentId, isPlaying, inset, onPlay)
         else LazyRow(contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            itemsIndexed(pages, key = { index, _ -> "chart-page-$index" }) { _, page ->
+            itemsIndexed(pages, key = { index, _ -> "chart-page-$index" }, contentType = { _, _ -> "SkinHomeSections-pages" }) { _, page ->
                 if (torque) Column(Modifier.width(318.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     page.forEach { (index, track) -> SkinChartRow(index, track, currentId, isPlaying, onPlay) }
                 } else if (LevyraIsIvory) IvoryChartPage(page, currentId, isPlaying, onPlay)
@@ -141,7 +141,7 @@ internal fun SkinResonanceSection(
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SkinSectionTitle(title, inset)
         LazyRow(contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            itemsIndexed(tracks, key = { _, track -> "resonance-${track.id}" }) { _, track ->
+            itemsIndexed(tracks, key = { _, track -> "resonance-${track.id}" }, contentType = { _, _ -> "SkinHomeSections-tracks" }) { _, track ->
                 val snippet = comments[track.id]
                 val current = track.id == currentId
                 Column(
@@ -223,7 +223,7 @@ internal fun SkinCollectionsShelf(title: String, collections: List<StudioCollect
         val rowState = rememberLazyListState()
         val motion = ivoryRailMotionEnabled()
         LazyRow(state = rowState, contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(if (LevyraIsSpotify) SpotifyDesign.gutter else 14.dp)) {
-            itemsIndexed(collections, key = { _, collection -> "collection-${collection.id}" }) { _, collection ->
+            itemsIndexed(collections, key = { _, collection -> "collection-${collection.id}" }, contentType = { _, _ -> "SkinHomeSections-collections" }) { _, collection ->
                 val tracks = covers[collection.id].orEmpty()
                 when {
                     torque -> TorqueCollectionCard(collection, tracks, onOpen)
@@ -293,7 +293,7 @@ internal fun SkinShowcaseShelf(items: List<StudioShelfItem>, isPlaying: Boolean,
     }
     val torque = LevyraIsTorque
     LazyRow(modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(if (torque) 10.dp else 16.dp)) {
-        itemsIndexed(items, key = { _, item -> item.key }) { index, item ->
+        itemsIndexed(items, key = { _, item -> item.key }, contentType = { _, _ -> "SkinHomeSections-items" }) { index, item ->
             when {
                 torque && item.round -> TorqueArtistCard(item)
                 torque -> TorqueAlbumCard(item, index, isPlaying)

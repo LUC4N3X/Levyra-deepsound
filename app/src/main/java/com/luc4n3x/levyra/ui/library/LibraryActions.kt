@@ -618,7 +618,7 @@ internal fun AddTracksToPlaylistDialog(
                         modifier = Modifier.fillMaxWidth().heightIn(max = 320.dp),
                         verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
-                        items(playlists, key = { it.id }) { playlist ->
+                        items(playlists, key = { it.id }, contentType = { "LibraryActions-playlists" }) { playlist ->
                             val unavailable = playlist.id in unavailablePlaylistIds
                             Surface(
                                 color = Color.Transparent,

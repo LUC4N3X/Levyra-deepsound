@@ -219,7 +219,7 @@ private fun SpotifyLyricsBody(lines: List<LyricLine>, synced: Boolean, loading: 
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                itemsIndexed(lines, key = { index, line -> "$index-${line.startMs}" }) { index, line ->
+                itemsIndexed(lines, key = { index, line -> "$index-${line.startMs}" }, contentType = { _, _ -> "SpotifyLyrics-lines" }) { index, line ->
                     SpotifyLyricRow(
                         line = line,
                         current = synced && index == active,

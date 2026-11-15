@@ -186,7 +186,7 @@ internal fun TorqueRadioScreen(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 modifier = Modifier.padding(top = 24.dp)
             ) {
-                items(RadioCategory.entries, key = { it.name }) { category ->
+                items(RadioCategory.entries, key = { it.name }, contentType = { "TorqueRadio-entries" }) { category ->
                     TorqueCategoryChip(radioStrings.category(category), state.category == category) { viewModel.selectCategory(category) }
                 }
             }
@@ -211,7 +211,7 @@ internal fun TorqueRadioScreen(
                     Column(Modifier.padding(top = 18.dp)) {
                         SkinSectionTitle(sectionTitle, TorqueRadioGutter)
                         LazyRow(contentPadding = PaddingValues(horizontal = TorqueRadioGutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            items(stations, key = { "$section-${it.uuid}" }) { station ->
+                            items(stations, key = { "$section-${it.uuid}" }, contentType = { "TorqueRadio-stations" }) { station ->
                                 TorquePreset(station, currentStationId == station.uuid && isPlaying) { tuneAndPlay(station) }
                             }
                         }

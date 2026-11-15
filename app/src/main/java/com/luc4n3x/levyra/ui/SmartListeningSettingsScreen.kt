@@ -1413,7 +1413,7 @@ private fun GentleWakeSourceSelector(
                     )
                 } else {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        items(playlists.take(20), key = { it.id }) { playlist ->
+                        items(playlists.take(20), key = { it.id }, contentType = { "SmartListeningSettingsScreen-take" }) { playlist ->
                             val artwork = playlist.tracks.firstOrNull()?.thumbnailUrl.orEmpty()
                             SourceOptionCard(
                                 title = playlist.name,
@@ -1447,7 +1447,7 @@ private fun GentleWakeSourceSelector(
                     )
                 } else {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        items(albums.take(20), key = { it.browseId.ifBlank { it.title } }) { album ->
+                        items(albums.take(20), key = { it.browseId.ifBlank { it.title } }, contentType = { "SmartListeningSettingsScreen-take" }) { album ->
                             val id = album.browseId.ifBlank { album.title }
                             val seedTrack = Track(
                                 id = id,
@@ -1500,7 +1500,7 @@ private fun GentleWakeSourceSelector(
                     )
                 } else {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        items(radioStations.take(20), key = { it.uuid }) { station ->
+                        items(radioStations.take(20), key = { it.uuid }, contentType = { "SmartListeningSettingsScreen-take" }) { station ->
                             val track = station.toTrack(artwork = station.safeFaviconUrl)
                             SourceOptionCard(
                                 title = station.name,
@@ -1558,7 +1558,7 @@ private fun GentleWakeSourceSelector(
                     )
                 } else {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        items(localCandidates, key = { it.id.ifBlank { it.streamUrl } }) { track ->
+                        items(localCandidates, key = { it.id.ifBlank { it.streamUrl } }, contentType = { "SmartListeningSettingsScreen-localCandidates" }) { track ->
                             val id = track.id.ifBlank { track.streamUrl }
                             SourceOptionCard(
                                 title = track.title,

@@ -187,7 +187,7 @@ internal fun IvoryRadioScreen(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 modifier = Modifier.padding(top = 24.dp)
             ) {
-                items(RadioCategory.entries, key = { it.name }) { category ->
+                items(RadioCategory.entries, key = { it.name }, contentType = { "IvoryRadio-entries" }) { category ->
                     IvoryCategoryChip(radioStrings.category(category), state.category == category) { viewModel.selectCategory(category) }
                 }
             }
@@ -212,7 +212,7 @@ internal fun IvoryRadioScreen(
                     Column(Modifier.padding(top = 18.dp)) {
                         SkinSectionTitle(sectionTitle, IvoryRadioGutter)
                         LazyRow(contentPadding = PaddingValues(horizontal = IvoryRadioGutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            items(stations, key = { "$section-${it.uuid}" }) { station ->
+                            items(stations, key = { "$section-${it.uuid}" }, contentType = { "IvoryRadio-stations" }) { station ->
                                 IvoryPreset(station, currentStationId == station.uuid && isPlaying) { tuneAndPlay(station) }
                             }
                         }

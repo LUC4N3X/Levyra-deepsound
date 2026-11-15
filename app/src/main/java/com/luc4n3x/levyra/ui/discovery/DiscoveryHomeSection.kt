@@ -636,7 +636,7 @@ private fun FlowDiscoveryTeaser(model: DiscoveryTeaserModel, spec: HomeStyleSpec
         StudioSectionHeader(HomeStyle.Flow, spec, model.copy.title, featured = false, onPlayAll = null)
         Box(Modifier.padding(horizontal = spec.inset)) { DiscoveryLeadLine(model, LevyraMuted) }
         LazyRow(contentPadding = PaddingValues(horizontal = spec.inset), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            itemsIndexed(cards, key = { index, card -> card?.key ?: "placeholder-$index" }) { index, card ->
+            itemsIndexed(cards, key = { index, card -> card?.key ?: "placeholder-$index" }, contentType = { _, _ -> "DiscoveryHomeSection-cards" }) { index, card ->
                 val width: Dp = if (index == 0) spec.cardWidth + 24.dp else spec.cardWidth - 12.dp * index.coerceAtMost(2)
                 Column(
                     Modifier

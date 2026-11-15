@@ -369,7 +369,7 @@ private fun PodcastSectionTitle(title: String) {
 @Composable
 private fun <T> PodcastRail(items: List<T>, key: (T) -> Any, content: @Composable (T) -> Unit) {
     LazyRow(contentPadding = PaddingValues(horizontal = PodcastGutter), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        items(items, key = key) { content(it) }
+        items(items, key = key, contentType = { "PodcastLibraryScreen-items" }) { content(it) }
     }
 }
 
@@ -432,7 +432,7 @@ private fun PodcastGenreRow(genres: List<String>, selected: String?, allLabel: S
         contentPadding = PaddingValues(horizontal = PodcastGutter, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(options, key = { it ?: "podcast-genre-all" }) { option ->
+        items(options, key = { it ?: "podcast-genre-all" }, contentType = { "PodcastLibraryScreen-options" }) { option ->
             PodcastGenreChip(label = option ?: allLabel, selected = option == selected) { onSelect(option) }
         }
     }

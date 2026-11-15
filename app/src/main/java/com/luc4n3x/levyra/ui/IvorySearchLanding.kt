@@ -56,7 +56,7 @@ internal fun IvoryRecentSearchesRail(
             contentPadding = PaddingValues(horizontal = RecentSearchGutter),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            itemsIndexed(tracks, key = { _, track -> "ivory-recent-${track.id}" }) { _, track ->
+            itemsIndexed(tracks, key = { _, track -> "ivory-recent-${track.id}" }, contentType = { _, _ -> "IvorySearchLanding-tracks" }) { _, track ->
                 var menuExpanded by remember(track.id) { mutableStateOf(false) }
                 val description = trackContentDescription(track)
                 Row(
@@ -90,7 +90,7 @@ internal fun IvorySearchSamplesRail(title: String, samples: List<Track>, preview
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(horizontal = RecentSearchGutter)
         ) {
-            itemsIndexed(samples, key = { _, track -> "ivory-sample-${track.id}" }) { index, track ->
+            itemsIndexed(samples, key = { _, track -> "ivory-sample-${track.id}" }, contentType = { _, _ -> "IvorySearchLanding-samples" }) { index, track ->
                 val description = trackContentDescription(track)
                 Box(
                     Modifier.size(width = 152.dp, height = 212.dp).clip(RoundedCornerShape(IvoryDesign.coverCorner)).clipToBounds().background(LevyraPanel)

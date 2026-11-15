@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.player
 
+import com.luc4n3x.levyra.ui.components.LevyraMarqueeSpec
 import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 
 import androidx.compose.animation.AnimatedContent
@@ -287,6 +288,7 @@ private fun AuraHeadline(
                 LevyraMediaTitle(
                     text = shown.title,
                     explicit = shown.explicit,
+                    iterations = LevyraMarqueeSpec.PlayerIterations, initialDelayMillis = LevyraMarqueeSpec.PlayerInitialDelayMillis, velocity = LevyraMarqueeSpec.PlayerVelocity,
                     color = AuraInk,
                     fontSize = 17.sp,
                     lineHeight = 22.sp,

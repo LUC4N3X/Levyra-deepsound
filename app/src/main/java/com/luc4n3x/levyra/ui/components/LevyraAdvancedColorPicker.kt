@@ -1272,7 +1272,7 @@ private fun ColorPickerPresetsRow(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            items(presets, key = { it }) { swatch ->
+            items(presets, key = { it }, contentType = { "LevyraAdvancedColorPicker-presets" }) { swatch ->
                 val opaqueSwatch = swatch or 0xFF000000.toInt()
                 val active = opaqueSwatch == selectedArgb
                 val swatchColor = Color(opaqueSwatch)

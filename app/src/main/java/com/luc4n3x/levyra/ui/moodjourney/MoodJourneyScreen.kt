@@ -275,7 +275,7 @@ private fun MoodJourneyContent(
                 }
                 val steps = session.result?.steps.orEmpty()
                 val peak = session.result?.peakIndex ?: -1
-                itemsIndexed(steps, key = { _, step -> step.key }) { index, step ->
+                itemsIndexed(steps, key = { _, step -> step.key }, contentType = { _, _ -> "MoodJourneyScreen-steps" }) { index, step ->
                     JourneyStepRow(
                         index = index,
                         step = step,

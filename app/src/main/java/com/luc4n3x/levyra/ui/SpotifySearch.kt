@@ -163,7 +163,7 @@ internal fun SpotifySearchBrowse(
                 contentPadding = PaddingValues(horizontal = SpotifyDesign.gutter),
                 horizontalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                items(shorts.take(SpotifyShortCount), key = { "spotify-short-${it.id}" }) { track ->
+                items(shorts.take(SpotifyShortCount), key = { "spotify-short-${it.id}" }, contentType = { "SpotifySearch-take" }) { track ->
                     SpotifyShortCard(spotifyShortTag(track, copy.music), track, previewEnabled && track.id == shorts.firstOrNull()?.id, onClick = { onShort(track) })
                 }
             }

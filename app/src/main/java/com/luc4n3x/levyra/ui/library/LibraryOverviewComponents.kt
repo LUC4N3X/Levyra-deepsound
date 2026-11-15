@@ -443,7 +443,8 @@ internal fun SmartCollectionDetail(
                 } else {
                     items(
                         count = tracks.size,
-                        key = { index -> "smart-" + collectionId + "-" + lazyItemKeys[index] }
+                        key = { index -> "smart-" + collectionId + "-" + lazyItemKeys[index] },
+                        contentType = { "LibraryOverviewComponents-count" }
                     ) { index ->
                         val track = tracks[index]
                         val key = trackSelectionKey(track)

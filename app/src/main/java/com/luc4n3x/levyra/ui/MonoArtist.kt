@@ -437,7 +437,7 @@ private fun LazyListScope.monoArtistSections(
             Column {
                 MonoArtistRailHeader(LocalLevyraStrings.current.video, copy.videosOverline)
                 LazyRow(contentPadding = PaddingValues(horizontal = MonoDesign.gutter), horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap)) {
-                    items(videos, key = { "mono-video-${it.id}" }) { video ->
+                    items(videos, key = { "mono-video-${it.id}" }, contentType = { "MonoArtist-videos" }) { video ->
                         MonoArtistVideoCard(video, video.id == currentId, { viewModel.playFrom(videos, video) }) { onTrackActions(video) }
                     }
                 }
@@ -452,7 +452,7 @@ private fun LazyListScope.monoArtistSections(
             Column {
                 MonoArtistRailHeader(title, null)
                 LazyRow(contentPadding = PaddingValues(horizontal = MonoDesign.gutter), horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap)) {
-                    items(playlists, key = { "mono-featured-${it.playlistId.ifBlank { it.browseId.ifBlank { it.title } }}" }) { playlist ->
+                    items(playlists, key = { "mono-featured-${it.playlistId.ifBlank { it.browseId.ifBlank { it.title } }}" }, contentType = { "MonoArtist-playlists" }) { playlist ->
                         MonoArtistCard(playlist.title, playlist.author, playlist.thumbnailUrl, MonoDesign.artShape) { viewModel.openPlaylistHit(playlist) }
                     }
                 }
@@ -467,7 +467,7 @@ private fun LazyListScope.monoArtistSections(
             Column {
                 MonoArtistRailHeader(title, null)
                 LazyRow(contentPadding = PaddingValues(horizontal = MonoDesign.gutter), horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap)) {
-                    items(playlists, key = { "mono-own-${it.playlistId.ifBlank { it.browseId.ifBlank { it.title } }}" }) { playlist ->
+                    items(playlists, key = { "mono-own-${it.playlistId.ifBlank { it.browseId.ifBlank { it.title } }}" }, contentType = { "MonoArtist-playlists" }) { playlist ->
                         MonoArtistCard(playlist.title, playlist.author, playlist.thumbnailUrl, MonoDesign.artShape) { viewModel.openPlaylistHit(playlist) }
                     }
                 }
@@ -480,7 +480,7 @@ private fun LazyListScope.monoArtistSections(
             Column {
                 MonoArtistRailHeader(copy.fansAlsoLike, copy.fansOverline)
                 LazyRow(contentPadding = PaddingValues(horizontal = MonoDesign.gutter), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    items(related, key = { "mono-related-${it.browseId.ifBlank { it.name }}" }) { hit ->
+                    items(related, key = { "mono-related-${it.browseId.ifBlank { it.name }}" }, contentType = { "MonoArtist-related" }) { hit ->
                         MonoArtistAvatar(hit.name, hit.thumbnailUrl) { viewModel.openArtistFromHit(hit) }
                     }
                 }
@@ -513,7 +513,7 @@ private fun LazyListScope.monoReleaseRail(
         Column {
             MonoArtistRailHeader(title(), overline)
             LazyRow(contentPadding = PaddingValues(horizontal = MonoDesign.gutter), horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap)) {
-                items(unique, key = { "mono-$key-${it.browseId.ifBlank { it.title }}" }) { release ->
+                items(unique, key = { "mono-$key-${it.browseId.ifBlank { it.title }}" }, contentType = { "MonoArtist-unique" }) { release ->
                     MonoArtistCard(release.title, release.year, release.thumbnailUrl, MonoDesign.artShape) { viewModel.openArtistRelease(release, profile.name) }
                 }
             }

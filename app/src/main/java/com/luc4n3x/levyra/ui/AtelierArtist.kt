@@ -423,7 +423,7 @@ private fun LazyListScope.atelierArtistSections(
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    itemsIndexed(related, key = { _, hit -> "atelier-related-${hit.browseId.ifBlank { hit.name }}" }) { index, hit ->
+                    itemsIndexed(related, key = { _, hit -> "atelier-related-${hit.browseId.ifBlank { hit.name }}" }, contentType = { _, _ -> "AtelierArtist-related" }) { index, hit ->
                         val followed = (hit.browseId.isNotBlank() && hit.browseId in state.followedArtistKeys) || hit.name.trim().lowercase() in state.followedArtistKeys
                         AtelierRelatedArtistBubble(
                             hit.name, hit.thumbnailUrl, AtelierRelatedDiameters[index % AtelierRelatedDiameters.size], followed,
@@ -441,7 +441,7 @@ private fun LazyListScope.atelierArtistSections(
             Column {
                 AtelierArtistSectionHeader(title, null, null)
                 LazyRow(contentPadding = AtelierArtistShelfPadding, horizontalArrangement = Arrangement.spacedBy(AtelierDesign.itemGap)) {
-                    items(profile.featuredPlaylists.distinctBy { it.playlistId.ifBlank { it.browseId.ifBlank { it.title } } }, key = { "atelier-featured-${it.playlistId.ifBlank { it.browseId.ifBlank { it.title } }}" }) { playlist ->
+                    items(profile.featuredPlaylists.distinctBy { it.playlistId.ifBlank { it.browseId.ifBlank { it.title } } }, key = { "atelier-featured-${it.playlistId.ifBlank { it.browseId.ifBlank { it.title } }}" }, contentType = { "AtelierArtist-distinctBy" }) { playlist ->
                         AtelierArtistShelfCard(playlist.title, playlist.author, playlist.thumbnailUrl) { viewModel.openPlaylistHit(playlist) }
                     }
                 }
@@ -472,7 +472,7 @@ private fun LazyListScope.atelierReleaseShelf(
                 contentPadding = PaddingValues(start = AtelierDesign.gutter, end = AtelierDesign.gutter, top = 6.dp, bottom = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                itemsIndexed(unique, key = { _, release -> "atelier-$key-${release.browseId.ifBlank { release.title }}" }) { index, release ->
+                itemsIndexed(unique, key = { _, release -> "atelier-$key-${release.browseId.ifBlank { release.title }}" }, contentType = { _, _ -> "AtelierArtist-unique" }) { index, release ->
                     AtelierReleaseSleeve(
                         release.title, release.year, release.thumbnailUrl, towardEnd,
                         Modifier.atelierShelfPerspective(rowState, index, animated)
@@ -541,7 +541,7 @@ private fun AtelierReleaseSleeve(
 }
 
 @Composable
-private fun AtelierArtistSectionHeader(title: String, actionLabel: String?, onAction: (() -> Unit)?) {
+internal fun AtelierArtistSectionHeader(title: String, actionLabel: String?, onAction: (() -> Unit)?) {
     Row(
         Modifier.fillMaxWidth().padding(start = AtelierDesign.gutter, end = 8.dp, top = AtelierDesign.sectionGap, bottom = 8.dp).heightIn(min = 48.dp),
         verticalAlignment = Alignment.CenterVertically

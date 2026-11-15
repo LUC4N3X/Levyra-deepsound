@@ -6,9 +6,12 @@ import androidx.test.uiautomator.Until
 import java.util.regex.Pattern
 
 private val OnboardingStep = Pattern.compile("^[1-9]/[1-9]$")
-private val OnboardingActions = listOf("Get started", "Inizia", "Allow", "Consenti", "Skip", "Salta", "Continue", "Continua", "Next", "Successivo", "Avanti", "Done", "Fatto")
+private val OnboardingActions = listOf("Allow", "Consenti", "Get started", "Inizia", "Skip", "Salta", "Continue", "Continua", "Next", "Successivo", "Avanti", "Done", "Fatto")
 private const val ONBOARDING_ACTION_LIMIT = 12
 private const val SETTLE_TIMEOUT_MS = 2_000L
+private const val SEARCH_TIMEOUT_MS = 10_000L
+private const val ProfileArtistQuery = "Taylor Swift"
+private const val LatestReleaseLabel = "Latest release"
 
 internal fun MacrobenchmarkScope.launchAndExerciseLevyra() {
     pressHome()
@@ -20,6 +23,32 @@ internal fun MacrobenchmarkScope.launchAndExerciseLevyra() {
         openTab(tab)
         scrollCurrentScreen(times = 2)
     }
+    runCatching { exerciseArtistAndAlbum() }
+}
+
+private fun MacrobenchmarkScope.exerciseArtistAndAlbum() {
+    openTab("Search")
+    val field = device.wait(Until.findObject(By.clazz("android.widget.EditText")), SEARCH_TIMEOUT_MS) ?: return
+    field.click()
+    field.text = ProfileArtistQuery
+    device.pressEnter()
+    val artist = device.wait(Until.findObject(By.text(ProfileArtistQuery).clazz("android.widget.TextView")), SEARCH_TIMEOUT_MS) ?: return
+    artist.click()
+    device.waitForIdle()
+    device.wait(Until.hasObject(By.text(LatestReleaseLabel)), SEARCH_TIMEOUT_MS)
+    scrollCurrentScreen(times = 1)
+    val release = device.findObject(By.text(LatestReleaseLabel))
+    if (release != null) {
+        release.click()
+        device.waitForIdle()
+        device.wait(Until.hasObject(By.textContains(ProfileArtistQuery)), SEARCH_TIMEOUT_MS)
+        scrollCurrentScreen(times = 3)
+        device.pressBack()
+        device.waitForIdle()
+    }
+    scrollCurrentScreen(times = 4)
+    device.pressBack()
+    device.waitForIdle()
 }
 
 private fun MacrobenchmarkScope.completeOnboardingIfPresent() {
@@ -47,7 +76,12 @@ private fun MacrobenchmarkScope.openTab(label: String) {
         "Library" -> listOf("Library", "Libreria")
         else -> listOf(label)
     }
-    val namedTab = labels.firstNotNullOfOrNull { text -> device.findObject(By.text(text)) ?: device.findObject(By.desc(text)) }
+    val findNamed = { labels.firstNotNullOfOrNull { text -> device.findObject(By.text(text)) ?: device.findObject(By.desc(text)) } }
+    val namedTab = findNamed() ?: run {
+        device.swipe(device.displayWidth / 2, device.displayHeight / 3, device.displayWidth / 2, device.displayHeight * 4 / 5, 12)
+        device.waitForIdle()
+        findNamed()
+    }
     val slot = listOf("Home", "Search", "Explore", "Library").indexOf(label)
     val tabs = if (namedTab == null) device.findObjects(By.focusable(true)).filter { candidate ->
         val bounds = candidate.visibleBounds

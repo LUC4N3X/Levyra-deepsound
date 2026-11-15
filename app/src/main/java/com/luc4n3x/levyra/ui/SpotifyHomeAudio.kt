@@ -136,7 +136,7 @@ private fun SpotifyPodcastLanding(
         }
         state.discover.forEach { shelf ->
             SpotifyHomeShelf(shelf.title) {
-                items(shelf.episodes, key = { "podcast-${shelf.title}-${it.id}" }) { episode ->
+                items(shelf.episodes, key = { "podcast-${shelf.title}-${it.id}" }, contentType = { "SpotifyHomeAudio-episodes" }) { episode ->
                     SpotifyHomeCoverCard(episode.title, episode.artist, episode.thumbnailUrl) { play(shelf.episodes, episode) }
                 }
             }
@@ -383,7 +383,7 @@ private fun SpotifyRadioCategories(
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(RadioCategory.entries, key = { "radio-category-${it.name}" }) { category ->
+        items(RadioCategory.entries, key = { "radio-category-${it.name}" }, contentType = { "SpotifyHomeAudio-entries" }) { category ->
             val selected = category == selectedCategory
             Box(
                 Modifier.height(SpotifyDesign.chipHeight).clip(CircleShape).background(if (selected) SpotifyDesign.green else SpotifyDesign.chip)
@@ -506,14 +506,14 @@ private fun SpotifyCustomStationShelf(
                 Text(addLabel, color = SpotifyDesign.text, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.padding(top = 8.dp))
             }
         }
-        items(stations, key = { "custom-${it.uuid}" }) { station -> SpotifyStationCard(station, station.uuid == currentId) { onPlay(station) } }
+        items(stations, key = { "custom-${it.uuid}" }, contentType = { "SpotifyHomeAudio-stations" }) { station -> SpotifyStationCard(station, station.uuid == currentId) { onPlay(station) } }
     }
 }
 
 @Composable
 private fun SpotifyStationShelf(title: String, stations: List<RadioStation>, currentId: String?, onPlay: (RadioStation) -> Unit) {
     SpotifyHomeShelf(title) {
-        items(stations, key = { "station-$title-${it.uuid}" }) { station -> SpotifyStationCard(station, station.uuid == currentId) { onPlay(station) } }
+        items(stations, key = { "station-$title-${it.uuid}" }, contentType = { "SpotifyHomeAudio-stations" }) { station -> SpotifyStationCard(station, station.uuid == currentId) { onPlay(station) } }
     }
 }
 

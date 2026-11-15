@@ -498,7 +498,7 @@ private fun LazyListScope.personalCollectionTrackItems(
         item(key = "pc-empty") { LibraryEmpty(Icons.Rounded.LibraryMusic, emptyLabel) }
         return
     }
-    items(tracks, key = { "pc-track-${it.id}" }) { track ->
+    items(tracks, key = { "pc-track-${it.id}" }, contentType = { "PersonalCollectionScreen-tracks" }) { track ->
         val key = trackSelectionKey(track)
         val download = downloads.firstOrNull { it.trackId == track.id }
         LibraryTrackRow(

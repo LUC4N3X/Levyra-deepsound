@@ -120,12 +120,12 @@ internal fun MonoChartMarketSheet(
                     }
                     if (suggested.isNotEmpty()) {
                         item(key = "suggested-label") { MonoMarketLabel(strings.chartMarketSuggested) }
-                        items(suggested, key = { "s-${it.region.id}" }) { market ->
+                        items(suggested, key = { "s-${it.region.id}" }, contentType = { "MonoMarketSheet-suggested" }) { market ->
                             MonoMarketRow(market, market.region.id == selectedId, strings.chartMarketYourRegion.takeIf { market.region.id == deviceRegionId }) { choose(market.region.id) }
                         }
                     }
                     item(key = "all-label") { MonoMarketLabel(strings.chartMarketAllCountries) }
-                    items(markets, key = { "a-${it.region.id}" }) { market ->
+                    items(markets, key = { "a-${it.region.id}" }, contentType = { "MonoMarketSheet-markets" }) { market ->
                         MonoMarketRow(market, market.region.id == selectedId, null) { choose(market.region.id) }
                     }
                 } else if (results.isEmpty()) {
@@ -136,7 +136,7 @@ internal fun MonoChartMarketSheet(
                         )
                     }
                 } else {
-                    items(results, key = { "r-${it.region.id}" }) { market ->
+                    items(results, key = { "r-${it.region.id}" }, contentType = { "MonoMarketSheet-results" }) { market ->
                         MonoMarketRow(market, market.region.id == selectedId, null) { choose(market.region.id) }
                     }
                 }

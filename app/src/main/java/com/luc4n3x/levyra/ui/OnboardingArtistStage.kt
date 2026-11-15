@@ -161,7 +161,7 @@ internal fun SetupArtistStage(
                 Text(copy.empty, color = muted, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(vertical = 24.dp))
             }
         }
-        items(visibleArtists, key = { it.id }) { artist ->
+        items(visibleArtists, key = { it.id }, contentType = { "OnboardingArtistStage-visibleArtists" }) { artist ->
             SetupArtistPortrait(artist, artwork[artist.id]?.firstOrNull(), artwork[artist.id]?.isEmpty() == true,
                 artist.id in selected, accent, ink, surface, onAccent) {
                 onToggle(artist.id)

@@ -1173,7 +1173,7 @@ private fun SetupLanguageStage(
                 Text(strings.languageQuestion, color = SetupMuted, fontSize = 16.sp, lineHeight = 23.sp)
             }
         }
-        itemsIndexed(languages, key = { _, language -> language.code }) { index, language ->
+        itemsIndexed(languages, key = { _, language -> language.code }, contentType = { _, _ -> "OnboardingSetup-languages" }) { index, language ->
             SetupLanguageRow(
                 language = language,
                 selected = language.code == selectedCode,

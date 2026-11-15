@@ -113,7 +113,7 @@ internal fun TorqueCollectionDestination(
         if (discoveryActions != null) genreDiscoveryItems(discovery, discoveryCopy, TorqueDiscoverySkin, discoveryActions)
         if (editorial.essentials.isNotEmpty()) {
             item(key = "torque-destination-essentials") { Box(Modifier.padding(top = 18.dp)) { SkinSectionTitle(strings.songsPlain, TorqueGutter) } }
-            itemsIndexed(editorial.essentials, key = { _, t -> "essential-${t.id}" }) { index, track ->
+            itemsIndexed(editorial.essentials, key = { _, t -> "essential-${t.id}" }, contentType = { _, _ -> "TorqueDestination-essentials" }) { index, track ->
                 LaunchedEffect(track.id) { onRequestTrackArtwork(track) }
                 TorqueEssentialRow(index, track, track.id == currentTrackId) { onPlayTrack(track) }
             }
@@ -181,7 +181,7 @@ private fun LazyListScope.torqueCoverRail(
         Column(Modifier.padding(top = 18.dp)) {
             SkinSectionTitle(title, TorqueGutter)
             LazyRow(contentPadding = PaddingValues(horizontal = TorqueGutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                itemsIndexed(entries, key = { _, entry -> entry.third.id + key }) { index, (name, artist, track) ->
+                itemsIndexed(entries, key = { _, entry -> entry.third.id + key }, contentType = { _, _ -> "TorqueDestination-entries" }) { index, (name, artist, track) ->
                     LaunchedEffect(track.id) { onRequestTrackArtwork(track) }
                     Column(
                         Modifier.width(156.dp).background(LevyraPanel)
@@ -235,7 +235,7 @@ private fun LazyListScope.torqueGenreChart(
         }
         return
     }
-    itemsIndexed(chart.take(if (expanded) 50 else 10), key = { _, track -> "torque-chart-${track.id}" }) { index, track ->
+    itemsIndexed(chart.take(if (expanded) 50 else 10), key = { _, track -> "torque-chart-${track.id}" }, contentType = { _, _ -> "TorqueDestination-take" }) { index, track ->
         LaunchedEffect(track.id) { onRequestTrackArtwork(track) }
         TorqueEssentialRow(index, track, track.id == currentTrackId) { onPlayTrack(track) }
     }

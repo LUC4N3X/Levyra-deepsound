@@ -177,7 +177,7 @@ internal fun SkinNewReleasesDestination(
                     val lead = releases.first()
                     SkinReleaseLead(look, lead, badge(lead), cased, strings, Modifier.padding(horizontal = gutter).padding(bottom = look.gap)) { onOpenRelease(lead) }
                 }
-                itemsIndexed(rest, key = { index, pair -> "skin-releases-$index-${pair.first().browseId.ifBlank { pair.first().title }}" }) { _, pair ->
+                itemsIndexed(rest, key = { index, pair -> "skin-releases-$index-${pair.first().browseId.ifBlank { pair.first().title }}" }, contentType = { _, _ -> "SkinNewReleasesScreen-rest" }) { _, pair ->
                     Row(Modifier.fillMaxWidth().padding(horizontal = gutter).padding(bottom = look.gap), horizontalArrangement = Arrangement.spacedBy(look.gap)) {
                         pair.forEach { album -> SkinReleaseCard(look, album, badge(album), cased, Modifier.weight(1f)) { onOpenRelease(album) } }
                         if (pair.size == 1) Spacer(Modifier.weight(1f))

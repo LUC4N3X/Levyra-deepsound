@@ -118,7 +118,7 @@ internal fun QobuzSearchEntry(viewModel: SearchViewModel, state: LevyraUiState, 
             contentPadding = PaddingValues(horizontal = QobuzDesign.gutter, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(QobuzDesign.chipGap)
         ) {
-            items(QobuzSearchFilters, key = { it.name }) { option ->
+            items(QobuzSearchFilters, key = { it.name }, contentType = { "QobuzSearch-QobuzSearchFilters" }) { option ->
                 QobuzChip(qobuzFilterLabel(option, copy), filter == option, { viewModel.setSearchFilter(option) })
             }
         }
@@ -131,7 +131,7 @@ internal fun QobuzSearchEntry(viewModel: SearchViewModel, state: LevyraUiState, 
                 state = listState,
                 contentPadding = PaddingValues(start = QobuzDesign.gutter, end = 4.dp, top = 4.dp, bottom = levyraTabContentBottomPadding(state.currentTrack != null) + 16.dp)
             ) {
-                items(rows, key = { it.key }) { row ->
+                items(rows, key = { it.key }, contentType = { "QobuzSearch-rows" }) { row ->
                     when (row) {
                         is QobuzSearchRow.Song -> QobuzSearchResultRow(
                             row.track.title, listOf(copy.trackType, row.track.artist, row.track.album), row.track.explicit, copy,
@@ -237,7 +237,7 @@ private fun QobuzRecentSearches(recent: List<Track>, copy: QobuzSkinCopy, curren
         QobuzSearchIcon(Icons.Outlined.Delete, copy.clearRecent) { recent.forEach(viewModel::removeRecentSearch) }
     }
     LazyColumn(contentPadding = PaddingValues(start = QobuzDesign.gutter, end = 4.dp, bottom = bottomPadding)) {
-        items(recent, key = { "recent-${it.id}" }) { track ->
+        items(recent, key = { "recent-${it.id}" }, contentType = { "QobuzSearch-recent" }) { track ->
             QobuzSearchResultRow(
                 track.title, listOf(copy.trackType, track.artist), track.explicit, copy, square = true, track = track, current = track.id == currentId,
                 onClick = { viewModel.playFrom(recent, track) },

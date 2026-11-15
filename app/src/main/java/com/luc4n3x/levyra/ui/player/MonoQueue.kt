@@ -145,7 +145,7 @@ private fun LazyListScope.monoQueueHistory(
         item(key = "mono-history-empty") { MonoQueueNotice(LocalLevyraStrings.current.listeningHistoryEmptyTitle) }
         return
     }
-    itemsIndexed(recent, key = { index, track -> "mono-history-$index-${track.id}" }) { _, track ->
+    itemsIndexed(recent, key = { index, track -> "mono-history-$index-${track.id}" }, contentType = { _, _ -> "MonoQueue-recent" }) { _, track ->
         MonoQueueRow(track, played = false, copy, { onPlay(track) }, { onTrackActions(track) })
     }
 }
@@ -172,7 +172,7 @@ private fun LazyListScope.monoQueueSections(
     val upcomingStart = if (currentIndex >= 0) currentIndex + 1 else 0
     if (previous.isNotEmpty()) {
         item(key = "mono-queue-previous-title") { MonoQueueLabel(LocalLevyraStrings.current.previous) }
-        itemsIndexed(previous, key = { _, entry -> "mono-queue-${entry.key}" }) { index, entry ->
+        itemsIndexed(previous, key = { _, entry -> "mono-queue-${entry.key}" }, contentType = { _, _ -> "MonoQueue-previous" }) { index, entry ->
             MonoQueueRow(
                 entry.track, played = true, copy, { onPlay(entry.track) }, { onTrackActions(entry.track) },
                 index, entries.size, onMove,
@@ -186,7 +186,7 @@ private fun LazyListScope.monoQueueSections(
     item(key = "mono-queue-radio") { MonoQueueRadioRow(radioEnabled, onToggleRadio) }
     if (upcoming.isNotEmpty()) {
         item(key = "mono-queue-upnext-title") { MonoQueueLabel(copy.upNext, upcoming.size.toString()) }
-        itemsIndexed(upcoming, key = { _, entry -> "mono-queue-${entry.key}" }) { index, entry ->
+        itemsIndexed(upcoming, key = { _, entry -> "mono-queue-${entry.key}" }, contentType = { _, _ -> "MonoQueue-upcoming" }) { index, entry ->
             MonoQueueRow(
                 entry.track, played = false, copy, { onPlay(entry.track) }, { onTrackActions(entry.track) },
                 upcomingStart + index, entries.size, onMove,

@@ -6,6 +6,7 @@ import com.luc4n3x.levyra.data.lore.ArtistLoreRepository
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.data.network.YoutubeRegionProfile
 import com.luc4n3x.levyra.data.security.GoogleApiKeyHeaders
+import com.luc4n3x.levyra.domain.parseCompactViewCount
 import com.luc4n3x.levyra.domain.ArtistBiography
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ArtistProfile
@@ -957,6 +958,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
                 .ifBlank { findPlaylistId(header.optJSONObject("startRadioButton")) },
             songsBrowseId = songsPointer?.browseId.orEmpty(),
             albumsBrowseId = albumPointer?.browseId.orEmpty(),
+            views = extractArtistViews(root),
             albumsParams = albumPointer?.params.orEmpty(),
             singlesBrowseId = singlePointer?.browseId.orEmpty(),
             singlesParams = singlePointer?.params.orEmpty(),
@@ -1024,6 +1026,15 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             accentStart = accent.first,
             accentEnd = accent.second
         )
+    }
+
+    internal fun extractArtistViews(root: JSONObject): String {
+        val shelves = mutableListOf<JSONObject>()
+        collectByKey(root, "musicDescriptionShelfRenderer", shelves)
+        return shelves.asSequence()
+            .mapNotNull { it.optJSONObject("subheader")?.optJSONArray("runs")?.joinText()?.trim() }
+            .firstOrNull { label -> label.any(Char::isDigit) }
+            .orEmpty()
     }
 
     internal fun extractArtistBiography(root: JSONObject): String {
@@ -1137,7 +1148,8 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
                     replayScore = (62 + (seed / 7) % 38).coerceIn(0, 100),
                     cacheScore = (48 + (seed / 11) % 50).coerceIn(0, 100),
                     accentStart = accent.first,
-                    accentEnd = accent.second
+                    accentEnd = accent.second,
+                    youtubeViewCount = artistSongViewCount(flexLines(renderer, distinct = false), album?.title)
                 )
             }
         }
@@ -1601,7 +1613,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         return ""
     }
 
-    private fun flexLines(renderer: JSONObject): List<String> {
+    private fun flexLines(renderer: JSONObject, distinct: Boolean = true): List<String> {
         val lines = mutableListOf<String>()
         val columns = renderer.optJSONArray("flexColumns") ?: JSONArray()
         for (i in 0 until columns.length()) {
@@ -1614,7 +1626,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
                 .trim()
             if (text.isNotBlank()) lines += text
         }
-        return lines.distinct()
+        return if (distinct) lines.distinct() else lines
     }
 
     private fun durationOf(text: String): Long {
@@ -1707,3 +1719,13 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         return palettes[seed % palettes.size]
     }
 }
+
+internal fun artistSongViewCount(lines: List<String>, albumTitle: String?): Long =
+    lines.drop(2)
+        .filterNot { line -> albumTitle != null && line.trim().equals(albumTitle.trim(), ignoreCase = true) }
+        .map { line -> parseCompactViewCount(line).takeIf { it >= PLAIN_COUNT_FLOOR || (it >= 0L && line.contains(GROUPED_DIGITS)) } ?: -1L }
+        .firstOrNull { it >= 0L }
+        ?: -1L
+
+private const val PLAIN_COUNT_FLOOR = 10_000L
+private val GROUPED_DIGITS = Regex("""\d[.,\u00A0\u202F ]\d""")

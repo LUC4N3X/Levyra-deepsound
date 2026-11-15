@@ -91,7 +91,7 @@ internal fun QobuzQueueScreen(
         QobuzQueueHeader(if (history) copy.history else copy.queueTitle, copy.history, history) { history = !history }
         LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 120.dp)) {
             if (history) {
-                itemsIndexed(state.recentListens, key = { index, track -> "h-$index-${track.id}" }) { _, track ->
+                itemsIndexed(state.recentListens, key = { index, track -> "h-$index-${track.id}" }, contentType = { _, _ -> "QobuzQueue-recentListens" }) { _, track ->
                     QobuzQueueRow(track, dimmed = false, copy.explicit, { onPlay(track) }, { onTrackActions(track) })
                 }
                 return@LazyColumn
@@ -115,7 +115,7 @@ private fun LazyListScope.qobuzQueueSections(
 ) {
     if (previous.isNotEmpty()) {
         item(key = "previous-title") { QobuzQueueTitle(copy.previous) }
-        itemsIndexed(previous, key = { index, track -> "p-$index-${track.id}" }) { index, track ->
+        itemsIndexed(previous, key = { index, track -> "p-$index-${track.id}" }, contentType = { _, _ -> "QobuzQueue-previous" }) { index, track ->
             QobuzQueueRow(track, dimmed = true, copy.explicit, { onPlay(track) }, { onTrackActions(track) }, index, state.queue.size, onMove)
         }
     }
@@ -130,7 +130,7 @@ private fun LazyListScope.qobuzQueueSections(
             QobuzQueueSwitch(state.radioEnabled, copy.autoplay, onToggleRadio)
         }
     }
-    itemsIndexed(upcoming, key = { index, track -> "u-$index-${track.id}" }) { index, track ->
+    itemsIndexed(upcoming, key = { index, track -> "u-$index-${track.id}" }, contentType = { _, _ -> "QobuzQueue-upcoming" }) { index, track ->
         QobuzQueueRow(track, dimmed = false, copy.explicit, { onPlay(track) }, { onTrackActions(track) }, currentIndex + 1 + index, state.queue.size, onMove)
     }
 }

@@ -34,7 +34,7 @@ internal fun SpotifyExploreSamples(state: LevyraUiState, viewModel: ExploreViewM
             contentPadding = PaddingValues(horizontal = SpotifyDesign.gutter),
             horizontalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            itemsIndexed(state.exploreSamples.take(12), key = { _, track -> track.id }) { index, track ->
+            itemsIndexed(state.exploreSamples.take(12), key = { _, track -> track.id }, contentType = { _, _ -> "SpotifyExplore-take" }) { index, track ->
                 val tag = spotifyShortTag(track, LevyraSpotifySkinStrings.forCode(strings.code).music)
                 SpotifyShortCard(tag, track, preview = index == 0 && !state.isVideoMode && !state.isResolving) { viewModel.openExploreSamples(index) }
             }

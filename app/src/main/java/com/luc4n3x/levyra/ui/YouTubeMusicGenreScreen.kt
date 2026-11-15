@@ -101,7 +101,7 @@ internal fun YouTubeMusicGenreScreen(
                 verticalArrangement = Arrangement.spacedBy(YouTubeMusicDesign.sectionGap),
                 modifier = Modifier.fillMaxSize()
             ) {
-                items(expanded.playlists, key = { it.playlistId.ifBlank { it.browseId } }) { playlist ->
+                items(expanded.playlists, key = { it.playlistId.ifBlank { it.browseId } }, contentType = { "YouTubeMusicGenreScreen-playlists" }) { playlist ->
                     YouTubeMusicGenreCard(playlist, Modifier.fillMaxWidth()) { onOpenPlaylist(playlist.toHit()) }
                 }
             }
@@ -113,18 +113,18 @@ internal fun YouTubeMusicGenreScreen(
             verticalArrangement = Arrangement.spacedBy(YouTubeMusicDesign.sectionGap + 8.dp)
         ) {
             if (sections.isEmpty()) {
-                items(YouTubeMusicGenrePlaceholders, key = { "ytm-genre-placeholder-$it" }) {
+                items(YouTubeMusicGenrePlaceholders, key = { "ytm-genre-placeholder-$it" }, contentType = { "YouTubeMusicGenreScreen-YouTubeMusicGenrePlaceholders" }) {
                     YouTubeMusicGenrePlaceholderRow()
                 }
             } else {
-                itemsIndexed(sections, key = { index, section -> "ytm-genre-section-$index-${section.title}" }) { index, section ->
+                itemsIndexed(sections, key = { index, section -> "ytm-genre-section-$index-${section.title}" }, contentType = { _, _ -> "YouTubeMusicGenreScreen-sections" }) { index, section ->
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         YouTubeMusicSectionHeader(section.title, onOpen = { openSection = index })
                         LazyRow(
                             contentPadding = PaddingValues(horizontal = YouTubeMusicDesign.gutter),
                             horizontalArrangement = Arrangement.spacedBy(YouTubeMusicDesign.itemGap)
                         ) {
-                            items(section.playlists, key = { it.playlistId.ifBlank { it.browseId } }) { playlist ->
+                            items(section.playlists, key = { it.playlistId.ifBlank { it.browseId } }, contentType = { "YouTubeMusicGenreScreen-playlists" }) { playlist ->
                                 YouTubeMusicGenreCard(playlist, Modifier.width(YouTubeMusicDesign.cardArtwork)) {
                                     onOpenPlaylist(playlist.toHit())
                                 }

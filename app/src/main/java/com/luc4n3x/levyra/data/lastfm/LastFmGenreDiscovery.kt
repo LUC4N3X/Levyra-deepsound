@@ -57,8 +57,15 @@ internal object LastFmGenreDiscoveryParser {
         }.distinctBy { it.lowercase(Locale.ROOT) }
     }
 
-    fun parseTopAlbums(body: String): LastFmTagPage<List<LastFmDiscoveryAlbum>> = parse(body) { root ->
-        val items = root.optJSONObject("albums")?.optJSONArray("album") ?: JSONArray()
+    fun parseSimilarArtists(body: String): LastFmTagPage<List<String>> = parse(body) { root ->
+        val items = root.optJSONObject("similarartists")?.optJSONArray("artist") ?: JSONArray()
+        (0 until items.length()).mapNotNull { index ->
+            items.optJSONObject(index)?.optString("name")?.trim()?.takeIf(::isRealName)
+        }.distinctBy { it.lowercase(Locale.ROOT) }
+    }
+
+    fun parseTopAlbums(body: String, container: String = "albums"): LastFmTagPage<List<LastFmDiscoveryAlbum>> = parse(body) { root ->
+        val items = root.optJSONObject(container)?.optJSONArray("album") ?: JSONArray()
         (0 until items.length()).mapNotNull { index ->
             val item = items.optJSONObject(index) ?: return@mapNotNull null
             val title = item.optString("name").trim().takeIf(::isRealName) ?: return@mapNotNull null
@@ -192,38 +199,7 @@ class LastFmGenreDiscoveryRepository(
         tag: String,
         extra: Map<String, String>,
         parse: (String) -> LastFmTagPage<T>
-    ): T? {
-        val url = LAST_FM_URL.toHttpUrl().newBuilder()
-            .addQueryParameter("method", method)
-            .addQueryParameter("tag", tag)
-            .apply { extra.forEach { (name, value) -> addQueryParameter(name, value) } }
-            .addQueryParameter("api_key", apiKey)
-            .addQueryParameter("format", "json")
-            .build()
-        val body = try {
-            runInterruptible {
-                httpClient.newCall(Request.Builder().url(url).get().build()).execute().use { response ->
-                    response.body.string().takeIf { it.length <= MAX_RESPONSE_CHARS }
-                }
-            }
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Throwable) {
-            Timber.w(error, "Last.fm %s request failed for %s", method, tag)
-            null
-        } ?: return null
-        return when (val page = parse(body)) {
-            is LastFmTagPage.Found -> page.value
-            LastFmTagPage.RateLimited -> {
-                Timber.w("Last.fm rate limited %s for %s", method, tag)
-                null
-            }
-            is LastFmTagPage.Failed -> {
-                Timber.w("Last.fm %s failed for %s: %s", method, tag, page.reason)
-                null
-            }
-        }
-    }
+    ): T? = lastFmGet(httpClient, apiKey, mapOf("method" to method, "tag" to tag) + extra, parse)
 
     private fun normalizedTags(tags: List<String>): List<String> =
         tags.map { it.trim().lowercase(Locale.ROOT) }.filter { it.isNotBlank() }.distinct()
@@ -283,11 +259,50 @@ class LastFmGenreDiscoveryRepository(
     }
 
     private companion object {
-        const val LAST_FM_URL = "https://ws.audioscrobbler.com/2.0/"
         const val CACHE_DIRECTORY = "lastfm-genre-discovery"
         const val CACHE_TTL_MS = 24L * 60L * 60L * 1000L
         const val PER_TAG_LIMIT = 30
         const val SECTION_LIMIT = 20
-        const val MAX_RESPONSE_CHARS = 2 * 1024 * 1024
+    }
+}
+
+private const val LAST_FM_API_URL = "https://ws.audioscrobbler.com/2.0/"
+private const val LAST_FM_MAX_RESPONSE_CHARS = 2 * 1024 * 1024
+
+internal suspend fun <T> lastFmGet(
+    httpClient: OkHttpClient,
+    apiKey: String,
+    params: Map<String, String>,
+    parse: (String) -> LastFmTagPage<T>
+): T? {
+    val label = params.filterKeys { it != "method" && it != "limit" && it != "lang" }.values.joinToString(" ")
+    val method = params["method"].orEmpty()
+    val url = LAST_FM_API_URL.toHttpUrl().newBuilder()
+        .apply { params.forEach { (name, value) -> addQueryParameter(name, value) } }
+        .addQueryParameter("api_key", apiKey)
+        .addQueryParameter("format", "json")
+        .build()
+    val body = try {
+        runInterruptible {
+            httpClient.newCall(Request.Builder().url(url).get().build()).execute().use { response ->
+                response.body.string().takeIf { it.length <= LAST_FM_MAX_RESPONSE_CHARS }
+            }
+        }
+    } catch (error: CancellationException) {
+        throw error
+    } catch (error: Throwable) {
+        Timber.w(error, "Last.fm %s request failed for %s", method, label)
+        null
+    } ?: return null
+    return when (val page = parse(body)) {
+        is LastFmTagPage.Found -> page.value
+        LastFmTagPage.RateLimited -> {
+            Timber.w("Last.fm rate limited %s for %s", method, label)
+            null
+        }
+        is LastFmTagPage.Failed -> {
+            Timber.w("Last.fm %s failed for %s: %s", method, label, page.reason)
+            null
+        }
     }
 }

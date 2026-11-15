@@ -203,7 +203,8 @@ internal fun PlayerArtistPickerSheet(
                 ) {
                     itemsIndexed(
                         items = artists,
-                        key = { index, artist -> artist.browseId.ifBlank { "$index:${artist.name}" } }
+                        key = { index, artist -> artist.browseId.ifBlank { "$index:${artist.name}" } },
+                        contentType = { _, _ -> "PlayerArtistIdentity-artists" }
                     ) { index, artist ->
                         PlayerArtistPickerCard(
                             artist = artist,

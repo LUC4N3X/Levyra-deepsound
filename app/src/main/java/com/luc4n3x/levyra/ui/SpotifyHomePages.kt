@@ -65,7 +65,7 @@ private fun LazyListScope.spotifyMusicItems(state: LevyraUiState, albums: List<A
     if (releases.isNotEmpty()) item(key = "spotify-music-for-you") {
         val strings = LocalLevyraStrings.current
         SpotifyHomeShelf(com.luc4n3x.levyra.ui.i18n.spotifyNewReleasesForYou(strings.code)) {
-            items(releases.distinctBy(Track::id).take(12), key = { "for-you-${it.id}" }) { track ->
+            items(releases.distinctBy(Track::id).take(12), key = { "for-you-${it.id}" }, contentType = { "SpotifyHomePages-distinctBy" }) { track ->
                 val single = track.album.isBlank() || track.album.equals(track.title, ignoreCase = true)
                 SpotifyReleaseCard(
                     kind = (if (single) strings.singlePlain else strings.albumPlain).replaceFirstChar { it.uppercase() },
@@ -82,14 +82,14 @@ private fun LazyListScope.spotifyMusicItems(state: LevyraUiState, albums: List<A
     item(key = "spotify-music-radio") { SpotifyArtistRadios(state, releases, viewModel) }
     if (state.homeArtists.isNotEmpty()) item(key = "spotify-music-artists") {
         SpotifyHomeShelf(LevyraSpotifyHomeStrings.forCode(LocalLevyraStrings.current.code).popularArtists) {
-            items(state.homeArtists.take(12), key = { it.browseId.ifBlank { it.name } }) { artist ->
+            items(state.homeArtists.take(12), key = { it.browseId.ifBlank { it.name } }, contentType = { "SpotifyHomePages-take" }) { artist ->
                 SpotifyHomeCoverCard(artist.name, "", artist.thumbnailUrl, round = true) { viewModel.openArtistFromHit(artist) }
             }
         }
     }
     if (albums.isNotEmpty()) item(key = "spotify-music-albums") {
         SpotifyHomeShelf(LevyraSpotifyHomeStrings.forCode(LocalLevyraStrings.current.code).popularAlbums) {
-            items(albums, key = { it.browseId.ifBlank { it.query } }) { album ->
+            items(albums, key = { it.browseId.ifBlank { it.query } }, contentType = { "SpotifyHomePages-albums" }) { album ->
                 SpotifyHomeCoverCard(album.title, album.artist, album.thumbnailUrl) { viewModel.openAlbum(album) }
             }
         }
@@ -97,7 +97,7 @@ private fun LazyListScope.spotifyMusicItems(state: LevyraUiState, albums: List<A
     if (state.recentListens.isNotEmpty()) item(key = "spotify-music-recent") {
         val strings = LocalLevyraStrings.current
         SpotifyHomeShelf(strings.recent) {
-            items(state.recentListens.distinctBy(Track::id).take(12), key = Track::id) { track ->
+            items(state.recentListens.distinctBy(Track::id).take(12), key = Track::id, contentType = { "SpotifyHomePages-distinctBy" }) { track ->
                 SpotifyHomeCoverCard(track.title, track.artist, track.thumbnailUrl, compact = true) { viewModel.playFrom(state.recentListens, track) }
             }
         }
@@ -211,7 +211,7 @@ private fun SpotifyArtistRadios(state: LevyraUiState, releases: List<Track>, vie
     val seeds = remember(state.recentListens, state.mostPlayedTracks, state.charts, releases) { spotifyArtistRadioSeeds(state, releases) }
     if (seeds.isEmpty()) return
     SpotifyHomeShelf(LevyraSpotifyHomeStrings.forCode(strings.code).popularRadio) {
-        items(seeds, key = Track::id) { track ->
+        items(seeds, key = Track::id, contentType = { "SpotifyHomePages-seeds" }) { track ->
             val name = spotifyRadioArtist(track)
             val portrait = state.homeArtists.firstOrNull { artistIdentityKey(it.name) == artistIdentityKey(name) }?.thumbnailUrl ?: track.thumbnailUrl
             SpotifyArtistRadioCard(name, portrait, track.artist) { SpotifyRadioNavigator.open(name, track) }

@@ -269,7 +269,8 @@ private fun PlayerLyricsCardList(
         ) {
             itemsIndexed(
                 items = lines,
-                key = { index, line -> "$index:${line.startMs}" }
+                key = { index, line -> "$index:${line.startMs}" },
+                contentType = { _, _ -> "PlayerLyricsCard-lines" }
             ) { index, line ->
                 val targetAlpha = when {
                     !synced -> LyricsCardUnsyncedAlpha
