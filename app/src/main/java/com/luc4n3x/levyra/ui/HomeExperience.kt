@@ -41,12 +41,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.material3.Icon
-import androidx.compose.material.icons.rounded.Podcasts
-import androidx.compose.material.icons.rounded.MusicNote
-import androidx.compose.material.icons.Icons
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -228,8 +222,6 @@ internal fun HomeGenreChips(
         }
         return
     }
-    val accented = com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin && !com.luc4n3x.levyra.ui.theme.LevyraIsIvory && !com.luc4n3x.levyra.ui.theme.LevyraIsTorque
-    val glyph = rememberHomeChipGlyph()
     LazyRow(
         modifier = modifier.fillMaxWidth(),
         contentPadding = contentPadding,
@@ -258,9 +250,7 @@ internal fun HomeGenreChips(
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                if (accented) {
-                    DefaultHomeChipFace(zone, RoundedCornerShape(corner), glyph)
-                } else Box(
+                Box(
                     modifier = Modifier
                         .height(HomeChipVisualHeight)
                         .clip(RoundedCornerShape(corner))
@@ -279,52 +269,6 @@ internal fun HomeGenreChips(
         }
     }
 }
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun rememberHomeChipGlyph(): Shape = MaterialShapes.Cookie9Sided.toShape()
-
-@Composable
-private fun DefaultHomeChipFace(zone: ExploreZone, shape: Shape, glyph: Shape) {
-    val colors = MaterialTheme.colorScheme
-    val podcasts = zone.id == com.luc4n3x.levyra.domain.EXPLORE_PODCASTS_REQUEST
-    val portrait = if (podcasts) "" else rememberExploreMoodArtworkUrl(zone)
-    Row(
-        modifier = Modifier
-            .height(HomeChipVisualHeight)
-            .clip(shape)
-            .background(colors.surfaceContainerHigh)
-            .border(1.dp, colors.outlineVariant.copy(alpha = HomeChipOutlineAlpha), shape)
-            .padding(start = HomeChipPortraitInset, end = 18.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Box(
-            modifier = Modifier.size(HomeChipPortraitSize).clip(glyph).background(colors.secondaryContainer),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = if (podcasts) Icons.Rounded.Podcasts else Icons.Rounded.MusicNote,
-                contentDescription = null,
-                tint = colors.onSecondaryContainer,
-                modifier = Modifier.size(16.dp)
-            )
-            if (portrait.isNotBlank()) {
-                StableRemoteArtwork(portrait, null, Modifier.fillMaxSize(), ContentScale.Crop)
-            }
-        }
-        Text(
-            text = zone.label,
-            color = colors.onSurface,
-            style = LevyraType.cardTitle.copy(fontWeight = FontWeight.Bold, letterSpacing = (-0.1).sp),
-            maxLines = 1
-        )
-    }
-}
-
-private val HomeChipPortraitSize = 32.dp
-private val HomeChipPortraitInset = 4.dp
-private const val HomeChipOutlineAlpha = 0.3f
 
 private const val PODIUM_PARALLAX_ZOOM = 1.06f
 private const val PODIUM_PARALLAX_FOLLOW = 0.35f

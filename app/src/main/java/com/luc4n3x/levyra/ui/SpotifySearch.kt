@@ -239,8 +239,8 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.spotifySearchBrowseI
         val zones = remember(strings) { com.luc4n3x.levyra.domain.ExploreCatalog.getZones(strings) }
         LaunchedEffect(strings) { viewModel.ensureExplore(strings) }
         val shorts = state.exploreSamples
-        val categories = state.exploreCategories
-        val categoryArtwork = state.exploreCategoryArtwork
+        val categories = rememberCategoriesWithDecades(state.exploreCategories, strings.code)
+        val categoryArtwork = rememberArtworkWithDecades(state.exploreCategoryArtwork, strings.code)
         val entries = remember(zones, categories, categoryArtwork) {
             spotifyBrowseEntries(zones, categories, categoryArtwork, viewModel::openExploreZone, viewModel::openExploreCategory)
         }

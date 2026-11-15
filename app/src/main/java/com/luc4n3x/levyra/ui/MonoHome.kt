@@ -926,10 +926,8 @@ private fun MonoHomeContent(
     val feed = rememberMonoHomeFeed(model, copy) { orbitOpen = true }
     val zones = remember(strings) { ExploreCatalog.getZones(strings) }
     val genreZones = remember(zones, strings.code) { exploreGenreChartZones(zones, strings.code) }
-    val decades = rememberDecadeCategories(strings.code)
-    val browse = remember(state.exploreCategories, zones, decades) {
-        monoBrowseTiles(if (state.exploreCategories.isEmpty()) state.exploreCategories else state.exploreCategories + decades, zones)
-    }
+    val categories = rememberCategoriesWithDecades(state.exploreCategories, strings.code)
+    val browse = remember(categories, zones) { monoBrowseTiles(categories, zones) }
     val viewModel = model.viewModel
     val categoriesLoading = state.isExploreCategoriesLoading
     val categoryArtwork = if (page == MonoPageMood) viewModel.exploreCategoryArtwork.collectAsStateWithLifecycle().value else emptyMap()

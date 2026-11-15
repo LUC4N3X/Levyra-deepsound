@@ -18,6 +18,7 @@ import com.luc4n3x.levyra.data.lastfm.LastFmGenreDiscoveryRepository
 import com.luc4n3x.levyra.data.lastfm.LastFmGenreTags
 import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.withPermit
@@ -45,6 +46,25 @@ private object GenreChartLastFmSource {
         }
 }
 
+internal object GenreChartPortraitClaims {
+    private val owners = HashMap<String, String>()
+
+    @Synchronized
+    fun claim(scope: String, zoneId: String, artist: String?, url: String): Boolean {
+        val keys = listOfNotNull(artist?.let { "$scope:artist:${it.trim().lowercase(Locale.ROOT)}" }, "$scope:url:$url")
+        if (keys.any { key -> owners[key]?.let { it != zoneId } == true }) return false
+        keys.forEach { key -> owners[key] = zoneId }
+        return true
+    }
+
+    @Synchronized
+    fun isTakenByOther(scope: String, zoneId: String, artist: String): Boolean =
+        owners["$scope:artist:${artist.trim().lowercase(Locale.ROOT)}"]?.let { it != zoneId } == true
+
+    @Synchronized
+    internal fun clear() = owners.clear()
+}
+
 internal fun genreChartPortraitCandidates(artists: List<String>, rotationBucket: Long): List<String> {
     val lead = artists.take(GenreChartLeadArtists)
     if (lead.isEmpty()) return emptyList()
@@ -59,11 +79,19 @@ internal fun rememberGenreChartCover(zone: ExploreZone): GenreChartCoverData {
     val fallback = rememberExploreMoodArtworkUrl(zone)
     val rotationBucket = remember(zone.id) { exploreGenreRotationBucket(System.currentTimeMillis()) }
     val cacheKey = remember(zone.id, strings.code) { "genre-chart-v3:${strings.code}:${zone.id}" }
-    var portrait by remember(cacheKey) { mutableStateOf(ExploreMoodArtworkCache.peek(cacheKey)?.url.orEmpty()) }
+    val claimScope = "${strings.code}:$rotationBucket"
+    var portrait by remember(cacheKey) {
+        mutableStateOf(
+            ExploreMoodArtworkCache.peek(cacheKey)?.url
+                ?.takeIf { url -> GenreChartPortraitClaims.claim(claimScope, zone.id, null, url) }
+                .orEmpty()
+        )
+    }
     var artists by remember(cacheKey) { mutableStateOf(GenreChartLastFmSource.artists[cacheKey].orEmpty()) }
     LaunchedEffect(cacheKey, rotationBucket) {
         val app = context.applicationContext
         val cached = ExploreMoodArtworkCache.load(app, cacheKey)
+            ?.takeIf { stored -> GenreChartPortraitClaims.claim(claimScope, zone.id, null, stored.url) }
         if (cached != null) portrait = cached.url
         val tags = LastFmGenreTags.forZone(zone.id)
         if (tags.isEmpty()) return@LaunchedEffect
@@ -90,16 +118,14 @@ internal fun rememberGenreChartCover(zone: ExploreZone): GenreChartCoverData {
         val spotify = SpotifyArtistArtworkRepository.get(app)
         val apple = AppleArtistArtworkRepository.get(app)
         val fallbackPortraits = ArtistPortraitFallbackRepository.get(app)
+        val providers = listOf(
+            apple::resolveArtistPortrait,
+            spotify::resolveArtistPortrait,
+            fallbackPortraits::youtubePortrait,
+            fallbackPortraits::deezerPortrait
+        )
         val resolved = ExploreMoodPortraitLookupSemaphore.withPermit {
-            resolveExploreMoodPortrait(
-                candidates = candidates,
-                providers = listOf(
-                    apple::resolveArtistPortrait,
-                    spotify::resolveArtistPortrait,
-                    fallbackPortraits::youtubePortrait,
-                    fallbackPortraits::deezerPortrait
-                )
-            )
+            resolveDistinctGenreChartPortrait(candidates, providers, claimScope, zone.id)
         }
         if (resolved.isNotBlank()) {
             ExploreMoodArtworkCache.store(app, cacheKey, ExploreMoodArtwork(resolved, rotationBucket))
@@ -107,4 +133,20 @@ internal fun rememberGenreChartCover(zone: ExploreZone): GenreChartCoverData {
         }
     }
     return GenreChartCoverData(portrait.ifBlank { fallback }, artists.take(GenreChartCaptionArtists))
+}
+
+internal suspend fun resolveDistinctGenreChartPortrait(
+    candidates: List<String>,
+    providers: List<suspend (String) -> String>,
+    claimScope: String,
+    zoneId: String
+): String {
+    for (provider in providers) {
+        for (artist in candidates) {
+            if (GenreChartPortraitClaims.isTakenByOther(claimScope, zoneId, artist)) continue
+            val portrait = provider(artist)
+            if (portrait.isNotBlank() && GenreChartPortraitClaims.claim(claimScope, zoneId, artist, portrait)) return portrait
+        }
+    }
+    return ""
 }

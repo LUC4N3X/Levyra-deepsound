@@ -41,6 +41,23 @@ internal fun rememberDecadeCategories(code: String): List<ExploreCategory> {
 }
 
 @Composable
+internal fun rememberCategoriesWithDecades(categories: List<ExploreCategory>, code: String): List<ExploreCategory> {
+    val decades = rememberDecadeCategories(code)
+    return remember(categories, decades) { if (categories.isEmpty()) categories else categories + decades }
+}
+
+@Composable
+internal fun rememberArtworkWithDecades(artwork: Map<String, String>, code: String): Map<String, String> {
+    val collectionsModel = viewModel<DefaultCuratedCollectionsViewModel>(key = "default-curated-collections")
+    val collections by collectionsModel.collections.collectAsStateWithLifecycle()
+    val decades = collections[CuratedCollection.Decades].orEmpty()
+    return remember(artwork, decades) {
+        val covers = decades.filter { it.categoryParams.isNotBlank() && it.categoryParams !in artwork }.associate { it.categoryParams to it.thumbnailUrl }
+        if (covers.isEmpty()) artwork else artwork + covers
+    }
+}
+
+@Composable
 internal fun rememberCuratedCollectionOpener(code: String, openPlaylist: (PlaylistHit) -> Unit, openCategory: (ExploreCategory) -> Unit): (PlaylistHit) -> Unit {
     val collectionsModel = viewModel<DefaultCuratedCollectionsViewModel>(key = "default-curated-collections")
     val collections by collectionsModel.collections.collectAsStateWithLifecycle()
