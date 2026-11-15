@@ -1,5 +1,18 @@
 # Exact repository-relative binary or generated paths explicitly approved by
 # the owner may be listed here, one per line. Keep this empty by default.
+docs/assets/showcase/readme/row-01.webp
+docs/assets/showcase/readme/row-01-mobile.webp
+docs/assets/showcase/readme/row-02.webp
+docs/assets/showcase/readme/row-02-mobile.webp
+docs/assets/showcase/readme/row-03.webp
+docs/assets/showcase/readme/row-03-mobile.webp
+docs/assets/showcase/readme/row-04.webp
+docs/assets/showcase/readme/row-04-mobile.webp
+docs/assets/showcase/readme/row-05.webp
+docs/assets/showcase/readme/row-05-mobile.webp
+docs/assets/showcase/readme/row-06.webp
+docs/assets/showcase/readme/row-06-mobile.webp
+docs/assets/showcase/readme/studio-backdrop.webp
 app/src/main/res/drawable-nodpi/onboarding_levyra_brand.webp
 docs/assets/levyra-github-banner.webp
 docs/assets/levyra-github-banner-light.webp
