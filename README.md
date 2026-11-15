@@ -82,8 +82,6 @@ I don't host FLAC audio on Levyra's servers. On Android, experimental FLAC playb
 <div align="center">
 <div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-01-spaced.webp?v=editorial-campaign-v9" width="900" align="top" alt="Levyra screens: radio, now playing, light theme, and dark theme" /></div>
 
-<details>
-<summary>More screenshots</summary>
 <br />
 <div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-02-spaced.webp?v=editorial-campaign-v9" width="900" align="top" alt="Levyra screens: discovery, player styles, moods, and audio controls" /></div>
 <br />
@@ -94,7 +92,6 @@ I don't host FLAC audio on Levyra's servers. On Android, experimental FLAC playb
 <div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-05-spaced.webp?v=editorial-campaign-v9" width="900" align="top" alt="Levyra screens: synced lyrics, offline albums, discovery, and Year in Music" /></div>
 <br />
 <div><img src="docs/assets/showcase/editorial-cards/editorial-grid-row-06-skins-spaced.webp?v=editorial-campaign-v9" width="900" align="top" alt="Levyra screens: Spotify Style, Apple Music Style, YouTube Music Style, and Qobuz Style" /></div>
-</details>
 </div>
 
 </div>
