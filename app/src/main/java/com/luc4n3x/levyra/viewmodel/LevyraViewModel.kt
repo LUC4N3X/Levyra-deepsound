@@ -2851,7 +2851,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                                     runCatchingPreservingCancellation { artistRepository.monthlyListeners(artist.browseId) }.getOrNull()
                                 }
                             }
-                            artist.copy(subscribers = listeners.orEmpty(), officialArtwork = artist.thumbnailUrl.isNotBlank())
+                            val monthly = listeners.orEmpty()
+                            artist.copy(
+                                subscribers = monthly.ifBlank { artist.subscribers },
+                                audienceIsSubscribers = monthly.isBlank() && artist.subscribers.isNotBlank(),
+                                officialArtwork = artist.thumbnailUrl.isNotBlank()
+                            )
                         }
                     }.awaitAll()
                 }

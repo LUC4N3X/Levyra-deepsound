@@ -155,6 +155,7 @@ class LevyraHomeSnapshotCache(context: Context) {
                         .put("accentEnd", artist.accentEnd)
                         .put("browseId", artist.browseId)
                         .put("officialArtwork", artist.officialArtwork)
+                        .put("audienceIsSubscribers", artist.audienceIsSubscribers)
                 )
             }
         return array
@@ -178,7 +179,8 @@ class LevyraHomeSnapshotCache(context: Context) {
                     accentStart = item.optInt("accentStart"),
                     accentEnd = item.optInt("accentEnd"),
                     browseId = browseId,
-                    officialArtwork = true
+                    officialArtwork = true,
+                    audienceIsSubscribers = item.optBoolean("audienceIsSubscribers", false)
                 )
             )
         }

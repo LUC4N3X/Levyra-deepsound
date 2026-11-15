@@ -4,6 +4,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.lazy.rememberLazyListState
 import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
+import com.luc4n3x.levyra.ui.components.LevyraAdaptiveSectionHeader
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -78,17 +79,19 @@ internal fun IvoryInkTab(start: Boolean, modifier: Modifier = Modifier, content:
 
 @Composable
 internal fun IvorySectionTitle(title: String, inset: Dp, actions: @Composable RowScope.() -> Unit = {}) {
-    Row(
-        Modifier.fillMaxWidth().padding(end = inset).heightIn(min = 56.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        IvoryInkTab(start = true, Modifier.width(inset + 6.dp).height(30.dp))
-        Text(
-            title, color = LevyraText, style = MaterialTheme.typography.titleLarge, fontSize = 21.sp,
-            maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).semantics { heading() }
-        )
-        actions()
-    }
+    LevyraAdaptiveSectionHeader(
+        modifier = Modifier.fillMaxWidth().padding(end = inset).heightIn(min = 56.dp),
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                IvoryInkTab(start = true, Modifier.width(inset + 6.dp).height(30.dp))
+                Text(
+                    title, color = LevyraText, style = MaterialTheme.typography.titleLarge, fontSize = 21.sp,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() }
+                )
+            }
+        },
+        action = actions
+    )
 }
 
 @Composable

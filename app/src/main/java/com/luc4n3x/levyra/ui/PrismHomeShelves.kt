@@ -5,6 +5,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -35,7 +39,9 @@ import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ReleaseType
 import com.luc4n3x.levyra.domain.YoutubeMusicHomeItem
+import com.luc4n3x.levyra.ui.components.LevyraAdaptiveSectionHeader
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
+import com.luc4n3x.levyra.ui.components.LocalSectionActionIconOnly
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LevyraMonoHomeStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
@@ -57,14 +63,31 @@ private val PrismPinkSplit = ColorFilter.tint(LevyraPink, BlendMode.Modulate)
 
 @Composable
 internal fun PrismShelfHeader(title: String, inset: Dp, action: @Composable RowScope.() -> Unit = {}) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = inset).padding(top = 22.dp, bottom = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.width(22.dp).height(4.dp).clip(CircleShape).background(PrismAccent.gradient()))
-        Spacer(Modifier.width(12.dp))
-        Text(
-            title, color = LevyraText, style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Normal, letterSpacing = (-0.4).sp),
-            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).semantics { heading() }
-        )
-        action()
+    LevyraAdaptiveSectionHeader(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = inset).padding(top = 22.dp, bottom = 14.dp),
+        gap = 0.dp,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.width(22.dp).height(4.dp).clip(CircleShape).background(PrismAccent.gradient()))
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    title, color = LevyraText, style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Normal, letterSpacing = (-0.4).sp),
+                    maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() }
+                )
+            }
+        },
+        action = action
+    )
+}
+
+@Composable
+private fun PrismShowAllAction(label: String, onClick: () -> Unit) {
+    if (LocalSectionActionIconOnly.current) {
+        IconButton(onClick = onClick) {
+            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = label, tint = LevyraPink)
+        }
+    } else {
+        TextButton(onClick = onClick) { Text(label, color = LevyraPink, maxLines = 1) }
     }
 }
 
@@ -107,7 +130,7 @@ internal fun PrismCuratedAndReleases(viewModel: HomeViewModel, inset: Dp, showRe
             if (tiles.isEmpty()) return@forEachIndexed
             PrismShelfHeader(if (index == 0) copy.mixedForYou else shelf.title, inset) {
                 if (index == 0) LocalCuratedPlaylistsOpener.current?.let { open ->
-                    TextButton(onClick = open) { Text(strings.showAll, color = LevyraPink, maxLines = 1) }
+                    PrismShowAllAction(strings.showAll, open)
                 }
             }
             LazyRow(contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(14.dp)) {

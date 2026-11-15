@@ -461,7 +461,7 @@ private fun youTubeMusicLevyraBlocks(
         YouTubeMusicMostDiscussedShelf(data.resonanceTracks, data.resonanceComments, copy.explicit, actions)
     },
     cardsBlock("levyra-artists", strings.trendingArtists, data.artists.takeIf { data.showArtists }.orEmpty().map { artist ->
-        YouTubeMusicCardModel("artist-${artist.browseId.ifBlank { artist.name }}", artist.name, artistAudienceLabel(artist.subscribers, strings.code, strings.monthlyListeners), artist.thumbnailUrl, circular = true, onClick = { actions.openArtist(artist) })
+        YouTubeMusicCardModel("artist-${artist.browseId.ifBlank { artist.name }}", artist.name, artistAudienceLabel(artist, strings.code, strings.monthlyListeners), artist.thumbnailUrl, circular = true, onClick = { actions.openArtist(artist) })
     }),
     songColumnsBlock("levyra-forgotten", strings.forgottenFavorites, data.forgottenFavorites, data.currentId, copy, actions)
 )
@@ -496,7 +496,8 @@ private fun chartBlock(data: AppleMusicHomeData, copy: YouTubeMusicSkinCopy, act
             YouTubeMusicSectionHeader(
                 data.chartsTitle,
                 actionLabel = data.countryLabel.ifBlank { null }?.let { "$it ▾" },
-                onAction = actions.pickCountry
+                onAction = actions.pickCountry,
+                actionIcon = null
             )
             Spacer(Modifier.height(4.dp))
             YouTubeMusicSongColumns(
