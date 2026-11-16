@@ -6851,20 +6851,16 @@ private fun ArtistHero(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.semantics { heading() }
             )
-            if (!LevyraIsAppleMusic) {
-                val heroStrings = LocalLevyraStrings.current
-                val heroLines = remember(profile, heroStrings, audience) {
-                    if (LevyraIsSpotify) listOf(audience).filter(String::isNotBlank) else artistStatLines(profile, heroStrings)
-                }
-                heroLines.forEach { line ->
-                    Text(
-                        text = line,
-                        color = artistHeroAudienceColor(),
-                        style = LevyraType.metadata,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+            val heroStrings = LocalLevyraStrings.current
+            val heroLines = remember(profile, heroStrings, audience) { artistHeroStatLines(profile, heroStrings, audience) }
+            heroLines.forEach { line ->
+                Text(
+                    text = line,
+                    color = artistHeroAudienceColor(),
+                    style = LevyraType.metadata,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }

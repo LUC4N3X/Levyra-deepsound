@@ -102,6 +102,8 @@ import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.playlistAlbumCopy
 import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
+import com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic
+import com.luc4n3x.levyra.ui.theme.LevyraIsSpotify
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.ui.theme.LevyraType
@@ -352,6 +354,12 @@ internal fun artistStatLines(profile: ArtistProfile, strings: LevyraStrings): Li
         profile.albums.size.takeIf { it > 0 }?.let { artistCountLabel(strings.playlistAlbumCopy().albumCount(it), it, profile.albumsBrowseId.isNotBlank()) }
     ).joinToString("  •  ")
     return listOf(audience, profile.views.trim(), catalog).filter(String::isNotBlank)
+}
+
+internal fun artistHeroStatLines(profile: ArtistProfile, strings: LevyraStrings, audience: String): List<String> = when {
+    LevyraIsAppleMusic -> emptyList()
+    LevyraIsSpotify -> listOf(audience).filter(String::isNotBlank)
+    else -> artistStatLines(profile, strings)
 }
 
 @Composable
