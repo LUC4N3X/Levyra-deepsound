@@ -715,6 +715,10 @@ import com.luc4n3x.levyra.domain.LevyraSmartOfflineSettings
 import com.luc4n3x.levyra.domain.LevyraBackupFrequency
 import com.luc4n3x.levyra.domain.LevyraBackupSettings
 import com.luc4n3x.levyra.domain.LevyraVaultStatus
+import com.luc4n3x.levyra.domain.VaultSyncFileAction
+import com.luc4n3x.levyra.domain.VaultSyncFileState
+import com.luc4n3x.levyra.ui.settings.vaultSyncFileItems
+import com.luc4n3x.levyra.data.LevyraBackupManager
 import com.luc4n3x.levyra.data.levyraVaultFileName
 import com.luc4n3x.levyra.data.VaultPreview
 import com.luc4n3x.levyra.domain.LevyraFontPreset
@@ -2072,6 +2076,12 @@ fun LevyraApp(
     val backupLocationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         uri?.let(viewModel::setBackupLocation)
     }
+    val createSyncFileLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+        uri?.let(viewModel::createVaultSyncFile)
+    }
+    val openSyncFileLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let(viewModel::useExistingVaultSyncFile)
+    }
     val downloadLocationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) {
             downloadLocationScope.launch {
@@ -2322,6 +2332,7 @@ fun LevyraApp(
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             DownloadQualityPickerHost(viewModel)
+            com.luc4n3x.levyra.ui.download.BatchDownloadCancelHost(viewModel)
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxSize()
@@ -3022,6 +3033,8 @@ fun LevyraApp(
             }
 
             AnimatedVisibility(visible = state.showSettings, enter = panelEnter, exit = panelExit) {
+                val vaultSyncFile by viewModel.vaultSyncFile.collectAsStateWithLifecycle()
+                LaunchedEffect(Unit) { viewModel.loadVaultSyncFile() }
                 SettingsOverlay(
                     onExitApplication = onExitApplication,
                     backEnabled = !playerVisible && !(state.showJam || state.showThemeStudio || state.showLyricsStudio ||
@@ -3046,6 +3059,7 @@ fun LevyraApp(
                     vaultStatus = state.vaultStatus,
                     lastBackupAtMs = state.lastBackupAtMs,
                     backupLocationUri = state.backupLocationUri,
+                    vaultSyncFile = vaultSyncFile,
                     downloadQueue = state.downloadQueue,
                     playbackDiagnostics = state.playbackDiagnostics,
                     lastFmConfigured = state.lastFmConfigured,
@@ -3140,6 +3154,15 @@ fun LevyraApp(
                     onManageBackups = { openManageBackups() },
                     onSelectBackupLocation = { backupLocationLauncher.launch(null) },
                     onClearBackupLocation = viewModel::clearBackupLocation,
+                    onVaultSyncFileAction = { action ->
+                        when (action) {
+                            VaultSyncFileAction.Create -> createSyncFileLauncher.launch("Levyra-sync${LevyraBackupManager.VAULT_EXTENSION}")
+                            VaultSyncFileAction.UseExisting -> openSyncFileLauncher.launch(arrayOf("application/zip", "application/octet-stream", "*/*"))
+                            VaultSyncFileAction.UpdateNow -> viewModel.updateVaultSyncFile()
+                            VaultSyncFileAction.Restore -> viewModel.restoreVaultSyncFile()
+                            VaultSyncFileAction.Unlink -> viewModel.unlinkVaultSyncFile()
+                        }
+                    },
                     onPauseDownload = viewModel::pauseDownload,
                     onResumeDownload = viewModel::resumeDownload,
                     onCancelDownload = viewModel::cancelDownload,
@@ -3500,6 +3523,14 @@ fun LevyraApp(
 
             AnimatedVisibility(visible = state.showArtist, enter = detailEnter, exit = pageExit) {
                 val appleStorefront = remember(state.selectedChartId) { ChartsCatalog.region(state.selectedChartId).country }
+                val artistCatalogActions = remember(viewModel) {
+                    ArtistCatalogActions(
+                        playAll = { viewModel.playAllArtistSongs() },
+                        shuffleAll = { viewModel.playAllArtistSongs(shuffled = true) },
+                        downloadAll = viewModel::downloadAllArtistSongs
+                    )
+                }
+                CompositionLocalProvider(LocalArtistCatalogActions provides artistCatalogActions) {
                 if (LevyraIsAtelier) AtelierArtistScreen(state, viewModel) { trackActionTarget = it } else if (LevyraIsMono) MonoArtistScreen(state, viewModel) { trackActionTarget = it } else if (LevyraIsQobuz) QobuzArtistScreen(state, viewModel) { trackActionTarget = it } else if (LevyraIsYouTubeMusic) YouTubeMusicArtistScreen(state, viewModel) { trackActionTarget = it } else ArtistOverlay(
                     state = state,
                     onPlay = viewModel::playArtistSong,
@@ -3529,6 +3560,7 @@ fun LevyraApp(
                     onOpenApplePlaylist = { playlist -> viewModel.openApplePlaylist(playlist, appleStorefront) },
                     onOpenArtistByName = viewModel::openArtistByName
                 )
+                }
             }
 
             AnimatedVisibility(visible = state.openPlaylist != null, enter = detailEnter, exit = pageExit) {
@@ -4454,7 +4486,7 @@ private fun PreUpdateBackupFailedDialog(
     )
 }
 
-private fun formatVaultTimestamp(timestampMs: Long, languageCode: String): String {
+internal fun formatVaultTimestamp(timestampMs: Long, languageCode: String): String {
     val locale = Locale.forLanguageTag(languageCode.replace('_', '-'))
     return java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT, locale)
         .format(java.util.Date(timestampMs))
@@ -5882,7 +5914,7 @@ private fun ArtistOverlay(
                                 onPlay = artist.topSongs.firstOrNull()?.let { track -> { onPlay(track) } },
                                 onShuffle = artist.topSongs
                                     .takeIf { it.size > 1 }
-                                    ?.let { songs -> { onPlayAll(songs.shuffled()) } },
+                                    ?.let { songs -> LocalArtistCatalogActions.current?.shuffleAll ?: { onPlayAll(songs.shuffled()) } },
                                 onToggleFollow = onToggleFollow,
                                 isExcluded = isExcluded,
                                 onToggleExclude = { onToggleExclude(artist.browseId, artist.name) },
@@ -6077,7 +6109,7 @@ private fun ArtistOverlay(
                             onToggleExclude = { onToggleExclude(profile.browseId, profile.name) },
                             isPinnedToHome = pinnedToHome,
                             onTogglePinToHome = { onTogglePinToHome(profile) },
-                            onShuffle = profile.topSongs.takeIf { it.size > 1 }?.let { songs -> { onPlayAll(songs.shuffled()) } }
+                            onShuffle = profile.topSongs.takeIf { it.size > 1 }?.let { songs -> LocalArtistCatalogActions.current?.shuffleAll ?: { onPlayAll(songs.shuffled()) } }
                         )
                     }
                 } else {
@@ -6819,9 +6851,11 @@ private fun ArtistHero(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.semantics { heading() }
             )
-            if (audience.isNotBlank() && !LevyraIsAppleMusic) {
+            val heroStrings = LocalLevyraStrings.current
+            val heroLines = remember(profile, heroStrings, audience) { artistHeroStatLines(profile, heroStrings, audience) }
+            heroLines.forEach { line ->
                 Text(
-                    text = audience,
+                    text = line,
                     color = artistHeroAudienceColor(),
                     style = LevyraType.metadata,
                     maxLines = 1,
@@ -18968,6 +19002,7 @@ private fun SettingsOverlay(
     vaultStatus: LevyraVaultStatus,
     lastBackupAtMs: Long,
     backupLocationUri: String?,
+    vaultSyncFile: VaultSyncFileState,
     downloadQueue: List<OfflineDownloadTask>,
     playbackDiagnostics: String,
     lastFmConfigured: Boolean,
@@ -19024,6 +19059,7 @@ private fun SettingsOverlay(
     onManageBackups: () -> Unit,
     onSelectBackupLocation: () -> Unit,
     onClearBackupLocation: () -> Unit,
+    onVaultSyncFileAction: (VaultSyncFileAction) -> Unit,
     onPauseDownload: (String) -> Unit,
     onResumeDownload: (String) -> Unit,
     onCancelDownload: (String) -> Unit,
@@ -20494,6 +20530,7 @@ private fun SettingsOverlay(
                                     onClick = onManageBackups
                                 )
                             }
+                            vaultSyncFileItems(strings, vaultSyncFile, vaultStatus, onVaultSyncFileAction)
                         }
                         "system" -> {
                             standaloneItem {
@@ -21597,7 +21634,7 @@ private fun SettingsChoiceChip(label: String, active: Boolean, onClick: () -> Un
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun SettingsInfoCard(icon: ImageVector, title: String, subtitle: String) {
+internal fun SettingsInfoCard(icon: ImageVector, title: String, subtitle: String) {
     SettingsTile(color = if (SkinChrome.active) LevyraPanelSoft else LevyraViolet.copy(alpha = 0.14f)) {
         Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             SettingsTileIcon(icon = icon, accent = LevyraViolet, shape = MaterialShapes.Cookie4Sided.toShape())
@@ -21642,7 +21679,7 @@ private fun DownloadQueueSettingsCard(
 }
 
 @Composable
-private fun SettingsSectionLabel(text: String) {
+internal fun SettingsSectionLabel(text: String) {
     val strings = LocalLevyraStrings.current
     val locale = remember(strings.code) { Locale.forLanguageTag(strings.code.replace('_', '-')) }
     val title = remember(text, locale) {

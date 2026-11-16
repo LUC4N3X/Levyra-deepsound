@@ -58,6 +58,24 @@ class YoutubeMusicSearchEntityKindTest {
     }
 
     @Test
+    fun `artist row keeps the monthly audience label as its audience`() {
+        val renderer = JSONObject().put(
+            "flexColumns",
+            JSONArray()
+                .put(line("Migos"))
+                .put(line("Artist • 23.5M monthly audience"))
+        ).put("navigationEndpoint", JSONObject().put("browseEndpoint", JSONObject().put("browseId", "UCmigos")
+            .put("browseEndpointContextSupportedConfigs", JSONObject().put("browseEndpointContextMusicConfig", JSONObject().put("pageType", "MUSIC_PAGE_TYPE_ARTIST")))))
+
+        val artist = repository.parseSearchOverview(
+            JSONObject().put("contents", JSONArray().put(JSONObject().put("musicResponsiveListItemRenderer", renderer))),
+            "migos"
+        ).artists.single()
+
+        assertEquals("23.5M monthly audience", artist.subscribers)
+    }
+
+    @Test
     fun `bare UC browse id is not classified as an artist without page type metadata`() {
         val renderer = JSONObject().put(
             "flexColumns",

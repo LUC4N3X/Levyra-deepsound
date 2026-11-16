@@ -87,6 +87,15 @@ internal fun mergeArtistSongs(
     return merged
 }
 
+internal const val ARTIST_ALL_SONGS_LIMIT = 500
+private const val ARTIST_ALL_SONGS_MAX_PAGES = 20
+
+internal fun artistQueueTail(currentQueue: List<Track>, initialQueue: List<Track>, catalog: List<Track>): List<Track> {
+    if (currentQueue.size < initialQueue.size || currentQueue.take(initialQueue.size).map { it.id } != initialQueue.map { it.id }) return emptyList()
+    val queued = currentQueue.mapTo(HashSet()) { it.id }
+    return catalog.filter { it.id.isNotBlank() && queued.add(it.id) }
+}
+
 internal data class ArtistSongAlbum(val title: String, val browseId: String)
 
 internal fun artistSongAlbum(renderer: JSONObject): ArtistSongAlbum? {
@@ -612,6 +621,11 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         extractOfficialMonthlyListeners(root.optJSONObject("header"))
     }
 
+    suspend fun allSongs(songsBrowseId: String, artistName: String): List<Track> = withContext(Dispatchers.IO) {
+        val browseId = songsBrowseId.trim().ifBlank { return@withContext emptyList() }
+        fetchSongs(ArtistSectionPointer(browseId, ""), artistName, ARTIST_ALL_SONGS_LIMIT, ARTIST_ALL_SONGS_MAX_PAGES, strict = true)
+    }
+
     suspend fun artistHit(browseId: String, fallbackName: String): ArtistHit? = withContext(Dispatchers.IO) {
         val cleanBrowseId = browseId.trim()
         val requestedName = fallbackName.trim().cleanAlbumArtistLabel()
@@ -1115,7 +1129,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
     }
 
 
-    private fun extractTopSongs(root: JSONObject, fallbackArtist: String): List<Track> {
+    private fun extractTopSongs(root: JSONObject, fallbackArtist: String, limit: Int = 20): List<Track> {
         val renderers = mutableListOf<JSONObject>()
         collectByKey(root, "musicResponsiveListItemRenderer", renderers)
         val tracks = LinkedHashMap<String, Track>()
@@ -1153,7 +1167,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
                 )
             }
         }
-        return tracks.values.take(20)
+        return tracks.values.take(limit)
     }
 
     internal fun extractArtistPageReleases(root: JSONObject): List<ArtistRelease> {
@@ -1346,18 +1360,29 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         return releases.values.take(MAX_RELEASES_PER_SECTION).toList()
     }
 
-    private fun fetchSongs(pointer: ArtistSectionPointer, fallbackArtist: String): List<Track> {
+    private fun fetchSongs(
+        pointer: ArtistSectionPointer,
+        fallbackArtist: String,
+        limit: Int = 100,
+        maxPages: Int = MAX_RELEASE_PAGES,
+        strict: Boolean = false
+    ): List<Track> {
         val songs = LinkedHashMap<String, Track>()
-        var response = runCatching { postBrowse(pointer.browseId, pointer.params) }.getOrDefault(JSONObject())
+        fun page(browseId: String, params: String, continuation: String): JSONObject =
+            if (strict) postBrowse(browseId, params, continuation)
+            else runCatching { postBrowse(browseId, params, continuation) }.getOrDefault(JSONObject())
+        var response = page(pointer.browseId, pointer.params, "")
         var pages = 0
-        while (response.length() > 0 && pages < MAX_RELEASE_PAGES) {
-            extractTopSongs(response, fallbackArtist).forEach { track -> songs.putIfAbsent(track.id, track) }
+        var previousContinuation = ""
+        while (response.length() > 0 && pages < maxPages) {
+            extractTopSongs(response, fallbackArtist, limit).forEach { track -> songs.putIfAbsent(track.id, track) }
             val continuation = findContinuation(response)
-            if (continuation.isBlank() || songs.size >= 100) break
-            response = runCatching { postBrowse("", continuation = continuation) }.getOrDefault(JSONObject())
+            if (continuation.isBlank() || continuation == previousContinuation || songs.size >= limit) break
+            previousContinuation = continuation
+            response = page("", "", continuation)
             pages += 1
         }
-        return songs.values.take(100).toList()
+        return songs.values.take(limit).toList()
     }
 
     private fun fetchVideos(pointer: ArtistSectionPointer, artistName: String): List<Track> {
@@ -1463,7 +1488,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
     }
 
     private fun findContinuation(root: JSONObject): String {
-        val keys = listOf("nextContinuationData", "reloadContinuationData", "continuationCommand")
+        val keys = listOf("nextContinuationData", "continuationCommand", "reloadContinuationData")
         keys.forEach { key ->
             val nodes = mutableListOf<JSONObject>()
             collectByKey(root, key, nodes)

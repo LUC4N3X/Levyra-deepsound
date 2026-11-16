@@ -199,6 +199,21 @@ class LevyraPreferencesStoreTest {
     }
 
     @Test
+    fun restoringASnapshotKeepsThisDeviceVaultSyncFileLink() {
+        val (store, preferences) = open()
+        val snapshot = preferences.snapshot()
+        runBlocking { preferences.persistVaultSyncFile("content://drive/document/levyra-sync", writesEnabled = true) }
+        preferences.setVaultSyncFileLastWriteAt(42L)
+        runBlocking { preferences.restoreSnapshot(snapshot) }
+        flush(store)
+
+        val reopened = reopen()
+        assertEquals("content://drive/document/levyra-sync", reopened.vaultSyncFileUri())
+        assertTrue(reopened.vaultSyncFileWritesEnabled())
+        assertEquals(42L, reopened.vaultSyncFileLastWriteAt())
+    }
+
+    @Test
     fun persistedValuesAndLegacyMappingsLoadIntoMemory() {
         runBlocking {
             disk.edit {

@@ -22,6 +22,7 @@ import android.net.Network
 import java.util.Locale
 import android.net.NetworkCapabilities
 import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkInfo
@@ -30,6 +31,9 @@ import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.AppUpdateRepository
 import com.luc4n3x.levyra.data.collections.isPersonalCollectionTrack
 import com.luc4n3x.levyra.data.ArtistRepository
+import com.luc4n3x.levyra.data.ARTIST_ALL_SONGS_LIMIT
+import com.luc4n3x.levyra.data.artistQueueTail
+import com.luc4n3x.levyra.data.mergeArtistSongs
 import com.luc4n3x.levyra.data.ChartsRepository
 import com.luc4n3x.levyra.data.isChartArtworkPlaceholder
 import com.luc4n3x.levyra.data.isPodcastEpisode
@@ -159,6 +163,8 @@ import com.luc4n3x.levyra.domain.savedPlaylistKey
 import com.luc4n3x.levyra.domain.resolvedWith
 import com.luc4n3x.levyra.domain.nextInCycle
 import com.luc4n3x.levyra.domain.batchDownloadKey
+import com.luc4n3x.levyra.domain.activeBatchDownload
+import com.luc4n3x.levyra.ui.i18n.artistCatalogCopy
 import com.luc4n3x.levyra.domain.batchDownloadKindOf
 import com.luc4n3x.levyra.domain.batchDownloadProgress
 import com.luc4n3x.levyra.domain.batchDownloadState
@@ -186,6 +192,7 @@ import com.luc4n3x.levyra.ui.i18n.playlistImportSuccessMessage
 import com.luc4n3x.levyra.ui.i18n.bulkLinkCaptureCopy
 import com.luc4n3x.levyra.ui.i18n.playlistProCopy
 import com.luc4n3x.levyra.ui.i18n.likeAllCopy
+import com.luc4n3x.levyra.ui.i18n.vaultSyncFileCopy
 import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.ArtistExclusions
 import com.luc4n3x.levyra.domain.ExcludedArtist
@@ -225,6 +232,7 @@ import com.luc4n3x.levyra.domain.ParametricProfiles
 import com.luc4n3x.levyra.domain.LevyraAutomationSettings
 import com.luc4n3x.levyra.domain.LevyraBackupSettings
 import com.luc4n3x.levyra.domain.LevyraVaultStatus
+import com.luc4n3x.levyra.domain.VaultSyncFileState
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.LevyraSmartOfflineSettings
 import com.luc4n3x.levyra.domain.DownloadOwnership
@@ -419,6 +427,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.Dispatchers
@@ -471,6 +480,7 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 private const val PLAYLIST_ALBUM_RECOVERY_TIMEOUT_MS = 8_000L
+private const val VAULT_SYNC_FILE_ACCESS = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
 private const val APPLE_NEW_THIS_WEEK_LIMIT = 60
 private const val EXPLORE_VIDEOS_LIMIT = 40
 
@@ -1191,6 +1201,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val downloadQualityProbe = DownloadQualityProbe(resolver)
     private val _downloadQualityPicker = MutableStateFlow<DownloadQualityPickerState?>(null)
     val downloadQualityPicker: StateFlow<DownloadQualityPickerState?> = _downloadQualityPicker.asStateFlow()
+    private val _pendingBatchCancel = MutableStateFlow<BatchDownload?>(null)
+    val pendingBatchCancel: StateFlow<BatchDownload?> = _pendingBatchCancel.asStateFlow()
     private var downloadQualityProbeJob: Job? = null
     private var lastDownloadQualityProbe: CachedDownloadQualityProbe? = null
     private val favoritesStore = FavoritesStore(application.applicationContext)
@@ -1212,6 +1224,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val speedDialLoaded = CompletableDeferred<Unit>()
     private val speedDialArtworkAttempted = HashSet<String>()
     private var speedDialArtworkJob: Job? = null
+    private var artistQueueExtensionJob: Job? = null
+    @Volatile private var artistAllSongsCache: Pair<String, List<Track>>? = null
+    private val artistCatalogLoadLock = Any()
+    private var artistCatalogLoad: Pair<String, Deferred<List<Track>?>>? = null
+    private val batchEnqueueJobs = java.util.concurrent.ConcurrentHashMap<String, Job>()
     private val excludedArtistsStore = com.luc4n3x.levyra.data.ExcludedArtistsStore(application.applicationContext)
     private val recommendationFeedbackStore =
         com.luc4n3x.levyra.data.RecommendationFeedbackStore(application.applicationContext)
@@ -1840,6 +1857,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     val state: StateFlow<LevyraUiState> = _state.asStateFlow()
+    private val _vaultSyncFile = MutableStateFlow(VaultSyncFileState())
+    val vaultSyncFile: StateFlow<VaultSyncFileState> = _vaultSyncFile.asStateFlow()
     private val _miniPlayerStudio = MutableStateFlow(MiniPlayerStudioState(settings = startupSettings.miniPlayerStudioSettings))
     val miniPlayerStudio: StateFlow<MiniPlayerStudioState> = _miniPlayerStudio.asStateFlow()
     private val _navigationStudio = MutableStateFlow(NavigationStudioState(settings = startupSettings.navigationStudioSettings))
@@ -7024,9 +7043,20 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             _state.update { it.copy(vaultStatus = LevyraVaultStatus.Running) }
             try {
                 val result = backupManager.exportAutomatic(_state.value.backupSettings.retentionCount)
+                val syncFailure = try {
+                    val synced = backupManager.exportToSyncFile()
+                    val expected = preferences.vaultSyncFileUri().isNotBlank() && preferences.vaultSyncFileWritesEnabled()
+                    if (!synced && expected) vaultSyncCopy().backupSavedNotSynced else null
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (error: Throwable) {
+                    Timber.w(error, "Vault sync file not updated")
+                    vaultSyncCopy().backupSavedNotSynced
+                }
+                refreshVaultSyncFile()
                 _state.update {
                     it.copy(
-                        backupMessage = result.message,
+                        backupMessage = syncFailure ?: result.message,
                         vaultStatus = LevyraVaultStatus.Completed,
                         lastBackupAtMs = System.currentTimeMillis()
                     )
@@ -7076,6 +7106,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             _state.update { it.copy(vaultStatus = LevyraVaultStatus.Running, backupPreview = null, pendingRestoreUri = null) }
             try {
                 val result = backupManager.restoreFrom(uri)
+                if (uri.toString() == preferences.vaultSyncFileUri()) {
+                    preferences.setVaultSyncFileWritesEnabled(true)
+                    refreshVaultSyncFile()
+                }
                 refreshAfterRestore()
                 _state.update {
                     it.copy(
@@ -7170,6 +7204,133 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             } catch (error: Throwable) {
                 Timber.w(error, "Unable to clear backup location")
             }
+        }
+    }
+
+    private fun vaultSyncCopy() = LevyraStrings.forCode(_state.value.languageCode).vaultSyncFileCopy()
+
+    fun loadVaultSyncFile() {
+        viewModelScope.launch { refreshVaultSyncFile() }
+    }
+
+    private suspend fun refreshVaultSyncFile() = withContext(Dispatchers.IO) {
+        val raw = preferences.vaultSyncFileUri().takeIf { it.isNotBlank() }
+        if (raw == null) {
+            _vaultSyncFile.value = VaultSyncFileState()
+            return@withContext
+        }
+        val uri = Uri.parse(raw)
+        val accessLost = !backupManager.hasPersistedAccess(uri)
+        val displayName = if (accessLost) {
+            ""
+        } else {
+            runCatching {
+                getApplication<Application>().contentResolver
+                    .query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+                    ?.use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
+            }.getOrNull().orEmpty()
+        }
+        if (preferences.vaultSyncFileUri() != raw) return@withContext
+        _vaultSyncFile.value = VaultSyncFileState(
+            uri = raw,
+            displayName = displayName,
+            lastWriteAtMs = preferences.vaultSyncFileLastWriteAt(),
+            writesEnabled = preferences.vaultSyncFileWritesEnabled(),
+            accessLost = accessLost
+        )
+    }
+
+    fun createVaultSyncFile(uri: Uri) = linkVaultSyncFile(uri, writesEnabled = true)
+
+    fun useExistingVaultSyncFile(uri: Uri) = linkVaultSyncFile(uri, writesEnabled = false)
+
+    private fun linkVaultSyncFile(uri: Uri, writesEnabled: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val copy = vaultSyncCopy()
+            val newUri = uri.toString()
+            val previous = preferences.vaultSyncFileUri().takeIf { it.isNotBlank() }
+            try {
+                getApplication<Application>().contentResolver.takePersistableUriPermission(uri, VAULT_SYNC_FILE_ACCESS)
+            } catch (refused: SecurityException) {
+                Timber.w(refused, "Sync file location refused persistable access")
+                _state.update { it.copy(backupMessage = copy.accessRefused) }
+                return@launch
+            }
+            val relinked = previous == newUri
+            try {
+                preferences.persistVaultSyncFile(newUri, writesEnabled || (relinked && preferences.vaultSyncFileWritesEnabled()))
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (persistError: Throwable) {
+                Timber.w(persistError, "Unable to persist the sync file link")
+                if (!relinked) releaseVaultSyncFileAccess(uri)
+                _state.update { it.copy(backupMessage = copy.linkFailed) }
+                return@launch
+            }
+            if (previous != null && !relinked) releaseVaultSyncFileAccess(Uri.parse(previous))
+            refreshVaultSyncFile()
+            when {
+                writesEnabled -> updateVaultSyncFile()
+                !relinked -> previewRestore(uri)
+            }
+        }
+    }
+
+    private fun releaseVaultSyncFileAccess(uri: Uri) {
+        runCatching {
+            getApplication<Application>().contentResolver.releasePersistableUriPermission(uri, VAULT_SYNC_FILE_ACCESS)
+        }.onFailure { error -> Timber.w(error, "Unable to release sync file permission") }
+    }
+
+    fun updateVaultSyncFile() {
+        viewModelScope.launch {
+            if (_state.value.vaultStatus == LevyraVaultStatus.Running) {
+                _state.update { it.copy(backupMessage = vaultSyncCopy().updateFailed) }
+                return@launch
+            }
+            _state.update { it.copy(vaultStatus = LevyraVaultStatus.Running) }
+            val copy = vaultSyncCopy()
+            val written = try {
+                preferences.setVaultSyncFileWritesEnabled(true)
+                backupManager.exportToSyncFile()
+            } catch (cancelled: CancellationException) {
+                _state.update { it.copy(vaultStatus = LevyraVaultStatus.Idle) }
+                throw cancelled
+            } catch (error: Throwable) {
+                Timber.w(error, "Vault sync file not updated")
+                null
+            }
+            refreshVaultSyncFile()
+            _state.update {
+                it.copy(
+                    backupMessage = when (written) {
+                        true -> copy.updateDone
+                        false -> copy.accessLost
+                        null -> copy.updateFailed
+                    },
+                    vaultStatus = if (written == true) LevyraVaultStatus.Completed else LevyraVaultStatus.Error
+                )
+            }
+        }
+    }
+
+    fun restoreVaultSyncFile() {
+        _vaultSyncFile.value.uri?.let { previewRestore(Uri.parse(it)) }
+    }
+
+    fun unlinkVaultSyncFile() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val raw = preferences.vaultSyncFileUri().takeIf { it.isNotBlank() } ?: return@launch
+            try {
+                preferences.persistVaultSyncFile("", writesEnabled = false)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Throwable) {
+                Timber.w(error, "Unable to unlink the sync file")
+                return@launch
+            }
+            releaseVaultSyncFileAccess(Uri.parse(raw))
+            refreshVaultSyncFile()
         }
     }
 
@@ -9643,7 +9804,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     playlistId = playlistId,
                     author = detail?.author.orEmpty(),
                     thumbnailUrl = detail?.thumbnailUrl.orEmpty(),
-                    tracks = tracks
+                    tracks = tracks,
+                    description = detail?.description.orEmpty(),
+                    stats = detail?.stats.orEmpty()
                 )
                 if (resolved == null) current else current.copy(playlistHitPreview = resolved)
             }
@@ -9846,6 +10009,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (batchKey.isBlank()) return
         viewModelScope.launch {
             val appContext = getApplication<Application>().applicationContext
+            batchEnqueueJobs.remove(batchKey)?.cancelAndJoin()
             withContext(Dispatchers.IO) {
                 offlineDownloadTasksDao.batchTasks(batchKey)
                     .filter { it.state in ACTIVE_DOWNLOAD_STATES }
@@ -9855,6 +10019,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     }
                 offlineDownloadTasksDao.deleteBatch(batchKey)
             }
+        }
+    }
+
+    fun dismissBatchCancel() {
+        _pendingBatchCancel.value = null
+    }
+
+    fun confirmBatchCancel() {
+        val batch = _pendingBatchCancel.value ?: return
+        _pendingBatchCancel.value = null
+        if (activeBatchDownload(_state.value.downloadBatches, batch.key) != null || batchEnqueueJobs[batch.key]?.isActive == true) {
+            cancelBatchDownload(batch.key)
         }
     }
 
@@ -9871,6 +10047,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             return
         }
         val currentState = _state.value
+        activeBatchDownload(currentState.downloadBatches, batchKey)?.let { running ->
+            _pendingBatchCancel.value = running
+            return
+        }
         val pending = tracks
             .filter { it.id.isNotBlank() || it.videoUrl.isNotBlank() || it.title.isNotBlank() }
             .distinctBy { downloadKeyFor(it) }
@@ -9887,9 +10067,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             _state.update { it.copy(offlineExportMessage = strings.alreadyOffline) }
             return
         }
-        viewModelScope.launch {
+        if (batchEnqueueJobs[batchKey]?.isActive == true) return
+        batchEnqueueJobs[batchKey] = viewModelScope.launch {
             val appContext = getApplication<Application>().applicationContext
-            _state.update { it.copy(offlineExportMessage = strings.downloadsInProgress) }
+            _state.update { it.copy(offlineExportMessage = strings.artistCatalogCopy().downloadStartedHint) }
             pending.forEachIndexed { index, track ->
                 val downloadKey = downloadKeyFor(track)
                 val enqueued = runCatchingPreservingCancellation {
@@ -9910,7 +10091,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }.onFailure { error -> Timber.e(error, "batch download enqueue failed") }
                 if (enqueued.isSuccess) recordSmartDownload(track)
             }
-        }
+        }.also { job -> job.invokeOnCompletion { batchEnqueueJobs.remove(batchKey, job) } }
     }
 
     private fun albumBatchUnavailableMessage(): String =
@@ -9952,6 +10133,66 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun playArtistSong(track: Track) {
         val profile = _state.value.artistProfile ?: return
         playFrom(profile.topSongs, track)
+        extendArtistQueue(profile)
+    }
+
+    fun playAllArtistSongs(shuffled: Boolean = false) {
+        val profile = _state.value.artistProfile ?: return
+        val songs = profile.topSongs
+        if (songs.isEmpty()) return
+        if (shuffled) {
+            if (_state.value.jam.role == JamRole.Guest) return
+            if (!queueEngine.state.value.shuffleEnabled) queueEngine.setShuffle(true)
+        }
+        playFrom(songs, autoplayStartTrack(songs, random = shuffled))
+        extendArtistQueue(profile)
+    }
+
+    fun downloadAllArtistSongs() {
+        val profile = _state.value.artistProfile ?: return
+        viewModelScope.launch {
+            val songs = allArtistSongs(profile)
+            if (songs.isEmpty()) {
+                _state.update { it.copy(offlineExportMessage = LevyraStrings.forCode(it.languageCode).playlistEmpty) }
+                return@launch
+            }
+            startBatchDownload(
+                kind = BatchDownloadKind.Artist,
+                canonicalId = profile.browseId,
+                title = profile.name,
+                artworkUrl = profile.thumbnailUrl,
+                tracks = songs
+            )
+        }
+    }
+
+    private fun extendArtistQueue(profile: ArtistProfile) {
+        if (_state.value.jam.isActive) return
+        val initialQueue = queueEngine.state.value.tracks
+        artistQueueExtensionJob?.cancel()
+        artistQueueExtensionJob = viewModelScope.launch {
+            val catalog = allArtistSongs(profile)
+            val tail = artistQueueTail(queueEngine.state.value.tracks, initialQueue, catalog)
+            if (tail.isEmpty() || _state.value.jam.isActive) return@launch
+            queueEngine.addLast(tail)
+            refreshQueuePrefetch()
+        }
+    }
+
+    private suspend fun allArtistSongs(profile: ArtistProfile): List<Track> {
+        artistAllSongsCache?.takeIf { it.first == profile.browseId }?.let { return it.second }
+        val load = synchronized(artistCatalogLoadLock) {
+            artistCatalogLoad?.takeIf { it.first == profile.browseId && it.second.isActive }?.second
+                ?: viewModelScope.async(Dispatchers.IO) {
+                    runCatchingPreservingCancellation { artistRepository.allSongs(profile.songsBrowseId, profile.name) }
+                        .onFailure { Timber.w(it, "artist catalog lookup failed") }
+                        .getOrNull()
+                }.also { artistCatalogLoad = profile.browseId to it }
+        }
+        val catalog = load.await()
+        val songs = mergeArtistSongs(profile.topSongs, catalog.orEmpty(), ARTIST_ALL_SONGS_LIMIT)
+        if (catalog != null && catalog.isNotEmpty()) artistAllSongsCache = profile.browseId to songs
+        return songs
     }
 
     private fun tryPromoteSmartDownload(track: Track): Boolean {

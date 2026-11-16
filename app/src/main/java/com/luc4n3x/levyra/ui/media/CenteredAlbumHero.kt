@@ -6,8 +6,6 @@ import com.luc4n3x.levyra.ui.artwork.ArtworkBackdropWash
 import com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -168,14 +166,23 @@ internal fun CenteredMediaActionRow(
     modifier: Modifier = Modifier,
     secondary: @Composable RowScope.() -> Unit = {}
 ) {
-    val ring = colors.content.copy(alpha = 0.32f)
+    val shuffleInteraction = remember { MutableInteractionSource() }
+    val shuffleCorner = levyraExpressiveCorner(
+        interactionSource = shuffleInteraction,
+        rest = TonalActionCorner,
+        pressed = TonalActionSize / 2,
+        label = "album-shuffle-corner"
+    )
     Row(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterHorizontally),
+        horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(
-            modifier = Modifier.size(RingActionSize).border(1.5.dp, ring, CircleShape),
+            modifier = Modifier
+                .size(TonalActionSize)
+                .clip(RoundedCornerShape(TonalActionCorner))
+                .background(colors.secondaryFill),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
             content = secondary
@@ -183,10 +190,10 @@ internal fun CenteredMediaActionRow(
         PrimaryAction(primary, colors)
         Box(
             modifier = Modifier
-                .size(RingActionSize)
-                .clip(CircleShape)
-                .border(1.5.dp, ring, CircleShape)
-                .levyraPressable(onClick = onShuffle, enabled = shuffleEnabled, role = Role.Button, pressedScale = LevyraPressScale.Control, onClickLabel = shuffleLabel)
+                .size(TonalActionSize)
+                .clip(RoundedCornerShape(shuffleCorner))
+                .background(colors.secondaryFill)
+                .levyraPressable(onClick = onShuffle, enabled = shuffleEnabled, role = Role.Button, pressedScale = LevyraPressScale.Control, interactionSource = shuffleInteraction, onClickLabel = shuffleLabel)
                 .semantics { contentDescription = shuffleLabel },
             contentAlignment = Alignment.Center
         ) {
@@ -200,8 +207,8 @@ private fun PrimaryAction(primary: ImmersiveMediaPrimaryAction, colors: Immersiv
     val interaction = remember { MutableInteractionSource() }
     val corner = levyraExpressiveCorner(
         interactionSource = interaction,
-        rest = PrimaryActionSize / 2,
-        pressed = PrimaryActionPressedCorner,
+        rest = PrimaryActionCorner,
+        pressed = PrimaryActionSize / 2,
         label = "album-primary-corner"
     )
     val content = if (primary.enabled) colors.actionContent else colors.contentMuted
@@ -229,9 +236,10 @@ private fun PrimaryAction(primary: ImmersiveMediaPrimaryAction, colors: Immersiv
     }
 }
 
-private val RingActionSize: Dp = 52.dp
-private val PrimaryActionSize: Dp = 72.dp
-private val PrimaryActionPressedCorner: Dp = 24.dp
+private val TonalActionSize: Dp = 56.dp
+private val TonalActionCorner: Dp = 18.dp
+private val PrimaryActionSize: Dp = 76.dp
+private val PrimaryActionCorner: Dp = 26.dp
 
 internal fun albumUsesCenteredHero(split: Boolean): Boolean = LevyraIsDefaultSkin && !split
 

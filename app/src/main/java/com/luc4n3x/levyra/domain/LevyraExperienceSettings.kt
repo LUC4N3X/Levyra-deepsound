@@ -386,6 +386,16 @@ data class LevyraBackupSettings(
 
 enum class LevyraVaultStatus { Idle, Running, Completed, Error }
 
+data class VaultSyncFileState(
+    val uri: String? = null,
+    val displayName: String = "",
+    val lastWriteAtMs: Long = 0L,
+    val writesEnabled: Boolean = false,
+    val accessLost: Boolean = false
+)
+
+enum class VaultSyncFileAction { Create, UseExisting, UpdateNow, Restore, Unlink }
+
 internal fun LevyraDownloadSettings.shouldSkipExistingDownload(
     trackId: String,
     downloadedTrackIds: Set<String>

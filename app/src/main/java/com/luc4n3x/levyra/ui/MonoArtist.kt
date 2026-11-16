@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -42,8 +43,10 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.DoNotDisturbOn
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.HowToReg
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.MusicNote
@@ -102,6 +105,7 @@ import com.luc4n3x.levyra.ui.components.formatSeekbarMillis
 import com.luc4n3x.levyra.ui.i18n.LevyraMonoSearchStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.MonoSearchCopy
+import com.luc4n3x.levyra.ui.i18n.artistCatalogCopy
 import com.luc4n3x.levyra.ui.i18n.searchDiscographyCopy
 import com.luc4n3x.levyra.ui.i18n.speedDialCopy
 import com.luc4n3x.levyra.ui.theme.MonoDesign
@@ -198,6 +202,19 @@ internal fun MonoArtistScreen(state: LevyraUiState, viewModel: LevyraViewModel, 
             }
             Box(Modifier.fillMaxWidth().height(1.dp).graphicsLayer { alpha = barAlpha }.background(MonoDesign.hairline))
         }
+        state.currentTrack?.let { current ->
+            AlbumNowPlayingDock(
+                track = current,
+                isPlaying = state.isPlaying,
+                isResolving = state.isResolving,
+                progress = if (state.durationMs > 0L) (state.positionMs.toFloat() / state.durationMs).coerceIn(0f, 1f) else 0f,
+                animated = state.animationsEnabled,
+                onToggle = viewModel::togglePlay,
+                onOpenPlayer = viewModel::openPlayerScreen,
+                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
+                    .padding(start = 18.dp, end = 18.dp, bottom = 14.dp)
+            )
+        }
     }
 }
 
@@ -212,7 +229,6 @@ private fun MonoArtistHeader(
     motionEnabled: Boolean
 ) {
     val animated = LocalAnimationsEnabled.current
-    val audience = profile.monthlyListeners.ifBlank { profile.subscribers }
     Box(Modifier.fillMaxWidth().height(portraitHeight).clipToBounds()) {
         Box(
             Modifier.fillMaxSize().graphicsLayer {
@@ -258,8 +274,16 @@ private fun MonoArtistHeader(
                 profile.name, style = MaterialTheme.typography.displayMedium, color = MonoDesign.text,
                 maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() }
             )
-            if (audience.isNotBlank()) {
-                Text(audience, style = MaterialTheme.typography.bodyLarge, color = MonoDesign.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            val statStrings = LocalLevyraStrings.current
+            val statLines = remember(profile, statStrings) { artistStatLines(profile, statStrings) }
+            statLines.forEachIndexed { index, line ->
+                Text(
+                    line,
+                    style = if (index == 0) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.bodyMedium,
+                    color = if (index == 0) MonoDesign.textSecondary else MonoDesign.textFaint,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }
@@ -275,10 +299,7 @@ private fun MonoArtistBarActions(profile: ArtistProfile, state: LevyraUiState, v
     val pinned = SpeedDial.artistKey(profile.name, profile.browseId)?.let { key -> state.speedDialPins.any { it.key == key } } == true
     var menuOpen by rememberSaveable(profile.browseId) { mutableStateOf(false) }
     if (songs.size > 1) {
-        MonoSearchIconTarget(Icons.Rounded.Shuffle, strings.shuffle, MonoDesign.text) {
-            val shuffled = songs.shuffled()
-            shuffled.firstOrNull()?.let { first -> viewModel.playFrom(shuffled, first) }
-        }
+        MonoSearchIconTarget(Icons.Rounded.Shuffle, strings.shuffle, MonoDesign.text) { viewModel.playAllArtistSongs(shuffled = true) }
     }
     if (profile.browseId.isNotBlank()) {
         MonoSearchIconTarget(Icons.Rounded.Share, ytm.share, MonoDesign.text) {
@@ -299,7 +320,16 @@ private fun MonoArtistBarActions(profile: ArtistProfile, state: LevyraUiState, v
     Box {
         MonoSearchIconTarget(Icons.Rounded.MoreVert, strings.more, MonoDesign.text) { menuOpen = true }
         val speedDial = remember(strings) { strings.speedDialCopy() }
+        val catalogCopy = remember(strings) { strings.artistCatalogCopy() }
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }, containerColor = MonoDesign.raised) {
+            MonoArtistMenuItem(catalogCopy.playAllSongs, Icons.AutoMirrored.Rounded.PlaylistPlay, songs.isNotEmpty()) {
+                menuOpen = false
+                viewModel.playAllArtistSongs()
+            }
+            MonoArtistMenuItem(catalogCopy.downloadAllSongs, Icons.Rounded.Download, songs.isNotEmpty()) {
+                menuOpen = false
+                viewModel.downloadAllArtistSongs()
+            }
             MonoArtistMenuItem(strings.addToQueue, Icons.AutoMirrored.Rounded.QueueMusic, songs.isNotEmpty()) {
                 menuOpen = false
                 viewModel.addTracksToQueue(songs)
@@ -362,7 +392,7 @@ private fun MonoArtistActions(profile: ArtistProfile, state: LevyraUiState, view
         Box(
             Modifier.size(MonoArtistPlaySize).clip(CircleShape)
                 .background(if (playEnabled) MonoDesign.accent else MonoDesign.raised)
-                .clickable(enabled = playEnabled, role = Role.Button, onClickLabel = strings.play) { viewModel.playAll(songs) }
+                .clickable(enabled = playEnabled, role = Role.Button, onClickLabel = strings.play) { viewModel.playAllArtistSongs() }
                 .semantics { contentDescription = strings.play },
             contentAlignment = Alignment.Center
         ) {

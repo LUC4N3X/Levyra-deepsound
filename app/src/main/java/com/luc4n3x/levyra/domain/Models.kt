@@ -565,7 +565,9 @@ data class PlaylistHitPreview(
     val tracks: List<Track> = emptyList(),
     val loading: Boolean = true,
     val failed: Boolean = false,
-    val appleStorefront: String = ""
+    val appleStorefront: String = "",
+    val description: String = "",
+    val stats: String = ""
 )
 
 data class SavedPlaylist(
@@ -600,7 +602,9 @@ fun PlaylistHitPreview.resolvedWith(
     playlistId: String,
     author: String,
     thumbnailUrl: String,
-    tracks: List<Track>
+    tracks: List<Track>,
+    description: String = "",
+    stats: String = ""
 ): PlaylistHitPreview? =
     if (hit.playlistId != playlistId) {
         null
@@ -612,7 +616,9 @@ fun PlaylistHitPreview.resolvedWith(
             ),
             tracks = tracks,
             loading = false,
-            failed = tracks.isEmpty()
+            failed = tracks.isEmpty(),
+            description = description.ifBlank { this.description },
+            stats = stats.ifBlank { this.stats }
         )
     }
 

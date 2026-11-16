@@ -38,7 +38,8 @@ internal val vaultKeys: Set<String> = linkedSetOf(
     "vaultPreUpdateBackupFailedTitle",
     "vaultPreUpdateBackupFailedBody",
     "vaultPreUpdateBackupRetry",
-    "vaultPreUpdateBackupContinue"
+    "vaultPreUpdateBackupContinue",
+    "vaultScreenTitle"
 )
 
 private fun vault(vararg values: String): Map<String, String> {
@@ -57,7 +58,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Vault operation in progress...", "Restore Levyra", "Compatible backup", "Backup incompatible with this version",
         "Created", "Levyra version", "Size", "Contents", "Restore",
         "Replaces favorites, playlists, history, queue and settings with the backup data.",
-        "Backup before update failed", "The local backup failed. You can retry or continue with the update.", "Retry", "Update anyway"
+        "Backup before update failed", "The local backup failed. You can retry or continue with the update.", "Retry", "Update anyway",
+        "Backup & restore"
     ),
     "it" to vault(
         "Backup automatici", "Crea archivi locali verificati senza includere i file audio", "Frequenza", "Conservazione",
@@ -69,7 +71,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Operazione Vault in corso...", "Ripristina Levyra", "Backup compatibile", "Backup non compatibile con questa versione",
         "Creato", "Versione Levyra", "Dimensione", "Contenuti", "Ripristina",
         "Sostituisce preferiti, playlist, cronologia, coda e impostazioni con i dati del backup.",
-        "Backup prima dell'aggiornamento non riuscito", "Il backup locale non è riuscito. Puoi riprovare o continuare con l'aggiornamento.", "Riprova", "Aggiorna comunque"
+        "Backup prima dell'aggiornamento non riuscito", "Il backup locale non è riuscito. Puoi riprovare o continuare con l'aggiornamento.", "Riprova", "Aggiorna comunque",
+        "Backup e ripristino"
     ),
     "es" to vault(
         "Copias automáticas", "Crea archivos locales verificados sin los archivos de audio", "Frecuencia", "Conservación",
@@ -81,7 +84,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Operación de Vault en curso...", "Restaurar Levyra", "Copia compatible", "Copia no compatible con esta versión",
         "Creada", "Versión de Levyra", "Tamaño", "Contenido", "Restaurar",
         "Reemplaza favoritos, listas, historial, cola y ajustes con los datos de la copia.",
-        "Falló la copia antes de actualizar", "No se pudo crear la copia local. Puedes reintentarlo o seguir con la actualización.", "Reintentar", "Actualizar igualmente"
+        "Falló la copia antes de actualizar", "No se pudo crear la copia local. Puedes reintentarlo o seguir con la actualización.", "Reintentar", "Actualizar igualmente",
+        "Copia y restauración"
     ),
     "fr" to vault(
         "Sauvegardes automatiques", "Crée des archives locales vérifiées, sans les fichiers audio", "Fréquence", "Conservation",
@@ -93,7 +97,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Opération Vault en cours...", "Restaurer Levyra", "Sauvegarde compatible", "Sauvegarde incompatible avec cette version",
         "Créée", "Version de Levyra", "Taille", "Contenu", "Restaurer",
         "Remplace favoris, playlists, historique, file d'attente et réglages par les données de la sauvegarde.",
-        "Échec de la sauvegarde avant mise à jour", "La sauvegarde locale a échoué. Vous pouvez réessayer ou poursuivre la mise à jour.", "Réessayer", "Mettre à jour quand même"
+        "Échec de la sauvegarde avant mise à jour", "La sauvegarde locale a échoué. Vous pouvez réessayer ou poursuivre la mise à jour.", "Réessayer", "Mettre à jour quand même",
+        "Sauvegarde et restauration"
     ),
     "de" to vault(
         "Automatische Backups", "Erstellt geprüfte lokale Archive ohne Audiodateien", "Häufigkeit", "Aufbewahrung",
@@ -105,7 +110,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Vault-Vorgang läuft...", "Levyra wiederherstellen", "Kompatibles Backup", "Backup ist mit dieser Version nicht kompatibel",
         "Erstellt", "Levyra-Version", "Größe", "Inhalt", "Wiederherstellen",
         "Ersetzt Favoriten, Playlists, Verlauf, Warteschlange und Einstellungen durch die Daten des Backups.",
-        "Backup vor dem Update fehlgeschlagen", "Das lokale Backup ist fehlgeschlagen. Du kannst es erneut versuchen oder mit dem Update fortfahren.", "Erneut versuchen", "Trotzdem aktualisieren"
+        "Backup vor dem Update fehlgeschlagen", "Das lokale Backup ist fehlgeschlagen. Du kannst es erneut versuchen oder mit dem Update fortfahren.", "Erneut versuchen", "Trotzdem aktualisieren",
+        "Sichern & wiederherstellen"
     ),
     "pt" to vault(
         "Backups automáticos", "Cria arquivos locais verificados, sem os ficheiros de áudio", "Frequência", "Retenção",
@@ -117,7 +123,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Operação do Vault em curso...", "Restaurar o Levyra", "Backup compatível", "Backup incompatível com esta versão",
         "Criado", "Versão do Levyra", "Tamanho", "Conteúdo", "Restaurar",
         "Substitui favoritos, playlists, histórico, fila e definições pelos dados do backup.",
-        "O backup antes da atualização falhou", "O backup local falhou. Pode tentar novamente ou continuar com a atualização.", "Tentar novamente", "Atualizar mesmo assim"
+        "O backup antes da atualização falhou", "O backup local falhou. Pode tentar novamente ou continuar com a atualização.", "Tentar novamente", "Atualizar mesmo assim",
+        "Backup e restauração"
     ),
     "nl" to vault(
         "Automatische back-ups", "Maakt gecontroleerde lokale archieven zonder audiobestanden", "Frequentie", "Bewaren",
@@ -129,7 +136,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Vault-bewerking bezig...", "Levyra herstellen", "Compatibele back-up", "Back-up niet compatibel met deze versie",
         "Gemaakt", "Levyra-versie", "Grootte", "Inhoud", "Herstellen",
         "Vervangt favorieten, playlists, geschiedenis, wachtrij en instellingen door de gegevens uit de back-up.",
-        "Back-up vóór update mislukt", "De lokale back-up is mislukt. Je kunt het opnieuw proberen of doorgaan met de update.", "Opnieuw proberen", "Toch bijwerken"
+        "Back-up vóór update mislukt", "De lokale back-up is mislukt. Je kunt het opnieuw proberen of doorgaan met de update.", "Opnieuw proberen", "Toch bijwerken",
+        "Back-up en herstel"
     ),
     "pl" to vault(
         "Automatyczne kopie zapasowe", "Tworzy sprawdzone lokalne archiwa bez plików audio", "Częstotliwość", "Przechowywanie",
@@ -141,7 +149,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Trwa operacja Vault...", "Przywróć Levyra", "Zgodna kopia", "Kopia niezgodna z tą wersją",
         "Utworzono", "Wersja Levyra", "Rozmiar", "Zawartość", "Przywróć",
         "Zastępuje ulubione, playlisty, historię, kolejkę i ustawienia danymi z kopii.",
-        "Kopia przed aktualizacją nie powiodła się", "Nie udało się utworzyć lokalnej kopii. Możesz spróbować ponownie lub kontynuować aktualizację.", "Spróbuj ponownie", "Aktualizuj mimo to"
+        "Kopia przed aktualizacją nie powiodła się", "Nie udało się utworzyć lokalnej kopii. Możesz spróbować ponownie lub kontynuować aktualizację.", "Spróbuj ponownie", "Aktualizuj mimo to",
+        "Kopia zapasowa i przywracanie"
     ),
     "ro" to vault(
         "Backupuri automate", "Creează arhive locale verificate, fără fișierele audio", "Frecvență", "Păstrare",
@@ -153,7 +162,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Operațiune Vault în curs...", "Restaurează Levyra", "Backup compatibil", "Backup incompatibil cu această versiune",
         "Creat", "Versiune Levyra", "Dimensiune", "Conținut", "Restaurează",
         "Înlocuiește favoritele, playlisturile, istoricul, coada și setările cu datele din backup.",
-        "Backupul dinaintea actualizării a eșuat", "Backupul local a eșuat. Poți încerca din nou sau poți continua actualizarea.", "Reîncearcă", "Actualizează oricum"
+        "Backupul dinaintea actualizării a eșuat", "Backupul local a eșuat. Poți încerca din nou sau poți continua actualizarea.", "Reîncearcă", "Actualizează oricum",
+        "Backup și restaurare"
     ),
     "el" to vault(
         "Αυτόματα αντίγραφα ασφαλείας", "Δημιουργεί επαληθευμένα τοπικά αρχεία χωρίς αρχεία ήχου", "Συχνότητα", "Διατήρηση",
@@ -165,7 +175,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Λειτουργία Vault σε εξέλιξη...", "Επαναφορά Levyra", "Συμβατό αντίγραφο", "Το αντίγραφο δεν είναι συμβατό με αυτή την έκδοση",
         "Δημιουργήθηκε", "Έκδοση Levyra", "Μέγεθος", "Περιεχόμενα", "Επαναφορά",
         "Αντικαθιστά αγαπημένα, λίστες, ιστορικό, ουρά και ρυθμίσεις με τα δεδομένα του αντιγράφου.",
-        "Το αντίγραφο πριν από την ενημέρωση απέτυχε", "Το τοπικό αντίγραφο απέτυχε. Μπορείτε να δοκιμάσετε ξανά ή να συνεχίσετε την ενημέρωση.", "Επανάληψη", "Ενημέρωση ούτως ή άλλως"
+        "Το αντίγραφο πριν από την ενημέρωση απέτυχε", "Το τοπικό αντίγραφο απέτυχε. Μπορείτε να δοκιμάσετε ξανά ή να συνεχίσετε την ενημέρωση.", "Επανάληψη", "Ενημέρωση ούτως ή άλλως",
+        "Αντίγραφα ασφαλείας και επαναφορά"
     ),
     "sv" to vault(
         "Automatiska säkerhetskopior", "Skapar verifierade lokala arkiv utan ljudfiler", "Frekvens", "Lagring",
@@ -177,7 +188,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Vault-åtgärd pågår...", "Återställ Levyra", "Kompatibel säkerhetskopia", "Säkerhetskopian är inte kompatibel med den här versionen",
         "Skapad", "Levyra-version", "Storlek", "Innehåll", "Återställ",
         "Ersätter favoriter, spellistor, historik, kö och inställningar med data från säkerhetskopian.",
-        "Säkerhetskopian före uppdateringen misslyckades", "Den lokala säkerhetskopian misslyckades. Du kan försöka igen eller fortsätta med uppdateringen.", "Försök igen", "Uppdatera ändå"
+        "Säkerhetskopian före uppdateringen misslyckades", "Den lokala säkerhetskopian misslyckades. Du kan försöka igen eller fortsätta med uppdateringen.", "Försök igen", "Uppdatera ändå",
+        "Säkerhetskopiering och återställning"
     ),
     "da" to vault(
         "Automatiske sikkerhedskopier", "Opretter verificerede lokale arkiver uden lydfiler", "Hyppighed", "Opbevaring",
@@ -189,7 +201,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Vault-handling i gang...", "Gendan Levyra", "Kompatibel sikkerhedskopi", "Sikkerhedskopien er ikke kompatibel med denne version",
         "Oprettet", "Levyra-version", "Størrelse", "Indhold", "Gendan",
         "Erstatter favoritter, playlister, historik, kø og indstillinger med dataene fra sikkerhedskopien.",
-        "Sikkerhedskopi før opdatering mislykkedes", "Den lokale sikkerhedskopi mislykkedes. Du kan prøve igen eller fortsætte med opdateringen.", "Prøv igen", "Opdater alligevel"
+        "Sikkerhedskopi før opdatering mislykkedes", "Den lokale sikkerhedskopi mislykkedes. Du kan prøve igen eller fortsætte med opdateringen.", "Prøv igen", "Opdater alligevel",
+        "Sikkerhedskopi og gendannelse"
     ),
     "cs" to vault(
         "Automatické zálohy", "Vytváří ověřené místní archivy bez zvukových souborů", "Frekvence", "Uchovávání",
@@ -201,7 +214,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Probíhá operace Vault...", "Obnovit Levyra", "Kompatibilní záloha", "Záloha není kompatibilní s touto verzí",
         "Vytvořeno", "Verze Levyra", "Velikost", "Obsah", "Obnovit",
         "Nahradí oblíbené, playlisty, historii, frontu a nastavení daty ze zálohy.",
-        "Záloha před aktualizací selhala", "Místní záloha selhala. Můžete to zkusit znovu nebo pokračovat v aktualizaci.", "Zkusit znovu", "Přesto aktualizovat"
+        "Záloha před aktualizací selhala", "Místní záloha selhala. Můžete to zkusit znovu nebo pokračovat v aktualizaci.", "Zkusit znovu", "Přesto aktualizovat",
+        "Zálohování a obnovení"
     ),
     "sk" to vault(
         "Automatické zálohy", "Vytvára overené lokálne archívy bez zvukových súborov", "Frekvencia", "Uchovávanie",
@@ -213,7 +227,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Prebieha operácia Vault...", "Obnoviť Levyra", "Kompatibilná záloha", "Záloha nie je kompatibilná s touto verziou",
         "Vytvorené", "Verzia Levyra", "Veľkosť", "Obsah", "Obnoviť",
         "Nahradí obľúbené, playlisty, históriu, front a nastavenia údajmi zo zálohy.",
-        "Záloha pred aktualizáciou zlyhala", "Lokálna záloha zlyhala. Môžete to skúsiť znova alebo pokračovať v aktualizácii.", "Skúsiť znova", "Aktualizovať aj tak"
+        "Záloha pred aktualizáciou zlyhala", "Lokálna záloha zlyhala. Môžete to skúsiť znova alebo pokračovať v aktualizácii.", "Skúsiť znova", "Aktualizovať aj tak",
+        "Zálohovanie a obnovenie"
     ),
     "hr" to vault(
         "Automatske sigurnosne kopije", "Stvara provjerene lokalne arhive bez audiodatoteka", "Učestalost", "Zadržavanje",
@@ -225,7 +240,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Vault radnja u tijeku...", "Vrati Levyru", "Kompatibilna kopija", "Kopija nije kompatibilna s ovom verzijom",
         "Stvoreno", "Verzija Levyre", "Veličina", "Sadržaj", "Vrati",
         "Zamjenjuje favorite, popise, povijest, red i postavke podacima iz kopije.",
-        "Kopija prije ažuriranja nije uspjela", "Lokalna kopija nije uspjela. Možete pokušati ponovno ili nastaviti s ažuriranjem.", "Pokušaj ponovno", "Ipak ažuriraj"
+        "Kopija prije ažuriranja nije uspjela", "Lokalna kopija nije uspjela. Možete pokušati ponovno ili nastaviti s ažuriranjem.", "Pokušaj ponovno", "Ipak ažuriraj",
+        "Sigurnosna kopija i vraćanje"
     ),
     "sr" to vault(
         "Automatske rezervne kopije", "Pravi proverene lokalne arhive bez audio datoteka", "Učestalost", "Čuvanje",
@@ -237,7 +253,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Vault radnja u toku...", "Vrati Levyru", "Kompatibilna kopija", "Kopija nije kompatibilna sa ovom verzijom",
         "Napravljeno", "Verzija Levyre", "Veličina", "Sadržaj", "Vrati",
         "Zamenjuje omiljene, plejliste, istoriju, red i podešavanja podacima iz kopije.",
-        "Kopija pre ažuriranja nije uspela", "Lokalna kopija nije uspela. Možete pokušati ponovo ili nastaviti sa ažuriranjem.", "Pokušaj ponovo", "Ipak ažuriraj"
+        "Kopija pre ažuriranja nije uspela", "Lokalna kopija nije uspela. Možete pokušati ponovo ili nastaviti sa ažuriranjem.", "Pokušaj ponovo", "Ipak ažuriraj",
+        "Резервна копија и враћање"
     ),
     "sq" to vault(
         "Kopje rezervë automatike", "Krijon arkiva lokale të verifikuara pa skedarët audio", "Shpeshtësia", "Ruajtja",
@@ -249,7 +266,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Veprim Vault në vazhdim...", "Rikthe Levyra", "Kopje e përputhshme", "Kopja nuk përputhet me këtë version",
         "Krijuar", "Versioni i Levyra", "Madhësia", "Përmbajtja", "Rikthe",
         "Zëvendëson të preferuarat, listat, historikun, radhën dhe cilësimet me të dhënat e kopjes.",
-        "Kopja para përditësimit dështoi", "Kopja lokale dështoi. Mund të provosh sërish ose të vazhdosh me përditësimin.", "Provo sërish", "Përditëso gjithsesi"
+        "Kopja para përditësimit dështoi", "Kopja lokale dështoi. Mund të provosh sërish ose të vazhdosh me përditësimin.", "Provo sërish", "Përditëso gjithsesi",
+        "Kopje rezervë dhe rikthim"
     ),
     "bg" to vault(
         "Автоматични резервни копия", "Създава проверени локални архиви без аудиофайлове", "Честота", "Съхранение",
@@ -261,7 +279,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Операция на Vault в ход...", "Възстанови Levyra", "Съвместимо копие", "Копието не е съвместимо с тази версия",
         "Създадено", "Версия на Levyra", "Размер", "Съдържание", "Възстанови",
         "Заменя любими, плейлисти, история, опашка и настройки с данните от копието.",
-        "Копието преди актуализацията не успя", "Локалното копие не успя. Можете да опитате отново или да продължите с актуализацията.", "Опитай отново", "Актуализирай все пак"
+        "Копието преди актуализацията не успя", "Локалното копие не успя. Можете да опитате отново или да продължите с актуализацията.", "Опитай отново", "Актуализирай все пак",
+        "Резервно копие и възстановяване"
     ),
     "hu" to vault(
         "Automatikus biztonsági mentések", "Ellenőrzött helyi archívumokat készít hangfájlok nélkül", "Gyakoriság", "Megőrzés",
@@ -273,7 +292,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Vault-művelet folyamatban...", "Levyra visszaállítása", "Kompatibilis mentés", "A mentés nem kompatibilis ezzel a verzióval",
         "Létrehozva", "Levyra-verzió", "Méret", "Tartalom", "Visszaállítás",
         "A kedvenceket, listákat, előzményeket, sort és beállításokat a mentés adataira cseréli.",
-        "A frissítés előtti mentés nem sikerült", "A helyi mentés nem sikerült. Újrapróbálhatod, vagy folytathatod a frissítést.", "Újra", "Frissítés mégis"
+        "A frissítés előtti mentés nem sikerült", "A helyi mentés nem sikerült. Újrapróbálhatod, vagy folytathatod a frissítést.", "Újra", "Frissítés mégis",
+        "Biztonsági mentés és visszaállítás"
     ),
     "fi" to vault(
         "Automaattiset varmuuskopiot", "Luo tarkistettuja paikallisia arkistoja ilman äänitiedostoja", "Tiheys", "Säilytys",
@@ -285,7 +305,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Vault-toiminto käynnissä...", "Palauta Levyra", "Yhteensopiva varmuuskopio", "Varmuuskopio ei ole yhteensopiva tämän version kanssa",
         "Luotu", "Levyran versio", "Koko", "Sisältö", "Palauta",
         "Korvaa suosikit, soittolistat, historian, jonon ja asetukset varmuuskopion tiedoilla.",
-        "Päivitystä edeltävä varmuuskopio epäonnistui", "Paikallinen varmuuskopio epäonnistui. Voit yrittää uudelleen tai jatkaa päivitystä.", "Yritä uudelleen", "Päivitä silti"
+        "Päivitystä edeltävä varmuuskopio epäonnistui", "Paikallinen varmuuskopio epäonnistui. Voit yrittää uudelleen tai jatkaa päivitystä.", "Yritä uudelleen", "Päivitä silti",
+        "Varmuuskopiointi ja palautus"
     ),
     "et" to vault(
         "Automaatsed varukoopiad", "Loob kontrollitud kohalikud arhiivid ilma helifailideta", "Sagedus", "Säilitamine",
@@ -297,7 +318,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Vaulti toiming käib...", "Taasta Levyra", "Ühilduv varukoopia", "Varukoopia ei ühildu selle versiooniga",
         "Loodud", "Levyra versioon", "Suurus", "Sisu", "Taasta",
         "Asendab lemmikud, esitusloendid, ajaloo, järjekorra ja seaded varukoopia andmetega.",
-        "Uuenduse-eelne varukoopia ebaõnnestus", "Kohalik varukoopia ebaõnnestus. Võid uuesti proovida või uuendusega jätkata.", "Proovi uuesti", "Uuenda ikkagi"
+        "Uuenduse-eelne varukoopia ebaõnnestus", "Kohalik varukoopia ebaõnnestus. Võid uuesti proovida või uuendusega jätkata.", "Proovi uuesti", "Uuenda ikkagi",
+        "Varundamine ja taastamine"
     ),
     "nb" to vault(
         "Automatiske sikkerhetskopier", "Lager verifiserte lokale arkiver uten lydfiler", "Hyppighet", "Oppbevaring",
@@ -309,7 +331,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Vault-handling pågår...", "Gjenopprett Levyra", "Kompatibel sikkerhetskopi", "Sikkerhetskopien er ikke kompatibel med denne versjonen",
         "Opprettet", "Levyra-versjon", "Størrelse", "Innhold", "Gjenopprett",
         "Erstatter favoritter, spillelister, historikk, kø og innstillinger med dataene fra sikkerhetskopien.",
-        "Sikkerhetskopi før oppdatering mislyktes", "Den lokale sikkerhetskopien mislyktes. Du kan prøve igjen eller fortsette med oppdateringen.", "Prøv igjen", "Oppdater likevel"
+        "Sikkerhetskopi før oppdatering mislyktes", "Den lokale sikkerhetskopien mislyktes. Du kan prøve igjen eller fortsette med oppdateringen.", "Prøv igjen", "Oppdater likevel",
+        "Sikkerhetskopi og gjenoppretting"
     ),
     "ca" to vault(
         "Còpies automàtiques", "Crea arxius locals verificats sense els fitxers d'àudio", "Freqüència", "Conservació",
@@ -321,7 +344,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Operació del Vault en curs...", "Restaura Levyra", "Còpia compatible", "Còpia no compatible amb aquesta versió",
         "Creada", "Versió de Levyra", "Mida", "Contingut", "Restaura",
         "Substitueix preferits, llistes, historial, cua i configuració amb les dades de la còpia.",
-        "Ha fallat la còpia abans d'actualitzar", "No s'ha pogut crear la còpia local. Pots tornar-ho a provar o continuar amb l'actualització.", "Torna-ho a provar", "Actualitza igualment"
+        "Ha fallat la còpia abans d'actualitzar", "No s'ha pogut crear la còpia local. Pots tornar-ho a provar o continuar amb l'actualització.", "Torna-ho a provar", "Actualitza igualment",
+        "Còpia de seguretat i restauració"
     ),
     "uk" to vault(
         "Автоматичні резервні копії", "Створює перевірені локальні архіви без аудіофайлів", "Частота", "Зберігання",
@@ -333,7 +357,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Триває операція Vault...", "Відновити Levyra", "Сумісна копія", "Копія несумісна з цією версією",
         "Створено", "Версія Levyra", "Розмір", "Вміст", "Відновити",
         "Замінює улюблене, плейлисти, історію, чергу та налаштування даними з копії.",
-        "Не вдалося створити копію перед оновленням", "Локальну копію не створено. Можна спробувати ще раз або продовжити оновлення.", "Спробувати ще", "Оновити все одно"
+        "Не вдалося створити копію перед оновленням", "Локальну копію не створено. Можна спробувати ще раз або продовжити оновлення.", "Спробувати ще", "Оновити все одно",
+        "Резервне копіювання й відновлення"
     ),
     "ru" to vault(
         "Автоматические резервные копии", "Создаёт проверенные локальные архивы без аудиофайлов", "Частота", "Хранение",
@@ -345,7 +370,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Идёт операция Vault...", "Восстановить Levyra", "Совместимая копия", "Копия несовместима с этой версией",
         "Создана", "Версия Levyra", "Размер", "Содержимое", "Восстановить",
         "Заменяет избранное, плейлисты, историю, очередь и настройки данными из копии.",
-        "Не удалось создать копию перед обновлением", "Локальная копия не создана. Можно повторить попытку или продолжить обновление.", "Повторить", "Всё равно обновить"
+        "Не удалось создать копию перед обновлением", "Локальная копия не создана. Можно повторить попытку или продолжить обновление.", "Повторить", "Всё равно обновить",
+        "Резервное копирование и восстановление"
     ),
     "kk" to vault(
         "Автоматты сақтық көшірмелер", "Аудиофайлдарсыз тексерілген жергілікті мұрағаттар жасайды", "Жиілік", "Сақтау",
@@ -357,7 +383,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Vault әрекеті орындалуда...", "Levyra-ны қалпына келтіру", "Үйлесімді көшірме", "Көшірме бұл нұсқамен үйлеспейді",
         "Жасалды", "Levyra нұсқасы", "Өлшемі", "Мазмұны", "Қалпына келтіру",
         "Таңдаулыларды, плейлистерді, тарихты, кезекті және баптауларды көшірме деректерімен ауыстырады.",
-        "Жаңарту алдындағы көшірме сәтсіз аяқталды", "Жергілікті көшірме жасалмады. Қайталап көруге немесе жаңартуды жалғастыруға болады.", "Қайталау", "Бәрібір жаңарту"
+        "Жаңарту алдындағы көшірме сәтсіз аяқталды", "Жергілікті көшірме жасалмады. Қайталап көруге немесе жаңартуды жалғастыруға болады.", "Қайталау", "Бәрібір жаңарту",
+        "Сақтық көшірме және қалпына келтіру"
     ),
     "tr" to vault(
         "Otomatik yedekler", "Ses dosyaları olmadan doğrulanmış yerel arşivler oluşturur", "Sıklık", "Saklama",
@@ -369,7 +396,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Vault işlemi sürüyor...", "Levyra'yı geri yükle", "Uyumlu yedek", "Yedek bu sürümle uyumlu değil",
         "Oluşturulma", "Levyra sürümü", "Boyut", "İçerik", "Geri yükle",
         "Favorileri, çalma listelerini, geçmişi, kuyruğu ve ayarları yedekteki verilerle değiştirir.",
-        "Güncelleme öncesi yedek başarısız oldu", "Yerel yedek alınamadı. Yeniden deneyebilir veya güncellemeye devam edebilirsiniz.", "Yeniden dene", "Yine de güncelle"
+        "Güncelleme öncesi yedek başarısız oldu", "Yerel yedek alınamadı. Yeniden deneyebilir veya güncellemeye devam edebilirsiniz.", "Yeniden dene", "Yine de güncelle",
+        "Yedekleme ve geri yükleme"
     ),
     "ar" to vault(
         "النسخ الاحتياطية التلقائية", "ينشئ أرشيفات محلية موثّقة من دون ملفات الصوت", "التكرار", "الاحتفاظ",
@@ -381,7 +409,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "عملية Vault قيد التنفيذ...", "استعادة Levyra", "نسخة متوافقة", "النسخة غير متوافقة مع هذا الإصدار",
         "تاريخ الإنشاء", "إصدار Levyra", "الحجم", "المحتويات", "استعادة",
         "يستبدل المفضلة وقوائم التشغيل والسجل وقائمة الانتظار والإعدادات ببيانات النسخة.",
-        "فشل النسخ الاحتياطي قبل التحديث", "تعذّر إنشاء النسخة المحلية. يمكنك المحاولة مجددًا أو متابعة التحديث.", "إعادة المحاولة", "التحديث على أي حال"
+        "فشل النسخ الاحتياطي قبل التحديث", "تعذّر إنشاء النسخة المحلية. يمكنك المحاولة مجددًا أو متابعة التحديث.", "إعادة المحاولة", "التحديث على أي حال",
+        "النسخ الاحتياطي والاستعادة"
     ),
     "fa" to vault(
         "پشتیبان‌گیری خودکار", "آرشیوهای محلی تأییدشده بدون فایل‌های صوتی می‌سازد", "تناوب", "نگهداری",
@@ -393,7 +422,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "عملیات Vault در حال انجام...", "بازیابی Levyra", "پشتیبان سازگار", "این پشتیبان با این نسخه سازگار نیست",
         "تاریخ ساخت", "نسخه Levyra", "حجم", "محتوا", "بازیابی",
         "علاقه‌مندی‌ها، فهرست‌های پخش، تاریخچه، صف و تنظیمات را با داده‌های پشتیبان جایگزین می‌کند.",
-        "پشتیبان‌گیری پیش از به‌روزرسانی ناموفق بود", "پشتیبان محلی ساخته نشد. می‌توانید دوباره تلاش کنید یا به‌روزرسانی را ادامه دهید.", "تلاش دوباره", "به‌روزرسانی در هر صورت"
+        "پشتیبان‌گیری پیش از به‌روزرسانی ناموفق بود", "پشتیبان محلی ساخته نشد. می‌توانید دوباره تلاش کنید یا به‌روزرسانی را ادامه دهید.", "تلاش دوباره", "به‌روزرسانی در هر صورت",
+        "پشتیبان‌گیری و بازیابی"
     ),
     "zh" to vault(
         "自动备份", "创建经过校验的本地存档，不包含音频文件", "频率", "保留份数",
@@ -405,7 +435,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Vault 操作进行中...", "恢复 Levyra", "备份兼容", "备份与此版本不兼容",
         "创建时间", "Levyra 版本", "大小", "内容", "恢复",
         "用备份数据替换收藏、播放列表、历史记录、队列和设置。",
-        "更新前备份失败", "本地备份失败。你可以重试，或继续更新。", "重试", "仍然更新"
+        "更新前备份失败", "本地备份失败。你可以重试，或继续更新。", "重试", "仍然更新",
+        "备份与恢复"
     ),
     "zh-Hant" to vault(
         "自動備份", "建立經過驗證的本機封存，不含音訊檔案", "頻率", "保留份數",
@@ -417,7 +448,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Vault 作業進行中...", "還原 Levyra", "備份相容", "備份與此版本不相容",
         "建立時間", "Levyra 版本", "大小", "內容", "還原",
         "以備份資料取代收藏、播放清單、播放記錄、佇列和設定。",
-        "更新前備份失敗", "本機備份失敗。你可以重試，或繼續更新。", "重試", "仍要更新"
+        "更新前備份失敗", "本機備份失敗。你可以重試，或繼續更新。", "重試", "仍要更新",
+        "備份與還原"
     ),
     "ja" to vault(
         "自動バックアップ", "音声ファイルを含まない検証済みのローカルアーカイブを作成します", "頻度", "保持数",
@@ -429,7 +461,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Vault の処理を実行中...", "Levyra を復元", "互換性のあるバックアップ", "このバージョンとは互換性のないバックアップです",
         "作成日時", "Levyra のバージョン", "サイズ", "内容", "復元",
         "お気に入り、プレイリスト、履歴、キュー、設定をバックアップのデータに置き換えます。",
-        "アップデート前のバックアップに失敗しました", "ローカルバックアップに失敗しました。再試行するか、アップデートを続行できます。", "再試行", "このまま更新"
+        "アップデート前のバックアップに失敗しました", "ローカルバックアップに失敗しました。再試行するか、アップデートを続行できます。", "再試行", "このまま更新",
+        "バックアップと復元"
     ),
     "ko" to vault(
         "자동 백업", "오디오 파일 없이 검증된 로컬 보관 파일을 만듭니다", "빈도", "보관 개수",
@@ -441,7 +474,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Vault 작업 진행 중...", "Levyra 복원", "호환되는 백업", "이 버전과 호환되지 않는 백업입니다",
         "생성일", "Levyra 버전", "크기", "내용", "복원",
         "즐겨찾기, 재생목록, 기록, 대기열, 설정을 백업 데이터로 바꿉니다.",
-        "업데이트 전 백업 실패", "로컬 백업에 실패했습니다. 다시 시도하거나 업데이트를 계속할 수 있습니다.", "다시 시도", "그래도 업데이트"
+        "업데이트 전 백업 실패", "로컬 백업에 실패했습니다. 다시 시도하거나 업데이트를 계속할 수 있습니다.", "다시 시도", "그래도 업데이트",
+        "백업 및 복원"
     ),
     "hi" to vault(
         "स्वचालित बैकअप", "ऑडियो फ़ाइलों के बिना सत्यापित लोकल आर्काइव बनाता है", "आवृत्ति", "रखी जाने वाली प्रतियाँ",
@@ -453,7 +487,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Vault कार्रवाई जारी है...", "Levyra पुनर्स्थापित करें", "संगत बैकअप", "यह बैकअप इस वर्ज़न के साथ संगत नहीं है",
         "बनाया गया", "Levyra वर्ज़न", "आकार", "सामग्री", "पुनर्स्थापित करें",
         "पसंदीदा, प्लेलिस्ट, इतिहास, कतार और सेटिंग्स को बैकअप के डेटा से बदल देता है।",
-        "अपडेट से पहले का बैकअप विफल रहा", "लोकल बैकअप नहीं बन सका। आप फिर से कोशिश कर सकते हैं या अपडेट जारी रख सकते हैं।", "फिर कोशिश करें", "फिर भी अपडेट करें"
+        "अपडेट से पहले का बैकअप विफल रहा", "लोकल बैकअप नहीं बन सका। आप फिर से कोशिश कर सकते हैं या अपडेट जारी रख सकते हैं।", "फिर कोशिश करें", "फिर भी अपडेट करें",
+        "बैकअप और रीस्टोर"
     ),
     "bn" to vault(
         "স্বয়ংক্রিয় ব্যাকআপ", "অডিও ফাইল ছাড়াই যাচাই করা লোকাল আর্কাইভ তৈরি করে", "কত ঘনঘন", "কতগুলো রাখা হবে",
@@ -465,7 +500,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Vault-এর কাজ চলছে...", "Levyra পুনরুদ্ধার করুন", "সামঞ্জস্যপূর্ণ ব্যাকআপ", "এই ব্যাকআপ এই সংস্করণের সাথে সামঞ্জস্যপূর্ণ নয়",
         "তৈরির সময়", "Levyra সংস্করণ", "আকার", "বিষয়বস্তু", "পুনরুদ্ধার",
         "প্রিয়, প্লেলিস্ট, ইতিহাস, সারি ও সেটিংস ব্যাকআপের ডেটা দিয়ে বদলে দেয়।",
-        "আপডেটের আগের ব্যাকআপ ব্যর্থ হয়েছে", "লোকাল ব্যাকআপ তৈরি করা যায়নি। আবার চেষ্টা করতে পারেন বা আপডেট চালিয়ে যেতে পারেন।", "আবার চেষ্টা করুন", "তবুও আপডেট করুন"
+        "আপডেটের আগের ব্যাকআপ ব্যর্থ হয়েছে", "লোকাল ব্যাকআপ তৈরি করা যায়নি। আবার চেষ্টা করতে পারেন বা আপডেট চালিয়ে যেতে পারেন।", "আবার চেষ্টা করুন", "তবুও আপডেট করুন",
+        "ব্যাকআপ ও রিস্টোর"
     ),
     "id" to vault(
         "Cadangan otomatis", "Membuat arsip lokal terverifikasi tanpa file audio", "Frekuensi", "Penyimpanan",
@@ -477,7 +513,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Operasi Vault sedang berjalan...", "Pulihkan Levyra", "Cadangan kompatibel", "Cadangan tidak kompatibel dengan versi ini",
         "Dibuat", "Versi Levyra", "Ukuran", "Isi", "Pulihkan",
         "Mengganti favorit, playlist, riwayat, antrean, dan setelan dengan data dari cadangan.",
-        "Cadangan sebelum pembaruan gagal", "Cadangan lokal gagal. Anda bisa mencoba lagi atau melanjutkan pembaruan.", "Coba lagi", "Tetap perbarui"
+        "Cadangan sebelum pembaruan gagal", "Cadangan lokal gagal. Anda bisa mencoba lagi atau melanjutkan pembaruan.", "Coba lagi", "Tetap perbarui",
+        "Cadangkan & pulihkan"
     ),
     "ms" to vault(
         "Sandaran automatik", "Mencipta arkib tempatan yang disahkan tanpa fail audio", "Kekerapan", "Simpanan",
@@ -489,7 +526,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Operasi Vault sedang berjalan...", "Pulihkan Levyra", "Sandaran serasi", "Sandaran tidak serasi dengan versi ini",
         "Dicipta", "Versi Levyra", "Saiz", "Kandungan", "Pulihkan",
         "Menggantikan kegemaran, senarai main, sejarah, baris gilir dan tetapan dengan data sandaran.",
-        "Sandaran sebelum kemas kini gagal", "Sandaran tempatan gagal. Anda boleh cuba lagi atau teruskan kemas kini.", "Cuba lagi", "Kemas kini juga"
+        "Sandaran sebelum kemas kini gagal", "Sandaran tempatan gagal. Anda boleh cuba lagi atau teruskan kemas kini.", "Cuba lagi", "Kemas kini juga",
+        "Sandaran & pemulihan"
     ),
     "vi" to vault(
         "Sao lưu tự động", "Tạo bản lưu trữ cục bộ đã xác minh, không kèm tệp âm thanh", "Tần suất", "Số bản giữ lại",
@@ -501,7 +539,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Đang thực hiện thao tác Vault...", "Khôi phục Levyra", "Bản sao lưu tương thích", "Bản sao lưu không tương thích với phiên bản này",
         "Ngày tạo", "Phiên bản Levyra", "Kích thước", "Nội dung", "Khôi phục",
         "Thay mục yêu thích, danh sách phát, lịch sử, hàng đợi và cài đặt bằng dữ liệu trong bản sao lưu.",
-        "Sao lưu trước khi cập nhật không thành công", "Không tạo được bản sao lưu cục bộ. Bạn có thể thử lại hoặc tiếp tục cập nhật.", "Thử lại", "Vẫn cập nhật"
+        "Sao lưu trước khi cập nhật không thành công", "Không tạo được bản sao lưu cục bộ. Bạn có thể thử lại hoặc tiếp tục cập nhật.", "Thử lại", "Vẫn cập nhật",
+        "Sao lưu và khôi phục"
     ),
     "th" to vault(
         "สำรองข้อมูลอัตโนมัติ", "สร้างไฟล์เก็บถาวรในเครื่องที่ตรวจสอบแล้ว โดยไม่รวมไฟล์เสียง", "ความถี่", "จำนวนที่เก็บไว้",
@@ -513,7 +552,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "กำลังดำเนินการ Vault...", "กู้คืน Levyra", "ข้อมูลสำรองที่ใช้ได้", "ข้อมูลสำรองนี้ใช้กับเวอร์ชันนี้ไม่ได้",
         "สร้างเมื่อ", "เวอร์ชัน Levyra", "ขนาด", "เนื้อหา", "กู้คืน",
         "แทนที่รายการโปรด เพลย์ลิสต์ ประวัติ คิว และการตั้งค่าด้วยข้อมูลจากข้อมูลสำรอง",
-        "สำรองข้อมูลก่อนอัปเดตไม่สำเร็จ", "สร้างข้อมูลสำรองในเครื่องไม่สำเร็จ คุณลองอีกครั้งหรืออัปเดตต่อได้", "ลองอีกครั้ง", "อัปเดตต่อ"
+        "สำรองข้อมูลก่อนอัปเดตไม่สำเร็จ", "สร้างข้อมูลสำรองในเครื่องไม่สำเร็จ คุณลองอีกครั้งหรืออัปเดตต่อได้", "ลองอีกครั้ง", "อัปเดตต่อ",
+        "สำรองและกู้คืนข้อมูล"
     ),
     "fil" to vault(
         "Mga awtomatikong backup", "Gumagawa ng beripikadong lokal na archive nang walang audio file", "Dalas", "Pagtatabi",
@@ -525,7 +565,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "Tumatakbo ang Vault...", "I-restore ang Levyra", "Tugmang backup", "Hindi tugma ang backup sa bersyong ito",
         "Ginawa", "Bersyon ng Levyra", "Laki", "Laman", "I-restore",
         "Papalitan ang mga paborito, playlist, history, queue at setting ng data mula sa backup.",
-        "Hindi nagawa ang backup bago mag-update", "Hindi nagawa ang lokal na backup. Puwede kang sumubok ulit o ituloy ang update.", "Subukan ulit", "I-update pa rin"
+        "Hindi nagawa ang backup bago mag-update", "Hindi nagawa ang lokal na backup. Puwede kang sumubok ulit o ituloy ang update.", "Subukan ulit", "I-update pa rin",
+        "Backup at pag-restore"
     ),
     "he" to vault(
         "גיבויים אוטומטיים", "יוצר ארכיונים מקומיים מאומתים בלי קובצי שמע", "תדירות", "שמירה",
@@ -537,7 +578,8 @@ private val vaultBundles: Map<String, Map<String, String>> = mapOf(
         "פעולת Vault מתבצעת...", "שחזור Levyra", "גיבוי תואם", "הגיבוי אינו תואם לגרסה זו",
         "נוצר", "גרסת Levyra", "גודל", "תוכן", "שחזור",
         "מחליף את המועדפים, הפלייליסטים, ההיסטוריה, התור וההגדרות בנתוני הגיבוי.",
-        "הגיבוי לפני העדכון נכשל", "הגיבוי המקומי נכשל. אפשר לנסות שוב או להמשיך בעדכון.", "ניסיון חוזר", "לעדכן בכל זאת"
+        "הגיבוי לפני העדכון נכשל", "הגיבוי המקומי נכשל. אפשר לנסות שוב או להמשיך בעדכון.", "ניסיון חוזר", "לעדכן בכל זאת",
+        "גיבוי ושחזור"
     )
 )
 

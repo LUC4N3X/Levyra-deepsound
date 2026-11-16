@@ -94,7 +94,8 @@ data class YoutubeMusicPlaylistDetail(
     val author: String,
     val thumbnailUrl: String,
     val tracks: List<Track>,
-    val continuation: String = ""
+    val continuation: String = "",
+    val stats: String = ""
 )
 
 private data class ScoredAlbumRecommendation(
@@ -597,7 +598,10 @@ private const val SEARCH_OVERVIEW_ARTIST_LIMIT = 8
 private const val SEARCH_OVERVIEW_ALBUM_LIMIT = 10
 private val SUBSCRIBER_TOKEN_HINTS = listOf(
     "subscriber", "iscritt", "scritt", "abonn", "suscriptor", "inscrito", "abonnee",
-    "subskry", "abonat", "συνδρομ", "подпис", "订阅", "訂閱", "チャンネル登録", "구독", "सदस्य", "ผู้ติดตาม", "מנוי", "مشترك"
+    "subskry", "abonat", "συνδρομ", "подпис", "订阅", "訂閱", "チャンネル登録", "구독", "सदस्य", "ผู้ติดตาม", "מנוי", "مشترك",
+    "audience", "audiencia", "audiência", "pubblico", "publikum", "аудитор", "listener", "ascoltator", "oyente", "auditeur",
+    "hörer", "ouvinte", "luisteraar", "słuchacz", "слушател", "слухач", "dinleyici", "مستمع", "听众", "聽眾", "リスナー",
+    "청취자", "श्रोता", "pendengar", "người nghe", "ผู้ฟัง", "מאזינ", "kuulija", "lyssnare", "lyttere", "posluchač"
 )
 private const val YOUTUBE_MUSIC_NEW_RELEASE_FALLBACK_LIMIT = 4
 private const val YOUTUBE_MUSIC_ARTIST_CONTAINS_MIN_LENGTH = 4
@@ -2309,12 +2313,15 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             node.optJSONArray("runs")?.joinText()?.trim()?.takeIf { it.isNotBlank() }
                 ?: node.optString("simpleText").trim().takeIf { it.isNotBlank() }
         }.orEmpty()
-        val author = header?.let { extractYoutubeMusicArtistReference(it, "")?.name }.orEmpty()
+        val facepileName = header?.optJSONObject("facepile")?.let { findStringUnderKey(it, "content") }.orEmpty().trim()
+        val author = header?.let { extractYoutubeMusicArtistReference(it, "")?.name }.orEmpty().ifBlank { facepileName }
+        val stats = header?.optJSONObject("secondSubtitle")?.optJSONArray("runs")?.joinText()?.trim().orEmpty()
         return YoutubeMusicPlaylistDetail(
             playlistId = playlistId,
             title = title.cleanLabel(),
             description = description,
             author = author,
+            stats = stats,
             thumbnailUrl = header?.let { upgradeThumbnail(findBestThumbnail(it)) }.orEmpty(),
             tracks = emptyList()
         )

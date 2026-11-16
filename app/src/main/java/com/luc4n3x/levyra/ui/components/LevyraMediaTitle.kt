@@ -17,6 +17,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.takeOrElse
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.takeOrElse
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.TextStyle
@@ -31,6 +33,13 @@ import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LevyraAppleMusicStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+
+@Composable
+private fun explicitBadgeSize(fontSize: TextUnit): Dp {
+    if (!fontSize.isSp) return 14.dp
+    val scaled = with(LocalDensity.current) { fontSize.toDp() } * 0.72f
+    return scaled.coerceIn(14.dp, 30.dp)
+}
 
 @Composable
 internal fun trackContentDescription(track: Track): String {
@@ -73,18 +82,19 @@ internal fun LevyraMediaTitle(
             else -> Arrangement.Start
         }
     ) {
+        val badgeSize = explicitBadgeSize(fontSize.takeOrElse { style.fontSize })
         if (explicit) {
             Icon(
                 Icons.Rounded.Explicit,
                 contentDescription = null,
                 tint = color.takeOrElse { style.color.takeOrElse { LocalContentColor.current } },
-                modifier = Modifier.size(14.dp)
+                modifier = Modifier.size(badgeSize)
             )
         }
         Text(
             text = text,
             modifier = Modifier.weight(1f, fill = false)
-                .then(if (explicit) Modifier.padding(start = 5.dp) else Modifier)
+                .then(if (explicit) Modifier.padding(start = badgeSize * 0.36f) else Modifier)
                 .then(
                     if (animationsEnabled && marqueeEnabled && maxLines == 1) {
                         Modifier.basicMarquee(iterations = iterations, repeatDelayMillis = repeatDelayMillis, initialDelayMillis = initialDelayMillis, velocity = velocity)

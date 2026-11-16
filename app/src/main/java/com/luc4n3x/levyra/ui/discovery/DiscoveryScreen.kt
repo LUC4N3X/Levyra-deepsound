@@ -133,7 +133,7 @@ import kotlin.math.absoluteValue
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-private enum class DiscoveryBackdrop { Wash, Burst, Flat, Paper, Bleed, Tonal, Glacier, Atelier, Prism }
+private enum class DiscoveryBackdrop { Wash, Burst, Flat, Paper, Bleed, Tonal, Glacier, Atelier, Prism, Aurora }
 
 private class DiscoveryLook(
     val cardShape: Shape,
@@ -156,7 +156,14 @@ private fun rememberDiscoveryLook(style: HomeStyle): DiscoveryLook {
     val glacier = com.luc4n3x.levyra.ui.theme.LevyraIsMono
     val atelier = com.luc4n3x.levyra.ui.theme.LevyraIsAtelier
     val prism = com.luc4n3x.levyra.ui.theme.LevyraActivePalette.id == com.luc4n3x.levyra.ui.theme.PrismPaletteId
-    return remember(style, type, cookie, square, glacier, atelier, prism) {
+    val defaultSkin = com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin
+    return remember(style, type, cookie, square, glacier, atelier, prism, defaultSkin) {
+        if (defaultSkin) return@remember DiscoveryLook(
+            DefaultDiscoveryCardShape, DefaultDiscoveryCardShape, 12f,
+            type.headlineMediumEmphasized.copy(fontWeight = FontWeight.Black),
+            type.displaySmallEmphasized.copy(fontWeight = FontWeight.Black),
+            false, DiscoveryBackdrop.Aurora, true, 16.dp
+        )
         if (prism) return@remember DiscoveryLook(
             com.luc4n3x.levyra.ui.theme.PrismDesign.cut(28.dp), com.luc4n3x.levyra.ui.theme.PrismDesign.cut(18.dp), 12f,
             type.headlineMedium.copy(fontWeight = FontWeight.Normal, letterSpacing = (-0.8).sp),
@@ -368,6 +375,7 @@ private fun DiscoveryBackdropLayer(look: DiscoveryLook, card: DiscoveryCard?, an
             Box(Modifier.fillMaxSize().graphicsLayer { alpha = 0.32f }) { DiscoveryArtwork(card, Modifier.fillMaxSize(), highRes = false) }
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.35f), Color.Black.copy(alpha = 0.88f)))))
         }
+        DiscoveryBackdrop.Aurora -> DefaultDiscoveryBackdrop(card, animationsEnabled)
         DiscoveryBackdrop.Tonal -> Box(
             Modifier.fillMaxWidth().height(420.dp).background(
                 Brush.verticalGradient(listOf(lerp(scheme.surfaceContainer, scheme.primaryContainer, 0.5f), Color.Transparent))
@@ -386,6 +394,10 @@ private fun DiscoveryTopBar(
     onRefresh: () -> Unit,
     onOpenSaved: () -> Unit
 ) {
+    if (look.backdrop == DiscoveryBackdrop.Aurora) {
+        DefaultDiscoveryTopBar(copy, ui.savedThisWeek, ui.refreshing, backLabel, onDismiss, onRefresh, onOpenSaved)
+        return
+    }
     val ink = if (look.backdrop == DiscoveryBackdrop.Bleed || (look.backdrop == DiscoveryBackdrop.Prism && !LevyraIsLight)) Color.White else LevyraText
     Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -464,10 +476,13 @@ private fun DiscoveryCardStack(
     val decide by rememberUpdatedState(onDecide)
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
-    BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    val stackPeek = if (look.backdrop == DiscoveryBackdrop.Aurora) look.stackGap * 3.4f else 0.dp
+    BoxWithConstraints(Modifier.fillMaxSize().padding(top = stackPeek), contentAlignment = Alignment.Center) {
         val widthPx = with(density) { maxWidth.toPx() }
         val chrome = DiscoveryCardChrome + if (showsDistance(ui.request)) DiscoveryDistanceChrome else 0.dp
-        val artSide = if (look.backdrop == DiscoveryBackdrop.Glacier || look.backdrop == DiscoveryBackdrop.Atelier) {
+        val artSide = if (look.backdrop == DiscoveryBackdrop.Aurora) {
+            (maxHeight - chrome - look.stackGap * 2).coerceAtLeast(96.dp)
+        } else if (look.backdrop == DiscoveryBackdrop.Glacier || look.backdrop == DiscoveryBackdrop.Atelier) {
             (maxHeight - DiscoveryCardChrome - GlacierDiscPeek - look.stackGap * 2).coerceAtLeast(96.dp)
         } else {
             minOf(maxWidth - 32.dp, maxHeight - chrome - look.stackGap * 2).coerceAtLeast(96.dp)
@@ -492,7 +507,7 @@ private fun DiscoveryCardStack(
                     .graphicsLayer {
                         scaleX = scale
                         scaleY = scale
-                        translationY = with(density) { (look.stackGap * depth * 1.6f).toPx() } * (1f - progress * 0.6f)
+                        translationY = with(density) { (look.stackGap * depth * 1.6f).toPx() } * (1f - progress * 0.6f) * if (look.backdrop == DiscoveryBackdrop.Aurora) -1f else 1f
                         rotationZ = if (animationsEnabled && look.backdrop != DiscoveryBackdrop.Glacier) (if (depth == 1) 3f else -3f) * (1f - progress) else 0f
                         alpha = if (look.backdrop == DiscoveryBackdrop.Atelier) progress * (1f - 0.3f * depth) else 0.6f + 0.4f * (1f - depth * 0.25f) + 0.2f * progress
                     }
@@ -531,8 +546,11 @@ private fun DiscoveryCardStack(
                     }
                 }
         )
-        if (look.backdrop == DiscoveryBackdrop.Atelier) AtelierDiscoveryStamp(controller.offset.value, threshold, copy)
-        else DiscoverySwipeStamp(controller.offset.value, threshold, copy)
+        when (look.backdrop) {
+            DiscoveryBackdrop.Atelier -> AtelierDiscoveryStamp(controller.offset.value, threshold, copy)
+            DiscoveryBackdrop.Aurora -> DefaultDiscoverySwipeStamp(controller.offset.value, threshold, copy)
+            else -> DiscoverySwipeStamp(controller.offset.value, threshold, copy)
+        }
     }
 }
 
@@ -586,20 +604,7 @@ private fun DiscoveryCardFace(
         return
     }
     if (look.artworkBleed) {
-        Box(modifier.fillMaxWidth().height(artSide + DiscoveryCardChrome).clip(look.cardShape).background(scheme.surfaceContainerHigh)) {
-            DiscoveryArtwork(card, Modifier.fillMaxSize(), highRes = true)
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.4f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.86f))))
-            if (look.backdrop != DiscoveryBackdrop.Glacier) DiscoveryReasonChip(card, copy, music, Color.Black.copy(alpha = 0.45f), Color.White, Modifier.align(Alignment.TopStart).padding(16.dp))
-            if (showsDistance(request)) BubbleDistanceBadge(card.distance, music, Color.Black.copy(alpha = 0.45f), Color.White, Modifier.align(Alignment.TopEnd).padding(16.dp))
-            Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(22.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (look.backdrop == DiscoveryBackdrop.Glacier) {
-                    com.luc4n3x.levyra.ui.MonoOverline(discoveryReasonLabel(card, copy, music), color = com.luc4n3x.levyra.ui.theme.MonoDesign.accent)
-                }
-                Text(card.track.title, style = look.titleStyle, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(card.track.artist, style = MaterialTheme.typography.bodyLarge, color = Color.White.copy(alpha = 0.82f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                DiscoveryPreviewBadge(preview, copy, Color.White, onTogglePreview)
-            }
-        }
+        DiscoveryBleedFace(card, look, copy, music, request, artSide, preview, modifier, onTogglePreview)
         return
     }
     val container = when (look.backdrop) {
@@ -639,6 +644,36 @@ private fun DiscoveryCardFace(
                 }
             }
             DiscoveryPreviewBadge(preview, copy, MaterialTheme.colorScheme.primary, onTogglePreview)
+        }
+    }
+}
+
+@Composable
+private fun DiscoveryBleedFace(
+    card: DiscoveryCard,
+    look: DiscoveryLook,
+    copy: DiscoveryCopy,
+    music: SmartMusicCopy,
+    request: DiscoveryRequest,
+    artSide: Dp,
+    preview: DiscoveryPreviewStatus?,
+    modifier: Modifier,
+    onTogglePreview: (() -> Unit)?
+) {
+    val scheme = MaterialTheme.colorScheme
+    val glow = if (look.backdrop == DiscoveryBackdrop.Aurora) Modifier.defaultDiscoveryGlow(card, look.cardShape) else Modifier
+    Box(modifier.fillMaxWidth().height(artSide + DiscoveryCardChrome).then(glow).clip(look.cardShape).background(scheme.surfaceContainerHigh)) {
+        DiscoveryArtwork(card, Modifier.fillMaxSize(), highRes = true)
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.4f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.86f))))
+        if (look.backdrop != DiscoveryBackdrop.Glacier) DiscoveryReasonChip(card, copy, music, Color.Black.copy(alpha = 0.45f), Color.White, Modifier.align(Alignment.TopStart).padding(16.dp))
+        if (showsDistance(request)) BubbleDistanceBadge(card.distance, music, Color.Black.copy(alpha = 0.45f), Color.White, Modifier.align(Alignment.TopEnd).padding(16.dp))
+        Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(22.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (look.backdrop == DiscoveryBackdrop.Glacier) {
+                com.luc4n3x.levyra.ui.MonoOverline(discoveryReasonLabel(card, copy, music), color = com.luc4n3x.levyra.ui.theme.MonoDesign.accent)
+            }
+            Text(card.track.title, style = look.titleStyle, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(card.track.artist, style = MaterialTheme.typography.bodyLarge, color = Color.White.copy(alpha = 0.82f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (look.backdrop != DiscoveryBackdrop.Aurora) DiscoveryPreviewBadge(preview, copy, Color.White, onTogglePreview)
         }
     }
 }
@@ -689,6 +724,10 @@ private fun DiscoveryControls(
     val playing = previewStatus == DiscoveryPreviewStatus.Playing
     val loading = previewStatus == DiscoveryPreviewStatus.Loading
     val morph = rememberLevyraPlayMorphShape(playing = playing, animated = animationsEnabled)
+    if (look.backdrop == DiscoveryBackdrop.Aurora) {
+        DefaultDiscoveryControls(current, ui.deck.canUndo, playing, loading, morph, copy, onDecide, onUndo, onTogglePreview, onPlayFull)
+        return
+    }
     if (look.backdrop == DiscoveryBackdrop.Prism) {
         PrismDiscoveryControls(ui.deck.canUndo, playing, loading, copy, onDecide, onUndo, onTogglePreview, onPlayFull)
         return

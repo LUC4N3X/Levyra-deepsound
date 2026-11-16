@@ -13,7 +13,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -381,7 +384,7 @@ private fun PlaylistHitList(
                 title = preview.hit.title,
                 overline = strings.speedDialCopy().playlist,
                 subtitle = preview.hit.author,
-                metadata = countLabel,
+                metadata = preview.stats.ifBlank { countLabel },
                 colors = colors,
                 wide = wide,
                 viewportWidth = viewportWidth,
@@ -433,6 +436,23 @@ private fun PlaylistHitList(
                     }
                 }
             )
+        }
+        if (preview.description.isNotBlank()) {
+            item(key = "playlist-hit-description", contentType = "playlist-hit-description") {
+                var expanded by rememberSaveable(preview.hit.playlistId) { mutableStateOf(false) }
+                Text(
+                    text = preview.description,
+                    color = colors.contentMuted,
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = if (wide) TextAlign.Start else TextAlign.Center,
+                    maxLines = if (expanded) Int.MAX_VALUE else 3,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(role = Role.Button, onClickLabel = if (expanded) strings.showLess else strings.showMore) { expanded = !expanded }
+                        .padding(horizontal = gutter, vertical = 8.dp)
+                )
+            }
         }
         when {
             preview.loading -> item(key = "playlist-hit-loading", contentType = "playlist-hit-state") {
