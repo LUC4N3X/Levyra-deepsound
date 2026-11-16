@@ -477,7 +477,7 @@ jobs:
         run: ./gradlew :app:testPrDiagnosticsUnitTest --tests 'com.luc4n3x.levyra.runtime.*' --console=plain --warning-mode summary
 
       - name: PR Diagnostics Compile
-        run: ./gradlew --no-configuration-cache assemblePrDiagnostics -x :app:lintVitalPrDiagnostics --console=plain --warning-mode summary
+        run: ./gradlew --no-configuration-cache assemblePrDiagnostics --console=plain --warning-mode summary
 
       - name: Verify Diagnostics Artifact Isolation
         run: |
@@ -553,7 +553,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ./gradlew --no-configuration-cache :app:assembleRelease -x :app:lintVitalRelease \
+          ./gradlew --no-configuration-cache :app:assembleRelease \
             -PlevyraFdroidBuild=true \
             --console=plain \
             --warning-mode summary
