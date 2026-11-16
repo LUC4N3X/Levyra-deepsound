@@ -1,24 +1,26 @@
 # README screenshot cards
 
-The root README uses six desktop panels (four cards each) and six mobile panels
-(the same cards in a two-by-two grid). The mobile source is selected at 600px.
-Each card uses a whisper-light pastel Material 3 Expressive surface, large rounded
-corners (`48px` on the `900x1800` card canvas), soft tonal blooming-rosette,
-clover, squircle, and wavy motifs matching Levyra's in-app geometry, clean
-badge-free typography, and subtle phone shadows. Transparent gutters work on
-both GitHub Light and Dark themes.
+The gallery contains 24 independent portrait cards. Each has its own headline,
+short description and screenshot on a light blue, lilac or mint surface. Soft
+scalloped shapes add a restrained Material 3 Expressive detail. There are no
+shared headings, enclosing panels or hidden gallery sections.
 
-`scripts/render_readme_showcase.mjs` composes all 24 cards from the existing,
-tracked `../editorial-cards/*.webp` assets. The first four preserve their original
-phone positions, angles, and card 01-to-02 diptych spillover; the other twenty retain the
-complete phone frame. Only the surrounding card design and copy are rendered.
-The screenshots and their third-party artwork are not generated or repainted.
+Each card is 900 × 1800 and is also exported individually. The README uses six
+2400px-wide rows of four cards, with transparent gutters between them. At
+viewport widths up to 600px, it selects a 1200px-wide two-by-two arrangement of
+the same cards. Rounded card corners are transparent on both GitHub themes.
+
+`scripts/render_readme_showcase.mjs` extracts the phones from the tracked
+`../editorial-cards/*.webp` assets. The first four keep the existing angled
+screen crops; the remaining twenty retain their complete phone frames. The
+first pair preserves its original continuous phone composition. App
+interfaces and third-party artwork are not generated or repainted.
 
 ## Regeneration
 
 Use Node.js 22 or newer, Sharp 0.35.3, and installed Rubik Regular/Bold fonts.
-The renderer falls back to Segoe UI, DejaVu Sans, or the system sans serif when
-Rubik is absent; check text wrapping and spacing if regenerating with a different font.
+The renderer falls back to Segoe UI, DejaVu Sans or system sans serif. Inspect
+the output if regenerating with different fonts.
 
 From the repository root:
 
@@ -27,10 +29,36 @@ npm install --prefix .levyra-tools/readme-showcase --no-save --package-lock=fals
 node scripts/render_readme_showcase.mjs --sharp-module ./.levyra-tools/readme-showcase/node_modules/sharp
 ```
 
-Use `--output build/readme-showcase-preview` to inspect a regeneration before
-replacing the published panels. The renderer always reads its screenshot
-sources from the repository, regardless of the working directory, and writes
-the twelve `row-*-expressive*.webp` panel files in the selected output directory.
+Use `--output build/readme-showcase-preview` to render to a different directory.
+The renderer reads repository-relative sources and writes 24 individual
+`card-*-studio.webp` assets and twelve `row-*-studio*.webp` grids.
+Backgrounds and typography are composed directly
+from the renderer; regeneration does not call an image service. Earlier panel
+assets and their backdrop are retained for existing links but are not used by
+this renderer.
+
+## Earlier backdrop provenance
+
+`studio-backdrop.webp` was created for the earlier pearl redesign using the built-in
+`image_gen` tool, then resized and encoded as WebP. It contains no app interface,
+people, artwork, logos or text. It was used by the earlier pearl panels, with a
+45% white wash. The current panels do not use this asset.
+
+Generation prompt:
+
+> Use case: precise-object-edit. Asset type: background ONLY for professional
+> music app screenshot cards in a GitHub README. Replace this dark graphite
+> backdrop with a VERY DELICATE LIGHT background. Portrait 1024x1536. Smooth
+> luminous pearl white on the left (#f8fcff), gently fading horizontally into pale
+> ice blue on the right (#cee8f3), with very subtle soft cyan at bottom right. A
+> clean airy satin-paper surface, almost flat, extremely understated, no visible
+> grain. Overall very light, low saturation, calm and refined. The top must remain
+> very light as dark teal headings will be added separately. One continuous
+> near-white to pastel-blue gradient, no bands, no patches, no vignette.
+> Constraints: background only; no phones, no interfaces, no text, no logos, no
+> objects, no circles, no waves, no frames, no shadows, no dark areas. This will
+> sit behind authentic unmodified screenshots. Entire image should feel soft
+> and delicate, like a minimal premium product sheet.
 
 Existing artwork and service names remain subject to the repository's
 [third-party rights notice](../../../legal/LEGAL.md#3-third-party-services-and-rights).
