@@ -39,6 +39,12 @@ internal object SpotifyYouTubeMatcher {
         "\\b(?:op|opus|bwv|kv?|d|s|h|hob|trv|av|woo|rv|hwv|sz|bb|mwv|wwv)\\.?\\s?\\d|:\\s*\\S",
         RegexOption.IGNORE_CASE
     )
+    private val workNumber = Regex(
+        "\\b(op|opus|no|nr|bwv|kv?|d|s|h|hob|trv|av|woo|rv|hwv|sz|bb|mwv|wwv)\\.?\\s?(\\d+[a-z]?)\\b",
+        RegexOption.IGNORE_CASE
+    )
+    private val movementNumeral = Regex(":\\s*([IVX]+)\\.(?:\\s|$)")
+    private val workNumberAliases = mapOf("opus" to "op", "nr" to "no", "kv" to "k")
     private val versionDescriptor = Regex("[(\\[{]([^)\\]}]*)[)\\]}]|\\s[-–—]\\s(.+)$")
 
     private fun versionLabels(title: String): Set<String> = versionDescriptor.findAll(title)
@@ -127,6 +133,7 @@ internal object SpotifyYouTubeMatcher {
         val yTitleId = MusicIdentityText.title(ytCandidate.title)
         if (sTitleId.markers != yTitleId.markers) return null
         if (hasVersionConflict(spotifyTrack, ytCandidate, sTitleId, yTitleId)) return null
+        if (hasWorkNumberConflict(spotifyTrack.title, ytCandidate.title)) return null
 
         val sArtistCredit = MusicIdentityText.artistCredit(spotifyTrack.artist)
         val yArtistCredit = MusicIdentityText.artistCredit(ytCandidate.artist)
@@ -158,6 +165,22 @@ internal object SpotifyYouTubeMatcher {
         val sExplicitHint = sTitleId.explicitHint ?: true.takeIf { spotifyTrack.explicit }
         val yExplicitHint = yTitleId.explicitHint ?: true.takeIf { ytCandidate.explicit }
         return sExplicitHint != null && yExplicitHint != null && sExplicitHint != yExplicitHint
+    }
+
+    private fun hasWorkNumberConflict(sourceTitle: String, candidateTitle: String): Boolean {
+        val source = workNumbers(sourceTitle)
+        if (source.isEmpty()) return false
+        val candidate = workNumbers(candidateTitle)
+        return source.any { (kind, numbers) -> candidate[kind]?.let { it.intersect(numbers).isEmpty() } == true }
+    }
+
+    private fun workNumbers(title: String): Map<String, Set<String>> {
+        val catalog = workNumber.findAll(title).map { match ->
+            val kind = match.groupValues[1].lowercase(Locale.ROOT)
+            (workNumberAliases[kind] ?: kind) to match.groupValues[2].lowercase(Locale.ROOT)
+        }
+        val movements = movementNumeral.findAll(title).map { "movement" to it.groupValues[1].uppercase(Locale.ROOT) }
+        return (catalog + movements).groupBy({ it.first }, { it.second }).mapValues { it.value.toSet() }
     }
 
     private fun isrcEvidence(sIsrc: String, yIsrc: String, artistScore: Double, durationDeltaMs: Long?): MatchEvidence? {

@@ -1179,9 +1179,14 @@ class PlaybackResolver private constructor(private val context: Context) {
         val languageCode = userPreferences.languageCode()
         withTimeoutOrNull(CATALOG_MATCH_SEARCH_BUDGET_MS) {
             for (query in playbackAlternativeSearchQueries(track)) {
-                runCatchingPreservingCancellation { repository.searchForPlayback(query, 8, languageCode) }
+                runCatchingPreservingCancellation {
+                    repository.searchForPlayback(query, 8, languageCode) { results ->
+                        results.filter { it.id.isNotBlank() && !sameVideoIdentity(track, it) }
+                            .takeIf { com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatcher.findPlayableMatch(track, it) != null }
+                            .orEmpty()
+                    }
+                }
                     .getOrDefault(emptyList())
-                    .filter { it.id.isNotBlank() && !sameVideoIdentity(track, it) }
                     .forEach { collected.putIfAbsent(it.id, it.copy(streamUrl = "", videoStreamUrl = "")) }
                 if (com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatcher.findBestMatch(track, collected.values.toList()) != null) break
             }

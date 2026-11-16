@@ -143,6 +143,26 @@ class CatalogClassicalMatchReplayTest {
     }
 
     @Test
+    fun anotherNumberOfTheSameOpusIsNeverAccepted() {
+        val catalog = apple("Prelude, Op. 28: No. 4", "Martha Argerich", 130_000L)
+        val candidates = listOf(
+            youtube("argerichp06", "Prelude, Op. 28: No. 6", "Martha Argerich", 131_000L),
+            youtube("pollinip006", "Prelude, Op. 28: No. 6", "Maurizio Pollini", 138_000L)
+        )
+
+        assertNull(SpotifyYouTubeMatcher.findBestMatch(catalog, candidates))
+        assertNull(SpotifyYouTubeMatcher.findPlayableMatch(catalog, candidates))
+    }
+
+    @Test
+    fun anotherMovementOfTheSameWorkIsNeverAccepted() {
+        val catalog = apple("Symphony No. 3 in F Major, Op. 90: III. Poco allegretto", "Kent Nagano", 388_000L)
+        val candidate = youtube("brahmsmov02", "Symphony No. 3 in F Major, Op. 90: II. Andante", "Kent Nagano", 389_000L)
+
+        assertNull(SpotifyYouTubeMatcher.findPlayableMatch(catalog, listOf(candidate)))
+    }
+
+    @Test
     fun strictMatchStillWinsOverSameWorkFallback() {
         val catalog = apple("Consolations, S. 172: No. 3, Lento placido", "Khatia Buniatishvili", 312_000L)
         val candidates = listOf(
