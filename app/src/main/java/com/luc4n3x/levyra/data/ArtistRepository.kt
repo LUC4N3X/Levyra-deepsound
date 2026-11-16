@@ -623,7 +623,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
 
     suspend fun allSongs(songsBrowseId: String, artistName: String): List<Track> = withContext(Dispatchers.IO) {
         val browseId = songsBrowseId.trim().ifBlank { return@withContext emptyList() }
-        fetchSongs(ArtistSectionPointer(browseId, ""), artistName, ARTIST_ALL_SONGS_LIMIT, ARTIST_ALL_SONGS_MAX_PAGES)
+        fetchSongs(ArtistSectionPointer(browseId, ""), artistName, ARTIST_ALL_SONGS_LIMIT, ARTIST_ALL_SONGS_MAX_PAGES, strict = true)
     }
 
     suspend fun artistHit(browseId: String, fallbackName: String): ArtistHit? = withContext(Dispatchers.IO) {
@@ -1364,10 +1364,14 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         pointer: ArtistSectionPointer,
         fallbackArtist: String,
         limit: Int = 100,
-        maxPages: Int = MAX_RELEASE_PAGES
+        maxPages: Int = MAX_RELEASE_PAGES,
+        strict: Boolean = false
     ): List<Track> {
         val songs = LinkedHashMap<String, Track>()
-        var response = runCatching { postBrowse(pointer.browseId, pointer.params) }.getOrDefault(JSONObject())
+        fun page(browseId: String, params: String, continuation: String): JSONObject =
+            if (strict) postBrowse(browseId, params, continuation)
+            else runCatching { postBrowse(browseId, params, continuation) }.getOrDefault(JSONObject())
+        var response = page(pointer.browseId, pointer.params, "")
         var pages = 0
         var previousContinuation = ""
         while (response.length() > 0 && pages < maxPages) {
@@ -1375,7 +1379,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             val continuation = findContinuation(response)
             if (continuation.isBlank() || continuation == previousContinuation || songs.size >= limit) break
             previousContinuation = continuation
-            response = runCatching { postBrowse("", continuation = continuation) }.getOrDefault(JSONObject())
+            response = page("", "", continuation)
             pages += 1
         }
         return songs.values.take(limit).toList()

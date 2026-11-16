@@ -7044,8 +7044,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             try {
                 val result = backupManager.exportAutomatic(_state.value.backupSettings.retentionCount)
                 val syncFailure = try {
-                    backupManager.exportToSyncFile()
-                    null
+                    val synced = backupManager.exportToSyncFile()
+                    val expected = preferences.vaultSyncFileUri().isNotBlank() && preferences.vaultSyncFileWritesEnabled()
+                    if (!synced && expected) vaultSyncCopy().backupSavedNotSynced else null
                 } catch (cancelled: CancellationException) {
                     throw cancelled
                 } catch (error: Throwable) {
