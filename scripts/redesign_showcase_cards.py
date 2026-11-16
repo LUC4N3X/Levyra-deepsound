@@ -475,7 +475,7 @@ UPRIGHT_CARD_SPECS = [
         "AUTO-BUILT MIXES",
         "Smart Auto-Playlists",
         "Dynamic mixes built from your history.",
-        "Screenshot_20261024_210532_Levyra.jpg",
+        "Screenshot_20261116_195217_Levyra.jpg",
         (245, 240, 252), (226, 216, 243), (204, 188, 234), (204, 190, 228),
         (108, 62, 172), (24, 17, 38), (82, 62, 118),
     ),
