@@ -173,9 +173,7 @@ internal object SpotifyYouTubeMatcher {
         sharedSpecialMarkers: Boolean,
         audioTrack: Boolean
     ): Double {
-        // Homonym protection: if artists do not match at all, cap total score so different artists never match
         var total = if (artistScore < 0.35) (weighted * 0.50).coerceAtMost(0.40) else weighted
-        // Duration penalty for large discrepancies (>30s or >60s)
         total -= when {
             durationDeltaMs == null -> 0.0
             durationDeltaMs > 60_000L -> 0.30
