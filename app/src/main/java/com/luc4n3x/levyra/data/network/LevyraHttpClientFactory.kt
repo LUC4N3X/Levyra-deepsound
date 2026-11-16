@@ -300,7 +300,7 @@ object LevyraHttpClientFactory {
         if (BuildConfig.DEBUG && context != null) {
             builder.addInterceptor(
                 ChuckerInterceptor.Builder(context.applicationContext)
-                    .maxContentLength(250_000L)
+                    .maxContentLength(32_000L)
                     .alwaysReadResponseBody(false)
                     .build()
             )

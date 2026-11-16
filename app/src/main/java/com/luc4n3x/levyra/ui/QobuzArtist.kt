@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -28,6 +29,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.HowToReg
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PersonAdd
@@ -66,6 +68,7 @@ import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
 import com.luc4n3x.levyra.ui.i18n.LevyraQobuzSkinStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.QobuzSkinCopy
+import com.luc4n3x.levyra.ui.i18n.artistCatalogCopy
 import com.luc4n3x.levyra.ui.player.qobuzPlayerField
 import com.luc4n3x.levyra.ui.theme.QobuzDesign
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
@@ -110,8 +113,23 @@ internal fun QobuzArtistScreen(state: LevyraUiState, viewModel: LevyraViewModel,
                 color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(start = 8.dp)
             )
             profile?.topSongs?.firstOrNull()?.let { first ->
+                val catalogCopy = remember(strings) { strings.artistCatalogCopy() }
+                QobuzWhiteIcon(Icons.Rounded.Download, catalogCopy.downloadAllSongs, viewModel::downloadAllArtistSongs)
                 QobuzWhiteIcon(Icons.Rounded.MoreVert, strings.more) { onTrackActions(first) }
             }
+        }
+        state.currentTrack?.let { current ->
+            AlbumNowPlayingDock(
+                track = current,
+                isPlaying = state.isPlaying,
+                isResolving = state.isResolving,
+                progress = if (state.durationMs > 0L) (state.positionMs.toFloat() / state.durationMs).coerceIn(0f, 1f) else 0f,
+                animated = state.animationsEnabled,
+                onToggle = viewModel::togglePlay,
+                onOpenPlayer = viewModel::openPlayerScreen,
+                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
+                    .padding(start = 18.dp, end = 18.dp, bottom = 14.dp)
+            )
         }
     }
 }
@@ -166,7 +184,7 @@ private fun QobuzArtistHeader(profile: ArtistProfile, state: LevyraUiState, view
             profile.topSongs.firstOrNull()?.let { seed -> QobuzWhiteIcon(Icons.Rounded.Sensors, strings.continuousRadio) { viewModel.startSongRadioFrom(seed) } }
             Box(
                 Modifier.size(56.dp).clip(CircleShape).background(Color.White)
-                    .clickable(role = Role.Button, onClickLabel = strings.play, enabled = profile.topSongs.isNotEmpty()) { viewModel.playAll(profile.topSongs) },
+                    .clickable(role = Role.Button, onClickLabel = strings.play, enabled = profile.topSongs.isNotEmpty()) { viewModel.playAllArtistSongs() },
                 contentAlignment = Alignment.Center
             ) { Icon(Icons.Rounded.PlayArrow, strings.play, tint = Color.Black, modifier = Modifier.size(30.dp)) }
             QobuzWhiteIcon(if (followed) Icons.Rounded.HowToReg else Icons.Rounded.PersonAdd, if (followed) strings.followingArtist else strings.followArtist, viewModel::toggleFollowArtist)

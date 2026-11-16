@@ -70,6 +70,7 @@ import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.LocalOffer
 import androidx.compose.material.icons.rounded.Photo
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -395,7 +396,11 @@ internal fun LibraryBatchDownloadRow(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    if (batch.kind == BatchDownloadKind.Playlist) Icons.AutoMirrored.Rounded.PlaylistPlay else Icons.Rounded.Album,
+                    when (batch.kind) {
+                        BatchDownloadKind.Playlist -> Icons.AutoMirrored.Rounded.PlaylistPlay
+                        BatchDownloadKind.Artist -> Icons.Rounded.Person
+                        BatchDownloadKind.Album -> Icons.Rounded.Album
+                    },
                     contentDescription = null,
                     tint = LevyraViolet,
                     modifier = Modifier.size(20.dp)

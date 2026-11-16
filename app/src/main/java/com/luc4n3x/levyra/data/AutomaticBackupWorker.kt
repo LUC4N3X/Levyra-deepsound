@@ -18,7 +18,15 @@ class AutomaticBackupWorker(context: Context, params: WorkerParameters) : Corout
         val settings = LevyraPreferences(applicationContext).backupSettings().normalized()
         if (!settings.enabled) return Result.success()
         return try {
-            LevyraBackupManager(applicationContext).exportAutomatic(settings.retentionCount)
+            val manager = LevyraBackupManager(applicationContext)
+            manager.exportAutomatic(settings.retentionCount)
+            try {
+                manager.exportToSyncFile()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Throwable) {
+                Timber.w(error, "Vault sync file not updated")
+            }
             Result.success()
         } catch (cancelled: CancellationException) {
             throw cancelled

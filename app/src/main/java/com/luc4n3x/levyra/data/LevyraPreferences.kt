@@ -620,6 +620,28 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         store.commit { it[KEY_VAULT_BACKUP_TREE_URI] = value }
     }
 
+    fun vaultSyncFileUri(): String = read { it[KEY_VAULT_SYNC_FILE_URI].orEmpty() }
+
+    fun vaultSyncFileWritesEnabled(): Boolean = read { it[KEY_VAULT_SYNC_FILE_WRITES_ENABLED] ?: false }
+
+    fun vaultSyncFileLastWriteAt(): Long = read { it[KEY_VAULT_SYNC_FILE_LAST_WRITE] ?: 0L }
+
+    suspend fun persistVaultSyncFile(uri: String, writesEnabled: Boolean) {
+        store.commit {
+            if (it[KEY_VAULT_SYNC_FILE_URI] != uri) it[KEY_VAULT_SYNC_FILE_LAST_WRITE] = 0L
+            it[KEY_VAULT_SYNC_FILE_URI] = uri
+            it[KEY_VAULT_SYNC_FILE_WRITES_ENABLED] = writesEnabled
+        }
+    }
+
+    suspend fun setVaultSyncFileWritesEnabled(value: Boolean) {
+        store.commit { it[KEY_VAULT_SYNC_FILE_WRITES_ENABLED] = value }
+    }
+
+    fun setVaultSyncFileLastWriteAt(value: Long) {
+        write { it[KEY_VAULT_SYNC_FILE_LAST_WRITE] = value.coerceAtLeast(0L) }
+    }
+
     fun vaultRuntimeState(): Pair<Long, String> = read {
         (it[KEY_VAULT_LAST_BACKUP] ?: 0L) to it[KEY_VAULT_BACKUP_TREE_URI].orEmpty()
     }
@@ -1833,6 +1855,9 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_BACKUP_PRE_UPDATE = booleanPreferencesKey("automatic_backup_pre_update")
         val KEY_VAULT_LAST_BACKUP = longPreferencesKey("vault_last_backup_at")
         val KEY_VAULT_BACKUP_TREE_URI = stringPreferencesKey("vault_backup_tree_uri")
+        val KEY_VAULT_SYNC_FILE_URI = stringPreferencesKey("vault_sync_file_uri")
+        val KEY_VAULT_SYNC_FILE_WRITES_ENABLED = booleanPreferencesKey("vault_sync_file_writes_enabled")
+        val KEY_VAULT_SYNC_FILE_LAST_WRITE = longPreferencesKey("vault_sync_file_last_write_at")
         val KEY_MOTION_CONTROLS_ENABLED = booleanPreferencesKey("motion_controls_enabled")
         val KEY_MOTION_FLIP_PAUSE = booleanPreferencesKey("motion_flip_to_pause")
         val KEY_MOTION_SHAKE_SKIP = booleanPreferencesKey("motion_shake_to_skip")

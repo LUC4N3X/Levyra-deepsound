@@ -16,8 +16,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.rounded.DoNotDisturbOn
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.MoreVert
@@ -70,6 +72,7 @@ import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LevyraYouTubeMusicSkinStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.YouTubeMusicSkinCopy
+import com.luc4n3x.levyra.ui.i18n.artistCatalogCopy
 import com.luc4n3x.levyra.ui.i18n.searchDiscographyCopy
 import com.luc4n3x.levyra.ui.i18n.speedDialCopy
 import com.luc4n3x.levyra.ui.theme.YouTubeMusicDesign
@@ -337,10 +340,11 @@ private fun YouTubeMusicArtistHero(artist: ArtistProfile, height: Dp) {
                 fontWeight = FontWeight.Bold, letterSpacing = (-0.8).sp, maxLines = 3, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.semantics { heading() }
             )
-            val audience = artist.monthlyListeners.ifBlank { artist.subscribers }
-            if (audience.isNotBlank()) {
+            val statStrings = LocalLevyraStrings.current
+            val statLines = remember(artist, statStrings) { artistStatLines(artist, statStrings) }
+            statLines.forEach { line ->
                 Text(
-                    audience, color = Color(0xFFCCCCCC), fontSize = 16.sp, lineHeight = 20.sp, maxLines = 1,
+                    line, color = Color(0xFFCCCCCC), fontSize = 16.sp, lineHeight = 20.sp, maxLines = 1,
                     overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp)
                 )
             }
@@ -381,15 +385,15 @@ private fun YouTubeMusicArtistActions(
         if (songs.size > 1) {
             Box(
                 Modifier.size(40.dp).clip(CircleShape).background(YouTubeMusicDesign.buttonFill)
-                    .levyraPressable(onClick = { viewModel.playAll(songs.shuffled()) }, role = Role.Button, onClickLabel = copy.shuffle, pressedScale = LevyraPressScale.Control),
+                    .levyraPressable(onClick = { viewModel.playAllArtistSongs(shuffled = true) }, role = Role.Button, onClickLabel = copy.shuffle, pressedScale = LevyraPressScale.Control),
                 contentAlignment = Alignment.Center
             ) { Icon(Icons.Rounded.Shuffle, copy.shuffle, tint = Color.White, modifier = Modifier.size(22.dp)) }
             Spacer(Modifier.width(14.dp))
         }
-        songs.firstOrNull()?.let { first ->
+        if (songs.isNotEmpty()) {
             Box(
                 Modifier.size(52.dp).clip(CircleShape).background(Color.White)
-                    .levyraPressable(onClick = { viewModel.playArtistSong(first) }, role = Role.Button, onClickLabel = strings.play, pressedScale = LevyraPressScale.Control),
+                    .levyraPressable(onClick = { viewModel.playAllArtistSongs() }, role = Role.Button, onClickLabel = strings.play, pressedScale = LevyraPressScale.Control),
                 contentAlignment = Alignment.Center
             ) { Icon(Icons.Rounded.PlayArrow, strings.play, tint = Color.Black, modifier = Modifier.size(32.dp)) }
         }
@@ -471,7 +475,26 @@ private fun YouTubeMusicArtistMenu(
     val speedDialCopy = remember(strings) { strings.speedDialCopy() }
     val excluded = state.artistExclusions.excludesBrowseId(artist.browseId) || state.artistExclusions.excludesArtistName(artist.name)
     val pinned = SpeedDial.artistKey(artist.name, artist.browseId)?.let { key -> state.speedDialPins.any { it.key == key } } == true
+    val catalogCopy = remember(strings) { strings.artistCatalogCopy() }
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss, containerColor = YouTubeMusicDesign.surface) {
+        if (artist.topSongs.isNotEmpty()) {
+            DropdownMenuItem(
+                text = { Text(catalogCopy.playAllSongs, color = YouTubeMusicDesign.text) },
+                leadingIcon = { Icon(Icons.AutoMirrored.Rounded.PlaylistPlay, null, tint = YouTubeMusicDesign.text) },
+                onClick = {
+                    onDismiss()
+                    viewModel.playAllArtistSongs()
+                }
+            )
+            DropdownMenuItem(
+                text = { Text(catalogCopy.downloadAllSongs, color = YouTubeMusicDesign.text) },
+                leadingIcon = { Icon(Icons.Rounded.Download, null, tint = YouTubeMusicDesign.text) },
+                onClick = {
+                    onDismiss()
+                    viewModel.downloadAllArtistSongs()
+                }
+            )
+        }
         DropdownMenuItem(
             text = { Text(if (excluded) strings.includeArtist else strings.excludeArtist, color = YouTubeMusicDesign.text) },
             leadingIcon = { Icon(if (excluded) Icons.Rounded.Recommend else Icons.Rounded.DoNotDisturbOn, null, tint = YouTubeMusicDesign.text) },

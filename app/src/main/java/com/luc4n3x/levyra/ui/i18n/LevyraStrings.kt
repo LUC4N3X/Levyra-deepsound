@@ -1175,7 +1175,7 @@ class LevyraStrings private constructor(
         else -> value("vaultBackupWeekly")
     }
     fun backupRetentionLabel(count: Int): String = value("vaultBackupCopies").replace("%d", count.toString())
-    val vaultTitle: String get() = "Levyra Vault"
+    val vaultTitle: String get() = value("vaultScreenTitle")
     val vaultSubtitle: String get() = value("vaultSubtitle")
     val backupNow: String get() = value("vaultBackupNow")
     val backupNowSubtitle: String get() = value("vaultBackupNowSubtitle")

@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
 import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.DoNotDisturbOn
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Recommend
 import androidx.compose.material.icons.rounded.Shuffle
@@ -28,7 +29,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,6 +57,7 @@ import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.appleArtistInfoCopy
+import com.luc4n3x.levyra.ui.i18n.artistCatalogCopy
 import com.luc4n3x.levyra.ui.i18n.searchDiscographyCopy
 import com.luc4n3x.levyra.ui.i18n.speedDialCopy
 import com.luc4n3x.levyra.ui.theme.*
@@ -137,6 +141,15 @@ internal fun LazyListScope.appleMusicArtistClosingItems(
     }
 }
 
+@Immutable
+internal class ArtistCatalogActions(
+    val playAll: () -> Unit,
+    val shuffleAll: () -> Unit,
+    val downloadAll: () -> Unit
+)
+
+internal val LocalArtistCatalogActions = staticCompositionLocalOf<ArtistCatalogActions?> { null }
+
 @Composable
 internal fun ArtistOptionsMenu(
     expanded: Boolean,
@@ -149,12 +162,32 @@ internal fun ArtistOptionsMenu(
 ) {
     val strings = LocalLevyraStrings.current
     val speedDialCopy = remember(strings) { strings.speedDialCopy() }
+    val catalogCopy = remember(strings) { strings.artistCatalogCopy() }
+    val catalog = LocalArtistCatalogActions.current
     DropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(20.dp),
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
+        if (catalog != null) {
+            DropdownMenuItem(
+                text = { Text(catalogCopy.playAllSongs) },
+                leadingIcon = { Icon(Icons.AutoMirrored.Rounded.PlaylistPlay, contentDescription = null) },
+                onClick = {
+                    onDismiss()
+                    catalog.playAll()
+                }
+            )
+            DropdownMenuItem(
+                text = { Text(catalogCopy.downloadAllSongs) },
+                leadingIcon = { Icon(Icons.Rounded.Download, contentDescription = null) },
+                onClick = {
+                    onDismiss()
+                    catalog.downloadAll()
+                }
+            )
+        }
         if (onShuffle != null) {
             DropdownMenuItem(
                 text = { Text(strings.shuffle) },

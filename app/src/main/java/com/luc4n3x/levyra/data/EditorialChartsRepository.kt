@@ -183,25 +183,30 @@ internal class EditorialChartsRepository private constructor(context: Context) {
         }
         scope.async {
             val stored = usableSnapshot(System.currentTimeMillis())
-            val remote = fetchRemoteSnapshot()
-            if (remote != null) {
-                val selected = if (
+            val fetched = fetchRemoteSnapshot()
+            if (fetched != null) {
+                val (remote, remoteJson) = fetched
+                val merged = if (
                     remote.exploreByParams.isEmpty() &&
                     stored?.exploreByParams?.isNotEmpty() == true
                 ) {
-                    mergeExploreCollectionsFromFallback(
-                        primaryJson = remote.rawJson,
-                        fallbackJson = stored.rawJson
-                    )?.let { mergedJson ->
+                    readStoredJson()?.let { storedJson ->
+                        mergeExploreCollectionsFromFallback(primaryJson = remoteJson, fallbackJson = storedJson)
+                    }?.let { mergedJson ->
                         EditorialCatalogParser.parse(
                             body = mergedJson,
                             loadedAt = System.currentTimeMillis()
-                        )
-                    } ?: remote
+                        )?.let { it to mergedJson }
+                    }
+                } else {
+                    null
+                }
+                val selected = merged?.first ?: if (remote.exploreByParams.isEmpty() && stored?.exploreByParams?.isNotEmpty() == true) {
+                    remote.copy(exploreByParams = stored.exploreByParams)
                 } else {
                     remote
                 }
-                persist(selected.rawJson)
+                persist(merged?.second ?: remoteJson)
                 memorySnapshot = selected
                 lastRefreshFailureAt = 0L
                 selected
@@ -242,7 +247,7 @@ internal class EditorialChartsRepository private constructor(context: Context) {
         return null
     }
 
-    private suspend fun fetchRemoteSnapshot(): CatalogSnapshot? =
+    private suspend fun fetchRemoteSnapshot(): Pair<CatalogSnapshot, String>? =
         suspendCancellableCoroutine { continuation ->
             val request = Request.Builder()
                 .url(CATALOG_URL)
@@ -264,10 +269,11 @@ internal class EditorialChartsRepository private constructor(context: Context) {
                             val body = current.body
                             val bytes = body.byteStream().readBounded(MAX_CATALOG_BYTES) ?: return@use null
                             if (bytes.isEmpty()) return@use null
+                            val json = bytes.toString(StandardCharsets.UTF_8)
                             EditorialCatalogParser.parse(
-                                body = bytes.toString(StandardCharsets.UTF_8),
+                                body = json,
                                 loadedAt = System.currentTimeMillis(),
-                            )
+                            )?.let { it to json }
                         }
                     }.getOrNull()
                     if (continuation.isActive) continuation.resume(snapshot)
@@ -275,12 +281,14 @@ internal class EditorialChartsRepository private constructor(context: Context) {
             })
         }
 
+    private fun readStoredJson(): String? = runCatching {
+        cacheFile.openRead().use { it.readBounded(MAX_CATALOG_BYTES) }
+    }.getOrNull()?.toString(StandardCharsets.UTF_8)
+
     private fun readStoredSnapshot(now: Long): CatalogSnapshot? {
-        val bytes = runCatching {
-            cacheFile.openRead().use { it.readBounded(MAX_CATALOG_BYTES) }
-        }.getOrNull() ?: return null
+        val json = readStoredJson() ?: return null
         val snapshot = EditorialCatalogParser.parse(
-            body = bytes.toString(StandardCharsets.UTF_8),
+            body = json,
             loadedAt = now,
         ) ?: return null
         return snapshot.takeIf { it.isUsable(now) }
@@ -348,7 +356,6 @@ internal data class CatalogSnapshot(
     val exploreByParams: Map<String, EditorialExploreCollection>,
     val generatedAtMs: Long,
     val loadedAt: Long,
-    val rawJson: String,
     val metadataTracks: List<Track> = emptyList(),
 ) {
     val spotifyMetadata: SpotifyMetadataIndex by lazy { SpotifyMetadataIndex(metadataTracks) }
@@ -438,7 +445,6 @@ internal object EditorialCatalogParser {
             exploreByParams = exploreByParams,
             generatedAtMs = generatedAtMs,
             loadedAt = loadedAt,
-            rawJson = body,
             metadataTracks = metadataTracks.distinctBy { it.id }.take(10_000),
         )
     }

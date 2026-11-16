@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -34,8 +35,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.DoNotDisturbOn
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.HowToReg
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.MusicNote
@@ -106,6 +109,7 @@ import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.AtelierCopy
 import com.luc4n3x.levyra.ui.i18n.LevyraAtelierStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.artistCatalogCopy
 import com.luc4n3x.levyra.ui.i18n.searchDiscographyCopy
 import com.luc4n3x.levyra.ui.i18n.speedDialCopy
 import com.luc4n3x.levyra.ui.media.AtelierExplicitMark
@@ -209,6 +213,19 @@ internal fun AtelierArtistScreen(state: LevyraUiState, viewModel: LevyraViewMode
             }
             if (collapsed) HorizontalDivider(thickness = 1.dp, color = AtelierDesign.hairline)
         }
+        state.currentTrack?.let { current ->
+            AlbumNowPlayingDock(
+                track = current,
+                isPlaying = state.isPlaying,
+                isResolving = state.isResolving,
+                progress = if (state.durationMs > 0L) (state.positionMs.toFloat() / state.durationMs).coerceIn(0f, 1f) else 0f,
+                animated = state.animationsEnabled,
+                onToggle = viewModel::togglePlay,
+                onOpenPlayer = viewModel::openPlayerScreen,
+                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
+                    .padding(start = 18.dp, end = 18.dp, bottom = 14.dp)
+            )
+        }
     }
 }
 
@@ -226,7 +243,6 @@ private fun AtelierArtistHeader(
     val animated = LocalAnimationsEnabled.current
     var expanded by rememberSaveable(profile.browseId) { mutableStateOf(false) }
     val bio = profile.biography?.text?.takeIf { it.isNotBlank() } ?: profile.bio
-    val audience = profile.monthlyListeners.ifBlank { profile.subscribers }
     val nameSize = remember(profile.name) { atelierArtistNameSize(profile.name) }
     Column(Modifier.fillMaxWidth()) {
         Box(Modifier.fillMaxWidth().height(portraitHeight)) {
@@ -276,10 +292,11 @@ private fun AtelierArtistHeader(
             }
         }
         Column(Modifier.fillMaxWidth().padding(horizontal = AtelierDesign.gutter)) {
-            if (audience.isNotBlank()) {
-                Spacer(Modifier.height(6.dp))
+            val statLines = remember(profile, strings) { artistStatLines(profile, strings) }
+            if (statLines.isNotEmpty()) Spacer(Modifier.height(6.dp))
+            statLines.forEach { line ->
                 Text(
-                    audience, style = MaterialTheme.typography.bodyMedium.copy(letterSpacing = 0.6.sp), color = AtelierDesign.textSecondary,
+                    line, style = MaterialTheme.typography.bodyMedium.copy(letterSpacing = 0.6.sp), color = AtelierDesign.textSecondary,
                     maxLines = 1, overflow = TextOverflow.Ellipsis
                 )
             }
@@ -315,16 +332,13 @@ private fun AtelierArtistActions(profile: ArtistProfile, state: LevyraUiState, v
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
         AtelierMediaKey(
             label = strings.play, icon = Icons.Rounded.PlayArrow, enabled = songs.isNotEmpty(), loading = false,
-            onClick = { viewModel.playAll(songs) }, modifier = Modifier.weight(1f)
+            onClick = { viewModel.playAllArtistSongs() }, modifier = Modifier.weight(1f)
         )
         AtelierFollowKey(followed, Modifier.weight(1f)) { viewModel.toggleFollowArtist() }
     }
     Spacer(Modifier.height(14.dp))
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-        AtelierQuietAction(Icons.Rounded.Shuffle, strings.shuffle, songs.size > 1, {
-            val shuffled = songs.shuffled()
-            shuffled.firstOrNull()?.let { first -> viewModel.playFrom(shuffled, first) }
-        })
+        AtelierQuietAction(Icons.Rounded.Shuffle, strings.shuffle, songs.size > 1, { viewModel.playAllArtistSongs(shuffled = true) })
         AtelierQuietAction(Icons.Rounded.Sensors, strings.continuousRadio, songs.isNotEmpty(), {
             songs.firstOrNull()?.let(viewModel::startSongRadioFrom)
         })
@@ -339,7 +353,26 @@ private fun AtelierArtistActions(profile: ArtistProfile, state: LevyraUiState, v
         Box {
             AtelierQuietAction(Icons.Rounded.MoreVert, strings.more, true, { menuOpen = true })
             val speedDialCopy = remember(strings) { strings.speedDialCopy() }
+            val catalogCopy = remember(strings) { strings.artistCatalogCopy() }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }, containerColor = AtelierDesign.panelRaised) {
+                DropdownMenuItem(
+                    text = { Text(catalogCopy.playAllSongs) },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.PlaylistPlay, null) },
+                    enabled = songs.isNotEmpty(),
+                    onClick = {
+                        menuOpen = false
+                        viewModel.playAllArtistSongs()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text(catalogCopy.downloadAllSongs) },
+                    leadingIcon = { Icon(Icons.Rounded.Download, null) },
+                    enabled = songs.isNotEmpty(),
+                    onClick = {
+                        menuOpen = false
+                        viewModel.downloadAllArtistSongs()
+                    }
+                )
                 DropdownMenuItem(
                     text = { Text(if (excluded) strings.includeArtist else strings.excludeArtist) },
                     leadingIcon = { Icon(if (excluded) Icons.Rounded.Recommend else Icons.Rounded.DoNotDisturbOn, null) },

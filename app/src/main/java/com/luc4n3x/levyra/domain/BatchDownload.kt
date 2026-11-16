@@ -4,7 +4,8 @@ import java.util.Locale
 
 enum class BatchDownloadKind {
     Album,
-    Playlist
+    Playlist,
+    Artist
 }
 
 enum class BatchDownloadState {
@@ -37,11 +38,10 @@ data class BatchDownload(
 }
 
 fun batchDownloadKindOf(raw: String): BatchDownloadKind =
-    if (raw.equals(BatchDownloadKind.Playlist.name, ignoreCase = true)) {
-        BatchDownloadKind.Playlist
-    } else {
-        BatchDownloadKind.Album
-    }
+    BatchDownloadKind.entries.firstOrNull { it.name.equals(raw, ignoreCase = true) } ?: BatchDownloadKind.Album
+
+fun activeBatchDownload(batches: List<BatchDownload>, key: String): BatchDownload? =
+    key.takeIf { it.isNotBlank() }?.let { batches.firstOrNull { batch -> batch.key == it && !batch.isFinished } }
 
 fun batchDownloadProgress(total: Int, progressSum: Int): Int {
     if (total <= 0) return 0

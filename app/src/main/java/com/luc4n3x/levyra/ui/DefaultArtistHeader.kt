@@ -98,6 +98,7 @@ import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraExpressiveCorner
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LevyraSpotifySkinStrings
+import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.playlistAlbumCopy
 import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
@@ -191,7 +192,7 @@ internal fun DefaultArtistHeroSection(
                 base = lerp(pageBase, Color.White, 0.05f),
                 highlight = highlight,
                 onPlay = artist.topSongs.firstOrNull()?.let { track -> { onPlay(track) } },
-                onShuffle = artist.topSongs.takeIf { it.size > 1 }?.let { songs -> { onPlayAll(songs.shuffled()) } },
+                onShuffle = artist.topSongs.takeIf { it.size > 1 }?.let { songs -> LocalArtistCatalogActions.current?.shuffleAll ?: { onPlayAll(songs.shuffled()) } },
                 onToggleFollow = onToggleFollow,
                 onOpenRelease = onOpenRelease
             )
@@ -344,6 +345,15 @@ internal fun DefaultArtistHero(
     }
 }
 
+internal fun artistStatLines(profile: ArtistProfile, strings: LevyraStrings): List<String> {
+    val audience = listOf(profile.monthlyListeners, profile.subscribers).map(String::trim).filter(String::isNotBlank).joinToString("  •  ")
+    val catalog = listOfNotNull(
+        profile.topSongs.size.takeIf { it > 0 }?.let { artistCountLabel(strings.formatTrackCount(it), it, profile.songsBrowseId.isNotBlank()) },
+        profile.albums.size.takeIf { it > 0 }?.let { artistCountLabel(strings.playlistAlbumCopy().albumCount(it), it, profile.albumsBrowseId.isNotBlank()) }
+    ).joinToString("  •  ")
+    return listOf(audience, profile.views.trim(), catalog).filter(String::isNotBlank)
+}
+
 @Composable
 internal fun DefaultArtistSummary(
     profile: ArtistProfile,
@@ -356,17 +366,9 @@ internal fun DefaultArtistSummary(
     onOpenRelease: (ArtistRelease, String) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val audience = remember(profile.monthlyListeners, profile.subscribers) {
-        listOf(profile.monthlyListeners, profile.subscribers).map(String::trim).filter(String::isNotBlank).joinToString("  •  ")
-    }
-    val catalog = remember(profile, strings) {
-        listOfNotNull(
-            profile.topSongs.size.takeIf { it > 0 }?.let { artistCountLabel(strings.formatTrackCount(it), it, profile.songsBrowseId.isNotBlank()) },
-            profile.albums.size.takeIf { it > 0 }?.let { artistCountLabel(strings.playlistAlbumCopy().albumCount(it), it, profile.albumsBrowseId.isNotBlank()) }
-        ).joinToString("  •  ")
-    }
+    val statLines = remember(profile, strings) { artistStatLines(profile, strings) }
     Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        listOf(audience, profile.views.trim(), catalog).filter(String::isNotBlank).forEach { line ->
+        statLines.forEach { line ->
             Text(
                 line,
                 color = LevyraText.copy(alpha = 0.66f),

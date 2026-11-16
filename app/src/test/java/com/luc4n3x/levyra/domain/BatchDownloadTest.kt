@@ -8,6 +8,36 @@ import org.junit.Test
 class BatchDownloadTest {
 
     @Test
+    fun `artist batches keep their kind and key`() {
+        assertEquals(BatchDownloadKind.Artist, batchDownloadKindOf("Artist"))
+        assertEquals(BatchDownloadKind.Playlist, batchDownloadKindOf("playlist"))
+        assertEquals(BatchDownloadKind.Album, batchDownloadKindOf(""))
+        assertEquals("artist:uc123", batchDownloadKey(BatchDownloadKind.Artist, "UC123", "Name"))
+    }
+
+    @Test
+    fun `active batch matches the page key only while unfinished`() {
+        val running = batch("playlist:abc", BatchDownloadState.Downloading)
+        val finished = batch("playlist:abc", BatchDownloadState.Completed)
+        assertEquals(running, activeBatchDownload(listOf(finished, running), "playlist:abc"))
+        assertEquals(null, activeBatchDownload(listOf(finished), "playlist:abc"))
+        assertEquals(null, activeBatchDownload(listOf(running), ""))
+    }
+
+    private fun batch(key: String, state: BatchDownloadState) = BatchDownload(
+        key = key,
+        kind = BatchDownloadKind.Playlist,
+        title = "Title",
+        artworkUrl = "",
+        total = 4,
+        completed = 1,
+        failed = 0,
+        active = 3,
+        progress = 25,
+        state = state
+    )
+
+    @Test
     fun `progress averages child progress across the batch`() {
         assertEquals(50, batchDownloadProgress(total = 4, progressSum = 200))
         assertEquals(0, batchDownloadProgress(total = 0, progressSum = 500))

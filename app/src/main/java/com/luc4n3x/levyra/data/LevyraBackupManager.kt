@@ -87,6 +87,7 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.VideoQualityTarget
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.FileNotFoundException
 import java.io.IOException
 import java.io.OutputStream
 import java.io.OutputStreamWriter
@@ -116,6 +117,20 @@ internal fun restorableDownloadDestinationTreeUri(
     return normalized.takeIf { it.isNotBlank() && canWrite(it) }.orEmpty()
 }
 
+internal fun syncFileShouldWrite(linked: Boolean, writesEnabled: Boolean, hasPermission: Boolean): Boolean =
+    linked && writesEnabled && hasPermission
+
+internal fun <T : Any> openTruncatingOrOverwriting(open: (String) -> T?): T? =
+    try {
+        open("wt")
+    } catch (unsupported: Exception) {
+        if (unsupported is FileNotFoundException || unsupported is IllegalArgumentException || unsupported is UnsupportedOperationException) {
+            open("rwt")
+        } else {
+            throw unsupported
+        }
+    }
+
 class LevyraBackupManager(private val context: Context) {
     private val appContext = context.applicationContext
     private val database = LevyraDatabase.get(appContext)
@@ -142,7 +157,7 @@ class LevyraBackupManager(private val context: Context) {
             val treeUri = preferences.backupTreeUri()
                 .takeIf { it.isNotBlank() }
                 ?.let { raw -> try { Uri.parse(raw) } catch (_: Throwable) { null } }
-            if (treeUri != null && hasPersistedTreeAccess(treeUri)) {
+            if (treeUri != null && hasPersistedAccess(treeUri)) {
                 try {
                     exportAutomaticToTree(treeUri, retentionCount)
                 } catch (cancelled: kotlinx.coroutines.CancellationException) {
@@ -160,6 +175,31 @@ class LevyraBackupManager(private val context: Context) {
                     result
                 }
             }
+        }
+    }
+
+    suspend fun exportToSyncFile(): Boolean = withContext(Dispatchers.IO) {
+        LevyraVaultOperationMutex.withLock {
+            val uri = preferences.vaultSyncFileUri().takeIf { it.isNotBlank() }?.let(Uri::parse)
+            val shouldWrite = syncFileShouldWrite(
+                linked = uri != null,
+                writesEnabled = preferences.vaultSyncFileWritesEnabled(),
+                hasPermission = uri != null && hasPersistedAccess(uri)
+            )
+            if (!shouldWrite || uri == null) return@withLock false
+            val staging = File.createTempFile("levyra-sync", VAULT_EXTENSION, appContext.cacheDir)
+            try {
+                staging.outputStream().buffered().use { writeArchive(it) }
+                withContext(NonCancellable) {
+                    val output = openTruncatingOrOverwriting { mode -> appContext.contentResolver.openOutputStream(uri, mode) }
+                        ?: throw IOException("Unable to open the sync file")
+                    output.use { target -> staging.inputStream().use { source -> source.copyTo(target) } }
+                }
+            } finally {
+                staging.delete()
+            }
+            preferences.setVaultSyncFileLastWriteAt(System.currentTimeMillis())
+            true
         }
     }
 
@@ -190,9 +230,9 @@ class LevyraBackupManager(private val context: Context) {
         return result
     }
 
-    private fun hasPersistedTreeAccess(treeUri: Uri): Boolean =
+    fun hasPersistedAccess(uri: Uri): Boolean =
         appContext.contentResolver.persistedUriPermissions.any {
-            it.uri == treeUri && it.isReadPermission && it.isWritePermission
+            it.uri == uri && it.isReadPermission && it.isWritePermission
         }
 
     private suspend fun exportAutomaticToTree(treeUri: Uri, retentionCount: Int): LevyraBackupResult {
