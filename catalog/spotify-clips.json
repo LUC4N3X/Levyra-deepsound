@@ -908,14 +908,14 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/791d1ff94d9b84e471e144f53fca4a23244fede9"
   },
   {
-   "id": "levyra-f7576d5b255e0312ee0d",
+   "id": "levyra-483d685fc62b1d271bd8",
    "genre": "dance-party",
-   "title": "Baianá",
-   "artist": "Bakermat",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273fc7ce3acfa2e8c2479bcf621",
-   "canvasUrl": "https://canvaz.scdn.co/upload/artist/3MyFDtqB80WZvbtCZRsekM/video/55130caeeb6b499b94d8851c0f67a73c.cnvs.mp4",
-   "spotifyTrackId": "780be5fB7823aHG06mwTat",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/c177d7d3bf35f5a906d0c8916fb5dddda6b5f8a0"
+   "title": "Free Your Mind",
+   "artist": "Prospa, Cloonee, Sybil",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27338974737cba5770d9dba1cd6",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/e07f69c4bd75473ca14eed883a200495.cnvs.mp4",
+   "spotifyTrackId": "6TWbY1dq8eYtFiMiGdBlOa",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/2d5304a8589bc85716b2ebe0a3ba177d2434d3bb"
   },
   {
    "id": "levyra-83d9c7b3b7fd0dade82a",
@@ -928,14 +928,14 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/2d8b05fad932d5512a4c88cd4b84e47eb1218fbe"
   },
   {
-   "id": "levyra-483d685fc62b1d271bd8",
+   "id": "levyra-f7576d5b255e0312ee0d",
    "genre": "dance-party",
-   "title": "Free Your Mind",
-   "artist": "Prospa, Cloonee, Sybil",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27338974737cba5770d9dba1cd6",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/e07f69c4bd75473ca14eed883a200495.cnvs.mp4",
-   "spotifyTrackId": "6TWbY1dq8eYtFiMiGdBlOa",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/2d5304a8589bc85716b2ebe0a3ba177d2434d3bb"
+   "title": "Baianá",
+   "artist": "Bakermat",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273fc7ce3acfa2e8c2479bcf621",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/3MyFDtqB80WZvbtCZRsekM/video/55130caeeb6b499b94d8851c0f67a73c.cnvs.mp4",
+   "spotifyTrackId": "780be5fB7823aHG06mwTat",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/c177d7d3bf35f5a906d0c8916fb5dddda6b5f8a0"
   },
   {
    "id": "levyra-dc57d4ccf5149d1a9167",
@@ -2230,6 +2230,15 @@
    "spotifyTrackId": "3bgnrHHwyYRtz3ykzAVImy"
   },
   {
+   "id": "levyra-629e42be3cce06f2266c",
+   "genre": "k-pop",
+   "title": "REDRED",
+   "artist": "CORTIS",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27324ace1518851b27e9983f739",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/1ebt9HnXdyYA6KgLXr1n4P/video/abd068977a504d909d0e4add35b59d81.cnvs.mp4",
+   "spotifyTrackId": "2fCwv2ppU5nTRTckomIGsd"
+  },
+  {
    "id": "levyra-872f13beec00c946a241",
    "genre": "k-pop",
    "title": "Birthday Wish",
@@ -2311,15 +2320,6 @@
    "spotifyTrackId": "5MOIAV008posdOGmxiJBsi"
   },
   {
-   "id": "levyra-91563e1e2784d2584b49",
-   "genre": "k-pop",
-   "title": "I SPY",
-   "artist": "NCT WISH",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27365cd6ccb20f03e763ae785d8",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/398gG8ZrUDMm0cA4Eg6rms/video/282512a828c54cacba694ed5c595a8d9.cnvs.mp4",
-   "spotifyTrackId": "3kcGkOmFXtaFjVdz7ge1WL"
-  },
-  {
    "id": "levyra-066922fd002a3163fb56",
    "genre": "fr-rap",
    "title": "Quotidien du bendo",
@@ -2369,7 +2369,7 @@
    "genre": "fr-rap",
    "title": "Vrai négro",
    "artist": "DA Uzi",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27314ae989799dc81b6397c020a",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273a0b3e9cf208797893db4b1cb",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/24e60186e3404bed9ca4409fce3f13b1.cnvs.mp4",
    "spotifyTrackId": "7hYyBqrKu9dgKrtyVSFvrP"
   },
@@ -2480,6 +2480,15 @@
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2735075c603d33c05ad8eddb5bd",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/7vohy1W7YNLxHynG44UFjS/video/fbb6779c42844b2580645c3132de0503.cnvs.mp4",
    "spotifyTrackId": "2puYoLAcArVFbFUceFYlYX"
+  },
+  {
+   "id": "levyra-019875df7990cb05dea7",
+   "genre": "de-rap",
+   "title": "KO Tour L3ben",
+   "artist": "Filow, Drunken Masters",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27301779a9b98ec201cb82b11dd",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/0BRUlYcw8Rr4MGHe8kRgTv/video/678f0901a0174aa2a7e0dff9e10a498e.cnvs.mp4",
+   "spotifyTrackId": "1N9obdfLK4WeWcTM5on6pR"
   },
   {
    "id": "levyra-441d7ea839cbb09e22bb",
