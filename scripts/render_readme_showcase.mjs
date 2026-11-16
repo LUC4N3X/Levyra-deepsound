@@ -107,28 +107,45 @@ function shadow(shape) {
   return svg(`<defs><filter id="s" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="24"/></filter></defs><g transform="translate(0 18)" opacity=".16" filter="url(#s)">${shape.replaceAll('fill="white"', 'fill="#284457"')}</g>`);
 }
 
-async function renderCard(index, spec) {
-  const p = palettes[[0, 1, 2, 0][index % 4]];
-  const backdrop = svg(`
+function cardBackdrop(index, p) {
+  return svg(`
     <defs><linearGradient id="paper" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${p.top}"/><stop offset="1" stop-color="${p.bottom}"/></linearGradient></defs>
     <rect width="900" height="1800" fill="url(#paper)"/>
     <path d="${flower(index === 0 ? 90 : 790, index === 0 ? 520 : 540, 205, index % 2 ? 8 : 12)}" fill="${p.motif}" opacity=".30"/>
     <path d="${flower(85, 1540, 165, 4)}" fill="${p.top}" opacity=".36"/>
   `);
-  const layers = [];
-  if (index < 4) {
-    const input = await readFile(resolve(source, `${spec[0]}.webp`));
-    const metadata = await sharp(input).metadata();
-    if (metadata.width !== width || metadata.height !== height) throw new Error(`Unexpected source dimensions: ${spec[0]}`);
-    const shape = heroShape(index);
-    layers.push({ input: shadow(shape) });
-    layers.push({ input: await sharp(input).composite([{ input: svg(shape), blend: 'dest-in' }]).png().toBuffer() });
-  } else {
+}
+
+async function cardMediaLayers(index, spec) {
+  if (index >= 4) {
     const phone = await extractPhone(index, spec);
     const { data, info } = await sharp(phone).resize({ width: 672 }).png().toBuffer({ resolveWithObject: true });
-    layers.push({ input: shadow(`<rect x="114" y="340" width="672" height="${info.height}" rx="32" fill="white"/>`) });
-    layers.push({ input: data, left: 114, top: 340 });
+    return [
+      { input: shadow(`<rect x="114" y="340" width="672" height="${info.height}" rx="32" fill="white"/>`) },
+      { input: data, left: 114, top: 340 }
+    ];
   }
+  const input = await readFile(resolve(source, `${spec[0]}.webp`));
+  const metadata = await sharp(input).metadata();
+  if (metadata.width !== width || metadata.height !== height) throw new Error(`Unexpected source dimensions: ${spec[0]}`);
+  const shape = heroShape(index);
+  return [
+    { input: shadow(shape) },
+    { input: await sharp(input).composite([{ input: svg(shape), blend: 'dest-in' }]).png().toBuffer() }
+  ];
+}
+
+async function renderCard(index, spec) {
+  const p = palettes[[0, 1, 2, 0][index % 4]];
+  const backdrop = cardBackdrop(index, p);
+  const layers = await cardMediaLayers(index, spec);
+  layers.push(await cardTextLayer(index, spec, p));
+  layers.push({ input: svg('<rect x="1.5" y="1.5" width="897" height="1797" rx="30" fill="none" stroke="white" stroke-opacity=".65" stroke-width="3"/>') });
+  const card = await sharp(backdrop).composite(layers).png().toBuffer();
+  return sharp(card).composite([{ input: rounded(width, height, 32), blend: 'dest-in' }]).png().toBuffer();
+}
+
+async function cardTextLayer(index, spec, p) {
   const right = index === 1 || index === 3;
   const x = index >= 4 ? 450 : right ? 832 : 68;
   const anchor = index >= 4 ? 'middle' : right ? 'end' : 'start';
@@ -141,10 +158,7 @@ async function renderCard(index, spec) {
   const titles = spec[2].map((line, i) => text(line, x, y + i * 100, titleSize, p.ink, 600, anchor));
   const subtitleY = index === 0 ? 1644 : index < 4 ? 328 : 223;
   const subtitles = spec[3].map((line, i) => text(line, x, subtitleY + i * 42, 32, p.muted, 400, anchor));
-  layers.push({ input: svg(titles.join('') + subtitles.join('')) });
-  layers.push({ input: svg('<rect x="1.5" y="1.5" width="897" height="1797" rx="30" fill="none" stroke="white" stroke-opacity=".65" stroke-width="3"/>') });
-  const card = await sharp(backdrop).composite(layers).png().toBuffer();
-  return sharp(card).composite([{ input: rounded(width, height, 32), blend: 'dest-in' }]).png().toBuffer();
+  return { input: svg(titles.join('') + subtitles.join('')) };
 }
 
 await mkdir(output, { recursive: true });
