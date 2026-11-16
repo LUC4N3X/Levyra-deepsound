@@ -1,21 +1,19 @@
-# README screenshot panels
+# README screenshot cards
 
-Six panels group the 24 existing Android screenshots into listening, discovery,
-library, personalization, offline listening and skins. Each panel has one shared
-headline and four distinct cards, each with an inset title, rounded border and
-its own screenshot. Graphite and warm-paper surfaces frame the cards. The first
-two panels are visible in the README; four more are inside the full-gallery
-disclosure.
+The gallery contains 24 independent portrait cards. Each has its own headline,
+short description and screenshot on a light blue, lilac or mint surface. Soft
+scalloped shapes add a restrained Material 3 Expressive detail. There are no
+shared headings, enclosing panels or hidden gallery sections.
 
-Desktop panels are 2000 × 1580 with four screens across. At viewport widths up
-to 600px, the README selects a separately composed 1000 × 2590 panel with two
-screens per row, wrapped copy and larger text relative to the canvas. Rounded
-outer corners are transparent on both GitHub themes.
+Each card is 900 × 1800 and is also exported individually. The README uses six
+2400px-wide rows of four cards, with transparent gutters between them. At
+viewport widths up to 600px, it selects a 1200px-wide two-by-two arrangement of
+the same cards. Rounded card corners are transparent on both GitHub themes.
 
 `scripts/render_readme_showcase.mjs` extracts the phones from the tracked
 `../editorial-cards/*.webp` assets. The first four keep the existing angled
 screen crops; the remaining twenty retain their complete phone frames. The
-second hero uses its own phone, without the previous card's spillover. App
+first pair preserves its original continuous phone composition. App
 interfaces and third-party artwork are not generated or repainted.
 
 ## Regeneration
@@ -32,8 +30,9 @@ node scripts/render_readme_showcase.mjs --sharp-module ./.levyra-tools/readme-sh
 ```
 
 Use `--output build/readme-showcase-preview` to render to a different directory.
-The renderer reads repository-relative sources and writes twelve
-`row-*-studio*.webp` files. Backgrounds and typography are composed directly
+The renderer reads repository-relative sources and writes 24 individual
+`card-*-studio.webp` assets and twelve `row-*-studio*.webp` grids.
+Backgrounds and typography are composed directly
 from the renderer; regeneration does not call an image service. Earlier panel
 assets and their backdrop are retained for existing links but are not used by
 this renderer.

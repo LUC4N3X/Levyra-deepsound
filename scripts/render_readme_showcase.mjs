@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -83,70 +83,90 @@ async function extractPhone(index, spec) {
     .composite([{ input: rounded(708, phoneHeight, 34), blend: 'dest-in' }]).png().toBuffer();
 }
 
-const chapters = [
-  ['THE LEVYRA EXPERIENCE', ['A home for', 'your music.'], 'No Levyra account. No ads. No telemetry.', ['Your home', 'Now playing', 'In the light', 'After dark']],
-  ['DISCOVER & LISTEN', ['Find your', 'next repeat.'], 'Search, explore and settle into the sound.', ['Discover', 'Keep listening', 'Moods & genres', 'Your sound']],
-  ['YOUR COLLECTION', ['Everything,', 'in your orbit.'], 'Local files, streamed tracks and listening insights.', ['One library', 'Find a favorite', 'Your listening', 'Made for you']],
-  ['MAKE IT PERSONAL', ['Music, on', 'your terms.'], 'Choose your look. Find your people. Press play.', ['Skins & themes', 'Live radio', 'Artist pages', 'Listen together']],
-  ['KEEP IT CLOSE', ['Take the music', 'with you.'], 'Synced lyrics, offline albums and your listening story.', ['Every word', 'Offline albums', 'Swipe & discover', 'Your year']],
-  ['LEVYRA SKINS', ['Same music.', 'Your style.'], 'Four more ways to make Levyra feel like home.', ['Spotify Style', 'Apple Music Style', 'YouTube Music Style', 'Qobuz Style']],
+const palettes = [
+  { top: '#F8FCFF', bottom: '#CBE5F4', ink: '#173B49', muted: '#466672', motif: '#AAD2E8' },
+  { top: '#FAF9FF', bottom: '#DDD7F2', ink: '#39344F', muted: '#635D78', motif: '#C5BBE5' },
+  { top: '#FAFDFB', bottom: '#CFE7DF', ink: '#22453C', muted: '#4D6A62', motif: '#ADD4C5' },
+  { top: '#FFFCF7', bottom: '#EDE0CF', ink: '#493E32', muted: '#756653', motif: '#DFCAAA' },
 ];
 
-function text(value, x, y, size, fill, weight = 400, spacing = 0) {
-  return `<text x="${x}" y="${y}" font-family="Rubik, Segoe UI, DejaVu Sans, sans-serif" font-size="${size}" font-weight="${weight}" letter-spacing="${spacing}" fill="${fill}">${xml(value)}</text>`;
+function flower(cx, cy, radius, lobes) {
+  const points = Array.from({ length: 144 }, (_, i) => {
+    const angle = i * Math.PI * 2 / 144;
+    const r = radius * (0.9 + 0.1 * Math.cos(lobes * angle));
+    return `${i ? 'L' : 'M'} ${(cx + r * Math.cos(angle)).toFixed(2)} ${(cy + r * Math.sin(angle)).toFixed(2)}`;
+  });
+  return `${points.join(' ')} Z`;
 }
 
-async function renderPanel(row, phones, mobile) {
-  const w = mobile ? 1000 : 2000;
-  const h = mobile ? 2590 : 1580;
-  const margin = mobile ? 64 : 88;
-  const [eyebrow, headline, subtitle, labels] = chapters[row];
-  const light = row === 2 || row === 5;
-  const palette = light
-    ? { surface: '#F1F0EB', ink: '#182225', muted: '#586264', accent: '#366C65', line: '#D4D8D2', well: '#E4E6E0' }
-    : { surface: '#141B1E', ink: '#F5F6F1', muted: '#B0BDBE', accent: '#AADDD0', line: '#354346', well: '#1D282C' };
-  const header = [
-    `<rect width="${w}" height="${h}" fill="${palette.surface}"/>`,
-    text(eyebrow, margin, 100, mobile ? 28 : 27, palette.accent, 500, 4),
-    ...headline.map((line, i) => text(line, margin, 225 + i * 112, mobile ? 100 : 112, palette.ink, 700, -4)),
-    `<path d="M ${margin} 440 H ${w - margin}" stroke="${palette.line}" stroke-width="2"/>`,
-    text('LEVYRA / ANDROID', margin, h - 62, 24, palette.muted, 500, 3),
-    text(`${String(row + 1).padStart(2, '0')} / 06`, w - margin - 112, h - 62, 24, palette.muted, 500, 2),
-  ];
-  {
-    const words = subtitle.split(' ');
-    const lines = [''];
-    for (const word of words) {
-      if ((lines.at(-1) + word).length > 43) lines.push('');
-      lines[lines.length - 1] += `${word} `;
-    }
-    lines.forEach((line, i) => header.push(text(line.trim(), mobile ? margin : 1130, (mobile ? 387 : 281) + i * 36, 29, palette.muted)));
-  }
+function text(value, x, y, size, fill, weight = 400, anchor = 'middle') {
+  return `<text x="${x}" y="${y}" text-anchor="${anchor}" font-family="Rubik, Segoe UI, DejaVu Sans, sans-serif" font-size="${size}" font-weight="${weight}" letter-spacing="${weight >= 600 ? -1.8 : 0}" fill="${fill}">${xml(value)}</text>`;
+}
+
+function shadow(shape) {
+  return svg(`<defs><filter id="s" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="24"/></filter></defs><g transform="translate(0 18)" opacity=".16" filter="url(#s)">${shape.replaceAll('fill="white"', 'fill="#284457"')}</g>`);
+}
+
+async function renderCard(index, spec) {
+  const p = palettes[[0, 1, 2, 0][index % 4]];
+  const backdrop = svg(`
+    <defs><linearGradient id="paper" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${p.top}"/><stop offset="1" stop-color="${p.bottom}"/></linearGradient></defs>
+    <rect width="900" height="1800" fill="url(#paper)"/>
+    <path d="${flower(index === 0 ? 90 : 790, index === 0 ? 520 : 540, 205, index % 2 ? 8 : 12)}" fill="${p.motif}" opacity=".30"/>
+    <path d="${flower(85, 1540, 165, 4)}" fill="${p.top}" opacity=".36"/>
+  `);
   const layers = [];
-  const columns = mobile ? 2 : 4;
-  const slotWidth = (w - margin * 2) / columns;
-  for (let i = 0; i < 4; i++) {
-    const x = Math.round(margin + (i % columns) * slotWidth);
-    const y = 505 + Math.floor(i / columns) * 975;
-    const phoneW = Math.floor(slotWidth - 58);
-    const phoneH = mobile ? 810 : 830;
-    header.push(`<rect x="${x + 8}" y="${y - 24}" width="${slotWidth - 28}" height="${phoneH + 150}" rx="28" fill="${palette.well}" stroke="${palette.line}" stroke-width="1.5"/>`);
-    header.push(text(labels[i], x + 30, y + 28, mobile ? 29 : 30, palette.ink, 500));
-    const { data, info } = await sharp(phones[i]).resize(phoneW, phoneH, { fit: 'inside' }).png().toBuffer({ resolveWithObject: true });
-    layers.push({ input: data, left: x + Math.round((slotWidth - 12 - info.width) / 2), top: y + 78 + Math.round((phoneH - info.height) / 2) });
+  if (index < 4) {
+    const input = await readFile(resolve(source, `${spec[0]}.webp`));
+    const metadata = await sharp(input).metadata();
+    if (metadata.width !== width || metadata.height !== height) throw new Error(`Unexpected source dimensions: ${spec[0]}`);
+    const shape = heroShape(index);
+    layers.push({ input: shadow(shape) });
+    layers.push({ input: await sharp(input).composite([{ input: svg(shape), blend: 'dest-in' }]).png().toBuffer() });
+  } else {
+    const phone = await extractPhone(index, spec);
+    const { data, info } = await sharp(phone).resize({ width: 672 }).png().toBuffer({ resolveWithObject: true });
+    layers.push({ input: shadow(`<rect x="114" y="340" width="672" height="${info.height}" rx="32" fill="white"/>`) });
+    layers.push({ input: data, left: 114, top: 340 });
   }
-  const panel = await sharp(svg(header.join(''), w, h)).composite(layers).png().toBuffer();
-  return sharp(panel).composite([{ input: rounded(w, h, 36), blend: 'dest-in' }]).webp({ quality: 90, effort: 6 }).toBuffer();
+  const right = index === 1 || index === 3;
+  const x = index >= 4 ? 450 : right ? 832 : 68;
+  const anchor = index >= 4 ? 'middle' : right ? 'end' : 'start';
+  const y = index === 0 ? 1450 : index < 4 ? 151 : 154;
+  let titleSize = index < 4 ? 82 : 66;
+  if (index >= 4) {
+    const probe = await sharp(svg(text(spec[2][0], 450, 100, titleSize, p.ink, 600))).trim().toBuffer({ resolveWithObject: true });
+    if (probe.info.width > 780) titleSize = Math.floor(titleSize * 780 / probe.info.width);
+  }
+  const titles = spec[2].map((line, i) => text(line, x, y + i * 100, titleSize, p.ink, 600, anchor));
+  const subtitleY = index === 0 ? 1644 : index < 4 ? 328 : 223;
+  const subtitles = spec[3].map((line, i) => text(line, x, subtitleY + i * 42, 32, p.muted, 400, anchor));
+  layers.push({ input: svg(titles.join('') + subtitles.join('')) });
+  layers.push({ input: svg('<rect x="1.5" y="1.5" width="897" height="1797" rx="30" fill="none" stroke="white" stroke-opacity=".65" stroke-width="3"/>') });
+  const card = await sharp(backdrop).composite(layers).png().toBuffer();
+  return sharp(card).composite([{ input: rounded(width, height, 32), blend: 'dest-in' }]).png().toBuffer();
 }
 
 await mkdir(output, { recursive: true });
-for (let row = 0; row < chapters.length; row++) {
-  const phones = [];
-  for (let i = 0; i < 4; i++) phones.push(await extractPhone(row * 4 + i, cards[row * 4 + i]));
+const rendered = [];
+for (const [index, spec] of cards.entries()) {
+  const card = await renderCard(index, spec);
+  rendered.push(card);
+  await sharp(card).webp({ quality: 92, effort: 4 }).toFile(resolve(output, `card-${String(index + 1).padStart(2, '0')}-studio.webp`));
+}
+const gap = 24;
+for (let row = 0; row < 6; row++) {
+  const set = rendered.slice(row * 4, row * 4 + 4);
   const id = String(row + 1).padStart(2, '0');
   for (const mobile of [false, true]) {
-    const panel = await renderPanel(row, phones, mobile);
-    await writeFile(resolve(output, `row-${id}-studio${mobile ? '-mobile' : ''}.webp`), panel);
+    const columns = mobile ? 2 : 4;
+    const panelWidth = width * columns + gap * (columns - 1);
+    const panelHeight = mobile ? height * 2 + gap : height;
+    const grid = await sharp({ create: { width: panelWidth, height: panelHeight, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+      .composite(set.map((input, i) => ({ input, left: (i % columns) * (width + gap), top: Math.floor(i / columns) * (height + gap) })))
+      .png().toBuffer();
+    await sharp(grid).resize({ width: mobile ? 1200 : 2400 }).webp({ quality: 92, effort: 4 })
+      .toFile(resolve(output, `row-${id}-studio${mobile ? '-mobile' : ''}.webp`));
   }
-  console.log(`Rendered chapter ${id}: desktop and mobile`);
+  console.log(`Rendered cards ${(row * 4) + 1}-${row * 4 + 4}: desktop and mobile`);
 }
