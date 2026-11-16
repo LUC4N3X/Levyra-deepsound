@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.data.spotify
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.nexus.identity.MusicIdentityText
 import com.luc4n3x.levyra.nexus.identity.TrackVersionMarker
+import com.luc4n3x.levyra.nexus.playlistimport.ImportTransliteration
 import java.util.Locale
 import kotlin.math.abs
 
@@ -11,11 +12,32 @@ internal data class SpotifyYouTubeMatch(
     val confidence: Double
 )
 
+private data class MatchEvidence(
+    val total: Double,
+    val title: Double,
+    val artist: Double,
+    val durationDeltaMs: Long?
+)
+
 internal object SpotifyYouTubeMatcher {
     const val DEFAULT_CONFIDENCE_THRESHOLD = 0.94
     private const val TITLE_WEIGHT = 0.45
     private const val ARTIST_WEIGHT = 0.35
     private const val DURATION_WEIGHT = 0.20
+    private const val SAME_WORK_TITLE_THRESHOLD = 0.85
+    private const val SAME_WORK_ARTIST_HINT = 0.6
+    private const val SAME_WORK_MIN_DRIFT_MS = 15_000L
+    private const val SAME_WORK_DRIFT_PERCENT = 8L
+    private const val SAME_RECORDING_ARTIST_THRESHOLD = 0.9
+    private const val SAME_RECORDING_TITLE_THRESHOLD = 0.6
+    private const val SAME_RECORDING_MAX_DRIFT_MS = 3_000L
+    private const val ROMANIZED_ARTIST_THRESHOLD = 0.85
+    private val workPrefix = Regex("^([^:\\d]{2,40}):\\s+(.*\\p{L}.*)$")
+    private val catalogNumberSpacing = Regex("\\b(\\p{L}{1,4}) (?=\\d)")
+    private val workTitleSignature = Regex(
+        "\\b(?:op|opus|bwv|kv?|d|s|h|hob|trv|av|woo|rv|hwv|sz|bb|mwv|wwv)\\.?\\s?\\d|:\\s*\\S",
+        RegexOption.IGNORE_CASE
+    )
     private val versionDescriptor = Regex("[(\\[{]([^)\\]}]*)[)\\]}]|\\s[-–—]\\s(.+)$")
 
     private fun versionLabels(title: String): Set<String> = versionDescriptor.findAll(title)
@@ -63,37 +85,72 @@ internal object SpotifyYouTubeMatcher {
         }
     }
 
+    fun findPlayableMatch(catalogTrack: Track, candidates: List<Track>): SpotifyYouTubeMatch? {
+        findBestMatch(catalogTrack, candidates)?.let { return it }
+        return candidates
+            .mapNotNull { candidate ->
+                evidence(catalogTrack, candidate)
+                    ?.takeIf { isSameWork(catalogTrack, it) }
+                    ?.let { candidate to it }
+            }
+            .sortedWith(
+                compareByDescending<Pair<Track, MatchEvidence>> { it.second.artist >= SAME_WORK_ARTIST_HINT }
+                    .thenBy { it.second.durationDeltaMs ?: Long.MAX_VALUE }
+                    .thenByDescending { it.second.total }
+            )
+            .firstOrNull()
+            ?.let { (candidate, evidence) -> SpotifyYouTubeMatch(candidate, evidence.total) }
+    }
+
+    private fun isSameWork(catalogTrack: Track, evidence: MatchEvidence): Boolean {
+        if (isSameRecording(evidence)) return true
+        if (evidence.title < SAME_WORK_TITLE_THRESHOLD) return false
+        if (evidence.artist < SAME_WORK_ARTIST_HINT && !workTitleSignature.containsMatchIn(catalogTrack.title)) return false
+        val delta = evidence.durationDeltaMs ?: return evidence.artist >= SAME_WORK_ARTIST_HINT
+        return delta <= maxOf(SAME_WORK_MIN_DRIFT_MS, catalogTrack.durationMs * SAME_WORK_DRIFT_PERCENT / 100L)
+    }
+
+    private fun isSameRecording(evidence: MatchEvidence): Boolean {
+        val delta = evidence.durationDeltaMs ?: return false
+        return evidence.artist >= SAME_RECORDING_ARTIST_THRESHOLD &&
+            delta <= SAME_RECORDING_MAX_DRIFT_MS &&
+            evidence.title >= SAME_RECORDING_TITLE_THRESHOLD
+    }
+
     private fun isAudioTrack(track: Track): Boolean = track.videoType.contains("ATV", ignoreCase = true)
 
-    fun scoreMatch(spotifyTrack: Track, ytCandidate: Track): Double {
+    fun scoreMatch(spotifyTrack: Track, ytCandidate: Track): Double = evidence(spotifyTrack, ytCandidate)?.total ?: 0.0
+
+    private fun evidence(spotifyTrack: Track, ytCandidate: Track): MatchEvidence? {
         val sTitleId = MusicIdentityText.title(spotifyTrack.title)
         val yTitleId = MusicIdentityText.title(ytCandidate.title)
-        if (sTitleId.markers != yTitleId.markers) return 0.0
+        if (sTitleId.markers != yTitleId.markers) return null
         val sVersionLabels = sTitleId.versionLabels + versionLabels(spotifyTrack.title)
         val yVersionLabels = yTitleId.versionLabels + versionLabels(ytCandidate.title)
         if (
             sVersionLabels.isNotEmpty() &&
             yVersionLabels.isNotEmpty() &&
             sVersionLabels != yVersionLabels
-        ) return 0.0
+        ) return null
         val sExplicitHint = sTitleId.explicitHint ?: true.takeIf { spotifyTrack.explicit }
         val yExplicitHint = yTitleId.explicitHint ?: true.takeIf { ytCandidate.explicit }
-        if (sExplicitHint != null && yExplicitHint != null && sExplicitHint != yExplicitHint) return 0.0
+        if (sExplicitHint != null && yExplicitHint != null && sExplicitHint != yExplicitHint) return null
 
         val sArtistCredit = MusicIdentityText.artistCredit(spotifyTrack.artist)
         val yArtistCredit = MusicIdentityText.artistCredit(ytCandidate.artist)
         val artistScore = computeArtistSimilarity(sArtistCredit.primary, sArtistCredit.names, yArtistCredit.primary, yArtistCredit.names, ytCandidate.title)
+        val durationDeltaMs = if (spotifyTrack.durationMs > 0L && ytCandidate.durationMs > 0L) {
+            abs(spotifyTrack.durationMs - ytCandidate.durationMs)
+        } else null
         val sIsrc = spotifyTrack.isrc.trim().uppercase(Locale.ROOT)
         val yIsrc = ytCandidate.isrc.trim().uppercase(Locale.ROOT)
         if (sIsrc.isNotEmpty() && yIsrc.isNotEmpty()) {
-            if (sIsrc != yIsrc || artistScore < 0.35) return 0.0
-            if (spotifyTrack.durationMs > 0L && ytCandidate.durationMs > 0L &&
-                abs(spotifyTrack.durationMs - ytCandidate.durationMs) > 30_000L
-            ) return 0.0
-            return 1.0
+            if (sIsrc != yIsrc || artistScore < 0.35) return null
+            if (durationDeltaMs != null && durationDeltaMs > 30_000L) return null
+            return MatchEvidence(1.0, 1.0, artistScore, durationDeltaMs)
         }
 
-        val titleScore = computeTitleSimilarity(sTitleId.core, sTitleId.fullNormalized, yTitleId.core, yTitleId.fullNormalized)
+        val titleScore = titleSimilarity(spotifyTrack.title, ytCandidate.title)
         val durationScore = computeDurationScore(spotifyTrack.durationMs, ytCandidate.durationMs)
 
         var total = (titleScore * TITLE_WEIGHT) + (artistScore * ARTIST_WEIGHT) + (durationScore * DURATION_WEIGHT)
@@ -122,8 +179,37 @@ internal object SpotifyYouTubeMatcher {
             total += 0.05
         }
 
-        return total.coerceIn(0.0, 1.0)
+        return MatchEvidence(total.coerceIn(0.0, 1.0), titleScore, artistScore, durationDeltaMs)
     }
+
+    private fun titleSimilarity(sourceTitle: String, candidateTitle: String): Double {
+        val direct = compactTitleSimilarity(sourceTitle, candidateTitle)
+        val source = withoutWorkPrefix(sourceTitle, candidateTitle)
+        val candidate = withoutWorkPrefix(candidateTitle, sourceTitle)
+        if ((source == null) == (candidate == null)) return direct
+        return maxOf(direct, compactTitleSimilarity(source ?: sourceTitle, candidate ?: candidateTitle))
+    }
+
+    private fun compactTitleSimilarity(sourceTitle: String, candidateTitle: String): Double {
+        val source = MusicIdentityText.title(sourceTitle)
+        val candidate = MusicIdentityText.title(candidateTitle)
+        return computeTitleSimilarity(
+            compactCatalogNumbers(source.core),
+            compactCatalogNumbers(source.fullNormalized),
+            compactCatalogNumbers(candidate.core),
+            compactCatalogNumbers(candidate.fullNormalized)
+        )
+    }
+
+    private fun withoutWorkPrefix(title: String, otherTitle: String): String? {
+        val match = workPrefix.find(title.trim()) ?: return null
+        val prefix = MusicIdentityText.normalize(match.groupValues[1])
+        if (prefix.isBlank() || prefix.split(' ').size > 4) return null
+        if (" ${MusicIdentityText.normalize(otherTitle)} ".contains(" $prefix ")) return null
+        return match.groupValues[2]
+    }
+
+    private fun compactCatalogNumbers(text: String): String = text.replace(catalogNumberSpacing, "$1")
 
     private fun computeTitleSimilarity(
         sCore: String,
@@ -160,9 +246,22 @@ internal object SpotifyYouTubeMatcher {
             if (name in yNames || containsArtistCredit(normalizedYtTitle, name)) return 0.90
         }
 
+        if (romanizedArtistSimilarity(sNames, yNames) >= ROMANIZED_ARTIST_THRESHOLD) return 0.90
+
         val sJoined = sNames.joinToString(" ")
         val yJoined = yNames.joinToString(" ")
         return diceCoefficient(sJoined, yJoined)
+    }
+
+    private fun romanizedArtistSimilarity(sNames: Set<String>, yNames: Set<String>): Double {
+        val sCyrillic = sNames.any(ImportTransliteration::containsCyrillic)
+        val yCyrillic = yNames.any(ImportTransliteration::containsCyrillic)
+        if (sCyrillic == yCyrillic) return 0.0
+        val yKeys = yNames.map(ImportTransliteration::romanizedKey)
+        return sNames.maxOfOrNull { name ->
+            val key = ImportTransliteration.romanizedKey(name)
+            yKeys.maxOfOrNull { diceCoefficient(key, it) } ?: 0.0
+        } ?: 0.0
     }
 
     private fun containsArtistCredit(text: String, artist: String): Boolean {

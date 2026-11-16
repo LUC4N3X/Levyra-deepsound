@@ -356,6 +356,8 @@ class PlaybackResolver private constructor(private val context: Context) {
         private const val VIDEO_MANIFEST_MAX_STREAMS = 16
         private const val VIDEO_LADDER_UPGRADE_BUDGET_MS = 6_000L
         private const val ALTERNATIVE_STREAM_QUARANTINE_MS = 30L * 60L * 1000L
+        private const val CATALOG_IDENTITY_BUDGET_MS = 3_500L
+        private const val CATALOG_MATCH_SEARCH_BUDGET_MS = 3_000L
         private val youtubeVideoIdRegex = Regex(YOUTUBE_VIDEO_ID_PATTERN)
         private val youtubeVideoUrlRegex = Regex("(?:v=|/shorts/|/embed/|/live/|youtu\\.be/)($YOUTUBE_VIDEO_ID_PATTERN)")
         private val youtubeSearchResultVideoIdRegex = Regex("""\\?[\"]videoId\\?[\"]\s*:\s*\\?[\"]($YOUTUBE_VIDEO_ID_PATTERN)\\?[\"]""")
@@ -1152,12 +1154,12 @@ class PlaybackResolver private constructor(private val context: Context) {
                 youtubeViewCount = maxOf(track.youtubeViewCount, cacheMatch.youtubeViewCount)
             )
         }
-        val candidates = findAlternativeAudioCandidates(track, spotifyIdentityOnly = true)
-        val matchedYt = com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatcher
-            .findBestMatch(track, candidates)
-            ?.candidate
-        if (matchedYt != null) {
-            com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatchCache.get(context).put(track.id, matchedYt)
+        val match = findCatalogYoutubeMatch(track)
+        if (match != null) {
+            val matchedYt = match.candidate
+            if (match.confidence >= com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatcher.DEFAULT_CONFIDENCE_THRESHOLD) {
+                com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatchCache.get(context).put(track.id, matchedYt)
+            }
             val videoId = matchedYt.audioVideoId.ifBlank { matchedYt.id }
             return track.copy(
                 videoUrl = matchedYt.videoUrl.ifBlank { "https://www.youtube.com/watch?v=$videoId" },
@@ -1171,9 +1173,25 @@ class PlaybackResolver private constructor(private val context: Context) {
         throw PlaybackBlockedException("Stream non disponibile")
     }
 
+    private suspend fun findCatalogYoutubeMatch(track: Track) = withContext(Dispatchers.IO) {
+        val collected = LinkedHashMap<String, Track>()
+        val repository = YoutubeMusicRepository(context)
+        val languageCode = userPreferences.languageCode()
+        withTimeoutOrNull(CATALOG_MATCH_SEARCH_BUDGET_MS) {
+            for (query in playbackAlternativeSearchQueries(track)) {
+                runCatchingPreservingCancellation { repository.searchForPlayback(query, 8, languageCode) }
+                    .getOrDefault(emptyList())
+                    .filter { it.id.isNotBlank() && !sameVideoIdentity(track, it) }
+                    .forEach { collected.putIfAbsent(it.id, it.copy(streamUrl = "", videoStreamUrl = "")) }
+                if (com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatcher.findBestMatch(track, collected.values.toList()) != null) break
+            }
+        }
+        com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatcher.findPlayableMatch(track, collected.values.toList())
+    }
+
     private suspend fun resolveCatalogIdentityWithinBudget(track: Track): Track =
         if (needsCatalogYoutubeIdentity(track)) {
-            withinPlaybackResolveBudget(3_500L) { resolveCatalogTrackIfUnmatched(track) }
+            withinPlaybackResolveBudget(CATALOG_IDENTITY_BUDGET_MS) { resolveCatalogTrackIfUnmatched(track) }
         } else track
 
     suspend fun resolve(requestedTrack: Track, isVideoMode: Boolean = false, allowLocalAudio: Boolean = true): Track {
@@ -2644,20 +2662,14 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
     }
 
-    private suspend fun findAlternativeAudioCandidates(track: Track, spotifyIdentityOnly: Boolean = false): List<Track> = withContext(Dispatchers.IO) {
+    private suspend fun findAlternativeAudioCandidates(track: Track): List<Track> = withContext(Dispatchers.IO) {
         val output = LinkedHashMap<String, Track>()
         val queries = playbackAlternativeSearchQueries(track)
         val repository = YoutubeMusicRepository(context)
         for (query in queries) {
             val candidates = runCatchingPreservingCancellation {
                 repository.searchForPlayback(query, 8, userPreferences.languageCode()) { searchResults ->
-                    val matched = if (spotifyIdentityOnly) {
-                        searchResults.filter { candidate ->
-                            com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatcher.scoreMatch(track, candidate) >=
-                                com.luc4n3x.levyra.data.spotify.SpotifyYouTubeMatcher.DEFAULT_CONFIDENCE_THRESHOLD
-                        }
-                    } else trustedPlaybackFallbackCandidates(track, searchResults)
-                    matched.filterNot { sameVideoIdentity(track, it) }
+                    trustedPlaybackFallbackCandidates(track, searchResults).filterNot { sameVideoIdentity(track, it) }
                 }
             }.getOrDefault(emptyList())
             candidates.asSequence()
@@ -2666,7 +2678,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 .forEach { candidate ->
                     output.putIfAbsent(candidate.id, candidate.copy(streamUrl = "", videoStreamUrl = ""))
                 }
-            if (spotifyIdentityOnly && output.isNotEmpty() || output.size >= 4) break
+            if (output.size >= 4) break
         }
         output.values
             .sortedByDescending { scoreAlternativeCandidate(track, it) }
