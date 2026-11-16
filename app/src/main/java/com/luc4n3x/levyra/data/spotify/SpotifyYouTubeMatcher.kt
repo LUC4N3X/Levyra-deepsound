@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.data.spotify
 
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.nexus.identity.MusicIdentityText
+import com.luc4n3x.levyra.nexus.identity.TitleIdentity
 import com.luc4n3x.levyra.nexus.identity.TrackVersionMarker
 import com.luc4n3x.levyra.nexus.playlistimport.ImportTransliteration
 import java.util.Locale
@@ -125,16 +126,7 @@ internal object SpotifyYouTubeMatcher {
         val sTitleId = MusicIdentityText.title(spotifyTrack.title)
         val yTitleId = MusicIdentityText.title(ytCandidate.title)
         if (sTitleId.markers != yTitleId.markers) return null
-        val sVersionLabels = sTitleId.versionLabels + versionLabels(spotifyTrack.title)
-        val yVersionLabels = yTitleId.versionLabels + versionLabels(ytCandidate.title)
-        if (
-            sVersionLabels.isNotEmpty() &&
-            yVersionLabels.isNotEmpty() &&
-            sVersionLabels != yVersionLabels
-        ) return null
-        val sExplicitHint = sTitleId.explicitHint ?: true.takeIf { spotifyTrack.explicit }
-        val yExplicitHint = yTitleId.explicitHint ?: true.takeIf { ytCandidate.explicit }
-        if (sExplicitHint != null && yExplicitHint != null && sExplicitHint != yExplicitHint) return null
+        if (hasVersionConflict(spotifyTrack, ytCandidate, sTitleId, yTitleId)) return null
 
         val sArtistCredit = MusicIdentityText.artistCredit(spotifyTrack.artist)
         val yArtistCredit = MusicIdentityText.artistCredit(ytCandidate.artist)
@@ -144,49 +136,62 @@ internal object SpotifyYouTubeMatcher {
         } else null
         val sIsrc = spotifyTrack.isrc.trim().uppercase(Locale.ROOT)
         val yIsrc = ytCandidate.isrc.trim().uppercase(Locale.ROOT)
-        if (sIsrc.isNotEmpty() && yIsrc.isNotEmpty()) {
-            if (sIsrc != yIsrc || artistScore < 0.35) return null
-            if (durationDeltaMs != null && durationDeltaMs > 30_000L) return null
-            return MatchEvidence(1.0, 1.0, artistScore, durationDeltaMs)
-        }
+        if (sIsrc.isNotEmpty() && yIsrc.isNotEmpty()) return isrcEvidence(sIsrc, yIsrc, artistScore, durationDeltaMs)
 
         val titleScore = titleSimilarity(spotifyTrack.title, ytCandidate.title)
         val durationScore = computeDurationScore(spotifyTrack.durationMs, ytCandidate.durationMs)
+        val weighted = (titleScore * TITLE_WEIGHT) + (artistScore * ARTIST_WEIGHT) + (durationScore * DURATION_WEIGHT)
+        val sharedSpecialMarkers = yTitleId.markers.any { it in sTitleId.markers && it in UNREQUESTED_PENALTY_MARKERS }
+        val total = adjustedTotal(weighted, artistScore, durationDeltaMs, sharedSpecialMarkers, isAudioTrack(ytCandidate))
+        return MatchEvidence(total, titleScore, artistScore, durationDeltaMs)
+    }
 
-        var total = (titleScore * TITLE_WEIGHT) + (artistScore * ARTIST_WEIGHT) + (durationScore * DURATION_WEIGHT)
+    private fun hasVersionConflict(
+        spotifyTrack: Track,
+        ytCandidate: Track,
+        sTitleId: TitleIdentity,
+        yTitleId: TitleIdentity
+    ): Boolean {
+        val sVersionLabels = sTitleId.versionLabels + versionLabels(spotifyTrack.title)
+        val yVersionLabels = yTitleId.versionLabels + versionLabels(ytCandidate.title)
+        if (sVersionLabels.isNotEmpty() && yVersionLabels.isNotEmpty() && sVersionLabels != yVersionLabels) return true
+        val sExplicitHint = sTitleId.explicitHint ?: true.takeIf { spotifyTrack.explicit }
+        val yExplicitHint = yTitleId.explicitHint ?: true.takeIf { ytCandidate.explicit }
+        return sExplicitHint != null && yExplicitHint != null && sExplicitHint != yExplicitHint
+    }
 
+    private fun isrcEvidence(sIsrc: String, yIsrc: String, artistScore: Double, durationDeltaMs: Long?): MatchEvidence? {
+        if (sIsrc != yIsrc || artistScore < 0.35) return null
+        if (durationDeltaMs != null && durationDeltaMs > 30_000L) return null
+        return MatchEvidence(1.0, 1.0, artistScore, durationDeltaMs)
+    }
+
+    private fun adjustedTotal(
+        weighted: Double,
+        artistScore: Double,
+        durationDeltaMs: Long?,
+        sharedSpecialMarkers: Boolean,
+        audioTrack: Boolean
+    ): Double {
         // Homonym protection: if artists do not match at all, cap total score so different artists never match
-        if (artistScore < 0.35) {
-            total = (total * 0.50).coerceAtMost(0.40)
-        }
-
+        var total = if (artistScore < 0.35) (weighted * 0.50).coerceAtMost(0.40) else weighted
         // Duration penalty for large discrepancies (>30s or >60s)
-        if (spotifyTrack.durationMs > 0L && ytCandidate.durationMs > 0L) {
-            val deltaMs = abs(spotifyTrack.durationMs - ytCandidate.durationMs)
-            if (deltaMs > 60_000L) {
-                total -= 0.30
-            } else if (deltaMs > 30_000L) {
-                total -= 0.15
-            }
+        total -= when {
+            durationDeltaMs == null -> 0.0
+            durationDeltaMs > 60_000L -> 0.30
+            durationDeltaMs > 30_000L -> 0.15
+            else -> 0.0
         }
-
-        val sharedSpecialMarkers = yTitleId.markers.filter { it in sTitleId.markers && it in UNREQUESTED_PENALTY_MARKERS }
-        if (sharedSpecialMarkers.isNotEmpty()) {
-            total += 0.10
-        }
-
-        if (ytCandidate.videoType.contains("ATV", ignoreCase = true)) {
-            total += 0.05
-        }
-
-        return MatchEvidence(total.coerceIn(0.0, 1.0), titleScore, artistScore, durationDeltaMs)
+        if (sharedSpecialMarkers) total += 0.10
+        if (audioTrack) total += 0.05
+        return total.coerceIn(0.0, 1.0)
     }
 
     private fun titleSimilarity(sourceTitle: String, candidateTitle: String): Double {
         val direct = compactTitleSimilarity(sourceTitle, candidateTitle)
         val source = withoutWorkPrefix(sourceTitle, candidateTitle)
         val candidate = withoutWorkPrefix(candidateTitle, sourceTitle)
-        if ((source == null) == (candidate == null)) return direct
+        if (listOfNotNull(source, candidate).size != 1) return direct
         return maxOf(direct, compactTitleSimilarity(source ?: sourceTitle, candidate ?: candidateTitle))
     }
 
