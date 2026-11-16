@@ -97,22 +97,22 @@ I don't host FLAC audio on Levyra's servers. On Android, experimental FLAC playb
 
 <p>
   <a href="docs/assets/showcase/readme/row-03-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-03-studio-mobile.webp?v=m3-cards-2">
-    <img src="docs/assets/showcase/readme/row-03-studio.webp?v=m3-cards-2" width="900" alt="Your library: local and streamed tracks, search results, on-device listening insights and personal collections.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-03-studio-mobile.webp?v=m3-cards-3">
+    <img src="docs/assets/showcase/readme/row-03-studio.webp?v=m3-cards-3" width="900" alt="Your library: local and streamed tracks, search results, on-device listening insights and personal collections.">
   </picture></a>
 </p>
 
 <p>
   <a href="docs/assets/showcase/readme/row-04-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-04-studio-mobile.webp?v=m3-cards-2">
-    <img src="docs/assets/showcase/readme/row-04-studio.webp?v=m3-cards-2" width="900" alt="Make Levyra yours: skin selection, live radio, artist pages and shared listening with Jam over Wi-Fi.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-04-studio-mobile.webp?v=m3-cards-3">
+    <img src="docs/assets/showcase/readme/row-04-studio.webp?v=m3-cards-3" width="900" alt="Make Levyra yours: skin selection, live radio, artist pages and shared listening with Jam over Wi-Fi.">
   </picture></a>
 </p>
 
 <p>
   <a href="docs/assets/showcase/readme/row-05-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-05-studio-mobile.webp?v=m3-cards-2">
-    <img src="docs/assets/showcase/readme/row-05-studio.webp?v=m3-cards-2" width="900" alt="Keep the music close: synced lyrics, albums with offline downloads, swipe discovery and Your Year in Music.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-05-studio-mobile.webp?v=m3-cards-3">
+    <img src="docs/assets/showcase/readme/row-05-studio.webp?v=m3-cards-3" width="900" alt="Keep the music close: synced lyrics, albums with offline downloads, swipe discovery and Your Year in Music.">
   </picture></a>
 </p>
 
