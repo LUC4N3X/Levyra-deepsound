@@ -2665,6 +2665,8 @@ fun LevyraApp(
 
             if (chromeVisible) {
                 val miniMaxWidth = levyraMiniPlayerMaxWidthDp(rootLayoutMode)
+                val bottomTabsScrimVisible = !state.showSettings && !LevyraIsSpotify &&
+                    !skinNavigationSettings(navigationStudio.settings).style.floating
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -2672,15 +2674,13 @@ fun LevyraApp(
                         .onSizeChanged { selectionChromeHeight.value = it.height }
                         .fillMaxWidth()
                         .windowInsetsPadding(LevyraHorizontalSafeInsets)
-                        .graphicsLayer { alpha = playerChromeAlpha(expansionProvider()) },
+                        .graphicsLayer { alpha = playerChromeAlpha(expansionProvider()) }
+                        .then(if (bottomTabsScrimVisible) Modifier.bottomTabsScrim() else Modifier),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(0.dp)
                 ) {
-                    if (
-                        !state.showSettings && !LevyraIsSpotify &&
-                        !skinNavigationSettings(navigationStudio.settings).style.floating
-                    ) {
-                        BottomTabsScrim()
+                    if (bottomTabsScrimVisible) {
+                        Spacer(Modifier.height(LevyraTabScrimHeight))
                     }
                     val dockCompaction = dockState.animatedCompaction(state.animationsEnabled)
                     val compactionProvider: () -> Float = { dockCompaction.value }
@@ -25913,22 +25913,15 @@ private fun VideoGlassCard(
     }
 }
 
-@Composable
-private fun BottomTabsScrim() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(LevyraTabScrimHeight)
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        Color.Transparent,
-                        LevyraBlack.copy(alpha = 0.34f),
-                        LevyraBlack.copy(alpha = 0.72f)
-                    )
-                )
-            )
+private fun Modifier.bottomTabsScrim(): Modifier = drawWithCache {
+    val scrim = Brush.verticalGradient(
+        0f to Color.Transparent,
+        0.5f to LevyraBlack.copy(alpha = 0.34f),
+        1f to LevyraBlack.copy(alpha = 0.72f),
+        startY = 0f,
+        endY = LevyraTabScrimHeight.toPx()
     )
+    onDrawBehind { drawRect(scrim) }
 }
 
 @Composable
