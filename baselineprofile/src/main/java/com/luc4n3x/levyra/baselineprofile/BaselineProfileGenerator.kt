@@ -38,10 +38,20 @@ class BaselineProfileGenerator {
     }
 
     @Test
-    fun generate() {
+    fun generateStartup() {
         rule.collect(
             packageName = "com.luc4n3x.levyra",
             includeInStartupProfile = true
+        ) {
+            launchLevyra()
+        }
+    }
+
+    @Test
+    fun generate() {
+        rule.collect(
+            packageName = "com.luc4n3x.levyra",
+            includeInStartupProfile = false
         ) {
             launchAndExerciseLevyra()
         }

@@ -2,6 +2,7 @@ package com.luc4n3x.levyra
 
 import android.app.Application
 import android.content.ComponentCallbacks2
+import android.os.Trace
 import com.luc4n3x.levyra.data.AutomaticBackupScheduler
 import com.luc4n3x.levyra.data.FollowedArtistsStore
 import com.luc4n3x.levyra.data.LevyraArtworkCache
@@ -36,24 +37,30 @@ class LevyraApplication : Application() {
         super.onCreate()
         com.luc4n3x.levyra.diagnostics.CrashReporting.install(this)
         if (com.luc4n3x.levyra.diagnostics.CrashReporting.isDiagnosticsProcess(this)) return
-        CastRuntimeInitializer.initialize(this)
-        RuntimeHooks.start(this)
+        startupSection("Levyra.cast") { CastRuntimeInitializer.initialize(this) }
+        startupSection("Levyra.runtimeHooks") { RuntimeHooks.start(this) }
         if (BuildConfig.DEBUG) Timber.plant(Timber.DebugTree())
-        preloadLevyraPreferences(this)
-        LevyraMusicRegion.apply(LevyraPreferences(this).musicRegionId())
+        startupSection("Levyra.preferences") {
+            preloadLevyraPreferences(this)
+            LevyraMusicRegion.apply(LevyraPreferences(this).musicRegionId())
+        }
         LevyraArtworkStartupMetrics.beginSession()
-        runCatching { LevyraNetworkController.applyStoredConfiguration(this) }
-            .onFailure { Timber.w(it, "Network configuration bootstrap failed") }
-        LevyraArtworkCache.configure(this)
+        startupSection("Levyra.network") {
+            runCatching { LevyraNetworkController.applyStoredConfiguration(this) }
+                .onFailure { Timber.w(it, "Network configuration bootstrap failed") }
+        }
+        startupSection("Levyra.artworkCache") { LevyraArtworkCache.configure(this) }
         startupScope.launch(Dispatchers.IO) {
             SpotifyYouTubeMatchCache.init(this@LevyraApplication)
         }
-        YoutubeLocalDecoder.install(this)
-        PlaybackNetworkStack.initialize(this)
-        WaveSeekRuntime.start(this)
-        runCatching { NewPipeRuntime.ensure(this) }
-            .onFailure { Timber.w(it, "Extractor initialization failed") }
-        warmPlaybackPipeline()
+        startupSection("Levyra.decoder") { YoutubeLocalDecoder.install(this) }
+        startupSection("Levyra.playbackNetwork") { PlaybackNetworkStack.initialize(this) }
+        startupSection("Levyra.waveSeek") { WaveSeekRuntime.start(this) }
+        startupSection("Levyra.extractor") {
+            runCatching { NewPipeRuntime.ensure(this) }
+                .onFailure { Timber.w(it, "Extractor initialization failed") }
+        }
+        startupSection("Levyra.warmPlayback") { warmPlaybackPipeline() }
         startupScope.launch {
             delay(1800L)
             try {
@@ -131,5 +138,14 @@ class LevyraApplication : Application() {
             runCatching { YoutubeLocalDecoder.prewarm() }
                 .onFailure { Timber.w(it, "Local decoder prewarm failed") }
         }
+    }
+}
+
+private inline fun <T> startupSection(name: String, block: () -> T): T {
+    Trace.beginSection(name)
+    try {
+        return block()
+    } finally {
+        Trace.endSection()
     }
 }

@@ -20,6 +20,7 @@ import android.net.Uri
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -177,16 +178,20 @@ internal fun DefaultArtistHeroSection(
             onVideoAspect = onVideoAspect,
             onCanvasTone = { tone -> if (tone != null && !canvasToneSettled) onCanvasTone(tone) }
         )
-        DefaultArtistSummary(
-            profile = artist,
-            isFollowed = isFollowed,
-            base = lerp(pageBase, Color.White, 0.05f),
-            highlight = highlight,
-            onPlay = artist.topSongs.firstOrNull()?.let { track -> { onPlay(track) } },
-            onShuffle = artist.topSongs.takeIf { it.size > 1 }?.let { songs -> { onPlayAll(songs.shuffled()) } },
-            onToggleFollow = onToggleFollow,
-            onOpenRelease = onOpenRelease
-        )
+        val neutral = LevyraBlack
+        val fade = remember(pageBase, neutral) { Brush.verticalGradient(listOf(pageBase, neutral)) }
+        Box(Modifier.fillMaxWidth().background(fade)) {
+            DefaultArtistSummary(
+                profile = artist,
+                isFollowed = isFollowed,
+                base = lerp(pageBase, Color.White, 0.05f),
+                highlight = highlight,
+                onPlay = artist.topSongs.firstOrNull()?.let { track -> { onPlay(track) } },
+                onShuffle = artist.topSongs.takeIf { it.size > 1 }?.let { songs -> { onPlayAll(songs.shuffled()) } },
+                onToggleFollow = onToggleFollow,
+                onOpenRelease = onOpenRelease
+            )
+        }
     }
 }
 
