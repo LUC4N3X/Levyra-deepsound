@@ -129,8 +129,7 @@ internal fun CuratedPlaylistsHost(
         AnimatedVisibility(visible = open, enter = curatedPageEnter(animated), exit = curatedPageExit(animated)) {
             BackHandler(enabled = backEnabled && open) { open = false }
             val home: HomeViewModel = viewModel(key = CuratedPageHomeViewModelKey, factory = factory)
-            val openCard = rememberCuratedCollectionOpener(LocalLevyraStrings.current.code, home::openPlaylistHit, home::openExploreCategoryPage)
-            CuratedPlaylistsPage(rememberCuratedPageData(), openCard, { open = false }, bottomInset)
+            CuratedPlaylistsPage(rememberCuratedPageData(), home::openPlaylistHit, { open = false }, bottomInset)
         }
     }
 }

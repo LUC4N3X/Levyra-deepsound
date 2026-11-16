@@ -1007,10 +1007,9 @@ private fun MonoHomeContent(
             )
         }
         if (curatedOpen) {
-            val openCard = rememberCuratedCollectionOpener(strings.code, viewModel::openPlaylistHit, viewModel::openExploreCategoryPage)
             GlacierCuratedPlaylistsScreen(
                 title = copy.mixedForYou, leadTitle = copy.rotationOverline, curatedShelves = playlistShelves,
-                onOpen = openCard, onDismiss = { curatedOpen = false }, bottomInset = homeBottomInset
+                onOpen = viewModel::openPlaylistHit, onDismiss = { curatedOpen = false }, bottomInset = homeBottomInset
             )
         }
     }
