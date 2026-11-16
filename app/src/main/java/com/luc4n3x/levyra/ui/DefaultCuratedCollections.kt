@@ -68,9 +68,7 @@ internal fun rememberCuratedCollectionOpener(code: String, openPlaylist: (Playli
     val collectionsModel = viewModel<DefaultCuratedCollectionsViewModel>(key = "default-curated-collections")
     val collections by collectionsModel.collections.collectAsStateWithLifecycle()
     val categories = remember(collections, code) {
-        val copy = curatedCollectionsCopy(code)
-        curatedCollectionCategories(collections[CuratedCollection.Decades].orEmpty(), copy.decadesTitle) +
-            curatedCollectionCategories(collections[CuratedCollection.Everyday].orEmpty(), copy.everydayTitle)
+        curatedCollectionCategories(collections[CuratedCollection.Decades].orEmpty(), curatedCollectionsCopy(code).decadesTitle)
     }
     return remember(categories, openPlaylist, openCategory) {
         { hit -> categories[hit]?.let(openCategory) ?: openPlaylist(hit) }
