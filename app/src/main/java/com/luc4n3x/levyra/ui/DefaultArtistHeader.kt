@@ -20,6 +20,7 @@ import android.net.Uri
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -58,7 +59,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberBottomSheetState
+import androidx.compose.material3.SheetValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -104,6 +106,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.ui.theme.LevyraType
 
 internal const val DefaultArtistFieldMaxLuminance = 0.06f
+private const val DefaultArtistFloorTint = 0.22f
 internal const val DefaultArtistToneSettleMs = 2_500L
 
 internal fun defaultArtistHeroHeight(width: Dp, height: Dp, canvasAspect: Float?): Dp {
@@ -124,6 +127,8 @@ internal fun artistAtmosphereTargets(
     val pair = harmonizePlayerAccents(source ?: paletteStart, source ?: paletteEnd)
     return playerAmbienceOf(pair.primary, pair.secondary).tint to playerHighlightOf(pair.primary, pair.secondary)
 }
+
+internal fun defaultArtistPageFloor(pageBase: Color, neutral: Color): Color = lerp(neutral, pageBase, DefaultArtistFloorTint)
 
 internal fun defaultArtistPageBase(tone: Color?, defaultPage: Boolean, lightTheme: Boolean, pureBlack: Boolean, neutral: Color): Color =
     if (tone != null && defaultPage && !lightTheme && !pureBlack) coverFieldTone(tone, DefaultArtistFieldMaxLuminance) else neutral
@@ -177,16 +182,20 @@ internal fun DefaultArtistHeroSection(
             onVideoAspect = onVideoAspect,
             onCanvasTone = { tone -> if (tone != null && !canvasToneSettled) onCanvasTone(tone) }
         )
-        DefaultArtistSummary(
-            profile = artist,
-            isFollowed = isFollowed,
-            base = lerp(pageBase, Color.White, 0.05f),
-            highlight = highlight,
-            onPlay = artist.topSongs.firstOrNull()?.let { track -> { onPlay(track) } },
-            onShuffle = artist.topSongs.takeIf { it.size > 1 }?.let { songs -> { onPlayAll(songs.shuffled()) } },
-            onToggleFollow = onToggleFollow,
-            onOpenRelease = onOpenRelease
-        )
+        val neutral = LevyraBlack
+        val fade = remember(pageBase, neutral) { Brush.verticalGradient(listOf(pageBase, defaultArtistPageFloor(pageBase, neutral))) }
+        Box(Modifier.fillMaxWidth().background(fade)) {
+            DefaultArtistSummary(
+                profile = artist,
+                isFollowed = isFollowed,
+                base = lerp(pageBase, Color.White, 0.05f),
+                highlight = highlight,
+                onPlay = artist.topSongs.firstOrNull()?.let { track -> { onPlay(track) } },
+                onShuffle = artist.topSongs.takeIf { it.size > 1 }?.let { songs -> { onPlayAll(songs.shuffled()) } },
+                onToggleFollow = onToggleFollow,
+                onOpenRelease = onOpenRelease
+            )
+        }
     }
 }
 
@@ -575,7 +584,7 @@ internal fun DefaultArtistAbout(profile: ArtistProfile, biography: ArtistBiograp
         }
     }
     if (sheetOpen) {
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded))
         ModalBottomSheet(onDismissRequest = { sheetOpen = false }, sheetState = sheetState) {
             ArtistAboutSheet(profile.name, photo, presentation, biography.sourceUrl)
         }

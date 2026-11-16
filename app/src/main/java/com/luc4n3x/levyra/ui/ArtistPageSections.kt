@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -83,13 +84,13 @@ internal fun LazyListScope.artistReleaseSection(
 ) {
     if (releases.isEmpty()) return
     item(key = "$key-title", contentType = "artist-section-title") { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(title) } }
-    item(key = key, contentType = "artist-release-row") { Box(modifier = Modifier.padding(start = 20.dp)) { ArtistReleaseRow(releases, artistName, onOpenRelease) } }
+    item(key = key, contentType = "artist-release-row") { ArtistReleaseRow(releases, artistName, onOpenRelease) }
 }
 
 internal fun LazyListScope.artistPlaylistSection(key: String, title: String, playlists: List<PlaylistHit>, onOpenPlaylist: (PlaylistHit) -> Unit) {
     if (playlists.isEmpty()) return
     item(key = "$key-title", contentType = "artist-section-title") { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(title) } }
-    item(key = key, contentType = "artist-playlist-row") { Box(modifier = Modifier.padding(start = 20.dp)) { ArtistPlaylistRow(playlists, onOpenPlaylist) } }
+    item(key = key, contentType = "artist-playlist-row") { ArtistPlaylistRow(playlists, onOpenPlaylist) }
 }
 
 internal fun LazyListScope.appleMusicArtistClosingItems(
@@ -202,10 +203,12 @@ private fun artistBiographyBody(biography: ArtistBiography): String {
     return presentation.paragraphs.filter { it.isNotBlank() }.joinToString("\n\n").ifBlank { presentation.previewText }
 }
 
+private val ArtistShelfContentPadding = PaddingValues(horizontal = 20.dp)
+
 @Composable
 private fun ArtistReleaseRow(releases: List<ArtistRelease>, artistName: String, onOpen: (ArtistRelease, String) -> Unit) {
     val width = artistShelfCardWidth()
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyRow(contentPadding = ArtistShelfContentPadding, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         items(releases, key = { "rel-${it.browseId.ifBlank { it.title }}" }, contentType = { "ArtistPageSections-releases" }) { release ->
             ArtistShelfCard(
                 title = release.title,
@@ -222,7 +225,7 @@ private fun ArtistReleaseRow(releases: List<ArtistRelease>, artistName: String, 
 @Composable
 private fun ArtistPlaylistRow(playlists: List<PlaylistHit>, onOpen: (PlaylistHit) -> Unit) {
     val width = artistShelfCardWidth()
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyRow(contentPadding = ArtistShelfContentPadding, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         items(playlists, key = { "playlist-${it.playlistId.ifBlank { it.browseId.ifBlank { it.title } }}" }, contentType = { "ArtistPageSections-playlists" }) { playlist ->
             ArtistShelfCard(
                 title = playlist.title,

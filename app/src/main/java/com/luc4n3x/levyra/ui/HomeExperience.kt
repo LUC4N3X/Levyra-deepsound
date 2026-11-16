@@ -65,6 +65,7 @@ import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
 import androidx.compose.material3.carousel.rememberCarouselState
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.shape.CircleShape
 
@@ -94,6 +95,7 @@ internal fun LevyraHomeAtmosphere(
     Box(
         modifier = modifier
             .fillMaxSize()
+            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
             .drawBehind {
                 drawHomeBackdrop(
                     canvas = homeCanvasColor(isLight),

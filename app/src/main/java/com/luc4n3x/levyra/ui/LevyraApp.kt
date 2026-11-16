@@ -5737,7 +5737,7 @@ private fun ArtistOverlay(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(pageBase)
+            .background(defaultArtistPageFloor(pageBase, neutralBase))
             .windowInsetsPadding(LevyraHorizontalSafeInsets)
     ) {
         val density = LocalDensity.current
