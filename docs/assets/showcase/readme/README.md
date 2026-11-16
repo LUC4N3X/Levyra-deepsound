@@ -1,24 +1,28 @@
-# README screenshot cards
+# README screenshot panels
 
-The root README uses six desktop panels (four cards each) and six mobile panels
-(the same cards in a two-by-two grid). The mobile source is selected at 600px.
-Near-white backgrounds with a faint ice-blue tint, smaller teal headings and
-subtle phone shadows keep every card light. The outer cards have square corners
-and no borders. Only the original phone frames retain their rounded corners.
-Transparent, narrow gutters work on both GitHub themes.
+Six panels group the 24 existing Android screenshots into listening, discovery,
+library, personalization, offline listening and skins. Each panel has one shared
+headline and four distinct cards, each with an inset title, rounded border and
+its own screenshot. Graphite and warm-paper surfaces frame the cards. The first
+two panels are visible in the README; four more are inside the full-gallery
+disclosure.
 
-`scripts/render_readme_showcase.mjs` composes all 24 cards from the existing,
-tracked `../editorial-cards/*.webp` assets. The first four preserve their original
-phone positions, angles and crops; the other twenty retain the complete phone.
-Only the surrounding card design and copy change. The screenshots and their
-third-party artwork are not generated or repainted.
+Desktop panels are 2000 × 1580 with four screens across. At viewport widths up
+to 600px, the README selects a separately composed 1000 × 2590 panel with two
+screens per row, wrapped copy and larger text relative to the canvas. Rounded
+outer corners are transparent on both GitHub themes.
+
+`scripts/render_readme_showcase.mjs` extracts the phones from the tracked
+`../editorial-cards/*.webp` assets. The first four keep the existing angled
+screen crops; the remaining twenty retain their complete phone frames. The
+second hero uses its own phone, without the previous card's spillover. App
+interfaces and third-party artwork are not generated or repainted.
 
 ## Regeneration
 
 Use Node.js 22 or newer, Sharp 0.35.3, and installed Rubik Regular/Bold fonts.
-Rubik was already used by the repository's earlier showcase generator. The
-renderer falls back to DejaVu Sans or the system sans serif when Rubik is absent;
-check text wrapping and spacing if regenerating with a different font.
+The renderer falls back to Segoe UI, DejaVu Sans or system sans serif. Inspect
+the output if regenerating with different fonts.
 
 From the repository root:
 
@@ -27,20 +31,19 @@ npm install --prefix .levyra-tools/readme-showcase --no-save --package-lock=fals
 node scripts/render_readme_showcase.mjs --sharp-module ./.levyra-tools/readme-showcase/node_modules/sharp
 ```
 
-Use `--output build/readme-showcase-preview` to inspect a regeneration before
-replacing the published panels. The renderer always reads its screenshot
-sources and backdrop from the repository, regardless of the working directory.
-It writes only the twelve `row-*-pearl-square*.webp` panel files in the selected
-output directory. The README references these distinct filenames so cached
-images from the earlier dark gallery cannot be reused for the new cards.
+Use `--output build/readme-showcase-preview` to render to a different directory.
+The renderer reads repository-relative sources and writes twelve
+`row-*-studio*.webp` files. Backgrounds and typography are composed directly
+from the renderer; regeneration does not call an image service. Earlier panel
+assets and their backdrop are retained for existing links but are not used by
+this renderer.
 
-## Backdrop provenance
+## Earlier backdrop provenance
 
-`studio-backdrop.webp` was created for this redesign using the built-in
+`studio-backdrop.webp` was created for the earlier pearl redesign using the built-in
 `image_gen` tool, then resized and encoded as WebP. It contains no app interface,
-people, artwork, logos or text. All cards share the same delicate light backdrop.
-The renderer adds a 45% white wash to soften the tint. Regeneration uses this
-checked-in backdrop and does not call an image service.
+people, artwork, logos or text. It was used by the earlier pearl panels, with a
+45% white wash. The current panels do not use this asset.
 
 Generation prompt:
 
