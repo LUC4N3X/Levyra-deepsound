@@ -139,7 +139,7 @@ internal class YouTubeMusicComposedKit(
                 contentPadding = PaddingValues(horizontal = YouTubeMusicDesign.gutter),
                 horizontalArrangement = Arrangement.spacedBy(YouTubeMusicDesign.itemGap)
             ) {
-                items(unique, key = { it.key }) { quote ->
+                items(unique, key = { it.key }, contentType = { "YouTubeMusicComposedKit-unique" }) { quote ->
                     YouTubeMusicQuoteCard(quote, showMeta, Modifier.width(width))
                 }
             }
@@ -207,7 +207,7 @@ internal class YouTubeMusicComposedKit(
                 contentPadding = PaddingValues(horizontal = YouTubeMusicDesign.gutter),
                 horizontalArrangement = Arrangement.spacedBy(YouTubeMusicDesign.itemGap)
             ) {
-                items(YouTubeComposedSkeletonCards, key = { "ytm-skeleton-$it" }) {
+                items(YouTubeComposedSkeletonCards, key = { "ytm-skeleton-$it" }, contentType = { "YouTubeMusicComposedKit-YouTubeComposedSkeletonCards" }) {
                     Column(Modifier.width(YouTubeMusicDesign.cardArtwork)) {
                         Box(
                             Modifier.size(YouTubeMusicDesign.cardArtwork).clip(YouTubeMusicDesign.cardShape)
@@ -312,7 +312,7 @@ private fun YouTubeMusicDiscoverySkeleton() {
         contentPadding = PaddingValues(horizontal = YouTubeMusicDesign.gutter),
         horizontalArrangement = Arrangement.spacedBy(YouTubeMusicDesign.itemGap)
     ) {
-        items(2, key = { "ytm-discovery-skeleton-$it" }) {
+        items(2, key = { "ytm-discovery-skeleton-$it" }, contentType = { "YouTubeMusicComposedKit-item" }) {
             Box(
                 Modifier.size(width).clip(RoundedCornerShape(YouTubeMusicDesign.discoveryCorner))
                     .background(YouTubeMusicDesign.placeholder)

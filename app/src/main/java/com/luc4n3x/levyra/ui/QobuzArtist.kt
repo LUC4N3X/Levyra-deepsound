@@ -197,7 +197,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.qobuzArtistSections(
                 )
             }
         }
-        items(if (showAllSongs) profile.topSongs else profile.topSongs.take(ArtistPreviewSongs), key = { "q-top-${it.id}" }) { track ->
+        items(if (showAllSongs) profile.topSongs else profile.topSongs.take(ArtistPreviewSongs), key = { "q-top-${it.id}" }, contentType = { "QobuzArtist-if" }) { track ->
             QobuzTrackRow(track, track.id == currentId, copy, { viewModel.playFrom(profile.topSongs, track) }, { onTrackActions(track) })
         }
     }
@@ -209,7 +209,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.qobuzArtistSections(
                 QobuzSectionHeader(LocalLevyraStrings.current.similarArtists, null, copy.seeAll, null)
                 Spacer(Modifier.height(QobuzDesign.headerToContent))
                 LazyRow(contentPadding = QobuzRowPadding, horizontalArrangement = Arrangement.spacedBy(QobuzDesign.itemGap)) {
-                    items(profile.relatedArtists, key = { "q-rel-${it.browseId.ifBlank { it.name }}" }) { hit ->
+                    items(profile.relatedArtists, key = { "q-rel-${it.browseId.ifBlank { it.name }}" }, contentType = { "QobuzArtist-relatedArtists" }) { hit ->
                         val followed = (hit.browseId.isNotBlank() && hit.browseId in state.followedArtistKeys) || hit.name.trim().lowercase() in state.followedArtistKeys
                         QobuzArtistCard(hit, copy, followed, { viewModel.openArtistFromHit(hit) }, { viewModel.toggleFollowArtist(hit) })
                     }
@@ -223,7 +223,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.qobuzArtistSections(
                 QobuzSectionHeader(com.luc4n3x.levyra.ui.i18n.searchDiscographyCopy(LocalLevyraStrings.current.code).featuredOn, null, copy.seeAll, null)
                 Spacer(Modifier.height(QobuzDesign.headerToContent))
                 LazyRow(contentPadding = QobuzRowPadding, horizontalArrangement = Arrangement.spacedBy(QobuzDesign.itemGap)) {
-                    items(profile.featuredPlaylists, key = { "q-feat-${it.playlistId.ifBlank { it.browseId.ifBlank { it.title } }}" }) { playlist ->
+                    items(profile.featuredPlaylists, key = { "q-feat-${it.playlistId.ifBlank { it.browseId.ifBlank { it.title } }}" }, contentType = { "QobuzArtist-featuredPlaylists" }) { playlist ->
                         Column(Modifier.width(QobuzDesign.gridCard).clickable(role = Role.Button) { viewModel.openPlaylistHit(playlist) }) {
                             QobuzArtworkBox(playlist.thumbnailUrl, Modifier.fillMaxWidth().aspectRatio(1f))
                             Spacer(Modifier.height(8.dp))
@@ -251,7 +251,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.qobuzReleaseShelf(
             QobuzSectionHeader(title(), null, copy.seeAll, null)
             Spacer(Modifier.height(QobuzDesign.headerToContent))
             LazyRow(contentPadding = QobuzRowPadding, horizontalArrangement = Arrangement.spacedBy(QobuzDesign.itemGap)) {
-                items(releases.distinctBy { it.browseId.ifBlank { it.title } }, key = { "q-$key-${it.browseId.ifBlank { it.title }}" }) { release ->
+                items(releases.distinctBy { it.browseId.ifBlank { it.title } }, key = { "q-$key-${it.browseId.ifBlank { it.title }}" }, contentType = { "QobuzArtist-distinctBy" }) { release ->
                     Column(Modifier.width(192.dp).clickable(role = Role.Button) { viewModel.openArtistRelease(release, profile.name) }) {
                         QobuzArtworkBox(release.thumbnailUrl, Modifier.fillMaxWidth().aspectRatio(1f))
                         Spacer(Modifier.height(8.dp))

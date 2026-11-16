@@ -223,7 +223,7 @@ internal fun PlaylistStudioCoverStyles(
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(options, key = { it.style.name }) { option ->
+        items(options, key = { it.style.name }, contentType = { "PlaylistStudioCover-options" }) { option ->
             val active = option.style == selected
             val tint by animateColorAsState(
                 targetValue = if (active) LevyraCyan else LevyraText,
@@ -295,7 +295,7 @@ internal fun PlaylistStudioArtworkChoices(
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(choices, key = { it.id }) { track ->
+            items(choices, key = { it.id }, contentType = { "PlaylistStudioCover-choices" }) { track ->
                 val active = track.id == effectiveSelection
                 Box(
                     modifier = Modifier

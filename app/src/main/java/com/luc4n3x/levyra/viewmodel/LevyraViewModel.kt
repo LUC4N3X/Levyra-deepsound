@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.viewmodel
 
+import com.luc4n3x.levyra.ui.albumSuggestionsSupported
 import com.luc4n3x.levyra.data.playlistimport.withEquivalentPlaybackSource
 import com.luc4n3x.levyra.nexus.identity.MusicIdentityText
 import com.luc4n3x.levyra.nexus.playlistimport.ImportTransliteration
@@ -169,6 +170,8 @@ import com.luc4n3x.levyra.domain.artistIdentityKey
 import com.luc4n3x.levyra.domain.artistIdentityMatches
 import com.luc4n3x.levyra.domain.isArtistShelfNameEligible
 import com.luc4n3x.levyra.domain.primaryArtistSegment
+import com.luc4n3x.levyra.domain.buildAlbumSuggestionShelves
+import com.luc4n3x.levyra.ui.i18n.moreByArtist
 import com.luc4n3x.levyra.domain.ChartsCatalog
 import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.ExploreCatalog
@@ -9307,6 +9310,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 )
             }
             refreshAlbumMotionArtwork(detail)
+            if (detail === providerDetail && albumSuggestionsSupported) launch { refreshAlbumSuggestions(detail, languageCode) }
             launch {
                 val description = runCatching {
                     repository.resolveAlbumDescription(detail, languageCode)
@@ -9325,6 +9329,56 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             recordSmartAlbumOpen(detail.album)
             LevyraArtworkCache.preloadPriority(getApplication<Application>().applicationContext, detail.tracks, 8)
             refreshOfficialMetadataBatch(detail.tracks, 12)
+        }
+    }
+
+    private suspend fun refreshAlbumSuggestions(detail: AlbumDetail, languageCode: String) {
+        val album = detail.album
+        val strings = LevyraStrings.forCode(languageCode)
+        val (profile, similar) = coroutineScope {
+            val profile = async {
+                album.artistBrowseId.takeIf { it.isNotBlank() }?.let { browseId ->
+                    runCatchingPreservingCancellation { artistRepository.profile(browseId, album.artist) }.getOrNull()
+                }
+            }
+            val similar = async {
+                runCatchingPreservingCancellation { lastFmSimilarAlbums.similarAlbums(primaryArtistSegment(album.artist).ifBlank { album.artist }) }
+                    .getOrNull().orEmpty()
+            }
+            profile.await() to similar.await()
+        }
+        val artistName = profile?.name?.ifBlank { null } ?: album.artist
+        val releases = profile?.let { it.albums + it.singles }.orEmpty().map { release ->
+            AlbumHit(
+                title = release.title,
+                artist = artistName,
+                year = release.year,
+                thumbnailUrl = release.thumbnailUrl,
+                query = listOf(release.title, artistName).filter { it.isNotBlank() }.joinToString(" "),
+                browseId = release.browseId,
+                artistBrowseId = profile?.browseId.orEmpty(),
+                explicit = release.explicit,
+                releaseType = release.releaseType
+            )
+        }
+        val similarAlbums = similar.map { item ->
+            AlbumHit(title = item.title, artist = item.artist, year = "", thumbnailUrl = item.imageUrl, query = "${item.title} ${item.artist}")
+        }
+        val shelves = buildAlbumSuggestionShelves(
+            current = album,
+            moreByTitle = moreByArtist(languageCode, artistName),
+            artistReleases = releases,
+            youtubeShelves = detail.suggestionShelves,
+            similarTitle = strings.youMightAlsoLike,
+            similarAlbums = similarAlbums
+        )
+        if (!currentCoroutineContext().isActive) return
+        _state.update { current ->
+            val shown = current.albumDetail ?: return@update current
+            val sameAlbum = if (album.browseId.isNotBlank()) shown.album.browseId.equals(album.browseId, ignoreCase = true)
+            else shown.album.title.equals(album.title, ignoreCase = true) && shown.album.artist.equals(album.artist, ignoreCase = true)
+            if (!current.showAlbum || !sameAlbum) current
+            else current.copy(albumDetail = shown.copy(suggestionShelves = shelves))
         }
     }
 
@@ -12002,6 +12056,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     val exploreGenreChart: StateFlow<ExploreGenreChartState> = _exploreGenreChart.asStateFlow()
     private var exploreGenreChartJob: Job? = null
     private val lastFmGenreDiscovery by lazy { LastFmGenreDiscoveryRepository(getApplication()) }
+    private val lastFmSimilarAlbums by lazy { com.luc4n3x.levyra.data.lastfm.LastFmSimilarAlbumsRepository(getApplication()) }
     private val _exploreGenreDiscovery = MutableStateFlow(ExploreGenreDiscoveryState())
     val exploreGenreDiscovery: StateFlow<ExploreGenreDiscoveryState> = _exploreGenreDiscovery.asStateFlow()
     private var exploreGenreDiscoveryJob: Job? = null

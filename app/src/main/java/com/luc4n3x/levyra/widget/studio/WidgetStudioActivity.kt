@@ -398,7 +398,7 @@ private fun PlacedWidgets(
         return
     }
     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        items(placed, key = { it.first }) { entry ->
+        items(placed, key = { it.first }, contentType = { "WidgetStudioActivity-placed" }) { entry ->
             PlacedWidgetCard(copy = copy, widgetId = entry.first, family = entry.second, onClick = { onEdit(entry) })
         }
         if (hasOriginal) {

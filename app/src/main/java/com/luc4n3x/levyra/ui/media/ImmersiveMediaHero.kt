@@ -1,7 +1,9 @@
 package com.luc4n3x.levyra.ui.media
 
+import com.luc4n3x.levyra.ui.components.LevyraShortPlayLabel
 import com.luc4n3x.levyra.ui.theme.Nocturne78Palette
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+import com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin
 import com.luc4n3x.levyra.ui.theme.LevyraIsPrism
 import com.luc4n3x.levyra.ui.theme.LevyraIsTorque
 import com.luc4n3x.levyra.ui.theme.LevyraIsIvory
@@ -14,6 +16,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,6 +42,7 @@ import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -222,9 +226,12 @@ internal fun ImmersiveMediaHero(
     actions: @Composable () -> Unit,
     artwork: @Composable BoxScope.() -> Unit,
     modifier: Modifier = Modifier,
-    overline: String = ""
+    overline: String = "",
+    centered: Boolean = false,
+    artworkAspect: Float? = null
 ) {
     if (!wide && SkinMediaHero(title, overline, subtitle, metadata, colors, viewportWidth, topBarHeight, onSubtitleClick, actions, artwork, modifier)) return
+    if (!wide && centered) return CenteredAlbumHero(title, overline, subtitle, metadata, colors, viewportWidth, viewportHeight, artworkAspect, onSubtitleClick, actions, artwork, modifier)
     val heroHeight = immersiveHeroHeight(wide, viewportWidth, viewportHeight, topBarHeight)
     val gutter = immersiveMediaGutter(viewportWidth)
     if (wide) {
@@ -424,8 +431,10 @@ internal fun ImmersiveMediaActionRow(
     onShuffle: () -> Unit,
     onDownload: () -> Unit,
     modifier: Modifier = Modifier,
+    centered: Boolean = false,
     secondary: @Composable RowScope.() -> Unit = {}
 ) {
+    if (centered) return CenteredMediaActionRow(primary, shuffleLabel, colors, shuffleEnabled, onShuffle, modifier, secondary)
     if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) return AtelierMediaActionRow(primary, shuffleLabel, downloadLabel, shuffleEnabled, downloadEnabled, onShuffle, onDownload, modifier, secondary)
     if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) return MonoMediaActionRow(primary, shuffleLabel, downloadLabel, shuffleEnabled, downloadEnabled, onShuffle, onDownload, modifier, secondary)
     if (com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) {
@@ -474,6 +483,9 @@ internal fun ImmersiveMediaActionRow(
         }
     }
 }
+
+private fun primaryActionText(primary: ImmersiveMediaPrimaryAction): String =
+    if (primary.icon == Icons.Rounded.PlayArrow) LevyraShortPlayLabel else primary.label
 
 @Composable
 private fun ImmersiveMediaPlayButton(
@@ -530,7 +542,7 @@ private fun ImmersiveMediaPlayButton(
             }
             if (showLabel) {
                 Text(
-                    text = primary.label,
+                    text = primaryActionText(primary),
                     color = content,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
@@ -667,7 +679,7 @@ internal fun ImmersiveMediaTopBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            LevyraBackButton(onClick = onBack, contentDescription = backLabel)
+            ImmersiveBackButton(onClick = onBack, contentDescription = backLabel)
             Text(
                 text = title,
                 color = colors.content,
@@ -692,6 +704,20 @@ internal fun ImmersiveMediaTopBar(
 
 internal val ImmersiveTopBarButtonSize: Dp = 40.dp
 internal val ImmersiveTopBarButtonFill: Color = Color.Black.copy(alpha = 0.30f)
+
+@Composable
+internal fun ImmersiveBackButton(onClick: () -> Unit, contentDescription: String) {
+    if (LevyraIsDefaultSkin) {
+        LevyraBackButton(
+            onClick = onClick,
+            contentDescription = contentDescription,
+            size = ImmersiveTopBarButtonSize,
+            colors = IconButtonDefaults.iconButtonColors(containerColor = ImmersiveTopBarButtonFill, contentColor = Color.White)
+        )
+    } else {
+        LevyraBackButton(onClick = onClick, contentDescription = contentDescription)
+    }
+}
 
 @Composable
 private fun SkinMediaHero(

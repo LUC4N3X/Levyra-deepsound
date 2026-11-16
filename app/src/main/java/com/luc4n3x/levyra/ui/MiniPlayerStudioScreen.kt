@@ -514,7 +514,7 @@ private fun LazyListScope.miniStudioItems(
     }
     item(key = "mini-styles", contentType = "styles") {
         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(MiniPlayerStyle.studioOrder, key = { it.storageId }) { option ->
+            items(MiniPlayerStyle.studioOrder, key = { it.storageId }, contentType = { "MiniPlayerStudioScreen-studioOrder" }) { option ->
                 MiniStyleCard(
                     style = option,
                     selected = option == style,

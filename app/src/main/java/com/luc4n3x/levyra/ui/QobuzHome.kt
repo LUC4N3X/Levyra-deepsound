@@ -517,7 +517,7 @@ private fun artistsBlock(data: AppleMusicHomeData, actions: QobuzHomeActions, ex
             QobuzSectionHeader(copy.artistsToFollow, copy.artistsToFollowBaseline, copy.seeAll, null)
             Spacer(Modifier.height(QobuzDesign.headerToContent + 4.dp))
             LazyRow(contentPadding = QobuzRowPadding, horizontalArrangement = Arrangement.spacedBy(QobuzDesign.itemGap)) {
-                items(artists, key = { it.browseId.ifBlank { it.name } }) { artist ->
+                items(artists, key = { it.browseId.ifBlank { it.name } }, contentType = { "QobuzHome-artists" }) { artist ->
                     val followed = (artist.browseId.isNotBlank() && artist.browseId in extras.followedArtistKeys) ||
                         artist.name.trim().lowercase() in extras.followedArtistKeys
                     QobuzArtistCard(artist, copy, followed, { actions.home.openArtist(artist) }, { actions.toggleFollow(artist) })
@@ -543,7 +543,7 @@ private fun trackRowBlock(
             QobuzSectionHeader(title, baseline, copy.seeAll, { onSeeAll(QobuzSeeAll.Tracks(title, tracks)) })
             Spacer(Modifier.height(QobuzDesign.headerToContent))
             LazyRow(contentPadding = QobuzRowPadding, horizontalArrangement = Arrangement.spacedBy(QobuzDesign.itemGap)) {
-                items(tracks.take(20), key = { it.id }) { track ->
+                items(tracks.take(20), key = { it.id }, contentType = { "QobuzHome-take" }) { track ->
                     QobuzTrackCard(track, QobuzDesign.gridCard, { actions.home.playFrom(tracks, track) }, { actions.home.onTrackActions(track) })
                 }
             }
@@ -578,7 +578,7 @@ private fun rankedBlock(
                 val pageWidth = maxWidth - QobuzDesign.gutter * 2 - 40.dp
                 val pages = remember(tracks) { tracks.take(50).withIndex().toList().chunked(3) }
                 LazyRow(contentPadding = QobuzRowPadding, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(pages, key = { page -> "$key-${page.first().value.id}" }) { page ->
+                    items(pages, key = { page -> "$key-${page.first().value.id}" }, contentType = { "QobuzHome-pages" }) { page ->
                         Column(Modifier.width(pageWidth)) {
                             page.forEach { (index, track) ->
                                 QobuzRankedRow(
@@ -643,7 +643,7 @@ private fun <T> QobuzGridRow(
     item: @Composable (T) -> Unit
 ) {
     LazyRow(contentPadding = QobuzRowPadding, horizontalArrangement = Arrangement.spacedBy(horizontalGap)) {
-        items(columns.size, key = { it }) { index ->
+        items(columns.size, key = { it }, contentType = { "QobuzHome-size" }) { index ->
             Column(Modifier.width(width), verticalArrangement = Arrangement.spacedBy(verticalGap)) {
                 columns[index].forEach { item(it) }
             }
@@ -710,7 +710,7 @@ private fun QobuzSeeAllScreen(
         Box(Modifier.fillMaxWidth().height(1.dp).background(QobuzDesign.separator))
         when (target) {
             is QobuzSeeAll.Tracks -> LazyColumn(contentPadding = PaddingValues(start = QobuzDesign.gutter, end = QobuzDesign.gutter, top = 8.dp, bottom = bottomInset + 24.dp)) {
-                itemsIndexed(target.tracks, key = { _, track -> track.id }) { index, track ->
+                itemsIndexed(target.tracks, key = { _, track -> track.id }, contentType = { _, _ -> "QobuzHome-tracks" }) { index, track ->
                     QobuzRankedRow(index + 1, track, copy, track.id == data.currentId,
                         { actions.home.playFrom(target.tracks, track) }, { actions.home.onTrackActions(track) }, Modifier.fillMaxWidth())
                 }
@@ -722,11 +722,11 @@ private fun QobuzSeeAllScreen(
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
                 if (target is QobuzSeeAll.Albums) {
-                    items(target.albums, key = { it.id }) { album ->
+                    items(target.albums, key = { it.id }, contentType = { "QobuzHome-albums" }) { album ->
                         QobuzAlbumCard(album, copy, Dp.Unspecified, { actions.home.openAlbum(album.toAlbumHit()) }, showAward = target.awards)
                     }
                 } else {
-                    items(feed.shelf(QobuzShelfKind.Playlists)?.playlists.orEmpty(), key = { it.id }) { playlist ->
+                    items(feed.shelf(QobuzShelfKind.Playlists)?.playlists.orEmpty(), key = { it.id }, contentType = { "QobuzHome-shelf" }) { playlist ->
                         QobuzPlaylistCard(playlist, copy.curatedByQobuz, Dp.Unspecified) { onOpenPlaylist(playlist) }
                     }
                 }
@@ -869,7 +869,7 @@ private fun QobuzCategoryScreen(category: ExploreCategory, actions: QobuzHomeAct
                 horizontalArrangement = Arrangement.spacedBy(QobuzDesign.itemGap),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                items(entries, key = { (_, playlist) -> playlist.playlistId.ifBlank { playlist.browseId } }) { (section, playlist) ->
+                items(entries, key = { (_, playlist) -> playlist.playlistId.ifBlank { playlist.browseId } }, contentType = { "QobuzHome-entries" }) { (section, playlist) ->
                     QobuzPlaylistCard(playlist.title, playlist.thumbnailUrl, section.uppercase(), Dp.Unspecified) { actions.openPlaylist(playlist.toHit()) }
                 }
             }

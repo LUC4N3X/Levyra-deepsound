@@ -247,7 +247,7 @@ private fun QobuzLibraryFilterRow(
     onImport: () -> Unit
 ) {
     LazyRow(contentPadding = PaddingValues(horizontal = QobuzDesign.gutter, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(QobuzDesign.chipGap)) {
-        items(QobuzLibraryFilter.entries, key = { it.name }) { option ->
+        items(QobuzLibraryFilter.entries, key = { it.name }, contentType = { "QobuzLibrary-entries" }) { option ->
             val label = when (option) {
                 QobuzLibraryFilter.Playlists -> strings.playlistsPlain
                 QobuzLibraryFilter.Artists -> strings.artists
@@ -324,7 +324,7 @@ private fun QobuzLibraryContent(
                 )
             }
         }
-        items(rows, key = { it.key }) { row ->
+        items(rows, key = { it.key }, contentType = { "QobuzLibrary-rows" }) { row ->
             val open = { openRow(row, viewModel, catalog, rows) }
             if (grid) QobuzLibraryCard(row, open) else QobuzLibraryListRow(row, state, copy.explicit, open, { viewModel.toggleFollowArtistRow(row) })
         }

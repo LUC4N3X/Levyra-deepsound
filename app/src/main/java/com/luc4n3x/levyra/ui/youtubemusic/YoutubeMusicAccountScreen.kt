@@ -197,7 +197,7 @@ private fun ColumnScope.YoutubeMusicTracks(state: YoutubeMusicAccountUiState, co
                 Text(copy.importDescription, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        items(page?.tracks.orEmpty(), key = { it.id }) { track ->
+        items(page?.tracks.orEmpty(), key = { it.id }, contentType = { "YoutubeMusicAccountScreen-page" }) { track ->
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer), shape = MaterialTheme.shapes.large) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Row(Modifier.weight(1f).clickable { actions.play(page!!.tracks, track) }.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -221,7 +221,7 @@ private fun ColumnScope.YoutubeMusicGrid(state: YoutubeMusicAccountUiState, copy
     val page = state.currentPage
     val error = state.error
     LazyVerticalGrid(columns = GridCells.Adaptive(160.dp), modifier = Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        items(page?.entries.orEmpty(), key = { it.browseId }) { entry ->
+        items(page?.entries.orEmpty(), key = { it.browseId }, contentType = { "YoutubeMusicAccountScreen-page" }) { entry ->
             Card(onClick = {
                 if (entry.collection == YoutubeMusicCollection.Artists) {
                     actions.close()
@@ -249,7 +249,7 @@ private fun YoutubeMusicAccountsSheet(state: YoutubeMusicAccountUiState, copy: Y
     ModalBottomSheet(onDismissRequest = onDismiss) {
         LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item { Text(copy.accounts, Modifier.padding(8.dp).semantics { heading() }, style = MaterialTheme.typography.headlineSmall) }
-            items(state.accounts, key = { it.id }) { account ->
+            items(state.accounts, key = { it.id }, contentType = { "YoutubeMusicAccountScreen-accounts" }) { account ->
                 Card(colors = CardDefaults.cardColors(containerColor = if (account.id == state.active?.id) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer), shape = MaterialTheme.shapes.large) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Row(Modifier.weight(1f).clickable(enabled = !state.busy) { onDismiss(); viewModel.switchAccount(account.id) }.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {

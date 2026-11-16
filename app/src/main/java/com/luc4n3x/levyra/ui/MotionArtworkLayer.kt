@@ -114,6 +114,7 @@ internal fun MotionArtworkLayer(
     livingArtwork: LivingArtworkColors? = null,
     dynamicBackdropEnabled: Boolean = false,
     onDynamicBackdropPalette: (MotionBackdropPalette?) -> Unit = {},
+    onVideoAspect: (Float?) -> Unit = {},
     staticArtwork: @Composable () -> Unit
 ) {
     val lifecycleActive = rememberMotionArtworkLifecycleActive()
@@ -205,6 +206,10 @@ internal fun MotionArtworkLayer(
     val visibleBridge = bridgeFrame?.takeIf { retainedArtwork != null }
     val motionVisible = videoReady || visibleBridge != null || !handoffCaptured
     val showStaticBed = motionStaticBedVisible(motionVisible)
+    var videoAspect by remember(artwork?.url) { mutableStateOf<Float?>(null) }
+    val shownVideoAspect = videoAspect.takeIf { videoReady }
+    val currentOnVideoAspect by rememberUpdatedState(onVideoAspect)
+    LaunchedEffect(shownVideoAspect) { currentOnVideoAspect(shownVideoAspect) }
     LaunchedEffect(artwork?.identityKey, videoArtwork, enabled, lifecycleActive, environment.remoteAllowed, videoUnavailable) {
         if (artwork == null) return@LaunchedEffect
         Timber.d(
@@ -323,6 +328,7 @@ internal fun MotionArtworkLayer(
                     frameSource = frameSource,
                     dynamicBackdropEnabled = dynamicBackdropEnabled,
                     onDynamicBackdropPalette = onDynamicBackdropPalette,
+                    onVideoAspect = { if (incoming) videoAspect = it },
                     onFirstFrame = {
                         if (incoming) {
                             videoReady = true
@@ -713,11 +719,13 @@ private fun MotionArtworkVideo(
     frameSource: MotionVideoFrameSource,
     dynamicBackdropEnabled: Boolean,
     onDynamicBackdropPalette: (MotionBackdropPalette?) -> Unit,
+    onVideoAspect: (Float) -> Unit,
     onFirstFrame: () -> Unit,
     onUnavailable: () -> Unit,
     modifier: Modifier
 ) {
     val context = LocalContext.current
+    val currentOnVideoAspect by rememberUpdatedState(onVideoAspect)
     val currentOnFirstFrame by rememberUpdatedState(onFirstFrame)
     val currentOnUnavailable by rememberUpdatedState(onUnavailable)
     val currentOnDynamicBackdropPalette by rememberUpdatedState(onDynamicBackdropPalette)
@@ -767,6 +775,10 @@ private fun MotionArtworkVideo(
 
             override fun onVideoSizeChanged(size: VideoSize) {
                 videoSize = size
+                if (size.width > 0 && size.height > 0) {
+                    val ratio = size.pixelWidthHeightRatio.takeIf { it > 0f && it.isFinite() } ?: 1f
+                    currentOnVideoAspect(size.width * ratio / size.height)
+                }
             }
 
             override fun onPlayerError(error: PlaybackException) {

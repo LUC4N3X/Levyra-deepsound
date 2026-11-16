@@ -169,7 +169,7 @@ internal fun GlacierCuratedPlaylistsScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.padding(top = 20.dp)
                     ) {
-                        itemsIndexed(groups, key = { _, shelf -> "jump-${shelf.key}" }) { index, shelf ->
+                        itemsIndexed(groups, key = { _, shelf -> "jump-${shelf.key}" }, contentType = { _, _ -> "GlacierCuratedPlaylists-groups" }) { index, shelf ->
                             MonoPill(shelf.title, selected = false, onClick = {
                                 headerIndices.getOrNull(index)?.let { target -> scope.launch { listState.animateScrollToItem(target) } }
                             })

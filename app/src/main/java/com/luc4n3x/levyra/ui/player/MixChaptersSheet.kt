@@ -299,7 +299,7 @@ private fun MixChapterTimeline(
         contentPadding = PaddingValues(bottom = 28.dp),
         modifier = Modifier.fillMaxWidth().heightIn(max = 560.dp)
     ) {
-        itemsIndexed(chapters.chapters, key = { _, chapter -> chapter.startMs }) { index, chapter ->
+        itemsIndexed(chapters.chapters, key = { _, chapter -> chapter.startMs }, contentType = { _, _ -> "MixChaptersSheet-chapters" }) { index, chapter ->
             MixChapterRow(
                 chapter = chapter,
                 durationMs = chapters.endMs(index) - chapter.startMs,

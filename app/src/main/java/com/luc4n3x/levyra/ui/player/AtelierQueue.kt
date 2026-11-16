@@ -133,7 +133,7 @@ private fun LazyListScope.atelierQueueHistory(
         item(key = "atelier-history-empty") { AtelierQueueNotice(copy.queueHistoryEmpty) }
         return
     }
-    itemsIndexed(recent, key = { index, track -> "atelier-history-$index-${track.id}" }) { _, track ->
+    itemsIndexed(recent, key = { index, track -> "atelier-history-$index-${track.id}" }, contentType = { _, _ -> "AtelierQueue-recent" }) { _, track ->
         AtelierQueueRow(track, played = false, copy, { onPlay(track) }, { onTrackActions(track) })
     }
 }
@@ -161,7 +161,7 @@ private fun LazyListScope.atelierQueueSections(
     val upcomingStart = if (currentIndex >= 0) currentIndex + 1 else 0
     if (previous.isNotEmpty()) {
         item(key = "atelier-queue-previous-title") { AtelierQueueLabel(LocalLevyraStrings.current.previous) }
-        itemsIndexed(previous, key = { _, entry -> "atelier-queue-${entry.key}" }) { index, entry ->
+        itemsIndexed(previous, key = { _, entry -> "atelier-queue-${entry.key}" }, contentType = { _, _ -> "AtelierQueue-previous" }) { index, entry ->
             AtelierQueueRow(
                 entry.track, played = true, copy, { onPlay(entry.track) }, { onTrackActions(entry.track) },
                 index, entries.size, onMove,
@@ -178,7 +178,7 @@ private fun LazyListScope.atelierQueueSections(
     item(key = "atelier-queue-radio") { AtelierQueueRadioRow(radioEnabled, onToggleRadio) }
     if (upcoming.isNotEmpty()) {
         item(key = "atelier-queue-upnext-title") { AtelierQueueLabel(copy.queueUpNext) }
-        itemsIndexed(upcoming, key = { _, entry -> "atelier-queue-${entry.key}" }) { index, entry ->
+        itemsIndexed(upcoming, key = { _, entry -> "atelier-queue-${entry.key}" }, contentType = { _, _ -> "AtelierQueue-upcoming" }) { index, entry ->
             AtelierQueueRow(
                 entry.track, played = false, copy, { onPlay(entry.track) }, { onTrackActions(entry.track) },
                 upcomingStart + index, entries.size, onMove,

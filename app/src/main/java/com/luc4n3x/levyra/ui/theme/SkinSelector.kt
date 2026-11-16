@@ -259,7 +259,7 @@ private fun SkinGems(focused: LevyraSkin, selected: LevyraSkin, style: SkinSelec
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         contentPadding = PaddingValues(horizontal = 4.dp)
     ) {
-        items(SkinOrder.size) { index ->
+        items(SkinOrder.size, contentType = { "SkinSelector-size" }) { index ->
             val skin = SkinOrder[index]
             val active = skin == focused
             val size by animateDpAsState(if (active) 44.dp else 34.dp, label = "skin-gem-size")

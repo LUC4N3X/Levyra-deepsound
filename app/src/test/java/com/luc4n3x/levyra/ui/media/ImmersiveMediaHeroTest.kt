@@ -36,6 +36,16 @@ class ImmersiveMediaHeroTest {
         assertDpEquals(400.dp, immersiveHeroHeight(false, 400.dp, 800.dp, 64.dp))
     }
 
+    @Test
+    fun centeredHeroFollowsCanvasAspectWithinBounds() {
+        assertDpEquals(400.dp, centeredHeroHeight(400.dp, 800.dp, null))
+        assertDpEquals(400.dp, centeredHeroHeight(400.dp, 800.dp, 1f))
+        assertDpEquals(533.333.dp, centeredHeroHeight(400.dp, 800.dp, 0.75f))
+        assertDpEquals(656.dp, centeredHeroHeight(400.dp, 800.dp, 9f / 16f))
+        assertDpEquals(225.dp, centeredHeroHeight(400.dp, 800.dp, 16f / 9f))
+        assertDpEquals(196.8.dp, centeredHeroHeight(500.dp, 240.dp, 1f))
+    }
+
     private fun assertDpEquals(expected: Dp, actual: Dp) {
         assertEquals(expected.value, actual.value, 0.001f)
     }

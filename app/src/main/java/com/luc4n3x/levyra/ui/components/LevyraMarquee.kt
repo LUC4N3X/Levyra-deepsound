@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.components
 
+import androidx.compose.foundation.MarqueeDefaults
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
@@ -16,11 +17,21 @@ import androidx.compose.ui.unit.dp
 
 private val MarqueeEdgeFade = 12.dp
 
+internal object LevyraMarqueeSpec {
+    const val ListIterations = 3
+    const val ListDelayMillis = 1_200
+    const val PlayerIterations = 1
+    const val PlayerInitialDelayMillis = 3_000
+    val PlayerVelocity: Dp = 30.dp
+}
+
 fun Modifier.levyraMarquee(
     enabled: Boolean,
     repeatDelayMillis: Int,
     edgeFade: Dp = MarqueeEdgeFade,
-    initialDelayMillis: Int = repeatDelayMillis
+    initialDelayMillis: Int = repeatDelayMillis,
+    iterations: Int = LevyraMarqueeSpec.ListIterations,
+    velocity: Dp = MarqueeDefaults.Velocity
 ): Modifier {
     if (!enabled) return this
     return this
@@ -51,6 +62,6 @@ fun Modifier.levyraMarquee(
                 drawRect(brush = mask, blendMode = BlendMode.DstIn)
             }
         }
-        .basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = repeatDelayMillis, initialDelayMillis = initialDelayMillis)
+        .basicMarquee(iterations = iterations, repeatDelayMillis = repeatDelayMillis, initialDelayMillis = initialDelayMillis, velocity = velocity)
         .padding(horizontal = edgeFade)
 }

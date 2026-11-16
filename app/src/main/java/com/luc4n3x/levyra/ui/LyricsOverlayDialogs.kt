@@ -1015,7 +1015,7 @@ internal fun LyricsVersionDialog(
                         verticalArrangement = Arrangement.spacedBy(9.dp),
                         contentPadding = PaddingValues(bottom = 8.dp)
                     ) {
-                        items(versions, key = { it.id }) { version ->
+                        items(versions, key = { it.id }, contentType = { "LyricsOverlayDialogs-versions" }) { version ->
                             val preview = version.result.lines
                                 .asSequence()
                                 .filterNot { it.isMetadata || it.isInstrumental }

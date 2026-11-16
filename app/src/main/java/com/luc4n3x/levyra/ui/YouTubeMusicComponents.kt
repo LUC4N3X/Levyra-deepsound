@@ -165,7 +165,7 @@ internal fun YouTubeMusicChipRow(
         contentPadding = PaddingValues(horizontal = YouTubeMusicDesign.gutter),
         horizontalArrangement = Arrangement.spacedBy(YouTubeMusicDesign.chipGap)
     ) {
-        items(labels.size, key = { index -> "chip-$index-${labels[index]}" }) { index ->
+        items(labels.size, key = { index -> "chip-$index-${labels[index]}" }, contentType = { "YouTubeMusicComponents-size" }) { index ->
             YouTubeMusicChip(labels[index], index == selected) { onSelect(index) }
         }
     }
@@ -387,7 +387,7 @@ internal fun YouTubeMusicSongColumns(
         flingBehavior = rememberSnapFlingBehavior(listState, SnapPosition.Start),
         horizontalArrangement = Arrangement.spacedBy(0.dp)
     ) {
-        items(columns, key = { column -> column.first().key + ":" + column.size }) { column ->
+        items(columns, key = { column -> column.first().key + ":" + column.size }, contentType = { "YouTubeMusicComponents-columns" }) { column ->
             Column(Modifier.width(width)) {
                 column.forEach { row ->
                     YouTubeMusicSongRow(row.track, row.subtitle, row.track.id == currentId, explicitLabel, row.onClick, row.onMore)
@@ -405,7 +405,7 @@ internal fun YouTubeMusicCardCarousel(cards: List<YouTubeMusicCardModel>, modifi
         contentPadding = PaddingValues(horizontal = YouTubeMusicDesign.gutter),
         horizontalArrangement = Arrangement.spacedBy(YouTubeMusicDesign.itemGap)
     ) {
-        items(cards, key = { it.key }) { card -> YouTubeMusicCard(card) }
+        items(cards, key = { it.key }, contentType = { "YouTubeMusicComponents-cards" }) { card -> YouTubeMusicCard(card) }
     }
 }
 

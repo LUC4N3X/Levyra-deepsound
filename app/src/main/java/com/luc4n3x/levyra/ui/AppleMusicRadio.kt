@@ -129,7 +129,7 @@ internal fun AppleMusicRadioScreen(viewModel: LevyraViewModel, state: LevyraUiSt
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 AppleRadioSectionTitle(radioStrings.subtitle)
                 LazyRow(contentPadding = PaddingValues(horizontal = AppleMusicDesign.gutter), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(live, key = { "live-${it.uuid}" }) { station -> AppleRadioLiveCard(station, radioStrings.live) { play(station) } }
+                    items(live, key = { "live-${it.uuid}" }, contentType = { "AppleMusicRadio-live" }) { station -> AppleRadioLiveCard(station, radioStrings.live) { play(station) } }
                 }
             }
         }
@@ -179,7 +179,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.appleRadioFavorites(
         }
     }
     if (listMode) {
-        items(radioState.favorites, key = { "apple-radio-favorite-row-${it.uuid}" }) { station ->
+        items(radioState.favorites, key = { "apple-radio-favorite-row-${it.uuid}" }, contentType = { "AppleMusicRadio-favorites" }) { station ->
             AppleRadioResultRow(station) { play(station) }
         }
     } else {
@@ -194,7 +194,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.appleRadioSearchResul
     play: (RadioStation) -> Unit
 ) {
     val stations = radioState.stations
-    items(stations, key = { "result-${it.uuid}" }) { station -> AppleRadioResultRow(station) { play(station) } }
+    items(stations, key = { "result-${it.uuid}" }, contentType = { "AppleMusicRadio-stations" }) { station -> AppleRadioResultRow(station) { play(station) } }
     if (stations.isEmpty() || radioState.error != null) item(key = "apple-radio-search-status") {
         AppleRadioStatus(radioState.loading && stations.isEmpty(), radioState.error, radioStrings.noStations, radio::retry)
     }
@@ -349,7 +349,7 @@ private fun AppleRadioRail(title: String?, stations: List<RadioStation>, onPlay:
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         title?.let { AppleRadioSectionTitle(it) }
         LazyRow(contentPadding = PaddingValues(horizontal = AppleMusicDesign.gutter), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(stations, key = { "rail-$title-${it.uuid}" }) { station ->
+            items(stations, key = { "rail-$title-${it.uuid}" }, contentType = { "AppleMusicRadio-stations" }) { station ->
                 Column(Modifier.width(AppleRadioRailWidth), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     AppleRadioLogoTile(station, Modifier.fillMaxWidth()) { onPlay(station) }
                     Text(station.name, color = AppleMusicDesign.label, style = MaterialTheme.typography.bodyMedium, maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis)

@@ -484,9 +484,9 @@ private fun AppleLyricsBody(
         verticalArrangement = Arrangement.spacedBy(if (list.synced) AppleLyricsTokens.rowSpacing else AppleLyricsTokens.staticSpacing)
     ) {
         if (list.synced) {
-            itemsIndexed(list.rows, key = { _, row -> row.key }) { index, row -> AppleSyncedItem(list, index, row) }
+            itemsIndexed(list.rows, key = { _, row -> row.key }, contentType = { _, _ -> "AppleLyricsScreen-rows" }) { index, row -> AppleSyncedItem(list, index, row) }
         } else {
-            itemsIndexed(list.stanzas, key = { index, _ -> "stanza-$index" }) { _, stanza ->
+            itemsIndexed(list.stanzas, key = { index, _ -> "stanza-$index" }, contentType = { _, _ -> "AppleLyricsScreen-stanzas" }) { _, stanza ->
                 Text(stanza, style = list.kit.static, modifier = Modifier.fillMaxWidth().padding(horizontal = AppleLyricsTokens.staticPadding))
             }
         }

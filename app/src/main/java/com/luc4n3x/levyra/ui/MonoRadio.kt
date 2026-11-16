@@ -222,7 +222,7 @@ internal fun MonoRadioRail(
     playLabel: String, onPlay: (RadioStation) -> Unit
 ) {
     LazyRow(contentPadding = PaddingValues(horizontal = MonoDesign.gutter), horizontalArrangement = Arrangement.spacedBy(MonoDesign.itemGap)) {
-        items(stations, key = { "mono-rail-${it.uuid}" }) { station ->
+        items(stations, key = { "mono-rail-${it.uuid}" }, contentType = { "MonoRadio-stations" }) { station ->
             val playing = currentStationId == station.uuid && isPlaying
             val favorite = station.uuid.lowercase(Locale.ROOT) in favoriteIds
             Column(
@@ -311,7 +311,7 @@ internal fun MonoRadioTuner(
                 contentPadding = PaddingValues(horizontal = side),
                 modifier = Modifier.fillMaxSize().semantics { contentDescription = station.name }
             ) {
-                items(stations.size, key = { stations[it].uuid }) { index ->
+                items(stations.size, key = { stations[it].uuid }, contentType = { "MonoRadio-size" }) { index ->
                     val marked = stations[index].uuid.lowercase(Locale.ROOT) in favoriteIds || stations[index].uuid == currentStationId
                     Box(Modifier.width(MonoTunerSlot).fillMaxHeight()) {
                         androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {

@@ -27,6 +27,7 @@ class BaselineProfileGenerator {
         check(tags.matches(Regex("[A-Za-z0-9,-]*"))) { "Unexpected application locale response" }
         previousLocales = tags
         device.executeShellCommand("cmd locale set-app-locales com.luc4n3x.levyra --locales en")
+        device.executeShellCommand("pm grant com.luc4n3x.levyra android.permission.POST_NOTIFICATIONS")
     }
 
     @After
@@ -37,10 +38,20 @@ class BaselineProfileGenerator {
     }
 
     @Test
-    fun generate() {
+    fun generateStartup() {
         rule.collect(
             packageName = "com.luc4n3x.levyra",
             includeInStartupProfile = true
+        ) {
+            launchLevyra()
+        }
+    }
+
+    @Test
+    fun generate() {
+        rule.collect(
+            packageName = "com.luc4n3x.levyra",
+            includeInStartupProfile = false
         ) {
             launchAndExerciseLevyra()
         }

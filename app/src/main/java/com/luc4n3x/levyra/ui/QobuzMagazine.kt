@@ -109,7 +109,7 @@ internal fun QobuzMagazineScreen(inputs: QobuzMagazineInputs, listState: LazyLis
                         horizontalArrangement = Arrangement.spacedBy(QobuzDesign.chipGap)
                     ) {
                         item(key = "home") { QobuzChip(copy.home, state.section.isBlank(), { magazine.selectSection("") }, QobuzHomeIcon) }
-                        items(state.rubrics, key = { it.slug }) { rubric ->
+                        items(state.rubrics, key = { it.slug }, contentType = { "QobuzMagazine-rubrics" }) { rubric ->
                             QobuzChip(rubric.label, state.section == rubric.slug, { magazine.selectSection(rubric.slug) })
                         }
                     }
@@ -135,7 +135,7 @@ internal fun QobuzMagazineScreen(inputs: QobuzMagazineInputs, listState: LazyLis
                     Text(copy.pickedForYou, style = QobuzText.sectionTitle,
                         modifier = Modifier.padding(start = QobuzDesign.gutter, end = QobuzDesign.gutter, top = 32.dp, bottom = 8.dp))
                 }
-                items(stories, key = { "story-" + it.url }) { story ->
+                items(stories, key = { "story-" + it.url }, contentType = { "QobuzMagazine-stories" }) { story ->
                     QobuzStoryCard(story, copy, Modifier.padding(horizontal = QobuzDesign.gutter, vertical = 6.dp)) { openStory(story) }
                 }
             } else if (state.loading && featured.isEmpty()) {
@@ -165,7 +165,7 @@ private fun QobuzStoryCarousel(stories: List<QobuzStory>, copy: QobuzSkinCopy, o
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val width = (maxWidth - QobuzDesign.gutter * 2 - 24.dp).coerceAtMost(440.dp)
         LazyRow(contentPadding = QobuzRowPadding, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(stories, key = { it.url }) { story ->
+            items(stories, key = { it.url }, contentType = { "QobuzMagazine-stories" }) { story ->
                 QobuzStoryGradientCard(story, copy, width) { onOpen(story) }
             }
         }
@@ -231,7 +231,7 @@ private fun QobuzLevyraRubrics(inputs: QobuzMagazineInputs, copy: QobuzSkinCopy)
             QobuzSectionHeader(copy.levyraExplore, null, copy.seeAll, null)
             Spacer(Modifier.height(QobuzDesign.headerToContent))
             LazyRow(contentPadding = QobuzRowPadding, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(shortcuts, key = { it.first }) { (label, action) ->
+                items(shortcuts, key = { it.first }, contentType = { "QobuzMagazine-shortcuts" }) { (label, action) ->
                     QobuzRubricCard(label, qobuzTagPalette(label), action)
                 }
             }
@@ -245,7 +245,7 @@ private fun QobuzLevyraRubrics(inputs: QobuzMagazineInputs, copy: QobuzSkinCopy)
                 QobuzSectionHeader(strings.exploreFresh, null, copy.seeAll, null)
                 Spacer(Modifier.height(QobuzDesign.headerToContent))
                 LazyRow(contentPadding = QobuzRowPadding, horizontalArrangement = Arrangement.spacedBy(QobuzDesign.itemGap)) {
-                    items(inputs.freshTracks.take(20), key = { it.id }) { track ->
+                    items(inputs.freshTracks.take(20), key = { it.id }, contentType = { "QobuzMagazine-take" }) { track ->
                         QobuzTrackCard(track, QobuzDesign.gridCard, { inputs.onPlay(inputs.freshTracks, track) }, { inputs.onTrackActions(track) })
                     }
                 }

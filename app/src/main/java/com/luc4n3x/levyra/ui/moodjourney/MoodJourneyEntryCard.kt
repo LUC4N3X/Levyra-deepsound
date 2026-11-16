@@ -273,7 +273,7 @@ private fun JourneyCoverRail(copy: SmartMusicCopy, style: JourneyCoverStyle, ope
         contentPadding = PaddingValues(horizontal = style.gutter),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(JourneyPresets, key = { it.name }) { preset ->
+        items(JourneyPresets, key = { it.name }, contentType = { "MoodJourneyEntryCard-JourneyPresets" }) { preset ->
             val label = copy[presetLabel(preset)]
             JourneyCoverCard(preset, if (style.uppercaseLabel) atelierUppercase(label) else label, style) { open(preset) }
         }

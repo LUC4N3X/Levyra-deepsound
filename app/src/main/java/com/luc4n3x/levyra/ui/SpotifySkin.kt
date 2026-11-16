@@ -166,7 +166,7 @@ internal fun SpotifyShortcutGrid(items: List<StudioShelfItem>, isPlaying: Boolea
     BoxWithConstraints(modifier.fillMaxWidth()) {
         val pageWidth = maxWidth - inset * 2
         LazyRow(Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            itemsIndexed(pages, key = { index, page -> "$index:${page.first().key}" }) { _, page ->
+            itemsIndexed(pages, key = { index, page -> "$index:${page.first().key}" }, contentType = { _, _ -> "SpotifySkin-pages" }) { _, page ->
                 SpotifyShortcutPage(page, isPlaying, Modifier.width(pageWidth))
             }
         }
@@ -208,7 +208,7 @@ private fun SpotifyShortcutTile(item: StudioShelfItem, isPlaying: Boolean, modif
 @Composable
 internal fun SpotifyCarousel(items: List<StudioShelfItem>, isPlaying: Boolean, inset: Dp, modifier: Modifier) {
     LazyRow(modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(SpotifyDesign.gutter)) {
-        itemsIndexed(items, key = { _, item -> item.key }) { _, item -> SpotifyCard(item, isPlaying) }
+        itemsIndexed(items, key = { _, item -> item.key }, contentType = { _, _ -> "SpotifySkin-items" }) { _, item -> SpotifyCard(item, isPlaying) }
     }
 }
 
@@ -251,7 +251,7 @@ internal fun SpotifyTrackCarousel(
 ) {
     val strings = LocalLevyraStrings.current
     LazyRow(Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = SpotifyDesign.gutter), horizontalArrangement = Arrangement.spacedBy(SpotifyDesign.gutter)) {
-        itemsIndexed(tracks, key = { index, track -> "$index-${LevyraPersonalOrbit.identityKey(track)}" }) { _, track ->
+        itemsIndexed(tracks, key = { index, track -> "$index-${LevyraPersonalOrbit.identityKey(track)}" }, contentType = { _, _ -> "SpotifySkin-tracks" }) { _, track ->
             val current = track.id == currentId
             Column(
                 Modifier.width(SpotifyDesign.cardSize).levyraPressable(

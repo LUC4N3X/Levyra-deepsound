@@ -27,6 +27,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -71,7 +73,11 @@ internal fun LevyraPlayAllButton(
                 role = Role.Button,
                 enabled = enabled,
                 pressedScale = LevyraPressScale.Control
-            ),
+            )
+            .clearAndSetSemantics {
+                contentDescription = label
+                role = Role.Button
+            },
         contentAlignment = Alignment.Center
     ) {
         Row(
@@ -85,7 +91,7 @@ internal fun LevyraPlayAllButton(
         ) {
             PlayAllDisc(size = PlayAllDiscSize, pressed = pressed, animated = animated)
             Text(
-                text = label,
+                text = LevyraShortPlayLabel,
                 color = colors.onPrimaryContainer,
                 style = LevyraType.cardTitle.copy(
                     fontSize = 12.5.sp,

@@ -63,20 +63,6 @@ internal fun rememberArtworkWithDecades(artwork: Map<String, String>, code: Stri
     }
 }
 
-@Composable
-internal fun rememberCuratedCollectionOpener(code: String, openPlaylist: (PlaylistHit) -> Unit, openCategory: (ExploreCategory) -> Unit): (PlaylistHit) -> Unit {
-    val collectionsModel = viewModel<DefaultCuratedCollectionsViewModel>(key = "default-curated-collections")
-    val collections by collectionsModel.collections.collectAsStateWithLifecycle()
-    val categories = remember(collections, code) {
-        val copy = curatedCollectionsCopy(code)
-        curatedCollectionCategories(collections[CuratedCollection.Decades].orEmpty(), copy.decadesTitle) +
-            curatedCollectionCategories(collections[CuratedCollection.Everyday].orEmpty(), copy.everydayTitle)
-    }
-    return remember(categories, openPlaylist, openCategory) {
-        { hit -> categories[hit]?.let(openCategory) ?: openPlaylist(hit) }
-    }
-}
-
 internal fun curatedCollectionCategories(cards: List<CuratedCollectionCard>, section: String): Map<PlaylistHit, ExploreCategory> =
     cards.filter { it.categoryParams.isNotBlank() && it.subtitle.isNotBlank() }
         .associate { it.toPlaylistHit() to ExploreCategory(title = it.subtitle, params = it.categoryParams, section = section) }

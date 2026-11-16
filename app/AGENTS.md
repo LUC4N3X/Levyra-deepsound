@@ -61,6 +61,18 @@ The stability reached after issue #427 is a preserved product invariant. Any And
 - For materially memory-sensitive playback changes, prefer a sustained real-playback validation after warm-up with normal track transitions; 20–30 minutes on a physical device is the target when practical. Include screen/background transitions when the changed path remains active there. If this cannot be run, report the memory regression check as `BLOCKED`/unverified rather than claiming stability.
 - Acceptance is a stable plateau or bounded oscillation appropriate to the workload, with no persistent monotonic climb across track transitions. Do not hard-code one universal MB threshold across devices/OEMs.
 
+## Rendering performance guard
+
+Scroll smoothness and startup work measured in November 2026 are preserved product invariants for every skin. Changes to backdrops, atmospheres, Home/Explore/Library/artist surfaces, horizontal shelves, application startup, or baseline profile generation must keep them.
+
+- A static full-screen backdrop (canvas fill plus decorative gradients that do not change per frame) renders through a cached hardware layer (`graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }`), as `LevyraHomeAtmosphere` does. Never put per-frame-changing content, such as scroll-translated portraits, inside such a layer; it invalidates the layer every frame and costs more than drawing directly.
+- Each full-screen offscreen layer costs roughly one screen-sized texture of GPU memory. Add one only when a repeated device measurement shows a gain; revert it otherwise.
+- Do not stack additional opaque full-screen fills beneath content that already paints an opaque background. Check changed screens with GPU overdraw visualization (`debug.hwui.overdraw show`) before and after.
+- Horizontal `LazyRow` shelves inside vertical lists take their side inset through `contentPadding`, never through an outer `padding` or wrapper `Box`, so cards scroll to the screen edge instead of being clipped at the inset.
+- The startup profile is collected only from the launch path (`BaselineProfileGenerator.generateStartup` with `launchLevyra()`); the full journey uses `includeInStartupProfile = false`. Do not merge them back into one collection.
+- New eager work in `LevyraApplication.onCreate` gets its own `startupSection("Levyra.<step>")`; keep existing sections when moving or splitting startup work.
+- Scroll and jank claims require a physical device running `benchmarkRelease`, measured with the same `dumpsys gfxinfo` protocol before and after (reset, fixed swipe cycles, compare janky %, frame percentiles, and slow draw commands). Emulator rendering is GPU-bound and is not valid evidence for jank.
+
 ## Compose and resources
 
 - Keep orchestration outside composables and observe the smallest stable state required by each screen.

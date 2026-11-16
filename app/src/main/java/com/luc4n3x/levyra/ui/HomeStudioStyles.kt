@@ -2546,7 +2546,7 @@ private fun StudioFlowChart(
             contentPadding = PaddingValues(horizontal = spec.inset),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            itemsIndexed(tracks.take(12), key = { index, track -> "flow-chart-$index-${track.id}" }) { index, track ->
+            itemsIndexed(tracks.take(12), key = { index, track -> "flow-chart-$index-${track.id}" }, contentType = { _, _ -> "HomeStudioStyles-take" }) { index, track ->
                 Column(
                     modifier = Modifier
                         .width(if (index == 0) 188.dp else 148.dp)
@@ -2696,7 +2696,7 @@ private fun StudioImmersiveChart(
     onPlay: (Track) -> Unit
 ) {
     LazyRow(contentPadding = PaddingValues(horizontal = spec.inset), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        itemsIndexed(tracks.take(10), key = { index, track -> "immersive-chart-$index-${track.id}" }) { index, track ->
+        itemsIndexed(tracks.take(10), key = { index, track -> "immersive-chart-$index-${track.id}" }, contentType = { _, _ -> "HomeStudioStyles-take" }) { index, track ->
             val leader = index == 0
             Box(
                 modifier = Modifier

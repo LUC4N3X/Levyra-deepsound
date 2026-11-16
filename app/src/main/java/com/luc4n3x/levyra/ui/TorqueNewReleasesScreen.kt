@@ -94,7 +94,7 @@ internal fun TorqueNewReleasesDestination(
                     val lead = releases.first()
                     TorqueReleaseLead(lead, badge(lead), strings) { onOpenRelease(lead) }
                 }
-                itemsIndexed(rest, key = { index, pair -> "torque-releases-$index-${pair.first().browseId.ifBlank { pair.first().title }}" }) { rowIndex, pair ->
+                itemsIndexed(rest, key = { index, pair -> "torque-releases-$index-${pair.first().browseId.ifBlank { pair.first().title }}" }, contentType = { _, _ -> "TorqueNewReleasesScreen-rest" }) { rowIndex, pair ->
                     Row(Modifier.fillMaxWidth().padding(horizontal = TorqueGutter, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         pair.forEachIndexed { column, album ->
                             TorqueReleaseGridCard(rowIndex * 2 + column + 2, album, badge(album), Modifier.weight(1f)) { onOpenRelease(album) }

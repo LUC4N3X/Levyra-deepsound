@@ -127,7 +127,7 @@ internal fun PrismSearchHeader(
 @Composable
 internal fun PrismSearchFilters(chips: List<Pair<SearchFilter, String>>, selected: SearchFilter, onSelect: (SearchFilter) -> Unit) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-        items(chips, key = { it.first.name }) { (filter, label) ->
+        items(chips, key = { it.first.name }, contentType = { "PrismSearch-chips" }) { (filter, label) ->
             val active = filter == selected
             val shape = PrismDesign.cut(12.dp)
             Box(

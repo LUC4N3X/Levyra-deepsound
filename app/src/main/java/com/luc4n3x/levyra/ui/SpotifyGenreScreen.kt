@@ -139,7 +139,7 @@ private fun SpotifyGenreSection(
             contentPadding = PaddingValues(horizontal = SpotifyDesign.gutter),
             horizontalArrangement = Arrangement.spacedBy(SpotifyGenreCardGap)
         ) {
-            items(section.playlists, key = { it.playlistId.ifBlank { it.browseId } }) { playlist ->
+            items(section.playlists, key = { it.playlistId.ifBlank { it.browseId } }, contentType = { "SpotifyGenreScreen-playlists" }) { playlist ->
                 SpotifyGenreCard(playlist, cardWidth) {
                     onOpenPlaylist(
                         PlaylistHit(

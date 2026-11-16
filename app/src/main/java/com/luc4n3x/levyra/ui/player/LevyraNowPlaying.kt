@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.player
 
+import com.luc4n3x.levyra.ui.components.LevyraMarqueeSpec
 import com.luc4n3x.levyra.ui.theme.*
 import com.luc4n3x.levyra.ui.theme.Nocturne78Palette
 import androidx.compose.foundation.layout.asPaddingValues
@@ -2066,6 +2067,7 @@ private fun PlayerLiveRadioMetadata(
         Row(verticalAlignment = Alignment.CenterVertically) {
             LevyraMediaTitle(
                 text = track.title, explicit = track.explicit,
+                iterations = LevyraMarqueeSpec.PlayerIterations, initialDelayMillis = LevyraMarqueeSpec.PlayerInitialDelayMillis, velocity = LevyraMarqueeSpec.PlayerVelocity,
                 color = surfaces.content,
                 fontSize = titleSize,
                 fontWeight = FontWeight.Bold,

@@ -65,6 +65,7 @@ import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
 import androidx.compose.material3.carousel.rememberCarouselState
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.shape.CircleShape
 
@@ -94,6 +95,7 @@ internal fun LevyraHomeAtmosphere(
     Box(
         modifier = modifier
             .fillMaxSize()
+            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
             .drawBehind {
                 drawHomeBackdrop(
                     canvas = homeCanvasColor(isLight),
@@ -216,7 +218,7 @@ internal fun HomeGenreChips(
     val colors = MaterialTheme.colorScheme
     if (com.luc4n3x.levyra.ui.theme.LevyraIsSpotify) {
         LazyRow(modifier = modifier.fillMaxWidth(), contentPadding = contentPadding, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(zones, key = { zone -> "home-chip-${zone.id}" }) { zone ->
+            items(zones, key = { zone -> "home-chip-${zone.id}" }, contentType = { "HomeExperience-zones" }) { zone ->
                 com.luc4n3x.levyra.ui.components.LevyraFilterPill(label = zone.label, selected = false, onClick = { onSelect(zone) }, role = Role.Button)
             }
         }
@@ -227,7 +229,7 @@ internal fun HomeGenreChips(
         contentPadding = contentPadding,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(zones, key = { zone -> "home-chip-${zone.id}" }) { zone ->
+        items(zones, key = { zone -> "home-chip-${zone.id}" }, contentType = { "HomeExperience-zones" }) { zone ->
             val interaction = remember(zone.id) { MutableInteractionSource() }
             val corner = if (LocalAnimationsEnabled.current) {
                 levyraExpressiveCorner(

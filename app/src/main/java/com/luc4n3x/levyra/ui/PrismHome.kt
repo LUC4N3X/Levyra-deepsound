@@ -108,7 +108,7 @@ internal fun PrismCompactShelf(items: List<StudioShelfItem>, isPlaying: Boolean,
     }
     val pages = remember(items) { items.chunked(3) }
     LazyRow(modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = (inset - 8.dp).coerceAtLeast(0.dp)), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        itemsIndexed(pages, key = { index, page -> "$index:${page.first().key}" }) { _, page ->
+        itemsIndexed(pages, key = { index, page -> "$index:${page.first().key}" }, contentType = { _, _ -> "PrismHome-pages" }) { _, page ->
             Column(Modifier.width(312.dp), verticalArrangement = Arrangement.spacedBy(if (LevyraIsTorque) 2.dp else 0.dp)) {
                 page.forEach { item ->
                     Row(
@@ -163,7 +163,7 @@ internal fun PrismArtworkShelf(items: List<StudioShelfItem>, isPlaying: Boolean,
         return
     }
     LazyRow(modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        itemsIndexed(items, key = { _, item -> item.key }) { _, item ->
+        itemsIndexed(items, key = { _, item -> item.key }, contentType = { _, _ -> "PrismHome-items" }) { _, item ->
             Column(
                 Modifier.width(if (item.round) 124.dp else 148.dp)
                     .levyraPressable(onClick = item.onClick, onLongClick = item.onLongClick, onClickLabel = item.title, role = Role.Button),

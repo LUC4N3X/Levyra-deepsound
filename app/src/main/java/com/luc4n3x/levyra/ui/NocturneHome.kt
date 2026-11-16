@@ -155,7 +155,7 @@ internal fun NocturneCompactShelf(items: List<StudioShelfItem>, isPlaying: Boole
         contentPadding = PaddingValues(horizontal = inset),
         horizontalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        itemsIndexed(pages, key = { index, page -> "$index:${page.first().key}" }) { _, page ->
+        itemsIndexed(pages, key = { index, page -> "$index:${page.first().key}" }, contentType = { _, _ -> "NocturneHome-pages" }) { _, page ->
             Column(Modifier.width(300.dp)) {
                 page.forEach { item ->
                     Row(
@@ -189,7 +189,7 @@ internal fun NocturneChartShelf(tracks: List<Track>, currentId: String?, isPlayi
         contentPadding = PaddingValues(horizontal = inset),
         horizontalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        itemsIndexed(pages, key = { index, page -> "$index:${page.first().id}" }) { pageIndex, page ->
+        itemsIndexed(pages, key = { index, page -> "$index:${page.first().id}" }, contentType = { _, _ -> "NocturneHome-pages" }) { pageIndex, page ->
             Column(Modifier.width(300.dp)) {
                 page.forEachIndexed { rowIndex, track ->
                     Row(

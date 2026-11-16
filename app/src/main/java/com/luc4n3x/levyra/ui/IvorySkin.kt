@@ -264,7 +264,7 @@ internal fun IvoryShowcaseShelf(items: List<StudioShelfItem>, isPlaying: Boolean
     val rowState = rememberLazyListState()
     val motion = ivoryRailMotionEnabled()
     LazyRow(modifier.fillMaxWidth(), state = rowState, contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        itemsIndexed(items, key = { _, item -> item.key }) { _, item ->
+        itemsIndexed(items, key = { _, item -> item.key }, contentType = { _, _ -> "IvorySkin-items" }) { _, item ->
             Box(Modifier.ivoryRailItemMotion(motion, rowState, item.key)) {
                 if (item.round) IvoryArtistCard(item) else IvoryAlbumCard(item, isPlaying)
             }
@@ -302,7 +302,7 @@ internal fun IvoryTrackRow(
 internal fun IvoryCompactShelf(items: List<StudioShelfItem>, isPlaying: Boolean, inset: Dp, modifier: Modifier) {
     val pages = remember(items) { items.chunked(3) }
     LazyRow(modifier.fillMaxWidth(), contentPadding = PaddingValues(end = inset), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        itemsIndexed(pages, key = { index, page -> "$index:${page.first().key}" }) { index, page ->
+        itemsIndexed(pages, key = { index, page -> "$index:${page.first().key}" }, contentType = { _, _ -> "IvorySkin-pages" }) { index, page ->
             Column(Modifier.width(320.dp)) {
                 page.forEach { item ->
                     IvoryTrackRow(item.title, item.subtitle, item.current, isPlaying, if (index == 0) inset else 12.dp, item.onClick, item.onLongClick, explicit = item.explicit) {
@@ -432,7 +432,7 @@ internal fun IvoryOrbitShelf(
     val rowState = rememberLazyListState()
     val motion = ivoryRailMotionEnabled()
     LazyRow(Modifier.fillMaxWidth(), state = rowState, contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        itemsIndexed(tracks, key = { index, track -> "$index-${LevyraPersonalOrbit.identityKey(track)}" }) { index, track ->
+        itemsIndexed(tracks, key = { index, track -> "$index-${LevyraPersonalOrbit.identityKey(track)}" }, contentType = { _, _ -> "IvorySkin-tracks" }) { index, track ->
             val current = track.id == currentId
             val key = "$index-${LevyraPersonalOrbit.identityKey(track)}"
             Box(Modifier.ivoryRailItemMotion(motion, rowState, key)) {
@@ -520,7 +520,7 @@ internal fun IvoryChartShelf(ranked: List<IndexedValue<Track>>, currentId: Strin
     val pages = remember(ranked) { ranked.chunked(6) }
     val total = ranked.size
     LazyRow(contentPadding = PaddingValues(horizontal = inset), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-        itemsIndexed(pages, key = { index, _ -> "chart-page-$index" }) { _, page -> IvoryChartBands(page, total, currentId, playing, onPlay) }
+        itemsIndexed(pages, key = { index, _ -> "chart-page-$index" }, contentType = { _, _ -> "IvorySkin-pages" }) { _, page -> IvoryChartBands(page, total, currentId, playing, onPlay) }
     }
 }
 

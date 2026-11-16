@@ -277,7 +277,7 @@ internal fun LyricsStudioOverlay(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         contentPadding = PaddingValues(horizontal = 2.dp)
                     ) {
-                        items(LevyraFontPreset.entries) { fontPreset ->
+                        items(LevyraFontPreset.entries, contentType = { "LyricsStudioScreen-entries" }) { fontPreset ->
                             val selected = settings.customFontId.isBlank() && settings.fontPreset == fontPreset
                             StudioChoiceChip(
                                 label = fontPreset.displayName,

@@ -197,7 +197,7 @@ private fun LazyListScope.youTubeMusicArtistItems(
                     contentPadding = PaddingValues(horizontal = YouTubeMusicDesign.gutter),
                     horizontalArrangement = Arrangement.spacedBy(YouTubeMusicDesign.itemGap)
                 ) {
-                    items(videos, key = { "video-${it.id}" }) { video ->
+                    items(videos, key = { "video-${it.id}" }, contentType = { "YouTubeMusicArtist-videos" }) { video ->
                         YouTubeMusicCard(
                             YouTubeMusicCardModel(
                                 "video-${video.id}", video.title, video.artist, "", wide = true, track = video,
@@ -240,7 +240,7 @@ private fun LazyListScope.youTubeMusicArtistItems(
                     contentPadding = PaddingValues(horizontal = YouTubeMusicDesign.gutter),
                     horizontalArrangement = Arrangement.spacedBy(YouTubeMusicDesign.itemGap)
                 ) {
-                    items(related, key = { "fan-${it.browseId.ifBlank { it.name }}" }) { hit ->
+                    items(related, key = { "fan-${it.browseId.ifBlank { it.name }}" }, contentType = { "YouTubeMusicArtist-related" }) { hit ->
                         YouTubeMusicArtistCircle(hit.name, hit.subscribers, hit.thumbnailUrl) { viewModel.openArtistFromHit(hit) }
                     }
                 }
@@ -292,7 +292,7 @@ private fun LazyListScope.releaseShelf(
                 contentPadding = PaddingValues(horizontal = YouTubeMusicDesign.gutter),
                 horizontalArrangement = Arrangement.spacedBy(YouTubeMusicDesign.itemGap)
             ) {
-                items(releases, key = { "$key-${it.browseId.ifBlank { it.title }}" }) { release ->
+                items(releases, key = { "$key-${it.browseId.ifBlank { it.title }}" }, contentType = { "YouTubeMusicArtist-releases" }) { release ->
                     YouTubeMusicReleaseCard(release) { viewModel.openArtistRelease(release, artist.name) }
                 }
             }
