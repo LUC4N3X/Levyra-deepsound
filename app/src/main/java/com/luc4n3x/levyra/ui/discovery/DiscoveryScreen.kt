@@ -604,21 +604,7 @@ private fun DiscoveryCardFace(
         return
     }
     if (look.artworkBleed) {
-        val glow = if (look.backdrop == DiscoveryBackdrop.Aurora) Modifier.defaultDiscoveryGlow(card, look.cardShape) else Modifier
-        Box(modifier.fillMaxWidth().height(artSide + DiscoveryCardChrome).then(glow).clip(look.cardShape).background(scheme.surfaceContainerHigh)) {
-            DiscoveryArtwork(card, Modifier.fillMaxSize(), highRes = true)
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.4f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.86f))))
-            if (look.backdrop != DiscoveryBackdrop.Glacier) DiscoveryReasonChip(card, copy, music, Color.Black.copy(alpha = 0.45f), Color.White, Modifier.align(Alignment.TopStart).padding(16.dp))
-            if (showsDistance(request)) BubbleDistanceBadge(card.distance, music, Color.Black.copy(alpha = 0.45f), Color.White, Modifier.align(Alignment.TopEnd).padding(16.dp))
-            Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(22.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (look.backdrop == DiscoveryBackdrop.Glacier) {
-                    com.luc4n3x.levyra.ui.MonoOverline(discoveryReasonLabel(card, copy, music), color = com.luc4n3x.levyra.ui.theme.MonoDesign.accent)
-                }
-                Text(card.track.title, style = look.titleStyle, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(card.track.artist, style = MaterialTheme.typography.bodyLarge, color = Color.White.copy(alpha = 0.82f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                if (look.backdrop != DiscoveryBackdrop.Aurora) DiscoveryPreviewBadge(preview, copy, Color.White, onTogglePreview)
-            }
-        }
+        DiscoveryBleedFace(card, look, copy, music, request, artSide, preview, modifier, onTogglePreview)
         return
     }
     val container = when (look.backdrop) {
@@ -658,6 +644,36 @@ private fun DiscoveryCardFace(
                 }
             }
             DiscoveryPreviewBadge(preview, copy, MaterialTheme.colorScheme.primary, onTogglePreview)
+        }
+    }
+}
+
+@Composable
+private fun DiscoveryBleedFace(
+    card: DiscoveryCard,
+    look: DiscoveryLook,
+    copy: DiscoveryCopy,
+    music: SmartMusicCopy,
+    request: DiscoveryRequest,
+    artSide: Dp,
+    preview: DiscoveryPreviewStatus?,
+    modifier: Modifier,
+    onTogglePreview: (() -> Unit)?
+) {
+    val scheme = MaterialTheme.colorScheme
+    val glow = if (look.backdrop == DiscoveryBackdrop.Aurora) Modifier.defaultDiscoveryGlow(card, look.cardShape) else Modifier
+    Box(modifier.fillMaxWidth().height(artSide + DiscoveryCardChrome).then(glow).clip(look.cardShape).background(scheme.surfaceContainerHigh)) {
+        DiscoveryArtwork(card, Modifier.fillMaxSize(), highRes = true)
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.4f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.86f))))
+        if (look.backdrop != DiscoveryBackdrop.Glacier) DiscoveryReasonChip(card, copy, music, Color.Black.copy(alpha = 0.45f), Color.White, Modifier.align(Alignment.TopStart).padding(16.dp))
+        if (showsDistance(request)) BubbleDistanceBadge(card.distance, music, Color.Black.copy(alpha = 0.45f), Color.White, Modifier.align(Alignment.TopEnd).padding(16.dp))
+        Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(22.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (look.backdrop == DiscoveryBackdrop.Glacier) {
+                com.luc4n3x.levyra.ui.MonoOverline(discoveryReasonLabel(card, copy, music), color = com.luc4n3x.levyra.ui.theme.MonoDesign.accent)
+            }
+            Text(card.track.title, style = look.titleStyle, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(card.track.artist, style = MaterialTheme.typography.bodyLarge, color = Color.White.copy(alpha = 0.82f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (look.backdrop != DiscoveryBackdrop.Aurora) DiscoveryPreviewBadge(preview, copy, Color.White, onTogglePreview)
         }
     }
 }
