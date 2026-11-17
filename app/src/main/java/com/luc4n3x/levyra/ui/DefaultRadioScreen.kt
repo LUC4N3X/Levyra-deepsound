@@ -79,6 +79,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.Role
@@ -319,7 +320,7 @@ private fun DefaultRadioMasthead(title: String, place: String, live: String, add
     ) {
         Column(Modifier.weight(1f)) {
             Text(
-                listOf(live, place).filter(String::isNotBlank).joinToString("  ·  ").uppercase(Locale.getDefault()),
+                listOf(live, place).filter(String::isNotBlank).joinToString("  ·  ").uppercase(LocalConfiguration.current.locales[0]),
                 color = colors.onSurfaceVariant,
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.6.sp),
                 maxLines = 1,
@@ -390,7 +391,7 @@ private fun DefaultRadioOnAirTag(playing: Boolean, label: String, liveTone: Colo
             Box(Modifier.size(8.dp).graphicsLayer { alpha = pulse() }.background(tint, CircleShape))
         }
         Text(
-            label.uppercase(Locale.getDefault()),
+            label.uppercase(LocalConfiguration.current.locales[0]),
             color = tint,
             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Black, letterSpacing = 1.6.sp),
             maxLines = 1,
