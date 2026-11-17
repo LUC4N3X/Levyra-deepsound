@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="160" height="42" viewBox="0 0 160 42" role="img" aria-label="Levyra license GPL-3.0">
 <title>Levyra license GPL-3.0</title>
-<rect x=".8" y=".8" width="158.4" height="40.4" rx="20.2" fill="#E4F0EC"/>
+<path d="M 7.8 0.8 L 140.2 0.8 C 150.65 0.8 159.2 9.35 159.2 19.8 L 159.2 34.2 C 159.2 38.05 156.05 41.2 152.2 41.2 L 18.8 41.2 C 8.9 41.2 0.8 33.1 0.8 23.2 L 0.8 7.8 C 0.8 3.95 3.95 0.8 7.8 0.8 Z" fill="#E4F0EC"/>
 <circle cx="23" cy="21" r="17" fill="#3D7469" fill-opacity=".14"/>
-<rect x=".8" y=".8" width="158.4" height="40.4" rx="20.2" fill="none" stroke="#17252C" stroke-opacity=".08" stroke-width=".8"/>/>
+<path d="M 7.8 0.8 L 140.2 0.8 C 150.65 0.8 159.2 9.35 159.2 19.8 L 159.2 34.2 C 159.2 38.05 156.05 41.2 152.2 41.2 L 18.8 41.2 C 8.9 41.2 0.8 33.1 0.8 23.2 L 0.8 7.8 C 0.8 3.95 3.95 0.8 7.8 0.8 Z" fill="none" stroke="#17252C" stroke-opacity=".08" stroke-width=".8"/>/>
 <g transform="translate(23 21) scale(1.33)" style="color:#3D7469">
     <path d="M0 -8 l7 3 v4 c0 5 -3 7 -7 9 -4 -2 -7 -4 -7 -9 v-4 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M-3 0 l2 2 4 -5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
