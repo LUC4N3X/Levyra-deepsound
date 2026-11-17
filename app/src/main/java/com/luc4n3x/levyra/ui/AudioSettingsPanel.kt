@@ -78,7 +78,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.rounded.Equalizer
 import androidx.compose.material.icons.rounded.FileOpen
 import androidx.compose.material.icons.rounded.GraphicEq
@@ -752,6 +754,7 @@ internal fun AudioSettingsPanel(
                         valueLabel = "${trimAudioSpeed(audioSettings.playbackSpeed)}x",
                         value = audioSettings.playbackSpeed,
                         range = 0.5f..2.0f,
+                        step = 0.05f,
                         onValue = { onTempo((it * 100f).roundToInt() / 100f) }
                     )
                 }
@@ -761,6 +764,7 @@ internal fun AudioSettingsPanel(
                         valueLabel = "${trimAudioSpeed(audioSettings.pitch)}x",
                         value = audioSettings.pitch,
                         range = 0.5f..2.0f,
+                        step = 0.05f,
                         onValue = { onPitch((it * 100f).roundToInt() / 100f) }
                     )
                 }
@@ -1991,6 +1995,7 @@ private fun AudioSliderRow(
     value: Float,
     range: ClosedFloatingPointRange<Float>,
     icon: Boolean = false,
+    step: Float? = null,
     onValue: (Float) -> Unit
 ) {
     Surface(
@@ -2004,10 +2009,14 @@ private fun AudioSliderRow(
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     if (icon) {
                         Icon(Icons.Rounded.SurroundSound, null, tint = LevyraCyan, modifier = Modifier.size(18.dp))
                     }
@@ -2018,20 +2027,65 @@ private fun AudioSliderRow(
                     color = LevyraCyan,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                    softWrap = false,
                     modifier = Modifier
                         .clip(ChipShape)
                         .background(LevyraCyan.copy(alpha = 0.14f))
                         .padding(horizontal = 10.dp, vertical = 4.dp)
                 )
             }
-            AudioLevelSlider(
-                value = value,
-                range = range,
-                label = title,
-                valueLabel = valueLabel,
-                onValue = onValue
-            )
+            if (step == null) {
+                AudioLevelSlider(
+                    value = value,
+                    range = range,
+                    label = title,
+                    valueLabel = valueLabel,
+                    onValue = onValue
+                )
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AudioStepButton(
+                        icon = Icons.Rounded.Remove,
+                        contentDescription = "$title −",
+                        enabled = value > range.start,
+                        onClick = { onValue((value - step).coerceIn(range.start, range.endInclusive)) }
+                    )
+                    Box(modifier = Modifier.weight(1f)) {
+                        AudioLevelSlider(
+                            value = value,
+                            range = range,
+                            label = title,
+                            valueLabel = valueLabel,
+                            onValue = onValue
+                        )
+                    }
+                    AudioStepButton(
+                        icon = Icons.Rounded.Add,
+                        contentDescription = "$title +",
+                        enabled = value < range.endInclusive,
+                        onClick = { onValue((value + step).coerceIn(range.start, range.endInclusive)) }
+                    )
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun AudioStepButton(
+    icon: ImageVector,
+    contentDescription: String,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(48.dp)) {
+        Icon(
+            icon,
+            contentDescription = contentDescription,
+            tint = if (enabled) LevyraCyan else LevyraMuted.copy(alpha = DISABLED_ALPHA),
+            modifier = Modifier.size(22.dp)
+        )
     }
 }
 

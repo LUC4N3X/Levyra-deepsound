@@ -369,19 +369,25 @@ private fun YouTubeMusicArtistActions(
         verticalAlignment = Alignment.CenterVertically
     ) {
         val content = if (followed) Color.White else Color.Black
-        Row(
-            Modifier.height(40.dp).clip(YouTubeMusicDesign.pillShape)
-                .background(if (followed) Color.Transparent else Color.White)
-                .border(1.dp, if (followed) YouTubeMusicDesign.outline else Color.Transparent, YouTubeMusicDesign.pillShape)
-                .levyraPressable(onClick = viewModel::toggleFollowArtist, role = Role.Button, pressedScale = LevyraPressScale.Control)
-                .padding(horizontal = 18.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Text(if (followed) strings.followingArtist else copy.subscribe, color = content, fontSize = 18.sp, fontWeight = FontWeight.Medium, maxLines = 1)
-            if (count.isNotBlank()) Text(count, color = content, fontSize = 18.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+            Row(
+                Modifier.height(40.dp).clip(YouTubeMusicDesign.pillShape)
+                    .background(if (followed) Color.Transparent else Color.White)
+                    .border(1.dp, if (followed) YouTubeMusicDesign.outline else Color.Transparent, YouTubeMusicDesign.pillShape)
+                    .levyraPressable(onClick = viewModel::toggleFollowArtist, role = Role.Button, pressedScale = LevyraPressScale.Control)
+                    .padding(horizontal = 18.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(if (followed) strings.followingArtist else copy.subscribe, color = content, fontSize = 18.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                if (count.isNotBlank()) {
+                    Text(
+                        count, color = content, fontSize = 18.sp, fontWeight = FontWeight.Medium, maxLines = 1,
+                        overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false)
+                    )
+                }
+            }
         }
-        Spacer(Modifier.weight(1f))
         if (songs.size > 1) {
             Box(
                 Modifier.size(40.dp).clip(CircleShape).background(YouTubeMusicDesign.buttonFill)
