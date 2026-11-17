@@ -710,10 +710,21 @@ private fun DefaultRadioChartRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        DefaultRadioChartRowInfo(rank, station, playing, Modifier.weight(1f))
+        if (playing) RadioEqualizer(colors.primary)
+        if (actions != null) actions() else DefaultRadioFavoriteToggle(tuning.isFavorite(station), strings) { tuning.onFavorite(station) }
+    }
+}
+
+@Composable
+private fun DefaultRadioChartRowInfo(rank: Int?, station: RadioStation, playing: Boolean, modifier: Modifier) {
+    val colors = MaterialTheme.colorScheme
+    val accent = if (playing) colors.primary else colors.onSurfaceVariant
+    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         if (rank != null) {
             Text(
                 rank.toString().padStart(2, '0'),
-                color = if (playing) colors.primary else colors.onSurfaceVariant,
+                color = accent,
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium, fontFeatureSettings = "tnum"),
                 modifier = Modifier.width(26.dp)
             )
@@ -722,12 +733,10 @@ private fun DefaultRadioChartRow(
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             RadioStationName(station.name, playing, if (playing) colors.primary else colors.onSurface, 16.sp, minLines = 1)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                DefaultRadioSignalBars(station.bitrateKbps, if (playing) colors.primary else colors.onSurfaceVariant)
+                DefaultRadioSignalBars(station.bitrateKbps, accent)
                 RadioStationDetail(station)
             }
         }
-        if (playing) RadioEqualizer(colors.primary)
-        if (actions != null) actions() else DefaultRadioFavoriteToggle(tuning.isFavorite(station), strings) { tuning.onFavorite(station) }
     }
 }
 
