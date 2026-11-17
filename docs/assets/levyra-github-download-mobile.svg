@@ -1,8 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="126" height="40" viewBox="0 0 126 40" role="img" aria-label="Download Levyra from GitHub">
 <title>Download Levyra from GitHub</title>
+<defs><linearGradient id="surface" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F5D1BF"/><stop offset=".54" stop-color="#EBC3AB"/><stop offset="1" stop-color="#D9AB93"/></linearGradient></defs>
 <clipPath id="badge"><path d="M 16 .8 H 117 A 8.2 8.2 0 0 1 125.2 9 V 23 A 16.2 16.2 0 0 1 109 39.2 H 9 A 8.2 8.2 0 0 1 .8 31 V 16 A 15.2 15.2 0 0 1 16 .8 Z"/></clipPath>
 <g clip-path="url(#badge)">
-  <rect width="100%" height="100%" fill="#EBC3AB"/>
+  <rect width="100%" height="100%" fill="url(#surface)"/>
+  <g transform="scale(.681081 .714286)">
+    <path d="M90 -15 C124 13 153 10 181 -12 L210 2 V16 C182 36 149 28 117 13 Z" fill="#FFFFFF" fill-opacity=".13"/>
+    <path d="M105 63 C121 35 148 43 162 21 C175 4 192 9 205 12 V72 Z" fill="#513624" fill-opacity=".095"/>
+    <path d="M10 26 C10 13 21 6 33 6 C46 6 54 17 54 29 C53 42 43 50 31 50 C18 50 9 41 10 26 Z" fill="#FFFFFF" fill-opacity=".16"/>
+    <path d="M10 26 C10 13 21 6 33 6 C46 6 54 17 54 29 C53 42 43 50 31 50 C18 50 9 41 10 26 Z" fill="none" stroke="#FFFFFF" stroke-opacity=".28" stroke-width=".8"/>
+    <ellipse cx="167" cy="9" rx="3.8" ry="2.4" fill="#FFFFFF" fill-opacity=".35"/>
+  </g>
+  <path d="M 16 .8 H 117 A 8.2 8.2 0 0 1 125.2 9 V 23 A 16.2 16.2 0 0 1 109 39.2 H 9 A 8.2 8.2 0 0 1 .8 31 V 16 A 15.2 15.2 0 0 1 16 .8 Z" fill="none" stroke="#FFFFFF" stroke-opacity=".32" stroke-width="1.2"/>
 </g>
 <g transform="translate(-2.342 -2.812) scale(1.1874)">
   <g transform="translate(5.5 4.5) scale(1.25)"><path fill="#513624" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></g>
