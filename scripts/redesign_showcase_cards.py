@@ -542,7 +542,7 @@ UPRIGHT_CARD_SPECS = [
         "FAST TRACK DIGGING",
         "Swipe-to-Save Feed",
         "Preview songs & build playlists fast.",
-        "Screenshot_20261024_195654_Levyra.jpg",
+        "Screenshot_20261117_094629_Levyra.jpg",
         (250, 243, 235), (233, 218, 200), (218, 194, 168), (214, 196, 176),
         (148, 82, 44), (28, 21, 16), (102, 74, 54),
     ),
