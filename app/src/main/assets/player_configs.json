@@ -493,6 +493,9 @@
     "8cd7dd12": { "sig": "Go(5,5087,INPUT)", "nClass": "Rs", "sts": 20770, "aliases": ["cd1bd289"] },
     "907ce1cd": { "sig": "Pl(16,2515,INPUT)", "nClass": "Ol", "sts": 20772, "aliases": ["64a89e1b"] },
     "6bde03ef": { "sig": "Uj(33,6730,INPUT)", "nClass": "Tj", "sts": 20773, "aliases": ["8c82c301"] },
-    "c310a3b4": { "sig": "BH(33,6730,INPUT)", "nClass": "ce", "sts": 20773, "aliases": ["dafc92c2"] }
+    "c310a3b4": { "sig": "BH(33,6730,INPUT)", "nClass": "ce", "sts": 20773, "aliases": ["dafc92c2"] },
+    "f30b036b": { "sig": "Qc(33,6730,INPUT)", "nClass": "Kl", "sts": 20773, "aliases": ["e4fcbbe6"] },
+    "53caf627": { "sig": "$h(33,6730,INPUT)", "nClass": "Zh", "sts": 20773, "aliases": ["350b473d"] },
+    "399658b3": { "sig": "xl(19,3722,INPUT)", "nClass": "uk", "sts": 20774, "aliases": ["b09c8027"] }
   }
 }
