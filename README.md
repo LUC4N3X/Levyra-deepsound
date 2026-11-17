@@ -105,7 +105,7 @@ I don't host FLAC audio on Levyra's servers. On Android, experimental FLAC playb
 <p>
   <a href="docs/assets/showcase/readme/row-04-studio.webp"><picture>
     <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-04-studio-mobile.webp?v=m3-cards-5">
-    <img src="docs/assets/showcase/readme/row-04-studio.webp?v=m3-cards-5" width="900" alt="Make Levyra yours: skin selection, live radio, artist pages and shared listening with Jam over Wi-Fi.">
+    <img src="docs/assets/showcase/readme/row-04-studio.webp?v=m3-cards-5" width="900" alt="Make Levyra yours: skin selection, live radio, artist pages and shared listening with Unison over Wi-Fi.">
   </picture></a>
 </p>
 
@@ -138,7 +138,7 @@ I don't host FLAC audio on Levyra's servers. On Android, experimental FLAC playb
 - **Studios.** Customize your theme, mini player and navigation bar with presets and live previews.
 - **Widgets (Android).** Control playback or start song recognition from your home screen. Widget Studio lets you customize your playback widgets.
 - **System integration (Android).** Use Android Auto, lockscreen controls and a Quick Settings tile. On HyperOS 3, synced lyrics appear in the Super Island. On OriginOS, the current track appears in the Atomic Island.
-- **Jam (Android).** Listen together on devices connected to the same Wi-Fi network.
+- **Unison (Android).** Listen together on devices connected to the same Wi-Fi network.
 - **Sleep timer (Android).** Stop playback after a set time or at the end of the current track.
 - **Song recognition.** Identify a song through the microphone or from audio playing on your phone. The app saves the results in a local history.
 - **Explore.** Listen to live radio, check international charts, browse by genre and mood, or find recommendations and radio based on songs and artists.

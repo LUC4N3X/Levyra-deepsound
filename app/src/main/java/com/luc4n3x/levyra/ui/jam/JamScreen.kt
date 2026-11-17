@@ -2,6 +2,49 @@
 
 package com.luc4n3x.levyra.ui.jam
 
+import kotlin.math.sin
+import kotlin.math.roundToInt
+import kotlin.math.max
+import kotlin.math.PI
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Rect
+import com.luc4n3x.levyra.ui.i18n.jamScanToJoin
+import com.luc4n3x.levyra.ui.theme.LevyraOnAccent
+import androidx.compose.material.icons.rounded.QrCode2
+import androidx.compose.material3.CircularProgressIndicator
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import com.luc4n3x.levyra.feature.jam.JamInvitationQr
+import com.google.zxing.common.BitMatrix
+import androidx.compose.runtime.produceState
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.material.icons.rounded.Headphones
+import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
+import com.luc4n3x.levyra.ui.theme.LevyraCyan
+import com.luc4n3x.levyra.ui.theme.LevyraViolet
+import com.luc4n3x.levyra.ui.theme.LevyraPink
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.width
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -210,11 +253,11 @@ private fun JamOverlayContent(
         if (LevyraIsAtelier) AtelierJamBackdrop() else if (!look.skinned) JamAmbientBackdrop()
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize().statusBarsPadding(),
+            modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
                 start = 20.dp,
                 end = 20.dp,
-                top = 12.dp,
+                top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 12.dp,
                 bottom = 140.dp
             ),
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -403,6 +446,14 @@ private fun JamOverlayContent(
                 }
             }
         }
+        val scrim = if (look.skinned) look.background else MaterialTheme.colorScheme.background
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp)
+                .background(Brush.verticalGradient(listOf(scrim, scrim.copy(alpha = 0.85f), Color.Transparent)))
+                .clearAndSetSemantics { }
+        )
         if (sharing && jam.isHost && invitation != null) {
             Dialog(onDismissRequest = { sharing = false }, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
                 JamQrShare(
@@ -419,30 +470,114 @@ private fun JamOverlayContent(
 
 @Composable
 private fun JamAmbientBackdrop() {
-    Box(modifier = Modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .offset(x = 64.dp, y = 72.dp)
-                .size(210.dp)
-                .background(
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
-                    MaterialShapes.Cookie9Sided.toShape()
-                )
-                .clearAndSetSemantics { }
+    val pink = LevyraPink
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .clearAndSetSemantics { }
+            .drawBehind {
+                jamGlow(pink, 0.10f, Offset(size.width * 0.9f, size.height * 0.92f), size.width * 0.8f)
+            }
+    )
+}
+
+@Composable
+private fun DefaultJamStage(title: String, subtitle: String, onClose: () -> Unit) {
+    val cyan = LevyraCyan
+    val violet = LevyraViolet
+    val pink = LevyraPink
+    val animate = LocalAnimationsEnabled.current
+    val ripple = if (animate) {
+        rememberInfiniteTransition(label = "jam-stage").animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(tween(JamRippleMs, easing = LinearEasing), RepeatMode.Restart),
+            label = "jam-stage-ripple"
         )
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .offset(x = (-72).dp)
-                .size(160.dp)
-                .background(
-                    MaterialTheme.colorScheme.tertiary.copy(alpha = 0.06f),
-                    MaterialShapes.Clover4Leaf.toShape()
-                )
-                .clearAndSetSemantics { }
-        )
+    } else {
+        null
     }
+    Box(modifier = Modifier.fillMaxWidth().heightIn(min = JamStageHeight)) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clearAndSetSemantics { }
+                .drawBehind {
+                    val center = Offset(size.width / 2f, JamStageMedallionCenter.toPx())
+                    jamGlow(violet, 0.55f, center, size.width * 0.62f)
+                    jamGlow(cyan, 0.42f, Offset(size.width * 0.08f, size.height * 0.12f), size.width * 0.55f)
+                    jamGlow(pink, 0.40f, Offset(size.width * 0.96f, size.height * 0.46f), size.width * 0.55f)
+                    val base = JamMedallionSize.toPx() / 2f
+                    val step = JamRingStep.toPx()
+                    val phase = ripple?.value ?: 0f
+                    for (ring in 0 until JamRingCount) {
+                        val position = ring + phase
+                        val fade = (1f - position / JamRingCount).coerceIn(0f, 1f)
+                        drawCircle(
+                            color = Color.White.copy(alpha = 0.22f * fade),
+                            radius = base + step * position,
+                            center = center,
+                            style = Stroke(width = 1.2.dp.toPx())
+                        )
+                    }
+                }
+        )
+        LevyraBackButton(
+            onClick = onClose,
+            contentDescription = LocalLevyraStrings.current.back,
+            size = 48.dp,
+            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.42f),
+                contentColor = MaterialTheme.colorScheme.onSurface
+            ),
+            modifier = Modifier.align(Alignment.TopStart)
+        )
+        Column(
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = JamStageMedallionCenter - JamMedallionSize / 2, bottom = 28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(JamMedallionSize)
+                    .background(Brush.linearGradient(listOf(cyan, violet, pink)), MaterialShapes.Cookie9Sided.toShape())
+                    .clearAndSetSemantics { },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.Headphones, contentDescription = null, tint = Color.White, modifier = Modifier.size(44.dp))
+            }
+            Spacer(Modifier.height(28.dp))
+            Text(
+                title,
+                color = MaterialTheme.colorScheme.onBackground,
+                style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.Black,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.semantics { heading() }
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                subtitle,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+private val JamStageHeight = 360.dp
+private val JamStageMedallionCenter = 128.dp
+private val JamMedallionSize = 104.dp
+private val JamRingStep = 30.dp
+private const val JamRingCount = 5
+private const val JamRippleMs = 3_200
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.jamGlow(color: Color, alpha: Float, center: Offset, radius: Float) {
+    drawCircle(
+        brush = Brush.radialGradient(listOf(color.copy(alpha = alpha), Color.Transparent), center = center, radius = radius),
+        radius = radius,
+        center = center
+    )
 }
 
 @Composable
@@ -508,47 +643,7 @@ private fun JamHeader(title: String, subtitle: String, onClose: () -> Unit) {
         }
         return
     }
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            LevyraBackButton(onClick = onClose, contentDescription = LocalLevyraStrings.current.back, size = 52.dp)
-            Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .background(
-                        MaterialTheme.colorScheme.primaryContainer,
-                        MaterialShapes.Cookie9Sided.toShape()
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Rounded.MusicNote,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(
-                title,
-                color = MaterialTheme.colorScheme.onBackground,
-                style = MaterialTheme.typography.displaySmall,
-                fontWeight = FontWeight.Black
-            )
-            Text(
-                subtitle,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodyLarge
-            )
-        }
-    }
+    DefaultJamStage(title, subtitle, onClose)
 }
 
 @Composable
@@ -610,86 +705,150 @@ private fun JamSessionHero(jam: JamUiState, strings: LevyraStrings, onShare: () 
         return
     }
     val connected = jam.connection == JamConnectionState.Connected
-    val statusColor by animateColorAsState(
-        targetValue = if (connected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-        label = "jam-status"
-    )
-    ElevatedCard(
-        colors = CardDefaults.elevatedCardColors(containerColor = Color.Transparent),
-        shape = MaterialTheme.shapes.extraLarge,
-        modifier = Modifier.fillMaxWidth()
+    val scheme = MaterialTheme.colorScheme
+    val shape = MaterialTheme.shapes.extraLarge
+    val invitation = remember(jam.deepLink, jam.code) {
+        JamSessionCode.parse(jam.deepLink.ifBlank { jam.code })?.deepLink()
+    }
+    val hostName = jam.session?.participants?.firstOrNull { it.isHost }?.name.orEmpty()
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(scheme.surfaceContainerLow)
+            .border(1.dp, scheme.outlineVariant.copy(alpha = 0.6f), shape)
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    Brush.linearGradient(
-                        listOf(
-                            MaterialTheme.colorScheme.primaryContainer,
-                            MaterialTheme.colorScheme.tertiaryContainer
-                        )
-                    )
-                )
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(12.dp)
-                        .background(statusColor, CircleShape)
-                        .clearAndSetSemantics { }
-                )
-                Text(
-                    if (jam.isHost) strings.jamRoleHost else strings.jamRoleGuest,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
-                )
-                if (jam.isHost && jam.locked) {
-                    JamBadge(label = strings.jamLocked, icon = Icons.Rounded.Lock)
-                }
-            }
+            JamLiveDot(connected)
             Text(
                 jamConnectionText(jam.connection, strings),
-                color = statusColor,
-                style = MaterialTheme.typography.labelLarge
+                color = scheme.onSurface,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
             )
-
-            Surface(
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.34f),
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                shape = RoundedCornerShape(24.dp)
+            if (jam.isHost && jam.locked) {
+                Icon(Icons.Rounded.Lock, contentDescription = strings.jamLocked, tint = scheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
+            }
+            Text(
+                if (jam.isHost) strings.jamRoleHost else strings.jamRoleGuest,
+                color = scheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 1
+            )
+        }
+        if (jam.isHost && invitation != null) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(18.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(strings.jamParticipants, style = MaterialTheme.typography.labelLarge)
+                JamInlineQr(invitation, strings.jamScanToJoin)
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        (jam.session?.participants?.size ?: 0).toString(),
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Black
+                        strings.jamScanToJoin,
+                        color = scheme.onSurface,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        strings.jamLocalNetworkOnly,
+                        color = scheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall
                     )
                 }
             }
-
-            if (jam.isHost && jam.code.isNotBlank()) {
-                JamInvitationCode(jam.code)
-                JamPrimaryButton(
-                    label = strings.jamShareInvite,
-                    icon = Icons.Rounded.IosShare,
-                    onClick = onShare
-                )
+            Button(
+                onClick = onShare,
+                shapes = ButtonDefaults.shapes(),
+                colors = ButtonDefaults.buttonColors(containerColor = LevyraCyan, contentColor = LevyraOnAccent),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
+            ) {
+                Icon(Icons.Rounded.IosShare, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(strings.jamShareInvite, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+            }
+        } else if (!jam.isHost && hostName.isNotBlank()) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                JamAvatar(name = hostName, accent = LevyraCyan)
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(hostName, color = scheme.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(strings.jamRoleHost, color = scheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                }
             }
         }
     }
 }
+
+@Composable
+private fun jamSignatureBrush(): Brush {
+    val cyan = LevyraCyan
+    val violet = LevyraViolet
+    val pink = LevyraPink
+    return remember(cyan, violet, pink) { Brush.linearGradient(listOf(cyan, violet, pink)) }
+}
+
+@Composable
+private fun JamLiveDot(connected: Boolean) {
+    val dot = if (connected) LevyraCyan else MaterialTheme.colorScheme.onSurfaceVariant
+    val animate = connected && LocalAnimationsEnabled.current
+    val pulse = if (animate) {
+        rememberInfiniteTransition(label = "jam-live").animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(tween(JamLivePulseMs), RepeatMode.Restart),
+            label = "jam-live-pulse"
+        )
+    } else {
+        null
+    }
+    Box(
+        Modifier
+            .size(10.dp)
+            .clearAndSetSemantics { }
+            .drawBehind {
+                val progress = pulse?.value ?: 0f
+                if (pulse != null) drawCircle(dot.copy(alpha = 0.4f * (1f - progress)), radius = size.minDimension / 2f * (1f + progress * 1.4f))
+                drawCircle(dot)
+            }
+    )
+}
+
+@Composable
+private fun JamInlineQr(invitation: String, description: String) {
+    val qr by produceState<Result<BitMatrix>?>(null, invitation) {
+        value = withContext(Dispatchers.Default) { runCatching { JamInvitationQr.encode(invitation) } }
+    }
+    Box(
+        modifier = Modifier
+            .size(JamInlineQrSize)
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color.White)
+            .padding(10.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        val matrix = qr?.getOrNull()
+        when {
+            matrix != null -> JamQrImage(matrix, description)
+            qr == null -> CircularProgressIndicator(color = Color.Black, strokeWidth = 2.dp, modifier = Modifier.size(24.dp))
+            else -> Icon(Icons.Rounded.QrCode2, contentDescription = null, tint = Color.Black.copy(alpha = 0.4f))
+        }
+    }
+}
+
+private val JamInlineQrSize = 128.dp
+
+private const val JamLivePulseMs = 1_600
 
 @Composable
 private fun JamPendingRow(
@@ -930,7 +1089,7 @@ private fun JamCardTitle(text: String) {
             modifier = Modifier
                 .size(14.dp)
                 .background(
-                    MaterialTheme.colorScheme.primary,
+                    jamSignatureBrush(),
                     MaterialShapes.Cookie6Sided.toShape()
                 )
         )
@@ -1018,51 +1177,81 @@ private fun JamPermissionPicker(
         }
         return
     }
+    val scheme = MaterialTheme.colorScheme
+    val motion = LocalAnimationsEnabled.current
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.selectableGroup()
     ) {
         JamPermissionOptions.forEach { permission ->
             val active = permission == selected
-            Surface(
-                color = if (active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
-                contentColor = if (active) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
-                shape = if (active) MaterialShapes.Cookie4Sided.toShape() else MaterialTheme.shapes.large,
-                onClick = { onSelect(permission) },
+            val amplitude by animateDpAsState(
+                targetValue = if (active) JamWaveAmplitude else 0.dp,
+                animationSpec = if (motion) spring(dampingRatio = 0.55f, stiffness = 380f) else snap(),
+                label = "jam-option-wave"
+            )
+            val shape = if (active) remember(amplitude) { JamWavyPillShape(amplitude, JamWaveLength) } else JamOptionRestShape
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 56.dp)
-                    .semantics {
-                        this.role = Role.RadioButton
-                        this.selected = active
-                    }
+                    .heightIn(min = 60.dp)
+                    .clip(shape)
+                    .background(if (active) scheme.primaryContainer else scheme.surfaceContainerHigh)
+                    .selectable(selected = active, role = Role.RadioButton) { onSelect(permission) }
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Row(
-                    modifier = Modifier.padding(
-                        horizontal = 16.dp,
-                        vertical = 14.dp
-                    ),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        jamPermissionLabel(permission, strings),
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
-                        modifier = Modifier.weight(1f)
+                Text(
+                    jamPermissionLabel(permission, strings),
+                    color = if (active) scheme.onPrimaryContainer else scheme.onSurface,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+                    modifier = Modifier.weight(1f)
+                )
+                if (active) {
+                    Icon(
+                        Icons.Rounded.Check,
+                        contentDescription = null,
+                        tint = scheme.onPrimaryContainer,
+                        modifier = Modifier.size(20.dp)
                     )
-                    if (active) {
-                        Icon(
-                            Icons.Rounded.Check,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
                 }
             }
         }
     }
 }
+
+private class JamWavyPillShape(private val amplitude: Dp, private val wavelength: Dp) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        val wave = with(density) { amplitude.toPx() }.coerceIn(0f, size.height / 6f)
+        val cap = (size.height - wave * 2f) / 2f
+        val start = cap
+        val end = size.width - cap
+        val run = (end - start).coerceAtLeast(0f)
+        val waves = max(1, (run / with(density) { wavelength.toPx() }).roundToInt())
+        val samples = waves * JamWaveSamples
+        val path = Path()
+        path.moveTo(start, wave)
+        for (index in 1..samples) {
+            val fraction = index.toFloat() / samples
+            path.lineTo(start + run * fraction, wave - wave * sin(fraction * waves * 2f * PI.toFloat()))
+        }
+        path.arcTo(Rect(end - cap, wave, end + cap, size.height - wave), -90f, 180f, false)
+        for (index in 1..samples) {
+            val fraction = index.toFloat() / samples
+            path.lineTo(end - run * fraction, size.height - wave + wave * sin(fraction * waves * 2f * PI.toFloat()))
+        }
+        path.arcTo(Rect(start - cap, wave, start + cap, size.height - wave), 90f, 180f, false)
+        path.close()
+        return Outline.Generic(path)
+    }
+}
+
+private val JamOptionRestShape = RoundedCornerShape(20.dp)
+private val JamWaveAmplitude = 3.dp
+private val JamWaveLength = 34.dp
+private const val JamWaveSamples = 12
 
 @Composable
 private fun AtelierJamPermissionPicker(

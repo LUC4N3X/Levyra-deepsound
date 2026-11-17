@@ -145,7 +145,7 @@ private fun JamQrCard(qr: Result<BitMatrix>?, foreground: Color, secondary: Colo
 }
 
 @Composable
-private fun JamQrImage(matrix: BitMatrix, description: String) {
+internal fun JamQrImage(matrix: BitMatrix, description: String) {
     Canvas(Modifier.fillMaxSize().semantics { contentDescription = description }) {
         val module = (size.minDimension / matrix.width).toInt().coerceAtLeast(1).toFloat()
         val left = ((size.width - matrix.width * module) / 2).toInt().toFloat()

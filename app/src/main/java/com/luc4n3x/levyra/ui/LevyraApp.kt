@@ -954,6 +954,7 @@ import com.luc4n3x.levyra.ui.player.PlayerContainerShape
 import java.io.File
 import java.time.format.TextStyle as DayTextStyle
 import java.util.Locale
+import com.luc4n3x.levyra.data.lore.ArtistLoreRepository
 import kotlin.math.roundToInt
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
@@ -6279,6 +6280,18 @@ private fun ArtistPopularTracksShelf(
         }
         return
     }
+    if (LevyraIsDefaultSkin) {
+        DefaultArtistPopularShowcase(
+            tracks = rankedTracks,
+            currentId = currentId,
+            isPlaying = isPlaying,
+            isResolving = isResolving,
+            selection = selection,
+            onPlay = onPlay,
+            onPlayAll = { onPlayAll(distinctTracks) }
+        )
+        return
+    }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -6341,7 +6354,7 @@ private fun ArtistPopularTracksShelf(
 }
 
 @Composable
-private fun RowScope.ArtistPopularHeader(strings: LevyraStrings, onPlayAll: () -> Unit) {
+internal fun RowScope.ArtistPopularHeader(strings: LevyraStrings, onPlayAll: () -> Unit) {
     val spotify = LevyraIsSpotify
     Text(
         text = if (spotify) LevyraSpotifySkinStrings.forCode(strings.code).popular else strings.popularTracks,
@@ -6481,12 +6494,7 @@ private fun ArtistPopularTrackRow(
     onPlay: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val subtitle = remember(track.youtubeViewCount, track.durationMs, strings.code) {
-        listOf(
-            formatSearchViewCount(track.youtubeViewCount, strings.code).takeIf(String::isNotBlank)?.let { "$it ${strings.pulsePlays}" }.orEmpty(),
-            formatDuration(track.durationMs).takeIf { it != "--:--" }.orEmpty()
-        ).filter(String::isNotBlank).joinToString(" · ")
-    }
+    val subtitle = remember(track.youtubeViewCount, track.durationMs, strings.code) { artistPopularSubtitle(track, strings) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -6545,6 +6553,11 @@ private fun ArtistPopularTrackRow(
         }
     }
 }
+
+internal fun artistPopularSubtitle(track: Track, strings: LevyraStrings): String = listOf(
+    formatSearchViewCount(track.youtubeViewCount, strings.code).takeIf(String::isNotBlank)?.let { "$it ${strings.pulsePlays}" }.orEmpty(),
+    formatDuration(track.durationMs).takeIf { it != "--:--" }.orEmpty()
+).filter(String::isNotBlank).joinToString(" · ")
 
 @Composable
 private fun ArtistPopularRank(rank: Int, isCurrent: Boolean) {
@@ -6968,7 +6981,8 @@ internal data class ArtistBiographyPresentation(
 internal fun buildArtistBiographyPresentation(
     biography: ArtistBiography,
     paragraphs: List<String>,
-    summary: String
+    summary: String,
+    uiLanguageCode: String = ""
 ): ArtistBiographyPresentation {
     val previewText = normalizeBiographyPreview(
         text = biography.text,
@@ -6977,10 +6991,15 @@ internal fun buildArtistBiographyPresentation(
     )
     val sourceLabel = biography.sourceLabel.trim()
     val wikipediaSource = sourceLabel.equals("Wikipedia", ignoreCase = true)
+    val sourceName = if (wikipediaSource) "Wikipedia" else sourceLabel
+    val biographyLanguage = biography.languageCode.takeIf(String::isNotBlank)?.let(ArtistLoreRepository::preferredLanguage)
+    val foreignLanguage = biographyLanguage?.takeIf {
+        uiLanguageCode.isNotBlank() && it != ArtistLoreRepository.preferredLanguage(uiLanguageCode)
+    }
     return ArtistBiographyPresentation(
         previewText = previewText,
         paragraphs = paragraphs.ifEmpty { listOf(previewText) },
-        sourceText = if (wikipediaSource) "Wikipedia" else sourceLabel,
+        sourceText = foreignLanguage?.let { "$sourceName · ${it.uppercase(Locale.ROOT)}" } ?: sourceName,
         showSource = sourceLabel.isNotBlank() && !sourceLabel.startsWith("YouTube", ignoreCase = true)
     )
 }
@@ -20713,6 +20732,10 @@ private fun SettingsHubFooter(onExitApplication: () -> Unit) {
         }
         Spacer(modifier = Modifier.height(12.dp))
         SupportLevyraSettingsLink(
+            languageCode = strings.code,
+            modifier = Modifier.fillMaxWidth()
+        )
+        com.luc4n3x.levyra.ui.support.SupportDonationSettingsCard(
             languageCode = strings.code,
             modifier = Modifier.fillMaxWidth()
         )

@@ -1064,65 +1064,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             youtubeRepository = repository
         )
     }
-    private val playlistImportCatalog by lazy {
-        val metadata = com.luc4n3x.levyra.data.playlistimport.PlaylistImportMetadata(
-            com.luc4n3x.levyra.data.apple.AppleMetadataEnricher(getApplication<Application>()),
-            { query -> spotifySearchClient.search(query, 12).songs },
-            { ChartsCatalog.defaultRegionForLanguage(_state.value.languageCode).country }
-        )
-        com.luc4n3x.levyra.data.playlistimport.PlaylistImportCatalog(
-            repository = repository,
-            localTracks = { localLibrary.availableMedia.first().map { it.toLocalTrack() } },
-            languageCode = { _state.value.languageCode },
-            metadataSearch = metadata::search,
-            youtubeSearch = { query -> repository.searchYoutubeForImport(query, 12) },
-            albumSource = object : com.luc4n3x.levyra.data.playlistimport.ImportAlbumSource {
-                override suspend fun albums(query: String, languageCode: String) =
-                    repository.searchAlbumsForImport(query, languageCode)
+    private val playlistImportHost = object : PlaylistImportHost {
+        override fun languageCode(): String = _state.value.languageCode
 
-                override suspend fun tracks(album: com.luc4n3x.levyra.domain.AlbumHit, languageCode: String) =
-                    repository.albumTracksForImport(album, languageCode)
-            },
-            durationLookup = { videoId, languageCode -> repository.videoDurationForImport(videoId, languageCode) },
-            searchBackoff = com.luc4n3x.levyra.data.playlistimport.ImportSearchBackoff()
-        )
+        override fun playlistsChanged() = loadPlaylists()
+
+        override fun openPlaylist(playlistId: String) = this@LevyraViewModel.openPlaylist(playlistId)
     }
-    val playlistImport: PlaylistImportController by lazy {
-        val appContext = getApplication<Application>().applicationContext
-        val fetcher = com.luc4n3x.levyra.data.playlistimport.PlaylistImportFetcher(
-            com.luc4n3x.levyra.data.network.LevyraHttpClientFactory.media(appContext)
-        )
-        PlaylistImportController(
-            scope = viewModelScope,
-            adapters = listOf(
-                com.luc4n3x.levyra.data.playlistimport.LevyraSharePlaylistAdapter(),
-                com.luc4n3x.levyra.data.playlistimport.TextPlaylistAdapter(),
-                com.luc4n3x.levyra.data.playlistimport.YoutubePlaylistAdapter(repository) { _state.value.languageCode },
-                com.luc4n3x.levyra.data.playlistimport.SpotifyPlaylistAdapter(fetcher),
-                com.luc4n3x.levyra.data.playlistimport.DeezerPlaylistAdapter(fetcher),
-                com.luc4n3x.levyra.data.playlistimport.AppleMusicPlaylistAdapter(fetcher),
-                com.luc4n3x.levyra.data.playlistimport.JioSaavnPlaylistAdapter(fetcher),
-                com.luc4n3x.levyra.data.playlistimport.BandcampAlbumAdapter(fetcher)
-            ),
-            catalog = playlistImportCatalog,
-            store = com.luc4n3x.levyra.data.playlistimport.PlaylistImportSessionStore(
-                java.io.File(appContext.filesDir, "playlist-import-sessions")
-            ),
-            gateway = object : PlaylistImportGateway {
-                override fun languageCode(): String = _state.value.languageCode
-
-                override suspend fun commit(name: String, tracks: List<Track>, playlistId: String) =
-                    playlistStore.createWithTracks(name, tracks, playlistId)
-
-                override suspend fun append(playlistId: String, tracks: List<Track>) =
-                    playlistStore.addTracks(playlistId, tracks)
-
-                override fun playlistsChanged() = loadPlaylists()
-
-                override fun openPlaylist(playlistId: String) = this@LevyraViewModel.openPlaylist(playlistId)
-            }
-        )
+    private val playlistImportEngineDelegate = lazy {
+        PlaylistImportEngine.get(getApplication<Application>()).also { it.attach(playlistImportHost) }
     }
+    private val playlistImportEngine by playlistImportEngineDelegate
+    private val playlistImportCatalog get() = playlistImportEngine.catalog
+    val playlistImport: PlaylistImportController get() = playlistImportEngine.controller
     val playlistExport: PlaylistExportController by lazy {
         PlaylistExportController(viewModelScope, getApplication<Application>().applicationContext)
     }
@@ -9241,6 +9195,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 val biographyDeferred = async {
                     runCatchingPreservingCancellation { artistRepository.biographyFor(clean, normalizedBrowseId) }.getOrNull()
                 }
+                val appleStorefront = ChartsCatalog.defaultRegionForLanguage(_state.value.languageCode).country
+                val appleBiographyDeferred = async {
+                    runCatchingPreservingCancellation { artistRepository.appleBiographyFor(clean, appleStorefront) }.getOrNull()
+                }
                 val profileDeferred = async {
                     resolveArtistProfileReference(
                         browseId = normalizedBrowseId,
@@ -9258,6 +9216,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 if (!isActive) return@coroutineScope
                 if (profile == null) {
                     biographyDeferred.cancel()
+                    appleBiographyDeferred.cancel()
                     _state.update {
                         it.copy(
                             artistLoading = false,
@@ -9269,9 +9228,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
                 val initialBiography = biographyDeferred.completedOrNull()
                     ?: withTimeoutOrNull(ARTIST_INITIAL_BIOGRAPHY_WAIT_MS) { biographyDeferred.await() }
-                val initialProfile = initialBiography?.let { biography ->
-                    artistRepository.mergeBiography(profile, biography)
-                } ?: profile
+                val initialProfile = listOfNotNull(initialBiography, appleBiographyDeferred.completedOrNull())
+                    .fold(profile, artistRepository::mergeBiography)
                 _state.update {
                     it.copy(
                         artistLoading = false,
@@ -9286,7 +9244,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     artistLoreJob?.cancel()
                     artistLoreJob = launchArtistLoreAwait(profile, biographyDeferred)
                 }
+                appleBiographyDeferred.await()?.let { biography -> mergeVisibleArtistBiography(profile, biography) }
             }
+        }
+    }
+
+    private fun mergeVisibleArtistBiography(profile: ArtistProfile, biography: ArtistBiography) {
+        _state.update { current ->
+            val visible = current.artistProfile ?: return@update current
+            if (!current.showArtist || !sameArtistProfile(visible, profile)) return@update current
+            current.copy(artistProfile = artistRepository.mergeBiography(visible, biography))
         }
     }
 
@@ -9329,11 +9296,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     ): Job {
         return viewModelScope.launch {
             runCatchingPreservingCancellation { biographyDeferred.await() }.getOrNull()?.let { biography ->
-                _state.update { current ->
-                    val visible = current.artistProfile ?: return@update current
-                    if (!current.showArtist || !sameArtistProfile(visible, profile)) return@update current
-                    current.copy(artistProfile = artistRepository.mergeBiography(visible, biography))
-                }
+                mergeVisibleArtistBiography(profile, biography)
             }
             val visible = _state.value.artistProfile ?: return@launch
             if (!_state.value.showArtist || !sameArtistProfile(visible, profile)) return@launch
@@ -9349,11 +9312,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun launchArtistLoreCollection(profile: ArtistProfile): Job {
         return viewModelScope.launch {
             artistRepository.observeBiography(profile).collectLatest { biography ->
-                _state.update { current ->
-                    val visible = current.artistProfile ?: return@update current
-                    if (!current.showArtist || !sameArtistProfile(visible, profile)) return@update current
-                    current.copy(artistProfile = artistRepository.mergeBiography(visible, biography))
-                }
+                mergeVisibleArtistBiography(profile, biography)
             }
         }
     }
@@ -16202,6 +16161,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         networkTestJob?.cancel()
         jamStateJob?.cancel()
         if (jamControllerDelegate.isInitialized()) jamController.close()
+        if (playlistImportEngineDelegate.isInitialized()) playlistImportEngine.detach(playlistImportHost)
         _state.value.currentTrack?.takeUnless { exitingApplication || it.isLiveRadio() }?.let {
             preferences.saveLastPlayback(it, player.positionMs)
         }

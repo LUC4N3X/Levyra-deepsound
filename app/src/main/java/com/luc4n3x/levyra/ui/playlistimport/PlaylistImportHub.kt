@@ -1,6 +1,15 @@
 package com.luc4n3x.levyra.ui.playlistimport
 
 import com.luc4n3x.levyra.ui.components.LevyraBackButton
+import com.luc4n3x.levyra.ui.components.LevyraWavyProgress
+import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.shape.CircleShape
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -199,8 +208,9 @@ internal fun ImportTopBar(title: String, onBack: () -> Unit, backDescription: St
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(start = 12.dp, end = 20.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         LevyraBackButton(onClick = onBack, contentDescription = backDescription)
         Text(
@@ -428,11 +438,9 @@ private fun SupportedSources(copy: PlaylistImportHubCopy) {
     }
 }
 
-@Composable
-private fun ImportProgressScreen(state: PlaylistImportUiState, copy: PlaylistImportHubCopy, controller: PlaylistImportController) {
-    val sourceName = (state.descriptor?.source ?: state.detectedSource)?.displayName().orEmpty()
+internal fun playlistImportProgressLine(state: PlaylistImportUiState, copy: PlaylistImportHubCopy): String {
     val total = state.progressTotal
-    val line = when (state.activity) {
+    return when (state.activity) {
         PlaylistImportActivity.READING -> if (total != null) {
             copy.format("fetched", "done" to state.progressDone, "total" to total)
         } else {
@@ -442,43 +450,138 @@ private fun ImportProgressScreen(state: PlaylistImportUiState, copy: PlaylistImp
         PlaylistImportActivity.CHECKING -> copy["checking"]
         PlaylistImportActivity.PREPARING -> copy["preparing"]
     }
-    val headline = if (state.step == PlaylistImportStep.READING) copy.format("reading", "source" to sourceName) else line
+}
+
+@Composable
+private fun ImportProgressScreen(state: PlaylistImportUiState, copy: PlaylistImportHubCopy, controller: PlaylistImportController) {
+    val sourceName = (state.descriptor?.source ?: state.detectedSource)?.displayName().orEmpty()
+    val line = playlistImportProgressLine(state, copy)
+    val reading = state.step == PlaylistImportStep.READING
+    val headline = if (reading) copy.format("reading", "source" to sourceName) else line
     CenteredColumn {
         ImportTopBar(copy["title"], controller::close, copy["back"])
         Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp)
+            modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             state.descriptor?.let { descriptor ->
                 PlaylistImportHero(descriptor, state.entries, state.progressTotal ?: descriptor.declaredTrackCount, copy)
             }
-            Text(
-                headline,
-                color = LevyraText,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
-            )
-            val determinate = total != null && total > 0 &&
-                (state.activity == PlaylistImportActivity.MATCHING || state.activity == PlaylistImportActivity.READING)
-            if (determinate) {
-                LinearProgressIndicator(
-                    progress = { (state.progressDone.toFloat() / total.toFloat()).coerceIn(0f, 1f) },
-                    modifier = Modifier.fillMaxWidth().height(6.dp),
-                    color = LevyraCyan,
-                    trackColor = Color.White.copy(alpha = 0.08f)
-                )
-            } else {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(6.dp), color = LevyraCyan, trackColor = Color.White.copy(alpha = 0.08f))
-            }
-            if (state.step == PlaylistImportStep.READING) Text(line, color = LevyraMuted, fontSize = 13.sp)
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedButton(onClick = controller::cancel, modifier = Modifier.heightIn(min = 48.dp)) { Text(copy["cancel"]) }
-                TextButton(onClick = controller::close, modifier = Modifier.heightIn(min = 48.dp)) { Text(copy["hide"], color = LevyraCyan) }
+            ImportProgressPanel(state, headline, line.takeIf { reading }, copy)
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Button(
+                    onClick = controller::close,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = LevyraCyan, contentColor = LevyraOnAccent)
+                ) {
+                    Text(copy["hide"], fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                }
+                OutlinedButton(
+                    onClick = controller::cancel,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
+                ) {
+                    Text(copy["cancel"], color = LevyraText, textAlign = TextAlign.Center)
+                }
             }
         }
     }
 }
+
+@Composable
+private fun ImportProgressPanel(state: PlaylistImportUiState, headline: String, detail: String?, copy: PlaylistImportHubCopy) {
+    val total = state.progressTotal?.takeIf { it > 0 }
+    val determinate = total != null &&
+        (state.activity == PlaylistImportActivity.MATCHING || state.activity == PlaylistImportActivity.READING)
+    val target = if (determinate) (state.progressDone.toFloat() / total.toFloat()).coerceIn(0f, 1f) else 0f
+    val animated by animateFloatAsState(
+        targetValue = target,
+        animationSpec = if (LocalAnimationsEnabled.current) tween(ImportProgressAnimationMs) else snap(),
+        label = "playlist-import-progress"
+    )
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(ImportPanelShape)
+            .background(LevyraText.copy(alpha = 0.05f))
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        if (determinate) {
+            Text(
+                "${(target * 100).toInt()}%",
+                color = LevyraText,
+                fontSize = 44.sp,
+                lineHeight = 46.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-1.2).sp,
+                style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum")
+            )
+        }
+        Text(
+            headline,
+            color = LevyraText,
+            fontSize = 17.sp,
+            lineHeight = 22.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+        )
+        if (determinate) {
+            LevyraWavyProgress(
+                progress = animated,
+                color = LevyraCyan,
+                trackColor = LevyraText.copy(alpha = 0.10f),
+                modifier = Modifier.fillMaxWidth()
+            )
+        } else {
+            LinearProgressIndicator(
+                modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
+                color = LevyraCyan,
+                trackColor = LevyraText.copy(alpha = 0.10f)
+            )
+        }
+        detail?.let { Text(it, color = LevyraMuted, fontSize = 13.sp) }
+        val counts = state.counts
+        if (state.step == PlaylistImportStep.MATCHING && counts.total > 0) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val scheme = MaterialTheme.colorScheme
+                ImportStat(copy["filterMatched"], counts.matched, LevyraCyan)
+                ImportStat(copy["filterReview"], counts.review, scheme.tertiary)
+                ImportStat(copy["filterMissing"], counts.missing + counts.skipped, scheme.error)
+            }
+        }
+    }
+}
+
+@Composable
+private fun RowScope.ImportStat(label: String, value: Int, accent: Color) {
+    Column(
+        modifier = Modifier
+            .weight(1f)
+            .clip(ImportRowShape)
+            .background(accent.copy(alpha = 0.10f))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Text(
+            value.toString(),
+            color = LevyraText,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum")
+        )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Box(Modifier.size(6.dp).clip(CircleShape).background(accent))
+            Text(label, color = LevyraMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+private val ImportPanelShape = RoundedCornerShape(28.dp)
+private const val ImportProgressAnimationMs = 450
 
 @Composable
 private fun ImportIncompleteScreen(

@@ -603,7 +603,8 @@ class PlaylistImportController(
                 if (now - lastPublish >= PROGRESS_INTERVAL_MS || processed == positions.size) {
                     lastPublish = now
                     val done = working.count { it.resolved }
-                    _state.update { it.copy(progressDone = done, progressTotal = working.size) }
+                    val counts = PlaylistImportReview.counts(working)
+                    _state.update { it.copy(progressDone = done, progressTotal = working.size, counts = counts) }
                 }
                 if (processed % PERSIST_EVERY == 0) persistNow(PlaylistImportPhase.MATCHING)
             }

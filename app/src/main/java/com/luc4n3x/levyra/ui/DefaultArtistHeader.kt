@@ -549,9 +549,9 @@ private fun ArtistLatestReleaseCard(release: ArtistRelease, base: Color, highlig
 internal fun DefaultArtistAbout(profile: ArtistProfile, biography: ArtistBiography, imageUrl: String, accent: Color, modifier: Modifier = Modifier) {
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { LevyraSpotifySkinStrings.forCode(strings.code) }
-    val presentation = remember(biography) {
+    val presentation = remember(biography, strings.code) {
         val editorial = artistBiographyEditorial(biography.text, biography.description, biography.languageCode)
-        buildArtistBiographyPresentation(biography, editorial.paragraphs, editorial.summary)
+        buildArtistBiographyPresentation(biography, editorial.paragraphs, editorial.summary, strings.code)
     }
     val photo = imageUrl.ifBlank { biography.originalImageUrl.ifBlank { biography.thumbnailUrl } }
     var sheetOpen by rememberSaveable(profile.browseId, profile.name) { mutableStateOf(false) }

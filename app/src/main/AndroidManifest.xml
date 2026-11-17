@@ -366,6 +366,12 @@
             tools:node="merge" />
 
         <service
+            android:name=".feature.playlistimport.PlaylistImportService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync"
+            android:stopWithTask="true" />
+
+        <service
             android:name=".feature.adaptive.AdaptiveListeningService"
             android:exported="false"
             android:foregroundServiceType="microphone"
