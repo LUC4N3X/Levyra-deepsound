@@ -57,6 +57,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.heading
+import kotlinx.coroutines.launch
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -350,7 +351,9 @@ internal fun DefaultDiscoveryFiltersSheet(
     onRefresh: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss) {
+    val sheetState = androidx.compose.material3.rememberModalBottomSheetState()
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(Modifier.fillMaxWidth().padding(bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
             Text(
                 copy[SmartMusicText.BubbleExplore],
@@ -361,7 +364,7 @@ internal fun DefaultDiscoveryFiltersSheet(
             androidx.compose.material3.FilledTonalButton(
                 onClick = {
                     onRefresh()
-                    onDismiss()
+                    scope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
                 },
                 enabled = !refreshing,
                 modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth().heightIn(min = 52.dp)

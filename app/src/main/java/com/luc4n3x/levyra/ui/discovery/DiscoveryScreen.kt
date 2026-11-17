@@ -269,7 +269,13 @@ internal fun DiscoveryScreen(
     Box(
         Modifier
             .fillMaxSize()
-            .background(if (look.backdrop == DiscoveryBackdrop.Atelier) com.luc4n3x.levyra.ui.theme.AtelierDesign.room else homeCanvasColor(LevyraIsLight))
+            .then(
+                when (look.backdrop) {
+                    DiscoveryBackdrop.Aurora -> Modifier
+                    DiscoveryBackdrop.Atelier -> Modifier.background(com.luc4n3x.levyra.ui.theme.AtelierDesign.room)
+                    else -> Modifier.background(homeCanvasColor(LevyraIsLight))
+                }
+            )
             .pointerInput(Unit) {}
     ) {
         DiscoveryBackdropLayer(look, ui.deck.current, animationsEnabled, ui.deck.upcoming.firstOrNull()) {
@@ -504,7 +510,7 @@ private fun DiscoveryCardStack(
         val widthPx = with(density) { maxWidth.toPx() }
         val chrome = DiscoveryCardChrome + if (showsDistance(ui.request)) DiscoveryDistanceChrome else 0.dp
         val artSide = if (look.backdrop == DiscoveryBackdrop.Aurora) {
-            minOf(maxWidth, maxHeight - panel - DefaultDiscoveryPeek * 3).coerceAtLeast(120.dp)
+            minOf(maxWidth, maxHeight - panel - DefaultDiscoveryPeek * 3).coerceAtLeast(0.dp)
         } else if (look.backdrop == DiscoveryBackdrop.Glacier || look.backdrop == DiscoveryBackdrop.Atelier) {
             (maxHeight - DiscoveryCardChrome - GlacierDiscPeek - look.stackGap * 2).coerceAtLeast(96.dp)
         } else {
