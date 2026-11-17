@@ -17,6 +17,7 @@ class FloatingNavSettingsTest {
         assertFalse(defaults.enabled)
         assertEquals(FloatingNavSide.Right, defaults.side)
         assertEquals(0.42f, defaults.anchor, 0f)
+        assertFalse(defaults.hideBottomBar)
     }
 
     @Test fun normalizedClampsAnchorAndReplacesNonFiniteValues() {
@@ -39,12 +40,13 @@ class FloatingNavSettingsTest {
 
     @Test fun backupRoundTripKeepsFloatingNavAndLegacyBackupsUseDefaults() {
         val original = LevyraInterfaceSettings(
-            floatingNav = LevyraFloatingNavSettings(enabled = true, side = FloatingNavSide.Left, anchor = 0.8f)
+            floatingNav = LevyraFloatingNavSettings(enabled = true, side = FloatingNavSide.Left, anchor = 0.8f, hideBottomBar = true)
         )
         val restored = backupInterfaceSettingsFromJson(backupInterfaceSettingsToJson(original)).floatingNav
         assertTrue(restored.enabled)
         assertEquals(FloatingNavSide.Left, restored.side)
         assertEquals(0.8f, restored.anchor, 0.0001f)
+        assertTrue(restored.hideBottomBar)
         assertEquals(LevyraFloatingNavSettings(), backupInterfaceSettingsFromJson(JSONObject()).floatingNav)
     }
 }

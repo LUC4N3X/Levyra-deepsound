@@ -2519,9 +2519,10 @@ fun LevyraApp(
                 accent = yourSoundAccent
             )
             val homeSaveableState = rememberSaveableStateHolder()
+            val dockHidden = state.showSettings || state.interfaceSettings.floatingNav.let { it.enabled && it.hideBottomBar }
             val dockMiniMergeable = state.interfaceSettings.dockMorphActive(skinNavigationSettings(navigationStudio.settings).style) &&
                 skinNavigationSettings(navigationStudio.settings).style.supportsDockMorph &&
-                !dockSideBySide && !state.showSettings
+                !dockSideBySide && !dockHidden
             val dockMiniMerged = remember(dockState, dockMiniMergeable) {
                 { dockMiniMergeable && dockState.compact }
             }
@@ -2696,10 +2697,11 @@ fun LevyraApp(
                     val dockCompaction = dockState.animatedCompaction(state.animationsEnabled)
                     val compactionProvider: () -> Float = { dockCompaction.value }
                     val miniPlayerVisible = state.currentTrack != null && !state.isSamplesOpen
+                    val dockHidden = state.showSettings || state.interfaceSettings.floatingNav.let { it.enabled && it.hideBottomBar }
                     val dockMorph = rememberDockMorph(
                         active = state.interfaceSettings.dockMorphActive(skinNavigationSettings(navigationStudio.settings).style) &&
                             skinNavigationSettings(navigationStudio.settings).style.supportsDockMorph &&
-                            !dockSideBySide && !state.showSettings,
+                            !dockSideBySide && !dockHidden,
                         miniVisible = miniPlayerVisible,
                         compaction = dockCompaction
                     )
@@ -2822,7 +2824,7 @@ fun LevyraApp(
                             }
                         }
                     }
-                    val dockRetracted = state.showSettings
+                    val dockRetracted = dockHidden
                     val dockRowSideBySide = dockSideBySide && !dockRetracted
                     run {
                         val dockModifier = if (miniMaxWidth.isFinite()) {
@@ -14797,10 +14799,10 @@ private fun SearchScreen(
                 if (levyraBrowse != null && LevyraIsDefaultSkin) item(key = "search-browse-top", contentType = "search-browse-top") {
                     Spacer(Modifier.height(2.dp))
                 }
-                if (levyraBrowse == null) item(key = "search-taste-hints", contentType = "search-taste-hints") {
+                if (levyraBrowse == null || LevyraIsDefaultSkin) item(key = "search-taste-hints", contentType = "search-taste-hints") {
                     SearchTasteHints(
                         suggestions = tasteHintQueries,
-                        onOpenLyricsSearch = if (LevyraIsDefaultSkin) viewModel::openLyricsPhraseSearch else null,
+                        onOpenLyricsSearch = null,
                         onClick = { suggestion ->
                             focusManager.clearFocus()
                             keyboardController?.hide()
@@ -14812,7 +14814,7 @@ private fun SearchScreen(
 
                 if (state.recentSearches.isNotEmpty()) {
                     item(key = "search-recent", contentType = "search-recent") {
-                        if (levyraBrowse == null || !LevyraIsDefaultSkin) SearchSectionGap()
+                        SearchSectionGap()
                         RecentSearchesRow(
                             title = strings.recentSearches,
                             tracks = state.recentSearches,
@@ -14831,7 +14833,7 @@ private fun SearchScreen(
                             onAddToQueue = viewModel::addToQueue,
                             onDownload = viewModel::exportTrack,
                             onArtist = viewModel::openArtist,
-                            refined = levyraBrowse != null
+                            refined = levyraBrowse != null && !LevyraIsDefaultSkin
                         )
                     }
                 }

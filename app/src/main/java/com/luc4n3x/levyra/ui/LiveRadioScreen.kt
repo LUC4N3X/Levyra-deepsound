@@ -567,10 +567,10 @@ private fun RadioHero(
     }
 }
 
-private val RadioLiveRed = Color(0xFFE53935)
+internal val RadioLiveRed = Color(0xFFE53935)
 
 @Composable
-private fun RadioChoiceChip(label: String, selected: Boolean, onClick: () -> Unit) {
+internal fun RadioChoiceChip(label: String, selected: Boolean, onClick: () -> Unit) {
     if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
         MonoPill(label, selected, onClick)
         return
@@ -727,7 +727,7 @@ private fun RadioLivePill(live: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun rememberRadioPulse(): () -> Float {
+internal fun rememberRadioPulse(): () -> Float {
     val animated = LocalAnimationsEnabled.current
     val pulse = rememberInfiniteTransition(label = "radio-live-pulse")
     val alpha = pulse.animateFloat(
@@ -740,7 +740,7 @@ private fun rememberRadioPulse(): () -> Float {
 }
 
 @Composable
-private fun RadioEqualizer(color: Color, modifier: Modifier = Modifier) {
+internal fun RadioEqualizer(color: Color, modifier: Modifier = Modifier) {
     val animated = LocalAnimationsEnabled.current
     val transition = rememberInfiniteTransition(label = "radio-equalizer")
     val bars = RadioEqualizerPeriods.mapIndexed { index, period ->
@@ -891,7 +891,7 @@ private fun RadioPlayPill(
 }
 
 @Composable
-private fun RadioFavoriteButton(
+internal fun RadioFavoriteButton(
     favorite: Boolean,
     addLabel: String,
     removeLabel: String,
@@ -1043,7 +1043,7 @@ private fun RadioStationPlayIndicator(playing: Boolean, playLabel: String) {
 }
 
 @Composable
-private fun RadioStationDetail(station: RadioStation) {
+internal fun RadioStationDetail(station: RadioStation) {
     val languageCode = LocalLevyraStrings.current.code
     val place = remember(station.countryCode, station.country, languageCode) {
         station.countryCode.takeIf(String::isNotBlank)
@@ -1213,7 +1213,7 @@ internal fun RadioArtwork(station: RadioStation, size: androidx.compose.ui.unit.
 }
 
 @Composable
-private fun RadioNotice(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
+internal fun RadioNotice(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 6.dp).background(LevyraPanelSoft, RoundedCornerShape(14.dp)).padding(13.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -1225,7 +1225,7 @@ private fun RadioNotice(text: String, icon: androidx.compose.ui.graphics.vector.
 }
 
 @Composable
-private fun RadioEmptyState(title: String, detail: String?, retry: String, onRetry: () -> Unit) {
+internal fun RadioEmptyState(title: String, detail: String?, retry: String, onRetry: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 34.dp, vertical = 46.dp),
         horizontalAlignment = Alignment.CenterHorizontally,

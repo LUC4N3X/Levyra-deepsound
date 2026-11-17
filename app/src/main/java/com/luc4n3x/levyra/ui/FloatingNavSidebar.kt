@@ -50,6 +50,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.SwapHoriz
+import androidx.compose.material.icons.rounded.VerticalAlignBottom
 import androidx.compose.material.icons.rounded.UnfoldLess
 import androidx.compose.material.icons.automirrored.rounded.ViewSidebar
 import androidx.compose.material3.Icon
@@ -576,6 +577,15 @@ internal fun SettingsGroupCollector.floatingNavSettingsItems(
                 ),
                 selected = floating.side.storageId,
                 onSelect = { update(floating.copy(side = FloatingNavSide.from(it))) }
+            )
+        }
+        item {
+            SettingsToggle(
+                icon = Icons.Rounded.VerticalAlignBottom,
+                title = copy.hideBottomBar,
+                subtitle = copy.hideBottomBarSubtitle,
+                checked = floating.hideBottomBar,
+                onCheckedChange = { update(floating.copy(hideBottomBar = it)) }
             )
         }
     }

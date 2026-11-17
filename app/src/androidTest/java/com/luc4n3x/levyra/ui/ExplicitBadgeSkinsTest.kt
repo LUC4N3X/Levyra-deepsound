@@ -62,11 +62,10 @@ class ExplicitBadgeSkinsTest {
                                 Text("Rail $rail $rated")
                                 val tracks = listOf(track.copy(explicit = rated))
                                 when (rail) {
-                                    0 -> DefaultRecentSearchesRail("Recent", tracks, {}) { _, _, _ -> }
-                                    1 -> DefaultSearchSamplesRail("Samples", tracks, false) {}
-                                    2 -> IvoryRecentSearchesRail("Recent", tracks, {}) { _, _, _ -> }
-                                    3 -> IvorySearchSamplesRail("Samples", tracks, false) {}
-                                    4 -> TorqueRecentSearchesRail("Recent", tracks, {}) { _, _, _ -> }
+                                    0 -> DefaultSearchSamplesRail("Samples", tracks, false) {}
+                                    1 -> IvoryRecentSearchesRail("Recent", tracks, {}) { _, _, _ -> }
+                                    2 -> IvorySearchSamplesRail("Samples", tracks, false) {}
+                                    3 -> TorqueRecentSearchesRail("Recent", tracks, {}) { _, _, _ -> }
                                     else -> TorqueSearchSamplesRail("Samples", tracks, false) {}
                                 }
                             }
@@ -74,7 +73,7 @@ class ExplicitBadgeSkinsTest {
                     }
                 }
             }
-            for (candidate in 0..5) for (explicit in listOf(true, false)) {
+            for (candidate in 0..4) for (explicit in listOf(true, false)) {
                 scenario.onActivity { rail = candidate; rated = explicit }
                 val expected = "Rated song, Artist" + if (explicit) ", Explicit" else ""
                 val deadline = SystemClock.uptimeMillis() + 5_000
