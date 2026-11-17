@@ -162,41 +162,7 @@ internal fun BubbleOrbitSelector(
         return
     }
     if (com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin) {
-        Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(
-                Modifier.padding(horizontal = 20.dp).fillMaxWidth().height(52.dp)
-                    .clip(CircleShape).background(scheme.onSurface.copy(alpha = 0.08f)).padding(4.dp)
-                    .selectableGroup()
-            ) {
-                BubbleLevel.entries.forEach { level ->
-                    val checked = level == request.level
-                    val container by androidx.compose.animation.animateColorAsState(
-                        if (checked) scheme.primary else Color.Transparent,
-                        if (animated) spring(stiffness = Spring.StiffnessMediumLow) else snap(),
-                        label = "bubble-level-segment"
-                    )
-                    Box(
-                        Modifier.weight(1f).fillMaxHeight().clip(CircleShape).background(container)
-                            .selectable(selected = checked, role = Role.RadioButton) {
-                                if (!checked) {
-                                    haptics.perform(LevyraHapticAction.Confirm)
-                                    onLevel(level)
-                                }
-                            }
-                            .padding(horizontal = 6.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            copy[bubbleLevelName(level)],
-                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = if (checked) FontWeight.Bold else FontWeight.Medium),
-                            color = if (checked) scheme.onPrimary else scheme.onSurface,
-                            maxLines = 1,
-                            autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = 15.sp)
-                        )
-                    }
-                }
-            }
-        }
+        DefaultBubbleLevelSelector(request.level, animated, copy, onLevel, modifier)
         return
     }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -322,6 +288,51 @@ private fun OrbitDiagram(level: BubbleLevel, animated: Boolean, modifier: Modifi
             drawCircle(scheme.tertiary, 4.5.dp.toPx(), satellite)
         }
         Box(Modifier.fillMaxSize(0.32f).clip(rememberOrbitMorph(level != BubbleLevel.Near, animated)).background(scheme.primary))
+    }
+}
+
+@Composable
+private fun DefaultBubbleLevelSelector(
+    selected: BubbleLevel,
+    animated: Boolean,
+    copy: SmartMusicCopy,
+    onLevel: (BubbleLevel) -> Unit,
+    modifier: Modifier
+) {
+    val scheme = MaterialTheme.colorScheme
+    val haptics = LocalLevyraHaptics.current
+    Row(
+        modifier.padding(horizontal = 20.dp).fillMaxWidth().height(52.dp)
+            .clip(CircleShape).background(scheme.onSurface.copy(alpha = 0.08f)).padding(4.dp)
+            .selectableGroup()
+    ) {
+        BubbleLevel.entries.forEach { level ->
+            val checked = level == selected
+            val container by androidx.compose.animation.animateColorAsState(
+                if (checked) scheme.primary else Color.Transparent,
+                if (animated) spring(stiffness = Spring.StiffnessMediumLow) else snap(),
+                label = "bubble-level-segment"
+            )
+            Box(
+                Modifier.weight(1f).fillMaxHeight().clip(CircleShape).background(container)
+                    .selectable(selected = checked, role = Role.RadioButton) {
+                        if (!checked) {
+                            haptics.perform(LevyraHapticAction.Confirm)
+                            onLevel(level)
+                        }
+                    }
+                    .padding(horizontal = 6.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    copy[bubbleLevelName(level)],
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = if (checked) FontWeight.Bold else FontWeight.Medium),
+                    color = if (checked) scheme.onPrimary else scheme.onSurface,
+                    maxLines = 1,
+                    autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = 15.sp)
+                )
+            }
+        }
     }
 }
 
