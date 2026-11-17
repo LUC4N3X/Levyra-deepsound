@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="126" height="33.075" viewBox="0 0 160 42" role="img" aria-label="Read Levyra documentation">
 <title>Read Levyra documentation</title>
-<path d="M 19.8 0.8 L 152.2 0.8 C 156.05 0.8 159.2 3.95 159.2 7.8 L 159.2 33.2 C 159.2 37.6 155.6 41.2 151.2 41.2 L 18.8 41.2 C 8.9 41.2 0.8 33.1 0.8 23.2 L 0.8 19.8 C 0.8 9.35 9.35 0.8 19.8 0.8 Z" fill="#F2E7EE"/>
+<path d="M 18 0.8 H 150.2 Q 159.2 0.8 159.2 9 V 32.2 Q 159.2 41.2 150.2 41.2 H 19.8 Q .8 41.2 .8 22.2 V 18 Q .8 .8 18 .8 Z" fill="#F2E7EE"/>
 <circle cx="23" cy="21" r="17" fill="#96607B" fill-opacity=".14"/>
-<path d="M 19.8 0.8 L 152.2 0.8 C 156.05 0.8 159.2 3.95 159.2 7.8 L 159.2 33.2 C 159.2 37.6 155.6 41.2 151.2 41.2 L 18.8 41.2 C 8.9 41.2 0.8 33.1 0.8 23.2 L 0.8 19.8 C 0.8 9.35 9.35 0.8 19.8 0.8 Z" fill="none" stroke="#17252C" stroke-opacity=".08" stroke-width=".8"/>/>
+<path d="M 18 0.8 H 150.2 Q 159.2 0.8 159.2 9 V 32.2 Q 159.2 41.2 150.2 41.2 H 19.8 Q .8 41.2 .8 22.2 V 18 Q .8 .8 18 .8 Z" fill="none" stroke="#17252C" stroke-opacity=".08" stroke-width=".8"/>/>
 <g transform="translate(23 21) scale(1.33)" style="color:#96607B">
     <path d="M-5 -7 h7 l4 4 v10 h-11 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M2 -7 v4 h4 M-2 1 h5 M-2 5 h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
