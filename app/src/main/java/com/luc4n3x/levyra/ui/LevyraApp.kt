@@ -14891,10 +14891,10 @@ private fun SearchScreen(
                 if (levyraBrowse != null && LevyraIsDefaultSkin) item(key = "search-browse-top", contentType = "search-browse-top") {
                     Spacer(Modifier.height(2.dp))
                 }
-                if (levyraBrowse == null) item(key = "search-taste-hints", contentType = "search-taste-hints") {
+                if (levyraBrowse == null || LevyraIsDefaultSkin) item(key = "search-taste-hints", contentType = "search-taste-hints") {
                     SearchTasteHints(
                         suggestions = tasteHintQueries,
-                        onOpenLyricsSearch = if (LevyraIsDefaultSkin) viewModel::openLyricsPhraseSearch else null,
+                        onOpenLyricsSearch = null,
                         onClick = { suggestion ->
                             focusManager.clearFocus()
                             keyboardController?.hide()
@@ -14906,7 +14906,7 @@ private fun SearchScreen(
 
                 if (state.recentSearches.isNotEmpty()) {
                     item(key = "search-recent", contentType = "search-recent") {
-                        if (levyraBrowse == null || !LevyraIsDefaultSkin) SearchSectionGap()
+                        SearchSectionGap()
                         RecentSearchesRow(
                             title = strings.recentSearches,
                             tracks = state.recentSearches,
@@ -14925,7 +14925,7 @@ private fun SearchScreen(
                             onAddToQueue = viewModel::addToQueue,
                             onDownload = viewModel::exportTrack,
                             onArtist = viewModel::openArtist,
-                            refined = levyraBrowse != null
+                            refined = levyraBrowse != null && !LevyraIsDefaultSkin
                         )
                     }
                 }

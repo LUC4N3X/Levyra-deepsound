@@ -29,7 +29,9 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.toShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.Text
@@ -45,6 +47,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
@@ -73,16 +76,17 @@ import com.luc4n3x.levyra.ui.components.LevyraSectionHeader
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.LevyraMotion
+import com.luc4n3x.levyra.ui.theme.LevyraText
+import com.luc4n3x.levyra.ui.theme.LevyraType
 
 private val DefaultRecentArtShape = RoundedCornerShape(24.dp)
-private val DefaultSampleCoverShape = RoundedCornerShape(18.dp)
 private val DefaultBrowseShape = RoundedCornerShape(24.dp)
 private val DefaultRecentTileSize = 112.dp
 private val DefaultSearchBarHeight = 56.dp
 private val DefaultSectionTop = 22.dp
-private val DefaultSamplesCardHeight = 156.dp
-private val DefaultSamplesFanWidth = 168.dp
-private val DefaultSamplesFan = listOf(0f to 0.dp, -12f to (-34).dp, 11f to 36.dp)
+private val DefaultSampleReelWidth = 148.dp
+private val DefaultSampleReelShape = RoundedCornerShape(28.dp)
+private val DefaultSampleReelScrim = Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.28f), 0.32f to Color.Transparent, 0.55f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.86f))
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -236,55 +240,76 @@ internal fun DefaultRecentSearchesRail(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun DefaultSearchSamplesRail(title: String, samples: List<Track>, previewEnabled: Boolean, onOpen: (Int) -> Unit) {
-    val lead = samples.firstOrNull() ?: return
-    val scheme = MaterialTheme.colorScheme
-    val fallback = remember(scheme.primary, scheme.tertiary) { ArtworkPalette(scheme.primary.toArgb(), scheme.tertiary.toArgb()) }
-    val paletteKey = remember(lead.id, lead.thumbnailUrl, lead.largeThumbnailUrl) {
-        ArtworkPaletteCache.key(trackId = lead.id, thumbnailUrl = lead.thumbnailUrl, largeThumbnailUrl = lead.largeThumbnailUrl)
-    }
-    val palette by rememberArtworkPalette(paletteKey, lead.largeThumbnailUrl.ifBlank { lead.thumbnailUrl }, fallback, retainPreviousUntilLoaded = true)
-    val start = Color(palette.start)
-    val end = Color(palette.end)
-    val fan = remember(samples) { samples.take(3) }
-    val artists = remember(samples) { samples.map { it.artist.substringBefore(',').trim() }.filter(String::isNotBlank).distinct().take(3).joinToString(" · ") }
-    val description = remember(title, artists) { listOf(title, artists).filter(String::isNotBlank).joinToString(", ") }
-    Box(
-        Modifier.padding(top = DefaultSectionTop).fillMaxWidth().height(DefaultSamplesCardHeight)
-            .clip(DefaultBrowseShape)
-            .background(Brush.linearGradient(listOf(lerp(start, Color.Black, 0.2f), lerp(end, Color.Black, 0.45f))))
-            .levyraPressable(onClick = { onOpen(0) }, pressedScale = LevyraPressScale.Tile, role = Role.Button)
-            .semantics(mergeDescendants = true) { contentDescription = description }
-    ) {
-        Box(Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(DefaultSamplesFanWidth).clearAndSetSemantics { }) {
-            fan.indices.reversed().forEach { index ->
-                val track = fan[index]
-                val (rotation, shiftX) = DefaultSamplesFan[index]
-                Box(
-                    Modifier.align(Alignment.Center).offset(x = shiftX).size(if (index == 0) 96.dp else 80.dp)
-                        .graphicsLayer { rotationZ = rotation; shadowElevation = 12.dp.toPx(); shape = DefaultSampleCoverShape; clip = true }
-                        .background(lerp(end, Color.Black, 0.5f))
-                ) {
-                    CoverImage(track, Modifier.fillMaxSize(), highRes = index == 0)
-                    if (index == 0 && previewEnabled) SpotifySamplePreview(track)
-                }
+    if (samples.isEmpty()) return
+    val badgeShape = MaterialShapes.SoftBurst.toShape()
+    Column(Modifier.padding(top = DefaultSectionTop), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            title,
+            color = LevyraText,
+            style = LevyraType.sectionTitle,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.semantics { heading() }
+        )
+        LazyRow(
+            modifier = Modifier.recentSearchesBleed(RecentSearchGutter),
+            contentPadding = PaddingValues(horizontal = RecentSearchGutter),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            itemsIndexed(samples, key = { _, track -> "default-sample-${track.id}" }, contentType = { _, _ -> "default-sample-reel" }) { index, track ->
+                DefaultSampleReelCard(track, index, samples.size, previewEnabled && index == 0, badgeShape) { onOpen(index) }
             }
         }
+    }
+}
+
+@Composable
+private fun DefaultSampleReelCard(track: Track, index: Int, count: Int, preview: Boolean, badgeShape: Shape, onClick: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val description = trackContentDescription(track)
+    Box(
+        Modifier
+            .width(DefaultSampleReelWidth)
+            .aspectRatio(9f / 16f)
+            .clip(DefaultSampleReelShape)
+            .background(scheme.surfaceContainerHighest)
+            .levyraPressable(onClick = onClick, pressedScale = LevyraPressScale.Tile, role = Role.Button)
+            .semantics(mergeDescendants = true) { contentDescription = description }
+    ) {
+        CoverImage(track, Modifier.fillMaxSize().clearAndSetSemantics { }, highRes = index < 3)
+        if (preview) SpotifySamplePreview(track)
+        Box(Modifier.matchParentSize().background(DefaultSampleReelScrim))
+        Text(
+            "${index + 1}/$count",
+            color = Color.White,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(10.dp)
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.38f))
+                .padding(horizontal = 9.dp, vertical = 3.dp)
+                .clearAndSetSemantics { }
+        )
         Column(
-            Modifier.align(Alignment.CenterStart).fillMaxWidth().padding(start = 18.dp, end = DefaultSamplesFanWidth).clearAndSetSemantics { },
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(start = 12.dp, end = 56.dp, bottom = 14.dp).clearAndSetSemantics { },
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            Text(title, color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (artists.isNotBlank()) {
-                Text(artists, color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            }
-            Box(
-                Modifier.padding(top = 8.dp).size(44.dp).clip(CircleShape).background(Color.White),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = lerp(end, Color.Black, 0.35f), modifier = Modifier.size(26.dp))
-            }
+            LevyraMediaTitle(
+                track.title, explicit = track.explicit, color = Color.White, style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis, marqueeEnabled = false
+            )
+            Text(track.artist, color = Color.White.copy(alpha = 0.74f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        Box(
+            Modifier.align(Alignment.BottomEnd).padding(10.dp).size(40.dp).clip(badgeShape).background(scheme.primary).clearAndSetSemantics { },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = scheme.onPrimary, modifier = Modifier.size(22.dp))
         }
     }
 }

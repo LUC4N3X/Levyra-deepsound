@@ -166,11 +166,6 @@ internal fun SearchHeader(
         return
     }
 
-    if (com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin) {
-        DefaultSkinSearchHeader(query, placeholder, animatePlaceholder, isSearching, recognitionAvailable, recognitionBusy,
-            onQuery, onClear, onBack, launchVoiceSearch, toggleRecognition, onLyrics)
-        return
-    }
     DefaultSearchHeader(query, placeholder, animatePlaceholder, isSearching, recognitionAvailable, recognitionBusy,
         onQuery, onClear, onBack, launchVoiceSearch, toggleRecognition, onLyrics)
 }
