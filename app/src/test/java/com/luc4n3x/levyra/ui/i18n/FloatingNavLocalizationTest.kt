@@ -18,11 +18,13 @@ class FloatingNavLocalizationTest {
                 code,
                 listOf(
                     copy.title, copy.subtitle, copy.side, copy.sideSubtitle, copy.left, copy.right, copy.handle,
-                    copy.expand, copy.collapse, copy.moveUp, copy.moveDown, copy.switchSide
+                    copy.expand, copy.collapse, copy.moveUp, copy.moveDown, copy.switchSide,
+                    copy.hideBottomBar, copy.hideBottomBarSubtitle
                 ).all { it.isNotBlank() }
             )
             if (code != "en") {
                 assertNotEquals(code, english.subtitle, copy.subtitle)
+                assertNotEquals(code, english.hideBottomBarSubtitle, copy.hideBottomBarSubtitle)
             }
             assertEquals(code, copy, LevyraStrings.forCode(code).floatingNav())
         }

@@ -12,7 +12,9 @@ data class LevyraFloatingNavCopy(
     val collapse: String,
     val moveUp: String,
     val moveDown: String,
-    val switchSide: String
+    val switchSide: String,
+    val hideBottomBar: String,
+    val hideBottomBarSubtitle: String
 )
 
 internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
@@ -28,7 +30,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Close navigation",
         moveUp = "Move up",
         moveDown = "Move down",
-        switchSide = "Move to the other side"
+        switchSide = "Move to the other side",
+        hideBottomBar = "Hide bottom bar",
+        hideBottomBarSubtitle = "Only the sidebar and the mini player stay on screen, for a cleaner layout."
     ),
     "it" to LevyraFloatingNavCopy(
         title = "Barra laterale fluttuante",
@@ -42,7 +46,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Chiudi navigazione",
         moveUp = "Sposta in alto",
         moveDown = "Sposta in basso",
-        switchSide = "Sposta sull'altro lato"
+        switchSide = "Sposta sull'altro lato",
+        hideBottomBar = "Nascondi barra in basso",
+        hideBottomBarSubtitle = "Restano solo la barra laterale e il mini player, per un'interfaccia più pulita."
     ),
     "es" to LevyraFloatingNavCopy(
         title = "Barra lateral flotante",
@@ -56,7 +62,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Cerrar navegación",
         moveUp = "Subir",
         moveDown = "Bajar",
-        switchSide = "Mover al otro lado"
+        switchSide = "Mover al otro lado",
+        hideBottomBar = "Ocultar barra inferior",
+        hideBottomBarSubtitle = "Solo quedan la barra lateral y el minirreproductor, para una interfaz más limpia."
     ),
     "fr" to LevyraFloatingNavCopy(
         title = "Barre latérale flottante",
@@ -70,7 +78,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Fermer la navigation",
         moveUp = "Déplacer vers le haut",
         moveDown = "Déplacer vers le bas",
-        switchSide = "Passer de l'autre côté"
+        switchSide = "Passer de l'autre côté",
+        hideBottomBar = "Masquer la barre du bas",
+        hideBottomBarSubtitle = "Seuls la barre latérale et le mini-lecteur restent à l'écran, pour une interface plus épurée."
     ),
     "de" to LevyraFloatingNavCopy(
         title = "Schwebende Seitenleiste",
@@ -84,7 +94,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Navigation schließen",
         moveUp = "Nach oben verschieben",
         moveDown = "Nach unten verschieben",
-        switchSide = "Auf die andere Seite verschieben"
+        switchSide = "Auf die andere Seite verschieben",
+        hideBottomBar = "Untere Leiste ausblenden",
+        hideBottomBarSubtitle = "Nur die Seitenleiste und der Mini-Player bleiben sichtbar, für eine aufgeräumtere Oberfläche."
     ),
     "pt" to LevyraFloatingNavCopy(
         title = "Barra lateral flutuante",
@@ -98,7 +110,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Fechar navegação",
         moveUp = "Mover para cima",
         moveDown = "Mover para baixo",
-        switchSide = "Mover para o outro lado"
+        switchSide = "Mover para o outro lado",
+        hideBottomBar = "Ocultar barra inferior",
+        hideBottomBarSubtitle = "Ficam apenas a barra lateral e o mini leitor, para uma interface mais limpa."
     ),
     "pt-BR" to LevyraFloatingNavCopy(
         title = "Menu lateral flutuante",
@@ -112,7 +126,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Fechar menu de navegação",
         moveUp = "Subir",
         moveDown = "Descer",
-        switchSide = "Trocar de lado"
+        switchSide = "Trocar de lado",
+        hideBottomBar = "Ocultar barra inferior",
+        hideBottomBarSubtitle = "Ficam só o menu lateral e o miniplayer, para uma interface mais limpa."
     ),
     "nl" to LevyraFloatingNavCopy(
         title = "Zwevende zijbalk",
@@ -126,7 +142,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Navigatie sluiten",
         moveUp = "Omhoog verplaatsen",
         moveDown = "Omlaag verplaatsen",
-        switchSide = "Naar de andere kant verplaatsen"
+        switchSide = "Naar de andere kant verplaatsen",
+        hideBottomBar = "Onderste balk verbergen",
+        hideBottomBarSubtitle = "Alleen de zijbalk en de minispeler blijven zichtbaar, voor een rustiger scherm."
     ),
     "pl" to LevyraFloatingNavCopy(
         title = "Pływający pasek boczny",
@@ -140,7 +158,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Zamknij nawigację",
         moveUp = "Przesuń w górę",
         moveDown = "Przesuń w dół",
-        switchSide = "Przenieś na drugą stronę"
+        switchSide = "Przenieś na drugą stronę",
+        hideBottomBar = "Ukryj dolny pasek",
+        hideBottomBarSubtitle = "Na ekranie zostają tylko panel boczny i miniodtwarzacz, dla czystszego wyglądu."
     ),
     "ro" to LevyraFloatingNavCopy(
         title = "Bară laterală plutitoare",
@@ -154,7 +174,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Închide navigarea",
         moveUp = "Mută în sus",
         moveDown = "Mută în jos",
-        switchSide = "Mută pe cealaltă parte"
+        switchSide = "Mută pe cealaltă parte",
+        hideBottomBar = "Ascunde bara de jos",
+        hideBottomBarSubtitle = "Rămân doar bara laterală și mini playerul, pentru o interfață mai curată."
     ),
     "el" to LevyraFloatingNavCopy(
         title = "Αιωρούμενη πλαϊνή γραμμή",
@@ -168,7 +190,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Κλείσιμο πλοήγησης",
         moveUp = "Μετακίνηση προς τα πάνω",
         moveDown = "Μετακίνηση προς τα κάτω",
-        switchSide = "Μετακίνηση στην άλλη πλευρά"
+        switchSide = "Μετακίνηση στην άλλη πλευρά",
+        hideBottomBar = "Απόκρυψη κάτω γραμμής",
+        hideBottomBarSubtitle = "Μένουν μόνο η πλαϊνή μπάρα και το mini player, για πιο καθαρή εμφάνιση."
     ),
     "sv" to LevyraFloatingNavCopy(
         title = "Flytande sidofält",
@@ -182,7 +206,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Stäng navigeringen",
         moveUp = "Flytta uppåt",
         moveDown = "Flytta nedåt",
-        switchSide = "Flytta till andra sidan"
+        switchSide = "Flytta till andra sidan",
+        hideBottomBar = "Dölj nedre fältet",
+        hideBottomBarSubtitle = "Bara sidofältet och minispelaren syns, för ett renare gränssnitt."
     ),
     "da" to LevyraFloatingNavCopy(
         title = "Flydende sidebjælke",
@@ -196,7 +222,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Luk navigation",
         moveUp = "Flyt op",
         moveDown = "Flyt ned",
-        switchSide = "Flyt til den anden side"
+        switchSide = "Flyt til den anden side",
+        hideBottomBar = "Skjul nederste bjælke",
+        hideBottomBarSubtitle = "Kun sidepanelet og miniafspilleren bliver på skærmen, for et renere udseende."
     ),
     "cs" to LevyraFloatingNavCopy(
         title = "Plovoucí postranní panel",
@@ -210,7 +238,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Zavřít navigaci",
         moveUp = "Posunout nahoru",
         moveDown = "Posunout dolů",
-        switchSide = "Přesunout na druhou stranu"
+        switchSide = "Přesunout na druhou stranu",
+        hideBottomBar = "Skrýt spodní lištu",
+        hideBottomBarSubtitle = "Na obrazovce zůstane jen boční panel a minipřehrávač, pro čistší vzhled."
     ),
     "sk" to LevyraFloatingNavCopy(
         title = "Plávajúci bočný panel",
@@ -224,7 +254,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Zavrieť navigáciu",
         moveUp = "Posunúť nahor",
         moveDown = "Posunúť nadol",
-        switchSide = "Presunúť na druhú stranu"
+        switchSide = "Presunúť na druhú stranu",
+        hideBottomBar = "Skryť spodnú lištu",
+        hideBottomBarSubtitle = "Na obrazovke zostane len bočný panel a miniprehrávač, pre čistejší vzhľad."
     ),
     "hr" to LevyraFloatingNavCopy(
         title = "Plutajuća bočna traka",
@@ -238,7 +270,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Zatvori navigaciju",
         moveUp = "Pomakni gore",
         moveDown = "Pomakni dolje",
-        switchSide = "Premjesti na drugu stranu"
+        switchSide = "Premjesti na drugu stranu",
+        hideBottomBar = "Sakrij donju traku",
+        hideBottomBarSubtitle = "Na zaslonu ostaju samo bočna traka i mini player, za čišće sučelje."
     ),
     "sr" to LevyraFloatingNavCopy(
         title = "Плутајућа бочна трака",
@@ -252,7 +286,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Затвори навигацију",
         moveUp = "Помери нагоре",
         moveDown = "Помери надоле",
-        switchSide = "Премести на другу страну"
+        switchSide = "Премести на другу страну",
+        hideBottomBar = "Сакриј доњу траку",
+        hideBottomBarSubtitle = "На екрану остају само бочна трака и мини плејер, за чистији изглед."
     ),
     "sq" to LevyraFloatingNavCopy(
         title = "Shiriti anësor lundrues",
@@ -266,7 +302,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Mbyll navigimin",
         moveUp = "Lëviz lart",
         moveDown = "Lëviz poshtë",
-        switchSide = "Zhvendose në anën tjetër"
+        switchSide = "Zhvendose në anën tjetër",
+        hideBottomBar = "Fshih shiritin e poshtëm",
+        hideBottomBarSubtitle = "Mbeten vetëm paneli anësor dhe mini-luajtësi, për një pamje më të pastër."
     ),
     "bg" to LevyraFloatingNavCopy(
         title = "Плаваща странична лента",
@@ -280,7 +318,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Затваряне на навигацията",
         moveUp = "Преместване нагоре",
         moveDown = "Преместване надолу",
-        switchSide = "Преместване от другата страна"
+        switchSide = "Преместване от другата страна",
+        hideBottomBar = "Скриване на долната лента",
+        hideBottomBarSubtitle = "Остават само страничният панел и мини плейърът за по-изчистен изглед."
     ),
     "hu" to LevyraFloatingNavCopy(
         title = "Lebegő oldalsáv",
@@ -294,7 +334,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Navigáció bezárása",
         moveUp = "Mozgatás felfelé",
         moveDown = "Mozgatás lefelé",
-        switchSide = "Áthelyezés a másik oldalra"
+        switchSide = "Áthelyezés a másik oldalra",
+        hideBottomBar = "Alsó sáv elrejtése",
+        hideBottomBarSubtitle = "Csak az oldalsáv és a minilejátszó marad a képernyőn, a letisztultabb felületért."
     ),
     "fi" to LevyraFloatingNavCopy(
         title = "Kelluva sivupalkki",
@@ -308,7 +350,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Sulje navigointi",
         moveUp = "Siirrä ylös",
         moveDown = "Siirrä alas",
-        switchSide = "Siirrä toiselle puolelle"
+        switchSide = "Siirrä toiselle puolelle",
+        hideBottomBar = "Piilota alapalkki",
+        hideBottomBarSubtitle = "Näkyviin jäävät vain sivupalkki ja minisoitin, jolloin näkymä on selkeämpi."
     ),
     "et" to LevyraFloatingNavCopy(
         title = "Hõljuv külgriba",
@@ -322,7 +366,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Sulge navigeerimine",
         moveUp = "Liiguta üles",
         moveDown = "Liiguta alla",
-        switchSide = "Liiguta teisele poole"
+        switchSide = "Liiguta teisele poole",
+        hideBottomBar = "Peida alumine riba",
+        hideBottomBarSubtitle = "Ekraanile jäävad ainult külgriba ja minipleier, et vaade oleks puhtam."
     ),
     "nb" to LevyraFloatingNavCopy(
         title = "Flytende sidefelt",
@@ -336,7 +382,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Lukk navigasjon",
         moveUp = "Flytt opp",
         moveDown = "Flytt ned",
-        switchSide = "Flytt til den andre siden"
+        switchSide = "Flytt til den andre siden",
+        hideBottomBar = "Skjul nederste linje",
+        hideBottomBarSubtitle = "Bare sidefeltet og minispilleren blir værende, for et ryddigere grensesnitt."
     ),
     "ca" to LevyraFloatingNavCopy(
         title = "Barra lateral flotant",
@@ -350,7 +398,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Tanca la navegació",
         moveUp = "Mou cap amunt",
         moveDown = "Mou cap avall",
-        switchSide = "Mou a l'altre costat"
+        switchSide = "Mou a l'altre costat",
+        hideBottomBar = "Amaga la barra inferior",
+        hideBottomBarSubtitle = "Només queden la barra lateral i el minireproductor, per a una interfície més neta."
     ),
     "uk" to LevyraFloatingNavCopy(
         title = "Плаваюча бічна панель",
@@ -364,7 +414,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Закрити навігацію",
         moveUp = "Перемістити вгору",
         moveDown = "Перемістити вниз",
-        switchSide = "Перемістити на інший бік"
+        switchSide = "Перемістити на інший бік",
+        hideBottomBar = "Приховати нижню панель",
+        hideBottomBarSubtitle = "Залишаються лише бічна панель і міні-плеєр для чистішого вигляду."
     ),
     "ru" to LevyraFloatingNavCopy(
         title = "Плавающая боковая панель",
@@ -378,7 +430,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Закрыть навигацию",
         moveUp = "Переместить вверх",
         moveDown = "Переместить вниз",
-        switchSide = "Переместить на другую сторону"
+        switchSide = "Переместить на другую сторону",
+        hideBottomBar = "Скрыть нижнюю панель",
+        hideBottomBarSubtitle = "Остаются только боковая панель и мини-плеер, чтобы интерфейс был чище."
     ),
     "kk" to LevyraFloatingNavCopy(
         title = "Қалқымалы бүйір панелі",
@@ -392,7 +446,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Навигацияны жабу",
         moveUp = "Жоғары жылжыту",
         moveDown = "Төмен жылжыту",
-        switchSide = "Екінші жаққа жылжыту"
+        switchSide = "Екінші жаққа жылжыту",
+        hideBottomBar = "Төменгі панельді жасыру",
+        hideBottomBarSubtitle = "Экранда тек бүйірлік панель мен шағын ойнатқыш қалады, интерфейс таза көрінеді."
     ),
     "tr" to LevyraFloatingNavCopy(
         title = "Kayan kenar çubuğu",
@@ -406,7 +462,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Gezinmeyi kapat",
         moveUp = "Yukarı taşı",
         moveDown = "Aşağı taşı",
-        switchSide = "Diğer tarafa taşı"
+        switchSide = "Diğer tarafa taşı",
+        hideBottomBar = "Alt çubuğu gizle",
+        hideBottomBarSubtitle = "Ekranda yalnızca kenar çubuğu ve mini oynatıcı kalır, arayüz daha sade görünür."
     ),
     "ar" to LevyraFloatingNavCopy(
         title = "شريط جانبي عائم",
@@ -420,7 +478,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "إغلاق التنقل",
         moveUp = "تحريك لأعلى",
         moveDown = "تحريك لأسفل",
-        switchSide = "النقل إلى الجانب الآخر"
+        switchSide = "النقل إلى الجانب الآخر",
+        hideBottomBar = "إخفاء الشريط السفلي",
+        hideBottomBarSubtitle = "يبقى الشريط الجانبي والمشغل المصغر فقط لواجهة أنظف."
     ),
     "fa" to LevyraFloatingNavCopy(
         title = "نوار کناری شناور",
@@ -434,7 +494,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "بستن ناوبری",
         moveUp = "انتقال به بالا",
         moveDown = "انتقال به پایین",
-        switchSide = "انتقال به سمت دیگر"
+        switchSide = "انتقال به سمت دیگر",
+        hideBottomBar = "پنهان کردن نوار پایین",
+        hideBottomBarSubtitle = "فقط نوار کناری و پخش‌کننده کوچک روی صفحه می‌مانند تا رابط تمیزتر شود."
     ),
     "zh" to LevyraFloatingNavCopy(
         title = "悬浮侧边栏",
@@ -448,7 +510,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "关闭导航",
         moveUp = "上移",
         moveDown = "下移",
-        switchSide = "移到另一侧"
+        switchSide = "移到另一侧",
+        hideBottomBar = "隐藏底部栏",
+        hideBottomBarSubtitle = "只保留侧边栏和迷你播放器，界面更简洁。"
     ),
     "zh-Hant" to LevyraFloatingNavCopy(
         title = "懸浮側邊欄",
@@ -462,7 +526,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "關閉導覽",
         moveUp = "上移",
         moveDown = "下移",
-        switchSide = "移到另一側"
+        switchSide = "移到另一側",
+        hideBottomBar = "隱藏底部列",
+        hideBottomBarSubtitle = "只保留側邊欄和迷你播放器，介面更簡潔。"
     ),
     "ja" to LevyraFloatingNavCopy(
         title = "フローティングサイドバー",
@@ -476,7 +542,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "ナビゲーションを閉じる",
         moveUp = "上へ移動",
         moveDown = "下へ移動",
-        switchSide = "反対側へ移動"
+        switchSide = "反対側へ移動",
+        hideBottomBar = "下部バーを非表示",
+        hideBottomBarSubtitle = "サイドバーとミニプレーヤーだけを表示して、画面をすっきりさせます。"
     ),
     "ko" to LevyraFloatingNavCopy(
         title = "플로팅 사이드바",
@@ -490,7 +558,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "내비게이션 닫기",
         moveUp = "위로 이동",
         moveDown = "아래로 이동",
-        switchSide = "반대쪽으로 이동"
+        switchSide = "반대쪽으로 이동",
+        hideBottomBar = "하단 바 숨기기",
+        hideBottomBarSubtitle = "사이드바와 미니 플레이어만 남겨 화면을 더 깔끔하게 만듭니다."
     ),
     "hi" to LevyraFloatingNavCopy(
         title = "फ़्लोटिंग साइडबार",
@@ -504,7 +574,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "नेविगेशन बंद करें",
         moveUp = "ऊपर ले जाएँ",
         moveDown = "नीचे ले जाएँ",
-        switchSide = "दूसरी ओर ले जाएँ"
+        switchSide = "दूसरी ओर ले जाएँ",
+        hideBottomBar = "नीचे की बार छिपाएँ",
+        hideBottomBarSubtitle = "स्क्रीन पर केवल साइडबार और मिनी प्लेयर रहते हैं, जिससे इंटरफ़ेस साफ़ दिखता है।"
     ),
     "bn" to LevyraFloatingNavCopy(
         title = "ফ্লোটিং সাইডবার",
@@ -518,7 +590,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "নেভিগেশন বন্ধ করুন",
         moveUp = "উপরে সরান",
         moveDown = "নিচে সরান",
-        switchSide = "অন্য পাশে সরান"
+        switchSide = "অন্য পাশে সরান",
+        hideBottomBar = "নিচের বার লুকান",
+        hideBottomBarSubtitle = "স্ক্রিনে শুধু সাইডবার আর মিনি প্লেয়ার থাকে, ইন্টারফেস আরও পরিষ্কার দেখায়।"
     ),
     "id" to LevyraFloatingNavCopy(
         title = "Bilah samping mengambang",
@@ -532,7 +606,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Tutup navigasi",
         moveUp = "Pindah ke atas",
         moveDown = "Pindah ke bawah",
-        switchSide = "Pindah ke sisi lain"
+        switchSide = "Pindah ke sisi lain",
+        hideBottomBar = "Sembunyikan bilah bawah",
+        hideBottomBarSubtitle = "Hanya sidebar dan pemutar mini yang tetap tampil, agar tampilan lebih rapi."
     ),
     "ms" to LevyraFloatingNavCopy(
         title = "Bar sisi terapung",
@@ -546,7 +622,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Tutup navigasi",
         moveUp = "Alih ke atas",
         moveDown = "Alih ke bawah",
-        switchSide = "Alih ke sisi lain"
+        switchSide = "Alih ke sisi lain",
+        hideBottomBar = "Sembunyikan bar bawah",
+        hideBottomBarSubtitle = "Hanya bar sisi dan pemain mini kekal di skrin untuk paparan yang lebih kemas."
     ),
     "vi" to LevyraFloatingNavCopy(
         title = "Thanh bên nổi",
@@ -560,7 +638,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Đóng điều hướng",
         moveUp = "Di chuyển lên",
         moveDown = "Di chuyển xuống",
-        switchSide = "Chuyển sang bên kia"
+        switchSide = "Chuyển sang bên kia",
+        hideBottomBar = "Ẩn thanh dưới cùng",
+        hideBottomBarSubtitle = "Chỉ giữ lại thanh bên và trình phát mini để giao diện gọn gàng hơn."
     ),
     "th" to LevyraFloatingNavCopy(
         title = "แถบด้านข้างแบบลอย",
@@ -574,7 +654,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "ปิดการนำทาง",
         moveUp = "ย้ายขึ้น",
         moveDown = "ย้ายลง",
-        switchSide = "ย้ายไปอีกด้าน"
+        switchSide = "ย้ายไปอีกด้าน",
+        hideBottomBar = "ซ่อนแถบด้านล่าง",
+        hideBottomBarSubtitle = "แสดงเฉพาะแถบด้านข้างและมินิเพลเยอร์ เพื่อให้หน้าจอดูสะอาดตาขึ้น"
     ),
     "fil" to LevyraFloatingNavCopy(
         title = "Lumulutang na sidebar",
@@ -588,7 +670,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "Isara ang navigation",
         moveUp = "Ilipat pataas",
         moveDown = "Ilipat pababa",
-        switchSide = "Ilipat sa kabilang gilid"
+        switchSide = "Ilipat sa kabilang gilid",
+        hideBottomBar = "Itago ang bar sa ibaba",
+        hideBottomBarSubtitle = "Ang sidebar at mini player lang ang maiiwan sa screen para mas malinis ang itsura."
     ),
     "he" to LevyraFloatingNavCopy(
         title = "סרגל צד צף",
@@ -602,7 +686,9 @@ internal val floatingNavCopies: Map<String, LevyraFloatingNavCopy> = mapOf(
         collapse = "סגירת הניווט",
         moveUp = "הזזה למעלה",
         moveDown = "הזזה למטה",
-        switchSide = "העברה לצד השני"
+        switchSide = "העברה לצד השני",
+        hideBottomBar = "הסתרת הסרגל התחתון",
+        hideBottomBarSubtitle = "נשארים רק סרגל הצד והנגן המוקטן, לממשק נקי יותר."
     )
 )
 

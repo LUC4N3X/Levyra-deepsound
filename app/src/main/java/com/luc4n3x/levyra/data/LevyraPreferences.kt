@@ -313,6 +313,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_UI_FLOATING_NAV_ENABLED] = normalizedInterface.floatingNav.enabled
             mutable[KEY_UI_FLOATING_NAV_SIDE] = normalizedInterface.floatingNav.side.storageId
             mutable[KEY_UI_FLOATING_NAV_ANCHOR] = normalizedInterface.floatingNav.anchor
+            mutable[KEY_UI_FLOATING_NAV_HIDE_BOTTOM_BAR] = normalizedInterface.floatingNav.hideBottomBar
             mutable[KEY_UI_PLAYER_VISUAL_MODE] = normalizedInterface.playerVisualMode.name
             mutable[KEY_UI_PLAYER_BACKGROUND] = normalizedInterface.playerBackground.name
             mutable[KEY_UI_REACTIVE_AURA_PRESET] = normalizedInterface.reactiveAuraPreset.name
@@ -520,6 +521,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             it[KEY_UI_FLOATING_NAV_ENABLED] = normalized.floatingNav.enabled
             it[KEY_UI_FLOATING_NAV_SIDE] = normalized.floatingNav.side.storageId
             it[KEY_UI_FLOATING_NAV_ANCHOR] = normalized.floatingNav.anchor
+            it[KEY_UI_FLOATING_NAV_HIDE_BOTTOM_BAR] = normalized.floatingNav.hideBottomBar
             it[KEY_UI_PLAYER_VISUAL_MODE] = normalized.playerVisualMode.name
             it[KEY_UI_PLAYER_BACKGROUND] = normalized.playerBackground.name
             it[KEY_UI_REACTIVE_AURA_PRESET] = normalized.reactiveAuraPreset.name
@@ -1060,7 +1062,8 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
                 enabled = preferences[KEY_UI_FLOATING_NAV_ENABLED] ?: false,
                 side = com.luc4n3x.levyra.domain.FloatingNavSide.from(preferences[KEY_UI_FLOATING_NAV_SIDE]),
                 anchor = preferences[KEY_UI_FLOATING_NAV_ANCHOR]
-                    ?: com.luc4n3x.levyra.domain.LevyraFloatingNavSettings.DEFAULT_ANCHOR
+                    ?: com.luc4n3x.levyra.domain.LevyraFloatingNavSettings.DEFAULT_ANCHOR,
+                hideBottomBar = preferences[KEY_UI_FLOATING_NAV_HIDE_BOTTOM_BAR] ?: false
             ).normalized(),
             playerVisualMode = visualMode,
             playerBackground = background,
@@ -1789,6 +1792,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_UI_FLOATING_NAV_ENABLED = booleanPreferencesKey("ui_floating_nav_enabled")
         val KEY_UI_FLOATING_NAV_SIDE = stringPreferencesKey("ui_floating_nav_side")
         val KEY_UI_FLOATING_NAV_ANCHOR = floatPreferencesKey("ui_floating_nav_anchor")
+        val KEY_UI_FLOATING_NAV_HIDE_BOTTOM_BAR = booleanPreferencesKey("ui_floating_nav_hide_bottom_bar")
         val KEY_UI_MUSIC_VIDEO_PREFERENCE = stringPreferencesKey("ui_music_video_preference")
         val KEY_UI_LAST_MUSIC_VIDEO_MODE = booleanPreferencesKey("ui_last_music_video_mode")
         val KEY_UI_PLAYER_FOCUS = booleanPreferencesKey("ui_player_focus")

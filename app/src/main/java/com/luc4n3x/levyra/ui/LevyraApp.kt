@@ -2822,7 +2822,7 @@ fun LevyraApp(
                             }
                         }
                     }
-                    val dockRetracted = state.showSettings
+                    val dockRetracted = state.showSettings || state.interfaceSettings.floatingNav.let { it.enabled && it.hideBottomBar }
                     val dockRowSideBySide = dockSideBySide && !dockRetracted
                     run {
                         val dockModifier = if (miniMaxWidth.isFinite()) {

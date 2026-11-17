@@ -14,7 +14,8 @@ enum class FloatingNavSide(val storageId: String) {
 data class LevyraFloatingNavSettings(
     val enabled: Boolean = false,
     val side: FloatingNavSide = FloatingNavSide.Right,
-    val anchor: Float = DEFAULT_ANCHOR
+    val anchor: Float = DEFAULT_ANCHOR,
+    val hideBottomBar: Boolean = false
 ) {
     fun normalized(): LevyraFloatingNavSettings =
         copy(anchor = if (anchor.isFinite()) anchor.coerceIn(0f, 1f) else DEFAULT_ANCHOR)

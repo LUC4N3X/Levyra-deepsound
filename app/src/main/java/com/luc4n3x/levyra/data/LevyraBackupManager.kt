@@ -2153,6 +2153,7 @@ internal fun backupInterfaceSettingsToJson(value: LevyraInterfaceSettings): JSON
     .put("floatingNavEnabled", value.floatingNav.enabled)
     .put("floatingNavSide", value.floatingNav.side.storageId)
     .put("floatingNavAnchor", value.floatingNav.normalized().anchor.toDouble())
+    .put("floatingNavHideBottomBar", value.floatingNav.hideBottomBar)
     .put("playerVisualMode", value.playerVisualMode.name)
     .put("playerBackground", value.playerBackground.name)
     .put("reactiveAuraPreset", value.reactiveAuraPreset.name)
@@ -2233,7 +2234,8 @@ internal fun backupInterfaceSettingsFromJson(
             anchor = json.optDouble(
                 "floatingNavAnchor",
                 com.luc4n3x.levyra.domain.LevyraFloatingNavSettings.DEFAULT_ANCHOR.toDouble()
-            ).toFloat()
+            ).toFloat(),
+            hideBottomBar = json.optBoolean("floatingNavHideBottomBar", false)
         ),
         playerVisualMode = visualMode,
         playerBackground = backgroundMode,
