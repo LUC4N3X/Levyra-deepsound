@@ -1,86 +1,78 @@
 package com.luc4n3x.levyra.ui.discovery
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.PlayCircle
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.toShape
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.dp
-import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
-import androidx.compose.foundation.layout.BoxWithConstraints
-import kotlin.math.absoluteValue
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.data.ArtworkPalette
 import com.luc4n3x.levyra.feature.discovery.DiscoveryCard
 import com.luc4n3x.levyra.feature.discovery.DiscoveryDecision
-import com.luc4n3x.levyra.ui.LevyraIsLight
+import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
 import com.luc4n3x.levyra.ui.artwork.rememberArtworkPalette
 import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
 import com.luc4n3x.levyra.ui.i18n.DiscoveryCopy
+import kotlin.math.absoluteValue
 
-internal val DefaultDiscoveryCardShape: Shape = RoundedCornerShape(topStart = 44.dp, topEnd = 44.dp, bottomEnd = 44.dp, bottomStart = 44.dp)
+internal val DefaultDiscoveryCardShape: Shape = RoundedCornerShape(24.dp)
+internal val DefaultDiscoveryPanel = 100.dp
+internal val DefaultDiscoveryPeek = 9.dp
 
 @Composable
-internal fun rememberDiscoveryPalette(card: DiscoveryCard?): Pair<Color, Color> {
+internal fun rememberDiscoveryPalette(card: DiscoveryCard?, animate: Boolean = true): Pair<Color, Color> {
     val scheme = MaterialTheme.colorScheme
     val fallback = remember(scheme.primary, scheme.tertiary) { ArtworkPalette(scheme.primary.toArgb(), scheme.tertiary.toArgb()) }
     val url = card?.track?.thumbnailUrl.orEmpty()
@@ -90,140 +82,135 @@ internal fun rememberDiscoveryPalette(card: DiscoveryCard?): Pair<Color, Color> 
         fallback = fallback,
         retainPreviousUntilLoaded = true
     )
-    val fade = if (LocalAnimationsEnabled.current) 700 else 0
+    val fade = if (animate && LocalAnimationsEnabled.current) 700 else 0
     val start by animateColorAsState(Color(palette.start), tween(fade), label = "discover-palette-start")
     val end by animateColorAsState(Color(palette.end), tween(fade), label = "discover-palette-end")
     return start to end
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-internal fun DefaultDiscoveryBackdrop(card: DiscoveryCard?, animationsEnabled: Boolean) {
-    val scheme = MaterialTheme.colorScheme
-    val (start, end) = rememberDiscoveryPalette(card)
-    val spin = if (animationsEnabled) {
-        rememberInfiniteTransition(label = "discover-aurora").animateFloat(
-            0f, 360f, infiniteRepeatable(tween(90_000, easing = LinearEasing), RepeatMode.Restart), label = "discover-aurora-spin"
-        )
-    } else null
-    val burst = MaterialShapes.SoftBurst.toShape()
-    val cookie = MaterialShapes.Cookie9Sided.toShape()
-    Box(Modifier.fillMaxSize()) {
-        if (card != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-            Crossfade(card, animationSpec = tween(if (animationsEnabled) 600 else 0), label = "discover-aurora-art") { shown ->
-                Box(Modifier.fillMaxSize().graphicsLayer { alpha = if (LevyraIsLight) 0.38f else 0.55f; scaleX = 1.25f; scaleY = 1.25f }.blur(90.dp)) {
-                    DiscoveryArtwork(shown, Modifier.fillMaxSize(), highRes = false)
-                }
+internal fun DefaultDiscoveryBackdrop(card: DiscoveryCard?, next: DiscoveryCard?, blend: () -> Float) {
+    val surface = MaterialTheme.colorScheme.surface
+    val (tone, _) = rememberDiscoveryPalette(card, animate = false)
+    val (nextTone, _) = rememberDiscoveryPalette(next, animate = false)
+    val target = if (next == null) tone else nextTone
+    Box(
+        Modifier.fillMaxSize().drawWithCache {
+            val current = defaultDiscoveryWash(tone, surface)
+            val upcoming = defaultDiscoveryWash(target, surface)
+            onDrawBehind {
+                drawRect(current)
+                val mix = blend()
+                if (mix > 0f) drawRect(upcoming, alpha = mix)
             }
         }
-        Box(
-            Modifier.fillMaxSize().background(
-                Brush.radialGradient(listOf(start.copy(alpha = 0.62f), Color.Transparent), center = Offset(0f, 0f), radius = 1500f)
-            )
-        )
-        Box(
-            Modifier.fillMaxSize().background(
-                Brush.radialGradient(listOf(end.copy(alpha = 0.5f), Color.Transparent), center = Offset(1500f, 2300f), radius = 1600f)
-            )
-        )
-        Box(
-            Modifier.align(Alignment.TopEnd).offset(x = 120.dp, y = (-90).dp).size(440.dp)
-                .graphicsLayer { rotationZ = spin?.value ?: 0f }
-                .clip(burst)
-                .background(Brush.linearGradient(listOf(start.copy(alpha = 0.34f), end.copy(alpha = 0.12f))))
-        )
-        Box(
-            Modifier.align(Alignment.BottomStart).offset(x = (-110).dp, y = 70.dp).size(360.dp)
-                .graphicsLayer { rotationZ = -(spin?.value ?: 0f) * 1.4f }
-                .clip(cookie)
-                .background(end.copy(alpha = 0.18f))
-        )
-        val veil = scheme.surface
-        Box(
-            Modifier.fillMaxSize().background(
-                Brush.verticalGradient(
-                    0f to veil.copy(alpha = if (LevyraIsLight) 0.42f else 0.18f),
-                    0.45f to veil.copy(alpha = if (LevyraIsLight) 0.30f else 0.10f),
-                    0.82f to veil.copy(alpha = if (LevyraIsLight) 0.78f else 0.72f),
-                    1f to veil.copy(alpha = 0.94f)
-                )
-            )
-        )
-    }
+    )
 }
 
+private fun defaultDiscoveryWash(tone: Color, surface: Color): Brush = Brush.verticalGradient(
+    0f to lerp(tone, surface, 0.42f),
+    0.55f to lerp(tone, surface, 0.58f),
+    1f to lerp(tone, surface, 0.9f)
+)
+
 @Composable
-internal fun Modifier.defaultDiscoveryGlow(card: DiscoveryCard, shape: Shape): Modifier {
-    val (start, _) = rememberDiscoveryPalette(card)
-    return this
-        .shadow(36.dp, shape, ambientColor = start, spotColor = start)
-        .border(1.dp, Color.White.copy(alpha = 0.16f), shape)
-}
+internal fun defaultDiscoveryPanelHeight(): Dp = DefaultDiscoveryPanel * LocalDensity.current.fontScale.coerceAtLeast(1f)
+
+@Composable
+internal fun Modifier.defaultDiscoveryCardShadow(shape: Shape): Modifier =
+    shadow(14.dp, shape, ambientColor = Color.Black.copy(alpha = 0.5f), spotColor = Color.Black.copy(alpha = 0.6f))
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun DefaultDiscoveryControls(
-    card: DiscoveryCard,
-    canUndo: Boolean,
     playing: Boolean,
     loading: Boolean,
     morph: Shape,
     copy: DiscoveryCopy,
     onDecide: (DiscoveryDecision) -> Unit,
-    onUndo: () -> Unit,
-    onTogglePreview: () -> Unit,
-    onPlayFull: () -> Unit
+    onTogglePreview: () -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
-    val (start, end) = rememberDiscoveryPalette(card)
-    val heroStart = lerp(start, scheme.primary, 0.5f)
-    val heroEnd = lerp(end, scheme.tertiary, 0.5f)
-    val heroContent = if (lerp(heroStart, heroEnd, 0.5f).luminance() > 0.45f) Color.Black else Color.White
-    BoxWithConstraints(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 18.dp)) {
-    val roomy = maxWidth >= DefaultDiscoveryControlsWidth
-    val sideSize = if (roomy) 62.dp else 56.dp
-    val heroSize = if (roomy) 80.dp else 68.dp
+    val previewLabel = if (playing) copy.pausePreview else copy.playPreview
     Row(
-        Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(if (roomy) 10.dp else 2.dp, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically
+        Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 18.dp),
+        verticalAlignment = Alignment.Top
     ) {
-        DefaultDiscoveryGlassButton(Icons.AutoMirrored.Rounded.Undo, copy.undo, enabled = canUndo, onClick = onUndo)
-        FilledTonalIconButton(
-            onClick = { onDecide(DiscoveryDecision.Dismissed) },
-            shapes = IconButtonDefaults.shapes(),
-            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                containerColor = scheme.errorContainer,
-                contentColor = scheme.onErrorContainer
-            ),
-            modifier = Modifier.size(sideSize)
-        ) { Icon(Icons.Rounded.Close, copy.skip, Modifier.size(30.dp)) }
-        Box(
-            Modifier.size(heroSize)
-                .shadow(22.dp, morph, ambientColor = heroStart, spotColor = heroStart)
-                .clip(morph)
-                .background(Brush.linearGradient(listOf(heroStart, heroEnd))),
-            contentAlignment = Alignment.Center
-        ) {
-            IconButton(onClick = onTogglePreview, modifier = Modifier.fillMaxSize()) {
-                when {
-                    loading -> LevyraLoadingIndicator(Modifier.size(36.dp).semantics { contentDescription = copy.previewLoading }, heroContent)
-                    playing -> Icon(Icons.Rounded.Pause, copy.pausePreview, tint = heroContent, modifier = Modifier.size(40.dp))
-                    else -> Icon(Icons.Rounded.PlayArrow, copy.playPreview, tint = heroContent, modifier = Modifier.size(40.dp))
+        DefaultDiscoveryAction(copy.skip, Modifier.weight(1f)) {
+            FilledTonalIconButton(
+                onClick = { onDecide(DiscoveryDecision.Dismissed) },
+                shapes = IconButtonDefaults.shapes(),
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = scheme.surfaceContainerHigh,
+                    contentColor = scheme.error
+                ),
+                modifier = Modifier.size(DefaultDiscoverySideAction)
+            ) { Icon(Icons.Rounded.Close, copy.skip, Modifier.size(30.dp)) }
+        }
+        DefaultDiscoveryAction(previewLabel, Modifier.weight(1f)) {
+            Box(
+                Modifier.size(DefaultDiscoveryHeroAction).clip(morph).background(scheme.inverseSurface),
+                contentAlignment = Alignment.Center
+            ) {
+                IconButton(onClick = onTogglePreview, modifier = Modifier.fillMaxSize()) {
+                    when {
+                        loading -> LevyraLoadingIndicator(Modifier.size(34.dp).semantics { contentDescription = copy.previewLoading }, scheme.inverseOnSurface)
+                        playing -> Icon(Icons.Rounded.Pause, copy.pausePreview, tint = scheme.inverseOnSurface, modifier = Modifier.size(38.dp))
+                        else -> Icon(Icons.Rounded.PlayArrow, copy.playPreview, tint = scheme.inverseOnSurface, modifier = Modifier.size(38.dp))
+                    }
                 }
             }
         }
-        FilledIconButton(
-            onClick = { onDecide(DiscoveryDecision.Saved) },
-            shapes = IconButtonDefaults.shapes(),
-            modifier = Modifier.size(sideSize)
-        ) { Icon(Icons.Rounded.Favorite, copy.save, Modifier.size(30.dp)) }
-        DefaultDiscoveryGlassButton(Icons.Rounded.PlayCircle, copy.playFull, onClick = onPlayFull)
-    }
+        DefaultDiscoveryAction(copy.save, Modifier.weight(1f)) {
+            FilledTonalIconButton(
+                onClick = { onDecide(DiscoveryDecision.Saved) },
+                shapes = IconButtonDefaults.shapes(),
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = scheme.surfaceContainerHigh,
+                    contentColor = scheme.primary
+                ),
+                modifier = Modifier.size(DefaultDiscoverySideAction)
+            ) { Icon(Icons.Rounded.Favorite, copy.save, Modifier.size(30.dp)) }
+        }
     }
 }
 
-private val DefaultDiscoveryControlsWidth = 344.dp
+private val DefaultDiscoverySideAction = 58.dp
+private val DefaultDiscoveryHeroAction = 66.dp
+
+@Composable
+private fun DefaultDiscoveryAction(label: String, modifier: Modifier, button: @Composable () -> Unit) {
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Box(Modifier.height(DefaultDiscoveryHeroAction), contentAlignment = Alignment.Center) { button() }
+        Text(
+            label,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.clearAndSetSemantics {}
+        )
+    }
+}
+
+@Composable
+internal fun DefaultDiscoveryMixLine(savedThisWeek: Int, copy: DiscoveryCopy, onOpenSaved: () -> Unit) {
+    if (savedThisWeek <= 0) return
+    val scheme = MaterialTheme.colorScheme
+    Box(Modifier.fillMaxWidth().padding(horizontal = 24.dp), contentAlignment = Alignment.Center) {
+        TextButton(onClick = onOpenSaved) {
+            Text(
+                "${copy.savedThisWeek} · $savedThisWeek",
+                style = MaterialTheme.typography.bodyLarge,
+                color = scheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, Modifier.size(20.dp), tint = scheme.onSurfaceVariant)
+        }
+    }
+}
 
 @Composable
 internal fun DefaultDiscoveryGlassButton(
@@ -239,10 +226,10 @@ internal fun DefaultDiscoveryGlassButton(
         enabled = enabled,
         shapes = IconButtonDefaults.shapes(),
         colors = IconButtonDefaults.filledTonalIconButtonColors(
-            containerColor = scheme.surfaceContainerHighest.copy(alpha = 0.55f),
+            containerColor = scheme.surfaceContainerHigh.copy(alpha = 0.7f),
             contentColor = scheme.onSurface
         ),
-        modifier = Modifier.size(48.dp).border(1.dp, scheme.onSurface.copy(alpha = 0.10f), CircleShape)
+        modifier = Modifier.size(48.dp)
     ) {
         if (content != null) content() else Icon(icon, label)
     }
@@ -252,43 +239,39 @@ internal fun DefaultDiscoveryGlassButton(
 @Composable
 internal fun DefaultDiscoveryTopBar(
     copy: DiscoveryCopy,
-    savedThisWeek: Int,
-    refreshing: Boolean,
+    canUndo: Boolean,
     backLabel: String,
+    filtersLabel: String,
+    filtersActive: Boolean,
     onDismiss: () -> Unit,
-    onRefresh: () -> Unit,
-    onOpenSaved: () -> Unit
+    onUndo: () -> Unit,
+    onFilters: () -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         DefaultDiscoveryGlassButton(Icons.AutoMirrored.Rounded.ArrowBack, backLabel, onClick = onDismiss)
-        Column(Modifier.weight(1f)) {
-            Text(
-                copy.title,
-                style = MaterialTheme.typography.titleLargeEmphasized.copy(fontWeight = FontWeight.Black),
-                color = scheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.semantics { heading() }
-            )
-            if (savedThisWeek > 0) {
-                Text(
-                    "${copy.savedThisWeek} · $savedThisWeek",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = scheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.clip(CircleShape).clickable(role = Role.Button, onClick = onOpenSaved).padding(vertical = 2.dp)
-                )
-            }
-        }
-        DefaultDiscoveryGlassButton(Icons.Rounded.Refresh, copy.refresh, enabled = !refreshing, onClick = onRefresh) {
-            if (refreshing) LevyraLoadingIndicator(Modifier.size(22.dp)) else Icon(Icons.Rounded.Refresh, copy.refresh)
-        }
+        Text(
+            copy.title,
+            style = MaterialTheme.typography.titleLargeEmphasized.copy(fontWeight = FontWeight.Black),
+            color = scheme.onSurface,
+            maxLines = 1,
+            autoSize = TextAutoSize.StepBased(minFontSize = 16.sp, maxFontSize = 22.sp),
+            modifier = Modifier.weight(1f).semantics { heading() }
+        )
+        DefaultDiscoveryGlassButton(Icons.AutoMirrored.Rounded.Undo, copy.undo, enabled = canUndo, onClick = onUndo)
+        FilledTonalIconButton(
+            onClick = onFilters,
+            shapes = IconButtonDefaults.shapes(),
+            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                containerColor = if (filtersActive) scheme.primary else scheme.surfaceContainerHigh.copy(alpha = 0.7f),
+                contentColor = if (filtersActive) scheme.onPrimary else scheme.onSurface
+            ),
+            modifier = Modifier.size(48.dp)
+        ) { Icon(Icons.Rounded.Tune, filtersLabel) }
     }
 }
 
@@ -300,7 +283,7 @@ internal fun DefaultDiscoverySwipeStamp(offset: Float, threshold: Float, copy: D
     val scheme = MaterialTheme.colorScheme
     val tint = if (saving) scheme.primary else scheme.error
     Box(
-        Modifier.fillMaxWidth().padding(top = 40.dp, start = 28.dp, end = 28.dp),
+        Modifier.fillMaxWidth().padding(top = 56.dp, start = 40.dp, end = 40.dp),
         contentAlignment = if (saving) Alignment.TopStart else Alignment.TopEnd
     ) {
         Row(

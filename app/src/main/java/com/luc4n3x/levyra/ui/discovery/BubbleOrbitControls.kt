@@ -56,6 +56,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -156,6 +158,44 @@ internal fun BubbleOrbitSelector(
                 }
             }
             LensRow(request.lens, scenes, animated, copy, onLens, onLoadScenes)
+        }
+        return
+    }
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin) {
+        Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                Modifier.padding(horizontal = 20.dp).fillMaxWidth().height(52.dp)
+                    .clip(CircleShape).background(scheme.onSurface.copy(alpha = 0.08f)).padding(4.dp)
+                    .selectableGroup()
+            ) {
+                BubbleLevel.entries.forEach { level ->
+                    val checked = level == request.level
+                    val container by androidx.compose.animation.animateColorAsState(
+                        if (checked) scheme.primary else Color.Transparent,
+                        if (animated) spring(stiffness = Spring.StiffnessMediumLow) else snap(),
+                        label = "bubble-level-segment"
+                    )
+                    Box(
+                        Modifier.weight(1f).fillMaxHeight().clip(CircleShape).background(container)
+                            .selectable(selected = checked, role = Role.RadioButton) {
+                                if (!checked) {
+                                    haptics.perform(LevyraHapticAction.Confirm)
+                                    onLevel(level)
+                                }
+                            }
+                            .padding(horizontal = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            copy[bubbleLevelName(level)],
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = if (checked) FontWeight.Bold else FontWeight.Medium),
+                            color = if (checked) scheme.onPrimary else scheme.onSurface,
+                            maxLines = 1,
+                            autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = 15.sp)
+                        )
+                    }
+                }
+            }
         }
         return
     }
@@ -285,6 +325,45 @@ private fun OrbitDiagram(level: BubbleLevel, animated: Boolean, modifier: Modifi
     }
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+internal fun DefaultDiscoveryFiltersSheet(
+    request: DiscoveryRequest,
+    scenes: List<ExploreCategory>,
+    animated: Boolean,
+    copy: SmartMusicCopy,
+    refreshLabel: String,
+    refreshing: Boolean,
+    onLens: (DiscoveryLens) -> Unit,
+    onLoadScenes: () -> Unit,
+    onRefresh: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.fillMaxWidth().padding(bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            Text(
+                copy[SmartMusicText.BubbleExplore],
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                modifier = Modifier.padding(horizontal = 20.dp).semantics { heading() }
+            )
+            LensRow(request.lens, scenes, animated, copy, onLens, onLoadScenes)
+            androidx.compose.material3.FilledTonalButton(
+                onClick = {
+                    onRefresh()
+                    onDismiss()
+                },
+                enabled = !refreshing,
+                modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth().heightIn(min = 52.dp)
+            ) {
+                Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(refreshLabel, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun LensRow(
     lens: DiscoveryLens,
