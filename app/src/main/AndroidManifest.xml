@@ -369,7 +369,7 @@
             android:name=".feature.playlistimport.PlaylistImportService"
             android:exported="false"
             android:foregroundServiceType="dataSync"
-            android:stopWithTask="true" />
+            android:stopWithTask="false" />
 
         <service
             android:name=".feature.adaptive.AdaptiveListeningService"

@@ -2,6 +2,7 @@
 
 package com.luc4n3x.levyra.ui.jam
 
+import androidx.compose.foundation.text.selection.SelectionContainer
 import kotlin.math.sin
 import kotlin.math.roundToInt
 import kotlin.math.max
@@ -762,6 +763,19 @@ private fun JamSessionHero(jam: JamUiState, strings: LevyraStrings, onShare: () 
                         color = scheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall
                     )
+                    if (jam.code.isNotBlank()) {
+                        SelectionContainer {
+                            Text(
+                                jam.code,
+                                color = scheme.onSurface,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 12.sp,
+                                lineHeight = 17.sp,
+                                letterSpacing = 0.4.sp,
+                                modifier = Modifier.semantics { contentDescription = "${strings.jamSessionCode}: ${jam.code}" }
+                            )
+                        }
+                    }
                 }
             }
             Button(

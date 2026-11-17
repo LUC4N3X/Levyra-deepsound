@@ -91,7 +91,7 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Con la sessione bloccata nessuno può più entrare", "Bloccata",
         "In attesa che l'host ti faccia entrare", "L'host ha rifiutato la tua richiesta",
         "L'host ti ha bloccato da questo Unison", "La sessione è bloccata",
-        "La sessione è piena", "L'host ti ha rimosso dal Unison",
+        "La sessione è piena", "L'host ti ha rimosso dall'Unison",
         "Ancora nessun ospite", "Tu", "Condividi invito"
     ),
     "es" to jamModeration(
@@ -111,7 +111,7 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Personne ne peut entrer quand la session est verrouillée", "Verrouillée",
         "En attente que l'hôte vous laisse entrer", "L'hôte a refusé votre demande",
         "L'hôte vous a bloqué dans ce Unison", "La session est verrouillée",
-        "La session est complète", "L'hôte vous a retiré du Unison",
+        "La session est complète", "L'hôte vous a retiré de l'Unison",
         "Aucun invité pour l'instant", "Vous", "Partager l'invitation"
     ),
     "de" to jamModeration(

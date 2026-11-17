@@ -6,6 +6,8 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -136,6 +138,7 @@ private fun SupportDonationSheet(copy: SupportDonationCopy, languageCode: String
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .navigationBarsPadding()
                 .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
