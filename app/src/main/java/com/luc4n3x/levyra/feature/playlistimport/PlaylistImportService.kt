@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.feature.playlistimport
 
+import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -7,6 +8,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
@@ -82,6 +84,11 @@ class PlaylistImportService : Service() {
 
     private fun post(notice: PlaylistImportNotice) {
         shown = notice
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
         runCatching { NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, notification(notice)) }
             .onFailure { Timber.d(it, "Playlist import notification update skipped") }
     }
