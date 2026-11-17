@@ -495,7 +495,7 @@ UPRIGHT_CARD_SPECS = [
         "LIVE WORLD BROADCASTS",
         "Global Live Radio",
         "Stream FM & internet stations worldwide.",
-        "Screenshot_20261024_145819_Levyra.jpg",
+        "Screenshot_20261117_142824_Levyra.jpg",
         (253, 241, 243), (242, 216, 221), (228, 186, 195), (226, 196, 203),
         (178, 42, 68), (38, 16, 22), (116, 52, 66),
     ),
