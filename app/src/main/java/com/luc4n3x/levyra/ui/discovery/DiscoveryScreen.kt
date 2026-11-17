@@ -110,9 +110,14 @@ import com.luc4n3x.levyra.domain.HomeStyle
 import com.luc4n3x.levyra.feature.discovery.BubbleLevel
 import com.luc4n3x.levyra.feature.discovery.DiscoveryCard
 import com.luc4n3x.levyra.feature.discovery.DiscoveryLens
+import com.luc4n3x.levyra.ui.i18n.SmartMusicText
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.luc4n3x.levyra.feature.discovery.DiscoveryRequest
 import com.luc4n3x.levyra.feature.discovery.DiscoveryDecision
 import com.luc4n3x.levyra.feature.discovery.DiscoveryPreviewStatus
+import com.luc4n3x.levyra.ui.components.LevyraPlayingIndicator
 import com.luc4n3x.levyra.ui.LevyraIsLight
 import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
@@ -160,7 +165,7 @@ private fun rememberDiscoveryLook(style: HomeStyle): DiscoveryLook {
     return remember(style, type, cookie, square, glacier, atelier, prism, defaultSkin) {
         if (defaultSkin) return@remember DiscoveryLook(
             DefaultDiscoveryCardShape, DefaultDiscoveryCardShape, 12f,
-            type.headlineMediumEmphasized.copy(fontWeight = FontWeight.Black),
+            type.titleLarge.copy(fontWeight = FontWeight.Bold),
             type.displaySmallEmphasized.copy(fontWeight = FontWeight.Black),
             false, DiscoveryBackdrop.Aurora, true, 16.dp
         )
@@ -246,6 +251,7 @@ internal fun DiscoveryScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     val controller = remember { DiscoveryStackController() }
+    var filtersOpen by rememberSaveable { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val decide: (DiscoveryDecision) -> Unit = { decision ->
         scope.launch {
@@ -263,12 +269,20 @@ internal fun DiscoveryScreen(
     Box(
         Modifier
             .fillMaxSize()
-            .background(if (look.backdrop == DiscoveryBackdrop.Atelier) com.luc4n3x.levyra.ui.theme.AtelierDesign.room else homeCanvasColor(LevyraIsLight))
+            .then(
+                when (look.backdrop) {
+                    DiscoveryBackdrop.Aurora -> Modifier
+                    DiscoveryBackdrop.Atelier -> Modifier.background(com.luc4n3x.levyra.ui.theme.AtelierDesign.room)
+                    else -> Modifier.background(homeCanvasColor(LevyraIsLight))
+                }
+            )
             .pointerInput(Unit) {}
     ) {
-        DiscoveryBackdropLayer(look, ui.deck.current, animationsEnabled)
+        DiscoveryBackdropLayer(look, ui.deck.current, animationsEnabled, ui.deck.upcoming.firstOrNull()) {
+            (controller.offset.value.absoluteValue / (controller.width * DiscoverySwipeThreshold)).coerceIn(0f, 1f)
+        }
         Column(Modifier.fillMaxSize().statusBarsPadding().padding(bottom = bottomInset)) {
-            DiscoveryTopBar(copy, look, ui, strings.back, onDismiss, viewModel::refresh, onOpenSaved)
+            DiscoveryTopBar(copy, look, ui, strings.back, onDismiss, viewModel::refresh, onOpenSaved, undo, music[SmartMusicText.BubbleExplore]) { filtersOpen = true }
             BubbleOrbitSelector(
                 request = ui.request,
                 scenes = ui.scenes,
@@ -281,7 +295,7 @@ internal fun DiscoveryScreen(
             )
             Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 20.dp), contentAlignment = Alignment.Center) {
                 when {
-                    ui.deck.current != null -> DiscoveryCardStack(ui, look, copy, music, animationsEnabled, controller, decide, viewModel::togglePreview)
+                    ui.deck.current != null -> DiscoveryCardStack(ui, look, copy, music, animationsEnabled, controller, decide, viewModel::togglePreview, viewModel::playFull)
                     ui.status == DiscoveryFeedStatus.Loading || ui.status == DiscoveryFeedStatus.Idle -> DiscoveryStatePanel(copy.loading, null, null, loading = true)
                     ui.status == DiscoveryFeedStatus.Error -> DiscoveryStatePanel(copy.error, copy.retry, viewModel::retry, loading = false)
                     else -> DiscoveryStatePanel(copy.empty, copy.refresh, viewModel::refresh, loading = false)
@@ -290,14 +304,23 @@ internal fun DiscoveryScreen(
             if (ui.deck.current != null) {
                 DiscoveryControls(ui, look, copy, animationsEnabled, decide, undo, viewModel::togglePreview, viewModel::playFull)
             }
+            if (look.backdrop == DiscoveryBackdrop.Aurora) {
+                DefaultDiscoveryMixLine(ui.savedThisWeek, copy, onOpenSaved)
+            }
         }
         DiscoveryMessageHost(ui, copy, bottomInset, viewModel::consumeMessage)
+    }
+    if (filtersOpen) {
+        DefaultDiscoveryFiltersSheet(
+            ui.request, ui.scenes, animationsEnabled, music, copy.refresh, ui.refreshing,
+            viewModel::setLens, viewModel::loadScenes, viewModel::refresh
+        ) { filtersOpen = false }
     }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun DiscoveryBackdropLayer(look: DiscoveryLook, card: DiscoveryCard?, animationsEnabled: Boolean) {
+private fun DiscoveryBackdropLayer(look: DiscoveryLook, card: DiscoveryCard?, animationsEnabled: Boolean, next: DiscoveryCard?, blend: () -> Float) {
     val scheme = MaterialTheme.colorScheme
     val accent = discoveryAccent(card)
     when (look.backdrop) {
@@ -375,7 +398,7 @@ private fun DiscoveryBackdropLayer(look: DiscoveryLook, card: DiscoveryCard?, an
             Box(Modifier.fillMaxSize().graphicsLayer { alpha = 0.32f }) { DiscoveryArtwork(card, Modifier.fillMaxSize(), highRes = false) }
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.35f), Color.Black.copy(alpha = 0.88f)))))
         }
-        DiscoveryBackdrop.Aurora -> DefaultDiscoveryBackdrop(card, animationsEnabled)
+        DiscoveryBackdrop.Aurora -> DefaultDiscoveryBackdrop(card, next, blend)
         DiscoveryBackdrop.Tonal -> Box(
             Modifier.fillMaxWidth().height(420.dp).background(
                 Brush.verticalGradient(listOf(lerp(scheme.surfaceContainer, scheme.primaryContainer, 0.5f), Color.Transparent))
@@ -392,10 +415,13 @@ private fun DiscoveryTopBar(
     backLabel: String,
     onDismiss: () -> Unit,
     onRefresh: () -> Unit,
-    onOpenSaved: () -> Unit
+    onOpenSaved: () -> Unit,
+    onUndo: () -> Unit,
+    filtersLabel: String,
+    onFilters: () -> Unit
 ) {
     if (look.backdrop == DiscoveryBackdrop.Aurora) {
-        DefaultDiscoveryTopBar(copy, ui.savedThisWeek, ui.refreshing, backLabel, onDismiss, onRefresh, onOpenSaved)
+        DefaultDiscoveryTopBar(copy, ui.deck.canUndo, backLabel, filtersLabel, ui.request.lens != DiscoveryLens.Open, onDismiss, onUndo, onFilters)
         return
     }
     val ink = if (look.backdrop == DiscoveryBackdrop.Bleed || (look.backdrop == DiscoveryBackdrop.Prism && !LevyraIsLight)) Color.White else LevyraText
@@ -428,6 +454,7 @@ private fun DiscoveryTopBar(
 }
 
 private val DiscoveryCardChrome = 132.dp
+private const val DiscoverySwipeThreshold = 0.3f
 private val DiscoveryDistanceChrome = 36.dp
 
 internal class DiscoveryStackController {
@@ -469,26 +496,28 @@ private fun DiscoveryCardStack(
     animationsEnabled: Boolean,
     controller: DiscoveryStackController,
     onDecide: (DiscoveryDecision) -> Unit,
-    onTogglePreview: () -> Unit
+    onTogglePreview: () -> Unit,
+    onPlayFull: () -> Unit
 ) {
     val current = ui.deck.current ?: return
     val upcoming = ui.deck.upcoming
     val decide by rememberUpdatedState(onDecide)
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
-    val stackPeek = if (look.backdrop == DiscoveryBackdrop.Aurora) look.stackGap * 3.4f else 0.dp
-    BoxWithConstraints(Modifier.fillMaxSize().padding(top = stackPeek), contentAlignment = Alignment.Center) {
+    val stacked = look.backdrop == DiscoveryBackdrop.Aurora
+    val panel = defaultDiscoveryPanelHeight()
+    BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         val widthPx = with(density) { maxWidth.toPx() }
         val chrome = DiscoveryCardChrome + if (showsDistance(ui.request)) DiscoveryDistanceChrome else 0.dp
         val artSide = if (look.backdrop == DiscoveryBackdrop.Aurora) {
-            (maxHeight - chrome - look.stackGap * 2).coerceAtLeast(96.dp)
+            minOf(maxWidth, maxHeight - panel - DefaultDiscoveryPeek * 3).coerceAtLeast(0.dp)
         } else if (look.backdrop == DiscoveryBackdrop.Glacier || look.backdrop == DiscoveryBackdrop.Atelier) {
             (maxHeight - DiscoveryCardChrome - GlacierDiscPeek - look.stackGap * 2).coerceAtLeast(96.dp)
         } else {
             minOf(maxWidth - 32.dp, maxHeight - chrome - look.stackGap * 2).coerceAtLeast(96.dp)
         }
         controller.width = widthPx
-        val threshold = widthPx * 0.3f
+        val threshold = widthPx * DiscoverySwipeThreshold
         LaunchedEffect(controller, animationsEnabled) {
             if (animationsEnabled && !controller.nudged) {
                 controller.nudged = true
@@ -503,7 +532,13 @@ private fun DiscoveryCardStack(
             val scale = baseScale + 0.06f * progress * if (depth == 1) 1f else 0.5f
             DiscoveryCardFace(
                 card, look, copy, music, ui.request, artSide, preview = null,
-                modifier = Modifier
+                modifier = if (stacked) Modifier.graphicsLayer {
+                    val step = depth - progress
+                    val stackScale = 1f - 0.06f * step
+                    scaleX = stackScale
+                    scaleY = stackScale
+                    translationY = size.height * (1f - stackScale) / 2f + DefaultDiscoveryPeek.toPx() * step
+                } else Modifier
                     .graphicsLayer {
                         scaleX = scale
                         scaleY = scale
@@ -517,6 +552,7 @@ private fun DiscoveryCardStack(
         DiscoveryCardFace(
             current, look, copy, music, ui.request, artSide, preview = ui.preview.takeIf { it.isFor(current.key) }?.status,
             onTogglePreview = onTogglePreview,
+            onPlayFull = onPlayFull,
             modifier = Modifier
                 .graphicsLayer {
                     translationX = controller.offset.value
@@ -585,7 +621,8 @@ private fun DiscoveryCardFace(
     artSide: Dp,
     preview: DiscoveryPreviewStatus?,
     modifier: Modifier = Modifier,
-    onTogglePreview: (() -> Unit)? = null
+    onTogglePreview: (() -> Unit)? = null,
+    onPlayFull: (() -> Unit)? = null
 ) {
     val scheme = MaterialTheme.colorScheme
     val accent = discoveryAccent(card)
@@ -601,6 +638,10 @@ private fun DiscoveryCardFace(
             if (onTogglePreview != null) GlacierRecord(card, preview == DiscoveryPreviewStatus.Playing, Modifier.align(Alignment.TopCenter))
             GlacierSleeve(card, look, copy, music, request, artSide, preview, onTogglePreview, Modifier.align(Alignment.BottomCenter))
         }
+        return
+    }
+    if (look.backdrop == DiscoveryBackdrop.Aurora) {
+        DefaultDiscoveryFace(card, look, copy, music, request, artSide, preview == DiscoveryPreviewStatus.Playing, modifier, onPlayFull)
         return
     }
     if (look.artworkBleed) {
@@ -661,8 +702,7 @@ private fun DiscoveryBleedFace(
     onTogglePreview: (() -> Unit)?
 ) {
     val scheme = MaterialTheme.colorScheme
-    val glow = if (look.backdrop == DiscoveryBackdrop.Aurora) Modifier.defaultDiscoveryGlow(card, look.cardShape) else Modifier
-    Box(modifier.fillMaxWidth().height(artSide + DiscoveryCardChrome).then(glow).clip(look.cardShape).background(scheme.surfaceContainerHigh)) {
+    Box(modifier.fillMaxWidth().height(artSide + DiscoveryCardChrome).clip(look.cardShape).background(scheme.surfaceContainerHigh)) {
         DiscoveryArtwork(card, Modifier.fillMaxSize(), highRes = true)
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.4f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.86f))))
         if (look.backdrop != DiscoveryBackdrop.Glacier) DiscoveryReasonChip(card, copy, music, Color.Black.copy(alpha = 0.45f), Color.White, Modifier.align(Alignment.TopStart).padding(16.dp))
@@ -674,6 +714,60 @@ private fun DiscoveryBleedFace(
             Text(card.track.title, style = look.titleStyle, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(card.track.artist, style = MaterialTheme.typography.bodyLarge, color = Color.White.copy(alpha = 0.82f), maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (look.backdrop != DiscoveryBackdrop.Aurora) DiscoveryPreviewBadge(preview, copy, Color.White, onTogglePreview)
+        }
+    }
+}
+
+@Composable
+private fun DefaultDiscoveryFace(
+    card: DiscoveryCard,
+    look: DiscoveryLook,
+    copy: DiscoveryCopy,
+    music: SmartMusicCopy,
+    request: DiscoveryRequest,
+    artSide: Dp,
+    previewing: Boolean,
+    modifier: Modifier,
+    onPlayFull: (() -> Unit)?
+) {
+    val scheme = MaterialTheme.colorScheme
+    val album = card.track.album.takeUnless { discoveryTitleKey(it) == discoveryTitleKey(card.track.title) }.orEmpty()
+    val meta = listOf(card.track.year, album).filter(String::isNotBlank).joinToString(" · ")
+    Column(
+        modifier
+            .fillMaxWidth()
+            .defaultDiscoveryCardShadow(look.cardShape)
+            .clip(look.cardShape)
+            .background(scheme.surfaceContainer)
+    ) {
+        Box(Modifier.fillMaxWidth().height(artSide)) {
+            DiscoveryArtwork(card, Modifier.fillMaxSize(), highRes = true)
+            if (showsDistance(request)) {
+                BubbleDistanceBadge(card.distance, music, Color.Black.copy(alpha = 0.5f), Color.White, Modifier.align(Alignment.TopStart).padding(12.dp))
+            }
+        }
+        Column(Modifier.fillMaxWidth().height(defaultDiscoveryPanelHeight()).padding(start = 20.dp, end = 6.dp, top = 10.dp, bottom = 14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (previewing) LevyraPlayingIndicator(playing = true, color = scheme.primary, size = 16.dp)
+                        Text(card.track.title, style = look.titleStyle, color = scheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    Text(card.track.artist, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                if (onPlayFull != null) {
+                    IconButton(onClick = onPlayFull) { Icon(Icons.Rounded.PlayCircle, copy.playFull, tint = scheme.onSurface) }
+                }
+            }
+            Spacer(Modifier.weight(1f))
+            Text(
+                listOf(meta, discoveryReasonLabel(card, copy, music)).filter(String::isNotBlank).joinToString(" · "),
+                style = MaterialTheme.typography.bodySmall,
+                color = scheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(end = 12.dp)
+            )
         }
     }
 }
@@ -725,7 +819,7 @@ private fun DiscoveryControls(
     val loading = previewStatus == DiscoveryPreviewStatus.Loading
     val morph = rememberLevyraPlayMorphShape(playing = playing, animated = animationsEnabled)
     if (look.backdrop == DiscoveryBackdrop.Aurora) {
-        DefaultDiscoveryControls(current, ui.deck.canUndo, playing, loading, morph, copy, onDecide, onUndo, onTogglePreview, onPlayFull)
+        DefaultDiscoveryControls(playing, loading, morph, copy, onDecide, onTogglePreview)
         return
     }
     if (look.backdrop == DiscoveryBackdrop.Prism) {
