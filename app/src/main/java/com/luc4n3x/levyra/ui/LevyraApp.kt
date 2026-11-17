@@ -6593,101 +6593,6 @@ private const val ArtistTitleDockStart = 0.82f
 private val ArtistNameRise = 14.dp
 
 @Composable
-private fun ArtistFollowButton(isFollowed: Boolean, onClick: () -> Unit) {
-    val strings = LocalLevyraStrings.current
-    if (SkinFollowPill(isFollowed, strings.followArtist, strings.followingArtist, onClick)) return
-    val animated = LocalAnimationsEnabled.current
-    val followProgress by animateFloatAsState(
-        targetValue = if (isFollowed) 1f else 0f,
-        animationSpec = LevyraMotion.spec(animated, LevyraMotion.standard()),
-        label = "artist-follow-progress"
-    )
-    val container by animateColorAsState(
-        targetValue = if (isFollowed) Color.Transparent else LevyraText.copy(alpha = 0.10f),
-        animationSpec = LevyraMotion.spec(animated, LevyraMotion.standard()),
-        label = "artist-follow-container"
-    )
-    val outline by animateColorAsState(
-        targetValue = LevyraText.copy(alpha = if (isFollowed) 0.24f else 0f),
-        animationSpec = LevyraMotion.spec(animated, LevyraMotion.standard()),
-        label = "artist-follow-outline"
-    )
-    val interaction = remember { MutableInteractionSource() }
-    val corner = levyraExpressiveToggleCorner(
-        checked = isFollowed,
-        unchecked = 24.dp,
-        checkedCorner = 14.dp,
-        label = "artist-follow-corner"
-    )
-    val pressedCorner = levyraExpressiveCorner(
-        interactionSource = interaction,
-        rest = corner,
-        pressed = 12.dp,
-        label = "artist-follow-press"
-    )
-    Surface(
-        color = container,
-        shape = RoundedCornerShape(pressedCorner),
-        border = BorderStroke(1.dp, outline),
-        modifier = Modifier
-            .heightIn(min = 48.dp)
-            .levyraPressable(
-                onClick = onClick,
-                pressedScale = LevyraPressScale.Control,
-                interactionSource = interaction,
-                role = Role.Switch,
-                haptic = LevyraHapticAction.Confirm
-            )
-            .clearAndSetSemantics {
-                contentDescription = strings.followArtist
-                toggleableState = ToggleableState(isFollowed)
-                role = Role.Switch
-            }
-    ) {
-        Box(
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            ArtistFollowLabel(
-                icon = Icons.Rounded.PersonAdd,
-                text = strings.followArtist,
-                color = LevyraText,
-                visibility = { 1f - followProgress }
-            )
-            ArtistFollowLabel(
-                icon = Icons.Rounded.Check,
-                text = strings.followingArtist,
-                color = LevyraText,
-                visibility = { followProgress }
-            )
-        }
-    }
-}
-
-@Composable
-private fun ArtistFollowLabel(
-    icon: ImageVector,
-    text: String,
-    color: Color,
-    visibility: () -> Float
-) {
-    Row(
-        modifier = Modifier.graphicsLayer {
-            val shown = visibility()
-            alpha = shown
-            val scale = 0.92f + 0.08f * shown
-            scaleX = scale
-            scaleY = scale
-        },
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Icon(imageVector = icon, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
-        Text(text = text, color = color, style = LevyraType.metadata.copy(fontWeight = FontWeight.Bold), maxLines = 1)
-    }
-}
-
-@Composable
 private fun ArtistHero(
     profile: ArtistProfile,
     artworkUrl: String,
@@ -6899,8 +6804,9 @@ private fun ArtistActionBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        ArtistFollowButton(isFollowed = isFollowed, onClick = onToggleFollow)
-        Spacer(modifier = Modifier.weight(1f))
+        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+            ArtistFollowButton(isFollowed = isFollowed, onClick = onToggleFollow)
+        }
         Box {
             Box(
                 modifier = Modifier

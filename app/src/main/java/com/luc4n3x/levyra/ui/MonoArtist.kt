@@ -358,27 +358,29 @@ private fun MonoArtistActions(profile: ArtistProfile, state: LevyraUiState, view
         verticalAlignment = Alignment.CenterVertically
     ) {
         val followLabel = if (followed) strings.followingArtist else strings.followArtist
-        Row(
-            Modifier.weight(1f, fill = false).heightIn(min = 48.dp).clip(MonoDesign.pillShape)
-                .background(if (followed) Color.Transparent else MonoDesign.text)
-                .border(1.dp, if (followed) MonoDesign.accent else MonoDesign.text, MonoDesign.pillShape)
-                .clickable(role = Role.Button, onClick = viewModel::toggleFollowArtist)
-                .semantics { selected = followed }
-                .padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            val ink = if (followed) MonoDesign.accent else MonoDesign.base
-            Text(followLabel, style = MaterialTheme.typography.titleSmall, color = ink, maxLines = 1)
-            if (profile.subscribers.isNotBlank()) {
-                Text(
-                    profile.subscribers.substringBeforeLast(' ').ifBlank { profile.subscribers },
-                    style = MaterialTheme.typography.titleSmall.copy(fontFamily = MonoCodeFont), color = ink.copy(alpha = 0.72f),
-                    maxLines = 1, overflow = TextOverflow.Ellipsis
-                )
+        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+            Row(
+                Modifier.heightIn(min = 48.dp).clip(MonoDesign.pillShape)
+                    .background(if (followed) Color.Transparent else MonoDesign.text)
+                    .border(1.dp, if (followed) MonoDesign.accent else MonoDesign.text, MonoDesign.pillShape)
+                    .clickable(role = Role.Button, onClick = viewModel::toggleFollowArtist)
+                    .semantics { selected = followed }
+                    .padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val ink = if (followed) MonoDesign.accent else MonoDesign.base
+                Text(followLabel, style = MaterialTheme.typography.titleSmall, color = ink, maxLines = 1)
+                if (profile.subscribers.isNotBlank()) {
+                    Text(
+                        profile.subscribers.substringBeforeLast(' ').ifBlank { profile.subscribers },
+                        style = MaterialTheme.typography.titleSmall.copy(fontFamily = MonoCodeFont), color = ink.copy(alpha = 0.72f),
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                }
             }
         }
-        Spacer(Modifier.weight(1f))
         val radioEnabled = songs.isNotEmpty()
         Box(
             Modifier.size(48.dp).clip(CircleShape).background(MonoDesign.raised)
