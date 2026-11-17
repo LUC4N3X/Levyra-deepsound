@@ -365,10 +365,6 @@ internal fun LevyraRecentSearchesRail(
         IvoryRecentSearchesRail(title, tracks, onTrackClick, menu)
         return
     }
-    if (LevyraIsDefaultSkin) {
-        DefaultRecentSearchesRail(title, tracks, onTrackClick, menu)
-        return
-    }
     val actionsLabel = LocalLevyraStrings.current.actions
     val carouselState = rememberCarouselState { tracks.size }
     Column {
