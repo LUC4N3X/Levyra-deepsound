@@ -1,7 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="126" height="33.075" viewBox="0 0 160 42" role="img" aria-label="Levyra license GPL-3.0">
 <title>Levyra license GPL-3.0</title>
-<path d="M 9 0.8 H 139.2 Q 159.2 0.8 159.2 20 V 32.2 Q 159.2 41.2 150.2 41.2 H 19.8 Q .8 41.2 .8 22.2 V 9 Q .8 .8 9 .8 Z" fill="#E4F0EC"/>
+<defs>
+  <linearGradient id="info-tone" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#E6F1ED"/>
+    <stop offset=".55" stop-color="#E4F0EC"/>
+    <stop offset="1" stop-color="#DAE5E1"/>
+  </linearGradient>
+  <clipPath id="info-frame"><path d="M 9 0.8 H 139.2 Q 159.2 0.8 159.2 20 V 32.2 Q 159.2 41.2 150.2 41.2 H 19.8 Q .8 41.2 .8 22.2 V 9 Q .8 .8 9 .8 Z"/></clipPath>
+</defs>
+<path d="M 9 0.8 H 139.2 Q 159.2 0.8 159.2 20 V 32.2 Q 159.2 41.2 150.2 41.2 H 19.8 Q .8 41.2 .8 22.2 V 9 Q .8 .8 9 .8 Z" fill="url(#info-tone)"/>
+<g clip-path="url(#info-frame)">
+  <path d="M76 -10 C101 6 124 9 162 -2 L169 12 C135 16 111 11 88 4 Z" fill="#FFFFFF" opacity="0.14"/>
+  <path d="M113 47 C123 31 142 33 166 19 L166 48 Z" fill="#3D7469" opacity="0.07"/>
+  <path d="M5 2 Q25 -2 46 5" fill="none" stroke="#FFFFFF" stroke-opacity="0.26" stroke-width="1"/>
+</g>
+
 <path d="M 1 21 C 1 10 10 1 24 1 H 33 C 45 10 46 31 34 41 H 17 C 7 41 1 32 1 21 Z" fill="#3D7469" opacity="0.13"/>
+<path d="M9 16 C12 8 19 5 28 5" fill="none" stroke="#3D7469" stroke-opacity="0.29" stroke-width="1.05" stroke-linecap="round"/>
+<path d="M 9 0.8 H 139.2 Q 159.2 0.8 159.2 20 V 32.2 Q 159.2 41.2 150.2 41.2 H 19.8 Q .8 41.2 .8 22.2 V 9 Q .8 .8 9 .8 Z" fill="none" stroke="#3D7469" stroke-opacity="0.17" stroke-width=".8"/>
 <g transform="translate(23 21) scale(1.33)" style="color:#3D7469">
     <path d="M0 -8 l7 3 v4 c0 5 -3 7 -7 9 -4 -2 -7 -4 -7 -9 v-4 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M-3 0 l2 2 4 -5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
   </g>

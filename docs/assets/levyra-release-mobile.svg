@@ -1,7 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="126" height="33.075" viewBox="0 0 160 42" role="img" aria-label="Latest Levyra release v3.1.3">
 <title>Latest Levyra release v3.1.3</title>
-<path d="M 19 0.8 H 151.2 Q 159.2 0.8 159.2 8 V 22.2 Q 159.2 41.2 140.2 41.2 H 8.8 Q .8 41.2 .8 33.2 V 19 Q .8 .8 19 .8 Z" fill="#474151"/>
+<defs>
+  <linearGradient id="info-tone" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#5B5664"/>
+    <stop offset=".55" stop-color="#474151"/>
+    <stop offset="1" stop-color="#413C4B"/>
+  </linearGradient>
+  <clipPath id="info-frame"><path d="M 19 0.8 H 151.2 Q 159.2 0.8 159.2 8 V 22.2 Q 159.2 41.2 140.2 41.2 H 8.8 Q .8 41.2 .8 33.2 V 19 Q .8 .8 19 .8 Z"/></clipPath>
+</defs>
+<path d="M 19 0.8 H 151.2 Q 159.2 0.8 159.2 8 V 22.2 Q 159.2 41.2 140.2 41.2 H 8.8 Q .8 41.2 .8 33.2 V 19 Q .8 .8 19 .8 Z" fill="url(#info-tone)"/>
+<g clip-path="url(#info-frame)">
+  <path d="M76 -10 C101 6 124 9 162 -2 L169 12 C135 16 111 11 88 4 Z" fill="#FFFFFF" opacity="0.1"/>
+  <path d="M113 47 C123 31 142 33 166 19 L166 48 Z" fill="#DECDF4" opacity="0.1"/>
+  <path d="M5 2 Q25 -2 46 5" fill="none" stroke="#FFFFFF" stroke-opacity="0.19" stroke-width="1"/>
+</g>
+
 <path d="M 1 21 C 1 10 10 1 24 1 H 33 C 45 10 46 31 34 41 H 17 C 7 41 1 32 1 21 Z" fill="#DECDF4" opacity="0.12"/>
+<path d="M9 16 C12 8 19 5 28 5" fill="none" stroke="#DECDF4" stroke-opacity="0.37" stroke-width="1.05" stroke-linecap="round"/>
+<path d="M 19 0.8 H 151.2 Q 159.2 0.8 159.2 8 V 22.2 Q 159.2 41.2 140.2 41.2 H 8.8 Q .8 41.2 .8 33.2 V 19 Q .8 .8 19 .8 Z" fill="none" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width=".8"/>
 <g transform="translate(23 21) scale(1.33)" style="color:#DECDF4">
     <path d="M-4 -8 h6 l5 5 -9 9 -6 -6 v-4 Z M1 -5 a1.5 1.5 0 1 0 0 3 A1.5 1.5 0 0 0 1 -5 Z" fill="currentColor"/>
   </g>
