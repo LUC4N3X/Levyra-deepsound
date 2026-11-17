@@ -183,7 +183,7 @@ internal fun DefaultRadioScreen(
                 item(key = "default-radio-custom-error", contentType = "default-radio-notice") { RadioNotice(libraryCopy.error(reason), Icons.Rounded.Podcasts) }
             }
             if (state.query.isBlank()) {
-                defaultRadioPresets(strings.favoritesPlain, state.favorites, tuning)
+                defaultRadioPresets(strings.favoritesPlain, strings.removeFromFavorites, state.favorites, tuning)
                 defaultRadioRecent(strings.recent, state.recent, tuning)
                 defaultRadioCustomStations(state.customStations, libraryCopy.custom, libraryCopy.edit, strings, tuning, openEditor) { deletingId = it }
             }
@@ -268,6 +268,10 @@ private class DefaultRadioTuning(
 ) {
     fun isLive(station: RadioStation): Boolean = isPlaying && currentStationId == station.uuid
     fun isFavorite(station: RadioStation): Boolean = station.uuid.lowercase(Locale.ROOT) in favoriteIds
+    fun favoriteAction(station: RadioStation, strings: LevyraStrings): DefaultRadioFavoriteAction {
+        val active = isFavorite(station)
+        return DefaultRadioFavoriteAction(active, if (active) strings.removeFromFavorites else strings.addToFavorites) { onFavorite(station) }
+    }
 }
 
 private fun defaultRadioOnAir(state: LiveRadioUiState, currentStationId: String?): RadioStation? =
@@ -515,14 +519,14 @@ private fun DefaultRadioSectionTitle(title: String) {
     )
 }
 
-private fun LazyListScope.defaultRadioPresets(title: String, stations: List<RadioStation>, tuning: DefaultRadioTuning) {
+private fun LazyListScope.defaultRadioPresets(title: String, removeLabel: String, stations: List<RadioStation>, tuning: DefaultRadioTuning) {
     if (stations.isEmpty()) return
     item(key = "default-radio-presets", contentType = "default-radio-presets") {
         Column {
             DefaultRadioSectionTitle(title)
             LazyRow(contentPadding = PaddingValues(horizontal = DefaultRadioGutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 itemsIndexed(stations, key = { _, station -> "preset-${station.uuid}" }, contentType = { _, _ -> "default-radio-preset" }) { index, station ->
-                    DefaultRadioPreset(index + 1, station, tuning.isLive(station)) { tuning.onPlay(station) }
+                    DefaultRadioPreset(index + 1, station, tuning.isLive(station), removeLabel, { tuning.onFavorite(station) }) { tuning.onPlay(station) }
                 }
             }
         }
@@ -634,7 +638,7 @@ private fun LazyListScope.defaultRadioChart(
                 modifier = Modifier.padding(bottom = 12.dp)
             ) {
                 itemsIndexed(podium, key = { _, station -> "podium-${station.uuid}" }, contentType = { _, _ -> "default-radio-podium-card" }) { index, station ->
-                    DefaultRadioPodiumCard(index + 1, station, tuning.isLive(station)) { tuning.onPlay(station) }
+                    DefaultRadioPodiumCard(index + 1, station, tuning.isLive(station), tuning.favoriteAction(station, strings)) { tuning.onPlay(station) }
                 }
             }
         }
@@ -712,7 +716,8 @@ private fun DefaultRadioChartRow(
     ) {
         DefaultRadioChartRowInfo(rank, station, playing, Modifier.weight(1f))
         if (playing) RadioEqualizer(colors.primary)
-        if (actions != null) actions() else DefaultRadioFavoriteToggle(tuning.isFavorite(station), strings) { tuning.onFavorite(station) }
+        DefaultRadioFavoriteToggle(tuning.isFavorite(station), strings) { tuning.onFavorite(station) }
+        actions?.invoke()
     }
 }
 

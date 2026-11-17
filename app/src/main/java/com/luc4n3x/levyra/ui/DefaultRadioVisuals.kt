@@ -37,9 +37,11 @@ import androidx.compose.material.icons.rounded.RecordVoiceOver
 import androidx.compose.material.icons.rounded.Spa
 import androidx.compose.material.icons.rounded.SportsSoccer
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material.icons.rounded.TheaterComedy
 import androidx.compose.material.icons.rounded.Whatshot
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -231,12 +233,26 @@ internal fun DefaultRadioGenreKey(category: RadioCategory, label: String, select
 }
 
 @Composable
-internal fun DefaultRadioPreset(number: Int, station: RadioStation, playing: Boolean, onClick: () -> Unit) {
+internal fun DefaultRadioPreset(
+    number: Int,
+    station: RadioStation,
+    playing: Boolean,
+    removeFavoriteLabel: String,
+    onRemoveFavorite: () -> Unit,
+    onClick: () -> Unit
+) {
     val colors = MaterialTheme.colorScheme
     Column(
         Modifier
             .width(88.dp)
-            .levyraPressable(onClick = onClick, role = Role.Button, pressedScale = LevyraPressScale.Control, onClickLabel = station.name)
+            .levyraPressable(
+                onClick = onClick,
+                onLongClick = onRemoveFavorite,
+                onLongClickLabel = removeFavoriteLabel,
+                role = Role.Button,
+                pressedScale = LevyraPressScale.Control,
+                onClickLabel = station.name
+            )
             .semantics { selected = playing },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -275,7 +291,13 @@ internal fun DefaultRadioPreset(number: Int, station: RadioStation, playing: Boo
 }
 
 @Composable
-internal fun DefaultRadioPodiumCard(rank: Int, station: RadioStation, playing: Boolean, onClick: () -> Unit) {
+internal fun DefaultRadioPodiumCard(
+    rank: Int,
+    station: RadioStation,
+    playing: Boolean,
+    favorite: DefaultRadioFavoriteAction,
+    onClick: () -> Unit
+) {
     val colors = MaterialTheme.colorScheme
     val fallback = remember(colors.primary, colors.tertiary) { ArtworkPalette(colors.primary.toArgb(), colors.tertiary.toArgb()) }
     val palette by rememberArtworkPalette(paletteKey = "radio-${station.uuid}", artworkUrl = station.safeFaviconUrl, fallback = fallback)
@@ -302,6 +324,14 @@ internal fun DefaultRadioPodiumCard(rank: Int, station: RadioStation, playing: B
                 modifier = Modifier.align(Alignment.BottomStart).offset(x = (-6).dp, y = 14.dp)
             )
             Box(Modifier.align(Alignment.TopEnd)) { RadioArtwork(station, 88.dp, RoundedCornerShape(22.dp)) }
+            IconButton(onClick = favorite.onToggle, modifier = Modifier.align(Alignment.TopStart).offset(x = (-12).dp, y = (-12).dp).size(48.dp)) {
+                Icon(
+                    if (favorite.active) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+                    contentDescription = favorite.label,
+                    tint = if (favorite.active) colors.primary else colors.onSurfaceVariant,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
             if (playing) {
                 Box(
                     Modifier.align(Alignment.BottomEnd).size(32.dp).background(colors.primary, CircleShape),
@@ -325,3 +355,5 @@ internal fun DefaultRadioPodiumCard(rank: Int, station: RadioStation, playing: B
         }
     }
 }
+
+internal class DefaultRadioFavoriteAction(val active: Boolean, val label: String, val onToggle: () -> Unit)
