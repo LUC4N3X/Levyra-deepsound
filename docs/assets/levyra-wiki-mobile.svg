@@ -1,22 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="126" height="33.075" viewBox="0 0 160 42" role="img" aria-label="Read Levyra documentation">
 <title>Read Levyra documentation</title>
 <defs>
-  <linearGradient id="info-tone" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0" stop-color="#5E525D"/>
-    <stop offset=".55" stop-color="#4A3D49"/>
-    <stop offset="1" stop-color="#443843"/>
+  <linearGradient id="info-subtle" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#50444F"/>
+    <stop offset="1" stop-color="#483C47"/>
   </linearGradient>
-  <clipPath id="info-frame"><path d="M 18 0.8 H 150.2 Q 159.2 0.8 159.2 9 V 32.2 Q 159.2 41.2 150.2 41.2 H 19.8 Q .8 41.2 .8 22.2 V 18 Q .8 .8 18 .8 Z"/></clipPath>
 </defs>
-<path d="M 18 0.8 H 150.2 Q 159.2 0.8 159.2 9 V 32.2 Q 159.2 41.2 150.2 41.2 H 19.8 Q .8 41.2 .8 22.2 V 18 Q .8 .8 18 .8 Z" fill="url(#info-tone)"/>
-<g clip-path="url(#info-frame)">
-  <path d="M76 -10 C101 6 124 9 162 -2 L169 12 C135 16 111 11 88 4 Z" fill="#FFFFFF" opacity="0.1"/>
-  <path d="M113 47 C123 31 142 33 166 19 L166 48 Z" fill="#F0CBDD" opacity="0.1"/>
-  <path d="M5 2 Q25 -2 46 5" fill="none" stroke="#FFFFFF" stroke-opacity="0.19" stroke-width="1"/>
-</g>
-
+<path d="M 18 0.8 H 150.2 Q 159.2 0.8 159.2 9 V 32.2 Q 159.2 41.2 150.2 41.2 H 19.8 Q .8 41.2 .8 22.2 V 18 Q .8 .8 18 .8 Z" fill="url(#info-subtle)"/>
 <path d="M 1 21 C 1 10 10 1 24 1 H 33 C 45 10 46 31 34 41 H 17 C 7 41 1 32 1 21 Z" fill="#F0CBDD" opacity="0.12"/>
-<path d="M9 16 C12 8 19 5 28 5" fill="none" stroke="#F0CBDD" stroke-opacity="0.37" stroke-width="1.05" stroke-linecap="round"/>
 <path d="M 18 0.8 H 150.2 Q 159.2 0.8 159.2 9 V 32.2 Q 159.2 41.2 150.2 41.2 H 19.8 Q .8 41.2 .8 22.2 V 18 Q .8 .8 18 .8 Z" fill="none" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width=".8"/>
 <g transform="translate(23 21) scale(1.33)" style="color:#F0CBDD">
     <path d="M-5 -7 h7 l4 4 v10 h-11 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M2 -7 v4 h4 M-2 1 h5 M-2 5 h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
