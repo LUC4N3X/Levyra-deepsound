@@ -2519,9 +2519,10 @@ fun LevyraApp(
                 accent = yourSoundAccent
             )
             val homeSaveableState = rememberSaveableStateHolder()
+            val dockHidden = state.showSettings || state.interfaceSettings.floatingNav.let { it.enabled && it.hideBottomBar }
             val dockMiniMergeable = state.interfaceSettings.dockMorphActive(skinNavigationSettings(navigationStudio.settings).style) &&
                 skinNavigationSettings(navigationStudio.settings).style.supportsDockMorph &&
-                !dockSideBySide && !state.showSettings
+                !dockSideBySide && !dockHidden
             val dockMiniMerged = remember(dockState, dockMiniMergeable) {
                 { dockMiniMergeable && dockState.compact }
             }
@@ -2696,10 +2697,11 @@ fun LevyraApp(
                     val dockCompaction = dockState.animatedCompaction(state.animationsEnabled)
                     val compactionProvider: () -> Float = { dockCompaction.value }
                     val miniPlayerVisible = state.currentTrack != null && !state.isSamplesOpen
+                    val dockHidden = state.showSettings || state.interfaceSettings.floatingNav.let { it.enabled && it.hideBottomBar }
                     val dockMorph = rememberDockMorph(
                         active = state.interfaceSettings.dockMorphActive(skinNavigationSettings(navigationStudio.settings).style) &&
                             skinNavigationSettings(navigationStudio.settings).style.supportsDockMorph &&
-                            !dockSideBySide && !state.showSettings,
+                            !dockSideBySide && !dockHidden,
                         miniVisible = miniPlayerVisible,
                         compaction = dockCompaction
                     )
@@ -2822,7 +2824,7 @@ fun LevyraApp(
                             }
                         }
                     }
-                    val dockRetracted = state.showSettings || state.interfaceSettings.floatingNav.let { it.enabled && it.hideBottomBar }
+                    val dockRetracted = dockHidden
                     val dockRowSideBySide = dockSideBySide && !dockRetracted
                     run {
                         val dockModifier = if (miniMaxWidth.isFinite()) {
