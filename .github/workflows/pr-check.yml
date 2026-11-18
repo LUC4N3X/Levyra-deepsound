@@ -475,10 +475,10 @@ jobs:
             >/dev/null
 
       - name: PR Diagnostics Unit Tests
-        run: ./gradlew :app:testPrDiagnosticsUnitTest --tests 'com.luc4n3x.levyra.runtime.*' --console=plain --warning-mode summary
+        run: ./gradlew :app:testPrDiagnosticsUnitTest --tests 'com.luc4n3x.levyra.runtime.*' -Pkotlin.daemon.jvmargs=-Xmx6g --console=plain --warning-mode summary
 
       - name: PR Diagnostics Compile
-        run: ./gradlew --no-configuration-cache assemblePrDiagnostics --console=plain --warning-mode summary
+        run: ./gradlew --no-configuration-cache assemblePrDiagnostics -Pkotlin.daemon.jvmargs=-Xmx6g --console=plain --warning-mode summary
 
       - name: Verify Diagnostics Artifact Isolation
         run: |
