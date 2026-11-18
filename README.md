@@ -90,8 +90,8 @@ I don't host FLAC audio on Levyra's servers. On Android, experimental FLAC playb
 
 <p>
   <a href="docs/assets/showcase/readme/row-02-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-02-studio-mobile.webp?v=m3-cards-2">
-    <img src="docs/assets/showcase/readme/row-02-studio.webp?v=m3-cards-2" width="900" alt="Discover and listen: search suggestions, music playback, moods and genres, and audio output settings.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-02-studio-mobile.webp?v=m3-cards-3">
+    <img src="docs/assets/showcase/readme/row-02-studio.webp?v=m3-cards-3" width="900" alt="Discover and listen: search suggestions, music playback, Mood Journey, and audio output settings.">
   </picture></a>
 </p>
 

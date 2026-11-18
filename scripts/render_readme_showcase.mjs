@@ -26,7 +26,7 @@ const cards = [
   ['04_midnight_obsidian', 'DARK THEME', ['Made for', 'after dark.'], ['Dark surfaces. Vivid artwork.']],
   ['05_fresh_currents', 'DISCOVERY', ['Discover more'], ['Search, revisit & explore.']],
   ['06_built_for_your_taste', 'PLAYBACK', ['Keep listening'], ['Gapless playback & crossfade.']],
-  ['07_every_genre', 'EXPLORE', ['Moods & genres'], ['Find music for the moment.']],
+  ['07_every_genre', 'EXPLORE', ['Mood Journey'], ['Draw how the music should feel.']],
   ['08_acoustic_precision', 'AUDIO', ['Your sound'], ['Output, quality & audio options.']],
   ['09_keep_it_personal', 'LIBRARY', ['One library'], ['Local files meet streamed music.']],
   ['10_curated_for_you', 'SEARCH', ['Find your next favorite'], ['Songs, artists & albums.']],
