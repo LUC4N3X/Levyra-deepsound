@@ -513,7 +513,7 @@ UPRIGHT_CARD_SPECS = [
         "LOCAL NETWORK PARTY",
         "Live Group Jam",
         "Share one live queue over Wi-Fi.",
-        "Screenshot_20261118_085513_Levyra.jpg",
+        "Screenshot_20261118_111945_Levyra.jpg",
         (239, 249, 243), (213, 237, 224), (176, 220, 198), (186, 220, 202),
         (22, 124, 78), (14, 34, 24), (42, 94, 68),
     ),
