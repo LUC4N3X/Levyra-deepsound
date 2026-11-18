@@ -2,6 +2,8 @@
 
 package com.luc4n3x.levyra.ui.jam
 
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.SolidColor
@@ -229,9 +231,8 @@ private fun JamOverlayContent(
                     SolidColor(MaterialTheme.colorScheme.background)
                 }
             )
-            .then(if (look.skinned) Modifier else Modifier.unisonWash(LevyraCyan))
     ) {
-        if (LevyraIsAtelier) AtelierJamBackdrop()
+        if (LevyraIsAtelier) AtelierJamBackdrop() else if (!look.skinned) UnisonWashBackdrop()
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
@@ -455,26 +456,31 @@ private fun DefaultJamStage(title: String, subtitle: String, onClose: () -> Unit
         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        LevyraBackButton(
-            onClick = onClose,
-            contentDescription = LocalLevyraStrings.current.back,
-            size = 48.dp,
-            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                containerColor = LevyraCyan.copy(alpha = 0.22f),
-                contentColor = scheme.onSurface
-            )
-        )
-        Spacer(Modifier.height(20.dp))
-        Box(
-            modifier = Modifier
-                .size(JamMedallionSize)
-                .background(Brush.linearGradient(listOf(LevyraCyan, LevyraViolet, LevyraPink)), MaterialShapes.Cookie9Sided.toShape())
-                .clearAndSetSemantics { },
-            contentAlignment = Alignment.Center
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Rounded.Headphones, contentDescription = null, tint = Color.White, modifier = Modifier.size(36.dp))
+            LevyraBackButton(
+                onClick = onClose,
+                contentDescription = LocalLevyraStrings.current.back,
+                size = 48.dp,
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = LevyraCyan.copy(alpha = 0.22f),
+                    contentColor = scheme.onSurface
+                )
+            )
+            Box(
+                modifier = Modifier
+                    .size(JamMedallionSize)
+                    .background(scheme.primaryContainer, MaterialShapes.Cookie9Sided.toShape())
+                    .clearAndSetSemantics { },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.Headphones, contentDescription = null, tint = scheme.onPrimaryContainer, modifier = Modifier.size(34.dp))
+            }
         }
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
         Text(
             title,
             color = scheme.onBackground,
@@ -490,7 +496,19 @@ private fun DefaultJamStage(title: String, subtitle: String, onClose: () -> Unit
     }
 }
 
-private val JamMedallionSize = 84.dp
+private val JamMedallionSize = 76.dp
+
+@Composable
+private fun UnisonWashBackdrop() {
+    val accent = LevyraCyan
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .clearAndSetSemantics { }
+            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+            .unisonWash(accent)
+    )
+}
 
 private fun Modifier.unisonWash(accent: Color): Modifier = drawBehind {
     val reach = size.width * 1.3f

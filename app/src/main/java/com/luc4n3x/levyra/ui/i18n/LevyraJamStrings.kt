@@ -3,7 +3,7 @@ package com.luc4n3x.levyra.ui.i18n
 private val jamBundles: Map<String, Map<String, String>> = mapOf(
     "en" to mapOf(
         "jamTitle" to "Unison",
-        "jamSubtitle" to "Listen together on the same network",
+        "jamSubtitle" to "Many devices. One sound.",
         "jamCreate" to "Create Unison",
         "jamJoin" to "Join Unison",
         "jamLeave" to "Leave Unison",
@@ -28,7 +28,7 @@ private val jamBundles: Map<String, Map<String, String>> = mapOf(
     ),
     "it" to mapOf(
         "jamTitle" to "Unison",
-        "jamSubtitle" to "Ascoltate insieme sulla stessa rete",
+        "jamSubtitle" to "Tanti dispositivi. Un solo suono.",
         "jamCreate" to "Crea Unison",
         "jamJoin" to "Entra nell'Unison",
         "jamLeave" to "Esci dall'Unison",
@@ -53,7 +53,7 @@ private val jamBundles: Map<String, Map<String, String>> = mapOf(
     ),
     "es" to mapOf(
         "jamTitle" to "Unison",
-        "jamSubtitle" to "Escuchad juntos en la misma red",
+        "jamSubtitle" to "Muchos dispositivos. Un solo sonido.",
         "jamCreate" to "Crear Unison",
         "jamJoin" to "Unirse al Unison",
         "jamLeave" to "Salir del Unison",
@@ -78,7 +78,7 @@ private val jamBundles: Map<String, Map<String, String>> = mapOf(
     ),
     "fr" to mapOf(
         "jamTitle" to "Unison",
-        "jamSubtitle" to "Écoutez ensemble sur le même réseau",
+        "jamSubtitle" to "Plusieurs appareils. Un seul son.",
         "jamCreate" to "Créer un Unison",
         "jamJoin" to "Rejoindre l'Unison",
         "jamLeave" to "Quitter l'Unison",
@@ -103,7 +103,7 @@ private val jamBundles: Map<String, Map<String, String>> = mapOf(
     ),
     "de" to mapOf(
         "jamTitle" to "Unison",
-        "jamSubtitle" to "Gemeinsam im selben Netzwerk hören",
+        "jamSubtitle" to "Viele Geräte. Ein Klang.",
         "jamCreate" to "Unison erstellen",
         "jamJoin" to "Unison beitreten",
         "jamLeave" to "Unison verlassen",
@@ -128,7 +128,7 @@ private val jamBundles: Map<String, Map<String, String>> = mapOf(
     ),
     "pt" to mapOf(
         "jamTitle" to "Unison",
-        "jamSubtitle" to "Ouçam juntos na mesma rede",
+        "jamSubtitle" to "Vários dispositivos. Um só som.",
         "jamCreate" to "Criar Unison",
         "jamJoin" to "Entrar no Unison",
         "jamLeave" to "Sair do Unison",
@@ -153,7 +153,7 @@ private val jamBundles: Map<String, Map<String, String>> = mapOf(
     ),
     "nl" to mapOf(
         "jamTitle" to "Unison",
-        "jamSubtitle" to "Luister samen op hetzelfde netwerk",
+        "jamSubtitle" to "Veel apparaten. Eén geluid.",
         "jamCreate" to "Unison maken",
         "jamJoin" to "Deelnemen aan Unison",
         "jamLeave" to "Unison verlaten",
@@ -178,7 +178,7 @@ private val jamBundles: Map<String, Map<String, String>> = mapOf(
     ),
     "pl" to mapOf(
         "jamTitle" to "Unison",
-        "jamSubtitle" to "Słuchajcie razem w tej samej sieci",
+        "jamSubtitle" to "Wiele urządzeń. Jeden dźwięk.",
         "jamCreate" to "Utwórz Unison",
         "jamJoin" to "Dołącz do Unisonu",
         "jamLeave" to "Opuść Unison",
@@ -203,7 +203,7 @@ private val jamBundles: Map<String, Map<String, String>> = mapOf(
     ),
     "ro" to mapOf(
         "jamTitle" to "Unison",
-        "jamSubtitle" to "Ascultați împreună în aceeași rețea",
+        "jamSubtitle" to "Multe dispozitive. Un singur sunet.",
         "jamCreate" to "Creează Unison",
         "jamJoin" to "Intră în Unison",
         "jamLeave" to "Ieși din Unison",
@@ -228,7 +228,7 @@ private val jamBundles: Map<String, Map<String, String>> = mapOf(
     ),
     "el" to mapOf(
         "jamTitle" to "Unison",
-        "jamSubtitle" to "Ακούστε μαζί στο ίδιο δίκτυο",
+        "jamSubtitle" to "Πολλές συσκευές. Ένας ήχος.",
         "jamCreate" to "Δημιουργία Unison",
         "jamJoin" to "Συμμετοχή σε Unison",
         "jamLeave" to "Αποχώρηση από το Unison",
@@ -253,7 +253,7 @@ private val jamBundles: Map<String, Map<String, String>> = mapOf(
     ),
     "sv" to mapOf(
         "jamTitle" to "Unison",
-        "jamSubtitle" to "Lyssna tillsammans på samma nätverk",
+        "jamSubtitle" to "Många enheter. Ett ljud.",
         "jamCreate" to "Skapa Unison",
         "jamJoin" to "Gå med i Unison",
         "jamLeave" to "Lämna Unison",
@@ -278,7 +278,7 @@ private val jamBundles: Map<String, Map<String, String>> = mapOf(
     ),
     "da" to mapOf(
         "jamTitle" to "Unison",
-        "jamSubtitle" to "Lyt sammen på samme netværk",
+        "jamSubtitle" to "Mange enheder. Én lyd.",
         "jamCreate" to "Opret Unison",
         "jamJoin" to "Deltag i Unison",
         "jamLeave" to "Forlad Unison",
@@ -303,7 +303,7 @@ private val jamBundles: Map<String, Map<String, String>> = mapOf(
     ),
     "cs" to mapOf(
         "jamTitle" to "Unison",
-        "jamSubtitle" to "Poslouchejte společně ve stejné síti",
+        "jamSubtitle" to "Mnoho zařízení. Jeden zvuk.",
         "jamCreate" to "Vytvořit Unison",
         "jamJoin" to "Připojit se k Unisonu",
         "jamLeave" to "Opustit Unison",
@@ -328,7 +328,7 @@ private val jamBundles: Map<String, Map<String, String>> = mapOf(
     ),
     "uk" to mapOf(
         "jamTitle" to "Unison",
-        "jamSubtitle" to "Слухайте разом в одній мережі",
+        "jamSubtitle" to "Багато пристроїв. Один звук.",
         "jamCreate" to "Створити Unison",
         "jamJoin" to "Приєднатися до Unison",
         "jamLeave" to "Вийти з Unison",
@@ -353,7 +353,7 @@ private val jamBundles: Map<String, Map<String, String>> = mapOf(
     ),
     "ru" to mapOf(
         "jamTitle" to "Unison",
-        "jamSubtitle" to "Слушайте вместе в одной сети",
+        "jamSubtitle" to "Много устройств. Один звук.",
         "jamCreate" to "Создать Unison",
         "jamJoin" to "Присоединиться к Unison",
         "jamLeave" to "Выйти из Unison",
@@ -378,7 +378,7 @@ private val jamBundles: Map<String, Map<String, String>> = mapOf(
     ),
     "tr" to mapOf(
         "jamTitle" to "Unison",
-        "jamSubtitle" to "Aynı ağda birlikte dinleyin",
+        "jamSubtitle" to "Birçok cihaz. Tek ses.",
         "jamCreate" to "Unison oluştur",
         "jamJoin" to "Unison'e katıl",
         "jamLeave" to "Unison'den ayrıl",
@@ -403,7 +403,7 @@ private val jamBundles: Map<String, Map<String, String>> = mapOf(
     ),
     "ar" to mapOf(
         "jamTitle" to "Unison",
-        "jamSubtitle" to "استمعوا معًا على الشبكة نفسها",
+        "jamSubtitle" to "أجهزة كثيرة. صوت واحد.",
         "jamCreate" to "إنشاء Unison",
         "jamJoin" to "الانضمام إلى Unison",
         "jamLeave" to "مغادرة Unison",
@@ -428,7 +428,7 @@ private val jamBundles: Map<String, Map<String, String>> = mapOf(
     ),
     "zh" to mapOf(
         "jamTitle" to "Unison",
-        "jamSubtitle" to "在同一网络下一起听歌",
+        "jamSubtitle" to "多台设备，同一个声音。",
         "jamCreate" to "创建 Unison",
         "jamJoin" to "加入 Unison",
         "jamLeave" to "离开 Unison",
@@ -453,7 +453,7 @@ private val jamBundles: Map<String, Map<String, String>> = mapOf(
     ),
     "ja" to mapOf(
         "jamTitle" to "Unison",
-        "jamSubtitle" to "同じネットワークで一緒に聴く",
+        "jamSubtitle" to "たくさんのデバイス、ひとつのサウンド。",
         "jamCreate" to "Unison を作成",
         "jamJoin" to "Unison に参加",
         "jamLeave" to "Unison から退出",
@@ -478,7 +478,7 @@ private val jamBundles: Map<String, Map<String, String>> = mapOf(
     ),
     "ko" to mapOf(
         "jamTitle" to "Unison",
-        "jamSubtitle" to "같은 네트워크에서 함께 듣기",
+        "jamSubtitle" to "여러 기기, 하나의 소리.",
         "jamCreate" to "Unison 만들기",
         "jamJoin" to "Unison 참여",
         "jamLeave" to "Unison 나가기",
@@ -503,7 +503,7 @@ private val jamBundles: Map<String, Map<String, String>> = mapOf(
     ),
     "hi" to mapOf(
         "jamTitle" to "Unison",
-        "jamSubtitle" to "एक ही नेटवर्क पर साथ सुनें",
+        "jamSubtitle" to "कई डिवाइस। एक आवाज़।",
         "jamCreate" to "Unison बनाएँ",
         "jamJoin" to "Unison में शामिल हों",
         "jamLeave" to "Unison छोड़ें",
@@ -528,7 +528,7 @@ private val jamBundles: Map<String, Map<String, String>> = mapOf(
     ),
     "id" to mapOf(
         "jamTitle" to "Unison",
-        "jamSubtitle" to "Dengarkan bersama di jaringan yang sama",
+        "jamSubtitle" to "Banyak perangkat. Satu suara.",
         "jamCreate" to "Buat Unison",
         "jamJoin" to "Gabung Unison",
         "jamLeave" to "Keluar dari Unison",
@@ -553,7 +553,7 @@ private val jamBundles: Map<String, Map<String, String>> = mapOf(
     ),
     "vi" to mapOf(
         "jamTitle" to "Unison",
-        "jamSubtitle" to "Cùng nghe trên cùng một mạng",
+        "jamSubtitle" to "Nhiều thiết bị. Một âm thanh.",
         "jamCreate" to "Tạo Unison",
         "jamJoin" to "Tham gia Unison",
         "jamLeave" to "Rời Unison",
@@ -578,7 +578,7 @@ private val jamBundles: Map<String, Map<String, String>> = mapOf(
     ),
     "th" to mapOf(
         "jamTitle" to "Unison",
-        "jamSubtitle" to "ฟังด้วยกันบนเครือข่ายเดียวกัน",
+        "jamSubtitle" to "หลายอุปกรณ์ หนึ่งเสียง",
         "jamCreate" to "สร้าง Unison",
         "jamJoin" to "เข้าร่วม Unison",
         "jamLeave" to "ออกจาก Unison",
@@ -603,7 +603,7 @@ private val jamBundles: Map<String, Map<String, String>> = mapOf(
     ),
     "fil" to mapOf(
         "jamTitle" to "Unison",
-        "jamSubtitle" to "Sabay makinig sa iisang network",
+        "jamSubtitle" to "Maraming device. Iisang tunog.",
         "jamCreate" to "Gumawa ng Unison",
         "jamJoin" to "Sumali sa Unison",
         "jamLeave" to "Umalis sa Unison",
@@ -628,7 +628,7 @@ private val jamBundles: Map<String, Map<String, String>> = mapOf(
     ),
     "he" to mapOf(
         "jamTitle" to "Unison",
-        "jamSubtitle" to "האזינו יחד באותה רשת",
+        "jamSubtitle" to "מכשירים רבים. צליל אחד.",
         "jamCreate" to "צור Unison",
         "jamJoin" to "הצטרף ל-Unison",
         "jamLeave" to "צא מה-Unison",
@@ -653,7 +653,7 @@ private val jamBundles: Map<String, Map<String, String>> = mapOf(
     ),
     "fi" to mapOf(
         "jamTitle" to "Unison",
-        "jamSubtitle" to "Kuunnelkaa yhdessä samassa verkossa",
+        "jamSubtitle" to "Monta laitetta. Yksi ääni.",
         "jamCreate" to "Luo Unison",
         "jamJoin" to "Liity Unisoniin",
         "jamLeave" to "Poistu Unisonista",
@@ -678,7 +678,7 @@ private val jamBundles: Map<String, Map<String, String>> = mapOf(
     ),
     "et" to mapOf(
         "jamTitle" to "Unison",
-        "jamSubtitle" to "Kuulake koos samas võrgus",
+        "jamSubtitle" to "Palju seadmeid. Üks heli.",
         "jamCreate" to "Loo Unison",
         "jamJoin" to "Liitu Unisoniga",
         "jamLeave" to "Lahku Unisonist",
