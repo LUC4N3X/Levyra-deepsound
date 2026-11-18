@@ -1,6 +1,16 @@
 @file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.levyraUtilityColors
+import com.luc4n3x.levyra.ui.components.utilityScrollProgress
+import com.luc4n3x.levyra.ui.components.LevyraPastelAmber
+import com.luc4n3x.levyra.ui.components.LevyraPastelPeriwinkle
+import com.luc4n3x.levyra.ui.components.LevyraUtilitySeed
+import com.luc4n3x.levyra.ui.components.LevyraPastelRose
+import com.luc4n3x.levyra.ui.components.LevyraPastelLavender
+import com.luc4n3x.levyra.ui.components.LevyraUtilityStyleActive
+import com.luc4n3x.levyra.ui.components.LevyraUtilityBackdrop
+import com.luc4n3x.levyra.ui.components.LevyraUtilityHeader
 import com.luc4n3x.levyra.ui.media.albumUsesCenteredHero
 import com.luc4n3x.levyra.ui.media.AlbumArtworkWash
 import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
@@ -8791,12 +8801,13 @@ private fun HomeScreen(
             localTrackIds = localSongs?.mapTo(HashSet()) { it.id }
         )
     }
-    val resonanceTracks = homeDerivedState.resonanceTracks
-    LaunchedEffect(resonanceTracks, state.interfaceSettings.showResonance) {
-        if (resonanceTracks.isNotEmpty() && state.interfaceSettings.showResonance) {
-            viewModel.refreshHomeResonanceComments(resonanceTracks)
+    val resonanceSource = homeDerivedState.resonanceTracks
+    LaunchedEffect(resonanceSource, state.interfaceSettings.showResonance) {
+        if (resonanceSource.isNotEmpty() && state.interfaceSettings.showResonance) {
+            viewModel.refreshHomeResonanceComments(resonanceSource)
         }
     }
+    val resonanceTracks = discussableResonanceTracks(resonanceSource, state.homeResonanceComments)
     val quickPicks = homeDerivedState.quickPicks
     val newReleases = homeDerivedState.newReleases
     val forgottenFavorites = state.forgottenFavorites
@@ -9051,6 +9062,7 @@ private fun HomeScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.sectionGap(compactHome))
         ) {
+            with(homeEntrance(this)) {
             item(key = "home-top", contentType = "home-header") {
                 val homeHeader: @Composable () -> Unit = {
                     HomeSectionInset {
@@ -9643,6 +9655,7 @@ private fun HomeScreen(
                     }
                 }
             }
+            }
         }
         PullToRefreshDefaults.LoadingIndicator(
             state = homePullState,
@@ -9761,12 +9774,13 @@ private fun StudioHomeScreen(
             localTrackIds = localSongs?.mapTo(HashSet()) { it.id }
         )
     }
-    val resonanceTracks = homeDerivedState.resonanceTracks
-    LaunchedEffect(resonanceTracks, state.interfaceSettings.showResonance) {
-        if (resonanceTracks.isNotEmpty() && state.interfaceSettings.showResonance) {
-            viewModel.refreshHomeResonanceComments(resonanceTracks)
+    val resonanceSource = homeDerivedState.resonanceTracks
+    LaunchedEffect(resonanceSource, state.interfaceSettings.showResonance) {
+        if (resonanceSource.isNotEmpty() && state.interfaceSettings.showResonance) {
+            viewModel.refreshHomeResonanceComments(resonanceSource)
         }
     }
+    val resonanceTracks = discussableResonanceTracks(resonanceSource, state.homeResonanceComments)
     val quickPicks = homeDerivedState.quickPicks
     val newReleases = homeDerivedState.newReleases
     val forgottenFavorites = state.forgottenFavorites
@@ -10479,7 +10493,7 @@ private fun StudioHomeContent(
                     ),
                     verticalArrangement = Arrangement.spacedBy(homeSectionGap)
                 ) {
-                    studioHomeFilteredSections(c, flowShortcutTracks, statusBarTop, homeTopPadding, spotifyFilter, shownOrder, youtubeMusicHome, homeRadio, homeDiscovery, LevyraIsSpotify)
+                    homeEntrance(this).studioHomeFilteredSections(c, flowShortcutTracks, statusBarTop, homeTopPadding, spotifyFilter, shownOrder, youtubeMusicHome, homeRadio, homeDiscovery, LevyraIsSpotify)
                 }
                 if (LevyraIsSpotify) {
                     SpotifyHomeFilterBar(
@@ -19110,8 +19124,9 @@ private fun SettingsOverlay(
                 miniPlayerVisible = miniPlayerVisible,
                 animationsEnabled = animationsEnabled
             )
-            val pageAccent = meta?.let { if (hubEntranceEnabled) LevyraCyan else it.accent }
+            val pageAccent = meta?.let { if (LevyraUtilityStyleActive && !SkinChrome.active) levyraUtilityColors(settingsGroupSeed(it.group)).accent else if (hubEntranceEnabled) LevyraCyan else it.accent }
             CompositionLocalProvider(LocalSettingsAccent provides pageAccent) {
+            if (LevyraUtilityStyleActive && !SkinChrome.active) LevyraUtilityBackdrop(scrollProgress = { settingsListState.utilityScrollProgress() })
             LazyColumn(
                 state = settingsListState,
                 modifier = Modifier
@@ -19216,7 +19231,7 @@ private fun SettingsOverlay(
                         item(key = "settings_group_${group.name}") {
                             SettingsHubGroupLabel(
                                 text = settingsHubGroupTitle(group, strings),
-                                accent = LevyraCyan,
+                                accent = if (LevyraUtilityStyleActive) settingsCategoryTone(settingsGroupSeed(group)).content else LevyraCyan,
                                 modifier = hubEntranceModifier(labelOrder)
                             )
                         }
@@ -20790,6 +20805,14 @@ private fun settingsCategoryParent(id: String?): String? = SettingsSubpageParent
 
 private enum class SettingsHubGroup { Appearance, Listening, Library, Accounts, System }
 
+private fun settingsGroupSeed(group: SettingsHubGroup): Color = when (group) {
+    SettingsHubGroup.Appearance -> LevyraPastelLavender
+    SettingsHubGroup.Listening -> LevyraPastelRose
+    SettingsHubGroup.Library -> LevyraUtilitySeed
+    SettingsHubGroup.Accounts -> LevyraPastelPeriwinkle
+    SettingsHubGroup.System -> LevyraPastelAmber
+}
+
 private fun settingsHubGroupTitle(group: SettingsHubGroup, strings: LevyraStrings): String = strings.settingsHubCopy[
     when (group) {
         SettingsHubGroup.Appearance -> SettingsHubText.Appearance
@@ -20869,10 +20892,25 @@ private fun SettingsStudioShelf(title: String, subtitle: String, entries: List<S
                             modifier = Modifier
                                 .size(42.dp)
                                 .clip(if (SkinChrome.active) SkinChrome.iconShape else entry.shape.toShape())
-                                .background(if (SkinChrome.active) SkinChrome.iconBackground else LevyraText.copy(alpha = 0.08f)),
+                                .background(
+                                    when {
+                                        SkinChrome.active -> SkinChrome.iconBackground
+                                        LevyraUtilityStyleActive -> settingsCategoryTone(settingsGroupSeed(SettingsHubGroup.Appearance), solid = true).container
+                                        else -> LevyraText.copy(alpha = 0.08f)
+                                    }
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(entry.icon, null, tint = if (SkinChrome.active) SkinChrome.iconTint else LevyraText.copy(alpha = 0.88f), modifier = Modifier.size(22.dp))
+                            Icon(
+                                entry.icon,
+                                null,
+                                tint = when {
+                                    SkinChrome.active -> SkinChrome.iconTint
+                                    LevyraUtilityStyleActive -> settingsCategoryTone(settingsGroupSeed(SettingsHubGroup.Appearance), solid = true).content
+                                    else -> LevyraText.copy(alpha = 0.88f)
+                                },
+                                modifier = Modifier.size(22.dp)
+                            )
                         }
                         Text(
                             text = entry.title,
@@ -20910,6 +20948,7 @@ private fun SettingsCategoryCard(
             icon = meta.icon,
             index = index,
             count = count,
+            accent = settingsGroupSeed(meta.group),
             modifier = modifier.then(spacing),
             onClick = onClick
         )
@@ -20991,14 +21030,30 @@ internal fun SettingsTile(
 @Composable
 internal fun SettingsTileIcon(icon: ImageVector, accent: Color, shape: Shape = MaterialShapes.Cookie4Sided.toShape()) {
     if (LevyraIsAtelier) return AtelierSettingsKey(icon)
+    val expressive = LevyraUtilityStyleActive && !SkinChrome.active
     Box(
         modifier = Modifier
             .size(if (LevyraIsAppleMusic) 30.dp else 44.dp)
             .clip(if (SkinChrome.active) SkinChrome.iconShape else shape)
-            .background(if (SkinChrome.active) SkinChrome.iconBackground else LevyraText.copy(alpha = 0.08f)),
+            .background(
+                when {
+                    SkinChrome.active -> SkinChrome.iconBackground
+                    expressive -> settingsCategoryTone(accent).container
+                    else -> LevyraText.copy(alpha = 0.08f)
+                }
+            ),
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, null, tint = if (SkinChrome.active) SkinChrome.iconTint else LevyraText.copy(alpha = 0.88f), modifier = Modifier.size(if (LevyraIsAppleMusic) 19.dp else 22.dp))
+        Icon(
+            icon,
+            null,
+            tint = when {
+                SkinChrome.active -> SkinChrome.iconTint
+                expressive -> settingsCategoryTone(accent).content
+                else -> LevyraText.copy(alpha = 0.88f)
+            },
+            modifier = Modifier.size(if (LevyraIsAppleMusic) 19.dp else 22.dp)
+        )
     }
 }
 
@@ -21032,6 +21087,18 @@ internal fun SettingsTileText(
 @Composable
 private fun SettingsDetailHeader(title: String, summary: String, icon: ImageVector, accent: Color, onBack: () -> Unit) {
     if (LevyraIsAtelier) return AtelierSettingsDetailHeader(title, summary, onBack)
+    if (LevyraUtilityStyleActive && !SkinChrome.active) {
+        return LevyraUtilityHeader(
+            title = title,
+            subtitle = summary,
+            icon = icon,
+            onBack = onBack,
+            backDescription = LocalLevyraStrings.current.back,
+            modifier = Modifier.padding(bottom = 18.dp),
+            medallionColor = settingsCategoryTone(accent).container,
+            medallionContentColor = settingsCategoryTone(accent).content
+        )
+    }
     if (SkinChrome.active) {
         Column {
             LevyraBackButton(onClick = onBack, contentDescription = LocalLevyraStrings.current.back)
@@ -24863,7 +24930,8 @@ private fun ExploreScreen(
         editorialExplore,
         news.isNotEmpty(),
         news.size > ExploreNewsFrontSize,
-        hasCityCharts
+        hasCityCharts,
+        LevyraIsDefaultSkin
     ) {
         buildExploreRows(
             zones = zones,
@@ -24877,7 +24945,8 @@ private fun ExploreScreen(
             editorial = editorialExplore,
             hasNews = news.isNotEmpty(),
             hasNewsDesk = news.size > ExploreNewsFrontSize,
-            editorialJourney = spotifyExplore,
+            editorialJourney = spotifyExplore || LevyraIsDefaultSkin,
+            newsLast = LevyraIsDefaultSkin,
             hasCityCharts = hasCityCharts
         )
     }
@@ -24977,46 +25046,49 @@ private fun ExploreScreen(
                 },
                 editorial = editorialContent
             ) { addToPlaylistTarget = it }
-        } else LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize().statusBarsPadding(),
-            contentPadding = PaddingValues(top = 14.dp, bottom = exploreBottomInset),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            if (editorialContent != null) item(key = "explore-editorial-title", contentType = "explore-editorial-title") {
-                LevyraTopLevelSearchRow(viewModel::openSearch, Modifier.padding(horizontal = HomeHorizontalInset)) { ExplorePageHeader(strings.exploreTitle, rememberExploreEditionDate(), Modifier.weight(1f)) }
-            }
-            items(
-                items = rows,
-                key = { row -> row.key },
-                contentType = { row -> row::class }
-            ) { row ->
-                ExploreContentRow(
-                    row = row,
-                    state = state,
-                    viewModel = viewModel,
-                    editorial = editorialContent,
-                    fresh = freshSection,
-                    availableAnchors = availableAnchors,
-                    mixAccent = exploreMixAccent,
-                    onShortcut = onShortcut,
-                    onPlayFresh = onPlayFresh,
-                    onSelectFreshScope = { scope -> freshScope = scope },
-                    onOpenJam = onOpenJam,
-                    onOpenRadio = { onLiveRadioOpenChange(true) },
-                    onOpenMoods = {
-                        samplesStartIndex = null
-                        exploreMoodReturn = null
-                        exploreDestination = ExploreMoodsDestination
-                    },
-                    onOpenZone = { zone ->
-                        viewModel.selectExploreZone(zone)
-                        exploreMoodReturn = null
-                        exploreDestination = exploreMoodDestination(zone.id)
-                    },
-                    onPlayTrack = onPlayFreshTrack,
-                    trackActions = freshTrackActions
-                )
+        } else Box(Modifier.fillMaxSize()) {
+            ExploreEditorialBackdrop(editorialContent != null, listState)
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize().statusBarsPadding(),
+                contentPadding = PaddingValues(top = 14.dp, bottom = exploreBottomInset),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                if (editorialContent != null) item(key = "explore-editorial-title", contentType = "explore-editorial-title") {
+                    LevyraTopLevelSearchRow(viewModel::openSearch, Modifier.padding(horizontal = HomeHorizontalInset)) { ExplorePageHeader(strings.exploreTitle, rememberExploreEditionDate(), Modifier.weight(1f)) }
+                }
+                items(
+                    items = rows,
+                    key = { row -> row.key },
+                    contentType = { row -> row::class }
+                ) { row ->
+                    ExploreContentRow(
+                        row = row,
+                        state = state,
+                        viewModel = viewModel,
+                        editorial = editorialContent,
+                        fresh = freshSection,
+                        availableAnchors = availableAnchors,
+                        mixAccent = exploreMixAccent,
+                        onShortcut = onShortcut,
+                        onPlayFresh = onPlayFresh,
+                        onSelectFreshScope = { scope -> freshScope = scope },
+                        onOpenJam = onOpenJam,
+                        onOpenRadio = { onLiveRadioOpenChange(true) },
+                        onOpenMoods = {
+                            samplesStartIndex = null
+                            exploreMoodReturn = null
+                            exploreDestination = ExploreMoodsDestination
+                        },
+                        onOpenZone = { zone ->
+                            viewModel.selectExploreZone(zone)
+                            exploreMoodReturn = null
+                            exploreDestination = exploreMoodDestination(zone.id)
+                        },
+                        onPlayTrack = onPlayFreshTrack,
+                        trackActions = freshTrackActions
+                    )
+                }
             }
         }
 
@@ -25171,10 +25243,7 @@ private fun ExploreContentRowDefault(
             )
         }
         is ExploreRow.Header -> if (editorial != null && row.anchor == ExploreAnchor.Fresh) {
-            ExploreEditorialHeader(
-                title = com.luc4n3x.levyra.ui.i18n.exploreEditorialCopy(strings.code).releasesTitle,
-                onSeeAll = { onShortcut(ExploreShortcut.NewReleases) }
-            )
+            ExploreReleasesHeader(strings.code) { onShortcut(ExploreShortcut.NewReleases) }
         } else {
             ExploreAnchorHeader(
                 anchor = row.anchor,
@@ -25898,6 +25967,7 @@ internal fun BottomTabs(
     compaction: () -> Float,
     onSelect: (LevyraTab) -> Unit
 ) {
+    if (LevyraIsDefaultSkin) return DefaultBottomTabs(selected, compaction, onSelect, LevyraTabBarHeight, LevyraTabBarCompactHeight)
     val entries = rememberLevyraBarEntries(com.luc4n3x.levyra.domain.NavDestinations.defaultOrder)
     val animationsEnabled = LocalAnimationsEnabled.current
     val haptics = LocalLevyraHaptics.current
@@ -25974,73 +26044,6 @@ internal fun BottomTabs(
     }
 }
 
-
-@Composable
-private fun PageHeader(title: String, subtitle: String) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 6.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Text(
-            title,
-            color = LevyraText,
-            fontSize = 32.sp,
-            lineHeight = LevyraTypeRhythm.lineHeight(32.sp),
-            fontWeight = FontWeight.Black,
-            letterSpacing = (-0.8).sp
-        )
-        Text(subtitle, color = LevyraMuted, fontSize = 14.5.sp, fontWeight = FontWeight.Medium, lineHeight = 19.sp)
-    }
-}
-
-
-@Composable
-private fun QuickChips(languageCode: String, onClick: (String) -> Unit) {
-    val chips = LevyraContentLocales.quickSearches(languageCode)
-    Row(
-        modifier = Modifier.horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        chips.forEach { chip ->
-            QuickSearchChip(label = chip, onClick = { onClick(chip) })
-        }
-    }
-}
-
-@Composable
-private fun QuickSearchChip(label: String, onClick: () -> Unit) {
-    val scheme = MaterialTheme.colorScheme
-    val interaction = remember { MutableInteractionSource() }
-    val corner = levyraExpressiveCorner(
-        interactionSource = interaction,
-        rest = 22.dp,
-        pressed = 12.dp,
-        label = "search-quick-chip-corner"
-    )
-    Box(
-        modifier = Modifier
-            .heightIn(min = 48.dp)
-            .levyraPressable(
-                onClick = onClick,
-                interactionSource = interaction,
-                role = Role.Button,
-                pressedScale = LevyraPressScale.Control
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = label,
-            color = if (LevyraSkinManagesLayout) LevyraText else scheme.onSecondaryContainer,
-            style = LevyraType.cardTitle.copy(fontWeight = if (LevyraSkinManagesLayout) FontWeight.Medium else FontWeight.Bold),
-            modifier = Modifier
-                .clip(if (LevyraSkinManagesLayout) SkinChrome.chipShape else RoundedCornerShape(corner))
-                .background(if (LevyraSkinManagesLayout) LevyraPanel else scheme.secondaryContainer)
-                .padding(horizontal = 16.dp, vertical = 10.dp)
-        )
-    }
-}
 
 @Composable
 private fun SearchSummary(state: LevyraUiState) {
@@ -26404,6 +26407,19 @@ private fun SettingsHubHeader(onClose: () -> Unit) {
     if (LevyraIsAtelier) return AtelierSettingsHeader(onClose)
     if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) return MonoSettingsHeader(onClose)
     val strings = LocalLevyraStrings.current
+    if (LevyraUtilityStyleActive && !SkinChrome.active) {
+        val tone = settingsCategoryTone(settingsGroupSeed(SettingsHubGroup.Library))
+        return LevyraUtilityHeader(
+            title = strings.settings,
+            subtitle = strings.settingsSubtitle,
+            icon = Icons.Rounded.Settings,
+            onBack = onClose,
+            backDescription = strings.close,
+            compact = true,
+            medallionColor = tone.container,
+            medallionContentColor = tone.content
+        )
+    }
     if (SkinChrome.active) PrismPageHeader(strings.settings, strings.settingsSubtitle) {
         IconButton(onClick = onClose, modifier = Modifier.size(48.dp)) { Icon(Icons.Rounded.Close, strings.close, tint = LevyraText) }
     } else Row(

@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.components
 
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
@@ -52,6 +53,10 @@ internal fun LevyraPlayAllButton(
     }
     if (LocalSectionActionIconOnly.current) {
         LevyraPlayAllIconButton(onClick = onClick, modifier = modifier, enabled = enabled, contentDescription = label)
+        return
+    }
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin) {
+        LevyraPlayAllIconButton(onClick = onClick, modifier = modifier, size = PlayAllTouchTarget, enabled = enabled, contentDescription = label)
         return
     }
     val colors = MaterialTheme.colorScheme
@@ -128,7 +133,9 @@ internal fun LevyraPlayAllIconButton(
             .semantics { this.contentDescription = contentDescription },
         contentAlignment = Alignment.Center
     ) {
-        PlayAllDisc(size = size, pressed = pressed, animated = LocalAnimationsEnabled.current)
+        Box(Modifier.graphicsLayer { alpha = if (enabled) 1f else DisabledPlayAllAlpha }) {
+            PlayAllDisc(size = size, pressed = pressed, animated = LocalAnimationsEnabled.current)
+        }
     }
 }
 
@@ -160,6 +167,7 @@ private fun PlayAllDisc(size: Dp, pressed: Boolean, animated: Boolean) {
 }
 
 private val PlayAllTouchTarget = 48.dp
+private const val DisabledPlayAllAlpha = 0.38f
 private val PlayAllVisualHeight = 34.dp
 private val PlayAllDiscSize = 26.dp
 private val PlayAllRestCorner = 24.dp

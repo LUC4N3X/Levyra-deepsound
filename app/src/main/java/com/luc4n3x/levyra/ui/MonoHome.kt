@@ -473,7 +473,8 @@ internal fun newReleaseMixItem(shelves: List<YoutubeMusicHomeShelf>): YoutubeMus
         .flatMap { it.items.asSequence() }
         .firstOrNull { it.kind == YoutubeMusicHomeItemKind.Playlist && it.playlist != null && it.thumbnailUrl.isNotBlank() }
 
-internal fun withFeaturedCuratedPlaylist(shelves: List<YoutubeMusicHomeShelf>, featured: YoutubeMusicHomeItem?): List<YoutubeMusicHomeShelf> {
+internal fun withFeaturedCuratedPlaylist(source: List<YoutubeMusicHomeShelf>, featured: YoutubeMusicHomeItem?): List<YoutubeMusicHomeShelf> {
+    val shelves = source.map(::trendingChartFirst)
     val first = shelves.firstOrNull() ?: return shelves
     if (featured == null) return shelves
     val featuredId = featured.playlist?.playlistId
@@ -486,6 +487,14 @@ internal fun withFeaturedCuratedPlaylist(shelves: List<YoutubeMusicHomeShelf>, f
     val items = first.items.toMutableList().apply { add(minOf(1, size), featured) }
     return listOf(first.copy(items = items)) + shelves.drop(1)
 }
+
+private fun trendingChartFirst(shelf: YoutubeMusicHomeShelf): YoutubeMusicHomeShelf {
+    val index = shelf.items.indexOfFirst { it.title.contains(TrendingChartTitle, ignoreCase = true) }
+    if (index <= 0) return shelf
+    return shelf.copy(items = listOf(shelf.items[index]) + shelf.items.filterIndexed { position, _ -> position != index })
+}
+
+private const val TrendingChartTitle = "Trending 20"
 
 internal fun monoPlaylistShelves(shelves: List<YoutubeMusicHomeShelf>): List<YoutubeMusicHomeShelf> =
     shelves.filter { shelf ->
@@ -766,7 +775,7 @@ internal fun MonoHomeEntry(
             releaseAlbums = if (showReleases) state.exploreNewReleases else emptyList(),
             pinnedCards = remember(speedDialPins, viewModel) { speedDialCards(speedDialPins, viewModel::openSpeedDialPin) },
             composition = composition,
-            resonanceTracks = if (composition == null && state.interfaceSettings.showResonance) render.derived.resonanceTracks else emptyList()
+            resonanceTracks = if (composition == null && state.interfaceSettings.showResonance) discussableResonanceTracks(render.derived.resonanceTracks, state.homeResonanceComments) else emptyList()
         ),
         page = page,
         onPage = { page = it },

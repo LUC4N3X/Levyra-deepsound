@@ -199,7 +199,7 @@ jobs:
         run: ./gradlew -p levyra-extraction test --console=plain --warning-mode summary
 
       - name: Android and Native Audio Unit Tests
-        run: ./gradlew :app:testDebugUnitTest :levyra-native-audio:testDebugUnitTest --console=plain --warning-mode summary
+        run: ./gradlew :app:testDebugUnitTest :levyra-native-audio:testDebugUnitTest -Pkotlin.daemon.jvmargs=-Xmx6g --console=plain --warning-mode summary
 
       - name: Upload Test Reports
         if: always()
@@ -268,6 +268,7 @@ jobs:
       - name: Run F-Droid Regression Tests
         run: |
           ./gradlew :app:testDebugUnitTest \
+            -Pkotlin.daemon.jvmargs=-Xmx6g \
             --tests 'com.luc4n3x.levyra.data.LevyraPreferencesDefaultsTest' \
             --tests 'com.luc4n3x.levyra.data.PlaybackResolverOfflineExportTest' \
             --tests 'com.luc4n3x.levyra.player.offline.OfflineAudioExporterTest' \
@@ -474,10 +475,10 @@ jobs:
             >/dev/null
 
       - name: PR Diagnostics Unit Tests
-        run: ./gradlew :app:testPrDiagnosticsUnitTest --tests 'com.luc4n3x.levyra.runtime.*' --console=plain --warning-mode summary
+        run: ./gradlew :app:testPrDiagnosticsUnitTest --tests 'com.luc4n3x.levyra.runtime.*' -Pkotlin.daemon.jvmargs=-Xmx6g --console=plain --warning-mode summary
 
       - name: PR Diagnostics Compile
-        run: ./gradlew --no-configuration-cache assemblePrDiagnostics --console=plain --warning-mode summary
+        run: ./gradlew --no-configuration-cache assemblePrDiagnostics -Pkotlin.daemon.jvmargs=-Xmx6g --console=plain --warning-mode summary
 
       - name: Verify Diagnostics Artifact Isolation
         run: |

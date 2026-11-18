@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import androidx.compose.material.icons.rounded.Equalizer
 import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import android.text.format.DateFormat
 import androidx.activity.compose.BackHandler
@@ -93,6 +94,7 @@ import java.util.Locale
 
 internal val Top100CoverSize = 164.dp
 internal val Top100CoverCorner = 24.dp
+private val Top100HeroSkylineHeight = 196.dp
 private const val HUE_SLOTS = 12
 
 @Immutable
@@ -138,7 +140,9 @@ internal fun ExploreDailyTop100(
                 LevyraSectionHeader(
                     title = copy.title,
                     subtitle = copy.subtitle,
-                    modifier = Modifier.padding(horizontal = LevyraHomeDesign.HorizontalInset)
+                    modifier = Modifier.padding(horizontal = LevyraHomeDesign.HorizontalInset),
+                    leadingIcon = exploreHeaderIcon(androidx.compose.material.icons.Icons.Rounded.Equalizer),
+                    leadingSeed = com.luc4n3x.levyra.ui.components.LevyraPastelAmber
                 )
             }
             LazyRow(
@@ -184,6 +188,15 @@ internal fun ExploreDailyTop100(
                     }
                     if (com.luc4n3x.levyra.ui.theme.LevyraIsSpotify) {
                         SpotifyTop100Card(label, copy.title, copy.subtitle, slots[index], chart.global) { viewModel.open(DailyChartRef.Country(chart)) }
+                        return@itemsIndexed
+                    }
+                    if (com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin) {
+                        DefaultTop100Card(
+                            label, date, chart.global, slots[index],
+                            Modifier.size(Top100CoverSize)
+                                .semantics(mergeDescendants = true) { contentDescription = "${copy.title}, $label" }
+                                .levyraPressable(onClick = { viewModel.open(DailyChartRef.Country(chart)) }, role = Role.Button, pressedScale = LevyraPressScale.Tile)
+                        )
                         return@itemsIndexed
                     }
                     Top100Cover(
@@ -270,6 +283,7 @@ private fun DailyChartScreen(
             AtelierTop100ChartScreen(open, label, date, slot, screenCopy, onBack, onRetry, onPlay, onTrackActions, city?.badge)
         else -> Top100ChartScreen(
             open = open,
+            city = city,
             label = label,
             date = date,
             numeral = numeral,
@@ -376,6 +390,7 @@ private fun Top100Cover(
 @Composable
 private fun Top100ChartScreen(
     open: DailyTop100ChartUiState,
+    city: AppleCityChart?,
     label: String,
     date: String,
     numeral: String,
@@ -406,7 +421,7 @@ private fun Top100ChartScreen(
     Box(Modifier.fillMaxSize().background(scheme.background)) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = bottom + 24.dp)) {
             item(key = "top100-hero", contentType = "top100-hero") {
-                Top100Hero(label, date, numeral, copy.title, palette, glyph, rotation, tracks.isNotEmpty(), onBack,
+                Top100Hero(label, date, numeral, copy.title, palette, glyph, rotation, city?.name?.hashCode(), tracks.isNotEmpty(), onBack,
                     onPlayAll = { onPlay(tracks, tracks.first()) },
                     onShuffle = {
                         val shuffled = tracks.shuffled()
@@ -448,6 +463,7 @@ private fun Top100Hero(
     palette: Top100Palette,
     glyph: Shape,
     rotation: Float,
+    skylineSeed: Int?,
     canPlay: Boolean,
     onBack: () -> Unit,
     onPlayAll: () -> Unit,
@@ -460,11 +476,16 @@ private fun Top100Hero(
             .clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
             .background(palette.canvas)
     ) {
-        Top100Glyph(glyph, rotation, palette.glyph, 260.dp, Modifier.align(Alignment.TopEnd).offset(x = 72.dp, y = 8.dp))
+        if (skylineSeed != null) {
+            Spacer(Modifier.align(Alignment.TopCenter).statusBarsPadding().fillMaxWidth().then(Modifier.size(width = Dp.Unspecified, height = Top100HeroSkylineHeight)).citySkyline(skylineSeed, palette, glyph))
+        } else {
+            Top100Glyph(glyph, rotation, palette.glyph, 260.dp, Modifier.align(Alignment.TopEnd).offset(x = 72.dp, y = 8.dp))
+        }
         Column(Modifier.statusBarsPadding().padding(start = 8.dp, end = 20.dp, bottom = 20.dp)) {
             IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = strings.back, tint = palette.ink)
             }
+            if (skylineSeed != null) Spacer(Modifier.size(Top100HeroSkylineHeight - 48.dp))
             Column(Modifier.padding(start = 12.dp, top = 12.dp)) {
                 Text(
                     overline.uppercase(Locale.forLanguageTag(strings.code)),

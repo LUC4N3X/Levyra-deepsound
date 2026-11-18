@@ -427,6 +427,7 @@ private val activePaletteState = mutableStateOf(LevyraThemes.cosmic)
 private val activeFontPresetState = mutableStateOf(LevyraFontPreset.Outfit)
 private val activePureBlackState = mutableStateOf(false)
 private val activeCornerScaleState = mutableStateOf(1f)
+private val activeSoftAccentsState = mutableStateOf(true)
 
 object LevyraTypographyController {
     fun apply(preset: LevyraFontPreset) {
@@ -479,16 +480,29 @@ object LevyraThemeController {
             else -> base
         }
         val pureBlackActive = pureBlack && !tinted.isLight && skin == LevyraSkin.Default
-        val palette = if (pureBlackActive) asPureBlack(tinted) else tinted
+        val surfaced = if (pureBlackActive) asPureBlack(tinted) else tinted
+        val expressive = skin == LevyraSkin.Default && accentOverride == null && LevyraThemes.customTheme(presetId) == null
+        val palette = if (expressive) withSoftAccents(surfaced) else surfaced
 
         if (activePureBlackState.value != pureBlackActive) {
             activePureBlackState.value = pureBlackActive
+        }
+        if (activeSoftAccentsState.value != expressive) {
+            activeSoftAccentsState.value = expressive
         }
         applyCornerScale(if (skin != LevyraSkin.Default) "" else presetId)
         if (activePaletteState.value != palette) {
             activePaletteState.value = palette
         }
     }
+
+    private fun withSoftAccents(palette: LevyraPalette): LevyraPalette = palette.copy(
+        cyan = levyraSoftAccent(palette.cyan, palette.isLight),
+        blue = levyraSoftAccent(palette.blue, palette.isLight),
+        violet = levyraSoftAccent(palette.violet, palette.isLight),
+        pink = levyraSoftAccent(palette.pink, palette.isLight),
+        orange = levyraSoftAccent(palette.orange, palette.isLight)
+    )
 
     private fun applyCornerScale(presetId: String) {
         val cornerScale = LevyraThemes.customTheme(presetId)?.let { it.cornerScale / 100f } ?: 1f
@@ -584,6 +598,9 @@ val LevyraMuted: Color
 
 val LevyraIsPureBlack: Boolean
     get() = activePureBlackState.value
+
+internal val LevyraSoftAccentsActive: Boolean
+    get() = activeSoftAccentsState.value
 
 val LevyraGlass: Color
     get() = when {

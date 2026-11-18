@@ -2,6 +2,22 @@
 
 package com.luc4n3x.levyra.ui.jam
 
+import com.luc4n3x.levyra.ui.components.utilityScrollProgress
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import com.luc4n3x.levyra.ui.components.LevyraUtilitySeed
+import com.luc4n3x.levyra.ui.components.LevyraPastelAmber
+import com.luc4n3x.levyra.ui.components.LevyraPastelPeriwinkle
+import com.luc4n3x.levyra.ui.components.LevyraPastelRose
+import com.luc4n3x.levyra.ui.components.LevyraPastelLavender
+import androidx.graphics.shapes.RoundedPolygon
+import androidx.compose.material.icons.rounded.Groups
+import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material.icons.automirrored.rounded.Login
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Person
+import com.luc4n3x.levyra.ui.components.levyraUtilityColors
+import com.luc4n3x.levyra.ui.components.LevyraUtilityBackdrop
+import com.luc4n3x.levyra.ui.components.LevyraUtilityHeader
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.runtime.getValue
@@ -232,7 +248,7 @@ private fun JamOverlayContent(
                 }
             )
     ) {
-        if (LevyraIsAtelier) AtelierJamBackdrop() else if (!look.skinned) UnisonWashBackdrop()
+        if (LevyraIsAtelier) AtelierJamBackdrop() else if (!look.skinned) LevyraUtilityBackdrop(scrollProgress = { listState.utilityScrollProgress() })
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
@@ -267,7 +283,7 @@ private fun JamOverlayContent(
             if (!jam.isActive) {
                 item(contentType = "jam-identity") {
                     JamCard {
-                        JamCardTitle(strings.jamDisplayName)
+                        JamCardTitle(strings.jamDisplayName, Icons.Rounded.Person, LevyraPastelLavender, MaterialShapes.Cookie9Sided)
                         OutlinedTextField(
                             value = displayName,
                             onValueChange = onDisplayNameChange,
@@ -281,7 +297,7 @@ private fun JamOverlayContent(
                 }
                 item(contentType = "jam-create") {
                     JamCard {
-                        JamCardTitle(strings.jamCreate)
+                        JamCardTitle(strings.jamCreate, Icons.Rounded.Add, LevyraUtilitySeed, MaterialShapes.Clover4Leaf)
                         JamPermissionPicker(
                             selected = selectedPermission,
                             strings = strings,
@@ -301,7 +317,7 @@ private fun JamOverlayContent(
                 }
                 item(contentType = "jam-join") {
                     JamCard {
-                        JamCardTitle(strings.jamJoin)
+                        JamCardTitle(strings.jamJoin, Icons.AutoMirrored.Rounded.Login, LevyraPastelRose, MaterialShapes.Cookie6Sided)
                         JamSecondaryButton(
                             label = strings.jamScanQr,
                             onClick = { scope.launch { listState.scrollToItem(0); qrScanner.scan() } }
@@ -357,7 +373,7 @@ private fun JamOverlayContent(
 
                     item(contentType = "jam-moderation") {
                         JamCard {
-                            JamCardTitle(strings.jamHostControls)
+                            JamCardTitle(strings.jamHostControls, Icons.Rounded.Shield, LevyraPastelAmber, MaterialShapes.Sunny)
                             JamSwitchRow(
                                 title = strings.jamApprovalRequired,
                                 subtitle = strings.jamApprovalRequiredSubtitle,
@@ -383,7 +399,7 @@ private fun JamOverlayContent(
 
                     item(contentType = "jam-permissions") {
                         JamCard {
-                            JamCardTitle(strings.jamPermissions)
+                            JamCardTitle(strings.jamPermissions, Icons.Rounded.Groups, LevyraPastelPeriwinkle, MaterialShapes.SoftBurst)
                             JamPermissionPicker(
                                 selected = jam.permission,
                                 strings = strings,
@@ -451,73 +467,13 @@ private fun JamOverlayContent(
 
 @Composable
 private fun DefaultJamStage(title: String, subtitle: String, onClose: () -> Unit) {
-    val scheme = MaterialTheme.colorScheme
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            LevyraBackButton(
-                onClick = onClose,
-                contentDescription = LocalLevyraStrings.current.back,
-                size = 48.dp,
-                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                    containerColor = LevyraCyan.copy(alpha = 0.22f),
-                    contentColor = scheme.onSurface
-                )
-            )
-            Box(
-                modifier = Modifier
-                    .size(JamMedallionSize)
-                    .background(scheme.primaryContainer, MaterialShapes.Cookie9Sided.toShape())
-                    .clearAndSetSemantics { },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Rounded.Headphones, contentDescription = null, tint = scheme.onPrimaryContainer, modifier = Modifier.size(34.dp))
-            }
-        }
-        Spacer(Modifier.height(20.dp))
-        Text(
-            title,
-            color = scheme.onBackground,
-            style = MaterialTheme.typography.displaySmall,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.semantics { heading() }
-        )
-        Text(
-            subtitle,
-            color = scheme.onSurfaceVariant,
-            style = MaterialTheme.typography.bodyLarge
-        )
-    }
-}
-
-private val JamMedallionSize = 76.dp
-
-@Composable
-private fun UnisonWashBackdrop() {
-    val accent = LevyraCyan
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .clearAndSetSemantics { }
-            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-            .unisonWash(accent)
-    )
-}
-
-private fun Modifier.unisonWash(accent: Color): Modifier = drawBehind {
-    val reach = size.width * 1.3f
-    drawRect(
-        Brush.radialGradient(
-            listOf(accent.copy(alpha = 0.34f), accent.copy(alpha = 0.10f), Color.Transparent),
-            center = Offset(size.width * 0.12f, 0f),
-            radius = reach
-        )
+    LevyraUtilityHeader(
+        title = title,
+        subtitle = subtitle,
+        icon = Icons.Rounded.Headphones,
+        onBack = onClose,
+        backDescription = LocalLevyraStrings.current.back,
+        modifier = Modifier.padding(bottom = 8.dp)
     )
 }
 
@@ -647,7 +603,7 @@ private fun JamSessionHero(jam: JamUiState, strings: LevyraStrings, onShare: () 
     }
     val connected = jam.connection == JamConnectionState.Connected
     val scheme = MaterialTheme.colorScheme
-    val accent = LevyraCyan
+    val accent = levyraUtilityColors().accent
     val participants = jam.session?.participants.orEmpty()
     val hostName = participants.firstOrNull { it.isHost }?.name.orEmpty()
     val role = if (jam.isHost) strings.jamRoleHost else strings.jamRoleGuest
@@ -765,16 +721,8 @@ private fun JamExitPill(label: String, onClick: () -> Unit) {
 private const val JamCodeSeparator = "-"
 
 @Composable
-private fun jamSignatureBrush(): Brush {
-    val cyan = LevyraCyan
-    val violet = LevyraViolet
-    val pink = LevyraPink
-    return remember(cyan, violet, pink) { Brush.linearGradient(listOf(cyan, violet, pink)) }
-}
-
-@Composable
 private fun JamLiveDot(connected: Boolean) {
-    val dot = if (connected) LevyraCyan else MaterialTheme.colorScheme.onSurfaceVariant
+    val dot = if (connected) levyraUtilityColors().accent else MaterialTheme.colorScheme.onSurfaceVariant
     val animate = connected && LocalAnimationsEnabled.current
     val pulse = if (animate) {
         rememberInfiniteTransition(label = "jam-live").animateFloat(
@@ -904,7 +852,7 @@ private fun JamParticipantRow(
                 accent = when {
                     look.skinned && participant.isHost -> look.mark
                     look.skinned -> look.textSecondary
-                    participant.isHost -> LevyraCyan
+                    participant.isHost -> levyraUtilityColors().accent
                     else -> MaterialTheme.colorScheme.secondary
                 }
             )
@@ -1026,8 +974,9 @@ private fun JamCard(content: @Composable () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun JamCardTitle(text: String) {
+private fun JamCardTitle(text: String, icon: ImageVector, seed: Color, shape: RoundedPolygon) {
     val look = LocalJamLook.current
     if (look.skinned) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.semantics(mergeDescendants = true) { heading() }) {
@@ -1036,23 +985,25 @@ private fun JamCardTitle(text: String) {
         }
         return
     }
+    val tone = levyraUtilityColors(seed)
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        modifier = Modifier.semantics(mergeDescendants = true) { heading() }
     ) {
         Box(
             modifier = Modifier
-                .size(14.dp)
-                .background(
-                    jamSignatureBrush(),
-                    MaterialShapes.Cookie6Sided.toShape()
-                )
-        )
+                .size(44.dp)
+                .background(tone.softContainer, shape.toShape())
+                .clearAndSetSemantics { },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription = null, tint = tone.accent, modifier = Modifier.size(22.dp))
+        }
         Text(
             text,
             color = MaterialTheme.colorScheme.onSurface,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
+            style = MaterialTheme.typography.titleLargeEmphasized
         )
     }
 }
@@ -1151,7 +1102,7 @@ private fun JamPermissionPicker(
                     .fillMaxWidth()
                     .heightIn(min = 64.dp)
                     .clip(if (active) selectedShape else JamOptionRestShape)
-                    .background(if (active) scheme.primaryContainer else scheme.surfaceContainerHigh)
+                    .background(if (active) levyraUtilityColors().container else scheme.surfaceContainerHigh)
                     .selectable(selected = active, role = Role.RadioButton) { onSelect(permission) }
                     .padding(horizontal = inset, vertical = 18.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -1159,7 +1110,7 @@ private fun JamPermissionPicker(
             ) {
                 Text(
                     jamPermissionLabel(permission, strings),
-                    color = if (active) scheme.onPrimaryContainer else scheme.onSurface,
+                    color = if (active) levyraUtilityColors().onContainer else scheme.onSurface,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
                     modifier = Modifier.weight(1f)
@@ -1262,7 +1213,14 @@ private fun JamSwitchRow(
                     uncheckedBorderColor = look.border
                 )
             } else {
-                SwitchDefaults.colors()
+                levyraUtilityColors().let { tone ->
+                    SwitchDefaults.colors(
+                        checkedThumbColor = tone.onAccent,
+                        checkedTrackColor = tone.accent,
+                        checkedBorderColor = tone.accent,
+                        checkedIconColor = tone.accent
+                    )
+                }
             }
         )
     }
@@ -1314,7 +1272,7 @@ private fun JamPrimaryButton(
                 disabledContentColor = look.textSecondary
             )
         } else {
-            ButtonDefaults.buttonColors()
+            levyraUtilityColors().let { tone -> ButtonDefaults.buttonColors(containerColor = tone.accent, contentColor = tone.onAccent) }
         },
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp),
         modifier = Modifier

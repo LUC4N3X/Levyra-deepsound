@@ -419,7 +419,11 @@ internal fun LibraryFavoritesSpotlight(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun LibraryCoverFan(covers: List<String>) {
+internal fun LibraryCoverFan(
+    covers: List<String>,
+    accent: Color = MaterialTheme.colorScheme.primaryContainer,
+    onAccent: Color = MaterialTheme.colorScheme.onPrimaryContainer
+) {
     val colors = MaterialTheme.colorScheme
     Box(
         modifier = Modifier.width(LibraryFanCoverSize + LibraryFanStep * 2).height(96.dp),
@@ -432,10 +436,10 @@ private fun LibraryCoverFan(covers: List<String>) {
                     .offset(x = LibraryFanStep)
                     .size(LibraryFanCoverSize)
                     .clip(heartShape)
-                    .background(colors.primaryContainer),
+                    .background(accent),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Rounded.Favorite, contentDescription = null, tint = colors.onPrimaryContainer, modifier = Modifier.size(30.dp))
+                Icon(Icons.Rounded.Favorite, contentDescription = null, tint = onAccent, modifier = Modifier.size(30.dp))
             }
         } else {
             val shape = LevyraCardDesign.ArtworkShape

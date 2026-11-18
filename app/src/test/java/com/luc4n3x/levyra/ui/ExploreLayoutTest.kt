@@ -63,6 +63,20 @@ class ExploreLayoutTest {
     }
 
     @Test
+    fun newsLastEditorialGroupsMusicBeforeNews() {
+        val rows = buildExploreRows(
+            zones(4), false, true,
+            editorial = true, hasNews = true, editorialJourney = true, hasCityCharts = true, newsLast = true
+        )
+
+        val firstNews = rows.indexOf(ExploreRow.NewsHero)
+        assertEquals(rows.indexOf(ExploreRow.NewsList), firstNews + 1)
+        assertEquals(rows.size - 2, firstNews)
+        assertTrue(rows.indexOf(ExploreRow.MoodJourney) in 0 until firstNews)
+        assertTrue(rows.indexOf(ExploreRow.CityCharts) in 0 until firstNews)
+    }
+
+    @Test
     fun editorialRowsWithoutCityChartsLeaveNoEmptyRow() {
         val rows = buildExploreRows(zones(4), false, true, editorial = true, hasNews = true)
 

@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui.discovery
 
+import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
+import com.luc4n3x.levyra.ui.components.levyraShimmer
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -295,7 +297,11 @@ private fun OriginalDiscoveryTeaser(model: DiscoveryTeaserModel, spec: HomeStyle
                 overflow = TextOverflow.Ellipsis
             )
         }
-        DiscoveryDeck(model, animationsEnabled, look.deckAccent, action, look.coverBorder)
+        if (model.loading && model.cards.isEmpty()) {
+            DiscoveryLoadingStrip(look.muted)
+        } else {
+            DiscoveryDeck(model, animationsEnabled, look.deckAccent, action, look.coverBorder)
+        }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             Box(Modifier.size(52.dp).clip(look.actionShape ?: morph).background(action.container), contentAlignment = Alignment.Center) {
                 if (model.loading && model.lead == null) LevyraLoadingIndicator(Modifier.size(24.dp), action.content)
@@ -308,6 +314,27 @@ private fun OriginalDiscoveryTeaser(model: DiscoveryTeaserModel, spec: HomeStyle
         }
     }
 }
+
+@Composable
+private fun DiscoveryLoadingStrip(tone: Color) {
+    Row(
+        Modifier.fillMaxWidth().levyraShimmer(),
+        horizontalArrangement = Arrangement.spacedBy(DiscoveryStripGap)
+    ) {
+        repeat(DiscoveryStripCount) {
+            Box(
+                Modifier
+                    .weight(1f)
+                    .aspectRatio(1f)
+                    .clip(LevyraCardDesign.ArtworkShape)
+                    .background(tone.copy(alpha = 0.14f))
+            )
+        }
+    }
+}
+
+private const val DiscoveryStripCount = 4
+private val DiscoveryStripGap = 8.dp
 
 private class DiscoverLook(
     val background: Brush,
