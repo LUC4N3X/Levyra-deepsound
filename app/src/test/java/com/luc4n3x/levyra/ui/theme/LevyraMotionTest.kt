@@ -54,11 +54,11 @@ class LevyraMotionTest {
     }
 
     @Test
-    fun `player morph springs are softer and calmer than generic surface springs`() {
-        assertTrue(LevyraMotion.playerExpand.stiffness < LevyraMotion.expand.stiffness)
-        assertTrue(LevyraMotion.playerCollapse.stiffness < LevyraMotion.collapse.stiffness)
-        assertTrue(LevyraMotion.playerExpand.dampingRatio >= LevyraMotion.expand.dampingRatio)
-        assertTrue(LevyraMotion.playerCollapse.dampingRatio >= LevyraMotion.playerExpand.dampingRatio)
+    fun `player morph springs are quick and settle without bounce`() {
+        assertEquals(1f, LevyraMotion.playerExpand.dampingRatio, 0f)
+        assertEquals(400f, LevyraMotion.playerExpand.stiffness, 0f)
+        assertEquals(LevyraMotion.playerExpand.dampingRatio, LevyraMotion.playerCollapse.dampingRatio, 0f)
+        assertEquals(LevyraMotion.playerExpand.stiffness, LevyraMotion.playerCollapse.stiffness, 0f)
         assertEquals(LevyraMotion.playerExpand.spec<Float>(), LevyraPlayerDesign.expandSpring<Float>())
         assertEquals(LevyraMotion.playerCollapse.spec<Float>(), LevyraPlayerDesign.collapseSpring<Float>())
     }

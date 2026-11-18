@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import androidx.compose.material.icons.rounded.LocationCity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -116,7 +117,9 @@ internal fun ExploreCityCharts(
                     else -> LevyraSectionHeader(
                         title = copy.title,
                         subtitle = copy.subtitle,
-                        modifier = Modifier.padding(horizontal = LevyraHomeDesign.HorizontalInset)
+                        modifier = Modifier.padding(horizontal = LevyraHomeDesign.HorizontalInset),
+                        leadingIcon = exploreHeaderIcon(androidx.compose.material.icons.Icons.Rounded.LocationCity),
+                        leadingSeed = com.luc4n3x.levyra.ui.components.LevyraPastelPeriwinkle
                     )
                 }
                 val markers = coverShapes()
@@ -189,41 +192,44 @@ private fun CityChartCover(
                 .fillMaxWidth()
                 .weight(1f)
                 .padding(top = 6.dp)
-                .drawWithCache {
-                    val random = Random(seed)
-                    val unit = 3.dp.toPx()
-                    val water = size.height * 0.12f
-                    val ground = size.height - water
-                    val back = Path()
-                    val front = Path()
-                    val windows = Path()
-                    skylineRow(back, null, random, size.width, ground, 0.45f, 0.85f, unit)
-                    skylineRow(front, windows, random, size.width, ground, 0.2f, 0.55f, unit)
-                    val sunSide = minOf(22.dp.toPx(), size.height * 0.32f)
-                    val sun = marker.createOutline(Size(sunSide, sunSide), layoutDirection, this)
-                    val sunLeft = size.width * (0.55f + random.nextFloat() * 0.25f)
-                    val backColor = lerp(palette.canvas, palette.accent, 0.3f)
-                    val frontColor = lerp(palette.canvas, Color.Black, 0.4f)
-                    val waterColor = lerp(palette.canvas, Color.Black, 0.22f)
-                    val ripple = palette.accent.copy(alpha = 0.32f)
-                    val rippleStroke = unit * 0.5f
-                    val ripples = List(2) { row ->
-                        val y = ground + water * (0.4f + row * 0.35f)
-                        val start = size.width * (0.08f + random.nextFloat() * 0.5f)
-                        Offset(start, y) to Offset(start + size.width * (0.15f + random.nextFloat() * 0.2f), y)
-                    }
-                    onDrawBehind {
-                        translate(sunLeft, unit * 0.5f) { drawOutline(sun, palette.accent) }
-                        drawPath(back, backColor)
-                        drawRect(waterColor, Offset(0f, ground), Size(size.width, water))
-                        ripples.forEach { (start, end) -> drawLine(ripple, start, end, rippleStroke, StrokeCap.Round) }
-                        drawPath(front, frontColor)
-                        drawPath(windows, palette.accent)
-                    }
-                }
+                .citySkyline(seed, palette, marker)
         )
     }
 }
+
+internal fun Modifier.citySkyline(seed: Int, palette: Top100Palette, marker: Shape): Modifier =
+    drawWithCache {
+        val random = Random(seed)
+        val unit = 3.dp.toPx()
+        val water = size.height * 0.12f
+        val ground = size.height - water
+        val back = Path()
+        val front = Path()
+        val windows = Path()
+        skylineRow(back, null, random, size.width, ground, 0.45f, 0.85f, unit)
+        skylineRow(front, windows, random, size.width, ground, 0.2f, 0.55f, unit)
+        val sunSide = minOf(22.dp.toPx(), size.height * 0.32f)
+        val sun = marker.createOutline(Size(sunSide, sunSide), layoutDirection, this)
+        val sunLeft = size.width * (0.55f + random.nextFloat() * 0.25f)
+        val backColor = lerp(palette.canvas, palette.accent, 0.3f)
+        val frontColor = lerp(palette.canvas, Color.Black, 0.4f)
+        val waterColor = lerp(palette.canvas, Color.Black, 0.22f)
+        val ripple = palette.accent.copy(alpha = 0.32f)
+        val rippleStroke = unit * 0.5f
+        val ripples = List(2) { row ->
+            val y = ground + water * (0.4f + row * 0.35f)
+            val start = size.width * (0.08f + random.nextFloat() * 0.5f)
+            Offset(start, y) to Offset(start + size.width * (0.15f + random.nextFloat() * 0.2f), y)
+        }
+        onDrawBehind {
+            translate(sunLeft, unit * 0.5f) { drawOutline(sun, palette.accent) }
+            drawPath(back, backColor)
+            drawRect(waterColor, Offset(0f, ground), Size(size.width, water))
+            ripples.forEach { (start, end) -> drawLine(ripple, start, end, rippleStroke, StrokeCap.Round) }
+            drawPath(front, frontColor)
+            drawPath(windows, palette.accent)
+        }
+    }
 
 private fun skylineRow(
     path: Path,

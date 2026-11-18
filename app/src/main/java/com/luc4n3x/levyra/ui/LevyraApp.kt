@@ -8801,12 +8801,13 @@ private fun HomeScreen(
             localTrackIds = localSongs?.mapTo(HashSet()) { it.id }
         )
     }
-    val resonanceTracks = homeDerivedState.resonanceTracks
-    LaunchedEffect(resonanceTracks, state.interfaceSettings.showResonance) {
-        if (resonanceTracks.isNotEmpty() && state.interfaceSettings.showResonance) {
-            viewModel.refreshHomeResonanceComments(resonanceTracks)
+    val resonanceSource = homeDerivedState.resonanceTracks
+    LaunchedEffect(resonanceSource, state.interfaceSettings.showResonance) {
+        if (resonanceSource.isNotEmpty() && state.interfaceSettings.showResonance) {
+            viewModel.refreshHomeResonanceComments(resonanceSource)
         }
     }
+    val resonanceTracks = discussableResonanceTracks(resonanceSource, state.homeResonanceComments)
     val quickPicks = homeDerivedState.quickPicks
     val newReleases = homeDerivedState.newReleases
     val forgottenFavorites = state.forgottenFavorites
@@ -9061,6 +9062,7 @@ private fun HomeScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.sectionGap(compactHome))
         ) {
+            with(homeEntrance(this)) {
             item(key = "home-top", contentType = "home-header") {
                 val homeHeader: @Composable () -> Unit = {
                     HomeSectionInset {
@@ -9653,6 +9655,7 @@ private fun HomeScreen(
                     }
                 }
             }
+            }
         }
         PullToRefreshDefaults.LoadingIndicator(
             state = homePullState,
@@ -9771,12 +9774,13 @@ private fun StudioHomeScreen(
             localTrackIds = localSongs?.mapTo(HashSet()) { it.id }
         )
     }
-    val resonanceTracks = homeDerivedState.resonanceTracks
-    LaunchedEffect(resonanceTracks, state.interfaceSettings.showResonance) {
-        if (resonanceTracks.isNotEmpty() && state.interfaceSettings.showResonance) {
-            viewModel.refreshHomeResonanceComments(resonanceTracks)
+    val resonanceSource = homeDerivedState.resonanceTracks
+    LaunchedEffect(resonanceSource, state.interfaceSettings.showResonance) {
+        if (resonanceSource.isNotEmpty() && state.interfaceSettings.showResonance) {
+            viewModel.refreshHomeResonanceComments(resonanceSource)
         }
     }
+    val resonanceTracks = discussableResonanceTracks(resonanceSource, state.homeResonanceComments)
     val quickPicks = homeDerivedState.quickPicks
     val newReleases = homeDerivedState.newReleases
     val forgottenFavorites = state.forgottenFavorites
@@ -10489,7 +10493,7 @@ private fun StudioHomeContent(
                     ),
                     verticalArrangement = Arrangement.spacedBy(homeSectionGap)
                 ) {
-                    studioHomeFilteredSections(c, flowShortcutTracks, statusBarTop, homeTopPadding, spotifyFilter, shownOrder, youtubeMusicHome, homeRadio, homeDiscovery, LevyraIsSpotify)
+                    homeEntrance(this).studioHomeFilteredSections(c, flowShortcutTracks, statusBarTop, homeTopPadding, spotifyFilter, shownOrder, youtubeMusicHome, homeRadio, homeDiscovery, LevyraIsSpotify)
                 }
                 if (LevyraIsSpotify) {
                     SpotifyHomeFilterBar(
@@ -24926,7 +24930,8 @@ private fun ExploreScreen(
         editorialExplore,
         news.isNotEmpty(),
         news.size > ExploreNewsFrontSize,
-        hasCityCharts
+        hasCityCharts,
+        LevyraIsDefaultSkin
     ) {
         buildExploreRows(
             zones = zones,
@@ -24940,7 +24945,8 @@ private fun ExploreScreen(
             editorial = editorialExplore,
             hasNews = news.isNotEmpty(),
             hasNewsDesk = news.size > ExploreNewsFrontSize,
-            editorialJourney = spotifyExplore,
+            editorialJourney = spotifyExplore || LevyraIsDefaultSkin,
+            newsLast = LevyraIsDefaultSkin,
             hasCityCharts = hasCityCharts
         )
     }
@@ -25040,46 +25046,49 @@ private fun ExploreScreen(
                 },
                 editorial = editorialContent
             ) { addToPlaylistTarget = it }
-        } else LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize().statusBarsPadding(),
-            contentPadding = PaddingValues(top = 14.dp, bottom = exploreBottomInset),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            if (editorialContent != null) item(key = "explore-editorial-title", contentType = "explore-editorial-title") {
-                LevyraTopLevelSearchRow(viewModel::openSearch, Modifier.padding(horizontal = HomeHorizontalInset)) { ExplorePageHeader(strings.exploreTitle, rememberExploreEditionDate(), Modifier.weight(1f)) }
-            }
-            items(
-                items = rows,
-                key = { row -> row.key },
-                contentType = { row -> row::class }
-            ) { row ->
-                ExploreContentRow(
-                    row = row,
-                    state = state,
-                    viewModel = viewModel,
-                    editorial = editorialContent,
-                    fresh = freshSection,
-                    availableAnchors = availableAnchors,
-                    mixAccent = exploreMixAccent,
-                    onShortcut = onShortcut,
-                    onPlayFresh = onPlayFresh,
-                    onSelectFreshScope = { scope -> freshScope = scope },
-                    onOpenJam = onOpenJam,
-                    onOpenRadio = { onLiveRadioOpenChange(true) },
-                    onOpenMoods = {
-                        samplesStartIndex = null
-                        exploreMoodReturn = null
-                        exploreDestination = ExploreMoodsDestination
-                    },
-                    onOpenZone = { zone ->
-                        viewModel.selectExploreZone(zone)
-                        exploreMoodReturn = null
-                        exploreDestination = exploreMoodDestination(zone.id)
-                    },
-                    onPlayTrack = onPlayFreshTrack,
-                    trackActions = freshTrackActions
-                )
+        } else Box(Modifier.fillMaxSize()) {
+            ExploreEditorialBackdrop(editorialContent != null, listState)
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize().statusBarsPadding(),
+                contentPadding = PaddingValues(top = 14.dp, bottom = exploreBottomInset),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                if (editorialContent != null) item(key = "explore-editorial-title", contentType = "explore-editorial-title") {
+                    LevyraTopLevelSearchRow(viewModel::openSearch, Modifier.padding(horizontal = HomeHorizontalInset)) { ExplorePageHeader(strings.exploreTitle, rememberExploreEditionDate(), Modifier.weight(1f)) }
+                }
+                items(
+                    items = rows,
+                    key = { row -> row.key },
+                    contentType = { row -> row::class }
+                ) { row ->
+                    ExploreContentRow(
+                        row = row,
+                        state = state,
+                        viewModel = viewModel,
+                        editorial = editorialContent,
+                        fresh = freshSection,
+                        availableAnchors = availableAnchors,
+                        mixAccent = exploreMixAccent,
+                        onShortcut = onShortcut,
+                        onPlayFresh = onPlayFresh,
+                        onSelectFreshScope = { scope -> freshScope = scope },
+                        onOpenJam = onOpenJam,
+                        onOpenRadio = { onLiveRadioOpenChange(true) },
+                        onOpenMoods = {
+                            samplesStartIndex = null
+                            exploreMoodReturn = null
+                            exploreDestination = ExploreMoodsDestination
+                        },
+                        onOpenZone = { zone ->
+                            viewModel.selectExploreZone(zone)
+                            exploreMoodReturn = null
+                            exploreDestination = exploreMoodDestination(zone.id)
+                        },
+                        onPlayTrack = onPlayFreshTrack,
+                        trackActions = freshTrackActions
+                    )
+                }
             }
         }
 
@@ -25234,10 +25243,7 @@ private fun ExploreContentRowDefault(
             )
         }
         is ExploreRow.Header -> if (editorial != null && row.anchor == ExploreAnchor.Fresh) {
-            ExploreEditorialHeader(
-                title = com.luc4n3x.levyra.ui.i18n.exploreEditorialCopy(strings.code).releasesTitle,
-                onSeeAll = { onShortcut(ExploreShortcut.NewReleases) }
-            )
+            ExploreReleasesHeader(strings.code) { onShortcut(ExploreShortcut.NewReleases) }
         } else {
             ExploreAnchorHeader(
                 anchor = row.anchor,
@@ -25961,6 +25967,7 @@ internal fun BottomTabs(
     compaction: () -> Float,
     onSelect: (LevyraTab) -> Unit
 ) {
+    if (LevyraIsDefaultSkin) return DefaultBottomTabs(selected, compaction, onSelect, LevyraTabBarHeight, LevyraTabBarCompactHeight)
     val entries = rememberLevyraBarEntries(com.luc4n3x.levyra.domain.NavDestinations.defaultOrder)
     val animationsEnabled = LocalAnimationsEnabled.current
     val haptics = LocalLevyraHaptics.current
@@ -26037,73 +26044,6 @@ internal fun BottomTabs(
     }
 }
 
-
-@Composable
-private fun PageHeader(title: String, subtitle: String) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 6.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Text(
-            title,
-            color = LevyraText,
-            fontSize = 32.sp,
-            lineHeight = LevyraTypeRhythm.lineHeight(32.sp),
-            fontWeight = FontWeight.Black,
-            letterSpacing = (-0.8).sp
-        )
-        Text(subtitle, color = LevyraMuted, fontSize = 14.5.sp, fontWeight = FontWeight.Medium, lineHeight = 19.sp)
-    }
-}
-
-
-@Composable
-private fun QuickChips(languageCode: String, onClick: (String) -> Unit) {
-    val chips = LevyraContentLocales.quickSearches(languageCode)
-    Row(
-        modifier = Modifier.horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        chips.forEach { chip ->
-            QuickSearchChip(label = chip, onClick = { onClick(chip) })
-        }
-    }
-}
-
-@Composable
-private fun QuickSearchChip(label: String, onClick: () -> Unit) {
-    val scheme = MaterialTheme.colorScheme
-    val interaction = remember { MutableInteractionSource() }
-    val corner = levyraExpressiveCorner(
-        interactionSource = interaction,
-        rest = 22.dp,
-        pressed = 12.dp,
-        label = "search-quick-chip-corner"
-    )
-    Box(
-        modifier = Modifier
-            .heightIn(min = 48.dp)
-            .levyraPressable(
-                onClick = onClick,
-                interactionSource = interaction,
-                role = Role.Button,
-                pressedScale = LevyraPressScale.Control
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = label,
-            color = if (LevyraSkinManagesLayout) LevyraText else scheme.onSecondaryContainer,
-            style = LevyraType.cardTitle.copy(fontWeight = if (LevyraSkinManagesLayout) FontWeight.Medium else FontWeight.Bold),
-            modifier = Modifier
-                .clip(if (LevyraSkinManagesLayout) SkinChrome.chipShape else RoundedCornerShape(corner))
-                .background(if (LevyraSkinManagesLayout) LevyraPanel else scheme.secondaryContainer)
-                .padding(horizontal = 16.dp, vertical = 10.dp)
-        )
-    }
-}
 
 @Composable
 private fun SearchSummary(state: LevyraUiState) {

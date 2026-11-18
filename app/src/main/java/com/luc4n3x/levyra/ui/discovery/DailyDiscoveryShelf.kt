@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui.discovery
 
+import com.luc4n3x.levyra.ui.components.levyraExpressiveCorner
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import com.luc4n3x.levyra.ui.components.levyraMarquee
 import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
 import androidx.compose.runtime.mutableStateOf
@@ -234,10 +236,35 @@ private fun DailyReasonText(reason: String, color: Color, modifier: Modifier = M
     }
 }
 
+@Composable
+private fun DailyReasonChip(reason: String, accent: Color) {
+    Row(
+        Modifier
+            .clip(CircleShape)
+            .background(accent.copy(alpha = 0.16f))
+            .padding(start = 8.dp, end = 10.dp, top = 5.dp, bottom = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp)
+    ) {
+        Icon(Icons.Rounded.AutoAwesome, null, tint = accent, modifier = Modifier.size(13.dp))
+        Text(
+            reason,
+            color = accent,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = if (LocalAnimationsEnabled.current) TextOverflow.Clip else TextOverflow.Ellipsis,
+            modifier = Modifier.levyraMarquee(LocalAnimationsEnabled.current, DAILY_TEXT_MARQUEE_DELAY, initialDelayMillis = 1600)
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun DefaultDailyCard(card: DiscoveryCard, reason: String, artworkMotion: Modifier, onPlay: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
+    val interaction = remember { MutableInteractionSource() }
+    val coverCorner = levyraExpressiveCorner(interaction, rest = 24.dp, pressed = 40.dp, label = "daily-cover-corner")
     val fallback = remember(scheme.primary, scheme.tertiary) { ArtworkPalette(scheme.primary.toArgb(), scheme.tertiary.toArgb()) }
     val palette by rememberArtworkPalette(paletteKey = "daily-${card.key}", artworkUrl = card.track.thumbnailUrl, fallback = fallback)
     val tint = Color(palette.start)
@@ -247,11 +274,12 @@ private fun DefaultDailyCard(card: DiscoveryCard, reason: String, artworkMotion:
             .width(204.dp)
             .clip(RoundedCornerShape(32.dp))
             .background(lerp(tint, scheme.surfaceContainerHigh, 0.84f))
-            .dailyCard(card, reason, onPlay)
+            .levyraPressable(onClick = onPlay, interactionSource = interaction, pressedScale = LevyraPressScale.Tile, role = Role.Button)
+            .semantics(mergeDescendants = true) { contentDescription = "${card.track.title}, ${card.track.artist}. $reason" }
             .padding(8.dp)
     ) {
         Box(Modifier.fillMaxWidth().aspectRatio(1f)) {
-            Box(Modifier.fillMaxSize().clip(RoundedCornerShape(24.dp)).background(scheme.surfaceContainerHighest)) {
+            Box(Modifier.fillMaxSize().clip(RoundedCornerShape(coverCorner)).background(scheme.surfaceContainerHighest)) {
                 CoverImage(track = card.track, modifier = Modifier.fillMaxSize().then(artworkMotion), highRes = true)
             }
             Box(
@@ -264,10 +292,7 @@ private fun DefaultDailyCard(card: DiscoveryCard, reason: String, artworkMotion:
             }
         }
         Column(Modifier.padding(start = 8.dp, end = 8.dp, top = 12.dp, bottom = 8.dp).clearAndSetSemantics { }) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Icon(Icons.Rounded.AutoAwesome, null, tint = accent, modifier = Modifier.padding(top = 1.dp).size(14.dp))
-                DailyReasonText(reason, accent, Modifier.weight(1f))
-            }
+            DailyReasonChip(reason, accent)
             val marquee = LocalAnimationsEnabled.current
             Text(
                 card.track.title, color = scheme.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,

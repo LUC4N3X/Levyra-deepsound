@@ -16,7 +16,10 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.toShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -53,6 +56,8 @@ internal fun LevyraSectionHeader(
     titleColor: Color = LevyraText,
     subtitleColor: Color = LevyraMuted,
     onTitleClick: (() -> Unit)? = null,
+    leadingIcon: ImageVector? = null,
+    leadingSeed: Color = LevyraUtilitySeed,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     val detail = subtitle?.trim().orEmpty()
@@ -60,7 +65,7 @@ internal fun LevyraSectionHeader(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = SectionHeaderMinHeight),
-        title = {
+        title = { LevyraSectionHeaderLead(leadingIcon, leadingSeed) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -117,9 +122,29 @@ internal fun LevyraSectionHeader(
                     )
                 }
             }
-        },
+        } },
         action = actions
     )
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun LevyraSectionHeaderLead(icon: ImageVector?, seed: Color, content: @Composable () -> Unit) {
+    if (icon == null) {
+        content()
+        return
+    }
+    val tone = levyraUtilityColors(seed)
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        androidx.compose.foundation.layout.Box(
+            Modifier.size(40.dp).clip(MaterialShapes.Cookie9Sided.toShape()).background(tone.accent),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription = null, tint = tone.onAccent, modifier = Modifier.size(20.dp))
+        }
+        androidx.compose.foundation.layout.Spacer(Modifier.size(14.dp))
+        androidx.compose.foundation.layout.Box(Modifier.weight(1f)) { content() }
+    }
 }
 
 @Composable

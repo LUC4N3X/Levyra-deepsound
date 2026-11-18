@@ -1,5 +1,10 @@
 package com.luc4n3x.levyra.ui.moodjourney
 
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.material3.LocalContentColor
+import com.luc4n3x.levyra.ui.recentSearchesBleed
+import androidx.compose.ui.unit.sp
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
@@ -802,7 +807,10 @@ private fun StyleSelector(selected: Set<MoodStyle>, copy: MoodStyleCopy, style: 
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(style.label(copy.title), style = MaterialTheme.typography.labelLarge, color = scheme.onSurface, modifier = Modifier.semantics { heading() })
         Text(copy.hint, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            Modifier.recentSearchesBleed(16.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             StyleChip(copy.mixed, selected.isEmpty(), style) {
                 haptics.perform(LevyraHapticAction.Confirm)
                 onSelect(null)
@@ -1110,20 +1118,31 @@ private fun JourneyActions(
         Row(
             Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Button(onClick = onPlay, enabled = ready, modifier = Modifier.weight(1f).heightIn(min = 52.dp)) {
-                Icon(Icons.Rounded.PlayArrow, contentDescription = null)
+            Button(
+                onClick = onPlay,
+                enabled = ready,
+                contentPadding = PaddingValues(horizontal = 14.dp),
+                modifier = Modifier.weight(1f).heightIn(min = 52.dp)
+            ) {
+                Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(6.dp))
-                Text(copy[SmartMusicText.MoodPlay], maxLines = 1, overflow = TextOverflow.Ellipsis)
+                BasicText(
+                    copy[SmartMusicText.MoodPlay],
+                    style = MaterialTheme.typography.labelLarge.copy(color = LocalContentColor.current),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    autoSize = TextAutoSize.StepBased(minFontSize = 11.sp, maxFontSize = MaterialTheme.typography.labelLarge.fontSize)
+                )
             }
-            FilledTonalIconButton(onClick = onAddToQueue, enabled = ready, modifier = Modifier.size(52.dp)) {
+            FilledTonalIconButton(onClick = onAddToQueue, enabled = ready, modifier = Modifier.size(48.dp)) {
                 Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = copy[SmartMusicText.MoodQueue])
             }
-            FilledTonalIconButton(onClick = onSave, enabled = ready && !session.saving, modifier = Modifier.size(52.dp)) {
+            FilledTonalIconButton(onClick = onSave, enabled = ready && !session.saving, modifier = Modifier.size(48.dp)) {
                 Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = copy[SmartMusicText.MoodSave])
             }
-            FilledTonalIconButton(onClick = onRegenerate, enabled = ready, modifier = Modifier.size(52.dp)) {
+            FilledTonalIconButton(onClick = onRegenerate, enabled = ready, modifier = Modifier.size(48.dp)) {
                 Icon(Icons.Rounded.Refresh, contentDescription = copy[SmartMusicText.MoodRegenerate])
             }
         }

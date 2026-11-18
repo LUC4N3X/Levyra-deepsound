@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.ui.library
 
 import com.luc4n3x.levyra.ui.levyraTabContentBottomPadding
+import com.luc4n3x.levyra.ui.components.utilityScrollProgress
 import com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 import com.luc4n3x.levyra.ui.theme.Nocturne78Design
@@ -818,6 +819,9 @@ internal fun LevyraLibraryScreen(
     BackHandler(enabled = backEnabled && selectionActive) { selectedKeys = emptySet() }
 
     Box(modifier = Modifier.fillMaxSize().background(if (com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) com.luc4n3x.levyra.ui.theme.YouTubeMusicDesign.background else LevyraInk)) {
+        if (LevyraIsDefaultSkin && category == LibraryCategory.Overview) {
+            com.luc4n3x.levyra.ui.components.LevyraUtilityBackdrop(strength = 0.8f, scrollProgress = { listState.utilityScrollProgress() })
+        }
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize().statusBarsPadding(),
@@ -1109,8 +1113,17 @@ internal fun LevyraLibraryScreen(
                             }
                         }
                     } else if (LevyraIsDefaultSkin) {
-                        smartGridItem()
-                        sectionsItem()
+                        item(key = "default-library-overview") {
+                            DefaultLibraryOverview(
+                                favorites = state.favorites,
+                                recent = catalog.recent,
+                                mostPlayed = catalog.mostPlayed,
+                                entries = librarySections,
+                                onOpenCollection = { openSmartCollectionName = it },
+                                onPlayTracks = { tracks -> tracks.firstOrNull()?.let { viewModel.playFrom(tracks, it) } },
+                                onOpenCategory = { switchCategory(it) }
+                            )
+                        }
                     } else {
                         sectionsItem()
                         item(key = "overview-smart-title") {
@@ -1118,7 +1131,7 @@ internal fun LevyraLibraryScreen(
                         }
                         smartGridItem()
                     }
-                    if (libraryRadioSkin && !com.luc4n3x.levyra.ui.theme.LevyraIsMono) {
+                    if (libraryRadioSkin && !com.luc4n3x.levyra.ui.theme.LevyraIsMono && !LevyraIsDefaultSkin) {
                         item(key = "overview-mood-journey") {
                             com.luc4n3x.levyra.ui.moodjourney.MoodJourneyEntryCard(
                                 onOpen = { preset -> if (preset == null) viewModel.openMoodJourney() else viewModel.openMoodJourney(preset) }

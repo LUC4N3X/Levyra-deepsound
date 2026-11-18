@@ -1,5 +1,10 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.levyraMarquee
+import androidx.compose.material.icons.rounded.Newspaper
+import androidx.compose.material.icons.rounded.NewReleases
+import com.luc4n3x.levyra.ui.components.utilityScrollProgress
+import androidx.compose.material.icons.automirrored.rounded.Article
 import android.text.format.DateFormat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -117,6 +122,29 @@ internal fun ExploreEditorialRow(row: ExploreRow, content: ExploreEditorialConte
 }
 
 @Composable
+internal fun ExploreReleasesHeader(code: String, onSeeAll: () -> Unit) {
+    ExploreEditorialHeader(
+        title = exploreEditorialCopy(code).releasesTitle,
+        onSeeAll = onSeeAll,
+        leadingIcon = exploreHeaderIcon(androidx.compose.material.icons.Icons.Rounded.NewReleases),
+        leadingSeed = com.luc4n3x.levyra.ui.components.LevyraPastelLavender
+    )
+}
+
+@Composable
+internal fun ExploreEditorialBackdrop(editorial: Boolean, listState: androidx.compose.foundation.lazy.LazyListState) {
+    if (editorial && com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin) {
+        com.luc4n3x.levyra.ui.components.LevyraUtilityBackdrop(
+            strength = 0.8f,
+            scrollProgress = { with(listState) { utilityScrollProgress() } }
+        )
+    }
+}
+
+internal fun exploreHeaderIcon(icon: androidx.compose.ui.graphics.vector.ImageVector): androidx.compose.ui.graphics.vector.ImageVector? =
+    icon.takeIf { com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin }
+
+@Composable
 internal fun rememberExploreEditionDate(): String {
     val code = LocalLevyraStrings.current.code
     return remember(code) {
@@ -128,9 +156,16 @@ internal fun rememberExploreEditionDate(): String {
 }
 
 @Composable
-internal fun ExploreEditorialHeader(title: String, onSeeAll: (() -> Unit)? = null) {
+internal fun ExploreEditorialHeader(
+    title: String,
+    onSeeAll: (() -> Unit)? = null,
+    leadingIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    leadingSeed: androidx.compose.ui.graphics.Color = com.luc4n3x.levyra.ui.components.LevyraUtilitySeed
+) {
     LevyraSectionHeader(
         title = title,
+        leadingIcon = leadingIcon,
+        leadingSeed = leadingSeed,
         modifier = Modifier.padding(
             start = LevyraHomeDesign.HorizontalInset,
             end = LevyraHomeDesign.HorizontalInset,
@@ -198,7 +233,7 @@ private fun ExploreNewsFrontPage(stories: List<MusicNewsStory>, onOpen: (MusicNe
             .padding(horizontal = LevyraHomeDesign.HorizontalInset),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        LevyraSectionHeader(title = copy.newsTitle)
+        LevyraSectionHeader(title = copy.newsTitle, leadingIcon = exploreHeaderIcon(androidx.compose.material.icons.Icons.Rounded.Newspaper))
         ExploreCoverStory(
             story = front.lead,
             age = exploreNewsAgeLabel(copy, nowMs, front.lead.publishedAtMs),
@@ -361,7 +396,7 @@ private fun ExploreNewsDesk(stories: List<MusicNewsStory>, onOpen: (MusicNewsSto
     val nowMs = remember(stories) { System.currentTimeMillis() }
     val divider = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
     Column(modifier = Modifier.widthIn(max = ExploreEditorialMaxWidth).fillMaxWidth()) {
-        ExploreEditorialHeader(title = copy.newsMore)
+        ExploreEditorialHeader(title = copy.newsMore, leadingIcon = exploreHeaderIcon(androidx.compose.material.icons.Icons.AutoMirrored.Rounded.Article))
         if (sources.size > 1) {
             LazyRow(
                 contentPadding = PaddingValues(horizontal = LevyraHomeDesign.HorizontalInset),
@@ -375,36 +410,55 @@ private fun ExploreNewsDesk(stories: List<MusicNewsStory>, onOpen: (MusicNewsSto
                 }
             }
         }
-        Spacer(Modifier.height(4.dp))
+        val segmented = com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin
+        Spacer(Modifier.height(if (segmented) 12.dp else 4.dp))
         desk.forEachIndexed { index, story ->
             key(story.url) {
-                if (index > 0) {
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = LevyraHomeDesign.HorizontalInset),
-                        thickness = 1.dp,
-                        color = divider
+                if (segmented) {
+                    ExploreDeskRow(
+                        story = story,
+                        age = exploreNewsAgeLabel(copy, nowMs, story.publishedAtMs),
+                        actionLabel = copy.readStory,
+                        shape = com.luc4n3x.levyra.ui.components.levyraGroupedListShape(index, desk.size),
+                        onClick = { onOpen(story) }
+                    )
+                } else {
+                    if (index > 0) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = LevyraHomeDesign.HorizontalInset),
+                            thickness = 1.dp,
+                            color = divider
+                        )
+                    }
+                    ExploreDeskRow(
+                        story = story,
+                        age = exploreNewsAgeLabel(copy, nowMs, story.publishedAtMs),
+                        actionLabel = copy.readStory,
+                        onClick = { onOpen(story) }
                     )
                 }
-                ExploreDeskRow(
-                    story = story,
-                    age = exploreNewsAgeLabel(copy, nowMs, story.publishedAtMs),
-                    actionLabel = copy.readStory,
-                    onClick = { onOpen(story) }
-                )
             }
         }
     }
 }
 
 @Composable
-private fun ExploreDeskRow(story: MusicNewsStory, age: String?, actionLabel: String, onClick: () -> Unit) {
+private fun ExploreDeskRow(story: MusicNewsStory, age: String?, actionLabel: String, shape: Shape? = null, onClick: () -> Unit) {
+    val segment = if (shape == null) {
+        Modifier
+    } else {
+        Modifier
+            .padding(start = LevyraHomeDesign.HorizontalInset, end = LevyraHomeDesign.HorizontalInset, bottom = 3.dp)
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+    }
     Row(
-        modifier = Modifier
+        modifier = segment
             .fillMaxWidth()
             .heightIn(min = ExploreDeskThumb + 28.dp)
             .levyraPressable(onClick = onClick, onClickLabel = actionLabel, role = Role.Button, pressedScale = LevyraPressScale.Row)
             .semantics(mergeDescendants = true) { }
-            .padding(horizontal = LevyraHomeDesign.HorizontalInset, vertical = 14.dp),
+            .padding(horizontal = if (shape == null) LevyraHomeDesign.HorizontalInset else 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -441,13 +495,19 @@ internal fun ExploreReleaseShelf(
     val columns = remember(releases) {
         if (releases.size >= ExploreReleaseGridMinimum) releases.chunked(2) else releases.map(::listOf)
     }
+    val shelfState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val tilt = com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin && defaultRailMotionEnabled()
     LazyRow(
+        state = shelfState,
         contentPadding = PaddingValues(horizontal = LevyraHomeDesign.HorizontalInset),
         horizontalArrangement = Arrangement.spacedBy(ExploreReleaseColumnGap)
     ) {
         items(columns, key = { column -> "explore-release-${column.first().id}" }, contentType = { "explore-release-column" }) { column ->
+            val columnKey = "explore-release-${column.first().id}"
             Column(
-                modifier = Modifier.width(LevyraHomeDesign.ArtworkCardWidth),
+                modifier = Modifier
+                    .width(LevyraHomeDesign.ArtworkCardWidth)
+                    .then(if (tilt) Modifier.releaseShelfTilt(shelfState, columnKey) else Modifier),
                 verticalArrangement = Arrangement.spacedBy(ExploreReleaseRowGap)
             ) {
                 column.forEach { track ->
@@ -531,8 +591,8 @@ private fun ExploreReleaseCard(
                 verticalArrangement = Arrangement.spacedBy(LevyraCardDesign.CaptionLineGap)
             ) {
                 Text(eyebrow, style = LevyraType.overline, color = colors.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(card.title, style = LevyraType.cardTitle, color = colors.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(card.subtitle, style = LevyraType.caption, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(card.title, style = LevyraType.cardTitle, color = colors.onSurface, maxLines = 1, modifier = Modifier.levyraMarquee())
+                Text(card.subtitle, style = LevyraType.caption, color = colors.onSurfaceVariant, maxLines = 1, modifier = Modifier.levyraMarquee())
             }
             Box(Modifier.offset(x = ExploreReleaseMenuInset)) { actions() }
         }

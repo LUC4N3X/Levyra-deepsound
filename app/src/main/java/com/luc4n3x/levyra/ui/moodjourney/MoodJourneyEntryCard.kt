@@ -88,27 +88,8 @@ internal fun MoodJourneyEntryCard(onOpen: (MoodCurvePreset?) -> Unit, modifier: 
     when {
         LevyraIsAtelier -> AtelierMoodJourneyEntry(copy, open, modifier)
         LevyraIsMono -> MonoMoodJourneyEntry(copy, open, modifier)
-        LevyraIsDefaultSkin -> DefaultMoodJourneyEntry(copy, open, modifier)
+        LevyraIsDefaultSkin -> DefaultMoodJourneyEntry(copy, JourneyPresets, open, modifier)
         else -> SkinMoodJourneyEntry(copy, open, modifier)
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun DefaultMoodJourneyEntry(copy: SmartMusicCopy, open: (MoodCurvePreset?) -> Unit, modifier: Modifier) {
-    val scheme = MaterialTheme.colorScheme
-    Column(modifier.fillMaxWidth().padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            JourneyHeading(copy, Modifier.weight(1f))
-            Box(
-                Modifier.size(48.dp).clip(MaterialShapes.Cookie9Sided.toShape()).background(scheme.surfaceContainerHigh)
-                    .clickable(role = Role.Button, onClickLabel = copy[SmartMusicText.MoodTitle]) { open(null) },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Rounded.Add, contentDescription = copy[SmartMusicText.MoodTitle], tint = scheme.onSurface, modifier = Modifier.size(24.dp))
-            }
-        }
-        JourneyCoverRail(copy, journeyCoverStyle(), open)
     }
 }
 
@@ -234,16 +215,6 @@ private fun journeyCoverStyle(): JourneyCoverStyle {
             labelColor = AtelierDesign.text,
             uppercaseLabel = true,
             gutter = AtelierDesign.gutter
-        )
-        LevyraIsDefaultSkin -> JourneyCoverStyle(
-            corner = 20.dp,
-            playShape = MaterialShapes.Cookie9Sided.toShape(),
-            base = scheme.surfaceContainer,
-            vividness = 0.74f,
-            muted = false,
-            labelColor = scheme.onSurface,
-            uppercaseLabel = false,
-            gutter = LevyraHomeDesign.HorizontalInset
         )
         else -> JourneyCoverStyle(
             corner = when {
