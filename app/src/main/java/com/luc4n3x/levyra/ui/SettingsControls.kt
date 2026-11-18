@@ -1,5 +1,21 @@
 package com.luc4n3x.levyra.ui
 
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.text.TextStyle
+import com.luc4n3x.levyra.ui.components.LevyraUtilitySeed
+import com.luc4n3x.levyra.ui.components.levyraUtilityColors
+import com.luc4n3x.levyra.ui.theme.levyraSoftAccent
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.runtime.Immutable
+import com.luc4n3x.levyra.ui.components.LevyraUtilityStyleActive
+import androidx.graphics.shapes.RoundedPolygon
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.material3.toShape
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -376,6 +392,7 @@ private const val SETTINGS_ENTRANCE_MAX_ORDER = 14
 private const val SETTINGS_ENTRANCE_STAGGER = 0.035f
 private const val SETTINGS_ENTRANCE_SPAN = 0.5f
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun SettingsHubCategoryRow(
     title: String,
@@ -383,6 +400,7 @@ internal fun SettingsHubCategoryRow(
     icon: ImageVector,
     index: Int,
     count: Int,
+    accent: Color,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
@@ -392,32 +410,29 @@ internal fun SettingsHubCategoryRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            val style = settingsHubRowStyle(index, accent)
             Box(
                 modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(LevyraText.copy(alpha = 0.08f)),
+                    .size(style.iconSize)
+                    .clip(style.iconShape)
+                    .background(style.iconContainer),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, contentDescription = null, tint = LevyraText.copy(alpha = 0.88f), modifier = Modifier.size(24.dp))
+                Icon(icon, contentDescription = null, tint = style.iconTint, modifier = Modifier.size(24.dp))
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = title,
                     color = LevyraText,
-                    fontSize = 17.sp,
-                    lineHeight = 22.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    style = style.title,
                     maxLines = if (LocalAnimationsEnabled.current) 1 else Int.MAX_VALUE,
                     modifier = Modifier.levyraMarquee(LocalAnimationsEnabled.current, 3000)
                 )
                 if (summary.isNotBlank()) {
                     Text(
                         text = summary,
-                        color = LevyraMuted,
-                        fontSize = 13.sp,
-                        lineHeight = 18.sp,
-                        fontWeight = FontWeight.Medium
+                        color = style.summaryColor,
+                        style = style.summary
                     )
                 }
             }
@@ -428,6 +443,67 @@ internal fun SettingsHubCategoryRow(
                 modifier = Modifier.size(22.dp)
             )
         }
+    }
+}
+
+@Immutable
+private data class SettingsHubRowStyle(
+    val iconSize: Dp,
+    val iconShape: Shape,
+    val iconContainer: Color,
+    val iconTint: Color,
+    val title: TextStyle,
+    val summary: TextStyle,
+    val summaryColor: Color
+)
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun settingsHubRowStyle(index: Int, accent: Color): SettingsHubRowStyle {
+    val base = LocalTextStyle.current
+    if (!LevyraUtilityStyleActive) {
+        return SettingsHubRowStyle(
+            iconSize = 48.dp,
+            iconShape = CircleShape,
+            iconContainer = LevyraText.copy(alpha = 0.08f),
+            iconTint = LevyraText.copy(alpha = 0.88f),
+            title = base.merge(TextStyle(fontSize = 17.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold)),
+            summary = base.merge(TextStyle(fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium)),
+            summaryColor = LevyraMuted
+        )
+    }
+    val tone = settingsCategoryTone(accent, solid = true)
+    return SettingsHubRowStyle(
+        iconSize = 52.dp,
+        iconShape = settingsExpressiveShape(index).toShape(),
+        iconContainer = tone.container,
+        iconTint = tone.content,
+        title = MaterialTheme.typography.titleLarge,
+        summary = MaterialTheme.typography.bodyMedium,
+        summaryColor = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+internal fun settingsExpressiveShape(index: Int): RoundedPolygon = when (index % 6) {
+    0 -> MaterialShapes.Cookie9Sided
+    1 -> MaterialShapes.Clover4Leaf
+    2 -> MaterialShapes.Cookie6Sided
+    3 -> MaterialShapes.Sunny
+    4 -> MaterialShapes.Cookie4Sided
+    else -> MaterialShapes.SoftBurst
+}
+
+@Immutable
+internal data class SettingsExpressiveTone(val container: Color, val content: Color)
+
+@Composable
+internal fun settingsCategoryTone(accent: Color, solid: Boolean = false): SettingsExpressiveTone {
+    val colors = levyraUtilityColors(accent)
+    return if (solid) {
+        SettingsExpressiveTone(container = colors.accent, content = colors.onAccent)
+    } else {
+        SettingsExpressiveTone(container = colors.softContainer, content = colors.accent)
     }
 }
 
@@ -458,5 +534,6 @@ private fun settingsTileTitleWeight(): FontWeight = when {
 internal fun settingsSectionLabelColor(): Color = when {
     LevyraIsPrism && !LevyraIsTorque -> LevyraMuted
     SkinChrome.active -> LevyraCyan
+    LevyraUtilityStyleActive -> levyraUtilityColors(LocalSettingsAccent.current ?: LevyraUtilitySeed).accent
     else -> LocalSettingsAccent.current ?: LevyraCyan
 }

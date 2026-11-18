@@ -1,6 +1,16 @@
 @file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.levyraUtilityColors
+import com.luc4n3x.levyra.ui.components.utilityScrollProgress
+import com.luc4n3x.levyra.ui.components.LevyraPastelAmber
+import com.luc4n3x.levyra.ui.components.LevyraPastelPeriwinkle
+import com.luc4n3x.levyra.ui.components.LevyraUtilitySeed
+import com.luc4n3x.levyra.ui.components.LevyraPastelRose
+import com.luc4n3x.levyra.ui.components.LevyraPastelLavender
+import com.luc4n3x.levyra.ui.components.LevyraUtilityStyleActive
+import com.luc4n3x.levyra.ui.components.LevyraUtilityBackdrop
+import com.luc4n3x.levyra.ui.components.LevyraUtilityHeader
 import com.luc4n3x.levyra.ui.media.albumUsesCenteredHero
 import com.luc4n3x.levyra.ui.media.AlbumArtworkWash
 import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
@@ -19110,8 +19120,9 @@ private fun SettingsOverlay(
                 miniPlayerVisible = miniPlayerVisible,
                 animationsEnabled = animationsEnabled
             )
-            val pageAccent = meta?.let { if (hubEntranceEnabled) LevyraCyan else it.accent }
+            val pageAccent = meta?.let { if (LevyraUtilityStyleActive && !SkinChrome.active) levyraUtilityColors(settingsGroupSeed(it.group)).accent else if (hubEntranceEnabled) LevyraCyan else it.accent }
             CompositionLocalProvider(LocalSettingsAccent provides pageAccent) {
+            if (LevyraUtilityStyleActive && !SkinChrome.active) LevyraUtilityBackdrop(scrollProgress = { settingsListState.utilityScrollProgress() })
             LazyColumn(
                 state = settingsListState,
                 modifier = Modifier
@@ -19216,7 +19227,7 @@ private fun SettingsOverlay(
                         item(key = "settings_group_${group.name}") {
                             SettingsHubGroupLabel(
                                 text = settingsHubGroupTitle(group, strings),
-                                accent = LevyraCyan,
+                                accent = if (LevyraUtilityStyleActive) settingsCategoryTone(settingsGroupSeed(group)).content else LevyraCyan,
                                 modifier = hubEntranceModifier(labelOrder)
                             )
                         }
@@ -20790,6 +20801,14 @@ private fun settingsCategoryParent(id: String?): String? = SettingsSubpageParent
 
 private enum class SettingsHubGroup { Appearance, Listening, Library, Accounts, System }
 
+private fun settingsGroupSeed(group: SettingsHubGroup): Color = when (group) {
+    SettingsHubGroup.Appearance -> LevyraPastelLavender
+    SettingsHubGroup.Listening -> LevyraPastelRose
+    SettingsHubGroup.Library -> LevyraUtilitySeed
+    SettingsHubGroup.Accounts -> LevyraPastelPeriwinkle
+    SettingsHubGroup.System -> LevyraPastelAmber
+}
+
 private fun settingsHubGroupTitle(group: SettingsHubGroup, strings: LevyraStrings): String = strings.settingsHubCopy[
     when (group) {
         SettingsHubGroup.Appearance -> SettingsHubText.Appearance
@@ -20869,10 +20888,25 @@ private fun SettingsStudioShelf(title: String, subtitle: String, entries: List<S
                             modifier = Modifier
                                 .size(42.dp)
                                 .clip(if (SkinChrome.active) SkinChrome.iconShape else entry.shape.toShape())
-                                .background(if (SkinChrome.active) SkinChrome.iconBackground else LevyraText.copy(alpha = 0.08f)),
+                                .background(
+                                    when {
+                                        SkinChrome.active -> SkinChrome.iconBackground
+                                        LevyraUtilityStyleActive -> settingsCategoryTone(settingsGroupSeed(SettingsHubGroup.Appearance), solid = true).container
+                                        else -> LevyraText.copy(alpha = 0.08f)
+                                    }
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(entry.icon, null, tint = if (SkinChrome.active) SkinChrome.iconTint else LevyraText.copy(alpha = 0.88f), modifier = Modifier.size(22.dp))
+                            Icon(
+                                entry.icon,
+                                null,
+                                tint = when {
+                                    SkinChrome.active -> SkinChrome.iconTint
+                                    LevyraUtilityStyleActive -> settingsCategoryTone(settingsGroupSeed(SettingsHubGroup.Appearance), solid = true).content
+                                    else -> LevyraText.copy(alpha = 0.88f)
+                                },
+                                modifier = Modifier.size(22.dp)
+                            )
                         }
                         Text(
                             text = entry.title,
@@ -20910,6 +20944,7 @@ private fun SettingsCategoryCard(
             icon = meta.icon,
             index = index,
             count = count,
+            accent = settingsGroupSeed(meta.group),
             modifier = modifier.then(spacing),
             onClick = onClick
         )
@@ -20991,14 +21026,30 @@ internal fun SettingsTile(
 @Composable
 internal fun SettingsTileIcon(icon: ImageVector, accent: Color, shape: Shape = MaterialShapes.Cookie4Sided.toShape()) {
     if (LevyraIsAtelier) return AtelierSettingsKey(icon)
+    val expressive = LevyraUtilityStyleActive && !SkinChrome.active
     Box(
         modifier = Modifier
             .size(if (LevyraIsAppleMusic) 30.dp else 44.dp)
             .clip(if (SkinChrome.active) SkinChrome.iconShape else shape)
-            .background(if (SkinChrome.active) SkinChrome.iconBackground else LevyraText.copy(alpha = 0.08f)),
+            .background(
+                when {
+                    SkinChrome.active -> SkinChrome.iconBackground
+                    expressive -> settingsCategoryTone(accent).container
+                    else -> LevyraText.copy(alpha = 0.08f)
+                }
+            ),
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, null, tint = if (SkinChrome.active) SkinChrome.iconTint else LevyraText.copy(alpha = 0.88f), modifier = Modifier.size(if (LevyraIsAppleMusic) 19.dp else 22.dp))
+        Icon(
+            icon,
+            null,
+            tint = when {
+                SkinChrome.active -> SkinChrome.iconTint
+                expressive -> settingsCategoryTone(accent).content
+                else -> LevyraText.copy(alpha = 0.88f)
+            },
+            modifier = Modifier.size(if (LevyraIsAppleMusic) 19.dp else 22.dp)
+        )
     }
 }
 
@@ -21032,6 +21083,18 @@ internal fun SettingsTileText(
 @Composable
 private fun SettingsDetailHeader(title: String, summary: String, icon: ImageVector, accent: Color, onBack: () -> Unit) {
     if (LevyraIsAtelier) return AtelierSettingsDetailHeader(title, summary, onBack)
+    if (LevyraUtilityStyleActive && !SkinChrome.active) {
+        return LevyraUtilityHeader(
+            title = title,
+            subtitle = summary,
+            icon = icon,
+            onBack = onBack,
+            backDescription = LocalLevyraStrings.current.back,
+            modifier = Modifier.padding(bottom = 18.dp),
+            medallionColor = settingsCategoryTone(accent).container,
+            medallionContentColor = settingsCategoryTone(accent).content
+        )
+    }
     if (SkinChrome.active) {
         Column {
             LevyraBackButton(onClick = onBack, contentDescription = LocalLevyraStrings.current.back)
@@ -26404,6 +26467,19 @@ private fun SettingsHubHeader(onClose: () -> Unit) {
     if (LevyraIsAtelier) return AtelierSettingsHeader(onClose)
     if (com.luc4n3x.levyra.ui.theme.LevyraIsMono) return MonoSettingsHeader(onClose)
     val strings = LocalLevyraStrings.current
+    if (LevyraUtilityStyleActive && !SkinChrome.active) {
+        val tone = settingsCategoryTone(settingsGroupSeed(SettingsHubGroup.Library))
+        return LevyraUtilityHeader(
+            title = strings.settings,
+            subtitle = strings.settingsSubtitle,
+            icon = Icons.Rounded.Settings,
+            onBack = onClose,
+            backDescription = strings.close,
+            compact = true,
+            medallionColor = tone.container,
+            medallionContentColor = tone.content
+        )
+    }
     if (SkinChrome.active) PrismPageHeader(strings.settings, strings.settingsSubtitle) {
         IconButton(onClick = onClose, modifier = Modifier.size(48.dp)) { Icon(Icons.Rounded.Close, strings.close, tint = LevyraText) }
     } else Row(

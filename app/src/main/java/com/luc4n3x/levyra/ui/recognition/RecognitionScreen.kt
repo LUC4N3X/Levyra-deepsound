@@ -1,5 +1,13 @@
 package com.luc4n3x.levyra.ui.recognition
 
+import com.luc4n3x.levyra.ui.components.utilityScrollProgress
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.graphics.Color
+import com.luc4n3x.levyra.ui.components.levyraUtilityColors
+import androidx.compose.material.icons.rounded.GraphicEq
+import com.luc4n3x.levyra.ui.components.LevyraUtilityStyleActive
+import com.luc4n3x.levyra.ui.components.LevyraUtilityBackdrop
+import com.luc4n3x.levyra.ui.components.LevyraUtilityHeader
 import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -25,6 +33,7 @@ import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -75,14 +84,27 @@ internal fun LevyraRecognitionOverlay(
     val strings = LocalLevyraStrings.current
     val busy = state is RecognitionState.Listening || state is RecognitionState.Identifying
 
+    val utility = LevyraUtilityStyleActive
+    val listState = rememberLazyListState()
     Box(modifier = Modifier.fillMaxSize().background(LevyraInk)) {
+        if (utility) LevyraUtilityBackdrop(scrollProgress = { listState.utilityScrollProgress() })
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize().statusBarsPadding(),
             contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 140.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             item(contentType = "recognition-header") {
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                if (utility) {
+                    LevyraUtilityHeader(
+                        title = strings.recognitionTitle,
+                        subtitle = strings.recognitionSubtitle,
+                        icon = Icons.Rounded.GraphicEq,
+                        onBack = onClose,
+                        backDescription = strings.back,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                } else Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     LevyraBackButton(onClick = onClose, contentDescription = strings.back)
                     Column(modifier = Modifier.padding(start = 6.dp)) {
                         Text(
@@ -117,7 +139,7 @@ internal fun LevyraRecognitionOverlay(
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     RecognitionActionRow(
                         label = if (busy) strings.recognitionCancelAction else strings.recognitionListenMicrophone,
-                        icon = if (busy) Icons.Rounded.Tune else Icons.Rounded.Mic,
+                        icon = if (busy) Icons.Rounded.Close else Icons.Rounded.Mic,
                         enabled = true,
                         onClick = { if (busy) onCancel() else onListenMicrophone() }
                     )
@@ -139,14 +161,14 @@ internal fun LevyraRecognitionOverlay(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        strings.historyLabel,
+                        strings.recognitionHistoryTitle,
                         color = LevyraText,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
                     if (history.isNotEmpty()) {
                         TextButton(onClick = onClearHistory) {
-                            Text(strings.recognitionClearHistory, color = LevyraCyan, fontSize = 13.sp)
+                            Text(strings.recognitionClearHistory, color = RecognitionAccent, fontSize = 13.sp)
                         }
                     }
                 }
@@ -270,7 +292,7 @@ private fun RecognitionResultBody(
             match != null -> strings.recognitionCatalogMatch
             else -> strings.recognitionCatalogMissing
         },
-        color = if (match != null) LevyraCyan else LevyraMuted,
+        color = if (match != null) RecognitionAccent else LevyraMuted,
         fontSize = 13.sp,
         fontWeight = FontWeight.SemiBold
     )
@@ -329,7 +351,7 @@ private fun RecognitionArtwork(url: String, description: String) {
 @Composable
 private fun RecognitionProgress(label: String) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        CircularProgressIndicator(modifier = Modifier.size(22.dp), color = LevyraCyan, strokeWidth = 2.dp)
+        CircularProgressIndicator(modifier = Modifier.size(22.dp), color = RecognitionAccent, strokeWidth = 2.dp)
         Text(label, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Bold)
     }
 }
@@ -427,3 +449,6 @@ private fun recognitionErrorText(kind: RecognitionErrorKind, strings: LevyraStri
     RecognitionErrorKind.Network,
     RecognitionErrorKind.Fingerprint -> strings.recognitionFailed
 }
+
+private val RecognitionAccent: Color
+    @Composable get() = if (LevyraUtilityStyleActive) levyraUtilityColors().accent else LevyraCyan

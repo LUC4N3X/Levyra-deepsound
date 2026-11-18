@@ -34,6 +34,22 @@ internal fun levyraTonalRole(seed: Color, isLight: Boolean, maxChroma: Double): 
     )
 }
 
+internal fun levyraSoftAccent(seed: Color, isLight: Boolean): Color {
+    val source = Hct.fromInt(seed.toArgb())
+    val chroma = source.chroma.coerceAtMost(SoftAccentChroma)
+    return Color(Hct.from(source.hue, chroma, if (isLight) SoftAccentLightTone else SoftAccentDarkTone).toInt())
+}
+
+internal fun levyraOnSoftAccent(seed: Color, isLight: Boolean): Color {
+    val source = Hct.fromInt(seed.toArgb())
+    val chroma = source.chroma.coerceAtMost(SoftAccentChroma)
+    return Color(Hct.from(source.hue, chroma, if (isLight) 100.0 else 20.0).toInt())
+}
+
+private const val SoftAccentChroma = 40.0
+private const val SoftAccentDarkTone = 82.0
+private const val SoftAccentLightTone = 40.0
+
 internal fun levyraInverseAccent(seed: Color, isLight: Boolean): Color {
     val source = Hct.fromInt(seed.toArgb())
     return Color(Hct.from(source.hue, source.chroma, if (isLight) 80.0 else 40.0).toInt())

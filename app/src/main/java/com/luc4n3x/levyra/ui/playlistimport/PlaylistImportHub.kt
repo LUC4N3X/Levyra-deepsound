@@ -1,5 +1,9 @@
 package com.luc4n3x.levyra.ui.playlistimport
 
+import com.luc4n3x.levyra.ui.components.levyraUtilityColors
+import com.luc4n3x.levyra.ui.components.LevyraUtilityStyleActive
+import com.luc4n3x.levyra.ui.components.LevyraUtilityBackdrop
+import com.luc4n3x.levyra.ui.components.LevyraUtilityHeader
 import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import com.luc4n3x.levyra.ui.components.LevyraWavyProgress
 import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
@@ -157,17 +161,25 @@ fun PlaylistImportHub(
                 else -> controller.close()
             }
         }
+        val utility = LevyraUtilityStyleActive
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(LevyraInk)
-                .background(
-                    Brush.verticalGradient(
-                        0f to LevyraViolet.copy(alpha = 0.14f),
-                        0.45f to Color.Transparent
-                    )
+                .then(
+                    if (utility) {
+                        Modifier
+                    } else {
+                        Modifier.background(
+                            Brush.verticalGradient(
+                                0f to LevyraViolet.copy(alpha = 0.14f),
+                                0.45f to Color.Transparent
+                            )
+                        )
+                    }
                 )
         ) {
+            if (utility) LevyraUtilityBackdrop()
             AnimatedContent(
                 targetState = state.step.screen(),
                 transitionSpec = { fadeIn() togetherWith fadeOut() },
@@ -253,22 +265,34 @@ private fun ImportInputScreen(
     onChooseFile: () -> Unit
 ) {
     val context = LocalContext.current
+    val utility = LevyraUtilityStyleActive
     CenteredColumn {
-        ImportTopBar(copy["title"], controller::close, copy["back"])
+        if (!utility) ImportTopBar(copy["title"], controller::close, copy["back"])
         Column(
             modifier = Modifier.padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = copy["heroTitle"],
-                color = LevyraText,
-                fontSize = 30.sp,
-                lineHeight = 36.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.semantics { heading() }
-            )
-            Text(copy["heroSubtitle"], color = LevyraMuted, fontSize = 14.sp, lineHeight = 20.sp)
+            if (utility) {
+                LevyraUtilityHeader(
+                    title = copy["heroTitle"],
+                    subtitle = copy["heroSubtitle"],
+                    icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
+                    onBack = controller::close,
+                    backDescription = copy["back"],
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            } else {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = copy["heroTitle"],
+                    color = LevyraText,
+                    fontSize = 30.sp,
+                    lineHeight = 36.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.semantics { heading() }
+                )
+                Text(copy["heroSubtitle"], color = LevyraMuted, fontSize = 14.sp, lineHeight = 20.sp)
+            }
             OutlinedTextField(
                 value = state.input,
                 onValueChange = controller::updateInput,
@@ -280,11 +304,11 @@ private fun ImportInputScreen(
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = LevyraText,
                     unfocusedTextColor = LevyraText,
-                    focusedBorderColor = LevyraCyan.copy(alpha = 0.7f),
+                    focusedBorderColor = ImportAccent.copy(alpha = 0.7f),
                     unfocusedBorderColor = Color.White.copy(alpha = 0.12f),
                     focusedContainerColor = LevyraPanel.copy(alpha = 0.6f),
                     unfocusedContainerColor = LevyraPanel.copy(alpha = 0.45f),
-                    cursorColor = LevyraCyan
+                    cursorColor = ImportAccent
                 )
             )
             DetectionLine(state, copy)
@@ -308,7 +332,7 @@ private fun ImportInputScreen(
                 onClick = controller::start,
                 enabled = state.input.isNotBlank() && state.inputIssue == null,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = LevyraCyan, contentColor = LevyraOnAccent),
+                colors = ButtonDefaults.buttonColors(containerColor = ImportAccent, contentColor = ImportOnAccent),
                 shape = ImportShape
             ) {
                 Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = null)
@@ -340,7 +364,7 @@ private fun DetectionLine(state: PlaylistImportUiState, copy: PlaylistImportHubC
         Icon(
             imageVector = if (issue == null) Icons.Rounded.CheckCircle else Icons.Rounded.ErrorOutline,
             contentDescription = null,
-            tint = if (issue == null) LevyraCyan else LevyraPink,
+            tint = if (issue == null) ImportAccent else LevyraPink,
             modifier = Modifier.size(18.dp)
         )
         Text(text, color = if (issue == null) LevyraText else LevyraMuted, fontSize = 13.sp, lineHeight = 18.sp)
@@ -374,7 +398,7 @@ private fun PreferenceSelector(
                     label = { Text(label, maxLines = 1) },
                     modifier = Modifier.heightIn(min = 48.dp),
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = LevyraCyan.copy(alpha = 0.18f),
+                        selectedContainerColor = ImportAccent.copy(alpha = 0.18f),
                         selectedLabelColor = LevyraText,
                         labelColor = LevyraMuted
                     )
@@ -392,7 +416,7 @@ private fun ResumableSessions(state: PlaylistImportUiState, copy: PlaylistImport
     Surface(color = LevyraPanel.copy(alpha = 0.7f), shape = ImportShape) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.Rounded.History, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(18.dp))
+                Icon(Icons.Rounded.History, contentDescription = null, tint = ImportAccent, modifier = Modifier.size(18.dp))
                 Text(copy["resumeTitle"], color = LevyraText, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
             }
             state.resumable.forEach { session ->
@@ -416,7 +440,7 @@ private fun ResumableSessions(state: PlaylistImportUiState, copy: PlaylistImport
                         Text(copy["discard"], color = LevyraMuted)
                     }
                     TextButton(onClick = { controller.resume(session.id) }, modifier = Modifier.heightIn(min = 48.dp)) {
-                        Text(copy["resume"], color = LevyraCyan, fontWeight = FontWeight.SemiBold)
+                        Text(copy["resume"], color = ImportAccent, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -475,7 +499,7 @@ private fun ImportProgressScreen(state: PlaylistImportUiState, copy: PlaylistImp
                 Button(
                     onClick = controller::close,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = LevyraCyan, contentColor = LevyraOnAccent)
+                    colors = ButtonDefaults.buttonColors(containerColor = ImportAccent, contentColor = ImportOnAccent)
                 ) {
                     Text(copy["hide"], fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
                 }
@@ -531,14 +555,14 @@ private fun ImportProgressPanel(state: PlaylistImportUiState, headline: String, 
         if (determinate) {
             LevyraWavyProgress(
                 progress = animated,
-                color = LevyraCyan,
+                color = ImportAccent,
                 trackColor = LevyraText.copy(alpha = 0.10f),
                 modifier = Modifier.fillMaxWidth()
             )
         } else {
             LinearProgressIndicator(
                 modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
-                color = LevyraCyan,
+                color = ImportAccent,
                 trackColor = LevyraText.copy(alpha = 0.10f)
             )
         }
@@ -547,7 +571,7 @@ private fun ImportProgressPanel(state: PlaylistImportUiState, headline: String, 
         if (state.step == PlaylistImportStep.MATCHING && counts.total > 0) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 val scheme = MaterialTheme.colorScheme
-                ImportStat(copy["filterMatched"], counts.matched, LevyraCyan)
+                ImportStat(copy["filterMatched"], counts.matched, ImportAccent)
                 ImportStat(copy["filterReview"], counts.review, scheme.tertiary)
                 ImportStat(copy["filterMissing"], counts.missing + counts.skipped, scheme.error)
             }
@@ -613,14 +637,14 @@ private fun ImportIncompleteScreen(
             Button(
                 onClick = onChooseFile,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = LevyraCyan, contentColor = LevyraOnAccent),
+                colors = ButtonDefaults.buttonColors(containerColor = ImportAccent, contentColor = ImportOnAccent),
                 shape = ImportShape
             ) { Text(copy["chooseFile"], fontWeight = FontWeight.SemiBold) }
             OutlinedButton(onClick = controller::continueIncomplete, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = ImportShape) {
                 Text(copy.format("importPartial", "read" to read))
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = controller::retry, modifier = Modifier.heightIn(min = 48.dp)) { Text(copy["retry"], color = LevyraCyan) }
+                TextButton(onClick = controller::retry, modifier = Modifier.heightIn(min = 48.dp)) { Text(copy["retry"], color = ImportAccent) }
                 TextButton(onClick = controller::cancel, modifier = Modifier.heightIn(min = 48.dp)) { Text(copy["cancel"], color = LevyraMuted) }
             }
         }
@@ -656,7 +680,7 @@ private fun ImportFailureScreen(
                 Button(
                     onClick = controller::retry,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = LevyraCyan, contentColor = LevyraOnAccent),
+                    colors = ButtonDefaults.buttonColors(containerColor = ImportAccent, contentColor = ImportOnAccent),
                     shape = ImportShape
                 ) { Text(copy["retry"], fontWeight = FontWeight.SemiBold) }
             }
@@ -679,7 +703,7 @@ private fun ImportSummaryScreen(state: PlaylistImportUiState, copy: PlaylistImpo
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             state.descriptor?.let { PlaylistImportHero(it, state.entries, summary.imported, copy) }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(26.dp))
+                Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = ImportAccent, modifier = Modifier.size(26.dp))
                 Text(
                     if (summary.appended) copy["summaryUpdated"] else copy["summaryTitle"],
                     color = LevyraText,
@@ -703,7 +727,7 @@ private fun ImportSummaryScreen(state: PlaylistImportUiState, copy: PlaylistImpo
             Button(
                 onClick = controller::viewPlaylist,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = LevyraCyan, contentColor = LevyraOnAccent),
+                colors = ButtonDefaults.buttonColors(containerColor = ImportAccent, contentColor = ImportOnAccent),
                 shape = ImportShape
             ) { Text(copy["viewPlaylist"], fontWeight = FontWeight.SemiBold) }
             val unresolved = summary.unresolved + summary.needsReview + summary.skipped + summary.errors
@@ -713,16 +737,16 @@ private fun ImportSummaryScreen(state: PlaylistImportUiState, copy: PlaylistImpo
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(onClick = controller::retryUnresolved, modifier = Modifier.heightIn(min = 48.dp)) {
-                        Text(copy["retryUnresolved"], color = LevyraCyan)
+                        Text(copy["retryUnresolved"], color = ImportAccent)
                     }
                     TextButton(
                         onClick = { copyToClipboard(context, summary.playlistName, controller.unresolvedReport()) },
                         modifier = Modifier.heightIn(min = 48.dp)
-                    ) { Text(copy["copyReport"], color = LevyraCyan) }
+                    ) { Text(copy["copyReport"], color = ImportAccent) }
                 }
             }
             TextButton(onClick = controller::importAnother, modifier = Modifier.heightIn(min = 48.dp)) {
-                Text(copy["importAnother"], color = LevyraCyan)
+                Text(copy["importAnother"], color = ImportAccent)
             }
             TextButton(onClick = controller::finish, modifier = Modifier.heightIn(min = 48.dp)) { Text(copy["done"], color = LevyraMuted) }
         }
@@ -804,7 +828,7 @@ internal fun PlaylistImportHero(
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 descriptor.source.displayName().uppercase(),
-                color = LevyraCyan,
+                color = ImportAccent,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
                 letterSpacing = 1.sp
@@ -827,3 +851,9 @@ internal fun PlaylistImportHero(
         }
     }
 }
+
+private val ImportAccent: Color
+    @Composable get() = if (LevyraUtilityStyleActive) levyraUtilityColors().accent else LevyraCyan
+
+private val ImportOnAccent: Color
+    @Composable get() = if (LevyraUtilityStyleActive) levyraUtilityColors().onAccent else LevyraOnAccent
