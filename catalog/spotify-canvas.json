@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-17T20:59:28Z",
+  "generatedAt": "2026-11-18T07:35:50Z",
   "items": [
     {
       "song": "Sentire La Musica",
@@ -1988,13 +1988,6 @@
       "artist": "White 2115, PMBTZ",
       "album": "TROFEA",
       "url": "https://canvaz.scdn.co/upload/artist/4nPxrGG7k7aEKmNLsfX4cd/video/7eb2fd663992491fba696054ae70e1f5.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "My Moon My Man",
-      "artist": "Feist",
-      "album": "The Reminder",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/daa08156285c4563b27140442341c05f.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4742,13 +4735,6 @@
       "scope": "track"
     },
     {
-      "song": "Iris",
-      "artist": "The Goo Goo Dolls",
-      "album": "Stay with You",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/4ab38c8ea56645c5ab7d8ebfb5e4edc2.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Coming Up Roses",
       "artist": "Harry Styles",
       "album": "Kiss All The Time. Disco, Occasionally.",
@@ -4913,7 +4899,7 @@
       "song": "TÚ SIN YO",
       "artist": "Maria Becerra, Big One",
       "album": "TÚ SIN YO",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/bff9a1c00e3c4546bb43ae33b9cd4a0b.cnvs.mp4",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/1186d9d8babc4ad4b32852dcd11fac6d.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -5404,6 +5390,13 @@
       "artist": "Bad Bunny",
       "album": "DeBÍ TiRAR MáS FOToS",
       "url": "https://canvaz.scdn.co/upload/artist/4q3ewBCX7sLwd24euuV69X/video/c47c377d4a334d86a5cbb3b6726339ef.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "El Teléfono",
+      "artist": "Héctor \"El Father\", Wisin & Yandel",
+      "album": "The Bad Boy",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/b23b719ccbb445188126f29f094d154a.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -6076,13 +6069,6 @@
       "artist": "Omar Courtz",
       "album": "PRIMERA MUSA",
       "url": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/4ffec7461a6042b6b3975a1fbaaa01dc.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "El Teléfono",
-      "artist": "Héctor \"El Father\", Wisin & Yandel",
-      "album": "The Bad Boy",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/b23b719ccbb445188126f29f094d154a.cnvs.mp4",
       "scope": "track"
     },
     {

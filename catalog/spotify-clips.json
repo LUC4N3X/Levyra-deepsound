@@ -918,14 +918,14 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/791d1ff94d9b84e471e144f53fca4a23244fede9"
   },
   {
-   "id": "levyra-f7576d5b255e0312ee0d",
+   "id": "levyra-483d685fc62b1d271bd8",
    "genre": "dance-party",
-   "title": "Baianá",
-   "artist": "Bakermat",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273fc7ce3acfa2e8c2479bcf621",
-   "canvasUrl": "https://canvaz.scdn.co/upload/artist/3MyFDtqB80WZvbtCZRsekM/video/55130caeeb6b499b94d8851c0f67a73c.cnvs.mp4",
-   "spotifyTrackId": "780be5fB7823aHG06mwTat",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/c177d7d3bf35f5a906d0c8916fb5dddda6b5f8a0"
+   "title": "Free Your Mind",
+   "artist": "Prospa, Cloonee, Sybil",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27338974737cba5770d9dba1cd6",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/e07f69c4bd75473ca14eed883a200495.cnvs.mp4",
+   "spotifyTrackId": "6TWbY1dq8eYtFiMiGdBlOa",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/2d5304a8589bc85716b2ebe0a3ba177d2434d3bb"
   },
   {
    "id": "levyra-83d9c7b3b7fd0dade82a",
@@ -938,14 +938,14 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/2d8b05fad932d5512a4c88cd4b84e47eb1218fbe"
   },
   {
-   "id": "levyra-483d685fc62b1d271bd8",
+   "id": "levyra-f7576d5b255e0312ee0d",
    "genre": "dance-party",
-   "title": "Free Your Mind",
-   "artist": "Prospa, Cloonee, Sybil",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27338974737cba5770d9dba1cd6",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/e07f69c4bd75473ca14eed883a200495.cnvs.mp4",
-   "spotifyTrackId": "6TWbY1dq8eYtFiMiGdBlOa",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/2d5304a8589bc85716b2ebe0a3ba177d2434d3bb"
+   "title": "Baianá",
+   "artist": "Bakermat",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273fc7ce3acfa2e8c2479bcf621",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/3MyFDtqB80WZvbtCZRsekM/video/55130caeeb6b499b94d8851c0f67a73c.cnvs.mp4",
+   "spotifyTrackId": "780be5fB7823aHG06mwTat",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/c177d7d3bf35f5a906d0c8916fb5dddda6b5f8a0"
   },
   {
    "id": "levyra-dc57d4ccf5149d1a9167",
@@ -1028,16 +1028,6 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/50081928cfabde0d63a4d78f893542711259652d"
   },
   {
-   "id": "levyra-032fa13818ecee393548",
-   "genre": "dance-party",
-   "title": "World Hold On - FISHER Rework",
-   "artist": "Bob Sinclar, FISHER, Steve Edwards",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2731145b908b1822b273a2379de",
-   "canvasUrl": "https://canvaz.scdn.co/upload/artist/5YFS41yoX0YuFY39fq21oN/video/557a03099be6415c86c6955268e7a373.cnvs.mp4",
-   "spotifyTrackId": "6t180YbVeK9MWrj2zjMr5Z",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/adae361145c433bcc47279b57374767940b96957"
-  },
-  {
    "id": "levyra-eb856260d385e91e9a37",
    "genre": "dance-party",
    "title": "Satisfaction",
@@ -1046,6 +1036,16 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/1Cs0zKBU1kc0i8ypK3B9ai/video/0c3cb750800245418c5b95358b7d4275.cnvs.mp4",
    "spotifyTrackId": "0lwyzp7GppQxv0Eu6wRkUo",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/c9ba41fd56c50e4af303216b3a76bb1372ef1e00"
+  },
+  {
+   "id": "levyra-032fa13818ecee393548",
+   "genre": "dance-party",
+   "title": "World Hold On - FISHER Rework",
+   "artist": "Bob Sinclar, FISHER, Steve Edwards",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2731145b908b1822b273a2379de",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/5YFS41yoX0YuFY39fq21oN/video/557a03099be6415c86c6955268e7a373.cnvs.mp4",
+   "spotifyTrackId": "6t180YbVeK9MWrj2zjMr5Z",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/adae361145c433bcc47279b57374767940b96957"
   },
   {
    "id": "levyra-abcefdcdd14811510835",
@@ -1078,16 +1078,6 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/9029ddfed3e4a7c48767ab7c08f0e60631461cbb"
   },
   {
-   "id": "levyra-7889f970e52cfa44e03a",
-   "genre": "dance-party",
-   "title": "WHERE IS MY HUSBAND! - Remix",
-   "artist": "RAYE, David Guetta, Hypaton",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2732baa745a54eb2b504f782b3d",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/c70e8f241f3d441d98d13de41ee0ccdd.cnvs.mp4",
-   "spotifyTrackId": "0vYSTV1Lye2Z2zktF6P39C",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/e10dac73398cf6dcf6d3f90925bb35fe7330190b"
-  },
-  {
    "id": "levyra-26c5b7268c0b366bd4b0",
    "genre": "dance-party",
    "title": "Positive",
@@ -1096,6 +1086,16 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/327472d482ae422d9ddfcebb426cfd2a.cnvs.mp4",
    "spotifyTrackId": "0cZN3g7rtfNE6vsmX0k8OF",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/265e15be487a4b6bbabacc8c565afdbee404e045"
+  },
+  {
+   "id": "levyra-7889f970e52cfa44e03a",
+   "genre": "dance-party",
+   "title": "WHERE IS MY HUSBAND! - Remix",
+   "artist": "RAYE, David Guetta, Hypaton",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2732baa745a54eb2b504f782b3d",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/c70e8f241f3d441d98d13de41ee0ccdd.cnvs.mp4",
+   "spotifyTrackId": "0vYSTV1Lye2Z2zktF6P39C",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/e10dac73398cf6dcf6d3f90925bb35fe7330190b"
   },
   {
    "id": "levyra-9a72aa8d0bf7874d8d34",
@@ -1994,7 +1994,8 @@
    "artist": "Joshua Baraka, Mr Eazi",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2737905cb89733adb4f0b18236f",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/0sACyypRn7jYbvuybT4flG/video/3d8e80d0fd94475bae34f22f22456319.cnvs.mp4",
-   "spotifyTrackId": "5GZTusIWd5rWT6QlQ3RVb3"
+   "spotifyTrackId": "5GZTusIWd5rWT6QlQ3RVb3",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/42e3f618af36622fdff9fbbcefa20e98e343bc79"
   },
   {
    "id": "levyra-2203a6ee93d91fccdf3a",
@@ -2123,15 +2124,6 @@
    "spotifyTrackId": "7aCW8Q337ACIFUmziqKGQd"
   },
   {
-   "id": "levyra-6e32bf197757d6990bd3",
-   "genre": "k-pop",
-   "title": "UP",
-   "artist": "ATEEZ",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273f69b1e29cd8a05310d40da38",
-   "canvasUrl": "https://canvaz.scdn.co/upload/artist/68KmkJeZGfwe1OUaivBa2L/video/9b512fa968064f4eb1fd5f56245fa5dd.cnvs.mp4",
-   "spotifyTrackId": "2DpMn9r9LPpa5PaR4XGFBP"
-  },
-  {
    "id": "levyra-adea24036c6c0f4d9b22",
    "genre": "k-pop",
    "title": "Angel Bite",
@@ -2148,6 +2140,15 @@
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273c49aa7c420cc427c17714ec2",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/5deOsjuFTKrNMJW3rKuL8S/video/a9b399d3aa724e09b27c442c7ee45790.cnvs.mp4",
    "spotifyTrackId": "6GNvsmhrkdPp5skYLq42nY"
+  },
+  {
+   "id": "levyra-6e32bf197757d6990bd3",
+   "genre": "k-pop",
+   "title": "UP",
+   "artist": "ATEEZ",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273f69b1e29cd8a05310d40da38",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/68KmkJeZGfwe1OUaivBa2L/video/9b512fa968064f4eb1fd5f56245fa5dd.cnvs.mp4",
+   "spotifyTrackId": "2DpMn9r9LPpa5PaR4XGFBP"
   },
   {
    "id": "levyra-1dbba553007a494bc804",
