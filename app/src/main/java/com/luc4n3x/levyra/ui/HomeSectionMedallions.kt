@@ -73,34 +73,35 @@ internal const val HOME_MEDALLION_GENRE_HITS = 100
 internal const val HOME_MEDALLION_MOST_DISCUSSED = 101
 internal const val HOME_MEDALLION_TRENDING_VIDEOS = 102
 
-internal fun homeSectionMedallion(key: Int): HomeSectionMedallion? {
-    if (!LevyraIsDefaultSkin) return null
-    return when (key) {
-        HOME_SUBTITLE_OFFLINE_DOWNLOADS -> HomeSectionMedallion(Icons.Rounded.DownloadDone, LevyraUtilitySeed)
-        HOME_SUBTITLE_OFFLINE_PLAYLISTS -> HomeSectionMedallion(Icons.AutoMirrored.Rounded.QueueMusic, LevyraPastelLavender)
-        HOME_SUBTITLE_OFFLINE_FAVORITES -> HomeSectionMedallion(Icons.Rounded.Favorite, LevyraPastelRose)
-        HOME_SUBTITLE_OFFLINE_RECENT -> HomeSectionMedallion(Icons.Rounded.History, LevyraPastelPeriwinkle)
-        HOME_SUBTITLE_ORBIT -> HomeSectionMedallion(Icons.Rounded.TrackChanges, LevyraPastelLavender)
-        HOME_SUBTITLE_QUICK_PICKS -> HomeSectionMedallion(Icons.Rounded.Bolt, LevyraPastelAmber)
-        HOME_SUBTITLE_FORGOTTEN_FAVORITES -> HomeSectionMedallion(Icons.Rounded.Restore, LevyraPastelRose)
-        HOME_SUBTITLE_ALBUMS -> HomeSectionMedallion(Icons.Rounded.Album, LevyraPastelPeriwinkle)
-        HOME_SUBTITLE_TRENDING_ARTISTS -> HomeSectionMedallion(Icons.AutoMirrored.Rounded.TrendingUp, LevyraPastelRose)
-        HOME_SUBTITLE_NEW_RELEASES -> HomeSectionMedallion(Icons.Rounded.NewReleases, LevyraPastelAmber)
-        HOME_SUBTITLE_VIDEOS -> HomeSectionMedallion(Icons.Rounded.SmartDisplay, LevyraUtilitySeed)
-        HOME_SUBTITLE_RELEASE_RADAR -> HomeSectionMedallion(Icons.Rounded.Radar, LevyraPastelLavender)
-        HOME_SUBTITLE_SIMILAR_ARTISTS -> HomeSectionMedallion(Icons.Rounded.Group, LevyraPastelPeriwinkle)
-        HOME_SUBTITLE_MORE_MUSIC -> HomeSectionMedallion(Icons.Rounded.LibraryMusic, LevyraUtilitySeed)
-        HOME_SUBTITLE_CURATED_PLAYLISTS -> HomeSectionMedallion(Icons.Rounded.AutoAwesome, LevyraPastelLavender)
-        HOME_SUBTITLE_COLLECTIONS -> HomeSectionMedallion(Icons.Rounded.CollectionsBookmark, LevyraPastelAmber)
-        HOME_SUBTITLE_DAILY_DISCOVER -> HomeSectionMedallion(Icons.Rounded.Explore, LevyraUtilitySeed)
-        HOME_SUBTITLE_FAVORITE_RADIO -> HomeSectionMedallion(Icons.Rounded.Radio, LevyraPastelRose)
-        HOME_SUBTITLE_CHART_MARKET -> HomeSectionMedallion(Icons.Rounded.Leaderboard, LevyraPastelAmber)
-        HOME_SUBTITLE_YOUR_MUSIC -> HomeSectionMedallion(Icons.Rounded.LibraryMusic, LevyraPastelPeriwinkle)
-        HOME_MEDALLION_GENRE_HITS -> HomeSectionMedallion(Icons.Rounded.Leaderboard, LevyraPastelPeriwinkle)
-        HOME_MEDALLION_MOST_DISCUSSED -> HomeSectionMedallion(Icons.Rounded.Forum, LevyraPastelRose)
-        HOME_MEDALLION_TRENDING_VIDEOS -> HomeSectionMedallion(Icons.Rounded.Theaters, LevyraUtilitySeed)
-        else -> null
-    }
+internal fun homeSectionMedallion(key: Int): HomeSectionMedallion? =
+    if (LevyraIsDefaultSkin) homeSectionMedallions[key] else null
+
+private val homeSectionMedallions: Map<Int, HomeSectionMedallion> by lazy {
+    mapOf(
+        HOME_SUBTITLE_OFFLINE_DOWNLOADS to HomeSectionMedallion(Icons.Rounded.DownloadDone, LevyraUtilitySeed),
+        HOME_SUBTITLE_OFFLINE_PLAYLISTS to HomeSectionMedallion(Icons.AutoMirrored.Rounded.QueueMusic, LevyraPastelLavender),
+        HOME_SUBTITLE_OFFLINE_FAVORITES to HomeSectionMedallion(Icons.Rounded.Favorite, LevyraPastelRose),
+        HOME_SUBTITLE_OFFLINE_RECENT to HomeSectionMedallion(Icons.Rounded.History, LevyraPastelPeriwinkle),
+        HOME_SUBTITLE_ORBIT to HomeSectionMedallion(Icons.Rounded.TrackChanges, LevyraPastelLavender),
+        HOME_SUBTITLE_QUICK_PICKS to HomeSectionMedallion(Icons.Rounded.Bolt, LevyraPastelAmber),
+        HOME_SUBTITLE_FORGOTTEN_FAVORITES to HomeSectionMedallion(Icons.Rounded.Restore, LevyraPastelRose),
+        HOME_SUBTITLE_ALBUMS to HomeSectionMedallion(Icons.Rounded.Album, LevyraPastelPeriwinkle),
+        HOME_SUBTITLE_TRENDING_ARTISTS to HomeSectionMedallion(Icons.AutoMirrored.Rounded.TrendingUp, LevyraPastelRose),
+        HOME_SUBTITLE_NEW_RELEASES to HomeSectionMedallion(Icons.Rounded.NewReleases, LevyraPastelAmber),
+        HOME_SUBTITLE_VIDEOS to HomeSectionMedallion(Icons.Rounded.SmartDisplay, LevyraUtilitySeed),
+        HOME_SUBTITLE_RELEASE_RADAR to HomeSectionMedallion(Icons.Rounded.Radar, LevyraPastelLavender),
+        HOME_SUBTITLE_SIMILAR_ARTISTS to HomeSectionMedallion(Icons.Rounded.Group, LevyraPastelPeriwinkle),
+        HOME_SUBTITLE_MORE_MUSIC to HomeSectionMedallion(Icons.Rounded.LibraryMusic, LevyraUtilitySeed),
+        HOME_SUBTITLE_CURATED_PLAYLISTS to HomeSectionMedallion(Icons.Rounded.AutoAwesome, LevyraPastelLavender),
+        HOME_SUBTITLE_COLLECTIONS to HomeSectionMedallion(Icons.Rounded.CollectionsBookmark, LevyraPastelAmber),
+        HOME_SUBTITLE_DAILY_DISCOVER to HomeSectionMedallion(Icons.Rounded.Explore, LevyraUtilitySeed),
+        HOME_SUBTITLE_FAVORITE_RADIO to HomeSectionMedallion(Icons.Rounded.Radio, LevyraPastelRose),
+        HOME_SUBTITLE_CHART_MARKET to HomeSectionMedallion(Icons.Rounded.Leaderboard, LevyraPastelAmber),
+        HOME_SUBTITLE_YOUR_MUSIC to HomeSectionMedallion(Icons.Rounded.LibraryMusic, LevyraPastelPeriwinkle),
+        HOME_MEDALLION_GENRE_HITS to HomeSectionMedallion(Icons.Rounded.Leaderboard, LevyraPastelPeriwinkle),
+        HOME_MEDALLION_MOST_DISCUSSED to HomeSectionMedallion(Icons.Rounded.Forum, LevyraPastelRose),
+        HOME_MEDALLION_TRENDING_VIDEOS to HomeSectionMedallion(Icons.Rounded.Theaters, LevyraUtilitySeed)
+    )
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)

@@ -104,7 +104,11 @@ private fun DefaultRadioCategoryTile(
     val tone = levyraUtilityColors(DefaultRadioCategorySeeds[index % DefaultRadioCategorySeeds.size])
     val interaction = remember { MutableInteractionSource() }
     val corner = levyraExpressiveCorner(interactionSource = interaction, rest = if (selected) 32.dp else 20.dp, pressed = 12.dp, label = "default-radio-category")
-    val turn by animateFloatAsState(if (selected) 30f else 0f, label = "default-radio-category-turn")
+    val turn by animateFloatAsState(
+        targetValue = if (selected) 30f else 0f,
+        animationSpec = if (LocalAnimationsEnabled.current) androidx.compose.animation.core.spring() else androidx.compose.animation.core.snap(),
+        label = "default-radio-category-turn"
+    )
     val shape = if (selected) MaterialShapes.Cookie12Sided else DefaultRadioCategoryShapes[index % DefaultRadioCategoryShapes.size]
     Column(
         modifier

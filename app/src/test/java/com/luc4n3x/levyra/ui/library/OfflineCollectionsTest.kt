@@ -62,6 +62,26 @@ class OfflineCollectionsTest {
     }
 
     @Test
+    fun textMatchSkipsRecordingsWithAnotherLength() {
+        val live = track("live", "Alpha", "Queen").copy(durationMs = 420_000L)
+        val withLive = listOf(download(9L, live, savedAt = 5L)) + downloads
+        val liveItems = withLive.map { LibraryOfflineItem("download:${it.id}", it.toLibraryTrack(), it) }
+        val studioFavorite = track("studio-elsewhere", "Alpha", "Queen")
+        val favorites = buildOfflineCollections(liveItems, emptyList(), listOf(studioFavorite), emptyList())
+            .mixes.single { it.mix == OfflineMix.Favorites }
+        assertEquals(listOf("download:1"), favorites.itemKeys)
+    }
+
+    @Test
+    fun sameArtistSpelledTwiceIsOneRail() {
+        val shouting = download(8L, track("q", "Delta", "QUEEN"), savedAt = 1L)
+        val mixed = (downloads + shouting).map { LibraryOfflineItem("download:${it.id}", it.toLibraryTrack(), it) }
+        val artists = buildOfflineCollections(mixed, emptyList(), emptyList(), emptyList()).artists
+        assertEquals(artists.map { it.key }.distinct(), artists.map { it.key })
+        assertEquals(3, artists.first { it.key == "artist:queen" }.itemKeys.size)
+    }
+
+    @Test
     fun findReturnsAnyCollectionByKey() {
         val collections = buildOfflineCollections(items, emptyList(), emptyList(), emptyList())
         assertTrue(collections.find("mix:Recent")?.mix == OfflineMix.Recent)

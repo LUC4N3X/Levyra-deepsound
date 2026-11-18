@@ -40,15 +40,15 @@ internal fun buildOfflineCollections(
 ): OfflineCollections {
     if (items.isEmpty()) return OfflineCollections.Empty
     val byTrackId = HashMap<String, LibraryOfflineItem>()
-    val byText = HashMap<Pair<String, String>, LibraryOfflineItem>()
+    val byText = HashMap<Pair<String, String>, MutableList<LibraryOfflineItem>>()
     items.forEach { item ->
         item.download.trackId.trim().takeIf(String::isNotBlank)?.let { byTrackId.putIfAbsent(it, item) }
-        byText.putIfAbsent(normalizeLibraryText(item.download.title) to normalizeLibraryText(item.download.artist), item)
+        byText.getOrPut(normalizeLibraryText(item.download.title) to normalizeLibraryText(item.download.artist)) { mutableListOf() }.add(item)
     }
     fun match(track: Track): LibraryOfflineItem? =
         track.id.trim().takeIf(String::isNotBlank)?.let(byTrackId::get)
             ?: byText[normalizeLibraryText(track.title) to normalizeLibraryText(track.artist)]
-                ?.takeIf { sameRecordingLength(it.track, track) }
+                ?.firstOrNull { sameRecordingLength(it.track, track) }
     fun matchAll(tracks: List<Track>): List<LibraryOfflineItem> =
         tracks.mapNotNull(::match).distinctBy { it.key }
 

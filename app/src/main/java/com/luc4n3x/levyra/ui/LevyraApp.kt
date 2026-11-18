@@ -2872,6 +2872,7 @@ fun LevyraApp(
                                     glass = dockGlass,
                                     modifier = dockModifier,
                                     trailing = defaultDockSearchSlot(backgroundTab == LevyraTab.Search, compactionProvider) {
+                                        if (state.showSettings) viewModel.closeSettings()
                                         dockState.expand()
                                         viewModel.selectTab(LevyraTab.Search)
                                     },

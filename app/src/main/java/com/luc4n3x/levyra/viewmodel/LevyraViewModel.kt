@@ -14624,6 +14624,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         advancedPrefetchJob?.cancel()
         advancedPrefetchJob = null
         advancedPrefetchKey = null
+        _offlineTransfers.update { it.copy(preload = emptyList()) }
     }
 
     private fun isAdvancedPrefetchCurrent(key: AdvancedPrefetchKey): Boolean {
