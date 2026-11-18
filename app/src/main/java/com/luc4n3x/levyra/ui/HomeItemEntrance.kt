@@ -41,7 +41,7 @@ internal fun homeEntrance(scope: LazyListScope): LazyListScope =
 
 private class HomeEntranceLazyListScope(private val delegate: LazyListScope) : LazyListScope by delegate {
     override fun item(key: Any?, contentType: Any?, content: @Composable LazyItemScope.() -> Unit) {
-        delegate.item(key, contentType) { HomeItemEntrance { content() } }
+        delegate.item(key, contentType) { HomeItemEntrance(Modifier.animateItem(fadeInSpec = null)) { content() } }
     }
 
     override fun items(
@@ -50,12 +50,12 @@ private class HomeEntranceLazyListScope(private val delegate: LazyListScope) : L
         contentType: (index: Int) -> Any?,
         itemContent: @Composable LazyItemScope.(index: Int) -> Unit
     ) {
-        delegate.items(count, key, contentType) { index -> HomeItemEntrance { itemContent(index) } }
+        delegate.items(count, key, contentType) { index -> HomeItemEntrance(Modifier.animateItem(fadeInSpec = null)) { itemContent(index) } }
     }
 }
 
 @Composable
-private fun HomeItemEntrance(content: @Composable () -> Unit) {
+private fun HomeItemEntrance(itemMotion: Modifier, content: @Composable () -> Unit) {
     if (!LocalAnimationsEnabled.current) {
         content()
         return
@@ -69,7 +69,7 @@ private fun HomeItemEntrance(content: @Composable () -> Unit) {
         played = true
     }
     Box(
-        Modifier.graphicsLayer {
+        itemMotion.graphicsLayer {
             val value = progress.value
             translationY = (1f - value) * -HomeEntranceDrop.toPx()
             alpha = value.coerceIn(0f, 1f)
