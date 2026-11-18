@@ -148,7 +148,7 @@ internal fun DailyDiscoveryShelf(inset: Dp, style: HomeStyle? = null, spec: Home
     val playAll = { handle.onPlayDaily(cards, cards.first()) }
     Column(Modifier.fillMaxWidth().padding(top = dailyTopGap(look, spec))) {
         if (style != null && spec != null) {
-            Box(Modifier.padding(bottom = 12.dp)) { StudioSectionHeader(style, spec, copy.dailyTitle, false, onPlayAll = playAll, subtitle = defaultHomeSubtitle(HOME_SUBTITLE_DAILY_DISCOVER, "")) }
+            Box(Modifier.padding(bottom = 12.dp)) { StudioSectionHeader(style, spec, copy.dailyTitle, false, onPlayAll = playAll, subtitle = defaultHomeSubtitle(HOME_SUBTITLE_DAILY_DISCOVER, ""), medallionKey = HOME_SUBTITLE_DAILY_DISCOVER) }
         } else when (look) {
             DailyLook.Prism -> PrismShelfHeader(copy.dailyTitle, inset)
             DailyLook.Mono -> MonoSectionHeader(copy.dailyTitle, Modifier.padding(bottom = MonoDesign.headerToContent))
@@ -236,74 +236,83 @@ private fun DailyReasonText(reason: String, color: Color, modifier: Modifier = M
     }
 }
 
-@Composable
-private fun DailyReasonChip(reason: String, accent: Color) {
-    Row(
-        Modifier
-            .clip(CircleShape)
-            .background(accent.copy(alpha = 0.16f))
-            .padding(start = 8.dp, end = 10.dp, top = 5.dp, bottom = 5.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp)
-    ) {
-        Icon(Icons.Rounded.AutoAwesome, null, tint = accent, modifier = Modifier.size(13.dp))
-        Text(
-            reason,
-            color = accent,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = if (LocalAnimationsEnabled.current) TextOverflow.Clip else TextOverflow.Ellipsis,
-            modifier = Modifier.levyraMarquee(LocalAnimationsEnabled.current, DAILY_TEXT_MARQUEE_DELAY, initialDelayMillis = 1600)
-        )
-    }
-}
-
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun DefaultDailyCard(card: DiscoveryCard, reason: String, artworkMotion: Modifier, onPlay: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     val interaction = remember { MutableInteractionSource() }
-    val coverCorner = levyraExpressiveCorner(interaction, rest = 24.dp, pressed = 40.dp, label = "daily-cover-corner")
+    val corner = levyraExpressiveCorner(interaction, rest = 32.dp, pressed = 44.dp, label = "daily-card-corner")
     val fallback = remember(scheme.primary, scheme.tertiary) { ArtworkPalette(scheme.primary.toArgb(), scheme.tertiary.toArgb()) }
     val palette by rememberArtworkPalette(paletteKey = "daily-${card.key}", artworkUrl = card.track.thumbnailUrl, fallback = fallback)
     val tint = Color(palette.start)
-    val accent = lerp(tint, scheme.onSurface, 0.35f)
-    Column(
+    val scrim = lerp(tint, Color.Black, 0.72f)
+    val play = lerp(tint, Color.White, 0.55f)
+    val marquee = LocalAnimationsEnabled.current
+    Box(
         Modifier
-            .width(204.dp)
-            .clip(RoundedCornerShape(32.dp))
-            .background(lerp(tint, scheme.surfaceContainerHigh, 0.84f))
+            .size(width = 212.dp, height = 276.dp)
+            .clip(RoundedCornerShape(corner))
+            .background(scrim)
             .levyraPressable(onClick = onPlay, interactionSource = interaction, pressedScale = LevyraPressScale.Tile, role = Role.Button)
             .semantics(mergeDescendants = true) { contentDescription = "${card.track.title}, ${card.track.artist}. $reason" }
-            .padding(8.dp)
     ) {
-        Box(Modifier.fillMaxWidth().aspectRatio(1f)) {
-            Box(Modifier.fillMaxSize().clip(RoundedCornerShape(coverCorner)).background(scheme.surfaceContainerHighest)) {
-                CoverImage(track = card.track, modifier = Modifier.fillMaxSize().then(artworkMotion), highRes = true)
+        CoverImage(track = card.track, modifier = Modifier.fillMaxSize().then(artworkMotion), highRes = true)
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.verticalGradient(
+                    0f to scrim.copy(alpha = 0.42f),
+                    0.28f to Color.Transparent,
+                    0.52f to Color.Transparent,
+                    1f to scrim.copy(alpha = 0.96f)
+                )
+            )
+        )
+        Row(
+            Modifier
+                .align(Alignment.TopStart)
+                .padding(12.dp)
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.34f))
+                .padding(start = 8.dp, end = 10.dp, top = 5.dp, bottom = 5.dp)
+                .clearAndSetSemantics { },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            Icon(Icons.Rounded.AutoAwesome, null, tint = play, modifier = Modifier.size(13.dp))
+            Text(
+                reason,
+                color = Color.White,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = if (marquee) TextOverflow.Clip else TextOverflow.Ellipsis,
+                modifier = Modifier.levyraMarquee(marquee, DAILY_TEXT_MARQUEE_DELAY, initialDelayMillis = 1600)
+            )
+        }
+        Row(
+            Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(start = 16.dp, end = 12.dp, bottom = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f).clearAndSetSemantics { }) {
+                Text(
+                    card.track.title, color = Color.White, style = MaterialTheme.typography.titleMediumEmphasized,
+                    maxLines = 1, overflow = if (marquee) TextOverflow.Clip else TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth().levyraMarquee(marquee, DAILY_TEXT_MARQUEE_DELAY, initialDelayMillis = 3000)
+                )
+                Text(
+                    card.track.artist, color = Color.White.copy(alpha = 0.78f), style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1, overflow = if (marquee) TextOverflow.Clip else TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth().levyraMarquee(marquee, DAILY_TEXT_MARQUEE_DELAY, initialDelayMillis = 4400)
+                )
             }
             Box(
-                Modifier.align(Alignment.BottomEnd).padding(10.dp).size(48.dp)
+                Modifier.padding(start = 8.dp).size(48.dp)
                     .clip(MaterialShapes.Cookie9Sided.toShape())
-                    .background(scheme.primaryContainer),
+                    .background(play),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Rounded.PlayArrow, null, tint = scheme.onPrimaryContainer, modifier = Modifier.size(26.dp))
+                Icon(Icons.Rounded.PlayArrow, null, tint = scrim, modifier = Modifier.size(26.dp))
             }
-        }
-        Column(Modifier.padding(start = 8.dp, end = 8.dp, top = 12.dp, bottom = 8.dp).clearAndSetSemantics { }) {
-            DailyReasonChip(reason, accent)
-            val marquee = LocalAnimationsEnabled.current
-            Text(
-                card.track.title, color = scheme.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
-                maxLines = 1, overflow = if (marquee) TextOverflow.Clip else TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 6.dp).fillMaxWidth().levyraMarquee(marquee, DAILY_TEXT_MARQUEE_DELAY, initialDelayMillis = 3000)
-            )
-            Text(
-                card.track.artist, color = scheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall,
-                maxLines = 1, overflow = if (marquee) TextOverflow.Clip else TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth().levyraMarquee(marquee, DAILY_TEXT_MARQUEE_DELAY, initialDelayMillis = 4400)
-            )
         }
     }
 }

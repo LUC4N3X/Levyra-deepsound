@@ -236,6 +236,9 @@ import com.luc4n3x.levyra.domain.VaultSyncFileState
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.LevyraSmartOfflineSettings
 import com.luc4n3x.levyra.domain.DownloadOwnership
+import com.luc4n3x.levyra.domain.OfflineLaneProgress
+import com.luc4n3x.levyra.domain.OfflineTransferState
+import com.luc4n3x.levyra.domain.PreloadQueueItem
 import com.luc4n3x.levyra.domain.shouldSkipExistingDownload
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.LevyraLocalIntelligence
@@ -422,6 +425,8 @@ import com.luc4n3x.levyra.player.offline.DownloadQualityProbe
 import com.luc4n3x.levyra.domain.DownloadQualityChoice
 import com.luc4n3x.levyra.domain.withDownloadQualityChoice
 import com.luc4n3x.levyra.player.offline.work.OfflineExportWorker
+import com.luc4n3x.levyra.player.offline.work.OfflineTransferPriority
+import com.luc4n3x.levyra.player.offline.work.PRELOAD_PRIORITY_TRACKS
 import com.luc4n3x.levyra.player.isTransientNetworkFailure
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -1428,6 +1433,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val youtubeEngagementGeneration = AtomicLong(0L)
     private var prefetchJob: Job? = null
     private var advancedPrefetchJob: Job? = null
+    private val _offlineTransfers = MutableStateFlow(OfflineTransferState())
+    val offlineTransfers: StateFlow<OfflineTransferState> = _offlineTransfers.asStateFlow()
     private var advancedPrefetchKey: AdvancedPrefetchKey? = null
     private var chartEnrichJob: Job? = null
     private var chartArtworkJob: Job? = null
@@ -2345,6 +2352,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun observeDownloadTasks() {
         viewModelScope.launch {
+            offlineDownloadTasksDao.observeLanes().collectLatest { rows ->
+                val lanes = rows.associate { row ->
+                    DownloadOwnership.fromStorage(row.ownership) to OfflineLaneProgress.of(row.total, row.completed, row.progressSum)
+                }
+                _offlineTransfers.update { it.copy(lanes = lanes) }
+            }
+        }
+        viewModelScope.launch {
             offlineDownloadTasksDao.observeActive().collectLatest { tasks ->
                 val domainTasks = tasks.map { task ->
                     OfflineDownloadTask(
@@ -2354,7 +2369,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         artist = task.artist,
                         state = task.state,
                         progress = task.progress,
-                        error = task.error
+                        error = task.error,
+                        ownership = DownloadOwnership.fromStorage(task.ownership)
                     )
                 }
                 val runningTasks = domainTasks.filter { it.state in setOf("QUEUED", "RUNNING", "RETRYING") }
@@ -13282,7 +13298,29 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             _state.update { it.copy(playerError = "File offline non disponibile") }
             return
         }
-        val track = Track(
+        playOfflineQueue(listOf(offlinePlaybackTrack(download)), 0)
+    }
+
+    fun playDownloads(downloads: List<DownloadedTrack>, shuffled: Boolean) {
+        val tracks = downloads.filter { it.uri.isNotBlank() }.map(::offlinePlaybackTrack)
+        if (tracks.isEmpty()) return
+        if (_state.value.jam.role == JamRole.Guest) return
+        val ordered = if (shuffled) tracks.shuffled() else tracks
+        playOfflineQueue(ordered, 0)
+    }
+
+    private fun playOfflineQueue(tracks: List<Track>, startIndex: Int) {
+        val track = tracks[startIndex]
+        leaveLiveRadioQueue()
+        _state.update { it.copy(isVideoMode = false) }
+        loopCurrentQueueOnCompletion = false
+        queueEngine.replace(tracks, startIndex, keepPlaybackModes = true, radioEnabled = false)
+        queueIndex = startIndex
+        startResolve(track)
+    }
+
+    private fun offlinePlaybackTrack(download: DownloadedTrack): Track =
+        Track(
             id = download.trackId.ifBlank { "offline-${download.id}" },
             title = download.title,
             artist = download.artist,
@@ -13301,13 +13339,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             accentStart = 0,
             accentEnd = 0
         )
-        leaveLiveRadioQueue()
-        _state.update { it.copy(isVideoMode = false) }
-        loopCurrentQueueOnCompletion = false
-        queueEngine.replace(listOf(track), 0, keepPlaybackModes = true, radioEnabled = false)
-        queueIndex = 0
-        startResolve(track)
-    }
 
     private fun resumePositionFor(track: Track): Long =
         if (track.isLiveRadio()) 0L else resumeStartPositionMs(pendingSeekMs, track.durationMs)
@@ -14574,7 +14605,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 val networkWatch = launch {
                     advancedPrefetchNetworkSuitable(key.mobileDataAllowed).collectLatest { suitable ->
                         if (suitable) {
-                            prefetchAdvancedWindow(current, key)
+                            try {
+                                prefetchAdvancedWindow(current, key)
+                            } finally {
+                                if (advancedPrefetchKey == key) _offlineTransfers.update { it.copy(preload = emptyList()) }
+                            }
                             windowFinished.complete(Unit)
                         }
                     }
@@ -14589,6 +14624,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         advancedPrefetchJob?.cancel()
         advancedPrefetchJob = null
         advancedPrefetchKey = null
+        _offlineTransfers.update { it.copy(preload = emptyList()) }
     }
 
     private fun isAdvancedPrefetchCurrent(key: AdvancedPrefetchKey): Boolean {
@@ -14626,37 +14662,46 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         var completeTracks = 0
         var stopReason = "window"
         val candidates = queueEngine.upcoming(key.windowSize)
-            .filterNot { samePlayableTrack(it, current) }
+            .filterNot { samePlayableTrack(it, current) || isLocalPlaybackTrack(it) || it.isLiveRadio() }
             .distinctBy { playbackIdentity(it) }
-        for (track in candidates) {
-            currentCoroutineContext().ensureActive()
-            if (!isAdvancedPrefetchCurrent(key)) {
-                stopReason = "stale"
-                break
+        val preloadKeys = startPreloadList(candidates)
+        var holdingDownloadPriority = candidates.isNotEmpty()
+        if (holdingDownloadPriority) OfflineTransferPriority.beginPreload()
+        try {
+            for ((index, track) in candidates.withIndex()) {
+                if (holdingDownloadPriority && index >= PRELOAD_PRIORITY_TRACKS) {
+                    OfflineTransferPriority.endPreload()
+                    holdingDownloadPriority = false
+                }
+                currentCoroutineContext().ensureActive()
+                val trackLimit = advancedPrefetchTrackLimit(usedBytes, budgetBytes)
+                val blocker = advancedPrefetchBlocker(key, trackLimit)
+                if (blocker != null) {
+                    stopReason = blocker
+                    break
+                }
+                if (isLocalPlaybackTrack(track) || track.isLiveRadio()) continue
+                val resolved = resolveQueuePrefetchTrack(track, videoMode = false)
+                if (resolved == null) {
+                    Timber.d("advanced prefetch unresolved id=%s", track.id)
+                    continue
+                }
+                if (!isAdvancedPrefetchCurrent(key)) {
+                    stopReason = "stale"
+                    break
+                }
+                val outcome = playbackWarmup.cacheCompletely(resolved, trackLimit) { progress ->
+                    publishPreload(preloadKeys, index, progress)
+                } ?: continue
+                usedBytes += outcome.cachedBytes.coerceAtLeast(0L)
+                if (outcome.complete) {
+                    completeTracks++
+                    publishPreload(preloadKeys, index, 100, complete = true)
+                }
+                delay(ADVANCED_PREFETCH_TRACK_GAP_MS)
             }
-            if (!advancedPrefetchConditionsMet(key.windowSize)) {
-                stopReason = "conditions"
-                break
-            }
-            val trackLimit = advancedPrefetchTrackLimit(usedBytes, budgetBytes)
-            if (trackLimit <= 0L) {
-                stopReason = "budget"
-                break
-            }
-            if (isLocalPlaybackTrack(track) || track.isLiveRadio()) continue
-            val resolved = resolveQueuePrefetchTrack(track, videoMode = false)
-            if (resolved == null) {
-                Timber.d("advanced prefetch unresolved id=%s", track.id)
-                continue
-            }
-            if (!isAdvancedPrefetchCurrent(key)) {
-                stopReason = "stale"
-                break
-            }
-            val outcome = playbackWarmup.cacheCompletely(resolved, trackLimit) ?: continue
-            usedBytes += outcome.cachedBytes.coerceAtLeast(0L)
-            if (outcome.complete) completeTracks++
-            delay(ADVANCED_PREFETCH_TRACK_GAP_MS)
+        } finally {
+            if (holdingDownloadPriority) OfflineTransferPriority.endPreload()
         }
         Timber.d(
             "advanced prefetch window stop=%s complete=%d/%d used=%d budget=%d",
@@ -14666,6 +14711,36 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             usedBytes,
             budgetBytes
         )
+    }
+
+    private fun advancedPrefetchBlocker(key: AdvancedPrefetchKey, trackLimit: Long): String? = when {
+        !isAdvancedPrefetchCurrent(key) -> "stale"
+        !advancedPrefetchConditionsMet(key.windowSize) -> "conditions"
+        trackLimit <= 0L -> "budget"
+        else -> null
+    }
+
+    private fun startPreloadList(candidates: List<Track>): List<String> {
+        val keys = candidates.map(::playbackIdentity)
+        _offlineTransfers.update { transfers ->
+            transfers.copy(
+                preload = candidates.mapIndexed { index, track ->
+                    PreloadQueueItem(keys[index], track.title, track.artist, progress = 0, complete = false)
+                }
+            )
+        }
+        return keys
+    }
+
+    private fun publishPreload(keys: List<String>, index: Int, progress: Int, complete: Boolean = false) {
+        _offlineTransfers.update { transfers ->
+            val item = transfers.preload.getOrNull(index)?.takeIf { it.key == keys[index] }
+            if (item == null || item.progress == progress && item.complete == complete) {
+                transfers
+            } else {
+                transfers.copy(preload = transfers.preload.toMutableList().also { it[index] = item.copy(progress = progress, complete = complete) })
+            }
+        }
     }
 
     private fun advancedPrefetchNetworkSuitable(mobileDataAllowed: Boolean): Flow<Boolean> = callbackFlow {

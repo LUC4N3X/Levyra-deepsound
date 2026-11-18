@@ -149,7 +149,7 @@ internal fun RadioTabScreen(viewModel: LevyraViewModel, state: LevyraUiState, ba
         com.luc4n3x.levyra.ui.theme.LevyraIsIvory -> IvoryRadioScreen(state.languageCode, currentStationId, state.isPlaying, copy.tab, togglePlay, onSearch)
         LevyraIsTorque -> TorqueRadioScreen(state.languageCode, currentStationId, state.isPlaying, copy.tab, togglePlay, onSearch)
         LevyraIsAtelier -> AtelierRadioScreen(state.languageCode, currentStationId, state.isPlaying, copy.tab, togglePlay, onSearch)
-        com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin -> DefaultRadioScreen(state.languageCode, currentStationId, state.isPlaying, copy.tab, togglePlay, onSearch)
+        com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin -> DefaultRadioScreen(state.languageCode, currentStationId, state.isPlaying, copy.tab, togglePlay)
         else -> Box(Modifier.fillMaxSize()) {
             LiveRadioScreen(
                 languageCode = state.languageCode,

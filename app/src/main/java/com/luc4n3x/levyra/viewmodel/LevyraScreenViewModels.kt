@@ -567,6 +567,8 @@ class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::li
     fun openPlaylistStudio(playlistId: String? = null) = root.openPlaylistStudio(playlistId)
     fun pauseDownload(taskKey: String) = root.pauseDownload(taskKey)
     fun playDownloaded(download: DownloadedTrack) = root.playDownloaded(download)
+    fun playDownloads(downloads: List<DownloadedTrack>, shuffled: Boolean) = root.playDownloads(downloads, shuffled)
+    val offlineTransfers: StateFlow<com.luc4n3x.levyra.domain.OfflineTransferState> get() = root.offlineTransfers
     fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) = root.playFrom(list, track, loopOnCompletion)
     fun playPlaylist(playlistId: String, startTrackId: String? = null) = root.playPlaylist(playlistId, startTrackId)
     fun playTracksNext(tracks: List<Track>) = root.playTracksNext(tracks)

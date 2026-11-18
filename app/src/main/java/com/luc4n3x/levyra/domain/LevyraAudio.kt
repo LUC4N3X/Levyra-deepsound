@@ -322,7 +322,9 @@ fun queuePrefetchAllowed(settings: LevyraAudioSettings): Boolean = settings.prel
 
 const val ADVANCED_QUEUE_PREFETCH_OFF = 0
 
-val ADVANCED_QUEUE_PREFETCH_OPTIONS: List<Int> = listOf(ADVANCED_QUEUE_PREFETCH_OFF, 5, 10, 15)
+const val ADVANCED_QUEUE_PREFETCH_MAX = 50
+
+val ADVANCED_QUEUE_PREFETCH_OPTIONS: List<Int> = listOf(ADVANCED_QUEUE_PREFETCH_OFF, 5, 10, 15, 25, ADVANCED_QUEUE_PREFETCH_MAX)
 
 fun normalizeAdvancedQueuePrefetchTracks(value: Int): Int =
-    if (value in ADVANCED_QUEUE_PREFETCH_OPTIONS) value else ADVANCED_QUEUE_PREFETCH_OFF
+    if (value in ADVANCED_QUEUE_PREFETCH_OFF..ADVANCED_QUEUE_PREFETCH_MAX) value else ADVANCED_QUEUE_PREFETCH_OFF

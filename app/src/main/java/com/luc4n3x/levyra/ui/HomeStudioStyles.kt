@@ -356,7 +356,8 @@ internal fun StudioSectionHeader(
     featured: Boolean,
     onPlayAll: (() -> Unit)?,
     modifier: Modifier = Modifier,
-    subtitle: String? = null
+    subtitle: String? = null,
+    medallionKey: Int = HOME_MEDALLION_NONE
 ) {
     val strings = LocalLevyraStrings.current
     val copy = strings.homeStudioCopy
@@ -394,7 +395,9 @@ internal fun StudioSectionHeader(
         HomeStyle.Original -> LevyraSectionHeader(
             title = title,
             subtitle = subtitle ?: if (featured) copy.featured else null,
-            modifier = headerModifier
+            modifier = headerModifier,
+            leadingIcon = homeSectionMedallion(medallionKey)?.icon,
+            leadingSeed = homeSectionMedallion(medallionKey)?.seed ?: com.luc4n3x.levyra.ui.components.LevyraUtilitySeed
         ) {
             onPlayAll?.let { action -> LevyraSectionPlayAll(onClick = action) }
         }

@@ -76,7 +76,11 @@ class PlaybackWarmup(context: Context) {
         if (jobs.isEmpty()) false else jobs.awaitAll().any { it }
     }
 
-    internal suspend fun cacheCompletely(track: Track, maxBytes: Long): FullCacheOutcome? = withContext(Dispatchers.IO) {
+    internal suspend fun cacheCompletely(
+        track: Track,
+        maxBytes: Long,
+        onProgress: (Int) -> Unit = {}
+    ): FullCacheOutcome? = withContext(Dispatchers.IO) {
         val url = track.streamUrl.trim()
         val mimeType = LevyraMediaItemFactory.mimeTypeFor(url, false)
         if (!isWarmableMediaUrl(url) || !isProgressiveMediaMimeType(mimeType) || !track.allowsPlaybackDiskCache()) {
@@ -126,6 +130,7 @@ class PlaybackWarmup(context: Context) {
                     var writer: CacheWriter? = null
                     writer = CacheWriter(source, dataSpec, ByteArray(PRIME_BUFFER_BYTES)) { requestLength, bytesCached, _ ->
                         if (requestLength > maxBytes || bytesCached > maxBytes) writer?.cancel()
+                        if (requestLength > 0L) onProgress((bytesCached * 100L / requestLength).toInt().coerceIn(0, 100))
                     }
                     cacheUntilCancelled(writer)
                     val complete = isPlaybackResourceFullyCached(cache, cacheKey)

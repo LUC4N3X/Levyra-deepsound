@@ -1043,7 +1043,7 @@ private fun RadioStationPlayIndicator(playing: Boolean, playLabel: String) {
 }
 
 @Composable
-internal fun RadioStationDetail(station: RadioStation) {
+internal fun RadioStationDetail(station: RadioStation, maxLines: Int = 1) {
     val languageCode = LocalLevyraStrings.current.code
     val place = remember(station.countryCode, station.country, languageCode) {
         station.countryCode.takeIf(String::isNotBlank)
@@ -1057,7 +1057,7 @@ internal fun RadioStationDetail(station: RadioStation) {
         station.qualityLabel.takeIf(String::isNotBlank)
     ).joinToString(" · ")
     if (detail.isNotBlank()) {
-        Text(detail, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(detail, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, maxLines = maxLines, overflow = TextOverflow.Ellipsis)
     }
 }
 

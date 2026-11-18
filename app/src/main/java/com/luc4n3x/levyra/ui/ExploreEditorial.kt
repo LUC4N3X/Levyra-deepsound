@@ -3,7 +3,6 @@ package com.luc4n3x.levyra.ui
 import com.luc4n3x.levyra.ui.components.levyraMarquee
 import androidx.compose.material.icons.rounded.Newspaper
 import androidx.compose.material.icons.rounded.NewReleases
-import com.luc4n3x.levyra.ui.components.utilityScrollProgress
 import androidx.compose.material.icons.automirrored.rounded.Article
 import android.text.format.DateFormat
 import androidx.compose.foundation.background
@@ -136,7 +135,7 @@ internal fun ExploreEditorialBackdrop(editorial: Boolean, listState: androidx.co
     if (editorial && com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin) {
         com.luc4n3x.levyra.ui.components.LevyraUtilityBackdrop(
             strength = 0.8f,
-            scrollProgress = { with(listState) { utilityScrollProgress() } }
+            listState = listState
         )
     }
 }

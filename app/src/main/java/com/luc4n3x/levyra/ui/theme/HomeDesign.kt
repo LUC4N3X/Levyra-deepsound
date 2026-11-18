@@ -19,8 +19,8 @@ object LevyraHomeDesign {
     val HorizontalInset: Dp = 16.dp
     val SectionGap: Dp = 8.dp
     val SectionGapCompact: Dp = 6.dp
-    val SectionStride: Dp = 24.dp
-    val SectionStrideCompact: Dp = 20.dp
+    val SectionStride: Dp get() = if (LevyraIsDefaultSkin) 32.dp else 24.dp
+    val SectionStrideCompact: Dp get() = if (LevyraIsDefaultSkin) 24.dp else 20.dp
     val HeaderCorner: Dp get() = if (LevyraIsTorque) 2.dp else if (LevyraIsSpotify) 8.dp else if (LevyraIsPrism) 24.dp else if (LevyraIsNocturne) 10.dp else 20.dp
     val HeaderPadding: Dp = 12.dp
     val SettingsControlHeight: Dp = 48.dp
@@ -46,7 +46,7 @@ object LevyraHomeDesign {
     val TrackRowHeight: Dp = 64.dp
     val TrackThumbSize: Dp = 48.dp
     val TrackColumnPeek: Dp = 28.dp
-    val TrackColumnGap: Dp = 6.dp
+    val TrackColumnGap: Dp get() = if (LevyraIsDefaultSkin) 8.dp else 6.dp
     val OrbitTileGap: Dp = 4.5.dp
     val OrbitTileCorner: Dp get() = if (LevyraIsNocturne) 6.dp else 8.dp
     val OrbitTileTitleInset: Dp = 9.dp

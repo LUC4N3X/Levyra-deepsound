@@ -2,7 +2,6 @@
 package com.luc4n3x.levyra.ui
 
 import com.luc4n3x.levyra.ui.components.levyraUtilityColors
-import com.luc4n3x.levyra.ui.components.utilityScrollProgress
 import com.luc4n3x.levyra.ui.components.LevyraPastelAmber
 import com.luc4n3x.levyra.ui.components.LevyraPastelPeriwinkle
 import com.luc4n3x.levyra.ui.components.LevyraUtilitySeed
@@ -1012,8 +1011,8 @@ private val HOME_DENSE_SHELF_END_PADDING = 38.dp
 private val HOME_VIDEO_CARD_WIDTH_FRACTION = 0.84f
 private val HOME_VIDEO_CARD_MAX_WIDTH = 420.dp
 private val HOME_ALBUM_CARD_WIDTH = 154.dp
-private val HOME_ARTIST_CARD_WIDTH = 148.dp
-private val HOME_ARTIST_ARTWORK_SIZE = 140.dp
+private val HOME_ARTIST_CARD_WIDTH = 112.dp
+private val HOME_ARTIST_ARTWORK_SIZE = 104.dp
 private val LevyraTabBarHeight = 76.dp
 private val LevyraTabBarCompactHeight = 54.dp
 private val LevyraMiniPlayerHeight = 77.dp
@@ -1448,13 +1447,17 @@ private fun HomeSectionHeader(
     subtitle: String? = null,
     onPlayAll: (() -> Unit)? = null,
     onShowAll: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    medallionKey: Int = HOME_MEDALLION_NONE
 ) {
     val displayTitle = remember(title) { cleanHomeSectionTitle(title) }
+    val medallion = homeSectionMedallion(medallionKey)
     LevyraSectionHeader(
         title = displayTitle,
         subtitle = subtitle,
-        modifier = modifier
+        modifier = modifier,
+        leadingIcon = medallion?.icon,
+        leadingSeed = medallion?.seed ?: com.luc4n3x.levyra.ui.components.LevyraUtilitySeed
     ) {
         onShowAll?.let { action -> LevyraSectionShowAll(onClick = action) }
         onPlayAll?.let { action -> LevyraSectionPlayAll(onClick = action) }
@@ -1476,7 +1479,12 @@ private fun ChartMarketHeader(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget),
-        title = { Column(
+        title = { Row(verticalAlignment = Alignment.CenterVertically) {
+            homeSectionMedallion(HOME_SUBTITLE_CHART_MARKET)?.let { medallion ->
+                HomeSectionMedallionBadge(medallion)
+                Spacer(modifier = Modifier.width(14.dp))
+            }
+            Column(
             modifier = Modifier
                 .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
                 .levyraPressable(
@@ -1527,7 +1535,7 @@ private fun ChartMarketHeader(
                 }
             }
             subtitle?.let { Text(it, color = LevyraMuted, style = LevyraType.caption, maxLines = 2, overflow = TextOverflow.Ellipsis) }
-        } },
+        } } },
         action = if (onPlayAll != null) { { LevyraSectionPlayAll(onClick = onPlayAll) } } else null
     )
 }
@@ -1723,7 +1731,7 @@ private fun HomeNowPlayingScrim(
 }
 
 @Composable
-private fun HomeTrackRow(
+internal fun HomeTrackRow(
     track: Track,
     isCurrent: Boolean,
     isPlaying: Boolean,
@@ -1858,7 +1866,8 @@ private fun HomeTrackColumnsShelf(
     onPlay: (Track) -> Unit,
     onPlayAll: (() -> Unit)? = null,
     onTrackActions: ((Track) -> Unit)? = null,
-    subtitle: String? = null
+    subtitle: String? = null,
+    medallionKey: Int = HOME_MEDALLION_NONE
 ) {
     if (tracks.isEmpty()) return
     val distinctTracks = remember(tracks) {
@@ -1885,7 +1894,8 @@ private fun HomeTrackColumnsShelf(
             HomeSectionHeader(
                 title = title,
                 subtitle = subtitle,
-                onPlayAll = onPlayAll
+                onPlayAll = onPlayAll,
+                medallionKey = medallionKey
             )
         }
         LazyRow(
@@ -2858,7 +2868,16 @@ fun LevyraApp(
                         }
                         val dockSurfaceSlot: @Composable () -> Unit = {
                             if (skinNavigationSettings(navigationStudio.settings).style == NavStyle.Original) {
-                                LevyraAdaptiveDockSurface(glass = dockGlass, modifier = dockModifier, content = dockContent)
+                                LevyraAdaptiveDockSurface(
+                                    glass = dockGlass,
+                                    modifier = dockModifier,
+                                    trailing = defaultDockSearchSlot(backgroundTab == LevyraTab.Search, compactionProvider) {
+                                        if (state.showSettings) viewModel.closeSettings()
+                                        dockState.expand()
+                                        viewModel.selectTab(LevyraTab.Search)
+                                    },
+                                    content = dockContent
+                                )
                             } else {
                                 StyledDockSurface(
                                     style = skinNavigationSettings(navigationStudio.settings).style,
@@ -9132,6 +9151,7 @@ private fun HomeScreen(
                             HomeQuickPicksShelf(
                                 title = strings.offlineHomeDownloads,
                                 subtitle = defaultHomeSubtitle(HOME_SUBTITLE_OFFLINE_DOWNLOADS, ""),
+                                medallionKey = HOME_SUBTITLE_OFFLINE_DOWNLOADS,
                                 tracks = offlineContent.downloads,
                                 currentId = state.currentTrack?.id,
                                 isPlaying = state.isPlaying,
@@ -9145,7 +9165,7 @@ private fun HomeScreen(
                 if (offlineContent.playlists.isNotEmpty()) {
                     item(key = "home-offline-playlists-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
                         HomeSectionLead(compactHome) {
-                            HomeSectionInset { HomeSectionHeader(strings.offlineHomePlaylists, defaultHomeSubtitle(HOME_SUBTITLE_OFFLINE_PLAYLISTS, "")) }
+                            HomeSectionInset { HomeSectionHeader(strings.offlineHomePlaylists, defaultHomeSubtitle(HOME_SUBTITLE_OFFLINE_PLAYLISTS, ""), medallionKey = HOME_SUBTITLE_OFFLINE_PLAYLISTS) }
                         }
                     }
                     item(key = "home-offline-playlists-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
@@ -9162,6 +9182,7 @@ private fun HomeScreen(
                             HomeQuickPicksShelf(
                                 title = strings.offlineHomeFavorites,
                                 subtitle = defaultHomeSubtitle(HOME_SUBTITLE_OFFLINE_FAVORITES, ""),
+                                medallionKey = HOME_SUBTITLE_OFFLINE_FAVORITES,
                                 tracks = offlineContent.favorites,
                                 currentId = state.currentTrack?.id,
                                 isPlaying = state.isPlaying,
@@ -9178,6 +9199,7 @@ private fun HomeScreen(
                             HomeQuickPicksShelf(
                                 title = strings.offlineHomeRecent,
                                 subtitle = defaultHomeSubtitle(HOME_SUBTITLE_OFFLINE_RECENT, ""),
+                                medallionKey = HOME_SUBTITLE_OFFLINE_RECENT,
                                 tracks = offlineContent.recentlyPlayed,
                                 currentId = state.currentTrack?.id,
                                 isPlaying = state.isPlaying,
@@ -9242,7 +9264,7 @@ private fun HomeScreen(
                 item(key = "home-your-music-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
                     HomeSectionLead(compactHome) {
                         HomeSectionInset {
-                            HomeSectionHeader(com.luc4n3x.levyra.ui.i18n.youtubeMusicHomeCopy(state.languageCode).title, defaultHomeSubtitle(HOME_SUBTITLE_YOUR_MUSIC, ""))
+                            HomeSectionHeader(com.luc4n3x.levyra.ui.i18n.youtubeMusicHomeCopy(state.languageCode).title, defaultHomeSubtitle(HOME_SUBTITLE_YOUR_MUSIC, ""), medallionKey = HOME_SUBTITLE_YOUR_MUSIC)
                         }
                     }
                 }
@@ -9290,6 +9312,7 @@ private fun HomeScreen(
                         HomeQuickPicksShelf(
                             title = quickPicks.title.ifBlank { strings.quickPicks },
                             subtitle = defaultHomeSubtitle(HOME_SUBTITLE_QUICK_PICKS, ""),
+                            medallionKey = HOME_SUBTITLE_QUICK_PICKS,
                             tracks = quickPicks.tracks,
                             currentId = state.currentTrack?.id,
                             isPlaying = state.isPlaying,
@@ -9308,6 +9331,7 @@ private fun HomeScreen(
                         HomeQuickPicksShelf(
                             title = strings.forgottenFavorites,
                             subtitle = defaultHomeSubtitle(HOME_SUBTITLE_FORGOTTEN_FAVORITES, ""),
+                            medallionKey = HOME_SUBTITLE_FORGOTTEN_FAVORITES,
                             tracks = forgottenFavorites,
                             currentId = state.currentTrack?.id,
                             isPlaying = state.isPlaying,
@@ -9327,7 +9351,7 @@ private fun HomeScreen(
                 item(key = "sec-home-albums-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
                     HomeSectionLead(compactHome) {
                         HomeSectionInset {
-                            HomeSectionHeader(homeAlbumShelf.title, defaultHomeSubtitle(HOME_SUBTITLE_ALBUMS, homeAlbumShelf.title))
+                            HomeSectionHeader(homeAlbumShelf.title, defaultHomeSubtitle(HOME_SUBTITLE_ALBUMS, homeAlbumShelf.title), medallionKey = HOME_SUBTITLE_ALBUMS)
                         }
                     }
                 }
@@ -9370,7 +9394,7 @@ private fun HomeScreen(
                 item(key = "sec-new-releases-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
                     HomeSectionLead(compactHome) {
                         HomeSectionInset {
-                            HomeSectionHeader(strings.newReleases, defaultHomeSubtitle(HOME_SUBTITLE_NEW_RELEASES, ""))
+                            HomeSectionHeader(strings.newReleases, defaultHomeSubtitle(HOME_SUBTITLE_NEW_RELEASES, ""), medallionKey = HOME_SUBTITLE_NEW_RELEASES)
                         }
                     }
                 }
@@ -9410,7 +9434,7 @@ private fun HomeScreen(
             ) {
                 item(key = "sec-release-radar-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
                     HomeSectionLead(compactHome) {
-                        HomeSectionInset { HomeSectionHeader(strings.releaseRadar, defaultHomeSubtitle(HOME_SUBTITLE_RELEASE_RADAR, "")) }
+                        HomeSectionInset { HomeSectionHeader(strings.releaseRadar, defaultHomeSubtitle(HOME_SUBTITLE_RELEASE_RADAR, ""), medallionKey = HOME_SUBTITLE_RELEASE_RADAR) }
                     }
                 }
                 item(key = "sec-release-radar-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
@@ -9428,7 +9452,7 @@ private fun HomeScreen(
             ) {
                 item(key = "sec-similar-artists-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
                     HomeSectionLead(compactHome) {
-                        HomeSectionInset { HomeSectionHeader(strings.similarToFollowed, defaultHomeSubtitle(HOME_SUBTITLE_SIMILAR_ARTISTS, "")) }
+                        HomeSectionInset { HomeSectionHeader(strings.similarToFollowed, defaultHomeSubtitle(HOME_SUBTITLE_SIMILAR_ARTISTS, ""), medallionKey = HOME_SUBTITLE_SIMILAR_ARTISTS) }
                     }
                 }
                 item(key = "sec-similar-artists-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
@@ -9464,6 +9488,7 @@ private fun HomeScreen(
                                     HomeQuickPicksShelf(
                                         title = section.title,
                                         subtitle = defaultHomeSubtitle(HOME_SUBTITLE_MORE_MUSIC, ""),
+                                        medallionKey = HOME_SUBTITLE_MORE_MUSIC,
                                         tracks = section.tracks,
                                         currentId = state.currentTrack?.id,
                                         isPlaying = state.isPlaying,
@@ -10936,6 +10961,7 @@ private fun LazyListScope.homeStudioSectionQuickPicks(c: StudioHomeContext) {
                             HomeQuickPicksShelf(
                                 title = quickPicks.title.ifBlank { strings.quickPicks },
                                 subtitle = defaultHomeSubtitle(HOME_SUBTITLE_QUICK_PICKS, ""),
+                                medallionKey = HOME_SUBTITLE_QUICK_PICKS,
                                 tracks = quickPicks.tracks,
                                 currentId = state.currentTrack?.id,
                                 isPlaying = state.isPlaying,
@@ -10980,6 +11006,7 @@ private fun LazyListScope.homeStudioSectionForgottenFavorites(c: StudioHomeConte
                             HomeQuickPicksShelf(
                                 title = strings.forgottenFavorites,
                                 subtitle = defaultHomeSubtitle(HOME_SUBTITLE_FORGOTTEN_FAVORITES, ""),
+                                medallionKey = HOME_SUBTITLE_FORGOTTEN_FAVORITES,
                                 tracks = forgottenFavorites,
                                 currentId = state.currentTrack?.id,
                                 isPlaying = state.isPlaying,
@@ -11014,7 +11041,7 @@ private fun LazyListScope.homeStudioSectionYourMusic(
                         onOpen = yourMusic.onOpen
                     )
                 } else {
-                    StudioSectionHeader(homeStyle, styleSpec, title, false, null, subtitle = defaultHomeSubtitle(HOME_SUBTITLE_YOUR_MUSIC, ""))
+                    StudioSectionHeader(homeStyle, styleSpec, title, false, null, subtitle = defaultHomeSubtitle(HOME_SUBTITLE_YOUR_MUSIC, ""), medallionKey = HOME_SUBTITLE_YOUR_MUSIC)
                     if (yourMusic.loading) HomeAlbumLoadingRow()
                 }
                 com.luc4n3x.levyra.ui.youtubemusic.YoutubeMusicHomeNotice(yourMusic, styleSpec.inset)
@@ -11060,7 +11087,7 @@ private fun LazyListScope.homeStudioSectionAlbumsForYou(c: StudioHomeContext) {
                     item(key = "sec-home-albums-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
                         HomeSectionLead(compactHome) {
                             HomeSectionInset {
-                                HomeSectionHeader(homeAlbumsTitle, defaultHomeSubtitle(HOME_SUBTITLE_ALBUMS, homeAlbumsTitle))
+                                HomeSectionHeader(homeAlbumsTitle, defaultHomeSubtitle(HOME_SUBTITLE_ALBUMS, homeAlbumsTitle), medallionKey = HOME_SUBTITLE_ALBUMS)
                             }
                         }
                     }
@@ -11150,7 +11177,7 @@ private fun LazyListScope.homeStudioSectionNewReleases(c: StudioHomeContext) {
                     item(key = "sec-new-releases-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
                         HomeSectionLead(compactHome) {
                             HomeSectionInset {
-                                HomeSectionHeader(strings.newReleases, defaultHomeSubtitle(HOME_SUBTITLE_NEW_RELEASES, ""))
+                                HomeSectionHeader(strings.newReleases, defaultHomeSubtitle(HOME_SUBTITLE_NEW_RELEASES, ""), medallionKey = HOME_SUBTITLE_NEW_RELEASES)
                             }
                         }
                     }
@@ -11199,7 +11226,7 @@ private fun LazyListScope.homeStudioSectionReleaseRadar(c: StudioHomeContext) {
             ) {
                 item(key = "sec-release-radar-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
                     HomeSectionLead(compactHome) {
-                        HomeSectionInset { HomeSectionHeader(strings.releaseRadar, defaultHomeSubtitle(HOME_SUBTITLE_RELEASE_RADAR, "")) }
+                        HomeSectionInset { HomeSectionHeader(strings.releaseRadar, defaultHomeSubtitle(HOME_SUBTITLE_RELEASE_RADAR, ""), medallionKey = HOME_SUBTITLE_RELEASE_RADAR) }
                     }
                 }
                 item(key = "sec-release-radar-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
@@ -11237,7 +11264,7 @@ private fun LazyListScope.homeStudioSectionSimilarArtists(c: StudioHomeContext) 
                 ) {
                     item(key = "sec-similar-artists-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
                         HomeSectionLead(compactHome) {
-                            HomeSectionInset { HomeSectionHeader(strings.similarToFollowed, defaultHomeSubtitle(HOME_SUBTITLE_SIMILAR_ARTISTS, "")) }
+                            HomeSectionInset { HomeSectionHeader(strings.similarToFollowed, defaultHomeSubtitle(HOME_SUBTITLE_SIMILAR_ARTISTS, ""), medallionKey = HOME_SUBTITLE_SIMILAR_ARTISTS) }
                         }
                     }
                     item(key = "sec-similar-artists-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
@@ -11308,6 +11335,7 @@ private fun LazyListScope.homeStudioSectionMoreSections(c: StudioHomeContext) {
                                         HomeQuickPicksShelf(
                                             title = section.title,
                                             subtitle = defaultHomeSubtitle(HOME_SUBTITLE_MORE_MUSIC, ""),
+                                            medallionKey = HOME_SUBTITLE_MORE_MUSIC,
                                             tracks = section.tracks,
                                             currentId = state.currentTrack?.id,
                                             isPlaying = state.isPlaying,
@@ -11461,7 +11489,7 @@ private fun LazyListScope.homeGenreChartsSection(
     val copy = com.luc4n3x.levyra.ui.i18n.genreChartCopy(strings.code)
     item(key = "home-genre-charts-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
         HomeSectionLead(compactHome) {
-            HomeSectionInset { HomeSectionHeader(title = copy.shelfTitle, subtitle = copy.shelfSubtitle) }
+            HomeSectionInset { HomeSectionHeader(title = copy.shelfTitle, subtitle = copy.shelfSubtitle, medallionKey = HOME_MEDALLION_GENRE_HITS) }
         }
     }
     item(key = "home-genre-charts-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
@@ -11663,6 +11691,7 @@ private fun LazyListScope.homeStudioOfflineSection(c: StudioHomeContext) {
                             HomeQuickPicksShelf(
                                 title = strings.offlineHomeDownloads,
                                 subtitle = defaultHomeSubtitle(HOME_SUBTITLE_OFFLINE_DOWNLOADS, ""),
+                                medallionKey = HOME_SUBTITLE_OFFLINE_DOWNLOADS,
                                 tracks = offlineContent.downloads,
                                 currentId = state.currentTrack?.id,
                                 isPlaying = state.isPlaying,
@@ -11676,7 +11705,7 @@ private fun LazyListScope.homeStudioOfflineSection(c: StudioHomeContext) {
                 if (offlineContent.playlists.isNotEmpty()) {
                     item(key = "home-offline-playlists-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
                         HomeSectionLead(compactHome) {
-                            HomeSectionInset { HomeSectionHeader(strings.offlineHomePlaylists, defaultHomeSubtitle(HOME_SUBTITLE_OFFLINE_PLAYLISTS, "")) }
+                            HomeSectionInset { HomeSectionHeader(strings.offlineHomePlaylists, defaultHomeSubtitle(HOME_SUBTITLE_OFFLINE_PLAYLISTS, ""), medallionKey = HOME_SUBTITLE_OFFLINE_PLAYLISTS) }
                         }
                     }
                     item(key = "home-offline-playlists-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
@@ -11693,6 +11722,7 @@ private fun LazyListScope.homeStudioOfflineSection(c: StudioHomeContext) {
                             HomeQuickPicksShelf(
                                 title = strings.offlineHomeFavorites,
                                 subtitle = defaultHomeSubtitle(HOME_SUBTITLE_OFFLINE_FAVORITES, ""),
+                                medallionKey = HOME_SUBTITLE_OFFLINE_FAVORITES,
                                 tracks = offlineContent.favorites,
                                 currentId = state.currentTrack?.id,
                                 isPlaying = state.isPlaying,
@@ -11709,6 +11739,7 @@ private fun LazyListScope.homeStudioOfflineSection(c: StudioHomeContext) {
                             HomeQuickPicksShelf(
                                 title = strings.offlineHomeRecent,
                                 subtitle = defaultHomeSubtitle(HOME_SUBTITLE_OFFLINE_RECENT, ""),
+                                medallionKey = HOME_SUBTITLE_OFFLINE_RECENT,
                                 tracks = offlineContent.recentlyPlayed,
                                 currentId = state.currentTrack?.id,
                                 isPlaying = state.isPlaying,
@@ -11960,7 +11991,7 @@ private fun HomeOrbitHeader(
 ) {
     val strings = LocalLevyraStrings.current
     val displayName = userName.trim()
-    val initial = remember(displayName) { homePersonalOrbitInitial(displayName) }
+    val initial = remember(displayName) { homePersonalOrbitInitial(displayName) }.takeUnless { LevyraIsDefaultSkin }
 
     LevyraAdaptiveSectionHeader(
         modifier = Modifier
@@ -11977,6 +12008,11 @@ private fun HomeOrbitHeader(
                         accountAvatarUrl = accountAvatarUrl
                     )
                     Spacer(modifier = Modifier.width(LevyraHomeDesign.OrbitAvatarGap))
+                } else {
+                    homeSectionMedallion(HOME_SUBTITLE_ORBIT)?.let { medallion ->
+                        HomeSectionMedallionBadge(medallion)
+                        Spacer(modifier = Modifier.width(14.dp))
+                    }
                 }
                 Column {
                     if (initial != null) {
@@ -12039,7 +12075,7 @@ private fun PersonalOrbitTile(
             modifier = Modifier.fillMaxSize(),
             highRes = true
         )
-        Box(
+        if (!LevyraIsDefaultSkin) Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(0.45f)
@@ -12053,7 +12089,9 @@ private fun PersonalOrbitTile(
                     )
                 )
         )
-        LevyraMediaTitle(
+        if (LevyraIsDefaultSkin) {
+            DefaultOrbitTileCaption(track, isCurrent, Modifier.align(Alignment.BottomStart))
+        } else LevyraMediaTitle(
             text = track.title, explicit = track.explicit,
             initialDelayMillis = 1_600 + (track.id.hashCode() and 3) * 700,
             color = if (isCurrent && !(LevyraIsPrism && LevyraIsLight)) LevyraCyan else Color.White,
@@ -12464,6 +12502,7 @@ private fun HomeEditorialCollectionsShelf(
         HomeSectionHeader(
             title = homeCollectionsTitle(strings),
             subtitle = defaultHomeSubtitle(HOME_SUBTITLE_COLLECTIONS, ""),
+            medallionKey = HOME_SUBTITLE_COLLECTIONS,
             modifier = Modifier.padding(horizontal = HomeHorizontalInset)
         )
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
@@ -12595,7 +12634,8 @@ private fun HomeQuickPicksShelf(
     onPlay: (Track) -> Unit,
     onPlayAll: (() -> Unit)? = null,
     onTrackActions: ((Track) -> Unit)? = null,
-    subtitle: String? = null
+    subtitle: String? = null,
+    medallionKey: Int = HOME_MEDALLION_NONE
 ) {
     HomeTrackColumnsShelf(
         title = title,
@@ -12606,7 +12646,8 @@ private fun HomeQuickPicksShelf(
         onPlay = onPlay,
         onPlayAll = onPlayAll,
         onTrackActions = onTrackActions,
-        subtitle = subtitle
+        subtitle = subtitle,
+        medallionKey = medallionKey
     )
 }
 
@@ -12791,6 +12832,7 @@ private fun TrendingArtistsShelf(
         HomeSectionHeader(
             title = if (plainDefault) strings.trendingArtists else strings.artists,
             subtitle = defaultHomeSubtitle(HOME_SUBTITLE_TRENDING_ARTISTS, ""),
+            medallionKey = HOME_SUBTITLE_TRENDING_ARTISTS,
             modifier = Modifier.padding(horizontal = HomeHorizontalInset)
         )
         val artistRowState = rememberLazyListState()
@@ -12923,6 +12965,7 @@ private fun ResonanceShelf(
         HomeSectionHeader(
             title = strings.mostCommentedTracks,
             subtitle = strings.tapToOpenComments,
+            medallionKey = HOME_MEDALLION_MOST_DISCUSSED,
             modifier = Modifier.padding(horizontal = HomeHorizontalInset)
         )
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
@@ -13260,7 +13303,7 @@ private fun HomeMusicVideoShelf(
     }
     if (videos.isEmpty()) return
     Column(verticalArrangement = Arrangement.spacedBy(homeHeaderContentGap())) {
-        HomeSectionInset { HomeSectionHeader(title, defaultHomeSubtitle(HOME_SUBTITLE_VIDEOS, title)) }
+        HomeSectionInset { HomeSectionHeader(title, defaultHomeSubtitle(HOME_SUBTITLE_VIDEOS, title), medallionKey = HOME_SUBTITLE_VIDEOS) }
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val videoCardWidth = remember(maxWidth) {
                 (maxWidth * HOME_VIDEO_CARD_WIDTH_FRACTION).coerceAtMost(HOME_VIDEO_CARD_MAX_WIDTH)
@@ -13563,7 +13606,7 @@ private fun StudioHomeOrbitHeader(
     }
     val strings = LocalLevyraStrings.current
     val displayName = userName.trim()
-    val initial = remember(displayName) { homePersonalOrbitInitial(displayName) }
+    val initial = remember(displayName) { homePersonalOrbitInitial(displayName) }.takeUnless { LevyraIsDefaultSkin }
     val compactPlayAll = style != HomeStyle.Original && style != HomeStyle.MaterialExpressive
 
     LevyraAdaptiveSectionHeader(
@@ -13600,6 +13643,11 @@ private fun StudioHomeOrbitHeader(
                         accountAvatarUrl = accountAvatarUrl
                     )
                     Spacer(modifier = Modifier.width(LevyraHomeDesign.OrbitAvatarGap))
+                } else {
+                    homeSectionMedallion(HOME_SUBTITLE_ORBIT)?.let { medallion ->
+                        HomeSectionMedallionBadge(medallion)
+                        Spacer(modifier = Modifier.width(14.dp))
+                    }
                 }
                 Column {
                     if (initial != null) {
@@ -19126,7 +19174,7 @@ private fun SettingsOverlay(
             )
             val pageAccent = meta?.let { if (LevyraUtilityStyleActive && !SkinChrome.active) levyraUtilityColors(settingsGroupSeed(it.group)).accent else if (hubEntranceEnabled) LevyraCyan else it.accent }
             CompositionLocalProvider(LocalSettingsAccent provides pageAccent) {
-            if (LevyraUtilityStyleActive && !SkinChrome.active) LevyraUtilityBackdrop(scrollProgress = { settingsListState.utilityScrollProgress() })
+            if (LevyraUtilityStyleActive && !SkinChrome.active) LevyraUtilityBackdrop(listState = settingsListState)
             LazyColumn(
                 state = settingsListState,
                 modifier = Modifier
@@ -20182,16 +20230,9 @@ private fun SettingsOverlay(
                             }
                             standaloneItem { SettingsSectionLabel(strings.settingsHubCopy[SettingsHubText.WhenToDownload]) }
                             item {
-                                val prefetchCopy = advancedPrefetchCopy(strings.code)
-                                SettingsChoiceRow(
-                                    icon = Icons.AutoMirrored.Rounded.QueueMusic,
-                                    title = prefetchCopy.title,
-                                    subtitle = prefetchCopy.description,
-                                    options = ADVANCED_QUEUE_PREFETCH_OPTIONS.map { tracks ->
-                                        tracks.toString() to if (tracks == ADVANCED_QUEUE_PREFETCH_OFF) prefetchCopy.off else prefetchCopy.tracks(tracks)
-                                    },
-                                    selected = advancedQueuePrefetchTracks.toString(),
-                                    onSelect = { value -> value.toIntOrNull()?.let(onAdvancedQueuePrefetch) }
+                                AdvancedPrefetchChoiceSetting(
+                                    tracks = advancedQueuePrefetchTracks,
+                                    onSelect = onAdvancedQueuePrefetch
                                 )
                             }
                             if (advancedQueuePrefetchTracks > ADVANCED_QUEUE_PREFETCH_OFF) {
@@ -21420,7 +21461,7 @@ private fun SmartOfflineSettingsCard(
 }
 
 @Composable
-private fun SmartOfflineTextSetting(
+internal fun SmartOfflineTextSetting(
     icon: ImageVector,
     title: String,
     subtitle: String,
@@ -22054,7 +22095,7 @@ private fun GreetingBar(
             )
         },
         trailing = {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (LevyraIsDefaultSkin) DefaultHomeHeaderActions(isResolving, onSettings) else Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 RewindEntry()
                 HomeHeaderIconButton(
                     icon = Icons.Rounded.Search,
@@ -22621,6 +22662,7 @@ private fun SectionHeaderAction(title: String, onPlayAll: () -> Unit) {
     HomeSectionHeader(
         title = title,
         subtitle = defaultHomeSubtitle(HOME_SUBTITLE_MORE_MUSIC, ""),
+        medallionKey = HOME_SUBTITLE_MORE_MUSIC,
         onPlayAll = onPlayAll
     )
 }
@@ -23024,99 +23066,6 @@ private fun CompactRow(
         }
     }
 }
-@Composable
-private fun ChartRow(
-    rank: Int,
-    track: Track,
-    isCurrent: Boolean,
-    isPlaying: Boolean,
-    isResolving: Boolean,
-    isFavorite: Boolean,
-    onClick: () -> Unit,
-    onFavorite: () -> Unit,
-    onAddToPlaylist: () -> Unit,
-    onAddToQueue: () -> Unit
-) {
-    HomeTrackRow(
-        track = track,
-        isCurrent = isCurrent,
-        isPlaying = isPlaying,
-        isResolving = isResolving,
-        onPlay = onClick,
-        leadingContent = {
-            Box(
-                modifier = Modifier
-                    .padding(end = 2.dp)
-                    .width(34.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = rank.toString(),
-                    color = if (isCurrent) MaterialTheme.colorScheme.primary else LevyraText.copy(alpha = 0.62f),
-                    style = LevyraType.contentTitle.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontFeatureSettings = "tnum"
-                    ),
-                    maxLines = 1
-                )
-            }
-        },
-        trailingContent = {
-            var expanded by remember { mutableStateOf(false) }
-            Box {
-                IconButton(
-                    onClick = { expanded = true },
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.MoreVert,
-                        contentDescription = LocalLevyraStrings.current.options,
-                        tint = LevyraMuted,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                DropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false },
-                    shape = RoundedCornerShape(20.dp),
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                ) {
-                    DropdownMenuItem(
-                        text = { Text(if (isFavorite) LocalLevyraStrings.current.removeFromFavorites else LocalLevyraStrings.current.addToFavorites) },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                                contentDescription = null,
-                                tint = if (isFavorite) LevyraPink else LocalContentColor.current
-                            )
-                        },
-                        onClick = {
-                            expanded = false
-                            onFavorite()
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(LocalLevyraStrings.current.addToQueue) },
-                        leadingIcon = { Icon(Icons.AutoMirrored.Rounded.QueueMusic, null) },
-                        onClick = {
-                            expanded = false
-                            onAddToQueue()
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(LocalLevyraStrings.current.addToPlaylist) },
-                        leadingIcon = { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, null) },
-                        onClick = {
-                            expanded = false
-                            onAddToPlaylist()
-                        }
-                    )
-                }
-            }
-        }
-    )
-}
-
 @Composable
 private fun FeaturedTrackCard(
     track: Track,

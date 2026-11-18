@@ -1,7 +1,6 @@
 package com.luc4n3x.levyra.ui.library
 
 import com.luc4n3x.levyra.ui.levyraTabContentBottomPadding
-import com.luc4n3x.levyra.ui.components.utilityScrollProgress
 import com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 import com.luc4n3x.levyra.ui.theme.Nocturne78Design
@@ -46,7 +45,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.LazyListLayoutInfo
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -60,6 +58,8 @@ import androidx.compose.material.icons.rounded.Insights
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.OfflinePin
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.AlertDialog
@@ -155,6 +155,8 @@ import com.luc4n3x.levyra.ui.artwork.rememberArtworkPalette
 import com.luc4n3x.levyra.ui.i18n.formatLibraryDuration
 import com.luc4n3x.levyra.ui.i18n.speedDialCopy
 import com.luc4n3x.levyra.ui.i18n.smartOfflineCopy
+import com.luc4n3x.levyra.ui.i18n.offlineQueueCopy
+import com.luc4n3x.levyra.player.offline.work.OfflineTransferLane
 import com.luc4n3x.levyra.ui.media.ImmersiveMediaActionRow
 import com.luc4n3x.levyra.ui.media.ImmersiveMediaHero
 import com.luc4n3x.levyra.ui.media.ImmersiveMediaPrimaryAction
@@ -622,8 +624,13 @@ internal fun LevyraLibraryScreen(
         }
     }
 
-    val visibleOffline = remember(browse, query, sort, direction) {
-        if (presorted) browse.offlineItems else filterLibraryOfflineItems(catalog.offlineItems, query, sort, direction)
+    var offlineFilterKey by rememberSaveable { mutableStateOf<String?>(null) }
+    var expandedOfflineLanes by remember { mutableStateOf(emptySet<OfflineTransferLane>()) }
+    val offlineQueueStrings = offlineQueueCopy(strings.code)
+    val offlineFilter = remember(browse.offlineCollections, offlineFilterKey) { browse.offlineCollections.find(offlineFilterKey) }
+    val visibleOffline = remember(browse, query, sort, direction, offlineFilter) {
+        val sorted = if (presorted) browse.offlineItems else filterLibraryOfflineItems(catalog.offlineItems, query, sort, direction)
+        offlineFilter?.itemKeys?.toHashSet()?.let { keys -> sorted.filter { it.key in keys } } ?: sorted
     }
 
     val selectedTracks = remember(category, selectedKeys, catalog, state.playlists) {
@@ -819,8 +826,12 @@ internal fun LevyraLibraryScreen(
     BackHandler(enabled = backEnabled && selectionActive) { selectedKeys = emptySet() }
 
     Box(modifier = Modifier.fillMaxSize().background(if (com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) com.luc4n3x.levyra.ui.theme.YouTubeMusicDesign.background else LevyraInk)) {
-        if (LevyraIsDefaultSkin && category == LibraryCategory.Overview) {
-            com.luc4n3x.levyra.ui.components.LevyraUtilityBackdrop(strength = 0.8f, scrollProgress = { listState.utilityScrollProgress() })
+        if (LevyraIsDefaultSkin) {
+            com.luc4n3x.levyra.ui.components.LevyraUtilityBackdrop(
+                accent = com.luc4n3x.levyra.ui.components.levyraUtilityColors(com.luc4n3x.levyra.ui.components.LevyraUtilitySeed).accent,
+                strength = if (category == LibraryCategory.Overview) 0.55f else 0.45f,
+                listState = listState
+            )
         }
         LazyColumn(
             state = listState,
@@ -1413,14 +1424,113 @@ internal fun LevyraLibraryScreen(
                 )
 
                 LibraryCategory.Offline -> {
+                    val activeBatches = visibleDownloadBatches(state.downloadBatches)
+                    val hasTransfers = activeBatches.isNotEmpty() || state.downloadQueue.isNotEmpty()
+                    val offlineCollections = browse.offlineCollections
+                    if (catalog.offlineItems.isNotEmpty()) {
+                        item(key = "offline-hero", contentType = "offline-hero") {
+                            val covers = remember(visibleOffline) {
+                                visibleOffline.asSequence()
+                                    .map { item ->
+                                        item.track.largeThumbnailUrl.ifBlank { item.track.thumbnailUrl }
+                                            .ifBlank { com.luc4n3x.levyra.domain.LevyraPersonalOrbit.youtubeFallbackArtwork(item.track).orEmpty() }
+                                    }
+                                    .filter(String::isNotBlank)
+                                    .distinct()
+                                    .take(3)
+                                    .toList()
+                            }
+                            OfflineHero(
+                                badge = strings.formatLibraryBytes(if (offlineFilter == null) state.downloadStorageBytes else visibleOffline.sumOf { it.download.sizeBytes }),
+                                title = offlineFilter?.let { filter -> filter.mix?.let { offlineMixTitle(it, strings, offlineQueueStrings) } ?: filter.title }
+                                    ?: strings.offlineDownloadsPlain,
+                                subtitle = strings.formatTrackCount(visibleOffline.size),
+                                covers = covers,
+                                playLabel = strings.playAll,
+                                shuffleLabel = strings.shuffle,
+                                clearFilterLabel = strings.showAll.takeIf { offlineFilter != null },
+                                enabled = visibleOffline.isNotEmpty(),
+                                onClearFilter = { offlineFilterKey = null },
+                                onPlay = { viewModel.playDownloads(visibleOffline.map { it.download }, shuffled = false) },
+                                onShuffle = { viewModel.playDownloads(visibleOffline.map { it.download }, shuffled = true) }
+                            )
+                        }
+                    }
+                    if (hasTransfers) {
+                        item(key = "offline-queue-title") {
+                            LibrarySectionTitle(strings.downloadsInProgress, strings.downloadInProgress)
+                        }
+                    }
+                    offlineTransferLanes(
+                        transfers = viewModel.offlineTransfers,
+                        tasks = state.downloadQueue,
+                        expandedLanes = expandedOfflineLanes,
+                        strings = strings,
+                        copy = offlineQueueStrings,
+                        onToggleLane = { lane -> expandedOfflineLanes = expandedOfflineLanes + lane },
+                        taskRow = { task ->
+                            LibraryDownloadTaskRow(
+                                task = task,
+                                onPause = { viewModel.pauseDownload(task.taskKey) },
+                                onResume = { viewModel.resumeDownload(task.taskKey) },
+                                onCancel = { viewModel.cancelDownload(task.taskKey) },
+                                position = LevyraConnectedPosition.Single
+                            )
+                        },
+                        leadingManualContent = {
+                            items(activeBatches, key = { "batch-${it.key}" }, contentType = { "LevyraLibraryScreen-activeBatches" }) { batch ->
+                                LibraryBatchDownloadRow(
+                                    batch = batch,
+                                    onRetry = { viewModel.retryBatchDownload(batch.key) },
+                                    onCancel = { viewModel.cancelBatchDownload(batch.key) }
+                                )
+                            }
+                        }
+                    )
+                    if (catalog.offlineItems.isNotEmpty()) {
+                        listOf(
+                            OfflineRailStyle.Mix to offlineCollections.mixes,
+                            OfflineRailStyle.Artist to offlineCollections.artists,
+                            OfflineRailStyle.Playlist to offlineCollections.playlists
+                        ).filter { it.second.isNotEmpty() }.forEach { (railStyle, collections) ->
+                            item(key = "offline-rail-${railStyle.name}", contentType = "offline-collection-rail") {
+                                OfflineCollectionRail(
+                                    title = when (railStyle) {
+                                        OfflineRailStyle.Mix -> offlineQueueStrings.offlineMixes
+                                        OfflineRailStyle.Artist -> strings.artists
+                                        OfflineRailStyle.Playlist -> strings.playlists
+                                    },
+                                    icon = when (railStyle) {
+                                        OfflineRailStyle.Mix -> Icons.Rounded.AutoAwesome
+                                        OfflineRailStyle.Artist -> Icons.Rounded.Person
+                                        OfflineRailStyle.Playlist -> Icons.AutoMirrored.Rounded.PlaylistPlay
+                                    },
+                                    seed = when (railStyle) {
+                                        OfflineRailStyle.Mix -> com.luc4n3x.levyra.ui.components.LevyraPastelPeriwinkle
+                                        OfflineRailStyle.Artist -> com.luc4n3x.levyra.ui.components.LevyraPastelRose
+                                        OfflineRailStyle.Playlist -> com.luc4n3x.levyra.ui.components.LevyraPastelLavender
+                                    },
+                                    style = railStyle,
+                                    collections = collections,
+                                    selectedKey = offlineFilterKey,
+                                    label = { collection -> collection.mix?.let { offlineMixTitle(it, strings, offlineQueueStrings) } ?: collection.title },
+                                    countLabel = strings::formatTrackCount,
+                                    onSelect = { collection ->
+                                        offlineFilterKey = collection.key.takeUnless { it == offlineFilterKey }
+                                    }
+                                )
+                            }
+                        }
+                    }
                     item(key = "download-health-entry") {
                         com.luc4n3x.levyra.ui.downloadhealth.DownloadHealthEntry()
                     }
                     item(key = "offline-storage") {
                         val showSmartOffline = state.smartOfflineSettings.enabled || smartOfflineSummary.first > 0
-                        val groupCount = if (showSmartOffline) 2 else 1
+                        val showStorageRow = catalog.offlineItems.isEmpty()
+                        val groupCount = listOf(showSmartOffline, showStorageRow).count { it }
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            LibraryOfflineSummary(
+                            if (showStorageRow) LibraryOfflineSummary(
                                 bytes = state.downloadStorageBytes,
                                 activeCount = state.downloadQueue.count {
                                     offlineDownloadStageOf(it.state).isActive
@@ -1434,39 +1544,12 @@ internal fun LevyraLibraryScreen(
                                     lastUpdatedAt = state.smartOfflineSettings.lastRefreshAt,
                                     refreshEnabled = state.smartOfflineSettings.enabled,
                                     onRefresh = viewModel::refreshSmartOffline,
-                                    shape = levyraGroupedListShape(1, groupCount)
+                                    shape = levyraGroupedListShape(if (showStorageRow) 1 else 0, groupCount)
                                 )
                             }
                         }
                     }
-                    val activeBatches = visibleDownloadBatches(state.downloadBatches)
-                    val hasTransfers = activeBatches.isNotEmpty() || state.downloadQueue.isNotEmpty()
-                    if (hasTransfers) {
-                        item(key = "offline-queue-title") {
-                            LibrarySectionTitle(strings.downloadsInProgress, strings.downloadInProgress)
-                        }
-                    }
-                    items(activeBatches, key = { "batch-${it.key}" }, contentType = { "LevyraLibraryScreen-activeBatches" }) { batch ->
-                        LibraryBatchDownloadRow(
-                            batch = batch,
-                            onRetry = { viewModel.retryBatchDownload(batch.key) },
-                            onCancel = { viewModel.cancelBatchDownload(batch.key) }
-                        )
-                    }
-                    itemsIndexed(
-                        state.downloadQueue,
-                        key = { _, task -> "task-${task.taskKey}" },
-                        contentType = { _, _ -> "download-task" }
-                    ) { _, task ->
-                        LibraryDownloadTaskRow(
-                            task = task,
-                            onPause = { viewModel.pauseDownload(task.taskKey) },
-                            onResume = { viewModel.resumeDownload(task.taskKey) },
-                            onCancel = { viewModel.cancelDownload(task.taskKey) },
-                            position = LevyraConnectedPosition.Single
-                        )
-                    }
-                    if (hasTransfers && visibleOffline.isNotEmpty()) {
+                    if ((hasTransfers || catalog.offlineItems.isNotEmpty()) && visibleOffline.isNotEmpty()) {
                         item(key = "offline-saved-title") {
                             LibrarySectionTitle(strings.downloaded, "")
                         }

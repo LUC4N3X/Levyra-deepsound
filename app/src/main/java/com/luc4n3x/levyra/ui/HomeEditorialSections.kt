@@ -1032,7 +1032,7 @@ internal fun HomeEditorialSpotlight(
     val heroSeed by animateColorAsState(
         targetValue = homeSoundtrackHeroSeed(
             portrait = if (resolvedArtistArtworkUrl.isBlank()) accentStart else Color(portraitPalette.start),
-            fallback = MaterialTheme.colorScheme.primary
+            fallback = if (LevyraIsDefaultSkin) com.luc4n3x.levyra.ui.components.LevyraUtilitySeed else MaterialTheme.colorScheme.primary
         ),
         animationSpec = if (LocalAnimationsEnabled.current) tween(durationMillis = 420, easing = FastOutSlowInEasing) else snap(),
         label = "homeSpotlightHeroSeed"
@@ -1057,8 +1057,9 @@ internal fun HomeEditorialSpotlight(
         android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
     val heroTones = remember(heroSeed, isLight) { homeSoundtrackHeroTones(heroSeed, isLight) }
     val chipFill = heroTones.chip
+    val defaultHeroTone = com.luc4n3x.levyra.ui.components.levyraUtilityColors(com.luc4n3x.levyra.ui.components.LevyraUtilitySeed)
     val playFill = heroTones.action
-    val playInk = heroTones.onAction
+    val playInk = if (LevyraIsDefaultSkin) defaultHeroTone.onAccent else heroTones.onAction
 
     Box(modifier = Modifier.fillMaxWidth()) {
         Box(
@@ -1094,7 +1095,7 @@ internal fun HomeEditorialSpotlight(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .fillMaxHeight()
-                        .fillMaxWidth(HOME_HERO_PORTRAIT_SHARE)
+                        .fillMaxWidth(if (LevyraIsDefaultSkin) DefaultHeroPortraitShare else HOME_HERO_PORTRAIT_SHARE)
                         .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
                         .drawWithContent {
                             drawContent()
@@ -1146,45 +1147,49 @@ internal fun HomeEditorialSpotlight(
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .fillMaxWidth(0.66f)
+                        .fillMaxWidth(if (LevyraIsDefaultSkin) 0.7f else 0.66f)
                         .padding(start = 20.dp, end = 8.dp, bottom = 30.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
+                    if (LevyraIsDefaultSkin) {
+                        DefaultSoundtrackHeroTitle(overline = strings.homeSoundtrackRadio, title = soundtrackTitle, accent = defaultHeroTone.accent, onAccent = defaultHeroTone.onAccent, ink = heroInk)
+                    } else {
                         Row(
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .background(chipFill)
-                                .padding(start = 6.dp, end = 12.dp, top = 5.dp, bottom = 5.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(7.dp)
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Box(
+                            Row(
                                 modifier = Modifier
-                                    .size(14.dp)
-                                    .clip(homeHeroChipBadgeShape())
-                                    .background(heroTones.badge)
-                            )
-                            Text(
-                                text = strings.homeSoundtrackRadio,
-                                color = heroTones.onChip,
-                                style = LevyraType.overline,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                                    .clip(CircleShape)
+                                    .background(chipFill)
+                                    .padding(start = 6.dp, end = 12.dp, top = 5.dp, bottom = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(7.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(14.dp)
+                                        .clip(homeHeroChipBadgeShape())
+                                        .background(heroTones.badge)
+                                )
+                                Text(
+                                    text = strings.homeSoundtrackRadio,
+                                    color = heroTones.onChip,
+                                    style = LevyraType.overline,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
+                        Text(
+                            text = soundtrackTitle,
+                            color = heroInk,
+                            style = LevyraType.heroTitle,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.semantics { heading() }
+                        )
                     }
-                    Text(
-                        text = soundtrackTitle,
-                        color = heroInk,
-                        style = LevyraType.heroTitle,
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.semantics { heading() }
-                    )
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -1207,18 +1212,35 @@ internal fun HomeEditorialSpotlight(
                             modifier = Modifier.weight(1f, fill = false)
                         )
                     }
+                    if (LevyraIsDefaultSkin) {
+                        MonoWaveLine(
+                            isCurrent && isPlaying,
+                            Modifier.padding(top = 4.dp).width(120.dp).height(14.dp),
+                            color = defaultHeroTone.accent,
+                            cycles = 5f,
+                            strokeWidth = 1.5.dp
+                        )
+                    }
                 }
 
                 Surface(
-                    color = playFill,
-                    shape = rememberLevyraPlayMorphShape(
-                        playing = isCurrent && isPlaying,
-                        animated = LocalAnimationsEnabled.current,
-                        spinWhilePlaying = !isResolving
-                    ),
+                    color = if (LevyraIsDefaultSkin) defaultHeroTone.accent else playFill,
+                    shape = if (LevyraIsDefaultSkin) {
+                        com.luc4n3x.levyra.ui.components.rememberLevyraHeroPlayShape(
+                            playing = isCurrent && isPlaying,
+                            animated = LocalAnimationsEnabled.current,
+                            spinWhilePlaying = !isResolving
+                        )
+                    } else {
+                        rememberLevyraPlayMorphShape(
+                            playing = isCurrent && isPlaying,
+                            animated = LocalAnimationsEnabled.current,
+                            spinWhilePlaying = !isResolving
+                        )
+                    },
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(end = 20.dp, bottom = 32.dp)
+                        .padding(end = 20.dp, bottom = 30.dp)
                         .size(68.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
@@ -1735,3 +1757,5 @@ internal fun ListeningHistoryRecapCard(
         }
     }
 }
+
+private const val DefaultHeroPortraitShare = 0.86f

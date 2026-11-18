@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.library
 
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -183,6 +184,7 @@ private fun List<Track>.coverUrls(limit: Int): List<String> =
 private fun DefaultLibraryFavoritesHero(tracks: List<Track>, onOpen: () -> Unit, onPlay: () -> Unit) {
     val strings = LocalLevyraStrings.current
     val tone = levyraUtilityColors(LevyraUtilitySeed)
+    val scheme = MaterialTheme.colorScheme
     val covers = remember(tracks) { tracks.coverUrls(3) }
     Row(
         modifier = Modifier
@@ -196,7 +198,7 @@ private fun DefaultLibraryFavoritesHero(tracks: List<Track>, onOpen: () -> Unit,
                     bottomEnd = LevyraGroupedInnerCorner
                 )
             )
-            .background(tone.container)
+            .background(androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(tone.softContainer.compositeOver(scheme.surfaceContainerHigh), scheme.surfaceContainerHigh)))
             .semantics(mergeDescendants = true) {}
             .levyraPressable(onClick = onOpen, role = Role.Button, onClickLabel = strings.favoritesPlain, pressedScale = LevyraPressScale.Surface)
             .padding(start = 20.dp, end = 16.dp, top = 18.dp, bottom = 18.dp),
@@ -205,14 +207,14 @@ private fun DefaultLibraryFavoritesHero(tracks: List<Track>, onOpen: () -> Unit,
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 strings.favoritesPlain,
-                color = tone.onContainer,
+                color = scheme.onSurface,
                 style = MaterialTheme.typography.headlineSmallEmphasized,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
                 strings.formatTrackCount(tracks.size),
-                color = tone.onContainer.copy(alpha = 0.74f),
+                color = scheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1
             )

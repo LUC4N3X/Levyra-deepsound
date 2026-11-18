@@ -1,6 +1,5 @@
 package com.luc4n3x.levyra.ui.recognition
 
-import com.luc4n3x.levyra.ui.components.utilityScrollProgress
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.ui.graphics.Color
 import com.luc4n3x.levyra.ui.components.levyraUtilityColors
@@ -87,7 +86,7 @@ internal fun LevyraRecognitionOverlay(
     val utility = LevyraUtilityStyleActive
     val listState = rememberLazyListState()
     Box(modifier = Modifier.fillMaxSize().background(LevyraInk)) {
-        if (utility) LevyraUtilityBackdrop(scrollProgress = { listState.utilityScrollProgress() })
+        if (utility) LevyraUtilityBackdrop(listState = listState)
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize().statusBarsPadding(),

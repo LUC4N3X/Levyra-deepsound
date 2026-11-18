@@ -42,7 +42,15 @@ data class OfflineDownloadTaskSummaryRow(
     val artist: String,
     val state: String,
     val progress: Int,
-    val error: String
+    val error: String,
+    val ownership: String = DownloadOwnership.MANUAL.name
+)
+
+data class OfflineDownloadLaneRow(
+    val ownership: String,
+    val total: Int,
+    val completed: Int,
+    val progressSum: Int
 )
 
 data class OfflineDownloadBatchRow(
@@ -70,13 +78,33 @@ interface OfflineDownloadTasksDao {
 
     @Query(
         """
-        SELECT taskKey, trackId, title, artist, state, progress, error
+        SELECT taskKey, trackId, title, artist, state, progress, error, ownership
         FROM offline_download_tasks
         WHERE state IN ('QUEUED','RUNNING','PAUSED','RETRYING','FAILED')
         ORDER BY createdAt ASC
         """
     )
     fun observeActive(): Flow<List<OfflineDownloadTaskSummaryRow>>
+
+    @Query(
+        """
+        SELECT t.ownership AS ownership,
+               COUNT(*) AS total,
+               SUM(CASE WHEN t.state = 'SUCCEEDED' THEN 1 ELSE 0 END) AS completed,
+               SUM(CASE WHEN t.state = 'SUCCEEDED' THEN 100 ELSE t.progress END) AS progressSum
+        FROM offline_download_tasks AS t
+        WHERE t.state IN ('QUEUED','RUNNING','PAUSED','RETRYING')
+           OR (
+             t.state = 'SUCCEEDED'
+             AND t.updatedAt >= (
+               SELECT MIN(a.createdAt) FROM offline_download_tasks AS a
+               WHERE a.ownership = t.ownership AND a.state IN ('QUEUED','RUNNING','PAUSED','RETRYING')
+             )
+           )
+        GROUP BY t.ownership
+        """
+    )
+    fun observeLanes(): Flow<List<OfflineDownloadLaneRow>>
 
     @Query("SELECT * FROM offline_download_tasks WHERE taskKey = :taskKey LIMIT 1")
     suspend fun byKey(taskKey: String): OfflineDownloadTaskEntity?

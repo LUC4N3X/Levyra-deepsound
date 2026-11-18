@@ -59,6 +59,26 @@ private val FavoriteMorph: Morph by lazy {
     Morph(MaterialShapes.Circle.normalized(), MaterialShapes.Cookie9Sided.normalized())
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private val HeroPlayMorph: Morph by lazy {
+    Morph(MaterialShapes.Cookie9Sided.normalized(), MaterialShapes.Cookie12Sided.normalized())
+}
+
+@Composable
+internal fun rememberLevyraHeroPlayShape(
+    playing: Boolean,
+    animated: Boolean,
+    spinWhilePlaying: Boolean = false
+): Shape = rememberSpinningMorphShape(
+    morph = HeroPlayMorph,
+    active = playing,
+    animated = animated,
+    spin = spinWhilePlaying,
+    spinDegrees = PlaySpinPeriodDegrees,
+    spinMillis = PlaySpinPeriodMillis,
+    label = "levyra-hero-play-morph"
+)
+
 internal fun levyraCookieLandingShape(progress: Float, rotationDegrees: Float = 0f): Shape =
     LevyraMorphShape(PlayMorph, progress, rotationDegrees)
 
