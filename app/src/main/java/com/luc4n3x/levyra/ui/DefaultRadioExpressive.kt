@@ -90,6 +90,23 @@ internal fun DefaultRadioCategoryGrid(
     }
 }
 
+private class DefaultRadioCategoryStyle(
+    val corner: androidx.compose.ui.unit.Dp,
+    val turn: Float,
+    val container: Color,
+    val badgeFill: Color,
+    val badgeInk: Color,
+    val label: Color,
+    val weight: FontWeight
+)
+
+private fun defaultRadioCategoryStyle(selected: Boolean, tone: com.luc4n3x.levyra.ui.components.LevyraUtilityColors, idle: Color, ink: Color) =
+    if (selected) {
+        DefaultRadioCategoryStyle(32.dp, 30f, tone.container, tone.accent, tone.onAccent, tone.onContainer, FontWeight.Bold)
+    } else {
+        DefaultRadioCategoryStyle(20.dp, 0f, idle, tone.container, tone.onContainer, ink, FontWeight.SemiBold)
+    }
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun DefaultRadioCategoryTile(
@@ -102,10 +119,11 @@ private fun DefaultRadioCategoryTile(
 ) {
     val colors = MaterialTheme.colorScheme
     val tone = levyraUtilityColors(DefaultRadioCategorySeeds[index % DefaultRadioCategorySeeds.size])
+    val style = defaultRadioCategoryStyle(selected, tone, colors.surfaceContainer, colors.onSurface)
     val interaction = remember { MutableInteractionSource() }
-    val corner = levyraExpressiveCorner(interactionSource = interaction, rest = if (selected) 32.dp else 20.dp, pressed = 12.dp, label = "default-radio-category")
+    val corner = levyraExpressiveCorner(interactionSource = interaction, rest = style.corner, pressed = 12.dp, label = "default-radio-category")
     val turn by animateFloatAsState(
-        targetValue = if (selected) 30f else 0f,
+        targetValue = style.turn,
         animationSpec = if (LocalAnimationsEnabled.current) androidx.compose.animation.core.spring() else androidx.compose.animation.core.snap(),
         label = "default-radio-category-turn"
     )
@@ -114,18 +132,18 @@ private fun DefaultRadioCategoryTile(
         modifier
             .heightIn(min = 104.dp)
             .clip(RoundedCornerShape(corner))
-            .background(if (selected) tone.container else colors.surfaceContainer)
+            .background(style.container)
             .levyraPressable(onClick = onClick, interactionSource = interaction, role = Role.Button, pressedScale = LevyraPressScale.Tile)
             .semantics { this.selected = selected }
             .padding(horizontal = 8.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)
     ) {
-        DefaultRadioCategoryBadge(category, shape, { turn }, if (selected) tone.accent else tone.container, if (selected) tone.onAccent else tone.onContainer)
+        DefaultRadioCategoryBadge(category, shape, { turn }, style.badgeFill, style.badgeInk)
         Text(
             label,
-            color = if (selected) tone.onContainer else colors.onSurface,
-            style = MaterialTheme.typography.labelLarge.copy(fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold),
+            color = style.label,
+            style = MaterialTheme.typography.labelLarge.copy(fontWeight = style.weight),
             textAlign = TextAlign.Center,
             maxLines = 2,
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
