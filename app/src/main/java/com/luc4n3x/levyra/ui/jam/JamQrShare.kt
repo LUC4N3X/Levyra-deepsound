@@ -1,5 +1,9 @@
 package com.luc4n3x.levyra.ui.jam
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import com.luc4n3x.levyra.ui.theme.LevyraCyan
+import androidx.compose.material3.IconButtonDefaults
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -30,12 +34,10 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -90,7 +92,19 @@ internal fun JamQrShare(invitation: String, sessionName: String, hostName: Strin
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         Box(Modifier.fillMaxWidth()) {
-            LevyraBackButton(onClick = onClose, contentDescription = strings.back, size = 48.dp)
+            if (look.skinned) {
+                LevyraBackButton(onClick = onClose, contentDescription = strings.back, size = 48.dp)
+            } else {
+                LevyraBackButton(
+                    onClick = onClose,
+                    contentDescription = strings.back,
+                    size = 48.dp,
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = LevyraCyan.copy(alpha = 0.22f),
+                        contentColor = scheme.onSurface
+                    )
+                )
+            }
             Image(painterResource(R.drawable.levyra_logo), contentDescription = null, modifier = Modifier.align(Alignment.CenterEnd).size(56.dp))
         }
         Column(Modifier.widthIn(max = 400.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
