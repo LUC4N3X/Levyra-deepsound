@@ -75,13 +75,16 @@ internal fun ArtistBio(
     val presentation = remember(
         biography.text,
         biography.sourceLabel,
+        biography.languageCode,
         editorial.paragraphs,
-        editorial.summary
+        editorial.summary,
+        strings.code
     ) {
         buildArtistBiographyPresentation(
             biography = biography,
             paragraphs = editorial.paragraphs,
-            summary = editorial.summary
+            summary = editorial.summary,
+            uiLanguageCode = strings.code
         )
     }
     val biographyText = remember(presentation.paragraphs, presentation.previewText) {

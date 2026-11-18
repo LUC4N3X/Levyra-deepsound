@@ -2,6 +2,10 @@ package com.luc4n3x.levyra.data
 
 import android.content.Context
 import com.luc4n3x.levyra.BuildConfig
+import com.luc4n3x.levyra.data.apple.AppleArtistPage
+import com.luc4n3x.levyra.data.apple.AppleArtistPageParser
+import com.luc4n3x.levyra.data.apple.AppleMusicEditorialRepository
+import com.luc4n3x.levyra.data.apple.AppleStorefronts
 import com.luc4n3x.levyra.data.lore.ArtistLoreRepository
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.data.network.YoutubeRegionProfile
@@ -255,21 +259,50 @@ internal fun shouldReplaceArtistBiography(
     candidate: ArtistBiography,
     requestedLanguageCode: String
 ): Boolean {
-    if (candidate.text.isBlank() || !candidate.isWikipediaBiography()) return false
-    if (current == null || current.text.isBlank() || !current.isWikipediaBiography()) return true
-    if (current.languageCode.isNotBlank() && candidate.languageCode.isNotBlank()) {
-        val requestedLanguage = ArtistLoreRepository.preferredLanguage(requestedLanguageCode)
-        val currentMatchesRequested = ArtistLoreRepository.preferredLanguage(current.languageCode) == requestedLanguage
-        val candidateMatchesRequested = ArtistLoreRepository.preferredLanguage(candidate.languageCode) == requestedLanguage
-        if (candidateMatchesRequested && !currentMatchesRequested) return true
-        if (!candidateMatchesRequested && currentMatchesRequested) return false
-    }
+    val candidateRank = candidate.preferenceRank(requestedLanguageCode)
+    if (candidate.text.isBlank() || candidateRank == 0) return false
+    if (current == null || current.text.isBlank()) return true
+    val currentRank = current.preferenceRank(requestedLanguageCode)
+    if (candidateRank != currentRank) return candidateRank > currentRank
     return when {
         candidate.confidence > current.confidence -> true
         candidate.confidence == current.confidence && candidate.text.length > current.text.length -> true
         else -> false
     }
 }
+
+internal const val APPLE_MUSIC_BIOGRAPHY_SOURCE = "Apple Music"
+
+internal fun appleArtistBiography(page: AppleArtistPage, storefront: String, languageCode: String): ArtistBiography? {
+    val text = AppleArtistPageParser.styledText(page.info?.bio.orEmpty())
+        .joinToString("") { it.first }
+        .replace(Regex("[ \\t]{2,}"), " ")
+        .replace(Regex("\\n{3,}"), "\n\n")
+        .trim()
+    if (text.length < 24) return null
+    return ArtistBiography(
+        text = text,
+        sourceLabel = APPLE_MUSIC_BIOGRAPHY_SOURCE,
+        sourceUrl = page.id.takeIf { it.isNotBlank() }?.let { "https://music.apple.com/$storefront/artist/$it" }.orEmpty(),
+        languageCode = languageCode,
+        confidence = 100
+    )
+}
+
+private fun ArtistBiography.preferenceRank(requestedLanguageCode: String): Int {
+    val matchesRequested = languageCode.isBlank() ||
+        ArtistLoreRepository.preferredLanguage(languageCode) == ArtistLoreRepository.preferredLanguage(requestedLanguageCode)
+    return when {
+        isAppleMusicBiography() && matchesRequested -> 4
+        isWikipediaBiography() && matchesRequested -> 3
+        isAppleMusicBiography() -> 2
+        isWikipediaBiography() -> 1
+        else -> 0
+    }
+}
+
+private fun ArtistBiography.isAppleMusicBiography(): Boolean =
+    sourceLabel.equals(APPLE_MUSIC_BIOGRAPHY_SOURCE, ignoreCase = true)
 
 private fun ArtistBiography.isWikipediaBiography(): Boolean {
     return sourceLabel.equals("Wikipedia", ignoreCase = true) ||
@@ -559,6 +592,17 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             browseId = browseId.trim(),
             languageCode = contentLanguage()
         ).firstOrNull()
+    }
+
+    suspend fun appleBiographyFor(artistName: String, storefront: String): ArtistBiography? {
+        val appContext = context?.applicationContext ?: return null
+        val cleanName = artistName.trim()
+        if (cleanName.length < 2) return null
+        val apple = AppleMusicEditorialRepository.get(appContext)
+        val front = AppleStorefronts.normalize(storefront)
+        return linkedSetOf(AppleStorefronts.language(contentLanguage()), "en").firstNotNullOfOrNull { language ->
+            apple.artistHeader(front, cleanName, language)?.let { appleArtistBiography(it, front, language) }
+        }
     }
 
     fun mergeBiography(profile: ArtistProfile, candidate: ArtistBiography): ArtistProfile {

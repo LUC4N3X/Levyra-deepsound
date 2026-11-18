@@ -1020,6 +1020,7 @@ private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
     val otherSections = input.homeSections.filter {
         !isVerifiedHomeReleaseSectionTitle(it.title, input.languageCode) &&
             !isHomeQuickPicksSectionTitle(it.title) &&
+            !isHomeSongMixesSectionTitle(it.title) &&
             !isHomePersonalOrbitSectionTitle(it.title, input.languageCode)
     }
     val contentAvailability = HomeContentAvailability(
@@ -1270,6 +1271,16 @@ private fun isHomeQuickPicksSectionTitle(title: String): Boolean {
         normalized.contains("quick pick") ||
         normalized.contains("scelte per te")
 }
+
+private val HomeSongMixesSectionTitles = setOf(
+    "song mixes", "mix brani", "миксы из треков", "мікси з пісень", "song-mixe", "mix de titres", "sang-mix",
+    "mixy skladeb", "mixaje de melodii", "μίξεις τραγουδιών", "노래 믹스", "歌曲合辑", "歌曲合輯", "ميكسات الأغاني",
+    "מיקסים של שירים", "गानों के मिक्स", "tuyển tập bài hát", "มิกซ์เพลง", "миксове по песни", "sangmikser",
+    "ترکیب آهنگ‌ها", "adunan lagu", "миксеви песама", "përzierjet e këngëve", "loo miksid", "mga mix ng kanta"
+)
+
+private fun isHomeSongMixesSectionTitle(title: String): Boolean =
+    title.trim().lowercase(Locale.ROOT) in HomeSongMixesSectionTitles
 
 private fun isHomePersonalOrbitSectionTitle(title: String, languageCode: String = "en"): Boolean {
     val normalized = title.trim().lowercase(Locale.ROOT)

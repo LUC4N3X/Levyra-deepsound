@@ -80,8 +80,8 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Blocked guests", "Clear blocked list", "Lock session",
         "Nobody new can join while the session is locked", "Locked",
         "Waiting for the host to let you in", "The host declined your request",
-        "The host blocked you from this Jam", "The session is locked",
-        "The session is full", "The host removed you from the Jam",
+        "The host blocked you from this Unison", "The session is locked",
+        "The session is full", "The host removed you from the Unison",
         "No guests yet", "You", "Share invite"
     ),
     "it" to jamModeration(
@@ -90,8 +90,8 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Ospiti bloccati", "Svuota lista bloccati", "Blocca sessione",
         "Con la sessione bloccata nessuno può più entrare", "Bloccata",
         "In attesa che l'host ti faccia entrare", "L'host ha rifiutato la tua richiesta",
-        "L'host ti ha bloccato da questo Jam", "La sessione è bloccata",
-        "La sessione è piena", "L'host ti ha rimosso dal Jam",
+        "L'host ti ha bloccato da questo Unison", "La sessione è bloccata",
+        "La sessione è piena", "L'host ti ha rimosso dall'Unison",
         "Ancora nessun ospite", "Tu", "Condividi invito"
     ),
     "es" to jamModeration(
@@ -100,8 +100,8 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Invitados bloqueados", "Vaciar lista de bloqueados", "Bloquear sesión",
         "Con la sesión bloqueada nadie más puede entrar", "Bloqueada",
         "Esperando a que el anfitrión te deje entrar", "El anfitrión rechazó tu solicitud",
-        "El anfitrión te bloqueó en este Jam", "La sesión está bloqueada",
-        "La sesión está llena", "El anfitrión te quitó del Jam",
+        "El anfitrión te bloqueó en este Unison", "La sesión está bloqueada",
+        "La sesión está llena", "El anfitrión te quitó del Unison",
         "Aún no hay invitados", "Tú", "Compartir invitación"
     ),
     "fr" to jamModeration(
@@ -110,8 +110,8 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Invités bloqués", "Vider la liste des bloqués", "Verrouiller la session",
         "Personne ne peut entrer quand la session est verrouillée", "Verrouillée",
         "En attente que l'hôte vous laisse entrer", "L'hôte a refusé votre demande",
-        "L'hôte vous a bloqué dans ce Jam", "La session est verrouillée",
-        "La session est complète", "L'hôte vous a retiré du Jam",
+        "L'hôte vous a bloqué dans ce Unison", "La session est verrouillée",
+        "La session est complète", "L'hôte vous a retiré de l'Unison",
         "Aucun invité pour l'instant", "Vous", "Partager l'invitation"
     ),
     "de" to jamModeration(
@@ -120,8 +120,8 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Gesperrte Gäste", "Sperrliste leeren", "Sitzung sperren",
         "Bei gesperrter Sitzung kann niemand mehr beitreten", "Gesperrt",
         "Warte, bis der Host dich hereinlässt", "Der Host hat deine Anfrage abgelehnt",
-        "Der Host hat dich für diesen Jam gesperrt", "Die Sitzung ist gesperrt",
-        "Die Sitzung ist voll", "Der Host hat dich aus dem Jam entfernt",
+        "Der Host hat dich für diesen Unison gesperrt", "Die Sitzung ist gesperrt",
+        "Die Sitzung ist voll", "Der Host hat dich aus dem Unison entfernt",
         "Noch keine Gäste", "Du", "Einladung teilen"
     ),
     "pt" to jamModeration(
@@ -130,8 +130,8 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Convidados bloqueados", "Limpar lista de bloqueados", "Bloquear sessão",
         "Com a sessão bloqueada ninguém pode entrar", "Bloqueada",
         "À espera que o anfitrião te deixe entrar", "O anfitrião recusou o teu pedido",
-        "O anfitrião bloqueou-te neste Jam", "A sessão está bloqueada",
-        "A sessão está cheia", "O anfitrião removeu-te do Jam",
+        "O anfitrião bloqueou-te neste Unison", "A sessão está bloqueada",
+        "A sessão está cheia", "O anfitrião removeu-te do Unison",
         "Ainda sem convidados", "Tu", "Partilhar convite"
     ),
     "nl" to jamModeration(
@@ -140,8 +140,8 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Geblokkeerde gasten", "Blokkeerlijst wissen", "Sessie vergrendelen",
         "Bij een vergrendelde sessie kan niemand meer meedoen", "Vergrendeld",
         "Wachten tot de host je binnenlaat", "De host heeft je verzoek geweigerd",
-        "De host heeft je geblokkeerd voor deze Jam", "De sessie is vergrendeld",
-        "De sessie is vol", "De host heeft je uit de Jam verwijderd",
+        "De host heeft je geblokkeerd voor deze Unison", "De sessie is vergrendeld",
+        "De sessie is vol", "De host heeft je uit de Unison verwijderd",
         "Nog geen gasten", "Jij", "Uitnodiging delen"
     ),
     "pl" to jamModeration(
@@ -150,8 +150,8 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Zablokowani goście", "Wyczyść listę blokad", "Zablokuj sesję",
         "Przy zablokowanej sesji nikt nowy nie dołączy", "Zablokowana",
         "Czekasz, aż gospodarz cię wpuści", "Gospodarz odrzucił twoją prośbę",
-        "Gospodarz zablokował cię w tym Jamie", "Sesja jest zablokowana",
-        "Sesja jest pełna", "Gospodarz usunął cię z Jamu",
+        "Gospodarz zablokował cię w tym Unisonie", "Sesja jest zablokowana",
+        "Sesja jest pełna", "Gospodarz usunął cię z Unisonu",
         "Brak gości", "Ty", "Udostępnij zaproszenie"
     ),
     "ro" to jamModeration(
@@ -160,8 +160,8 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Invitați blocați", "Golește lista de blocați", "Blochează sesiunea",
         "Cu sesiunea blocată nimeni nu mai poate intra", "Blocată",
         "Aștepți ca gazda să te lase să intri", "Gazda ți-a respins cererea",
-        "Gazda te-a blocat în acest Jam", "Sesiunea este blocată",
-        "Sesiunea este plină", "Gazda te-a eliminat din Jam",
+        "Gazda te-a blocat în acest Unison", "Sesiunea este blocată",
+        "Sesiunea este plină", "Gazda te-a eliminat din Unison",
         "Încă niciun invitat", "Tu", "Distribuie invitația"
     ),
     "el" to jamModeration(
@@ -170,8 +170,8 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Αποκλεισμένοι καλεσμένοι", "Καθαρισμός αποκλεισμένων", "Κλείδωμα συνεδρίας",
         "Με κλειδωμένη συνεδρία δεν μπορεί να μπει κανείς", "Κλειδωμένη",
         "Περιμένεις να σε δεχτεί ο οικοδεσπότης", "Ο οικοδεσπότης απέρριψε το αίτημά σου",
-        "Ο οικοδεσπότης σε απέκλεισε από αυτό το Jam", "Η συνεδρία είναι κλειδωμένη",
-        "Η συνεδρία είναι γεμάτη", "Ο οικοδεσπότης σε αφαίρεσε από το Jam",
+        "Ο οικοδεσπότης σε απέκλεισε από αυτό το Unison", "Η συνεδρία είναι κλειδωμένη",
+        "Η συνεδρία είναι γεμάτη", "Ο οικοδεσπότης σε αφαίρεσε από το Unison",
         "Κανένας καλεσμένος ακόμα", "Εσύ", "Κοινή χρήση πρόσκλησης"
     ),
     "sv" to jamModeration(
@@ -180,8 +180,8 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Blockerade gäster", "Rensa blockeringslistan", "Lås sessionen",
         "Med låst session kan ingen ny gå med", "Låst",
         "Väntar på att värden släpper in dig", "Värden avvisade din förfrågan",
-        "Värden blockerade dig från detta Jam", "Sessionen är låst",
-        "Sessionen är full", "Värden tog bort dig från Jam",
+        "Värden blockerade dig från detta Unison", "Sessionen är låst",
+        "Sessionen är full", "Värden tog bort dig från Unison",
         "Inga gäster än", "Du", "Dela inbjudan"
     ),
     "da" to jamModeration(
@@ -190,8 +190,8 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Blokerede gæster", "Ryd blokeringsliste", "Lås session",
         "Med låst session kan ingen nye deltage", "Låst",
         "Venter på, at værten lukker dig ind", "Værten afviste din anmodning",
-        "Værten blokerede dig fra dette Jam", "Sessionen er låst",
-        "Sessionen er fuld", "Værten fjernede dig fra Jam",
+        "Værten blokerede dig fra dette Unison", "Sessionen er låst",
+        "Sessionen er fuld", "Værten fjernede dig fra Unison",
         "Ingen gæster endnu", "Dig", "Del invitation"
     ),
     "cs" to jamModeration(
@@ -200,8 +200,8 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Zablokovaní hosté", "Vymazat seznam blokovaných", "Zamknout relaci",
         "Se zamčenou relací se už nikdo nepřipojí", "Zamčeno",
         "Čekáš, až tě hostitel vpustí", "Hostitel tvou žádost odmítl",
-        "Hostitel tě v tomto Jamu zablokoval", "Relace je zamčená",
-        "Relace je plná", "Hostitel tě odebral z Jamu",
+        "Hostitel tě v tomto Unisonu zablokoval", "Relace je zamčená",
+        "Relace je plná", "Hostitel tě odebral z Unisonu",
         "Zatím žádní hosté", "Ty", "Sdílet pozvánku"
     ),
     "uk" to jamModeration(
@@ -210,8 +210,8 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Заблоковані гості", "Очистити список блокувань", "Заблокувати сесію",
         "Із заблокованою сесією ніхто новий не приєднається", "Заблоковано",
         "Очікуєш, поки хост тебе впустить", "Хост відхилив твій запит",
-        "Хост заблокував тебе в цьому Jam", "Сесію заблоковано",
-        "Сесія заповнена", "Хост видалив тебе з Jam",
+        "Хост заблокував тебе в цьому Unison", "Сесію заблоковано",
+        "Сесія заповнена", "Хост видалив тебе з Unison",
         "Поки що немає гостей", "Ти", "Поділитися запрошенням"
     ),
     "ru" to jamModeration(
@@ -220,8 +220,8 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Заблокированные гости", "Очистить список блокировок", "Заблокировать сессию",
         "При заблокированной сессии никто новый не войдёт", "Заблокирована",
         "Ждёшь, пока хост тебя впустит", "Хост отклонил твой запрос",
-        "Хост заблокировал тебя в этом Jam", "Сессия заблокирована",
-        "Сессия заполнена", "Хост удалил тебя из Jam",
+        "Хост заблокировал тебя в этом Unison", "Сессия заблокирована",
+        "Сессия заполнена", "Хост удалил тебя из Unison",
         "Гостей пока нет", "Ты", "Поделиться приглашением"
     ),
     "tr" to jamModeration(
@@ -230,8 +230,8 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Engellenen misafirler", "Engel listesini temizle", "Oturumu kilitle",
         "Oturum kilitliyken kimse katılamaz", "Kilitli",
         "Sunucunun seni almasını bekliyorsun", "Sunucu isteğini reddetti",
-        "Sunucu seni bu Jam'den engelledi", "Oturum kilitli",
-        "Oturum dolu", "Sunucu seni Jam'den çıkardı",
+        "Sunucu seni bu Unison'den engelledi", "Oturum kilitli",
+        "Oturum dolu", "Sunucu seni Unison'den çıkardı",
         "Henüz misafir yok", "Sen", "Daveti paylaş"
     ),
     "ar" to jamModeration(
@@ -240,8 +240,8 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "الضيوف المحظورون", "مسح قائمة الحظر", "قفل الجلسة",
         "عند قفل الجلسة لا يمكن لأحد الانضمام", "مقفلة",
         "في انتظار أن يسمح لك المضيف بالدخول", "رفض المضيف طلبك",
-        "حظرك المضيف من هذا الـ Jam", "الجلسة مقفلة",
-        "الجلسة ممتلئة", "أزالك المضيف من الـ Jam",
+        "حظرك المضيف من هذا الـ Unison", "الجلسة مقفلة",
+        "الجلسة ممتلئة", "أزالك المضيف من الـ Unison",
         "لا يوجد ضيوف بعد", "أنت", "مشاركة الدعوة"
     ),
     "zh" to jamModeration(
@@ -250,8 +250,8 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "已屏蔽的访客", "清空屏蔽列表", "锁定会话",
         "会话锁定后无人可以加入", "已锁定",
         "正在等待主持人放行", "主持人拒绝了你的请求",
-        "主持人已在此 Jam 中屏蔽你", "会话已锁定",
-        "会话已满", "主持人已将你移出 Jam",
+        "主持人已在此 Unison 中屏蔽你", "会话已锁定",
+        "会话已满", "主持人已将你移出 Unison",
         "暂无访客", "你", "分享邀请"
     ),
     "ja" to jamModeration(
@@ -260,8 +260,8 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "ブロック中のゲスト", "ブロックリストを消去", "セッションをロック",
         "ロック中は誰も参加できません", "ロック中",
         "ホストの許可を待っています", "ホストがリクエストを却下しました",
-        "ホストがこの Jam であなたをブロックしました", "セッションはロックされています",
-        "セッションが満員です", "ホストが Jam からあなたを削除しました",
+        "ホストがこの Unison であなたをブロックしました", "セッションはロックされています",
+        "セッションが満員です", "ホストが Unison からあなたを削除しました",
         "ゲストはまだいません", "あなた", "招待を共有"
     ),
     "ko" to jamModeration(
@@ -270,8 +270,8 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "차단된 게스트", "차단 목록 지우기", "세션 잠금",
         "세션이 잠기면 아무도 참여할 수 없습니다", "잠김",
         "호스트의 승인을 기다리는 중", "호스트가 요청을 거절했습니다",
-        "호스트가 이 Jam에서 차단했습니다", "세션이 잠겨 있습니다",
-        "세션이 가득 찼습니다", "호스트가 Jam에서 내보냈습니다",
+        "호스트가 이 Unison에서 차단했습니다", "세션이 잠겨 있습니다",
+        "세션이 가득 찼습니다", "호스트가 Unison에서 내보냈습니다",
         "아직 게스트가 없습니다", "나", "초대 공유"
     ),
     "hi" to jamModeration(
@@ -280,8 +280,8 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "ब्लॉक किए मेहमान", "ब्लॉक सूची साफ़ करें", "सत्र लॉक करें",
         "सत्र लॉक होने पर कोई नया शामिल नहीं हो सकता", "लॉक",
         "होस्ट के प्रवेश देने का इंतज़ार", "होस्ट ने आपका अनुरोध अस्वीकार किया",
-        "होस्ट ने आपको इस Jam से ब्लॉक किया", "सत्र लॉक है",
-        "सत्र भरा है", "होस्ट ने आपको Jam से हटा दिया",
+        "होस्ट ने आपको इस Unison से ब्लॉक किया", "सत्र लॉक है",
+        "सत्र भरा है", "होस्ट ने आपको Unison से हटा दिया",
         "अभी कोई मेहमान नहीं", "आप", "आमंत्रण साझा करें"
     ),
     "id" to jamModeration(
@@ -290,8 +290,8 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Tamu diblokir", "Bersihkan daftar blokir", "Kunci sesi",
         "Saat sesi terkunci tidak ada yang bisa bergabung", "Terkunci",
         "Menunggu host mengizinkanmu masuk", "Host menolak permintaanmu",
-        "Host memblokirmu dari Jam ini", "Sesi terkunci",
-        "Sesi penuh", "Host mengeluarkanmu dari Jam",
+        "Host memblokirmu dari Unison ini", "Sesi terkunci",
+        "Sesi penuh", "Host mengeluarkanmu dari Unison",
         "Belum ada tamu", "Kamu", "Bagikan undangan"
     ),
     "vi" to jamModeration(
@@ -300,8 +300,8 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Khách bị chặn", "Xóa danh sách chặn", "Khóa phiên",
         "Khi phiên bị khóa không ai tham gia được", "Đã khóa",
         "Đang chờ chủ phòng cho vào", "Chủ phòng đã từ chối yêu cầu của bạn",
-        "Chủ phòng đã chặn bạn khỏi Jam này", "Phiên đang bị khóa",
-        "Phiên đã đầy", "Chủ phòng đã xóa bạn khỏi Jam",
+        "Chủ phòng đã chặn bạn khỏi Unison này", "Phiên đang bị khóa",
+        "Phiên đã đầy", "Chủ phòng đã xóa bạn khỏi Unison",
         "Chưa có khách", "Bạn", "Chia sẻ lời mời"
     ),
     "th" to jamModeration(
@@ -310,8 +310,8 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "ผู้เข้าร่วมที่ถูกบล็อก", "ล้างรายการบล็อก", "ล็อกเซสชัน",
         "เมื่อล็อกเซสชันจะไม่มีใครเข้าร่วมได้", "ล็อกแล้ว",
         "กำลังรอเจ้าของห้องอนุญาต", "เจ้าของห้องปฏิเสธคำขอของคุณ",
-        "เจ้าของห้องบล็อกคุณจาก Jam นี้", "เซสชันถูกล็อก",
-        "เซสชันเต็มแล้ว", "เจ้าของห้องนำคุณออกจาก Jam",
+        "เจ้าของห้องบล็อกคุณจาก Unison นี้", "เซสชันถูกล็อก",
+        "เซสชันเต็มแล้ว", "เจ้าของห้องนำคุณออกจาก Unison",
         "ยังไม่มีผู้เข้าร่วม", "คุณ", "แชร์คำเชิญ"
     ),
     "fil" to jamModeration(
@@ -320,8 +320,8 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Mga naka-block na bisita", "Linisin ang block list", "I-lock ang session",
         "Kapag naka-lock ang session walang makakasali", "Naka-lock",
         "Naghihintay na papasukin ka ng host", "Tinanggihan ng host ang request mo",
-        "Na-block ka ng host sa Jam na ito", "Naka-lock ang session",
-        "Puno na ang session", "Inalis ka ng host sa Jam",
+        "Na-block ka ng host sa Unison na ito", "Naka-lock ang session",
+        "Puno na ang session", "Inalis ka ng host sa Unison",
         "Wala pang bisita", "Ikaw", "Ibahagi ang imbitasyon"
     ),
     "he" to jamModeration(
@@ -330,8 +330,8 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "אורחים חסומים", "ניקוי רשימת החסומים", "נעילת המפגש",
         "כשהמפגש נעול אף אחד לא יכול להצטרף", "נעול",
         "ממתין שהמארח יכניס אותך", "המארח דחה את הבקשה שלך",
-        "המארח חסם אותך ב-Jam הזה", "המפגש נעול",
-        "המפגש מלא", "המארח הסיר אותך מה-Jam",
+        "המארח חסם אותך ב-Unison הזה", "המפגש נעול",
+        "המפגש מלא", "המארח הסיר אותך מה-Unison",
         "עדיין אין אורחים", "את/ה", "שיתוף הזמנה"
     ),
     "fi" to jamModeration(
@@ -340,8 +340,8 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Estetyt vieraat", "Tyhjennä estolista", "Lukitse istunto",
         "Kukaan uusi ei voi liittyä istunnon ollessa lukittu", "Lukittu",
         "Odotetaan isännän hyväksyntää", "Isäntä hylkäsi pyyntösi",
-        "Isäntä esti sinut tästä Jamista", "Istunto on lukittu",
-        "Istunto on täynnä", "Isäntä poisti sinut Jamista",
+        "Isäntä esti sinut tästä Unisonista", "Istunto on lukittu",
+        "Istunto on täynnä", "Isäntä poisti sinut Unisonista",
         "Ei vielä vieraita", "Sinä", "Jaa kutsu"
     ),
     "et" to jamModeration(
@@ -350,8 +350,8 @@ private val jamModerationBundles: Map<String, Map<String, String>> = mapOf(
         "Blokeeritud külalised", "Tühjenda blokeeritud nimekiri", "Lukusta seanss",
         "Lukustatud seansiga ei saa keegi uus liituda", "Lukustatud",
         "Oodatakse võõrustaja heakskiitu", "Võõrustaja lükkas su taotluse tagasi",
-        "Võõrustaja blokeeris sind sellest Jamist", "Seanss on lukustatud",
-        "Seanss on täis", "Võõrustaja eemaldas sind Jamist",
+        "Võõrustaja blokeeris sind sellest Unisonist", "Seanss on lukustatud",
+        "Seanss on täis", "Võõrustaja eemaldas sind Unisonist",
         "Külalisi veel pole", "Sina", "Jaga kutset"
     )
 )
