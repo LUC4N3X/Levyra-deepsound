@@ -448,7 +448,7 @@ UPRIGHT_CARD_SPECS = [
         "LOCAL + STREAMING",
         "Unified Library",
         "Your files & streams in one place.",
-        "Screenshot_20261020_142741_LEVYRA.jpg",
+        "Screenshot_20261118_163520_Levyra.jpg",
         (240, 244, 253), (220, 229, 247), (186, 203, 238), (196, 210, 238),
         (52, 82, 184), (17, 24, 39), (58, 74, 108),
     ),
