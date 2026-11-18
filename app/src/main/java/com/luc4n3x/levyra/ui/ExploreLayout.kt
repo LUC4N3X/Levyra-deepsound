@@ -146,25 +146,12 @@ internal fun buildExploreRows(
     hasCityCharts: Boolean = false,
     newsLast: Boolean = false
 ): List<ExploreRow> {
-    val rows = mutableListOf<ExploreRow>()
-    if (editorial && newsLast) {
-        rows += exploreFreshRows(isFreshLoading, hasFreshTracks, hasFreshScopes, hasFreshMoment = false)
-        rows += ExploreRow.DailyTop100
-        if (hasCityCharts) rows += ExploreRow.CityCharts
-        if (editorialJourney) rows += ExploreRow.MoodJourney
-        if (hasNews) rows += ExploreRow.NewsHero
-        if (hasNews && hasNewsDesk) rows += ExploreRow.NewsList
-        return rows
-    }
     if (editorial) {
-        if (hasNews) rows += ExploreRow.NewsHero
-        rows += exploreFreshRows(isFreshLoading, hasFreshTracks, hasFreshScopes, hasFreshMoment = false)
-        rows += ExploreRow.DailyTop100
-        if (hasCityCharts) rows += ExploreRow.CityCharts
-        if (editorialJourney) rows += ExploreRow.MoodJourney
-        if (hasNews && hasNewsDesk) rows += ExploreRow.NewsList
-        return rows
+        return editorialExploreRows(
+            EditorialExploreFlags(isFreshLoading, hasFreshTracks, hasFreshScopes, hasNews, hasNewsDesk, editorialJourney, hasCityCharts, newsLast)
+        )
     }
+    val rows = mutableListOf<ExploreRow>()
     rows += ExploreRow.Shortcuts
     if (spotifyStyle) rows += ExploreRow.Samples
     rows += exploreFreshRows(isFreshLoading, hasFreshTracks, hasFreshScopes, hasFreshMoment)
@@ -177,6 +164,27 @@ internal fun buildExploreRows(
         rows += ExploreRow.MoodRail(distinctZones)
     }
     return rows
+}
+
+private class EditorialExploreFlags(
+    val isFreshLoading: Boolean,
+    val hasFreshTracks: Boolean,
+    val hasFreshScopes: Boolean,
+    val hasNews: Boolean,
+    val hasNewsDesk: Boolean,
+    val journey: Boolean,
+    val cityCharts: Boolean,
+    val newsLast: Boolean
+)
+
+private fun editorialExploreRows(flags: EditorialExploreFlags): List<ExploreRow> = buildList {
+    if (flags.hasNews && !flags.newsLast) add(ExploreRow.NewsHero)
+    addAll(exploreFreshRows(flags.isFreshLoading, flags.hasFreshTracks, flags.hasFreshScopes, hasFreshMoment = false))
+    add(ExploreRow.DailyTop100)
+    if (flags.cityCharts) add(ExploreRow.CityCharts)
+    if (flags.journey) add(ExploreRow.MoodJourney)
+    if (flags.hasNews && flags.newsLast) add(ExploreRow.NewsHero)
+    if (flags.hasNews && flags.hasNewsDesk) add(ExploreRow.NewsList)
 }
 
 private fun exploreFreshRows(

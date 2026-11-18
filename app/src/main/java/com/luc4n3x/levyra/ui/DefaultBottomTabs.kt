@@ -28,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -115,30 +116,12 @@ private fun RowScope.DefaultTabItem(
     compaction: () -> Float,
     onClick: () -> Unit
 ) {
-    val animationsEnabled = LocalAnimationsEnabled.current
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    val motion = MaterialTheme.motionScheme
-    val reveal by animateFloatAsState(
-        targetValue = if (isSelected) 1f else 0f,
-        animationSpec = if (animationsEnabled) motion.fastSpatialSpec() else snap(),
-        label = "nav-indicator-reveal"
-    )
-    val pressScale by animateFloatAsState(
-        targetValue = if (pressed) 0.9f else 1f,
-        animationSpec = if (animationsEnabled) spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium) else snap(),
-        label = "nav-item-press"
-    )
-    val iconColor by animateColorAsState(
-        targetValue = if (isSelected) activeIconColor else inactiveColor,
-        animationSpec = if (animationsEnabled) motion.fastEffectsSpec() else snap(),
-        label = "nav-icon-color"
-    )
-    val labelColor by animateColorAsState(
-        targetValue = if (isSelected) activeLabelColor else inactiveColor,
-        animationSpec = if (animationsEnabled) motion.fastEffectsSpec() else snap(),
-        label = "nav-label-color"
-    )
+    val reveal by navItemReveal(isSelected)
+    val pressScale by navItemPressScale(pressed)
+    val iconColor by navItemColor(isSelected, activeIconColor, inactiveColor, "nav-icon-color")
+    val labelColor by navItemColor(isSelected, activeLabelColor, inactiveColor, "nav-label-color")
     val dockMorph = LocalDockMorph.current
     Box(
         Modifier
@@ -190,3 +173,26 @@ private fun RowScope.DefaultTabItem(
         }
     }
 }
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun navItemReveal(selected: Boolean): State<Float> = animateFloatAsState(
+    targetValue = if (selected) 1f else 0f,
+    animationSpec = if (LocalAnimationsEnabled.current) MaterialTheme.motionScheme.fastSpatialSpec() else snap(),
+    label = "nav-indicator-reveal"
+)
+
+@Composable
+private fun navItemPressScale(pressed: Boolean): State<Float> = animateFloatAsState(
+    targetValue = if (pressed) 0.9f else 1f,
+    animationSpec = if (LocalAnimationsEnabled.current) spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium) else snap(),
+    label = "nav-item-press"
+)
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun navItemColor(selected: Boolean, active: Color, inactive: Color, label: String): State<Color> = animateColorAsState(
+    targetValue = if (selected) active else inactive,
+    animationSpec = if (LocalAnimationsEnabled.current) MaterialTheme.motionScheme.fastEffectsSpec() else snap(),
+    label = label
+)
