@@ -45,7 +45,7 @@ internal fun isPlaybackCacheHintQualityCompatible(
     }
 }
 
-internal const val PLAYBACK_CACHE_HINT_CAPACITY = 32
+internal const val PLAYBACK_CACHE_HINT_CAPACITY = com.luc4n3x.levyra.domain.ADVANCED_QUEUE_PREFETCH_MAX * 2
 
 internal object PlaybackCacheHintStore {
     private const val PREFS_NAME = "levyra.playback.cache.hints"

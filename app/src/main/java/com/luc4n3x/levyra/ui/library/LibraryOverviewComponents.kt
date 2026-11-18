@@ -123,7 +123,20 @@ internal fun LibraryHero(title: String, subtitle: String, onBack: (() -> Unit)? 
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         if (onBack != null) {
-            LevyraBackButton(onClick = onBack, contentDescription = strings.back, modifier = Modifier.padding(bottom = 4.dp))
+            if (LevyraIsDefaultSkin) {
+                val tone = com.luc4n3x.levyra.ui.components.levyraUtilityColors(com.luc4n3x.levyra.ui.components.LevyraUtilitySeed)
+                LevyraBackButton(
+                    onClick = onBack,
+                    contentDescription = strings.back,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                    colors = androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = tone.softContainer,
+                        contentColor = tone.accent
+                    )
+                )
+            } else {
+                LevyraBackButton(onClick = onBack, contentDescription = strings.back, modifier = Modifier.padding(bottom = 4.dp))
+            }
         }
         Text(title, color = colors.onSurface, style = if (LevyraIsNocturne) LevyraType.screenTitle else LevyraType.heroTitle, softWrap = true, modifier = Modifier.semantics { heading() })
         if (subtitle.isNotBlank()) {

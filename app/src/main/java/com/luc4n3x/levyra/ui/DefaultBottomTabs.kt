@@ -6,6 +6,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.indication
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -13,8 +15,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,11 +22,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
@@ -45,6 +46,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.NavDestinations
 import com.luc4n3x.levyra.ui.components.LocalDockMorph
@@ -54,12 +56,12 @@ import com.luc4n3x.levyra.ui.components.dockMorphTray
 import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
 import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
 
-private val NavItemTop = 12.dp
+private val NavItemTop = 9.dp
 private val NavIndicatorHeight = 32.dp
 private val NavIndicatorWidth = 56.dp
 private val NavIconSize = 24.dp
 private val NavIconLabelSpace = 4.dp
-private const val NavIndicatorAlpha = 0.12f
+private val NavLabelMinFontSize = 9.sp
 
 @Composable
 internal fun DefaultBottomTabs(
@@ -72,13 +74,16 @@ internal fun DefaultBottomTabs(
     val entries = rememberLevyraBarEntries(NavDestinations.defaultOrder)
     val haptics = LocalLevyraHaptics.current
     val scheme = MaterialTheme.colorScheme
+    val tone = com.luc4n3x.levyra.ui.components.levyraUtilityColors(com.luc4n3x.levyra.ui.components.LevyraUtilitySeed)
+    val pillHeight = barHeight - com.luc4n3x.levyra.ui.components.DefaultDockPillBottom
+    val pillCompactHeight = compactHeight - com.luc4n3x.levyra.ui.components.DefaultDockPillBottom
     val selectedIndex = entries.indexOfFirst { it.tab == selected }
     Column(Modifier.fillMaxWidth()) {
         Box(
             Modifier
-                .dockClipHeight(compaction, barHeight - compactHeight)
+                .dockClipHeight(compaction, pillHeight - pillCompactHeight)
                 .fillMaxWidth()
-                .height(barHeight)
+                .height(pillHeight)
                 .dockMorphTray(LocalDockMorph.current, entries.size, selectedIndex.coerceAtLeast(0))
         ) {
             Row(Modifier.fillMaxSize().selectableGroup(), verticalAlignment = Alignment.Top) {
@@ -87,9 +92,9 @@ internal fun DefaultBottomTabs(
                     DefaultTabItem(
                         entry = entry,
                         isSelected = isSelected,
-                        indicatorColor = scheme.onSurface.copy(alpha = NavIndicatorAlpha),
-                        activeIconColor = scheme.onSurface,
-                        activeLabelColor = scheme.onSurface,
+                        indicatorColor = tone.container,
+                        activeIconColor = tone.onContainer,
+                        activeLabelColor = tone.accent,
                         inactiveColor = scheme.onSurfaceVariant,
                         compaction = compaction,
                         onClick = {
@@ -100,7 +105,6 @@ internal fun DefaultBottomTabs(
                 }
             }
         }
-        Spacer(Modifier.navigationBarsPadding())
     }
 }
 
@@ -123,6 +127,13 @@ private fun RowScope.DefaultTabItem(
     val iconColor by navItemColor(isSelected, activeIconColor, inactiveColor, "nav-icon-color")
     val labelColor by navItemColor(isSelected, activeLabelColor, inactiveColor, "nav-label-color")
     val dockMorph = LocalDockMorph.current
+    val indicatorCorner = com.luc4n3x.levyra.ui.components.levyraExpressiveCorner(
+        interactionSource = interactionSource,
+        rest = NavIndicatorHeight / 2,
+        pressed = 10.dp,
+        label = "nav-indicator-corner"
+    )
+    val indicatorShape = androidx.compose.foundation.shape.RoundedCornerShape(indicatorCorner)
     Box(
         Modifier
             .weight(1f)
@@ -147,9 +158,9 @@ private fun RowScope.DefaultTabItem(
                             scaleX = reveal
                             alpha = reveal.coerceIn(0f, 1f)
                         }
-                        .dockMorphAnchorBackground(if (isSelected) dockMorph else null, indicatorColor, CircleShape)
+                        .dockMorphAnchorBackground(if (isSelected) dockMorph else null, indicatorColor, indicatorShape)
                 )
-                Box(Modifier.matchParentSize().clip(CircleShape).indication(interactionSource, ripple()))
+                Box(Modifier.matchParentSize().clip(indicatorShape).indication(interactionSource, ripple()))
                 Icon(
                     imageVector = if (isSelected) entry.selectedIcon else entry.unselectedIcon,
                     contentDescription = null,
@@ -160,15 +171,20 @@ private fun RowScope.DefaultTabItem(
                     }
                 )
             }
-            Text(
+            val labelStyle = MaterialTheme.typography.labelMedium
+            androidx.compose.foundation.text.BasicText(
                 text = entry.label,
-                color = labelColor,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                color = { labelColor },
+                style = labelStyle.copy(fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium, textAlign = TextAlign.Center),
                 maxLines = 1,
+                softWrap = false,
                 overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 3.dp).graphicsLayer { alpha = dockFade(compaction()) }
+                autoSize = androidx.compose.foundation.text.TextAutoSize.StepBased(
+                    minFontSize = NavLabelMinFontSize,
+                    maxFontSize = labelStyle.fontSize,
+                    stepSize = 0.5.sp
+                ),
+                modifier = Modifier.padding(horizontal = 1.dp).graphicsLayer { alpha = dockFade(compaction()) }
             )
         }
     }
@@ -196,3 +212,68 @@ private fun navItemColor(selected: Boolean, active: Color, inactive: Color, labe
     animationSpec = if (LocalAnimationsEnabled.current) MaterialTheme.motionScheme.fastEffectsSpec() else snap(),
     label = label
 )
+
+internal fun defaultDockSearchSlot(
+    selected: Boolean,
+    compaction: () -> Float,
+    onClick: () -> Unit
+): (@Composable () -> Unit)? =
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin) {
+        { DefaultDockSearchButton(selected, compaction, onClick) }
+    } else {
+        null
+    }
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun DefaultDockSearchButton(selected: Boolean, compaction: () -> Float, onClick: () -> Unit) {
+    val tone = com.luc4n3x.levyra.ui.components.levyraUtilityColors(com.luc4n3x.levyra.ui.components.LevyraUtilitySeed)
+    val strings = com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings.current
+    val haptics = LocalLevyraHaptics.current
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val pressScale by navItemPressScale(pressed)
+    val reveal by navItemReveal(selected)
+    Box(
+        Modifier
+            .layout { measurable, _ ->
+                val full = com.luc4n3x.levyra.ui.components.DefaultDockSearchSize.roundToPx()
+                val compact = com.luc4n3x.levyra.ui.components.DefaultDockSearchCompactSize.roundToPx()
+                val side = (full + (compact - full) * compaction().coerceIn(0f, 1f)).toInt()
+                val placeable = measurable.measure(androidx.compose.ui.unit.Constraints.fixed(side, side))
+                layout(side, side) { placeable.place(0, 0) }
+            }
+            .semantics {
+                role = Role.Tab
+                this.selected = selected
+            }
+            .pressable(interactionSource = interactionSource, pressedScale = 0.97f) {
+                if (!selected) haptics.perform(LevyraHapticAction.SeekSnap)
+                onClick()
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        val searchShape = androidx.compose.material3.MaterialShapes.Cookie9Sided.toShape()
+        Box(
+            Modifier
+                .fillMaxSize()
+                .padding(8.dp)
+                .graphicsLayer {
+                    scaleX = reveal
+                    scaleY = reveal
+                    rotationZ = reveal * 40f
+                    alpha = reveal.coerceIn(0f, 1f)
+                }
+                .background(tone.container, searchShape)
+        )
+        Icon(
+            imageVector = androidx.compose.material.icons.Icons.Rounded.Search,
+            contentDescription = strings.search,
+            tint = if (selected) tone.onContainer else MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.size(28.dp).graphicsLayer {
+                scaleX = pressScale
+                scaleY = pressScale
+            }
+        )
+    }
+}

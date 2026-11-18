@@ -424,5 +424,6 @@ data class OfflineDownloadTask(
     val artist: String,
     val state: String,
     val progress: Int,
-    val error: String
+    val error: String,
+    val ownership: DownloadOwnership = DownloadOwnership.MANUAL
 )

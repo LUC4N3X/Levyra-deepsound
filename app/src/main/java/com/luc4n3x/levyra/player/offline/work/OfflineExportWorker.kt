@@ -59,9 +59,6 @@ import java.io.IOException
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
 
 data class OfflineDownloadBatchRef(
@@ -71,32 +68,6 @@ data class OfflineDownloadBatchRef(
     val artworkUrl: String,
     val position: Int
 )
-
-private object OfflineDownloadConcurrencyGate {
-    private val mutex = Mutex()
-    private var active = 0
-
-    suspend fun <T> withLimit(limit: Int, block: suspend () -> T): T {
-        val normalized = limit.coerceIn(1, 4)
-        while (true) {
-            val acquired = mutex.withLock {
-                if (active < normalized) {
-                    active += 1
-                    true
-                } else {
-                    false
-                }
-            }
-            if (acquired) break
-            delay(120L)
-        }
-        return try {
-            block()
-        } finally {
-            mutex.withLock { active = (active - 1).coerceAtLeast(0) }
-        }
-    }
-}
 
 class OfflineExportWorker(
     appContext: Context,
@@ -200,7 +171,7 @@ class OfflineExportWorker(
                 ownership = ownership,
                 qualityChoice = qualityChoice
             )
-            val result = OfflineDownloadConcurrencyGate.withLimit(settings.maxConcurrentDownloads) {
+            val result = OfflineTransferPriority.withDownloadSlot(ownership, settings.maxConcurrentDownloads) {
                 pipeline.export(track)
             }
             if (repairTarget != null && repairTarget.uri != result.uri.toString()) {

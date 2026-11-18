@@ -109,7 +109,8 @@ internal class LibraryBrowseSnapshot(
     val tracks: List<Track>,
     val albums: List<LibraryAlbum>,
     val artists: List<LibraryArtist>,
-    val offlineItems: List<LibraryOfflineItem>
+    val offlineItems: List<LibraryOfflineItem>,
+    val offlineCollections: OfflineCollections = OfflineCollections.Empty
 ) {
     fun presortedFor(query: String, sort: LibrarySort, direction: LibrarySortDirection): Boolean =
         query.isBlank() && input.sort == sort && input.direction == direction
@@ -131,7 +132,8 @@ internal fun LibraryBrowseInput.buildSnapshot(): LibraryBrowseSnapshot {
         tracks = filterLibraryTracks(catalog.tracks, "", sort, direction, catalog::recencyOf),
         albums = filterLibraryAlbums(catalog.albums, "", sort, direction),
         artists = filterLibraryArtists(catalog.artists, "", sort, direction),
-        offlineItems = filterLibraryOfflineItems(catalog.offlineItems, "", sort, direction)
+        offlineItems = filterLibraryOfflineItems(catalog.offlineItems, "", sort, direction),
+        offlineCollections = buildOfflineCollections(catalog.offlineItems, playlists, favorites, catalog.mostPlayed)
     )
 }
 
@@ -643,7 +645,7 @@ private fun libraryMetadataScore(track: Track): Int {
     ).count(String::isNotBlank) * 10 + track.metadataConfidence
 }
 
-private fun splitLibraryArtists(value: String): List<String> {
+internal fun splitLibraryArtists(value: String): List<String> {
     return value
         .split(LibraryArtistSeparatorPattern)
         .map(String::trim)

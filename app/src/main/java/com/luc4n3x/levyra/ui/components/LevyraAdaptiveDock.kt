@@ -7,6 +7,15 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -229,18 +238,31 @@ private fun rememberDockMaterial(): DockMaterial {
 fun LevyraAdaptiveDockSurface(
     glass: GlassBackdropState,
     modifier: Modifier = Modifier,
+    trailing: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val material = rememberDockMaterial()
-    val shape = remember {
-        RoundedCornerShape(topStart = LevyraPlayerDesign.DockTrayCorner, topEnd = LevyraPlayerDesign.DockTrayCorner)
+    val floatingPill = com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin
+    val shape = remember(floatingPill) {
+        if (floatingPill) {
+            RoundedCornerShape(percent = 50)
+        } else {
+            RoundedCornerShape(topStart = LevyraPlayerDesign.DockTrayCorner, topEnd = LevyraPlayerDesign.DockTrayCorner)
+        }
     }
     val frostBrush = remember(material) { Brush.verticalGradient(listOf(material.frostTop, material.frostBottom)) }
     val solidBrush = remember(material) { Brush.verticalGradient(listOf(material.solidTop, material.solidBottom)) }
     val rimBrush = remember(material) { Brush.verticalGradient(0f to material.rim, 0.35f to Color.Transparent) }
-    Column(
-        modifier = modifier
-            .shadow(material.shadow, shape, clip = true)
+    val surfaceModifier = if (floatingPill) {
+        modifier
+            .padding(horizontal = DefaultDockPillInset)
+            .navigationBarsPadding()
+            .padding(bottom = DefaultDockPillBottom)
+    } else {
+        modifier
+    }
+    val glassModifier: Modifier.(Shape) -> Modifier = { surfaceShape ->
+        shadow(material.shadow, surfaceShape, clip = true)
             .glassFrost(
                 state = glass,
                 blurRadius = DockBlurRadius,
@@ -248,10 +270,40 @@ fun LevyraAdaptiveDockSurface(
                 onDrawFrosted = { drawRect(frostBrush) },
                 onDrawFallback = { drawRect(solidBrush) }
             )
-            .border(LevyraPlayerDesign.Hairline, rimBrush, shape),
-        content = content
-    )
+            .border(LevyraPlayerDesign.Hairline, rimBrush, surfaceShape)
+    }
+    if (floatingPill && trailing != null) {
+        Row(modifier = surfaceModifier, verticalAlignment = Alignment.Bottom) {
+            Column(modifier = Modifier.weight(1f).glassModifier(DefaultDockConnectedPillShape), content = content)
+            Spacer(Modifier.width(DefaultDockPillGap))
+            Box(
+                modifier = Modifier.glassModifier(DefaultDockConnectedSearchShape),
+                contentAlignment = Alignment.Center
+            ) { trailing() }
+        }
+        return
+    }
+    Column(modifier = surfaceModifier.glassModifier(shape), content = content)
 }
+
+internal val DefaultDockPillInset = 16.dp
+internal val DefaultDockPillBottom = 8.dp
+internal val DefaultDockPillGap = 4.dp
+internal val DefaultDockSearchSize = 68.dp
+internal val DefaultDockSearchCompactSize = 48.dp
+private const val DefaultDockInnerCornerPercent = 18
+private val DefaultDockConnectedPillShape = RoundedCornerShape(
+    topStartPercent = 50,
+    topEndPercent = DefaultDockInnerCornerPercent,
+    bottomEndPercent = DefaultDockInnerCornerPercent,
+    bottomStartPercent = 50
+)
+private val DefaultDockConnectedSearchShape = RoundedCornerShape(
+    topStartPercent = DefaultDockInnerCornerPercent,
+    topEndPercent = 50,
+    bottomEndPercent = 50,
+    bottomStartPercent = DefaultDockInnerCornerPercent
+)
 
 private fun lerpPx(start: Float, stop: Float, fraction: Float): Float =
     start + (stop - start) * fraction.coerceIn(0f, 1f)

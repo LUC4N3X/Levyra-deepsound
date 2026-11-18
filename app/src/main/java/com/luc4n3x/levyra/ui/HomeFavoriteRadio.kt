@@ -73,10 +73,16 @@ private fun HomeFavoriteRadio(radio: HomeRadioState) {
         if (LevyraIsQobuz) QobuzSectionHeader(title, null, "", null, Modifier.padding(top = QobuzDesign.sectionGap))
         else if (LevyraIsAtelier) AtelierSectionLabel(title)
         else if (LevyraSkinManagesLayout && !LevyraIsAppleMusic && !LevyraIsYouTubeMusic) SkinSectionTitle(title, inset)
-        else Column(Modifier.padding(horizontal = inset), verticalArrangement = Arrangement.spacedBy(LevyraCardDesign.CaptionLineGap)) {
-            Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = LevyraText,
-                modifier = Modifier.semantics { heading() })
-            defaultHomeSubtitle(HOME_SUBTITLE_FAVORITE_RADIO, "")?.let { Text(it, color = LevyraMuted, style = LevyraType.caption, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+        else androidx.compose.foundation.layout.Row(Modifier.padding(horizontal = inset), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            homeSectionMedallion(HOME_SUBTITLE_FAVORITE_RADIO)?.let { medallion ->
+                HomeSectionMedallionBadge(medallion)
+                androidx.compose.foundation.layout.Spacer(Modifier.width(14.dp))
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(LevyraCardDesign.CaptionLineGap)) {
+                Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = LevyraText,
+                    modifier = Modifier.semantics { heading() })
+                defaultHomeSubtitle(HOME_SUBTITLE_FAVORITE_RADIO, "")?.let { Text(it, color = LevyraMuted, style = LevyraType.caption, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+            }
         }
         when {
             LevyraIsNocturne || LevyraIsTorque || LevyraIsIvory -> LazyRow(

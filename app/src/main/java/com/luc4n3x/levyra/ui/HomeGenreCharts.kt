@@ -62,14 +62,6 @@ internal fun HomeGenreChartCarousel(
                     kicker = kicker,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Text(
-                    text = zone.label,
-                    style = LevyraType.cardTitle,
-                    color = LevyraText,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 10.dp)
-                )
                 run {
                     Text(
                         text = cover.artists.joinToString(", "),
@@ -78,7 +70,7 @@ internal fun HomeGenreChartCarousel(
                         minLines = 2,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 2.dp)
+                        modifier = Modifier.padding(top = 10.dp)
                     )
                 }
             }

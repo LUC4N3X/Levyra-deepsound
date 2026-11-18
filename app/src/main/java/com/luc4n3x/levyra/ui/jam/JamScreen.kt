@@ -2,7 +2,6 @@
 
 package com.luc4n3x.levyra.ui.jam
 
-import com.luc4n3x.levyra.ui.components.utilityScrollProgress
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import com.luc4n3x.levyra.ui.components.LevyraUtilitySeed
 import com.luc4n3x.levyra.ui.components.LevyraPastelAmber
@@ -248,7 +247,7 @@ private fun JamOverlayContent(
                 }
             )
     ) {
-        if (LevyraIsAtelier) AtelierJamBackdrop() else if (!look.skinned) LevyraUtilityBackdrop(scrollProgress = { listState.utilityScrollProgress() })
+        if (LevyraIsAtelier) AtelierJamBackdrop() else if (!look.skinned) LevyraUtilityBackdrop(listState = listState)
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),

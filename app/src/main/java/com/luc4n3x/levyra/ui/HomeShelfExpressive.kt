@@ -90,6 +90,7 @@ internal fun HomeCollapsedTopBar(
     if (reveal <= 0f) return
     val title = remember(strings, userName, greetingHour) { strings.formatGreeting(userName, greetingHour) }
     val solidShare = (statusBarTop + barHeight) / (statusBarTop + barHeight + HOME_COLLAPSED_BAR_FADE)
+    val washAccent = com.luc4n3x.levyra.ui.components.levyraUtilityColors(com.luc4n3x.levyra.ui.components.LevyraUtilitySeed).accent
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -103,6 +104,21 @@ internal fun HomeCollapsedTopBar(
                         1f to canvas.copy(alpha = 0f)
                     )
                 )
+            )
+            .then(
+                if (com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin) {
+                    Modifier.background(
+                        Brush.verticalGradient(
+                            colorStops = arrayOf(
+                                0f to washAccent.copy(alpha = 0.20f),
+                                solidShare to washAccent.copy(alpha = 0.12f),
+                                1f to Color.Transparent
+                            )
+                        )
+                    )
+                } else {
+                    Modifier
+                }
             )
     ) {
         Row(
@@ -126,7 +142,7 @@ internal fun HomeCollapsedTopBar(
                     .weight(1f)
                     .semantics { heading() }
             )
-            HomeHeaderIconButton(
+            if (!com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin) HomeHeaderIconButton(
                 icon = Icons.Rounded.Search,
                 contentDescription = strings.search,
                 polygon = MaterialShapes.Cookie4Sided,

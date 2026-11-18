@@ -7,6 +7,7 @@ import androidx.compose.material3.toShape
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
+import com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin
 import com.luc4n3x.levyra.ui.components.LevyraCardCaption
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.carouselDepthEnabled
@@ -275,7 +276,7 @@ internal fun HomeGenreChips(
 private const val PODIUM_PARALLAX_ZOOM = 1.06f
 private const val PODIUM_PARALLAX_FOLLOW = 0.35f
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun HomeChartPodium(
     tracks: List<Track>,
@@ -288,6 +289,7 @@ internal fun HomeChartPodium(
     if (tracks.isEmpty()) return
     val carouselState = rememberCarouselState { tracks.size }
     val podiumMotion = defaultRailMotionEnabled()
+    val podiumTone = com.luc4n3x.levyra.ui.components.levyraUtilityColors(com.luc4n3x.levyra.ui.components.LevyraUtilitySeed)
     HorizontalMultiBrowseCarousel(
         state = carouselState,
         preferredItemWidth = PodiumPreferredWidth,
@@ -357,7 +359,7 @@ internal fun HomeChartPodium(
                     .graphicsLayer { translationX = carouselItemDrawInfo.maskRect.left }
                     .padding(10.dp)
                     .clip(CircleShape)
-                    .background(Color.Black.copy(alpha = 0.46f))
+                    .background(if (LevyraIsDefaultSkin) podiumTone.accent else Color.Black.copy(alpha = 0.46f))
                     .padding(horizontal = 10.dp, vertical = 5.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -371,7 +373,7 @@ internal fun HomeChartPodium(
                 }
                 Text(
                     text = "#${index + 1}",
-                    color = Color.White,
+                    color = if (LevyraIsDefaultSkin) podiumTone.onAccent else Color.White,
                     style = LevyraType.overline.copy(fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 0.4.sp),
                     maxLines = 1
                 )

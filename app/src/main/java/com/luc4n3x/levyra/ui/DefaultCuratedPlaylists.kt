@@ -80,6 +80,8 @@ internal fun DefaultCuratedPlaylistShelf(index: Int, shelf: YoutubeMusicHomeShel
             title = if (index == 0) copy.mixedForYou else shelf.title,
             subtitle = if (index == 0) copy.rotationOverline else shelf.strapline.ifBlank { null } ?: defaultHomeSubtitle(HOME_SUBTITLE_CURATED_PLAYLISTS, ""),
             modifier = Modifier.padding(horizontal = LevyraHomeDesign.HorizontalInset).padding(bottom = 12.dp),
+            leadingIcon = homeSectionMedallion(HOME_SUBTITLE_CURATED_PLAYLISTS)?.icon,
+            leadingSeed = homeSectionMedallion(HOME_SUBTITLE_CURATED_PLAYLISTS)?.seed ?: com.luc4n3x.levyra.ui.components.LevyraUtilitySeed,
             actions = { if (index == 0) LocalCuratedPlaylistsOpener.current?.let { open -> LevyraSectionShowAll(onClick = open) } }
         )
         val rowState = rememberLazyListState()

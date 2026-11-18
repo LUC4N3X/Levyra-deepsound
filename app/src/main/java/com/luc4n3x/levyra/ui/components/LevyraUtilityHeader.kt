@@ -27,7 +27,12 @@ import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -91,32 +96,55 @@ internal val LevyraUtilityStyleActive: Boolean
     get() = !(LevyraIsAtelier || LevyraIsMono || LevyraIsAppleMusic || LevyraIsYouTubeMusic || LevyraIsQobuz || LevyraIsSpotify ||
         LevyraIsTorque || LevyraIsIvory || LevyraIsNocturne || LevyraIsPrism)
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun LevyraUtilityBackdrop(
     modifier: Modifier = Modifier,
     accent: Color = LevyraCyan,
     strength: Float = 0.5f,
-    scrollProgress: (() -> Float)? = null
+    listState: LazyListState? = null
 ) {
+    val bloom = MaterialShapes.Cookie9Sided.toShape()
+    val fadeDistance = with(LocalDensity.current) { LevyraBackdropFadeDistance.toPx() }
+    val fade = remember(listState, fadeDistance) { listState?.let { LevyraBackdropScrollFade(it, fadeDistance) } }
     Box(
         modifier = modifier
             .fillMaxSize()
             .clearAndSetSemantics { }
             .graphicsLayer {
                 compositingStrategy = CompositingStrategy.Offscreen
-                alpha = 1f - (scrollProgress?.invoke() ?: 0f)
+                alpha = fade?.visibility() ?: 1f
             }
-            .drawBehind {
-                drawRect(
-                    Brush.radialGradient(
-                        listOf(accent.copy(alpha = 0.34f * strength), accent.copy(alpha = 0.10f * strength), Color.Transparent),
-                        center = Offset(size.width * 0.12f, 0f),
-                        radius = size.width * 1.3f
-                    )
+            .drawWithCache {
+                val glow = Brush.radialGradient(
+                    listOf(accent.copy(alpha = 0.34f * strength), accent.copy(alpha = 0.10f * strength), Color.Transparent),
+                    center = Offset(size.width * 0.12f, 0f),
+                    radius = size.width * 1.3f
                 )
+                val bloomSize = Size(size.width * LevyraBackdropBloomScale, size.width * LevyraBackdropBloomScale)
+                val bloomOutline = bloom.createOutline(bloomSize, layoutDirection, this)
+                val bloomBrush = Brush.radialGradient(
+                    0f to accent.copy(alpha = 0.15f * strength),
+                    0.55f to accent.copy(alpha = 0.06f * strength),
+                    1f to Color.Transparent,
+                    center = Offset(bloomSize.width * 0.42f, bloomSize.height * 0.6f),
+                    radius = bloomSize.width * 0.62f
+                )
+                val bloomOrigin = Offset(size.width - bloomSize.width * 0.62f, -bloomSize.height * 0.42f)
+                onDrawBehind {
+                    drawRect(glow)
+                    translate(bloomOrigin.x, bloomOrigin.y) {
+                        rotate(LevyraBackdropBloomTurn, pivot = Offset(bloomSize.width / 2f, bloomSize.height / 2f)) {
+                            drawOutline(bloomOutline, bloomBrush)
+                        }
+                    }
+                }
             }
     )
 }
+
+private const val LevyraBackdropBloomScale = 0.92f
+private const val LevyraBackdropBloomTurn = 18f
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -182,9 +210,25 @@ internal fun LevyraUtilityHeader(
 
 private val LevyraUtilityMedallionSize = 76.dp
 
-internal fun LazyListState.utilityScrollProgress(): Float {
-    if (firstVisibleItemIndex > 0) return 1f
-    val height = layoutInfo.visibleItemsInfo.firstOrNull()?.size ?: return 0f
-    return (firstVisibleItemScrollOffset.toFloat() / height.coerceAtLeast(1)).coerceIn(0f, 1f)
+private class LevyraBackdropScrollFade(private val state: LazyListState, private val distance: Float) {
+    private val leadingSizes = IntArray(LevyraBackdropTrackedItems)
+
+    fun visibility(): Float {
+        state.layoutInfo.visibleItemsInfo.forEach { item ->
+            if (item.index < leadingSizes.size) leadingSizes[item.index] = item.size
+        }
+        val index = state.firstVisibleItemIndex
+        if (index >= leadingSizes.size) return 0f
+        var scrolled = state.firstVisibleItemScrollOffset.toFloat()
+        for (i in 0 until index) {
+            if (leadingSizes[i] == 0) return 0f
+            scrolled += leadingSizes[i]
+        }
+        val progress = (scrolled / distance.coerceAtLeast(1f)).coerceIn(0f, 1f)
+        return 1f - progress * progress * (3f - 2f * progress)
+    }
 }
+
+private const val LevyraBackdropTrackedItems = 12
+private val LevyraBackdropFadeDistance = 420.dp
 private val LevyraUtilityCompactMedallionSize = 60.dp

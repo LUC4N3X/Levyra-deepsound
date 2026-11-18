@@ -142,6 +142,9 @@ internal fun LevyraPlayAllIconButton(
 @Composable
 private fun PlayAllDisc(size: Dp, pressed: Boolean, animated: Boolean) {
     val colors = MaterialTheme.colorScheme
+    val tone = if (com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin) levyraUtilityColors(LevyraUtilitySeed) else null
+    val container = tone?.container ?: colors.primary
+    val content = tone?.onContainer ?: colors.onPrimary
     val shape = rememberLevyraAvatarPressShape(pressed = pressed, animated = animated)
     val nudge by animateDpAsState(
         targetValue = if (pressed && animated) 1.5.dp else 0.dp,
@@ -152,13 +155,13 @@ private fun PlayAllDisc(size: Dp, pressed: Boolean, animated: Boolean) {
         modifier = Modifier
             .size(size)
             .clip(shape)
-            .background(colors.primary),
+            .background(container),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             imageVector = Icons.Rounded.PlayArrow,
             contentDescription = null,
-            tint = colors.onPrimary,
+            tint = content,
             modifier = Modifier
                 .offset(x = nudge)
                 .size(size * 0.62f)

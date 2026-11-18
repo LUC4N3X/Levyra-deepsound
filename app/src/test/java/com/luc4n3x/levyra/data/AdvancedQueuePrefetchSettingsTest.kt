@@ -15,14 +15,14 @@ class AdvancedQueuePrefetchSettingsTest {
 
     @Test
     fun supportedWindowsSurviveNormalization() {
-        listOf(0, 5, 10, 15).forEach { tracks ->
+        listOf(0, 1, 5, 10, 12, 15, 25, 37, 50).forEach { tracks ->
             assertEquals(tracks, LevyraAudioSettings(advancedQueuePrefetchTracks = tracks).normalized().advancedQueuePrefetchTracks)
         }
     }
 
     @Test
     fun unsupportedWindowsFallBackToOff() {
-        listOf(-1, 1, 3, 7, 20, Int.MAX_VALUE).forEach { tracks ->
+        listOf(-1, 51, 100, Int.MIN_VALUE, Int.MAX_VALUE).forEach { tracks ->
             assertEquals(
                 ADVANCED_QUEUE_PREFETCH_OFF,
                 LevyraAudioSettings(advancedQueuePrefetchTracks = tracks).normalized().advancedQueuePrefetchTracks
@@ -32,10 +32,12 @@ class AdvancedQueuePrefetchSettingsTest {
 
     @Test
     fun windowRoundTripsThroughBackup() {
-        val restored = backupAudioSettingsFromJson(
-            backupAudioSettingsToJson(LevyraAudioSettings(advancedQueuePrefetchTracks = 10))
-        )
-        assertEquals(10, restored.advancedQueuePrefetchTracks)
+        listOf(10, 37).forEach { tracks ->
+            val restored = backupAudioSettingsFromJson(
+                backupAudioSettingsToJson(LevyraAudioSettings(advancedQueuePrefetchTracks = tracks))
+            )
+            assertEquals(tracks, restored.advancedQueuePrefetchTracks)
+        }
     }
 
     @Test
@@ -58,7 +60,7 @@ class AdvancedQueuePrefetchSettingsTest {
 
     @Test
     fun corruptedBackupValueRestoresOff() {
-        val corrupted = JSONObject().put("advancedQueuePrefetchTracks", 12)
+        val corrupted = JSONObject().put("advancedQueuePrefetchTracks", 75)
         assertEquals(ADVANCED_QUEUE_PREFETCH_OFF, backupAudioSettingsFromJson(corrupted).advancedQueuePrefetchTracks)
         val wrongType = JSONObject().put("advancedQueuePrefetchTracks", "many")
         assertEquals(ADVANCED_QUEUE_PREFETCH_OFF, backupAudioSettingsFromJson(wrongType).advancedQueuePrefetchTracks)
