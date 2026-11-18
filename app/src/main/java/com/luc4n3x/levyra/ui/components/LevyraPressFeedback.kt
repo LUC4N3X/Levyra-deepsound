@@ -9,6 +9,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
@@ -39,7 +40,8 @@ fun Modifier.levyraPressable(
 ): Modifier {
     val animationsEnabled = LocalAnimationsEnabled.current
     val haptics = LocalLevyraHaptics.current
-    val interaction = interactionSource ?: remember { MutableInteractionSource() }
+    val ownInteraction = remember { MutableInteractionSource() }
+    val interaction = interactionSource ?: ownInteraction
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (pressed && enabled && animationsEnabled) pressedScale else 1f,
@@ -47,16 +49,23 @@ fun Modifier.levyraPressable(
         label = "levyra-press"
     )
     val indication = if (animationsEnabled) null else LocalIndication.current
-    val click: () -> Unit = {
-        haptic?.let(haptics::perform)
-        onClick()
-    }
-    val longClick: (() -> Unit)? = onLongClick?.let { action ->
+    val currentOnClick by rememberUpdatedState(onClick)
+    val currentOnLongClick by rememberUpdatedState(onLongClick)
+    val currentHaptic by rememberUpdatedState(haptic)
+    val currentLongPressHaptic by rememberUpdatedState(longPressHaptic)
+    val click: () -> Unit = remember(haptics) {
         {
-            longPressHaptic?.let(haptics::perform)
-            action()
+            currentHaptic?.let(haptics::perform)
+            currentOnClick()
         }
     }
+    val longPress: () -> Unit = remember(haptics) {
+        {
+            currentLongPressHaptic?.let(haptics::perform)
+            currentOnLongClick?.invoke()
+        }
+    }
+    val longClick: (() -> Unit)? = if (onLongClick != null) longPress else null
     return this
         .graphicsLayer {
             scaleX = scale

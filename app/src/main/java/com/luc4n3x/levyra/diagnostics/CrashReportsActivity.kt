@@ -2,7 +2,9 @@ package com.luc4n3x.levyra.diagnostics
 
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
@@ -67,13 +69,26 @@ class CrashReportsActivity : ComponentActivity() {
             val draft = withContext(Dispatchers.Default) { crashIssueDraft(report) }
             if (!copy(draft.clipboard)) return@launch
             val words = supportCopy(viewModel.state.value.language)
-            try {
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(draft.url)))
-                message(if (draft.needsPaste) words.pasteOnGithub else words.githubReady)
-            } catch (_: Exception) {
-                message(words.failed)
-            }
+            val page = Intent(Intent.ACTION_VIEW, Uri.parse(draft.url)).addCategory(Intent.CATEGORY_BROWSABLE)
+            val opened = defaultBrowser()?.let { browser -> tryStart(Intent(page).setPackage(browser)) } == true || tryStart(page)
+            message(if (!opened) words.failed else if (draft.needsPaste) words.pasteOnGithub else words.githubReady)
         }
+    }
+
+    private fun defaultBrowser(): String? {
+        val probe = Intent(Intent.ACTION_VIEW, Uri.parse(BrowserProbeUrl)).addCategory(Intent.CATEGORY_BROWSABLE)
+        return packageManager.resolveActivity(probe, PackageManager.MATCH_DEFAULT_ONLY)
+            ?.activityInfo?.packageName
+            ?.takeUnless { it == ResolverPackage }
+    }
+
+    private fun tryStart(intent: Intent): Boolean = try {
+        startActivity(intent)
+        true
+    } catch (_: ActivityNotFoundException) {
+        false
+    } catch (_: SecurityException) {
+        false
     }
 
     private fun share(report: CrashReport) {
@@ -105,3 +120,6 @@ class CrashReportsActivity : ComponentActivity() {
         const val EXTRA_PRESENTATION = "presentation"
     }
 }
+
+private const val BrowserProbeUrl = "https://example.com"
+private const val ResolverPackage = "android"
