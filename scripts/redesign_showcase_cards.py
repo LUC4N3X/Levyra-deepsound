@@ -486,7 +486,7 @@ UPRIGHT_CARD_SPECS = [
         "FULL UI OVERHAUL",
         "7 Complete App Skins",
         "Restyle every screen, dock & player.",
-        "Screenshot_20261116_212357_Levyra.jpg",
+        "Screenshot_20261118_133723_Levyra.jpg",
         (246, 241, 253), (228, 217, 246), (206, 188, 238), (208, 194, 232),
         (114, 58, 184), (26, 17, 42), (86, 60, 126),
     ),
