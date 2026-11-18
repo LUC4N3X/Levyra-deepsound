@@ -70,16 +70,25 @@ class CrashReportsActivity : ComponentActivity() {
             if (!copy(draft.clipboard)) return@launch
             val words = supportCopy(viewModel.state.value.language)
             val page = Intent(Intent.ACTION_VIEW, Uri.parse(draft.url)).addCategory(Intent.CATEGORY_BROWSABLE)
-            val opened = defaultBrowser()?.let { browser -> tryStart(Intent(page).setPackage(browser)) } == true || tryStart(page)
-            message(if (!opened) words.failed else if (draft.needsPaste) words.pasteOnGithub else words.githubReady)
+            val inBrowser = browserPackage()?.let { browser -> tryStart(Intent(page).setPackage(browser)) } == true
+            val opened = inBrowser || tryStart(page)
+            message(
+                when {
+                    !opened -> words.failed
+                    draft.needsPaste || !inBrowser -> words.pasteOnGithub
+                    else -> words.githubReady
+                }
+            )
         }
     }
 
-    private fun defaultBrowser(): String? {
+    private fun browserPackage(): String? {
         val probe = Intent(Intent.ACTION_VIEW, Uri.parse(BrowserProbeUrl)).addCategory(Intent.CATEGORY_BROWSABLE)
-        return packageManager.resolveActivity(probe, PackageManager.MATCH_DEFAULT_ONLY)
+        val preferred = packageManager.resolveActivity(probe, PackageManager.MATCH_DEFAULT_ONLY)
             ?.activityInfo?.packageName
             ?.takeUnless { it == ResolverPackage }
+        return preferred ?: packageManager.queryIntentActivities(probe, PackageManager.MATCH_DEFAULT_ONLY)
+            .firstOrNull()?.activityInfo?.packageName
     }
 
     private fun tryStart(intent: Intent): Boolean = try {
