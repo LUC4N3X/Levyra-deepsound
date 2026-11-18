@@ -427,6 +427,7 @@ private val activePaletteState = mutableStateOf(LevyraThemes.cosmic)
 private val activeFontPresetState = mutableStateOf(LevyraFontPreset.Outfit)
 private val activePureBlackState = mutableStateOf(false)
 private val activeCornerScaleState = mutableStateOf(1f)
+private val activeSoftAccentsState = mutableStateOf(true)
 
 object LevyraTypographyController {
     fun apply(preset: LevyraFontPreset) {
@@ -485,6 +486,9 @@ object LevyraThemeController {
 
         if (activePureBlackState.value != pureBlackActive) {
             activePureBlackState.value = pureBlackActive
+        }
+        if (activeSoftAccentsState.value != expressive) {
+            activeSoftAccentsState.value = expressive
         }
         applyCornerScale(if (skin != LevyraSkin.Default) "" else presetId)
         if (activePaletteState.value != palette) {
@@ -594,6 +598,9 @@ val LevyraMuted: Color
 
 val LevyraIsPureBlack: Boolean
     get() = activePureBlackState.value
+
+internal val LevyraSoftAccentsActive: Boolean
+    get() = activeSoftAccentsState.value
 
 val LevyraGlass: Color
     get() = when {

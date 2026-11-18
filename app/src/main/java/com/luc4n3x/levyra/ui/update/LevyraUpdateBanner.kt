@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.update
 
+import com.luc4n3x.levyra.ui.theme.LevyraOnAccent
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -165,7 +166,7 @@ private fun BannerHeader(
             Icon(
                 imageVector = Icons.Rounded.SystemUpdateAlt,
                 contentDescription = null,
-                tint = if (phase is LevyraUpdatePhase.Failed) LevyraMuted else UpdateOnAccent,
+                tint = if (phase is LevyraUpdatePhase.Failed) LevyraMuted else LevyraOnAccent,
                 modifier = Modifier.size(22.dp)
             )
         }
@@ -387,7 +388,7 @@ private fun QuietAction(label: String, onClick: () -> Unit) {
 private fun PrimaryAction(label: String, onClick: () -> Unit) {
     Button(
         onClick = onClick,
-        colors = ButtonDefaults.buttonColors(containerColor = LevyraCyan, contentColor = UpdateOnAccent),
+        colors = ButtonDefaults.buttonColors(containerColor = LevyraCyan, contentColor = LevyraOnAccent),
         shapes = ButtonDefaults.shapes()
     ) {
         Text(text = label, fontSize = 14.sp, fontWeight = FontWeight.Bold)
@@ -488,7 +489,6 @@ internal fun levyraUpdateNoteLines(notes: String, version: String): List<String>
 }
 
 private val BannerShape = RoundedCornerShape(28.dp)
-private val UpdateOnAccent = Color(0xFF00201F)
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable

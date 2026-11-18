@@ -40,6 +40,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
+import com.luc4n3x.levyra.ui.theme.LevyraSoftAccentsActive
 import com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic
 import com.luc4n3x.levyra.ui.theme.LevyraIsAtelier
 import com.luc4n3x.levyra.ui.theme.LevyraIsIvory
@@ -67,14 +68,15 @@ internal data class LevyraUtilityColors(
 )
 
 @Composable
-internal fun levyraUtilityColors(seed: Color = LevyraUtilitySeed): LevyraUtilityColors {
+internal fun levyraUtilityColors(seed: Color = LevyraCyan): LevyraUtilityColors {
     val light = MaterialTheme.colorScheme.surface.luminance() > 0.5f
-    return remember(seed, light) {
-        val accent = levyraSoftAccent(seed, light)
-        val role = levyraTonalRole(seed, light, LevyraUtilityContainerChroma)
+    val source = if (LevyraSoftAccentsActive) seed else LevyraCyan
+    return remember(source, light) {
+        val accent = levyraSoftAccent(source, light)
+        val role = levyraTonalRole(source, light, LevyraUtilityContainerChroma)
         LevyraUtilityColors(
             accent = accent,
-            onAccent = levyraOnSoftAccent(seed, light),
+            onAccent = levyraOnSoftAccent(source, light),
             container = role.container,
             onContainer = role.onContainer,
             softContainer = accent.copy(alpha = LevyraUtilitySoftAlpha)
