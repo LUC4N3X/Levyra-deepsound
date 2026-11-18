@@ -121,20 +121,7 @@ private fun DefaultRadioCategoryTile(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)
     ) {
-        Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
-            Box(
-                Modifier
-                    .matchParentSize()
-                    .graphicsLayer { rotationZ = turn }
-                    .background(if (selected) tone.accent else tone.container, shape.toShape())
-            )
-            Icon(
-                radioCategoryIcon(category),
-                contentDescription = null,
-                tint = if (selected) tone.onAccent else tone.onContainer,
-                modifier = Modifier.size(22.dp)
-            )
-        }
+        DefaultRadioCategoryBadge(category, shape, { turn }, if (selected) tone.accent else tone.container, if (selected) tone.onAccent else tone.onContainer)
         Text(
             label,
             color = if (selected) tone.onContainer else colors.onSurface,
@@ -143,6 +130,26 @@ private fun DefaultRadioCategoryTile(
             maxLines = 2,
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun DefaultRadioCategoryBadge(
+    category: RadioCategory,
+    shape: androidx.graphics.shapes.RoundedPolygon,
+    turn: () -> Float,
+    fill: Color,
+    ink: Color
+) {
+    Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+        Box(
+            Modifier
+                .matchParentSize()
+                .graphicsLayer { rotationZ = turn() }
+                .background(fill, shape.toShape())
+        )
+        Icon(radioCategoryIcon(category), contentDescription = null, tint = ink, modifier = Modifier.size(22.dp))
     }
 }
 

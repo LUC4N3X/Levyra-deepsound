@@ -335,8 +335,6 @@ private fun DefaultRadioMasthead(title: String, place: String, live: String, add
 private fun DefaultRadioOnAir(station: RadioStation, tone: Color, tuning: DefaultRadioTuning, live: String, strings: LevyraStrings, onSurprise: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     val playing = tuning.isLive(station)
-    val favorite = tuning.isFavorite(station)
-    val actionTone = com.luc4n3x.levyra.ui.components.levyraUtilityColors(com.luc4n3x.levyra.ui.components.LevyraUtilitySeed)
     Column(
         Modifier
             .fillMaxWidth()
@@ -368,35 +366,44 @@ private fun DefaultRadioOnAir(station: RadioStation, tone: Color, tuning: Defaul
             RadioStationDetail(station, maxLines = 2)
         }
         DefaultRadioAirwave(tone, playing, Modifier.fillMaxWidth().height(28.dp))
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            DefaultRadioGroupedAction(
-                icon = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                label = if (playing) strings.pause else strings.play,
-                container = actionTone.accent,
-                content = actionTone.onAccent,
-                startCorner = 28.dp,
-                endCorner = 8.dp,
-                modifier = Modifier.weight(1f),
-                text = if (playing) strings.pause else strings.play
-            ) { tuning.onPlay(station) }
-            DefaultRadioGroupedAction(
-                icon = if (favorite) Icons.Rounded.Star else Icons.Rounded.StarBorder,
-                label = if (favorite) strings.removeFromFavorites else strings.addToFavorites,
-                container = if (favorite) actionTone.container else colors.surfaceContainerHighest,
-                content = if (favorite) actionTone.onContainer else colors.onSurface,
-                startCorner = 8.dp,
-                endCorner = 8.dp
-            ) { tuning.onFavorite(station) }
-            DefaultRadioGroupedAction(
-                icon = Icons.Rounded.Shuffle,
-                label = strings.shuffle,
-                container = colors.surfaceContainerHighest,
-                content = colors.onSurface,
-                startCorner = 8.dp,
-                endCorner = 28.dp,
-                onClick = onSurprise
-            )
-        }
+        DefaultRadioOnAirActions(station, tuning, strings, onSurprise)
+    }
+}
+
+@Composable
+private fun DefaultRadioOnAirActions(station: RadioStation, tuning: DefaultRadioTuning, strings: LevyraStrings, onSurprise: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val playing = tuning.isLive(station)
+    val favorite = tuning.isFavorite(station)
+    val actionTone = com.luc4n3x.levyra.ui.components.levyraUtilityColors(com.luc4n3x.levyra.ui.components.LevyraUtilitySeed)
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        DefaultRadioGroupedAction(
+            icon = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+            label = if (playing) strings.pause else strings.play,
+            container = actionTone.accent,
+            content = actionTone.onAccent,
+            startCorner = 28.dp,
+            endCorner = 8.dp,
+            modifier = Modifier.weight(1f),
+            text = if (playing) strings.pause else strings.play
+        ) { tuning.onPlay(station) }
+        DefaultRadioGroupedAction(
+            icon = if (favorite) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+            label = if (favorite) strings.removeFromFavorites else strings.addToFavorites,
+            container = if (favorite) actionTone.container else colors.surfaceContainerHighest,
+            content = if (favorite) actionTone.onContainer else colors.onSurface,
+            startCorner = 8.dp,
+            endCorner = 8.dp
+        ) { tuning.onFavorite(station) }
+        DefaultRadioGroupedAction(
+            icon = Icons.Rounded.Shuffle,
+            label = strings.shuffle,
+            container = colors.surfaceContainerHighest,
+            content = colors.onSurface,
+            startCorner = 8.dp,
+            endCorner = 28.dp,
+            onClick = onSurprise
+        )
     }
 }
 

@@ -1528,7 +1528,7 @@ internal fun LevyraLibraryScreen(
                     item(key = "offline-storage") {
                         val showSmartOffline = state.smartOfflineSettings.enabled || smartOfflineSummary.first > 0
                         val showStorageRow = catalog.offlineItems.isEmpty()
-                        val groupCount = (if (showSmartOffline) 1 else 0) + (if (showStorageRow) 1 else 0)
+                        val groupCount = listOf(showSmartOffline, showStorageRow).count { it }
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             if (showStorageRow) LibraryOfflineSummary(
                                 bytes = state.downloadStorageBytes,

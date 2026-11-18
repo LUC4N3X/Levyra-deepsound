@@ -14664,28 +14664,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val candidates = queueEngine.upcoming(key.windowSize)
             .filterNot { samePlayableTrack(it, current) || isLocalPlaybackTrack(it) || it.isLiveRadio() }
             .distinctBy { playbackIdentity(it) }
-        val preloadKeys = candidates.map(::playbackIdentity)
-        _offlineTransfers.update { transfers ->
-            transfers.copy(
-                preload = candidates.mapIndexed { index, track ->
-                    PreloadQueueItem(preloadKeys[index], track.title, track.artist, progress = 0, complete = false)
-                }
-            )
-        }
-        fun publishPreload(index: Int, progress: Int, complete: Boolean = false) {
-            _offlineTransfers.update { transfers ->
-                val item = transfers.preload.getOrNull(index)
-                if (item == null || item.key != preloadKeys[index] || (item.progress == progress && item.complete == complete)) {
-                    transfers
-                } else {
-                    transfers.copy(
-                        preload = transfers.preload.toMutableList().also {
-                            it[index] = item.copy(progress = progress, complete = complete)
-                        }
-                    )
-                }
-            }
-        }
+        val preloadKeys = startPreloadList(candidates)
         var holdingDownloadPriority = candidates.isNotEmpty()
         if (holdingDownloadPriority) OfflineTransferPriority.beginPreload()
         try {
@@ -14695,17 +14674,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     holdingDownloadPriority = false
                 }
                 currentCoroutineContext().ensureActive()
-                if (!isAdvancedPrefetchCurrent(key)) {
-                    stopReason = "stale"
-                    break
-                }
-                if (!advancedPrefetchConditionsMet(key.windowSize)) {
-                    stopReason = "conditions"
-                    break
-                }
                 val trackLimit = advancedPrefetchTrackLimit(usedBytes, budgetBytes)
-                if (trackLimit <= 0L) {
-                    stopReason = "budget"
+                val blocker = advancedPrefetchBlocker(key, trackLimit)
+                if (blocker != null) {
+                    stopReason = blocker
                     break
                 }
                 if (isLocalPlaybackTrack(track) || track.isLiveRadio()) continue
@@ -14719,12 +14691,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     break
                 }
                 val outcome = playbackWarmup.cacheCompletely(resolved, trackLimit) { progress ->
-                    publishPreload(index, progress)
+                    publishPreload(preloadKeys, index, progress)
                 } ?: continue
                 usedBytes += outcome.cachedBytes.coerceAtLeast(0L)
                 if (outcome.complete) {
                     completeTracks++
-                    publishPreload(index, 100, complete = true)
+                    publishPreload(preloadKeys, index, 100, complete = true)
                 }
                 delay(ADVANCED_PREFETCH_TRACK_GAP_MS)
             }
@@ -14739,6 +14711,36 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             usedBytes,
             budgetBytes
         )
+    }
+
+    private fun advancedPrefetchBlocker(key: AdvancedPrefetchKey, trackLimit: Long): String? = when {
+        !isAdvancedPrefetchCurrent(key) -> "stale"
+        !advancedPrefetchConditionsMet(key.windowSize) -> "conditions"
+        trackLimit <= 0L -> "budget"
+        else -> null
+    }
+
+    private fun startPreloadList(candidates: List<Track>): List<String> {
+        val keys = candidates.map(::playbackIdentity)
+        _offlineTransfers.update { transfers ->
+            transfers.copy(
+                preload = candidates.mapIndexed { index, track ->
+                    PreloadQueueItem(keys[index], track.title, track.artist, progress = 0, complete = false)
+                }
+            )
+        }
+        return keys
+    }
+
+    private fun publishPreload(keys: List<String>, index: Int, progress: Int, complete: Boolean = false) {
+        _offlineTransfers.update { transfers ->
+            val item = transfers.preload.getOrNull(index)?.takeIf { it.key == keys[index] }
+            if (item == null || item.progress == progress && item.complete == complete) {
+                transfers
+            } else {
+                transfers.copy(preload = transfers.preload.toMutableList().also { it[index] = item.copy(progress = progress, complete = complete) })
+            }
+        }
     }
 
     private fun advancedPrefetchNetworkSuitable(mobileDataAllowed: Boolean): Flow<Boolean> = callbackFlow {
