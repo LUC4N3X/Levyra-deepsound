@@ -148,7 +148,7 @@ class StoryPostPlanningTest {
 
     @Test
     fun captionsAreNormalizedAndTitlesDerived() {
-        assertEquals("Hello\nWorld", normalizeStoryPostCaption("﻿Hello\r\nWorld\r\n"))
+        assertEquals("Hello\nWorld", normalizeStoryPostCaption("\uFEFFHello\r\nWorld\r\n"))
         assertEquals("a\nb", normalizeStoryPostCaption("a\rb"))
 
         assertEquals("First line", storyPostTitle("\n   \n  First line \nSecond", "post.zip"))

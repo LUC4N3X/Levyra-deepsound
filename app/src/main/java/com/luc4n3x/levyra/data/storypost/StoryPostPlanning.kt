@@ -109,7 +109,7 @@ fun compareNatural(left: String, right: String): Int {
 }
 
 fun normalizeStoryPostCaption(raw: String): String = raw
-    .removePrefix("﻿")
+    .removePrefix("\uFEFF")
     .replace("\r\n", "\n")
     .replace('\r', '\n')
     .trim()
