@@ -381,12 +381,11 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         )
     }
 
-    fun setSupportPromptState(state: SupportPromptState) {
+    fun recordSupportPromptOpen(state: SupportPromptState) {
         write {
             it[KEY_SUPPORT_PROMPT_VERSION] = state.versionCode
             it[KEY_SUPPORT_PROMPT_OPENS] = state.opens
             it[KEY_SUPPORT_PROMPT_LAST_OPEN_AT] = state.lastOpenAtMs
-            it[KEY_SUPPORT_PROMPT_FINISHED] = state.finished
         }
     }
 

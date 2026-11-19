@@ -104,7 +104,7 @@ internal fun LevyraSupportPromptGate(
                     versionCode = BuildConfig.VERSION_CODE,
                     nowMs = System.currentTimeMillis()
                 ) ?: return@withContext false
-                preferences.setSupportPromptState(next)
+                preferences.recordSupportPromptOpen(next)
                 SupportPromptSchedule.isDue(next)
             }
             if (decided) due = true
