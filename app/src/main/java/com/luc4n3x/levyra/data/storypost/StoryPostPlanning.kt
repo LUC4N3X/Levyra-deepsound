@@ -104,7 +104,7 @@ fun compareNatural(left: String, right: String): Int {
             j++
         }
     }
-    val remaining = (left.length - i) - (right.length - j)
+    val remaining = left.length - i - (right.length - j)
     return if (remaining != 0) remaining else left.compareTo(right)
 }
 
