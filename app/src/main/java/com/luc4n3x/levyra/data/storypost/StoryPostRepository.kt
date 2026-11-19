@@ -306,6 +306,7 @@ class StoryPostRepository private constructor(context: Context) {
     }
 
     private fun extractZip(zip: ZipFile, dir: File): List<StoryPostSourceFile> {
+        if (zip.size() > limits.maxEntries) throw StoryPostImportException(StoryPostImportError.TooLarge)
         val check = checkStoryPostZipEntries(
             zip.entries().toList().map { StoryPostZipEntry(it.name, it.size, it.isDirectory) },
             limits

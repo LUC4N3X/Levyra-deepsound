@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -326,7 +327,7 @@ private fun StoryPostPreviewSheet(
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .navigationBarsPadding()
-                .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
+                .padding(start = STORY_POST_SHEET_GUTTER, end = STORY_POST_SHEET_GUTTER, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -346,7 +347,11 @@ private fun StoryPostPreviewSheet(
                 )
             }
             if (!video && plan.images.isNotEmpty()) {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                LazyRow(
+                    modifier = Modifier.libraryCategoriesBleed(STORY_POST_SHEET_GUTTER),
+                    contentPadding = PaddingValues(horizontal = STORY_POST_SHEET_GUTTER),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     itemsIndexed(plan.images, key = { _, image -> image.path }) { index, image ->
                         StoryPostPreviewImage(index, plan.images.size, image, storyStrings)
                     }
@@ -503,6 +508,8 @@ private fun StoryPostChoiceRow(label: String, selected: Boolean, onClick: () -> 
         )
     }
 }
+
+private val STORY_POST_SHEET_GUTTER = 24.dp
 
 private fun storyPostDuration(durationMs: Long): String {
     val totalSeconds = durationMs / 1000L

@@ -31,7 +31,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
+import com.luc4n3x.levyra.ui.components.LevyraSlider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -47,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -63,6 +64,8 @@ import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraText
+
+private const val STORY_POST_DETAILS_MAX_FRACTION = 0.45f
 
 @Composable
 internal fun StoryPostPlayer(
@@ -121,7 +124,13 @@ internal fun StoryPostPlayer(
                 )
             }
         }
-        Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
+        val detailsMaxHeight = (LocalConfiguration.current.screenHeightDp * STORY_POST_DETAILS_MAX_FRACTION).dp
+        Column(
+            modifier = Modifier
+                .heightIn(max = detailsMaxHeight)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 16.dp)
+        ) {
             val title = post?.title ?: track.title
             Text(
                 text = title,
@@ -235,7 +244,7 @@ private fun StoryPostSeekBar(positionMs: Long, durationMs: Long, trackId: String
     var dragFraction by remember(trackId) { mutableStateOf<Float?>(null) }
     val fraction = dragFraction
         ?: if (durationMs > 0L) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
-    Slider(
+    LevyraSlider(
         value = fraction,
         onValueChange = { dragFraction = it },
         onValueChangeFinished = {
