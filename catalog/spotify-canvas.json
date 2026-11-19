@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-18T20:37:20Z",
+  "generatedAt": "2026-11-19T07:31:44Z",
   "items": [
     {
       "song": "Sentire La Musica",
@@ -2054,13 +2054,6 @@
       "scope": "track"
     },
     {
-      "song": "My Moon My Man",
-      "artist": "Feist",
-      "album": "The Reminder",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/daa08156285c4563b27140442341c05f.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Meduza",
       "artist": "Aerozen",
       "album": "Meduza",
@@ -2520,13 +2513,6 @@
       "artist": "GENER8ION, Yung Lean",
       "album": "Love & Tears",
       "url": "https://canvaz.scdn.co/upload/artist/5xXSrTidFvVRJmiam2Zh1o/video/69ecc1082fc64314bcf45e6d181083f6.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "The Art of Loving",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4590,7 +4576,7 @@
     {
       "song": "SaWaDiKa",
       "artist": "LISA",
-      "album": "PRESS PLAY",
+      "album": "SaWaDiKa",
       "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/e606da7656394abeb100a98d0d5848a2.cnvs.mp4",
       "scope": "track"
     },
@@ -4798,13 +4784,6 @@
       "scope": "track"
     },
     {
-      "song": "Iris",
-      "artist": "The Goo Goo Dolls",
-      "album": "Stay with You",
-      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/4ab38c8ea56645c5ab7d8ebfb5e4edc2.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "Treat You Better",
       "artist": "Shawn Mendes",
       "album": "Illuminate",
@@ -4961,7 +4940,7 @@
     {
       "song": "El Teléfono",
       "artist": "Héctor \"El Father\", Wisin & Yandel",
-      "album": "The Bad Boy",
+      "album": "Machete Music Chronicles: Vol. I",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/b23b719ccbb445188126f29f094d154a.cnvs.mp4",
       "scope": "track"
     },
@@ -5089,13 +5068,6 @@
       "artist": "LORENZ",
       "album": "Katz und Maus",
       "url": "https://canvaz.scdn.co/upload/artist/29AFMZC7aOFh52PJn1JoRx/video/2555736234bd43249bfc3b32c7b837b3.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Mistletoe",
-      "artist": "Justin Bieber",
-      "album": "Under The Mistletoe",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/fdad1192d6504562ad65445226732137.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -5372,13 +5344,6 @@
       "scope": "track"
     },
     {
-      "song": "El Teléfono",
-      "artist": "Héctor \"El Father\", Wisin & Yandel",
-      "album": "Machete Music Chronicles: Vol. I",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/b23b719ccbb445188126f29f094d154a.cnvs.mp4",
-      "scope": "track"
-    },
-    {
       "song": "SORNERO",
       "artist": "Blessd",
       "album": "EL PEOR HOMBRE DEL MUNDO",
@@ -5474,6 +5439,13 @@
       "artist": "La Factoria, Eddy Lover",
       "album": "Nuevas Metas",
       "url": "https://canvaz.scdn.co/upload/artist/7gR53ad9JjCweCv4f9MWEX/video/fbdf2e79f6824470b7e9b8e36fc76bf3.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "El Teléfono",
+      "artist": "Héctor \"El Father\", Wisin & Yandel",
+      "album": "The Bad Boy",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/b23b719ccbb445188126f29f094d154a.cnvs.mp4",
       "scope": "track"
     },
     {
