@@ -24,7 +24,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: desktop-windows-${{ github.ref }}
@@ -83,6 +83,8 @@ jobs:
 
   installer:
     name: Windows installer
+    permissions:
+      contents: write
     runs-on: windows-latest
     needs: verify
     timeout-minutes: 60

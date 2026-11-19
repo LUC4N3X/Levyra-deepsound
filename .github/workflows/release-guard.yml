@@ -44,6 +44,9 @@ jobs:
 
       - name: Validate Version Consistency
         shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
 
@@ -77,8 +80,8 @@ jobs:
           if [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
             EXPECTED_TAG="${GITHUB_REF_NAME}"
           fi
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            EXPECTED_TAG="${{ inputs.tag }}"
+          if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
+            EXPECTED_TAG="${INPUT_TAG}"
           fi
 
           if [ -n "${EXPECTED_TAG}" ]; then
