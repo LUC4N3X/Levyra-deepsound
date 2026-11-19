@@ -62,6 +62,7 @@ private const val QUEUE_PREVIEW_ROWS = 5
 @Composable
 internal fun DownloadProgressHud(
     queue: List<OfflineDownloadTask>,
+    savedTrackIds: Set<String>,
     onOpenDownloads: () -> Unit,
     onCancelAll: () -> Unit
 ) {
@@ -70,10 +71,12 @@ internal fun DownloadProgressHud(
     val catalogCopy = remember(strings) { strings.artistCatalogCopy() }
     val colors = MaterialTheme.colorScheme
     val active = remember(queue) { activeHudTasks(queue) }
-    var sessionKeys by rememberSaveable { mutableStateOf(emptyList<String>()) }
-    val session = remember(sessionKeys, active) { extendDownloadSession(sessionKeys.toSet(), active) }
-    LaunchedEffect(session) { sessionKeys = session.toList() }
-    val snapshot = remember(active, session) { downloadHudSnapshot(active, session) } ?: return
+    var sessionPairs by rememberSaveable { mutableStateOf(emptyList<String>()) }
+    val session = remember(sessionPairs, active) {
+        extendDownloadSession(sessionPairs.chunked(2).associate { it[0] to it[1] }, active)
+    }
+    LaunchedEffect(session) { sessionPairs = session.flatMap { (key, trackId) -> listOf(key, trackId) } }
+    val snapshot = remember(active, session, savedTrackIds) { downloadHudSnapshot(active, session, savedTrackIds) } ?: return
     var expanded by rememberSaveable { mutableStateOf(false) }
     var confirmCancel by rememberSaveable { mutableStateOf(false) }
     val currentProgress by animateFloatAsState(

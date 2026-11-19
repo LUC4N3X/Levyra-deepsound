@@ -1197,6 +1197,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val artistCatalogLoadLock = Any()
     private var artistCatalogLoad: Pair<String, Deferred<List<Track>?>>? = null
     private val batchEnqueueJobs = java.util.concurrent.ConcurrentHashMap<String, Job>()
+    private val selectionEnqueueJobs: MutableSet<Job> = java.util.concurrent.ConcurrentHashMap.newKeySet()
     private val excludedArtistsStore = com.luc4n3x.levyra.data.ExcludedArtistsStore(application.applicationContext)
     private val recommendationFeedbackStore =
         com.luc4n3x.levyra.data.RecommendationFeedbackStore(application.applicationContext)
@@ -10045,6 +10046,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun cancelAllDownloads() {
+        selectionEnqueueJobs.toList().forEach { it.cancel() }
         val snapshot = _state.value
         (snapshot.downloadBatches.filterNot { it.isFinished }.map { it.key } + batchEnqueueJobs.keys)
             .toSet()
@@ -10159,6 +10161,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 if (index > 0) delay(220L)
                 startTrackDownload(track, null)
             }
+        }.also { job ->
+            selectionEnqueueJobs += job
+            job.invokeOnCompletion { selectionEnqueueJobs -= job }
         }
     }
 

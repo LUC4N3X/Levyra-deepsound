@@ -3026,6 +3026,7 @@ fun LevyraApp(
             ) {
                 com.luc4n3x.levyra.ui.download.DownloadProgressHud(
                     queue = state.downloadQueue,
+                    savedTrackIds = state.downloadedTrackIds,
                     onOpenDownloads = { showDownloadsFolder = true },
                     onCancelAll = viewModel::cancelAllDownloads
                 )

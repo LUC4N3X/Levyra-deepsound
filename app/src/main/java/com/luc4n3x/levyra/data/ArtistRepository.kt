@@ -956,7 +956,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             val videosJob = async { videoPointer?.let { fetchVideos(it, name) }.orEmpty() }
             if (onPreview != null) {
                 val earlySongs = firstSongsPage.await()
-                if (songsJob.isActive) {
+                if (songsJob.isActive || (albumsJobs + singlesJobs + videosJob).any { it.isActive }) {
                     suspend fun <T> List<Deferred<List<T>>>.ready(): List<T> = filter { it.isCompleted }.flatMap { it.await() }
                     assembleProfile(
                         root, header, browseId, name, thumb, artwork.bannerUrl,

@@ -63,6 +63,9 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.R
 import com.luc4n3x.levyra.data.LevyraPreferences
@@ -90,19 +93,23 @@ internal fun LevyraSupportPromptGate(
     var due by rememberSaveable { mutableStateOf<Boolean?>(null) }
     var visible by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        val decided = due ?: withContext(Dispatchers.IO) {
-            if (!preferences.isOnboarded()) return@withContext false
-            val next = SupportPromptSchedule.recordOpen(
-                state = preferences.supportPromptState(),
-                versionCode = BuildConfig.VERSION_CODE,
-                nowMs = System.currentTimeMillis()
-            ) ?: return@withContext false
-            preferences.setSupportPromptState(next)
-            SupportPromptSchedule.isDue(next)
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(lifecycle, enabled) {
+        if (!enabled) return@LaunchedEffect
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            val decided = withContext(Dispatchers.IO) {
+                if (!preferences.isOnboarded()) return@withContext false
+                val next = SupportPromptSchedule.recordOpen(
+                    state = preferences.supportPromptState(),
+                    versionCode = BuildConfig.VERSION_CODE,
+                    nowMs = System.currentTimeMillis()
+                ) ?: return@withContext false
+                preferences.setSupportPromptState(next)
+                SupportPromptSchedule.isDue(next)
+            }
+            if (decided) due = true
+            onDecided(decided || due == true)
         }
-        due = decided
-        onDecided(decided)
     }
 
     LaunchedEffect(enabled, due) {
