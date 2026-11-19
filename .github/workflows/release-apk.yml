@@ -27,7 +27,7 @@ on:
         default: "r6"
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: publish-release-apk-${{ github.ref }}
@@ -36,6 +36,8 @@ concurrency:
 jobs:
   release:
     name: Validate, Build and Publish Signed APK
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     timeout-minutes: 120
     outputs:
@@ -420,6 +422,8 @@ jobs:
 
   fdroid:
     name: Build and Publish Reproducible F-Droid APK
+    permissions:
+      contents: write
     needs: release
     if: "${{ needs.release.result == 'success' && ((github.event_name == 'push' && github.event.head_commit.message != 'chore(release): refresh v2.6.9 APK') || (github.event_name == 'workflow_dispatch' && inputs.publish_fdroid_asset && inputs.refresh_existing_github_apk != true)) }}"
     runs-on: ubuntu-latest

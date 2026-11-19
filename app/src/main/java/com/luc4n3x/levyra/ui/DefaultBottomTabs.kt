@@ -92,8 +92,8 @@ internal fun DefaultBottomTabs(
                     DefaultTabItem(
                         entry = entry,
                         isSelected = isSelected,
-                        indicatorColor = tone.container,
-                        activeIconColor = tone.onContainer,
+                        indicatorColor = scheme.surfaceContainerHighest,
+                        activeIconColor = tone.accent,
                         activeLabelColor = tone.accent,
                         inactiveColor = scheme.onSurfaceVariant,
                         compaction = compaction,
@@ -264,12 +264,12 @@ private fun DefaultDockSearchButton(selected: Boolean, compaction: () -> Float, 
                     rotationZ = reveal * 40f
                     alpha = reveal.coerceIn(0f, 1f)
                 }
-                .background(tone.container, searchShape)
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest, searchShape)
         )
         Icon(
             imageVector = androidx.compose.material.icons.Icons.Rounded.Search,
             contentDescription = strings.search,
-            tint = if (selected) tone.onContainer else MaterialTheme.colorScheme.onSurface,
+            tint = if (selected) tone.accent else MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.size(28.dp).graphicsLayer {
                 scaleX = pressScale
                 scaleY = pressScale

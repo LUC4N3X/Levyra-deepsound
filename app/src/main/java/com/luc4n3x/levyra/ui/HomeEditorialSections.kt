@@ -1061,6 +1061,23 @@ internal fun HomeEditorialSpotlight(
     val playFill = heroTones.action
     val playInk = if (LevyraIsDefaultSkin) defaultHeroTone.onAccent else heroTones.onAction
 
+    if (LevyraIsDefaultSkin) {
+        DefaultSoundtrackCard(
+            header = header,
+            backdropBleed = backdropBleed,
+            artworkUrl = resolvedArtistArtworkUrl,
+            overline = strings.homeSoundtrackRadio,
+            title = soundtrackTitle,
+            lead = soundtrackLead,
+            companions = visibleCompanionArtworkUrls,
+            playing = isCurrent && isPlaying,
+            resolving = isResolving,
+            playLabel = if (isCurrent && isPlaying) strings.pause else strings.playNow,
+            onOpen = onOpen
+        )
+        return
+    }
+
     Box(modifier = Modifier.fillMaxWidth()) {
         Box(
             modifier = Modifier

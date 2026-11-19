@@ -50,7 +50,7 @@ private fun HeaderToolbarButton(icon: ImageVector, label: String, onClick: () ->
             pressedShape = MaterialShapes.Cookie9Sided.toShape()
         ),
         colors = IconButtonDefaults.filledTonalIconButtonColors(
-            containerColor = if (light) Color.White.copy(alpha = 0.86f) else Color.White.copy(alpha = 0.14f),
+            containerColor = if (light) Color.White.copy(alpha = 0.86f) else Color.Black.copy(alpha = 0.42f),
             contentColor = LevyraText.copy(alpha = 0.94f)
         ),
         modifier = modifier.size(HeaderToolbarButtonSize)

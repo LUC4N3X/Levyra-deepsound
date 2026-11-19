@@ -62,11 +62,11 @@ internal fun QuickSearchChip(label: String, onClick: () -> Unit) {
     ) {
         Text(
             text = label,
-            color = if (LevyraSkinManagesLayout) LevyraText else scheme.onSecondaryContainer,
-            style = LevyraType.cardTitle.copy(fontWeight = if (LevyraSkinManagesLayout) FontWeight.Medium else FontWeight.Bold),
+            color = if (LevyraSkinManagesLayout) LevyraText else scheme.onSurface,
+            style = LevyraType.cardTitle.copy(fontWeight = if (LevyraSkinManagesLayout) FontWeight.Medium else FontWeight.SemiBold),
             modifier = Modifier
                 .clip(if (LevyraSkinManagesLayout) SkinChrome.chipShape else RoundedCornerShape(corner))
-                .background(if (LevyraSkinManagesLayout) LevyraPanel else scheme.secondaryContainer)
+                .background(if (LevyraSkinManagesLayout) LevyraPanel else scheme.surfaceContainerHigh)
                 .padding(horizontal = 16.dp, vertical = 10.dp)
         )
     }

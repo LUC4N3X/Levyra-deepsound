@@ -55,6 +55,20 @@ class ListeningPulseEngineTest {
     }
 
     @Test
+    fun weeklyHourBucketsExcludeOlderListening() {
+        val events = listOf(
+            event(trackId = "recent", listenedMs = 60_000L, startedAt = hoursAgo(1)),
+            event(trackId = "old", listenedMs = 600_000L, startedAt = hoursAgo(24 * 10 + 6))
+        )
+
+        val pulse = engine.build(events, now)
+
+        assertEquals(60_000L, pulse.last7Days.hourBuckets.sum())
+        assertEquals(60_000L, pulse.last7Days.hourBuckets[20])
+        assertEquals(660_000L, pulse.hourBuckets.sum())
+    }
+
+    @Test
     fun completionRateReflectsCompletedShare() {
         val events = listOf(
             event(trackId = "a", completed = true, startedAt = hoursAgo(1)),
