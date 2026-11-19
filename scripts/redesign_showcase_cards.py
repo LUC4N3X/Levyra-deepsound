@@ -437,7 +437,7 @@ UPRIGHT_CARD_SPECS = [
         "VERIFIED HIGH-BITRATE",
         "Verified 320 kbps & FLAC",
         "Header-checked streams & Enhanced Audio.",
-        "Screenshot_20261024_150113_Levyra.jpg",
+        "Screenshot_20261119_205957_Levyra.jpg",
         (237, 243, 250), (212, 225, 239), (178, 200, 226), (188, 205, 224),
         (42, 82, 142), (15, 23, 42), (52, 70, 98),
     ),
