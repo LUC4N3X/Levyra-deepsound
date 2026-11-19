@@ -431,8 +431,8 @@ class OfficialArtworkRepository(context: Context) {
             var content: String? = null
             val attributes = META_ATTRIBUTE_PATTERN.toPattern().matcher(tags.group())
             while (attributes.find()) {
-                when (attributes.group(1).lowercase(Locale.ROOT)) {
-                    "property", "name" -> if (key == null) key = attributes.group(2).lowercase(Locale.ROOT)
+                when (attributes.group(1)?.lowercase(Locale.ROOT)) {
+                    "property", "name" -> if (key == null) key = attributes.group(2)?.lowercase(Locale.ROOT)
                     "content" -> if (content == null) content = attributes.group(2)
                 }
             }

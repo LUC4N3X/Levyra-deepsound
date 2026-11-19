@@ -351,7 +351,7 @@ internal fun DefaultDiscoveryFiltersSheet(
     onRefresh: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val sheetState = androidx.compose.material3.rememberModalBottomSheetState()
+    val sheetState = androidx.compose.material3.rememberBottomSheetState(androidx.compose.material3.SheetValue.Hidden)
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(Modifier.fillMaxWidth().padding(bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
