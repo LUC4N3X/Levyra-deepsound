@@ -132,6 +132,8 @@ import com.luc4n3x.levyra.viewmodel.LevyraViewModel
 import com.luc4n3x.levyra.viewmodel.LibraryViewModel
 import com.luc4n3x.levyra.viewmodel.libraryBrowseInput
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.luc4n3x.levyra.ui.i18n.LevyraStoryPostCatalog
+import com.luc4n3x.levyra.viewmodel.StoryPostImportState
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
@@ -376,6 +378,23 @@ internal fun LevyraLibraryScreen(
     val personalCollections by viewModel.personalCollections.summaries.collectAsStateWithLifecycle()
     val personalCollectionSyncing by viewModel.personalCollections.syncingIds.collectAsStateWithLifecycle()
     val collectionImportState by viewModel.personalCollections.importState.collectAsStateWithLifecycle()
+    val storyPostList by viewModel.storyPosts.posts.collectAsStateWithLifecycle()
+    val storyPostImportState by viewModel.storyPosts.importState.collectAsStateWithLifecycle()
+    val storyPostStrings = remember(strings.code) { LevyraStoryPostCatalog.forCode(strings.code) }
+    val storyPostFolderLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) viewModel.storyPosts.importFolder(uri)
+    }
+    val storyPostZipLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) viewModel.storyPosts.importZip(uri)
+    }
+    val storyPostCallbacks = remember(viewModel) {
+        StoryPostLibraryCallbacks(
+            onImportFolder = { storyPostFolderLauncher.launch(null) },
+            onImportZip = { storyPostZipLauncher.launch(STORY_POST_ZIP_TYPES) },
+            onPlay = viewModel::playStoryPost,
+            onDelete = { post -> viewModel.storyPosts.delete(post.id) }
+        )
+    }
     var openCollectionId by rememberSaveable { mutableStateOf<String?>(null) }
     var showCollectionImport by rememberSaveable { mutableStateOf(false) }
     val openCollection = openCollectionId?.let { id -> personalCollections.firstOrNull { it.id == id } }
@@ -1420,7 +1439,13 @@ internal fun LevyraLibraryScreen(
                     isPlaying = state.isPlaying,
                     favoriteIds = state.favoriteIds,
                     unavailableUris = state.queueUnavailableUris,
-                    callbacks = localLibraryCallbacks
+                    callbacks = localLibraryCallbacks,
+                    storyPosts = StoryPostLibrarySection(
+                        posts = storyPostList,
+                        reading = storyPostImportState is StoryPostImportState.Reading,
+                        strings = storyPostStrings,
+                        callbacks = storyPostCallbacks
+                    )
                 )
 
                 LibraryCategory.Offline -> {
@@ -1722,6 +1747,14 @@ internal fun LevyraLibraryScreen(
             )
         }
     }
+
+    StoryPostImportHost(
+        state = storyPostImportState,
+        storyStrings = storyPostStrings,
+        onSelect = viewModel.storyPosts::select,
+        onSave = viewModel.storyPosts::save,
+        onDismiss = viewModel.storyPosts::dismiss
+    )
 
     if (showCollectionImport) {
         PersonalCollectionImportSheet(
@@ -2469,3 +2502,5 @@ private fun playlistItemReorderPresentation(item: PlaylistItem, albumLabel: Stri
             subtitle = listOf(albumLabel, item.entry.album.artist).filter(String::isNotBlank).joinToString(" · ")
         )
     }
+
+private val STORY_POST_ZIP_TYPES = arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream")

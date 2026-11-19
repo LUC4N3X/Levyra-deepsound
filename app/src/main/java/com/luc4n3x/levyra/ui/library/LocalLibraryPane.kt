@@ -9,6 +9,8 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -52,7 +54,10 @@ import com.luc4n3x.levyra.data.local.LocalMediaEntity
 import com.luc4n3x.levyra.data.locallibrary.LocalFolderGroup
 import com.luc4n3x.levyra.data.locallibrary.isSafeTagEditorFormat
 import com.luc4n3x.levyra.data.locallibrary.matchesFullTagQuery
+import com.luc4n3x.levyra.data.storypost.StoryPost
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.ui.i18n.LevyraStoryPostCatalog
+import com.luc4n3x.levyra.ui.i18n.LevyraStoryPostStrings
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.localLibraryRecentFilterLabel
@@ -64,7 +69,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.viewmodel.LocalLibraryUiState
 import java.util.Locale
 
-internal enum class LocalLibraryTab { Songs, Albums, Artists, Folders }
+internal enum class LocalLibraryTab { Songs, Albums, Artists, Folders, Posts }
 
 internal enum class LocalLibraryQualityFilter { All, Lossless, HighBitrate, Recent }
 
@@ -86,7 +91,15 @@ internal fun LocalLibraryTab.label(strings: LevyraStrings): String = when (this)
     LocalLibraryTab.Albums -> strings.albumsPlain
     LocalLibraryTab.Artists -> strings.artists
     LocalLibraryTab.Folders -> strings.localFolders
+    LocalLibraryTab.Posts -> LevyraStoryPostCatalog.forCode(strings.code).tab
 }
+
+internal data class StoryPostLibrarySection(
+    val posts: List<StoryPost>,
+    val reading: Boolean,
+    val strings: LevyraStoryPostStrings,
+    val callbacks: StoryPostLibraryCallbacks
+)
 
 internal data class LocalLibraryCallbacks(
     val onPlay: (List<Track>, Track) -> Unit,
@@ -114,16 +127,11 @@ internal fun LazyListScope.localLibrarySection(
     isPlaying: Boolean,
     favoriteIds: Set<String>,
     unavailableUris: Set<String>,
-    callbacks: LocalLibraryCallbacks
+    callbacks: LocalLibraryCallbacks,
+    storyPosts: StoryPostLibrarySection
 ) {
     item(key = "local-actions", contentType = "local-actions") {
         LocalLibraryActions(library, callbacks)
-    }
-    if (!library.permissionGranted) {
-        item(key = "local-permission", contentType = "local-permission") {
-            LocalLibraryPermissionCard(callbacks.onGrantPermission)
-        }
-        return
     }
     item(key = "local-tabs", contentType = "local-tabs") {
         LocalLibraryTabs(
@@ -133,6 +141,23 @@ internal fun LazyListScope.localLibrarySection(
                 onTab(entry)
             }
         )
+    }
+    if (tab == LocalLibraryTab.Posts) {
+        storyPostItems(
+            posts = storyPosts.posts,
+            reading = storyPosts.reading,
+            currentTrackId = currentTrack?.id,
+            isPlaying = isPlaying,
+            storyStrings = storyPosts.strings,
+            callbacks = storyPosts.callbacks
+        )
+        return
+    }
+    if (!library.permissionGranted) {
+        item(key = "local-permission", contentType = "local-permission") {
+            LocalLibraryPermissionCard(callbacks.onGrantPermission)
+        }
+        return
     }
     if (library.catalog.totalCount == 0) {
         item(key = "local-empty", contentType = "local-empty") {
@@ -250,6 +275,7 @@ internal fun LazyListScope.localLibrarySection(
                 onHide = { callbacks.onToggleFolderHidden(folder.key, true) }
             )
         }
+        LocalLibraryTab.Posts -> Unit
     }
     if (library.catalog.hiddenDuplicateCount > 0) {
         item(key = "local-duplicates", contentType = "local-note") {
@@ -521,6 +547,7 @@ internal fun localLibraryAlphabetIndex(
         !library.permissionGranted ||
         library.catalog.totalCount == 0 ||
         tab == LocalLibraryTab.Folders ||
+        tab == LocalLibraryTab.Posts ||
         tab == LocalLibraryTab.Songs && !songsAlphabetical
     ) {
         return LocalLibraryAlphabetIndex()
@@ -540,7 +567,7 @@ internal fun localLibraryAlphabetIndex(
             .filterLocalArtists(query, library.catalog.mediaByUri)
             .mapNotNull { it.filteredByLocalQuality(effectiveFilter, library.catalog.mediaByUri, nowMs) }
             .map(LocalArtistGroup::name)
-        LocalLibraryTab.Folders -> emptyList()
+        LocalLibraryTab.Folders, LocalLibraryTab.Posts -> emptyList()
     }
     val targets = buildList {
         var previous: Char? = null
@@ -619,6 +646,7 @@ private fun localAlphabetLetter(value: String): Char? = normalizeLibraryText(val
 private const val LOCAL_ALPHABET_MIN_ITEMS = 50
 private const val LOCAL_ALPHABET_MIN_LETTERS = 5
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun LocalLibraryActions(library: LocalLibraryUiState, callbacks: LocalLibraryCallbacks) {
     val strings = LocalLevyraStrings.current
@@ -651,7 +679,10 @@ private fun LocalLibraryActions(library: LocalLibraryUiState, callbacks: LocalLi
                     }
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 LibraryCategoryChip(strings.localScanFull, selected = false, onClick = callbacks.onFullScan)
                 LibraryCategoryChip(strings.localRebuildLevyra, selected = false, onClick = callbacks.onRebuildLevyra)
             }
