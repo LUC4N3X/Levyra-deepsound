@@ -302,35 +302,8 @@ private fun DefaultRadioOnAirCard(station: RadioStation, tuning: DefaultRadioTun
     val colors = MaterialTheme.colorScheme
     val action = com.luc4n3x.levyra.ui.components.levyraUtilityColors(com.luc4n3x.levyra.ui.components.LevyraUtilitySeed)
     val playing = tuning.isLive(station)
-    val favorite = tuning.isFavorite(station)
-    val blur = com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities.current.heavyBlur && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
-    val playCorner by animateDpAsState(
-        if (playing) DefaultRadioHeroPlay / 2 else 24.dp,
-        animationSpec = if (LocalAnimationsEnabled.current) androidx.compose.animation.core.spring() else androidx.compose.animation.core.snap(),
-        label = "default-radio-hero-play"
-    )
     Box(Modifier.fillMaxWidth()) {
-        if (blur && station.safeFaviconUrl.isNotBlank()) {
-            Box(
-                Modifier
-                    .matchParentSize()
-                    .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
-                    .drawWithContent {
-                        drawContent()
-                        drawRect(
-                            Brush.verticalGradient(0f to Color.Transparent, 0.2f to Color.Black, 0.6f to Color.Black, 1f to Color.Transparent),
-                            blendMode = androidx.compose.ui.graphics.BlendMode.DstIn
-                        )
-                    }
-            ) {
-                coil3.compose.AsyncImage(
-                    model = station.safeFaviconUrl,
-                    contentDescription = null,
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().graphicsLayer { alpha = 0.38f }.blur(90.dp, androidx.compose.ui.draw.BlurredEdgeTreatment.Rectangle)
-                )
-            }
-        }
+        DefaultRadioOnAirGlow(station)
         Column(
             Modifier.fillMaxWidth().padding(horizontal = DefaultRadioGutter).padding(top = 12.dp, bottom = 4.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -347,36 +320,80 @@ private fun DefaultRadioOnAirCard(station: RadioStation, tuning: DefaultRadioTun
                 overflow = TextOverflow.Ellipsis
             )
             RadioStationDetail(station)
-            Row(
-                Modifier.padding(top = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(24.dp)
-            ) {
-                FilledTonalIconButton(
-                    onClick = { tuning.onFavorite(station) },
-                    colors = IconButtonDefaults.filledTonalIconButtonColors(colors.surfaceContainerHighest, if (favorite) action.accent else colors.onSurface),
-                    modifier = Modifier.size(52.dp)
-                ) {
-                    Icon(
-                        if (favorite) Icons.Rounded.Star else Icons.Rounded.StarBorder,
-                        contentDescription = if (favorite) strings.removeFromFavorites else strings.addToFavorites
-                    )
-                }
-                FilledIconButton(
-                    onClick = { tuning.onPlay(station) },
-                    shapes = IconButtonDefaults.shapes(shape = RoundedCornerShape(playCorner), pressedShape = RoundedCornerShape(18.dp)),
-                    colors = IconButtonDefaults.filledIconButtonColors(action.accent, action.onAccent),
-                    modifier = Modifier.size(DefaultRadioHeroPlay)
-                ) {
-                    Icon(
-                        if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                        contentDescription = if (playing) strings.pause else strings.play,
-                        modifier = Modifier.size(36.dp)
-                    )
-                }
-                Spacer(Modifier.size(52.dp))
-            }
+            DefaultRadioOnAirControls(station, tuning, strings, playing, action)
         }
+    }
+}
+
+@Composable
+private fun androidx.compose.foundation.layout.BoxScope.DefaultRadioOnAirGlow(station: RadioStation) {
+    val blur = com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities.current.heavyBlur && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
+    if (!blur || station.safeFaviconUrl.isBlank()) return
+    Box(
+        Modifier
+            .matchParentSize()
+            .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
+            .drawWithContent {
+                drawContent()
+                drawRect(
+                    Brush.verticalGradient(0f to Color.Transparent, 0.2f to Color.Black, 0.6f to Color.Black, 1f to Color.Transparent),
+                    blendMode = androidx.compose.ui.graphics.BlendMode.DstIn
+                )
+            }
+    ) {
+        coil3.compose.AsyncImage(
+            model = station.safeFaviconUrl,
+            contentDescription = null,
+            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+            modifier = Modifier.fillMaxSize().graphicsLayer { alpha = 0.38f }.blur(90.dp, androidx.compose.ui.draw.BlurredEdgeTreatment.Rectangle)
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun DefaultRadioOnAirControls(
+    station: RadioStation,
+    tuning: DefaultRadioTuning,
+    strings: LevyraStrings,
+    playing: Boolean,
+    action: com.luc4n3x.levyra.ui.components.LevyraUtilityColors
+) {
+    val colors = MaterialTheme.colorScheme
+    val favorite = tuning.isFavorite(station)
+    val playCorner by animateDpAsState(
+        if (playing) DefaultRadioHeroPlay / 2 else 24.dp,
+        animationSpec = if (LocalAnimationsEnabled.current) androidx.compose.animation.core.spring() else androidx.compose.animation.core.snap(),
+        label = "default-radio-hero-play"
+    )
+    Row(
+        Modifier.padding(top = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        FilledTonalIconButton(
+            onClick = { tuning.onFavorite(station) },
+            colors = IconButtonDefaults.filledTonalIconButtonColors(colors.surfaceContainerHighest, if (favorite) action.accent else colors.onSurface),
+            modifier = Modifier.size(52.dp)
+        ) {
+            Icon(
+                if (favorite) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+                contentDescription = if (favorite) strings.removeFromFavorites else strings.addToFavorites
+            )
+        }
+        FilledIconButton(
+            onClick = { tuning.onPlay(station) },
+            shapes = IconButtonDefaults.shapes(shape = RoundedCornerShape(playCorner), pressedShape = RoundedCornerShape(18.dp)),
+            colors = IconButtonDefaults.filledIconButtonColors(action.accent, action.onAccent),
+            modifier = Modifier.size(DefaultRadioHeroPlay)
+        ) {
+            Icon(
+                if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                contentDescription = if (playing) strings.pause else strings.play,
+                modifier = Modifier.size(36.dp)
+            )
+        }
+        Spacer(Modifier.size(52.dp))
     }
 }
 
