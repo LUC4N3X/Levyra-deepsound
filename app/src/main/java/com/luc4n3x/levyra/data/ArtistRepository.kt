@@ -29,6 +29,8 @@ import com.luc4n3x.levyra.domain.ReleaseType
 import com.luc4n3x.levyra.domain.isSingleLike
 import com.luc4n3x.levyra.domain.releaseTypeFromProviderLabel
 import com.luc4n3x.levyra.nexus.playlistimport.ImportTransliteration
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -942,14 +944,32 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             assembleProfile(root, header, browseId, name, thumb, artwork.bannerUrl, emptySections)?.let(onPreview)
         }
         val expanded = run {
-            val songsJob = async { songsPointer?.let { pointer -> fetchSongs(pointer, name) }.orEmpty() }
+            val firstSongsPage = CompletableDeferred<List<Track>>()
+            val songsJob = async {
+                songsPointer
+                    ?.let { pointer -> fetchSongs(pointer, name) { page -> firstSongsPage.complete(page) } }
+                    .orEmpty()
+                    .also { firstSongsPage.complete(it) }
+            }
             val albumsJobs = albumPointers.map { pointer -> async { fetchReleases(pointer) } }
             val singlesJobs = singlePointers.map { pointer -> async { fetchReleases(pointer) } }
             val videosJob = async { videoPointer?.let { fetchVideos(it, name) }.orEmpty() }
+            if (onPreview != null) {
+                val earlySongs = firstSongsPage.await()
+                if (songsJob.isActive || (albumsJobs + singlesJobs + videosJob).any { it.isActive }) {
+                    suspend fun <T> List<Deferred<List<T>>>.ready(): List<T> = filter { it.isCompleted }.flatMap { it.await() }
+                    assembleProfile(
+                        root, header, browseId, name, thumb, artwork.bannerUrl,
+                        ArtistExpandedSections(earlySongs, albumsJobs.ready(), singlesJobs.ready(), listOf(videosJob).ready())
+                    )?.let(onPreview)
+                }
+            }
+            val albums = albumsJobs.awaitAll().flatten()
+            val singles = singlesJobs.awaitAll().flatten()
             ArtistExpandedSections(
                 songs = songsJob.await(),
-                albums = albumsJobs.awaitAll().flatten(),
-                singles = singlesJobs.awaitAll().flatten(),
+                albums = albums,
+                singles = singles,
                 videos = videosJob.await()
             )
         }
@@ -1409,7 +1429,8 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         fallbackArtist: String,
         limit: Int = 100,
         maxPages: Int = MAX_RELEASE_PAGES,
-        strict: Boolean = false
+        strict: Boolean = false,
+        onFirstPage: ((List<Track>) -> Unit)? = null
     ): List<Track> {
         val songs = LinkedHashMap<String, Track>()
         fun page(browseId: String, params: String, continuation: String): JSONObject =
@@ -1420,6 +1441,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         var previousContinuation = ""
         while (response.length() > 0 && pages < maxPages) {
             extractTopSongs(response, fallbackArtist, limit).forEach { track -> songs.putIfAbsent(track.id, track) }
+            if (pages == 0) onFirstPage?.invoke(songs.values.toList())
             val continuation = findContinuation(response)
             if (continuation.isBlank() || continuation == previousContinuation || songs.size >= limit) break
             previousContinuation = continuation

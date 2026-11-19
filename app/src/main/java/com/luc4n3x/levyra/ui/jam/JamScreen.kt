@@ -1084,26 +1084,27 @@ private fun JamPermissionPicker(
     }
     val scheme = MaterialTheme.colorScheme
     val motion = LocalAnimationsEnabled.current
-    val selectedShape = MaterialShapes.Cookie4Sided.toShape()
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.selectableGroup()
     ) {
         JamPermissionOptions.forEach { permission ->
             val active = permission == selected
-            val inset by animateDpAsState(
-                targetValue = if (active) JamCookieInset else JamOptionInset,
+            val corner by animateDpAsState(
+                targetValue = if (active) JamOptionSelectedCorner else JamOptionRestCorner,
                 animationSpec = if (motion) spring(dampingRatio = 0.7f, stiffness = 420f) else snap(),
-                label = "jam-option-inset"
+                label = "jam-option-corner"
             )
+            val shape = RoundedCornerShape(corner)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 64.dp)
-                    .clip(if (active) selectedShape else JamOptionRestShape)
+                    .clip(shape)
                     .background(if (active) levyraUtilityColors().container else scheme.surfaceContainerHigh)
+                    .then(if (active) Modifier.border(1.dp, scheme.primary.copy(alpha = 0.32f), shape) else Modifier)
                     .selectable(selected = active, role = Role.RadioButton) { onSelect(permission) }
-                    .padding(horizontal = inset, vertical = 18.dp),
+                    .padding(start = 24.dp, end = 16.dp, top = 18.dp, bottom = 18.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -1115,21 +1116,27 @@ private fun JamPermissionPicker(
                     modifier = Modifier.weight(1f)
                 )
                 if (active) {
-                    Icon(
-                        Icons.Rounded.Check,
-                        contentDescription = null,
-                        tint = scheme.onPrimaryContainer,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .background(scheme.primary, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Rounded.Check,
+                            contentDescription = null,
+                            tint = scheme.onPrimary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
         }
     }
 }
 
-private val JamOptionRestShape = RoundedCornerShape(20.dp)
-private val JamOptionInset = 24.dp
-private val JamCookieInset = 34.dp
+private val JamOptionRestCorner = 20.dp
+private val JamOptionSelectedCorner = 32.dp
 
 @Composable
 private fun AtelierJamPermissionPicker(

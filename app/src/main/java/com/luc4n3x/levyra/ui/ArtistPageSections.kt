@@ -61,6 +61,14 @@ import com.luc4n3x.levyra.ui.i18n.artistCatalogCopy
 import com.luc4n3x.levyra.ui.i18n.searchDiscographyCopy
 import com.luc4n3x.levyra.ui.i18n.speedDialCopy
 import com.luc4n3x.levyra.ui.theme.*
+import androidx.compose.material.icons.rounded.DownloadDone
+import com.luc4n3x.levyra.domain.BatchDownload
+import com.luc4n3x.levyra.domain.BatchDownloadKind
+import com.luc4n3x.levyra.domain.BatchDownloadState
+import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.batchDownloadKey
+import com.luc4n3x.levyra.ui.i18n.downloadProgressCopy
+import com.luc4n3x.levyra.ui.theme.LevyraCyan
 
 internal fun LazyListScope.artistReleaseItems(artist: ArtistProfile, strings: LevyraStrings, onOpenRelease: (ArtistRelease, String) -> Unit) {
     if (LevyraIsSpotify) {
@@ -145,8 +153,44 @@ internal fun LazyListScope.appleMusicArtistClosingItems(
 internal class ArtistCatalogActions(
     val playAll: () -> Unit,
     val shuffleAll: () -> Unit,
-    val downloadAll: () -> Unit
+    val downloadAll: () -> Unit,
+    val downloadBatch: BatchDownload? = null,
+    val downloadedTrackIds: Set<String> = emptySet()
 )
+
+internal fun artistDownloadBatch(batches: List<BatchDownload>, profile: ArtistProfile?): BatchDownload? {
+    profile ?: return null
+    val key = batchDownloadKey(BatchDownloadKind.Artist, profile.browseId, profile.name)
+    if (key.isBlank()) return null
+    return batches.firstOrNull {
+        it.key == key && it.total > 0 && it.state != BatchDownloadState.Completed && it.state != BatchDownloadState.Cancelled
+    }
+}
+
+@Composable
+internal fun artistDownloadAllLabel(): String {
+    val strings = LocalLevyraStrings.current
+    val batch = LocalArtistCatalogActions.current?.downloadBatch
+    return if (batch != null) {
+        downloadProgressCopy(strings.code).downloadedOf(batch.completed, batch.total)
+    } else {
+        strings.artistCatalogCopy().downloadAllSongs
+    }
+}
+
+@Composable
+internal fun ArtistTrackDownloadedMark(track: Track): Boolean {
+    val downloaded = LocalArtistCatalogActions.current?.downloadedTrackIds?.contains(track.id) == true
+    if (downloaded) {
+        Icon(
+            imageVector = Icons.Rounded.DownloadDone,
+            contentDescription = LocalLevyraStrings.current.downloaded,
+            tint = LevyraCyan.copy(alpha = 0.82f),
+            modifier = Modifier.size(18.dp)
+        )
+    }
+    return downloaded
+}
 
 internal val LocalArtistCatalogActions = staticCompositionLocalOf<ArtistCatalogActions?> { null }
 
@@ -180,7 +224,7 @@ internal fun ArtistOptionsMenu(
                 }
             )
             DropdownMenuItem(
-                text = { Text(catalogCopy.downloadAllSongs) },
+                text = { Text(artistDownloadAllLabel()) },
                 leadingIcon = { Icon(Icons.Rounded.Download, contentDescription = null) },
                 onClick = {
                     onDismiss()

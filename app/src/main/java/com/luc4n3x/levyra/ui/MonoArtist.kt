@@ -326,7 +326,7 @@ private fun MonoArtistBarActions(profile: ArtistProfile, state: LevyraUiState, v
                 menuOpen = false
                 viewModel.playAllArtistSongs()
             }
-            MonoArtistMenuItem(catalogCopy.downloadAllSongs, Icons.Rounded.Download, songs.isNotEmpty()) {
+            MonoArtistMenuItem(artistDownloadAllLabel(), Icons.Rounded.Download, songs.isNotEmpty()) {
                 menuOpen = false
                 viewModel.downloadAllArtistSongs()
             }

@@ -451,6 +451,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
@@ -1168,6 +1169,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     val downloadQualityPicker: StateFlow<DownloadQualityPickerState?> = _downloadQualityPicker.asStateFlow()
     private val _pendingBatchCancel = MutableStateFlow<BatchDownload?>(null)
     val pendingBatchCancel: StateFlow<BatchDownload?> = _pendingBatchCancel.asStateFlow()
+    private val _downloadsFolderRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val downloadsFolderRequests: SharedFlow<Unit> = _downloadsFolderRequests.asSharedFlow()
     private var downloadQualityProbeJob: Job? = null
     private var lastDownloadQualityProbe: CachedDownloadQualityProbe? = null
     private val favoritesStore = FavoritesStore(application.applicationContext)
@@ -1194,6 +1197,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val artistCatalogLoadLock = Any()
     private var artistCatalogLoad: Pair<String, Deferred<List<Track>?>>? = null
     private val batchEnqueueJobs = java.util.concurrent.ConcurrentHashMap<String, Job>()
+    private val selectionEnqueueJobs: MutableSet<Job> = java.util.concurrent.ConcurrentHashMap.newKeySet()
     private val excludedArtistsStore = com.luc4n3x.levyra.data.ExcludedArtistsStore(application.applicationContext)
     private val recommendationFeedbackStore =
         com.luc4n3x.levyra.data.RecommendationFeedbackStore(application.applicationContext)
@@ -9334,7 +9338,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { current ->
             published = false
             if (!current.showArtist || !current.artistLoading || current.artistListStateKey != requestKey) return@update current
-            if (current.artistProfile != null && current.artistProfile !== artistPlaceholder) return@update current
+            val shown = current.artistProfile
+            if (shown != null && shown !== artistPlaceholder && !(shown.browseId == preview.browseId && shown.topSongs.size <= preview.topSongs.size)) {
+                return@update current
+            }
             published = true
             current.copy(artistProfile = biography?.let { artistRepository.mergeBiography(preview, it) } ?: preview)
         }
@@ -10034,6 +10041,21 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun openDownloadsFolder() {
+        _downloadsFolderRequests.tryEmit(Unit)
+    }
+
+    fun cancelAllDownloads() {
+        selectionEnqueueJobs.toList().forEach { it.cancel() }
+        val snapshot = _state.value
+        (snapshot.downloadBatches.filterNot { it.isFinished }.map { it.key } + batchEnqueueJobs.keys)
+            .toSet()
+            .forEach(::cancelBatchDownload)
+        snapshot.downloadQueue
+            .filter { it.state in ACTIVE_DOWNLOAD_STATES }
+            .forEach { cancelDownload(it.taskKey) }
+    }
+
     fun dismissBatchCancel() {
         _pendingBatchCancel.value = null
     }
@@ -10139,6 +10161,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 if (index > 0) delay(220L)
                 startTrackDownload(track, null)
             }
+        }.also { job ->
+            selectionEnqueueJobs += job
+            job.invokeOnCompletion { selectionEnqueueJobs -= job }
         }
     }
 

@@ -234,6 +234,8 @@ class HomeViewModel internal constructor(
     fun refreshHomeArtists() = root.refreshHomeArtists()
     fun refreshHomeResonanceComments(tracks: List<Track>) = root.refreshHomeResonanceComments(tracks)
     fun retryHomeContent() = root.retryHomeContent()
+
+    fun openDownloadsFolder() = root.openDownloadsFolder()
     fun openPlaylist(playlistId: String) = root.openPlaylist(playlistId)
     fun openPlaylistHit(playlist: PlaylistHit) = root.openPlaylistHit(playlist)
     fun openSpeedDialPin(pin: com.luc4n3x.levyra.domain.SpeedDialPin) = root.openSpeedDialPin(pin)

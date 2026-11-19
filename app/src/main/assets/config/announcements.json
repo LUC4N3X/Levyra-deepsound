@@ -3,7 +3,7 @@
   "announcements": [
     {
       "id": "github-star-2026-08",
-      "enabled": true,
+      "enabled": false,
       "priority": 100,
       "style": "open_source",
       "minimumVersionCode": 2031800,
