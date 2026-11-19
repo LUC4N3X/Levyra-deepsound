@@ -3,44 +3,44 @@ package com.luc4n3x.levyra.extraction.youtube
 object YoutubePlayerAnalyzer {
     private data class Rule(
         val regex: Regex,
-        val expression: (MatchResult) -> String?
+        val expression: (List<String>) -> String?
     )
 
     private val signatureRules = listOf(
         Rule(
             Regex("&&\\s*\\(\\s*[A-Za-z0-9_$]+\\s*=\\s*([A-Za-z0-9_$]+)\\s*\\(\\s*(\\d+)\\s*,\\s*decodeURIComponent\\s*\\(\\s*[A-Za-z0-9_$]+\\s*\\)"),
-            { match -> safeName(match.groupValues[1])?.let { "$it(${match.groupValues[2]},INPUT)" } }
+            { groups -> safeName(groups[1])?.let { "$it(${groups[2]},INPUT)" } }
         ),
         Rule(
             Regex("\\b[cs]\\s*&&\\s*[adf]\\.set\\([^,]+\\s*,\\s*encodeURIComponent\\(([A-Za-z0-9_$]+)\\("),
-            { match -> safeName(match.groupValues[1])?.let { "$it(INPUT)" } }
+            { groups -> safeName(groups[1])?.let { "$it(INPUT)" } }
         ),
         Rule(
             Regex("\\b[A-Za-z0-9_$]+\\s*&&\\s*[A-Za-z0-9_$]+\\.set\\([^,]+\\s*,\\s*encodeURIComponent\\(([A-Za-z0-9_$]+)\\("),
-            { match -> safeName(match.groupValues[1])?.let { "$it(INPUT)" } }
+            { groups -> safeName(groups[1])?.let { "$it(INPUT)" } }
         ),
         Rule(
             Regex("\\bm=([A-Za-z0-9_$]{2,})\\(decodeURIComponent\\(h\\.s\\)\\)"),
-            { match -> safeName(match.groupValues[1])?.let { "$it(INPUT)" } }
+            { groups -> safeName(groups[1])?.let { "$it(INPUT)" } }
         ),
         Rule(
             Regex("\\bc\\s*&&\\s*d\\.set\\([^,]+\\s*,\\s*(?:encodeURIComponent\\s*\\()?([A-Za-z0-9_$]+)\\("),
-            { match -> safeName(match.groupValues[1])?.let { "$it(INPUT)" } }
+            { groups -> safeName(groups[1])?.let { "$it(INPUT)" } }
         )
     )
 
     private val nRules = listOf(
         Rule(
             Regex("\\.get\\(\\\"n\\\"\\)\\)&&\\(b=([A-Za-z0-9_$]+)(?:\\[(\\d+)])?\\([A-Za-z0-9_$]\\)"),
-            { match -> functionExpression(match.groupValues[1], match.groupValues.getOrNull(2), "INPUT") }
+            { groups -> functionExpression(groups[1], groups.getOrNull(2), "INPUT") }
         ),
         Rule(
             Regex("\\.get\\(\\\"n\\\"\\)\\)\\s*&&\\s*\\(([A-Za-z0-9_$]+)\\s*=\\s*([A-Za-z0-9_$]+)(?:\\[(\\d+)])?\\(\\1\\)"),
-            { match -> functionExpression(match.groupValues[2], match.groupValues.getOrNull(3), "INPUT") }
+            { groups -> functionExpression(groups[2], groups.getOrNull(3), "INPUT") }
         ),
         Rule(
             Regex("([A-Za-z0-9_$]+)\\s*=\\s*function\\([A-Za-z0-9_$]\\)\\s*\\{[^}]{0,2000}?enhanced_except_"),
-            { match -> functionExpression(match.groupValues[1], null, "INPUT") }
+            { groups -> functionExpression(groups[1], null, "INPUT") }
         )
     )
 
@@ -122,8 +122,8 @@ object YoutubePlayerAnalyzer {
     private fun expressions(javascript: String, rules: List<Rule>): List<String> {
         val expressions = LinkedHashSet<String>()
         for (rule in rules) {
-            rule.regex.findAll(javascript).take(MAX_MATCHES_PER_RULE).forEach { match ->
-                rule.expression(match)?.let(expressions::add)
+            javascript.forEachGroupMatch(rule.regex, MAX_MATCHES_PER_RULE) { groups ->
+                rule.expression(groups)?.let(expressions::add)
             }
             if (expressions.size >= MAX_EXPRESSIONS_PER_KIND) break
         }
@@ -153,4 +153,13 @@ object YoutubePlayerAnalyzer {
     private const val MAX_SEMANTIC_EXPRESSIONS_PER_KIND = 2
     private const val MAX_EXPRESSIONS_PER_KIND = 3
     private const val MAX_CANDIDATES = 6
+}
+
+internal inline fun String.forEachGroupMatch(regex: Regex, limit: Int, action: (List<String>) -> Unit) {
+    val matcher = regex.toPattern().matcher(this)
+    var count = 0
+    while (count < limit && matcher.find()) {
+        action(List(matcher.groupCount() + 1) { index -> matcher.group(index).orEmpty() })
+        count++
+    }
 }

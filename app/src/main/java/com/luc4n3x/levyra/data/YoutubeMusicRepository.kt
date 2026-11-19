@@ -3861,16 +3861,12 @@ return Track(
     }
 
     private fun extractDuration(text: String): Long {
-        val match = Regex("\\b\\d{1,2}:\\d{2}(?::\\d{2})?\\b").find(text)?.value ?: return 0L
+        val match = InlineDurationPattern.find(text)?.value ?: return 0L
         return match.durationToMs()
     }
 
     private fun extractVideoId(url: String): String {
-        val patterns = listOf(
-            Regex("[?&]v=([^&]+)"),
-            Regex("youtu\\.be/([^?&/]+)"),
-            Regex("shorts/([^?&/]+)")
-        )
+        val patterns = VideoIdUrlPatterns
         return patterns.firstNotNullOfOrNull { it.find(url)?.groupValues?.getOrNull(1) }.orEmpty()
     }
 
@@ -3956,12 +3952,12 @@ internal fun String.cleanAlbumArtistLabel(): String {
     val cleaned = replace("\\n", " ")
         .replace('\n', ' ')
         .replace('\r', ' ')
-        .replace(Regex("\\s+"), " ")
+        .replace(AlbumArtistWhitespace, " ")
         .trim()
     if (cleaned.isBlank() || cleaned.looksLikeSerializedJson()) return ""
     val normalized = cleaned.lowercase()
         .replace('\u2019', '\'')
-        .replace(Regex("[^\\p{L}\\p{M}\\p{N}]+"), " ")
+        .replace(AlbumArtistSeparators, " ")
         .trim()
     if (normalized in ALBUM_ARTIST_ACTION_LABELS) return ""
     return cleaned
@@ -3993,9 +3989,9 @@ internal fun isYoutubeMusicAlbumTrackMetadata(value: String): Boolean {
         .trim()
         .lowercase(Locale.ROOT)
     if (normalized.isBlank()) return true
-    if (normalized.matches(Regex("^(?:19|20)\\d{2}$"))) return true
-    if (normalized.matches(Regex("^\\d{1,2}:\\d{2}(?::\\d{2})?$"))) return true
-    if (normalized.matches(Regex("^\\d+\\s*(?:brani|tracce|songs?|tracks?)$", RegexOption.IGNORE_CASE))) return true
+    if (normalized.matches(AlbumTrackYearPattern)) return true
+    if (normalized.matches(AlbumTrackDurationPattern)) return true
+    if (normalized.matches(AlbumTrackCountPattern)) return true
     if (normalized.none(Char::isDigit)) return false
     return hasYoutubeMusicMetricWord(normalized) || ALBUM_TRACK_METRIC_PATTERN.containsMatchIn(normalized)
 }
@@ -4063,3 +4059,15 @@ private val ALBUM_DESCRIPTION_ATTRIBUTION_PATTERNS = listOf(
 )
 
 private val ExploreYearPattern = Regex("""\b(?:19|20)\d{2}\b""")
+
+private val AlbumArtistWhitespace = Regex("\\s+")
+private val AlbumArtistSeparators = Regex("[^\\p{L}\\p{M}\\p{N}]+")
+private val AlbumTrackYearPattern = Regex("^(?:19|20)\\d{2}$")
+private val AlbumTrackDurationPattern = Regex("^\\d{1,2}:\\d{2}(?::\\d{2})?$")
+private val AlbumTrackCountPattern = Regex("^\\d+\\s*(?:brani|tracce|songs?|tracks?)$", RegexOption.IGNORE_CASE)
+private val InlineDurationPattern = Regex("\\b\\d{1,2}:\\d{2}(?::\\d{2})?\\b")
+private val VideoIdUrlPatterns = listOf(
+    Regex("[?&]v=([^&]+)"),
+    Regex("youtu\\.be/([^?&/]+)"),
+    Regex("shorts/([^?&/]+)")
+)

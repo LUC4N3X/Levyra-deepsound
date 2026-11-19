@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui.library
 
+import androidx.compose.material.icons.rounded.LibraryMusic
 import com.luc4n3x.levyra.ui.levyraTabContentBottomPadding
 import com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
@@ -141,6 +142,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.statusBars
+import com.luc4n3x.levyra.ui.glassBackdropSource
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
@@ -825,21 +827,17 @@ internal fun LevyraLibraryScreen(
     BackHandler(enabled = backEnabled && !selectionActive && openSmartCollectionName != null) { openSmartCollectionName = null }
     BackHandler(enabled = backEnabled && selectionActive) { selectedKeys = emptySet() }
 
+    val libraryFrost = LevyraIsDefaultSkin
+    val libraryGlass = com.luc4n3x.levyra.ui.rememberGlassBackdropState(libraryFrost && com.luc4n3x.levyra.ui.rememberGlassBlurAllowed())
+    val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     Box(modifier = Modifier.fillMaxSize().background(if (com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) com.luc4n3x.levyra.ui.theme.YouTubeMusicDesign.background else LevyraInk)) {
-        if (LevyraIsDefaultSkin) {
-            com.luc4n3x.levyra.ui.components.LevyraUtilityBackdrop(
-                accent = com.luc4n3x.levyra.ui.components.levyraUtilityColors(com.luc4n3x.levyra.ui.components.LevyraUtilitySeed).accent,
-                strength = if (category == LibraryCategory.Overview) 0.55f else 0.45f,
-                listState = listState
-            )
-        }
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize().statusBarsPadding(),
+            modifier = if (libraryFrost) Modifier.fillMaxSize().glassBackdropSource(libraryGlass) else Modifier.fillMaxSize().statusBarsPadding(),
             contentPadding = PaddingValues(
                 start = 16.dp,
                 end = 16.dp,
-                top = 12.dp,
+                top = 12.dp + if (libraryFrost) statusTop else 0.dp,
                 bottom = if (selectionActive) 230.dp else levyraTabContentBottomPadding(state.currentTrack != null)
             ),
             verticalArrangement = Arrangement.spacedBy(14.dp)
@@ -1130,6 +1128,13 @@ internal fun LevyraLibraryScreen(
                                 recent = catalog.recent,
                                 mostPlayed = catalog.mostPlayed,
                                 entries = librarySections,
+                                categoryCovers = remember(catalog.albums, catalog.artists, catalog.tracks) {
+                                    mapOf(
+                                        LibraryCategory.Albums to catalog.albums.map { it.artworkUrl }.filter(String::isNotBlank).take(2),
+                                        LibraryCategory.Artists to catalog.artists.map { it.artworkUrl }.filter(String::isNotBlank).take(2),
+                                        LibraryCategory.Songs to catalog.tracks.map { it.thumbnailUrl }.filter(String::isNotBlank).distinct().take(2)
+                                    )
+                                },
                                 onOpenCollection = { openSmartCollectionName = it },
                                 onPlayTracks = { tracks -> tracks.firstOrNull()?.let { viewModel.playFrom(tracks, it) } },
                                 onOpenCategory = { switchCategory(it) }
@@ -1603,6 +1608,17 @@ internal fun LevyraLibraryScreen(
                     }
                 }
             }
+        }
+
+        if (libraryFrost) com.luc4n3x.levyra.ui.components.LevyraScrolledTopBar(
+            glass = libraryGlass,
+            listState = listState,
+            title = if (category == LibraryCategory.Overview) strings.libraryTitle else category.libraryLabel(strings),
+            icon = androidx.compose.material.icons.Icons.Rounded.LibraryMusic
+        ) {
+                androidx.compose.material3.IconButton(onClick = viewModel::openSearch) {
+                    androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Search, contentDescription = strings.search, tint = MaterialTheme.colorScheme.onSurface)
+                }
         }
 
         if (category == LibraryCategory.Device && localAlphabetIndex.visible) {

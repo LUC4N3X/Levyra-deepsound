@@ -251,6 +251,13 @@ object MusicIdentityText {
         Normalizer.normalize(decodeHtmlEntities(value), Normalizer.Form.NFKC).trim()
 
     fun normalize(value: String): String {
+        normalizedCache.get(value)?.let { return it }
+        return computeNormalized(value).also { normalizedCache.put(value, it) }
+    }
+
+    private val normalizedCache = BoundedTextCache(NORMALIZED_CACHE_SIZE)
+
+    private fun computeNormalized(value: String): String {
         val lowered = prepare(value).lowercase(Locale.ROOT).replace('ё', 'е')
         var foldableBase = false
         val stripped = buildString {
@@ -470,4 +477,20 @@ object MusicIdentityText {
 
     private fun hasVersionLabel(text: String): Boolean =
         normalize(text.replace(albumEditionWord, " ").replace(yearToken, " ")).isNotBlank()
+}
+
+private const val NORMALIZED_CACHE_SIZE = 4096
+
+private class BoundedTextCache(private val capacity: Int) {
+    private val entries = object : LinkedHashMap<String, String>(capacity, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>): Boolean = size > capacity
+    }
+
+    @Synchronized
+    fun get(key: String): String? = entries[key]
+
+    @Synchronized
+    fun put(key: String, value: String) {
+        entries[key] = value
+    }
 }

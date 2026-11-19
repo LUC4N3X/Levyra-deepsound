@@ -74,6 +74,8 @@ class GlassBackdropState {
 
     /** Position of the backdrop source in the composition root, used to align panel samples. */
     var sourceOrigin: Offset by mutableStateOf(Offset.Zero)
+
+    var sampling: Boolean by mutableStateOf(true)
 }
 
 /** Provides the active [GlassBackdropState] to descendants so panels can opt in without plumbing. */
@@ -135,7 +137,7 @@ fun Modifier.glassBackdropSource(state: GlassBackdropState): Modifier {
         .onGloballyPositioned { state.sourceOrigin = it.positionInRoot() }
         .drawWithContent {
             val layer = state.layer
-            if (layer != null) {
+            if (layer != null && state.sampling) {
                 layer.record(size = size.toIntSize()) {
                     this@drawWithContent.drawContent()
                 }

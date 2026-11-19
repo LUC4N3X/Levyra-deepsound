@@ -573,18 +573,18 @@ internal object EditorialCatalogParser {
     private fun publishedCatalogTrackId(value: String?): String {
         val normalized = value.orEmpty().trim()
         return normalized.takeIf {
-            it.length in 1..128 && it.matches(Regex("[A-Za-z0-9_-]+"))
+            it.length in 1..128 && it.matches(PublishedTokenPattern)
         }.orEmpty()
     }
 
     private fun publishedYoutubeVideoId(value: String?): String {
         val normalized = value.orEmpty().trim()
-        return normalized.takeIf { it.matches(Regex("[A-Za-z0-9_-]{11}")) }.orEmpty()
+        return normalized.takeIf { it.matches(PublishedVideoIdPattern) }.orEmpty()
     }
 
     private fun publishedYoutubeBrowseId(value: String?): String {
         val normalized = value.orEmpty().trim()
-        return normalized.takeIf { it.length <= 128 && it.matches(Regex("[A-Za-z0-9_-]+")) }.orEmpty()
+        return normalized.takeIf { it.length <= 128 && it.matches(PublishedTokenPattern) }.orEmpty()
     }
 
     private fun publishedYoutubeBrowseParams(value: String?): String {
@@ -692,3 +692,6 @@ internal fun mergeExploreCollectionsFromFallback(
     }
     primary.toString()
 }.getOrNull()
+
+private val PublishedTokenPattern = Regex("[A-Za-z0-9_-]+")
+private val PublishedVideoIdPattern = Regex("[A-Za-z0-9_-]{11}")

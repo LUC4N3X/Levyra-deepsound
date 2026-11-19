@@ -1,5 +1,8 @@
 package com.luc4n3x.levyra.ui
 
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -44,8 +47,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
@@ -60,74 +63,8 @@ import com.luc4n3x.levyra.feature.radio.RadioStation
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.sin
-
-private const val AirwaveTwoPi = (2 * PI).toFloat()
-
-@Composable
-internal fun DefaultRadioAirwave(color: Color, live: Boolean, modifier: Modifier) {
-    val moving = live && LocalAnimationsEnabled.current
-    val phase = if (moving) {
-        rememberInfiniteTransition(label = "default-radio-airwave").animateFloat(
-            initialValue = 0f,
-            targetValue = AirwaveTwoPi,
-            animationSpec = infiniteRepeatable(tween(2400, easing = LinearEasing)),
-            label = "default-radio-airwave-phase"
-        )
-    } else null
-    Spacer(
-        modifier.drawWithCache {
-            val path = Path()
-            val stroke = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round)
-            val layerColors = AirwaveLayers.map { color.copy(alpha = it.alpha) }
-            val amplitude = size.height * if (live) 0.38f else 0.12f
-            onDrawBehind {
-                val shift = phase?.value ?: 0f
-                AirwaveLayers.forEachIndexed { layer, spec ->
-                    path.reset()
-                    var x = 0f
-                    while (x <= size.width) {
-                        val t = x / size.width
-                        val envelope = sin(PI.toFloat() * t)
-                        val y = size.height / 2f + sin(t * spec.cycles * AirwaveTwoPi + shift * spec.speed + layer) * amplitude * spec.scale * envelope
-                        if (x == 0f) path.moveTo(x, y) else path.lineTo(x, y)
-                        x += 4f
-                    }
-                    drawPath(path, layerColors[layer], style = stroke)
-                }
-            }
-        }
-    )
-}
-
-private class AirwaveLayer(val cycles: Float, val speed: Float, val scale: Float, val alpha: Float)
-
-private val AirwaveLayers = listOf(
-    AirwaveLayer(cycles = 3f, speed = 1f, scale = 1f, alpha = 0.95f),
-    AirwaveLayer(cycles = 4.5f, speed = -1f, scale = 0.7f, alpha = 0.45f),
-    AirwaveLayer(cycles = 6f, speed = 2f, scale = 0.45f, alpha = 0.22f)
-)
-
-@Composable
-internal fun DefaultRadioSignalBars(bitrateKbps: Int, color: Color, modifier: Modifier = Modifier) {
-    val level = radioSignalLevel(bitrateKbps)
-    val idle = color.copy(alpha = 0.25f)
-    Spacer(
-        modifier.size(width = 14.dp, height = 11.dp).drawBehind {
-            val gap = 1.5.dp.toPx()
-            val barWidth = (size.width - gap * 3f) / 4f
-            repeat(4) { bar ->
-                val height = size.height * (0.4f + 0.2f * bar)
-                drawRoundRect(
-                    color = if (bar < level) color else idle,
-                    topLeft = Offset(bar * (barWidth + gap), size.height - height),
-                    size = Size(barWidth, height),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(barWidth / 2f)
-                )
-            }
-        }
-    )
-}
 
 internal fun radioSignalLevel(bitrateKbps: Int): Int = when {
     bitrateKbps <= 64 -> 1
@@ -211,3 +148,181 @@ internal fun DefaultRadioPreset(
         )
     }
 }
+
+@Composable
+internal fun DefaultRadioDial(stations: List<RadioStation>, liveId: String?, onTune: (RadioStation) -> Unit) {
+    if (stations.isEmpty()) return
+    val colors = MaterialTheme.colorScheme
+    val accent = com.luc4n3x.levyra.ui.components.levyraUtilityColors(com.luc4n3x.levyra.ui.components.LevyraUtilitySeed).accent
+    val state = androidx.compose.foundation.lazy.rememberLazyListState()
+    val fling = androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior(state)
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val stepPx = with(density) { (RadioDialItem + RadioDialGap).toPx() }
+    val tickPx = with(density) { RadioDialTick.toPx() }
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth().padding(top = 20.dp).height(RadioDialHeight)) {
+        val side = (maxWidth - RadioDialItem) / 2
+        Spacer(
+            Modifier
+                .fillMaxWidth()
+                .height(26.dp)
+                .drawBehind {
+                    val scrolled = state.firstVisibleItemIndex * stepPx + state.firstVisibleItemScrollOffset
+                    val phase = scrolled % tickPx
+                    val first = (scrolled / tickPx).toInt()
+                    var k = 0
+                    var x = -phase
+                    while (x <= size.width) {
+                        val major = (first + k) % 5 == 0
+                        val h = if (major) size.height else size.height * 0.45f
+                        drawLine(
+                            colors.onSurfaceVariant.copy(alpha = if (major) 0.55f else 0.25f),
+                            Offset(x, size.height - h),
+                            Offset(x, size.height),
+                            strokeWidth = if (major) 2.dp.toPx() else 1.dp.toPx()
+                        )
+                        x += tickPx
+                        k++
+                    }
+                }
+        )
+        androidx.compose.foundation.lazy.LazyRow(
+            state = state,
+            flingBehavior = fling,
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(start = side, end = side, top = 38.dp),
+            horizontalArrangement = Arrangement.spacedBy(RadioDialGap),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            items(stations.size, key = { stations[it].uuid }) { index ->
+                val station = stations[index]
+                val live = station.uuid == liveId
+                Column(
+                    Modifier
+                        .width(RadioDialItem)
+                        .levyraPressable(onClick = { onTune(station) }, role = Role.Button, pressedScale = LevyraPressScale.Tile, onClickLabel = station.name),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Box(
+                        Modifier.size(64.dp).border(if (live) 3.dp else 0.dp, if (live) accent else Color.Transparent, CircleShape).padding(4.dp),
+                        contentAlignment = Alignment.Center
+                    ) { RadioArtwork(station, 56.dp, CircleShape) }
+                    Text(
+                        station.name,
+                        color = if (live) accent else colors.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+        Box(
+            Modifier
+                .align(Alignment.TopCenter)
+                .width(4.dp)
+                .height(34.dp)
+                .background(accent, CircleShape)
+        )
+        Box(
+            Modifier
+                .matchParentSize()
+                .drawBehind {
+                    drawRect(
+                        androidx.compose.ui.graphics.Brush.horizontalGradient(
+                            0f to com.luc4n3x.levyra.ui.theme.LevyraBlack,
+                            0.14f to Color.Transparent,
+                            0.86f to Color.Transparent,
+                            1f to com.luc4n3x.levyra.ui.theme.LevyraBlack
+                        )
+                    )
+                }
+        )
+    }
+}
+
+private val RadioDialItem = 76.dp
+private val RadioDialGap = 12.dp
+private val RadioDialTick = 11.dp
+private val RadioDialHeight = 140.dp
+
+@Composable
+internal fun DefaultRadioOnAirLamp(onAir: Boolean, label: String) {
+    val colors = MaterialTheme.colorScheme
+    val glow = if (onAir && LocalAnimationsEnabled.current) {
+        rememberInfiniteTransition(label = "default-radio-lamp").animateFloat(
+            initialValue = 0.45f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(tween(900), androidx.compose.animation.core.RepeatMode.Reverse),
+            label = "default-radio-lamp-glow"
+        )
+    } else null
+    val lamp = if (onAir) RadioLiveRed else colors.onSurfaceVariant
+    androidx.compose.foundation.layout.Row(
+        Modifier
+            .clip(CircleShape)
+            .background(if (onAir) RadioLiveRed.copy(alpha = 0.16f) else colors.surfaceContainerHighest)
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Box(
+            Modifier
+                .size(8.dp)
+                .drawBehind {
+                    val strength = glow?.value ?: 1f
+                    if (onAir) drawCircle(lamp.copy(alpha = 0.35f * strength), radius = size.minDimension * 1.1f)
+                    drawCircle(lamp.copy(alpha = if (onAir) strength else 1f))
+                }
+        )
+        Text(
+            label.uppercase(androidx.compose.ui.platform.LocalConfiguration.current.locales[0]),
+            color = if (onAir) RadioLiveRed else colors.onSurfaceVariant,
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+internal fun DefaultRadioTransmitter(station: RadioStation, onAir: Boolean, accent: Color) {
+    val moving = onAir && LocalAnimationsEnabled.current
+    val phase = if (moving) {
+        rememberInfiniteTransition(label = "default-radio-transmitter").animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(tween(2400, easing = LinearEasing)),
+            label = "default-radio-transmitter-phase"
+        )
+    } else null
+    Box(
+        Modifier
+            .size(RadioTransmitterSize)
+            .drawBehind {
+                val inner = RadioTransmitterLogo.toPx() / 2f
+                val outer = size.minDimension / 2f
+                val stroke = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
+                val shift = phase?.value
+                repeat(RadioTransmitterRings) { ring ->
+                    val progress = if (shift == null) (ring + 1f) / (RadioTransmitterRings + 1f) else (shift + ring.toFloat() / RadioTransmitterRings) % 1f
+                    val radius = inner + (outer - inner) * progress
+                    val alpha = if (shift == null) 0.18f else (1f - progress) * 0.7f
+                    drawCircle(accent.copy(alpha = alpha), radius = radius, style = stroke)
+                }
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            Modifier
+                .size(RadioTransmitterLogo)
+                .border(3.dp, if (onAir) accent else Color.White.copy(alpha = 0.18f), CircleShape)
+                .padding(3.dp),
+            contentAlignment = Alignment.Center
+        ) { RadioArtwork(station, RadioTransmitterLogo - 6.dp, CircleShape) }
+    }
+}
+
+private const val RadioTransmitterRings = 3
+private val RadioTransmitterSize = 200.dp
+private val RadioTransmitterLogo = 116.dp

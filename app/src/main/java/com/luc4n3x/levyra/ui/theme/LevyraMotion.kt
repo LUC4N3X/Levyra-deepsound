@@ -54,9 +54,9 @@ object LevyraMotion {
     object Durations {
         const val Instant: Int = 90
         const val Quick: Int = 120
-        const val Short: Int = 180
-        const val Medium: Int = 260
-        const val Long: Int = 420
+        const val Short: Int = 150
+        const val Medium: Int = 200
+        const val Long: Int = 320
         const val Palette: Int = 650
     }
 
@@ -81,23 +81,23 @@ object LevyraMotion {
         const val ReleaseDamping: Float = 0.58f
         const val ReleaseStiffness: Float = 760f
         const val ExpandDamping: Float = 0.82f
-        const val ExpandStiffness: Float = 360f
+        const val ExpandStiffness: Float = 500f
         const val CollapseDamping: Float = 0.86f
-        const val CollapseStiffness: Float = 430f
+        const val CollapseStiffness: Float = 580f
         const val PlayerExpandDamping: Float = 1f
-        const val PlayerExpandStiffness: Float = 400f
+        const val PlayerExpandStiffness: Float = 520f
         const val PlayerCollapseDamping: Float = 1f
-        const val PlayerCollapseStiffness: Float = 400f
+        const val PlayerCollapseStiffness: Float = 520f
         const val SettleDamping: Float = 0.90f
         const val SettleStiffness: Float = 540f
         const val SnappyDamping: Float = 0.82f
         const val SnappyStiffness: Float = 1_100f
         const val ExpressiveDamping: Float = 0.64f
-        const val ExpressiveStiffness: Float = 360f
+        const val ExpressiveStiffness: Float = 460f
         const val ReorderDamping: Float = 0.86f
         const val ReorderStiffness: Float = 700f
         const val SpatialDamping: Float = 0.88f
-        const val SpatialStiffness: Float = 420f
+        const val SpatialStiffness: Float = 560f
         const val GestureDamping: Float = 0.92f
         const val GestureStiffness: Float = 620f
         const val FeedbackDamping: Float = 0.62f

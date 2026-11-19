@@ -9,13 +9,11 @@ internal object YoutubePlayerUrlFactoryAnalyzer {
     )
 
     fun discover(javascript: String): YoutubeSemanticDiscoveryResult {
-        val factories = factoryRegex.findAll(javascript)
-            .take(MAX_FACTORY_MATCHES)
-            .toList()
+        val factories = buildList { javascript.forEachGroupMatch(factoryRegex, MAX_FACTORY_MATCHES) { add(it) } }
         if (factories.size != 1) return YoutubeSemanticDiscoveryResult(emptyList(), emptyList())
         val factory = factories.single()
-        val name = factory.groupValues[1]
-        val body = factory.groupValues[2]
+        val name = factory[1]
+        val body = factory[2]
         val nTransforms = buildList {
             urlClassRegex.findAll(body).map { it.groupValues[1] }.distinct().toList().singleOrNull()?.let { nClass ->
                 add(

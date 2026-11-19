@@ -107,6 +107,11 @@ class DiscoveryViewModel internal constructor(private val root: LevyraViewModel)
 
     init {
         viewModelScope.launch {
+            root.state.map { it.showOnboarding }.distinctUntilChanged().collect { onboarding ->
+                if (!onboarding && feed.value.daily.isEmpty()) warmDaily()
+            }
+        }
+        viewModelScope.launch {
             root.state.map { it.isPlaying }.distinctUntilChanged().collect { mainPlaying ->
                 if (mainPlaying && (previewArmed || previewPlayer.state.value.audible)) {
                     previewArmed = false
@@ -142,7 +147,12 @@ class DiscoveryViewModel internal constructor(private val root: LevyraViewModel)
         val today = LocalDate.now().toEpochDay()
         if (dailyJob?.isActive == true || dailyDay == today) return
         dailyJob = viewModelScope.launch {
-            val cards = runCatchingSafely { engine.daily(root.discoveryProfile(), interactionStore.load(), today, familiarArtistKeys()) } ?: return@launch
+            val cards = runCatchingSafely {
+                val profile = root.discoveryProfile().let { profile ->
+                    if (profile.seeds.isEmpty()) profile.copy(seeds = root.onboardingDiscoverySeeds()) else profile
+                }
+                engine.daily(profile, interactionStore.load(), today, familiarArtistKeys())
+            } ?: return@launch
             if (cards.isEmpty()) return@launch
             dailyDay = today
             feed.update { it.copy(daily = cards) }

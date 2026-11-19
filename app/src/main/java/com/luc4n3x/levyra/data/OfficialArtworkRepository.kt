@@ -418,13 +418,33 @@ class OfficialArtworkRepository(context: Context) {
 
     private fun firstMeta(html: String, property: String): String? = allMeta(html, property).firstOrNull()
 
-    private fun allMeta(html: String, property: String): List<String> {
-        val escaped = Regex.escape(property)
-        val patterns = listOf(
-            Regex("<meta[^>]+(?:property|name)=[\\\"']$escaped[\\\"'][^>]+content=[\\\"']([^\\\"']*)[\\\"'][^>]*>", RegexOption.IGNORE_CASE),
-            Regex("<meta[^>]+content=[\\\"']([^\\\"']*)[\\\"'][^>]+(?:property|name)=[\\\"']$escaped[\\\"'][^>]*>", RegexOption.IGNORE_CASE)
-        )
-        return patterns.flatMap { regex -> regex.findAll(html).map { decodeHtml(it.groupValues[1]) }.toList() }.distinct()
+    private fun allMeta(html: String, property: String): List<String> =
+        metaIndex(html)[property.lowercase(Locale.ROOT)].orEmpty()
+
+    private val metaIndexCache = HtmlMetaIndexCache()
+
+    private fun metaIndex(html: String): Map<String, List<String>> = metaIndexCache.indexFor(html) {
+        val index = linkedMapOf<String, MutableList<String>>()
+        val tags = META_TAG_PATTERN.toPattern().matcher(html)
+        while (tags.find()) {
+            var key: String? = null
+            var content: String? = null
+            val attributes = META_ATTRIBUTE_PATTERN.toPattern().matcher(tags.group())
+            while (attributes.find()) {
+                when (attributes.group(1).lowercase(Locale.ROOT)) {
+                    "property", "name" -> if (key == null) key = attributes.group(2).lowercase(Locale.ROOT)
+                    "content" -> if (content == null) content = attributes.group(2)
+                }
+            }
+            val resolvedKey = key
+            val resolvedContent = content
+            if (resolvedKey != null && resolvedContent != null) {
+                val values = index.getOrPut(resolvedKey) { mutableListOf() }
+                val decoded = decodeHtml(resolvedContent)
+                if (decoded !in values) values += decoded
+            }
+        }
+        index
     }
 
     private fun primaryQuery(track: Track): String {
@@ -677,21 +697,21 @@ class OfficialArtworkRepository(context: Context) {
 
     private fun normalize(value: String): String = removeVersionText(value)
         .lowercase(Locale.ROOT)
-        .replace(Regex("feat\\.?|featuring|ft\\.?"), " ")
-        .replace(Regex("[^a-z0-9àèéìòóùçñäöüß\\s]"), " ")
-        .replace(Regex("\\s+"), " ")
+        .replace(ARTWORK_FEATURE_PATTERN, " ")
+        .replace(ARTWORK_SYMBOL_PATTERN, " ")
+        .replace(ARTWORK_WHITESPACE_PATTERN, " ")
         .trim()
 
     private fun removeVersionText(value: String): String = value
-        .replace(Regex("\\([^)]*(official\\s*(video|audio)|lyrics?|visualizer|music\\s*video)[^)]*\\)", RegexOption.IGNORE_CASE), " ")
-        .replace(Regex("\\[[^]]*(official\\s*(video|audio)|lyrics?|visualizer|music\\s*video)[^]]*]", RegexOption.IGNORE_CASE), " ")
-        .replace(Regex("\\s+-\\s+(official\\s*(video|audio)|lyrics?|visualizer|music\\s*video).*$", RegexOption.IGNORE_CASE), " ")
+        .replace(ARTWORK_PAREN_VERSION_PATTERN, " ")
+        .replace(ARTWORK_BRACKET_VERSION_PATTERN, " ")
+        .replace(ARTWORK_DASH_VERSION_PATTERN, " ")
         .trim()
 
     private fun queryText(value: String): String = value
-        .replace(Regex("[\\r\\n\\t]+"), " ")
+        .replace(ARTWORK_CONTROL_PATTERN, " ")
         .replace('"', ' ')
-        .replace(Regex("\\s+"), " ")
+        .replace(ARTWORK_WHITESPACE_PATTERN, " ")
         .trim()
 
     private fun resizeAppleArtwork(url: String, size: Int): String = url.replace(APPLE_ARTWORK_SIZE, "${size}x${size}bb")
@@ -716,7 +736,7 @@ class OfficialArtworkRepository(context: Context) {
         .replace("&apos;", "'")
         .replace("&lt;", "<")
         .replace("&gt;", ">")
-        .replace(Regex("&#(\\d+);")) { match -> match.groupValues[1].toIntOrNull()?.toChar()?.toString().orEmpty() }
+        .replace(HTML_NUMERIC_ENTITY_PATTERN) { match -> match.groupValues[1].toIntOrNull()?.toChar()?.toString().orEmpty() }
 
     private fun cacheKey(track: Track, country: String): String = listOf(
         normalize(track.title),
@@ -819,5 +839,30 @@ internal fun sameAlbumRecordingForArtwork(track: Track, candidates: List<Track>)
                 artist,
                 com.luc4n3x.levyra.domain.primaryArtistSegment(candidate.artist).ifBlank { candidate.artist }
             )
+    }
+}
+
+private val META_TAG_PATTERN = Regex("<meta\\b[^>]*>", RegexOption.IGNORE_CASE)
+private val META_ATTRIBUTE_PATTERN = Regex("([A-Za-z:_-]+)\\s*=\\s*[\"']([^\"']*)[\"']")
+private val ARTWORK_FEATURE_PATTERN = Regex("feat\\.?|featuring|ft\\.?")
+private val ARTWORK_SYMBOL_PATTERN = Regex("[^a-z0-9àèéìòóùçñäöüß\\s]")
+private val ARTWORK_WHITESPACE_PATTERN = Regex("\\s+")
+private val HTML_NUMERIC_ENTITY_PATTERN = Regex("&#(\\d+);")
+private val ARTWORK_CONTROL_PATTERN =Regex("[\\r\\n\\t]+")
+private val ARTWORK_PAREN_VERSION_PATTERN = Regex("\\([^)]*(official\\s*(video|audio)|lyrics?|visualizer|music\\s*video)[^)]*\\)", RegexOption.IGNORE_CASE)
+private val ARTWORK_BRACKET_VERSION_PATTERN = Regex("\\[[^]]*(official\\s*(video|audio)|lyrics?|visualizer|music\\s*video)[^]]*]", RegexOption.IGNORE_CASE)
+private val ARTWORK_DASH_VERSION_PATTERN = Regex("\\s+-\\s+(official\\s*(video|audio)|lyrics?|visualizer|music\\s*video).*$", RegexOption.IGNORE_CASE)
+
+private class HtmlMetaIndexCache {
+    private var html: String? = null
+    private var index: Map<String, List<String>> = emptyMap()
+
+    @Synchronized
+    fun indexFor(source: String, build: () -> Map<String, List<String>>): Map<String, List<String>> {
+        if (html === source) return index
+        return build().also {
+            html = source
+            index = it
+        }
     }
 }

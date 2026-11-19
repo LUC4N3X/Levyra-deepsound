@@ -11704,8 +11704,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             playlistTracks = snapshot.playlists.asSequence().flatMap { it.tracks.asSequence() }.take(DISCOVERY_PLAYLIST_SIGNAL_LIMIT).toList(),
             followedArtists = snapshot.followedArtists.map { it.name },
             excludedArtists = snapshot.excludedArtists.map { it.name },
-            similarArtists = snapshot.similarArtists.map { it.name }
+            similarArtists = snapshot.similarArtists.map { it.name } + OnboardingArtists.selectedNames(preferences.tastes())
         )
+    }
+
+    internal suspend fun onboardingDiscoverySeeds(): List<Track> = withContext(Dispatchers.IO) {
+        val language = _state.value.languageCode
+        OnboardingArtists.selectedNames(preferences.tastes())
+            .take(ONBOARDING_DISCOVERY_SEED_ARTISTS)
+            .mapNotNull { artist ->
+                runCatchingPreservingCancellation { repository.search(artist, 1, language).firstOrNull() }.getOrNull()
+            }
     }
 
     internal fun discoverySources(): com.luc4n3x.levyra.feature.discovery.DiscoverySources =
@@ -16946,3 +16955,5 @@ private fun youtubeVideoId(url: String): String {
         pattern.find(url)?.groupValues?.getOrNull(1)
     }.orEmpty()
 }
+
+private const val ONBOARDING_DISCOVERY_SEED_ARTISTS = 4

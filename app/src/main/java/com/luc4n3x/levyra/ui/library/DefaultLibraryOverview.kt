@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -18,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Replay
@@ -34,7 +37,9 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -66,7 +71,8 @@ private val DefaultLibraryGroupGap = 20.dp
 private val DefaultLibraryTileHeight = 112.dp
 private val DefaultLibraryMedallion = 44.dp
 private val DefaultLibraryCover = 44.dp
-private val DefaultLibraryHeroHeight = 148.dp
+private val DefaultLibraryHeroHeight = 184.dp
+private const val DefaultLibraryMosaicSize = 4
 
 private val DefaultLibraryShelfCategories = setOf(
     LibraryCategory.Playlists,
@@ -93,6 +99,7 @@ internal fun DefaultLibraryOverview(
     recent: List<Track>,
     mostPlayed: List<Track>,
     entries: List<LibrarySectionEntry>,
+    categoryCovers: Map<LibraryCategory, List<String>>,
     onOpenCollection: (String) -> Unit,
     onPlayTracks: (List<Track>) -> Unit,
     onOpenCategory: (LibraryCategory) -> Unit
@@ -131,13 +138,13 @@ internal fun DefaultLibraryOverview(
         Spacer(Modifier.height(DefaultLibraryGap))
         DefaultLibraryTileGrid(smart, topJoined = true)
         Spacer(Modifier.height(DefaultLibraryGroupGap))
-        DefaultLibraryTileGrid(shelf.map { it.toTile(it.category.libraryLabel(strings), onOpenCategory) })
+        DefaultLibraryTileGrid(shelf.map { it.toTile(it.category.libraryLabel(strings), categoryCovers[it.category].orEmpty(), onOpenCategory) })
         if (storage.isNotEmpty()) {
             Spacer(Modifier.height(DefaultLibraryGroupGap))
             Column(verticalArrangement = Arrangement.spacedBy(DefaultLibraryGap)) {
                 storage.forEachIndexed { index, entry ->
                     DefaultLibraryStorageRow(
-                        tile = entry.toTile(entry.category.libraryLabel(strings), onOpenCategory),
+                        tile = entry.toTile(entry.category.libraryLabel(strings), emptyList(), onOpenCategory),
                         shape = levyraGroupedListShape(index, storage.size)
                     )
                 }
@@ -147,7 +154,7 @@ internal fun DefaultLibraryOverview(
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
-private fun LibrarySectionEntry.toTile(title: String, onOpen: (LibraryCategory) -> Unit) = DefaultLibraryTile(
+private fun LibrarySectionEntry.toTile(title: String, covers: List<String>, onOpen: (LibraryCategory) -> Unit) = DefaultLibraryTile(
     title = title,
     summary = summary,
     icon = category.sectionIcon(),
@@ -167,7 +174,7 @@ private fun LibrarySectionEntry.toTile(title: String, onOpen: (LibraryCategory) 
         LibraryCategory.Device -> MaterialShapes.Gem
         LibraryCategory.Collections, LibraryCategory.Overview -> MaterialShapes.SoftBurst
     },
-    covers = emptyList(),
+    covers = covers,
     onClick = { onOpen(category) }
 )
 
@@ -186,7 +193,9 @@ private fun DefaultLibraryFavoritesHero(tracks: List<Track>, onOpen: () -> Unit,
     val tone = levyraUtilityColors(LevyraUtilitySeed)
     val scheme = MaterialTheme.colorScheme
     val covers = remember(tracks) { tracks.coverUrls(3) }
-    Row(
+    val mosaic = remember(tracks) { tracks.coverUrls(DefaultLibraryMosaicSize) }
+    val blur = com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities.current.heavyBlur && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(DefaultLibraryHeroHeight)
@@ -201,10 +210,49 @@ private fun DefaultLibraryFavoritesHero(tracks: List<Track>, onOpen: () -> Unit,
             .background(androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(tone.softContainer.compositeOver(scheme.surfaceContainerHigh), scheme.surfaceContainerHigh)))
             .semantics(mergeDescendants = true) {}
             .levyraPressable(onClick = onOpen, role = Role.Button, onClickLabel = strings.favoritesPlain, pressedScale = LevyraPressScale.Surface)
-            .padding(start = 20.dp, end = 16.dp, top = 18.dp, bottom = 18.dp),
+    ) {
+        if (blur && mosaic.isNotEmpty()) {
+            Row(
+                Modifier
+                    .matchParentSize()
+                    .graphicsLayer { alpha = 0.5f }
+                    .blur(36.dp, androidx.compose.ui.draw.BlurredEdgeTreatment.Rectangle)
+            ) {
+                mosaic.forEach { url ->
+                    AsyncImage(model = url, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.weight(1f).fillMaxHeight())
+                }
+            }
+            Box(
+                Modifier.matchParentSize().background(
+                    androidx.compose.ui.graphics.Brush.horizontalGradient(
+                        listOf(scheme.surfaceContainerHigh.copy(alpha = 0.92f), scheme.surfaceContainerHigh.copy(alpha = 0.45f))
+                    )
+                )
+            )
+        }
+        DefaultLibraryFavoritesHeroContent(tracks, covers, onPlay)
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun DefaultLibraryFavoritesHeroContent(tracks: List<Track>, covers: List<String>, onPlay: () -> Unit) {
+    val strings = LocalLevyraStrings.current
+    val tone = levyraUtilityColors(LevyraUtilitySeed)
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier.fillMaxSize().padding(start = 20.dp, end = 16.dp, top = 18.dp, bottom = 18.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (covers.isNotEmpty()) {
+                Box(
+                    Modifier.padding(bottom = 6.dp).size(36.dp).clip(MaterialShapes.Cookie9Sided.toShape()).background(tone.accent),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Rounded.Favorite, contentDescription = null, tint = tone.onAccent, modifier = Modifier.size(20.dp))
+                }
+            }
             Text(
                 strings.favoritesPlain,
                 color = scheme.onSurface,
@@ -224,7 +272,7 @@ private fun DefaultLibraryFavoritesHero(tracks: List<Track>, onOpen: () -> Unit,
         FilledIconButton(
             onClick = onPlay,
             enabled = tracks.isNotEmpty(),
-            shape = MaterialShapes.Cookie4Sided.toShape(),
+            shapes = IconButtonDefaults.shapes(),
             colors = IconButtonDefaults.filledIconButtonColors(
                 containerColor = tone.accent,
                 contentColor = tone.onAccent,
@@ -295,7 +343,7 @@ private fun DefaultLibraryStorageRow(tile: DefaultLibraryTile, shape: Shape) {
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        DefaultLibraryVisual(tile)
+        DefaultLibraryMedallionBadge(tile)
         Column(Modifier.weight(1f).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(tile.title, color = colors.onSurface, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (tile.summary.isNotBlank()) {
@@ -309,11 +357,19 @@ private fun DefaultLibraryStorageRow(tile: DefaultLibraryTile, shape: Shape) {
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun DefaultLibraryVisual(tile: DefaultLibraryTile) {
-    if (tile.covers.isNotEmpty()) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        DefaultLibraryMedallionBadge(tile)
+        DefaultLibraryCoverStack(tile.covers)
+    }
+}
+
+@Composable
+private fun DefaultLibraryCoverStack(covers: List<String>) {
+    if (covers.isNotEmpty()) {
         val colors = MaterialTheme.colorScheme
         val shape = LevyraCardDesign.ArtworkShape
-        Box(Modifier.width(DefaultLibraryCover + 22.dp * (tile.covers.size - 1)).height(DefaultLibraryCover)) {
-            tile.covers.forEachIndexed { index, url ->
+        Box(Modifier.width(DefaultLibraryCover + 22.dp * (covers.size - 1)).height(DefaultLibraryCover)) {
+            covers.forEachIndexed { index, url ->
                 AsyncImage(
                     model = url,
                     contentDescription = null,
@@ -327,8 +383,12 @@ private fun DefaultLibraryVisual(tile: DefaultLibraryTile) {
                 )
             }
         }
-        return
     }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun DefaultLibraryMedallionBadge(tile: DefaultLibraryTile) {
     val tone = levyraUtilityColors(tile.seed)
     Box(
         modifier = Modifier.size(DefaultLibraryMedallion).clip(tile.badge.toShape()).background(tone.accent),
