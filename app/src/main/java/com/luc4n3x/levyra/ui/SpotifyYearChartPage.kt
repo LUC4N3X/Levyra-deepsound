@@ -98,11 +98,12 @@ internal fun SpotifyYearChartOverlay(
             Box(
                 Modifier.size(SpotifyYearCoverSize)
                     .graphicsLayer {
-                        val scale = 1f - progress * 0.3f
+                        val collapse = progress()
+                        val scale = 1f - collapse * 0.3f
                         scaleX = scale
                         scaleY = scale
-                        translationY = headerScroll.coerceAtMost(coverPx) * 0.55f
-                        alpha = 1f - progress
+                        translationY = headerScroll().coerceAtMost(coverPx) * 0.55f
+                        alpha = 1f - collapse
                     }
                     .shadow(24.dp, RoundedCornerShape(2.dp))
                     .background(SpotifyDesign.placeholder)

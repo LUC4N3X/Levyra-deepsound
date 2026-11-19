@@ -399,6 +399,10 @@ import com.luc4n3x.levyra.player.queue.AutoQueueTombstones
 import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
 import com.luc4n3x.levyra.data.locallibrary.LOCAL_MEDIA_TRACK_ID_PREFIX
 import com.luc4n3x.levyra.data.locallibrary.LocalLibraryRepository
+import com.luc4n3x.levyra.data.storypost.StoryPost
+import com.luc4n3x.levyra.data.storypost.StoryPostKind
+import com.luc4n3x.levyra.data.storypost.isStoryPost
+import com.luc4n3x.levyra.data.storypost.toTrack
 import com.luc4n3x.levyra.data.locallibrary.LocalLibraryStatus
 import com.luc4n3x.levyra.data.locallibrary.LocalScanMode
 import com.luc4n3x.levyra.data.locallibrary.PreferredLocalAudio
@@ -585,6 +589,8 @@ internal fun shouldStartPlaybackPaused(
     request: PlaybackResolveRequest,
     activeRequestId: Long
 ): Boolean = request.id == activeRequestId && request.startPaused
+
+private const val STORY_POST_END_SLACK_MS = 1_000L
 
 internal fun LevyraUiState.withExplicitPlaybackMode(videoMode: Boolean): LevyraUiState =
     if (isVideoMode == videoMode && pendingVideoMode == null) this
@@ -1197,6 +1203,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         .catch { error -> Timber.w(error, "Saved playlists load failed"); emit(emptyList()) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val personalCollections = PersonalCollectionsController(application.applicationContext, viewModelScope)
+    val storyPosts = StoryPostsController(application.applicationContext, viewModelScope)
     val playlistStudio = PlaylistStudioController(
         scope = viewModelScope,
         gateway = PlaylistStudioStoreGateway(application.applicationContext, playlistStore) { playlistId ->
@@ -7787,6 +7794,36 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         playFrom(tracks, track)
     }
 
+    fun playStoryPost(post: StoryPost) {
+        val track = post.toTrack()
+        val snapshot = _state.value
+        val finished = snapshot.currentTrack?.id == track.id && !snapshot.isPlaying &&
+            track.durationMs > 0L && snapshot.positionMs >= track.durationMs - STORY_POST_END_SLACK_MS
+        if (snapshot.currentTrack?.id != track.id || finished) {
+            _state.update { it.withExplicitPlaybackMode(videoMode = post.kind == StoryPostKind.Video) }
+            playFrom(listOf(track), track)
+        } else if (!snapshot.isPlaying) {
+            play()
+        }
+        openPlayerScreen()
+    }
+
+    fun showStoryPostVideo() {
+        val snapshot = _state.value
+        if (snapshot.isVideoMode || snapshot.isResolving) return
+        val current = snapshot.currentTrack?.takeIf { it.isStoryPost() } ?: return
+        val track = storyPosts.posts.value
+            .firstOrNull { it.trackId == current.id && it.kind == StoryPostKind.Video }
+            ?.toTrack() ?: return
+        val loadedPositionMs = player.positionForTrack(current)
+        val index = queueEngine.state.value.currentIndex
+        if (index >= 0) queueEngine.updateTrackAt(index, track)
+        _state.update { it.withExplicitPlaybackMode(videoMode = true).copy(currentTrack = track) }
+        if (loadedPositionMs != null) {
+            player.replaceSource(track = track, positionMs = loadedPositionMs, videoMode = true, playWhenReady = player.isPlaying)
+        }
+    }
+
     fun switchQueueSpace(spaceId: String) {
         if (spaceId.isBlank() || spaceId == _state.value.activeQueueSpaceId) return
         if (_state.value.jam.isActive) {
@@ -12148,7 +12185,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val track = requestedTrack.withoutPreferredLocalStream()
         val requestId = request.id
         val requestedVideoMode = _state.value.isVideoMode
-        val playableTrack = if (requestedVideoMode && !isYoutubeShortTrack(track)) {
+        val playableTrack = if (requestedVideoMode && !isYoutubeShortTrack(track) && !track.isStoryPost()) {
             preferredVideoPlaybackTrack(track)
         } else {
             audioPlaybackTrack(withCatalogArtTrack(track))

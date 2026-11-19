@@ -10,8 +10,8 @@ import android.media.MediaRouter2
 import android.os.Build
 import android.provider.Settings
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.luc4n3x.levyra.domain.SmartAudioDeviceCategory
 import java.security.MessageDigest
 import java.util.Locale
@@ -118,7 +118,7 @@ internal fun smartAudioDefaultCategory(route: LevyraAudioOutputRoute): SmartAudi
 
 @Composable
 fun rememberLevyraAudioOutputState(): LevyraAudioOutputState {
-    val state by LevyraAudioOutputRepository.state.collectAsState()
+    val state by LevyraAudioOutputRepository.state.collectAsStateWithLifecycle()
     return state
 }
 

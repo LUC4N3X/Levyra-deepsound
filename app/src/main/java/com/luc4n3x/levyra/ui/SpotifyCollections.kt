@@ -175,8 +175,8 @@ internal fun SpotifyRadioPage(
             SpotifyRadioCircles(
                 circles, pastel, 200.dp,
                 Modifier.graphicsLayer {
-                    translationY = headerScroll.coerceAtMost(heroPx) * 0.5f
-                    alpha = 1f - progress
+                    translationY = headerScroll().coerceAtMost(heroPx) * 0.5f
+                    alpha = 1f - progress()
                 }
             )
             Text(

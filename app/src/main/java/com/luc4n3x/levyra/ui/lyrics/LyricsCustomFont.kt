@@ -1,7 +1,6 @@
 package com.luc4n3x.levyra.ui.lyrics
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -11,6 +10,7 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.luc4n3x.levyra.data.LyricsFontEntry
 import com.luc4n3x.levyra.data.LyricsFontLibrary
 import java.io.File
@@ -43,7 +43,7 @@ internal fun lyricsFontFamily(entry: LyricsFontEntry, file: File): FontFamily = 
 fun rememberLyricsFontFamily(fontId: String): FontFamily? {
     val context = LocalContext.current
     val library = remember(context) { LyricsFontLibrary.get(context) }
-    val fonts by library.fonts.collectAsState()
+    val fonts by library.fonts.collectAsStateWithLifecycle()
     val entry = fonts.firstOrNull { it.id == fontId }
     val family by produceState<FontFamily?>(null, fontId, entry) {
         value = if (fontId.isBlank()) null else library.fontFile(fontId)?.let { (resolved, file) -> lyricsFontFamily(resolved, file) }

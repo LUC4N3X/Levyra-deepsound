@@ -783,6 +783,8 @@ import com.luc4n3x.levyra.feature.search.rankPersonalizedSearchArtists
 import com.luc4n3x.levyra.ui.jam.LevyraJamOverlay
 import com.luc4n3x.levyra.ui.recognition.LevyraRecognitionOverlay
 import com.luc4n3x.levyra.ui.settings.NetworkSettingsPanel
+import com.luc4n3x.levyra.data.storypost.isStoryPost
+import com.luc4n3x.levyra.ui.storypost.StoryPostPlayer
 import com.luc4n3x.levyra.ui.settings.DeviceIntegrationSettingsPanel
 import com.luc4n3x.levyra.ui.settings.PreferLocalAudioSettingsPanel
 import com.luc4n3x.levyra.ui.settings.DOWNLOADS_ADVANCED_SEARCH_IDS
@@ -18371,6 +18373,19 @@ private fun PlayerScreen(
     motionSuspended: Boolean
 ) {
     val track = state.currentTrack
+    if (track != null && track.isStoryPost()) {
+        val posts by viewModel.storyPosts.collectAsStateWithLifecycle()
+        StoryPostPlayer(
+            post = posts.firstOrNull { it.trackId == track.id }, track = track,
+            isPlaying = state.isPlaying, isVideoMode = state.isVideoMode,
+            positionMs = state.positionMs, durationMs = state.durationMs,
+            onTogglePlay = viewModel::togglePlay, onSeek = viewModel::seekTo,
+            onPrevious = viewModel::previous, onNext = viewModel::next,
+            onCollapse = collapseActions.collapse, onShowVideo = viewModel::showStoryPostVideo,
+            videoSurface = { m -> LevyraVideoSurface(state = state, modifier = m) }
+        )
+        return
+    }
     val strings = LocalLevyraStrings.current
     var playlistTarget by remember(track?.id) { mutableStateOf<Track?>(null) }
     val queuedTrackIds = remember(state.queue) {

@@ -59,7 +59,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -88,6 +87,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.luc4n3x.levyra.R
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.ui.components.LevyraBackButton
@@ -928,7 +928,7 @@ private fun WidgetThumbnail(
     demo: StudioPlaybackState? = null
 ) {
     val context = LocalContext.current
-    val artworkVersion by WidgetStudioArtwork.version.collectAsState()
+    val artworkVersion by WidgetStudioArtwork.version.collectAsStateWithLifecycle()
     val views by produceState<RemoteViews?>(initialValue = null, family, config, size, artworkVersion, demo) {
         value = withContext(Dispatchers.Default) {
             val state = demo ?: WidgetStudioStore.playbackState(context)
