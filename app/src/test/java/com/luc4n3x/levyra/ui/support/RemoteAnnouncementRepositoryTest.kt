@@ -50,6 +50,8 @@ class RemoteAnnouncementRepositoryTest {
 
         assertEquals(expectedLanguages, announcement.translations.keys)
         assertEquals(AnnouncementStyle.OPEN_SOURCE, announcement.style)
+        assertFalse(announcement.enabled)
+        assertNull(RemoteAnnouncementRules.select(catalog, "en", Int.MAX_VALUE, emptySet(), Long.MAX_VALUE))
         assertEquals(2_031_800, announcement.minimumVersionCode)
         assertEquals(LEVYRA_REPOSITORY_URL, announcement.actionUrl)
         announcement.translations.forEach { (code, copy) ->
@@ -67,11 +69,10 @@ class RemoteAnnouncementRepositoryTest {
             assertTrue("Announcement body is too short for $code", copy.body.length >= 20)
         }
 
-        val now = Instant.parse("2026-08-03T12:00:00Z").toEpochMilli()
-        val italian = RemoteAnnouncementRules.select(catalog, "it-IT", 2_031_800, emptySet(), now)
-        val arabic = RemoteAnnouncementRules.select(catalog, "ar-SA", 2_031_800, emptySet(), now)
-        val hebrew = RemoteAnnouncementRules.select(catalog, "he-IL", 2_031_800, emptySet(), now)
-        val unknown = RemoteAnnouncementRules.select(catalog, "xx-YY", 2_031_800, emptySet(), now)
+        val italian = RemoteAnnouncementRules.presentationFor(announcement, "it-IT")
+        val arabic = RemoteAnnouncementRules.presentationFor(announcement, "ar-SA")
+        val hebrew = RemoteAnnouncementRules.presentationFor(announcement, "he-IL")
+        val unknown = RemoteAnnouncementRules.presentationFor(announcement, "xx-YY")
 
         assertEquals("Ti piace Levyra?", italian?.copy?.title)
         assertEquals("Più tardi", italian?.copy?.laterAction)
@@ -136,51 +137,6 @@ class RemoteAnnouncementRepositoryTest {
                 nowMs = now
             )
         )
-    }
-
-    @Test
-    fun promptPolicyWaitsForUsagePositiveListeningAndSnoozeExpiry() {
-        val now = Instant.parse("2026-08-03T12:00:00Z").toEpochMilli()
-
-        assertFalse(
-            RemoteAnnouncementPromptPolicy.isEligible(
-                launchCount = 2,
-                hasPositiveListeningMoment = true,
-                snoozedUntilMs = 0L,
-                nowMs = now
-            )
-        )
-        assertFalse(
-            RemoteAnnouncementPromptPolicy.isEligible(
-                launchCount = 3,
-                hasPositiveListeningMoment = false,
-                snoozedUntilMs = 0L,
-                nowMs = now
-            )
-        )
-        assertFalse(
-            RemoteAnnouncementPromptPolicy.isEligible(
-                launchCount = 3,
-                hasPositiveListeningMoment = true,
-                snoozedUntilMs = now + 1L,
-                nowMs = now
-            )
-        )
-        assertTrue(
-            RemoteAnnouncementPromptPolicy.isEligible(
-                launchCount = 3,
-                hasPositiveListeningMoment = true,
-                snoozedUntilMs = now,
-                nowMs = now
-            )
-        )
-    }
-
-    @Test
-    fun positiveMomentCanComeFromHistoryOrElapsedPlayback() {
-        assertFalse(RemoteAnnouncementPromptPolicy.hasPositiveListeningMoment(2, 89_999L))
-        assertTrue(RemoteAnnouncementPromptPolicy.hasPositiveListeningMoment(3, 0L))
-        assertTrue(RemoteAnnouncementPromptPolicy.hasPositiveListeningMoment(0, 90_000L))
     }
 
     @Test

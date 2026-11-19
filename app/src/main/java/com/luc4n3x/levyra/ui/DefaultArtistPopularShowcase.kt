@@ -183,6 +183,7 @@ private fun PopularPageRow(
                 )
                 isResolving -> LevyraLoadingIndicator(modifier = Modifier.size(18.dp), color = LevyraCyan)
                 isCurrent -> LevyraPlayingIndicator(playing = isPlaying, color = LevyraCyan, size = 18.dp, contentDescription = strings.playing)
+                else -> ArtistTrackDownloadedMark(track)
             }
         }
     }

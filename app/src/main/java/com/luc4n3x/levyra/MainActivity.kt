@@ -34,7 +34,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -62,11 +61,10 @@ import com.luc4n3x.levyra.ui.LocalLevyraGlassStyle
 import com.luc4n3x.levyra.ui.components.LocalLevyraLiquidGlassEnabled
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.support.RemoteAnnouncementGate
-import com.luc4n3x.levyra.ui.support.RemoteAnnouncementPromptPolicy
+import com.luc4n3x.levyra.ui.support.LevyraSupportPromptGate
 import com.luc4n3x.levyra.ui.theme.LevyraTheme
 import com.luc4n3x.levyra.ui.theme.LevyraThemeController
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
-import com.luc4n3x.levyra.ui.update.LevyraStarThanksGate
 import com.luc4n3x.levyra.ui.update.LevyraUpdateBanner
 import com.luc4n3x.levyra.ui.update.LevyraUpdatePhase
 import com.luc4n3x.levyra.ui.update.LevyraUpdateScreen
@@ -79,7 +77,6 @@ import com.luc4n3x.levyra.viewmodel.LevyraViewModel
 import kotlin.math.roundToInt
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -91,11 +88,9 @@ private data class MainActivityUiSlice(
     val animationsEnabled: Boolean,
     val liquidGlassEnabled: Boolean,
     val glassStyle: LevyraGlassStyle,
-    val isPlaying: Boolean,
     val showSettings: Boolean,
     val showOnboarding: Boolean,
     val languageCode: String,
-    val recentListenCount: Int,
     val updateInfo: AppUpdateInfo?,
     val showUpdatePrompt: Boolean
 )
@@ -110,11 +105,9 @@ private fun LevyraUiState.toMainActivityUiSlice(): MainActivityUiSlice = MainAct
         tint = interfaceSettings.glassTint,
         refraction = interfaceSettings.glassRefraction
     ),
-    isPlaying = isPlaying,
     showSettings = showSettings,
     showOnboarding = showOnboarding,
     languageCode = languageCode,
-    recentListenCount = recentListens.size,
     updateInfo = updateInfo,
     showUpdatePrompt = showUpdatePrompt
 )
@@ -180,8 +173,7 @@ class MainActivity : ComponentActivity() {
                 fontPreset = activityUiState.fontPreset,
                 animationsEnabled = activityUiState.animationsEnabled
             ) {
-                var listenedPlaybackMs by rememberSaveable { mutableLongStateOf(0L) }
-                var starSheetThisLaunch by rememberSaveable { mutableStateOf<Boolean?>(null) }
+                var supportPromptThisLaunch by rememberSaveable { mutableStateOf<Boolean?>(null) }
                 var previousLanguageCode by remember { mutableStateOf(activityUiState.languageCode) }
 
                 LaunchedEffect(activityUiState.languageCode) {
@@ -191,17 +183,6 @@ class MainActivity : ComponentActivity() {
                     val defaultRegionId = ChartsCatalog.defaultRegionForLanguage(currentLanguageCode).id
                     if (viewModel.state.value.selectedChartId != defaultRegionId) {
                         viewModel.selectChart(defaultRegionId)
-                    }
-                }
-
-                LaunchedEffect(activityUiState.isPlaying) {
-                    if (!activityUiState.isPlaying) return@LaunchedEffect
-                    var lastTickMs = SystemClock.elapsedRealtime()
-                    while (true) {
-                        delay(1_000L)
-                        val nowMs = SystemClock.elapsedRealtime()
-                        listenedPlaybackMs += (nowMs - lastTickMs).coerceAtLeast(0L)
-                        lastTickMs = nowMs
                     }
                 }
 
@@ -224,18 +205,14 @@ class MainActivity : ComponentActivity() {
                 }
                 RemoteAnnouncementGate(
                     enabled = !activityUiState.showOnboarding && !pipMode.value && !activityUiState.showSettings &&
-                        starSheetThisLaunch == false,
-                    languageCode = activityUiState.languageCode,
-                    hasPositiveListeningMoment = RemoteAnnouncementPromptPolicy.hasPositiveListeningMoment(
-                        recentListenCount = activityUiState.recentListenCount,
-                        listenedPlaybackMs = listenedPlaybackMs
-                    )
+                        supportPromptThisLaunch == false,
+                    languageCode = activityUiState.languageCode
                 )
-                LevyraStarThanksGate(
+                LevyraSupportPromptGate(
                     enabled = !activityUiState.showOnboarding && !pipMode.value && !activityUiState.showSettings,
                     languageCode = activityUiState.languageCode,
-                    onDecided = { show -> if (starSheetThisLaunch != true) starSheetThisLaunch = show },
-                    onClosed = { starSheetThisLaunch = false }
+                    onDecided = { show -> if (supportPromptThisLaunch != true) supportPromptThisLaunch = show },
+                    onClosed = { supportPromptThisLaunch = false }
                 )
                 if (
                     BuildConfig.UPSTREAM_UPDATES_ENABLED &&

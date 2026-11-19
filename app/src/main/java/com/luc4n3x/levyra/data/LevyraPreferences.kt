@@ -372,10 +372,26 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         write { it[KEY_YOUTUBE_MUSIC_INTRO_SEEN] = true }
     }
 
-    fun starThanksShown(): Boolean = read { it[KEY_STAR_THANKS_SHOWN] ?: false }
+    fun supportPromptState(): SupportPromptState = read {
+        SupportPromptState(
+            versionCode = it[KEY_SUPPORT_PROMPT_VERSION] ?: 0,
+            opens = it[KEY_SUPPORT_PROMPT_OPENS] ?: 0,
+            lastOpenAtMs = it[KEY_SUPPORT_PROMPT_LAST_OPEN_AT] ?: 0L,
+            finished = it[KEY_SUPPORT_PROMPT_FINISHED] ?: false
+        )
+    }
 
-    fun setStarThanksShown() {
-        write { it[KEY_STAR_THANKS_SHOWN] = true }
+    fun setSupportPromptState(state: SupportPromptState) {
+        write {
+            it[KEY_SUPPORT_PROMPT_VERSION] = state.versionCode
+            it[KEY_SUPPORT_PROMPT_OPENS] = state.opens
+            it[KEY_SUPPORT_PROMPT_LAST_OPEN_AT] = state.lastOpenAtMs
+            it[KEY_SUPPORT_PROMPT_FINISHED] = state.finished
+        }
+    }
+
+    fun finishSupportPrompt() {
+        write { it[KEY_SUPPORT_PROMPT_FINISHED] = true }
     }
 
     fun tastes(): Set<String> = read { it[KEY_TASTES].orEmpty() }
@@ -1669,7 +1685,10 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_JAM_GUEST_ID = stringPreferencesKey("jam_guest_id")
         val KEY_ONBOARDED = booleanPreferencesKey("onboarded")
         val KEY_YOUTUBE_MUSIC_INTRO_SEEN = booleanPreferencesKey("youtube_music_intro_seen")
-        val KEY_STAR_THANKS_SHOWN = booleanPreferencesKey("star_thanks_shown")
+        val KEY_SUPPORT_PROMPT_VERSION = intPreferencesKey("support_prompt_version")
+        val KEY_SUPPORT_PROMPT_OPENS = intPreferencesKey("support_prompt_opens")
+        val KEY_SUPPORT_PROMPT_LAST_OPEN_AT = longPreferencesKey("support_prompt_last_open_at")
+        val KEY_SUPPORT_PROMPT_FINISHED = booleanPreferencesKey("support_prompt_finished")
         val KEY_TASTES = stringSetPreferencesKey("tastes")
         val KEY_SEARCH_HIDDEN_LISTENS = stringSetPreferencesKey("search_hidden_listens")
         val KEY_LAST_TRACK = stringPreferencesKey("last_track")

@@ -22,6 +22,11 @@ import com.luc4n3x.levyra.ui.i18n.discoveryCopy
 import com.luc4n3x.levyra.ui.i18n.homeVideoShelfTitle
 import com.luc4n3x.levyra.ui.i18n.speedDialCopy
 import com.luc4n3x.levyra.viewmodel.DiscoveryFeedStatus
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import com.luc4n3x.levyra.ui.i18n.downloadProgressCopy
 
 internal class ComposedCard(
     val key: String,
@@ -117,7 +122,8 @@ internal class ComposedHomeContent(
     val chartsLoading: Boolean,
     val offlineMessage: String?,
     val offlineRetryLabel: String,
-    val onOfflineRetry: () -> Unit
+    val onOfflineRetry: () -> Unit,
+    val onOfflineOpen: () -> Unit
 )
 
 internal fun LazyListScope.composedHomeSections(
@@ -128,7 +134,10 @@ internal fun LazyListScope.composedHomeSections(
     val content = request.content
     content.offlineMessage?.let { message ->
         item(key = "composed-offline", contentType = "composed-notice") {
-            kit.Notice(message, content.offlineRetryLabel, content.onOfflineRetry)
+            val openLabel = downloadProgressCopy(LocalLevyraStrings.current.code).openDownloads
+            Box(modifier = Modifier.clickable(onClickLabel = openLabel, role = Role.Button, onClick = content.onOfflineOpen)) {
+                kit.Notice(message, content.offlineRetryLabel, content.onOfflineRetry)
+            }
         }
     }
     request.blocks.forEach { block ->

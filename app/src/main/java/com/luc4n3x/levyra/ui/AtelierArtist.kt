@@ -365,7 +365,7 @@ private fun AtelierArtistActions(profile: ArtistProfile, state: LevyraUiState, v
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text(catalogCopy.downloadAllSongs) },
+                    text = { Text(artistDownloadAllLabel()) },
                     leadingIcon = { Icon(Icons.Rounded.Download, null) },
                     enabled = songs.isNotEmpty(),
                     onClick = {

@@ -493,7 +493,7 @@ private fun YouTubeMusicArtistMenu(
                 }
             )
             DropdownMenuItem(
-                text = { Text(catalogCopy.downloadAllSongs, color = YouTubeMusicDesign.text) },
+                text = { Text(artistDownloadAllLabel(), color = YouTubeMusicDesign.text) },
                 leadingIcon = { Icon(Icons.Rounded.Download, null, tint = YouTubeMusicDesign.text) },
                 onClick = {
                     onDismiss()

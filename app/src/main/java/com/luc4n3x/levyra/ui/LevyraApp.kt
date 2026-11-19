@@ -1057,13 +1057,23 @@ private fun HomeOfflineNotice(
     title: String,
     message: String,
     retryLabel: String,
-    onRetry: () -> Unit
+    onRetry: () -> Unit,
+    onOpen: () -> Unit
 ) {
+    val openLabel = com.luc4n3x.levyra.ui.i18n.downloadProgressCopy(LocalLevyraStrings.current.code).openDownloads
     Surface(
         color = CinematicGlass.copy(alpha = 0.62f),
         border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.20f)),
         shape = LevyraCardDesign.SurfaceShape,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(LevyraCardDesign.SurfaceShape)
+            .levyraPressable(
+                onClick = onOpen,
+                pressedScale = LevyraPressScale.Control,
+                role = Role.Button,
+                onClickLabel = openLabel
+            )
     ) {
         Row(
             modifier = Modifier.padding(start = 16.dp, top = 12.dp, end = 8.dp, bottom = 12.dp),
@@ -1116,6 +1126,12 @@ private fun HomeOfflineNotice(
                     fontWeight = FontWeight.Bold
                 )
             }
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = null,
+                tint = LevyraMuted,
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }
@@ -2059,6 +2075,7 @@ fun LevyraApp(
     var showLanguageRestartDialog by remember { mutableStateOf(false) }
     var showPlaybackDiagnostics by remember { mutableStateOf(false) }
     var showDownloadsFolder by remember { mutableStateOf(false) }
+    LaunchedEffect(viewModel) { viewModel.downloadsFolderRequests.collect { showDownloadsFolder = true } }
     var musicExperience by rememberSaveable { mutableStateOf<String?>(null) }
     var liveRadioOpen by rememberSaveable { mutableStateOf(false) }
     var discoveryOpen by rememberSaveable { mutableStateOf(false) }
@@ -2990,17 +3007,9 @@ fun LevyraApp(
             }
 
             val downloadsActive = state.downloadingTrackIds.isNotEmpty()
-            var downloadHudMinimized by rememberSaveable { mutableStateOf(false) }
-            var downloadHudDismissed by rememberSaveable { mutableStateOf(false) }
-            LaunchedEffect(downloadsActive) {
-                if (!downloadsActive) {
-                    downloadHudMinimized = false
-                    downloadHudDismissed = false
-                }
-            }
             val downloadHudOverPlayer = state.selectedTab == LevyraTab.Player
             AnimatedVisibility(
-                visible = downloadsActive && !downloadHudDismissed,
+                visible = downloadsActive,
                 modifier = Modifier
                     .align(if (downloadHudOverPlayer) Alignment.TopCenter else Alignment.BottomCenter)
                     .zIndex(18f)
@@ -3015,11 +3024,10 @@ fun LevyraApp(
                 enter = miniEnter,
                 exit = miniExit
             ) {
-                DownloadProgressHud(
-                    state = state,
-                    minimized = downloadHudMinimized,
-                    onMinimizedChange = { downloadHudMinimized = it },
-                    onDismiss = { downloadHudDismissed = true }
+                com.luc4n3x.levyra.ui.download.DownloadProgressHud(
+                    queue = state.downloadQueue,
+                    onOpenDownloads = { showDownloadsFolder = true },
+                    onCancelAll = viewModel::cancelAllDownloads
                 )
             }
 
@@ -3557,11 +3565,14 @@ fun LevyraApp(
 
             AnimatedVisibility(visible = state.showArtist, enter = detailEnter, exit = pageExit) {
                 val appleStorefront = remember(state.selectedChartId) { ChartsCatalog.region(state.selectedChartId).country }
-                val artistCatalogActions = remember(viewModel) {
+                val artistBatch = artistDownloadBatch(state.downloadBatches, state.artistProfile)
+                val artistCatalogActions = remember(viewModel, artistBatch, state.downloadedTrackIds) {
                     ArtistCatalogActions(
                         playAll = { viewModel.playAllArtistSongs() },
                         shuffleAll = { viewModel.playAllArtistSongs(shuffled = true) },
-                        downloadAll = viewModel::downloadAllArtistSongs
+                        downloadAll = viewModel::downloadAllArtistSongs,
+                        downloadBatch = artistBatch,
+                        downloadedTrackIds = state.downloadedTrackIds
                     )
                 }
                 CompositionLocalProvider(LocalArtistCatalogActions provides artistCatalogActions) {
@@ -4246,23 +4257,6 @@ private fun SharedMediaAction(
     }
 }
 
-private data class DownloadHudItem(
-    val taskKey: String,
-    val progress: Int,
-    val title: String,
-    val count: Int
-)
-
-private fun LevyraUiState.activeDownloadHudItem(strings: LevyraStrings): DownloadHudItem? {
-    val ids = downloadingTrackIds.toList()
-    if (ids.isEmpty()) return null
-    val primaryId = ids.maxByOrNull { downloadProgressByTrackId[it] ?: 1 } ?: return null
-    val progress = (downloadProgressByTrackId[primaryId] ?: 1).coerceIn(1, 99)
-    val rawTitle = downloadTitleByTrackId[primaryId].orEmpty().ifBlank { strings.song }
-    val title = if (ids.size > 1) "$rawTitle +${ids.size - 1}" else rawTitle
-    return DownloadHudItem(taskKey = primaryId, progress = progress, title = title, count = ids.size)
-}
-
 private fun downloadHudBottomPadding(state: LevyraUiState, dockSideBySide: Boolean): Dp {
     return when {
         state.currentTrack != null && !dockSideBySide -> 154.dp
@@ -4319,115 +4313,6 @@ private fun animatedBottomContentInset(
         label = "bottomContentInset"
     )
     return inset
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun DownloadProgressHud(
-    state: LevyraUiState,
-    minimized: Boolean,
-    onMinimizedChange: (Boolean) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val strings = LocalLevyraStrings.current
-    val item = state.activeDownloadHudItem(strings) ?: return
-    val colors = MaterialTheme.colorScheme
-    val progress by animateFloatAsState(
-        targetValue = item.progress / 100f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow),
-        label = "downloadHudProgress"
-    )
-    AnimatedContent(
-        targetState = minimized,
-        transitionSpec = {
-            fadeIn(tween(180)) + scaleIn(spring(dampingRatio = 0.7f, stiffness = 500f), initialScale = 0.85f) togetherWith
-                fadeOut(tween(120)) using SizeTransform(clip = false)
-        },
-        modifier = Modifier.fillMaxWidth(),
-        contentAlignment = Alignment.CenterEnd,
-        label = "downloadHudMode"
-    ) { compact ->
-        if (compact) {
-            Surface(
-                onClick = { onMinimizedChange(false) },
-                shape = CircleShape,
-                color = colors.primaryContainer,
-                contentColor = colors.onPrimaryContainer,
-                shadowElevation = 6.dp,
-                modifier = Modifier
-                    .wrapContentWidth(Alignment.End)
-                    .size(52.dp)
-                    .semantics { contentDescription = "${strings.downloadInProgress} ${item.progress}%" }
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    CircularWavyProgressIndicator(
-                        progress = { progress },
-                        modifier = Modifier.size(44.dp),
-                        color = colors.primary,
-                        trackColor = colors.primary.copy(alpha = 0.18f)
-                    )
-                    Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(20.dp))
-                }
-            }
-        } else {
-            Surface(
-                shape = RoundedCornerShape(28.dp),
-                color = colors.surfaceContainerHigh,
-                contentColor = colors.onSurface,
-                shadowElevation = 6.dp,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(start = 10.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(colors.primaryContainer),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularWavyProgressIndicator(
-                            progress = { progress },
-                            modifier = Modifier.size(40.dp),
-                            color = colors.primary,
-                            trackColor = colors.primary.copy(alpha = 0.18f)
-                        )
-                        Icon(
-                            Icons.Rounded.Download,
-                            contentDescription = null,
-                            tint = colors.onPrimaryContainer,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = item.title,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = "${if (item.count > 1) strings.downloadsInProgress else strings.downloadInProgress} · ${item.progress}%",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = colors.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                    IconButton(onClick = { onMinimizedChange(true) }) {
-                        Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = strings.showLess, tint = colors.onSurfaceVariant)
-                    }
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Rounded.Close, contentDescription = strings.close, tint = colors.onSurfaceVariant)
-                    }
-                }
-            }
-        }
-    }
 }
 
 @Composable
@@ -6580,6 +6465,7 @@ private fun ArtistPopularTrackRow(
                     size = 18.dp,
                     contentDescription = strings.playing
                 )
+                else -> ArtistTrackDownloadedMark(track)
             }
         }
     }
@@ -9142,7 +9028,8 @@ private fun HomeScreen(
                                 title = strings.offlineHomeTitle,
                                 message = strings.offlineHomeMessage,
                                 retryLabel = strings.offlineHomeRetry,
-                                onRetry = viewModel::retryHomeContent
+                                onRetry = viewModel::retryHomeContent,
+                                onOpen = viewModel::openDownloadsFolder
                             )
                         }
                     }
@@ -10052,7 +9939,8 @@ private fun composedHomeContent(
         chartsLoading = state.isLoadingCharts && state.interfaceSettings.showCharts,
         offlineMessage = if (offlineHomeVisible) strings.offlineHomeMessage else null,
         offlineRetryLabel = strings.offlineHomeRetry,
-        onOfflineRetry = viewModel::retryHomeContent
+        onOfflineRetry = viewModel::retryHomeContent,
+        onOfflineOpen = viewModel::openDownloadsFolder
     )
 }
 
@@ -11682,7 +11570,8 @@ private fun LazyListScope.homeStudioOfflineSection(c: StudioHomeContext) {
                                 title = strings.offlineHomeTitle,
                                 message = strings.offlineHomeMessage,
                                 retryLabel = strings.offlineHomeRetry,
-                                onRetry = viewModel::retryHomeContent
+                                onRetry = viewModel::retryHomeContent,
+                                onOpen = viewModel::openDownloadsFolder
                             )
                         }
                     }

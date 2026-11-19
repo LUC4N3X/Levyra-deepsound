@@ -27,39 +27,14 @@ private const val KEY_CACHED_JSON = "cached_json"
 private const val KEY_ETAG = "etag"
 private const val KEY_LAST_SUCCESSFUL_CHECK = "last_successful_check"
 private const val KEY_COMPLETED_IDS = "dismissed_ids"
-private const val KEY_APP_LAUNCH_COUNT = "app_launch_count"
-private const val KEY_LAST_APP_LAUNCH_AT = "last_app_launch_at"
 private const val KEY_SNOOZED_UNTIL_PREFIX = "snoozed_until_"
 private const val MAX_ANNOUNCEMENTS = 20
 internal const val MAX_REMOTE_ANNOUNCEMENT_PAYLOAD_BYTES = 2 * 1_024 * 1_024
 private const val MAX_COMPLETED_IDS = 200
-private const val MAX_RECORDED_LAUNCHES = 10_000
-private const val APP_LAUNCH_SESSION_GAP_MS = 30L * 60L * 1_000L
 private val supportedLanguageCodes = LevyraLanguageCatalog.selectableLanguages.mapTo(mutableSetOf()) { it.code }
 
-internal object RemoteAnnouncementPromptPolicy {
-    const val MINIMUM_APP_LAUNCHES = 3
-    const val MINIMUM_RECENT_LISTENS = 3
-    const val MINIMUM_CURRENT_LISTEN_MS = 90_000L
-    const val PASSIVE_SNOOZE_MS = 3L * 24L * 60L * 60L * 1_000L
-    const val LATER_SNOOZE_MS = 10L * 24L * 60L * 60L * 1_000L
-
-    fun hasPositiveListeningMoment(recentListenCount: Int, listenedPlaybackMs: Long): Boolean {
-        return recentListenCount >= MINIMUM_RECENT_LISTENS ||
-            listenedPlaybackMs >= MINIMUM_CURRENT_LISTEN_MS
-    }
-
-    fun isEligible(
-        launchCount: Int,
-        hasPositiveListeningMoment: Boolean,
-        snoozedUntilMs: Long,
-        nowMs: Long
-    ): Boolean {
-        return launchCount >= MINIMUM_APP_LAUNCHES &&
-            hasPositiveListeningMoment &&
-            snoozedUntilMs <= nowMs
-    }
-}
+internal const val PASSIVE_SNOOZE_MS = 3L * 24L * 60L * 60L * 1_000L
+internal const val LATER_SNOOZE_MS = 10L * 24L * 60L * 60L * 1_000L
 
 internal enum class AnnouncementStyle {
     OPEN_SOURCE,
@@ -310,13 +285,8 @@ internal class RemoteAnnouncementRepository(context: Context) {
         readBundledCatalog()
     }
 
-    fun recordAppLaunch(nowMs: Long = System.currentTimeMillis()): Int =
-        if (BuildConfig.REMOTE_ANNOUNCEMENTS_ENABLED) store.recordAppLaunch(nowMs) else 0
-
     suspend fun resolveForPrompt(
         languageCode: String,
-        launchCount: Int,
-        hasPositiveListeningMoment: Boolean,
         versionCode: Int = BuildConfig.VERSION_CODE,
         nowMs: Long = System.currentTimeMillis()
     ): RemoteAnnouncementPresentation? = withContext(Dispatchers.IO) {
@@ -326,15 +296,8 @@ internal class RemoteAnnouncementRepository(context: Context) {
             versionCode = versionCode,
             nowMs = nowMs
         ) { announcement ->
-            val snoozeExpired = store.snoozedUntil(announcement.id) <= nowMs
-            val engagementEligible = announcement.style != AnnouncementStyle.OPEN_SOURCE ||
-                RemoteAnnouncementPromptPolicy.isEligible(
-                    launchCount = launchCount,
-                    hasPositiveListeningMoment = hasPositiveListeningMoment,
-                    snoozedUntilMs = 0L,
-                    nowMs = nowMs
-                )
-            snoozeExpired && engagementEligible
+            announcement.style != AnnouncementStyle.OPEN_SOURCE &&
+                store.snoozedUntil(announcement.id) <= nowMs
         }
     }
 
@@ -348,10 +311,12 @@ internal class RemoteAnnouncementRepository(context: Context) {
     }
 
     fun snooze(id: String, durationMs: Long, nowMs: Long = System.currentTimeMillis()) {
+        if (!BuildConfig.REMOTE_ANNOUNCEMENTS_ENABLED) return
         store.snooze(id, nowMs + durationMs.coerceAtLeast(0L))
     }
 
     fun markCompleted(id: String) {
+        if (!BuildConfig.REMOTE_ANNOUNCEMENTS_ENABLED) return
         store.markCompleted(id)
     }
 
@@ -454,21 +419,6 @@ private class RemoteAnnouncementStore(context: Context) {
 
     fun markSuccessfullyChecked(nowMs: Long) {
         preferences.edit().putLong(KEY_LAST_SUCCESSFUL_CHECK, nowMs).apply()
-    }
-
-    fun recordAppLaunch(nowMs: Long): Int = synchronized(stateLock) {
-        val current = preferences.getInt(KEY_APP_LAUNCH_COUNT, 0)
-        val lastRecordedAt = preferences.getLong(KEY_LAST_APP_LAUNCH_AT, 0L)
-        val elapsed = nowMs - lastRecordedAt
-        if (lastRecordedAt > 0L && elapsed in 0L until APP_LAUNCH_SESSION_GAP_MS) {
-            return@synchronized current
-        }
-        val next = (current + 1).coerceAtMost(MAX_RECORDED_LAUNCHES)
-        preferences.edit()
-            .putInt(KEY_APP_LAUNCH_COUNT, next)
-            .putLong(KEY_LAST_APP_LAUNCH_AT, nowMs)
-            .apply()
-        next
     }
 
     fun completedIds(): Set<String> = synchronized(stateLock) {

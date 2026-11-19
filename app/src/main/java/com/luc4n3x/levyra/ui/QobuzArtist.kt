@@ -114,7 +114,7 @@ internal fun QobuzArtistScreen(state: LevyraUiState, viewModel: LevyraViewModel,
             )
             profile?.topSongs?.firstOrNull()?.let { first ->
                 val catalogCopy = remember(strings) { strings.artistCatalogCopy() }
-                QobuzWhiteIcon(Icons.Rounded.Download, catalogCopy.downloadAllSongs, viewModel::downloadAllArtistSongs)
+                QobuzWhiteIcon(Icons.Rounded.Download, artistDownloadAllLabel(), viewModel::downloadAllArtistSongs)
                 QobuzWhiteIcon(Icons.Rounded.MoreVert, strings.more) { onTrackActions(first) }
             }
         }

@@ -28,7 +28,8 @@ class LevyraStarThanksStringsTest {
                     "If you already have, thank you so much. Happy listening.",
                 star = "Leave a star",
                 done = "I already did, thanks",
-                logoDescription = "Levyra logo"
+                logoDescription = "Levyra logo",
+                later = "Maybe later"
             ),
             starThanksCopy("en")
         )
@@ -40,7 +41,8 @@ class LevyraStarThanksStringsTest {
                     "Se l'hai già fatto, grazie di cuore. Buon ascolto.",
                 star = "Lascia una stella",
                 done = "L'ho già fatto, grazie",
-                logoDescription = "Logo di Levyra"
+                logoDescription = "Logo di Levyra",
+                later = "Più tardi"
             ),
             starThanksCopy("it")
         )
@@ -56,7 +58,7 @@ class LevyraStarThanksStringsTest {
         val english = starThanksCopy("en")
         dailyTop100Codes.forEach { code ->
             val copy = starThanksCopy(code)
-            listOf(copy.title, copy.body, copy.star, copy.done, copy.logoDescription).forEach {
+            listOf(copy.title, copy.body, copy.star, copy.done, copy.logoDescription, copy.later).forEach {
                 assertTrue(code, it.isNotBlank() && '"' !in it && '—' !in it && '’' !in it)
             }
             if (code != "en") {
