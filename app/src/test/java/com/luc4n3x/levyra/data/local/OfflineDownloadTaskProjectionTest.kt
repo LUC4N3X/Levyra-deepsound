@@ -14,7 +14,7 @@ class OfflineDownloadTaskProjectionTest {
             .toSet()
 
         assertEquals(
-            setOf("taskKey", "trackId", "title", "artist", "state", "progress", "error"),
+            setOf("taskKey", "trackId", "title", "artist", "state", "progress", "error", "ownership"),
             fields
         )
         assertFalse("payload" in fields)

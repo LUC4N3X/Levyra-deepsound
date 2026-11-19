@@ -56,7 +56,7 @@ class LevyraMotionTest {
     @Test
     fun `player morph springs are quick and settle without bounce`() {
         assertEquals(1f, LevyraMotion.playerExpand.dampingRatio, 0f)
-        assertEquals(400f, LevyraMotion.playerExpand.stiffness, 0f)
+        assertEquals(520f, LevyraMotion.playerExpand.stiffness, 0f)
         assertEquals(LevyraMotion.playerExpand.dampingRatio, LevyraMotion.playerCollapse.dampingRatio, 0f)
         assertEquals(LevyraMotion.playerExpand.stiffness, LevyraMotion.playerCollapse.stiffness, 0f)
         assertEquals(LevyraMotion.playerExpand.spec<Float>(), LevyraPlayerDesign.expandSpring<Float>())
@@ -98,7 +98,7 @@ class LevyraMotionTest {
     @Test
     fun `player design delegates to the shared motion language without changing values`() {
         assertEquals(0.64f, LevyraPlayerDesign.ExpressiveDamping, 0f)
-        assertEquals(360f, LevyraPlayerDesign.ExpressiveStiffness, 0f)
+        assertEquals(460f, LevyraPlayerDesign.ExpressiveStiffness, 0f)
         assertEquals(0.90f, LevyraPlayerDesign.SmoothDamping, 0f)
         assertEquals(540f, LevyraPlayerDesign.SmoothStiffness, 0f)
         assertEquals(0.58f, LevyraPlayerDesign.PressDamping, 0f)
