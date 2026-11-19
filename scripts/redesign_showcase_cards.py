@@ -301,15 +301,15 @@ def build_row1_cards():
     pair1.paste(bg1, (0, 0))
     pair1.paste(bg2, (CARD_W + GAP, 0))
 
-    # Phone 1: Zero Ads. Zero Tracking. descending from top-right at +12.5 deg
-    dev1, _, _, _ = create_phone_mockup("Screenshot_20261016_223653_LEVYRA.jpg", outer_w=725)
-    rot1 = rotate_device(dev1, 12.5)
-    place_rotated_device(pair1, rot1, pos=(215, -185), shadow_offset=(22, 40))
+    # Phone 1: Zero Ads. Zero Tracking. descending across the diptych seam at +10.5 deg
+    dev1, _, _, _ = create_phone_mockup("Screenshot_20261119_210350_Levyra.jpg", outer_w=705)
+    rot1 = rotate_device(dev1, 10.5)
+    place_rotated_device(pair1, rot1, pos=(232, -135), shadow_offset=(22, 40))
 
-    # Phone 2: Audio & Video in One Tap rising from bottom-right at -8.5 deg
-    dev2, _, _, _ = create_phone_mockup("Screenshot_20261016_135636_LEVYRA.jpg", outer_w=725)
+    # Phone 2: Audio & Video in One Tap rising cleanly from bottom-right at -8.5 deg
+    dev2, _, _, _ = create_phone_mockup("Screenshot_20261119_205616_Levyra.jpg", outer_w=705)
     rot2 = rotate_device(dev2, -8.5)
-    place_rotated_device(pair1, rot2, pos=(CARD_W + GAP + 195, 415), shadow_offset=(22, 40))
+    place_rotated_device(pair1, rot2, pos=(CARD_W + GAP + 165, 395), shadow_offset=(22, 40))
 
     c1 = pair1.crop((0, 0, CARD_W, CARD_H))
     c2 = pair1.crop((CARD_W + GAP, 0, pair_w, CARD_H))
@@ -410,16 +410,34 @@ UPRIGHT_CARD_SPECS = [
         "ON-DEVICE AUDIO ID",
         "Built-In Song ID",
         "Identify any song playing around you.",
-        "Screenshot_20261024_144737_Levyra.jpg",
+        "Screenshot_20261119_213954_Levyra.jpg",
         (241, 246, 254), (218, 230, 248), (184, 206, 242), (194, 210, 236),
         (37, 99, 235), (15, 23, 42), (56, 74, 106),
+    ),
+    (
+        "05b_explore_charts",
+        "GLOBAL & CITY CHARTS",
+        "Explore Charts",
+        "Top 100, city charts & moods.",
+        "Screenshot_20261119_214847_Levyra.jpg",
+        (239, 250, 246), (212, 239, 230), (174, 224, 208), (182, 222, 209),
+        (16, 122, 92), (15, 34, 29), (44, 92, 78),
     ),
     (
         "06_built_for_your_taste",
         "UNINTERRUPTED PLAYBACK",
         "Gapless & Crossfade",
         "10-band EQ, AutoEQ & pitch control.",
-        "Screenshot_20261024_203401_Levyra.jpg",
+        "Screenshot_20261119_205936_Levyra.jpg",
+        (250, 244, 236), (234, 220, 204), (218, 195, 170), (216, 199, 180),
+        (154, 84, 42), (28, 20, 16), (102, 74, 56),
+    ),
+    (
+        "06b_live_lyrics",
+        "APPLE-STYLE LYRICS",
+        "Live Lyrics",
+        "Word-by-word sync & translation.",
+        "Screenshot_20261119_214641_Levyra.jpg",
         (250, 244, 236), (234, 220, 204), (218, 195, 170), (216, 199, 180),
         (154, 84, 42), (28, 20, 16), (102, 74, 56),
     ),
@@ -437,7 +455,7 @@ UPRIGHT_CARD_SPECS = [
         "VERIFIED HIGH-BITRATE",
         "Verified 320 kbps & FLAC",
         "Header-checked streams & Enhanced Audio.",
-        "Screenshot_20261024_150113_Levyra.jpg",
+        "Screenshot_20261119_205957_Levyra.jpg",
         (237, 243, 250), (212, 225, 239), (178, 200, 226), (188, 205, 224),
         (42, 82, 142), (15, 23, 42), (52, 70, 98),
     ),
@@ -495,7 +513,7 @@ UPRIGHT_CARD_SPECS = [
         "LIVE WORLD BROADCASTS",
         "Global Live Radio",
         "Stream FM & internet stations worldwide.",
-        "Screenshot_20261118_195057_Levyra.jpg",
+        "Screenshot_20261119_213832_Levyra.jpg",
         (253, 241, 243), (242, 216, 221), (228, 186, 195), (226, 196, 203),
         (178, 42, 68), (38, 16, 22), (116, 52, 66),
     ),

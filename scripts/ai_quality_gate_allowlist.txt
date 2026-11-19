@@ -81,7 +81,9 @@ docs/assets/showcase/editorial-cards/04_midnight_obsidian.webp
 docs/assets/showcase/editorial-cards/03_sing_along.webp
 docs/assets/showcase/editorial-cards/04_open_the_album.webp
 docs/assets/showcase/editorial-cards/05_fresh_currents.webp
+docs/assets/showcase/editorial-cards/05b_explore_charts.webp
 docs/assets/showcase/editorial-cards/06_built_for_your_taste.webp
+docs/assets/showcase/editorial-cards/06b_live_lyrics.webp
 docs/assets/showcase/editorial-cards/07_every_genre.webp
 docs/assets/showcase/editorial-cards/08_acoustic_precision.webp
 docs/assets/showcase/editorial-cards/09_keep_it_personal.webp
