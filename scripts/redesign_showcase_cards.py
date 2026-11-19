@@ -279,34 +279,40 @@ def finalize_card(card, border_rgb):
 # ROW 1 — DYNAMIC EDITORIAL DIPTYCH CUTS (Cards 01-04 ONLY)
 # ==============================================================================
 def build_row1_cards():
+    pair_w = CARD_W * 2 + GAP
+    pair1 = Image.new("RGBA", (pair_w, CARD_H), (0, 0, 0, 0))
+
     # Card 01 Surface: Periwinkle Cobalt Mist
-    c1 = create_editorial_surface(
+    bg1 = create_editorial_surface(
         CARD_W, CARD_H,
         top_rgb=(238, 243, 254),
         bot_rgb=(214, 225, 248),
         wash_rgb=(174, 195, 245),
-        wash_pos=(0.55, 0.58),
+        wash_pos=(0.55, 0.45),
     )
     # Card 02 Surface: Warm Rose-Orchid Blush
-    c2 = create_editorial_surface(
+    bg2 = create_editorial_surface(
         CARD_W, CARD_H,
         top_rgb=(252, 241, 246),
         bot_rgb=(238, 218, 230),
         wash_rgb=(226, 185, 210),
-        wash_pos=(0.50, 0.62),
+        wash_pos=(0.50, 0.65),
     )
+    pair1.paste(bg1, (0, 0))
+    pair1.paste(bg2, (CARD_W + GAP, 0))
 
-    # Phone 1: Just press play (Home) rising cleanly inside Card 01 at -5.5 deg
-    dev1, _, _, _ = create_phone_mockup("Screenshot_20261119_210350_Levyra.jpg", outer_w=680)
-    rot1 = rotate_device(dev1, -5.5)
-    x1 = (CARD_W - rot1.width) // 2 + 10
-    place_rotated_device(c1, rot1, pos=(x1, 395), shadow_offset=(20, 38))
+    # Phone 1: Zero Ads. Zero Tracking. descending across the diptych seam at +10.5 deg
+    dev1, _, _, _ = create_phone_mockup("Screenshot_20261119_210350_Levyra.jpg", outer_w=705)
+    rot1 = rotate_device(dev1, 10.5)
+    place_rotated_device(pair1, rot1, pos=(232, -135), shadow_offset=(22, 40))
 
-    # Phone 2: Stay with the song (Now Playing) mirrored cleanly inside Card 02 at +5.5 deg
-    dev2, _, _, _ = create_phone_mockup("Screenshot_20261119_205616_Levyra.jpg", outer_w=680)
-    rot2 = rotate_device(dev2, 5.5)
-    x2 = (CARD_W - rot2.width) // 2 - 10
-    place_rotated_device(c2, rot2, pos=(x2, 395), shadow_offset=(-20, 38))
+    # Phone 2: Audio & Video in One Tap rising cleanly from bottom-right at -8.5 deg
+    dev2, _, _, _ = create_phone_mockup("Screenshot_20261119_205616_Levyra.jpg", outer_w=705)
+    rot2 = rotate_device(dev2, -8.5)
+    place_rotated_device(pair1, rot2, pos=(CARD_W + GAP + 165, 395), shadow_offset=(22, 40))
+
+    c1 = pair1.crop((0, 0, CARD_W, CARD_H))
+    c2 = pair1.crop((CARD_W + GAP, 0, pair_w, CARD_H))
 
     draw_diptych_editorial_block(
         c1,
@@ -314,7 +320,7 @@ def build_row1_cards():
         title_lines=["Zero Ads.", "Zero Tracking."],
         subtitle="Play everything in total privacy.",
         x=68,
-        y=68,
+        y=1430,
         align="left",
         eyebrow_fill=(45, 78, 178, 255),
         title_fill=(17, 24, 39, 255),

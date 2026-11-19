@@ -55,20 +55,14 @@ function phoneGeometry(outerWidth, angle, x, y) {
     - Math.floor(w / 2 - (w * Math.abs(Math.cos(radians)) + h * Math.abs(Math.sin(radians))) / 2);
   const rotatedHeight = Math.ceil(h / 2 + (h * Math.abs(Math.cos(radians)) + w * Math.abs(Math.sin(radians))) / 2)
     - Math.floor(h / 2 - (h * Math.abs(Math.cos(radians)) + w * Math.abs(Math.sin(radians))) / 2);
-  const left = x === 'right'
-    ? 840 - rotatedWidth
-    : x === 'center+10'
-      ? Math.floor((width - rotatedWidth) / 2) + 10
-      : x === 'center-10'
-        ? Math.floor((width - rotatedWidth) / 2) - 10
-        : x;
+  const left = x === 'right' ? 840 - rotatedWidth : x;
   return `<g transform="translate(${left + rotatedWidth / 2} ${y + rotatedHeight / 2}) rotate(${-angle}) translate(${-w / 2} ${-h / 2})"><rect x="37" y="37" width="${outerWidth - 3}" height="${outerHeight - 3}" rx="33" fill="white"/></g>`;
 }
 
 function heroShape(index) {
   const paths = [
-    phoneGeometry(680, -5.5, 'center+10', 395),
-    phoneGeometry(680, 5.5, 'center-10', 395),
+    phoneGeometry(705, 10.5, 232, -135),
+    phoneGeometry(705, 10.5, 232 - 932, -135) + phoneGeometry(705, -8.5, 165, 395),
     phoneGeometry(720, -8, 105, 395),
     phoneGeometry(720, 8, 'right', 395),
   ];
@@ -80,7 +74,7 @@ async function extractPhone(index, spec) {
   const metadata = await sharp(input).metadata();
   if (metadata.width !== width || metadata.height !== height) throw new Error(`Unexpected source dimensions: ${spec[0]}`);
   if (index < 4) {
-    const shape = heroShape(index);
+    const shape = index === 1 ? phoneGeometry(705, -8.5, 165, 395) : heroShape(index);
     const cutout = await sharp(input).composite([{ input: svg(shape), blend: 'dest-in' }]).png().toBuffer();
     return sharp(cutout).trim({ threshold: 1 }).png().toBuffer();
   }
@@ -155,14 +149,14 @@ async function cardTextLayer(index, spec, p) {
   const right = index === 1 || index === 3;
   const x = index >= 4 ? 450 : right ? 832 : 68;
   const anchor = index >= 4 ? 'middle' : right ? 'end' : 'start';
-  const y = index < 4 ? 151 : 154;
+  const y = index === 0 ? 1450 : index < 4 ? 151 : 154;
   let titleSize = index < 4 ? 82 : 66;
   if (index >= 4) {
     const probe = await sharp(svg(text(spec[2][0], 450, 100, titleSize, p.ink, 600))).trim().toBuffer({ resolveWithObject: true });
     if (probe.info.width > 780) titleSize = Math.floor(titleSize * 780 / probe.info.width);
   }
   const titles = spec[2].map((line, i) => text(line, x, y + i * 100, titleSize, p.ink, 600, anchor));
-  const subtitleY = index < 4 ? 328 : 223;
+  const subtitleY = index === 0 ? 1644 : index < 4 ? 328 : 223;
   const subtitles = spec[3].map((line, i) => text(line, x, subtitleY + i * 42, 32, p.muted, 400, anchor));
   return { input: svg(titles.join('') + subtitles.join('')) };
 }
