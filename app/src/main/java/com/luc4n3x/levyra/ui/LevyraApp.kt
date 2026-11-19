@@ -14916,7 +14916,7 @@ private fun SearchScreen(
                             onAddToQueue = viewModel::addToQueue,
                             onDownload = viewModel::exportTrack,
                             onArtist = viewModel::openArtist,
-                            refined = levyraBrowse != null && !LevyraIsDefaultSkin
+                            refined = LevyraIsDefaultSkin || levyraBrowse != null
                         )
                     }
                 }
@@ -24992,7 +24992,7 @@ private fun ExploreScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Transparent)
+            .background(if (LevyraIsDefaultSkin) LevyraInk else Color.Transparent)
     ) {
         if (LevyraIsAtelier) {
             AtelierExploreEntry(state, viewModel, freshTracks, listState, exploreBottomInset, editorialContent)
@@ -25011,11 +25011,14 @@ private fun ExploreScreen(
                 editorial = editorialContent
             ) { addToPlaylistTarget = it }
         } else Box(Modifier.fillMaxSize()) {
-            ExploreEditorialBackdrop(editorialContent != null, listState)
+            val exploreGlass = rememberGlassBackdropState(LevyraIsDefaultSkin && rememberGlassBlurAllowed())
             LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize().statusBarsPadding(),
-                contentPadding = PaddingValues(top = 14.dp, bottom = exploreBottomInset),
+                modifier = if (LevyraIsDefaultSkin) Modifier.fillMaxSize().glassBackdropSource(exploreGlass) else Modifier.fillMaxSize().statusBarsPadding(),
+                contentPadding = PaddingValues(
+                    top = 14.dp + if (LevyraIsDefaultSkin) WindowInsets.statusBars.asPaddingValues().calculateTopPadding() else 0.dp,
+                    bottom = exploreBottomInset
+                ),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 if (editorialContent != null) item(key = "explore-editorial-title", contentType = "explore-editorial-title") {
@@ -25052,6 +25055,11 @@ private fun ExploreScreen(
                         onPlayTrack = onPlayFreshTrack,
                         trackActions = freshTrackActions
                     )
+                }
+            }
+            if (LevyraIsDefaultSkin) com.luc4n3x.levyra.ui.components.LevyraScrolledTopBar(exploreGlass, listState, strings.exploreTitle, androidx.compose.material.icons.Icons.Rounded.Explore, com.luc4n3x.levyra.ui.components.LevyraPastelLavender) {
+                androidx.compose.material3.IconButton(onClick = viewModel::openSearch) {
+                    androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Search, contentDescription = strings.search, tint = MaterialTheme.colorScheme.onSurface)
                 }
             }
         }

@@ -28,10 +28,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.graphics.drawscope.translate
-import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.graphics.drawOutline
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -96,7 +94,6 @@ internal val LevyraUtilityStyleActive: Boolean
     get() = !(LevyraIsAtelier || LevyraIsMono || LevyraIsAppleMusic || LevyraIsYouTubeMusic || LevyraIsQobuz || LevyraIsSpotify ||
         LevyraIsTorque || LevyraIsIvory || LevyraIsNocturne || LevyraIsPrism)
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun LevyraUtilityBackdrop(
     modifier: Modifier = Modifier,
@@ -104,8 +101,10 @@ internal fun LevyraUtilityBackdrop(
     strength: Float = 0.5f,
     listState: LazyListState? = null
 ) {
-    val bloom = MaterialShapes.Cookie9Sided.toShape()
-    val fadeDistance = with(LocalDensity.current) { LevyraBackdropFadeDistance.toPx() }
+    val tint = lerp(accent, MaterialTheme.colorScheme.outline, LevyraBackdropMute)
+    val density = LocalDensity.current
+    val fadeDistance = with(density) { LevyraBackdropFadeDistance.toPx() }
+    val washHeight = with(density) { LevyraBackdropWashHeight.toPx() }
     val fade = remember(listState, fadeDistance) { listState?.let { LevyraBackdropScrollFade(it, fadeDistance) } }
     Box(
         modifier = modifier
@@ -116,35 +115,27 @@ internal fun LevyraUtilityBackdrop(
                 alpha = fade?.visibility() ?: 1f
             }
             .drawWithCache {
-                val glow = Brush.radialGradient(
-                    listOf(accent.copy(alpha = 0.34f * strength), accent.copy(alpha = 0.10f * strength), Color.Transparent),
-                    center = Offset(size.width * 0.12f, 0f),
-                    radius = size.width * 1.3f
-                )
-                val bloomSize = Size(size.width * LevyraBackdropBloomScale, size.width * LevyraBackdropBloomScale)
-                val bloomOutline = bloom.createOutline(bloomSize, layoutDirection, this)
-                val bloomBrush = Brush.radialGradient(
-                    0f to accent.copy(alpha = 0.15f * strength),
-                    0.55f to accent.copy(alpha = 0.06f * strength),
+                val wash = Brush.verticalGradient(
+                    0f to tint.copy(alpha = 0.30f * strength),
+                    0.5f to tint.copy(alpha = 0.10f * strength),
                     1f to Color.Transparent,
-                    center = Offset(bloomSize.width * 0.42f, bloomSize.height * 0.6f),
-                    radius = bloomSize.width * 0.62f
+                    endY = washHeight
                 )
-                val bloomOrigin = Offset(size.width - bloomSize.width * 0.62f, -bloomSize.height * 0.42f)
+                val light = Brush.radialGradient(
+                    listOf(tint.copy(alpha = 0.34f * strength), Color.Transparent),
+                    center = if (layoutDirection == LayoutDirection.Rtl) Offset(size.width, 0f) else Offset.Zero,
+                    radius = washHeight * 1.1f
+                )
                 onDrawBehind {
-                    drawRect(glow)
-                    translate(bloomOrigin.x, bloomOrigin.y) {
-                        rotate(LevyraBackdropBloomTurn, pivot = Offset(bloomSize.width / 2f, bloomSize.height / 2f)) {
-                            drawOutline(bloomOutline, bloomBrush)
-                        }
-                    }
+                    drawRect(wash, size = size.copy(height = washHeight))
+                    drawRect(light)
                 }
             }
     )
 }
 
-private const val LevyraBackdropBloomScale = 0.92f
-private const val LevyraBackdropBloomTurn = 18f
+private const val LevyraBackdropMute = 0.45f
+private val LevyraBackdropWashHeight = 380.dp
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable

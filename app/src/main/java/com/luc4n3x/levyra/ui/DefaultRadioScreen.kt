@@ -30,6 +30,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Language
@@ -47,6 +48,14 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialShapes
@@ -150,29 +159,29 @@ internal fun DefaultRadioScreen(
         editorOpen = true
     }
     val listState = rememberLazyListState()
-    val scrolled by remember(listState) { derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0 } }
-    val scrimAlpha by animateFloatAsState(if (scrolled) 1f else 0f, label = "default-radio-status-scrim")
+    val radioGlass = rememberGlassBackdropState(rememberGlassBlurAllowed())
     Box(Modifier.fillMaxSize().background(LevyraBlack)) {
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().glassBackdropSource(radioGlass),
             contentPadding = PaddingValues(bottom = 190.dp)
         ) {
-            item(key = "default-radio-stage", contentType = "default-radio-stage") {
-                DefaultRadioStage(
-                    title = title,
-                    station = onAir.takeIf { state.query.isBlank() },
-                    tuning = tuning,
-                    place = selectedCountryLabel(state, radioStrings),
-                    live = radioStrings.live,
-                    strings = strings,
-                    addLabel = libraryCopy.add,
-                    onAdd = { openEditor(null) },
-                    onSurprise = { state.stations.randomOrNull()?.let(onPlay) }
-                )
+            item(key = "default-radio-masthead", contentType = "default-radio-masthead") {
+                DefaultRadioMasthead(title, libraryCopy.add) { openEditor(null) }
             }
             item(key = "default-radio-search", contentType = "default-radio-search") {
                 DefaultRadioSearchField(state.query, radioStrings.searchHint, strings.clear, viewModel::setQuery)
+            }
+            onAir?.takeIf { state.query.isBlank() }?.let { station ->
+                item(key = "default-radio-on-air", contentType = "default-radio-on-air") { DefaultRadioOnAirCard(station, tuning, strings, radioStrings.live) }
+            }
+            if (state.query.isBlank()) {
+                item(key = "default-radio-dial", contentType = "default-radio-dial") {
+                    val dialStations = remember(state.favorites, state.recent, state.stations) {
+                        (state.favorites + state.recent + state.stations).distinctBy { it.uuid }.take(DefaultRadioDialLimit)
+                    }
+                    DefaultRadioDial(dialStations, currentStationId.takeIf { isPlaying }, onPlay)
+                }
             }
             item(key = "default-radio-genres", contentType = "default-radio-genres") {
                 DefaultRadioGenres(state.category, radioStrings, viewModel::selectCategory)
@@ -182,7 +191,7 @@ internal fun DefaultRadioScreen(
             }
             if (state.query.isBlank()) {
                 defaultRadioPresets(strings.favoritesPlain, strings.removeFromFavorites, state.favorites, tuning)
-                defaultRadioRecent(strings.recent, state.recent, tuning)
+                defaultRadioRecent(strings.recent, state.recent, strings, tuning)
                 defaultRadioCustomStations(state.customStations, libraryCopy.custom, libraryCopy.edit, strings, tuning, openEditor) { deletingId = it }
             }
             defaultRadioChart(
@@ -202,13 +211,9 @@ internal fun DefaultRadioScreen(
             ) { openEditor(null) }
             defaultRadioFooter(state, radioStrings, libraryCopy.partialSearch, libraryCopy.error(CustomRadioError.Limit), strings.exploreSamplesRetry, viewModel::retry, viewModel::loadMore)
         }
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .windowInsetsTopHeight(WindowInsets.statusBars)
-                .graphicsLayer { alpha = scrimAlpha }
-                .background(Brush.verticalGradient(listOf(LevyraBlack.copy(alpha = 0.94f), LevyraBlack.copy(alpha = 0.6f))))
-        )
+        com.luc4n3x.levyra.ui.components.LevyraScrolledTopBar(radioGlass, listState, title, Icons.Rounded.Radio, com.luc4n3x.levyra.ui.components.LevyraPastelAmber) {
+            IconButton(onClick = { openEditor(null) }) { Icon(Icons.Rounded.Add, contentDescription = libraryCopy.add, tint = MaterialTheme.colorScheme.onSurface) }
+        }
     }
 
     if (editorOpen) CustomRadioDialog(
@@ -274,158 +279,127 @@ private fun defaultRadioOnAir(state: LiveRadioUiState, currentStationId: String?
         ?: state.stations.firstOrNull()
 
 @Composable
-private fun DefaultRadioStage(
-    title: String,
-    station: RadioStation?,
-    tuning: DefaultRadioTuning,
-    place: String,
-    live: String,
-    strings: LevyraStrings,
-    addLabel: String,
-    onAdd: () -> Unit,
-    onSurprise: () -> Unit
-) {
-    val colors = MaterialTheme.colorScheme
-    val fallback = remember(colors.primary, colors.tertiary) { ArtworkPalette(colors.primary.toArgb(), colors.tertiary.toArgb()) }
-    val palette by rememberArtworkPalette(
-        paletteKey = station?.let { "radio-${it.uuid}" }.orEmpty(),
-        artworkUrl = station?.safeFaviconUrl.orEmpty(),
-        fallback = fallback,
-        retainPreviousUntilLoaded = true
-    )
-    val tone = Color(palette.start)
-    val washTone = com.luc4n3x.levyra.ui.components.levyraUtilityColors(com.luc4n3x.levyra.ui.components.LevyraUtilitySeed).accent
-    val wash = remember(washTone) { Brush.verticalGradient(listOf(washTone.copy(alpha = 0.18f), Color.Transparent)) }
-    Column(Modifier.fillMaxWidth().background(wash).statusBarsPadding()) {
-        DefaultRadioMasthead(title, place, live, addLabel, onAdd)
-        if (station != null) DefaultRadioOnAir(station, tone, tuning, live, strings, onSurprise)
-    }
-}
-
-@Composable
-private fun DefaultRadioMasthead(title: String, place: String, live: String, addLabel: String, onAdd: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
+private fun DefaultRadioMasthead(title: String, addLabel: String, onAdd: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().padding(start = DefaultRadioGutter, end = DefaultRadioGutter, top = 12.dp),
+        Modifier.fillMaxWidth().statusBarsPadding().padding(start = DefaultRadioGutter, end = 8.dp, top = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(Modifier.weight(1f)) {
-            Text(
-                listOf(live, place).filter(String::isNotBlank).joinToString("  ·  ").uppercase(LocalConfiguration.current.locales[0]),
-                color = colors.onSurfaceVariant,
-                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.6.sp),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                title,
-                color = colors.onSurface,
-                style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Black, letterSpacing = (-1.5).sp),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.semantics { heading() }
-            )
-        }
-        DefaultRadioHeaderAction(Icons.Rounded.Add, addLabel, onAdd)
+        Text(
+            title,
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f).semantics { heading() }
+        )
+        IconButton(onClick = onAdd) { Icon(Icons.Rounded.Add, contentDescription = addLabel, tint = MaterialTheme.colorScheme.onSurface) }
     }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun DefaultRadioOnAir(station: RadioStation, tone: Color, tuning: DefaultRadioTuning, live: String, strings: LevyraStrings, onSurprise: () -> Unit) {
+private fun DefaultRadioOnAirCard(station: RadioStation, tuning: DefaultRadioTuning, strings: LevyraStrings, liveLabel: String) {
     val colors = MaterialTheme.colorScheme
+    val action = com.luc4n3x.levyra.ui.components.levyraUtilityColors(com.luc4n3x.levyra.ui.components.LevyraUtilitySeed)
     val playing = tuning.isLive(station)
-    Column(
+    Box(Modifier.fillMaxWidth()) {
+        DefaultRadioOnAirGlow(station)
+        Column(
+            Modifier.fillMaxWidth().padding(horizontal = DefaultRadioGutter).padding(top = 12.dp, bottom = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            DefaultRadioTransmitter(station, playing, action.accent)
+            DefaultRadioOnAirLamp(playing, if (playing) liveLabel else strings.continueListening)
+            Text(
+                station.name,
+                color = colors.onSurface,
+                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            RadioStationDetail(station)
+            DefaultRadioOnAirControls(station, tuning, strings, playing, action)
+        }
+    }
+}
+
+@Composable
+private fun androidx.compose.foundation.layout.BoxScope.DefaultRadioOnAirGlow(station: RadioStation) {
+    val blur = com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities.current.heavyBlur && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
+    if (!blur || station.safeFaviconUrl.isBlank()) return
+    Box(
         Modifier
-            .fillMaxWidth()
-            .padding(horizontal = DefaultRadioGutter)
-            .padding(top = 20.dp, bottom = 8.dp)
-            .clip(RoundedCornerShape(32.dp))
-            .background(lerp(colors.surfaceContainer, tone, 0.14f))
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Box(
-                Modifier.size(104.dp).clip(MaterialShapes.Cookie9Sided.toShape()).background(lerp(tone, colors.surfaceContainerHighest, 0.45f)),
-                contentAlignment = Alignment.Center
-            ) { RadioArtwork(station, 68.dp, RoundedCornerShape(20.dp)) }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                DefaultRadioOnAirTag(playing, if (playing) strings.nowPlaying else live, lerp(tone, colors.onSurface, 0.35f))
-                Text(
-                    station.name,
-                    color = colors.onSurface,
-                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis
+            .matchParentSize()
+            .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
+            .drawWithContent {
+                drawContent()
+                drawRect(
+                    Brush.verticalGradient(0f to Color.Transparent, 0.2f to Color.Black, 0.6f to Color.Black, 1f to Color.Transparent),
+                    blendMode = androidx.compose.ui.graphics.BlendMode.DstIn
                 )
             }
-        }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            DefaultRadioSignalBars(station.bitrateKbps, tone)
-            RadioStationDetail(station, maxLines = 2)
-        }
-        DefaultRadioAirwave(tone, playing, Modifier.fillMaxWidth().height(28.dp))
-        DefaultRadioOnAirActions(station, tuning, strings, onSurprise)
+    ) {
+        coil3.compose.AsyncImage(
+            model = station.safeFaviconUrl,
+            contentDescription = null,
+            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+            modifier = Modifier.fillMaxSize().graphicsLayer { alpha = 0.38f }.blur(90.dp, androidx.compose.ui.draw.BlurredEdgeTreatment.Rectangle)
+        )
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun DefaultRadioOnAirActions(station: RadioStation, tuning: DefaultRadioTuning, strings: LevyraStrings, onSurprise: () -> Unit) {
+private fun DefaultRadioOnAirControls(
+    station: RadioStation,
+    tuning: DefaultRadioTuning,
+    strings: LevyraStrings,
+    playing: Boolean,
+    action: com.luc4n3x.levyra.ui.components.LevyraUtilityColors
+) {
     val colors = MaterialTheme.colorScheme
-    val playing = tuning.isLive(station)
     val favorite = tuning.isFavorite(station)
-    val actionTone = com.luc4n3x.levyra.ui.components.levyraUtilityColors(com.luc4n3x.levyra.ui.components.LevyraUtilitySeed)
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        DefaultRadioGroupedAction(
-            icon = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-            label = if (playing) strings.pause else strings.play,
-            container = actionTone.accent,
-            content = actionTone.onAccent,
-            startCorner = 28.dp,
-            endCorner = 8.dp,
-            modifier = Modifier.weight(1f),
-            text = if (playing) strings.pause else strings.play
-        ) { tuning.onPlay(station) }
-        DefaultRadioGroupedAction(
-            icon = if (favorite) Icons.Rounded.Star else Icons.Rounded.StarBorder,
-            label = if (favorite) strings.removeFromFavorites else strings.addToFavorites,
-            container = if (favorite) actionTone.container else colors.surfaceContainerHighest,
-            content = if (favorite) actionTone.onContainer else colors.onSurface,
-            startCorner = 8.dp,
-            endCorner = 8.dp
-        ) { tuning.onFavorite(station) }
-        DefaultRadioGroupedAction(
-            icon = Icons.Rounded.Shuffle,
-            label = strings.shuffle,
-            container = colors.surfaceContainerHighest,
-            content = colors.onSurface,
-            startCorner = 8.dp,
-            endCorner = 28.dp,
-            onClick = onSurprise
-        )
+    val playCorner by animateDpAsState(
+        if (playing) DefaultRadioHeroPlay / 2 else 24.dp,
+        animationSpec = if (LocalAnimationsEnabled.current) androidx.compose.animation.core.spring() else androidx.compose.animation.core.snap(),
+        label = "default-radio-hero-play"
+    )
+    Row(
+        Modifier.padding(top = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        FilledTonalIconButton(
+            onClick = { tuning.onFavorite(station) },
+            colors = IconButtonDefaults.filledTonalIconButtonColors(colors.surfaceContainerHighest, if (favorite) action.accent else colors.onSurface),
+            modifier = Modifier.size(52.dp)
+        ) {
+            Icon(
+                if (favorite) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+                contentDescription = if (favorite) strings.removeFromFavorites else strings.addToFavorites
+            )
+        }
+        FilledIconButton(
+            onClick = { tuning.onPlay(station) },
+            shapes = IconButtonDefaults.shapes(shape = RoundedCornerShape(playCorner), pressedShape = RoundedCornerShape(18.dp)),
+            colors = IconButtonDefaults.filledIconButtonColors(action.accent, action.onAccent),
+            modifier = Modifier.size(DefaultRadioHeroPlay)
+        ) {
+            Icon(
+                if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                contentDescription = if (playing) strings.pause else strings.play,
+                modifier = Modifier.size(36.dp)
+            )
+        }
+        Spacer(Modifier.size(52.dp))
     }
 }
 
-@Composable
-private fun DefaultRadioOnAirTag(playing: Boolean, label: String, liveTone: Color) {
-    val tint = if (playing) liveTone else RadioLiveRed
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (playing) {
-            RadioEqualizer(tint)
-        } else {
-            val pulse = rememberRadioPulse()
-            Box(Modifier.size(8.dp).graphicsLayer { alpha = pulse() }.background(tint, CircleShape))
-        }
-        Text(
-            label.uppercase(LocalConfiguration.current.locales[0]),
-            color = tint,
-            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Black, letterSpacing = 1.6.sp),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
-}
+private val DefaultRadioHeroArtwork = 104.dp
+private const val DefaultRadioDialLimit = 24
+private val DefaultRadioHeroPlay = 76.dp
 
 @Composable
 private fun DefaultRadioSearchField(query: String, hint: String, clearLabel: String, onQueryChange: (String) -> Unit) {
@@ -459,13 +433,8 @@ private fun DefaultRadioSearchField(query: String, hint: String, clearLabel: Str
 @Composable
 private fun DefaultRadioGenres(selected: RadioCategory, radioStrings: LevyraLiveRadioStrings, onSelect: (RadioCategory) -> Unit) {
     Column {
-        DefaultRadioSectionTitle(radioStrings.categories, Icons.Rounded.Category, com.luc4n3x.levyra.ui.components.LevyraPastelPeriwinkle)
-        DefaultRadioCategoryGrid(
-            selected = selected,
-            label = radioStrings::category,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = DefaultRadioGutter),
-            onSelect = onSelect
-        )
+        DefaultRadioSectionTitle(radioStrings.categories)
+        DefaultRadioCategoryChips(selected, radioStrings::category, PaddingValues(horizontal = DefaultRadioGutter), onSelect)
     }
 }
 
@@ -494,14 +463,14 @@ private fun DefaultRadioDirectoryChip(icon: ImageVector, label: String, modifier
 }
 
 @Composable
-private fun DefaultRadioSectionTitle(title: String, icon: ImageVector, seed: Color) {
-    com.luc4n3x.levyra.ui.components.LevyraSectionHeader(
-        title = title,
-        modifier = Modifier.padding(start = DefaultRadioGutter, end = DefaultRadioGutter, top = 28.dp, bottom = 14.dp),
-        titleColor = MaterialTheme.colorScheme.onSurface,
-        subtitleColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        leadingIcon = icon,
-        leadingSeed = seed
+private fun DefaultRadioSectionTitle(title: String) {
+    Text(
+        title,
+        color = MaterialTheme.colorScheme.primary,
+        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.padding(start = DefaultRadioGutter, end = DefaultRadioGutter, top = 28.dp, bottom = 12.dp).semantics { heading() }
     )
 }
 
@@ -509,7 +478,7 @@ private fun LazyListScope.defaultRadioPresets(title: String, removeLabel: String
     if (stations.isEmpty()) return
     item(key = "default-radio-presets", contentType = "default-radio-presets") {
         Column {
-            DefaultRadioSectionTitle(title, Icons.Rounded.Star, com.luc4n3x.levyra.ui.components.LevyraPastelAmber)
+            DefaultRadioSectionTitle(title)
             LazyRow(contentPadding = PaddingValues(horizontal = DefaultRadioGutter), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 itemsIndexed(stations, key = { _, station -> "preset-${station.uuid}" }, contentType = { _, _ -> "default-radio-preset" }) { index, station ->
                     DefaultRadioPreset(index + 1, station, tuning.isLive(station), removeLabel, { tuning.onFavorite(station) }) { tuning.onPlay(station) }
@@ -519,45 +488,16 @@ private fun LazyListScope.defaultRadioPresets(title: String, removeLabel: String
     }
 }
 
-private fun LazyListScope.defaultRadioRecent(title: String, stations: List<RadioStation>, tuning: DefaultRadioTuning) {
+private fun LazyListScope.defaultRadioRecent(title: String, stations: List<RadioStation>, strings: LevyraStrings, tuning: DefaultRadioTuning) {
     if (stations.isEmpty()) return
-    item(key = "default-radio-recent", contentType = "default-radio-recent") {
-        Column {
-            DefaultRadioSectionTitle(title, Icons.Rounded.History, com.luc4n3x.levyra.ui.components.LevyraPastelLavender)
-            LazyRow(contentPadding = PaddingValues(horizontal = DefaultRadioGutter), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(stations, key = { "recent-${it.uuid}" }, contentType = { "default-radio-recent-tile" }) { station ->
-                    DefaultRadioRecentTile(station, tuning.isLive(station)) { tuning.onPlay(station) }
-                }
-            }
-        }
+    val visible = stations.take(DefaultRadioRecentLimit)
+    item(key = "default-radio-recent-title", contentType = "default-radio-title") { DefaultRadioSectionTitle(title) }
+    itemsIndexed(visible, key = { _, station -> "default-radio-recent-${station.uuid}" }, contentType = { _, _ -> "default-radio-row" }) { index, station ->
+        DefaultRadioChartRow(null, station, tuning, strings, defaultRadioSegmentShape(index == 0, index == visible.lastIndex), actions = null)
     }
 }
 
-@Composable
-private fun DefaultRadioRecentTile(station: RadioStation, playing: Boolean, onClick: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    Row(
-        Modifier
-            .width(300.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(if (playing) colors.primaryContainer else colors.surfaceContainer)
-            .levyraPressable(onClick = onClick, role = Role.Button, pressedScale = LevyraPressScale.Control, onClickLabel = station.name)
-            .semantics { selected = playing }
-            .padding(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        RadioArtwork(station, 56.dp, RoundedCornerShape(14.dp))
-        Column(Modifier.weight(1f)) {
-            Text(
-                station.name, color = if (playing) colors.onPrimaryContainer else colors.onSurface, fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis
-            )
-            DefaultRadioSignalBars(station.bitrateKbps, if (playing) colors.onPrimaryContainer else colors.onSurfaceVariant, Modifier.padding(top = 6.dp))
-        }
-        if (playing) RadioEqualizer(colors.onPrimaryContainer, Modifier.padding(end = 8.dp))
-    }
-}
+private const val DefaultRadioRecentLimit = 4
 
 private fun LazyListScope.defaultRadioCustomStations(
     stations: List<RadioStation>,
@@ -569,7 +509,7 @@ private fun LazyListScope.defaultRadioCustomStations(
     onDelete: (String) -> Unit
 ) {
     if (stations.isEmpty()) return
-    item(key = "default-radio-custom-title", contentType = "default-radio-title") { DefaultRadioSectionTitle(title, Icons.Rounded.Podcasts, com.luc4n3x.levyra.ui.components.LevyraPastelRose) }
+    item(key = "default-radio-custom-title", contentType = "default-radio-title") { DefaultRadioSectionTitle(title) }
     itemsIndexed(stations, key = { _, station -> "default-radio-custom-${station.uuid}" }, contentType = { _, _ -> "default-radio-row" }) { index, station ->
         DefaultRadioChartRow(null, station, tuning, strings, defaultRadioSegmentShape(index == 0, index == stations.lastIndex)) {
             DefaultRadioCustomMenu(editLabel, strings.delete, onEdit = { onEdit(station.uuid) }, onDelete = { onDelete(station.uuid) })
@@ -638,15 +578,9 @@ private fun LazyListScope.defaultRadioChart(
 @Composable
 private fun DefaultRadioChartHeader(title: String, directory: DefaultRadioDirectory) {
     val colors = MaterialTheme.colorScheme
-    Column(Modifier.fillMaxWidth().padding(start = DefaultRadioGutter, end = DefaultRadioGutter, top = 32.dp, bottom = 16.dp)) {
-        com.luc4n3x.levyra.ui.components.LevyraSectionHeader(
-            title = title,
-            titleColor = colors.onSurface,
-            subtitleColor = colors.onSurfaceVariant,
-            leadingIcon = Icons.Rounded.Leaderboard,
-            leadingSeed = com.luc4n3x.levyra.ui.components.LevyraPastelAmber
-        )
-        Row(Modifier.padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 12.dp)) {
+        DefaultRadioSectionTitle(title)
+        Row(Modifier.padding(horizontal = DefaultRadioGutter), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             DefaultRadioDirectoryChip(Icons.Rounded.Public, directory.countryLabel, Modifier.weight(1f, fill = false), directory.onCountry)
             DefaultRadioDirectoryChip(Icons.Rounded.Language, directory.languageLabel, Modifier.weight(1f, fill = false), directory.onLanguage)
         }
@@ -678,9 +612,9 @@ private fun DefaultRadioChartRow(
                 onClickLabel = if (playing) strings.pause else strings.play
             )
             .semantics { selected = playing }
-            .padding(start = 14.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
+            .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         DefaultRadioChartRowInfo(rank, station, playing, Modifier.weight(1f))
         if (playing) RadioEqualizer(colors.primary)
@@ -693,15 +627,26 @@ private fun DefaultRadioChartRow(
 private fun DefaultRadioChartRowInfo(rank: Int?, station: RadioStation, playing: Boolean, modifier: Modifier) {
     val colors = MaterialTheme.colorScheme
     val accent = if (playing) colors.primary else colors.onSurfaceVariant
-    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        if (rank != null) DefaultChartRankBadge(rank, playing)
-        RadioArtwork(station, 52.dp, RoundedCornerShape(16.dp))
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            RadioStationName(station.name, playing, if (playing) colors.primary else colors.onSurface, 16.sp, minLines = 1)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                DefaultRadioSignalBars(station.bitrateKbps, accent)
-                RadioStationDetail(station)
-            }
+    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        if (rank != null) {
+            Text(
+                rank.toString(),
+                color = accent,
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.width(24.dp)
+            )
+        }
+        RadioArtwork(station, 48.dp, RoundedCornerShape(12.dp))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                station.name,
+                color = if (playing) colors.primary else colors.onSurface,
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            RadioStationDetail(station)
         }
     }
 }

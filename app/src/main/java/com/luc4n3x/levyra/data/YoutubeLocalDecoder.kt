@@ -1618,7 +1618,7 @@ private class YoutubePlayerJsSource(
         } else {
             emptyList()
         }
-        val sts = extractSignatureTimestamp(javascript)
+        val sts = YoutubePlayerJsAnalyzer.extractSignatureTimestamp(hash, javascript)
             ?: validated?.signatureTimestamp
             ?: analyzed.firstOrNull()?.signatureTimestamp
         return YoutubePlayerScript(hash, configKey, javascript, sts, analyzed)
@@ -1637,7 +1637,7 @@ private class YoutubePlayerJsSource(
         }.filterNot { it.identity in rejectedAnalyzerIdentities }
         return player.copy(
             configKey = configKey,
-            signatureTimestamp = extractSignatureTimestamp(player.javascript)
+            signatureTimestamp = YoutubePlayerJsAnalyzer.extractSignatureTimestamp(player.hash, player.javascript)
                 ?: validated?.signatureTimestamp
                 ?: analyzed.firstOrNull()?.signatureTimestamp,
             analyzedConfigs = analyzed
@@ -1694,7 +1694,7 @@ private class YoutubePlayerJsSource(
                 .takeIf { YoutubePlayerConfigParser.isValidHash(it) }
                 ?: hash
             val sts = json.optInt("signatureTimestamp", 0).takeIf { it > 0 }
-                ?: extractSignatureTimestamp(javascript)
+                ?: YoutubePlayerJsAnalyzer.extractSignatureTimestamp(hash, javascript)
             YoutubePlayerScript(hash, configKey, javascript, sts)
         }.onFailure { Timber.w(it, "Cached player JS rejected") }.getOrNull()
     }
@@ -1828,9 +1828,6 @@ private class YoutubePlayerJsSource(
             return value.length >= 100_000 && value.contains("_yt_player") && value.contains("})(_yt_player);")
         }
 
-        private fun extractSignatureTimestamp(javascript: String): Int? {
-            return YoutubePlayerJsAnalyzer.extractSignatureTimestamp(javascript)
-        }
     }
 }
 
@@ -1840,6 +1837,22 @@ internal object YoutubePlayerJsAnalyzer {
 
     fun analyzeCandidates(hash: String, javascript: String): List<YoutubePlayerCipherConfig> {
         if (!YoutubePlayerConfigParser.isValidHash(hash)) return emptyList()
+        return candidatesByHash.getOrPut(playerMemoKey(hash, javascript)) { computeCandidates(hash, javascript) }
+    }
+
+    fun extractSignatureTimestamp(hash: String, javascript: String): Int? =
+        if (YoutubePlayerConfigParser.isValidHash(hash)) {
+            timestampByHash.getOrPut(playerMemoKey(hash, javascript)) { YoutubePlayerAnalyzer.extractSignatureTimestamp(javascript) }
+        } else {
+            YoutubePlayerAnalyzer.extractSignatureTimestamp(javascript)
+        }
+
+    private fun playerMemoKey(hash: String, javascript: String): String = "$hash:${javascript.length}:${javascript.hashCode()}"
+
+    private val candidatesByHash = PlayerAnalysisMemo<List<YoutubePlayerCipherConfig>>()
+    private val timestampByHash = PlayerAnalysisMemo<Int?>()
+
+    private fun computeCandidates(hash: String, javascript: String): List<YoutubePlayerCipherConfig> {
         val analysis = YoutubePlayerAnalyzer.analyze(javascript) as? YoutubePlayerAnalysis.Candidates
             ?: return emptyList()
         return analysis.transforms.map { transform ->
@@ -2316,3 +2329,21 @@ private suspend fun OkHttpClient.awaitText(request: Request, maxBytes: Int): You
         })
     }
 }
+
+private class PlayerAnalysisMemo<T> {
+    private val entries = object : LinkedHashMap<String, Any?>(PLAYER_ANALYSIS_MEMO_SIZE, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Any?>): Boolean = size > PLAYER_ANALYSIS_MEMO_SIZE
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun getOrPut(key: String, compute: () -> T): T {
+        synchronized(entries) {
+            if (entries.containsKey(key)) return entries[key] as T
+        }
+        val value = compute()
+        synchronized(entries) { entries[key] = value }
+        return value
+    }
+}
+
+private const val PLAYER_ANALYSIS_MEMO_SIZE = 4

@@ -251,7 +251,12 @@ private fun DefaultSearchHeader(
                 focusManager.clearFocus()
                 keyboardController?.hide()
             },
-            contentDescription = strings.back
+            contentDescription = strings.back,
+            colors = if (com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin) {
+                androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors(containerColor = scheme.surfaceContainerHigh, contentColor = scheme.onSurface)
+            } else {
+                androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors()
+            }
         )
 
         Surface(

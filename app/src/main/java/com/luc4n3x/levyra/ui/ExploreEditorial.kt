@@ -130,16 +130,6 @@ internal fun ExploreReleasesHeader(code: String, onSeeAll: () -> Unit) {
     )
 }
 
-@Composable
-internal fun ExploreEditorialBackdrop(editorial: Boolean, listState: androidx.compose.foundation.lazy.LazyListState) {
-    if (editorial && com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin) {
-        com.luc4n3x.levyra.ui.components.LevyraUtilityBackdrop(
-            strength = 0.8f,
-            listState = listState
-        )
-    }
-}
-
 internal fun exploreHeaderIcon(icon: androidx.compose.ui.graphics.vector.ImageVector): androidx.compose.ui.graphics.vector.ImageVector? =
     icon.takeIf { com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin }
 
@@ -589,7 +579,7 @@ private fun ExploreReleaseCard(
                 modifier = Modifier.weight(1f).padding(top = 6.dp).clearAndSetSemantics { },
                 verticalArrangement = Arrangement.spacedBy(LevyraCardDesign.CaptionLineGap)
             ) {
-                Text(eyebrow, style = LevyraType.overline, color = colors.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(eyebrow, style = LevyraType.overline, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(card.title, style = LevyraType.cardTitle, color = colors.onSurface, maxLines = 1, modifier = Modifier.levyraMarquee())
                 Text(card.subtitle, style = LevyraType.caption, color = colors.onSurfaceVariant, maxLines = 1, modifier = Modifier.levyraMarquee())
             }

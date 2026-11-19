@@ -17,11 +17,15 @@ val ReleaseType.isFullAlbum: Boolean
 val ReleaseType.isSingleLike: Boolean
     get() = this == ReleaseType.Single || this == ReleaseType.Ep
 
+private val ReleaseLabelMarks = Regex("\\p{M}+")
+private val ReleaseLabelSeparators = Regex("[^\\p{L}\\p{N}]+")
+private val ReleaseLabelWhitespace = Regex("\\s+")
+
 private fun normalizeReleaseLabel(value: String): String = Normalizer.normalize(value, Normalizer.Form.NFD)
-    .replace(Regex("\\p{M}+"), "")
+    .replace(ReleaseLabelMarks, "")
     .lowercase(Locale.ROOT)
-    .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
-    .replace(Regex("\\s+"), " ")
+    .replace(ReleaseLabelSeparators, " ")
+    .replace(ReleaseLabelWhitespace, " ")
     .trim()
 
 private fun normalizedLabelSet(vararg labels: String): Set<String> =

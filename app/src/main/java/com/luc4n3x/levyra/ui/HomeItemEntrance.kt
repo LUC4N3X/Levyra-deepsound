@@ -21,9 +21,10 @@ import kotlinx.coroutines.delay
 private const val HomeEntranceStepMillis = 35L
 private const val HomeEntranceMaxDelayMillis = 280L
 private const val HomeEntranceBurstGapNanos = 500_000_000L
-private const val HomeEntranceDamping = 0.9f
-private const val HomeEntranceStiffness = 700f
-private val HomeEntranceDrop = 24.dp
+private const val HomeEntranceDamping = 0.8f
+private const val HomeEntranceStiffness = 520f
+private val HomeEntranceRise = 48.dp
+private const val HomeEntranceScale = 0.94f
 
 private object HomeEntranceSequence {
     private var lastStartNanos = 0L
@@ -71,7 +72,10 @@ private fun HomeItemEntrance(itemMotion: Modifier, content: @Composable () -> Un
     Box(
         itemMotion.graphicsLayer {
             val value = progress.value
-            translationY = (1f - value) * -HomeEntranceDrop.toPx()
+            translationY = (1f - value) * HomeEntranceRise.toPx()
+            val scale = HomeEntranceScale + (1f - HomeEntranceScale) * value
+            scaleX = scale
+            scaleY = scale
             alpha = value.coerceIn(0f, 1f)
         }
     ) { content() }

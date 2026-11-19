@@ -4,6 +4,7 @@ import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material.icons.rounded.Podcasts
+import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.FormatQuote
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
@@ -217,7 +218,9 @@ internal fun LazyListScope.levyraSearchBrowseItems(
     item(key = "search-browse-header", contentType = "search-browse-header") {
         LevyraSectionHeader(
             title = browse.copy.browseTitle,
-            modifier = Modifier.padding(top = 18.dp, bottom = 6.dp)
+            modifier = Modifier.padding(top = 18.dp, bottom = 6.dp),
+            leadingIcon = if (LevyraIsDefaultSkin) Icons.Rounded.GridView else null,
+            leadingSeed = com.luc4n3x.levyra.ui.components.LevyraPastelAmber
         )
     }
     val palettes = searchBrowsePaletteIndices(tiles.map(::searchBrowseTileIdentity), ExploreCategoryPalettes.size)
@@ -363,6 +366,10 @@ internal fun LevyraRecentSearchesRail(
     }
     if (com.luc4n3x.levyra.ui.theme.LevyraIsIvory) {
         IvoryRecentSearchesRail(title, tracks, onTrackClick, menu)
+        return
+    }
+    if (LevyraIsDefaultSkin) {
+        DefaultRecentSearchesRail(title, tracks, onTrackClick, menu)
         return
     }
     val actionsLabel = LocalLevyraStrings.current.actions
