@@ -22,10 +22,10 @@ const rounded = (w, h, radius) => svg(`<rect width="${w}" height="${h}" rx="${ra
 const cards = [
   ['01_pure_listening', 'LISTEN', ['Just press', 'play.'], ['No Levyra account.', 'No ads or telemetry.']],
   ['02_stay_with_the_song', 'NOW PLAYING', ['Stay with', 'the song.'], ['Audio, video & motion artwork.']],
-  ['03_daylight_expressive', 'LIGHT THEME', ['A brighter', 'kind of play.'], ['Material 3 Expressive.']],
-  ['04_midnight_obsidian', 'DARK THEME', ['Made for', 'after dark.'], ['Dark surfaces. Vivid artwork.']],
-  ['05_fresh_currents', 'DISCOVERY', ['Discover more'], ['Search, revisit & explore.']],
   ['06_built_for_your_taste', 'PLAYBACK', ['Keep listening'], ['Gapless playback & crossfade.']],
+  ['06b_live_lyrics', 'LYRICS', ['Live lyrics'], ['Word-by-word sync & translation.']],
+  ['05_fresh_currents', 'DISCOVERY', ['Discover more'], ['Search, revisit & explore.']],
+  ['05b_explore_charts', 'EXPLORE', ['Explore charts'], ['Top 100, city charts & moods.']],
   ['07_every_genre', 'EXPLORE', ['Mood Journey'], ['Draw how the music should feel.']],
   ['08_acoustic_precision', 'AUDIO', ['Your sound'], ['Output, quality & audio options.']],
   ['09_keep_it_personal', 'LIBRARY', ['One library'], ['Local files meet streamed music.']],
@@ -63,8 +63,6 @@ function heroShape(index) {
   const paths = [
     phoneGeometry(705, 10.5, 232, -135),
     phoneGeometry(705, 10.5, 232 - 932, -135) + phoneGeometry(705, -8.5, 165, 395),
-    phoneGeometry(720, -8, 105, 395),
-    phoneGeometry(720, 8, 'right', 395),
   ];
   return paths[index];
 }
@@ -73,7 +71,7 @@ async function extractPhone(index, spec) {
   const input = await readFile(resolve(source, `${spec[0]}.webp`));
   const metadata = await sharp(input).metadata();
   if (metadata.width !== width || metadata.height !== height) throw new Error(`Unexpected source dimensions: ${spec[0]}`);
-  if (index < 4) {
+  if (index < 2) {
     const shape = index === 1 ? phoneGeometry(705, -8.5, 165, 395) : heroShape(index);
     const cutout = await sharp(input).composite([{ input: svg(shape), blend: 'dest-in' }]).png().toBuffer();
     return sharp(cutout).trim({ threshold: 1 }).png().toBuffer();
@@ -117,7 +115,7 @@ function cardBackdrop(index, p) {
 }
 
 async function cardMediaLayers(index, spec) {
-  if (index >= 4) {
+  if (index >= 2) {
     const phone = await extractPhone(index, spec);
     const { data, info } = await sharp(phone).resize({ width: 672 }).png().toBuffer({ resolveWithObject: true });
     return [
@@ -146,17 +144,17 @@ async function renderCard(index, spec) {
 }
 
 async function cardTextLayer(index, spec, p) {
-  const right = index === 1 || index === 3;
-  const x = index >= 4 ? 450 : right ? 832 : 68;
-  const anchor = index >= 4 ? 'middle' : right ? 'end' : 'start';
-  const y = index === 0 ? 1450 : index < 4 ? 151 : 154;
-  let titleSize = index < 4 ? 82 : 66;
-  if (index >= 4) {
+  const right = index === 1;
+  const x = index >= 2 ? 450 : right ? 832 : 68;
+  const anchor = index >= 2 ? 'middle' : right ? 'end' : 'start';
+  const y = index === 0 ? 1450 : index < 2 ? 151 : 154;
+  let titleSize = index < 2 ? 82 : 66;
+  if (index >= 2) {
     const probe = await sharp(svg(text(spec[2][0], 450, 100, titleSize, p.ink, 600))).trim().toBuffer({ resolveWithObject: true });
     if (probe.info.width > 780) titleSize = Math.floor(titleSize * 780 / probe.info.width);
   }
   const titles = spec[2].map((line, i) => text(line, x, y + i * 100, titleSize, p.ink, 600, anchor));
-  const subtitleY = index === 0 ? 1644 : index < 4 ? 328 : 223;
+  const subtitleY = index === 0 ? 1644 : index < 2 ? 328 : 223;
   const subtitles = spec[3].map((line, i) => text(line, x, subtitleY + i * 42, 32, p.muted, 400, anchor));
   return { input: svg(titles.join('') + subtitles.join('')) };
 }
@@ -169,18 +167,28 @@ for (const [index, spec] of cards.entries()) {
   await sharp(card).webp({ quality: 92, effort: 4 }).toFile(resolve(output, `card-${String(index + 1).padStart(2, '0')}-studio.webp`));
 }
 const gap = 24;
-for (let row = 0; row < 6; row++) {
-  const set = rendered.slice(row * 4, row * 4 + 4);
+const rowSlices = [
+  [0, 4],
+  [4, 8],
+  [8, 12],
+  [12, 16],
+  [16, 20],
+  [20, 24],
+];
+for (const [row, [start, end]] of rowSlices.entries()) {
+  const set = rendered.slice(start, end);
   const id = String(row + 1).padStart(2, '0');
   for (const mobile of [false, true]) {
-    const columns = mobile ? 2 : 4;
+    const columns = mobile ? Math.min(2, set.length) : set.length;
+    const rowsCount = Math.ceil(set.length / columns);
     const panelWidth = width * columns + gap * (columns - 1);
-    const panelHeight = mobile ? height * 2 + gap : height;
+    const panelHeight = height * rowsCount + gap * (rowsCount - 1);
     const grid = await sharp({ create: { width: panelWidth, height: panelHeight, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
       .composite(set.map((input, i) => ({ input, left: (i % columns) * (width + gap), top: Math.floor(i / columns) * (height + gap) })))
       .png().toBuffer();
-    await sharp(grid).resize({ width: mobile ? 1200 : 2400 }).webp({ quality: 92, effort: 4 })
+    const outWidth = mobile ? 1200 : Math.round(2400 * columns / 4);
+    await sharp(grid).resize({ width: outWidth }).webp({ quality: 92, effort: 4 })
       .toFile(resolve(output, `row-${id}-studio${mobile ? '-mobile' : ''}.webp`));
   }
-  console.log(`Rendered cards ${(row * 4) + 1}-${row * 4 + 4}: desktop and mobile`);
+  console.log(`Rendered cards ${start + 1}-${end}: desktop and mobile`);
 }

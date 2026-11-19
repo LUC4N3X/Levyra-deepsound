@@ -85,43 +85,43 @@ I don't host FLAC audio on Levyra's servers. On Android, experimental FLAC playb
 
 <p>
   <a href="docs/assets/showcase/readme/row-01-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-01-studio-mobile.webp?v=m3-cards-3">
-    <img src="docs/assets/showcase/readme/row-01-studio.webp?v=m3-cards-3" width="900" alt="Levyra for Android: personalized home, Now Playing, light theme and dark theme. No Levyra account, ads or telemetry.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-01-studio-mobile.webp?v=m3-cards-5">
+    <img src="docs/assets/showcase/readme/row-01-studio.webp?v=m3-cards-5" width="900" alt="Levyra for Android: personalized home, Now Playing, gapless playback and word-by-word live lyrics. No Levyra account, ads or telemetry.">
   </picture></a>
 </p>
 
 <p>
   <a href="docs/assets/showcase/readme/row-02-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-02-studio-mobile.webp?v=m3-cards-4">
-    <img src="docs/assets/showcase/readme/row-02-studio.webp?v=m3-cards-4" width="900" alt="Discover and listen: search suggestions, music playback, Mood Journey, and audio output settings.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-02-studio-mobile.webp?v=m3-cards-8">
+    <img src="docs/assets/showcase/readme/row-02-studio.webp?v=m3-cards-8" width="900" alt="Discover more, Top 100 and city charts, Mood Journey, and audio output and quality settings.">
   </picture></a>
 </p>
 
 <p>
   <a href="docs/assets/showcase/readme/row-03-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-03-studio-mobile.webp?v=m3-cards-6">
-    <img src="docs/assets/showcase/readme/row-03-studio.webp?v=m3-cards-6" width="900" alt="Your library: local and streamed tracks, search results, on-device listening insights and personal collections.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-03-studio-mobile.webp?v=m3-cards-9">
+    <img src="docs/assets/showcase/readme/row-03-studio.webp?v=m3-cards-9" width="900" alt="Your library: local and streamed tracks, search results, on-device listening insights and personal collections.">
   </picture></a>
 </p>
 
 <p>
   <a href="docs/assets/showcase/readme/row-04-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-04-studio-mobile.webp?v=m3-cards-13">
-    <img src="docs/assets/showcase/readme/row-04-studio.webp?v=m3-cards-13" width="900" alt="Make Levyra yours: skin selection, live radio, artist pages and shared listening with Unison over Wi-Fi.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-04-studio-mobile.webp?v=m3-cards-17">
+    <img src="docs/assets/showcase/readme/row-04-studio.webp?v=m3-cards-17" width="900" alt="Make Levyra yours: skin selection, live radio, artist pages and shared listening with Unison over Wi-Fi.">
   </picture></a>
 </p>
 
 <p>
   <a href="docs/assets/showcase/readme/row-05-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-05-studio-mobile.webp?v=m3-cards-4">
-    <img src="docs/assets/showcase/readme/row-05-studio.webp?v=m3-cards-4" width="900" alt="Keep the music close: synced lyrics, albums with offline downloads, swipe discovery and Your Year in Music.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-05-studio-mobile.webp?v=m3-cards-7">
+    <img src="docs/assets/showcase/readme/row-05-studio.webp?v=m3-cards-7" width="900" alt="Keep the music close: synced lyrics, albums with offline downloads, swipe discovery and Your Year in Music.">
   </picture></a>
 </p>
 
 <p>
   <a href="docs/assets/showcase/readme/row-06-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-06-studio-mobile.webp?v=m3-cards-2">
-    <img src="docs/assets/showcase/readme/row-06-studio.webp?v=m3-cards-2" width="900" alt="Four Levyra skins: Spotify Style, Apple Music Style, YouTube Music Style and Qobuz Style.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-06-studio-mobile.webp?v=m3-cards-5">
+    <img src="docs/assets/showcase/readme/row-06-studio.webp?v=m3-cards-5" width="900" alt="Four Levyra skins: Spotify Style, Apple Music Style, YouTube Music Style and Qobuz Style.">
   </picture></a>
 </p>
 
