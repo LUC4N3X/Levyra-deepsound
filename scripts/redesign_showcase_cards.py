@@ -302,12 +302,12 @@ def build_row1_cards():
     pair1.paste(bg2, (CARD_W + GAP, 0))
 
     # Phone 1: Zero Ads. Zero Tracking. descending from top-right at +12.5 deg
-    dev1, _, _, _ = create_phone_mockup("Screenshot_20261016_223653_LEVYRA.jpg", outer_w=725)
+    dev1, _, _, _ = create_phone_mockup("Screenshot_20261119_210350_Levyra.jpg", outer_w=725)
     rot1 = rotate_device(dev1, 12.5)
     place_rotated_device(pair1, rot1, pos=(215, -185), shadow_offset=(22, 40))
 
     # Phone 2: Audio & Video in One Tap rising from bottom-right at -8.5 deg
-    dev2, _, _, _ = create_phone_mockup("Screenshot_20261016_135636_LEVYRA.jpg", outer_w=725)
+    dev2, _, _, _ = create_phone_mockup("Screenshot_20261119_205616_Levyra.jpg", outer_w=725)
     rot2 = rotate_device(dev2, -8.5)
     place_rotated_device(pair1, rot2, pos=(CARD_W + GAP + 195, 415), shadow_offset=(22, 40))
 
