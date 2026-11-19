@@ -83,10 +83,10 @@ jobs:
 
   installer:
     name: Windows installer
-    permissions:
-      contents: write
     runs-on: windows-latest
     needs: verify
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     timeout-minutes: 60
     steps:
       - name: Checkout
@@ -178,12 +178,26 @@ jobs:
           path: release-assets/*
           retention-days: 14
           if-no-files-found: error
+
+  publish:
+    name: Publish Windows release
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: installer
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: levyra-desktop-windows-${{ needs.installer.outputs.version }}
+          path: release-assets
       - name: Publish immutable desktop release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-          LEVYRA_DESKTOP_VERSION: ${{ steps.version.outputs.version }}
+          LEVYRA_DESKTOP_VERSION: ${{ needs.installer.outputs.version }}
         run: |
           $ErrorActionPreference = "Stop"
           $PSNativeCommandUseErrorActionPreference = $false
