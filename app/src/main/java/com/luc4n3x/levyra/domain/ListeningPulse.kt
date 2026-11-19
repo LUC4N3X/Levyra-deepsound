@@ -45,7 +45,8 @@ data class PulsePeriod(
     val completionRate: Int = 0,
     val topTracks: List<PulseTrack> = emptyList(),
     val topArtists: List<PulseArtist> = emptyList(),
-    val peakHour: Int = -1
+    val peakHour: Int = -1,
+    val hourBuckets: List<Long> = emptyList()
 ) {
     val totalMinutes: Long
         get() = totalListenMs / 60_000L
@@ -135,7 +136,8 @@ class ListeningPulseEngine(private val zone: ZoneId = ZoneId.systemDefault()) {
             completionRate = (events.count { it.completed } * 100) / events.size,
             topTracks = topTracks(events),
             topArtists = topArtists(events),
-            peakHour = peakHour(events)
+            peakHour = peakHour(events),
+            hourBuckets = hourBuckets(events)
         )
     }
 

@@ -104,7 +104,7 @@ internal fun LibraryTasteCard(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
                 ListeningClock(
-                    hours = pulse.hourBuckets,
+                    hours = period.hourBuckets,
                     peakHour = period.peakHour,
                     accent = accent,
                     idle = colors.outlineVariant,
