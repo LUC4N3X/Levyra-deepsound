@@ -99,6 +99,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -1006,7 +1007,7 @@ private fun GlacierRecord(card: DiscoveryCard, spinning: Boolean, modifier: Modi
     BoxWithConstraints(modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
         val diameter = minOf(maxWidth * 0.78f, maxHeight)
         Box(
-            Modifier.offset(y = lift).size(diameter).graphicsLayer { rotationZ = angle.value }
+            Modifier.offset { IntOffset(0, lift.roundToPx()) }.size(diameter).graphicsLayer { rotationZ = angle.value }
                 .drawBehind {
                     val center = Offset(size.width / 2f, size.height / 2f)
                     val radius = size.minDimension / 2f
@@ -1076,7 +1077,7 @@ private fun AtelierDiscoveryRecord(card: DiscoveryCard, spinning: Boolean, modif
     val lift by androidx.compose.animation.core.animateDpAsState(if (spinning) 0.dp else 22.dp, label = "atelier-discovery-lift")
     BoxWithConstraints(modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
         val diameter = minOf(maxWidth * 0.74f, maxHeight)
-        com.luc4n3x.levyra.ui.AtelierVinyl(card.track, Modifier.offset(y = lift).size(diameter).graphicsLayer { rotationZ = angle.value })
+        com.luc4n3x.levyra.ui.AtelierVinyl(card.track, Modifier.offset { IntOffset(0, lift.roundToPx()) }.size(diameter).graphicsLayer { rotationZ = angle.value })
     }
 }
 

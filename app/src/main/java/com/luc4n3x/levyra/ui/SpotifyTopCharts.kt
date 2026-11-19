@@ -49,6 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -216,11 +217,12 @@ private fun SpotifyTopChartScreen(
                 cover, contentDescription = null, contentScale = ContentScale.Crop,
                 modifier = Modifier.size(SpotifyChartCoverSize)
                     .graphicsLayer {
-                        val scale = 1f - progress * 0.3f
+                        val collapse = progress()
+                        val scale = 1f - collapse * 0.3f
                         scaleX = scale
                         scaleY = scale
-                        translationY = headerScroll.coerceAtMost(coverPx) * 0.55f
-                        alpha = 1f - progress
+                        translationY = headerScroll().coerceAtMost(coverPx) * 0.55f
+                        alpha = 1f - collapse
                     }
                     .shadow(24.dp, RoundedCornerShape(2.dp))
                     .background(SpotifyDesign.placeholder)
@@ -250,7 +252,7 @@ internal fun SpotifyPlaylistPage(
     descriptionContent: (@Composable () -> Unit)? = null,
     heroBehindTopBar: Boolean = false,
     footer: (androidx.compose.foundation.lazy.LazyListScope.() -> Unit)? = null,
-    hero: @Composable (headerScroll: Float, progress: Float) -> Unit
+    hero: @Composable (headerScroll: () -> Float, progress: () -> Float) -> Unit
 ) {
     BackHandler(onBack = onDismiss)
     val strings = LocalLevyraStrings.current
@@ -259,20 +261,22 @@ internal fun SpotifyPlaylistPage(
     val listState = rememberLazyListState()
     val density = LocalDensity.current
     val coverPx = heroCollapsePx
-    val headerScroll by remember {
-        derivedStateOf { if (listState.firstVisibleItemIndex > 0) Float.MAX_VALUE else listState.firstVisibleItemScrollOffset.toFloat() }
+    val headerScroll: () -> Float = {
+        if (listState.firstVisibleItemIndex > 0) Float.MAX_VALUE else listState.firstVisibleItemScrollOffset.toFloat()
     }
-    val coverProgress = (headerScroll / coverPx).coerceIn(0f, 1f)
+    val coverProgress: () -> Float = { (headerScroll() / coverPx).coerceIn(0f, 1f) }
     var playRowY by remember { mutableIntStateOf(Int.MAX_VALUE) }
     val topBarPx = with(density) { SpotifyChartTopBar.toPx() }
     var statusBarPx by remember { mutableIntStateOf(0) }
-    val pinned = listState.firstVisibleItemIndex > 0 || playRowY <= topBarPx + statusBarPx
-    val barAlpha = ((headerScroll - coverPx * 0.6f) / (coverPx * 0.4f)).coerceIn(0f, 1f)
+    val pinned by remember(listState, topBarPx) {
+        derivedStateOf { listState.firstVisibleItemIndex > 0 || playRowY <= topBarPx + statusBarPx }
+    }
+    val barAlpha: () -> Float = { ((headerScroll() - coverPx * 0.6f) / (coverPx * 0.4f)).coerceIn(0f, 1f) }
     val playTracks: () -> Unit = { tracks.firstOrNull()?.let { onPlay(tracks, it) } }
 
     Box(Modifier.fillMaxSize().background(SpotifyDesign.base)) {
         Box(
-            Modifier.fillMaxWidth().height(560.dp).graphicsLayer { translationY = -headerScroll.coerceAtMost(2000f) * 0.5f }
+            Modifier.fillMaxWidth().height(560.dp).graphicsLayer { translationY = -headerScroll().coerceAtMost(2000f) * 0.5f }
                 .background(Brush.verticalGradient(0f to tone, 1f to SpotifyDesign.base))
         )
         LazyColumn(
@@ -407,30 +411,31 @@ private fun SpotifyPlaylistTrackRow(
 private fun SpotifyPlaylistTopBar(
     title: String,
     tone: Color,
-    barAlpha: Float,
+    barAlpha: () -> Float,
     pinned: Boolean,
     playTracks: () -> Unit,
     onDismiss: () -> Unit,
     onPositioned: (Int) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    val barTone = lerp(tone, Color.Black, 0.45f)
     Box(
-        Modifier.fillMaxWidth().background(lerp(tone, Color.Black, 0.45f).copy(alpha = barAlpha))
+        Modifier.fillMaxWidth().drawBehind { drawRect(barTone.copy(alpha = barAlpha())) }
             .onGloballyPositioned { onPositioned(it.positionInRoot().y.toInt()) }
             .statusBarsPadding().height(SpotifyChartTopBar)
     ) {
         Box(
             Modifier.padding(start = 12.dp).align(Alignment.CenterStart).size(40.dp).clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.35f * (1f - barAlpha))).levyraPressable(onClick = onDismiss, onClickLabel = strings.back, role = Role.Button),
+                .drawBehind { drawRect(Color.Black.copy(alpha = 0.35f * (1f - barAlpha()))) }.levyraPressable(onClick = onDismiss, onClickLabel = strings.back, role = Role.Button),
             contentAlignment = Alignment.Center
         ) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, strings.back, tint = Color.White) }
         Text(
             title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.align(Alignment.CenterStart).padding(start = 64.dp, end = 120.dp).graphicsLayer { alpha = barAlpha }
+            modifier = Modifier.align(Alignment.CenterStart).padding(start = 64.dp, end = 120.dp).graphicsLayer { alpha = barAlpha() }
         )
         Box(
             Modifier.padding(end = 12.dp).align(Alignment.CenterEnd).size(40.dp).clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.35f * (1f - barAlpha))),
+                .drawBehind { drawRect(Color.Black.copy(alpha = 0.35f * (1f - barAlpha()))) },
             contentAlignment = Alignment.Center
         ) { Icon(Icons.Rounded.MoreVert, strings.options, tint = Color.White) }
         if (pinned) SpotifyChartPlayButton(

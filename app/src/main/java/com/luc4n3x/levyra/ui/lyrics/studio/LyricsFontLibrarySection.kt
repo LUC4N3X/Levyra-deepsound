@@ -32,7 +32,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -54,6 +53,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.luc4n3x.levyra.data.LyricsFontEntry
 import com.luc4n3x.levyra.data.LyricsFontError
 import com.luc4n3x.levyra.data.LyricsFontException
@@ -86,7 +86,7 @@ internal fun LyricsFontLibrarySection(
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
     val library = remember(context) { LyricsFontLibrary.get(context) }
-    val fonts by library.fonts.collectAsState()
+    val fonts by library.fonts.collectAsStateWithLifecycle()
     val latestSettings by rememberUpdatedState(settings)
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }

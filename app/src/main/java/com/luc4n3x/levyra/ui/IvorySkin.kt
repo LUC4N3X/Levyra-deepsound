@@ -55,6 +55,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -460,7 +461,7 @@ private fun IvorySleeveCard(
         verticalArrangement = Arrangement.spacedBy(3.dp)
     ) {
         Box(Modifier.fillMaxWidth().height(150.dp)) {
-            IvoryRecord(track, spinning, Modifier.align(Alignment.CenterStart).offset(x = slide).then(recordMotion).size(140.dp))
+            IvoryRecord(track, spinning, Modifier.align(Alignment.CenterStart).offset { IntOffset(slide.roundToPx(), 0) }.then(recordMotion).size(140.dp))
             Box(Modifier.align(Alignment.CenterStart).size(150.dp).clip(RoundedCornerShape(26.dp)).background(LevyraPanel)) {
                 CoverImage(track, Modifier.fillMaxSize(), highRes = true)
                 if (current) Box(
