@@ -674,7 +674,8 @@
    "artist": "Ozuna",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2734eb2c37b5fc56c16b1c45e0f",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/e3be4b4b534e46029adbf52fd1b5d9a3.cnvs.mp4",
-   "spotifyTrackId": "6P5OklKnFLlyc5sZiQwCrA"
+   "spotifyTrackId": "6P5OklKnFLlyc5sZiQwCrA",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/122b8ea35873d3aa1704f8f63e08122d3421458c"
   },
   {
    "id": "levyra-11fa46dd463b509c5b20",
@@ -763,7 +764,8 @@
    "artist": "Sasha Keable",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2735b3452d9da16ee561092d8b9",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/55ccd9a6cdc841b6bce6440b92588056.cnvs.mp4",
-   "spotifyTrackId": "7thqe7vYttYy5gY66AK1Ll"
+   "spotifyTrackId": "7thqe7vYttYy5gY66AK1Ll",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/573a2ab46a05380bbcf701728ccc0f59b9d21e30"
   },
   {
    "id": "levyra-94e120c77dbef0393525",
@@ -916,14 +918,14 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/791d1ff94d9b84e471e144f53fca4a23244fede9"
   },
   {
-   "id": "levyra-483d685fc62b1d271bd8",
+   "id": "levyra-f7576d5b255e0312ee0d",
    "genre": "dance-party",
-   "title": "Free Your Mind",
-   "artist": "Prospa, Cloonee, Sybil",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27338974737cba5770d9dba1cd6",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/e07f69c4bd75473ca14eed883a200495.cnvs.mp4",
-   "spotifyTrackId": "6TWbY1dq8eYtFiMiGdBlOa",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/2d5304a8589bc85716b2ebe0a3ba177d2434d3bb"
+   "title": "Baianá",
+   "artist": "Bakermat",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273fc7ce3acfa2e8c2479bcf621",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/3MyFDtqB80WZvbtCZRsekM/video/55130caeeb6b499b94d8851c0f67a73c.cnvs.mp4",
+   "spotifyTrackId": "780be5fB7823aHG06mwTat",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/c177d7d3bf35f5a906d0c8916fb5dddda6b5f8a0"
   },
   {
    "id": "levyra-83d9c7b3b7fd0dade82a",
@@ -936,24 +938,14 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/2d8b05fad932d5512a4c88cd4b84e47eb1218fbe"
   },
   {
-   "id": "levyra-f7576d5b255e0312ee0d",
+   "id": "levyra-483d685fc62b1d271bd8",
    "genre": "dance-party",
-   "title": "Baianá",
-   "artist": "Bakermat",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273fc7ce3acfa2e8c2479bcf621",
-   "canvasUrl": "https://canvaz.scdn.co/upload/artist/3MyFDtqB80WZvbtCZRsekM/video/55130caeeb6b499b94d8851c0f67a73c.cnvs.mp4",
-   "spotifyTrackId": "780be5fB7823aHG06mwTat",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/c177d7d3bf35f5a906d0c8916fb5dddda6b5f8a0"
-  },
-  {
-   "id": "levyra-dc57d4ccf5149d1a9167",
-   "genre": "dance-party",
-   "title": "(It Goes Like) Nanana - Edit",
-   "artist": "Peggy Gou",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27388d71aadd009fe1a83df88f2",
-   "canvasUrl": "https://canvaz.scdn.co/upload/artist/2mLA48B366zkELXYx7hcDN/video/6a2df4c8ca154df29a120ec8ee8f71f7.cnvs.mp4",
-   "spotifyTrackId": "23RoR84KodL5HWvUTneQ1w",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/e36e0bd4714844f1f9d992398b41a3e333f15cc9"
+   "title": "Free Your Mind",
+   "artist": "Prospa, Cloonee, Sybil",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27338974737cba5770d9dba1cd6",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/e07f69c4bd75473ca14eed883a200495.cnvs.mp4",
+   "spotifyTrackId": "6TWbY1dq8eYtFiMiGdBlOa",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/2d5304a8589bc85716b2ebe0a3ba177d2434d3bb"
   },
   {
    "id": "levyra-554dd5c42365b295a2f5",
@@ -964,6 +956,16 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/43BxCL6t4c73BQnIJtry5v/video/0a3fdefeac8143c49ed1d5dab5d823e4.cnvs.mp4",
    "spotifyTrackId": "4zN21mbAuaD0WqtmaTZZeP",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/3c21e0bea740ed198a79f0abf2b3b113b68f3f29"
+  },
+  {
+   "id": "levyra-dc57d4ccf5149d1a9167",
+   "genre": "dance-party",
+   "title": "(It Goes Like) Nanana - Edit",
+   "artist": "Peggy Gou",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27388d71aadd009fe1a83df88f2",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/2mLA48B366zkELXYx7hcDN/video/6a2df4c8ca154df29a120ec8ee8f71f7.cnvs.mp4",
+   "spotifyTrackId": "23RoR84KodL5HWvUTneQ1w",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/e36e0bd4714844f1f9d992398b41a3e333f15cc9"
   },
   {
    "id": "levyra-050fb9c7c4c5fa70256b",
@@ -1006,16 +1008,6 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/fbba6422f5d54ca1c3fab33ae59bbd4e842acddb"
   },
   {
-   "id": "levyra-7e8226d7a02f6f0a7d93",
-   "genre": "dance-party",
-   "title": "Set Me Free",
-   "artist": "Nic Fanciulli, Robert Courtois",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273c1718d34b5a65b301ea4b1b3",
-   "canvasUrl": "https://canvaz.scdn.co/upload/artist/7btR5VXutQv39SDEzcfXEk/video/52d674056ff1432da4703e2a74c87962.cnvs.mp4",
-   "spotifyTrackId": "4FOTUoZP8r4mYZ8H7aUVsu",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/80c0bd68e652b85b6dfeac9c51da3c6e712116d7"
-  },
-  {
    "id": "levyra-046114c2c1e1bb7281bc",
    "genre": "dance-party",
    "title": "Give It To Me - Full Vocal Mix",
@@ -1024,6 +1016,16 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/741fb252d45c4856b3d63edfe826c7db.cnvs.mp4",
    "spotifyTrackId": "5ZduaRci3iNUiDfJbBfAaf",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/50081928cfabde0d63a4d78f893542711259652d"
+  },
+  {
+   "id": "levyra-7e8226d7a02f6f0a7d93",
+   "genre": "dance-party",
+   "title": "Set Me Free",
+   "artist": "Nic Fanciulli, Robert Courtois",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273c1718d34b5a65b301ea4b1b3",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/7btR5VXutQv39SDEzcfXEk/video/52d674056ff1432da4703e2a74c87962.cnvs.mp4",
+   "spotifyTrackId": "4FOTUoZP8r4mYZ8H7aUVsu",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/80c0bd68e652b85b6dfeac9c51da3c6e712116d7"
   },
   {
    "id": "levyra-eb856260d385e91e9a37",
@@ -1036,16 +1038,6 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/c9ba41fd56c50e4af303216b3a76bb1372ef1e00"
   },
   {
-   "id": "levyra-032fa13818ecee393548",
-   "genre": "dance-party",
-   "title": "World Hold On - FISHER Rework",
-   "artist": "Bob Sinclar, FISHER, Steve Edwards",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2731145b908b1822b273a2379de",
-   "canvasUrl": "https://canvaz.scdn.co/upload/artist/5YFS41yoX0YuFY39fq21oN/video/557a03099be6415c86c6955268e7a373.cnvs.mp4",
-   "spotifyTrackId": "6t180YbVeK9MWrj2zjMr5Z",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/adae361145c433bcc47279b57374767940b96957"
-  },
-  {
    "id": "levyra-abcefdcdd14811510835",
    "genre": "dance-party",
    "title": "Friday (feat. Mufasa & Hypeman) - Dopamine Re-Edit",
@@ -1054,6 +1046,16 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/617e7b002d6f4df8a703a096dfcc7efb.cnvs.mp4",
    "spotifyTrackId": "4cG7HUWYHBV6R6tHn1gxrl",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/0a9ed687dddcd95c83e37099958bdc6d54430e4d"
+  },
+  {
+   "id": "levyra-032fa13818ecee393548",
+   "genre": "dance-party",
+   "title": "World Hold On - FISHER Rework",
+   "artist": "Bob Sinclar, FISHER, Steve Edwards",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2731145b908b1822b273a2379de",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/5YFS41yoX0YuFY39fq21oN/video/557a03099be6415c86c6955268e7a373.cnvs.mp4",
+   "spotifyTrackId": "6t180YbVeK9MWrj2zjMr5Z",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/adae361145c433bcc47279b57374767940b96957"
   },
   {
    "id": "levyra-e38ca6ceb21d47433340",
@@ -1076,16 +1078,6 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/c310d4c62be3d6c647fa1bf1d523ec0f4f80bc45"
   },
   {
-   "id": "levyra-26c5b7268c0b366bd4b0",
-   "genre": "dance-party",
-   "title": "Positive",
-   "artist": "Jamback",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273c162c6865468b621a78109a7",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/327472d482ae422d9ddfcebb426cfd2a.cnvs.mp4",
-   "spotifyTrackId": "0cZN3g7rtfNE6vsmX0k8OF",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/265e15be487a4b6bbabacc8c565afdbee404e045"
-  },
-  {
    "id": "levyra-9a72aa8d0bf7874d8d34",
    "genre": "dance-party",
    "title": "HIGHJACK (right back)",
@@ -1094,6 +1086,16 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/0NGAZxHanS9e0iNHpR8f2W/video/b3b635eacbb94393b15a16821a62342d.cnvs.mp4",
    "spotifyTrackId": "1Eqdkt6DfGNWElHpeujHGJ",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/ec2aa978d0aa75eb24054af59554e0e63d44537e"
+  },
+  {
+   "id": "levyra-26c5b7268c0b366bd4b0",
+   "genre": "dance-party",
+   "title": "Positive",
+   "artist": "Jamback",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273c162c6865468b621a78109a7",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/327472d482ae422d9ddfcebb426cfd2a.cnvs.mp4",
+   "spotifyTrackId": "0cZN3g7rtfNE6vsmX0k8OF",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/265e15be487a4b6bbabacc8c565afdbee404e045"
   },
   {
    "id": "levyra-3694cc14be3c6267960e",
