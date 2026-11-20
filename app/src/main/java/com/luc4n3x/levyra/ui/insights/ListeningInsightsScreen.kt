@@ -678,7 +678,7 @@ private fun InsightsHero(
             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(
                     formatHeroDuration(snapshot.metrics.listenedMs, number, strings),
-                    color = LevyraText,
+                    color = Color.White,
                     fontSize = 60.sp,
                     lineHeight = 62.sp,
                     fontWeight = FontWeight.Black,
@@ -688,7 +688,7 @@ private fun InsightsHero(
                 )
                 Text(
                     strings.insightsListened,
-                    color = LevyraMuted,
+                    color = Color.White.copy(alpha = 0.7f),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.4.sp
@@ -715,7 +715,7 @@ private fun InsightsHero(
                             )
                         }
                     }
-                    Text(strings.insightsPrevious, color = LevyraMuted, fontSize = 10.5.sp, fontWeight = FontWeight.Medium)
+                    Text(strings.insightsPrevious, color = Color.White.copy(alpha = 0.7f), fontSize = 10.5.sp, fontWeight = FontWeight.Medium)
                 }
             }
         }
