@@ -4751,7 +4751,7 @@ private fun AlbumOverlay(
         animated = state.animationsEnabled,
         labelPrefix = "album"
     )
-    val listStage = if (LevyraIsQobuz) com.luc4n3x.levyra.ui.media.qobuzListColors(stage) else stage
+    val listStage = com.luc4n3x.levyra.ui.media.skinListColors(stage)
     val motionEnabled = state.animationsEnabled && state.motionArtworkEnabled
     var albumMenuExpanded by rememberSaveable(album?.browseId, album?.title) { mutableStateOf(false) }
     var canvasAspect by remember(album?.browseId, album?.title) { mutableStateOf<Float?>(null) }

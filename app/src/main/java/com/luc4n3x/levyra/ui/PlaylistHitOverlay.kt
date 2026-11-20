@@ -437,7 +437,7 @@ private fun PlaylistHitList(
                 }
             )
         }
-        val listColors = if (com.luc4n3x.levyra.ui.theme.LevyraIsQobuz) com.luc4n3x.levyra.ui.media.qobuzListColors(colors) else colors
+        val listColors = com.luc4n3x.levyra.ui.media.skinListColors(colors)
         if (preview.description.isNotBlank()) {
             item(key = "playlist-hit-description", contentType = "playlist-hit-description") {
                 var expanded by rememberSaveable(preview.hit.playlistId) { mutableStateOf(false) }

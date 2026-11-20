@@ -466,70 +466,94 @@ internal fun selectSearchTopResultTracks(
 ): List<Track> {
     val hero = topTrack ?: return emptyList()
     val merged = mergeTopResultDisplayDuplicates(deduplicateSearchSongs(listOf(hero) + songs))
-    val resolvedHero = merged.firstOrNull { candidate ->
-        sameSearchRecording(hero, candidate)
-    }?.let { candidate -> playableRecordingFor(candidate, merged) ?: candidate }
+    val resolvedHero = resolveTopResultHero(hero, merged)
+    val scope = TopResultArtistScope(resolvedHero, songs, artistBrowseId)
+    if (!scope.hasIdentity) return listOf(resolvedHero)
+    val leadTrack = scope.leadTrack()
+    val rows = scope.rows(merged, leadTrack).take(limit.coerceIn(1, 3) - 1)
+    return listOf(leadTrack) + rows
+}
+
+private fun resolveTopResultHero(hero: Track, merged: List<Track>): Track =
+    merged.firstOrNull { candidate -> sameSearchRecording(hero, candidate) }
+        ?.let { candidate -> playableRecordingFor(candidate, merged) ?: candidate }
         ?: playableRecordingFor(hero, merged)
         ?: hero
-    val heroTitle = com.luc4n3x.levyra.nexus.identity.MusicIdentityText.title(resolvedHero.title)
-    val heroArtist = primaryArtistSegment(resolvedHero.artist).ifBlank { resolvedHero.artist.trim() }
-    val heroBrowseIds = resolvedHero.artistBrowseIds
-        .map { it.trim().lowercase(Locale.ROOT) }
-        .filter(String::isNotBlank)
-        .toSet()
-    val boundedLimit = limit.coerceIn(1, 3)
 
-    if (heroArtist.isBlank() && heroBrowseIds.isEmpty()) return listOf(resolvedHero)
-    val verifiedBrowseId = artistBrowseId.trim().lowercase(Locale.ROOT)
-    fun matchesHeroArtist(candidate: Track): Boolean {
-        val candidateBrowseIds = candidate.artistBrowseIds
+private fun topResultTitleKey(track: Track): String =
+    com.luc4n3x.levyra.nexus.identity.MusicIdentityText.title(track.title)
+        .let { title -> title.core + "|" + title.versionSignature }
+
+private class TopResultArtistScope(
+    private val hero: Track,
+    private val songs: List<Track>,
+    artistBrowseId: String
+) {
+    private val heroTitle = com.luc4n3x.levyra.nexus.identity.MusicIdentityText.title(hero.title)
+    private val heroArtist = primaryArtistSegment(hero.artist).ifBlank { hero.artist.trim() }
+    private val heroBrowseIds = normalizedBrowseIds(hero)
+    private val verifiedBrowseId = artistBrowseId.trim().lowercase(Locale.ROOT)
+
+    val hasIdentity: Boolean get() = heroArtist.isNotBlank() || heroBrowseIds.isNotEmpty()
+
+    fun matches(candidate: Track): Boolean {
+        val candidateBrowseIds = normalizedBrowseIds(candidate)
+        if (verifiedBrowseId.isNotBlank() && candidateBrowseIds.isNotEmpty()) return verifiedBrowseId in candidateBrowseIds
+        if (heroBrowseIds.isNotEmpty() && candidateBrowseIds.any(heroBrowseIds::contains)) return true
+        val candidateArtist = primaryArtistSegment(candidate.artist).ifBlank { candidate.artist.trim() }
+        return heroArtist.isNotBlank() && artistIdentityMatches(heroArtist, candidateArtist)
+    }
+
+    fun withYoutubePlays(track: Track): Track {
+        if (track.youtubeViewCount >= 0L) return track
+        val key = topResultTitleKey(track)
+        return songs.firstOrNull { candidate ->
+            isYoutubeMusicSong(candidate) && matches(candidate) && topResultTitleKey(candidate) == key &&
+                compatibleExplicitEdition(track, candidate)
+        } ?: track
+    }
+
+    fun leadTrack(): Track {
+        val heroWithPlays = withYoutubePlays(hero)
+        if (heroWithPlays.youtubeViewCount >= 0L) return heroWithPlays
+        val heroKey = topResultTitleKey(hero)
+        return songs.firstOrNull { candidate ->
+            isYoutubeMusicSong(candidate) && matches(candidate) &&
+                (topResultTitleKey(candidate) != heroKey || compatibleExplicitEdition(hero, candidate))
+        } ?: heroWithPlays
+    }
+
+    fun rows(merged: List<Track>, leadTrack: Track): List<Track> {
+        val leadKey = topResultTitleKey(leadTrack)
+        return merged
+            .filterNot { it.id == hero.id || hasNoPlayableIdentity(it) }
+            .filter(::matches)
+            .filterNot(::isSameHeroRecording)
+            .sortedBy { candidate -> if (isHeroVersion(candidate)) 0 else 1 }
+            .map(::withYoutubePlays)
+            .filterNot { candidate -> candidate.id == leadTrack.id || topResultTitleKey(candidate) == leadKey }
+            .sortedBy { candidate -> if (isYoutubeMusicSong(candidate)) 0 else 1 }
+            .distinctBy(::topResultTitleKey)
+    }
+
+    private fun isSameHeroRecording(candidate: Track): Boolean =
+        sharesHeroTitle(candidate) && versionOf(candidate) == heroTitle.versionSignature
+
+    private fun isHeroVersion(candidate: Track): Boolean =
+        sharesHeroTitle(candidate) && versionOf(candidate) != heroTitle.versionSignature
+
+    private fun sharesHeroTitle(candidate: Track): Boolean =
+        heroTitle.core.isNotBlank() && com.luc4n3x.levyra.nexus.identity.MusicIdentityText.title(candidate.title).core == heroTitle.core
+
+    private fun versionOf(candidate: Track) =
+        com.luc4n3x.levyra.nexus.identity.MusicIdentityText.title(candidate.title).versionSignature
+
+    private fun normalizedBrowseIds(track: Track): Set<String> =
+        track.artistBrowseIds
             .asSequence()
             .map { it.trim().lowercase(Locale.ROOT) }
             .filter(String::isNotBlank)
             .toSet()
-        if (verifiedBrowseId.isNotBlank() && candidateBrowseIds.isNotEmpty()) return verifiedBrowseId in candidateBrowseIds
-        val sharesBrowseId = heroBrowseIds.isNotEmpty() && candidateBrowseIds.any(heroBrowseIds::contains)
-        val candidateArtist = primaryArtistSegment(candidate.artist).ifBlank { candidate.artist.trim() }
-        return sharesBrowseId || (heroArtist.isNotBlank() && artistIdentityMatches(heroArtist, candidateArtist))
-    }
-    fun titleKey(track: Track): String =
-        com.luc4n3x.levyra.nexus.identity.MusicIdentityText.title(track.title)
-            .let { title -> title.core + "|" + title.versionSignature }
-    fun withYoutubePlays(track: Track): Track {
-        if (track.youtubeViewCount >= 0L) return track
-        val key = titleKey(track)
-        return songs.firstOrNull { candidate ->
-            isYoutubeMusicSong(candidate) && matchesHeroArtist(candidate) && titleKey(candidate) == key &&
-                compatibleExplicitEdition(track, candidate)
-        } ?: track
-    }
-    val heroWithPlays = withYoutubePlays(resolvedHero)
-    val leadTrack = heroWithPlays.takeIf { it.youtubeViewCount >= 0L }
-        ?: songs.firstOrNull { candidate ->
-            isYoutubeMusicSong(candidate) && matchesHeroArtist(candidate) &&
-                (titleKey(candidate) != titleKey(resolvedHero) || compatibleExplicitEdition(resolvedHero, candidate))
-        }
-        ?: heroWithPlays
-    return buildList {
-        add(leadTrack)
-        val sameArtist = merged
-            .filterNot { it.id == resolvedHero.id || hasNoPlayableIdentity(it) }
-            .filter(::matchesHeroArtist)
-        val (sameTitle, otherTitles) = sameArtist.partition { candidate ->
-            heroTitle.core.isNotBlank() &&
-                com.luc4n3x.levyra.nexus.identity.MusicIdentityText.title(candidate.title).core == heroTitle.core
-        }
-        val versions = sameTitle.filter { candidate ->
-            com.luc4n3x.levyra.nexus.identity.MusicIdentityText.title(candidate.title).versionSignature != heroTitle.versionSignature
-        }
-        (versions + otherTitles)
-            .map(::withYoutubePlays)
-            .filterNot { candidate -> candidate.id == leadTrack.id || titleKey(candidate) == titleKey(leadTrack) }
-            .sortedBy { candidate -> if (isYoutubeMusicSong(candidate)) 0 else 1 }
-            .distinctBy(::titleKey)
-            .take(boundedLimit - 1)
-            .forEach(::add)
-    }.take(boundedLimit)
 }
 
 private fun isYoutubeMusicSong(track: Track): Boolean =

@@ -42,6 +42,9 @@ internal fun qobuzMediaColors(cover: Color): ImmersiveMediaColors {
     )
 }
 
+internal fun skinListColors(hero: ImmersiveMediaColors): ImmersiveMediaColors =
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsQobuz) qobuzListColors(hero) else hero
+
 internal fun qobuzListColors(hero: ImmersiveMediaColors): ImmersiveMediaColors = hero.copy(
     content = QobuzDesign.textPrimary, contentMuted = QobuzDesign.textSecondary, accent = QobuzDesign.textAccent
 )
