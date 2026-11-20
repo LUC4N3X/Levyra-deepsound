@@ -424,6 +424,96 @@ class SearchEntityIdentityTest {
         assertEquals(listOf("hero", "one", "two"), selected.map { it.id })
     }
 
+    @Test
+    fun `top result rows prefer youtube music songs with play counts`() {
+        fun spotify(id: String, title: String) = track(id = "spotify:$id", title = title, artist = "Drake", album = "")
+            .copy(source = "spotify", metadataProvider = "spotify")
+        fun youtube(id: String, title: String, plays: Long) =
+            track(id = id, title = title, artist = "Drake", album = "", youtubeViewCount = plays)
+                .copy(videoType = "MUSIC_VIDEO_TYPE_ATV")
+        val spotifyHero = spotify("gods-plan", "God's Plan")
+        val selected = selectSearchTopResultTracks(
+            topTrack = spotifyHero,
+            songs = listOf(
+                spotifyHero,
+                spotify("one-dance", "One Dance"),
+                track(id = "ugcOneDance", title = "One Dance", artist = "Drake", album = "", youtubeViewCount = 67_000L)
+                    .copy(videoType = "MUSIC_VIDEO_TYPE_UGC"),
+                youtube("ytGodsPlan1", "God's Plan", 2_500_000_000L),
+                youtube("ytJanice001", "Janice STFU", 155_000_000L),
+                youtube("ytShutItDwn", "Shut It Down", 97_000_000L)
+            )
+        )
+
+        assertEquals(listOf("God's Plan", "Janice STFU", "Shut It Down"), selected.map { it.title })
+        assertEquals(listOf(2_500_000_000L, 155_000_000L, 97_000_000L), selected.map { it.youtubeViewCount })
+    }
+
+    @Test
+    fun `top result rows reject same name uploads from another artist channel`() {
+        fun youtube(id: String, title: String, plays: Long, channel: String) =
+            track(id = id, title = title, artist = "Drake", album = "", youtubeViewCount = plays, artistBrowseIds = listOf(channel))
+                .copy(videoType = "MUSIC_VIDEO_TYPE_ATV")
+        val hero = youtube("ytGodsPlan1", "God's Plan", 2_500_000_000L, "UCdrake")
+        val selected = selectSearchTopResultTracks(
+            topTrack = hero,
+            songs = listOf(
+                hero,
+                youtube("fakeOneDanc", "One Dance", 67_000L, "UCimpostor"),
+                youtube("fakeHotline", "Hotline Bling", 37_000L, "UCimpostor"),
+                youtube("ytJanice001", "Janice STFU", 155_000_000L, "UCdrake"),
+                youtube("ytShutItDwn", "Shut It Down", 97_000_000L, "UCdrake")
+            ),
+            artistBrowseId = "UCdrake"
+        )
+
+        assertEquals(listOf("ytGodsPlan1", "ytJanice001", "ytShutItDwn"), selected.map { it.id })
+    }
+
+    @Test
+    fun `top result hero without plays yields to the first youtube song of the artist`() {
+        val spotifyHero = track(id = "spotify:one-of-the-girls", title = "One Of The Girls", artist = "The Weeknd", album = "")
+            .copy(source = "spotify", metadataProvider = "spotify")
+        fun youtube(id: String, title: String, plays: Long) =
+            track(id = id, title = title, artist = "The Weeknd", album = "", youtubeViewCount = plays)
+                .copy(videoType = "MUSIC_VIDEO_TYPE_ATV")
+        val selected = selectSearchTopResultTracks(
+            topTrack = spotifyHero,
+            songs = listOf(
+                spotifyHero,
+                youtube("ytBlinding1", "Blinding Lights", 3_700_000_000L),
+                youtube("ytSaveTears", "Save Your Tears", 786_000_000L),
+                youtube("ytStarboy01", "Starboy", 2_900_000_000L)
+            )
+        )
+
+        assertEquals(listOf("ytBlinding1", "ytSaveTears", "ytStarboy01"), selected.map { it.id })
+    }
+
+    @Test
+    fun `explicit youtube song never lends plays to a clean edition`() {
+        val clean = track(id = "spotify:clean", title = "Clean Song", artist = "Artist", album = "")
+            .copy(source = "spotify", metadataProvider = "spotify", explicit = false)
+        val explicitTwin = track(id = "ytExplicit1", title = "Clean Song", artist = "Artist", album = "", youtubeViewCount = 9_000_000L)
+            .copy(videoType = "MUSIC_VIDEO_TYPE_ATV", explicit = true)
+        val other = track(id = "ytOther0001", title = "Other Song", artist = "Artist", album = "", youtubeViewCount = 5_000_000L)
+            .copy(videoType = "MUSIC_VIDEO_TYPE_ATV")
+
+        val selected = selectSearchTopResultTracks(topTrack = clean, songs = listOf(clean, explicitTwin, other))
+
+        assertEquals("ytOther0001", selected.first().id)
+    }
+
+    @Test
+    fun `top result rows fall back to other sources without youtube songs`() {
+        val hero = track(id = "spotify:hero", title = "Hero", artist = "Drake").copy(source = "spotify", metadataProvider = "spotify")
+        val other = track(id = "spotify:other", title = "Other", artist = "Drake").copy(source = "spotify", metadataProvider = "spotify")
+
+        val selected = selectSearchTopResultTracks(topTrack = hero, songs = listOf(hero, other))
+
+        assertEquals(listOf("spotify:hero", "spotify:other"), selected.map { it.id })
+    }
+
 
 
     @Test

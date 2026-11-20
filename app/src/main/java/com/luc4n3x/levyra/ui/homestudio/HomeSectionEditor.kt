@@ -100,7 +100,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-internal val HomeEditorItemGap = 10.dp
+internal val HomeEditorItemGap = 4.dp
 private val AutoScrollEdge = 96.dp
 private val AutoScrollStep = 9.dp
 private const val JustAddedHighlightMillis = 2_800L

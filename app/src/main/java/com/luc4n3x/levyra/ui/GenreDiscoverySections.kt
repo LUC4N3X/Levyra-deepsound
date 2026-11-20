@@ -228,7 +228,7 @@ internal fun LazyListScope.genreArtistRowItems(
             skin.header(title)
             GenreDiscoveryRow(skin, entries, GenreArtistEntry::key) { index, entry ->
                 entry.track?.let { track -> LaunchedEffect(track.id) { onRequestTrackArtwork(track) } }
-                val portrait = rememberGenreArtistPortrait(entry.name).ifBlank { entry.fallbackArtworkUrl }
+                val portrait = rememberOfficialArtistPortrait(entry.name).orEmpty().ifBlank { entry.fallbackArtworkUrl }
                 skin.artist(
                     GenreDiscoveryTile(entry.key, index, entry.name, "", portrait) {
                         entry.track?.let(onPlayTrack) ?: onOpenArtist(entry.name)
@@ -412,12 +412,12 @@ internal fun GenreDiscoveryCredit(
 }
 
 @Composable
-private fun rememberGenreArtistPortrait(name: String): String {
+internal fun rememberOfficialArtistPortrait(name: String): String? {
     val context = LocalContext.current
     val spotify = remember(context) { SpotifyArtistArtworkRepository.get(context) }
     val apple = remember(context) { AppleArtistArtworkRepository.get(context) }
     val appleCached = remember(name) { apple.cachedArtistPortrait(name) }
-    var url by remember(name) { mutableStateOf(appleCached.ifBlank { spotify.cachedArtistPortrait(name) }) }
+    var url by remember(name) { mutableStateOf(appleCached.ifBlank { spotify.cachedArtistPortrait(name) }.ifBlank { null }) }
     LaunchedEffect(name) {
         if (appleCached.isNotBlank()) return@LaunchedEffect
         val fallback = ArtistPortraitFallbackRepository.get(context)
@@ -431,7 +431,7 @@ private fun rememberGenreArtistPortrait(name: String): String {
                     fallback::deezerPortrait
                 )
             )
-        }.ifBlank { url }
+        }.ifBlank { url.orEmpty() }
     }
     return url
 }

@@ -79,6 +79,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -107,6 +108,16 @@ import com.luc4n3x.levyra.ui.i18n.colorPickerCopy
 import com.luc4n3x.levyra.ui.i18n.glassStudioCopy
 import com.luc4n3x.levyra.ui.i18n.themeLibraryCopy
 import kotlin.math.roundToInt
+import androidx.compose.foundation.lazy.rememberLazyListState
+import com.luc4n3x.levyra.ui.components.LevyraScrolledTopBar
+import com.luc4n3x.levyra.ui.components.LevyraUtilityBackdrop
+import com.luc4n3x.levyra.ui.components.LevyraUtilityHeader
+import com.luc4n3x.levyra.ui.components.LevyraUtilitySeed
+import com.luc4n3x.levyra.ui.components.LevyraUtilityStyleActive
+import com.luc4n3x.levyra.ui.components.levyraUtilityColors
+import com.luc4n3x.levyra.ui.glassBackdropSource
+import com.luc4n3x.levyra.ui.rememberGlassBackdropState
+import com.luc4n3x.levyra.ui.rememberGlassBlurAllowed
 
 internal val LevyraThemeAccents: List<Int> = listOf(
     0xFF0A84FF.toInt(),
@@ -136,22 +147,30 @@ internal fun LevyraThemeStudioOverlay(
     onRestoreDefault: () -> Unit = {},
     glassEnabled: Boolean = false,
     glassStyle: LevyraGlassStyle = LevyraGlassStyle(),
-    onGlassStyleChange: (LevyraGlassStyle) -> Unit = {}
+    onGlassStyleChange: (LevyraGlassStyle) -> Unit = {},
+    previewArtwork: (@Composable () -> Unit)? = null
 ) {
     val strings = LocalLevyraStrings.current
     val library = strings.themeLibraryCopy
     var previewAccent by remember(selectedPresetId, accent) { mutableStateOf<Int?>(null) }
     val basePreview = rememberThemeStudioPreview(selectedPresetId, accent, pureBlack, customThemes)
     val preview = rememberThemeStudioPreview(selectedPresetId, previewAccent ?: accent, pureBlack, customThemes)
-    val presetRows = remember { themeStudioRows() }
+    val presets = LevyraThemes.presets
     val defaultPresetId = LevyraThemes.defaultPresetId
     val dialogs = remember { ThemeStudioDialogState() }
 
     val navigationBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val listState = rememberLazyListState()
+    val frost = LevyraUtilityStyleActive
+    val glass = rememberGlassBackdropState(frost && rememberGlassBlurAllowed())
 
     Box(modifier = Modifier.fillMaxSize().background(LevyraInk)) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize().statusBarsPadding(),
+            state = listState,
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .then(if (frost) Modifier.glassBackdropSource(glass) else Modifier),
             contentPadding = PaddingValues(
                 start = LevyraPlayerDesign.GutterCompact,
                 end = LevyraPlayerDesign.GutterCompact,
@@ -160,50 +179,26 @@ internal fun LevyraThemeStudioOverlay(
             ),
             verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceLg)
         ) {
-            item(contentType = "studio-header") {
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    LevyraBackButton(onClick = onClose, contentDescription = strings.back)
-                    Column(modifier = Modifier.padding(start = LevyraPlayerDesign.SpaceXs)) {
-                        Text(
-                            strings.themeStudio,
-                            color = LevyraText,
-                            fontSize = 26.sp,
-                            lineHeight = LevyraTypeRhythm.lineHeight(26f),
-                            fontWeight = FontWeight.Black
-                        )
-                        Text(
-                            strings.themeStudioSubtitle,
-                            color = LevyraMuted,
-                            fontSize = 13.sp,
-                            lineHeight = LevyraTypeRhythm.lineHeight(13f),
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
-            }
-
-            item(contentType = "studio-preview") {
-                ThemeStudioPreview(
-                    palette = preview,
-                    title = previewTitle.ifBlank { strings.nowPlaying },
-                    artist = previewArtist.ifBlank { strings.artistLabel },
-                    label = strings.themeStudioPreview
+            item(key = "studio-header", contentType = "studio-header") {
+                com.luc4n3x.levyra.ui.components.LevyraStudioTopBar(
+                    title = strings.themeStudio,
+                    onBack = onClose,
+                    backDescription = strings.back
                 )
             }
 
-            item(contentType = "studio-presets") {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        strings.themes,
-                        color = LevyraMuted,
-                        fontSize = 12.sp,
-                        letterSpacing = 0.4.sp,
-                        fontWeight = FontWeight.Black,
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(start = LevyraPlayerDesign.SpaceXs)
-                            .semantics { heading() }
-                    )
+            item(key = "studio-preview", contentType = "studio-preview") {
+                ThemeStudioShowcase(
+                    palette = preview,
+                    title = previewTitle.ifBlank { strings.themeStudio },
+                    artist = previewArtist.ifBlank { strings.artistLabel },
+                    modifier = Modifier.semantics { contentDescription = strings.themeStudioPreview },
+                    artwork = previewArtwork
+                )
+            }
+
+            item(key = "studio-presets-header", contentType = "studio-section-header") {
+                com.luc4n3x.levyra.ui.components.LevyraStudioSectionHeader(title = strings.themes, modifier = Modifier.padding(top = LevyraPlayerDesign.SpaceSm)) {
                     TextButton(
                         onClick = { dialogs.confirmRestore = true },
                         enabled = selectedPresetId != defaultPresetId || accent != 0
@@ -215,117 +210,27 @@ internal fun LevyraThemeStudioOverlay(
                 }
             }
 
-            items(
-                count = presetRows.size,
-                key = { index -> "studio-row-$index" },
-                contentType = { "studio-row" }
-            ) { index ->
-                val row = presetRows[index]
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(IntrinsicSize.Min),
-                    horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)
-                ) {
-                    row.forEach { palette ->
-                        ThemePresetTile(
+            item(key = "studio-themes", contentType = "studio-theme-list") {
+                Column(verticalArrangement = Arrangement.spacedBy(ThemeRowGap)) {
+                    presets.forEachIndexed { index, palette ->
+                        ThemeStudioThemeRow(
                             palette = palette,
                             selected = palette.id == selectedPresetId,
+                            shape = themeStudioRowShape(index, presets.size),
                             onClick = { onSelectPreset(palette.id) },
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight(),
                             defaultLabel = library[ThemeLibraryText.DefaultBadge].takeIf { palette.id == defaultPresetId },
                             selectedLabel = library[ThemeLibraryText.Selected]
                         )
                     }
-                    if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
                 }
             }
 
-            item(contentType = "studio-library-header") {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        library[ThemeLibraryText.MyThemes],
-                        color = LevyraMuted,
-                        fontSize = 12.sp,
-                        letterSpacing = 0.4.sp,
-                        fontWeight = FontWeight.Black,
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(start = LevyraPlayerDesign.SpaceXs)
-                            .semantics { heading() }
-                    )
-                    FilledTonalButton(
-                        onClick = { dialogs.editing = newCustomThemeFrom(selectedPresetId, accent, customThemes, library[ThemeLibraryText.NewThemeName]) },
-                        enabled = customThemes.size < LevyraCustomThemes.MAX_THEMES
-                    ) {
-                        Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(library[ThemeLibraryText.CreateTheme])
-                    }
-                }
-            }
-
-            if (customThemes.isEmpty()) {
-                item(contentType = "studio-library-empty") {
-                    Text(
-                        library[ThemeLibraryText.MyThemesEmpty],
-                        color = LevyraMuted,
-                        fontSize = 13.sp,
-                        lineHeight = LevyraTypeRhythm.lineHeight(13f),
-                        modifier = Modifier.padding(start = LevyraPlayerDesign.SpaceXs)
-                    )
-                }
-            } else {
-                val customRows = customThemes.chunked(2)
-                items(
-                    count = customRows.size,
-                    key = { index -> "studio-custom-" + customRows[index].joinToString { it.id } },
-                    contentType = { "studio-custom-row" }
-                ) { index ->
-                    val row = customRows[index]
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)
-                    ) {
-                        row.forEach { theme ->
-                            val palette = remember(theme) { theme.toPalette() }
-                            Box(modifier = Modifier.weight(1f)) {
-                                ThemePresetTile(
-                                    palette = palette,
-                                    selected = theme.id == selectedPresetId,
-                                    onClick = { onSelectPreset(theme.id) },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    selectedLabel = library[ThemeLibraryText.Selected]
-                                )
-                                CustomThemeMenu(
-                                    copy = library,
-                                    tint = palette.text,
-                                    modifier = Modifier.align(Alignment.BottomEnd),
-                                    onEdit = { dialogs.editing = theme },
-                                    onDuplicate = { onDuplicateCustomTheme(theme.id, library[ThemeLibraryText.CopySuffix]) },
-                                    onRename = { dialogs.renaming = theme },
-                                    onDelete = { dialogs.deleting = theme },
-                                    canDuplicate = customThemes.size < LevyraCustomThemes.MAX_THEMES
-                                )
-                            }
-                        }
-                        if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
-                    }
-                }
-            }
-
-            item(contentType = "studio-accent") {
-                Column(verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)) {
-                    Text(
-                        strings.themeAccent,
-                        color = LevyraMuted,
-                        fontSize = 12.sp,
-                        letterSpacing = 0.4.sp,
-                        fontWeight = FontWeight.Black,
-                        modifier = Modifier.padding(start = LevyraPlayerDesign.SpaceXs)
-                    )
+            item(key = "studio-accent", contentType = "studio-accent") {
+                Column(
+                    modifier = Modifier.padding(top = LevyraPlayerDesign.SpaceSm),
+                    verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)
+                ) {
+                    com.luc4n3x.levyra.ui.components.LevyraStudioSectionHeader(title = strings.themeAccent)
                     ThemeAccentPicker(
                         selected = accent,
                         fromPresetLabel = strings.themeAccentFromPreset,
@@ -349,14 +254,68 @@ internal fun LevyraThemeStudioOverlay(
                 }
             }
 
-            item(contentType = "studio-glass") {
+            item(key = "studio-glass", contentType = "studio-glass") {
                 ThemeStudioGlassSection(
                     copy = strings.glassStudioCopy(),
                     enabled = glassEnabled,
                     style = glassStyle,
-                    onStyleChange = onGlassStyleChange
+                    onStyleChange = onGlassStyleChange,
+                    modifier = Modifier.padding(top = LevyraPlayerDesign.SpaceSm)
                 )
             }
+
+            item(key = "studio-library-header", contentType = "studio-section-header") {
+                com.luc4n3x.levyra.ui.components.LevyraStudioSectionHeader(
+                    title = library[ThemeLibraryText.MyThemes],
+                    subtitle = if (customThemes.isEmpty()) library[ThemeLibraryText.MyThemesEmpty] else "",
+                    modifier = Modifier.padding(top = LevyraPlayerDesign.SpaceSm)
+                ) {
+                    FilledTonalButton(
+                        onClick = { dialogs.editing = newCustomThemeFrom(selectedPresetId, accent, customThemes, library[ThemeLibraryText.NewThemeName]) },
+                        enabled = customThemes.size < LevyraCustomThemes.MAX_THEMES
+                    ) {
+                        Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(library[ThemeLibraryText.CreateTheme], maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+            }
+
+            if (customThemes.isNotEmpty()) {
+                item(key = "studio-custom-themes", contentType = "studio-theme-list") {
+                    Column(verticalArrangement = Arrangement.spacedBy(ThemeRowGap)) {
+                        customThemes.forEachIndexed { index, theme ->
+                            val palette = remember(theme) { theme.toPalette() }
+                            ThemeStudioThemeRow(
+                                palette = palette,
+                                selected = theme.id == selectedPresetId,
+                                shape = themeStudioRowShape(index, customThemes.size),
+                                onClick = { onSelectPreset(theme.id) },
+                                selectedLabel = library[ThemeLibraryText.Selected]
+                            ) {
+                                CustomThemeMenu(
+                                    copy = library,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier,
+                                    onEdit = { dialogs.editing = theme },
+                                    onDuplicate = { onDuplicateCustomTheme(theme.id, library[ThemeLibraryText.CopySuffix]) },
+                                    onRename = { dialogs.renaming = theme },
+                                    onDelete = { dialogs.deleting = theme },
+                                    canDuplicate = customThemes.size < LevyraCustomThemes.MAX_THEMES
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (frost) {
+            LevyraScrolledTopBar(
+                glass = glass,
+                listState = listState,
+                title = strings.themeStudio,
+                icon = Icons.Rounded.Palette
+            )
         }
     }
 
@@ -1056,89 +1015,6 @@ private fun ThemeStudioPreview(
     }
 }
 
-@Composable
-private fun ThemePresetTile(
-    palette: LevyraPalette,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    defaultLabel: String? = null,
-    selectedLabel: String? = null
-) {
-    val border by animateColorAsState(
-        if (selected) LevyraCyan else LevyraMuted.copy(alpha = 0.2f),
-        LevyraPlayerDesign.standardTween(),
-        label = "studio-tile-border"
-    )
-    Surface(
-        color = palette.black,
-        border = BorderStroke(if (selected) 2.dp else LevyraPlayerDesign.Hairline, border),
-        shape = LevyraPlayerDesign.ShapeSm,
-        onClick = onClick,
-        modifier = modifier
-            .heightIn(min = 96.dp)
-            .semantics {
-                this.role = Role.RadioButton
-                this.selected = selected
-                this.contentDescription = palette.label
-                val states = listOfNotNull(selectedLabel.takeIf { selected }, defaultLabel)
-                if (states.isNotEmpty()) stateDescription = states.joinToString(", ")
-            }
-    ) {
-        Column(
-            modifier = Modifier.padding(LevyraPlayerDesign.SpaceMd),
-            verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(5.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(modifier = Modifier.size(16.dp).clip(CircleShape).background(palette.cyan))
-                Box(modifier = Modifier.size(16.dp).clip(CircleShape).background(palette.violet))
-                Box(modifier = Modifier.size(16.dp).clip(CircleShape).background(palette.pink))
-                Spacer(modifier = Modifier.weight(1f))
-                if (selected) {
-                    Icon(
-                        Icons.Rounded.Check,
-                        contentDescription = null,
-                        tint = LevyraCyan,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(10.dp)
-                    .clip(CircleShape)
-                    .background(palette.panel)
-            )
-            Text(
-                palette.label,
-                color = palette.text,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Black,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            if (defaultLabel != null) {
-                Text(
-                    defaultLabel,
-                    color = palette.cyan,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .border(1.dp, palette.cyan.copy(alpha = 0.55f), RoundedCornerShape(8.dp))
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
-                )
-            }
-        }
-    }
-}
-
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ThemeAccentPicker(
@@ -1157,6 +1033,7 @@ private fun ThemeAccentPicker(
     val activeColor = Color(activeArgb)
     var pickerInitialColor by remember { mutableStateOf(activeArgb) }
     val badgeShape = MaterialShapes.Cookie9Sided.toShape()
+    val tone = levyraUtilityColors(LevyraUtilitySeed)
 
     Column(verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)) {
         val openPicker = {
@@ -1230,7 +1107,7 @@ private fun ThemeAccentPicker(
                 showCustomPicker = true
             },
             shape = RoundedCornerShape(24.dp),
-            color = LevyraPanel,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
@@ -1242,15 +1119,15 @@ private fun ThemeAccentPicker(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(46.dp)
+                        .size(40.dp)
                         .clip(badgeShape)
-                        .background(activeColor),
+                        .background(tone.softContainer),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.Palette,
                         contentDescription = null,
-                        tint = LevyraOnAccent,
+                        tint = tone.accent,
                         modifier = Modifier.size(21.dp)
                     )
                 }
@@ -1264,9 +1141,9 @@ private fun ThemeAccentPicker(
                     ) {
                         Text(
                             text = pickerCopy[ColorPickerText.OpenPicker],
-                            color = LevyraText,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Black,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false)
@@ -1274,15 +1151,17 @@ private fun ThemeAccentPicker(
                         Box(
                             modifier = Modifier
                                 .clip(CircleShape)
-                                .background(activeColor.copy(alpha = 0.20f))
-                                .padding(horizontal = 9.dp, vertical = 3.dp)
+                                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                                .padding(start = 4.dp, end = 9.dp, top = 3.dp, bottom = 3.dp)
                         ) {
+                            Box(Modifier.padding(end = 6.dp).size(12.dp).clip(CircleShape).background(activeColor).align(Alignment.CenterStart))
                             Text(
+                                modifier = Modifier.padding(start = 16.dp),
                                 text = "#${formatThemeHex(activeArgb)}",
                                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = LevyraText,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 maxLines = 1,
                                 softWrap = false
                             )
@@ -1290,9 +1169,8 @@ private fun ThemeAccentPicker(
                     }
                     Text(
                         text = pickerCopy[ColorPickerText.Subtitle],
-                        color = LevyraMuted,
-                        fontSize = 12.sp,
-                        lineHeight = 16.sp
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall
                     )
                 }
             }
@@ -1329,8 +1207,7 @@ private fun ThemeAccentDot(
     icon: ImageVector? = null,
     onClick: () -> Unit
 ) {
-    val activeShape = MaterialShapes.Cookie9Sided.toShape()
-    val shape = if (selected) activeShape else CircleShape
+    val ring = levyraUtilityColors(LevyraUtilitySeed).accent
     Box(
         modifier = Modifier
             .size(LevyraPlayerDesign.MinimumTouchTarget)
@@ -1343,15 +1220,16 @@ private fun ThemeAccentDot(
             },
         contentAlignment = Alignment.Center
     ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .border(if (selected) 2.5.dp else 0.dp, if (selected) ring else Color.Transparent, CircleShape)
+        )
         Surface(
             color = color,
-            shape = shape,
-            border = if (outlined && !selected) {
-                BorderStroke(1.5.dp, LevyraMuted.copy(alpha = 0.4f))
-            } else {
-                null
-            },
-            modifier = Modifier.size(if (selected) 36.dp else 30.dp)
+            shape = CircleShape,
+            border = if (outlined) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else null,
+            modifier = Modifier.size(30.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {
                 if (selected) {
@@ -1427,4 +1305,4 @@ internal fun themeStudioPaletteFor(
     )
 }
 
-private fun themeStudioRows(): List<List<LevyraPalette>> = LevyraThemes.presets.chunked(2)
+private val ThemeRowGap = 3.dp

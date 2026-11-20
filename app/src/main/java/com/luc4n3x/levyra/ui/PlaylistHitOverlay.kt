@@ -437,12 +437,13 @@ private fun PlaylistHitList(
                 }
             )
         }
+        val listColors = com.luc4n3x.levyra.ui.media.skinListColors(colors)
         if (preview.description.isNotBlank()) {
             item(key = "playlist-hit-description", contentType = "playlist-hit-description") {
                 var expanded by rememberSaveable(preview.hit.playlistId) { mutableStateOf(false) }
                 Text(
                     text = preview.description,
-                    color = colors.contentMuted,
+                    color = listColors.contentMuted,
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = if (wide) TextAlign.Start else TextAlign.Center,
                     maxLines = if (expanded) Int.MAX_VALUE else 3,
@@ -460,7 +461,7 @@ private fun PlaylistHitList(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    LevyraLoadingIndicator(modifier = Modifier.size(28.dp), color = colors.accent)
+                    LevyraLoadingIndicator(modifier = Modifier.size(28.dp), color = listColors.accent)
                 }
             }
             tracks.isEmpty() -> item(key = "playlist-hit-empty", contentType = "playlist-hit-state") {

@@ -201,31 +201,12 @@ internal fun NavigationStudioOverlay(
             .statusBarsPadding()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 8.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                LevyraBackButton(onClick = onClose, contentDescription = strings.back)
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(start = 4.dp)
-                ) {
-                    Text(
-                        text = copy[NavStudioText.Title],
-                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black),
-                        color = LevyraText,
-                        modifier = Modifier.semantics { heading() }
-                    )
-                    Text(
-                        text = copy[NavStudioText.Subtitle],
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = LevyraMuted,
-                    )
-                }
-            }
+            com.luc4n3x.levyra.ui.components.LevyraStudioTopBar(
+                title = copy[NavStudioText.Title],
+                onBack = onClose,
+                backDescription = strings.back,
+                modifier = Modifier.padding(start = 4.dp, end = 8.dp, top = 4.dp, bottom = 8.dp)
+            )
             NavStudioStage(
                 style = style,
                 tuning = tuning,
@@ -883,9 +864,9 @@ private fun NavStyleCard(
         modifier = Modifier
             .width(184.dp)
             .clip(NavStudioCardShape)
-            .background(if (selected) scheme.secondaryContainer else scheme.surfaceContainerHigh)
+            .background(scheme.surfaceContainerHigh)
             .border(
-                width = if (selected) 2.dp else 1.dp,
+                width = if (selected) 2.5.dp else 1.dp,
                 color = if (selected) scheme.primary else scheme.outlineVariant.copy(alpha = 0.5f),
                 shape = NavStudioCardShape
             )
@@ -921,7 +902,7 @@ private fun NavStyleCard(
             Text(
                 text = name,
                 style = MaterialTheme.typography.labelLarge.copy(fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold),
-                color = if (selected) scheme.onSecondaryContainer else LevyraText,
+                color = scheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)

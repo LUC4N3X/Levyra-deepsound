@@ -317,6 +317,7 @@ internal fun HomeStudioOverlay(
                         layout = layout.layoutFor(id),
                         copy = copy,
                         dragging = isDragging,
+                        shape = com.luc4n3x.levyra.ui.theme.themeStudioRowShape(index, shownOrder.size),
                         modifier = Modifier
                             .zIndex(if (isDragging) 1f else 0f)
                             .graphicsLayer {
@@ -470,18 +471,11 @@ private const val HomeEditorFirstBlockIndex = 3
 
 private fun LazyListScope.homeStudioTopItem(copy: HomeStudioCopy, backLabel: String, onClose: () -> Unit) {
     item(key = "studio-top", contentType = "studio-top") {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            LevyraBackButton(onClick = onClose, contentDescription = backLabel)
-            Column(modifier = Modifier.weight(1f).padding(start = 4.dp)) {
-                Text(
-                    text = copy.title,
-                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black),
-                    color = LevyraText,
-                    modifier = Modifier.semantics { heading() }
-                )
-                Text(text = copy.subtitle, style = MaterialTheme.typography.bodyMedium, color = LevyraMuted)
-            }
-        }
+        com.luc4n3x.levyra.ui.components.LevyraStudioTopBar(
+            title = copy.title,
+            onBack = onClose,
+            backDescription = backLabel
+        )
     }
 }
 
@@ -614,10 +608,10 @@ internal fun <T : Any> reorderStep(
 private fun HomeStudioLabel(text: String) {
     Text(
         text = text,
-        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-        color = LevyraText,
+        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+        color = MaterialTheme.colorScheme.onBackground,
         modifier = Modifier
-            .padding(top = 12.dp)
+            .padding(top = 20.dp)
             .semantics { heading() }
     )
 }
@@ -739,6 +733,7 @@ private fun HomeStudioSectionRow(
     layout: HomeSectionLayout,
     copy: HomeStudioCopy,
     dragging: Boolean,
+    shape: androidx.compose.ui.graphics.Shape,
     modifier: Modifier,
     dragHandleModifier: Modifier,
     onVisible: (Boolean) -> Unit,
@@ -749,7 +744,7 @@ private fun HomeStudioSectionRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(if (dragging) RoundedCornerShape(20.dp) else shape)
             .background(
                 if (dragging) {
                     MaterialTheme.colorScheme.secondaryContainer

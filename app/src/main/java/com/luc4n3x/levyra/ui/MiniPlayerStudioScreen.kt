@@ -345,54 +345,16 @@ private fun MiniStudioHeader(
     onBack: () -> Unit,
     onRestore: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 8.dp, end = 16.dp, top = 8.dp, bottom = 12.dp)
+    com.luc4n3x.levyra.ui.components.LevyraStudioTopBar(
+        title = copy[MiniStudioText.Title],
+        onBack = onBack,
+        backDescription = backLabel,
+        modifier = Modifier.padding(start = 4.dp, end = 8.dp, top = 4.dp, bottom = 8.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            LevyraBackButton(onClick = onBack, contentDescription = backLabel)
-            FilledTonalButton(
-                onClick = onRestore,
-                enabled = restoreEnabled,
-                shapes = ButtonDefaults.shapes(),
-                contentPadding = PaddingValues(start = 14.dp, end = 18.dp),
-                modifier = Modifier
-                    .weight(1f, fill = false)
-                    .padding(start = 12.dp)
-                    .heightIn(min = 48.dp)
-            ) {
-                Icon(Icons.Rounded.RestartAlt, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = copy[MiniStudioText.RestoreDefault],
-                    style = MaterialTheme.typography.labelLarge,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-        Column(modifier = Modifier.padding(start = 12.dp, top = 12.dp)) {
-            Text(
-                text = copy[MiniStudioText.Title],
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = (-0.6).sp
-                ),
-                color = LevyraText,
-                maxLines = 2,
-                modifier = Modifier.semantics { heading() }
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = copy[MiniStudioText.Subtitle],
-                style = MaterialTheme.typography.bodyMedium,
-                color = LevyraMuted
-            )
+        TextButton(onClick = onRestore, enabled = restoreEnabled, modifier = Modifier.heightIn(min = 48.dp)) {
+            Icon(Icons.Rounded.RestartAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(copy[MiniStudioText.RestoreDefault], maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -412,7 +374,7 @@ private fun MiniStudioStage(
             .background(
                 Brush.verticalGradient(
                     listOf(
-                        scheme.surfaceContainerHigh.playerMix(palette.accent, 0.10f),
+                        scheme.surfaceContainerHigh,
                         scheme.surfaceContainerLow
                     )
                 )
@@ -421,7 +383,7 @@ private fun MiniStudioStage(
             .semantics { contentDescription = miniPlayerStyleName(style) }
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            MiniStudioStageContent(accent = palette.accent)
+            Spacer(modifier = Modifier.height(24.dp))
             AnimatedContent(
                 targetState = style,
                 transitionSpec = {
@@ -439,34 +401,6 @@ private fun MiniStudioStage(
                 )
             }
             MiniStudioStageDock()
-        }
-    }
-}
-
-@Composable
-private fun MiniStudioStageContent(accent: Color) {
-    val scheme = MaterialTheme.colorScheme
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        repeat(3) { index ->
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(56.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(
-                        Brush.linearGradient(
-                            listOf(
-                                accent.copy(alpha = 0.34f - index * 0.08f),
-                                scheme.surfaceContainerHighest.copy(alpha = 0.6f)
-                            )
-                        )
-                    )
-            )
         }
     }
 }
@@ -887,8 +821,8 @@ private fun miniShapeLabel(shape: MiniArtworkShape, copy: MiniPlayerStudioCopy):
 internal fun MiniStudioLabel(text: String) {
     Text(
         text = text,
-        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-        color = LevyraText,
+        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+        color = MaterialTheme.colorScheme.onBackground,
         modifier = Modifier
             .padding(top = 8.dp)
             .semantics { heading() }
@@ -917,8 +851,8 @@ internal fun MiniStudioGroup(title: String, content: @Composable () -> Unit) {
     ) {
         Text(
             text = title,
-            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-            color = LevyraText,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.semantics { heading() }
         )
         content()
@@ -943,10 +877,10 @@ private fun MiniStyleCard(
         modifier = Modifier
             .width(168.dp)
             .clip(StudioCardShape)
-            .background(if (selected) scheme.secondaryContainer else scheme.surfaceContainerHigh)
+            .background(scheme.surfaceContainerHigh)
             .border(
-                width = if (selected) 2.dp else 1.dp,
-                color = if (selected) scheme.primary else scheme.outlineVariant.copy(alpha = 0.5f),
+                width = if (selected) 2.5.dp else 1.dp,
+                color = if (selected) scheme.primary else scheme.outlineVariant.copy(alpha = 0.4f),
                 shape = StudioCardShape
             )
             .levyraPressable(onClick = onClick, onClickLabel = name, role = Role.RadioButton)
@@ -987,7 +921,7 @@ private fun MiniStyleCard(
                 style = MaterialTheme.typography.labelLarge.copy(
                     fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold
                 ),
-                color = if (selected) scheme.onSecondaryContainer else LevyraText,
+                color = scheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)

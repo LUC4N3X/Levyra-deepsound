@@ -50,6 +50,7 @@ import androidx.compose.material.icons.rounded.Wallpaper
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -81,6 +82,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -155,31 +157,11 @@ internal fun LyricsStudioOverlay(
         ) {
             // Header
             item(contentType = "studio-header") {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                com.luc4n3x.levyra.ui.components.LevyraStudioTopBar(
+                    title = strings.lyricsStudio,
+                    onBack = onClose,
+                    backDescription = strings.back
                 ) {
-                    LevyraBackButton(onClick = onClose, contentDescription = strings.back)
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(start = LevyraPlayerDesign.SpaceXs)
-                    ) {
-                        Text(
-                            text = strings.lyricsStudio,
-                            color = LevyraText,
-                            fontSize = 26.sp,
-                            lineHeight = LevyraTypeRhythm.lineHeight(26f),
-                            fontWeight = FontWeight.Black
-                        )
-                        Text(
-                            text = strings.lyricsStudioSubtitle,
-                            color = LevyraMuted,
-                            fontSize = 13.sp,
-                            lineHeight = LevyraTypeRhythm.lineHeight(13f),
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
                     IconButton(
                         onClick = { showResetDialog = true },
                         modifier = Modifier.size(LevyraPlayerDesign.MinimumTouchTarget)
@@ -187,7 +169,7 @@ internal fun LyricsStudioOverlay(
                         Icon(
                             imageVector = Icons.Rounded.RestartAlt,
                             contentDescription = strings.lyricsStudioReset,
-                            tint = LevyraMuted
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -666,9 +648,9 @@ internal fun LyricsStudioOverlay(
                     OutlinedButton(
                         onClick = { showResetDialog = true },
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = LevyraCyan
+                            contentColor = MaterialTheme.colorScheme.primary
                         ),
-                        border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.5f)),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
                         shape = RoundedCornerShape(20.dp),
                         modifier = Modifier.fillMaxWidth(0.85f)
                     ) {
@@ -716,7 +698,7 @@ internal fun LyricsStudioOverlay(
                 ) {
                     Text(
                         text = strings.lyricsStudioReset,
-                        color = LevyraCyan,
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -729,7 +711,7 @@ internal fun LyricsStudioOverlay(
                     )
                 }
             },
-            containerColor = Color(0xFF1E1E24),
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
             shape = RoundedCornerShape(24.dp)
         )
     }
@@ -750,15 +732,15 @@ private fun StudioSectionHeader(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = LevyraCyan,
-            modifier = Modifier.size(18.dp)
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp)
         )
         Text(
             text = title,
-            color = LevyraText,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.ExtraBold,
-            letterSpacing = 0.2.sp
+            color = MaterialTheme.colorScheme.onBackground,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.semantics { heading() }
         )
     }
 }
@@ -773,12 +755,12 @@ private fun PresetCard(
 ) {
     val animationsEnabled = LocalAnimationsEnabled.current
     val borderColor by animateColorAsState(
-        targetValue = if (selected) LevyraCyan else Color.White.copy(alpha = 0.08f),
+        targetValue = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
         animationSpec = LevyraMotion.spec(animationsEnabled, tween(200)),
         label = "preset-border"
     )
     val bgColor by animateColorAsState(
-        targetValue = if (selected) LevyraCyan.copy(alpha = 0.12f) else Color(0xFF16161A),
+        targetValue = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceContainerHigh,
         animationSpec = LevyraMotion.spec(animationsEnabled, tween(200)),
         label = "preset-bg"
     )
@@ -805,7 +787,7 @@ private fun PresetCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    color = if (selected) LevyraCyan else LevyraText,
+                    color = if (selected) MaterialTheme.colorScheme.primary else LevyraText,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -822,7 +804,7 @@ private fun PresetCard(
                     modifier = Modifier
                         .size(24.dp)
                         .clip(CircleShape)
-                        .background(LevyraCyan),
+                        .background(MaterialTheme.colorScheme.primary),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -844,8 +826,8 @@ private fun StudioCard(content: @Composable () -> Unit) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp)),
         shape = RoundedCornerShape(24.dp),
-        color = Color(0xFF16161A),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.06f))
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
     ) {
         Column(
             modifier = Modifier
@@ -866,7 +848,7 @@ private fun StudioChoiceChip(
 ) {
     val animationsEnabled = LocalAnimationsEnabled.current
     val bgColor by animateColorAsState(
-        targetValue = if (selected) LevyraCyan else Color.White.copy(alpha = 0.06f),
+        targetValue = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
         animationSpec = LevyraMotion.spec(animationsEnabled, tween(180)),
         label = "chip-bg"
     )
@@ -905,7 +887,7 @@ private fun StudioIconChoiceChip(
 ) {
     val animationsEnabled = LocalAnimationsEnabled.current
     val bgColor by animateColorAsState(
-        targetValue = if (selected) LevyraCyan else Color.White.copy(alpha = 0.06f),
+        targetValue = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
         animationSpec = LevyraMotion.spec(animationsEnabled, tween(180)),
         label = "chip-icon-bg"
     )
@@ -975,9 +957,9 @@ private fun StudioToggleRow(
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = LevyraInk,
-                checkedTrackColor = LevyraCyan,
+                checkedTrackColor = MaterialTheme.colorScheme.primary,
                 uncheckedThumbColor = LevyraMuted,
-                uncheckedTrackColor = Color.White.copy(alpha = 0.10f)
+                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest
             )
         )
     }
@@ -1024,7 +1006,7 @@ private fun LyricsStudioLivePreview(
                 .fillMaxWidth()
                 .height(230.dp)
                 .clip(RoundedCornerShape(26.dp))
-                .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(26.dp))
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(26.dp))
         ) {
             StudioPreviewBackground(
                 mode = settings.backgroundMode,
@@ -1127,12 +1109,12 @@ private fun StudioPreviewHeader(
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
-                .background(if (useLive) LevyraCyan.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.08f))
+                .background(if (useLive) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 .padding(horizontal = 8.dp, vertical = 2.dp)
         ) {
             Text(
                 text = if (useLive && currentTrack != null) currentTrack.title.ifBlank { strings.nowPlaying } else "Demo Timeline",
-                color = if (useLive) LevyraCyan else LevyraMuted,
+                color = if (useLive) MaterialTheme.colorScheme.primary else LevyraMuted,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,

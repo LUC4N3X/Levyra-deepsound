@@ -583,6 +583,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -3770,12 +3771,14 @@ fun LevyraApp(
             }
 
             AnimatedVisibility(visible = state.showThemeStudio, enter = overlayEnter, exit = overlayExit) {
+                com.luc4n3x.levyra.ui.components.LevyraStudioTheme {
                 LevyraThemeStudioOverlay(
                     selectedPresetId = state.themePreset,
                     accent = state.themeAccent,
                     pureBlack = state.interfaceSettings.pureBlack,
                     previewTitle = state.currentTrack?.title.orEmpty(),
                     previewArtist = state.currentTrack?.artist.orEmpty(),
+                    previewArtwork = state.currentTrack?.let { track -> { CoverImage(track, Modifier.fillMaxSize()) } },
                     onSelectPreset = viewModel::setThemePreset,
                     onSelectAccent = viewModel::setThemeAccent,
                     onClose = viewModel::closeThemeStudio,
@@ -3802,9 +3805,11 @@ fun LevyraApp(
                         )
                     }
                 )
+                }
             }
 
             AnimatedVisibility(visible = state.showLyricsStudio, enter = overlayEnter, exit = overlayExit) {
+                com.luc4n3x.levyra.ui.components.LevyraStudioTheme {
                 LyricsStudioOverlay(
                     settings = state.lyricsStudioSettings,
                     currentTrack = state.currentTrack,
@@ -3816,9 +3821,11 @@ fun LevyraApp(
                     onResetSettings = viewModel::resetLyricsStudioSettings,
                     onClose = viewModel::closeLyricsStudio
                 )
+                }
             }
 
             AnimatedVisibility(visible = state.showHomeStudio, enter = overlayEnter, exit = overlayExit) {
+                com.luc4n3x.levyra.ui.components.LevyraStudioTheme {
                 HomeStudioOverlay(
                     settings = state.homeStudioSettings,
                     composition = homeComposition,
@@ -3828,9 +3835,11 @@ fun LevyraApp(
                     onInterfaceSettings = viewModel::setInterfaceSettings,
                     onClose = viewModel::closeHomeStudio
                 )
+                }
             }
 
             AnimatedVisibility(visible = miniPlayerStudio.visible, enter = overlayEnter, exit = overlayExit) {
+                com.luc4n3x.levyra.ui.components.LevyraStudioTheme {
                 MiniPlayerStudioOverlay(
                     settings = miniPlayerStudio.settings,
                     track = state.currentTrack,
@@ -3843,14 +3852,17 @@ fun LevyraApp(
                     scrollEffectLocked = skinNavigationSettings(navigationStudio.settings).style == NavStyle.LiquidCapsule,
                     onScrollEffect = { viewModel.setInterfaceSettings(state.interfaceSettings.copy(dockScrollEffect = it)) }
                 )
+                }
             }
 
             AnimatedVisibility(visible = navigationStudio.visible, enter = overlayEnter, exit = overlayExit) {
+                com.luc4n3x.levyra.ui.components.LevyraStudioTheme {
                 NavigationStudioOverlay(
                     settings = navigationStudio.settings,
                     onUpdate = viewModel::setNavigationStudioSettings,
                     onClose = viewModel::closeNavigationStudio
                 )
+                }
             }
 
             AnimatedVisibility(visible = state.showYourSound, enter = overlayEnter, exit = overlayExit) {
@@ -4739,6 +4751,7 @@ private fun AlbumOverlay(
         animated = state.animationsEnabled,
         labelPrefix = "album"
     )
+    val listStage = com.luc4n3x.levyra.ui.media.skinListColors(stage)
     val motionEnabled = state.animationsEnabled && state.motionArtworkEnabled
     var albumMenuExpanded by rememberSaveable(album?.browseId, album?.title) { mutableStateOf(false) }
     var canvasAspect by remember(album?.browseId, album?.title) { mutableStateOf<Float?>(null) }
@@ -4785,7 +4798,7 @@ private fun AlbumOverlay(
                 key = { index -> "album-skeleton-$index" },
                 contentType = { "album-skeleton" }
             ) {
-                AlbumTrackSkeleton(stage = stage, modifier = Modifier.padding(horizontal = gutter))
+                AlbumTrackSkeleton(stage = listStage, modifier = Modifier.padding(horizontal = gutter))
             }
             tracks.isNotEmpty() -> itemsIndexed(
                 items = tracks,
@@ -4798,7 +4811,7 @@ private fun AlbumOverlay(
                     count = tracks.size,
                     track = track,
                     albumArtist = album?.artist.orEmpty(),
-                    stage = stage,
+                    stage = listStage,
                     presentation = AlbumTrackRowPresentation(
                         isCurrent = uiTrackMatches(state.currentTrack, track),
                         isPlaying = state.isPlaying,
@@ -4988,7 +5001,7 @@ private fun AlbumOverlay(
                             ) {
                                 Text(
                                     text = description,
-                                    color = stage.contentMuted,
+                                    color = listStage.contentMuted,
                                     fontSize = 14.sp,
                                     lineHeight = 21.sp,
                                     letterSpacing = (-0.1).sp,
@@ -5718,6 +5731,12 @@ private fun ArtistOverlay(
             }
         }
         val heroMotion = remember(appleArtist) { appleArtist?.heroMotion() } ?: state.artistMotionArtwork
+        val canvasPosterTone = rememberAppleCanvasEdgeColor(
+            if (defaultArtistPage && appleArtist?.squareMotion != null) fittedHeroArtwork else ""
+        )
+        LaunchedEffect(canvasPosterTone, profile?.browseId) {
+            canvasPosterTone?.let { artistCanvasTone = Color(it) }
+        }
         val topBarPx = with(density) { (WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + ArtistTopBarHeight).toPx() }
         val heroScroll: () -> Float = {
             if (artistListState.firstVisibleItemIndex == 0) {
@@ -14635,8 +14654,13 @@ private fun SearchScreen(
 
         val data = state.searchData
         val filter = state.searchFilter
-        val topResultTracks = remember(data.topTrack, data.songs, filter) {
-            if (filter == SearchFilter.All) selectSearchTopResultTracks(data.topTrack, data.songs) else emptyList()
+        val topResultTracks = remember(data.topTrack, data.songs, data.artists, filter, queryClean) {
+            if (filter == SearchFilter.All) {
+                val verifiedArtist = findVerifiedTopResultArtist(data.artists, data.topTrack, queryClean)
+                selectSearchTopResultTracks(data.topTrack, data.songs, artistBrowseId = verifiedArtist?.browseId.orEmpty())
+            } else {
+                emptyList()
+            }
         }
         val topResultArtist = remember(data.artists, topResultTracks, queryClean) {
             findVerifiedTopResultArtist(data.artists, topResultTracks.firstOrNull(), queryClean)
@@ -19047,6 +19071,8 @@ private fun SettingsOverlay(
     }
     val settingsFrost = LevyraIsDefaultSkin && !SkinChrome.active
     val settingsGlass = rememberGlassBackdropState(settingsFrost && rememberGlassBlurAllowed())
+    val settingsSearchFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+    val settingsScope = rememberCoroutineScope()
     Box(
         modifier = Modifier
         .fillMaxSize()
@@ -19105,6 +19131,7 @@ private fun SettingsOverlay(
                             cursorBrush = SolidColor(LevyraCyan),
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .focusRequester(settingsSearchFocus)
                                 .semantics { contentDescription = strings.settingsSearchPlaceholder }
                                 .padding(bottom = 16.dp)
                                 .background(LevyraAdaptiveCard, if (SkinChrome.active) SkinChrome.fieldShape else CircleShape)
@@ -20508,10 +20535,23 @@ private fun SettingsOverlay(
                 listState = settingsListStates.getOrPut(activeCategory) { LazyListState() },
                 title = barMeta?.title ?: strings.settings,
                 icon = barMeta?.icon ?: Icons.Rounded.Settings
-            )
+            ) {
+                if (activeCategory == null && !LevyraIsAtelier) {
+                    IconButton(onClick = {
+                        settingsScope.launch {
+                            settingsListStates.getOrPut(null) { LazyListState() }.animateScrollToItem(SettingsSearchFieldIndex)
+                            settingsSearchFocus.requestFocus()
+                        }
+                    }) {
+                        Icon(Icons.Rounded.Search, contentDescription = strings.settingsSearchPlaceholder, tint = MaterialTheme.colorScheme.onSurface)
+                    }
+                }
+            }
         }
     }
 }
+
+private const val SettingsSearchFieldIndex = 1
 
 @Composable
 private fun SettingsSearchResultRow(title: String, description: String, category: String, onClick: () -> Unit) {
