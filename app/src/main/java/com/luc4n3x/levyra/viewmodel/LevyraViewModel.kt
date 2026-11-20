@@ -521,6 +521,7 @@ private const val JAM_SIMILAR_SONG_SELECT_TIMEOUT_MS = 5_000L
 
 private const val DISCOVERY_PLAYLIST_SIGNAL_LIMIT = 300
 private const val DISCOVERY_SOURCE_LIMIT = 16
+private const val APPLE_TRENDING_SEARCH_LIMIT = 8
 private const val DISCOVERY_REGIONAL_LIMIT = 30
 private const val DISCOVERY_RELEASE_RADAR_LIMIT = 5
 private const val DISCOVERY_ARTIST_LIMIT = 8
@@ -1450,6 +1451,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var chartEnrichJob: Job? = null
     private var chartArtworkJob: Job? = null
     private var orbitArtworkJob: Job? = null
+    private var appleTrendingJob: Job? = null
     private var motionArtworkJob: Job? = null
     @Volatile private var motionArtworkRequestKey: String? = null
     @Volatile private var motionArtworkRequestGeneration: Long = 0L
@@ -2607,6 +2609,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             loadHomeFeed(deferUntilHomeIdle = true)
             homeFeedJob?.join()
             refreshHomeResonanceIfStale()
+            refreshAppleTrendingQuickPicks()
         }
         viewModelScope.launch {
             delay(450L)
@@ -7623,6 +7626,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (refreshRemote) {
             loadHomeFeed()
             loadCharts(selectedChartRegion.id)
+            refreshAppleTrendingQuickPicks()
         }
         warmChartRegionMemoryCache()
     }
@@ -11000,6 +11004,31 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         deferUntilHomeIdle: Boolean = false
     ) {
         enqueueOfficialMetadata(tracks, limit, deferUntilHomeIdle)
+    }
+
+    private fun refreshAppleTrendingQuickPicks() {
+        val snapshot = _state.value
+        if (snapshot.isDeviceOffline) return
+        val languageCode = snapshot.languageCode
+        val storefront = AppleStorefronts.normalize(ChartsCatalog.defaultRegionForLanguage(languageCode).country)
+        appleTrendingJob?.cancel()
+        appleTrendingJob = viewModelScope.launch {
+            awaitHomeUiIdle()
+            val apple = AppleMusicEditorialRepository.get(getApplication<Application>())
+            val appleLanguage = AppleStorefronts.language(languageCode)
+            val page = runCatchingPreservingCancellation { apple.newMusic(storefront, appleLanguage)?.page }.getOrNull()
+            val songs = com.luc4n3x.levyra.data.apple.appleTrendingSongs(page)
+            if (songs.isEmpty()) return@launch
+            val detailed = apple.withSongDetails(storefront, appleLanguage, songs)
+            val trending = com.luc4n3x.levyra.data.apple.AppleTrendingQuickPicks.match(detailed) { query ->
+                repository.searchForPlayback(query, APPLE_TRENDING_SEARCH_LIMIT, languageCode)
+            }
+            if (trending.isEmpty()) return@launch
+            _state.update { current ->
+                if (current.languageCode != languageCode) current
+                else current.copy(quickPickSeeds = trending + LevyraStartupCatalog.quickPickSeeds(languageCode))
+            }
+        }
     }
 
     private fun refreshMissingOfficialOrbitArtwork(tracks: List<Track>, deferUntilHomeIdle: Boolean = false) {
