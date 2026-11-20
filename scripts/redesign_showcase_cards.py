@@ -484,7 +484,7 @@ UPRIGHT_CARD_SPECS = [
         "100% PRIVATE ANALYTICS",
         "Listening Insights",
         "On-device stats & Last.fm scrobbling.",
-        "Screenshot_20261024_210317_Levyra.jpg",
+        "Screenshot_20261120_140611_Levyra.jpg",
         (238, 247, 252), (211, 232, 246), (175, 212, 238), (184, 214, 234),
         (24, 108, 158), (14, 28, 42), (46, 82, 112),
     ),
