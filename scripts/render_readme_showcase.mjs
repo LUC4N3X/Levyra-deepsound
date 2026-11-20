@@ -82,10 +82,10 @@ async function extractPhone(index, spec) {
 }
 
 const palettes = [
-  { top: '#F7F8FD', mid: '#E7ECFA', bottom: '#C8D3F2', shape: '#B2C1EC', ink: '#161B2E', muted: '#495270', pillBg: '#D8E0F8', pillInk: '#273870' },
-  { top: '#F9F8FD', mid: '#ECEAF9', bottom: '#D1CCF0', shape: '#BDB6E8', ink: '#1B1830', muted: '#514C6E', pillBg: '#E0DCF6', pillInk: '#3A3173' },
-  { top: '#F6F9FC', mid: '#E4EFF8', bottom: '#C2D9EE', shape: '#ABC9E6', ink: '#142030', muted: '#465870', pillBg: '#D3E4F5', pillInk: '#20446E' },
-  { top: '#F8F8FD', mid: '#EAEBF9', bottom: '#CCD0F1', shape: '#B6BCEB', ink: '#171B2F', muted: '#4C526F', pillBg: '#DCE0F7', pillInk: '#2E3A72' },
+  { top: '#EFF3FD', mid: '#D4DFF8', bottom: '#9EB6EC', shape: '#7F9EE4', ink: '#12182B', muted: '#3B486B' },
+  { top: '#F1F2FD', mid: '#D8DCF8', bottom: '#A7B2EC', shape: '#8B99E4', ink: '#14172E', muted: '#40476B' },
+  { top: '#EDF4FC', mid: '#CFE2F6', bottom: '#95BCE8', shape: '#74A5DF', ink: '#101C2C', muted: '#374D68' },
+  { top: '#EFF2FD', mid: '#D5DDF8', bottom: '#A2B4EC', shape: '#849AE4', ink: '#13182C', muted: '#3D486B' },
 ];
 
 function flower(cx, cy, radius, lobes, amp = 0.1) {
@@ -108,8 +108,8 @@ function shadow(shape) {
       <filter id="s1" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="32"/></filter>
       <filter id="s2" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="10"/></filter>
     </defs>
-    <g transform="translate(0 26)" opacity=".20" filter="url(#s1)">${shape.replaceAll('fill="white"', 'fill="#182040"')}</g>
-    <g transform="translate(0 8)" opacity=".14" filter="url(#s2)">${shape.replaceAll('fill="white"', 'fill="#0F1429"')}</g>
+    <g transform="translate(0 24)" opacity=".24" filter="url(#s1)">${shape.replaceAll('fill="white"', 'fill="#121B3A"')}</g>
+    <g transform="translate(0 8)" opacity=".18" filter="url(#s2)">${shape.replaceAll('fill="white"', 'fill="#0A1024"')}</g>
   `);
 }
 
@@ -122,21 +122,21 @@ function cardBackdrop(index, p) {
       ? 'x1="0" y1="0" x2="1" y2="1"'
       : (index % 2 === 0 ? 'x1="0" y1="0" x2="1" y2="1"' : 'x1="1" y1="0" x2="0" y2="1"');
   const mainShape = isHeroLeft
-    ? `<path d="${flower(110, 560, 235, 10, 0.11)}" fill="${p.shape}" opacity=".34"/>
-       <path d="${flower(145, 1180, 145, 4, 0.16)}" fill="#FFFFFF" opacity=".55"/>`
+    ? `<path d="${flower(105, 560, 240, 10, 0.11)}" fill="${p.shape}" opacity=".26"/>
+       <path d="${flower(135, 1170, 150, 4, 0.16)}" fill="#FFFFFF" opacity=".42"/>`
     : isHeroRight
-      ? `<path d="${flower(780, 440, 230, 8, 0.12)}" fill="${p.shape}" opacity=".32"/>
-         <path d="${flower(130, 1520, 160, 4, 0.16)}" fill="#FFFFFF" opacity=".50"/>`
+      ? `<path d="${flower(785, 430, 235, 8, 0.12)}" fill="${p.shape}" opacity=".24"/>
+         <path d="${flower(125, 1520, 165, 4, 0.16)}" fill="#FFFFFF" opacity=".38"/>`
       : index % 2 === 0
-        ? `<path d="${flower(790, 460, 225, 12, 0.09)}" fill="${p.shape}" opacity=".32"/>
-           <path d="${flower(95, 1240, 170, 4, 0.16)}" fill="#FFFFFF" opacity=".52"/>`
-        : `<path d="${flower(110, 470, 220, 8, 0.12)}" fill="${p.shape}" opacity=".32"/>
-           <path d="${flower(815, 1260, 175, 4, 0.16)}" fill="#FFFFFF" opacity=".52"/>`;
+        ? `<path d="${flower(805, 340, 225, 12, 0.09)}" fill="${p.shape}" opacity=".24"/>
+           <path d="${flower(85, 1180, 175, 4, 0.16)}" fill="#FFFFFF" opacity=".36"/>`
+        : `<path d="${flower(95, 350, 220, 8, 0.12)}" fill="${p.shape}" opacity=".24"/>
+           <path d="${flower(820, 1200, 180, 4, 0.16)}" fill="#FFFFFF" opacity=".36"/>`;
   return svg(`
     <defs>
       <linearGradient id="paper" ${gradAttrs}>
         <stop offset="0%" stop-color="${p.top}"/>
-        <stop offset="52%" stop-color="${p.mid}"/>
+        <stop offset="50%" stop-color="${p.mid}"/>
         <stop offset="100%" stop-color="${p.bottom}"/>
       </linearGradient>
     </defs>
@@ -148,10 +148,10 @@ function cardBackdrop(index, p) {
 async function cardMediaLayers(index, spec) {
   if (index >= 2) {
     const phone = await extractPhone(index, spec);
-    const { data, info } = await sharp(phone).resize({ width: 716 }).png().toBuffer({ resolveWithObject: true });
+    const { data, info } = await sharp(phone).resize({ width: 764 }).png().toBuffer({ resolveWithObject: true });
     return [
-      { input: shadow(`<rect x="92" y="344" width="716" height="${info.height}" rx="34" fill="white"/>`) },
-      { input: data, left: 92, top: 344 }
+      { input: shadow(`<rect x="68" y="252" width="764" height="${info.height}" rx="36" fill="white"/>`) },
+      { input: data, left: 68, top: 252 }
     ];
   }
   const input = await readFile(resolve(source, `${spec[0]}.webp`));
@@ -169,7 +169,7 @@ async function renderCard(index, spec) {
   const backdrop = cardBackdrop(index, p);
   const layers = await cardMediaLayers(index, spec);
   layers.push(await cardTextLayer(index, spec, p));
-  layers.push({ input: svg('<rect x="1.5" y="1.5" width="897" height="1797" rx="34" fill="none" stroke="white" stroke-opacity=".80" stroke-width="3"/>') });
+  layers.push({ input: svg('<rect x="1.5" y="1.5" width="897" height="1797" rx="34" fill="none" stroke="white" stroke-opacity=".70" stroke-width="3"/>') });
   const card = await sharp(backdrop).composite(layers).png().toBuffer();
   return sharp(card).composite([{ input: rounded(width, height, 36), blend: 'dest-in' }]).png().toBuffer();
 }
@@ -178,23 +178,16 @@ async function cardTextLayer(index, spec, p) {
   const right = index === 1;
   const x = index >= 2 ? 450 : right ? 832 : 68;
   const anchor = index >= 2 ? 'middle' : right ? 'end' : 'start';
-  const label = spec[1];
-  const pillH = 44;
-  const pillW = Math.round(label.length * 16.5 + 48);
-  const pillY = index === 0 ? 1344 : index < 2 ? 56 : 62;
-  const pillX = anchor === 'middle' ? Math.round(x - pillW / 2) : anchor === 'end' ? x - pillW : x;
-  const pill = `<rect x="${pillX}" y="${pillY}" width="${pillW}" height="${pillH}" rx="22" fill="${p.pillBg}"/>`
-    + text(label, pillX + pillW / 2, pillY + 29, 20, p.pillInk, 700, 'middle', 3.4);
-  const y = index === 0 ? 1474 : index < 2 ? 186 : 196;
-  let titleSize = index < 2 ? 80 : 66;
+  const y = index === 0 ? 1458 : index < 2 ? 156 : 124;
+  let titleSize = index < 2 ? 82 : 64;
   if (index >= 2) {
     const probe = await sharp(svg(text(spec[2][0], 450, 100, titleSize, p.ink, 700))).trim().toBuffer({ resolveWithObject: true });
     if (probe.info.width > 780) titleSize = Math.floor(titleSize * 780 / probe.info.width);
   }
-  const titles = spec[2].map((line, i) => text(line, x, y + i * 94, titleSize, p.ink, 700, anchor));
-  const subtitleY = index === 0 ? 1656 : index < 2 ? 350 : 264;
-  const subtitles = spec[3].map((line, i) => text(line, x, subtitleY + i * 42, 31, p.muted, 400, anchor));
-  return { input: svg(pill + titles.join('') + subtitles.join('')) };
+  const titles = spec[2].map((line, i) => text(line, x, y + i * 96, titleSize, p.ink, 700, anchor));
+  const subtitleY = index === 0 ? 1646 : index < 2 ? 328 : 186;
+  const subtitles = spec[3].map((line, i) => text(line, x, subtitleY + i * 42, 30, p.muted, 400, anchor));
+  return { input: svg(titles.join('') + subtitles.join('')) };
 }
 
 await mkdir(output, { recursive: true });
