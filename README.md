@@ -92,8 +92,8 @@ I don't host FLAC audio on Levyra's servers. On Android, experimental FLAC playb
 
 <p>
   <a href="docs/assets/showcase/readme/row-02-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-02-studio-mobile.webp?v=m3-cards-14">
-    <img src="docs/assets/showcase/readme/row-02-studio.webp?v=m3-cards-14" width="900" alt="Discover more, instant search results, artist pages, and personal collections.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-02-studio-mobile.webp?v=m3-cards-15">
+    <img src="docs/assets/showcase/readme/row-02-studio.webp?v=m3-cards-15" width="900" alt="Discover more, instant search results, artist pages, and personal collections.">
   </picture></a>
 </p>
 
@@ -120,8 +120,8 @@ I don't host FLAC audio on Levyra's servers. On Android, experimental FLAC playb
 
 <p>
   <a href="docs/assets/showcase/readme/row-06-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-06-studio-mobile.webp?v=m3-cards-9">
-    <img src="docs/assets/showcase/readme/row-06-studio.webp?v=m3-cards-9" width="900" alt="Spotify Style, in-app updates, Theme Studio and Player Deck.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-06-studio-mobile.webp?v=m3-cards-10">
+    <img src="docs/assets/showcase/readme/row-06-studio.webp?v=m3-cards-10" width="900" alt="Spotify Style, in-app updates, Theme Studio and Player Deck.">
   </picture></a>
 </p>
 
