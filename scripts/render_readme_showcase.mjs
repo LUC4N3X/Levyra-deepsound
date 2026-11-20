@@ -36,7 +36,7 @@ const cards = [
   ['05b_explore_charts', 'EXPLORE', ['Explore charts'], ['Top 100, city charts & moods.']],
   ['07_every_genre', 'EXPLORE', ['Mood Journey'], ['Draw how the music should feel.']],
   ['13_tailor_every_detail', 'PERSONALIZATION', ['Make it yours'], ['Skins, themes & studios.']],
-  ['17_sing_along', 'LYRICS', ['Follow every word'], ['Follow along with synced lyrics.']],
+  ['17_sing_along', 'SETTINGS', ['Settings & studios'], ['Customize skins, themes & playback.']],
   ['11_your_rhythm', 'INSIGHTS', ['Listening insights'], ['Stats calculated on your device.']],
   ['16_listen_together', 'JAM', ['Listen together'], ['One queue. The same Wi-Fi.']],
   ['20_your_year_in_music', 'YOUR YEAR', ['Your year in music'], ['Your listening story, on device.']],

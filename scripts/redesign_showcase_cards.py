@@ -539,10 +539,10 @@ UPRIGHT_CARD_SPECS = [
     # Row 5: Lyrics, Real Offline Downloads, Swipe Discovery & Annual Recap (17-20)
     (
         "17_sing_along",
-        "WORD-BY-WORD SYNC",
-        "Time-Synced Lyrics",
-        "Romanization, offset & tap-to-seek.",
-        "screen-lyrics.jpg",
+        "FULL CONTROL",
+        "Settings & Studios",
+        "Customize skins, themes & playback.",
+        "Screenshot_20261120_151757_Levyra.jpg",
         (253, 248, 236), (240, 226, 196), (228, 206, 162), (224, 206, 172),
         (158, 98, 24), (32, 24, 12), (108, 78, 36),
     ),
