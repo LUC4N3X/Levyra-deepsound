@@ -29,7 +29,7 @@ const cards = [
   ['07_every_genre', 'EXPLORE', ['Mood Journey'], ['Draw how the music should feel.']],
   ['08_acoustic_precision', 'AUDIO', ['Your sound'], ['Output, quality & audio options.']],
   ['09_keep_it_personal', 'LIBRARY', ['One library'], ['Local files meet streamed music.']],
-  ['10_curated_for_you', 'SEARCH', ['Find your next favorite'], ['Songs, artists & albums.']],
+  ['10_curated_for_you', 'SEARCH', ['Instant search'], ['Top results, tracks & discography.']],
   ['11_your_rhythm', 'INSIGHTS', ['Listening insights'], ['Stats calculated on your device.']],
   ['12_in_your_orbit', 'COLLECTIONS', ['Made for you'], ['Mixes from your listening history.']],
   ['13_tailor_every_detail', 'PERSONALIZATION', ['Make it yours'], ['Skins, themes & studios.']],

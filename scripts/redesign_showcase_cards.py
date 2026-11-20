@@ -473,9 +473,9 @@ UPRIGHT_CARD_SPECS = [
     (
         "10_curated_for_you",
         "INSTANT DEEP FILTERING",
-        "Curated Search",
-        "Top results, artist radios & live chips.",
-        "Screenshot_20261024_193919_Levyra.jpg",
+        "Instant Search",
+        "Top results, tracks & discography.",
+        "Screenshot_20261120_143035_Levyra.jpg",
         (253, 245, 238), (242, 223, 206), (228, 198, 172), (226, 202, 182),
         (168, 76, 38), (34, 20, 14), (112, 68, 46),
     ),
