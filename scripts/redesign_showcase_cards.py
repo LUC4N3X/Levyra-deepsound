@@ -301,15 +301,15 @@ def build_row1_cards():
     pair1.paste(bg1, (0, 0))
     pair1.paste(bg2, (CARD_W + GAP, 0))
 
-    # Phone 1: Zero Ads. Zero Tracking. descending across the diptych seam at +10.5 deg
-    dev1, _, _, _ = create_phone_mockup("Screenshot_20261119_210350_Levyra.jpg", outer_w=705)
-    rot1 = rotate_device(dev1, 10.5)
-    place_rotated_device(pair1, rot1, pos=(232, -135), shadow_offset=(22, 40))
+    # Phone 1: Zero Ads. Zero Tracking. bold diagonal diptych sweep across Cards 1-2 at +20 deg
+    dev1, _, _, _ = create_phone_mockup("Screenshot_20261119_210350_Levyra.jpg", outer_w=710)
+    rot1 = rotate_device(dev1, 20.0)
+    place_rotated_device(pair1, rot1, pos=(175, -155), shadow_offset=(24, 44))
 
-    # Phone 2: Audio & Video in One Tap rising cleanly from bottom-right at -8.5 deg
-    dev2, _, _, _ = create_phone_mockup("Screenshot_20261119_205616_Levyra.jpg", outer_w=705)
-    rot2 = rotate_device(dev2, -8.5)
-    place_rotated_device(pair1, rot2, pos=(CARD_W + GAP + 165, 395), shadow_offset=(22, 40))
+    # Phone 2: Audio & Video in One Tap dynamic angled rise from bottom-right at -11 deg
+    dev2, _, _, _ = create_phone_mockup("Screenshot_20261119_205616_Levyra.jpg", outer_w=710)
+    rot2 = rotate_device(dev2, -11.0)
+    place_rotated_device(pair1, rot2, pos=(CARD_W + GAP + 185, 420), shadow_offset=(24, 44))
 
     c1 = pair1.crop((0, 0, CARD_W, CARD_H))
     c2 = pair1.crop((CARD_W + GAP, 0, pair_w, CARD_H))
