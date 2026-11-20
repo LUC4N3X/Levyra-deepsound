@@ -105,11 +105,13 @@ function text(value, x, y, size, fill, weight = 400, anchor = 'middle', letterSp
 function shadow(shape) {
   return svg(`
     <defs>
-      <filter id="s1" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="32"/></filter>
-      <filter id="s2" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="10"/></filter>
+      <filter id="s1" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="44"/></filter>
+      <filter id="s2" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="20"/></filter>
+      <filter id="s3" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="8"/></filter>
     </defs>
-    <g transform="translate(0 24)" opacity=".24" filter="url(#s1)">${shape.replaceAll('fill="white"', 'fill="#121B3A"')}</g>
-    <g transform="translate(0 8)" opacity=".18" filter="url(#s2)">${shape.replaceAll('fill="white"', 'fill="#0A1024"')}</g>
+    <g transform="translate(0 36)" opacity=".34" filter="url(#s1)">${shape.replaceAll('fill="white"', 'fill="#0E1733"')}</g>
+    <g transform="translate(0 20)" opacity=".32" filter="url(#s2)">${shape.replaceAll('fill="white"', 'fill="#0B1228"')}</g>
+    <g transform="translate(0 8)" opacity=".28" filter="url(#s3)">${shape.replaceAll('fill="white"', 'fill="#060A18"')}</g>
   `);
 }
 
@@ -148,10 +150,10 @@ function cardBackdrop(index, p) {
 async function cardMediaLayers(index, spec) {
   if (index >= 2) {
     const phone = await extractPhone(index, spec);
-    const { data, info } = await sharp(phone).resize({ width: 764 }).png().toBuffer({ resolveWithObject: true });
+    const { data, info } = await sharp(phone).resize({ width: 744 }).png().toBuffer({ resolveWithObject: true });
     return [
-      { input: shadow(`<rect x="68" y="252" width="764" height="${info.height}" rx="36" fill="white"/>`) },
-      { input: data, left: 68, top: 252 }
+      { input: shadow(`<rect x="78" y="274" width="744" height="${info.height}" rx="36" fill="white"/>`) },
+      { input: data, left: 78, top: 274 }
     ];
   }
   const input = await readFile(resolve(source, `${spec[0]}.webp`));
