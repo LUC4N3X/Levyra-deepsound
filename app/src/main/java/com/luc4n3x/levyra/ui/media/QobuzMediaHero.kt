@@ -42,6 +42,10 @@ internal fun qobuzMediaColors(cover: Color): ImmersiveMediaColors {
     )
 }
 
+internal fun qobuzListColors(hero: ImmersiveMediaColors): ImmersiveMediaColors = hero.copy(
+    content = QobuzDesign.textPrimary, contentMuted = QobuzDesign.textSecondary, accent = QobuzDesign.textAccent
+)
+
 @Composable
 internal fun QobuzMediaHero(
     title: String, overline: String, subtitle: String, metadata: String, colors: ImmersiveMediaColors,

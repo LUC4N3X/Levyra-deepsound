@@ -134,6 +134,7 @@ class WidgetStudioActivity : ComponentActivity() {
             }
             val resolved = strings ?: return@setContent
             LevyraTheme {
+                com.luc4n3x.levyra.ui.components.LevyraStudioTheme {
                 CompositionLocalProvider(LocalLevyraStrings provides resolved) {
                     WidgetStudioScreen(
                         copy = resolved.widgetStudioCopy,
@@ -145,6 +146,7 @@ class WidgetStudioActivity : ComponentActivity() {
                             finish()
                         }
                     )
+                }
                 }
             }
         }
@@ -201,34 +203,12 @@ private fun StudioHeader(
     onBack: () -> Unit,
     trailing: @Composable () -> Unit = {}
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 8.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+    com.luc4n3x.levyra.ui.components.LevyraStudioTopBar(
+        title = title,
+        onBack = onBack,
+        backDescription = backLabel,
+        modifier = Modifier.padding(start = 4.dp, end = 8.dp, top = 4.dp, bottom = 8.dp)
     ) {
-        LevyraBackButton(onClick = onBack, contentDescription = backLabel)
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = 8.dp)
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black),
-                color = LevyraText,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.semantics { heading() }
-            )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = LevyraMuted,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
         trailing()
     }
 }
@@ -238,12 +218,12 @@ private fun StudioSectionHeader(title: String, hint: String?) {
     Column(modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 12.dp, bottom = 4.dp)) {
         Text(
             text = title,
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-            color = LevyraText,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.semantics { heading() }
         )
         if (hint != null) {
-            Text(text = hint, style = MaterialTheme.typography.bodySmall, color = LevyraMuted)
+            Text(text = hint, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -668,13 +648,13 @@ private fun StyleCard(
     modifier: Modifier
 ) {
     val scheme = MaterialTheme.colorScheme
-    val background by animateColorAsState(if (selected) scheme.secondaryContainer else scheme.surfaceContainer, label = "style-card")
+    val background by animateColorAsState(scheme.surfaceContainerHigh, label = "style-card")
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(24.dp))
             .background(background)
             .border(
-                width = if (selected) 2.dp else 1.dp,
+                width = if (selected) 2.5.dp else 1.dp,
                 color = if (selected) scheme.primary else scheme.outlineVariant.copy(alpha = 0.5f),
                 shape = RoundedCornerShape(24.dp)
             )

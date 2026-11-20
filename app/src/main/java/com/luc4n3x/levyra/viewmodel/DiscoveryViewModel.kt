@@ -149,7 +149,11 @@ class DiscoveryViewModel internal constructor(private val root: LevyraViewModel)
         dailyJob = viewModelScope.launch {
             val cards = runCatchingSafely {
                 val profile = root.discoveryProfile().let { profile ->
-                    if (profile.seeds.isEmpty()) profile.copy(seeds = root.onboardingDiscoverySeeds()) else profile
+                    if (profile.seeds.isEmpty()) {
+                        profile.copy(seeds = root.onboardingDiscoverySeeds().ifEmpty { root.chartDiscoverySeeds(profile.market) })
+                    } else {
+                        profile
+                    }
                 }
                 engine.daily(profile, interactionStore.load(), today, familiarArtistKeys())
             } ?: return@launch

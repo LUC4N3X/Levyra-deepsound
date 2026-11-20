@@ -187,8 +187,13 @@ internal fun legibleCanvasTone(color: Color): Color {
 
 @Composable
 private fun rememberAppleCanvasReflection(track: Track, widthPx: Int, videoHeightPx: Int): AppleCanvasReflection? {
-    val context = LocalContext.current
     val url = remember(track.id, track.thumbnailUrl, track.largeThumbnailUrl) { preferredPlayerArtworkUrl(track) }
+    return rememberAppleCanvasReflection(url, widthPx, videoHeightPx)
+}
+
+@Composable
+internal fun rememberAppleCanvasReflection(url: String, widthPx: Int, videoHeightPx: Int): AppleCanvasReflection? {
+    val context = LocalContext.current
     var reflection by remember(url, widthPx, videoHeightPx) { mutableStateOf<AppleCanvasReflection?>(null) }
     LaunchedEffect(url, widthPx, videoHeightPx) {
         if (url.isBlank() || widthPx <= 0 || videoHeightPx <= 0) return@LaunchedEffect

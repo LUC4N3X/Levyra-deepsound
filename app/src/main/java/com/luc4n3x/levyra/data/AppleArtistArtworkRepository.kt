@@ -65,14 +65,14 @@ internal class AppleArtistArtworkRepository private constructor(context: Context
 
     fun cachedArtistPortrait(artistName: String): String {
         val identity = artistIdentityKey(artistName.trim())
-        if (identity.isBlank()) return ""
+        if (identity.isBlank() || identity in SPOTIFY_PORTRAIT_ARTISTS) return ""
         return memoryCache[identity].orEmpty()
     }
 
     suspend fun resolveArtistPortrait(artistName: String): String = withContext(Dispatchers.IO) {
         val cleanName = artistName.trim()
         val identity = artistIdentityKey(cleanName)
-        if (identity.isBlank()) return@withContext ""
+        if (identity.isBlank() || identity in SPOTIFY_PORTRAIT_ARTISTS) return@withContext ""
 
         val now = System.currentTimeMillis()
         memoryCache[identity]?.let { return@withContext it }
@@ -172,6 +172,7 @@ internal class AppleArtistArtworkRepository private constructor(context: Context
         }
 
         private const val PREFERENCES_NAME = "apple_artist_artwork"
+        private val SPOTIFY_PORTRAIT_ARTISTS = setOf("drake")
         private const val SEARCH_URL = "https://itunes.apple.com/search"
         private const val USER_AGENT =
             "Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 Chrome/140.0.0.0 Mobile Safari/537.36"

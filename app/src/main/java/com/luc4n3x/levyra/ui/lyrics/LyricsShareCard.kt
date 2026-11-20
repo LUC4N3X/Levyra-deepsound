@@ -142,7 +142,7 @@ internal object LyricsShareCard {
             type = "image/png"
             putExtra(Intent.EXTRA_STREAM, uri)
             putExtra(Intent.EXTRA_TEXT, lyricsShareCaption(content))
-            clipData = ClipData.newUri(context.contentResolver, "lyrics", uri)
+            clipData = ClipData("lyrics", arrayOf("image/png"), ClipData.Item(uri))
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
     }

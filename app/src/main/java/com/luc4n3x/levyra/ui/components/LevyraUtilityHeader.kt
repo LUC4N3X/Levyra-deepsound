@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -165,7 +166,8 @@ internal fun LevyraUtilityHeader(
     modifier: Modifier = Modifier,
     compact: Boolean = false,
     medallionColor: Color = levyraUtilityColors().softContainer,
-    medallionContentColor: Color = levyraUtilityColors().accent
+    medallionContentColor: Color = levyraUtilityColors().accent,
+    actions: @Composable RowScope.() -> Unit = {}
 ) {
     val scheme = MaterialTheme.colorScheme
     Column(
@@ -186,6 +188,7 @@ internal fun LevyraUtilityHeader(
                     contentColor = scheme.onSurface
                 )
             )
+            Row(verticalAlignment = Alignment.CenterVertically) { actions() }
             if (icon != null) {
                 Box(
                     modifier = Modifier

@@ -461,7 +461,8 @@ private fun mergeTopResultDisplayDuplicates(tracks: List<Track>): List<Track> {
 internal fun selectSearchTopResultTracks(
     topTrack: Track?,
     songs: List<Track>,
-    limit: Int = 3
+    limit: Int = 3,
+    artistBrowseId: String = ""
 ): List<Track> {
     val hero = topTrack ?: return emptyList()
     val merged = mergeTopResultDisplayDuplicates(deduplicateSearchSongs(listOf(hero) + songs))
@@ -478,21 +479,42 @@ internal fun selectSearchTopResultTracks(
         .toSet()
     val boundedLimit = limit.coerceIn(1, 3)
 
+    if (heroArtist.isBlank() && heroBrowseIds.isEmpty()) return listOf(resolvedHero)
+    val verifiedBrowseId = artistBrowseId.trim().lowercase(Locale.ROOT)
+    fun matchesHeroArtist(candidate: Track): Boolean {
+        val candidateBrowseIds = candidate.artistBrowseIds
+            .asSequence()
+            .map { it.trim().lowercase(Locale.ROOT) }
+            .filter(String::isNotBlank)
+            .toSet()
+        if (verifiedBrowseId.isNotBlank() && candidateBrowseIds.isNotEmpty()) return verifiedBrowseId in candidateBrowseIds
+        val sharesBrowseId = heroBrowseIds.isNotEmpty() && candidateBrowseIds.any(heroBrowseIds::contains)
+        val candidateArtist = primaryArtistSegment(candidate.artist).ifBlank { candidate.artist.trim() }
+        return sharesBrowseId || (heroArtist.isNotBlank() && artistIdentityMatches(heroArtist, candidateArtist))
+    }
+    fun titleKey(track: Track): String =
+        com.luc4n3x.levyra.nexus.identity.MusicIdentityText.title(track.title)
+            .let { title -> title.core + "|" + title.versionSignature }
+    fun withYoutubePlays(track: Track): Track {
+        if (track.youtubeViewCount >= 0L) return track
+        val key = titleKey(track)
+        return songs.firstOrNull { candidate ->
+            isYoutubeMusicSong(candidate) && matchesHeroArtist(candidate) && titleKey(candidate) == key &&
+                compatibleExplicitEdition(track, candidate)
+        } ?: track
+    }
+    val heroWithPlays = withYoutubePlays(resolvedHero)
+    val leadTrack = heroWithPlays.takeIf { it.youtubeViewCount >= 0L }
+        ?: songs.firstOrNull { candidate ->
+            isYoutubeMusicSong(candidate) && matchesHeroArtist(candidate) &&
+                (titleKey(candidate) != titleKey(resolvedHero) || compatibleExplicitEdition(resolvedHero, candidate))
+        }
+        ?: heroWithPlays
     return buildList {
-        add(resolvedHero)
-        if (heroArtist.isBlank() && heroBrowseIds.isEmpty()) return@buildList
+        add(leadTrack)
         val sameArtist = merged
             .filterNot { it.id == resolvedHero.id || hasNoPlayableIdentity(it) }
-            .filter { candidate ->
-                val candidateBrowseIds = candidate.artistBrowseIds
-                    .asSequence()
-                    .map { it.trim().lowercase(Locale.ROOT) }
-                    .filter(String::isNotBlank)
-                    .toSet()
-                val sharesBrowseId = heroBrowseIds.isNotEmpty() && candidateBrowseIds.any(heroBrowseIds::contains)
-                val candidateArtist = primaryArtistSegment(candidate.artist).ifBlank { candidate.artist.trim() }
-                sharesBrowseId || (heroArtist.isNotBlank() && artistIdentityMatches(heroArtist, candidateArtist))
-            }
+            .filter(::matchesHeroArtist)
         val (sameTitle, otherTitles) = sameArtist.partition { candidate ->
             heroTitle.core.isNotBlank() &&
                 com.luc4n3x.levyra.nexus.identity.MusicIdentityText.title(candidate.title).core == heroTitle.core
@@ -501,10 +523,19 @@ internal fun selectSearchTopResultTracks(
             com.luc4n3x.levyra.nexus.identity.MusicIdentityText.title(candidate.title).versionSignature != heroTitle.versionSignature
         }
         (versions + otherTitles)
+            .map(::withYoutubePlays)
+            .filterNot { candidate -> candidate.id == leadTrack.id || titleKey(candidate) == titleKey(leadTrack) }
+            .sortedBy { candidate -> if (isYoutubeMusicSong(candidate)) 0 else 1 }
+            .distinctBy(::titleKey)
             .take(boundedLimit - 1)
             .forEach(::add)
     }.take(boundedLimit)
 }
+
+private fun isYoutubeMusicSong(track: Track): Boolean =
+    searchTrackKind(track) == SearchTrackKind.Youtube &&
+        track.videoType.trim().equals(MUSIC_VIDEO_TYPE_AUDIO, ignoreCase = true) &&
+        track.youtubeViewCount >= 0L
 
 private fun hasNoPlayableIdentity(track: Track): Boolean =
     !isLocalSearchTrack(track) && track.streamUrl.isBlank() && !preservesPersonalMetadata(track) &&

@@ -66,9 +66,14 @@ internal fun TopResultArtistHero(
     onArtist: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val portrait = artist?.thumbnailUrl?.ifBlank { null } ?: hero.largeThumbnailUrl.ifBlank { hero.thumbnailUrl }
-    val portraitUrl = remember(portrait) { highResolutionHomeArtistArtworkUrl(portrait) }
     val name = artist?.name?.ifBlank { null } ?: hero.artist
+    val officialPortrait = rememberOfficialArtistPortrait(name)
+    val portrait = when {
+        officialPortrait == null -> ""
+        officialPortrait.isNotBlank() -> officialPortrait
+        else -> artist?.thumbnailUrl?.ifBlank { null } ?: hero.largeThumbnailUrl.ifBlank { hero.thumbnailUrl }
+    }
+    val portraitUrl = remember(portrait) { highResolutionHomeArtistArtworkUrl(portrait) }
     val subtitle = artist?.subscribers?.trim()?.takeIf(String::isNotBlank) ?: strings.artistLabel
     Box(
         modifier = Modifier

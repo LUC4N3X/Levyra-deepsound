@@ -867,29 +867,31 @@ private fun MotionArtworkVideo(
         }
     }
 
-    AndroidView(
-        factory = { textureView },
-        modifier = modifier
-            .clip(RoundedCornerShape(nonNegativeCornerRadius(cornerRadius)))
-            .onSizeChanged { surfaceSize = it }
-            .graphicsLayer {
-                alpha = videoAlpha
-                val fit = motionArtworkFit(
-                    videoWidth = videoSize.width,
-                    videoHeight = videoSize.height,
-                    pixelWidthHeightRatio = videoSize.pixelWidthHeightRatio,
-                    containerWidth = surfaceSize.width,
-                    containerHeight = surfaceSize.height,
-                    maxZoom = maxZoom
-                )
-                scaleX = fit.scaleX
-                scaleY = fit.scaleY
-                if (frameSource.textureView === textureView) {
-                    frameSource.fitScaleX = fit.scaleX
-                    frameSource.fitScaleY = fit.scaleY
+    key(textureView) {
+        AndroidView(
+            factory = { textureView },
+            modifier = modifier
+                .clip(RoundedCornerShape(nonNegativeCornerRadius(cornerRadius)))
+                .onSizeChanged { surfaceSize = it }
+                .graphicsLayer {
+                    alpha = videoAlpha
+                    val fit = motionArtworkFit(
+                        videoWidth = videoSize.width,
+                        videoHeight = videoSize.height,
+                        pixelWidthHeightRatio = videoSize.pixelWidthHeightRatio,
+                        containerWidth = surfaceSize.width,
+                        containerHeight = surfaceSize.height,
+                        maxZoom = maxZoom
+                    )
+                    scaleX = fit.scaleX
+                    scaleY = fit.scaleY
+                    if (frameSource.textureView === textureView) {
+                        frameSource.fitScaleX = fit.scaleX
+                        frameSource.fitScaleY = fit.scaleY
+                    }
                 }
-            }
-    )
+        )
+    }
 }
 
 private fun motionArtworkHost(url: String): String = Uri.parse(url).host.orEmpty()

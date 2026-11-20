@@ -58,6 +58,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.ui.LevyraGlassStyle
+import com.luc4n3x.levyra.ui.components.LevyraUtilitySeed
+import com.luc4n3x.levyra.ui.components.levyraUtilityColors
 import com.luc4n3x.levyra.ui.i18n.GlassStudioCopy
 import kotlin.math.roundToInt
 
@@ -85,31 +87,11 @@ internal fun ThemeStudioGlassSection(
     copy: GlassStudioCopy,
     enabled: Boolean,
     style: LevyraGlassStyle,
-    onStyleChange: (LevyraGlassStyle) -> Unit
+    onStyleChange: (LevyraGlassStyle) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = LevyraPlayerDesign.SpaceXs)
-            ) {
-                Text(
-                    copy.title,
-                    color = LevyraMuted,
-                    fontSize = 12.sp,
-                    letterSpacing = 0.4.sp,
-                    fontWeight = FontWeight.Black,
-                    modifier = Modifier.semantics { heading() }
-                )
-                Text(
-                    copy.subtitle,
-                    color = LevyraMuted,
-                    fontSize = 13.sp,
-                    lineHeight = LevyraTypeRhythm.lineHeight(13f),
-                    fontWeight = FontWeight.Medium
-                )
-            }
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceMd)) {
+        com.luc4n3x.levyra.ui.components.LevyraStudioSectionHeader(title = copy.title, subtitle = copy.subtitle) {
             FilledTonalButton(
                 onClick = { onStyleChange(LevyraGlassStyle()) },
                 enabled = enabled && style != LevyraGlassStyle(),
@@ -164,17 +146,18 @@ internal fun ThemeStudioGlassSection(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 private fun GlassTileIcon(icon: ImageVector, enabled: Boolean) {
     val scheme = MaterialTheme.colorScheme
+    val tone = levyraUtilityColors(LevyraUtilitySeed)
     Box(
         modifier = Modifier
             .size(40.dp)
             .clip(MaterialShapes.Cookie9Sided.toShape())
-            .background(if (enabled) scheme.secondaryContainer else scheme.surfaceContainerHighest),
+            .background(if (enabled) tone.softContainer else scheme.surfaceContainerHighest),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = if (enabled) scheme.onSecondaryContainer else scheme.onSurfaceVariant,
+            tint = if (enabled) tone.accent else scheme.onSurfaceVariant,
             modifier = Modifier.size(20.dp)
         )
     }
@@ -191,6 +174,14 @@ private fun GlassLevelTile(
     onCommit: (Int) -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
+    val tone = levyraUtilityColors(LevyraUtilitySeed)
+    val sliderColors = SliderDefaults.colors(
+        thumbColor = tone.accent,
+        activeTrackColor = tone.accent,
+        inactiveTrackColor = tone.softContainer,
+        activeTickColor = tone.onAccent,
+        inactiveTickColor = tone.accent
+    )
     var draft by remember(value) { mutableFloatStateOf(value.toFloat()) }
     val percent = "${draft.roundToInt()}%"
     val interactionSource = remember { MutableInteractionSource() }
@@ -219,8 +210,8 @@ private fun GlassLevelTile(
                 )
                 Surface(
                     shape = CircleShape,
-                    color = if (enabled) scheme.primaryContainer else scheme.surfaceContainerHighest,
-                    contentColor = if (enabled) scheme.onPrimaryContainer else scheme.onSurfaceVariant
+                    color = if (enabled) tone.softContainer else scheme.surfaceContainerHighest,
+                    contentColor = if (enabled) tone.accent else scheme.onSurfaceVariant
                 ) {
                     Text(
                         percent,
@@ -243,11 +234,12 @@ private fun GlassLevelTile(
                 enabled = enabled,
                 interactionSource = interactionSource,
                 thumb = {
-                    SliderDefaults.Thumb(interactionSource = interactionSource, enabled = enabled)
+                    SliderDefaults.Thumb(interactionSource = interactionSource, colors = sliderColors, enabled = enabled)
                 },
                 track = { sliderState: SliderState ->
                     SliderDefaults.Track(
                         sliderState = sliderState,
+                        colors = sliderColors,
                         enabled = enabled,
                         modifier = Modifier.height(GlassSliderTrackHeight)
                     )
@@ -302,6 +294,11 @@ private fun GlassRefractionTile(
                 checked = checked,
                 onCheckedChange = null,
                 enabled = enabled,
+                colors = SwitchDefaults.colors(
+                    checkedTrackColor = levyraUtilityColors(LevyraUtilitySeed).accent,
+                    checkedThumbColor = levyraUtilityColors(LevyraUtilitySeed).onAccent,
+                    checkedIconColor = levyraUtilityColors(LevyraUtilitySeed).accent
+                ),
                 thumbContent = {
                     Icon(
                         imageVector = if (checked) Icons.Rounded.Check else Icons.Rounded.Close,

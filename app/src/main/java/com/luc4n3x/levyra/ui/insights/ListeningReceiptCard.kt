@@ -169,7 +169,7 @@ internal object ListeningReceiptCard {
             type = "image/png"
             putExtra(Intent.EXTRA_STREAM, uri)
             putExtra(Intent.EXTRA_TEXT, caption)
-            clipData = ClipData.newUri(context.contentResolver, "receipt", uri)
+            clipData = ClipData("receipt", arrayOf("image/png"), ClipData.Item(uri))
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
     }
