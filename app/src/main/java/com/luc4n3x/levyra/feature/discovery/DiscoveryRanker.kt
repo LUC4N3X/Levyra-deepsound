@@ -125,11 +125,26 @@ object DiscoveryRanker {
 
     private fun metadataQuality(track: Track): Int {
         var quality = 0
-        if (track.thumbnailUrl.isNotBlank() || track.largeThumbnailUrl.isNotBlank()) quality += 6 else quality -= 10
+        val hasArt = track.thumbnailUrl.isNotBlank() || track.largeThumbnailUrl.isNotBlank()
+        if (hasArt) quality += 6 else quality -= 10
+        if (hasArt && !hasSquareAlbumArtwork(track)) quality -= 16
         if (track.album.isNotBlank()) quality += 3
         if (track.durationMs > 0L) quality += 3
         if (track.isrc.isNotBlank()) quality += 2
         return quality
+    }
+
+    private val videoFrameArtworkMarkers = listOf(
+        "/vi/", "/vi_webp/", "ytimg.com/an_webp", "hqdefault", "mqdefault",
+        "sddefault", "maxresdefault", "hq720"
+    )
+
+    private fun hasSquareAlbumArtwork(track: Track): Boolean {
+        val url = track.thumbnailUrl.ifBlank { track.largeThumbnailUrl }.trim().lowercase()
+        if (url.isBlank()) return false
+        if (videoFrameArtworkMarkers.any { url.contains(it) }) return false
+        if (url.endsWith("default.jpg") || url.endsWith("default.webp")) return false
+        return true
     }
 
     private fun jitter(key: String, rotation: Long): Int = (key.hashCode().toLong() * 31L + rotation).hashCode().absoluteValue % 9

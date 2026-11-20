@@ -101,7 +101,10 @@ internal fun LevyraUtilityBackdrop(
     strength: Float = 0.5f,
     listState: LazyListState? = null
 ) {
-    val tint = lerp(accent, MaterialTheme.colorScheme.outline, LevyraBackdropMute)
+    val isLight = MaterialTheme.colorScheme.surface.luminance() > 0.5f
+    val surface = MaterialTheme.colorScheme.surface
+    val tint = remember(accent, isLight, surface) { lerp(levyraSoftAccent(accent, isLight), surface, LevyraBackdropMute) }
+    val peak = (if (isLight) LevyraBackdropLightPeak else LevyraBackdropDarkPeak) * strength
     val density = LocalDensity.current
     val fadeDistance = with(density) { LevyraBackdropFadeDistance.toPx() }
     val washHeight = with(density) { LevyraBackdropWashHeight.toPx() }
@@ -116,26 +119,40 @@ internal fun LevyraUtilityBackdrop(
             }
             .drawWithCache {
                 val wash = Brush.verticalGradient(
-                    0f to tint.copy(alpha = 0.30f * strength),
-                    0.5f to tint.copy(alpha = 0.10f * strength),
-                    1f to Color.Transparent,
+                    colorStops = levyraBackdropEasedStops(tint, peak * LevyraBackdropWashShare),
                     endY = washHeight
                 )
-                val light = Brush.radialGradient(
-                    listOf(tint.copy(alpha = 0.34f * strength), Color.Transparent),
-                    center = if (layoutDirection == LayoutDirection.Rtl) Offset(size.width, 0f) else Offset.Zero,
-                    radius = washHeight * 1.1f
+                val glowCenter = Offset(
+                    if (layoutDirection == LayoutDirection.Rtl) size.width * 1.08f else size.width * -0.08f,
+                    -size.width * 0.06f
+                )
+                val glow = Brush.radialGradient(
+                    colorStops = levyraBackdropEasedStops(tint, peak),
+                    center = glowCenter,
+                    radius = size.width * LevyraBackdropGlowReach
                 )
                 onDrawBehind {
                     drawRect(wash, size = size.copy(height = washHeight))
-                    drawRect(light)
+                    drawRect(glow)
                 }
             }
     )
 }
 
-private const val LevyraBackdropMute = 0.45f
-private val LevyraBackdropWashHeight = 380.dp
+private fun levyraBackdropEasedStops(tint: Color, peak: Float): Array<Pair<Float, Color>> =
+    Array(LevyraBackdropWashSteps + 1) { step ->
+        val t = step / LevyraBackdropWashSteps.toFloat()
+        val eased = 1f - t * t * (3f - 2f * t)
+        t to tint.copy(alpha = peak * eased)
+    }
+
+private const val LevyraBackdropMute = 0.22f
+private const val LevyraBackdropDarkPeak = 0.40f
+private const val LevyraBackdropLightPeak = 0.26f
+private const val LevyraBackdropWashShare = 0.22f
+private const val LevyraBackdropGlowReach = 1.12f
+private const val LevyraBackdropWashSteps = 8
+private val LevyraBackdropWashHeight = 520.dp
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable

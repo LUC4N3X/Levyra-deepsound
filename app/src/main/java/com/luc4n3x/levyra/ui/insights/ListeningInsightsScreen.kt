@@ -28,9 +28,13 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -49,14 +53,23 @@ import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Equalizer
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.Insights
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Receipt
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -78,6 +91,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -101,6 +115,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.draw.drawBehind
+import com.luc4n3x.levyra.ui.glassBackdropSource
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -160,6 +176,7 @@ internal fun ListeningInsightsScreen(
     onClose: () -> Unit,
     viewModel: ListeningInsightsViewModel = viewModel()
 ) {
+    @Suppress("NAME_SHADOWING") val accent = LevyraCyan
     val state by viewModel.state.collectAsStateWithLifecycle()
     val strings = LocalLevyraStrings.current
     val locale = remember(strings.code) { Locale.forLanguageTag(strings.code) }
@@ -178,6 +195,9 @@ internal fun ListeningInsightsScreen(
         viewModel.setSearchVisible(false)
     }
 
+    val frost = com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin
+    val glass = com.luc4n3x.levyra.ui.rememberGlassBackdropState(frost && com.luc4n3x.levyra.ui.rememberGlassBlurAllowed())
+    val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -185,12 +205,13 @@ internal fun ListeningInsightsScreen(
     ) {
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize().statusBarsPadding(),
-            contentPadding = PaddingValues(bottom = overlayScreenBottomPadding())
+            modifier = if (frost) Modifier.fillMaxSize().glassBackdropSource(glass) else Modifier.fillMaxSize().statusBarsPadding(),
+            contentPadding = PaddingValues(top = if (frost) statusTop else 0.dp, bottom = overlayScreenBottomPadding())
         ) {
             item(key = "insights-header", contentType = "header") {
                 InsightsHeader(
                     strings = strings,
+                    accent = accent,
                     onOpenRecap = onOpenRecap,
                     onClose = onClose
                 )
@@ -236,6 +257,16 @@ internal fun ListeningInsightsScreen(
                     onPlayTrack = onPlayTrack,
                     onLoadMore = viewModel::loadMoreHistory
                 )
+            }
+        }
+        if (frost) com.luc4n3x.levyra.ui.components.LevyraScrolledTopBar(
+            glass = glass,
+            listState = listState,
+            title = strings.listeningInsights,
+            icon = Icons.Rounded.Insights
+        ) {
+            IconButton(onClick = onOpenRecap) {
+                Icon(Icons.Rounded.History, contentDescription = strings.openRecap, tint = MaterialTheme.colorScheme.onSurface)
             }
         }
         if (receiptVisible) {
@@ -431,29 +462,62 @@ private fun LazyListScope.insightsHistoryItems(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun InsightsHeader(
     strings: LevyraStrings,
+    accent: Color,
     onOpenRecap: () -> Unit,
     onClose: () -> Unit
 ) {
+    val scheme = MaterialTheme.colorScheme
+    val titleText = strings.listeningInsights.trim()
+    val firstLine = titleText.substringBefore(' ')
+    val restLine = titleText.substringAfter(' ', "").trim()
+    val titleStyle = MaterialTheme.typography.displaySmall.copy(
+        fontWeight = FontWeight.Black,
+        letterSpacing = (-1).sp,
+        lineHeight = 40.sp
+    )
+    val glass = IconButtonDefaults.filledTonalIconButtonColors(
+        containerColor = scheme.surfaceContainerHigh.copy(alpha = 0.7f),
+        contentColor = scheme.onSurface
+    )
     Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
+        modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 16.dp, top = 10.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        LevyraBackButton(onClick = onClose, contentDescription = strings.back)
-        Column(modifier = Modifier.weight(1f).padding(start = 4.dp)) {
+        Column(Modifier.weight(1f).padding(top = 2.dp).semantics(mergeDescendants = true) { heading() }) {
+            Text(firstLine, style = titleStyle, color = LevyraText, maxLines = 2, autoSize = TextAutoSize.StepBased(minFontSize = 20.sp, maxFontSize = 38.sp), overflow = TextOverflow.Ellipsis)
+            if (restLine.isNotEmpty()) {
+                Text(restLine, style = titleStyle, color = accent, maxLines = 2, autoSize = TextAutoSize.StepBased(minFontSize = 20.sp, maxFontSize = 38.sp), overflow = TextOverflow.Ellipsis)
+            }
             Text(
-                strings.listeningInsights,
-                color = LevyraText,
-                fontSize = 23.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(23.sp),
-                fontWeight = FontWeight.Black
+                strings.listeningInsightsSubtitle,
+                color = LevyraMuted,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 6.dp)
             )
-            Text(strings.listeningInsightsSubtitle, color = LevyraMuted, fontSize = 11.5.sp, fontWeight = FontWeight.Medium)
         }
-        IconButton(onClick = onOpenRecap) {
-            Icon(Icons.Rounded.History, contentDescription = strings.openRecap, tint = LevyraMuted)
+        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilledTonalIconButton(
+                onClick = onClose,
+                shapes = IconButtonDefaults.shapes(),
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = accent.copy(alpha = 0.18f),
+                    contentColor = accent
+                ),
+                modifier = Modifier.size(48.dp)
+            ) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = strings.back) }
+            FilledTonalIconButton(
+                onClick = onOpenRecap,
+                shapes = IconButtonDefaults.shapes(),
+                colors = glass,
+                modifier = Modifier.size(48.dp)
+            ) { Icon(Icons.Rounded.History, contentDescription = strings.openRecap) }
         }
     }
 }
@@ -469,14 +533,12 @@ internal fun InsightsPeriodSelector(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(3.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        InsightsPeriods.forEachIndexed { index, period ->
+        InsightsPeriods.forEach { period ->
             InsightsPeriodSegment(
                 label = periodLongLabel(period, strings),
                 active = period == selected,
-                first = index == 0,
-                last = index == InsightsPeriods.lastIndex,
                 accent = accent,
                 onClick = { onSelect(period) }
             )
@@ -488,27 +550,13 @@ internal fun InsightsPeriodSelector(
 private fun RowScope.InsightsPeriodSegment(
     label: String,
     active: Boolean,
-    first: Boolean,
-    last: Boolean,
     accent: Color,
     onClick: () -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
-    val outer = InsightsSegmentHeight / 2
-    val inner = levyraExpressiveToggleCorner(
-        checked = active,
-        unchecked = 6.dp,
-        checkedCorner = outer,
-        label = "insights-period-corner"
-    )
-    val shape = RoundedCornerShape(
-        topStart = if (first) outer else inner,
-        bottomStart = if (first) outer else inner,
-        topEnd = if (last) outer else inner,
-        bottomEnd = if (last) outer else inner
-    )
+    val shape = RoundedCornerShape(InsightsSegmentHeight / 2)
     val container by animateColorAsState(
-        targetValue = if (active) accent else scheme.surfaceContainerHigh,
+        targetValue = if (active) accent else scheme.surfaceContainerHigh.copy(alpha = 0.6f),
         label = "insights-period-container"
     )
     Box(
@@ -529,7 +577,7 @@ private fun RowScope.InsightsPeriodSegment(
         Text(
             label,
             color = if (active) Color(0xFF07080C) else scheme.onSurfaceVariant,
-            fontSize = 11.5.sp,
+            fontSize = 12.sp,
             fontWeight = if (active) FontWeight.Black else FontWeight.SemiBold,
             letterSpacing = 0.4.sp,
             maxLines = 1
@@ -537,8 +585,9 @@ private fun RowScope.InsightsPeriodSegment(
     }
 }
 
-private val InsightsSegmentHeight = 44.dp
+private val InsightsSegmentHeight = 46.dp
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun InsightsHero(
     snapshot: ListeningInsightsSnapshot,
@@ -553,49 +602,50 @@ private fun InsightsHero(
     val heroHeight = (244f + ((fontScale - 1f).coerceAtLeast(0f) * 72f)).dp
     val isAllTime = snapshot.period == ListeningInsightsPeriod.AllTime
 
+    val animate = LocalAnimationsEnabled.current
+    val heroUrl = artwork.firstOrNull()
+    val ink = remember { Color(0xFF07080C) }
+    val baseTop = remember(accent) { lerp(LevyraViolet, ink, 0.78f) }
+    val baseBottom = remember(accent) { lerp(accent, ink, 0.86f) }
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 14.dp)
             .height(heroHeight)
             .clip(RoundedCornerShape(32.dp))
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(accent.copy(alpha = 0.38f), LevyraViolet.copy(alpha = 0.16f), MaterialTheme.colorScheme.surfaceContainer)
-                )
-            )
+            .background(Brush.linearGradient(listOf(baseTop, baseBottom)))
     ) {
-        artwork.forEachIndexed { index, url ->
-            val heroArtworkRequest = remember(context, url) {
-                ImageRequest.Builder(context)
-                    .data(LevyraArtworkCache.large(url))
-                    .crossfade(true)
-                    .build()
+        val waveValues = remember(snapshot.activity) {
+            val raw = snapshot.activity.map { it.listenedMs.toFloat() }
+            val max = raw.maxOrNull() ?: 0f
+            when {
+                raw.size >= 2 && max > 0f -> raw.map { 0.12f + 0.88f * (it / max) }
+                else -> listOf(0.35f, 0.6f, 0.45f, 0.85f, 0.55f, 0.7f, 0.4f)
+            }
+        }
+        Box(
+            Modifier.align(Alignment.BottomStart).fillMaxWidth().height(70.dp)
+                .drawBehind { drawListeningWave(waveValues, accent) }
+        )
+        if (heroUrl != null) {
+            val heroArtworkRequest = remember(context, heroUrl) {
+                ImageRequest.Builder(context).data(LevyraArtworkCache.large(heroUrl)).crossfade(animate).build()
             }
             AsyncImage(
                 model = heroArtworkRequest,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .offset(x = (24 - index * 32).dp, y = (index * 12 - 12).dp)
-                    .rotate((index - 1) * 8f)
-                    .size((156 - index * 16).dp)
-                    .clip(insightsHeroArtworkShape(index))
+                    .align(Alignment.TopEnd)
+                    .padding(22.dp)
+                    .size(74.dp)
+                    .clip(CircleShape)
+                    .border(2.dp, accent.copy(alpha = 0.75f), CircleShape)
             )
         }
-        Box(
-            modifier = Modifier.fillMaxSize().background(
-                Brush.horizontalGradient(
-                    0f to LevyraPanel.copy(alpha = 0.98f),
-                    0.56f to LevyraPanel.copy(alpha = 0.72f),
-                    1f to Color.Transparent
-                )
-            )
-        )
         Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 22.dp),
-            verticalArrangement = Arrangement.SpaceBetween
+            modifier = Modifier.fillMaxSize().padding(start = 24.dp, end = 24.dp, top = 22.dp, bottom = 78.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -628,7 +678,7 @@ private fun InsightsHero(
             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(
                     formatHeroDuration(snapshot.metrics.listenedMs, number, strings),
-                    color = LevyraText,
+                    color = Color.White,
                     fontSize = 60.sp,
                     lineHeight = 62.sp,
                     fontWeight = FontWeight.Black,
@@ -638,7 +688,7 @@ private fun InsightsHero(
                 )
                 Text(
                     strings.insightsListened,
-                    color = LevyraMuted,
+                    color = Color.White.copy(alpha = 0.7f),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.4.sp
@@ -665,10 +715,43 @@ private fun InsightsHero(
                             )
                         }
                     }
-                    Text(strings.insightsPrevious, color = LevyraMuted, fontSize = 10.5.sp, fontWeight = FontWeight.Medium)
+                    Text(strings.insightsPrevious, color = Color.White.copy(alpha = 0.7f), fontSize = 10.5.sp, fontWeight = FontWeight.Medium)
                 }
             }
         }
+    }
+}
+
+private fun DrawScope.drawListeningWave(values: List<Float>, accent: Color) {
+    if (values.isEmpty()) return
+    val w = size.width
+    val h = size.height
+    val baseY = h
+    val amp = h * 0.82f
+    val n = values.size
+    fun pointAt(i: Int): Offset {
+        val x = if (n == 1) w / 2f else w * i / (n - 1)
+        return Offset(x, baseY - values[i].coerceIn(0f, 1f) * amp)
+    }
+    val line = Path().apply {
+        moveTo(0f, pointAt(0).y)
+        for (i in 0 until n - 1) {
+            val p0 = pointAt(i)
+            val p1 = pointAt(i + 1)
+            val midX = (p0.x + p1.x) / 2f
+            cubicTo(midX, p0.y, midX, p1.y, p1.x, p1.y)
+        }
+    }
+    val fill = Path().apply {
+        addPath(line)
+        lineTo(w, baseY)
+        lineTo(0f, baseY)
+        close()
+    }
+    drawPath(fill, Brush.verticalGradient(listOf(accent.copy(alpha = 0.5f), accent.copy(alpha = 0.02f))))
+    drawPath(line, accent.copy(alpha = 0.9f), style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round))
+    for (i in 0 until n) {
+        drawCircle(accent, radius = 3.5.dp.toPx(), center = pointAt(i))
     }
 }
 
@@ -759,6 +842,7 @@ private fun ListeningShareEntries(
 
 private fun Color.compositeOverDark(): Color = compositeOver(Color(0xFF0B0C12))
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun InsightsMetricRibbon(
     snapshot: ListeningInsightsSnapshot,
@@ -769,66 +853,77 @@ private fun InsightsMetricRibbon(
     val number = remember(locale) { NumberFormat.getIntegerInstance(locale) }
     val scheme = MaterialTheme.colorScheme
     val tiles = listOf(
-        Triple(number.format(snapshot.metrics.countedPlays), strings.statPlays, scheme.primaryContainer to scheme.onPrimaryContainer),
-        Triple(number.format(snapshot.metrics.distinctTracks), strings.songs, scheme.secondaryContainer to scheme.onSecondaryContainer),
-        Triple(number.format(snapshot.metrics.distinctArtists), strings.artists, scheme.tertiaryContainer to scheme.onTertiaryContainer),
-        Triple("${number.format(snapshot.metrics.completionRate)}%", strings.pulseCompletion, scheme.surfaceContainerHighest to accent)
+        InsightsTile(number.format(snapshot.metrics.countedPlays), strings.statPlays, scheme.primaryContainer, scheme.onPrimaryContainer, Icons.Rounded.PlayArrow, MaterialShapes.Cookie9Sided),
+        InsightsTile(number.format(snapshot.metrics.distinctTracks), strings.songs, scheme.secondaryContainer, scheme.onSecondaryContainer, Icons.Rounded.MusicNote, MaterialShapes.Clover4Leaf),
+        InsightsTile(number.format(snapshot.metrics.distinctArtists), strings.artists, scheme.tertiaryContainer, scheme.onTertiaryContainer, Icons.Rounded.Person, MaterialShapes.Sunny),
+        InsightsTile("${number.format(snapshot.metrics.completionRate)}%", strings.pulseCompletion, scheme.surfaceContainerHighest, accent, Icons.Rounded.CheckCircle, MaterialShapes.Cookie7Sided)
     )
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(3.dp)
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        tiles.chunked(2).forEachIndexed { row, pair ->
-            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                pair.forEachIndexed { column, (value, label, colors) ->
-                    InsightsMetricTile(
-                        value = value,
-                        label = label,
-                        container = colors.first,
-                        content = colors.second,
-                        shape = levyraGroupedGridShape(row, column, rows = 2, columns = 2),
-                        modifier = Modifier.weight(1f)
-                    )
+        tiles.chunked(2).forEach { pair ->
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                pair.forEach { tile ->
+                    InsightsMetricTile(tile = tile, modifier = Modifier.weight(1f))
                 }
             }
         }
     }
 }
 
+private data class InsightsTile(
+    val value: String,
+    val label: String,
+    val container: Color,
+    val content: Color,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val badge: androidx.graphics.shapes.RoundedPolygon
+)
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun InsightsMetricTile(
-    value: String,
-    label: String,
-    container: Color,
-    content: Color,
-    shape: Shape,
-    modifier: Modifier = Modifier
-) {
-    Column(
+private fun InsightsMetricTile(tile: InsightsTile, modifier: Modifier = Modifier) {
+    Box(
         modifier = modifier
-            .clip(shape)
-            .background(container)
-            .padding(horizontal = 18.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp)
+            .heightIn(min = 118.dp)
+            .clip(RoundedCornerShape(26.dp))
+            .background(tile.container)
     ) {
-        Text(
-            value,
-            color = content,
-            fontSize = 32.sp,
-            lineHeight = 34.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = (-1.2).sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        Text(
-            label,
-            color = content.copy(alpha = 0.78f),
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(14.dp)
+                .size(36.dp)
+                .clip(tile.badge.toShape())
+                .background(tile.content.copy(alpha = 0.18f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(tile.icon, contentDescription = null, tint = tile.content, modifier = Modifier.size(20.dp))
+        }
+        Column(
+            modifier = Modifier.align(Alignment.BottomStart).padding(horizontal = 18.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(1.dp)
+        ) {
+            Text(
+                tile.value,
+                color = tile.content,
+                fontSize = 34.sp,
+                lineHeight = 36.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-1.4).sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                tile.label,
+                color = tile.content.copy(alpha = 0.78f),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
 

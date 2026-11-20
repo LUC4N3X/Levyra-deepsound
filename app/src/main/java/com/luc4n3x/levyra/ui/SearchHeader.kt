@@ -438,7 +438,7 @@ private fun SearchHeaderActionButtons(query: String, isSearching: Boolean, field
             )
         }
     }
-    IconButton(
+    if (query.isEmpty() || !com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin) IconButton(
         onClick = launchVoiceSearch,
         modifier = Modifier.size(38.dp)
     ) {
