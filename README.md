@@ -106,15 +106,15 @@ I don't host FLAC audio on Levyra's servers. On Android, experimental FLAC playb
 
 <p>
   <a href="docs/assets/showcase/readme/row-04-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-04-studio-mobile.webp?v=m3-cards-19">
-    <img src="docs/assets/showcase/readme/row-04-studio.webp?v=m3-cards-19" width="900" alt="Make Levyra yours: skin selection, Mood Journey, on-device listening insights and shared listening with Unison over Wi-Fi.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-04-studio-mobile.webp?v=m3-cards-20">
+    <img src="docs/assets/showcase/readme/row-04-studio.webp?v=m3-cards-20" width="900" alt="Unified library, Top 100 and city charts, Mood Journey, and skin customization.">
   </picture></a>
 </p>
 
 <p>
   <a href="docs/assets/showcase/readme/row-05-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-05-studio-mobile.webp?v=m3-cards-9">
-    <img src="docs/assets/showcase/readme/row-05-studio.webp?v=m3-cards-9" width="900" alt="Synced lyrics, unified library, Top 100 and city charts, and Your Year in Music.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-05-studio-mobile.webp?v=m3-cards-10">
+    <img src="docs/assets/showcase/readme/row-05-studio.webp?v=m3-cards-10" width="900" alt="Synced lyrics, on-device listening insights, shared listening with Unison over Wi-Fi, and Your Year in Music.">
   </picture></a>
 </p>
 
