@@ -11841,7 +11841,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     internal suspend fun chartDiscoverySeeds(market: String): List<Track> = withContext(Dispatchers.IO) {
+        val language = _state.value.languageCode
         runCatchingPreservingCancellation { chartsRepository.topSongs(market, CHART_DISCOVERY_SEEDS) }.getOrNull().orEmpty()
+            .mapNotNull { track ->
+                if (com.luc4n3x.levyra.data.PlaybackSourceIdentity.sourceVideoId(track).isNotBlank()) {
+                    track
+                } else {
+                    runCatchingPreservingCancellation { repository.search("${track.artist} ${track.title}", 1, language).firstOrNull() }.getOrNull()
+                }
+            }
     }
 
     internal fun discoverySources(): com.luc4n3x.levyra.feature.discovery.DiscoverySources =
@@ -17086,4 +17094,4 @@ private fun youtubeVideoId(url: String): String {
 }
 
 private const val ONBOARDING_DISCOVERY_SEED_ARTISTS = 4
-private const val CHART_DISCOVERY_SEEDS = 12
+private const val CHART_DISCOVERY_SEEDS = 8

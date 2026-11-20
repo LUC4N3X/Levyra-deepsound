@@ -74,6 +74,7 @@ private const val CanvasWhiteScrim = 0x0AFFFFFF
 private const val CanvasStripBlurRadius = 25
 private const val CanvasSaturation = 1.4f
 private const val CanvasMaxToneLuminance = 0.22f
+private const val CanvasEdgeScrim = 0.35f
 
 internal class AppleCanvasReflection(val strip: Bitmap, val averageColor: Int)
 
@@ -213,7 +214,49 @@ internal fun rememberAppleCanvasReflection(url: String, widthPx: Int, videoHeigh
     return reflection
 }
 
+@Composable
+internal fun rememberAppleCanvasEdgeColor(url: String): Int? {
+    val context = LocalContext.current
+    val color by produceState<Int?>(null, url) {
+        value = null
+        if (url.isBlank()) return@produceState
+        val source = withContext(Dispatchers.IO) {
+            val request = ImageRequest.Builder(context).data(url).size(Size(64, 64)).allowHardware(false).build()
+            try {
+                (SingletonImageLoader.get(context).execute(request) as? SuccessResult)?.image?.toBitmap()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Timber.w(error, "Canvas edge colour source unavailable")
+                null
+            }
+        } ?: return@produceState
+        value = withContext(Dispatchers.Default) { AppleCanvasReflections.edgeColor(source) }
+    }
+    return color
+}
+
 internal object AppleCanvasReflections {
+    fun edgeColor(source: Bitmap): Int {
+        val rows = max(source.height / 8, 1)
+        val pixels = IntArray(source.width * rows)
+        source.getPixels(pixels, 0, source.width, 0, source.height - rows, source.width, rows)
+        var red = 0L
+        var green = 0L
+        var blue = 0L
+        pixels.forEach { pixel ->
+            red += android.graphics.Color.red(pixel)
+            green += android.graphics.Color.green(pixel)
+            blue += android.graphics.Color.blue(pixel)
+        }
+        val count = pixels.size.coerceAtLeast(1)
+        val hsv = FloatArray(3)
+        android.graphics.Color.RGBToHSV((red / count).toInt(), (green / count).toInt(), (blue / count).toInt(), hsv)
+        hsv[1] = (hsv[1] * CanvasSaturation).coerceAtMost(1f)
+        hsv[2] *= 1f - CanvasEdgeScrim
+        return android.graphics.Color.HSVToColor(hsv)
+    }
+
     fun build(source: Bitmap, viewWidth: Int, videoHeight: Int): AppleCanvasReflection {
         val sampleWidth = max(ceil(viewWidth / 8f / 10f).toInt() * 10, 2)
         val sampleHeight = max((videoHeight / 16f).roundToInt(), 2)

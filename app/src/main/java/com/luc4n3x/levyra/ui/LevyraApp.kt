@@ -5731,11 +5731,9 @@ private fun ArtistOverlay(
             }
         }
         val heroMotion = remember(appleArtist) { appleArtist?.heroMotion() } ?: state.artistMotionArtwork
-        val canvasPosterTone = rememberAppleCanvasReflection(
-            url = if (defaultArtistPage && appleArtist?.squareMotion != null) fittedHeroArtwork else "",
-            widthPx = heroWidthPx,
-            videoHeightPx = artworkHeightPx.roundToInt()
-        )?.averageColor
+        val canvasPosterTone = rememberAppleCanvasEdgeColor(
+            if (defaultArtistPage && appleArtist?.squareMotion != null) fittedHeroArtwork else ""
+        )
         LaunchedEffect(canvasPosterTone, profile?.browseId) {
             canvasPosterTone?.let { artistCanvasTone = Color(it) }
         }
