@@ -92,15 +92,15 @@ I don't host FLAC audio on Levyra's servers. On Android, experimental FLAC playb
 
 <p>
   <a href="docs/assets/showcase/readme/row-02-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-02-studio-mobile.webp?v=m3-cards-8">
-    <img src="docs/assets/showcase/readme/row-02-studio.webp?v=m3-cards-8" width="900" alt="Discover more, Top 100 and city charts, Mood Journey, and audio output and quality settings.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-02-studio-mobile.webp?v=m3-cards-9">
+    <img src="docs/assets/showcase/readme/row-02-studio.webp?v=m3-cards-9" width="900" alt="Discover more, instant search results, artist pages, and audio output and quality settings.">
   </picture></a>
 </p>
 
 <p>
   <a href="docs/assets/showcase/readme/row-03-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-03-studio-mobile.webp?v=m3-cards-12">
-    <img src="docs/assets/showcase/readme/row-03-studio.webp?v=m3-cards-12" width="900" alt="Your library: local and streamed tracks, instant search results, artist pages and personal collections.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-03-studio-mobile.webp?v=m3-cards-13">
+    <img src="docs/assets/showcase/readme/row-03-studio.webp?v=m3-cards-13" width="900" alt="Your library, Top 100 and city charts, Mood Journey, and personal collections.">
   </picture></a>
 </p>
 
