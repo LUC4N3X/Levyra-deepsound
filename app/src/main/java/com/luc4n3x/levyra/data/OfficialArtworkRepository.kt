@@ -66,8 +66,11 @@ class OfficialArtworkRepository(context: Context) {
     suspend fun find(track: Track, country: String): OfficialArtwork? {
         if (track.title.isBlank() || track.artist.isBlank()) return null
         if (preservesPersonalMetadata(track)) return null
-        findApple(track, country)?.takeIf { isDecisiveMatch(track, it) }?.let { return it }
+        val apple = findApple(track, country)
+        if (apple != null && isDecisiveMatch(track, apple)) return apple
         val key = cacheKey(track, country)
+        val appleSeed = apple?.let { ProviderResponse(listOf(it), true) }
+            ?: ProviderResponse(emptyList(), true).takeIf { hasFreshMiss("apple|$key", System.currentTimeMillis()) }
         val preferred = editorialCatalog.cachedSpotifyMetadata(track)?.toSpotifyArtwork()
         if (preferred != null) return mergeArtwork(preferred, readCache(key))
         readCache(key)?.let { return it }
@@ -77,7 +80,7 @@ class OfficialArtworkRepository(context: Context) {
         return keyLock.withLock {
             readCache(key)?.let { return@withLock it }
             if (hasFreshMiss(key, System.currentTimeMillis())) return@withLock null
-            val outcome = searchSlots.withPermit { search(track, country) }
+            val outcome = searchSlots.withPermit { search(track, country, appleSeed) }
             writeOutcome(key, outcome)
             outcome.artwork
         }
@@ -103,7 +106,7 @@ class OfficialArtworkRepository(context: Context) {
         }
     }
 
-    private suspend fun search(track: Track, country: String): SearchOutcome = coroutineScope {
+    private suspend fun search(track: Track, country: String, appleSeed: ProviderResponse?): SearchOutcome = coroutineScope {
         val spotify = async {
             withTimeoutOrNull(3_500L) {
                 val candidates = spotifySearch.search("${track.title} ${track.artist}", 12, country).songs
@@ -126,7 +129,7 @@ class OfficialArtworkRepository(context: Context) {
             if (url?.isHttps == true && url.host.endsWith(".googleusercontent.com") && LevyraPersonalOrbit.hasSquareAlbumArtwork(track)) {
                 SearchOutcome(track.toSpotifyArtwork("YouTube Music"), true)
             } else {
-                searchSecondary(track, country)
+                searchSecondary(track, country, appleSeed)
             }
         }
         val preferred = spotify.await()
@@ -136,11 +139,11 @@ class OfficialArtworkRepository(context: Context) {
         SearchOutcome(mergeArtwork(preferred, supplement), true)
     }
 
-    private suspend fun searchSecondary(track: Track, country: String): SearchOutcome = withContext(Dispatchers.IO) {
+    private suspend fun searchSecondary(track: Track, country: String, appleSeed: ProviderResponse?): SearchOutcome = withContext(Dispatchers.IO) {
         val normalizedCountry = country.trim().uppercase(Locale.ROOT).takeIf { it.length == 2 } ?: "IT"
         coroutineScope {
             val apple = async {
-                fetchProvider(APPLE_TIMEOUT_MS) { fetchAppleWithStorefrontFallback(track, normalizedCountry) }
+                appleSeed ?: fetchProvider(APPLE_TIMEOUT_MS) { fetchAppleWithStorefrontFallback(track, normalizedCountry) }
             }
             val deezer = async {
                 fetchProvider(DEEZER_TIMEOUT_MS) { fetchDeezer(track) }

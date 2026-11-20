@@ -1685,6 +1685,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val activeDownloadTracks = ConcurrentHashMap<String, Track>()
     private val officialMetadataSignal = Channel<Unit>(Channel.CONFLATED)
     private val officialMetadataPending = ConcurrentHashMap<String, Track>()
+    @Volatile private var deferredSearchArtwork: List<Track> = emptyList()
     private val officialMetadataInFlightKeys = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
     private val officialMetadataDeferUntilIdle = AtomicBoolean(false)
 
@@ -10872,8 +10873,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 searchSectionLoading = snapshot.sectionLoading
             )
         }
-        if (!snapshot.pending && officialMetadataPending.size < OFFICIAL_METADATA_MAX_BATCH_SIZE * 4) {
-            enqueueOfficialMetadata(snapshot.results.songs, OFFICIAL_METADATA_MAX_BATCH_SIZE, false)
+        if (!snapshot.pending) {
+            if (officialMetadataPending.size < OFFICIAL_METADATA_SEARCH_BACKLOG) {
+                deferredSearchArtwork = emptyList()
+                enqueueOfficialMetadata(snapshot.results.songs, OFFICIAL_METADATA_MAX_BATCH_SIZE, false)
+            } else {
+                deferredSearchArtwork = snapshot.results.songs.take(OFFICIAL_METADATA_MAX_BATCH_SIZE)
+            }
         }
     }
 
@@ -11112,6 +11118,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     .toList()
                 if (batch.isEmpty()) break
                 batch.forEach { (key, track) -> officialMetadataPending.remove(key, track) }
+                val deferredSearch = deferredSearchArtwork
+                if (deferredSearch.isNotEmpty() && officialMetadataPending.size < OFFICIAL_METADATA_SEARCH_BACKLOG) {
+                    deferredSearchArtwork = emptyList()
+                    enqueueOfficialMetadata(deferredSearch, OFFICIAL_METADATA_MAX_BATCH_SIZE, false)
+                }
                 val enrichedTracks = Collections.synchronizedList(mutableListOf<Track>())
                 val semaphore = Semaphore(OFFICIAL_METADATA_CONCURRENCY)
                 coroutineScope {
@@ -16325,6 +16336,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             "Olivia Rodrigo", "Sabrina Carpenter", "Miley Cyrus", "Harry Styles"
         )
         private const val OFFICIAL_METADATA_MAX_BATCH_SIZE = 8
+        private const val OFFICIAL_METADATA_SEARCH_BACKLOG = OFFICIAL_METADATA_MAX_BATCH_SIZE * 4
         private const val FRESH_APPLE_ARTWORK_LIMIT = 21
         private const val OFFICIAL_METADATA_CONCURRENCY = 2
         const val LISTEN_SESSION_FLUSH_INTERVAL_MS = 30_000L
