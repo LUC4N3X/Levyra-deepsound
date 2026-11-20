@@ -412,8 +412,8 @@ class ListeningInsightsRepository(context: Context) {
                     } else {
                         val portrait = try {
                             semaphore.withPermit {
-                                val spotify = spotifyArtwork.resolveArtistPortrait(artist.name)
-                                if (spotify.isNotBlank()) spotify else appleArtwork.resolveArtistPortrait(artist.name)
+                                appleArtwork.resolveArtistPortrait(artist.name)
+                                    .ifBlank { spotifyArtwork.resolveArtistPortrait(artist.name) }
                             }
                         } catch (cancelled: CancellationException) {
                             throw cancelled

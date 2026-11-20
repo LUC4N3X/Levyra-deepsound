@@ -357,7 +357,8 @@ private fun ArtistShelfCard(title: String, subtitle: String, imageUrl: String, p
 
 private val ArtistShelfCardWidth = 140.dp
 internal const val AppleHeroArtworkMaxPx = 1600
-internal const val AppleHeroWaitMs = 4_000L
+internal const val AppleHeroWaitMs = 1_500L
+internal const val ArtistTonePx = 600
 internal const val AppleReleaseArtworkPx = 400
 private const val AppleBubbleArtworkPx = 300
 private val AppleSimilarTitleGap = 14.dp

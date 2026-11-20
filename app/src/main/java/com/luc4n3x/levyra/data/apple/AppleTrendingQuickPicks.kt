@@ -52,7 +52,7 @@ internal object AppleTrendingQuickPicks {
                 .filter { it.id.length == YOUTUBE_VIDEO_ID_LENGTH }
                 .forEach { candidates.putIfAbsent(it.id, it) }
             SpotifyYouTubeMatcher.findBestMatch(apple, candidates.values.toList())?.let { match ->
-                return match.candidate.copy(appleSongId = apple.appleSongId)
+                return match.candidate.copy(appleSongId = apple.appleSongId, explicit = apple.explicit || match.candidate.explicit)
             }
         }
         return null

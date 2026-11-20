@@ -63,6 +63,12 @@ internal class AppleArtistArtworkRepository private constructor(context: Context
         .getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     private val memoryCache = ConcurrentHashMap<String, String>()
 
+    fun cachedArtistPortrait(artistName: String): String {
+        val identity = artistIdentityKey(artistName.trim())
+        if (identity.isBlank()) return ""
+        return memoryCache[identity].orEmpty()
+    }
+
     suspend fun resolveArtistPortrait(artistName: String): String = withContext(Dispatchers.IO) {
         val cleanName = artistName.trim()
         val identity = artistIdentityKey(cleanName)

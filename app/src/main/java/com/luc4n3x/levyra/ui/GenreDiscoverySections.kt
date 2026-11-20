@@ -424,8 +424,8 @@ private fun rememberGenreArtistPortrait(name: String): String {
             resolveExploreMoodPortrait(
                 candidates = listOf(name),
                 providers = listOf(
-                    spotify::resolveArtistPortrait,
                     apple::resolveArtistPortrait,
+                    spotify::resolveArtistPortrait,
                     fallback::youtubePortrait,
                     fallback::deezerPortrait
                 )

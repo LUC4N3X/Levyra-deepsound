@@ -62,6 +62,16 @@ class AppleTrendingQuickPicksTest {
     }
 
     @Test
+    fun `apple explicit flag survives the youtube match`() = runBlocking {
+        val apple = appleTrendingSongs(page(listOf(songs("best", "New" to "Someone"), songs("tendenza", "Ti ricordi" to "Sfera Ebbasta")).joinToString(",")))
+            .map { it.copy(explicit = true) }
+
+        val matched = AppleTrendingQuickPicks.match(apple) { listOf(youtube("tiricordi01", "Ti ricordi", "Sfera Ebbasta")) }
+
+        assertTrue(matched.single().explicit)
+    }
+
+    @Test
     fun `catalog duration rejects a longer version with the same title`() = runBlocking {
         val apple = withAppleSongDetails(
             appleTrendingSongs(page(listOf(songs("best", "New" to "Someone"), songs("tendenza", "Housewife" to "Tate McRae")).joinToString(","))),

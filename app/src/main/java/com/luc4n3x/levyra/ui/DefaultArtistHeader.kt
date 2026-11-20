@@ -86,7 +86,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.ArtistBiography
 import com.luc4n3x.levyra.domain.ArtistProfile
@@ -115,8 +114,7 @@ internal const val DefaultArtistToneSettleMs = 2_500L
 internal fun defaultArtistHeroHeight(width: Dp, height: Dp, canvasAspect: Float?): Dp {
     val base = minOf(width * 1.08f, height * 0.62f)
     val aspect = canvasAspect?.takeIf { it.isFinite() && it > 0f } ?: return base
-    val upper = max(base, height * 0.8f)
-    return (width / aspect).coerceIn(minOf(width * 0.56f, upper), upper)
+    return (width / aspect).coerceIn(minOf(width * 0.56f, base), base)
 }
 
 internal fun artistAtmosphereTargets(

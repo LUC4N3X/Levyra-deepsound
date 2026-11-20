@@ -703,6 +703,14 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         verified
     }
 
+    private suspend fun withApplePortrait(hit: ArtistHit): ArtistHit {
+        val appContext = context ?: return hit
+        val portrait = runCatchingPreservingCancellation {
+            AppleArtistArtworkRepository.get(appContext).resolveArtistPortrait(hit.name)
+        }.getOrNull().orEmpty()
+        return if (portrait.isBlank()) hit else hit.copy(thumbnailUrl = portrait)
+    }
+
     suspend fun officialArtistHits(candidates: List<ArtistHit>, limit: Int = 12): List<ArtistHit> = withContext(Dispatchers.IO) {
         val requested = candidates
             .asSequence()
@@ -720,6 +728,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
                         runCatching { verifyArtistCandidate(candidate, candidate.name) }
                             .getOrNull()
                             ?.takeIf { it.officialArtwork && artistNameMatches(candidate.name, it.name) }
+                            ?.let { hit -> withApplePortrait(hit) }
                     }
                 }.map { it.await() }
             }

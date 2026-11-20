@@ -66,6 +66,7 @@ class OfficialArtworkRepository(context: Context) {
     suspend fun find(track: Track, country: String): OfficialArtwork? {
         if (track.title.isBlank() || track.artist.isBlank()) return null
         if (preservesPersonalMetadata(track)) return null
+        findApple(track, country)?.let { return it }
         val key = cacheKey(track, country)
         val preferred = editorialCatalog.cachedSpotifyMetadata(track)?.toSpotifyArtwork()
         if (preferred != null) return mergeArtwork(preferred, readCache(key))

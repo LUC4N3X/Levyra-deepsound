@@ -38,7 +38,7 @@ class MotionArtworkRestorePolicyContractTest {
     }
 
     @Test
-    fun `spotify artwork wins over other covers and is never replaced`() {
+    fun `apple artwork wins over spotify and other covers and is never replaced`() {
         val apply = readSource("viewmodel/LevyraViewModel.kt")
             .substringAfter("private suspend fun applyOfficialOrbitArtworkBatch(")
             .substringBefore("fun normalizedMetadataText(")
@@ -46,7 +46,12 @@ class MotionArtworkRestorePolicyContractTest {
         val lookup = apply.indexOf("valenriched=enrichedByKey[LevyraPersonalOrbit.identityKey(item)]?:returnitem")
 
         assertTrue(lookup >= 0)
-        assertTrue(apply.contains("valkeepsArtwork=LevyraPersonalOrbit.hasSquareAlbumArtwork(item)&&(isSpotifyArtworkUrl(item.thumbnailUrl)||!isSpotifyArtworkUrl(enriched.thumbnailUrl))"))
+        assertTrue(apply.contains("valkeepsArtwork=LevyraPersonalOrbit.hasSquareAlbumArtwork(item)&&artworkPreference(item.thumbnailUrl)>=artworkPreference(enriched.thumbnailUrl)"))
+        val preference = readSource("viewmodel/LevyraViewModel.kt")
+            .substringAfter("private fun artworkPreference(")
+            .substringBefore("}")
+            .filterNot(Char::isWhitespace)
+        assertTrue(preference.indexOf("isAppleArtworkUrl(url)->2") in 0 until preference.indexOf("isSpotifyArtworkUrl(url)->1"))
         assertTrue(apply.contains("thumbnailUrl=if(keepsArtwork)item.thumbnailUrlelse"))
         assertFalse(apply.contains("scoreMatch(item,enriched)"))
         assertFalse(apply.contains("sameSpotifyAlbum(item.album,enriched.album)"))

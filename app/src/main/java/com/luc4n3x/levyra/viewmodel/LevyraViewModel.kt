@@ -2857,8 +2857,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                                     runCatchingPreservingCancellation { artistRepository.monthlyListeners(artist.browseId) }.getOrNull()
                                 }
                             }
+                            val applePortrait = audienceGate.withPermit {
+                                withTimeoutOrNull(HOME_ARTIST_FAST_TIMEOUT_MS) {
+                                    runCatchingPreservingCancellation {
+                                        com.luc4n3x.levyra.data.AppleArtistArtworkRepository.get(getApplication<Application>()).resolveArtistPortrait(artist.name)
+                                    }.getOrNull()
+                                }
+                            }.orEmpty()
                             val monthly = listeners.orEmpty()
                             artist.copy(
+                                thumbnailUrl = applePortrait.ifBlank { artist.thumbnailUrl },
                                 subscribers = monthly.ifBlank { artist.subscribers },
                                 audienceIsSubscribers = monthly.isBlank() && artist.subscribers.isNotBlank(),
                                 officialArtwork = artist.thumbnailUrl.isNotBlank()
@@ -10863,6 +10871,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 searchSectionLoading = snapshot.sectionLoading
             )
         }
+        if (!snapshot.pending) enqueueOfficialMetadata(snapshot.results.songs, OFFICIAL_METADATA_MAX_BATCH_SIZE, false)
     }
 
     private fun localSearchCandidates(): List<LocalSearchCandidate> {
@@ -11131,9 +11140,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun needsOfficialMetadata(track: Track): Boolean {
         if (com.luc4n3x.levyra.data.spotify.preservesPersonalMetadata(track)) return false
         return !LevyraPersonalOrbit.hasSquareAlbumArtwork(track) ||
-            !track.metadataProvider.equals("spotify", ignoreCase = true) ||
+            !isAppleArtworkUrl(track.thumbnailUrl) ||
             (track.canonicalAlbumUrl.isBlank() && track.releaseDate.isBlank())
     }
+
+    private fun isAppleArtworkUrl(url: String): Boolean =
+        url.startsWith("https://") && url.substringAfter("://").substringBefore('/').endsWith(".mzstatic.com")
 
     private fun officialMetadataConfidence(score: Int): Int = when {
         score >= 500 -> 100
@@ -11196,6 +11208,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun isSpotifyArtworkUrl(url: String): Boolean = url.startsWith("https://i.scdn.co/image/")
 
+    private fun artworkPreference(url: String): Int = when {
+        isAppleArtworkUrl(url) -> 2
+        isSpotifyArtworkUrl(url) -> 1
+        else -> 0
+    }
+
     private suspend fun applyOfficialOrbitArtworkBatch(enrichedTracks: List<Track>) {
         val enrichedByKey = enrichedTracks
             .distinctBy { LevyraPersonalOrbit.identityKey(it) }
@@ -11216,7 +11234,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 if (com.luc4n3x.levyra.data.spotify.preservesPersonalMetadata(item)) return item
                 val enriched = enrichedByKey[LevyraPersonalOrbit.identityKey(item)] ?: return item
                 val keepsArtwork = LevyraPersonalOrbit.hasSquareAlbumArtwork(item) &&
-                    (isSpotifyArtworkUrl(item.thumbnailUrl) || !isSpotifyArtworkUrl(enriched.thumbnailUrl))
+                    artworkPreference(item.thumbnailUrl) >= artworkPreference(enriched.thumbnailUrl)
                 return item.copy(
                     album = if (keepsArtwork) item.album.ifBlank { enriched.album } else enriched.album.ifBlank { item.album },
                     thumbnailUrl = if (keepsArtwork) item.thumbnailUrl else enriched.thumbnailUrl.ifBlank { item.thumbnailUrl },
@@ -14419,7 +14437,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val request = ArtistMotionRequest(artistMotionIdentity(profile), seeds.map(::playbackIdentity))
         if (keepCurrent && request.identity == artistMotionRequest?.identity) {
             val published = _state.value.artistMotionArtwork != null && artistMotionPublished
-            val sameWorkInFlight = artistMotionJob?.isActive == true && request == artistMotionRequest
+            val sameWorkInFlight = artistMotionJob?.isActive == true
             if (published || sameWorkInFlight) return
         }
         artistMotionJob?.cancel()
