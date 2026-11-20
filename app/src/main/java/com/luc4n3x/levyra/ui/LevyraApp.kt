@@ -19053,6 +19053,8 @@ private fun SettingsOverlay(
     val settingsSearchResults = remember(settingsQuery, settingsSearchIndex) {
         settingsSearchIndex.search(settingsQuery)
     }
+    val settingsFrost = LevyraIsDefaultSkin && !SkinChrome.active
+    val settingsGlass = rememberGlassBackdropState(settingsFrost && rememberGlassBlurAllowed())
     Box(
         modifier = Modifier
         .fillMaxSize()
@@ -19090,7 +19092,8 @@ private fun SettingsOverlay(
                 modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .navigationBarsPadding(),
+                .navigationBarsPadding()
+                .then(if (settingsFrost) Modifier.glassBackdropSource(settingsGlass) else Modifier),
                 contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 18.dp, bottom = maxOf(40.dp, bottomContentInset)),
                 verticalArrangement = Arrangement.spacedBy(if (current == null) 0.dp else SettingsGroupGap)
             ) {
@@ -20505,6 +20508,15 @@ private fun SettingsOverlay(
                 }
             }
             }
+        }
+        if (settingsFrost) {
+            val barMeta = categories.firstOrNull { it.id == activeCategory }
+            com.luc4n3x.levyra.ui.components.LevyraScrolledTopBar(
+                glass = settingsGlass,
+                listState = settingsListStates.getOrPut(activeCategory) { LazyListState() },
+                title = barMeta?.title ?: strings.settings,
+                icon = barMeta?.icon ?: Icons.Rounded.Settings
+            )
         }
     }
 }

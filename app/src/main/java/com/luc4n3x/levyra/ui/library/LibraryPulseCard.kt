@@ -46,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.lerp
@@ -58,6 +59,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.domain.ListeningChartProjection
 import com.luc4n3x.levyra.domain.ListeningPulse
@@ -391,7 +393,8 @@ private fun PulseDayBar(
         animationSpec = if (animationsEnabled) tween(PulseBarEmphasisMs) else snap(),
         label = "pulse-bar-emphasis"
     )
-    val barColor = lerp(colors.primary.copy(alpha = 0.30f), colors.primary, emphasis)
+        val topColor = lerp(colors.primary.copy(alpha = 0.34f), colors.primary, emphasis)
+        val bottomColor = lerp(colors.primary.copy(alpha = 0.18f), colors.primary.copy(alpha = 0.72f), emphasis)
     Box(
         modifier = modifier
             .fillMaxHeight()
@@ -406,7 +409,7 @@ private fun PulseDayBar(
                     .widthIn(max = PulseBarMaxWidth)
                     .fillMaxHeight(fraction.coerceIn(0.02f, 1f))
                     .clip(PulseBarShape)
-                    .background(barColor)
+                    .background(Brush.verticalGradient(listOf(topColor, bottomColor)))
             )
         } else {
             Box(
@@ -488,36 +491,40 @@ private fun PulseStatTiles(pulse: ListeningPulse, locale: Locale) {
             if (peakHour in 0..23) LocalTime.of(peakHour, 0).format(timeFormatter) else "—",
         strings.topArtistsTitle to pulse.last7Days.topArtists.firstOrNull()?.name.orEmpty().ifBlank { "—" }
     )
-    Row(horizontalArrangement = Arrangement.spacedBy(3.dp), modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
         tiles.forEachIndexed { index, (label, value) ->
             PulseStatTile(
                 label = label,
                 value = value,
+                accent = index == 0,
                 modifier = Modifier
                     .weight(if (index == tiles.lastIndex) 1.3f else 1f)
                     .fillMaxHeight()
-                    .clip(levyraGroupedGridShape(0, index, 1, tiles.size))
+                    .clip(RoundedCornerShape(20.dp))
             )
         }
     }
 }
 
 @Composable
-private fun PulseStatTile(label: String, value: String, modifier: Modifier = Modifier) {
+private fun PulseStatTile(label: String, value: String, accent: Boolean, modifier: Modifier = Modifier) {
     val colors = MaterialTheme.colorScheme
+    val container = if (accent) colors.primaryContainer else colors.surfaceContainerHigh
+    val labelColor = if (accent) colors.onPrimaryContainer.copy(alpha = 0.78f) else colors.onSurfaceVariant
+    val valueColor = if (accent) colors.onPrimaryContainer else colors.onSurface
     Column(
         modifier = modifier
-            .heightIn(min = 76.dp)
-            .background(colors.surfaceContainerHigh)
+            .heightIn(min = 88.dp)
+            .background(container)
             .semantics(mergeDescendants = true) {}
-            .padding(horizontal = 12.dp, vertical = 12.dp),
+            .padding(horizontal = 14.dp, vertical = 14.dp),
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(label, color = colors.onSurfaceVariant, style = LevyraType.caption, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(label, color = labelColor, style = LevyraType.caption, maxLines = 2, overflow = TextOverflow.Ellipsis)
         Text(
             value,
-            color = colors.onSurface,
-            style = LevyraType.cardTitle.copy(fontWeight = FontWeight.Bold),
+            color = valueColor,
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black, letterSpacing = (-0.5).sp),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
