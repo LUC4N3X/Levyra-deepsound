@@ -10871,7 +10871,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 searchSectionLoading = snapshot.sectionLoading
             )
         }
-        if (!snapshot.pending) enqueueOfficialMetadata(snapshot.results.songs, OFFICIAL_METADATA_MAX_BATCH_SIZE, false)
+        if (!snapshot.pending && officialMetadataPending.size < OFFICIAL_METADATA_MAX_BATCH_SIZE * 4) {
+            enqueueOfficialMetadata(snapshot.results.songs, OFFICIAL_METADATA_MAX_BATCH_SIZE, false)
+        }
     }
 
     private fun localSearchCandidates(): List<LocalSearchCandidate> {
@@ -14437,7 +14439,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val request = ArtistMotionRequest(artistMotionIdentity(profile), seeds.map(::playbackIdentity))
         if (keepCurrent && request.identity == artistMotionRequest?.identity) {
             val published = _state.value.artistMotionArtwork != null && artistMotionPublished
-            val sameWorkInFlight = artistMotionJob?.isActive == true
+            val sameWorkInFlight = artistMotionJob?.isActive == true &&
+                (request == artistMotionRequest || artistMotionRequest?.seedIdentities?.isNotEmpty() == true)
             if (published || sameWorkInFlight) return
         }
         artistMotionJob?.cancel()

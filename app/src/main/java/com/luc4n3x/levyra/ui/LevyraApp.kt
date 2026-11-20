@@ -12114,7 +12114,7 @@ private fun rememberHomeHeroPortrait(hero: HomeSpotlightHero?): HomeSpotlightHer
             .orEmpty()
         portraitLookupComplete = true
     }
-    val portraitUrl = if (portraitLookupComplete) externalPortraitUrl else ""
+    val portraitUrl = if (portraitLookupComplete) externalPortraitUrl.ifBlank { hero?.artistArtworkUrl.orEmpty() } else ""
     return remember(hero, portraitUrl) { hero?.copy(artistArtworkUrl = portraitUrl) }
 }
 
