@@ -92,29 +92,29 @@ I don't host FLAC audio on Levyra's servers. On Android, experimental FLAC playb
 
 <p>
   <a href="docs/assets/showcase/readme/row-02-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-02-studio-mobile.webp?v=m3-cards-10">
-    <img src="docs/assets/showcase/readme/row-02-studio.webp?v=m3-cards-10" width="900" alt="Discover more, instant search results, artist pages, and personal collections.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-02-studio-mobile.webp?v=m3-cards-11">
+    <img src="docs/assets/showcase/readme/row-02-studio.webp?v=m3-cards-11" width="900" alt="Discover more, instant search results, artist pages, and personal collections.">
   </picture></a>
 </p>
 
 <p>
   <a href="docs/assets/showcase/readme/row-03-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-03-studio-mobile.webp?v=m3-cards-14">
-    <img src="docs/assets/showcase/readme/row-03-studio.webp?v=m3-cards-14" width="900" alt="Your library, Top 100 and city charts, Mood Journey, and audio output and quality settings.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-03-studio-mobile.webp?v=m3-cards-15">
+    <img src="docs/assets/showcase/readme/row-03-studio.webp?v=m3-cards-15" width="900" alt="Albums with offline downloads, swipe discovery, live radio, and audio output and quality settings.">
   </picture></a>
 </p>
 
 <p>
   <a href="docs/assets/showcase/readme/row-04-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-04-studio-mobile.webp?v=m3-cards-18">
-    <img src="docs/assets/showcase/readme/row-04-studio.webp?v=m3-cards-18" width="900" alt="Make Levyra yours: skin selection, live radio, on-device listening insights and shared listening with Unison over Wi-Fi.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-04-studio-mobile.webp?v=m3-cards-19">
+    <img src="docs/assets/showcase/readme/row-04-studio.webp?v=m3-cards-19" width="900" alt="Make Levyra yours: skin selection, Mood Journey, on-device listening insights and shared listening with Unison over Wi-Fi.">
   </picture></a>
 </p>
 
 <p>
   <a href="docs/assets/showcase/readme/row-05-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-05-studio-mobile.webp?v=m3-cards-8">
-    <img src="docs/assets/showcase/readme/row-05-studio.webp?v=m3-cards-8" width="900" alt="Keep the music close: synced lyrics, albums with offline downloads, swipe discovery and Your Year in Music.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-05-studio-mobile.webp?v=m3-cards-9">
+    <img src="docs/assets/showcase/readme/row-05-studio.webp?v=m3-cards-9" width="900" alt="Synced lyrics, unified library, Top 100 and city charts, and Your Year in Music.">
   </picture></a>
 </p>
 

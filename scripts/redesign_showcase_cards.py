@@ -522,7 +522,7 @@ UPRIGHT_CARD_SPECS = [
         "COMPLETE DISCOGRAPHIES",
         "Full Artist Hubs",
         "Albums, singles, bio & top tracks.",
-        "Screenshot_20261120_145346_Levyra.jpg",
+        "Screenshot_20261120_144857_Levyra.jpg",
         (251, 247, 240), (237, 226, 208), (222, 205, 178), (218, 204, 184),
         (138, 92, 46), (28, 23, 18), (98, 80, 58),
     ),
