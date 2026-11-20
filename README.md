@@ -99,15 +99,15 @@ I don't host FLAC audio on Levyra's servers. On Android, experimental FLAC playb
 
 <p>
   <a href="docs/assets/showcase/readme/row-03-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-03-studio-mobile.webp?v=m3-cards-11">
-    <img src="docs/assets/showcase/readme/row-03-studio.webp?v=m3-cards-11" width="900" alt="Your library: local and streamed tracks, instant search results, on-device listening insights and personal collections.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-03-studio-mobile.webp?v=m3-cards-12">
+    <img src="docs/assets/showcase/readme/row-03-studio.webp?v=m3-cards-12" width="900" alt="Your library: local and streamed tracks, instant search results, artist pages and personal collections.">
   </picture></a>
 </p>
 
 <p>
   <a href="docs/assets/showcase/readme/row-04-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-04-studio-mobile.webp?v=m3-cards-17">
-    <img src="docs/assets/showcase/readme/row-04-studio.webp?v=m3-cards-17" width="900" alt="Make Levyra yours: skin selection, live radio, artist pages and shared listening with Unison over Wi-Fi.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-04-studio-mobile.webp?v=m3-cards-18">
+    <img src="docs/assets/showcase/readme/row-04-studio.webp?v=m3-cards-18" width="900" alt="Make Levyra yours: skin selection, live radio, on-device listening insights and shared listening with Unison over Wi-Fi.">
   </picture></a>
 </p>
 
