@@ -521,6 +521,7 @@ private const val JAM_SIMILAR_SONG_SELECT_TIMEOUT_MS = 5_000L
 
 private const val DISCOVERY_PLAYLIST_SIGNAL_LIMIT = 300
 private const val DISCOVERY_SOURCE_LIMIT = 16
+private const val APPLE_TRENDING_SEARCH_LIMIT = 8
 private const val DISCOVERY_REGIONAL_LIMIT = 30
 private const val DISCOVERY_RELEASE_RADAR_LIMIT = 5
 private const val DISCOVERY_ARTIST_LIMIT = 8
@@ -1450,6 +1451,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var chartEnrichJob: Job? = null
     private var chartArtworkJob: Job? = null
     private var orbitArtworkJob: Job? = null
+    private var appleTrendingJob: Job? = null
     private var motionArtworkJob: Job? = null
     @Volatile private var motionArtworkRequestKey: String? = null
     @Volatile private var motionArtworkRequestGeneration: Long = 0L
@@ -1683,6 +1685,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val activeDownloadTracks = ConcurrentHashMap<String, Track>()
     private val officialMetadataSignal = Channel<Unit>(Channel.CONFLATED)
     private val officialMetadataPending = ConcurrentHashMap<String, Track>()
+    @Volatile private var deferredSearchArtwork: List<Track> = emptyList()
     private val officialMetadataInFlightKeys = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
     private val officialMetadataDeferUntilIdle = AtomicBoolean(false)
 
@@ -2607,6 +2610,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             loadHomeFeed(deferUntilHomeIdle = true)
             homeFeedJob?.join()
             refreshHomeResonanceIfStale()
+            refreshAppleTrendingQuickPicks()
         }
         viewModelScope.launch {
             delay(450L)
@@ -2854,8 +2858,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                                     runCatchingPreservingCancellation { artistRepository.monthlyListeners(artist.browseId) }.getOrNull()
                                 }
                             }
+                            val applePortrait = audienceGate.withPermit {
+                                withTimeoutOrNull(HOME_ARTIST_FAST_TIMEOUT_MS) {
+                                    runCatchingPreservingCancellation {
+                                        com.luc4n3x.levyra.data.AppleArtistArtworkRepository.get(getApplication<Application>()).resolveArtistPortrait(artist.name)
+                                    }.getOrNull()
+                                }
+                            }.orEmpty()
                             val monthly = listeners.orEmpty()
                             artist.copy(
+                                thumbnailUrl = applePortrait.ifBlank { artist.thumbnailUrl },
                                 subscribers = monthly.ifBlank { artist.subscribers },
                                 audienceIsSubscribers = monthly.isBlank() && artist.subscribers.isNotBlank(),
                                 officialArtwork = artist.thumbnailUrl.isNotBlank()
@@ -6158,6 +6170,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         loadHomeFeed()
         loadCharts(_state.value.selectedChartId)
         refreshHomeArtists()
+        refreshAppleTrendingQuickPicks()
     }
 
     suspend fun refreshHomeAndAwait() {
@@ -7623,6 +7636,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (refreshRemote) {
             loadHomeFeed()
             loadCharts(selectedChartRegion.id)
+            refreshAppleTrendingQuickPicks()
         }
         warmChartRegionMemoryCache()
     }
@@ -10859,6 +10873,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 searchSectionLoading = snapshot.sectionLoading
             )
         }
+        if (!snapshot.pending) {
+            if (officialMetadataPending.size < OFFICIAL_METADATA_SEARCH_BACKLOG) {
+                deferredSearchArtwork = emptyList()
+                enqueueOfficialMetadata(snapshot.results.songs, OFFICIAL_METADATA_MAX_BATCH_SIZE, false)
+            } else {
+                deferredSearchArtwork = snapshot.results.songs.take(OFFICIAL_METADATA_MAX_BATCH_SIZE)
+            }
+        }
     }
 
     private fun localSearchCandidates(): List<LocalSearchCandidate> {
@@ -11002,6 +11024,31 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         enqueueOfficialMetadata(tracks, limit, deferUntilHomeIdle)
     }
 
+    private fun refreshAppleTrendingQuickPicks() {
+        val snapshot = _state.value
+        if (snapshot.isDeviceOffline) return
+        val languageCode = snapshot.languageCode
+        val storefront = AppleStorefronts.normalize(ChartsCatalog.defaultRegionForLanguage(languageCode).country)
+        appleTrendingJob?.cancel()
+        appleTrendingJob = viewModelScope.launch {
+            awaitHomeUiIdle()
+            val apple = AppleMusicEditorialRepository.get(getApplication<Application>())
+            val appleLanguage = AppleStorefronts.language(languageCode)
+            val page = runCatchingPreservingCancellation { apple.newMusic(storefront, appleLanguage)?.page }.getOrNull()
+            val songs = com.luc4n3x.levyra.data.apple.appleTrendingSongs(page)
+            if (songs.isEmpty()) return@launch
+            val detailed = apple.withSongDetails(storefront, appleLanguage, songs)
+            val trending = com.luc4n3x.levyra.data.apple.AppleTrendingQuickPicks.match(detailed) { query ->
+                repository.searchForPlayback(query, APPLE_TRENDING_SEARCH_LIMIT, languageCode)
+            }
+            if (trending.isEmpty()) return@launch
+            _state.update { current ->
+                if (current.languageCode != languageCode) current
+                else current.copy(quickPickSeeds = trending + LevyraStartupCatalog.quickPickSeeds(languageCode))
+            }
+        }
+    }
+
     private fun refreshMissingOfficialOrbitArtwork(tracks: List<Track>, deferUntilHomeIdle: Boolean = false) {
         orbitArtworkJob?.cancel()
         orbitArtworkJob = viewModelScope.launch {
@@ -11071,6 +11118,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     .toList()
                 if (batch.isEmpty()) break
                 batch.forEach { (key, track) -> officialMetadataPending.remove(key, track) }
+                val deferredSearch = deferredSearchArtwork
+                if (deferredSearch.isNotEmpty() && officialMetadataPending.size < OFFICIAL_METADATA_SEARCH_BACKLOG) {
+                    deferredSearchArtwork = emptyList()
+                    enqueueOfficialMetadata(deferredSearch, OFFICIAL_METADATA_MAX_BATCH_SIZE, false)
+                }
                 val enrichedTracks = Collections.synchronizedList(mutableListOf<Track>())
                 val semaphore = Semaphore(OFFICIAL_METADATA_CONCURRENCY)
                 coroutineScope {
@@ -11102,9 +11154,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun needsOfficialMetadata(track: Track): Boolean {
         if (com.luc4n3x.levyra.data.spotify.preservesPersonalMetadata(track)) return false
         return !LevyraPersonalOrbit.hasSquareAlbumArtwork(track) ||
-            !track.metadataProvider.equals("spotify", ignoreCase = true) ||
+            !isAppleArtworkUrl(track.thumbnailUrl) ||
             (track.canonicalAlbumUrl.isBlank() && track.releaseDate.isBlank())
     }
+
+    private fun isAppleArtworkUrl(url: String): Boolean =
+        url.startsWith("https://") && url.substringAfter("://").substringBefore('/').endsWith(".mzstatic.com")
 
     private fun officialMetadataConfidence(score: Int): Int = when {
         score >= 500 -> 100
@@ -11167,6 +11222,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun isSpotifyArtworkUrl(url: String): Boolean = url.startsWith("https://i.scdn.co/image/")
 
+    private fun artworkPreference(url: String): Int = when {
+        isAppleArtworkUrl(url) -> 2
+        isSpotifyArtworkUrl(url) -> 1
+        else -> 0
+    }
+
     private suspend fun applyOfficialOrbitArtworkBatch(enrichedTracks: List<Track>) {
         val enrichedByKey = enrichedTracks
             .distinctBy { LevyraPersonalOrbit.identityKey(it) }
@@ -11187,7 +11248,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 if (com.luc4n3x.levyra.data.spotify.preservesPersonalMetadata(item)) return item
                 val enriched = enrichedByKey[LevyraPersonalOrbit.identityKey(item)] ?: return item
                 val keepsArtwork = LevyraPersonalOrbit.hasSquareAlbumArtwork(item) &&
-                    (isSpotifyArtworkUrl(item.thumbnailUrl) || !isSpotifyArtworkUrl(enriched.thumbnailUrl))
+                    artworkPreference(item.thumbnailUrl) >= artworkPreference(enriched.thumbnailUrl)
                 return item.copy(
                     album = if (keepsArtwork) item.album.ifBlank { enriched.album } else enriched.album.ifBlank { item.album },
                     thumbnailUrl = if (keepsArtwork) item.thumbnailUrl else enriched.thumbnailUrl.ifBlank { item.thumbnailUrl },
@@ -14390,7 +14451,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val request = ArtistMotionRequest(artistMotionIdentity(profile), seeds.map(::playbackIdentity))
         if (keepCurrent && request.identity == artistMotionRequest?.identity) {
             val published = _state.value.artistMotionArtwork != null && artistMotionPublished
-            val sameWorkInFlight = artistMotionJob?.isActive == true && request == artistMotionRequest
+            val sameWorkInFlight = artistMotionJob?.isActive == true &&
+                (request == artistMotionRequest || artistMotionRequest?.seedIdentities?.isNotEmpty() == true)
             if (published || sameWorkInFlight) return
         }
         artistMotionJob?.cancel()
@@ -16274,6 +16336,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             "Olivia Rodrigo", "Sabrina Carpenter", "Miley Cyrus", "Harry Styles"
         )
         private const val OFFICIAL_METADATA_MAX_BATCH_SIZE = 8
+        private const val OFFICIAL_METADATA_SEARCH_BACKLOG = OFFICIAL_METADATA_MAX_BATCH_SIZE * 4
         private const val FRESH_APPLE_ARTWORK_LIMIT = 21
         private const val OFFICIAL_METADATA_CONCURRENCY = 2
         const val LISTEN_SESSION_FLUSH_INTERVAL_MS = 30_000L

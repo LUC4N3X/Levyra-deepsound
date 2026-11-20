@@ -235,8 +235,8 @@ internal fun rememberExploreMoodArtworkUrl(zone: ExploreZone): String {
             resolveExploreMoodPortrait(
                 candidates = portraitCandidates,
                 providers = listOf(
-                    spotifyRepository::resolveArtistPortrait,
                     appleRepository::resolveArtistPortrait,
+                    spotifyRepository::resolveArtistPortrait,
                     fallbackRepository::youtubePortrait,
                     fallbackRepository::deezerPortrait,
                     fallbackRepository::tidalPortrait

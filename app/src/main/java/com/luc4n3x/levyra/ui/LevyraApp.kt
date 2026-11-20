@@ -5630,18 +5630,21 @@ private fun ArtistOverlay(
         LazyListState()
     }
     val heroArtwork = profile?.let { it.thumbnailUrl.ifBlank { it.bannerUrl } }.orEmpty()
+    val toneArtwork = appleArtist?.heroArtworkUrl(ArtistTonePx)?.takeIf(String::isNotBlank)
+        ?: state.artistMotionArtwork?.posterUrl?.takeIf(String::isNotBlank)
+        ?: heroArtwork
     val fallbackPalette = remember(accentStart, accentEnd) {
         ArtworkPalette(accentStart.toArgb(), accentEnd.toArgb())
     }
     val artistPalette by rememberArtworkPalette(
-        paletteKey = profile?.let { "artist:" + it.browseId.ifBlank { it.name.trim().lowercase() } }.orEmpty(),
-        artworkUrl = heroArtwork,
+        paletteKey = profile?.let { "artist:" + it.browseId.ifBlank { it.name.trim().lowercase() } + ":" + toneArtwork.hashCode() }.orEmpty(),
+        artworkUrl = toneArtwork,
         fallback = fallbackPalette
     )
     val nocturne = LevyraIsNocturne
-    var artistCanvasTone by remember(profile?.browseId, profile?.name) { mutableStateOf<Color?>(null) }
+    var artistCanvasTone by remember(profile?.browseId, profile?.name, toneArtwork) { mutableStateOf<Color?>(null) }
     SettleDefaultArtistTone(
-        key = profile?.browseId to profile?.name,
+        key = Triple(profile?.browseId, profile?.name, toneArtwork),
         enabled = LevyraIsDefaultSkin,
         photoReady = artistPalette != fallbackPalette,
         settled = { artistCanvasTone != null },
@@ -5714,10 +5717,7 @@ private fun ArtistOverlay(
                     ?: LevyraPersonalOrbit.croppedArtworkUrl(heroArtwork, heroWidthPx, artworkHeightPx.roundToInt())
             }
         }
-        val heroMotion = when {
-            awaitingAppleHero -> null
-            else -> remember(appleArtist) { appleArtist?.heroMotion() } ?: state.artistMotionArtwork
-        }
+        val heroMotion = remember(appleArtist) { appleArtist?.heroMotion() } ?: state.artistMotionArtwork
         val topBarPx = with(density) { (WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + ArtistTopBarHeight).toPx() }
         val heroScroll: () -> Float = {
             if (artistListState.firstVisibleItemIndex == 0) {
@@ -12070,8 +12070,8 @@ private fun homeArtistPortraitUrlEligible(url: String): Boolean {
 private fun homeArtistPortraitSourceRank(url: String): Int {
     val lower = url.trim().lowercase(Locale.ROOT)
     return when {
-        lower.contains("i.scdn.co/") && lower.contains("ab676161") -> 0
-        lower.contains("mzstatic.com/") -> 1
+        lower.contains("mzstatic.com/") -> 0
+        lower.contains("i.scdn.co/") && lower.contains("ab676161") -> 1
         lower.contains("googleusercontent.com/") || lower.contains("ggpht.com/") -> 2
         else -> 3
     }
@@ -12090,11 +12090,13 @@ private fun rememberHomeHeroPortrait(hero: HomeSpotlightHero?): HomeSpotlightHer
     val context = LocalContext.current
     val spotifyRepository = remember(context) { SpotifyArtistArtworkRepository.get(context) }
     val appleRepository = remember(context) { AppleArtistArtworkRepository.get(context) }
-    val artistName = hero?.artists?.firstOrNull().orEmpty().trim()
-    val fallbackUrl = hero?.artistArtworkUrl.orEmpty()
+    val languageCode = LocalLevyraStrings.current.code
+    val artistName = remember(languageCode) {
+        HomeSoundtrackPortraits.artistForDay(languageCode, java.time.LocalDate.now().toEpochDay())
+    }
     var externalPortraitUrl by rememberSaveable(artistName) {
         mutableStateOf(
-            spotifyRepository.cachedArtistPortrait(artistName)
+            appleRepository.cachedArtistPortrait(artistName)
                 .takeIf(String::isNotBlank)
                 ?.let(::highResolutionHomeArtistArtworkUrl)
                 .orEmpty()
@@ -12103,26 +12105,16 @@ private fun rememberHomeHeroPortrait(hero: HomeSpotlightHero?): HomeSpotlightHer
     var portraitLookupComplete by rememberSaveable(artistName) {
         mutableStateOf(artistName.isBlank() || externalPortraitUrl.isNotBlank())
     }
-    var lockedFallbackUrl by rememberSaveable(artistName) { mutableStateOf("") }
     LaunchedEffect(artistName, spotifyRepository, appleRepository) {
         if (portraitLookupComplete) return@LaunchedEffect
-        val portrait = spotifyRepository.resolveArtistPortrait(artistName)
-            .ifBlank { appleRepository.resolveArtistPortrait(artistName) }
+        val portrait = appleRepository.resolveArtistPortrait(artistName)
+            .ifBlank { spotifyRepository.resolveArtistPortrait(artistName) }
         externalPortraitUrl = portrait.takeIf(String::isNotBlank)
             ?.let(::highResolutionHomeArtistArtworkUrl)
             .orEmpty()
         portraitLookupComplete = true
     }
-    LaunchedEffect(portraitLookupComplete, externalPortraitUrl, fallbackUrl) {
-        if (portraitLookupComplete && externalPortraitUrl.isBlank() && lockedFallbackUrl.isBlank()) {
-            lockedFallbackUrl = fallbackUrl
-        }
-    }
-    val portraitUrl = when {
-        !portraitLookupComplete -> ""
-        externalPortraitUrl.isNotBlank() -> externalPortraitUrl
-        else -> lockedFallbackUrl.ifBlank { fallbackUrl }
-    }
+    val portraitUrl = if (portraitLookupComplete) externalPortraitUrl.ifBlank { hero?.artistArtworkUrl.orEmpty() } else ""
     return remember(hero, portraitUrl) { hero?.copy(artistArtworkUrl = portraitUrl) }
 }
 

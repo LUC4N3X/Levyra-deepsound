@@ -1106,6 +1106,9 @@ private fun buildQuickPicks(input: HomeDerivedInput): HomeSection? {
         .filter(String::isNotBlank)
         .toHashSet()
     val candidates = input.artistExclusions.filterTracks(buildList {
+        input.quickPickSeeds
+            .filterNot { LevyraStartupCatalog.isStartupSeedId(it.id) }
+            .let(::addAll)
         input.homeSections
             .firstOrNull { isHomeQuickPicksSectionTitle(it.title) }
             ?.tracks

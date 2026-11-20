@@ -63,6 +63,12 @@ internal class AppleArtistArtworkRepository private constructor(context: Context
         .getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     private val memoryCache = ConcurrentHashMap<String, String>()
 
+    fun cachedArtistPortrait(artistName: String): String {
+        val identity = artistIdentityKey(artistName.trim())
+        if (identity.isBlank()) return ""
+        return memoryCache[identity].orEmpty()
+    }
+
     suspend fun resolveArtistPortrait(artistName: String): String = withContext(Dispatchers.IO) {
         val cleanName = artistName.trim()
         val identity = artistIdentityKey(cleanName)
@@ -71,7 +77,7 @@ internal class AppleArtistArtworkRepository private constructor(context: Context
         val now = System.currentTimeMillis()
         memoryCache[identity]?.let { return@withContext it }
         readPersisted(identity, now)?.let { cached ->
-            memoryCache[identity] = cached
+            rememberPortrait(identity, cached)
             return@withContext cached
         }
 
@@ -81,13 +87,18 @@ internal class AppleArtistArtworkRepository private constructor(context: Context
         }.getOrNull().orEmpty()
 
         if (resolved.isNotBlank()) {
-            memoryCache[identity] = resolved
+            rememberPortrait(identity, resolved)
             preferences.edit()
                 .putString("$identity.url", resolved)
                 .putLong("$identity.savedAt", now)
                 .apply()
         }
         resolved
+    }
+
+    private fun rememberPortrait(identity: String, url: String) {
+        if (memoryCache.size >= MAX_MEMORY_PORTRAITS) memoryCache.clear()
+        memoryCache[identity] = url
     }
 
     private fun readPersisted(identity: String, now: Long): String? {
@@ -165,6 +176,7 @@ internal class AppleArtistArtworkRepository private constructor(context: Context
         private const val USER_AGENT =
             "Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 Chrome/140.0.0.0 Mobile Safari/537.36"
         private const val SEARCH_LIMIT = 5
+        private const val MAX_MEMORY_PORTRAITS = 256
         private const val MAX_SEARCH_BYTES = 512_000L
         private const val MAX_PAGE_BYTES = 4_000_000L
         private const val ARTWORK_TTL_MS = 30L * 24L * 60L * 60L * 1000L

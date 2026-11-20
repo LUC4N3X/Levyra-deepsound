@@ -251,6 +251,24 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
         )
     }
 
+    suspend fun withSongDetails(storefront: String, language: String, tracks: List<Track>): List<Track> = withContext(Dispatchers.IO) {
+        val ids = tracks.map { it.appleSongId }.filter(String::isNotBlank).distinct()
+        if (ids.isEmpty()) return@withContext tracks
+        val url = "$CATALOG_API_URL/v1/catalog/${AppleStorefronts.normalize(storefront)}/songs".toHttpUrl().newBuilder()
+            .addQueryParameter("ids", ids.joinToString(","))
+            .addQueryParameter("l", AppleStorefronts.language(language))
+            .build()
+        val songs = try {
+            catalogJson(url, "Apple song details")?.optJSONArray("data")
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Timber.w(error, "Apple song details failed")
+            null
+        }
+        withAppleSongDetails(tracks, songs)
+    }
+
     private suspend fun topMusicVideos(storefront: String, artistId: String, language: String): List<AppleCatalogItem> {
         val url = "$CATALOG_API_URL/v1/catalog/$storefront/artists/$artistId/view/top-music-videos".toHttpUrl().newBuilder()
             .addQueryParameter("l", language)
