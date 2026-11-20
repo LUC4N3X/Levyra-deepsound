@@ -732,10 +732,10 @@
    "genre": "rnb",
    "title": "Fast Asleep",
    "artist": "GIVĒON",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27347592fa87309c3061e63b7c9",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2735fd8378b2e0fc843b0c12c95",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/cb49431b559c476f8af27724d39ffa80.cnvs.mp4",
    "spotifyTrackId": "4EMW9BdGJ8avDfuab1ostA",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/b962956409ca2f2077e3f78eb9db7b920ffb6a4e"
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/b381e7d5cf547bfd3955166bf5cadb462a379f9c"
   },
   {
    "id": "levyra-0c920fe78c33b78b4a07",
@@ -1498,6 +1498,16 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/5e5691677995053a8c1eb4e04b3693a00202b029"
   },
   {
+   "id": "levyra-b05febd44a5bc0e986d1",
+   "genre": "edm",
+   "title": "Yup",
+   "artist": "Dirt Monkey, Shank Aaron",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2737ab4834622bf0d8e2fbaacf5",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/5dNqUwGTZcQQ09ecTKkCGH/video/7e1597e4c1a44350b38e1a29946af261.cnvs.mp4",
+   "spotifyTrackId": "6KeV88IDmSMzyNMt1j3Hyn",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/93f5bb2e3139ebc9e61ab15746a6534408ff2406"
+  },
+  {
    "id": "levyra-cc436cc3902ab659d22c",
    "genre": "edm",
    "title": "Final Bonk",
@@ -1652,7 +1662,7 @@
    "genre": "uk-rap",
    "title": "REMEMBER ME (A Minute)",
    "artist": "DC3",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273c68899632ee0e2829ce04c44",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27319f8d0518d3069e7cf44ec68",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/b99e481d0d4f46278640fd6ac1e11e55.cnvs.mp4",
    "spotifyTrackId": "4ndtY7U9KVCLiDy4VKUQqR",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/47e74930333e1421cea2d77c86cea219af2f5069"
@@ -1736,6 +1746,16 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/156336c0ba7a41d49a884eda00f0574e.cnvs.mp4",
    "spotifyTrackId": "7bxaFZ1O3cHkgLKMsdC3xR",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/0015e9347a45b62215447eba657b2fc3ce279d2d"
+  },
+  {
+   "id": "levyra-07681568f1a8f7df27ee",
+   "genre": "pop",
+   "title": "Go Easy (from GTAVI: The Album)",
+   "artist": "Dua Lipa, Grand Theft Auto VI",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273c8b29eb380509bdaee35e15c",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/15o7qdDTBzs6xWRUYUtZc1/video/3848509c0d6e4d2680da7168a5e41020.cnvs.mp4",
+   "spotifyTrackId": "7koaKeYj2Xkw1vItkRUlX4",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/032ef848b95da6e788fef2f9706a24c398deda37"
   },
   {
    "id": "levyra-15e33322095520a93dc0",
@@ -1974,8 +1994,7 @@
    "artist": "BNXN, Asake",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2739a7fa1aa096871716cda8bdc",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/3zaDigUwjHvjOkSn0NDf9x/video/619c302ad6e64372ad4d95e200657f34.cnvs.mp4",
-   "spotifyTrackId": "5Ca1fyuX04EKHCc8Cnb791",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/b6ba1121bb8cee39216039cae66efe0e24ceac0b"
+   "spotifyTrackId": "5Ca1fyuX04EKHCc8Cnb791"
   },
   {
    "id": "levyra-5245b579f8927db44735",
@@ -1984,8 +2003,7 @@
    "artist": "Darkoo, Asake",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273a97549613fb7f87cb4d6af66",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/4QSTyDpxsKmv3UfavVUImR/video/74059b5f1bc7438b82dd7f4a894a65e6.cnvs.mp4",
-   "spotifyTrackId": "2DgmLCX1ojv7lE6xk2PD0H",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/527531f68dc2d876ba06b26579874f3997f95809"
+   "spotifyTrackId": "2DgmLCX1ojv7lE6xk2PD0H"
   },
   {
    "id": "levyra-bcf02eb2ca610a4f5e4d",
@@ -2087,6 +2105,15 @@
    "spotifyTrackId": "62pmQMfcm1leFyeKRfSaDq"
   },
   {
+   "id": "levyra-bf821ca69600916be046",
+   "genre": "k-pop",
+   "title": "ICONIC",
+   "artist": "CL",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2738a7402245848c8b68373b7bb",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/0tzSBCPJZmHTdOA3ZV2mN3/video/01a97840db254a86ac3ae4db26801f31.cnvs.mp4",
+   "spotifyTrackId": "1eP2AytiZlppmvR0VVdylu"
+  },
+  {
    "id": "levyra-b2b282e4e1db993cf48b",
    "genre": "k-pop",
    "title": "With",
@@ -2094,6 +2121,24 @@
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273c49aa7c420cc427c17714ec2",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/5deOsjuFTKrNMJW3rKuL8S/video/a9b399d3aa724e09b27c442c7ee45790.cnvs.mp4",
    "spotifyTrackId": "6GNvsmhrkdPp5skYLq42nY"
+  },
+  {
+   "id": "levyra-9ef7e312774512880c28",
+   "genre": "k-pop",
+   "title": "I Want You",
+   "artist": "ENHYPEN",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2736c81f9e70bfc0bd5eff18533",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/5t5FqBwTcgKTaWmfEbwQY9/video/4414111bf4d742eb890b6e49e31cd07b.cnvs.mp4",
+   "spotifyTrackId": "2C9poZVeujCvZsZ7RmI0gZ"
+  },
+  {
+   "id": "levyra-7574cc01284412483875",
+   "genre": "k-pop",
+   "title": "BABY ANGEL",
+   "artist": "NAYEON",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273c97cebd58465439ee40ab6a8",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/1VwDG9aBflQupaFNjUru9A/video/34c0e5ee0e524bd491ceea609dac309a.cnvs.mp4",
+   "spotifyTrackId": "5iaJ57VdY5qxFh8slxBkfp"
   },
   {
    "id": "levyra-6e32bf197757d6990bd3",
@@ -2172,7 +2217,7 @@
    "genre": "k-pop",
    "title": "Happiest",
    "artist": "Mark Lee",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2735b5430315c5285a77aa77e7e",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27352b36aaed6bf7901a14778ef",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/70DFixYAFPv4Pf9kgSfR9O/video/33835774e3f849169b9e765a9fa9ca07.cnvs.mp4",
    "spotifyTrackId": "6PhiK9i3MgfOCqbAsYMmaE"
   },
@@ -2249,6 +2294,15 @@
    "spotifyTrackId": "1VWiDyYTrqQhhmnWANWkFa"
   },
   {
+   "id": "levyra-67fd59d28d9c541beb15",
+   "genre": "fr-rap",
+   "title": "N9NE (feat. Zed)",
+   "artist": "twinsmatic, Zed",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27366817f32ae4df6152a2b2808",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/3gYoYSbWPhxA0zY9lZ4Ldv/video/2151ccd2215a489bad3b8c3bbfd38e51.cnvs.mp4",
+   "spotifyTrackId": "1SLmb979kVp8OFczr0uwEz"
+  },
+  {
    "id": "levyra-066922fd002a3163fb56",
    "genre": "fr-rap",
    "title": "Quotidien du bendo",
@@ -2321,6 +2375,24 @@
    "spotifyTrackId": "5LkjTiiR368ZNlIZbCe7yV"
   },
   {
+   "id": "levyra-e7040a2e4d72811fa645",
+   "genre": "de-rap",
+   "title": "Throw That Thang",
+   "artist": "Shindy, reezy",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2733f3db1f577b459503113760c",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/21c9f0987671456fa2424d4fa2c3275e.cnvs.mp4",
+   "spotifyTrackId": "2dtnHqzhrZWxpowKi0swwo"
+  },
+  {
+   "id": "levyra-3e7879d205df2cbaf5c2",
+   "genre": "de-rap",
+   "title": "profit",
+   "artist": "pepino",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27324a5bab707041b9478077ab5",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/0lE1by0S3JE5W2BrEopkUh/video/31d8850e47454f1b9e1b929905ac6fba.cnvs.mp4",
+   "spotifyTrackId": "25Y2PdH30yNMR1SZlYC5Pk"
+  },
+  {
    "id": "levyra-9bcd49417dd7325f2f1d",
    "genre": "de-rap",
    "title": "Ticker die rappen",
@@ -2337,6 +2409,15 @@
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27394d644e407d1058d988e459f",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/72y6W9pGy97xTM44dwy3F6/video/efdf70453067421682a53e519ec2483f.cnvs.mp4",
    "spotifyTrackId": "5JNwBXjBc7bKi9ibPql2GG"
+  },
+  {
+   "id": "levyra-ed1fa2ff3febef6aa453",
+   "genre": "de-rap",
+   "title": "DER ALTE GITARRIST",
+   "artist": "idolinjo",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273eef3af0ce8484c677155fb49",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/7slJ8mgbVwvyPEzQMJ5qYO/video/18d91a45a87f4814ac99742f6c3f55b1.cnvs.mp4",
+   "spotifyTrackId": "6LjprIj7FBcLwg9dxZwOCX"
   },
   {
    "id": "levyra-f473b95f13c61fc5897f",
@@ -2364,6 +2445,24 @@
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2739f5b7e65b9195e21fdd8cdc7",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/697ZbUKLJSEWWhtayAGxBY/video/984542df9431415189837af919ffa554.cnvs.mp4",
    "spotifyTrackId": "56NwjwoqUnjXxHZts6TDym"
+  },
+  {
+   "id": "levyra-d413d77e3e9cc50f0334",
+   "genre": "de-rap",
+   "title": "Bon Appétit",
+   "artist": "Kurdo, Chahid",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273022128b5d2f6634e28924c1d",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/1yIifIA91WgmfzBcjbQB8i/video/0dfe674a7ad9494282caafbc42131153.cnvs.mp4",
+   "spotifyTrackId": "2w0IA4SBx3e0ymlZ5EY9mP"
+  },
+  {
+   "id": "levyra-f3941e87bb4f472e48f9",
+   "genre": "de-rap",
+   "title": "Mach dir kein Kopf",
+   "artist": "Ritter Lean",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2733f7c8e9a3d3f916a5a21b3ee",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/4e28a38b8c3047d2b0c26b2aa78ae6cf.cnvs.mp4",
+   "spotifyTrackId": "0o3wwst5Gzbweqw4R8QHNP"
   }
  ]
 }
