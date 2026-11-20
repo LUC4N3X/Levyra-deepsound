@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
@@ -79,7 +80,7 @@ internal fun TopResultArtistHero(
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(portraitUrl)
-                    .crossfade(true)
+                    .crossfade(LocalAnimationsEnabled.current)
                     .build(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,

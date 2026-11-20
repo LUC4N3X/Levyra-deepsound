@@ -56,6 +56,7 @@ import androidx.compose.material.icons.rounded.Receipt
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -457,9 +458,9 @@ private fun InsightsHeader(
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Column(Modifier.weight(1f).semantics(mergeDescendants = true) { heading() }) {
-            Text(firstLine, style = titleStyle, color = LevyraText, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(firstLine, style = titleStyle, color = LevyraText, maxLines = 2, autoSize = TextAutoSize.StepBased(minFontSize = 20.sp, maxFontSize = 36.sp), overflow = TextOverflow.Ellipsis)
             if (restLine.isNotEmpty()) {
-                Text(restLine, style = titleStyle, color = accent, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(restLine, style = titleStyle, color = accent, maxLines = 2, autoSize = TextAutoSize.StepBased(minFontSize = 20.sp, maxFontSize = 36.sp), overflow = TextOverflow.Ellipsis)
             }
             Text(
                 strings.listeningInsightsSubtitle,

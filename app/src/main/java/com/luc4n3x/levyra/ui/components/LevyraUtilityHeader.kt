@@ -133,7 +133,7 @@ internal fun LevyraUtilityBackdrop(
                 )
                 onDrawBehind {
                     drawRect(wash, size = size.copy(height = washHeight))
-                    drawRect(glow, size = size.copy(height = washHeight))
+                    drawRect(glow)
                 }
             }
     )

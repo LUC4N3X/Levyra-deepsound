@@ -266,7 +266,8 @@ internal fun DefaultDiscoveryTopBar(
                 firstLine,
                 style = titleStyle,
                 color = scheme.onSurface,
-                maxLines = 1,
+                maxLines = 2,
+                autoSize = TextAutoSize.StepBased(minFontSize = 20.sp, maxFontSize = 36.sp),
                 overflow = TextOverflow.Ellipsis
             )
             if (restLine.isNotEmpty()) {
@@ -274,7 +275,8 @@ internal fun DefaultDiscoveryTopBar(
                     restLine,
                     style = titleStyle,
                     color = scheme.primary,
-                    maxLines = 1,
+                    maxLines = 2,
+                    autoSize = TextAutoSize.StepBased(minFontSize = 20.sp, maxFontSize = 36.sp),
                     overflow = TextOverflow.Ellipsis
                 )
             }
