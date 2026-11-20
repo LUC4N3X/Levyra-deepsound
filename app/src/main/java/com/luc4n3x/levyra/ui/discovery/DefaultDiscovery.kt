@@ -248,30 +248,52 @@ internal fun DefaultDiscoveryTopBar(
     onFilters: () -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
+    val titleText = copy.title.trim()
+    val firstLine = titleText.substringBefore(' ')
+    val restLine = titleText.substringAfter(' ', "").trim()
+    val titleStyle = MaterialTheme.typography.displaySmall.copy(
+        fontWeight = FontWeight.Black,
+        letterSpacing = (-1).sp,
+        lineHeight = 40.sp
+    )
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        Modifier.fillMaxWidth().padding(start = 20.dp, end = 16.dp, top = 14.dp, bottom = 10.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        DefaultDiscoveryGlassButton(Icons.AutoMirrored.Rounded.ArrowBack, backLabel, onClick = onDismiss)
-        Text(
-            copy.title,
-            style = MaterialTheme.typography.titleLargeEmphasized.copy(fontWeight = FontWeight.Black),
-            color = scheme.onSurface,
-            maxLines = 1,
-            autoSize = TextAutoSize.StepBased(minFontSize = 16.sp, maxFontSize = 22.sp),
-            modifier = Modifier.weight(1f).semantics { heading() }
-        )
-        DefaultDiscoveryGlassButton(Icons.AutoMirrored.Rounded.Undo, copy.undo, enabled = canUndo, onClick = onUndo)
-        FilledTonalIconButton(
-            onClick = onFilters,
-            shapes = IconButtonDefaults.shapes(),
-            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                containerColor = if (filtersActive) scheme.primary else scheme.surfaceContainerHigh.copy(alpha = 0.7f),
-                contentColor = if (filtersActive) scheme.onPrimary else scheme.onSurface
-            ),
-            modifier = Modifier.size(48.dp)
-        ) { Icon(Icons.Rounded.Tune, filtersLabel) }
+        Column(Modifier.weight(1f).semantics(mergeDescendants = true) { heading() }) {
+            Text(
+                firstLine,
+                style = titleStyle,
+                color = scheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (restLine.isNotEmpty()) {
+                Text(
+                    restLine,
+                    style = titleStyle,
+                    color = scheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            DefaultDiscoveryGlassButton(Icons.AutoMirrored.Rounded.ArrowBack, backLabel, onClick = onDismiss)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                DefaultDiscoveryGlassButton(Icons.AutoMirrored.Rounded.Undo, copy.undo, enabled = canUndo, onClick = onUndo)
+                FilledTonalIconButton(
+                    onClick = onFilters,
+                    shapes = IconButtonDefaults.shapes(),
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = if (filtersActive) scheme.primary else scheme.surfaceContainerHigh.copy(alpha = 0.7f),
+                        contentColor = if (filtersActive) scheme.onPrimary else scheme.onSurface
+                    ),
+                    modifier = Modifier.size(48.dp)
+                ) { Icon(Icons.Rounded.Tune, filtersLabel) }
+            }
+        }
     }
 }
 

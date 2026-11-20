@@ -12077,7 +12077,7 @@ private fun homeArtistPortraitSourceRank(url: String): Int {
     }
 }
 
-private fun highResolutionHomeArtistArtworkUrl(url: String): String {
+internal fun highResolutionHomeArtistArtworkUrl(url: String): String {
     val upgraded = highResolutionPlayerArtworkUrl(url)
     if (!upgraded.contains("i.scdn.co/", ignoreCase = true)) return upgraded
     return upgraded
@@ -14699,7 +14699,7 @@ private fun SearchScreen(
             buildList {
                 if (filter == SearchFilter.All) addAll(topResultTracks.take(3))
                 if (filter == SearchFilter.All || filter == SearchFilter.Songs) addAll(visibleSongs)
-                if (filter == SearchFilter.All || filter == SearchFilter.Videos) addAll(data.videos)
+                if ((filter == SearchFilter.All && !LevyraIsDefaultSkin) || filter == SearchFilter.Videos) addAll(data.videos)
             }.distinctBy(::trackSelectionKey)
         }
         val selectableIds = remember(selectableTracks) { selectableTracks.map(::trackSelectionKey) }
@@ -15175,7 +15175,7 @@ private fun SearchScreen(
                                 )
                             }
                         }
-                        if ((filter == SearchFilter.All || filter == SearchFilter.Videos) && data.videos.isNotEmpty()) {
+                        if (((filter == SearchFilter.All && !LevyraIsDefaultSkin) || filter == SearchFilter.Videos) && data.videos.isNotEmpty()) {
                             item(key = "search-videos-header", contentType = "search-section-header") {
                                 SearchSectionGap()
                                 SearchSectionHeader(
@@ -15709,20 +15709,25 @@ private fun SearchQuerySuggestionChip(
             ),
         contentAlignment = Alignment.Center
     ) {
+        val ghost = LevyraIsDefaultSkin
+        val chipShape = RoundedCornerShape(corner)
         Row(
             modifier = Modifier
                 .widthIn(max = 280.dp)
-                .clip(RoundedCornerShape(corner))
-                .background(scheme.surfaceContainerHigh)
-                .padding(start = 12.dp, end = 16.dp, top = 9.dp, bottom = 9.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                .clip(chipShape)
+                .then(
+                    if (ghost) Modifier.border(1.dp, scheme.outlineVariant.copy(alpha = 0.7f), chipShape)
+                    else Modifier.background(scheme.surfaceContainerHigh)
+                )
+                .padding(start = 12.dp, end = 16.dp, top = if (ghost) 7.dp else 9.dp, bottom = if (ghost) 7.dp else 9.dp),
+            horizontalArrangement = Arrangement.spacedBy(if (ghost) 6.dp else 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 imageVector = Icons.Rounded.Search,
                 contentDescription = null,
-                tint = scheme.primary,
-                modifier = Modifier.size(18.dp)
+                tint = if (ghost) scheme.onSurfaceVariant else scheme.primary,
+                modifier = Modifier.size(if (ghost) 16.dp else 18.dp)
             )
             Text(
                 text = label,
@@ -23256,8 +23261,10 @@ private fun TopResultCard(
 ) {
     val hero = tracks.firstOrNull() ?: return
     val strings = LocalLevyraStrings.current
-    val cardBg = MaterialTheme.colorScheme.surfaceContainer
-    val heroArtwork = hero.largeThumbnailUrl.ifBlank { hero.thumbnailUrl }
+    val tonalHero = LevyraIsDefaultSkin
+    val utility = com.luc4n3x.levyra.ui.components.levyraUtilityColors()
+    val cardBg = if (tonalHero) MaterialTheme.colorScheme.surfaceContainerLow else MaterialTheme.colorScheme.surfaceContainer
+    val heroArtwork = if (tonalHero) "" else hero.largeThumbnailUrl.ifBlank { hero.thumbnailUrl }
     val rows: @Composable () -> Unit = {
         TopResultRows(tracks, currentTrackId, isPlaying, isResolving, favoriteIds, selection, onPlay, onFavorite, onAddToPlaylist, onPlayNext, onAddToQueue, onArtist)
     }
@@ -23294,33 +23301,55 @@ private fun TopResultCard(
             modifier = Modifier
                 .matchParentSize()
                 .background(
-                    Brush.verticalGradient(
-                        0f to cardBg.copy(alpha = 0.30f),
-                        0.42f to cardBg.copy(alpha = 0.78f),
-                        1f to cardBg
-                    )
+                    if (tonalHero) {
+                        Brush.verticalGradient(
+                            0f to utility.accent.copy(alpha = 0.22f),
+                            0.35f to utility.accent.copy(alpha = 0.10f),
+                            0.7f to utility.accent.copy(alpha = 0.03f),
+                            1f to Color.Transparent
+                        )
+                    } else {
+                        Brush.verticalGradient(
+                            0f to cardBg.copy(alpha = 0.30f),
+                            0.42f to cardBg.copy(alpha = 0.78f),
+                            1f to cardBg
+                        )
+                    }
                 )
         )
-        Column(modifier = Modifier.padding(top = 18.dp, bottom = 10.dp)) {
-            Text(
-                text = strings.topResult.uppercase(Locale.forLanguageTag(strings.code)),
-                color = MaterialTheme.colorScheme.primary,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 1.6.sp,
-                maxLines = 1,
-                modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 12.dp)
-            )
+        Column(modifier = Modifier.padding(top = if (tonalHero) 0.dp else 18.dp, bottom = if (tonalHero) 12.dp else 10.dp)) {
+            if (tonalHero) {
+                TopResultArtistHero(
+                    hero = hero,
+                    artist = artist,
+                    overline = strings.topResult.uppercase(Locale.forLanguageTag(strings.code)),
+                    overlineColor = utility.accent,
+                    cardColor = cardBg,
+                    enabled = !selection.isActive,
+                    onArtist = onArtist
+                )
+            } else {
+                Text(
+                    text = strings.topResult.uppercase(Locale.forLanguageTag(strings.code)),
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.6.sp,
+                    maxLines = 1,
+                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 12.dp)
+                )
 
-            TopResultArtistHeader(
-                hero = hero,
-                artist = artist,
-                enabled = !selection.isActive,
-                onArtist = onArtist
-            )
+                TopResultArtistHeader(
+                    hero = hero,
+                    artist = artist,
+                    enabled = !selection.isActive,
+                    onArtist = onArtist
+                )
+            }
 
             TopResultActions(
                 enabled = !selection.isActive,
+                tonal = tonalHero,
                 onPlay = { onPlay(hero) },
                 onShuffle = onShuffle,
                 onMix = onMix
@@ -23444,11 +23473,14 @@ private fun TopResultArtistHeader(
 @Composable
 private fun TopResultActions(
     enabled: Boolean,
+    tonal: Boolean,
     onPlay: () -> Unit,
     onShuffle: () -> Unit,
     onMix: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    val utility = com.luc4n3x.levyra.ui.components.levyraUtilityColors()
+    val scheme = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -23457,7 +23489,7 @@ private fun TopResultActions(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Surface(
-            color = MaterialTheme.colorScheme.primary,
+            color = if (tonal) utility.accent else scheme.primary,
             shape = MaterialShapes.Cookie9Sided.toShape(),
             modifier = Modifier
                 .size(56.dp)
@@ -23467,14 +23499,22 @@ private fun TopResultActions(
                 Icon(
                     imageVector = Icons.Rounded.PlayArrow,
                     contentDescription = strings.play,
-                    tint = MaterialTheme.colorScheme.onPrimary,
+                    tint = if (tonal) utility.onAccent else scheme.onPrimary,
                     modifier = Modifier.size(30.dp)
                 )
             }
         }
 
-        val shuffleBg = if (LevyraIsLight) LevyraText else Color.White
-        val shuffleFg = if (LevyraIsLight) LevyraPanel else LevyraBlack
+        val shuffleBg = when {
+            tonal -> utility.container
+            LevyraIsLight -> LevyraText
+            else -> Color.White
+        }
+        val shuffleFg = when {
+            tonal -> utility.onContainer
+            LevyraIsLight -> LevyraPanel
+            else -> LevyraBlack
+        }
 
         Surface(
             color = shuffleBg,
@@ -23496,19 +23536,40 @@ private fun TopResultActions(
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                LevyraMediaTitle(
-                    text = strings.shuffle,
-                    color = shuffleFg,
-                    fontSize = 14.sp,
-                    lineHeight = 16.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
+                if (tonal) {
+                    Text(
+                        text = strings.shuffle,
+                        color = shuffleFg,
+                        fontSize = 14.sp,
+                        lineHeight = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.Center,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                } else {
+                    LevyraMediaTitle(
+                        text = strings.shuffle,
+                        color = shuffleFg,
+                        fontSize = 14.sp,
+                        lineHeight = 16.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
         }
 
-        val mixBg = if (LevyraIsLight) LevyraPanelSoft else Color.White.copy(alpha = 0.12f)
-        val mixFg = LevyraText
-        val mixBorder = if (LevyraIsLight) BorderStroke(1.dp, LevyraAdaptiveHairline) else BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
+        val mixBg = when {
+            tonal -> scheme.surfaceContainerHighest
+            LevyraIsLight -> LevyraPanelSoft
+            else -> Color.White.copy(alpha = 0.12f)
+        }
+        val mixFg = if (tonal) scheme.onSurface else LevyraText
+        val mixBorder = when {
+            tonal -> null
+            LevyraIsLight -> BorderStroke(1.dp, LevyraAdaptiveHairline)
+            else -> BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
+        }
 
         Surface(
             color = mixBg,
@@ -23595,14 +23656,26 @@ private fun TopResultTrackRow(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            LevyraMediaTitle(
-                text = track.title,
-                color = if (isCurrent) LevyraCyan else LevyraText,
-                fontSize = if (emphasized) 17.sp else 15.sp,
-                fontWeight = if (emphasized) FontWeight.Bold else FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            if (LevyraIsDefaultSkin) {
+                Text(
+                    text = track.title,
+                    color = if (isCurrent) LevyraCyan else LevyraText,
+                    fontSize = if (emphasized) 17.sp else 15.sp,
+                    lineHeight = if (emphasized) 21.sp else 19.sp,
+                    fontWeight = if (emphasized) FontWeight.Bold else FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            } else {
+                LevyraMediaTitle(
+                    text = track.title,
+                    color = if (isCurrent) LevyraCyan else LevyraText,
+                    fontSize = if (emphasized) 17.sp else 15.sp,
+                    fontWeight = if (emphasized) FontWeight.Bold else FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -23626,10 +23699,13 @@ private fun TopResultTrackRow(
                     }
                 }
 
-                val subtitle = remember(track.youtubeViewCount, track.durationMs, strings.code) {
+                val compactMeta = LevyraIsDefaultSkin
+                val subtitle = remember(track.youtubeViewCount, track.durationMs, strings.code, compactMeta) {
                     val plays = formatSearchViewCount(track.youtubeViewCount, strings.code)
                     val songLabel = strings.song
                     when {
+                        compactMeta && plays.isNotBlank() -> "$plays ${strings.pulsePlays}"
+                        compactMeta && track.durationMs > 0L -> formatDuration(track.durationMs)
                         plays.isNotBlank() -> "$songLabel • $plays ${strings.pulsePlays}"
                         track.durationMs > 0L -> "$songLabel • ${formatDuration(track.durationMs)}"
                         else -> songLabel
@@ -23780,6 +23856,7 @@ private fun SearchTrackCard(
     onDownload: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    val compactRow = LevyraIsDefaultSkin
     val rowAccent = if (isCurrent) rememberNowPlayingAccent(track, LevyraCyan) else LevyraCyan
     val rowPadding by animateDpAsState(
         targetValue = if (isCurrent || selected) 9.dp else 0.dp,
@@ -23840,7 +23917,7 @@ private fun SearchTrackCard(
                 track.title, explicit = track.explicit,
                 color = if (isCurrent) rowAccent else LevyraText,
                 style = LevyraType.contentTitle.copy(fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.SemiBold),
-                maxLines = 1,
+                maxLines = if (compactRow) 2 else 1,
                 overflow = TextOverflow.Ellipsis
             )
             val playsLabel = remember(track.youtubeViewCount, strings.code, strings.pulsePlays) {
@@ -23849,7 +23926,20 @@ private fun SearchTrackCard(
                     ?.let { "$it ${strings.pulsePlays}" }
                     .orEmpty()
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            if (compactRow) {
+                val meta = remember(track.artist, playsLabel) {
+                    listOf(track.artist.trim(), playsLabel).filter(String::isNotBlank).joinToString(" · ")
+                }
+                if (meta.isNotEmpty()) {
+                    Text(
+                        meta,
+                        color = LevyraMuted,
+                        style = LevyraType.metadata,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            } else Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     track.artist,
                     color = LevyraMuted,
@@ -23876,6 +23966,25 @@ private fun SearchTrackCard(
                 tint = if (selected) LevyraCyan else LevyraMuted,
                 modifier = Modifier.size(28.dp)
             )
+        } else if (compactRow) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (isDownloading || isDownloaded) {
+                    DownloadButton(
+                        isDownloading = isDownloading,
+                        isDownloaded = isDownloaded,
+                        progress = downloadProgress,
+                        onDownload = onDownload
+                    )
+                }
+                SearchTrackOverflowMenu(
+                    trackId = track.id,
+                    isFavorite = isFavorite,
+                    canDownload = !isDownloading && !isDownloaded,
+                    onFavorite = onFavorite,
+                    onAddToPlaylist = onAddToPlaylist,
+                    onDownload = onDownload
+                )
+            }
         } else {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(0.dp)) {
                 DownloadButton(

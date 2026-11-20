@@ -275,7 +275,7 @@ private fun SearchDiscographyHeader(artist: ArtistHit, overline: String, onOpenA
                     else -> FontWeight.Normal
                 },
                 letterSpacing = if (style == SearchCardStyle.Torque) 1.4.sp else (-0.3).sp,
-                maxLines = 1,
+                maxLines = if (style == SearchCardStyle.Expressive) 2 else 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.semantics { heading() }
             )

@@ -56,7 +56,9 @@ import androidx.compose.material.icons.rounded.Receipt
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -191,6 +193,7 @@ internal fun ListeningInsightsScreen(
             item(key = "insights-header", contentType = "header") {
                 InsightsHeader(
                     strings = strings,
+                    accent = accent,
                     onOpenRecap = onOpenRecap,
                     onClose = onClose
                 )
@@ -431,29 +434,54 @@ private fun LazyListScope.insightsHistoryItems(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun InsightsHeader(
     strings: LevyraStrings,
+    accent: Color,
     onOpenRecap: () -> Unit,
     onClose: () -> Unit
 ) {
+    val scheme = MaterialTheme.colorScheme
+    val titleText = strings.listeningInsights.trim()
+    val firstLine = titleText.substringBefore(' ')
+    val restLine = titleText.substringAfter(' ', "").trim()
+    val titleStyle = MaterialTheme.typography.displaySmall.copy(
+        fontWeight = FontWeight.Black,
+        letterSpacing = (-1).sp,
+        lineHeight = 40.sp
+    )
     Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
+        modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 16.dp, top = 12.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        LevyraBackButton(onClick = onClose, contentDescription = strings.back)
-        Column(modifier = Modifier.weight(1f).padding(start = 4.dp)) {
+        Column(Modifier.weight(1f).semantics(mergeDescendants = true) { heading() }) {
+            Text(firstLine, style = titleStyle, color = LevyraText, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (restLine.isNotEmpty()) {
+                Text(restLine, style = titleStyle, color = accent, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
             Text(
-                strings.listeningInsights,
-                color = LevyraText,
-                fontSize = 23.sp,
-                lineHeight = LevyraTypeRhythm.lineHeight(23.sp),
-                fontWeight = FontWeight.Black
+                strings.listeningInsightsSubtitle,
+                color = LevyraMuted,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 6.dp)
             )
-            Text(strings.listeningInsightsSubtitle, color = LevyraMuted, fontSize = 11.5.sp, fontWeight = FontWeight.Medium)
         }
-        IconButton(onClick = onOpenRecap) {
-            Icon(Icons.Rounded.History, contentDescription = strings.openRecap, tint = LevyraMuted)
+        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            val glass = IconButtonDefaults.filledTonalIconButtonColors(
+                containerColor = scheme.surfaceContainerHigh.copy(alpha = 0.7f),
+                contentColor = scheme.onSurface
+            )
+            LevyraBackButton(onClick = onClose, contentDescription = strings.back, colors = glass)
+            FilledTonalIconButton(
+                onClick = onOpenRecap,
+                shapes = IconButtonDefaults.shapes(),
+                colors = glass,
+                modifier = Modifier.size(48.dp)
+            ) { Icon(Icons.Rounded.History, contentDescription = strings.openRecap) }
         }
     }
 }
@@ -469,14 +497,12 @@ internal fun InsightsPeriodSelector(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(3.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        InsightsPeriods.forEachIndexed { index, period ->
+        InsightsPeriods.forEach { period ->
             InsightsPeriodSegment(
                 label = periodLongLabel(period, strings),
                 active = period == selected,
-                first = index == 0,
-                last = index == InsightsPeriods.lastIndex,
                 accent = accent,
                 onClick = { onSelect(period) }
             )
@@ -488,27 +514,13 @@ internal fun InsightsPeriodSelector(
 private fun RowScope.InsightsPeriodSegment(
     label: String,
     active: Boolean,
-    first: Boolean,
-    last: Boolean,
     accent: Color,
     onClick: () -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
-    val outer = InsightsSegmentHeight / 2
-    val inner = levyraExpressiveToggleCorner(
-        checked = active,
-        unchecked = 6.dp,
-        checkedCorner = outer,
-        label = "insights-period-corner"
-    )
-    val shape = RoundedCornerShape(
-        topStart = if (first) outer else inner,
-        bottomStart = if (first) outer else inner,
-        topEnd = if (last) outer else inner,
-        bottomEnd = if (last) outer else inner
-    )
+    val shape = RoundedCornerShape(InsightsSegmentHeight / 2)
     val container by animateColorAsState(
-        targetValue = if (active) accent else scheme.surfaceContainerHigh,
+        targetValue = if (active) accent else scheme.surfaceContainerHigh.copy(alpha = 0.6f),
         label = "insights-period-container"
     )
     Box(
@@ -529,7 +541,7 @@ private fun RowScope.InsightsPeriodSegment(
         Text(
             label,
             color = if (active) Color(0xFF07080C) else scheme.onSurfaceVariant,
-            fontSize = 11.5.sp,
+            fontSize = 12.sp,
             fontWeight = if (active) FontWeight.Black else FontWeight.SemiBold,
             letterSpacing = 0.4.sp,
             maxLines = 1
@@ -537,7 +549,7 @@ private fun RowScope.InsightsPeriodSegment(
     }
 }
 
-private val InsightsSegmentHeight = 44.dp
+private val InsightsSegmentHeight = 46.dp
 
 @Composable
 private fun InsightsHero(

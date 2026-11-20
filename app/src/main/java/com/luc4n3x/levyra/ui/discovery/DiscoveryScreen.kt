@@ -732,6 +732,8 @@ private fun DefaultDiscoveryFace(
     onPlayFull: (() -> Unit)?
 ) {
     val scheme = MaterialTheme.colorScheme
+    val (tone, _) = rememberDiscoveryPalette(card)
+    val panel = lerp(scheme.surfaceContainer, tone, 0.18f)
     val album = card.track.album.takeUnless { discoveryTitleKey(it) == discoveryTitleKey(card.track.title) }.orEmpty()
     val meta = listOf(card.track.year, album).filter(String::isNotBlank).joinToString(" · ")
     Column(
@@ -739,7 +741,7 @@ private fun DefaultDiscoveryFace(
             .fillMaxWidth()
             .defaultDiscoveryCardShadow(look.cardShape)
             .clip(look.cardShape)
-            .background(scheme.surfaceContainer)
+            .background(panel)
     ) {
         Box(Modifier.fillMaxWidth().height(artSide)) {
             DiscoveryArtwork(card, Modifier.fillMaxSize(), highRes = true)
