@@ -41,9 +41,9 @@ const cards = [
   ['16_listen_together', 'JAM', ['Listen together'], ['One queue. The same Wi-Fi.']],
   ['20_your_year_in_music', 'YOUR YEAR', ['Your year in music'], ['Your listening story, on device.']],
   ['21_spotify_style', 'LEVYRA SKINS', ['Spotify Style'], ['Browse genres & new releases.']],
-  ['22_apple_music_style', 'LEVYRA SKINS', ['Apple Music Style'], ['Light surfaces & bold type.']],
+  ['22_apple_music_style', 'UPDATES', ['In-app updates'], ['Changelogs & one-tap updates.']],
   ['23_youtube_music_style', 'LEVYRA SKINS', ['YouTube Music Style'], ['Mood chips & music discovery.']],
-  ['24_qobuz_style', 'LEVYRA SKINS', ['Qobuz Style'], ['An editorial take on your library.']],
+  ['24_qobuz_style', 'PLAYER DECK', ['Player Deck'], ['Player styles & live backgrounds.']],
 ];
 
 function phoneGeometry(outerWidth, angle, x, y) {
