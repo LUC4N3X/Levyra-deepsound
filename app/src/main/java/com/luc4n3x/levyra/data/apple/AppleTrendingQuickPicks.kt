@@ -49,7 +49,7 @@ internal object AppleTrendingQuickPicks {
         for (query in playbackAlternativeSearchQueries(apple).take(MAX_QUERIES_PER_TRACK)) {
             runCatchingPreservingCancellation { search(query) }
                 .getOrDefault(emptyList())
-                .filter { it.id.length == YOUTUBE_VIDEO_ID_LENGTH }
+                .filter { it.id.length == YOUTUBE_VIDEO_ID_LENGTH && it.videoType.contains(OFFICIAL_AUDIO_TYPE, ignoreCase = true) }
                 .forEach { candidates.putIfAbsent(it.id, it) }
             SpotifyYouTubeMatcher.findBestMatch(apple, candidates.values.toList())?.let { match ->
                 return match.candidate.copy(appleSongId = apple.appleSongId, explicit = apple.explicit || match.candidate.explicit)
@@ -62,6 +62,7 @@ internal object AppleTrendingQuickPicks {
     private const val MAX_QUERIES_PER_TRACK = 2
     private const val MATCH_PARALLELISM = 4
     private const val YOUTUBE_VIDEO_ID_LENGTH = 11
+    private const val OFFICIAL_AUDIO_TYPE = "ATV"
 }
 
 private const val TRENDING_SONGS_SHELF_INDEX = 1

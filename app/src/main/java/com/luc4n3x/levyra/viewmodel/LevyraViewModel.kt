@@ -6169,6 +6169,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         loadHomeFeed()
         loadCharts(_state.value.selectedChartId)
         refreshHomeArtists()
+        refreshAppleTrendingQuickPicks()
     }
 
     suspend fun refreshHomeAndAwait() {

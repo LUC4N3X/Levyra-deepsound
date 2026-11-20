@@ -415,10 +415,11 @@ internal fun GenreDiscoveryCredit(
 private fun rememberGenreArtistPortrait(name: String): String {
     val context = LocalContext.current
     val spotify = remember(context) { SpotifyArtistArtworkRepository.get(context) }
-    var url by remember(name) { mutableStateOf(spotify.cachedArtistPortrait(name)) }
+    val apple = remember(context) { AppleArtistArtworkRepository.get(context) }
+    val appleCached = remember(name) { apple.cachedArtistPortrait(name) }
+    var url by remember(name) { mutableStateOf(appleCached.ifBlank { spotify.cachedArtistPortrait(name) }) }
     LaunchedEffect(name) {
-        if (url.isNotBlank()) return@LaunchedEffect
-        val apple = AppleArtistArtworkRepository.get(context)
+        if (appleCached.isNotBlank()) return@LaunchedEffect
         val fallback = ArtistPortraitFallbackRepository.get(context)
         url = GenreArtistPortraitLookups.withPermit {
             resolveExploreMoodPortrait(
@@ -430,7 +431,7 @@ private fun rememberGenreArtistPortrait(name: String): String {
                     fallback::deezerPortrait
                 )
             )
-        }
+        }.ifBlank { url }
     }
     return url
 }

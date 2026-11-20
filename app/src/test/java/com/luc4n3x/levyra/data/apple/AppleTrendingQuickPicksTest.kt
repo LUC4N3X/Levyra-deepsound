@@ -62,6 +62,14 @@ class AppleTrendingQuickPicksTest {
     }
 
     @Test
+    fun `music videos are never accepted as trending picks`() = runBlocking {
+        val apple = appleTrendingSongs(page(listOf(songs("best", "New" to "Someone"), songs("tendenza", "Housewife" to "Tate McRae")).joinToString(",")))
+        val video = youtube("housewifemv", "Housewife", "Tate McRae").copy(videoType = "MUSIC_VIDEO_TYPE_OMV")
+
+        assertTrue(AppleTrendingQuickPicks.match(apple) { listOf(video) }.isEmpty())
+    }
+
+    @Test
     fun `apple explicit flag survives the youtube match`() = runBlocking {
         val apple = appleTrendingSongs(page(listOf(songs("best", "New" to "Someone"), songs("tendenza", "Ti ricordi" to "Sfera Ebbasta")).joinToString(",")))
             .map { it.copy(explicit = true) }
