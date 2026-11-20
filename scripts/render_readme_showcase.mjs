@@ -42,7 +42,7 @@ const cards = [
   ['20_your_year_in_music', 'YOUR YEAR', ['Your year in music'], ['Your listening story, on device.']],
   ['21_spotify_style', 'LEVYRA SKINS', ['Spotify Style'], ['Browse genres & new releases.']],
   ['22_apple_music_style', 'UPDATES', ['In-app updates'], ['Changelogs & one-tap updates.']],
-  ['23_youtube_music_style', 'LEVYRA SKINS', ['YouTube Music Style'], ['Mood chips & music discovery.']],
+  ['23_youtube_music_style', 'THEME STUDIO', ['Theme Studio'], ['Live preview & colour presets.']],
   ['24_qobuz_style', 'PLAYER DECK', ['Player Deck'], ['Player styles & live backgrounds.']],
 ];
 

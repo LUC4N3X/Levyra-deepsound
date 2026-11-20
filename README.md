@@ -120,8 +120,8 @@ I don't host FLAC audio on Levyra's servers. On Android, experimental FLAC playb
 
 <p>
   <a href="docs/assets/showcase/readme/row-06-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-06-studio-mobile.webp?v=m3-cards-8">
-    <img src="docs/assets/showcase/readme/row-06-studio.webp?v=m3-cards-8" width="900" alt="Spotify Style, in-app updates, YouTube Music Style and Player Deck.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-06-studio-mobile.webp?v=m3-cards-9">
+    <img src="docs/assets/showcase/readme/row-06-studio.webp?v=m3-cards-9" width="900" alt="Spotify Style, in-app updates, Theme Studio and Player Deck.">
   </picture></a>
 </p>
 
