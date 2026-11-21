@@ -271,7 +271,7 @@ private fun SoundtrackPlayButton(
                 targetState = playing,
                 transitionSpec = {
                     if (animated) {
-                        (fadeIn() + scaleIn(initialScale = 0.5f)) togetherWith (fadeOut() + scaleOut(targetScale = 0.5f))
+                        fadeIn() + scaleIn(initialScale = 0.5f) togetherWith fadeOut() + scaleOut(targetScale = 0.5f)
                     } else {
                         EnterTransition.None togetherWith ExitTransition.None
                     }

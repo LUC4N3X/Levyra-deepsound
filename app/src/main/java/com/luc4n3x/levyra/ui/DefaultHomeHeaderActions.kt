@@ -194,40 +194,21 @@ private fun DefaultHomeLogoPill(
 @Composable
 private fun DefaultHomeLogo(open: Boolean, loading: Boolean, actionLabel: String, onClick: () -> Unit) {
     val animated = LocalAnimationsEnabled.current
-    val decorative = animated && LocalLevyraVisualCapabilities.current.decorativeMotion
     val turn by animateFloatAsState(
         targetValue = if (open) 360f else 0f,
         animationSpec = if (animated) spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessVeryLow) else snap(),
         label = "defaultLogoTurn"
     )
-    val spin = if (loading && decorative) {
-        val angle by rememberInfiniteTransition(label = "defaultLogoSpin").animateFloat(
-            initialValue = 0f,
-            targetValue = 360f,
-            animationSpec = infiniteRepeatable(tween(DefaultLogoSpinMillis, easing = LinearEasing), RepeatMode.Restart),
-            label = "defaultLogoSpinAngle"
-        )
-        angle
-    } else 0f
     val morph by animateFloatAsState(
         targetValue = if (open) 1f else 0f,
         animationSpec = if (animated) spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMediumLow) else snap(),
         label = "defaultLogoMorph"
     )
-    val appName = stringResource(R.string.app_name)
     val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val press by animateFloatAsState(
-        targetValue = if (pressed) 0.9f else 1f,
-        animationSpec = if (animated) spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMedium) else snap(),
-        label = "defaultLogoPress"
-    )
-    val rotation = turn + spin
+    val press = rememberLogoPressScale(interaction, animated)
+    val rotation = turn + rememberLogoLoadingSpin(loading && animated && LocalLevyraVisualCapabilities.current.decorativeMotion)
     val shape = remember(morph, rotation) { LevyraMorphShape(DefaultLogoMorph, morph, rotation) }
-    val scheme = MaterialTheme.colorScheme
-    val disc = lerp(scheme.surfaceContainerLowest, scheme.primary, 0.07f)
-    val grooveTint = scheme.primary
-    val edge = scheme.outlineVariant.copy(alpha = 0.7f)
+    val appName = stringResource(R.string.app_name)
     Box(
         modifier = Modifier
             .size(LevyraHomeDesign.SettingsControlHeight)
@@ -236,31 +217,8 @@ private fun DefaultHomeLogo(open: Boolean, loading: Boolean, actionLabel: String
                 scaleY = press
             }
             .clip(shape)
-            .drawWithCache {
-                val radius = size.minDimension / 2f
-                val groove = Stroke(width = 0.6.dp.toPx())
-                val sheen = Brush.sweepGradient(
-                    0f to Color.Transparent,
-                    0.08f to Color.White.copy(alpha = 0.16f),
-                    0.18f to Color.Transparent,
-                    0.58f to Color.Transparent,
-                    0.66f to Color.White.copy(alpha = 0.07f),
-                    0.74f to Color.Transparent,
-                    1f to Color.Transparent,
-                    center = Offset(size.width / 2f, size.height / 2f)
-                )
-                val lift = Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.06f), Color.Transparent))
-                onDrawWithContent {
-                    drawRect(disc)
-                    DefaultLogoGrooves.forEachIndexed { index, share ->
-                        drawCircle(grooveTint.copy(alpha = if (index % 2 == 0) 0.24f else 0.12f), radius * share, style = groove)
-                    }
-                    drawCircle(lift, radius)
-                    drawContent()
-                    drawCircle(sheen, radius)
-                }
-            }
-            .border(1.dp, edge, shape)
+            .vinylDisc(MaterialTheme.colorScheme.surfaceContainerLowest, MaterialTheme.colorScheme.primary)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f), shape)
             .clickable(
                 interactionSource = interaction,
                 indication = null,
@@ -283,6 +241,55 @@ private fun DefaultHomeLogo(open: Boolean, loading: Boolean, actionLabel: String
                     rotationZ = rotation
                 }
         )
+    }
+}
+
+@Composable
+private fun rememberLogoPressScale(interaction: MutableInteractionSource, animated: Boolean): Float {
+    val pressed by interaction.collectIsPressedAsState()
+    val press by animateFloatAsState(
+        targetValue = if (pressed) 0.9f else 1f,
+        animationSpec = if (animated) spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMedium) else snap(),
+        label = "defaultLogoPress"
+    )
+    return press
+}
+
+@Composable
+private fun rememberLogoLoadingSpin(active: Boolean): Float {
+    if (!active) return 0f
+    val angle by rememberInfiniteTransition(label = "defaultLogoSpin").animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(tween(DefaultLogoSpinMillis, easing = LinearEasing), RepeatMode.Restart),
+        label = "defaultLogoSpinAngle"
+    )
+    return angle
+}
+
+private fun Modifier.vinylDisc(base: Color, tint: Color): Modifier = drawWithCache {
+    val radius = size.minDimension / 2f
+    val groove = Stroke(width = 0.6.dp.toPx())
+    val disc = lerp(base, tint, 0.07f)
+    val sheen = Brush.sweepGradient(
+        0f to Color.Transparent,
+        0.08f to Color.White.copy(alpha = 0.16f),
+        0.18f to Color.Transparent,
+        0.58f to Color.Transparent,
+        0.66f to Color.White.copy(alpha = 0.07f),
+        0.74f to Color.Transparent,
+        1f to Color.Transparent,
+        center = Offset(size.width / 2f, size.height / 2f)
+    )
+    val lift = Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.06f), Color.Transparent))
+    onDrawWithContent {
+        drawRect(disc)
+        DefaultLogoGrooves.forEachIndexed { index, share ->
+            drawCircle(tint.copy(alpha = if (index % 2 == 0) 0.24f else 0.12f), radius * share, style = groove)
+        }
+        drawCircle(lift, radius)
+        drawContent()
+        drawCircle(sheen, radius)
     }
 }
 
