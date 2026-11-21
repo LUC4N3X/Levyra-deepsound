@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -47,12 +48,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.ui.components.LevyraUtilitySeed
 import com.luc4n3x.levyra.ui.components.levyraUtilityColors
+import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
 import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun DefaultSoundtrackCard(
     header: (@Composable () -> Unit)?,
+    compactStage: Boolean,
     backdropBleed: Dp,
     artworkUrl: String,
     overline: String,
@@ -69,6 +72,11 @@ internal fun DefaultSoundtrackCard(
     val action = levyraUtilityColors(LevyraUtilitySeed)
     val blur = LocalLevyraVisualCapabilities.current.heavyBlur && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val interaction = remember { MutableInteractionSource() }
+    val body = if (compactStage) {
+        Modifier.heightIn(min = levyraCompactLandscapeHeight(272.dp, viewportShare = 0.5f, minimum = 144.dp))
+    } else {
+        Modifier.height(DefaultSoundtrackBodyHeight)
+    }
     Box(Modifier.fillMaxWidth()) {
         if (artworkUrl.isNotBlank()) {
             Box(
@@ -98,7 +106,7 @@ internal fun DefaultSoundtrackCard(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .fillMaxHeight()
-                        .fillMaxWidth(DefaultSoundtrackPortraitShare)
+                        .fillMaxWidth(if (compactStage) 0.88f else DefaultSoundtrackPortraitShare)
                         .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
                         .drawWithContent {
                             drawContent()
@@ -127,47 +135,63 @@ internal fun DefaultSoundtrackCard(
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .height(DefaultSoundtrackBodyHeight)
+                    .then(body)
                     .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClickLabel = playLabel, onClick = onOpen)
             ) {
-                Column(
-                    Modifier.align(Alignment.BottomStart).fillMaxWidth(0.68f).padding(start = 20.dp, bottom = 28.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        overline.uppercase(LocalConfiguration.current.locales[0]),
-                        color = colors.onSurfaceVariant,
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.6.sp),
-                        maxLines = 1
-                    )
-                    Text(
-                        title,
-                        color = colors.onSurface,
-                        style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.semantics { heading() }
-                    )
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (companions.isNotEmpty()) HomeSoundtrackCompanionStack(companions, ring = canvas, accent = colors.outlineVariant)
-                        Text(lead, color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                val details: @Composable (Modifier) -> Unit = { modifier ->
+                    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            overline.uppercase(LocalConfiguration.current.locales[0]),
+                            color = colors.onSurfaceVariant,
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.6.sp),
+                            maxLines = 1
+                        )
+                        Text(
+                            title,
+                            color = colors.onSurface,
+                            style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.semantics { heading() }
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if (companions.isNotEmpty()) HomeSoundtrackCompanionStack(companions, ring = canvas, accent = colors.outlineVariant)
+                            Text(lead, color = colors.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        }
                     }
                 }
-                FilledIconButton(
-                    onClick = onOpen,
-                    shapes = IconButtonDefaults.shapes(),
-                    colors = IconButtonDefaults.filledIconButtonColors(action.accent, action.onAccent),
-                    modifier = Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = 28.dp).size(64.dp)
-                ) {
-                    if (resolving) {
-                        DiscoveryLoadingIndicator(Modifier.size(24.dp), color = action.onAccent)
-                    } else {
-                        Icon(
-                            if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                            contentDescription = playLabel,
-                            modifier = Modifier.size(28.dp)
-                        )
+                val playButton: @Composable (Modifier) -> Unit = { modifier ->
+                    FilledIconButton(
+                        onClick = onOpen,
+                        shapes = IconButtonDefaults.shapes(),
+                        colors = IconButtonDefaults.filledIconButtonColors(action.accent, action.onAccent),
+                        modifier = modifier
+                    ) {
+                        if (resolving) {
+                            DiscoveryLoadingIndicator(Modifier.size(24.dp), color = action.onAccent)
+                        } else {
+                            Icon(
+                                if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                                contentDescription = playLabel,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
                     }
+                }
+                if (compactStage) {
+                    Row(
+                        Modifier.align(Alignment.BottomStart)
+                            .fillMaxWidth()
+                            .padding(start = LevyraHomeDesign.HorizontalInset, end = LevyraHomeDesign.HorizontalInset, bottom = 20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.Bottom
+                    ) {
+                        details(Modifier.weight(1f))
+                        playButton(Modifier.size(56.dp))
+                    }
+                } else {
+                    details(Modifier.align(Alignment.BottomStart).fillMaxWidth(0.68f).padding(start = 20.dp, bottom = 28.dp))
+                    playButton(Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = 28.dp).size(64.dp))
                 }
             }
         }

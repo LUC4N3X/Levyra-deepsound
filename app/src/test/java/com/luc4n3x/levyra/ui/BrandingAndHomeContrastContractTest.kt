@@ -50,7 +50,7 @@ class BrandingAndHomeContrastContractTest {
     @Test
     fun `home identity header stays transparent and compact`() {
         val greetingBar = functionBlock("private fun GreetingBar(")
-        val logoBadge = functionBlock("internal fun HomeLogoBadge()")
+        val logoBadge = functionBlock("internal fun HomeLogoBadge(")
         val greetingName = functionBlock("private fun HomeGreetingName(")
 
         assertTrue(greetingBar.contains(".heightIn(min = LevyraHomeDesign.SettingsControlHeight)"))

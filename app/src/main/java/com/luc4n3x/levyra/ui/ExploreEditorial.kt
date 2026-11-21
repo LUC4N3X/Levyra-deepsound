@@ -69,6 +69,7 @@ import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.exploreEditorialCopy
 import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
+import com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin
 import com.luc4n3x.levyra.ui.theme.LevyraType
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -481,11 +482,12 @@ internal fun ExploreReleaseShelf(
     actions: @Composable (Track) -> Unit
 ) {
     if (releases.isEmpty()) return
-    val columns = remember(releases) {
-        if (releases.size >= ExploreReleaseGridMinimum) releases.chunked(2) else releases.map(::listOf)
+    val singleRow = LevyraIsDefaultSkin || releases.size < ExploreReleaseGridMinimum
+    val columns = remember(releases, singleRow) {
+        if (singleRow) releases.map(::listOf) else releases.chunked(2)
     }
     val shelfState = androidx.compose.foundation.lazy.rememberLazyListState()
-    val tilt = com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin && defaultRailMotionEnabled()
+    val tilt = LevyraIsDefaultSkin && defaultRailMotionEnabled()
     LazyRow(
         state = shelfState,
         contentPadding = PaddingValues(horizontal = LevyraHomeDesign.HorizontalInset),

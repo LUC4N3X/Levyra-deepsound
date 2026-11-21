@@ -1,5 +1,19 @@
 package com.luc4n3x.levyra.ui
 
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material3.Surface
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.text.TextStyle
@@ -36,6 +50,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -43,12 +58,15 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
@@ -81,6 +99,8 @@ import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
 import com.luc4n3x.levyra.ui.theme.LevyraIsAtelier
+import com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin
+import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraIsTorque
 import com.luc4n3x.levyra.ui.theme.LevyraIsPrism
 import com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic
@@ -392,6 +412,181 @@ private const val SETTINGS_ENTRANCE_MAX_ORDER = 14
 private const val SETTINGS_ENTRANCE_STAGGER = 0.035f
 private const val SETTINGS_ENTRANCE_SPAN = 0.5f
 
+@Composable
+internal fun SettingsHubSearchField(
+    query: String,
+    placeholder: String,
+    clearLabel: String,
+    focusRequester: FocusRequester,
+    onQueryChange: (String) -> Unit
+) {
+    BasicTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        singleLine = true,
+        textStyle = TextStyle(color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
+        cursorBrush = SolidColor(LevyraCyan),
+        modifier = Modifier
+            .fillMaxWidth()
+            .focusRequester(focusRequester)
+            .semantics { contentDescription = placeholder }
+            .padding(bottom = if (LevyraIsDefaultSkin) 0.dp else 16.dp)
+            .background(
+                if (LevyraIsDefaultSkin) MaterialTheme.colorScheme.surfaceContainerHigh else LevyraAdaptiveCard,
+                when {
+                    SkinChrome.active -> SkinChrome.fieldShape
+                    LevyraIsDefaultSkin -> MaterialTheme.shapes.extraLarge
+                    else -> CircleShape
+                }
+            )
+            .padding(horizontal = 18.dp, vertical = if (LevyraIsDefaultSkin) 0.dp else 16.dp),
+        decorationBox = { innerTextField ->
+            Row(
+                modifier = if (LevyraIsDefaultSkin) Modifier.heightIn(min = 56.dp) else Modifier,
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Icon(Icons.Rounded.Search, null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
+                Box(modifier = Modifier.weight(1f)) {
+                    if (query.isBlank()) Text(placeholder, color = LevyraMuted, fontSize = 15.sp)
+                    innerTextField()
+                }
+                if (query.isNotBlank()) {
+                    IconButton(onClick = { onQueryChange("") }, modifier = Modifier.size(48.dp)) {
+                        Icon(Icons.Rounded.Close, clearLabel, tint = LevyraMuted)
+                    }
+                }
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+internal fun SettingsStudioShelf(
+    title: String,
+    subtitle: String,
+    accentSeed: Color,
+    entries: List<SettingsStudioEntry>
+) {
+    if (LevyraIsAtelier) return AtelierStudioShelf(title, subtitle, entries)
+    val compact = LevyraIsDefaultSkin
+    Column(modifier = Modifier.fillMaxWidth().padding(top = if (compact) 0.dp else 6.dp)) {
+        if (compact) DefaultSettingsGroupLabel(title)
+        else {
+            Text(
+                title,
+                color = LevyraText,
+                fontSize = 20.sp,
+                fontWeight = if (SkinChrome.active) FontWeight.Medium else FontWeight.Black,
+                modifier = Modifier
+                    .padding(start = 4.dp)
+                    .semantics { heading() }
+            )
+            Text(
+                subtitle,
+                color = LevyraMuted,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(start = 4.dp, top = 2.dp, bottom = 12.dp)
+            )
+        }
+        LazyRow(
+            modifier = Modifier.recentSearchesBleed(SettingsStudioGutter),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(horizontal = SettingsStudioGutter)
+        ) {
+            items(entries, key = { it.id }, contentType = { "LevyraApp-entries" }) { entry ->
+                SettingsStudioShortcut(entry, accentSeed, compact)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun SettingsStudioShortcut(entry: SettingsStudioEntry, accentSeed: Color, compact: Boolean) {
+    Surface(
+        onClick = entry.onClick,
+        shape = RoundedCornerShape(if (SkinChrome.active) SkinChrome.outerCorner else 22.dp),
+        color = if (compact) MaterialTheme.colorScheme.surfaceContainer else LevyraAdaptiveCard,
+        modifier = Modifier.widthIn(min = if (compact) 148.dp else 180.dp)
+            .width(IntrinsicSize.Min)
+            .heightIn(min = if (compact) 56.dp else 80.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = if (compact) 8.dp else 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(if (compact) 30.dp else 42.dp)
+                    .clip(if (SkinChrome.active) SkinChrome.iconShape else entry.shape.toShape())
+                    .background(
+                        when {
+                            compact -> Color.Transparent
+                            SkinChrome.active -> SkinChrome.iconBackground
+                            LevyraUtilityStyleActive -> settingsCategoryTone(accentSeed, solid = true).container
+                            else -> LevyraText.copy(alpha = 0.08f)
+                        }
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    entry.icon,
+                    null,
+                    tint = when {
+                        compact -> MaterialTheme.colorScheme.onSurfaceVariant
+                        SkinChrome.active -> SkinChrome.iconTint
+                        LevyraUtilityStyleActive -> settingsCategoryTone(accentSeed, solid = true).content
+                        else -> LevyraText.copy(alpha = 0.88f)
+                    },
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            Text(
+                text = entry.title,
+                color = LevyraText,
+                fontSize = 14.sp,
+                lineHeight = 18.sp,
+                fontWeight = FontWeight.Bold,
+                softWrap = true,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+internal fun DefaultSettingsGroupLabel(title: String, modifier: Modifier = Modifier) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.padding(start = 14.dp, top = 22.dp, bottom = 8.dp).semantics { heading() }
+    )
+}
+
+@Composable
+internal fun DefaultSettingsHubHeader(title: String, backLabel: String, onBack: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
+            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = backLabel, tint = MaterialTheme.colorScheme.onSurface)
+        }
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f).semantics { heading() }
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun SettingsHubCategoryRow(
@@ -404,29 +599,37 @@ internal fun SettingsHubCategoryRow(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    SettingsTile(onClick = onClick, groupIndex = index, groupCount = count, modifier = modifier) {
+    val compact = LevyraIsDefaultSkin
+    val verticalInset = if (compact) 10.dp else 15.dp
+    val animateTitle = !compact && LocalAnimationsEnabled.current
+    val content: @Composable () -> Unit = {
         Row(
-            modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 15.dp, bottom = 15.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 14.dp, vertical = verticalInset),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(if (compact) 12.dp else 16.dp)
         ) {
             val style = settingsHubRowStyle(index, accent)
             Box(
                 modifier = Modifier
-                    .size(style.iconSize)
+                    .size(if (compact) 28.dp else style.iconSize)
                     .clip(style.iconShape)
-                    .background(style.iconContainer),
+                    .background(if (compact) Color.Transparent else style.iconContainer),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, contentDescription = null, tint = style.iconTint, modifier = Modifier.size(24.dp))
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = if (compact) MaterialTheme.colorScheme.onSurfaceVariant else style.iconTint,
+                    modifier = Modifier.size(if (compact) 22.dp else 24.dp)
+                )
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = title,
                     color = LevyraText,
-                    style = style.title,
-                    maxLines = if (LocalAnimationsEnabled.current) 1 else Int.MAX_VALUE,
-                    modifier = Modifier.levyraMarquee(LocalAnimationsEnabled.current, 3000)
+                    style = if (compact) MaterialTheme.typography.titleMedium else style.title,
+                    maxLines = if (animateTitle) 1 else Int.MAX_VALUE,
+                    modifier = Modifier.levyraMarquee(animateTitle, 3000)
                 )
                 if (summary.isNotBlank()) {
                     Text(
@@ -443,6 +646,26 @@ internal fun SettingsHubCategoryRow(
                 modifier = Modifier.size(22.dp)
             )
         }
+    }
+    if (compact) {
+        val top = if (index == 0) LevyraCardDesign.SurfaceCorner else 0.dp
+        val bottom = if (index == count - 1) LevyraCardDesign.SurfaceCorner else 0.dp
+        Surface(
+            onClick = onClick,
+            modifier = modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(topStart = top, topEnd = top, bottomStart = bottom, bottomEnd = bottom),
+            color = MaterialTheme.colorScheme.surfaceContainer
+        ) {
+            Column {
+                if (index > 0) HorizontalDivider(
+                    modifier = Modifier.padding(start = 54.dp, end = 14.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
+                )
+                content()
+            }
+        }
+    } else {
+        SettingsTile(onClick = onClick, groupIndex = index, groupCount = count, modifier = modifier, content = content)
     }
 }
 

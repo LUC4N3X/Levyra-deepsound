@@ -33,9 +33,11 @@ import com.luc4n3x.levyra.domain.ExploreZone
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.clip
 import androidx.compose.material3.MaterialTheme
+import com.luc4n3x.levyra.ui.player.horizontalFadeEdges
 import androidx.compose.material3.Text
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.PaddingValues
@@ -214,19 +216,25 @@ internal fun HomeGenreChips(
     zones: List<ExploreZone>,
     contentPadding: PaddingValues,
     onSelect: (ExploreZone) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    compactPills: Boolean = false,
+    state: LazyListState = rememberLazyListState()
 ) {
     val colors = MaterialTheme.colorScheme
     if (com.luc4n3x.levyra.ui.theme.LevyraIsSpotify) {
-        LazyRow(modifier = modifier.fillMaxWidth(), contentPadding = contentPadding, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyRow(state = state, modifier = modifier.fillMaxWidth(), contentPadding = contentPadding, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(zones, key = { zone -> "home-chip-${zone.id}" }, contentType = { "HomeExperience-zones" }) { zone ->
                 com.luc4n3x.levyra.ui.components.LevyraFilterPill(label = zone.label, selected = false, onClick = { onSelect(zone) }, role = Role.Button)
             }
         }
         return
     }
+    val edges = if (compactPills) {
+        Modifier.horizontalFadeEdges(state.canScrollBackward, state.canScrollForward, 12.dp)
+    } else Modifier
     LazyRow(
-        modifier = modifier.fillMaxWidth(),
+        state = state,
+        modifier = modifier.fillMaxWidth().then(edges),
         contentPadding = contentPadding,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -255,16 +263,16 @@ internal fun HomeGenreChips(
             ) {
                 Box(
                     modifier = Modifier
-                        .height(HomeChipVisualHeight)
+                        .then(if (compactPills) Modifier.heightIn(min = 36.dp) else Modifier.height(HomeChipVisualHeight))
                         .clip(RoundedCornerShape(corner))
                         .background(colors.surfaceContainerHigh)
-                        .padding(horizontal = 18.dp),
+                        .padding(horizontal = if (compactPills) 14.dp else 18.dp, vertical = if (compactPills) 5.dp else 0.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = zone.label,
                         color = colors.onSurface,
-                        style = LevyraType.cardTitle.copy(fontWeight = FontWeight.Bold, letterSpacing = (-0.1).sp),
+                        style = if (compactPills) MaterialTheme.typography.labelLarge else LevyraType.cardTitle.copy(fontWeight = FontWeight.Bold, letterSpacing = (-0.1).sp),
                         maxLines = 1
                     )
                 }
