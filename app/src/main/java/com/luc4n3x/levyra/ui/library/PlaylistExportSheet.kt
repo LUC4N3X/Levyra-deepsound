@@ -215,24 +215,7 @@ private fun ExportOutcome(
     onRetry: () -> Unit,
     onDone: () -> Unit
 ) {
-    val errorText = when (state.error) {
-        PlaylistExportError.NETWORK -> copy.networkError
-        PlaylistExportError.SIGN_IN -> copy.signInError
-        PlaylistExportError.SERVICE -> if (state.destination == PlaylistExportDestination.LISTENBRAINZ) copy.listenBrainzError else copy.serviceError
-        null -> ""
-    }
-    val message = when (state.phase) {
-        PlaylistExportPhase.SENT -> if (state.destination == PlaylistExportDestination.LISTENBRAINZ) copy.listenBrainzSent(state.added, state.matchedTotal) else copy.sent(state.added)
-        PlaylistExportPhase.PARTIAL -> if (state.destination == PlaylistExportDestination.LISTENBRAINZ) {
-            copy.listenBrainzPartial(state.added, state.matchedTotal)
-        } else {
-            copy.partial(state.added, state.total) + "\n" + errorText
-        }
-        PlaylistExportPhase.CANCELLED -> copy.cancelled(state.added)
-        PlaylistExportPhase.FAILED -> errorText
-        PlaylistExportPhase.FILE_SAVED -> copy.fileSaved
-        else -> copy.fileFailed
-    }
+    val message = exportOutcomeMessage(copy, state)
     val success = state.phase == PlaylistExportPhase.SENT || state.phase == PlaylistExportPhase.FILE_SAVED
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Icon(
@@ -248,14 +231,50 @@ private fun ExportOutcome(
             modifier = Modifier.weight(1f).semantics { liveRegion = LiveRegionMode.Polite }
         )
     }
+    ExportOutcomeButtons(copy, state, success, onOpen, onRetry, onDone)
+}
+
+@Composable
+private fun ExportOutcomeButtons(
+    copy: PlaylistExportCopy,
+    state: PlaylistExportUiState,
+    success: Boolean,
+    onOpen: () -> Unit,
+    onRetry: () -> Unit,
+    onDone: () -> Unit
+) {
+    val openLabel = if (state.destination == PlaylistExportDestination.LISTENBRAINZ) copy.listenBrainzOpen else copy.open
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
         if (!success) TextButton(onClick = onRetry) { Text(copy.retry, color = LevyraCyan) }
         if (state.remoteUrl.isNotBlank()) {
-            OutlinedButton(onClick = onOpen) { Text(if (state.destination == PlaylistExportDestination.LISTENBRAINZ) copy.listenBrainzOpen else copy.open, color = LevyraText) }
+            OutlinedButton(onClick = onOpen) { Text(openLabel, color = LevyraText) }
         }
         Button(onClick = onDone, colors = ButtonDefaults.buttonColors(containerColor = LevyraCyan, contentColor = LevyraOnAccent)) {
             Text(copy.done, fontWeight = FontWeight.Bold)
         }
+    }
+}
+
+private fun exportErrorText(copy: PlaylistExportCopy, state: PlaylistExportUiState): String = when (state.error) {
+    PlaylistExportError.NETWORK -> copy.networkError
+    PlaylistExportError.SIGN_IN -> copy.signInError
+    PlaylistExportError.SERVICE -> if (state.destination == PlaylistExportDestination.LISTENBRAINZ) copy.listenBrainzError else copy.serviceError
+    null -> ""
+}
+
+private fun exportOutcomeMessage(copy: PlaylistExportCopy, state: PlaylistExportUiState): String {
+    val listenBrainz = state.destination == PlaylistExportDestination.LISTENBRAINZ
+    return when (state.phase) {
+        PlaylistExportPhase.SENT -> if (listenBrainz) copy.listenBrainzSent(state.added, state.matchedTotal) else copy.sent(state.added)
+        PlaylistExportPhase.PARTIAL -> if (listenBrainz) {
+            copy.listenBrainzPartial(state.added, state.matchedTotal)
+        } else {
+            copy.partial(state.added, state.total) + "\n" + exportErrorText(copy, state)
+        }
+        PlaylistExportPhase.CANCELLED -> copy.cancelled(state.added)
+        PlaylistExportPhase.FAILED -> exportErrorText(copy, state)
+        PlaylistExportPhase.FILE_SAVED -> copy.fileSaved
+        else -> copy.fileFailed
     }
 }
 
