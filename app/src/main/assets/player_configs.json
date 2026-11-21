@@ -505,6 +505,7 @@
     "afdf03ae": { "sig": "Ab(49,8822,INPUT)", "nClass": "zb", "sts": 20776, "aliases": ["e10989d8"] },
     "cb7ffe6d": { "sig": "Kk(49,8822,INPUT)", "nClass": "Fh", "sts": 20776, "aliases": ["442da4f7"] },
     "3dc75896": { "sig": "id(49,8822,INPUT)", "nClass": "pm", "sts": 20776, "aliases": ["ce49321c"] },
-    "6f4caf4e": { "sig": "RD(43,6537,INPUT)", "nClass": "oB", "sts": 20777, "aliases": ["07d83cab"] }
+    "6f4caf4e": { "sig": "RD(43,6537,INPUT)", "nClass": "oB", "sts": 20777, "aliases": ["07d83cab"] },
+    "28c28ac0": { "sig": "Pm(43,6537,INPUT)", "nClass": "Om", "sts": 20777, "aliases": ["61fed212"] }
   }
 }
