@@ -19137,7 +19137,7 @@ private fun SettingsOverlay(
             LaunchedEffect(searchFocus) {
                 val focus = searchFocus ?: return@LaunchedEffect
                 withFrameNanos { }
-                var index = settingsListState.firstVisibleItemIndex
+                var index = 0
                 while (!focus.reached && index < settingsListState.layoutInfo.totalItemsCount) {
                     settingsListState.scrollToItem(index)
                     withFrameNanos { }

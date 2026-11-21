@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.ui
 
 import androidx.compose.runtime.MutableState
+import kotlinx.coroutines.delay
 import com.luc4n3x.levyra.ui.theme.*
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -193,11 +194,18 @@ private fun settingsTileColor(): Color = when {
 @Composable
 private fun settingsSearchPulse(highlight: MutableState<Boolean>, shape: Shape): Modifier {
     val pulse = remember { Animatable(0f) }
+    val animated = LocalAnimationsEnabled.current
     LaunchedEffect(highlight.value) {
         if (!highlight.value) return@LaunchedEffect
-        repeat(2) {
-            pulse.animateTo(1f, tween(durationMillis = 260))
-            pulse.animateTo(0f, tween(durationMillis = 420))
+        if (animated) {
+            repeat(2) {
+                pulse.animateTo(1f, tween(durationMillis = 260))
+                pulse.animateTo(0f, tween(durationMillis = 420))
+            }
+        } else {
+            pulse.snapTo(1f)
+            delay(SETTINGS_SEARCH_STATIC_HIGHLIGHT_MS)
+            pulse.snapTo(0f)
         }
         highlight.value = false
     }
@@ -219,3 +227,5 @@ private fun settingsTileShape(interactionSource: MutableInteractionSource, first
 }
 
 private val SettingsSearchFocusBreathingRoom = 160.dp
+
+private const val SETTINGS_SEARCH_STATIC_HIGHLIGHT_MS = 1_400L

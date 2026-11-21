@@ -8,7 +8,11 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Replay
@@ -79,18 +83,18 @@ internal fun DefaultHomeBrowseHeader(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(Modifier.weight(1f)) {
+                val gutter = LevyraHomeDesign.HorizontalInset
+                Box(Modifier.weight(1f).bleedStart(gutter)) {
                     HomeGenreChips(
                         zones = zones,
-                        contentPadding = PaddingValues(start = LevyraHomeDesign.SettingsControlHeight + 8.dp),
+                        contentPadding = PaddingValues(start = gutter + LevyraHomeDesign.SettingsControlHeight + 8.dp),
                         onSelect = onSelect,
                         compactPills = true,
                         state = chipState
                     )
-                    HomeLogoBadge(
-                        logoSemantics.align(Alignment.CenterStart)
-                            .pointerInput(Unit) { detectTapGestures(onTap = {}) }
-                    )
+                    Box(Modifier.align(Alignment.CenterStart).padding(start = gutter)) {
+                        HomeLogoBadge(logoSemantics.pointerInput(Unit) { detectTapGestures(onTap = {}) })
+                    }
                 }
                 DefaultHomeHeaderActions(loading, onSettings)
             }
@@ -136,3 +140,12 @@ private fun HeaderToolbarButton(icon: ImageVector, label: String, onClick: () ->
 }
 
 private val HeaderToolbarButtonSize = 46.dp
+
+private fun Modifier.bleedStart(gutter: Dp): Modifier = layout { measurable, constraints ->
+    val gutterPx = gutter.roundToPx()
+    val width = constraints.maxWidth + gutterPx
+    val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
+    layout(constraints.maxWidth, placeable.height) {
+        placeable.place(if (layoutDirection == LayoutDirection.Ltr) -gutterPx else 0, 0)
+    }
+}
