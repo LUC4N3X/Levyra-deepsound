@@ -69,4 +69,17 @@ class QobuzCatalogParserTest {
         assertEquals(false, QobuzStore.isStoreUrl("https://play.qobuz.com/album/1"))
         assertEquals(false, QobuzStore.isStoreUrl("http://www.qobuz.com/it-it/shop"))
     }
+
+    @Test
+    fun artistPortraitUsesTheHeadingPictureNotTheShareLogo() {
+        val html = """
+            <meta property="og:image" content="https://www.qobuz.com/assets-static/img/logo/qobuz_logo_og.png">
+            <div class="catalog-heading__picture" style="background-image: url('//static.qobuz.com/images/artists/covers/medium/23940f06302cbb45ee2f4de6d08aaf00.jpg')" title="Karol G">
+        """.trimIndent()
+        assertEquals(
+            "https://static.qobuz.com/images/artists/covers/large/23940f06302cbb45ee2f4de6d08aaf00.jpg",
+            QobuzCatalogParser.artistPortrait(html)
+        )
+        assertEquals("", QobuzCatalogParser.artistPortrait(html.lines().first()))
+    }
 }

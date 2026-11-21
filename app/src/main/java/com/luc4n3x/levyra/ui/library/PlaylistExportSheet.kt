@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,6 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.Hub
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.TableChart
 import androidx.compose.material3.Button
@@ -63,6 +65,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraOrange
 import com.luc4n3x.levyra.ui.theme.LevyraPanel
 import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.viewmodel.PlaylistExportController
+import com.luc4n3x.levyra.viewmodel.PlaylistExportDestination
 import com.luc4n3x.levyra.viewmodel.PlaylistExportError
 import com.luc4n3x.levyra.viewmodel.PlaylistExportPhase
 import com.luc4n3x.levyra.viewmodel.PlaylistExportUiState
@@ -114,24 +117,8 @@ internal fun PlaylistExportSheet(controller: PlaylistExportController, state: Pl
                 fontSize = 14.sp
             )
             when (state.phase) {
-                PlaylistExportPhase.CHOOSE -> ExportChoices(copy, state, controller::exportToYoutubeMusic, saveAs)
-                PlaylistExportPhase.SENDING -> {
-                    Text(
-                        copy.sending(state.added, state.total),
-                        color = LevyraText,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
-                    )
-                    LevyraWavyProgress(
-                        progress = if (state.total == 0) 0f else state.added.toFloat() / state.total,
-                        color = LevyraCyan,
-                        trackColor = LevyraText.copy(alpha = 0.12f),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedButton(onClick = controller::cancel, modifier = Modifier.align(Alignment.End)) {
-                        Text(copy.cancel, color = LevyraText)
-                    }
-                }
+                PlaylistExportPhase.CHOOSE -> ExportChoices(copy, state, controller::exportToYoutubeMusic, controller::exportToListenBrainz, saveAs)
+                PlaylistExportPhase.SENDING -> ExportSending(copy, state, controller::cancel)
                 PlaylistExportPhase.SAVING -> LevyraLoadingIndicator(
                     color = LevyraCyan,
                     modifier = Modifier.align(Alignment.CenterHorizontally).size(36.dp)
@@ -156,10 +143,35 @@ internal fun PlaylistExportSheet(controller: PlaylistExportController, state: Pl
 }
 
 @Composable
+private fun ColumnScope.ExportSending(copy: PlaylistExportCopy, state: PlaylistExportUiState, onCancel: () -> Unit) {
+    val listenBrainz = state.destination == PlaylistExportDestination.LISTENBRAINZ
+    Text(
+        if (listenBrainz) copy.listenBrainzMatching else copy.sending(state.added, state.total),
+        color = LevyraText,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+    )
+    if (listenBrainz) {
+        LevyraLoadingIndicator(color = LevyraCyan, modifier = Modifier.align(Alignment.CenterHorizontally).size(36.dp))
+    } else {
+        LevyraWavyProgress(
+            progress = if (state.total == 0) 0f else state.added.toFloat() / state.total,
+            color = LevyraCyan,
+            trackColor = LevyraText.copy(alpha = 0.12f),
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+    OutlinedButton(onClick = onCancel, modifier = Modifier.align(Alignment.End)) {
+        Text(copy.cancel, color = LevyraText)
+    }
+}
+
+@Composable
 private fun ExportChoices(
     copy: PlaylistExportCopy,
     state: PlaylistExportUiState,
     onYoutubeMusic: () -> Unit,
+    onListenBrainz: () -> Unit,
     onFile: (PlaylistFileFormat) -> Unit
 ) {
     val account = state.youtubeAccount
@@ -175,8 +187,17 @@ private fun ExportChoices(
         },
         enabled = youtubeReady,
         shapeIndex = 0,
-        shapeCount = 1,
+        shapeCount = 2,
         onClick = onYoutubeMusic
+    )
+    ExportRow(
+        icon = Icons.Rounded.Hub,
+        title = "ListenBrainz",
+        subtitle = if (state.listenBrainzConnected) copy.listenBrainzConnected else copy.listenBrainzSignedOut,
+        enabled = state.listenBrainzConnected && state.tracks.isNotEmpty(),
+        shapeIndex = 1,
+        shapeCount = 2,
+        onClick = onListenBrainz
     )
     if (youtubeReady && state.plan.unmatched.isNotEmpty()) Note(copy.unmatched(state.plan.unmatched.size))
     if (youtubeReady && state.plan.duplicates > 0) Note(copy.duplicates(state.plan.duplicates))
@@ -194,20 +215,7 @@ private fun ExportOutcome(
     onRetry: () -> Unit,
     onDone: () -> Unit
 ) {
-    val errorText = when (state.error) {
-        PlaylistExportError.NETWORK -> copy.networkError
-        PlaylistExportError.SIGN_IN -> copy.signInError
-        PlaylistExportError.SERVICE -> copy.serviceError
-        null -> ""
-    }
-    val message = when (state.phase) {
-        PlaylistExportPhase.SENT -> copy.sent(state.added)
-        PlaylistExportPhase.PARTIAL -> copy.partial(state.added, state.total) + "\n" + errorText
-        PlaylistExportPhase.CANCELLED -> copy.cancelled(state.added)
-        PlaylistExportPhase.FAILED -> errorText
-        PlaylistExportPhase.FILE_SAVED -> copy.fileSaved
-        else -> copy.fileFailed
-    }
+    val message = exportOutcomeMessage(copy, state)
     val success = state.phase == PlaylistExportPhase.SENT || state.phase == PlaylistExportPhase.FILE_SAVED
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Icon(
@@ -223,14 +231,50 @@ private fun ExportOutcome(
             modifier = Modifier.weight(1f).semantics { liveRegion = LiveRegionMode.Polite }
         )
     }
+    ExportOutcomeButtons(copy, state, success, onOpen, onRetry, onDone)
+}
+
+@Composable
+private fun ExportOutcomeButtons(
+    copy: PlaylistExportCopy,
+    state: PlaylistExportUiState,
+    success: Boolean,
+    onOpen: () -> Unit,
+    onRetry: () -> Unit,
+    onDone: () -> Unit
+) {
+    val openLabel = if (state.destination == PlaylistExportDestination.LISTENBRAINZ) copy.listenBrainzOpen else copy.open
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
         if (!success) TextButton(onClick = onRetry) { Text(copy.retry, color = LevyraCyan) }
         if (state.remoteUrl.isNotBlank()) {
-            OutlinedButton(onClick = onOpen) { Text(copy.open, color = LevyraText) }
+            OutlinedButton(onClick = onOpen) { Text(openLabel, color = LevyraText) }
         }
         Button(onClick = onDone, colors = ButtonDefaults.buttonColors(containerColor = LevyraCyan, contentColor = LevyraOnAccent)) {
             Text(copy.done, fontWeight = FontWeight.Bold)
         }
+    }
+}
+
+private fun exportErrorText(copy: PlaylistExportCopy, state: PlaylistExportUiState): String = when (state.error) {
+    PlaylistExportError.NETWORK -> copy.networkError
+    PlaylistExportError.SIGN_IN -> copy.signInError
+    PlaylistExportError.SERVICE -> if (state.destination == PlaylistExportDestination.LISTENBRAINZ) copy.listenBrainzError else copy.serviceError
+    null -> ""
+}
+
+private fun exportOutcomeMessage(copy: PlaylistExportCopy, state: PlaylistExportUiState): String {
+    val listenBrainz = state.destination == PlaylistExportDestination.LISTENBRAINZ
+    return when (state.phase) {
+        PlaylistExportPhase.SENT -> if (listenBrainz) copy.listenBrainzSent(state.added, state.matchedTotal) else copy.sent(state.added)
+        PlaylistExportPhase.PARTIAL -> if (listenBrainz) {
+            copy.listenBrainzPartial(state.added, state.matchedTotal)
+        } else {
+            copy.partial(state.added, state.total) + "\n" + exportErrorText(copy, state)
+        }
+        PlaylistExportPhase.CANCELLED -> copy.cancelled(state.added)
+        PlaylistExportPhase.FAILED -> exportErrorText(copy, state)
+        PlaylistExportPhase.FILE_SAVED -> copy.fileSaved
+        else -> copy.fileFailed
     }
 }
 

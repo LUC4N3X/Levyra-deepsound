@@ -15,6 +15,8 @@ import com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicSession
 import com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicSessionExpired
 import com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicSessionStore
 import com.luc4n3x.levyra.domain.Playlist
+import com.luc4n3x.levyra.feature.scrobbling.ListenBrainzLibrary
+import com.luc4n3x.levyra.feature.scrobbling.ListenBrainzTrack
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.items
 import com.luc4n3x.levyra.domain.playableTracks
@@ -35,6 +37,8 @@ enum class PlaylistExportPhase { CHOOSE, SENDING, SAVING, SENT, PARTIAL, CANCELL
 
 enum class PlaylistExportError { NETWORK, SIGN_IN, SERVICE }
 
+enum class PlaylistExportDestination { YOUTUBE_MUSIC, LISTENBRAINZ }
+
 data class PlaylistExportUiState(
     val visible: Boolean = false,
     val playlistId: String = "",
@@ -46,14 +50,18 @@ data class PlaylistExportUiState(
     val added: Int = 0,
     val remoteUrl: String = "",
     val error: PlaylistExportError? = null,
-    val savedFormat: PlaylistFileFormat? = null
+    val savedFormat: PlaylistFileFormat? = null,
+    val listenBrainzConnected: Boolean = false,
+    val destination: PlaylistExportDestination = PlaylistExportDestination.YOUTUBE_MUSIC,
+    val matchedTotal: Int = 0
 ) {
     val total: Int get() = plan.videoIds.size
 }
 
 class PlaylistExportController internal constructor(
     private val scope: CoroutineScope,
-    private val context: Context
+    private val context: Context,
+    private val listenBrainz: ListenBrainzLibrary? = null
 ) {
     private val _state = MutableStateFlow(PlaylistExportUiState())
     val state: StateFlow<PlaylistExportUiState> = _state.asStateFlow()
@@ -70,7 +78,8 @@ class PlaylistExportController internal constructor(
             playlistId = playlist.id,
             title = playlist.name,
             tracks = tracks,
-            plan = planRemotePlaylistExport(tracks)
+            plan = planRemotePlaylistExport(tracks),
+            listenBrainzConnected = listenBrainz?.isConnected() == true
         )
         job = scope.launch {
             val active = withContext(Dispatchers.IO) {
@@ -103,8 +112,47 @@ class PlaylistExportController internal constructor(
         exportRemote(YoutubeMusicPlaylistExporter(active), current)
     }
 
+    fun exportToListenBrainz() {
+        val current = _state.value
+        val library = listenBrainz ?: return
+        if (current.phase != PlaylistExportPhase.CHOOSE || current.tracks.isEmpty() || !current.listenBrainzConnected) return
+        _state.update {
+            it.copy(
+                phase = PlaylistExportPhase.SENDING,
+                destination = PlaylistExportDestination.LISTENBRAINZ,
+                added = 0,
+                matchedTotal = current.tracks.size,
+                remoteUrl = "",
+                error = null
+            )
+        }
+        job = scope.launch {
+            try {
+                val result = library.export(current.title, current.tracks.map { ListenBrainzTrack(it.title, it.artist) }) { url, saved ->
+                    _state.update { it.copy(remoteUrl = url, added = saved) }
+                }
+                _state.update {
+                    it.copy(phase = PlaylistExportPhase.SENT, added = result.matched, matchedTotal = result.total, remoteUrl = result.url)
+                }
+            } catch (error: CancellationException) {
+                _state.update { if (it.visible) it.copy(phase = PlaylistExportPhase.CANCELLED) else it }
+                throw error
+            } catch (error: Exception) {
+                Timber.w(error, "playlist export to listenbrainz failed")
+                _state.update {
+                    it.copy(
+                        phase = if (it.remoteUrl.isBlank()) PlaylistExportPhase.FAILED else PlaylistExportPhase.PARTIAL,
+                        error = PlaylistExportError.SERVICE
+                    )
+                }
+            }
+        }
+    }
+
     private fun exportRemote(exporter: RemotePlaylistExporter, current: PlaylistExportUiState) {
-        _state.update { it.copy(phase = PlaylistExportPhase.SENDING, added = 0, remoteUrl = "", error = null) }
+        _state.update {
+            it.copy(phase = PlaylistExportPhase.SENDING, destination = PlaylistExportDestination.YOUTUBE_MUSIC, added = 0, remoteUrl = "", error = null)
+        }
         job = scope.launch {
             val progress = object : RemotePlaylistExportProgress {
                 override fun onCreated(url: String) = _state.update { it.copy(remoteUrl = url) }

@@ -376,3 +376,9 @@ data class SmartListeningUiState(
     val morningResumeSnapshot: MorningResumeSnapshot? = null,
     val availableRadioStations: List<RadioStation> = emptyList()
 )
+
+data class ListenBrainzPlaylistsState(
+    val loading: Boolean = false,
+    val playlists: List<com.luc4n3x.levyra.feature.scrobbling.ListenBrainzPlaylist> = emptyList(),
+    val importingId: String? = null
+)

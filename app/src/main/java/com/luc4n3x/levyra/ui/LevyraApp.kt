@@ -3227,6 +3227,7 @@ fun LevyraApp(
                     onCompleteLastFm = viewModel::completeLastFmAuthorization,
                     onClearLastFm = viewModel::clearLastFmAuthorization,
                     onSaveListenBrainz = viewModel::saveListenBrainzToken,
+                    listenBrainzPlaylists = { ListenBrainzPlaylistsSection(viewModel) },
                     onClearListenBrainz = viewModel::clearListenBrainzToken,
                     onSaveAudD = viewModel::saveAudDToken,
                     onClearAudD = viewModel::clearAudDToken,
@@ -8896,7 +8897,7 @@ private fun HomeScreen(
         )
         HomeSpotlightHero(candidate, heroArtistArtworkUrl, soundtrackArtists, companions)
     }
-    val spotlightHeroData = rememberHomeHeroPortrait(spotlightHeroBase)
+    val spotlightHeroData = rememberHomeHeroPortrait(spotlightHeroBase, viewModel::searchSongs)
     val offlineContent = homeDerivedState.offlineContent
     val offlineHomeVisible = HomeOfflinePolicy.showOfflineHome(state.isDeviceOffline)
     val homeContent = homeDerivedState.contentAvailability
@@ -8970,7 +8971,7 @@ private fun HomeScreen(
                     stableSpotlightId = heroTrack.id
                     when {
                         heroTrack.id != state.currentTrack?.id ->
-                            viewModel.playFrom(spotlightTracks, heroTrack)
+                            viewModel.playFrom(homeSoundtrackQueue(spotlightTracks, heroTrack), heroTrack)
                         state.isResolving -> Unit
                         else -> viewModel.togglePlay()
                     }
@@ -9773,7 +9774,7 @@ private fun StudioHomeScreen(
     val otherSections = rememberSkinHomeSections(plainOtherSections)
     val spotlightDayKey = HomeEditorialEngine.localDayKey()
     val stableSpotlightIdState = rememberSaveable(spotlightDayKey) { mutableStateOf<String?>(null) }
-    val spotlight = rememberStudioSpotlight(state, homeDerivedState, spotlightDayKey, stableSpotlightIdState)
+    val spotlight = rememberStudioSpotlight(state, homeDerivedState, spotlightDayKey, stableSpotlightIdState, viewModel::searchSongs)
     val visiblePersonalTracks = homeDerivedState.personalOrbitDisplayTracks
     val chartChunks = homeDerivedState.chartChunks
     val offlineContent = homeDerivedState.offlineContent
@@ -10028,7 +10029,8 @@ private fun rememberStudioSpotlight(
     state: LevyraUiState,
     homeDerivedState: com.luc4n3x.levyra.viewmodel.HomeDerivedState,
     spotlightDayKey: Int,
-    stableSpotlightIdState: MutableState<String?>
+    stableSpotlightIdState: MutableState<String?>,
+    searchSongs: suspend (String, Int) -> List<Track>
 ): StudioSpotlightState {
     val spotlightCandidates = homeDerivedState.spotlightCandidates
     val editorialCollections = homeDerivedState.editorialCollections
@@ -10074,7 +10076,7 @@ private fun rememberStudioSpotlight(
     ) {
         buildStudioSpotlightHero(spotlightCandidate, spotlightTracks, soundtrackArtistPool, spotlightDayKey, state.languageCode)
     }
-    val spotlightHeroData = rememberHomeHeroPortrait(spotlightHeroBase)
+    val spotlightHeroData = rememberHomeHeroPortrait(spotlightHeroBase, searchSongs)
     return StudioSpotlightState(spotlightCandidate, spotlightTracks, spotlightHeroData, visibleEditorialCollections, homeCollectionAccents)
 }
 
@@ -10269,7 +10271,7 @@ private class StudioHomeContext(
                 onOpen = {
                     stableSpotlightId = heroTrack.id
                     when {
-                        heroTrack.id != state.currentTrack?.id -> viewModel.playFrom(spotlightTracks, heroTrack)
+                        heroTrack.id != state.currentTrack?.id -> viewModel.playFrom(homeSoundtrackQueue(spotlightTracks, heroTrack), heroTrack)
                         state.isResolving -> Unit
                         else -> viewModel.togglePlay()
                     }
@@ -10294,7 +10296,7 @@ private class StudioHomeContext(
                     stableSpotlightId = heroTrack.id
                     when {
                         heroTrack.id != state.currentTrack?.id ->
-                            viewModel.playFrom(spotlightTracks, heroTrack)
+                            viewModel.playFrom(homeSoundtrackQueue(spotlightTracks, heroTrack), heroTrack)
                         state.isResolving -> Unit
                         else -> viewModel.togglePlay()
                     }
@@ -10750,7 +10752,7 @@ private fun LazyListScope.homeStudioSectionSpotlight(c: StudioHomeContext) {
                                     stableSpotlightId = heroTrack.id
                                     when {
                                         heroTrack.id != state.currentTrack?.id ->
-                                            viewModel.playFrom(spotlightTracks, heroTrack)
+                                            viewModel.playFrom(homeSoundtrackQueue(spotlightTracks, heroTrack), heroTrack)
                                         state.isResolving -> Unit
                                         else -> viewModel.togglePlay()
                                     }
@@ -12059,127 +12061,8 @@ private fun PersonalOrbitTile(
     }
 }
 
-private fun homeSoundtrackPrimaryArtist(rawArtist: String): String {
-    var value = rawArtist.trim()
-    if (value.isBlank()) return value
-    val separators = listOf(",", " & ", " feat. ", " feat ", " featuring ", " x ")
-    separators.forEach { separator ->
-        val index = value.indexOf(separator, ignoreCase = true)
-        if (index > 0) value = value.substring(0, index).trim()
-    }
-    return value
-}
-
-private data class HomeSpotlightHero(
-    val candidate: HomeSpotlightCandidate,
-    val artistArtworkUrl: String,
-    val artists: List<String>,
-    val companionArtworkUrls: List<String>
-)
-
-private fun homeSoundtrackCompanions(
-    tracks: List<Track>,
-    artistPool: List<Triple<String, String, String>>,
-    heroArtistName: String
-): List<String> {
-    val heroKey = heroArtistName.trim().lowercase(Locale.ROOT)
-    return artistPool.asSequence()
-        .filter { artist -> homeArtistPortraitUrlEligible(artist.third) }
-        .filter { artist -> homeSoundtrackPrimaryArtist(artist.first).lowercase(Locale.ROOT) != heroKey }
-        .filter { artist -> tracks.any { track -> homeSoundtrackMatchesArtist(track, artist.first, artist.second) } }
-        .distinctBy { artist -> homeSoundtrackPrimaryArtist(artist.first).lowercase(Locale.ROOT) }
-        .map { artist -> artist.third.trim() }
-        .take(HOME_HERO_COMPANION_LIMIT)
-        .toList()
-}
-
-private fun homeSoundtrackArtists(tracks: List<Track>, heroTrack: Track): List<String> {
-    return sequenceOf(heroTrack)
-        .plus(tracks.asSequence())
-        .map { homeSoundtrackPrimaryArtist(it.artist) }
-        .filter(String::isNotBlank)
-        .distinctBy { it.lowercase(Locale.ROOT) }
-        .take(3)
-        .toList()
-}
-
-private fun homeArtistPortraitUrlEligible(url: String): Boolean {
-    val clean = url.trim()
-    if (!clean.startsWith("https://", ignoreCase = true)) return false
-    if (LevyraPersonalOrbit.isVideoFrameArtworkUrl(clean)) return false
-    val lower = clean.lowercase(Locale.ROOT)
-    if (lower.contains("i.scdn.co/")) {
-        return lower.contains("ab676161")
-    }
-    return true
-}
-
-private fun homeArtistPortraitSourceRank(url: String): Int {
-    val lower = url.trim().lowercase(Locale.ROOT)
-    return when {
-        lower.contains("mzstatic.com/") -> 0
-        lower.contains("i.scdn.co/") && lower.contains("ab676161") -> 1
-        lower.contains("googleusercontent.com/") || lower.contains("ggpht.com/") -> 2
-        else -> 3
-    }
-}
-
-internal fun highResolutionHomeArtistArtworkUrl(url: String): String {
-    val upgraded = highResolutionPlayerArtworkUrl(url)
-    if (!upgraded.contains("i.scdn.co/", ignoreCase = true)) return upgraded
-    return upgraded
-        .replace("ab67616100005174", "ab6761610000e5eb", ignoreCase = true)
-        .replace("ab6761610000f178", "ab6761610000e5eb", ignoreCase = true)
-}
-
-@Composable
-private fun rememberHomeHeroPortrait(hero: HomeSpotlightHero?): HomeSpotlightHero? {
-    val context = LocalContext.current
-    val spotifyRepository = remember(context) { SpotifyArtistArtworkRepository.get(context) }
-    val appleRepository = remember(context) { AppleArtistArtworkRepository.get(context) }
-    val languageCode = LocalLevyraStrings.current.code
-    val artistName = remember(languageCode) {
-        HomeSoundtrackPortraits.artistForDay(languageCode, java.time.LocalDate.now().toEpochDay())
-    }
-    val qobuzPortraitPage = remember(artistName) { HomeSoundtrackPortraits.qobuzPortraitPage(artistName) }
-    var externalPortraitUrl by rememberSaveable(artistName) {
-        mutableStateOf(
-            appleRepository.cachedArtistPortrait(artistName)
-                .takeIf(String::isNotBlank)
-                ?.let(::highResolutionHomeArtistArtworkUrl)
-                .orEmpty()
-        )
-    }
-    var portraitLookupComplete by rememberSaveable(artistName) {
-        mutableStateOf(artistName.isBlank() || (externalPortraitUrl.isNotBlank() && qobuzPortraitPage == null))
-    }
-    LaunchedEffect(artistName, spotifyRepository, appleRepository) {
-        if (portraitLookupComplete) return@LaunchedEffect
-        val qobuzPortrait = qobuzPortraitPage
-            ?.let { page -> com.luc4n3x.levyra.data.qobuz.QobuzEditorialRepository.get(context).artistPortrait(page) }
-            .orEmpty()
-        val portrait = qobuzPortrait
-            .ifBlank { externalPortraitUrl }
-            .ifBlank { appleRepository.resolveArtistPortrait(artistName) }
-            .ifBlank { spotifyRepository.resolveArtistPortrait(artistName) }
-        externalPortraitUrl = portrait.takeIf(String::isNotBlank)
-            ?.let(::highResolutionHomeArtistArtworkUrl)
-            .orEmpty()
-        portraitLookupComplete = true
-    }
-    val portraitUrl = if (portraitLookupComplete || externalPortraitUrl.isNotBlank()) externalPortraitUrl.ifBlank { hero?.artistArtworkUrl.orEmpty() } else ""
-    return remember(hero, portraitUrl) { hero?.copy(artistArtworkUrl = portraitUrl) }
-}
-
-private fun homeSoundtrackMatchesArtist(track: Track, artistName: String, browseId: String): Boolean {
-    if (artistName.isBlank()) return false
-    if (browseId.isNotBlank() && track.artistBrowseIds.any { it.equals(browseId, ignoreCase = true) }) return true
-    val primary = homeSoundtrackPrimaryArtist(track.artist)
-    return primary.equals(artistName.trim(), ignoreCase = true)
-}
-
 internal const val HOME_HERO_PORTRAIT_SHARE = 0.84f
-private const val HOME_HERO_COMPANION_LIMIT = 3
+internal const val HOME_HERO_COMPANION_LIMIT = 3
 private val HOME_HERO_COMPANION_SIZE = 30.dp
 private val HOME_HERO_COMPANION_OVERLAP = 10.dp
 
@@ -19042,6 +18925,7 @@ private fun SettingsOverlay(
     onCompleteLastFm: () -> Unit,
     onClearLastFm: () -> Unit,
     onSaveListenBrainz: (String) -> Unit,
+    listenBrainzPlaylists: @Composable () -> Unit,
     onClearListenBrainz: () -> Unit,
     onSaveAudD: (String) -> Unit,
     onClearAudD: () -> Unit,
@@ -19362,7 +19246,8 @@ private fun SettingsOverlay(
                                     onSaveListenBrainz,
                                     onClearListenBrainz,
                                     onSaveAudD,
-                                    onClearAudD
+                                    onClearAudD,
+                                    listenBrainzPlaylists
                                 )
                             }
                         }
@@ -20661,7 +20546,8 @@ private fun IntegrationSettingsPanel(
     listenBrainzConfigured: Boolean, audDConfigured: Boolean,
     onBeginLastFm: (String, String) -> Unit, onCompleteLastFm: () -> Unit, onClearLastFm: () -> Unit,
     onSaveListenBrainz: (String) -> Unit, onClearListenBrainz: () -> Unit,
-    onSaveAudD: (String) -> Unit, onClearAudD: () -> Unit
+    onSaveAudD: (String) -> Unit, onClearAudD: () -> Unit,
+    listenBrainzPlaylists: @Composable () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     var lastFmKey by remember { mutableStateOf("") }
@@ -20734,6 +20620,7 @@ private fun IntegrationSettingsPanel(
                 listenBrainzToken = ""
             }
         }
+        if (listenBrainzConfigured) listenBrainzPlaylists()
         Text("AudD", color = LevyraText, fontWeight = FontWeight.Black, fontSize = 17.sp)
         OutlinedTextField(
             audDToken,

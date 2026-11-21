@@ -17,7 +17,13 @@ internal object HomeSoundtrackPortraits {
         "karol g" to "https://www.qobuz.com/it-it/interpreter/karol-g/2587039"
     )
 
+    private val fixedPortraits: Map<String, String> = mapOf(
+        "dua lipa" to "https://api.deezer.com/artist/8706544/image?size=xl"
+    )
+
     fun qobuzPortraitPage(artistName: String): String? = qobuzPortraitPages[artistName.trim().lowercase()]
+
+    fun fixedPortrait(artistName: String): String? = fixedPortraits[artistName.trim().lowercase()]
 
     fun artistForDay(languageCode: String, epochDay: Long): String {
         val pool = byLanguage[languageCode.substringBefore('-').lowercase()] ?: byLanguage.getValue("en")

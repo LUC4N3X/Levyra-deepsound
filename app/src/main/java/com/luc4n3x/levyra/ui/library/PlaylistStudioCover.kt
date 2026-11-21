@@ -16,12 +16,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
@@ -37,9 +39,13 @@ import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.material.icons.rounded.Radar
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
@@ -50,10 +56,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -73,6 +81,7 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.buildPlaylistCoverPlan
 import com.luc4n3x.levyra.domain.playlistStudioArtwork
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
+import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraMotion
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
@@ -88,16 +97,20 @@ private const val CoverRenderDebounceMs = 90L
 private val CoverCorner = 26.dp
 private const val ArtworkChoicesLimit = 40
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun PlaylistStudioCoverPreview(
     draft: PlaylistStudioDraft,
     animated: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    tonal: Boolean = false
 ) {
-    val shape = RoundedCornerShape(CoverCorner)
-    Box(
-        modifier = modifier
-            .shadow(
+    val colors = MaterialTheme.colorScheme
+    val shape = if (tonal) LevyraCardDesign.ArtworkShape else RoundedCornerShape(CoverCorner)
+    val frame = if (tonal) {
+        modifier.clip(shape).background(colors.surfaceContainerHigh).border(1.dp, colors.outlineVariant, shape)
+    } else {
+        modifier.shadow(
                 elevation = 22.dp,
                 shape = shape,
                 clip = false,
@@ -107,7 +120,33 @@ internal fun PlaylistStudioCoverPreview(
             .clip(shape)
             .background(LevyraPanelSoft)
             .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)), shape)
-    ) {
+    }
+    val emptyAutomatic = draft.coverStyle == PlaylistCoverStyle.Automatic && draft.tracks.isEmpty()
+    Box(modifier = frame, contentAlignment = Alignment.Center) {
+        if (tonal && emptyAutomatic) {
+            Box(
+                modifier = Modifier.fillMaxSize().drawWithCache {
+                    val radius = size.minDimension * 0.40f
+                    val groove = Stroke(width = 1.dp.toPx())
+                    val line = colors.onSurfaceVariant.copy(alpha = 0.20f)
+                    onDrawBehind {
+                        drawCircle(colors.surfaceContainerHighest, radius = radius)
+                        drawCircle(line, radius = radius * 0.96f, style = groove)
+                        drawCircle(line, radius = radius * 0.80f, style = groove)
+                        drawCircle(line, radius = radius * 0.64f, style = groove)
+                    }
+                },
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier.size(52.dp).clip(MaterialShapes.Cookie9Sided.toShape()).background(colors.surfaceContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = null, tint = colors.primary)
+                }
+            }
+            return@Box
+        }
         when (draft.coverStyle) {
             PlaylistCoverStyle.Current -> PlaylistCoverArt(
                 coverMode = PlaylistCoverMode.CUSTOM,
@@ -214,8 +253,10 @@ internal fun PlaylistStudioCoverStyles(
     selected: PlaylistCoverStyle,
     animated: Boolean,
     onSelect: (PlaylistCoverStyle) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    tonal: Boolean = false
 ) {
+    val colors = MaterialTheme.colorScheme
     LazyRow(
         modifier = modifier
             .fillMaxWidth()
@@ -226,41 +267,84 @@ internal fun PlaylistStudioCoverStyles(
         items(options, key = { it.style.name }, contentType = { "PlaylistStudioCover-options" }) { option ->
             val active = option.style == selected
             val tint by animateColorAsState(
-                targetValue = if (active) LevyraCyan else LevyraText,
+                targetValue = when {
+                    tonal && active -> colors.primary
+                    tonal -> colors.onSurfaceVariant
+                    active -> LevyraCyan
+                    else -> LevyraText
+                },
                 animationSpec = LevyraMotion.spec(animated, LevyraMotion.fade()),
                 label = "studio-cover-style-tint"
             )
+            val container = when {
+                tonal && active -> colors.surfaceContainerHighest
+                tonal -> colors.surfaceContainer
+                active -> LevyraCyan.copy(alpha = 0.14f)
+                else -> Color.White.copy(alpha = 0.05f)
+            }
+            val border = when {
+                tonal -> if (active) BorderStroke(1.dp, colors.primary.copy(alpha = 0.55f)) else null
+                active -> BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.6f))
+                else -> BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
+            }
+            val shape = if (tonal) LevyraCardDesign.EditorialShape else RoundedCornerShape(18.dp)
+            val size = if (tonal) Modifier.widthIn(max = 208.dp).heightIn(min = 48.dp) else Modifier.width(84.dp).heightIn(min = 72.dp)
             Surface(
-                color = if (active) LevyraCyan.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.05f),
-                border = BorderStroke(1.dp, if (active) LevyraCyan.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.08f)),
-                shape = RoundedCornerShape(18.dp),
-                modifier = Modifier
-                    .width(84.dp)
-                    .heightIn(min = 72.dp)
-                    .clip(RoundedCornerShape(18.dp))
+                color = container,
+                border = border,
+                shape = shape,
+                modifier = size
+                    .clip(shape)
                     .selectable(
                         selected = active,
                         role = Role.RadioButton,
                         onClick = { onSelect(option.style) }
                     )
             ) {
-                Column(
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 12.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(option.icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
-                    Text(
-                        text = option.label,
-                        color = tint,
-                        fontSize = 12.sp,
-                        fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                CoverStyleOptionContent(option, tonal, active, tint)
             }
+        }
+    }
+}
+
+@Composable
+private fun CoverStyleOptionContent(
+    option: PlaylistStudioCoverOption,
+    tonal: Boolean,
+    active: Boolean,
+    tint: Color
+) {
+    if (tonal) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(option.icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+            Text(
+                text = option.label,
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    } else {
+        Column(
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(option.icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
+            Text(
+                text = option.label,
+                color = tint,
+                fontSize = 12.sp,
+                fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }

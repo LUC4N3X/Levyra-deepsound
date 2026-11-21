@@ -547,6 +547,7 @@ internal fun LibrarySelectionAction(
     }
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun LibraryEmpty(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -558,13 +559,26 @@ internal fun LibraryEmpty(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Surface(color = LevyraGlass, shape = CircleShape) {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = LevyraMuted,
-                modifier = Modifier.padding(16.dp).size(26.dp)
-            )
+        if (com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin) {
+            val celeste = com.luc4n3x.levyra.ui.components.levyraUtilityColors(com.luc4n3x.levyra.ui.components.LevyraUtilitySeed)
+            androidx.compose.foundation.layout.Box(
+                Modifier
+                    .size(60.dp)
+                    .clip(androidx.compose.material3.MaterialShapes.Cookie9Sided.toShape())
+                    .background(celeste.container),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = null, tint = celeste.onContainer, modifier = Modifier.size(28.dp))
+            }
+        } else {
+            Surface(color = LevyraGlass, shape = CircleShape) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = LevyraMuted,
+                    modifier = Modifier.padding(16.dp).size(26.dp)
+                )
+            }
         }
         Text(
             title,

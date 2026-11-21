@@ -77,7 +77,8 @@ internal fun PlaylistStudioLibraryPane(
     animated: Boolean,
     onToggle: (Track) -> Unit,
     onClose: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    defaultCreation: Boolean = false
 ) {
     val strings = LocalLevyraStrings.current
     val haptics = LocalLevyraHaptics.current
@@ -99,7 +100,11 @@ internal fun PlaylistStudioLibraryPane(
                 .padding(start = 4.dp, end = 12.dp, top = 8.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            LevyraBackButton(onClick = onClose, contentDescription = strings.back)
+            if (defaultCreation) {
+                DefaultLibraryBackButton(onClick = onClose, contentDescription = strings.back)
+            } else {
+                LevyraBackButton(onClick = onClose, contentDescription = strings.back)
+            }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = strings.playlistStudioAddSongs,

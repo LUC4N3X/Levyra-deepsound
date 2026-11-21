@@ -27,6 +27,7 @@ internal data class LiveRadioUiState(
     val savingCustom: Boolean = false,
     val searchLimitReached: Boolean = false,
     val customError: CustomRadioError? = null,
+    val customImport: RadioImportResult? = null,
     val recent: List<RadioStation> = emptyList(),
     val countries: List<RadioDirectoryEntry> = emptyList(),
     val languages: List<RadioDirectoryEntry> = emptyList(),
@@ -259,7 +260,7 @@ internal class LiveRadioViewModel(
         }
     }
 
-    fun clearCustomError() { _state.update { it.copy(customError = null) } }
+    fun clearCustomError() { _state.update { it.copy(customError = null, customImport = null) } }
 
     private fun publishCustomFailure(error: Exception) {
         _state.update { it.copy(customError = (error as? CustomRadioException)?.reason ?: CustomRadioError.Storage) }
@@ -277,6 +278,20 @@ internal class LiveRadioViewModel(
             } catch (cancelled: CancellationException) { throw cancelled
             } catch (error: Exception) {
                 _state.update { it.copy(savingCustom = false, customError = (error as? CustomRadioException)?.reason ?: CustomRadioError.Storage) }
+            }
+        }
+    }
+
+    fun importCustom(uri: android.net.Uri) {
+        if (_state.value.savingCustom) return
+        _state.update { it.copy(savingCustom = true, customError = null, customImport = null) }
+        viewModelScope.launch {
+            try {
+                val result = repository.importCustom(uri)
+                _state.update { it.copy(savingCustom = false, customImport = result) }
+            } catch (cancelled: CancellationException) { throw cancelled
+            } catch (error: Exception) {
+                _state.update { it.copy(savingCustom = false, customError = (error as? CustomRadioException)?.reason ?: CustomRadioError.Playlist) }
             }
         }
     }

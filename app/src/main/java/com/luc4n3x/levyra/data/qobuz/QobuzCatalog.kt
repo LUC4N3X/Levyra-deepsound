@@ -215,6 +215,14 @@ internal object QobuzCatalogParser {
         )
     }
 
+    fun artistPortrait(html: String): String =
+        artistHeadingPicture.find(html)?.groupValues?.get(1)
+            ?.let { path -> "https://static.qobuz.com/images/artists/covers/large/$path" }
+            .orEmpty()
+
+    private val artistHeadingPicture =
+        Regex("""catalog-heading__picture"[^>]*url\(\s*['"]?(?:https:)?//static\.qobuz\.com/images/artists/covers/\w+/([0-9a-f]+\.jpg)""")
+
     internal fun text(raw: String): String = decode(tag.replace(raw, " ")).replace(space, " ").trim()
 
     private fun decode(value: String): String = value

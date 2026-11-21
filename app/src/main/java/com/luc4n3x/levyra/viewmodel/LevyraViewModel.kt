@@ -1091,7 +1091,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val playlistImportCatalog get() = playlistImportEngine.catalog
     val playlistImport: PlaylistImportController get() = playlistImportEngine.controller
     val playlistExport: PlaylistExportController by lazy {
-        PlaylistExportController(viewModelScope, getApplication<Application>().applicationContext)
+        PlaylistExportController(viewModelScope, getApplication<Application>().applicationContext, listenBrainzLibrary)
     }
     private val deArrowRepository = lazy { DeArrowRepository(DeArrowApi()) }
     private val videoMetadataEnhancer by lazy { VideoMetadataEnhancer(deArrowRepository.value) }
@@ -1326,6 +1326,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val externalCredentialStore = com.luc4n3x.levyra.data.security.AndroidKeystoreCredentialStore(application.applicationContext)
     private val lastFmScrobbling = com.luc4n3x.levyra.feature.scrobbling.LastFmScrobbleProvider(externalCredentialStore)
     private val listenBrainzScrobbling = com.luc4n3x.levyra.feature.scrobbling.ListenBrainzScrobbleProvider(externalCredentialStore)
+    private val listenBrainzLibrary by lazy { com.luc4n3x.levyra.feature.scrobbling.ListenBrainzLibrary(listenBrainzScrobbling::token) }
+    private val _listenBrainzPlaylists = MutableStateFlow(ListenBrainzPlaylistsState())
+    private var listenBrainzRefreshJob: Job? = null
+    val listenBrainzPlaylists: StateFlow<ListenBrainzPlaylistsState> = _listenBrainzPlaylists.asStateFlow()
     private val youtubeMusicHistory = com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicHistoryProvider(
         application.applicationContext,
         videoId = { track -> youtubePlayableTrack(track)?.videoUrl?.let(::youtubeVideoId) }
@@ -8317,6 +8321,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     suspend fun artistRadioTracks(track: Track): List<Track> =
         listOf(track) + repository.radio(track, _state.value.languageCode, 30, diversify = true).filterNot { it.id == track.id }
+
+    suspend fun searchSongs(query: String, limit: Int): List<Track> =
+        runCatchingPreservingCancellation { repository.search(query, limit, _state.value.languageCode) }
+            .getOrNull()
+            .orEmpty()
 
     fun playSimilarSong(track: Track) {
         val jam = _state.value.jam
@@ -16132,6 +16141,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun saveListenBrainzToken(token: String) {
         viewModelScope.launch(Dispatchers.IO) {
+            listenBrainzRefreshJob?.cancel()
+            _listenBrainzPlaylists.value = ListenBrainzPlaylistsState()
             _state.update { it.copy(listenBrainzConfigured = listenBrainzScrobbling.saveToken(token)) }
         }
     }
@@ -16139,7 +16150,43 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun clearListenBrainzToken() {
         viewModelScope.launch(Dispatchers.IO) {
             listenBrainzScrobbling.clear()
+            listenBrainzRefreshJob?.cancel()
+            _listenBrainzPlaylists.value = ListenBrainzPlaylistsState()
             _state.update { it.copy(listenBrainzConfigured = false) }
+        }
+    }
+
+    fun refreshListenBrainzPlaylists() {
+        listenBrainzRefreshJob?.cancel()
+        _listenBrainzPlaylists.update { it.copy(loading = true) }
+        listenBrainzRefreshJob = viewModelScope.launch {
+            val account = withContext(Dispatchers.IO) { listenBrainzScrobbling.token() }
+            val playlists = runCatchingPreservingCancellation { listenBrainzLibrary.playlists() }
+                .onFailure { Timber.w(it, "listenbrainz playlists failed") }
+                .getOrNull()
+            val current = withContext(Dispatchers.IO) { listenBrainzScrobbling.token() }
+            _listenBrainzPlaylists.update {
+                if (current != account) it.copy(loading = false, playlists = emptyList())
+                else it.copy(loading = false, playlists = playlists ?: it.playlists)
+            }
+        }
+    }
+
+    fun importListenBrainzPlaylist(playlist: com.luc4n3x.levyra.feature.scrobbling.ListenBrainzPlaylist, title: String) {
+        if (_listenBrainzPlaylists.value.importingId != null) return
+        _listenBrainzPlaylists.update { it.copy(importingId = playlist.id) }
+        viewModelScope.launch {
+            val tracks = runCatchingPreservingCancellation { listenBrainzLibrary.tracks(playlist) }
+                .onFailure { Timber.w(it, "listenbrainz playlist tracks failed") }
+                .getOrNull()
+                .orEmpty()
+            _listenBrainzPlaylists.update { it.copy(importingId = null) }
+            if (tracks.isEmpty()) {
+                val copy = com.luc4n3x.levyra.ui.i18n.listenBrainzCopy(_state.value.languageCode)
+                _state.update { it.copy(offlineExportMessage = copy.nothingToImport) }
+                return@launch
+            }
+            playlistImport.loadFile(com.luc4n3x.levyra.feature.scrobbling.ListenBrainzJson.xspf(title, tracks), "listenbrainz.xspf")
         }
     }
 

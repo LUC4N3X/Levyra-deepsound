@@ -369,6 +369,7 @@ internal fun SpotifyLiveRadioHome(state: LevyraUiState, viewModel: HomeViewModel
     if (editorOpen) CustomRadioDialog(
         station = null, saving = radioState.savingCustom, error = radioState.customError,
         onDismiss = { editorOpen = false }, onChanged = radio::clearCustomError,
+        imported = radioState.customImport, onImport = radio::importCustom,
         onSave = { name, url, image -> radio.saveCustom(name, url, image, null) { editorOpen = false } }
     )
 }

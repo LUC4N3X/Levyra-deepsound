@@ -30,7 +30,14 @@ internal data class PlaylistExportCopy(
     val retry: String,
     val done: String,
     val back: String,
-    val emptyPlaylist: String
+    val emptyPlaylist: String,
+    val listenBrainzConnected: String,
+    val listenBrainzSignedOut: String,
+    val listenBrainzMatching: String,
+    val listenBrainzSent: (matched: Int, total: Int) -> String,
+    val listenBrainzOpen: String,
+    val listenBrainzError: String,
+    val listenBrainzPartial: (saved: Int, total: Int) -> String
 )
 
 internal fun playlistExportCopy(code: String): PlaylistExportCopy = when (code.substringBefore('-')) {
@@ -64,7 +71,14 @@ internal fun playlistExportCopy(code: String): PlaylistExportCopy = when (code.s
         retry = "Riprova",
         done = "Fine",
         back = "Indietro",
-        emptyPlaylist = "La playlist è vuota: aggiungi dei brani per esportarla"
+        emptyPlaylist = "La playlist è vuota: aggiungi dei brani per esportarla",
+        listenBrainzConnected = "Abbina ogni brano per MusicBrainz ID e salva una playlist privata sul tuo account",
+        listenBrainzSignedOut = "Aggiungi il token ListenBrainz in Impostazioni › Integrazioni",
+        listenBrainzMatching = "Abbinamento dei brani su MusicBrainz…",
+        listenBrainzSent = { matched, total -> "Playlist salvata su ListenBrainz: $matched di $total brani abbinati per MusicBrainz ID" },
+        listenBrainzOpen = "Apri in ListenBrainz",
+        listenBrainzError = "ListenBrainz non ha trovato corrispondenze o non ha confermato il salvataggio. Riprova.",
+        listenBrainzPartial = { saved, total -> "Esportazione interrotta: playlist creata su ListenBrainz con $saved di $total brani" }
     )
     "ru" -> PlaylistExportCopy(
         action = "Экспорт плейлиста",
@@ -96,7 +110,14 @@ internal fun playlistExportCopy(code: String): PlaylistExportCopy = when (code.s
         retry = "Повторить",
         done = "Готово",
         back = "Назад",
-        emptyPlaylist = "Плейлист пуст: добавьте треки, чтобы экспортировать его"
+        emptyPlaylist = "Плейлист пуст: добавьте треки, чтобы экспортировать его",
+        listenBrainzConnected = "Сопоставить каждый трек по MusicBrainz ID и сохранить приватный плейлист в вашем аккаунте",
+        listenBrainzSignedOut = "Добавьте токен ListenBrainz в Настройки › Интеграции",
+        listenBrainzMatching = "Сопоставление треков в MusicBrainz…",
+        listenBrainzSent = { matched, total -> "Плейлист сохранён в ListenBrainz: сопоставлено по MusicBrainz ID $matched из $total" },
+        listenBrainzOpen = "Открыть в ListenBrainz",
+        listenBrainzError = "ListenBrainz не нашёл совпадений или не подтвердил сохранение. Повторите.",
+        listenBrainzPartial = { saved, total -> "Экспорт прерван: плейлист в ListenBrainz создан, сохранено $saved из $total" }
     )
     else -> PlaylistExportCopy(
         action = "Export playlist",
@@ -128,6 +149,13 @@ internal fun playlistExportCopy(code: String): PlaylistExportCopy = when (code.s
         retry = "Try again",
         done = "Done",
         back = "Back",
-        emptyPlaylist = "This playlist is empty: add tracks to export it"
+        emptyPlaylist = "This playlist is empty: add tracks to export it",
+        listenBrainzConnected = "Match every track by MusicBrainz ID and save a private playlist to your account",
+        listenBrainzSignedOut = "Add your ListenBrainz token in Settings › Integrations",
+        listenBrainzMatching = "Matching tracks on MusicBrainz…",
+        listenBrainzSent = { matched, total -> "Saved to ListenBrainz: $matched of $total tracks matched by MusicBrainz ID" },
+        listenBrainzOpen = "Open in ListenBrainz",
+        listenBrainzError = "ListenBrainz found no matches or didn’t confirm the save. Try again.",
+        listenBrainzPartial = { saved, total -> "Export stopped: the ListenBrainz playlist was created with $saved of $total tracks" }
     )
 }

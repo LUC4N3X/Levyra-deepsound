@@ -48,9 +48,14 @@ import androidx.compose.material.icons.rounded.DragHandle
 import androidx.compose.material.icons.rounded.OfflinePin
 import androidx.compose.material.icons.rounded.RemoveCircleOutline
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -68,6 +73,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -91,18 +97,24 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.playlistStudioArtwork
 import com.luc4n3x.levyra.domain.playlistStudioStats
 import com.luc4n3x.levyra.ui.components.rememberLastNonNull
+import com.luc4n3x.levyra.ui.components.LevyraSectionAction
+import com.luc4n3x.levyra.ui.components.LevyraSectionHeader
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.i18n.formatLibraryDuration
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
+import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
 import com.luc4n3x.levyra.ui.theme.LevyraInk
+import com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin
+import com.luc4n3x.levyra.ui.theme.LevyraIsPureBlack
 import com.luc4n3x.levyra.ui.theme.LevyraMotion
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraPanel
 import com.luc4n3x.levyra.ui.theme.LevyraPink
 import com.luc4n3x.levyra.ui.theme.LevyraText
+import com.luc4n3x.levyra.ui.theme.LevyraType
 import com.luc4n3x.levyra.ui.theme.LevyraViolet
 import com.luc4n3x.levyra.ui.theme.LocalLevyraHaptics
 import com.luc4n3x.levyra.viewmodel.PlaylistStudioController
@@ -128,6 +140,8 @@ internal fun PlaylistStudioScreen(
     val strings = LocalLevyraStrings.current
     val haptics = LocalLevyraHaptics.current
     val draft = session.draft
+    val openedForCreation = rememberSaveable(session.generation) { draft.isNew }
+    val defaultCreation = LevyraIsDefaultSkin && openedForCreation
     var libraryOpen by rememberSaveable(session.generation) { mutableStateOf(false) }
     var discardPrompt by rememberSaveable(session.generation) { mutableStateOf(false) }
     var photoSource by remember(session.generation) { mutableStateOf<android.net.Uri?>(null) }
@@ -148,6 +162,12 @@ internal fun PlaylistStudioScreen(
             .fillMaxSize()
             .background(LevyraInk)
     ) {
+        if (defaultCreation && !LevyraIsPureBlack) {
+            com.luc4n3x.levyra.ui.components.LevyraUtilityBackdrop(
+                accent = com.luc4n3x.levyra.ui.components.LevyraUtilitySeed,
+                listState = listState
+            )
+        }
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             val wide = maxWidth.value >= StudioWideBreakpointDp
             LazyColumn(
@@ -166,6 +186,7 @@ internal fun PlaylistStudioScreen(
                         session = session,
                         strings = strings,
                         animated = animated,
+                        defaultCreation = defaultCreation,
                         onClose = requestClose,
                         onSave = {
                             haptics.perform(LevyraHapticAction.Confirm)
@@ -179,6 +200,7 @@ internal fun PlaylistStudioScreen(
                         strings = strings,
                         animated = animated,
                         wide = wide,
+                        defaultCreation = defaultCreation,
                         statsLine = studioStatsLine(strings, stats.trackCount, stats.durationMs, stats.artistCount, stats.offlineCount),
                         onRename = controller::rename,
                         onRetry = controller::retry
@@ -189,6 +211,7 @@ internal fun PlaylistStudioScreen(
                     options = coverOptions,
                     strings = strings,
                     animated = animated,
+                    defaultCreation = defaultCreation,
                     onSelectStyle = { style ->
                         if (style == PlaylistCoverStyle.Photo) {
                             photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
@@ -205,6 +228,7 @@ internal fun PlaylistStudioScreen(
                     reorder = reorder,
                     controller = controller,
                     animated = animated,
+                    defaultCreation = defaultCreation,
                     onAddSongs = { libraryOpen = true }
                 )
             }
@@ -230,6 +254,7 @@ internal fun PlaylistStudioScreen(
                 selectedIds = draft.trackIds,
                 downloadedTrackIds = downloadedTrackIds,
                 animated = animated,
+                defaultCreation = defaultCreation,
                 onToggle = controller::toggle,
                 onClose = { libraryOpen = false }
             )
@@ -306,17 +331,23 @@ private fun LazyListScope.studioCoverSection(
     options: List<PlaylistStudioCoverOption>,
     strings: LevyraStrings,
     animated: Boolean,
+    defaultCreation: Boolean,
     onSelectStyle: (PlaylistCoverStyle) -> Unit,
     onSelectTrack: (String) -> Unit
 ) {
     item(key = "studio-cover-label", contentType = "studio-label") {
-        StudioSectionLabel(strings.playlistStudioCover)
+        if (defaultCreation) {
+            LevyraSectionHeader(strings.playlistStudioCover, modifier = Modifier.padding(horizontal = StudioGutter))
+        } else {
+            StudioSectionLabel(strings.playlistStudioCover)
+        }
     }
     item(key = "studio-cover-styles", contentType = "studio-cover-styles") {
         PlaylistStudioCoverStyles(
             options = options,
             selected = draft.coverStyle,
             animated = animated,
+            tonal = defaultCreation,
             onSelect = onSelectStyle
         )
     }
@@ -340,25 +371,49 @@ private fun LazyListScope.studioTrackSection(
     reorder: StudioReorderState,
     controller: PlaylistStudioController,
     animated: Boolean,
+    defaultCreation: Boolean,
     onAddSongs: () -> Unit
 ) {
     item(key = "studio-tracks-header", contentType = "studio-tracks-header") {
-        StudioTracksHeader(
-            title = strings.songsPlain,
-            count = draft.tracks.size,
-            hint = if (draft.tracks.size > 1) strings.dragToReorder else null,
-            addLabel = strings.playlistStudioAddSongs,
-            onAdd = onAddSongs
-        )
+        if (defaultCreation) {
+            LevyraSectionHeader(
+                title = strings.songsPlain,
+                subtitle = strings.dragToReorder.takeIf { draft.tracks.size > 1 },
+                modifier = Modifier.padding(start = StudioGutter, end = StudioGutter, top = 12.dp)
+            ) {
+                LevyraSectionAction(
+                    label = strings.playlistStudioAddSongs,
+                    onClick = onAddSongs,
+                    leadingIcon = Icons.AutoMirrored.Rounded.PlaylistAdd
+                )
+            }
+        } else {
+            StudioTracksHeader(
+                title = strings.songsPlain,
+                count = draft.tracks.size,
+                hint = if (draft.tracks.size > 1) strings.dragToReorder else null,
+                addLabel = strings.playlistStudioAddSongs,
+                onAdd = onAddSongs
+            )
+        }
     }
     if (draft.tracks.isEmpty()) {
         item(key = "studio-empty", contentType = "studio-empty") {
-            PlaylistStudioEmptyTracks(
-                title = strings.playlistStudioEmptyTitle,
-                body = strings.playlistStudioEmptyBody,
-                actionLabel = strings.playlistStudioAddSongs,
-                onAction = onAddSongs
-            )
+            if (defaultCreation) {
+                Text(
+                    text = strings.playlistStudioEmptyBody,
+                    style = LevyraType.metadata,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = StudioGutter, vertical = 8.dp)
+                )
+            } else {
+                PlaylistStudioEmptyTracks(
+                    title = strings.playlistStudioEmptyTitle,
+                    body = strings.playlistStudioEmptyBody,
+                    actionLabel = strings.playlistStudioAddSongs,
+                    onAction = onAddSongs
+                )
+            }
         }
         return
     }
@@ -526,9 +581,47 @@ private fun StudioTopBar(
     session: PlaylistStudioSession,
     strings: LevyraStrings,
     animated: Boolean,
+    defaultCreation: Boolean,
     onClose: () -> Unit,
     onSave: () -> Unit
 ) {
+    if (defaultCreation) {
+        val colors = MaterialTheme.colorScheme
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = StudioGutter, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            DefaultLibraryBackButton(onClick = onClose, contentDescription = strings.back)
+            Text(
+                text = if (session.draft.isNew) strings.newPlaylist else strings.playlistStudioEdit,
+                color = colors.onSurface,
+                style = LevyraType.screenTitle,
+                modifier = Modifier.weight(1f).semantics { heading() }
+            )
+            Button(
+                onClick = onSave,
+                enabled = session.canSave,
+                shape = LevyraCardDesign.EditorialShape,
+                colors = ButtonDefaults.buttonColors(
+                    disabledContainerColor = Color.Transparent,
+                    disabledContentColor = colors.onSurfaceVariant
+                ),
+                modifier = Modifier.heightIn(min = 48.dp)
+            ) {
+                if (session.saving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        color = colors.onSurfaceVariant,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(Modifier.width(8.dp))
+                }
+                Text(strings.save)
+            }
+        }
+        return
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -612,20 +705,22 @@ private fun StudioHero(
     strings: LevyraStrings,
     animated: Boolean,
     wide: Boolean,
+    defaultCreation: Boolean,
     statsLine: String,
     onRename: (String) -> Unit,
     onRetry: () -> Unit
 ) {
     val draft = session.draft
     val cover: @Composable (Modifier) -> Unit = { modifier ->
-        PlaylistStudioCoverPreview(draft = draft, animated = animated, modifier = modifier)
+        PlaylistStudioCoverPreview(draft = draft, animated = animated, modifier = modifier, tonal = defaultCreation)
     }
     val details: @Composable (Modifier, TextAlign) -> Unit = { modifier, align ->
         Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
             StudioNameField(
                 value = draft.name,
-                placeholder = strings.playlistStudioNameHint,
+                placeholder = if (defaultCreation) strings.playlistName else strings.playlistStudioNameHint,
                 align = align,
+                tonal = defaultCreation,
                 onValueChange = onRename
             )
             Text(
@@ -640,11 +735,33 @@ private fun StudioHero(
                 session = session,
                 strings = strings,
                 align = align,
+                tonal = defaultCreation,
                 onRetry = onRetry
             )
         }
     }
-    if (wide) {
+    if (defaultCreation) {
+        val heroModifier = Modifier.fillMaxWidth().padding(horizontal = StudioGutter, vertical = 12.dp)
+        if (wide && LocalDensity.current.fontScale < 1.4f) {
+            Row(
+                modifier = heroModifier,
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                cover(Modifier.size(176.dp))
+                details(Modifier.weight(1f), TextAlign.Start)
+            }
+        } else {
+            Column(
+                modifier = heroModifier,
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                cover(Modifier.size(148.dp))
+                details(Modifier.widthIn(max = 480.dp).fillMaxWidth(), TextAlign.Start)
+            }
+        }
+    } else if (wide) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -679,8 +796,33 @@ private fun StudioNameField(
     value: String,
     placeholder: String,
     align: TextAlign,
+    tonal: Boolean,
     onValueChange: (String) -> Unit
 ) {
+    if (tonal) {
+        val colors = MaterialTheme.colorScheme
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            label = { Text(placeholder) },
+            textStyle = LevyraType.sectionTitle,
+            shape = LevyraCardDesign.EditorialShape,
+            colors = OutlinedTextFieldDefaults.colors(
+                unfocusedContainerColor = colors.surfaceContainer,
+                focusedContainerColor = colors.surfaceContainerHigh,
+                unfocusedBorderColor = Color.Transparent,
+                focusedBorderColor = colors.primary,
+                unfocusedLabelColor = colors.onSurfaceVariant
+            ),
+            maxLines = 3,
+            keyboardOptions = KeyboardOptions(
+                capitalization = KeyboardCapitalization.Sentences,
+                imeAction = ImeAction.Done
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+        return
+    }
     val style = TextStyle(
         color = LevyraText,
         fontSize = 28.sp,
@@ -722,6 +864,7 @@ private fun StudioSaveStatus(
     session: PlaylistStudioSession,
     strings: LevyraStrings,
     align: TextAlign,
+    tonal: Boolean,
     onRetry: () -> Unit
 ) {
     val state = session.saveState
@@ -755,7 +898,8 @@ private fun StudioSaveStatus(
             text = label,
             color = if (state == PlaylistStudioSaveState.Failed) LevyraText else LevyraMuted,
             fontSize = 12.sp,
-            fontWeight = FontWeight.Medium
+            fontWeight = FontWeight.Medium,
+            modifier = if (tonal && state == PlaylistStudioSaveState.Failed) Modifier.weight(1f) else Modifier
         )
         if (state == PlaylistStudioSaveState.Failed) {
             TextButton(onClick = onRetry, modifier = Modifier.heightIn(min = 40.dp)) {

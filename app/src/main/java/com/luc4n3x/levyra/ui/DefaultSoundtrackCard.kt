@@ -96,7 +96,7 @@ internal fun DefaultSoundtrackCard(
     val blur = LocalLevyraVisualCapabilities.current.heavyBlur && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val interaction = remember { MutableInteractionSource() }
     val body = if (compactStage) {
-        Modifier.heightIn(min = levyraCompactLandscapeHeight(272.dp, viewportShare = 0.5f, minimum = 144.dp))
+        Modifier.heightIn(min = levyraCompactLandscapeHeight(304.dp, viewportShare = 0.5f, minimum = 144.dp))
     } else {
         Modifier.height(DefaultSoundtrackBodyHeight)
     }

@@ -10,7 +10,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 
 internal class RadioRepository(
-    context: Context,
+    private val context: Context,
     private val api: RadioBrowserApi = RadioBrowserApi(),
     private val store: RadioStore = RadioStore(context),
     private val now: () -> Long = System::currentTimeMillis
@@ -165,6 +165,23 @@ internal class RadioRepository(
 
     suspend fun deleteCustom(station: RadioStation) = store.deleteCustom(station)
 
+    suspend fun importCustom(uri: android.net.Uri): RadioImportResult = withContext(Dispatchers.IO) {
+        val bytes = context.contentResolver.openInputStream(uri)?.use { input ->
+            val out = java.io.ByteArrayOutputStream()
+            val chunk = ByteArray(8192)
+            while (true) {
+                val read = input.read(chunk)
+                if (read < 0) break
+                out.write(chunk, 0, read)
+                if (out.size() > MAX_PLAYLIST_BYTES) throw CustomRadioException(CustomRadioError.Playlist)
+            }
+            out.toByteArray()
+        } ?: throw CustomRadioException(CustomRadioError.Playlist)
+        val entries = parseRadioPlaylist(bytes.toString(Charsets.UTF_8))
+        if (entries.isEmpty()) throw CustomRadioException(CustomRadioError.Playlist)
+        store.importCustom(entries)
+    }
+
     suspend fun recent(): List<RadioStation> = store.recent()
 
     suspend fun playbackStation(): RadioStation? = store.playbackStation()
@@ -184,6 +201,7 @@ internal class RadioRepository(
 
     private companion object {
         const val MAX_CACHE_ENTRIES = 48
+        const val MAX_PLAYLIST_BYTES = 1_048_576
         const val STATION_CACHE_MS = 30 * 60 * 1_000L
         const val DIRECTORY_CACHE_MS = 24 * 60 * 60 * 1_000L
     }

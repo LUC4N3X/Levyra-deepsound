@@ -38,7 +38,14 @@ internal fun LevyraBackButton(
     contentDescription: String,
     modifier: Modifier = Modifier,
     size: Dp = LevyraBackButtonSize,
-    colors: IconButtonColors = IconButtonDefaults.filledTonalIconButtonColors()
+    colors: IconButtonColors = if (com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin) {
+        IconButtonDefaults.filledTonalIconButtonColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        )
+    } else {
+        IconButtonDefaults.filledTonalIconButtonColors()
+    }
 ) {
     IconButton(
         onClick = onClick,

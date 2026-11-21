@@ -144,7 +144,7 @@ class QobuzEditorialRepository private constructor(context: Context) {
             Timber.w(error, "Qobuz artist portrait failed")
             null
         }
-        val portrait = html?.let(com.luc4n3x.levyra.data.news.MusicNewsFeedParser::articleImage).orEmpty()
+        val portrait = html?.let(QobuzCatalogParser::artistPortrait).orEmpty()
         if (portrait.isNotBlank()) {
             if (artistPortraits.size >= MAX_ARTIST_PORTRAITS) artistPortraits.clear()
             artistPortraits[pageUrl] = portrait
