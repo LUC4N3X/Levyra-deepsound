@@ -135,31 +135,77 @@ function shadow(shape) {
 }
 
 function cardBackdrop(index, p) {
-  const isHeroLeft = index === 0;
-  const isHeroRight = index === 1;
-  const gradAttrs = isHeroLeft
-    ? 'x1="0" y1="0" x2="1" y2="1"'
-    : isHeroRight
-      ? 'x1="1" y1="1" x2="0" y2="0"'
-      : (index % 2 === 0 ? 'x1="0" y1="0.2" x2="1" y2="0.85"' : 'x1="0" y1="0.15" x2="1" y2="0.9"');
-  const mainShape = isHeroLeft
-    ? `<path d="${flower(110, 560, 230, 10, 0.11)}" fill="${p.shape}" opacity=".07"/>`
-    : isHeroRight
-      ? `<path d="${flower(790, 440, 220, 8, 0.12)}" fill="${p.shape}" opacity=".07"/>`
-      : index % 2 === 0
-        ? `<path d="${flower(810, 360, 210, 12, 0.09)}" fill="${p.shape}" opacity=".07"/>`
-        : `<path d="${flower(820, 1180, 210, 8, 0.12)}" fill="${p.shape}" opacity=".07"/>`;
+  const row = Math.floor(index / 4);
+  const col = index % 4;
+  const xOff = -(col * 910);
+  const flip = row % 2 === 1;
+  const waveY = flip ? 1140 : 1260;
+  const amp = flip ? -220 : 220;
+  const ribbon1 = `M -200 ${waveY} C 550 ${waveY - amp}, 1150 ${waveY + amp * 1.15}, 1850 ${waveY - amp * 0.45} C 2550 ${waveY - amp * 1.4}, 3150 ${waveY + amp * 0.85}, 3900 ${waveY - 120} L 3900 2050 L -200 2050 Z`;
+  const ribbon2 = `M -200 ${waveY + 260} C 650 ${waveY + 260 + amp * 0.8}, 1350 ${waveY + 120 - amp * 0.9}, 2150 ${waveY + 280 + amp * 0.6} C 2850 ${waveY + 380 - amp * 0.7}, 3350 ${waveY + 140}, 3900 ${waveY + 220} L 3900 2050 L -200 2050 Z`;
+  const glassEdge1 = `M -200 ${waveY} C 550 ${waveY - amp}, 1150 ${waveY + amp * 1.15}, 1850 ${waveY - amp * 0.45} C 2550 ${waveY - amp * 1.4}, 3150 ${waveY + amp * 0.85}, 3900 ${waveY - 120}`;
+  const glassEdge2 = `M -200 ${waveY + 260} C 650 ${waveY + 260 + amp * 0.8}, 1350 ${waveY + 120 - amp * 0.9}, 2150 ${waveY + 280 + amp * 0.6} C 2850 ${waveY + 380 - amp * 0.7}, 3350 ${waveY + 140}, 3900 ${waveY + 220}`;
+  const orbX1 = flip ? 2850 : 780;
+  const orbX2 = flip ? 1250 : 2650;
+  const orbX3 = flip ? 2050 : 1780;
+  const shape = col % 2 === 0
+    ? `<path d="${flower(800, 380, 195, 10, 0.10)}" fill="${p.shape}" opacity=".055"/>`
+    : `<path d="${flower(105, 420, 190, 8, 0.11)}" fill="${p.shape}" opacity=".055"/>`;
   return svg(`
     <defs>
-      <linearGradient id="paper" ${gradAttrs}>
-        <stop offset="0%" stop-color="${p.top}"/>
-        <stop offset="28%" stop-color="${p.top}"/>
-        <stop offset="62%" stop-color="${p.mid}"/>
-        <stop offset="100%" stop-color="${p.bottom}"/>
+      <linearGradient id="baseSky" x1="0" y1="0" x2="0.6" y2="1">
+        <stop offset="0%" stop-color="#FFFFFF"/>
+        <stop offset="34%" stop-color="#F7FAFF"/>
+        <stop offset="72%" stop-color="#E4EEFF"/>
+        <stop offset="100%" stop-color="#C6D9FC"/>
       </linearGradient>
+      <linearGradient id="silkBlue" x1="0" y1="0" x2="1" y2="0.25">
+        <stop offset="0%" stop-color="#6A95FA"/>
+        <stop offset="35%" stop-color="#7B8BF8"/>
+        <stop offset="68%" stop-color="#58A8FA"/>
+        <stop offset="100%" stop-color="#8B84F6"/>
+      </linearGradient>
+      <linearGradient id="silkDeep" x1="0" y1="0.2" x2="1" y2="0.9">
+        <stop offset="0%" stop-color="#4C7DF6"/>
+        <stop offset="48%" stop-color="#6F7CF6"/>
+        <stop offset="100%" stop-color="#4A9BF5"/>
+      </linearGradient>
+      <radialGradient id="orbA" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#5C8DF8" stop-opacity=".42"/>
+        <stop offset="55%" stop-color="#7C9EFB" stop-opacity=".16"/>
+        <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="orbB" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#8C7CF6" stop-opacity=".34"/>
+        <stop offset="55%" stop-color="#A399FA" stop-opacity=".13"/>
+        <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="orbC" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#4BC0FA" stop-opacity=".30"/>
+        <stop offset="60%" stop-color="#89D4FC" stop-opacity=".10"/>
+        <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+      </radialGradient>
+      <linearGradient id="topVeil" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#FFFFFF" stop-opacity=".92"/>
+        <stop offset="22%" stop-color="#FFFFFF" stop-opacity=".55"/>
+        <stop offset="42%" stop-color="#FFFFFF" stop-opacity="0"/>
+      </linearGradient>
+      <filter id="glassBlur" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="58"/></filter>
+      <filter id="softRim" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="8"/></filter>
     </defs>
-    <rect width="900" height="1800" fill="url(#paper)"/>
-    ${mainShape}
+    <rect width="900" height="1800" fill="url(#baseSky)"/>
+    <g transform="translate(${xOff} 0)">
+      <ellipse cx="${orbX1}" cy="1360" rx="920" ry="620" fill="url(#orbA)"/>
+      <ellipse cx="${orbX2}" cy="1180" rx="860" ry="640" fill="url(#orbB)"/>
+      <ellipse cx="${orbX3}" cy="1540" rx="820" ry="520" fill="url(#orbC)"/>
+      <path d="${ribbon1}" fill="url(#silkBlue)" opacity=".32" filter="url(#glassBlur)"/>
+      <path d="${ribbon2}" fill="url(#silkDeep)" opacity=".26" filter="url(#glassBlur)"/>
+      <path d="${glassEdge1}" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-opacity=".68" filter="url(#softRim)"/>
+      <path d="${glassEdge1}" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-opacity=".55"/>
+      <path d="${glassEdge2}" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-opacity=".42" filter="url(#softRim)"/>
+    </g>
+    <rect width="900" height="1800" fill="url(#topVeil)"/>
+    ${shape}
   `);
 }
 
