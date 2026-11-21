@@ -2,6 +2,27 @@ package com.luc4n3x.levyra.ui
 
 import android.os.Build
 import androidx.compose.foundation.clickable
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.material3.ripple
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.semantics.contentDescription
+import com.luc4n3x.levyra.ui.components.rememberLevyraHeroPlayShape
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,9 +39,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -156,8 +175,8 @@ internal fun DefaultSoundtrackCard(
                         Text(
                             title,
                             color = colors.onSurface,
-                            style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                            maxLines = 3,
+                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.semantics { heading() }
                         )
@@ -167,45 +186,108 @@ internal fun DefaultSoundtrackCard(
                         }
                     }
                 }
-                val playButton: @Composable (Modifier) -> Unit = { modifier ->
-                    FilledIconButton(
-                        onClick = onOpen,
-                        shapes = IconButtonDefaults.shapes(),
-                        colors = IconButtonDefaults.filledIconButtonColors(action.accent, action.onAccent),
-                        modifier = modifier
-                    ) {
-                        if (resolving) {
-                            DiscoveryLoadingIndicator(Modifier.size(24.dp), color = action.onAccent)
-                        } else {
-                            Icon(
-                                if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                                contentDescription = playLabel,
-                                modifier = Modifier.size(28.dp)
-                            )
-                        }
-                    }
-                }
-                if (compactStage) {
-                    Row(
-                        Modifier.align(Alignment.BottomStart)
-                            .fillMaxWidth()
-                            .padding(start = LevyraHomeDesign.HorizontalInset, end = LevyraHomeDesign.HorizontalInset, bottom = 20.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.Bottom
-                    ) {
-                        details(Modifier.weight(1f))
-                        playButton(Modifier.size(56.dp))
-                    }
-                } else {
-                    details(Modifier.align(Alignment.BottomStart).fillMaxWidth(0.68f).padding(start = 20.dp, bottom = 28.dp))
-                    playButton(Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = 28.dp).size(64.dp))
-                }
+                val inset = if (compactStage) LevyraHomeDesign.HorizontalInset else 20.dp
+                details(
+                    Modifier.align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .padding(
+                            start = inset,
+                            end = inset + SoundtrackPlaySize + 12.dp,
+                            bottom = (if (compactStage) 12.dp else 24.dp) + SoundtrackPlaySize * SoundtrackPlayOverhang
+                        )
+                )
+                SoundtrackPlayButton(
+                    playing = playing,
+                    resolving = resolving,
+                    label = playLabel,
+                    accent = action.accent,
+                    onAccent = action.onAccent,
+                    onClick = onOpen,
+                    modifier = Modifier.align(Alignment.BottomEnd)
+                        .padding(end = inset, bottom = 2.dp)
+                )
             }
         }
     }
 }
 
 private const val DefaultSoundtrackPortraitShare = 0.78f
+private val SoundtrackPlaySize = 72.dp
+private const val SoundtrackPlayOverhang = 0.3f
+
+@Composable
+private fun SoundtrackPlayButton(
+    playing: Boolean,
+    resolving: Boolean,
+    label: String,
+    accent: Color,
+    onAccent: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val animated = LocalAnimationsEnabled.current
+    val shape = rememberLevyraHeroPlayShape(playing = playing, animated = animated, spinWhilePlaying = true)
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.9f else 1f,
+        animationSpec = if (animated) spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMedium) else snap(),
+        label = "soundtrackPlayPress"
+    )
+    Box(
+        modifier = modifier
+            .size(SoundtrackPlaySize)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .drawBehind {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        listOf(Color.Black.copy(alpha = 0.32f), Color.Transparent),
+                        center = center + Offset(0f, size.height * 0.08f),
+                        radius = size.minDimension * 0.72f
+                    ),
+                    radius = size.minDimension * 0.72f,
+                    center = center + Offset(0f, size.height * 0.08f)
+                )
+            }
+            .clip(shape)
+            .background(accent)
+            .clickable(
+                interactionSource = interaction,
+                indication = ripple(color = onAccent),
+                role = Role.Button,
+                onClickLabel = label,
+                onClick = onClick
+            )
+            .semantics { contentDescription = label },
+        contentAlignment = Alignment.Center
+    ) {
+        if (resolving) {
+            DiscoveryLoadingIndicator(Modifier.size(30.dp), color = onAccent)
+        } else {
+            AnimatedContent(
+                targetState = playing,
+                transitionSpec = {
+                    if (animated) {
+                        (fadeIn() + scaleIn(initialScale = 0.5f)) togetherWith (fadeOut() + scaleOut(targetScale = 0.5f))
+                    } else {
+                        EnterTransition.None togetherWith ExitTransition.None
+                    }
+                },
+                label = "soundtrackPlayGlyph"
+            ) { isPlaying ->
+                Icon(
+                    if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                    contentDescription = null,
+                    tint = onAccent,
+                    modifier = Modifier.size(34.dp)
+                )
+            }
+        }
+    }
+}
 private val DefaultSoundtrackBodyHeight = 300.dp
 
 private fun soundtrackOverline(text: String, highlight: String?, accent: Color): AnnotatedString = buildAnnotatedString {

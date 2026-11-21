@@ -1071,7 +1071,7 @@ internal fun HomeEditorialSpotlight(
             artworkUrl = resolvedArtistArtworkUrl,
             overline = greeting?.first ?: strings.homeSoundtrackRadio,
             overlineHighlight = greeting?.second,
-            title = soundtrackTitle,
+            title = strings.homeSoundtrackTodayTitle,
             lead = soundtrackLead,
             companions = visibleCompanionArtworkUrls,
             playing = isCurrent && isPlaying,

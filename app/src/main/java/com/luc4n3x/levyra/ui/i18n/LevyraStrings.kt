@@ -270,6 +270,7 @@ class LevyraStrings private constructor(
     val profilePhotoRemove: String get() = value("profilePhotoRemove")
     val profilePhotoFailed: String get() = value("profilePhotoFailed")
     val homeSoundtrackTitle: String get() = value("homeSoundtrackTitle")
+    val homeSoundtrackTodayTitle: String get() = value("homeSoundtrackTodayTitle")
     fun homeSoundtrackLead(artists: List<String>): String {
         val names = artists.asSequence()
             .map(String::trim)
