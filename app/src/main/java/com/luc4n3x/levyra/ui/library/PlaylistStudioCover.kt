@@ -282,17 +282,16 @@ internal fun PlaylistStudioCoverStyles(
                 active -> LevyraCyan.copy(alpha = 0.14f)
                 else -> Color.White.copy(alpha = 0.05f)
             }
-            val outline = when {
-                tonal && active -> colors.primary.copy(alpha = 0.55f)
-                tonal -> colors.outlineVariant
-                active -> LevyraCyan.copy(alpha = 0.6f)
-                else -> Color.White.copy(alpha = 0.08f)
+            val border = when {
+                tonal -> if (active) BorderStroke(1.dp, colors.primary.copy(alpha = 0.55f)) else null
+                active -> BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.6f))
+                else -> BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
             }
             val shape = if (tonal) LevyraCardDesign.EditorialShape else RoundedCornerShape(18.dp)
             val size = if (tonal) Modifier.widthIn(max = 208.dp).heightIn(min = 48.dp) else Modifier.width(84.dp).heightIn(min = 72.dp)
             Surface(
                 color = container,
-                border = if (tonal && !active) null else BorderStroke(1.dp, outline),
+                border = border,
                 shape = shape,
                 modifier = size
                     .clip(shape)
@@ -302,38 +301,50 @@ internal fun PlaylistStudioCoverStyles(
                         onClick = { onSelect(option.style) }
                     )
             ) {
-                if (tonal) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(option.icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
-                        Text(
-                            text = option.label,
-                            color = colors.onSurface,
-                            style = MaterialTheme.typography.labelLarge,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                } else Column(
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 12.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(option.icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
-                    Text(
-                        text = option.label,
-                        color = tint,
-                        fontSize = 12.sp,
-                        fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                CoverStyleOptionContent(option, tonal, active, tint)
             }
+        }
+    }
+}
+
+@Composable
+private fun CoverStyleOptionContent(
+    option: PlaylistStudioCoverOption,
+    tonal: Boolean,
+    active: Boolean,
+    tint: Color
+) {
+    if (tonal) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(option.icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+            Text(
+                text = option.label,
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    } else {
+        Column(
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(option.icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
+            Text(
+                text = option.label,
+                color = tint,
+                fontSize = 12.sp,
+                fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
