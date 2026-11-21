@@ -87,12 +87,52 @@ async function extractPhone(index, spec) {
     .composite([{ input: rounded(708, phoneHeight, 34), blend: 'dest-in' }]).png().toBuffer();
 }
 
-const palettes = [
-  { top: '#FFFFFF', mid: '#D5E3FF', bottom: '#B6D0FA', shape: '#7693C9', ink: '#161F33', accent: '#3D5684', muted: '#4D5C7A' },
-  { top: '#FFFFFF', mid: '#D5E3FF', bottom: '#B8D1FF', shape: '#6C84B5', ink: '#161F33', accent: '#3D5684', muted: '#4D5C7A' },
-  { top: '#FFFFFF', mid: '#D5E3FF', bottom: '#B6D0FA', shape: '#7693C9', ink: '#161F33', accent: '#3D5684', muted: '#4D5C7A' },
-  { top: '#FFFFFF', mid: '#D5E3FF', bottom: '#B8D1FF', shape: '#6C84B5', ink: '#161F33', accent: '#3D5684', muted: '#4D5C7A' },
-];
+const brandColors = { ink: '#161F33', muted: '#4D5C7A' };
+const shapeColors = ['#7693C9', '#6C84B5'];
+
+const BACKDROP_DEFS = `
+  <defs>
+    <linearGradient id="baseSky" x1="0" y1="0" x2="0.55" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="34%" stop-color="#F6F9FF"/>
+      <stop offset="70%" stop-color="#D5E3FF"/>
+      <stop offset="100%" stop-color="#B6D0FA"/>
+    </linearGradient>
+    <linearGradient id="silkBlue" x1="0" y1="0" x2="1" y2="0.25">
+      <stop offset="0%" stop-color="#88B0F2"/>
+      <stop offset="36%" stop-color="#6C89BE"/>
+      <stop offset="68%" stop-color="#9AC0FA"/>
+      <stop offset="100%" stop-color="#5E7BB2"/>
+    </linearGradient>
+    <linearGradient id="silkDeep" x1="0" y1="0.2" x2="1" y2="0.9">
+      <stop offset="0%" stop-color="#546D9E"/>
+      <stop offset="50%" stop-color="#6C84B5"/>
+      <stop offset="100%" stop-color="#4A6494"/>
+    </linearGradient>
+    <radialGradient id="orbA" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#8EB6F6" stop-opacity=".44"/>
+      <stop offset="55%" stop-color="#B6D0FA" stop-opacity=".18"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="orbB" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#6C84B5" stop-opacity=".34"/>
+      <stop offset="55%" stop-color="#9BB6E6" stop-opacity=".14"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="orbC" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#B8D1FF" stop-opacity=".46"/>
+      <stop offset="60%" stop-color="#D5E3FF" stop-opacity=".18"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="topVeil" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity=".92"/>
+      <stop offset="22%" stop-color="#FFFFFF" stop-opacity=".55"/>
+      <stop offset="42%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="glassBlur" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="58"/></filter>
+    <filter id="softRim" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="8"/></filter>
+  </defs>
+`;
 
 function flower(cx, cy, radius, lobes, amp = 0.1) {
   const points = Array.from({ length: 144 }, (_, i) => {
@@ -103,8 +143,8 @@ function flower(cx, cy, radius, lobes, amp = 0.1) {
   return `${points.join(' ')} Z`;
 }
 
-function text(value, x, y, size, fill, weight = 400, anchor = 'middle', letterSpacing = null) {
-  const ls = letterSpacing !== null ? letterSpacing : (size >= 50 ? -0.8 : 0);
+function text(value, x, y, size, fill, weight = 400, anchor = 'middle') {
+  const ls = size >= 50 ? -0.8 : 0;
   return `<text x="${x}" y="${y}" text-anchor="${anchor}" font-family="Outfit, Segoe UI, Inter, DejaVu Sans, sans-serif" font-size="${size}" font-weight="${weight}" letter-spacing="${ls}" fill="${fill}">${xml(value)}</text>`;
 }
 
@@ -134,78 +174,32 @@ function shadow(shape) {
   `);
 }
 
-function cardBackdrop(index, p) {
+function cardBackdrop(index, shapeColor) {
   const row = Math.floor(index / 4);
   const col = index % 4;
   const xOff = -(col * 910);
   const flip = row % 2 === 1;
   const waveY = flip ? 1140 : 1260;
   const amp = flip ? -220 : 220;
-  const ribbon1 = `M -200 ${waveY} C 550 ${waveY - amp}, 1150 ${waveY + amp * 1.15}, 1850 ${waveY - amp * 0.45} C 2550 ${waveY - amp * 1.4}, 3150 ${waveY + amp * 0.85}, 3900 ${waveY - 120} L 3900 2050 L -200 2050 Z`;
-  const ribbon2 = `M -200 ${waveY + 260} C 650 ${waveY + 260 + amp * 0.8}, 1350 ${waveY + 120 - amp * 0.9}, 2150 ${waveY + 280 + amp * 0.6} C 2850 ${waveY + 380 - amp * 0.7}, 3350 ${waveY + 140}, 3900 ${waveY + 220} L 3900 2050 L -200 2050 Z`;
   const glassEdge1 = `M -200 ${waveY} C 550 ${waveY - amp}, 1150 ${waveY + amp * 1.15}, 1850 ${waveY - amp * 0.45} C 2550 ${waveY - amp * 1.4}, 3150 ${waveY + amp * 0.85}, 3900 ${waveY - 120}`;
   const glassEdge2 = `M -200 ${waveY + 260} C 650 ${waveY + 260 + amp * 0.8}, 1350 ${waveY + 120 - amp * 0.9}, 2150 ${waveY + 280 + amp * 0.6} C 2850 ${waveY + 380 - amp * 0.7}, 3350 ${waveY + 140}, 3900 ${waveY + 220}`;
-  const orbX1 = flip ? 2850 : 780;
-  const orbX2 = flip ? 1250 : 2650;
-  const orbX3 = flip ? 2050 : 1780;
-  const shape = col % 2 === 0
-    ? `<path d="${flower(800, 380, 195, 10, 0.10)}" fill="${p.shape}" opacity=".055"/>`
-    : `<path d="${flower(105, 420, 190, 8, 0.11)}" fill="${p.shape}" opacity=".055"/>`;
+  const [orbX1, orbX2, orbX3] = flip ? [2850, 1250, 2050] : [780, 2650, 1780];
+  const shapePath = col % 2 === 0 ? flower(800, 380, 195, 10, 0.10) : flower(105, 420, 190, 8, 0.11);
   return svg(`
-    <defs>
-      <linearGradient id="baseSky" x1="0" y1="0" x2="0.55" y2="1">
-        <stop offset="0%" stop-color="#FFFFFF"/>
-        <stop offset="34%" stop-color="#F6F9FF"/>
-        <stop offset="70%" stop-color="#D5E3FF"/>
-        <stop offset="100%" stop-color="#B6D0FA"/>
-      </linearGradient>
-      <linearGradient id="silkBlue" x1="0" y1="0" x2="1" y2="0.25">
-        <stop offset="0%" stop-color="#88B0F2"/>
-        <stop offset="36%" stop-color="#6C89BE"/>
-        <stop offset="68%" stop-color="#9AC0FA"/>
-        <stop offset="100%" stop-color="#5E7BB2"/>
-      </linearGradient>
-      <linearGradient id="silkDeep" x1="0" y1="0.2" x2="1" y2="0.9">
-        <stop offset="0%" stop-color="#546D9E"/>
-        <stop offset="50%" stop-color="#6C84B5"/>
-        <stop offset="100%" stop-color="#4A6494"/>
-      </linearGradient>
-      <radialGradient id="orbA" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stop-color="#8EB6F6" stop-opacity=".44"/>
-        <stop offset="55%" stop-color="#B6D0FA" stop-opacity=".18"/>
-        <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
-      </radialGradient>
-      <radialGradient id="orbB" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stop-color="#6C84B5" stop-opacity=".34"/>
-        <stop offset="55%" stop-color="#9BB6E6" stop-opacity=".14"/>
-        <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
-      </radialGradient>
-      <radialGradient id="orbC" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stop-color="#B8D1FF" stop-opacity=".46"/>
-        <stop offset="60%" stop-color="#D5E3FF" stop-opacity=".18"/>
-        <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
-      </radialGradient>
-      <linearGradient id="topVeil" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#FFFFFF" stop-opacity=".92"/>
-        <stop offset="22%" stop-color="#FFFFFF" stop-opacity=".55"/>
-        <stop offset="42%" stop-color="#FFFFFF" stop-opacity="0"/>
-      </linearGradient>
-      <filter id="glassBlur" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="58"/></filter>
-      <filter id="softRim" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="8"/></filter>
-    </defs>
+    ${BACKDROP_DEFS}
     <rect width="900" height="1800" fill="url(#baseSky)"/>
     <g transform="translate(${xOff} 0)">
       <ellipse cx="${orbX1}" cy="1360" rx="920" ry="620" fill="url(#orbA)"/>
       <ellipse cx="${orbX2}" cy="1180" rx="860" ry="640" fill="url(#orbB)"/>
       <ellipse cx="${orbX3}" cy="1540" rx="820" ry="520" fill="url(#orbC)"/>
-      <path d="${ribbon1}" fill="url(#silkBlue)" opacity=".32" filter="url(#glassBlur)"/>
-      <path d="${ribbon2}" fill="url(#silkDeep)" opacity=".26" filter="url(#glassBlur)"/>
+      <path d="${glassEdge1} L 3900 2050 L -200 2050 Z" fill="url(#silkBlue)" opacity=".32" filter="url(#glassBlur)"/>
+      <path d="${glassEdge2} L 3900 2050 L -200 2050 Z" fill="url(#silkDeep)" opacity=".26" filter="url(#glassBlur)"/>
       <path d="${glassEdge1}" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-opacity=".68" filter="url(#softRim)"/>
       <path d="${glassEdge1}" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-opacity=".55"/>
       <path d="${glassEdge2}" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-opacity=".42" filter="url(#softRim)"/>
     </g>
     <rect width="900" height="1800" fill="url(#topVeil)"/>
-    ${shape}
+    <path d="${shapePath}" fill="${shapeColor}" opacity=".055"/>
   `);
 }
 
@@ -230,46 +224,55 @@ async function cardMediaLayers(index, spec) {
   ];
 }
 
-async function renderCard(index, spec) {
-  const p = palettes[index < 2 ? 0 : index % 4];
-  const backdrop = cardBackdrop(index, p);
-  const layers = await cardMediaLayers(index, spec);
-  layers.push(...await cardTextLayers(index, spec, p));
-  const card = await sharp(backdrop).composite(layers).png().toBuffer();
-  return sharp(card).composite([{ input: rounded(width, height, 8), blend: 'dest-in' }]).png().toBuffer();
+function textLayoutFor(index) {
+  if (index === 0) {
+    return { x: 68, anchor: 'start', titleTop: 1432, titleStep: 78, subtitleTop: 1628, svgY: 1492, svgSubY: 1660, titlePt: 52, svgSize: 68, fitWidth: false };
+  }
+  if (index === 1) {
+    return { x: 832, anchor: 'end', titleTop: 120, titleStep: 78, subtitleTop: 302, svgY: 172, svgSubY: 326, titlePt: 52, svgSize: 68, fitWidth: false };
+  }
+  return { x: 450, anchor: 'middle', titleTop: 146, titleStep: 66, subtitleTop: 226, svgY: 196, svgSubY: 256, titlePt: 43, svgSize: 56, fitWidth: true };
 }
 
-async function cardTextLayers(index, spec, p) {
-  const right = index === 1;
-  const x = index >= 2 ? 450 : right ? 832 : 68;
-  const anchor = index >= 2 ? 'middle' : right ? 'end' : 'start';
-  if (!hasOutfitFiles) {
-    const y = index === 0 ? 1492 : index < 2 ? 172 : 196;
-    const titleSize = index < 2 ? 68 : 56;
-    const titles = spec[2].map((line, i) => text(line, x, y + i * 78, titleSize, p.ink, 500, anchor));
-    const subtitleY = index === 0 ? 1660 : index < 2 ? 326 : 256;
-    const subtitles = spec[3].map((line, i) => text(line, x, subtitleY + i * 40, 27, p.muted, 400, anchor));
-    return [{ input: svg(titles.join('') + subtitles.join('')) }];
-  }
-  const layers = [];
-  const alignX = w => (anchor === 'middle' ? Math.round(x - w / 2) : anchor === 'end' ? Math.round(x - w) : x);
-  let titlePt = index < 2 ? 52 : 43;
-  if (index >= 2) {
-    const probe = await renderOutfitLine(spec[2][0], titlePt, p.ink, outfitTitleFont, 'Outfit Medium', -0.8);
+function alignLeft(x, anchor, boxWidth) {
+  if (anchor === 'middle') return Math.round(x - boxWidth / 2);
+  if (anchor === 'end') return Math.round(x - boxWidth);
+  return x;
+}
+
+function renderSvgTextLayers(spec, layout) {
+  const titles = spec[2].map((line, i) => text(line, layout.x, layout.svgY + i * 78, layout.svgSize, brandColors.ink, 500, layout.anchor));
+  const subtitles = spec[3].map((line, i) => text(line, layout.x, layout.svgSubY + i * 40, 27, brandColors.muted, 400, layout.anchor));
+  return [{ input: svg(titles.join('') + subtitles.join('')) }];
+}
+
+async function renderOutfitTextLayers(spec, layout) {
+  let { titlePt } = layout;
+  if (layout.fitWidth) {
+    const probe = await renderOutfitLine(spec[2][0], titlePt, brandColors.ink, outfitTitleFont, 'Outfit Medium', -0.8);
     if (probe.info.width > 760) titlePt = Math.floor(titlePt * 760 / probe.info.width);
   }
-  const titleTop = index === 0 ? 1432 : index < 2 ? 120 : 146;
-  const titleStep = index < 2 ? 78 : 66;
+  const layers = [];
   for (const [i, line] of spec[2].entries()) {
-    const { data, info } = await renderOutfitLine(line, titlePt, p.ink, outfitTitleFont, 'Outfit Medium', -0.8);
-    layers.push({ input: data, left: alignX(info.width), top: titleTop + i * titleStep });
+    const { data, info } = await renderOutfitLine(line, titlePt, brandColors.ink, outfitTitleFont, 'Outfit Medium', -0.8);
+    layers.push({ input: data, left: alignLeft(layout.x, layout.anchor, info.width), top: layout.titleTop + i * layout.titleStep });
   }
-  const subtitleTop = index === 0 ? 1628 : index < 2 ? 302 : 226;
   for (const [i, line] of spec[3].entries()) {
-    const { data, info } = await renderOutfitLine(line, 21, p.muted, outfitBodyFont, 'Outfit', 0);
-    layers.push({ input: data, left: alignX(info.width), top: subtitleTop + i * 38 });
+    const { data, info } = await renderOutfitLine(line, 21, brandColors.muted, outfitBodyFont, 'Outfit', 0);
+    layers.push({ input: data, left: alignLeft(layout.x, layout.anchor, info.width), top: layout.subtitleTop + i * 38 });
   }
   return layers;
+}
+
+async function renderCard(index, spec) {
+  const shapeColor = shapeColors[index % shapeColors.length];
+  const backdrop = cardBackdrop(index, shapeColor);
+  const layers = await cardMediaLayers(index, spec);
+  const layout = textLayoutFor(index);
+  const textLayers = hasOutfitFiles ? await renderOutfitTextLayers(spec, layout) : renderSvgTextLayers(spec, layout);
+  layers.push(...textLayers);
+  const card = await sharp(backdrop).composite(layers).png().toBuffer();
+  return sharp(card).composite([{ input: rounded(width, height, 8), blend: 'dest-in' }]).png().toBuffer();
 }
 
 await mkdir(output, { recursive: true });
