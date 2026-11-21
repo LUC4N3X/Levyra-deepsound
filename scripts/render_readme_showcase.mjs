@@ -82,10 +82,10 @@ async function extractPhone(index, spec) {
 }
 
 const palettes = [
-  { top: '#FFFFFF', mid: '#E0EAFF', bottom: '#8CA8F6', shape: '#6E8FF0', ink: '#161F33', muted: '#4D5C7A' },
-  { top: '#FFFFFF', mid: '#E4E5FF', bottom: '#969EF6', shape: '#7B85F0', ink: '#181E35', muted: '#505978' },
-  { top: '#FFFFFF', mid: '#DCEEFF', bottom: '#82B2F5', shape: '#659CEB', ink: '#132234', muted: '#485E78' },
-  { top: '#FFFFFF', mid: '#E2E8FF', bottom: '#91A3F6', shape: '#758BF0', ink: '#171F34', muted: '#4E5B7A' },
+  { top: '#FFFFFF', mid: '#E0EAFF', bottom: '#8CA8F6', shape: '#6E8FF0', ink: '#161F33', accent: '#3651B5', muted: '#4D5C7A' },
+  { top: '#FFFFFF', mid: '#E4E5FF', bottom: '#969EF6', shape: '#7B85F0', ink: '#181E35', accent: '#484CB5', muted: '#505978' },
+  { top: '#FFFFFF', mid: '#DCEEFF', bottom: '#82B2F5', shape: '#659CEB', ink: '#132234', accent: '#2D5DA8', muted: '#485E78' },
+  { top: '#FFFFFF', mid: '#E2E8FF', bottom: '#91A3F6', shape: '#758BF0', ink: '#171F34', accent: '#3B50B5', muted: '#4E5B7A' },
 ];
 
 function flower(cx, cy, radius, lobes, amp = 0.1) {
@@ -100,6 +100,21 @@ function flower(cx, cy, radius, lobes, amp = 0.1) {
 function text(value, x, y, size, fill, weight = 400, anchor = 'middle', letterSpacing = null) {
   const ls = letterSpacing !== null ? letterSpacing : (size >= 50 ? -0.8 : 0);
   return `<text x="${x}" y="${y}" text-anchor="${anchor}" font-family="Segoe UI, Inter, Rubik, DejaVu Sans, sans-serif" font-size="${size}" font-weight="${weight}" letter-spacing="${ls}" fill="${fill}">${xml(value)}</text>`;
+}
+
+function editorialTitle(value, x, y, size, ink, accent, italicLast, anchor = 'middle') {
+  let inner = xml(value);
+  if (italicLast) {
+    const splitAt = value.lastIndexOf(' ');
+    if (splitAt > 0) {
+      const lead = xml(value.slice(0, splitAt + 1));
+      const tail = xml(value.slice(splitAt + 1));
+      inner = `${lead}<tspan font-style="italic" fill="${accent}">${tail}</tspan>`;
+    } else {
+      inner = `<tspan font-style="italic" fill="${accent}">${xml(value)}</tspan>`;
+    }
+  }
+  return `<text x="${x}" y="${y}" text-anchor="${anchor}" font-family="Georgia, Noto Serif, Liberation Serif, serif" font-size="${size}" font-weight="400" letter-spacing="-0.6" fill="${ink}">${inner}</text>`;
 }
 
 function shadow(shape) {
@@ -178,15 +193,16 @@ async function cardTextLayer(index, spec, p) {
   const right = index === 1;
   const x = index >= 2 ? 450 : right ? 832 : 68;
   const anchor = index >= 2 ? 'middle' : right ? 'end' : 'start';
-  const y = index === 0 ? 1496 : index < 2 ? 172 : 196;
-  let titleSize = index < 2 ? 68 : 56;
+  const y = index === 0 ? 1492 : index < 2 ? 172 : 196;
+  let titleSize = index < 2 ? 70 : 58;
   if (index >= 2) {
-    const probe = await sharp(svg(text(spec[2][0], 450, 100, titleSize, p.ink, 400))).trim().toBuffer({ resolveWithObject: true });
+    const probe = await sharp(svg(editorialTitle(spec[2][0], 450, 100, titleSize, p.ink, p.accent, true))).trim().toBuffer({ resolveWithObject: true });
     if (probe.info.width > 760) titleSize = Math.floor(titleSize * 760 / probe.info.width);
   }
-  const titles = spec[2].map((line, i) => text(line, x, y + i * 78, titleSize, p.ink, 400, anchor));
-  const subtitleY = index === 0 ? 1660 : index < 2 ? 326 : 256;
-  const subtitles = spec[3].map((line, i) => text(line, x, subtitleY + i * 40, 28, p.muted, 400, anchor));
+  const lastIdx = spec[2].length - 1;
+  const titles = spec[2].map((line, i) => editorialTitle(line, x, y + i * 78, titleSize, p.ink, p.accent, i === lastIdx, anchor));
+  const subtitleY = index === 0 ? 1660 : index < 2 ? 326 : 258;
+  const subtitles = spec[3].map((line, i) => text(line, x, subtitleY + i * 40, 27, p.muted, 400, anchor));
   return { input: svg(titles.join('') + subtitles.join('')) };
 }
 
