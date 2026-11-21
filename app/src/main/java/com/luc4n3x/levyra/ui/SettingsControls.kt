@@ -1,5 +1,19 @@
 package com.luc4n3x.levyra.ui
 
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material3.Surface
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.text.TextStyle
@@ -35,7 +49,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -43,12 +59,15 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
@@ -61,6 +80,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
+import com.luc4n3x.levyra.viewmodel.limitUserName
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -81,6 +114,8 @@ import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
 import com.luc4n3x.levyra.ui.theme.LevyraIsAtelier
+import com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin
+import com.luc4n3x.levyra.ui.theme.LevyraCardDesign
 import com.luc4n3x.levyra.ui.theme.LevyraIsTorque
 import com.luc4n3x.levyra.ui.theme.LevyraIsPrism
 import com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic
@@ -392,6 +427,308 @@ private const val SETTINGS_ENTRANCE_MAX_ORDER = 14
 private const val SETTINGS_ENTRANCE_STAGGER = 0.035f
 private const val SETTINGS_ENTRANCE_SPAN = 0.5f
 
+@Composable
+internal fun SettingsHubSearchField(
+    query: String,
+    placeholder: String,
+    clearLabel: String,
+    focusRequester: FocusRequester,
+    onQueryChange: (String) -> Unit
+) {
+    BasicTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        singleLine = true,
+        textStyle = TextStyle(color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
+        cursorBrush = SolidColor(LevyraCyan),
+        modifier = Modifier
+            .fillMaxWidth()
+            .focusRequester(focusRequester)
+            .semantics { contentDescription = placeholder }
+            .padding(bottom = if (LevyraIsDefaultSkin) 0.dp else 16.dp)
+            .background(
+                if (LevyraIsDefaultSkin) defaultSettingsCardColor() else LevyraAdaptiveCard,
+                when {
+                    SkinChrome.active -> SkinChrome.fieldShape
+                    LevyraIsDefaultSkin -> MaterialTheme.shapes.extraLarge
+                    else -> CircleShape
+                }
+            )
+            .padding(horizontal = 18.dp, vertical = if (LevyraIsDefaultSkin) 0.dp else 16.dp),
+        decorationBox = { innerTextField ->
+            Row(
+                modifier = if (LevyraIsDefaultSkin) Modifier.heightIn(min = 56.dp) else Modifier,
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Icon(Icons.Rounded.Search, null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
+                Box(modifier = Modifier.weight(1f)) {
+                    if (query.isBlank()) Text(placeholder, color = LevyraMuted, fontSize = 15.sp)
+                    innerTextField()
+                }
+                if (query.isNotBlank()) {
+                    IconButton(onClick = { onQueryChange("") }, modifier = Modifier.size(48.dp)) {
+                        Icon(Icons.Rounded.Close, clearLabel, tint = LevyraMuted)
+                    }
+                }
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+internal fun SettingsStudioShelf(
+    title: String,
+    subtitle: String,
+    accentSeed: Color,
+    entries: List<SettingsStudioEntry>
+) {
+    if (LevyraIsAtelier) return AtelierStudioShelf(title, subtitle, entries)
+    val compact = LevyraIsDefaultSkin
+    Column(modifier = Modifier.fillMaxWidth().padding(top = if (compact) 0.dp else 6.dp)) {
+        if (compact) DefaultSettingsGroupLabel(title)
+        else {
+            Text(
+                title,
+                color = LevyraText,
+                fontSize = 20.sp,
+                fontWeight = if (SkinChrome.active) FontWeight.Medium else FontWeight.Black,
+                modifier = Modifier
+                    .padding(start = 4.dp)
+                    .semantics { heading() }
+            )
+            Text(
+                subtitle,
+                color = LevyraMuted,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(start = 4.dp, top = 2.dp, bottom = 12.dp)
+            )
+        }
+        LazyRow(
+            modifier = Modifier.recentSearchesBleed(SettingsStudioGutter),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(horizontal = SettingsStudioGutter)
+        ) {
+            items(entries, key = { it.id }, contentType = { "LevyraApp-entries" }) { entry ->
+                if (compact) DefaultSettingsStudioShortcut(entry) else SettingsStudioShortcut(entry, accentSeed)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun SettingsStudioShortcut(entry: SettingsStudioEntry, accentSeed: Color) {
+    Surface(
+        onClick = entry.onClick,
+        shape = RoundedCornerShape(if (SkinChrome.active) SkinChrome.outerCorner else 22.dp),
+        color = LevyraAdaptiveCard,
+        modifier = Modifier.widthIn(min = 180.dp).width(IntrinsicSize.Min).heightIn(min = 80.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(if (SkinChrome.active) SkinChrome.iconShape else entry.shape.toShape())
+                    .background(
+                        when {
+                            SkinChrome.active -> SkinChrome.iconBackground
+                            LevyraUtilityStyleActive -> settingsCategoryTone(accentSeed, solid = true).container
+                            else -> LevyraText.copy(alpha = 0.08f)
+                        }
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    entry.icon,
+                    null,
+                    tint = when {
+                        SkinChrome.active -> SkinChrome.iconTint
+                        LevyraUtilityStyleActive -> settingsCategoryTone(accentSeed, solid = true).content
+                        else -> LevyraText.copy(alpha = 0.88f)
+                    },
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            SettingsStudioShortcutTitle(entry.title)
+        }
+    }
+}
+
+@Composable
+private fun DefaultSettingsStudioShortcut(entry: SettingsStudioEntry) {
+    Surface(
+        onClick = entry.onClick,
+        shape = RoundedCornerShape(22.dp),
+        color = defaultSettingsCardColor(),
+        modifier = Modifier.widthIn(min = 148.dp).width(IntrinsicSize.Min).heightIn(min = 56.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            DefaultSettingsAccentIcon(entry.icon, entry.accent)
+            SettingsStudioShortcutTitle(entry.title)
+        }
+    }
+}
+
+@Composable
+private fun RowScope.SettingsStudioShortcutTitle(title: String) {
+    Text(
+        text = title,
+        color = LevyraText,
+        fontSize = 14.sp,
+        lineHeight = 18.sp,
+        fontWeight = FontWeight.Bold,
+        softWrap = true,
+        modifier = Modifier.weight(1f)
+    )
+}
+
+@Composable
+internal fun DefaultSettingsGroupLabel(title: String, modifier: Modifier = Modifier) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.padding(start = 14.dp, top = 22.dp, bottom = 8.dp).semantics { heading() }
+    )
+}
+
+@Composable
+internal fun DefaultSettingsHubHeader(title: String, backLabel: String, onBack: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
+            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = backLabel, tint = MaterialTheme.colorScheme.onSurface)
+        }
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f).semantics { heading() }
+        )
+    }
+}
+
+@Stable
+internal class SettingsSearchFocus(val title: String, val onReached: () -> Unit) {
+    var reached by mutableStateOf(false)
+}
+
+internal val LocalSettingsSearchFocus = compositionLocalOf<SettingsSearchFocus?> { null }
+
+internal val LocalSettingsTileHighlight = compositionLocalOf<MutableState<Boolean>?> { null }
+
+@Composable
+internal fun SettingsUserNameField(
+    name: String,
+    title: String,
+    placeholder: String,
+    clearLabel: String,
+    onNameChange: (String) -> Unit
+) {
+    var draft by rememberSaveable { mutableStateOf(name) }
+    var syncedName by rememberSaveable { mutableStateOf(name) }
+    var focused by remember { mutableStateOf(false) }
+    LaunchedEffect(name) {
+        if (name == syncedName) return@LaunchedEffect
+        syncedName = name
+        if (!focused) draft = name
+    }
+    val focusManager = LocalFocusManager.current
+    val accent = LocalSettingsAccent.current ?: LevyraCyan
+    val latestDraft by rememberUpdatedState(draft)
+    val latestFocused by rememberUpdatedState(focused)
+    val commit by rememberUpdatedState(onNameChange)
+    DisposableEffect(Unit) { onDispose { if (latestFocused) commit(latestDraft) } }
+    SettingsTile {
+        Row(
+            modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp).padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            SettingsTileIcon(Icons.Rounded.Person, accent)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(title, color = LevyraMuted, style = MaterialTheme.typography.labelMedium)
+                BasicTextField(
+                    value = draft,
+                    onValueChange = { draft = limitUserName(it) },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.titleMedium.copy(color = LevyraText),
+                    cursorBrush = SolidColor(accent),
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = title }
+                        .onFocusChanged { state ->
+                            if (focused && !state.isFocused) onNameChange(draft)
+                            focused = state.isFocused
+                        },
+                    decorationBox = { inner ->
+                        Box {
+                            if (draft.isEmpty()) Text(placeholder, color = LevyraMuted, style = MaterialTheme.typography.titleMedium)
+                            inner()
+                        }
+                    }
+                )
+            }
+            if (draft.isNotEmpty()) {
+                IconButton(onClick = { draft = ""; onNameChange("") }, modifier = Modifier.size(48.dp)) {
+                    Icon(Icons.Rounded.Close, clearLabel, tint = LevyraMuted)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun DefaultSettingsDetailHeader(title: String, summary: String, backLabel: String, onBack: () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+        DefaultSettingsHubHeader(title, backLabel, onBack)
+        if (summary.isNotBlank()) {
+            Text(
+                text = summary,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 60.dp, end = 14.dp)
+            )
+        }
+    }
+}
+
+@Composable
+internal fun DefaultSettingsAccentIcon(icon: ImageVector, accent: Color) {
+    val tone = defaultSettingsAccentTone(accent)
+    Box(
+        Modifier.size(36.dp).clip(CircleShape).background(tone.container),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, contentDescription = null, tint = tone.content, modifier = Modifier.size(20.dp))
+    }
+}
+
+@Composable
+internal fun defaultSettingsCardColor(): Color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.62f)
+
+@Composable
+private fun defaultSettingsAccentTone(accent: Color): SettingsExpressiveTone {
+    val colors = levyraUtilityColors(accent)
+    return SettingsExpressiveTone(container = colors.accent.copy(alpha = 0.24f), content = colors.accent)
+}
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun SettingsHubCategoryRow(
@@ -404,13 +741,13 @@ internal fun SettingsHubCategoryRow(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    SettingsTile(onClick = onClick, groupIndex = index, groupCount = count, modifier = modifier) {
+    val style = settingsHubRowStyle(index, accent)
+    val content: @Composable () -> Unit = {
         Row(
-            modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 15.dp, bottom = 15.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 14.dp, vertical = style.rowInset),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(style.rowGap)
         ) {
-            val style = settingsHubRowStyle(index, accent)
             Box(
                 modifier = Modifier
                     .size(style.iconSize)
@@ -418,15 +755,15 @@ internal fun SettingsHubCategoryRow(
                     .background(style.iconContainer),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, contentDescription = null, tint = style.iconTint, modifier = Modifier.size(24.dp))
+                Icon(icon, contentDescription = null, tint = style.iconTint, modifier = Modifier.size(style.glyphSize))
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = title,
                     color = LevyraText,
                     style = style.title,
-                    maxLines = if (LocalAnimationsEnabled.current) 1 else Int.MAX_VALUE,
-                    modifier = Modifier.levyraMarquee(LocalAnimationsEnabled.current, 3000)
+                    maxLines = if (style.marquee) 1 else Int.MAX_VALUE,
+                    modifier = Modifier.levyraMarquee(style.marquee, 3000)
                 )
                 if (summary.isNotBlank()) {
                     Text(
@@ -444,6 +781,37 @@ internal fun SettingsHubCategoryRow(
             )
         }
     }
+    if (LevyraIsDefaultSkin) {
+        DefaultSettingsGroupedRow(index, count, modifier, onClick, content)
+    } else {
+        SettingsTile(onClick = onClick, groupIndex = index, groupCount = count, modifier = modifier, content = content)
+    }
+}
+
+@Composable
+private fun DefaultSettingsGroupedRow(
+    index: Int,
+    count: Int,
+    modifier: Modifier,
+    onClick: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    val top = if (index == 0) LevyraCardDesign.SurfaceCorner else 0.dp
+    val bottom = if (index == count - 1) LevyraCardDesign.SurfaceCorner else 0.dp
+    Surface(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(topStart = top, topEnd = top, bottomStart = bottom, bottomEnd = bottom),
+        color = defaultSettingsCardColor()
+    ) {
+        Column {
+            if (index > 0) HorizontalDivider(
+                modifier = Modifier.padding(start = 64.dp, end = 14.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
+            )
+            content()
+        }
+    }
 }
 
 @Immutable
@@ -454,13 +822,33 @@ private data class SettingsHubRowStyle(
     val iconTint: Color,
     val title: TextStyle,
     val summary: TextStyle,
-    val summaryColor: Color
+    val summaryColor: Color,
+    val glyphSize: Dp = 24.dp,
+    val rowInset: Dp = 15.dp,
+    val rowGap: Dp = 16.dp,
+    val marquee: Boolean = false
 )
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun settingsHubRowStyle(index: Int, accent: Color): SettingsHubRowStyle {
     val base = LocalTextStyle.current
+    val marquee = LocalAnimationsEnabled.current
+    if (LevyraIsDefaultSkin) {
+        val tone = defaultSettingsAccentTone(accent)
+        return SettingsHubRowStyle(
+            iconSize = 36.dp,
+            iconShape = CircleShape,
+            iconContainer = tone.container,
+            iconTint = tone.content,
+            title = MaterialTheme.typography.titleMedium,
+            summary = MaterialTheme.typography.bodyMedium,
+            summaryColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            glyphSize = 20.dp,
+            rowInset = 10.dp,
+            rowGap = 12.dp
+        )
+    }
     if (!LevyraUtilityStyleActive) {
         return SettingsHubRowStyle(
             iconSize = 48.dp,
@@ -469,7 +857,8 @@ private fun settingsHubRowStyle(index: Int, accent: Color): SettingsHubRowStyle 
             iconTint = LevyraText.copy(alpha = 0.88f),
             title = base.merge(TextStyle(fontSize = 17.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold)),
             summary = base.merge(TextStyle(fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium)),
-            summaryColor = LevyraMuted
+            summaryColor = LevyraMuted,
+            marquee = marquee
         )
     }
     val tone = settingsCategoryTone(accent, solid = true)
@@ -480,7 +869,8 @@ private fun settingsHubRowStyle(index: Int, accent: Color): SettingsHubRowStyle 
         iconTint = tone.content,
         title = MaterialTheme.typography.titleLarge,
         summary = MaterialTheme.typography.bodyMedium,
-        summaryColor = MaterialTheme.colorScheme.onSurfaceVariant
+        summaryColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        marquee = marquee
     )
 }
 

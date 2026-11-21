@@ -7,6 +7,15 @@ import org.junit.Test
 
 class MusicNewsFeedParserTest {
     @Test
+    fun articleImageReadsOpenGraphInEitherAttributeOrder() {
+        val property = "<meta property=\"og:image\" content=\"https://example.com/a.jpg\" />"
+        val reversed = "<meta content='https://example.com/b.jpg?x=1&amp;y=2' property='og:image'>"
+        assertEquals("https://example.com/a.jpg", MusicNewsFeedParser.articleImage(property))
+        assertEquals("https://example.com/b.jpg?x=1&y=2", MusicNewsFeedParser.articleImage(reversed))
+        assertEquals("", MusicNewsFeedParser.articleImage("<meta property=\"og:image\" content=\"http://insecure.example/c.jpg\">"))
+    }
+
+    @Test
     fun readsMediaImageAndHttpsLink() {
         val xml = """<rss xmlns:media="http://search.yahoo.com/mrss/"><channel><item>
             <title>Album &amp; tour</title><link>https://example.com/a</link>

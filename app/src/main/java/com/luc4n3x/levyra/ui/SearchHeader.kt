@@ -236,7 +236,8 @@ private fun DefaultSearchHeader(
     val fieldInteraction = remember { MutableInteractionSource() }
     val fieldFocused by fieldInteraction.collectIsFocusedAsState()
     val scheme = MaterialTheme.colorScheme
-    val (fieldContainer, searchBadgeColor, focusRing, searchIconTint, fieldCorner) = rememberSearchHeaderAppearance(fieldFocused, query, animationsEnabled, scheme)
+    val appearance = rememberSearchHeaderAppearance(fieldFocused, query, animationsEnabled, scheme)
+    val field = searchFieldStyle(appearance, fieldFocused, query.isNotEmpty())
 
     Row(
         modifier = Modifier
@@ -252,20 +253,16 @@ private fun DefaultSearchHeader(
                 keyboardController?.hide()
             },
             contentDescription = strings.back,
-            colors = if (com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin) {
-                androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors(containerColor = scheme.surfaceContainerHigh, contentColor = scheme.onSurface)
-            } else {
-                androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors()
-            }
+            colors = field.backColors
         )
 
         Surface(
-            color = fieldContainer,
-            border = if (LevyraIsSpotify) null else BorderStroke(if (LevyraIsPrism) 1.5.dp else 2.dp, focusRing),
-            shape = RoundedCornerShape(fieldCorner),
+            color = field.container,
+            border = field.border,
+            shape = field.shape,
             modifier = Modifier
                 .weight(1f)
-                .heightIn(min = 60.dp)
+                .heightIn(min = field.minHeight)
         ) {
             Row(
                 modifier = Modifier
@@ -278,12 +275,12 @@ private fun DefaultSearchHeader(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .size(40.dp)
-                        .background(searchBadgeColor, MaterialShapes.Cookie4Sided.toShape())
+                        .background(field.badge, MaterialShapes.Cookie4Sided.toShape())
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.Search,
                         contentDescription = null,
-                        tint = searchIconTint,
+                        tint = field.icon,
                         modifier = Modifier.size(22.dp)
                     )
                 }
@@ -336,6 +333,53 @@ internal fun searchFocusRing(scheme: androidx.compose.material3.ColorScheme, foc
     )
 
 private data class SearchHeaderAppearance(val container: Color, val badge: Color, val ring: Brush, val icon: Color, val corner: Dp)
+
+private class SearchFieldStyle(
+    val container: Color,
+    val border: BorderStroke?,
+    val shape: androidx.compose.ui.graphics.Shape,
+    val minHeight: Dp,
+    val badge: Color,
+    val icon: Color,
+    val backColors: androidx.compose.material3.IconButtonColors
+)
+
+@Composable
+private fun searchFieldStyle(appearance: SearchHeaderAppearance, focused: Boolean, hasQuery: Boolean): SearchFieldStyle {
+    if (!com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin) {
+        return SearchFieldStyle(
+            container = appearance.container,
+            border = if (LevyraIsSpotify) null else BorderStroke(if (LevyraIsPrism) 1.5.dp else 2.dp, appearance.ring),
+            shape = RoundedCornerShape(appearance.corner),
+            minHeight = 60.dp,
+            badge = appearance.badge,
+            icon = appearance.icon,
+            backColors = androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors()
+        )
+    }
+    val accent = com.luc4n3x.levyra.ui.components.levyraUtilityColors(com.luc4n3x.levyra.ui.components.LevyraUtilitySeed).accent
+    val fill = defaultSearchGlassFill(focused)
+    return SearchFieldStyle(
+        container = fill,
+        border = BorderStroke(1.dp, defaultSearchGlassEdge(focused, accent)),
+        shape = RoundedCornerShape(50),
+        minHeight = 54.dp,
+        badge = Color.Transparent,
+        icon = if (focused || hasQuery) accent else LevyraMuted,
+        backColors = androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors(containerColor = fill, contentColor = LevyraText)
+    )
+}
+
+private fun defaultSearchGlassFill(focused: Boolean): Color = when {
+    LevyraIsLight -> Color.White.copy(alpha = if (focused) 0.78f else 0.62f)
+    else -> Color.Black.copy(alpha = if (focused) 0.42f else 0.30f)
+}
+
+private fun defaultSearchGlassEdge(focused: Boolean, accent: Color): Color = when {
+    focused -> accent.copy(alpha = 0.85f)
+    LevyraIsLight -> Color(0x1F11131F)
+    else -> Color.White.copy(alpha = 0.16f)
+}
 
 @Composable
 private fun rememberSearchHeaderAppearance(fieldFocused: Boolean, query: String, animationsEnabled: Boolean, scheme: androidx.compose.material3.ColorScheme): SearchHeaderAppearance {
@@ -425,7 +469,10 @@ private fun SearchHeaderActionButtons(query: String, isSearching: Boolean, field
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(50))
-            .background(scheme.surfaceContainerHighest.copy(alpha = if (fieldFocused) 0.9f else 0.6f)),
+            .background(
+                if (com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin) Color.White.copy(alpha = if (LevyraIsLight) 0.0f else 0.06f)
+                else scheme.surfaceContainerHighest.copy(alpha = if (fieldFocused) 0.9f else 0.6f)
+            ),
         verticalAlignment = Alignment.CenterVertically
     ) {
     if (onLyrics != null && query.isEmpty()) {
@@ -490,6 +537,12 @@ internal fun SearchHeaderRecognitionButton(recognitionBusy: Boolean, toggleRecog
     val animationsEnabled = LocalAnimationsEnabled.current
     val strings = LocalLevyraStrings.current
     val scheme = MaterialTheme.colorScheme
+    val recognitionColors = if (com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin) {
+        val tone = com.luc4n3x.levyra.ui.components.levyraUtilityColors(com.luc4n3x.levyra.ui.components.LevyraUtilitySeed)
+        if (recognitionBusy) tone.onAccent to tone.accent else tone.accent to tone.onAccent
+    } else {
+        if (recognitionBusy) scheme.primary to scheme.onPrimary else scheme.primaryContainer to scheme.onPrimaryContainer
+    }
     val recognitionRotation = if (recognitionBusy && animationsEnabled) {
         val spin = rememberInfiniteTransition(label = "search-recognition-spin")
         spin.animateFloat(
@@ -508,13 +561,13 @@ internal fun SearchHeaderRecognitionButton(recognitionBusy: Boolean, toggleRecog
             .size(40.dp)
             .graphicsLayer { rotationZ = recognitionRotation }
             .clip(MaterialShapes.Cookie9Sided.toShape())
-            .background(if (recognitionBusy) scheme.primary else scheme.primaryContainer)
+            .background(recognitionColors.first)
             .clickable(onClickLabel = strings.recognizeMusic, role = Role.Button, onClick = toggleRecognition)
     ) {
         Icon(
             imageVector = Icons.Rounded.GraphicEq,
             contentDescription = strings.recognizeMusic,
-            tint = if (recognitionBusy) scheme.onPrimary else scheme.onPrimaryContainer,
+            tint = recognitionColors.second,
             modifier = Modifier
                 .size(19.dp)
                 .graphicsLayer { rotationZ = -recognitionRotation }

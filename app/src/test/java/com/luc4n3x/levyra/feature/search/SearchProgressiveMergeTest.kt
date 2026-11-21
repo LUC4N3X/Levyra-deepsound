@@ -271,6 +271,42 @@ class SearchProgressiveMergeTest {
     }
 
     @Test
+    fun `verified artist profile fills missing play counts and playlists`() = runBlocking {
+        val album = searchTestAlbum("Starboy", "The Weeknd", "MPRE_starboy")
+        val playlist = PlaylistHit(title = "This Is The Weeknd", author = "YouTube Music", thumbnailUrl = "", playlistId = "RDweeknd")
+        val searchSong = searchTestTrack("s1", "Timeless", "The Weeknd")
+        val otherSong = searchTestTrack("s2", "Die For You", "The Weeknd")
+        val profileSong = searchTestTrack("p1", "Timeless", "The Weeknd").copy(youtubeViewCount = 681_000_000L)
+        val refinement = refineSearchAlbums("the weeknd", listOf(searchTestArtist("The Weeknd", "UCweeknd"))) {
+            SearchArtistDiscography(
+                artist = searchTestArtist("The Weeknd", "UCweeknd"),
+                albums = listOf(album),
+                playlists = listOf(playlist),
+                topSongs = listOf(profileSong)
+            )
+        }
+
+        val refined = session("the weeknd")
+            .copy(results = SearchResults(topTrack = searchSong, songs = listOf(searchSong, otherSong)))
+            .withAlbumRefinement(refinement)
+
+        assertEquals(681_000_000L, refined.results.topTrack?.youtubeViewCount)
+        assertEquals(listOf(681_000_000L, -1L), refined.results.songs.map { it.youtubeViewCount })
+        assertEquals(listOf("RDweeknd"), refined.results.playlists.map { it.playlistId })
+    }
+
+    @Test
+    fun `play counts never move between different recordings that share a title`() {
+        val studio = searchTestTrack("studio", "Example", "Artist")
+        val live = searchTestTrack("live", "Example (Live)", "Artist").copy(youtubeViewCount = 9_000L)
+        val otherArtist = searchTestTrack("other", "Example", "Someone Else").copy(youtubeViewCount = 7_000L)
+        val video = searchTestTrack("video", "Example (Official Video)", "Artist").copy(youtubeViewCount = 5_000L)
+
+        assertEquals(listOf(-1L), listOf(studio).withPlayCountsFrom(listOf(live, otherArtist)).map { it.youtubeViewCount })
+        assertEquals(listOf(5_000L), listOf(studio).withPlayCountsFrom(listOf(video)).map { it.youtubeViewCount })
+    }
+
+    @Test
     fun `singles only discography replaces search albums with verified singles`() = runBlocking {
         val single = searchTestAlbum("Easy On Me", "Adele", "MPRE_easy").copy(releaseType = ReleaseType.Single)
         val refinement = refineSearchAlbums("adele", listOf(searchTestArtist("Adele", "UCadele"))) {

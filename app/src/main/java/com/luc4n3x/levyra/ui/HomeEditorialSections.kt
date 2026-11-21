@@ -924,7 +924,9 @@ internal fun HomeEditorialSpotlight(
     onPaletteChanged: (Color, Color) -> Unit,
     onOpen: () -> Unit,
     header: (@Composable () -> Unit)? = null,
-    backdropBleed: Dp = 0.dp
+    backdropBleed: Dp = 0.dp,
+    compactDefaultStage: Boolean = false,
+    greeting: Pair<String, String>? = null
 ) {
     val track = candidate.track
     val strings = LocalLevyraStrings.current
@@ -1064,10 +1066,12 @@ internal fun HomeEditorialSpotlight(
     if (LevyraIsDefaultSkin) {
         DefaultSoundtrackCard(
             header = header,
+            compactStage = compactDefaultStage,
             backdropBleed = backdropBleed,
             artworkUrl = resolvedArtistArtworkUrl,
-            overline = strings.homeSoundtrackRadio,
-            title = soundtrackTitle,
+            overline = greeting?.first ?: strings.homeSoundtrackRadio,
+            overlineHighlight = greeting?.second,
+            title = strings.homeSoundtrackTodayTitle,
             lead = soundtrackLead,
             companions = visibleCompanionArtworkUrls,
             playing = isCurrent && isPlaying,

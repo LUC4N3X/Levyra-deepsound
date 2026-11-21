@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.feature.search
 
+import java.util.Locale
 import com.luc4n3x.levyra.data.albumRecommendationTextKey
 import com.luc4n3x.levyra.data.mergeSearchAlbums
 import com.luc4n3x.levyra.data.mergeSearchArtists
@@ -283,11 +284,41 @@ internal fun SearchSessionSnapshot.withAlbumRefinement(refinement: SearchAlbumRe
         is SearchAlbumRefinement.DropSongTitleEchoes -> albumsWithoutSongTitleEchoes(base.albums, base.songs)
         is SearchAlbumRefinement.Official -> refinement.albums
     }
+    val discography = refinement.discography
     return copy(
-        results = base.copy(albums = albums, discography = refinement.discography),
+        results = base.copy(
+            albums = albums,
+            discography = discography,
+            topTrack = base.topTrack?.let { listOf(it).withPlayCountsFrom(discography?.topSongs.orEmpty()).first() },
+            songs = base.songs.withPlayCountsFrom(discography?.topSongs.orEmpty()),
+            playlists = base.playlists.ifEmpty { discography?.playlists.orEmpty() }
+        ),
         carriedOver = false,
         verified = true
     )
+}
+
+internal fun List<Track>.withPlayCountsFrom(source: List<Track>): List<Track> {
+    val counted = source.filter { it.youtubeViewCount > 0L }
+    if (counted.isEmpty() || isEmpty()) return this
+    val byId = counted.associate { it.id to it.youtubeViewCount }
+    val byTitle = counted.associate { searchPlayCountRecordingKey(it) to it.youtubeViewCount }
+    return map { track ->
+        if (track.youtubeViewCount > 0L) return@map track
+        val count = byId[track.id] ?: byTitle[searchPlayCountRecordingKey(track)]
+        if (count == null) track else track.copy(youtubeViewCount = count)
+    }
+}
+
+private val searchPlayCountPackaging = Regex(
+    "\\s*[(\\[](?:official\\s+)?(?:music\\s+)?(?:video|audio|lyric(?:s)?(?:\\s+video)?|visualizer)[)\\]]|\\s*[(\\[]?\\s*(?:ft\\.|feat\\.|with)\\s[^)\\]]*[)\\]]?",
+    RegexOption.IGNORE_CASE
+)
+
+private fun searchPlayCountRecordingKey(track: Track): String {
+    val title = searchPlayCountPackaging.replace(track.title.lowercase(Locale.ROOT), "").trim()
+    val artist = track.artist.lowercase(Locale.ROOT).substringBefore(',').substringBefore(" & ").trim()
+    return "$title|$artist"
 }
 
 private fun SearchArtistDiscography.verifiedReleases(): List<AlbumHit> =
@@ -346,7 +377,8 @@ internal fun officialSearchDiscography(profile: ArtistProfile?, artist: ArtistHi
         albums = profile.albums.asSearchAlbums(),
         singles = profile.singles.asSearchAlbums(),
         compilations = profile.compilations.asSearchAlbums(),
-        playlists = profile.featuredPlaylists
+        playlists = profile.featuredPlaylists,
+        topSongs = profile.topSongs
     ).takeUnless(SearchArtistDiscography::isEmpty)
 }
 

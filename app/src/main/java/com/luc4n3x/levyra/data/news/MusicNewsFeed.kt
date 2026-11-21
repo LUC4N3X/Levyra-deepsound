@@ -48,6 +48,18 @@ internal object MusicNewsFeedParser {
             .toList()
     }
 
+    private val openGraphImage = Regex(
+        "<meta\\b[^>]*?(?:property|name)\\s*=\\s*[\"'](?:og:image|og:image:secure_url|twitter:image)[\"'][^>]*?\\bcontent\\s*=\\s*[\"']([^\"']+)[\"']" +
+            "|<meta\\b[^>]*?\\bcontent\\s*=\\s*[\"']([^\"']+)[\"'][^>]*?(?:property|name)\\s*=\\s*[\"'](?:og:image|og:image:secure_url|twitter:image)[\"']",
+        RegexOption.IGNORE_CASE
+    )
+
+    fun articleImage(html: String): String =
+        openGraphImage.findAll(html)
+            .map { match -> match.groupValues[1].ifBlank { match.groupValues[2] }.trim().replace("&amp;", "&") }
+            .firstOrNull(::isHttps)
+            .orEmpty()
+
     fun isHttps(url: String): Boolean = url.startsWith("https://", ignoreCase = true) && url.length > "https://".length
 
     private fun collectEntries(element: Element, into: MutableList<Element>) {

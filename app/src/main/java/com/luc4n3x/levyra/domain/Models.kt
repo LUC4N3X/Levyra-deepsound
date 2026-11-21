@@ -653,7 +653,8 @@ data class SearchArtistDiscography(
     val albums: List<AlbumHit> = emptyList(),
     val singles: List<AlbumHit> = emptyList(),
     val compilations: List<AlbumHit> = emptyList(),
-    val playlists: List<PlaylistHit> = emptyList()
+    val playlists: List<PlaylistHit> = emptyList(),
+    val topSongs: List<Track> = emptyList()
 ) {
     val shelves: List<SearchDiscographyShelf>
         get() = buildList {

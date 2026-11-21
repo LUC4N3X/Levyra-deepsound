@@ -6101,6 +6101,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { it.copy(youtubeMusicIntroPending = false) }
     }
 
+    fun updateUserName(name: String) {
+        val trimmed = limitUserName(name.trim())
+        if (trimmed == _state.value.userName) return
+        preferences.setUserName(trimmed)
+        _state.update { it.copy(userName = trimmed) }
+    }
+
     fun completeOnboarding(name: String, tasteIds: Set<String>, languageCode: String) {
         onboardingArtworkJobs.values.forEach(Job::cancel)
         onboardingArtworkJobs.clear()

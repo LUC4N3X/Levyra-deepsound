@@ -1,4 +1,7 @@
 package com.luc4n3x.levyra.ui
+import androidx.compose.material.icons.rounded.Podcasts
+import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.Swipe
 
 import com.luc4n3x.levyra.ui.components.LevyraMediaTitle
 import com.luc4n3x.levyra.ui.components.LevyraPlayingIndicator
@@ -29,13 +32,16 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Column
 import com.luc4n3x.levyra.ui.theme.LevyraType
 import com.luc4n3x.levyra.ui.theme.LevyraText
+import androidx.compose.foundation.border
 import com.luc4n3x.levyra.domain.ExploreZone
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.clip
 import androidx.compose.material3.MaterialTheme
+import com.luc4n3x.levyra.ui.player.horizontalFadeEdges
 import androidx.compose.material3.Text
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.PaddingValues
@@ -205,8 +211,28 @@ internal fun homeChipZones(strings: com.luc4n3x.levyra.ui.i18n.LevyraStrings): L
     return zones.take(1) + podcasts + zones.drop(1)
 }
 
+internal const val DEFAULT_MOODS_CHIP = "default:moods"
+private const val DEFAULT_SAMPLES_CHIP = com.luc4n3x.levyra.domain.EXPLORE_SAMPLES_REQUEST + "0"
+
+internal fun defaultHomeChipZones(strings: com.luc4n3x.levyra.ui.i18n.LevyraStrings): List<ExploreZone> = listOf(
+    ExploreZone(com.luc4n3x.levyra.domain.EXPLORE_PODCASTS_REQUEST, com.luc4n3x.levyra.ui.i18n.podcastCopy(strings.code).title, "", "", 0, 0),
+    ExploreZone(DEFAULT_MOODS_CHIP, strings.exploreMoods, "", "", 0, 0),
+    ExploreZone(DEFAULT_SAMPLES_CHIP, strings.exploreSamples, "", "", 0, 0)
+)
+
+private fun defaultHomeChipIcon(id: String): androidx.compose.ui.graphics.vector.ImageVector? = when (id) {
+    com.luc4n3x.levyra.domain.EXPLORE_PODCASTS_REQUEST -> androidx.compose.material.icons.Icons.Rounded.Podcasts
+    DEFAULT_MOODS_CHIP -> androidx.compose.material.icons.Icons.Rounded.Palette
+    DEFAULT_SAMPLES_CHIP -> androidx.compose.material.icons.Icons.Rounded.Swipe
+    else -> null
+}
+
 internal fun com.luc4n3x.levyra.viewmodel.HomeViewModel.openHomeChip(zone: ExploreZone) {
-    if (zone.id == com.luc4n3x.levyra.domain.EXPLORE_PODCASTS_REQUEST) openExplorePodcasts() else openExploreZone(zone)
+    when (zone.id) {
+        com.luc4n3x.levyra.domain.EXPLORE_PODCASTS_REQUEST -> openExplorePodcasts()
+        DEFAULT_SAMPLES_CHIP -> openExploreSamples(0)
+        else -> openExploreZone(zone)
+    }
 }
 
 @Composable
@@ -214,63 +240,102 @@ internal fun HomeGenreChips(
     zones: List<ExploreZone>,
     contentPadding: PaddingValues,
     onSelect: (ExploreZone) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    compactPills: Boolean = false,
+    state: LazyListState = rememberLazyListState()
 ) {
-    val colors = MaterialTheme.colorScheme
     if (com.luc4n3x.levyra.ui.theme.LevyraIsSpotify) {
-        LazyRow(modifier = modifier.fillMaxWidth(), contentPadding = contentPadding, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyRow(state = state, modifier = modifier.fillMaxWidth(), contentPadding = contentPadding, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(zones, key = { zone -> "home-chip-${zone.id}" }, contentType = { "HomeExperience-zones" }) { zone ->
                 com.luc4n3x.levyra.ui.components.LevyraFilterPill(label = zone.label, selected = false, onClick = { onSelect(zone) }, role = Role.Button)
             }
         }
         return
     }
+    val edges = if (compactPills) {
+        Modifier.horizontalFadeEdges(state.canScrollBackward, false, 12.dp)
+    } else Modifier
     LazyRow(
-        modifier = modifier.fillMaxWidth(),
+        state = state,
+        modifier = modifier.fillMaxWidth().then(edges),
         contentPadding = contentPadding,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(zones, key = { zone -> "home-chip-${zone.id}" }, contentType = { "HomeExperience-zones" }) { zone ->
-            val interaction = remember(zone.id) { MutableInteractionSource() }
-            val corner = if (LocalAnimationsEnabled.current) {
-                levyraExpressiveCorner(
-                    interactionSource = interaction,
-                    rest = HomeChipRestCorner,
-                    pressed = HomeChipPressedCorner,
-                    label = "homeGenreChipCorner"
-                )
-            } else {
-                HomeChipRestCorner
-            }
-            Box(
-                modifier = Modifier
-                    .heightIn(min = 48.dp)
-                    .levyraPressable(
-                        onClick = { onSelect(zone) },
-                        interactionSource = interaction,
-                        pressedScale = LevyraPressScale.Control,
-                        role = Role.Button
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .height(HomeChipVisualHeight)
-                        .clip(RoundedCornerShape(corner))
-                        .background(colors.surfaceContainerHigh)
-                        .padding(horizontal = 18.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = zone.label,
-                        color = colors.onSurface,
-                        style = LevyraType.cardTitle.copy(fontWeight = FontWeight.Bold, letterSpacing = (-0.1).sp),
-                        maxLines = 1
-                    )
-                }
-            }
+            HomeGenreChip(
+                label = zone.label,
+                compact = compactPills,
+                icon = if (compactPills) defaultHomeChipIcon(zone.id) else null,
+                onClick = { onSelect(zone) }
+            )
         }
     }
+}
+
+@Composable
+private fun HomeGenreChip(label: String, compact: Boolean, icon: androidx.compose.ui.graphics.vector.ImageVector?, onClick: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    val corner = if (LocalAnimationsEnabled.current) {
+        levyraExpressiveCorner(
+            interactionSource = interaction,
+            rest = HomeChipRestCorner,
+            pressed = HomeChipPressedCorner,
+            label = "homeGenreChipCorner"
+        )
+    } else {
+        HomeChipRestCorner
+    }
+    Box(
+        modifier = Modifier
+            .heightIn(min = 48.dp)
+            .levyraPressable(
+                onClick = onClick,
+                interactionSource = interaction,
+                pressedScale = LevyraPressScale.Control,
+                role = Role.Button
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            modifier = homeChipSurface(compact, RoundedCornerShape(corner)),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            if (icon != null) {
+                androidx.compose.material3.Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = com.luc4n3x.levyra.ui.components.levyraUtilityColors(com.luc4n3x.levyra.ui.components.LevyraUtilitySeed).accent,
+                    modifier = Modifier.size(15.dp)
+                )
+            }
+            Text(
+                text = label,
+                color = if (compact) LevyraText.copy(alpha = 0.94f) else MaterialTheme.colorScheme.onSurface,
+                style = if (compact) MaterialTheme.typography.labelLarge else LevyraType.cardTitle.copy(fontWeight = FontWeight.Bold, letterSpacing = (-0.1).sp),
+                maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
+private fun homeChipSurface(compact: Boolean, shape: RoundedCornerShape): Modifier {
+    if (!compact) {
+        return Modifier
+            .height(HomeChipVisualHeight)
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .padding(horizontal = 18.dp)
+    }
+    val fill = if (LevyraIsLight) Color.White.copy(alpha = 0.62f) else Color.Black.copy(alpha = 0.30f)
+    val edge = if (LevyraIsLight) Color(0x1F11131F) else Color.White.copy(alpha = 0.16f)
+    return Modifier
+        .heightIn(min = 36.dp)
+        .clip(shape)
+        .background(fill)
+        .border(1.dp, edge, shape)
+        .padding(start = 10.dp, end = 12.dp, top = 6.dp, bottom = 6.dp)
 }
 
 private const val PODIUM_PARALLAX_ZOOM = 1.06f

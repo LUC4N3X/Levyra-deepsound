@@ -130,6 +130,28 @@ class QobuzEditorialRepository private constructor(context: Context) {
         null
     }
 
+    private val artistPortraits = ConcurrentHashMap<String, String>()
+
+    suspend fun artistPortrait(pageUrl: String): String = withContext(Dispatchers.IO) {
+        artistPortraits[pageUrl]?.let { return@withContext it }
+        if (backoff.blocked(System.currentTimeMillis())) return@withContext ""
+        val html = try {
+            fetchHtml(pageUrl)
+        } catch (error: java.io.IOException) {
+            Timber.w(error, "Qobuz artist portrait failed")
+            null
+        } catch (error: IllegalArgumentException) {
+            Timber.w(error, "Qobuz artist portrait failed")
+            null
+        }
+        val portrait = html?.let(com.luc4n3x.levyra.data.news.MusicNewsFeedParser::articleImage).orEmpty()
+        if (portrait.isNotBlank()) {
+            if (artistPortraits.size >= MAX_ARTIST_PORTRAITS) artistPortraits.clear()
+            artistPortraits[pageUrl] = portrait
+        }
+        portrait
+    }
+
     private fun fetchHtml(url: String): String? {
         if (!QobuzStore.isStoreUrl(url)) return null
         val request = Request.Builder()
@@ -195,6 +217,7 @@ class QobuzEditorialRepository private constructor(context: Context) {
         private const val MAX_STALE_MS = 7L * 24L * 60L * 60L * 1000L
         private const val PLAYLIST_TTL_MS = 3L * 60L * 60L * 1000L
         private const val MAX_PAGE_BYTES = 6L * 1024L * 1024L
+        private const val MAX_ARTIST_PORTRAITS = 32
         private const val READ_CHUNK_BYTES = 64L * 1024L
         private const val HTTP_TOO_MANY_REQUESTS = 429
         private const val HTTP_FORBIDDEN = 403
