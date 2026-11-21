@@ -55,10 +55,9 @@ class ListenBrainzLibrary(
     }
 
     suspend fun export(title: String, tracks: List<ListenBrainzTrack>): ListenBrainzExportResult = withContext(Dispatchers.IO) {
-        val capped = tracks.take(MAX_EXPORT_TRACKS)
         val gate = Semaphore(LOOKUP_PARALLELISM)
         val mbids = coroutineScope {
-            capped.map { track ->
+            tracks.map { track ->
                 async {
                     gate.withPermit {
                         track.recordingMbid.ifBlank {
@@ -73,11 +72,16 @@ class ListenBrainzLibrary(
             }.awaitAll()
         }.filter(String::isNotBlank).distinct()
         if (mbids.isEmpty()) throw ListenBrainzException()
-        val body = ListenBrainzJson.createPayload(title, mbids).toString().toRequestBody(JSON)
+        val batches = mbids.chunked(EXPORT_BATCH)
+        val body = ListenBrainzJson.createPayload(title, batches.first()).toString().toRequestBody(JSON)
         val created = send(Request.Builder().url("$API/playlist/create").post(body))
         val playlistMbid = created?.let { JSONObject(it).optString("playlist_mbid") }.orEmpty()
         if (playlistMbid.isBlank()) throw ListenBrainzException()
-        ListenBrainzExportResult(matched = mbids.size, total = capped.size, url = "https://listenbrainz.org/playlist/$playlistMbid")
+        batches.drop(1).forEach { batch ->
+            val add = ListenBrainzJson.trackPayload(batch).toString().toRequestBody(JSON)
+            send(Request.Builder().url("$API/playlist/$playlistMbid/item/add").post(add)) ?: throw ListenBrainzException()
+        }
+        ListenBrainzExportResult(matched = mbids.size, total = tracks.size, url = "https://listenbrainz.org/playlist/$playlistMbid")
     }
 
     private fun top(user: String, range: String, kind: ListenBrainzPlaylistKind): ListenBrainzPlaylist? {
@@ -116,7 +120,7 @@ class ListenBrainzLibrary(
         const val API = "https://api.listenbrainz.org/1"
         const val TOP_COUNT = 50
         const val LIST_COUNT = 25
-        const val MAX_EXPORT_TRACKS = 200
+        const val EXPORT_BATCH = 100
         const val LOOKUP_PARALLELISM = 4
         const val HTTP_NO_CONTENT = 204
         val JSON = "application/json; charset=utf-8".toMediaType()
@@ -167,9 +171,14 @@ internal object ListenBrainzJson {
         "playlist",
         JSONObject()
             .put("title", title)
-            .put("track", JSONArray().apply { mbids.forEach { put(JSONObject().put("identifier", RECORDING_PREFIX + it)) } })
+            .put("track", trackArray(mbids))
             .put("extension", JSONObject().put("https://musicbrainz.org/doc/jspf#playlist", JSONObject().put("public", false)))
     )
+
+    fun trackPayload(mbids: List<String>): JSONObject = JSONObject().put("playlist", JSONObject().put("track", trackArray(mbids)))
+
+    private fun trackArray(mbids: List<String>): JSONArray =
+        JSONArray().apply { mbids.forEach { put(JSONObject().put("identifier", RECORDING_PREFIX + it)) } }
 
     fun xspf(title: String, tracks: List<ListenBrainzTrack>): String = buildString {
         append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<playlist version=\"1\" xmlns=\"http://xspf.org/ns/0/\">\n")

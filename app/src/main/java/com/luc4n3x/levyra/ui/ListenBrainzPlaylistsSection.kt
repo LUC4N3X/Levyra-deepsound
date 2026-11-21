@@ -73,7 +73,7 @@ internal fun ListenBrainzPlaylistsSection(viewModel: LevyraViewModel) {
             val title = copy.titleFor(playlist)
             ListenBrainzPlaylistRow(
                 title = title,
-                subtitle = copy.kind(playlist.kind),
+                subtitle = copy.kindLabel(playlist.kind),
                 icon = playlist.kind.icon(),
                 importing = state.importingId == playlist.id,
                 importLabel = copy.import,
@@ -129,4 +129,10 @@ private fun ListenBrainzCopy.titleFor(playlist: ListenBrainzPlaylist): String = 
     ListenBrainzPlaylistKind.TopWeek -> topWeek
     ListenBrainzPlaylistKind.TopMonth -> topMonth
     else -> playlist.title
+}
+
+private fun ListenBrainzCopy.kindLabel(kind: ListenBrainzPlaylistKind): String = when (kind) {
+    ListenBrainzPlaylistKind.TopWeek, ListenBrainzPlaylistKind.TopMonth -> kindTop
+    ListenBrainzPlaylistKind.CreatedFor -> kindCreatedFor
+    ListenBrainzPlaylistKind.Own -> kindOwn
 }

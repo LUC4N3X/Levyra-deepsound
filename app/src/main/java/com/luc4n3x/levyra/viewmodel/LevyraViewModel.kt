@@ -1328,6 +1328,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val listenBrainzScrobbling = com.luc4n3x.levyra.feature.scrobbling.ListenBrainzScrobbleProvider(externalCredentialStore)
     private val listenBrainzLibrary by lazy { com.luc4n3x.levyra.feature.scrobbling.ListenBrainzLibrary(listenBrainzScrobbling::token) }
     private val _listenBrainzPlaylists = MutableStateFlow(ListenBrainzPlaylistsState())
+    private var listenBrainzRefreshJob: Job? = null
     val listenBrainzPlaylists: StateFlow<ListenBrainzPlaylistsState> = _listenBrainzPlaylists.asStateFlow()
     private val youtubeMusicHistory = com.luc4n3x.levyra.data.youtubemusic.YoutubeMusicHistoryProvider(
         application.applicationContext,
@@ -16140,6 +16141,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun saveListenBrainzToken(token: String) {
         viewModelScope.launch(Dispatchers.IO) {
+            listenBrainzRefreshJob?.cancel()
+            _listenBrainzPlaylists.value = ListenBrainzPlaylistsState()
             _state.update { it.copy(listenBrainzConfigured = listenBrainzScrobbling.saveToken(token)) }
         }
     }
@@ -16147,19 +16150,25 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun clearListenBrainzToken() {
         viewModelScope.launch(Dispatchers.IO) {
             listenBrainzScrobbling.clear()
+            listenBrainzRefreshJob?.cancel()
             _listenBrainzPlaylists.value = ListenBrainzPlaylistsState()
             _state.update { it.copy(listenBrainzConfigured = false) }
         }
     }
 
     fun refreshListenBrainzPlaylists() {
-        if (_listenBrainzPlaylists.value.loading) return
+        listenBrainzRefreshJob?.cancel()
         _listenBrainzPlaylists.update { it.copy(loading = true) }
-        viewModelScope.launch {
+        listenBrainzRefreshJob = viewModelScope.launch {
+            val account = withContext(Dispatchers.IO) { listenBrainzScrobbling.token() }
             val playlists = runCatchingPreservingCancellation { listenBrainzLibrary.playlists() }
                 .onFailure { Timber.w(it, "listenbrainz playlists failed") }
                 .getOrNull()
-            _listenBrainzPlaylists.update { it.copy(loading = false, playlists = playlists ?: it.playlists) }
+            val current = withContext(Dispatchers.IO) { listenBrainzScrobbling.token() }
+            _listenBrainzPlaylists.update {
+                if (current != account) it.copy(loading = false, playlists = emptyList())
+                else it.copy(loading = false, playlists = playlists ?: it.playlists)
+            }
         }
     }
 

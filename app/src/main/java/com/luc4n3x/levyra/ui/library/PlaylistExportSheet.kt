@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -117,31 +118,7 @@ internal fun PlaylistExportSheet(controller: PlaylistExportController, state: Pl
             )
             when (state.phase) {
                 PlaylistExportPhase.CHOOSE -> ExportChoices(copy, state, controller::exportToYoutubeMusic, controller::exportToListenBrainz, saveAs)
-                PlaylistExportPhase.SENDING -> if (state.destination == PlaylistExportDestination.LISTENBRAINZ) {
-                    Text(
-                        copy.listenBrainzMatching,
-                        color = LevyraText,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
-                    )
-                    LevyraLoadingIndicator(color = LevyraCyan, modifier = Modifier.align(Alignment.CenterHorizontally).size(36.dp))
-                } else {
-                    Text(
-                        copy.sending(state.added, state.total),
-                        color = LevyraText,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
-                    )
-                    LevyraWavyProgress(
-                        progress = if (state.total == 0) 0f else state.added.toFloat() / state.total,
-                        color = LevyraCyan,
-                        trackColor = LevyraText.copy(alpha = 0.12f),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedButton(onClick = controller::cancel, modifier = Modifier.align(Alignment.End)) {
-                        Text(copy.cancel, color = LevyraText)
-                    }
-                }
+                PlaylistExportPhase.SENDING -> ExportSending(copy, state, controller::cancel)
                 PlaylistExportPhase.SAVING -> LevyraLoadingIndicator(
                     color = LevyraCyan,
                     modifier = Modifier.align(Alignment.CenterHorizontally).size(36.dp)
@@ -162,6 +139,30 @@ internal fun PlaylistExportSheet(controller: PlaylistExportController, state: Pl
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun ColumnScope.ExportSending(copy: PlaylistExportCopy, state: PlaylistExportUiState, onCancel: () -> Unit) {
+    val listenBrainz = state.destination == PlaylistExportDestination.LISTENBRAINZ
+    Text(
+        if (listenBrainz) copy.listenBrainzMatching else copy.sending(state.added, state.total),
+        color = LevyraText,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+    )
+    if (listenBrainz) {
+        LevyraLoadingIndicator(color = LevyraCyan, modifier = Modifier.align(Alignment.CenterHorizontally).size(36.dp))
+    } else {
+        LevyraWavyProgress(
+            progress = if (state.total == 0) 0f else state.added.toFloat() / state.total,
+            color = LevyraCyan,
+            trackColor = LevyraText.copy(alpha = 0.12f),
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+    OutlinedButton(onClick = onCancel, modifier = Modifier.align(Alignment.End)) {
+        Text(copy.cancel, color = LevyraText)
     }
 }
 

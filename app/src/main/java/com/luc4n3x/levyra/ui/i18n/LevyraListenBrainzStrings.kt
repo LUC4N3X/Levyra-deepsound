@@ -1,7 +1,5 @@
 package com.luc4n3x.levyra.ui.i18n
 
-import com.luc4n3x.levyra.feature.scrobbling.ListenBrainzPlaylistKind
-
 internal data class ListenBrainzCopy(
     val title: String,
     val subtitle: String,
@@ -14,13 +12,7 @@ internal data class ListenBrainzCopy(
     val kindCreatedFor: String,
     val kindOwn: String,
     val nothingToImport: String
-) {
-    fun kind(kind: ListenBrainzPlaylistKind): String = when (kind) {
-        ListenBrainzPlaylistKind.TopWeek, ListenBrainzPlaylistKind.TopMonth -> kindTop
-        ListenBrainzPlaylistKind.CreatedFor -> kindCreatedFor
-        ListenBrainzPlaylistKind.Own -> kindOwn
-    }
-}
+)
 
 internal fun listenBrainzCopy(code: String): ListenBrainzCopy = when (code.substringBefore('-')) {
     "it" -> ListenBrainzCopy(

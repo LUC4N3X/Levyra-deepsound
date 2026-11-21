@@ -38,6 +38,13 @@ class ListenBrainzJsonTest {
     }
 
     @Test
+    fun trackPayloadAddsRecordingIdentifiersWithoutTitle() {
+        val playlist = ListenBrainzJson.trackPayload(listOf("a", "b")).getJSONObject("playlist")
+        assertEquals(false, playlist.has("title"))
+        assertEquals("https://musicbrainz.org/recording/b", playlist.getJSONArray("track").getJSONObject(1).getString("identifier"))
+    }
+
+    @Test
     fun xspfEscapesTitlesForTheImportPipeline() {
         val xspf = ListenBrainzJson.xspf("Rock & <Roll>", listOf(ListenBrainzTrack("A \"B\"", "C & D")))
         assertTrue(xspf.contains("<title>Rock &amp; &lt;Roll&gt;</title>"))

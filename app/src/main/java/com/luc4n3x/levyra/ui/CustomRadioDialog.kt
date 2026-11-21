@@ -76,6 +76,7 @@ import com.luc4n3x.levyra.ui.components.LevyraUtilityBackdrop
 import com.luc4n3x.levyra.ui.components.LevyraUtilitySeed
 import com.luc4n3x.levyra.ui.components.levyraUtilityColors
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.i18n.RadioLibraryCopy
 import com.luc4n3x.levyra.ui.i18n.radioLibraryCopy
 import com.luc4n3x.levyra.ui.theme.LevyraSkinManagesLayout
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -135,11 +136,7 @@ internal fun CustomRadioDialog(
                 if (station == null) {
                     RadioPlaylistImportCard(
                         title = copy.importPlaylist,
-                        supporting = when {
-                            importFailed -> copy.error(CustomRadioError.Playlist)
-                            imported != null -> copy.imported(imported.added, imported.skipped)
-                            else -> RadioPlaylistFormats
-                        },
+                        supporting = radioImportSupporting(copy, importFailed, imported),
                         busy = saving && importing,
                         done = imported != null && !importFailed,
                         failed = importFailed,
@@ -148,23 +145,15 @@ internal fun CustomRadioDialog(
                         onClick = { onChanged(); picker.launch(RadioPlaylistMimeTypes) }
                     )
                 }
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    CustomRadioField(
-                        value = name, label = copy.name, icon = Icons.Rounded.Radio, shape = fieldShape,
-                        enabled = !saving, isError = error == CustomRadioError.Name,
-                        keyboardType = KeyboardType.Text, imeAction = ImeAction.Next
-                    ) { name = it.take(160); onChanged() }
-                    CustomRadioField(
-                        value = stream, label = copy.stream, icon = Icons.Rounded.Link, shape = fieldShape,
-                        enabled = !saving, isError = error == CustomRadioError.StreamUrl || error == CustomRadioError.Duplicate,
-                        keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next
-                    ) { stream = it.take(4096); onChanged() }
-                    CustomRadioField(
-                        value = image, label = copy.image, icon = Icons.Rounded.Image, shape = fieldShape,
-                        enabled = !saving, isError = error == CustomRadioError.ImageUrl,
-                        keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done
-                    ) { image = it.take(4096); onChanged() }
-                }
+                CustomRadioFields(
+                    values = CustomRadioValues(name, stream, image),
+                    error = error,
+                    saving = saving,
+                    shape = fieldShape,
+                    onName = { name = it.take(160); onChanged() },
+                    onStream = { stream = it.take(4096); onChanged() },
+                    onImage = { image = it.take(4096); onChanged() }
+                )
                 if (error != null && !importFailed) {
                     Text(
                         copy.error(error),
@@ -173,32 +162,88 @@ internal fun CustomRadioDialog(
                         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
                     )
                 }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    if (!importDone) {
-                        TextButton(
-                            onClick = onDismiss,
-                            enabled = !saving,
-                            modifier = Modifier.weight(1f).heightIn(min = 56.dp)
-                        ) { Text(strings.cancel, style = MaterialTheme.typography.titleSmall) }
-                    }
-                    Button(
-                        onClick = if (importDone) onDismiss else submit,
-                        enabled = importDone || !saving,
-                        modifier = Modifier.weight(1f).heightIn(min = 56.dp)
-                    ) {
-                        if (saving && !importing) {
-                            LevyraLoadingIndicator(Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
-                        } else {
-                            Text(if (importDone) strings.done else strings.save, style = MaterialTheme.typography.titleSmall)
-                        }
-                    }
-                }
+                CustomRadioFooter(
+                    importDone = importDone,
+                    saving = saving,
+                    savingStation = saving && !importing,
+                    onDismiss = onDismiss,
+                    onSubmit = submit
+                )
             }
         }
     }
 }
 
 private const val CustomRadioHaloStrength = 0.6f
+
+private data class CustomRadioValues(val name: String, val stream: String, val image: String)
+
+private fun radioImportSupporting(copy: RadioLibraryCopy, failed: Boolean, imported: RadioImportResult?): String = when {
+    failed -> copy.error(CustomRadioError.Playlist)
+    imported != null -> copy.imported(imported.added, imported.skipped)
+    else -> RadioPlaylistFormats
+}
+
+@Composable
+private fun CustomRadioFields(
+    values: CustomRadioValues,
+    error: CustomRadioError?,
+    saving: Boolean,
+    shape: Shape,
+    onName: (String) -> Unit,
+    onStream: (String) -> Unit,
+    onImage: (String) -> Unit
+) {
+    val copy = radioLibraryCopy(LocalLevyraStrings.current.code)
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        CustomRadioField(
+            value = values.name, label = copy.name, icon = Icons.Rounded.Radio, shape = shape,
+            enabled = !saving, isError = error == CustomRadioError.Name,
+            keyboardType = KeyboardType.Text, imeAction = ImeAction.Next, onValueChange = onName
+        )
+        CustomRadioField(
+            value = values.stream, label = copy.stream, icon = Icons.Rounded.Link, shape = shape,
+            enabled = !saving, isError = error == CustomRadioError.StreamUrl || error == CustomRadioError.Duplicate,
+            keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next, onValueChange = onStream
+        )
+        CustomRadioField(
+            value = values.image, label = copy.image, icon = Icons.Rounded.Image, shape = shape,
+            enabled = !saving, isError = error == CustomRadioError.ImageUrl,
+            keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done, onValueChange = onImage
+        )
+    }
+}
+
+@Composable
+private fun CustomRadioFooter(
+    importDone: Boolean,
+    saving: Boolean,
+    savingStation: Boolean,
+    onDismiss: () -> Unit,
+    onSubmit: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (!importDone) {
+            TextButton(
+                onClick = onDismiss,
+                enabled = !saving,
+                modifier = Modifier.weight(1f).heightIn(min = 56.dp)
+            ) { Text(strings.cancel, style = MaterialTheme.typography.titleSmall) }
+        }
+        Button(
+            onClick = if (importDone) onDismiss else onSubmit,
+            enabled = importDone || !saving,
+            modifier = Modifier.weight(1f).heightIn(min = 56.dp)
+        ) {
+            if (savingStation) {
+                LevyraLoadingIndicator(Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+            } else {
+                Text(if (importDone) strings.done else strings.save, style = MaterialTheme.typography.titleSmall)
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable

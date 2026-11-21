@@ -15,7 +15,7 @@ internal fun parseRadioPlaylist(text: String): List<RadioPlaylistEntry> {
     for (line in lines) {
         if (line.startsWith("#EXTINF", ignoreCase = true)) {
             pendingName = line.substringAfter(',', "").trim()
-            pendingImage = extinfAttribute(line, "tvg-logo")
+            pendingImage = TvgLogoAttribute.find(line.substringBefore(','))?.groupValues?.get(1)?.trim().orEmpty()
             continue
         }
         if (line.startsWith("#")) continue
@@ -30,8 +30,7 @@ internal fun parseRadioPlaylist(text: String): List<RadioPlaylistEntry> {
     return entries
 }
 
-private fun extinfAttribute(line: String, key: String): String =
-    Regex("""$key\s*=\s*"([^"]*)"""", RegexOption.IGNORE_CASE).find(line.substringBefore(','))?.groupValues?.get(1)?.trim().orEmpty()
+private val TvgLogoAttribute = Regex("""tvg-logo\s*=\s*"([^"]*)"""", RegexOption.IGNORE_CASE)
 
 private fun radioEntryName(name: String, stream: String): String {
     val clean = name.filterNot(Char::isISOControl).trim().take(160)
