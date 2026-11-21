@@ -23785,6 +23785,42 @@ private val SearchRowArtworkShape = RoundedCornerShape(14.dp)
 private val DefaultSearchRowArtworkSize = 60.dp
 private val DefaultSearchRowArtworkShape = RoundedCornerShape(16.dp)
 
+@Composable
+private fun SearchTrackMeta(artist: String, playsLabel: String, compactRow: Boolean) {
+    if (compactRow) {
+        val meta = remember(artist, playsLabel) {
+            listOf(artist.trim(), playsLabel).filter(String::isNotBlank).joinToString(" · ")
+        }
+        if (meta.isNotEmpty()) {
+            Text(
+                meta,
+                color = LevyraMuted,
+                style = LevyraType.metadata,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    } else Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            artist,
+            color = LevyraMuted,
+            style = LevyraType.metadata,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false)
+        )
+        if (playsLabel.isNotEmpty()) {
+            Text(
+                " · $playsLabel",
+                color = LevyraMuted,
+                style = LevyraType.metadata,
+                maxLines = 1,
+                softWrap = false
+            )
+        }
+    }
+}
+
 private fun searchRowArtworkSize(): Dp = if (LevyraIsDefaultSkin) DefaultSearchRowArtworkSize else SearchRowArtworkSize
 
 private fun searchRowArtworkShape(): RoundedCornerShape = if (LevyraIsDefaultSkin) DefaultSearchRowArtworkShape else SearchRowArtworkShape
@@ -23879,38 +23915,7 @@ private fun SearchTrackCard(
                     ?.let { "$it ${strings.pulsePlays}" }
                     .orEmpty()
             }
-            if (compactRow) {
-                val meta = remember(track.artist, playsLabel) {
-                    listOf(track.artist.trim(), playsLabel).filter(String::isNotBlank).joinToString(" · ")
-                }
-                if (meta.isNotEmpty()) {
-                    Text(
-                        meta,
-                        color = LevyraMuted,
-                        style = LevyraType.metadata,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            } else Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    track.artist,
-                    color = LevyraMuted,
-                    style = LevyraType.metadata,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false)
-                )
-                if (playsLabel.isNotEmpty()) {
-                    Text(
-                        " · $playsLabel",
-                        color = LevyraMuted,
-                        style = LevyraType.metadata,
-                        maxLines = 1,
-                        softWrap = false
-                    )
-                }
-            }
+            SearchTrackMeta(track.artist, playsLabel, compactRow)
         }
         if (selectionActive) {
             Icon(
