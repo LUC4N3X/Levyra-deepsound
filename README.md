@@ -85,43 +85,43 @@ I don't host FLAC audio on Levyra's servers. On Android, experimental FLAC playb
 
 <p>
   <a href="docs/assets/showcase/readme/row-01-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-01-studio-mobile.webp?v=m3-cards-12">
-    <img src="docs/assets/showcase/readme/row-01-studio.webp?v=m3-cards-12" width="900" alt="Levyra for Android: personalized home, Now Playing, gapless playback and word-by-word live lyrics. No Levyra account, ads or telemetry.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-01-studio-mobile.webp?v=m3-cards-13">
+    <img src="docs/assets/showcase/readme/row-01-studio.webp?v=m3-cards-13" width="900" alt="Levyra for Android: personalized home, Now Playing, gapless playback and word-by-word live lyrics. No Levyra account, ads or telemetry.">
   </picture></a>
 </p>
 
 <p>
   <a href="docs/assets/showcase/readme/row-02-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-02-studio-mobile.webp?v=m3-cards-21">
-    <img src="docs/assets/showcase/readme/row-02-studio.webp?v=m3-cards-21" width="900" alt="Discover more, instant search results, artist pages, and personal collections.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-02-studio-mobile.webp?v=m3-cards-22">
+    <img src="docs/assets/showcase/readme/row-02-studio.webp?v=m3-cards-22" width="900" alt="Discover more, instant search results, artist pages, and personal collections.">
   </picture></a>
 </p>
 
 <p>
   <a href="docs/assets/showcase/readme/row-03-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-03-studio-mobile.webp?v=m3-cards-22">
-    <img src="docs/assets/showcase/readme/row-03-studio.webp?v=m3-cards-22" width="900" alt="Albums with offline downloads, swipe discovery, live radio, and audio output and quality settings.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-03-studio-mobile.webp?v=m3-cards-23">
+    <img src="docs/assets/showcase/readme/row-03-studio.webp?v=m3-cards-23" width="900" alt="Albums with offline downloads, swipe discovery, live radio, and audio output and quality settings.">
   </picture></a>
 </p>
 
 <p>
   <a href="docs/assets/showcase/readme/row-04-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-04-studio-mobile.webp?v=m3-cards-28">
-    <img src="docs/assets/showcase/readme/row-04-studio.webp?v=m3-cards-28" width="900" alt="Unified library, Top 100 and city charts, playlist import, and skin customization.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-04-studio-mobile.webp?v=m3-cards-29">
+    <img src="docs/assets/showcase/readme/row-04-studio.webp?v=m3-cards-29" width="900" alt="Unified library, Top 100 and city charts, playlist import, and skin customization.">
   </picture></a>
 </p>
 
 <p>
   <a href="docs/assets/showcase/readme/row-05-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-05-studio-mobile.webp?v=m3-cards-18">
-    <img src="docs/assets/showcase/readme/row-05-studio.webp?v=m3-cards-18" width="900" alt="Settings and studios, on-device listening insights, shared listening with Unison over Wi-Fi, and Your Year in Music.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-05-studio-mobile.webp?v=m3-cards-19">
+    <img src="docs/assets/showcase/readme/row-05-studio.webp?v=m3-cards-19" width="900" alt="Settings and studios, on-device listening insights, shared listening with Unison over Wi-Fi, and Your Year in Music.">
   </picture></a>
 </p>
 
 <p>
   <a href="docs/assets/showcase/readme/row-06-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-06-studio-mobile.webp?v=m3-cards-15">
-    <img src="docs/assets/showcase/readme/row-06-studio.webp?v=m3-cards-15" width="900" alt="Spotify Style, in-app updates, Theme Studio and Player Deck.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-06-studio-mobile.webp?v=m3-cards-16">
+    <img src="docs/assets/showcase/readme/row-06-studio.webp?v=m3-cards-16" width="900" alt="Spotify Style, in-app updates, Theme Studio and Player Deck.">
   </picture></a>
 </p>
 

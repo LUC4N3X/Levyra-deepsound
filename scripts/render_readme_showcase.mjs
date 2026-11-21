@@ -88,10 +88,10 @@ async function extractPhone(index, spec) {
 }
 
 const palettes = [
-  { top: '#FFFFFF', mid: '#E0EAFF', bottom: '#8CA8F6', shape: '#6E8FF0', ink: '#161F33', accent: '#3651B5', muted: '#4D5C7A' },
-  { top: '#FFFFFF', mid: '#E4E5FF', bottom: '#969EF6', shape: '#7B85F0', ink: '#181E35', accent: '#484CB5', muted: '#505978' },
-  { top: '#FFFFFF', mid: '#DCEEFF', bottom: '#82B2F5', shape: '#659CEB', ink: '#132234', accent: '#2D5DA8', muted: '#485E78' },
-  { top: '#FFFFFF', mid: '#E2E8FF', bottom: '#91A3F6', shape: '#758BF0', ink: '#171F34', accent: '#3B50B5', muted: '#4E5B7A' },
+  { top: '#FFFFFF', mid: '#D5E3FF', bottom: '#B6D0FA', shape: '#7693C9', ink: '#161F33', accent: '#3D5684', muted: '#4D5C7A' },
+  { top: '#FFFFFF', mid: '#D5E3FF', bottom: '#B8D1FF', shape: '#6C84B5', ink: '#161F33', accent: '#3D5684', muted: '#4D5C7A' },
+  { top: '#FFFFFF', mid: '#D5E3FF', bottom: '#B6D0FA', shape: '#7693C9', ink: '#161F33', accent: '#3D5684', muted: '#4D5C7A' },
+  { top: '#FFFFFF', mid: '#D5E3FF', bottom: '#B8D1FF', shape: '#6C84B5', ink: '#161F33', accent: '#3D5684', muted: '#4D5C7A' },
 ];
 
 function flower(cx, cy, radius, lobes, amp = 0.1) {
@@ -153,36 +153,36 @@ function cardBackdrop(index, p) {
     : `<path d="${flower(105, 420, 190, 8, 0.11)}" fill="${p.shape}" opacity=".055"/>`;
   return svg(`
     <defs>
-      <linearGradient id="baseSky" x1="0" y1="0" x2="0.6" y2="1">
+      <linearGradient id="baseSky" x1="0" y1="0" x2="0.55" y2="1">
         <stop offset="0%" stop-color="#FFFFFF"/>
-        <stop offset="34%" stop-color="#F7FAFF"/>
-        <stop offset="72%" stop-color="#E4EEFF"/>
-        <stop offset="100%" stop-color="#C6D9FC"/>
+        <stop offset="34%" stop-color="#F6F9FF"/>
+        <stop offset="70%" stop-color="#D5E3FF"/>
+        <stop offset="100%" stop-color="#B6D0FA"/>
       </linearGradient>
       <linearGradient id="silkBlue" x1="0" y1="0" x2="1" y2="0.25">
-        <stop offset="0%" stop-color="#6A95FA"/>
-        <stop offset="35%" stop-color="#7B8BF8"/>
-        <stop offset="68%" stop-color="#58A8FA"/>
-        <stop offset="100%" stop-color="#8B84F6"/>
+        <stop offset="0%" stop-color="#88B0F2"/>
+        <stop offset="36%" stop-color="#6C89BE"/>
+        <stop offset="68%" stop-color="#9AC0FA"/>
+        <stop offset="100%" stop-color="#5E7BB2"/>
       </linearGradient>
       <linearGradient id="silkDeep" x1="0" y1="0.2" x2="1" y2="0.9">
-        <stop offset="0%" stop-color="#4C7DF6"/>
-        <stop offset="48%" stop-color="#6F7CF6"/>
-        <stop offset="100%" stop-color="#4A9BF5"/>
+        <stop offset="0%" stop-color="#546D9E"/>
+        <stop offset="50%" stop-color="#6C84B5"/>
+        <stop offset="100%" stop-color="#4A6494"/>
       </linearGradient>
       <radialGradient id="orbA" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stop-color="#5C8DF8" stop-opacity=".42"/>
-        <stop offset="55%" stop-color="#7C9EFB" stop-opacity=".16"/>
+        <stop offset="0%" stop-color="#8EB6F6" stop-opacity=".44"/>
+        <stop offset="55%" stop-color="#B6D0FA" stop-opacity=".18"/>
         <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
       </radialGradient>
       <radialGradient id="orbB" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stop-color="#8C7CF6" stop-opacity=".34"/>
-        <stop offset="55%" stop-color="#A399FA" stop-opacity=".13"/>
+        <stop offset="0%" stop-color="#6C84B5" stop-opacity=".34"/>
+        <stop offset="55%" stop-color="#9BB6E6" stop-opacity=".14"/>
         <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
       </radialGradient>
       <radialGradient id="orbC" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stop-color="#4BC0FA" stop-opacity=".30"/>
-        <stop offset="60%" stop-color="#89D4FC" stop-opacity=".10"/>
+        <stop offset="0%" stop-color="#B8D1FF" stop-opacity=".46"/>
+        <stop offset="60%" stop-color="#D5E3FF" stop-opacity=".18"/>
         <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
       </radialGradient>
       <linearGradient id="topVeil" x1="0" y1="0" x2="0" y2="1">
