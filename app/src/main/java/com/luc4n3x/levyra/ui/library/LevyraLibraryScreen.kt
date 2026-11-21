@@ -4,6 +4,7 @@ import androidx.compose.material.icons.rounded.LibraryMusic
 import com.luc4n3x.levyra.ui.levyraTabContentBottomPadding
 import com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
+import com.luc4n3x.levyra.ui.theme.LevyraIsPureBlack
 import com.luc4n3x.levyra.ui.theme.Nocturne78Design
 
 import androidx.compose.foundation.shape.CircleShape
@@ -148,6 +149,9 @@ import com.luc4n3x.levyra.ui.glassBackdropSource
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import com.luc4n3x.levyra.data.ArtworkPalette
 import com.luc4n3x.levyra.data.ArtworkPaletteCache
 import com.luc4n3x.levyra.ui.LevyraPlayerPane
@@ -847,9 +851,17 @@ internal fun LevyraLibraryScreen(
     BackHandler(enabled = backEnabled && selectionActive) { selectedKeys = emptySet() }
 
     val libraryFrost = LevyraIsDefaultSkin
+    val librarySearchFocus = remember(listState) { FocusRequester() }
+    var focusLibrarySearch by remember(listState) { mutableStateOf(false) }
     val libraryGlass = com.luc4n3x.levyra.ui.rememberGlassBackdropState(libraryFrost && com.luc4n3x.levyra.ui.rememberGlassBlurAllowed())
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    Box(modifier = Modifier.fillMaxSize().background(if (com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) com.luc4n3x.levyra.ui.theme.YouTubeMusicDesign.background else LevyraInk)) {
+    val libraryBackground = if (com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) com.luc4n3x.levyra.ui.theme.YouTubeMusicDesign.background else LevyraInk
+    val topTint = if (libraryFrost && category == LibraryCategory.Overview && query.isBlank() && !LevyraIsPureBlack) {
+        Modifier.defaultLibraryTopTint(colors.primary, libraryBackground)
+    } else {
+        Modifier
+    }
+    Box(modifier = Modifier.fillMaxSize().background(libraryBackground).then(topTint)) {
         LazyColumn(
             state = listState,
             modifier = if (libraryFrost) Modifier.fillMaxSize().glassBackdropSource(libraryGlass) else Modifier.fillMaxSize().statusBarsPadding(),
@@ -864,7 +876,10 @@ internal fun LevyraLibraryScreen(
             if (spotifyOverview) item(key = "library-title") {
                 SpotifyLibraryHeader(spotifyLabels, spotifyActions)
             } else item(key = "library-title") {
-                com.luc4n3x.levyra.ui.LevyraTopLevelSearchRow(viewModel::openSearch.takeIf { libraryRadioSkin && category == LibraryCategory.Overview }, onJam = viewModel::openJam.takeIf { libraryRadioSkin && category == LibraryCategory.Overview }) {
+                com.luc4n3x.levyra.ui.LevyraTopLevelSearchRow(
+                    onSearch = viewModel::openSearch.takeIf { !libraryFrost && libraryRadioSkin && category == LibraryCategory.Overview },
+                    onJam = viewModel::openJam.takeIf { libraryRadioSkin && category == LibraryCategory.Overview }
+                ) {
                     Box(Modifier.weight(1f)) {
                         LibraryHero(
                             title = if (category == LibraryCategory.Overview) strings.libraryTitle else category.libraryLabel(strings),
@@ -886,12 +901,25 @@ internal fun LevyraLibraryScreen(
             }
 
             if (!(com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic && category == LibraryCategory.Overview && query.isEmpty()) && (!spotifyOverview || spotifySearchOpen || query.isNotBlank())) item(key = "library-search") {
+                if (libraryFrost && focusLibrarySearch) {
+                    val keyboard = LocalSoftwareKeyboardController.current
+                    LaunchedEffect(librarySearchFocus) {
+                        withFrameNanos { }
+                        if (librarySearchFocus.requestFocus()) keyboard?.show()
+                        focusLibrarySearch = false
+                    }
+                }
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
+                        .then(if (libraryFrost) Modifier.focusRequester(librarySearchFocus) else Modifier),
                     singleLine = true,
-                    shape = if (LevyraIsNocturne) RoundedCornerShape(Nocturne78Design.controlCorner) else CircleShape,
+                    shape = when {
+                        libraryFrost -> LevyraCardDesign.EditorialShape
+                        LevyraIsNocturne -> RoundedCornerShape(Nocturne78Design.controlCorner)
+                        else -> CircleShape
+                    },
                     textStyle = MaterialTheme.typography.bodyMedium.copy(
                         color = colors.onSurface,
                         fontWeight = FontWeight.Medium
@@ -930,13 +958,17 @@ internal fun LevyraLibraryScreen(
                 )
             }
 
-            if (category != LibraryCategory.Overview) item(key = "library-categories") {
+            if (category != LibraryCategory.Overview || (libraryFrost && query.isBlank())) item(key = "library-categories") {
                 val chipRowState = rememberLazyListState(
                     initialFirstVisibleItemIndex = LibraryBrowseCategories.indexOf(category).coerceAtLeast(0)
                 )
-                LaunchedEffect(category) {
+                val animateCategoryScroll = !libraryFrost || state.animationsEnabled
+                LaunchedEffect(category, animateCategoryScroll) {
                     val index = LibraryBrowseCategories.indexOf(category)
-                    if (index >= 0) chipRowState.animateScrollToItem(index)
+                    if (index >= 0) {
+                        if (animateCategoryScroll) chipRowState.animateScrollToItem(index)
+                        else chipRowState.scrollToItem(index)
+                    }
                 }
                 LazyRow(
                     state = chipRowState,
@@ -1141,24 +1173,24 @@ internal fun LevyraLibraryScreen(
                             }
                         }
                     } else if (LevyraIsDefaultSkin) {
-                        item(key = "default-library-overview") {
-                            DefaultLibraryOverview(
-                                favorites = state.favorites,
-                                recent = catalog.recent,
-                                mostPlayed = catalog.mostPlayed,
-                                entries = librarySections,
-                                categoryCovers = remember(catalog.albums, catalog.artists, catalog.tracks) {
-                                    mapOf(
-                                        LibraryCategory.Albums to catalog.albums.map { it.artworkUrl }.filter(String::isNotBlank).take(2),
-                                        LibraryCategory.Artists to catalog.artists.map { it.artworkUrl }.filter(String::isNotBlank).take(2),
-                                        LibraryCategory.Songs to catalog.tracks.map { it.thumbnailUrl }.filter(String::isNotBlank).distinct().take(2)
-                                    )
-                                },
-                                onOpenCollection = { openSmartCollectionName = it },
-                                onPlayTracks = { tracks -> tracks.firstOrNull()?.let { viewModel.playFrom(tracks, it) } },
-                                onOpenCategory = { switchCategory(it) }
-                            )
-                        }
+                        defaultLibraryOverview(
+                            favorites = state.favorites,
+                            recent = catalog.recent,
+                            mostPlayed = catalog.mostPlayed,
+                            entries = librarySections,
+                            playlists = visiblePlaylists,
+                            savedPlaylists = visibleSavedPlaylists,
+                            albums = visibleAlbums,
+                            strings = strings,
+                            animationsEnabled = state.animationsEnabled,
+                            onOpenCollection = { openSmartCollectionName = it },
+                            onPlayFavorites = { state.favorites.firstOrNull()?.let { viewModel.playFrom(state.favorites, it) } },
+                            onPlayRecent = { viewModel.playFrom(catalog.recent, it) },
+                            onOpenCategory = { switchCategory(it) },
+                            onOpenPlaylist = { viewModel.openPlaylist(it.id) },
+                            onOpenSavedPlaylist = viewModel::openSavedPlaylist,
+                            onOpenAlbum = { viewModel.openAlbum(it.toAlbumHit()) }
+                        )
                     } else {
                         sectionsItem()
                         item(key = "overview-smart-title") {
@@ -1641,9 +1673,14 @@ internal fun LevyraLibraryScreen(
             title = if (category == LibraryCategory.Overview) strings.libraryTitle else category.libraryLabel(strings),
             icon = androidx.compose.material.icons.Icons.Rounded.LibraryMusic
         ) {
-                androidx.compose.material3.IconButton(onClick = viewModel::openSearch) {
-                    androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Search, contentDescription = strings.search, tint = MaterialTheme.colorScheme.onSurface)
+            IconButton(onClick = {
+                collectionScope.launch {
+                    if (state.animationsEnabled) listState.animateScrollToItem(0) else listState.scrollToItem(0)
+                    focusLibrarySearch = true
                 }
+            }) {
+                Icon(Icons.Rounded.Search, contentDescription = strings.search, tint = colors.onSurface)
+            }
         }
 
         if (category == LibraryCategory.Device && localAlphabetIndex.visible) {

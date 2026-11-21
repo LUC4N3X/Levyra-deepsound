@@ -124,15 +124,10 @@ internal fun LibraryHero(title: String, subtitle: String, onBack: (() -> Unit)? 
     ) {
         if (onBack != null) {
             if (LevyraIsDefaultSkin) {
-                val tone = com.luc4n3x.levyra.ui.components.levyraUtilityColors(com.luc4n3x.levyra.ui.components.LevyraUtilitySeed)
-                LevyraBackButton(
+                DefaultLibraryBackButton(
                     onClick = onBack,
                     contentDescription = strings.back,
-                    modifier = Modifier.padding(bottom = 4.dp),
-                    colors = androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = tone.softContainer,
-                        contentColor = tone.accent
-                    )
+                    modifier = Modifier.padding(bottom = 4.dp)
                 )
             } else {
                 LevyraBackButton(onClick = onBack, contentDescription = strings.back, modifier = Modifier.padding(bottom = 4.dp))
@@ -143,6 +138,24 @@ internal fun LibraryHero(title: String, subtitle: String, onBack: (() -> Unit)? 
             Text(subtitle, color = colors.onSurfaceVariant, style = LevyraType.metadata, softWrap = true)
         }
     }
+}
+
+@Composable
+internal fun DefaultLibraryBackButton(
+    onClick: () -> Unit,
+    contentDescription: String,
+    modifier: Modifier = Modifier
+) {
+    val colors = MaterialTheme.colorScheme
+    LevyraBackButton(
+        onClick = onClick,
+        contentDescription = contentDescription,
+        modifier = modifier,
+        colors = androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors(
+            containerColor = colors.surfaceContainerHigh,
+            contentColor = colors.onSurface
+        )
+    )
 }
 
 @Composable
