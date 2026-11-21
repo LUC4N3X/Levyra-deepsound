@@ -78,20 +78,21 @@ import java.util.Locale
 @Composable
 internal fun DefaultSearchTopResult(
     hero: Track,
-    artist: ArtistHit?,
-    tracks: List<Track>,
     currentTrackId: String?,
     isPlaying: Boolean,
+    artist: ArtistHit?,
     enabled: Boolean,
     onArtist: () -> Unit,
     onPlay: () -> Unit,
+    onTogglePlay: () -> Unit,
     onShuffle: () -> Unit,
     onMix: () -> Unit,
     rows: @Composable () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     val scheme = MaterialTheme.colorScheme
-    val playing = isPlaying && tracks.any { it.id == currentTrackId }
+    val heroIsCurrent = hero.id == currentTrackId
+    val playing = heroIsCurrent && isPlaying
     val name = artist?.name?.ifBlank { null } ?: hero.artist
     val officialPortrait = rememberOfficialArtistPortrait(name)
     val portrait = officialPortrait?.ifBlank { null }
@@ -120,8 +121,8 @@ internal fun DefaultSearchTopResult(
             labelUrl = hero.thumbnailUrl.ifBlank { portraitUrl },
             playing = playing,
             enabled = enabled,
-            playLabel = strings.play,
-            onPlay = onPlay,
+            playLabel = if (playing) strings.pause else strings.play,
+            onPlay = if (heroIsCurrent) onTogglePlay else onPlay,
             modifier = Modifier.padding(start = 20.dp, top = 20.dp, end = 20.dp)
         )
         Row(

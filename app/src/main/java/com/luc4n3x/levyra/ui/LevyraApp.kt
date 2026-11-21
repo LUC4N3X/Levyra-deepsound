@@ -15045,7 +15045,8 @@ private fun SearchScreen(
                                     onAddToQueue = viewModel::addToQueue,
                                     onArtist = openTopResult,
                                     onShuffle = shuffleTopResult,
-                                    onMix = mixTopResult
+                                    onMix = mixTopResult,
+                                    onTogglePlay = viewModel::togglePlay
                                 )
                             }
                         }
@@ -23198,7 +23199,8 @@ private fun TopResultCard(
     onAddToQueue: (Track) -> Unit,
     onArtist: () -> Unit,
     onShuffle: () -> Unit,
-    onMix: () -> Unit
+    onMix: () -> Unit,
+    onTogglePlay: () -> Unit = {}
 ) {
     val hero = tracks.firstOrNull() ?: return
     val strings = LocalLevyraStrings.current
@@ -23214,7 +23216,7 @@ private fun TopResultCard(
         return
     }
     if (LevyraIsDefaultSkin) {
-        DefaultSearchTopResult(hero, artist, tracks, currentTrackId, isPlaying, !selection.isActive, onArtist, { onPlay(hero) }, onShuffle, onMix, rows)
+        DefaultSearchTopResult(hero, currentTrackId, isPlaying, artist, !selection.isActive, onArtist, { onPlay(hero) }, onTogglePlay, onShuffle, onMix, rows)
         return
     }
 
