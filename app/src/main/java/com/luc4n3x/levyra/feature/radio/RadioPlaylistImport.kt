@@ -7,7 +7,7 @@ internal data class RadioPlaylistEntry(val name: String, val streamUrl: String, 
 internal data class RadioImportResult(val added: Int, val skipped: Int)
 
 internal fun parseRadioPlaylist(text: String): List<RadioPlaylistEntry> {
-    val lines = text.removePrefix("﻿").lineSequence().map(String::trim).filter(String::isNotEmpty).toList()
+    val lines = text.removePrefix("\uFEFF").lineSequence().map(String::trim).filter(String::isNotEmpty).toList()
     if (lines.any { it.startsWith("#EXT-X-", ignoreCase = true) }) return emptyList()
     val entries = mutableListOf<RadioPlaylistEntry>()
     var pendingName = ""
