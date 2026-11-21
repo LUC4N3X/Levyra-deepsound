@@ -925,7 +925,8 @@ internal fun HomeEditorialSpotlight(
     onOpen: () -> Unit,
     header: (@Composable () -> Unit)? = null,
     backdropBleed: Dp = 0.dp,
-    compactDefaultStage: Boolean = false
+    compactDefaultStage: Boolean = false,
+    greeting: Pair<String, String>? = null
 ) {
     val track = candidate.track
     val strings = LocalLevyraStrings.current
@@ -1068,7 +1069,8 @@ internal fun HomeEditorialSpotlight(
             compactStage = compactDefaultStage,
             backdropBleed = backdropBleed,
             artworkUrl = resolvedArtistArtworkUrl,
-            overline = strings.homeSoundtrackRadio,
+            overline = greeting?.first ?: strings.homeSoundtrackRadio,
+            overlineHighlight = greeting?.second,
             title = soundtrackTitle,
             lead = soundtrackLead,
             companions = visibleCompanionArtworkUrls,

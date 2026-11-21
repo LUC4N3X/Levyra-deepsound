@@ -49,6 +49,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -79,6 +80,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
+import com.luc4n3x.levyra.viewmodel.limitUserName
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -432,7 +447,7 @@ internal fun SettingsHubSearchField(
             .semantics { contentDescription = placeholder }
             .padding(bottom = if (LevyraIsDefaultSkin) 0.dp else 16.dp)
             .background(
-                if (LevyraIsDefaultSkin) MaterialTheme.colorScheme.surfaceContainerHigh else LevyraAdaptiveCard,
+                if (LevyraIsDefaultSkin) defaultSettingsCardColor() else LevyraAdaptiveCard,
                 when {
                     SkinChrome.active -> SkinChrome.fieldShape
                     LevyraIsDefaultSkin -> MaterialTheme.shapes.extraLarge
@@ -497,7 +512,7 @@ internal fun SettingsStudioShelf(
             contentPadding = PaddingValues(horizontal = SettingsStudioGutter)
         ) {
             items(entries, key = { it.id }, contentType = { "LevyraApp-entries" }) { entry ->
-                SettingsStudioShortcut(entry, accentSeed, compact)
+                if (compact) DefaultSettingsStudioShortcut(entry) else SettingsStudioShortcut(entry, accentSeed)
             }
         }
     }
@@ -505,27 +520,24 @@ internal fun SettingsStudioShelf(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun SettingsStudioShortcut(entry: SettingsStudioEntry, accentSeed: Color, compact: Boolean) {
+private fun SettingsStudioShortcut(entry: SettingsStudioEntry, accentSeed: Color) {
     Surface(
         onClick = entry.onClick,
         shape = RoundedCornerShape(if (SkinChrome.active) SkinChrome.outerCorner else 22.dp),
-        color = if (compact) MaterialTheme.colorScheme.surfaceContainer else LevyraAdaptiveCard,
-        modifier = Modifier.widthIn(min = if (compact) 148.dp else 180.dp)
-            .width(IntrinsicSize.Min)
-            .heightIn(min = if (compact) 56.dp else 80.dp)
+        color = LevyraAdaptiveCard,
+        modifier = Modifier.widthIn(min = 180.dp).width(IntrinsicSize.Min).heightIn(min = 80.dp)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = if (compact) 8.dp else 12.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(if (compact) 30.dp else 42.dp)
+                    .size(42.dp)
                     .clip(if (SkinChrome.active) SkinChrome.iconShape else entry.shape.toShape())
                     .background(
                         when {
-                            compact -> Color.Transparent
                             SkinChrome.active -> SkinChrome.iconBackground
                             LevyraUtilityStyleActive -> settingsCategoryTone(accentSeed, solid = true).container
                             else -> LevyraText.copy(alpha = 0.08f)
@@ -537,7 +549,6 @@ private fun SettingsStudioShortcut(entry: SettingsStudioEntry, accentSeed: Color
                     entry.icon,
                     null,
                     tint = when {
-                        compact -> MaterialTheme.colorScheme.onSurfaceVariant
                         SkinChrome.active -> SkinChrome.iconTint
                         LevyraUtilityStyleActive -> settingsCategoryTone(accentSeed, solid = true).content
                         else -> LevyraText.copy(alpha = 0.88f)
@@ -545,17 +556,41 @@ private fun SettingsStudioShortcut(entry: SettingsStudioEntry, accentSeed: Color
                     modifier = Modifier.size(22.dp)
                 )
             }
-            Text(
-                text = entry.title,
-                color = LevyraText,
-                fontSize = 14.sp,
-                lineHeight = 18.sp,
-                fontWeight = FontWeight.Bold,
-                softWrap = true,
-                modifier = Modifier.weight(1f)
-            )
+            SettingsStudioShortcutTitle(entry.title)
         }
     }
+}
+
+@Composable
+private fun DefaultSettingsStudioShortcut(entry: SettingsStudioEntry) {
+    Surface(
+        onClick = entry.onClick,
+        shape = RoundedCornerShape(22.dp),
+        color = defaultSettingsCardColor(),
+        modifier = Modifier.widthIn(min = 148.dp).width(IntrinsicSize.Min).heightIn(min = 56.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            DefaultSettingsAccentIcon(entry.icon, entry.accent)
+            SettingsStudioShortcutTitle(entry.title)
+        }
+    }
+}
+
+@Composable
+private fun RowScope.SettingsStudioShortcutTitle(title: String) {
+    Text(
+        text = title,
+        color = LevyraText,
+        fontSize = 14.sp,
+        lineHeight = 18.sp,
+        fontWeight = FontWeight.Bold,
+        softWrap = true,
+        modifier = Modifier.weight(1f)
+    )
 }
 
 @Composable
@@ -587,6 +622,113 @@ internal fun DefaultSettingsHubHeader(title: String, backLabel: String, onBack: 
     }
 }
 
+@Stable
+internal class SettingsSearchFocus(val title: String, val onReached: () -> Unit) {
+    var reached by mutableStateOf(false)
+}
+
+internal val LocalSettingsSearchFocus = compositionLocalOf<SettingsSearchFocus?> { null }
+
+internal val LocalSettingsTileHighlight = compositionLocalOf<MutableState<Boolean>?> { null }
+
+@Composable
+internal fun SettingsUserNameField(
+    name: String,
+    title: String,
+    placeholder: String,
+    clearLabel: String,
+    onNameChange: (String) -> Unit
+) {
+    var draft by rememberSaveable { mutableStateOf(name) }
+    var syncedName by rememberSaveable { mutableStateOf(name) }
+    var focused by remember { mutableStateOf(false) }
+    LaunchedEffect(name) {
+        if (name == syncedName) return@LaunchedEffect
+        syncedName = name
+        if (!focused) draft = name
+    }
+    val focusManager = LocalFocusManager.current
+    val accent = LocalSettingsAccent.current ?: LevyraCyan
+    val latestDraft by rememberUpdatedState(draft)
+    val latestFocused by rememberUpdatedState(focused)
+    val commit by rememberUpdatedState(onNameChange)
+    DisposableEffect(Unit) { onDispose { if (latestFocused) commit(latestDraft) } }
+    SettingsTile {
+        Row(
+            modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp).padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            SettingsTileIcon(Icons.Rounded.Person, accent)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(title, color = LevyraMuted, style = MaterialTheme.typography.labelMedium)
+                BasicTextField(
+                    value = draft,
+                    onValueChange = { draft = limitUserName(it) },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.titleMedium.copy(color = LevyraText),
+                    cursorBrush = SolidColor(accent),
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = title }
+                        .onFocusChanged { state ->
+                            if (focused && !state.isFocused) onNameChange(draft)
+                            focused = state.isFocused
+                        },
+                    decorationBox = { inner ->
+                        Box {
+                            if (draft.isEmpty()) Text(placeholder, color = LevyraMuted, style = MaterialTheme.typography.titleMedium)
+                            inner()
+                        }
+                    }
+                )
+            }
+            if (draft.isNotEmpty()) {
+                IconButton(onClick = { draft = ""; onNameChange("") }, modifier = Modifier.size(48.dp)) {
+                    Icon(Icons.Rounded.Close, clearLabel, tint = LevyraMuted)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun DefaultSettingsDetailHeader(title: String, summary: String, backLabel: String, onBack: () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+        DefaultSettingsHubHeader(title, backLabel, onBack)
+        if (summary.isNotBlank()) {
+            Text(
+                text = summary,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 60.dp, end = 14.dp)
+            )
+        }
+    }
+}
+
+@Composable
+internal fun DefaultSettingsAccentIcon(icon: ImageVector, accent: Color) {
+    val tone = defaultSettingsAccentTone(accent)
+    Box(
+        Modifier.size(36.dp).clip(CircleShape).background(tone.container),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, contentDescription = null, tint = tone.content, modifier = Modifier.size(20.dp))
+    }
+}
+
+@Composable
+internal fun defaultSettingsCardColor(): Color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.62f)
+
+@Composable
+private fun defaultSettingsAccentTone(accent: Color): SettingsExpressiveTone {
+    val colors = levyraUtilityColors(accent)
+    return SettingsExpressiveTone(container = colors.accent.copy(alpha = 0.24f), content = colors.accent)
+}
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun SettingsHubCategoryRow(
@@ -599,37 +741,29 @@ internal fun SettingsHubCategoryRow(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    val compact = LevyraIsDefaultSkin
-    val verticalInset = if (compact) 10.dp else 15.dp
-    val animateTitle = !compact && LocalAnimationsEnabled.current
+    val style = settingsHubRowStyle(index, accent)
     val content: @Composable () -> Unit = {
         Row(
-            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 14.dp, vertical = verticalInset),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 14.dp, vertical = style.rowInset),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(if (compact) 12.dp else 16.dp)
+            horizontalArrangement = Arrangement.spacedBy(style.rowGap)
         ) {
-            val style = settingsHubRowStyle(index, accent)
             Box(
                 modifier = Modifier
-                    .size(if (compact) 28.dp else style.iconSize)
+                    .size(style.iconSize)
                     .clip(style.iconShape)
-                    .background(if (compact) Color.Transparent else style.iconContainer),
+                    .background(style.iconContainer),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    icon,
-                    contentDescription = null,
-                    tint = if (compact) MaterialTheme.colorScheme.onSurfaceVariant else style.iconTint,
-                    modifier = Modifier.size(if (compact) 22.dp else 24.dp)
-                )
+                Icon(icon, contentDescription = null, tint = style.iconTint, modifier = Modifier.size(style.glyphSize))
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = title,
                     color = LevyraText,
-                    style = if (compact) MaterialTheme.typography.titleMedium else style.title,
-                    maxLines = if (animateTitle) 1 else Int.MAX_VALUE,
-                    modifier = Modifier.levyraMarquee(animateTitle, 3000)
+                    style = style.title,
+                    maxLines = if (style.marquee) 1 else Int.MAX_VALUE,
+                    modifier = Modifier.levyraMarquee(style.marquee, 3000)
                 )
                 if (summary.isNotBlank()) {
                     Text(
@@ -647,25 +781,36 @@ internal fun SettingsHubCategoryRow(
             )
         }
     }
-    if (compact) {
-        val top = if (index == 0) LevyraCardDesign.SurfaceCorner else 0.dp
-        val bottom = if (index == count - 1) LevyraCardDesign.SurfaceCorner else 0.dp
-        Surface(
-            onClick = onClick,
-            modifier = modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(topStart = top, topEnd = top, bottomStart = bottom, bottomEnd = bottom),
-            color = MaterialTheme.colorScheme.surfaceContainer
-        ) {
-            Column {
-                if (index > 0) HorizontalDivider(
-                    modifier = Modifier.padding(start = 54.dp, end = 14.dp),
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
-                )
-                content()
-            }
-        }
+    if (LevyraIsDefaultSkin) {
+        DefaultSettingsGroupedRow(index, count, modifier, onClick, content)
     } else {
         SettingsTile(onClick = onClick, groupIndex = index, groupCount = count, modifier = modifier, content = content)
+    }
+}
+
+@Composable
+private fun DefaultSettingsGroupedRow(
+    index: Int,
+    count: Int,
+    modifier: Modifier,
+    onClick: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    val top = if (index == 0) LevyraCardDesign.SurfaceCorner else 0.dp
+    val bottom = if (index == count - 1) LevyraCardDesign.SurfaceCorner else 0.dp
+    Surface(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(topStart = top, topEnd = top, bottomStart = bottom, bottomEnd = bottom),
+        color = defaultSettingsCardColor()
+    ) {
+        Column {
+            if (index > 0) HorizontalDivider(
+                modifier = Modifier.padding(start = 64.dp, end = 14.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
+            )
+            content()
+        }
     }
 }
 
@@ -677,13 +822,33 @@ private data class SettingsHubRowStyle(
     val iconTint: Color,
     val title: TextStyle,
     val summary: TextStyle,
-    val summaryColor: Color
+    val summaryColor: Color,
+    val glyphSize: Dp = 24.dp,
+    val rowInset: Dp = 15.dp,
+    val rowGap: Dp = 16.dp,
+    val marquee: Boolean = false
 )
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun settingsHubRowStyle(index: Int, accent: Color): SettingsHubRowStyle {
     val base = LocalTextStyle.current
+    val marquee = LocalAnimationsEnabled.current
+    if (LevyraIsDefaultSkin) {
+        val tone = defaultSettingsAccentTone(accent)
+        return SettingsHubRowStyle(
+            iconSize = 36.dp,
+            iconShape = CircleShape,
+            iconContainer = tone.container,
+            iconTint = tone.content,
+            title = MaterialTheme.typography.titleMedium,
+            summary = MaterialTheme.typography.bodyMedium,
+            summaryColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            glyphSize = 20.dp,
+            rowInset = 10.dp,
+            rowGap = 12.dp
+        )
+    }
     if (!LevyraUtilityStyleActive) {
         return SettingsHubRowStyle(
             iconSize = 48.dp,
@@ -692,7 +857,8 @@ private fun settingsHubRowStyle(index: Int, accent: Color): SettingsHubRowStyle 
             iconTint = LevyraText.copy(alpha = 0.88f),
             title = base.merge(TextStyle(fontSize = 17.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold)),
             summary = base.merge(TextStyle(fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium)),
-            summaryColor = LevyraMuted
+            summaryColor = LevyraMuted,
+            marquee = marquee
         )
     }
     val tone = settingsCategoryTone(accent, solid = true)
@@ -703,7 +869,8 @@ private fun settingsHubRowStyle(index: Int, accent: Color): SettingsHubRowStyle 
         iconTint = tone.content,
         title = MaterialTheme.typography.titleLarge,
         summary = MaterialTheme.typography.bodyMedium,
-        summaryColor = MaterialTheme.colorScheme.onSurfaceVariant
+        summaryColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        marquee = marquee
     )
 }
 

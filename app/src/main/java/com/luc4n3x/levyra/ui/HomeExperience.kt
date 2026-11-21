@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Column
 import com.luc4n3x.levyra.ui.theme.LevyraType
 import com.luc4n3x.levyra.ui.theme.LevyraText
+import androidx.compose.foundation.border
 import com.luc4n3x.levyra.domain.ExploreZone
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.clip
@@ -232,6 +233,8 @@ internal fun HomeGenreChips(
     val edges = if (compactPills) {
         Modifier.horizontalFadeEdges(state.canScrollBackward, state.canScrollForward, 12.dp)
     } else Modifier
+    val glassFill = if (LevyraIsLight) Color.White.copy(alpha = 0.62f) else Color.Black.copy(alpha = 0.30f)
+    val glassEdge = if (LevyraIsLight) Color(0x1F11131F) else Color.White.copy(alpha = 0.16f)
     LazyRow(
         state = state,
         modifier = modifier.fillMaxWidth().then(edges),
@@ -261,17 +264,24 @@ internal fun HomeGenreChips(
                     ),
                 contentAlignment = Alignment.Center
             ) {
+                val shape = RoundedCornerShape(corner)
                 Box(
                     modifier = Modifier
-                        .then(if (compactPills) Modifier.heightIn(min = 36.dp) else Modifier.height(HomeChipVisualHeight))
-                        .clip(RoundedCornerShape(corner))
-                        .background(colors.surfaceContainerHigh)
-                        .padding(horizontal = if (compactPills) 14.dp else 18.dp, vertical = if (compactPills) 5.dp else 0.dp),
+                        .then(if (compactPills) Modifier.heightIn(min = 40.dp) else Modifier.height(HomeChipVisualHeight))
+                        .clip(shape)
+                        .then(
+                            if (compactPills) {
+                                Modifier.background(glassFill).border(1.dp, glassEdge, shape)
+                            } else {
+                                Modifier.background(colors.surfaceContainerHigh)
+                            }
+                        )
+                        .padding(horizontal = 18.dp, vertical = if (compactPills) 6.dp else 0.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = zone.label,
-                        color = colors.onSurface,
+                        color = if (compactPills) LevyraText.copy(alpha = 0.94f) else colors.onSurface,
                         style = if (compactPills) MaterialTheme.typography.labelLarge else LevyraType.cardTitle.copy(fontWeight = FontWeight.Bold, letterSpacing = (-0.1).sp),
                         maxLines = 1
                     )

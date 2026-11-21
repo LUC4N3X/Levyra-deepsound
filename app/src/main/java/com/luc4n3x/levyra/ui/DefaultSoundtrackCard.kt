@@ -25,6 +25,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
@@ -59,6 +62,7 @@ internal fun DefaultSoundtrackCard(
     backdropBleed: Dp,
     artworkUrl: String,
     overline: String,
+    overlineHighlight: String?,
     title: String,
     lead: String,
     companions: List<String>,
@@ -140,8 +144,11 @@ internal fun DefaultSoundtrackCard(
             ) {
                 val details: @Composable (Modifier) -> Unit = { modifier ->
                     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        val locale = LocalConfiguration.current.locales[0]
                         Text(
-                            overline.uppercase(LocalConfiguration.current.locales[0]),
+                            remember(overline, overlineHighlight, locale, action.accent) {
+                                soundtrackOverline(overline.uppercase(locale), overlineHighlight?.uppercase(locale), action.accent)
+                            },
                             color = colors.onSurfaceVariant,
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.6.sp),
                             maxLines = 1
@@ -200,3 +207,10 @@ internal fun DefaultSoundtrackCard(
 
 private const val DefaultSoundtrackPortraitShare = 0.78f
 private val DefaultSoundtrackBodyHeight = 300.dp
+
+private fun soundtrackOverline(text: String, highlight: String?, accent: Color): AnnotatedString = buildAnnotatedString {
+    append(text)
+    if (highlight.isNullOrBlank()) return@buildAnnotatedString
+    val start = text.lastIndexOf(highlight)
+    if (start >= 0) addStyle(SpanStyle(color = accent), start, start + highlight.length)
+}

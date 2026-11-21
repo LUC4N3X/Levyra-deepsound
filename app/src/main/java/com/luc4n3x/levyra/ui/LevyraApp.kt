@@ -3164,6 +3164,8 @@ fun LevyraApp(
                     onBackupSettings = viewModel::setBackupSettings,
                     onAutomationSettings = viewModel::setAutomationSettings,
                     onAnimations = viewModel::setAnimationsEnabled,
+                    userName = state.userName,
+                    onUserName = viewModel::updateUserName,
                     onMotionArtwork = viewModel::setMotionArtworkEnabled,
                     onDynamicColor = viewModel::setDynamicColor,
                     onMusicRegion = viewModel::setMusicRegion,
@@ -8946,6 +8948,10 @@ private fun HomeScreen(
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val homeTopPadding = 8.dp
     val homeChipState = rememberLazyListState()
+    val greetingHour by rememberCurrentGreetingHour()
+    val homeGreeting = remember(state.userName, strings, greetingHour) {
+        state.userName.takeIf { LevyraIsDefaultSkin && it.isNotBlank() }?.let { strings.formatGreeting(it, greetingHour) to strings.greetingName(it) }
+    }
     val stagedSpotlight = spotlightHeroData?.takeIf { speedDialPins.isEmpty() && !offlineHomeVisible }
     val spotlightHero: @Composable ((@Composable () -> Unit)?, Dp) -> Unit = { header, bleed ->
         spotlightHeroData?.let { (candidate, heroArtistArtworkUrl, soundtrackArtists, companions) ->
@@ -8970,10 +8976,12 @@ private fun HomeScreen(
                 },
                 header = header,
                 backdropBleed = bleed,
-                compactDefaultStage = LevyraIsDefaultSkin && header != null
+                compactDefaultStage = LevyraIsDefaultSkin && header != null,
+                greeting = homeGreeting
             )
         }
     }
+    val homePullRevealPx = with(LocalDensity.current) { (statusBarTop + PullToRefreshDefaults.PositionalThreshold + 20.dp).toPx() }
     Box(modifier = Modifier.fillMaxSize()) {
         LevyraHomeAtmosphere(
             isLight = LevyraIsLight,
@@ -8984,7 +8992,14 @@ private fun HomeScreen(
             state = homeListState,
             modifier = Modifier
                 .fillMaxSize()
-                .pullToRefresh(isRefreshing = homeRefreshing, state = homePullState, onRefresh = onPullRefresh),
+                .pullToRefresh(isRefreshing = homeRefreshing, state = homePullState, onRefresh = onPullRefresh)
+                .then(
+                    if (LevyraIsDefaultSkin) {
+                        Modifier.graphicsLayer {
+                            translationY = homePullState.distanceFraction.coerceAtLeast(0f) * homePullRevealPx
+                        }
+                    } else Modifier
+                ),
             contentPadding = PaddingValues(
                 top = statusBarTop + homeTopPadding,
                 bottom = homeBottomInset
@@ -18951,6 +18966,8 @@ private fun SettingsOverlay(
     onOpenLyricsStudio: () -> Unit = {},
     homeStudioStyle: HomeStyle = HomeStyle.Original,
     onOpenHomeStudio: () -> Unit = {},
+    userName: String = "",
+    onUserName: (String) -> Unit = {},
     miniPlayerStyle: MiniPlayerStyle = MiniPlayerStyle.Original,
     onOpenMiniPlayerStudio: () -> Unit = {},
     navigationStyle: NavStyle = NavStyle.Original,
@@ -19083,6 +19100,7 @@ private fun SettingsOverlay(
     val settingsFrost = LevyraIsDefaultSkin && !SkinChrome.active
     val settingsGlass = rememberGlassBackdropState(settingsFrost && rememberGlassBlurAllowed())
     val settingsSearchFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+    var settingsSearchFocusTitle by remember { mutableStateOf<String?>(null) }
     val settingsScope = rememberCoroutineScope()
     Box(
         modifier = Modifier
@@ -19114,8 +19132,31 @@ private fun SettingsOverlay(
                 animationsEnabled = animationsEnabled
             )
             val pageAccent = meta?.let { if (LevyraUtilityStyleActive && !SkinChrome.active) levyraUtilityColors(settingsGroupSeed(it.group)).accent else if (hubEntranceEnabled) LevyraCyan else it.accent }
-            CompositionLocalProvider(LocalSettingsAccent provides pageAccent) {
-            if (LevyraUtilityStyleActive && !SkinChrome.active) LevyraUtilityBackdrop(listState = settingsListState)
+            val focusTitle = settingsSearchFocusTitle.takeIf { current != null }
+            val searchFocus = remember(focusTitle) { focusTitle?.let { SettingsSearchFocus(it) { settingsSearchFocusTitle = null } } }
+            LaunchedEffect(searchFocus) {
+                val focus = searchFocus ?: return@LaunchedEffect
+                withFrameNanos { }
+                var index = settingsListState.firstVisibleItemIndex
+                while (!focus.reached && index < settingsListState.layoutInfo.totalItemsCount) {
+                    settingsListState.scrollToItem(index)
+                    withFrameNanos { }
+                    withFrameNanos { }
+                    index += maxOf(1, settingsListState.layoutInfo.visibleItemsInfo.size - 1)
+                }
+                if (!focus.reached) {
+                    settingsListState.scrollToItem(0)
+                    settingsSearchFocusTitle = null
+                }
+            }
+            CompositionLocalProvider(LocalSettingsAccent provides pageAccent, LocalSettingsSearchFocus provides searchFocus) {
+            if (LevyraUtilityStyleActive && !SkinChrome.active) {
+                if (LevyraIsDefaultSkin) {
+                    LevyraUtilityBackdrop(accent = pageAccent ?: MaterialTheme.colorScheme.primary, strength = 1.7f, listState = settingsListState)
+                } else {
+                    LevyraUtilityBackdrop(listState = settingsListState)
+                }
+            }
             LazyColumn(
                 state = settingsListState,
                 modifier = Modifier
@@ -19166,6 +19207,7 @@ private fun SettingsOverlay(
                                     onOpenYoutubeMusic()
                                 } else {
                                     if (result.id in DOWNLOADS_ADVANCED_SEARCH_IDS) downloadsAdvancedOpen = true
+                                    settingsSearchFocusTitle = result.title
                                     activeCategory = result.categoryId
                                 }
                             }
@@ -19482,6 +19524,15 @@ private fun SettingsOverlay(
                             }
                         }
                         "home" -> {
+                            item {
+                                SettingsUserNameField(
+                                    name = userName,
+                                    title = strings.nameQuestion,
+                                    placeholder = strings.namePlaceholder,
+                                    clearLabel = strings.clear,
+                                    onNameChange = onUserName
+                                )
+                            }
                             item {
                                 SettingsButton(
                                     icon = Icons.Rounded.Dashboard,
@@ -20895,111 +20946,9 @@ private fun SettingsCategoryCard(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-internal fun SettingsTile(
-    modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null,
-    checked: Boolean? = null,
-    onCheckedChange: ((Boolean) -> Unit)? = null,
-    enabled: Boolean = true,
-    groupIndex: Int? = null,
-    groupCount: Int? = null,
-    color: Color = if (LevyraIsSpotify || LevyraIsYouTubeMusic) Color.Transparent else if (LevyraIsAppleMusic) AppleMusicDesign.groupedBackground else if (LevyraIsAtelier) AtelierSettingsPanelFill else LevyraAdaptiveCard,
-    content: @Composable () -> Unit
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val slot = LocalSettingsGroupSlot.current
-    val index = groupIndex ?: slot?.index ?: 0
-    val count = groupCount ?: slot?.count ?: 1
-    val first = index == 0
-    val last = index == count - 1
-    val shape = settingsTileShape(interactionSource, first, last)
-    val tileModifier = modifier.fillMaxWidth().then(if (SkinChrome.active) Modifier.padding(vertical = 1.dp) else Modifier)
-        .then(if (LevyraIsAtelier) Modifier.border(1.dp, AtelierBrass.copy(alpha = 0.28f), shape) else Modifier)
-    when {
-        checked != null && onCheckedChange != null -> Surface(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            enabled = enabled,
-            shape = shape,
-            color = color,
-            interactionSource = interactionSource,
-            modifier = tileModifier,
-            content = content
-        )
-        onClick != null -> Surface(
-            onClick = onClick,
-            enabled = enabled,
-            shape = shape,
-            color = color,
-            interactionSource = interactionSource,
-            modifier = tileModifier,
-            content = content
-        )
-        else -> Surface(shape = shape, color = color, modifier = tileModifier, content = content)
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-internal fun SettingsTileIcon(icon: ImageVector, accent: Color, shape: Shape = MaterialShapes.Cookie4Sided.toShape()) {
-    if (LevyraIsAtelier) return AtelierSettingsKey(icon)
-    val expressive = LevyraUtilityStyleActive && !SkinChrome.active
-    Box(
-        modifier = Modifier
-            .size(if (LevyraIsAppleMusic) 30.dp else 44.dp)
-            .clip(if (SkinChrome.active) SkinChrome.iconShape else shape)
-            .background(
-                when {
-                    SkinChrome.active -> SkinChrome.iconBackground
-                    expressive -> settingsCategoryTone(accent).container
-                    else -> LevyraText.copy(alpha = 0.08f)
-                }
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            icon,
-            null,
-            tint = when {
-                SkinChrome.active -> SkinChrome.iconTint
-                expressive -> settingsCategoryTone(accent).content
-                else -> LevyraText.copy(alpha = 0.88f)
-            },
-            modifier = Modifier.size(if (LevyraIsAppleMusic) 19.dp else 22.dp)
-        )
-    }
-}
-
-@Composable
-internal fun SettingsTileText(
-    title: String,
-    subtitle: String,
-    modifier: Modifier = Modifier,
-    maxTitleLines: Int = Int.MAX_VALUE,
-    maxSubtitleLines: Int = Int.MAX_VALUE
-) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        SettingsTileTitle(title, maxTitleLines)
-        if (subtitle.isNotBlank()) {
-            Text(
-                subtitle,
-                color = LevyraMuted,
-                fontFamily = if (LevyraIsAtelier) AtelierSerif else null,
-                fontStyle = if (LevyraIsAtelier) FontStyle.Italic else null,
-                fontSize = 13.sp,
-                lineHeight = 18.sp,
-                fontWeight = FontWeight.Medium,
-                maxLines = maxSubtitleLines,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
 private fun SettingsDetailHeader(title: String, summary: String, icon: ImageVector, accent: Color, onBack: () -> Unit) {
     if (LevyraIsAtelier) return AtelierSettingsDetailHeader(title, summary, onBack)
+    if (LevyraIsDefaultSkin) return DefaultSettingsDetailHeader(title, summary, LocalLevyraStrings.current.back, onBack)
     if (LevyraUtilityStyleActive && !SkinChrome.active) {
         return LevyraUtilityHeader(
             title = title,
@@ -26393,17 +26342,6 @@ private fun SettingsSkinSelection(interfaceSettings: LevyraInterfaceSettings, on
     }
 }
 
-@Composable
-private fun settingsTileShape(interactionSource: MutableInteractionSource, first: Boolean, last: Boolean): Shape {
-    val outer = if (SkinChrome.active) SkinChrome.outerCorner else levyraExpressiveCorner(interactionSource, rest = 24.dp, pressed = 14.dp, label = "settingsTileOuter")
-    val inner = if (SkinChrome.active) SkinChrome.innerCorner else levyraExpressiveCorner(interactionSource, rest = 6.dp, pressed = 14.dp, label = "settingsTileInner")
-    return RoundedCornerShape(
-        topStart = if (first) outer else inner,
-        topEnd = if (first) outer else inner,
-        bottomEnd = if (last) outer else inner,
-        bottomStart = if (last) outer else inner
-    )
-}
 
 private fun settingsChoiceContainer(active: Boolean): Color =
     if (SkinChrome.active) {
