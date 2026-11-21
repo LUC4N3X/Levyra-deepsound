@@ -79,7 +79,9 @@ import java.util.Locale
 internal fun DefaultSearchTopResult(
     hero: Track,
     artist: ArtistHit?,
-    playing: Boolean,
+    tracks: List<Track>,
+    currentTrackId: String?,
+    isPlaying: Boolean,
     enabled: Boolean,
     onArtist: () -> Unit,
     onPlay: () -> Unit,
@@ -89,6 +91,7 @@ internal fun DefaultSearchTopResult(
 ) {
     val strings = LocalLevyraStrings.current
     val scheme = MaterialTheme.colorScheme
+    val playing = isPlaying && tracks.any { it.id == currentTrackId }
     val name = artist?.name?.ifBlank { null } ?: hero.artist
     val officialPortrait = rememberOfficialArtistPortrait(name)
     val portrait = officialPortrait?.ifBlank { null }

@@ -23214,7 +23214,7 @@ private fun TopResultCard(
         return
     }
     if (LevyraIsDefaultSkin) {
-        DefaultSearchTopResult(hero, artist, isPlaying && tracks.any { it.id == currentTrackId }, !selection.isActive, onArtist, { onPlay(hero) }, onShuffle, onMix, rows)
+        DefaultSearchTopResult(hero, artist, tracks, currentTrackId, isPlaying, !selection.isActive, onArtist, { onPlay(hero) }, onShuffle, onMix, rows)
         return
     }
 
