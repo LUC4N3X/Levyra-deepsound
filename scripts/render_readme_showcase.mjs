@@ -82,10 +82,10 @@ async function extractPhone(index, spec) {
 }
 
 const palettes = [
-  { top: '#FCFDFE', mid: '#E8EFFD', bottom: '#BDCEF6', shape: '#90ACEA', ink: '#172033', muted: '#4C5B7A' },
-  { top: '#FDFCFE', mid: '#EBEDFD', bottom: '#C4CBF6', shape: '#9BA5EA', ink: '#191E35', muted: '#505978' },
-  { top: '#FBFDFE', mid: '#E4F0FC', bottom: '#B6D2F4', shape: '#87B2E6', ink: '#142334', muted: '#485E78' },
-  { top: '#FCFDFE', mid: '#E9EEFD', bottom: '#C0CDF6', shape: '#95A9EA', ink: '#182034', muted: '#4E5B7A' },
+  { top: '#FFFFFF', mid: '#E0EAFF', bottom: '#8CA8F6', shape: '#6E8FF0', ink: '#161F33', muted: '#4D5C7A' },
+  { top: '#FFFFFF', mid: '#E4E5FF', bottom: '#969EF6', shape: '#7B85F0', ink: '#181E35', muted: '#505978' },
+  { top: '#FFFFFF', mid: '#DCEEFF', bottom: '#82B2F5', shape: '#659CEB', ink: '#132234', muted: '#485E78' },
+  { top: '#FFFFFF', mid: '#E2E8FF', bottom: '#91A3F6', shape: '#758BF0', ink: '#171F34', muted: '#4E5B7A' },
 ];
 
 function flower(cx, cy, radius, lobes, amp = 0.1) {
@@ -98,20 +98,20 @@ function flower(cx, cy, radius, lobes, amp = 0.1) {
 }
 
 function text(value, x, y, size, fill, weight = 400, anchor = 'middle', letterSpacing = null) {
-  const ls = letterSpacing !== null ? letterSpacing : (weight >= 600 ? -1.1 : 0);
-  return `<text x="${x}" y="${y}" text-anchor="${anchor}" font-family="Rubik, Segoe UI, DejaVu Sans, sans-serif" font-size="${size}" font-weight="${weight}" letter-spacing="${ls}" fill="${fill}">${xml(value)}</text>`;
+  const ls = letterSpacing !== null ? letterSpacing : (size >= 50 ? -0.8 : 0);
+  return `<text x="${x}" y="${y}" text-anchor="${anchor}" font-family="Segoe UI, Inter, Rubik, DejaVu Sans, sans-serif" font-size="${size}" font-weight="${weight}" letter-spacing="${ls}" fill="${fill}">${xml(value)}</text>`;
 }
 
 function shadow(shape) {
   return svg(`
     <defs>
-      <filter id="s1" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="46"/></filter>
-      <filter id="s2" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="20"/></filter>
-      <filter id="s3" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7"/></filter>
+      <filter id="s1" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="44"/></filter>
+      <filter id="s2" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="18"/></filter>
+      <filter id="s3" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6"/></filter>
     </defs>
-    <g transform="translate(0 30)" opacity=".18" filter="url(#s1)">${shape.replaceAll('fill="white"', 'fill="#1A2B5C"')}</g>
-    <g transform="translate(0 16)" opacity=".18" filter="url(#s2)">${shape.replaceAll('fill="white"', 'fill="#142044"')}</g>
-    <g transform="translate(0 6)" opacity=".15" filter="url(#s3)">${shape.replaceAll('fill="white"', 'fill="#0D1530"')}</g>
+    <g transform="translate(0 28)" opacity=".20" filter="url(#s1)">${shape.replaceAll('fill="white"', 'fill="#182A5E"')}</g>
+    <g transform="translate(0 14)" opacity=".18" filter="url(#s2)">${shape.replaceAll('fill="white"', 'fill="#111E42"')}</g>
+    <g transform="translate(0 5)" opacity=".14" filter="url(#s3)">${shape.replaceAll('fill="white"', 'fill="#0A122B"')}</g>
   `);
 }
 
@@ -119,39 +119,27 @@ function cardBackdrop(index, p) {
   const isHeroLeft = index === 0;
   const isHeroRight = index === 1;
   const gradAttrs = isHeroLeft
-    ? 'x1="0" y1="1" x2="1" y2="0"'
+    ? 'x1="0" y1="0" x2="1" y2="1"'
     : isHeroRight
-      ? 'x1="0" y1="0" x2="1" y2="1"'
-      : (index % 2 === 0 ? 'x1="0" y1="0" x2="1" y2="1"' : 'x1="1" y1="0" x2="0" y2="1"');
-  const glowCx = isHeroLeft ? '15%' : isHeroRight ? '85%' : (index % 2 === 0 ? '20%' : '80%');
-  const glowCy = isHeroLeft ? '88%' : '10%';
+      ? 'x1="1" y1="1" x2="0" y2="0"'
+      : (index % 2 === 0 ? 'x1="0" y1="0.2" x2="1" y2="0.85"' : 'x1="0" y1="0.15" x2="1" y2="0.9"');
   const mainShape = isHeroLeft
-    ? `<path d="${flower(105, 560, 240, 10, 0.11)}" fill="${p.shape}" opacity=".11"/>
-       <path d="${flower(135, 1170, 150, 4, 0.16)}" fill="#FFFFFF" opacity=".52"/>`
+    ? `<path d="${flower(110, 560, 230, 10, 0.11)}" fill="${p.shape}" opacity=".07"/>`
     : isHeroRight
-      ? `<path d="${flower(785, 430, 235, 8, 0.12)}" fill="${p.shape}" opacity=".10"/>
-         <path d="${flower(125, 1520, 165, 4, 0.16)}" fill="#FFFFFF" opacity=".48"/>`
+      ? `<path d="${flower(790, 440, 220, 8, 0.12)}" fill="${p.shape}" opacity=".07"/>`
       : index % 2 === 0
-        ? `<path d="${flower(805, 340, 225, 12, 0.09)}" fill="${p.shape}" opacity=".10"/>
-           <path d="${flower(85, 1180, 175, 4, 0.16)}" fill="#FFFFFF" opacity=".46"/>`
-        : `<path d="${flower(95, 350, 220, 8, 0.12)}" fill="${p.shape}" opacity=".10"/>
-           <path d="${flower(820, 1200, 180, 4, 0.16)}" fill="#FFFFFF" opacity=".46"/>`;
+        ? `<path d="${flower(810, 360, 210, 12, 0.09)}" fill="${p.shape}" opacity=".07"/>`
+        : `<path d="${flower(820, 1180, 210, 8, 0.12)}" fill="${p.shape}" opacity=".07"/>`;
   return svg(`
     <defs>
       <linearGradient id="paper" ${gradAttrs}>
         <stop offset="0%" stop-color="${p.top}"/>
-        <stop offset="22%" stop-color="${p.top}"/>
-        <stop offset="64%" stop-color="${p.mid}"/>
+        <stop offset="28%" stop-color="${p.top}"/>
+        <stop offset="62%" stop-color="${p.mid}"/>
         <stop offset="100%" stop-color="${p.bottom}"/>
       </linearGradient>
-      <radialGradient id="airGlow" cx="${glowCx}" cy="${glowCy}" r="72%">
-        <stop offset="0%" stop-color="#FFFFFF" stop-opacity=".75"/>
-        <stop offset="60%" stop-color="#FFFFFF" stop-opacity=".18"/>
-        <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
-      </radialGradient>
     </defs>
     <rect width="900" height="1800" fill="url(#paper)"/>
-    <rect width="900" height="1800" fill="url(#airGlow)"/>
     ${mainShape}
   `);
 }
@@ -159,10 +147,12 @@ function cardBackdrop(index, p) {
 async function cardMediaLayers(index, spec) {
   if (index >= 2) {
     const phone = await extractPhone(index, spec);
-    const { data, info } = await sharp(phone).resize({ width: 724 }).png().toBuffer({ resolveWithObject: true });
+    const { data, info } = await sharp(phone).resize({ width: 688 }).png().toBuffer({ resolveWithObject: true });
+    const top = height - info.height + 14;
+    const left = Math.round((width - 688) / 2);
     return [
-      { input: shadow(`<rect x="88" y="292" width="724" height="${info.height}" rx="35" fill="white"/>`) },
-      { input: data, left: 88, top: 292 }
+      { input: shadow(`<rect x="${left}" y="${top}" width="688" height="${info.height}" rx="34" fill="white"/>`) },
+      { input: data, left, top }
     ];
   }
   const input = await readFile(resolve(source, `${spec[0]}.webp`));
@@ -180,24 +170,23 @@ async function renderCard(index, spec) {
   const backdrop = cardBackdrop(index, p);
   const layers = await cardMediaLayers(index, spec);
   layers.push(await cardTextLayer(index, spec, p));
-  layers.push({ input: svg('<rect x="1" y="1" width="898" height="1798" rx="35" fill="none" stroke="white" stroke-opacity=".82" stroke-width="2"/>') });
   const card = await sharp(backdrop).composite(layers).png().toBuffer();
-  return sharp(card).composite([{ input: rounded(width, height, 36), blend: 'dest-in' }]).png().toBuffer();
+  return sharp(card).composite([{ input: rounded(width, height, 8), blend: 'dest-in' }]).png().toBuffer();
 }
 
 async function cardTextLayer(index, spec, p) {
   const right = index === 1;
   const x = index >= 2 ? 450 : right ? 832 : 68;
   const anchor = index >= 2 ? 'middle' : right ? 'end' : 'start';
-  const y = index === 0 ? 1488 : index < 2 ? 164 : 148;
-  let titleSize = index < 2 ? 72 : 56;
+  const y = index === 0 ? 1496 : index < 2 ? 172 : 196;
+  let titleSize = index < 2 ? 68 : 56;
   if (index >= 2) {
-    const probe = await sharp(svg(text(spec[2][0], 450, 100, titleSize, p.ink, 600))).trim().toBuffer({ resolveWithObject: true });
+    const probe = await sharp(svg(text(spec[2][0], 450, 100, titleSize, p.ink, 400))).trim().toBuffer({ resolveWithObject: true });
     if (probe.info.width > 760) titleSize = Math.floor(titleSize * 760 / probe.info.width);
   }
-  const titles = spec[2].map((line, i) => text(line, x, y + i * 82, titleSize, p.ink, 600, anchor));
-  const subtitleY = index === 0 ? 1656 : index < 2 ? 326 : 206;
-  const subtitles = spec[3].map((line, i) => text(line, x, subtitleY + i * 40, 29, p.muted, 400, anchor));
+  const titles = spec[2].map((line, i) => text(line, x, y + i * 78, titleSize, p.ink, 400, anchor));
+  const subtitleY = index === 0 ? 1660 : index < 2 ? 326 : 256;
+  const subtitles = spec[3].map((line, i) => text(line, x, subtitleY + i * 40, 28, p.muted, 400, anchor));
   return { input: svg(titles.join('') + subtitles.join('')) };
 }
 
@@ -208,7 +197,7 @@ for (const [index, spec] of cards.entries()) {
   rendered.push(card);
   await sharp(card).webp({ quality: 92, effort: 4 }).toFile(resolve(output, `card-${String(index + 1).padStart(2, '0')}-studio.webp`));
 }
-const gap = 24;
+const gap = 10;
 const rowSlices = [
   [0, 4],
   [4, 8],
