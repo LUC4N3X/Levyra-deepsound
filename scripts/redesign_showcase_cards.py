@@ -475,7 +475,7 @@ UPRIGHT_CARD_SPECS = [
         "INSTANT DEEP FILTERING",
         "Instant Search",
         "Top results, tracks & discography.",
-        "Screenshot_20261120_213322_Levyra.jpg",
+        "Screenshot_20261121_190709_Levyra.jpg",
         (253, 245, 238), (242, 223, 206), (228, 198, 172), (226, 202, 182),
         (168, 76, 38), (34, 20, 14), (112, 68, 46),
     ),
