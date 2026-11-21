@@ -117,11 +117,20 @@ class PlaylistExportController internal constructor(
         val library = listenBrainz ?: return
         if (current.phase != PlaylistExportPhase.CHOOSE || current.tracks.isEmpty() || !current.listenBrainzConnected) return
         _state.update {
-            it.copy(phase = PlaylistExportPhase.SENDING, destination = PlaylistExportDestination.LISTENBRAINZ, added = 0, remoteUrl = "", error = null)
+            it.copy(
+                phase = PlaylistExportPhase.SENDING,
+                destination = PlaylistExportDestination.LISTENBRAINZ,
+                added = 0,
+                matchedTotal = current.tracks.size,
+                remoteUrl = "",
+                error = null
+            )
         }
         job = scope.launch {
             try {
-                val result = library.export(current.title, current.tracks.map { ListenBrainzTrack(it.title, it.artist) })
+                val result = library.export(current.title, current.tracks.map { ListenBrainzTrack(it.title, it.artist) }) { url, saved ->
+                    _state.update { it.copy(remoteUrl = url, added = saved) }
+                }
                 _state.update {
                     it.copy(phase = PlaylistExportPhase.SENT, added = result.matched, matchedTotal = result.total, remoteUrl = result.url)
                 }
@@ -130,7 +139,12 @@ class PlaylistExportController internal constructor(
                 throw error
             } catch (error: Exception) {
                 Timber.w(error, "playlist export to listenbrainz failed")
-                _state.update { it.copy(phase = PlaylistExportPhase.FAILED, error = PlaylistExportError.SERVICE) }
+                _state.update {
+                    it.copy(
+                        phase = if (it.remoteUrl.isBlank()) PlaylistExportPhase.FAILED else PlaylistExportPhase.PARTIAL,
+                        error = PlaylistExportError.SERVICE
+                    )
+                }
             }
         }
     }

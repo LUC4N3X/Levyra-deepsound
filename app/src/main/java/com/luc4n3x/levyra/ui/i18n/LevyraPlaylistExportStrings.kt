@@ -36,7 +36,8 @@ internal data class PlaylistExportCopy(
     val listenBrainzMatching: String,
     val listenBrainzSent: (matched: Int, total: Int) -> String,
     val listenBrainzOpen: String,
-    val listenBrainzError: String
+    val listenBrainzError: String,
+    val listenBrainzPartial: (saved: Int, total: Int) -> String
 )
 
 internal fun playlistExportCopy(code: String): PlaylistExportCopy = when (code.substringBefore('-')) {
@@ -76,7 +77,8 @@ internal fun playlistExportCopy(code: String): PlaylistExportCopy = when (code.s
         listenBrainzMatching = "Abbinamento dei brani su MusicBrainz…",
         listenBrainzSent = { matched, total -> "Playlist salvata su ListenBrainz: $matched di $total brani abbinati per MusicBrainz ID" },
         listenBrainzOpen = "Apri in ListenBrainz",
-        listenBrainzError = "ListenBrainz non ha trovato corrispondenze o non ha confermato il salvataggio. Riprova."
+        listenBrainzError = "ListenBrainz non ha trovato corrispondenze o non ha confermato il salvataggio. Riprova.",
+        listenBrainzPartial = { saved, total -> "Esportazione interrotta: playlist creata su ListenBrainz con $saved di $total brani" }
     )
     "ru" -> PlaylistExportCopy(
         action = "Экспорт плейлиста",
@@ -114,7 +116,8 @@ internal fun playlistExportCopy(code: String): PlaylistExportCopy = when (code.s
         listenBrainzMatching = "Сопоставление треков в MusicBrainz…",
         listenBrainzSent = { matched, total -> "Плейлист сохранён в ListenBrainz: сопоставлено по MusicBrainz ID $matched из $total" },
         listenBrainzOpen = "Открыть в ListenBrainz",
-        listenBrainzError = "ListenBrainz не нашёл совпадений или не подтвердил сохранение. Повторите."
+        listenBrainzError = "ListenBrainz не нашёл совпадений или не подтвердил сохранение. Повторите.",
+        listenBrainzPartial = { saved, total -> "Экспорт прерван: плейлист в ListenBrainz создан, сохранено $saved из $total" }
     )
     else -> PlaylistExportCopy(
         action = "Export playlist",
@@ -152,6 +155,7 @@ internal fun playlistExportCopy(code: String): PlaylistExportCopy = when (code.s
         listenBrainzMatching = "Matching tracks on MusicBrainz…",
         listenBrainzSent = { matched, total -> "Saved to ListenBrainz: $matched of $total tracks matched by MusicBrainz ID" },
         listenBrainzOpen = "Open in ListenBrainz",
-        listenBrainzError = "ListenBrainz found no matches or didn’t confirm the save. Try again."
+        listenBrainzError = "ListenBrainz found no matches or didn’t confirm the save. Try again.",
+        listenBrainzPartial = { saved, total -> "Export stopped: the ListenBrainz playlist was created with $saved of $total tracks" }
     )
 }

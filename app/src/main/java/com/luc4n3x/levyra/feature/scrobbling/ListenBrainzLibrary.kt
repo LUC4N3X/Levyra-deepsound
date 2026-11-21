@@ -54,7 +54,11 @@ class ListenBrainzLibrary(
         get("playlist/${playlist.id}")?.let(ListenBrainzJson::playlistTracks).orEmpty()
     }
 
-    suspend fun export(title: String, tracks: List<ListenBrainzTrack>): ListenBrainzExportResult = withContext(Dispatchers.IO) {
+    suspend fun export(
+        title: String,
+        tracks: List<ListenBrainzTrack>,
+        onSaved: (url: String, saved: Int) -> Unit = { _, _ -> }
+    ): ListenBrainzExportResult = withContext(Dispatchers.IO) {
         val gate = Semaphore(LOOKUP_PARALLELISM)
         val mbids = coroutineScope {
             tracks.map { track ->
@@ -77,11 +81,16 @@ class ListenBrainzLibrary(
         val created = send(Request.Builder().url("$API/playlist/create").post(body))
         val playlistMbid = created?.let { JSONObject(it).optString("playlist_mbid") }.orEmpty()
         if (playlistMbid.isBlank()) throw ListenBrainzException()
+        val url = "https://listenbrainz.org/playlist/$playlistMbid"
+        var saved = batches.first().size
+        onSaved(url, saved)
         batches.drop(1).forEach { batch ->
             val add = ListenBrainzJson.trackPayload(batch).toString().toRequestBody(JSON)
             send(Request.Builder().url("$API/playlist/$playlistMbid/item/add").post(add)) ?: throw ListenBrainzException()
+            saved += batch.size
+            onSaved(url, saved)
         }
-        ListenBrainzExportResult(matched = mbids.size, total = tracks.size, url = "https://listenbrainz.org/playlist/$playlistMbid")
+        ListenBrainzExportResult(matched = mbids.size, total = tracks.size, url = url)
     }
 
     private fun top(user: String, range: String, kind: ListenBrainzPlaylistKind): ListenBrainzPlaylist? {

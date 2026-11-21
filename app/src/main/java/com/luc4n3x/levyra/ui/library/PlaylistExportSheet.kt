@@ -223,7 +223,11 @@ private fun ExportOutcome(
     }
     val message = when (state.phase) {
         PlaylistExportPhase.SENT -> if (state.destination == PlaylistExportDestination.LISTENBRAINZ) copy.listenBrainzSent(state.added, state.matchedTotal) else copy.sent(state.added)
-        PlaylistExportPhase.PARTIAL -> copy.partial(state.added, state.total) + "\n" + errorText
+        PlaylistExportPhase.PARTIAL -> if (state.destination == PlaylistExportDestination.LISTENBRAINZ) {
+            copy.listenBrainzPartial(state.added, state.matchedTotal)
+        } else {
+            copy.partial(state.added, state.total) + "\n" + errorText
+        }
         PlaylistExportPhase.CANCELLED -> copy.cancelled(state.added)
         PlaylistExportPhase.FAILED -> errorText
         PlaylistExportPhase.FILE_SAVED -> copy.fileSaved
