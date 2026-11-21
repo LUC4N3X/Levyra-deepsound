@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { mkdir, readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
@@ -6,12 +7,17 @@ import { parseArgs } from 'node:util';
 
 const { values } = parseArgs({ options: {
   'sharp-module': { type: 'string', default: 'sharp' },
+  'font-dir': { type: 'string', default: '.levyra-tools/readme-showcase/fonts' },
   output: { type: 'string' },
 } });
 const require = createRequire(import.meta.url);
 const sharp = require(values['sharp-module'] === 'sharp' ? 'sharp' : resolve(values['sharp-module']));
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const source = resolve(root, 'docs/assets/showcase/editorial-cards');
+const fontDir = resolve(root, values['font-dir']);
+const outfitTitleFont = resolve(fontDir, 'Outfit-500.ttf');
+const outfitBodyFont = resolve(fontDir, 'Outfit-400.ttf');
+const hasOutfitFiles = existsSync(outfitTitleFont) && existsSync(outfitBodyFont);
 const output = values.output ? resolve(values.output) : resolve(root, 'docs/assets/showcase/readme');
 const width = 900;
 const height = 1800;
@@ -99,22 +105,20 @@ function flower(cx, cy, radius, lobes, amp = 0.1) {
 
 function text(value, x, y, size, fill, weight = 400, anchor = 'middle', letterSpacing = null) {
   const ls = letterSpacing !== null ? letterSpacing : (size >= 50 ? -0.8 : 0);
-  return `<text x="${x}" y="${y}" text-anchor="${anchor}" font-family="Segoe UI, Inter, Rubik, DejaVu Sans, sans-serif" font-size="${size}" font-weight="${weight}" letter-spacing="${ls}" fill="${fill}">${xml(value)}</text>`;
+  return `<text x="${x}" y="${y}" text-anchor="${anchor}" font-family="Outfit, Segoe UI, Inter, DejaVu Sans, sans-serif" font-size="${size}" font-weight="${weight}" letter-spacing="${ls}" fill="${fill}">${xml(value)}</text>`;
 }
 
-function editorialTitle(value, x, y, size, ink, accent, italicLast, anchor = 'middle') {
-  let inner = xml(value);
-  if (italicLast) {
-    const splitAt = value.lastIndexOf(' ');
-    if (splitAt > 0) {
-      const lead = xml(value.slice(0, splitAt + 1));
-      const tail = xml(value.slice(splitAt + 1));
-      inner = `${lead}<tspan font-style="italic" fill="${accent}">${tail}</tspan>`;
-    } else {
-      inner = `<tspan font-style="italic" fill="${accent}">${xml(value)}</tspan>`;
-    }
-  }
-  return `<text x="${x}" y="${y}" text-anchor="${anchor}" font-family="Georgia, Noto Serif, Liberation Serif, serif" font-size="${size}" font-weight="400" letter-spacing="-0.6" fill="${ink}">${inner}</text>`;
+async function renderOutfitLine(value, sizePt, fill, fontfile, fontName, letterSpacing = 0) {
+  const lsAttr = letterSpacing ? ` letter_spacing="${Math.round(letterSpacing * 1024)}"` : '';
+  return sharp({
+    text: {
+      text: `<span foreground="${fill}"${lsAttr}>${xml(value)}</span>`,
+      font: `${fontName} ${sizePt}`,
+      fontfile,
+      rgba: true,
+      dpi: 96,
+    },
+  }).png().toBuffer({ resolveWithObject: true });
 }
 
 function shadow(shape) {
@@ -184,26 +188,42 @@ async function renderCard(index, spec) {
   const p = palettes[index < 2 ? 0 : index % 4];
   const backdrop = cardBackdrop(index, p);
   const layers = await cardMediaLayers(index, spec);
-  layers.push(await cardTextLayer(index, spec, p));
+  layers.push(...await cardTextLayers(index, spec, p));
   const card = await sharp(backdrop).composite(layers).png().toBuffer();
   return sharp(card).composite([{ input: rounded(width, height, 8), blend: 'dest-in' }]).png().toBuffer();
 }
 
-async function cardTextLayer(index, spec, p) {
+async function cardTextLayers(index, spec, p) {
   const right = index === 1;
   const x = index >= 2 ? 450 : right ? 832 : 68;
   const anchor = index >= 2 ? 'middle' : right ? 'end' : 'start';
-  const y = index === 0 ? 1492 : index < 2 ? 172 : 196;
-  let titleSize = index < 2 ? 70 : 58;
-  if (index >= 2) {
-    const probe = await sharp(svg(editorialTitle(spec[2][0], 450, 100, titleSize, p.ink, p.accent, true))).trim().toBuffer({ resolveWithObject: true });
-    if (probe.info.width > 760) titleSize = Math.floor(titleSize * 760 / probe.info.width);
+  if (!hasOutfitFiles) {
+    const y = index === 0 ? 1492 : index < 2 ? 172 : 196;
+    const titleSize = index < 2 ? 68 : 56;
+    const titles = spec[2].map((line, i) => text(line, x, y + i * 78, titleSize, p.ink, 500, anchor));
+    const subtitleY = index === 0 ? 1660 : index < 2 ? 326 : 256;
+    const subtitles = spec[3].map((line, i) => text(line, x, subtitleY + i * 40, 27, p.muted, 400, anchor));
+    return [{ input: svg(titles.join('') + subtitles.join('')) }];
   }
-  const lastIdx = spec[2].length - 1;
-  const titles = spec[2].map((line, i) => editorialTitle(line, x, y + i * 78, titleSize, p.ink, p.accent, i === lastIdx, anchor));
-  const subtitleY = index === 0 ? 1660 : index < 2 ? 326 : 258;
-  const subtitles = spec[3].map((line, i) => text(line, x, subtitleY + i * 40, 27, p.muted, 400, anchor));
-  return { input: svg(titles.join('') + subtitles.join('')) };
+  const layers = [];
+  const alignX = w => (anchor === 'middle' ? Math.round(x - w / 2) : anchor === 'end' ? Math.round(x - w) : x);
+  let titlePt = index < 2 ? 52 : 43;
+  if (index >= 2) {
+    const probe = await renderOutfitLine(spec[2][0], titlePt, p.ink, outfitTitleFont, 'Outfit Medium', -0.8);
+    if (probe.info.width > 760) titlePt = Math.floor(titlePt * 760 / probe.info.width);
+  }
+  const titleTop = index === 0 ? 1432 : index < 2 ? 120 : 146;
+  const titleStep = index < 2 ? 78 : 66;
+  for (const [i, line] of spec[2].entries()) {
+    const { data, info } = await renderOutfitLine(line, titlePt, p.ink, outfitTitleFont, 'Outfit Medium', -0.8);
+    layers.push({ input: data, left: alignX(info.width), top: titleTop + i * titleStep });
+  }
+  const subtitleTop = index === 0 ? 1628 : index < 2 ? 302 : 226;
+  for (const [i, line] of spec[3].entries()) {
+    const { data, info } = await renderOutfitLine(line, 21, p.muted, outfitBodyFont, 'Outfit', 0);
+    layers.push({ input: data, left: alignX(info.width), top: subtitleTop + i * 38 });
+  }
+  return layers;
 }
 
 await mkdir(output, { recursive: true });
