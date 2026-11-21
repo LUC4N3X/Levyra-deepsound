@@ -221,7 +221,6 @@ internal fun HomeGenreChips(
     compactPills: Boolean = false,
     state: LazyListState = rememberLazyListState()
 ) {
-    val colors = MaterialTheme.colorScheme
     if (com.luc4n3x.levyra.ui.theme.LevyraIsSpotify) {
         LazyRow(state = state, modifier = modifier.fillMaxWidth(), contentPadding = contentPadding, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(zones, key = { zone -> "home-chip-${zone.id}" }, contentType = { "HomeExperience-zones" }) { zone ->
@@ -233,8 +232,6 @@ internal fun HomeGenreChips(
     val edges = if (compactPills) {
         Modifier.horizontalFadeEdges(state.canScrollBackward, state.canScrollForward, 12.dp)
     } else Modifier
-    val glassFill = if (LevyraIsLight) Color.White.copy(alpha = 0.62f) else Color.Black.copy(alpha = 0.30f)
-    val glassEdge = if (LevyraIsLight) Color(0x1F11131F) else Color.White.copy(alpha = 0.16f)
     LazyRow(
         state = state,
         modifier = modifier.fillMaxWidth().then(edges),
@@ -242,53 +239,66 @@ internal fun HomeGenreChips(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(zones, key = { zone -> "home-chip-${zone.id}" }, contentType = { "HomeExperience-zones" }) { zone ->
-            val interaction = remember(zone.id) { MutableInteractionSource() }
-            val corner = if (LocalAnimationsEnabled.current) {
-                levyraExpressiveCorner(
-                    interactionSource = interaction,
-                    rest = HomeChipRestCorner,
-                    pressed = HomeChipPressedCorner,
-                    label = "homeGenreChipCorner"
-                )
-            } else {
-                HomeChipRestCorner
-            }
-            Box(
-                modifier = Modifier
-                    .heightIn(min = 48.dp)
-                    .levyraPressable(
-                        onClick = { onSelect(zone) },
-                        interactionSource = interaction,
-                        pressedScale = LevyraPressScale.Control,
-                        role = Role.Button
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                val shape = RoundedCornerShape(corner)
-                Box(
-                    modifier = Modifier
-                        .then(if (compactPills) Modifier.heightIn(min = 40.dp) else Modifier.height(HomeChipVisualHeight))
-                        .clip(shape)
-                        .then(
-                            if (compactPills) {
-                                Modifier.background(glassFill).border(1.dp, glassEdge, shape)
-                            } else {
-                                Modifier.background(colors.surfaceContainerHigh)
-                            }
-                        )
-                        .padding(horizontal = 18.dp, vertical = if (compactPills) 6.dp else 0.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = zone.label,
-                        color = if (compactPills) LevyraText.copy(alpha = 0.94f) else colors.onSurface,
-                        style = if (compactPills) MaterialTheme.typography.labelLarge else LevyraType.cardTitle.copy(fontWeight = FontWeight.Bold, letterSpacing = (-0.1).sp),
-                        maxLines = 1
-                    )
-                }
-            }
+            HomeGenreChip(label = zone.label, compact = compactPills, onClick = { onSelect(zone) })
         }
     }
+}
+
+@Composable
+private fun HomeGenreChip(label: String, compact: Boolean, onClick: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    val corner = if (LocalAnimationsEnabled.current) {
+        levyraExpressiveCorner(
+            interactionSource = interaction,
+            rest = HomeChipRestCorner,
+            pressed = HomeChipPressedCorner,
+            label = "homeGenreChipCorner"
+        )
+    } else {
+        HomeChipRestCorner
+    }
+    Box(
+        modifier = Modifier
+            .heightIn(min = 48.dp)
+            .levyraPressable(
+                onClick = onClick,
+                interactionSource = interaction,
+                pressedScale = LevyraPressScale.Control,
+                role = Role.Button
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = homeChipSurface(compact, RoundedCornerShape(corner)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = label,
+                color = if (compact) LevyraText.copy(alpha = 0.94f) else MaterialTheme.colorScheme.onSurface,
+                style = if (compact) MaterialTheme.typography.labelLarge else LevyraType.cardTitle.copy(fontWeight = FontWeight.Bold, letterSpacing = (-0.1).sp),
+                maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
+private fun homeChipSurface(compact: Boolean, shape: RoundedCornerShape): Modifier {
+    if (!compact) {
+        return Modifier
+            .height(HomeChipVisualHeight)
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .padding(horizontal = 18.dp)
+    }
+    val fill = if (LevyraIsLight) Color.White.copy(alpha = 0.62f) else Color.Black.copy(alpha = 0.30f)
+    val edge = if (LevyraIsLight) Color(0x1F11131F) else Color.White.copy(alpha = 0.16f)
+    return Modifier
+        .heightIn(min = 40.dp)
+        .clip(shape)
+        .background(fill)
+        .border(1.dp, edge, shape)
+        .padding(horizontal = 18.dp, vertical = 6.dp)
 }
 
 private const val PODIUM_PARALLAX_ZOOM = 1.06f
