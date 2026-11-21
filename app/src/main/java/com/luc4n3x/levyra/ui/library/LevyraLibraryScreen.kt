@@ -470,6 +470,7 @@ internal fun LevyraLibraryScreen(
     }
     val savedPlaylistCopy = remember(strings.code) { com.luc4n3x.levyra.ui.i18n.savedPlaylistCopy(strings.code) }
     val presorted = browse.presortedFor(query, sort, direction)
+    val emptyCopy = remember(strings.code) { com.luc4n3x.levyra.ui.i18n.libraryEmptyCopy(strings.code) }
     val visibleAlbums = remember(browse, query, sort, direction) {
         if (presorted) browse.albums else filterLibraryAlbums(catalog.albums, query, sort, direction)
     }
@@ -856,12 +857,15 @@ internal fun LevyraLibraryScreen(
     val libraryGlass = com.luc4n3x.levyra.ui.rememberGlassBackdropState(libraryFrost && com.luc4n3x.levyra.ui.rememberGlassBlurAllowed())
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val libraryBackground = if (com.luc4n3x.levyra.ui.theme.LevyraIsYouTubeMusic) com.luc4n3x.levyra.ui.theme.YouTubeMusicDesign.background else LevyraInk
-    val topTint = if (libraryFrost && category == LibraryCategory.Overview && query.isBlank() && !LevyraIsPureBlack) {
-        Modifier.defaultLibraryTopTint(colors.primary, libraryBackground)
-    } else {
-        Modifier
-    }
-    Box(modifier = Modifier.fillMaxSize().background(libraryBackground).then(topTint)) {
+    val celesteHalo = libraryFrost && category == LibraryCategory.Overview && query.isBlank() && !LevyraIsPureBlack
+    Box(modifier = Modifier.fillMaxSize().background(libraryBackground)) {
+        if (celesteHalo) {
+            com.luc4n3x.levyra.ui.components.LevyraUtilityBackdrop(
+                accent = com.luc4n3x.levyra.ui.components.LevyraUtilitySeed,
+                strength = LibraryHaloStrength,
+                listState = listState
+            )
+        }
         LazyColumn(
             state = listState,
             modifier = if (libraryFrost) Modifier.fillMaxSize().glassBackdropSource(libraryGlass) else Modifier.fillMaxSize().statusBarsPadding(),
@@ -958,7 +962,7 @@ internal fun LevyraLibraryScreen(
                 )
             }
 
-            if (category != LibraryCategory.Overview || (libraryFrost && query.isBlank())) item(key = "library-categories") {
+            if (category != LibraryCategory.Overview) item(key = "library-categories") {
                 val chipRowState = rememberLazyListState(
                     initialFirstVisibleItemIndex = LibraryBrowseCategories.indexOf(category).coerceAtLeast(0)
                 )
@@ -986,10 +990,18 @@ internal fun LevyraLibraryScreen(
                 }
             }
 
+            val categoryEmpty = query.isBlank() && when (category) {
+                LibraryCategory.Albums -> visibleAlbums.isEmpty()
+                LibraryCategory.Artists -> visibleArtists.isEmpty()
+                LibraryCategory.Songs -> visibleTracks.isEmpty()
+                LibraryCategory.Offline -> visibleOffline.isEmpty()
+                else -> false
+            }
             if (
                 category != LibraryCategory.Overview &&
                 category != LibraryCategory.Collections &&
-                (category != LibraryCategory.Playlists || state.playlists.isNotEmpty())
+                (category != LibraryCategory.Playlists || state.playlists.isNotEmpty()) &&
+                !categoryEmpty
             ) {
                 item(key = "library-toolbar") {
                     LibraryToolbar(
@@ -1182,7 +1194,6 @@ internal fun LevyraLibraryScreen(
                             savedPlaylists = visibleSavedPlaylists,
                             albums = visibleAlbums,
                             strings = strings,
-                            animationsEnabled = state.animationsEnabled,
                             onOpenCollection = { openSmartCollectionName = it },
                             onPlayFavorites = { state.favorites.firstOrNull()?.let { viewModel.playFrom(state.favorites, it) } },
                             onPlayRecent = { viewModel.playFrom(catalog.recent, it) },
@@ -1330,8 +1341,8 @@ internal fun LevyraLibraryScreen(
                         item {
                             LibraryEmpty(
                                 Icons.Rounded.Album,
-                                if (query.isBlank()) strings.albumUnavailable else strings.emptySearchPrompt,
-                                if (query.isBlank()) strings.savedTracks else null
+                                if (query.isBlank()) emptyCopy.albumsTitle else strings.emptySearchPrompt,
+                                if (query.isBlank()) emptyCopy.albumsDetail else null
                             )
                         }
                     } else if (layout == LibraryLayout.Grid) {
@@ -1375,8 +1386,8 @@ internal fun LevyraLibraryScreen(
                         item {
                             LibraryEmpty(
                                 Icons.Rounded.Person,
-                                if (query.isBlank()) strings.artistProfileUnavailable else strings.emptySearchPrompt,
-                                if (query.isBlank()) strings.followedArtistsSubtitle else null
+                                if (query.isBlank()) emptyCopy.artistsTitle else strings.emptySearchPrompt,
+                                if (query.isBlank()) emptyCopy.artistsDetail else null
                             )
                         }
                     } else if (layout == LibraryLayout.Grid) {
@@ -2557,3 +2568,5 @@ private fun playlistItemReorderPresentation(item: PlaylistItem, albumLabel: Stri
     }
 
 private val STORY_POST_ZIP_TYPES = arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream")
+
+private const val LibraryHaloStrength = 0.5f

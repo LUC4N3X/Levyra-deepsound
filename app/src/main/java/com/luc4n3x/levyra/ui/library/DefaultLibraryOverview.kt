@@ -1,6 +1,5 @@
 package com.luc4n3x.levyra.ui.library
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,36 +37,45 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import com.luc4n3x.levyra.ui.components.LevyraBackButton
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.zIndex
+import com.luc4n3x.levyra.ui.components.LevyraUtilityColors
+import com.luc4n3x.levyra.ui.components.LevyraUtilitySeed
+import com.luc4n3x.levyra.ui.components.levyraUtilityColors
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.luc4n3x.levyra.data.ArtworkPalette
-import com.luc4n3x.levyra.data.ArtworkPaletteCache
 import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.SavedPlaylist
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.playableTrackCount
-import com.luc4n3x.levyra.ui.artwork.rememberArtworkPalette
-import com.luc4n3x.levyra.ui.components.LevyraGroupedOuterCorner
+import com.luc4n3x.levyra.ui.components.LevyraPastelAmber
+import com.luc4n3x.levyra.ui.components.LevyraPastelLavender
 import com.luc4n3x.levyra.ui.components.LevyraPastelPeriwinkle
+import com.luc4n3x.levyra.ui.components.LevyraPastelRose
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.LevyraSectionHeader
 import com.luc4n3x.levyra.ui.components.levyraGroupedGridShape
@@ -82,21 +90,6 @@ import com.materialkolor.hct.Hct
 
 private const val LibraryShelfLimit = 6
 private val LibraryOverviewGutter = 16.dp
-private val NoArtworkPalette = ArtworkPalette(0, 0)
-
-@Composable
-internal fun Modifier.defaultLibraryTopTint(accent: Color, background: Color): Modifier {
-    val blue = rememberLibraryBlue(accent)
-    val dark = remember(background) { Hct.fromInt(background.toArgb()).tone < 50.0 }
-    return drawWithCache {
-        val height = minOf(size.height, 148.dp.toPx())
-        val tint = Brush.verticalGradient(
-            colors = listOf(blue.copy(alpha = if (dark) 0.045f else 0.07f), blue.copy(alpha = 0f)),
-            endY = height
-        )
-        onDrawBehind { drawRect(tint, size = Size(size.width, height)) }
-    }
-}
 
 @Composable
 private fun rememberLibraryBlue(accent: Color): Color =
@@ -139,7 +132,6 @@ internal fun LazyListScope.defaultLibraryOverview(
     savedPlaylists: List<SavedPlaylist>,
     albums: List<LibraryAlbum>,
     strings: LevyraStrings,
-    animationsEnabled: Boolean,
     onOpenCollection: (String) -> Unit,
     onPlayFavorites: () -> Unit,
     onPlayRecent: (Track) -> Unit,
@@ -151,13 +143,12 @@ internal fun LazyListScope.defaultLibraryOverview(
     item(key = "default-library-overview") {
         DefaultLibraryFavorites(
             tracks = favorites,
-            animated = animationsEnabled,
             onOpen = { onOpenCollection(SMART_COLLECTION_FAVORITES) },
             onPlay = onPlayFavorites
         )
     }
     item(key = "default-library-listening") {
-        DefaultLibraryListening(recent, mostPlayed, animationsEnabled, onOpenCollection)
+        DefaultLibraryListening(recent, mostPlayed, onOpenCollection)
     }
     if (recent.isNotEmpty()) {
         item(key = "default-library-recent") {
@@ -236,47 +227,30 @@ internal fun LazyListScope.defaultLibraryOverview(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun DefaultLibraryFavorites(tracks: List<Track>, animated: Boolean, onOpen: () -> Unit, onPlay: () -> Unit) {
+private fun DefaultLibraryFavorites(tracks: List<Track>, onOpen: () -> Unit, onPlay: () -> Unit) {
     val strings = LocalLevyraStrings.current
     val scheme = MaterialTheme.colorScheme
-    val artwork = remember(tracks) { tracks.firstCover() }
-    val container = rememberLibraryContainer(artwork, scheme.primaryContainer, animated)
+    val utility = levyraUtilityColors(LevyraUtilitySeed)
+    val covers = remember(tracks) { tracks.covers(LibraryFanSize) }
     val hasTracks = tracks.isNotEmpty()
-    BoxWithConstraints(
+    val heartShape = MaterialShapes.Cookie9Sided.toShape()
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(LevyraCardDesign.SurfaceShape)
-            .drawBehind { drawRect(container.value) }
+            .background(librarySurface())
             .levyraPressable(onClick = onOpen, role = Role.Button, pressedScale = LevyraPressScale.Surface)
-            .padding(16.dp)
+            .padding(20.dp)
     ) {
-        val coverSize = if (hasTracks) (maxWidth * 0.42f).coerceIn(72.dp, 144.dp) else 52.dp
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (artwork.isNotBlank()) {
-                val coverShape = RoundedCornerShape(
-                    topStart = LevyraGroupedOuterCorner,
-                    topEnd = LevyraCardDesign.ArtworkCorner,
-                    bottomEnd = LevyraGroupedOuterCorner,
-                    bottomStart = LevyraCardDesign.ArtworkCorner
-                )
-                LibraryArtwork(artwork, strings.favoritesPlain, Modifier.size(coverSize), coverShape, false)
-            } else {
-                Box(
-                    modifier = Modifier.size(coverSize).clip(MaterialShapes.Cookie9Sided.toShape())
-                        .drawBehind { drawRect(scheme.primary.copy(alpha = 0.08f).compositeOver(container.value)) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Rounded.Favorite, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(24.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(Modifier.size(44.dp).clip(heartShape).background(utility.accent), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.Favorite, contentDescription = null, tint = utility.onAccent, modifier = Modifier.size(22.dp))
                 }
-            }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     strings.favoritesPlain,
                     color = scheme.onSurface,
-                    style = if (hasTracks) MaterialTheme.typography.headlineSmallEmphasized else MaterialTheme.typography.titleLargeEmphasized,
+                    style = MaterialTheme.typography.headlineSmallEmphasized,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -285,23 +259,22 @@ private fun DefaultLibraryFavorites(tracks: List<Track>, animated: Boolean, onOp
                     color = scheme.libraryTonalDetail,
                     style = MaterialTheme.typography.bodyMedium
                 )
-                if (hasTracks) DefaultLibraryPlayFavorites(onPlay, enabled = true)
+                if (hasTracks) DefaultLibraryPlayFavorites(onPlay)
             }
-            if (!hasTracks) DefaultLibraryPlayFavorites(onPlay, enabled = false)
+            LibraryCoverFan(covers, cardSize = 84.dp, accent = utility.accent)
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun DefaultLibraryPlayFavorites(onPlay: () -> Unit, enabled: Boolean) {
-    val scheme = MaterialTheme.colorScheme
+private fun DefaultLibraryPlayFavorites(onPlay: () -> Unit) {
+    val utility = levyraUtilityColors(LevyraUtilitySeed)
     val strings = LocalLevyraStrings.current
     FilledIconButton(
         onClick = onPlay,
-        enabled = enabled,
         shapes = IconButtonDefaults.shapes(),
-        colors = IconButtonDefaults.filledIconButtonColors(containerColor = scheme.primary, contentColor = scheme.onPrimary),
+        colors = IconButtonDefaults.filledIconButtonColors(containerColor = utility.accent, contentColor = utility.onAccent),
         modifier = Modifier.size(48.dp)
     ) {
         Icon(Icons.Rounded.PlayArrow, contentDescription = "${strings.play}, ${strings.favoritesPlain}")
@@ -312,21 +285,21 @@ private fun DefaultLibraryPlayFavorites(onPlay: () -> Unit, enabled: Boolean) {
 private fun DefaultLibraryListening(
     recent: List<Track>,
     mostPlayed: List<Track>,
-    animated: Boolean,
     onOpenCollection: (String) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val scheme = MaterialTheme.colorScheme
+    val recentColors = levyraUtilityColors(LevyraUtilitySeed)
+    val playedColors = levyraUtilityColors(LevyraPastelPeriwinkle)
     val recentTile: @Composable (Modifier, Boolean) -> Unit = { modifier, stacked ->
         DefaultLibraryListeningTile(
-            strings.recent, recent, Icons.Rounded.History, scheme.secondaryContainer,
-            animated, index = 0, stacked = stacked, modifier = modifier
+            strings.recent, recent, Icons.Rounded.History, recentColors,
+            index = 0, stacked = stacked, modifier = modifier
         ) { onOpenCollection(SMART_COLLECTION_RECENT) }
     }
     val playedTile: @Composable (Modifier, Boolean) -> Unit = { modifier, stacked ->
         DefaultLibraryListeningTile(
-            strings.pulsePlays, mostPlayed, Icons.Rounded.Replay, scheme.tertiaryContainer,
-            animated, index = 1, stacked = stacked, modifier = modifier
+            strings.pulsePlays, mostPlayed, Icons.Rounded.Replay, playedColors,
+            index = 1, stacked = stacked, modifier = modifier
         ) { onOpenCollection(SMART_COLLECTION_MOST_PLAYED) }
     }
     BoxWithConstraints {
@@ -352,29 +325,23 @@ private fun DefaultLibraryListeningTile(
     title: String,
     tracks: List<Track>,
     icon: ImageVector,
-    role: Color,
-    animated: Boolean,
+    tone: LevyraUtilityColors,
     index: Int,
     stacked: Boolean,
     modifier: Modifier,
     onOpen: () -> Unit
 ) {
-    val artwork = remember(tracks) { tracks.firstCover() }
-    val container = rememberLibraryContainer(artwork, role, animated)
     val colors = MaterialTheme.colorScheme
+    val covers = remember(tracks) { tracks.covers(2) }
     val shape = if (stacked) levyraGroupedListShape(index, 2) else levyraGroupedGridShape(0, index, 1, 2)
     val surface = modifier
         .clip(shape)
-        .drawBehind { drawRect(container.value) }
+        .background(librarySurface())
         .levyraPressable(onClick = onOpen, role = Role.Button, pressedScale = LevyraPressScale.Tile)
-        .padding(12.dp)
-    val thumbnail: @Composable () -> Unit = {
-        if (artwork.isBlank()) {
-            Box(Modifier.size(40.dp), contentAlignment = Alignment.CenterStart) {
-                Icon(icon, contentDescription = null, tint = colors.libraryTonalDetail)
-            }
-        } else {
-            LibraryArtwork(artwork, title, Modifier.size(40.dp), LevyraCardDesign.ThumbShape, false)
+        .padding(14.dp)
+    val badge: @Composable () -> Unit = {
+        Box(Modifier.size(36.dp).clip(CircleShape).background(tone.accent), contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, tint = tone.onAccent, modifier = Modifier.size(20.dp))
         }
     }
     val caption: @Composable () -> Unit = {
@@ -383,17 +350,51 @@ private fun DefaultLibraryListeningTile(
     }
     if (stacked) {
         Row(surface, horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            thumbnail()
+            badge()
             Column(Modifier.weight(1f)) { caption() }
-            Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = colors.onSurfaceVariant)
+            LibraryCoverFan(covers, cardSize = 40.dp, accent = tone.accent, slots = 2)
         }
     } else {
-        Column(surface, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                thumbnail()
-                Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = colors.onSurfaceVariant)
+        Column(surface, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                badge()
+                LibraryCoverFan(covers, cardSize = 48.dp, accent = tone.accent, slots = 2)
             }
             Column { caption() }
+        }
+    }
+}
+
+@Composable
+private fun LibraryCoverFan(covers: List<String>, cardSize: Dp, accent: Color, slots: Int = LibraryFanSize) {
+    val step = cardSize * 0.34f
+    Box(Modifier.size(width = cardSize + step * (slots - 1), height = cardSize), contentAlignment = Alignment.CenterStart) {
+        repeat(slots) { slot ->
+            val cover = covers.getOrNull(slot)
+            Box(
+                Modifier
+                    .offset(x = step * slot)
+                    .zIndex(slot.toFloat())
+                    .size(cardSize)
+                    .drawWithCache {
+                        val radius = size.minDimension / 2f
+                        val groove = Stroke(width = 1.dp.toPx())
+                        onDrawBehind {
+                            drawCircle(LibraryVinylBase, radius)
+                            drawCircle(accent.copy(alpha = LibraryVinylDiscAlpha), radius)
+                            LibraryVinylGrooves.forEach { ratio ->
+                                drawCircle(accent.copy(alpha = LibraryVinylGrooveAlpha), radius * ratio, style = groove)
+                            }
+                            if (cover == null) drawCircle(accent.copy(alpha = LibraryVinylLabelAlpha), radius * LibraryVinylLabel)
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                if (cover != null) {
+                    LibraryArtwork(cover, "", Modifier.fillMaxSize(LibraryVinylLabel).clip(CircleShape), CircleShape, false)
+                }
+                Box(Modifier.size(cardSize * 0.06f).clip(CircleShape).background(Color.Black.copy(alpha = 0.55f)))
+            }
         }
     }
 }
@@ -452,9 +453,9 @@ private fun DefaultLibraryShelfArtwork(entry: LibraryShelfItem, category: Librar
     if (entry.artwork.isNotBlank()) {
         LibraryArtwork(entry.artwork, entry.title, modifier, shape, false)
     } else {
-        val scheme = MaterialTheme.colorScheme
-        Box(modifier.clip(shape).background(scheme.surfaceContainerHigh), contentAlignment = Alignment.Center) {
-            Icon(category.sectionIcon(), contentDescription = null, tint = scheme.onSurfaceVariant, modifier = Modifier.size(28.dp))
+        val utility = levyraUtilityColors(LevyraUtilitySeed)
+        Box(modifier.clip(shape).background(utility.container), contentAlignment = Alignment.Center) {
+            Icon(category.sectionIcon(), contentDescription = null, tint = utility.onContainer, modifier = Modifier.size(28.dp))
         }
     }
 }
@@ -472,69 +473,145 @@ private fun DefaultLibraryShelfCaption(entry: LibraryShelfItem, modifier: Modifi
 
 @Composable
 private fun DefaultLibraryCategoryLinks(entries: List<LibrarySectionEntry>, onOpen: (LibraryCategory) -> Unit) {
-    val scheme = MaterialTheme.colorScheme
-    val strings = LocalLevyraStrings.current
-    val surface = librarySurface()
-    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        entries.forEachIndexed { index, entry ->
-            val title = entry.category.libraryLabel(strings)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 60.dp)
-                    .clip(levyraGroupedListShape(index, entries.size))
-                    .background(surface)
-                    .levyraPressable(onClick = { onOpen(entry.category) }, role = Role.Button, pressedScale = LevyraPressScale.Row)
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    Modifier.size(40.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(entry.category.sectionIcon(), contentDescription = null, tint = scheme.libraryTonalDetail, modifier = Modifier.size(22.dp))
-                }
-                Column(Modifier.weight(1f)) {
-                    Text(title, style = LevyraType.contentTitle, color = scheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    if (entry.summary.isNotBlank() && entry.summary != title) {
-                        Text(entry.summary, style = LevyraType.caption, color = scheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    if (entries.isEmpty()) return
+    BoxWithConstraints {
+        val columns = if (maxWidth < 300.dp || LocalDensity.current.fontScale >= 1.45f) 1 else 2
+        val rows = entries.chunked(columns)
+        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            rows.forEachIndexed { row, items ->
+                Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                    items.forEachIndexed { column, entry ->
+                        val index = row * columns + column
+                        DefaultLibraryCategoryTile(
+                            entry = entry,
+                            tone = LibraryCategoryTones[index % LibraryCategoryTones.size],
+                            shape = levyraGroupedGridShape(row, column, rows.size, items.size),
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                            onOpen = onOpen
+                        )
                     }
                 }
-                Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = scheme.onSurfaceVariant)
             }
         }
     }
 }
 
-private fun List<Track>.firstCover(): String =
-    firstNotNullOfOrNull { track -> track.thumbnailUrl.ifBlank { track.largeThumbnailUrl }.takeIf(String::isNotBlank) }.orEmpty()
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun DefaultLibraryCategoryTile(
+    entry: LibrarySectionEntry,
+    tone: Color,
+    shape: Shape,
+    modifier: Modifier,
+    onOpen: (LibraryCategory) -> Unit
+) {
+    val scheme = MaterialTheme.colorScheme
+    val strings = LocalLevyraStrings.current
+    val colors = levyraUtilityColors(tone)
+    val title = entry.category.libraryLabel(strings)
+    val badgeShape = MaterialShapes.Cookie7Sided.toShape()
+    Column(
+        modifier = modifier
+            .heightIn(min = 112.dp)
+            .clip(shape)
+            .background(librarySurface())
+            .levyraPressable(onClick = { onOpen(entry.category) }, role = Role.Button, pressedScale = LevyraPressScale.Tile)
+            .padding(14.dp),
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        Box(Modifier.size(40.dp).clip(badgeShape).background(colors.accent), contentAlignment = Alignment.Center) {
+            Icon(entry.category.sectionIcon(), contentDescription = null, tint = colors.onAccent, modifier = Modifier.size(22.dp))
+        }
+        Column(Modifier.padding(top = 12.dp)) {
+            Text(title, style = LevyraType.contentTitle, color = scheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            if (entry.summary.isNotBlank() && entry.summary != title) {
+                Text(entry.summary, style = LevyraType.caption, color = scheme.libraryTonalDetail, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+
+private val LibraryCategoryTones = listOf(
+    LevyraUtilitySeed,
+    LevyraPastelPeriwinkle,
+    LevyraPastelLavender,
+    LevyraPastelRose,
+    LevyraPastelAmber
+)
+
+private fun List<Track>.covers(limit: Int): List<String> =
+    asSequence()
+        .map { track -> track.thumbnailUrl.ifBlank { track.largeThumbnailUrl } }
+        .filter(String::isNotBlank)
+        .distinct()
+        .take(limit)
+        .toList()
+
+private const val LibraryFanSize = 3
+private const val LibraryVinylDiscAlpha = 0.18f
+private const val LibraryVinylGrooveAlpha = 0.32f
+private const val LibraryVinylLabelAlpha = 0.85f
+private val LibraryVinylGrooves = floatArrayOf(0.92f, 0.82f, 0.72f, 0.62f)
+private const val LibraryVinylLabel = 0.6f
+private val LibraryVinylBase = Color(0xFF0E1216)
 
 private val ColorScheme.libraryTonalDetail: Color
     get() = lerp(onSurfaceVariant, onSurface, 0.35f)
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun rememberLibraryContainer(artwork: String, role: Color, animated: Boolean): State<Color> {
+internal fun DefaultSmartCollectionHero(
+    title: String,
+    subtitle: String,
+    countLabel: String,
+    accent: Color,
+    icon: ImageVector,
+    tracks: List<Track>,
+    onClose: () -> Unit
+) {
     val scheme = MaterialTheme.colorScheme
-    val surface = librarySurface()
-    val content = scheme.libraryTonalDetail
-    val paletteKey = remember(artwork) {
-        if (artwork.isBlank()) "" else ArtworkPaletteCache.key("library-overview", artwork, "")
-    }
-    val palette by rememberArtworkPalette(
-        paletteKey = paletteKey,
-        artworkUrl = artwork,
-        fallback = NoArtworkPalette
-    )
-    val target = remember(palette.start, role, surface, content) {
-        Color(libraryArtworkContainer(palette.start, role.toArgb(), surface.toArgb(), content.toArgb()))
-    }
-    return if (animated) {
-        key(role, surface, content) {
-            animateColorAsState(target, animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(), label = "library-container")
+    val strings = LocalLevyraStrings.current
+    val tone = levyraUtilityColors(accent)
+    val covers = remember(tracks) { tracks.covers(LibraryFanSize) }
+    val badgeShape = MaterialShapes.Cookie9Sided.toShape()
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(LevyraCardDesign.SurfaceShape)
+            .background(librarySurface())
+            .padding(start = 12.dp, end = 20.dp, top = 12.dp, bottom = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Row(verticalAlignment = Alignment.Top) {
+            LevyraBackButton(onClick = onClose, contentDescription = strings.back)
+            Spacer(Modifier.weight(1f))
+            LibraryCoverFan(covers, cardSize = 76.dp, accent = tone.accent)
         }
-    } else {
-        rememberUpdatedState(target)
+        Row(
+            modifier = Modifier.padding(start = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(Modifier.size(48.dp).clip(badgeShape).background(tone.accent), contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = tone.onAccent, modifier = Modifier.size(24.dp))
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    title,
+                    color = scheme.onSurface,
+                    style = LevyraType.screenTitle,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.semantics { heading() }
+                )
+                Text(
+                    if (subtitle.isNotBlank()) "$countLabel · $subtitle" else countLabel,
+                    color = scheme.libraryTonalDetail,
+                    style = LevyraType.metadata,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
     }
 }

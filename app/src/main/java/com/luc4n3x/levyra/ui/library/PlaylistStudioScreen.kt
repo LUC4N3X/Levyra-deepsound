@@ -157,17 +157,17 @@ internal fun PlaylistStudioScreen(
     }
     BackHandler(enabled = !libraryOpen, onBack = requestClose)
 
-    val topTint = if (defaultCreation && !LevyraIsPureBlack) {
-        Modifier.defaultLibraryTopTint(MaterialTheme.colorScheme.primary, LevyraInk)
-    } else {
-        Modifier
-    }
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(LevyraInk)
-            .then(topTint)
     ) {
+        if (defaultCreation && !LevyraIsPureBlack) {
+            com.luc4n3x.levyra.ui.components.LevyraUtilityBackdrop(
+                accent = com.luc4n3x.levyra.ui.components.LevyraUtilitySeed,
+                listState = listState
+            )
+        }
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             val wide = maxWidth.value >= StudioWideBreakpointDp
             LazyColumn(

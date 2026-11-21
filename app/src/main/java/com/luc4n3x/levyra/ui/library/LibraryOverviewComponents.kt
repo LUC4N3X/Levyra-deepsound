@@ -118,6 +118,22 @@ internal fun LibraryHero(title: String, subtitle: String, onBack: (() -> Unit)? 
         }
         return
     }
+    if (LevyraIsDefaultSkin && onBack != null) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            DefaultLibraryBackButton(onClick = onBack, contentDescription = strings.back)
+            Column(Modifier.weight(1f)) {
+                Text(title, color = colors.onSurface, style = LevyraType.screenTitle, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() })
+                if (subtitle.isNotBlank()) {
+                    Text(subtitle, color = colors.onSurfaceVariant, style = LevyraType.metadata, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+        return
+    }
     Column(
         modifier = Modifier.fillMaxWidth().padding(top = if (onBack == null) 8.dp else 0.dp, bottom = 6.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -440,6 +456,12 @@ internal fun SmartCollectionDetail(
 
     Surface(color = com.luc4n3x.levyra.ui.theme.LevyraInk, modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize()) {
+            if (LevyraIsDefaultSkin && !LevyraIsPureBlack) {
+                com.luc4n3x.levyra.ui.components.LevyraUtilityBackdrop(
+                    accent = com.luc4n3x.levyra.ui.components.LevyraUtilitySeed,
+                    strength = 0.5f
+                )
+            }
             androidx.compose.foundation.lazy.LazyColumn(
                 modifier = Modifier.fillMaxSize().statusBarsPadding(),
                 contentPadding = PaddingValues(
@@ -451,7 +473,19 @@ internal fun SmartCollectionDetail(
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 item(key = "smart-hero") {
-                    SmartCollectionHero(style, strings.formatTrackCount(tracks.size), onClose)
+                    if (LevyraIsDefaultSkin) {
+                        DefaultSmartCollectionHero(
+                            title = style.title,
+                            subtitle = style.subtitle,
+                            countLabel = strings.formatTrackCount(tracks.size),
+                            accent = style.accent,
+                            icon = style.icon,
+                            tracks = tracks,
+                            onClose = onClose
+                        )
+                    } else {
+                        SmartCollectionHero(style, strings.formatTrackCount(tracks.size), onClose)
+                    }
                 }
                 item(key = "smart-actions") {
                     SmartCollectionActions(
@@ -675,8 +709,20 @@ private fun SmartCollectionAction(
         label = "smart-collection-action-corner"
     )
     val shape = RoundedCornerShape(corner)
-    val container = if (filled) colors.primary else colors.secondaryContainer
-    val content = if (filled) colors.onPrimary else colors.onSecondaryContainer
+    val celeste = com.luc4n3x.levyra.ui.components.levyraUtilityColors(com.luc4n3x.levyra.ui.components.LevyraUtilitySeed)
+    val container = when {
+        LevyraIsDefaultSkin && filled -> celeste.accent
+        LevyraIsDefaultSkin -> colors.surfaceContainerHigh
+        filled -> colors.primary
+        else -> colors.secondaryContainer
+    }
+    val content = when {
+        LevyraIsDefaultSkin && filled -> celeste.onAccent
+        LevyraIsDefaultSkin -> colors.onSurface
+        filled -> colors.onPrimary
+        else -> colors.onSecondaryContainer
+    }
+    val iconTint = if (LevyraIsDefaultSkin && !filled) celeste.accent else if (filled) content else accent
     Row(
         modifier = modifier
             .height(52.dp)
@@ -692,7 +738,7 @@ private fun SmartCollectionAction(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
-        Icon(icon, contentDescription = null, tint = if (filled) content else accent, modifier = Modifier.size(20.dp))
+        Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(8.dp))
         Text(label, color = content, style = LevyraType.cardTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
