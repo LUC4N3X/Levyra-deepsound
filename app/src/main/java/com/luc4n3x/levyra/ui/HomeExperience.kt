@@ -253,7 +253,7 @@ internal fun HomeGenreChips(
         return
     }
     val edges = if (compactPills) {
-        Modifier.horizontalFadeEdges(state.canScrollBackward, false, 12.dp)
+        Modifier.horizontalFadeEdges(state.canScrollBackward, state.canScrollForward, 12.dp)
     } else Modifier
     LazyRow(
         state = state,

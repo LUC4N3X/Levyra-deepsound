@@ -69,6 +69,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -108,9 +109,11 @@ internal fun DefaultHomeBrowseHeader(
     Box(Modifier.fillMaxWidth()) {
         HomeGenreChips(
             zones = zones,
-            contentPadding = PaddingValues(start = chipLead),
+            contentPadding = PaddingValues(start = chipLead, end = LevyraHomeDesign.HorizontalInset),
             onSelect = { zone -> if (zone.id == DEFAULT_MOODS_CHIP) moodsOpen = true else onSelect(zone) },
-            modifier = Modifier.padding(start = logoHalf),
+            modifier = Modifier
+                .defaultHomeChipEndBleed(LevyraHomeDesign.HorizontalInset)
+                .padding(start = logoHalf),
             compactPills = true,
             state = chipState
         )
@@ -366,3 +369,13 @@ private val DefaultLogoPillActionSize = 48.dp
 private val DefaultLogoPillEndPadding = 2.dp
 private val DefaultLogoPillOpenWidth =
     LevyraHomeDesign.SettingsControlHeight + DefaultLogoPillGap + DefaultLogoPillActionSize * 2 + DefaultLogoPillActionGap + DefaultLogoPillEndPadding
+
+private fun Modifier.defaultHomeChipEndBleed(gutter: androidx.compose.ui.unit.Dp): Modifier =
+    layout { measurable, constraints ->
+        val gutterPx = gutter.roundToPx()
+        val width = constraints.maxWidth + gutterPx
+        val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
+        layout(constraints.maxWidth, placeable.height) {
+            placeable.placeRelative(0, 0)
+        }
+    }

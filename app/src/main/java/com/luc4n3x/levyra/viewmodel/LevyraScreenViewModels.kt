@@ -227,6 +227,7 @@ class HomeViewModel internal constructor(
     fun openExploreTab() = root.selectTab(LevyraTab.Explore)
     fun startSongRadioFrom(track: Track) = root.startSongRadioFrom(track)
     suspend fun artistRadioTracks(track: Track) = root.artistRadioTracks(track)
+    suspend fun searchSongs(query: String, limit: Int) = root.searchSongs(query, limit)
     fun openListeningRecap() = root.openListeningRecap()
     fun openArtistByName(name: String) = root.openArtistByName(name)
     fun openArtistFromHit(hit: ArtistHit) = root.openArtistFromHit(hit)

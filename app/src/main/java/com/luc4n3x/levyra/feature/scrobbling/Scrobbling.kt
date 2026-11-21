@@ -139,6 +139,8 @@ class ListenBrainzScrobbleProvider(private val credentials: AndroidKeystoreCrede
 
     override fun isConfigured(): Boolean = credentials.read(LISTEN_BRAINZ_CREDENTIAL_SLOT) != null
 
+    fun token(): String? = credentials.read(LISTEN_BRAINZ_CREDENTIAL_SLOT)
+
     suspend fun saveToken(token: String): Boolean = withContext(Dispatchers.IO) {
         val clean = token.trim()
         if (clean.isBlank()) return@withContext false

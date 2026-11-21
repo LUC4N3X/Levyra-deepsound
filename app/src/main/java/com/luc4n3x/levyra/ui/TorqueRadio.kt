@@ -292,6 +292,7 @@ internal fun TorqueRadioScreen(
     if (editorOpen) CustomRadioDialog(
         station = state.customStations.firstOrNull { it.uuid == editingId }, saving = state.savingCustom, error = state.customError,
         onDismiss = { editorOpen = false }, onChanged = viewModel::clearCustomError,
+        imported = state.customImport, onImport = viewModel::importCustom,
         onSave = { name, url, image -> viewModel.saveCustom(name, url, image, state.customStations.firstOrNull { it.uuid == editingId }) { editorOpen = false } }
     )
     state.customStations.firstOrNull { it.uuid == deletingId }?.let { station ->

@@ -60,6 +60,23 @@ internal class RadioStore(private val preferences: SharedPreferences) {
         }
     }
 
+    suspend fun importCustom(entries: List<RadioPlaylistEntry>): RadioImportResult = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            val current = decode(preferences.getString(KEY_CUSTOM, null))
+            val known = current.mapNotNull { canonicalRadioUrl(it.streamUrl) }.toMutableSet()
+            val added = mutableListOf<RadioStation>()
+            for (entry in entries) {
+                if (current.size + added.size >= MAX_CUSTOM) break
+                val station = runCatching { customRadioStation(entry.name, entry.streamUrl, entry.imageUrl) }.getOrNull() ?: continue
+                if (known.add(station.streamUrl)) added += station
+            }
+            if (added.isNotEmpty() && !preferences.edit().putString(KEY_CUSTOM, encode(current + added)).commit()) {
+                throw CustomRadioException(CustomRadioError.Storage)
+            }
+            RadioImportResult(added = added.size, skipped = entries.size - added.size)
+        }
+    }
+
     suspend fun deleteCustom(station: RadioStation) = withContext(Dispatchers.IO) {
         require(station.isCustom)
         mutex.withLock {
