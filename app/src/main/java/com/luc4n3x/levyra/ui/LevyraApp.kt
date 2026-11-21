@@ -23785,6 +23785,10 @@ private val SearchRowArtworkShape = RoundedCornerShape(14.dp)
 private val DefaultSearchRowArtworkSize = 60.dp
 private val DefaultSearchRowArtworkShape = RoundedCornerShape(16.dp)
 
+private fun searchRowArtworkSize(): Dp = if (LevyraIsDefaultSkin) DefaultSearchRowArtworkSize else SearchRowArtworkSize
+
+private fun searchRowArtworkShape(): RoundedCornerShape = if (LevyraIsDefaultSkin) DefaultSearchRowArtworkShape else SearchRowArtworkShape
+
 @Composable
 private fun SearchTrackCard(
     track: Track,
@@ -23842,8 +23846,8 @@ private fun SearchTrackCard(
         horizontalArrangement = Arrangement.spacedBy(LevyraCardDesign.RowTextGap)
     ) {
         Box {
-            val artShape = if (compactRow) DefaultSearchRowArtworkShape else SearchRowArtworkShape
-            CoverImage(track, Modifier.size(if (compactRow) DefaultSearchRowArtworkSize else SearchRowArtworkSize).clip(artShape))
+            val artShape = searchRowArtworkShape()
+            CoverImage(track, Modifier.size(searchRowArtworkSize()).clip(artShape))
             if (isPlaying || isResolving) {
                 Surface(color = Color.Black.copy(alpha = 0.5f), shape = artShape, modifier = Modifier.matchParentSize()) {
                     Box(contentAlignment = Alignment.Center) {
