@@ -58,13 +58,14 @@ private data class FilterPillColors(val container: Color, val content: Color)
 private fun animatedFilterPillColors(selected: Boolean, animationsEnabled: Boolean): FilterPillColors {
     val colors = MaterialTheme.colorScheme
     val spec: AnimationSpec<Color> = if (animationsEnabled) LevyraMotion.standard() else snap()
+    val defaultAccent = if (com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin) levyraUtilityColors(LevyraUtilitySeed) else null
     val container by animateColorAsState(
-        targetValue = filterPillContainer(selected, colors),
+        targetValue = if (defaultAccent != null && selected) defaultAccent.accent else filterPillContainer(selected, colors),
         animationSpec = spec,
         label = "filter-pill-container"
     )
     val content by animateColorAsState(
-        targetValue = filterPillContent(selected, colors),
+        targetValue = if (defaultAccent != null && selected) defaultAccent.onAccent else filterPillContent(selected, colors),
         animationSpec = spec,
         label = "filter-pill-content"
     )

@@ -13,6 +13,12 @@ internal object HomeSoundtrackPortraits {
         "ko" to listOf("IU", "NewJeans", "aespa", "IVE", "BLACKPINK", "Stray Kids", "BTS")
     )
 
+    private val qobuzPortraitPages: Map<String, String> = mapOf(
+        "karol g" to "https://www.qobuz.com/it-it/interpreter/karol-g/2587039"
+    )
+
+    fun qobuzPortraitPage(artistName: String): String? = qobuzPortraitPages[artistName.trim().lowercase()]
+
     fun artistForDay(languageCode: String, epochDay: Long): String {
         val pool = byLanguage[languageCode.substringBefore('-').lowercase()] ?: byLanguage.getValue("en")
         return pool[Math.floorMod(epochDay, pool.size.toLong()).toInt()]

@@ -162,6 +162,8 @@ class HomeViewModel internal constructor(
     fun openExploreZone(zone: ExploreZone) = root.openExploreZone(zone)
     fun openExploreGenreChart(zone: ExploreZone) = root.openExploreGenreChart(zone)
     fun openExplorePodcasts() = root.openExplorePodcasts()
+    fun openExploreSamples(index: Int) = root.openExploreSamples(index)
+    val browseState: StateFlow<LevyraUiState> get() = root.state
     fun selectTab(tab: com.luc4n3x.levyra.domain.LevyraTab) = root.selectTab(tab)
     val appleNewThisWeek: StateFlow<AppleNewThisWeek> get() = root.appleNewThisWeek
     fun ensureAppleNewThisWeek(force: Boolean = false) = root.ensureAppleNewThisWeek(force)

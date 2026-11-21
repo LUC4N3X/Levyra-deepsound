@@ -91,9 +91,12 @@ internal fun DefaultHomeBrowseHeader(
     chipState: LazyListState,
     loading: Boolean,
     onSelect: (ExploreZone) -> Unit,
-    onSettings: () -> Unit
+    onSettings: () -> Unit,
+    moodsSheet: @Composable (onDismiss: () -> Unit) -> Unit = {}
 ) {
     var actionsOpen by rememberSaveable { mutableStateOf(false) }
+    var moodsOpen by rememberSaveable { mutableStateOf(false) }
+    if (moodsOpen) moodsSheet { moodsOpen = false }
     BackHandler(enabled = actionsOpen) { actionsOpen = false }
     val logoHalf = LevyraHomeDesign.SettingsControlHeight / 2
     val animated = LocalAnimationsEnabled.current
@@ -106,7 +109,7 @@ internal fun DefaultHomeBrowseHeader(
         HomeGenreChips(
             zones = zones,
             contentPadding = PaddingValues(start = chipLead),
-            onSelect = onSelect,
+            onSelect = { zone -> if (zone.id == DEFAULT_MOODS_CHIP) moodsOpen = true else onSelect(zone) },
             modifier = Modifier.padding(start = logoHalf),
             compactPills = true,
             state = chipState
@@ -267,7 +270,7 @@ private fun rememberLogoLoadingSpin(active: Boolean): Float {
     return angle
 }
 
-private fun Modifier.vinylDisc(base: Color, tint: Color): Modifier = drawWithCache {
+internal fun Modifier.vinylDisc(base: Color, tint: Color): Modifier = drawWithCache {
     val radius = size.minDimension / 2f
     val groove = Stroke(width = 0.6.dp.toPx())
     val disc = lerp(base, tint, 0.07f)

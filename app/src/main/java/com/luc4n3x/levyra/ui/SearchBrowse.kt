@@ -183,6 +183,13 @@ internal fun rememberLevyraSearchBrowse(state: LevyraUiState, viewModel: SearchV
         viewModel.ensureExplore(strings)
         viewModel.ensureExploreSamples()
     }
+    return rememberLevyraBrowse(state, viewModel::ensureExploreCategoryArtwork)
+}
+
+@Composable
+internal fun rememberLevyraBrowse(state: LevyraUiState, requestCategoryArtwork: (String) -> Unit): LevyraSearchBrowse {
+    val strings = LocalLevyraStrings.current
+    val latestRequest by androidx.compose.runtime.rememberUpdatedState(requestCategoryArtwork)
     val zones = remember(strings) { ExploreCatalog.getZones(strings) }
     val categories = rememberCategoriesWithDecades(state.exploreCategories, strings.code)
     val sections = remember(zones, categories) { levyraSearchBrowseSections(zones, categories) }
@@ -197,7 +204,7 @@ internal fun rememberLevyraSearchBrowse(state: LevyraUiState, viewModel: SearchV
             sections = sections,
             categoryArtwork = categoryArtwork,
             zoneCovers = zoneCovers,
-            requestCategoryArtwork = viewModel::ensureExploreCategoryArtwork
+            requestCategoryArtwork = { params -> latestRequest(params) }
         )
     }
 }

@@ -63,6 +63,9 @@ class MusicNewsRepository private constructor(context: Context) {
             }
             .build()
     }
+    private val articleClient: OkHttpClient by lazy {
+        httpClient.newBuilder().callTimeout(ARTICLE_CALL_TIMEOUT_SECONDS, java.util.concurrent.TimeUnit.SECONDS).build()
+    }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val pages = ConcurrentHashMap<String, MusicNewsPage>()
     private val inFlight = ConcurrentHashMap<String, Deferred<MusicNewsPage?>>()
@@ -80,7 +83,7 @@ class MusicNewsRepository private constructor(context: Context) {
         val shared = inFlight.computeIfAbsent(key) {
             scope.async {
                 try {
-                    fetchAll(MusicNewsSources.forLanguage(key))?.let { fresh -> keepFailedSources(fresh, usable) }?.also { page ->
+                    fetchAll(MusicNewsSources.forLanguage(key), usable?.stories.orEmpty())?.let { fresh -> keepFailedSources(fresh, usable) }?.also { page ->
                         pages[key] = page
                         writeText(key, MusicNewsCodec.encode(page))
                     }
@@ -104,9 +107,50 @@ class MusicNewsRepository private constructor(context: Context) {
         return page?.takeIf { now - it.fetchedAtMs < MAX_STALE_MS && it.stories.isNotEmpty() }
     }
 
-    private suspend fun fetchAll(sources: List<MusicNewsSource>): MusicNewsPage? = coroutineScope {
+    private suspend fun fetchAll(sources: List<MusicNewsSource>, previous: List<MusicNewsStory>): MusicNewsPage? = coroutineScope {
         val stories = sources.map { source -> async { fetchSource(source) } }.awaitAll().flatten()
-        merge(stories).takeIf { it.isNotEmpty() }?.let { MusicNewsPage(it, System.currentTimeMillis()) }
+        merge(stories).takeIf { it.isNotEmpty() }
+            ?.let { withArticleImages(it, previous) }
+            ?.let { MusicNewsPage(it, System.currentTimeMillis()) }
+    }
+
+    private suspend fun withArticleImages(stories: List<MusicNewsStory>, previous: List<MusicNewsStory>): List<MusicNewsStory> = coroutineScope {
+        val known = previous.filter { it.imageUrl.isNotBlank() }.associate { it.url to it.imageUrl }
+        val lookups = stories.filter { it.imageUrl.isBlank() && it.url !in known }
+            .take(MAX_ARTICLE_IMAGE_LOOKUPS)
+            .map { story -> story.url to async { articleImage(story.url) } }
+            .toMap()
+        stories.map { story ->
+            when {
+                story.imageUrl.isNotBlank() -> story
+                known[story.url] != null -> story.copy(imageUrl = known.getValue(story.url))
+                else -> lookups[story.url]?.await()?.takeIf(String::isNotBlank)?.let { story.copy(imageUrl = it) } ?: story
+            }
+        }
+    }
+
+    private fun articleImage(url: String): String = try {
+        if (!MusicNewsFeedParser.isHttps(url)) {
+            ""
+        } else {
+            val request = Request.Builder().url(url).header("Accept", "text/html").header("User-Agent", USER_AGENT).build()
+            articleClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful || !response.request.url.isHttps) return@use ""
+                val source = response.body.source()
+                val buffer = Buffer()
+                var exhausted = false
+                while (!exhausted && buffer.size < MAX_ARTICLE_HEAD_BYTES) {
+                    exhausted = source.read(buffer, READ_CHUNK_BYTES) == -1L
+                }
+                MusicNewsFeedParser.articleImage(buffer.readString(response.body.contentType()?.charset() ?: Charsets.UTF_8))
+            }
+        }
+    } catch (error: IOException) {
+        Timber.w(error, "Music news article image failed")
+        ""
+    } catch (error: RuntimeException) {
+        Timber.w(error, "Music news article image failed")
+        ""
     }
 
     private fun fetchSource(source: MusicNewsSource): List<MusicNewsStory> = try {
@@ -188,6 +232,9 @@ class MusicNewsRepository private constructor(context: Context) {
         private const val MAX_STALE_MS = 3L * 24L * 60L * 60L * 1000L
         private const val MAX_FEED_BYTES = 2L * 1024L * 1024L
         private const val READ_CHUNK_BYTES = 64L * 1024L
+        private const val MAX_ARTICLE_HEAD_BYTES = 192L * 1024L
+        private const val MAX_ARTICLE_IMAGE_LOOKUPS = 16
+        private const val ARTICLE_CALL_TIMEOUT_SECONDS = 6L
         private const val HTTP_TOO_MANY_REQUESTS = 429
         private const val HTTP_SERVICE_UNAVAILABLE = 503
 
