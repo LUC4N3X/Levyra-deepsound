@@ -82,9 +82,48 @@ async function extractPhone(index, spec) {
     const cutout = await sharp(input).composite([{ input: svg(shape), blend: 'dest-in' }]).png().toBuffer();
     return sharp(cutout).trim({ threshold: 1 }).png().toBuffer();
   }
-  const phoneHeight = Math.round(684 * 2993 / 1440) + 24;
-  return sharp(input).extract({ left: 96, top: 264, width: 708, height: phoneHeight })
-    .composite([{ input: rounded(708, phoneHeight, 34), blend: 'dest-in' }]).png().toBuffer();
+  const screenHeight = Math.round(684 * 2993 / 1440);
+  return sharp(input).extract({ left: 108, top: 276, width: 684, height: screenHeight }).png().toBuffer();
+}
+
+function smartphoneFrameSvg(left, top, outerW, outerH) {
+  const rx = left + outerW - 1;
+  return svg(`
+    <defs>
+      <linearGradient id="tiGray" x1="0" y1="0" x2="1" y2="0.45">
+        <stop offset="0%" stop-color="#A8A6A0"/>
+        <stop offset="12%" stop-color="#6F6D68"/>
+        <stop offset="34%" stop-color="#9B9993"/>
+        <stop offset="60%" stop-color="#5E5C57"/>
+        <stop offset="86%" stop-color="#94928C"/>
+        <stop offset="100%" stop-color="#AEACA6"/>
+      </linearGradient>
+      <linearGradient id="tiBtn" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#A8A6A0"/>
+        <stop offset="50%" stop-color="#5E5C57"/>
+        <stop offset="100%" stop-color="#92908A"/>
+      </linearGradient>
+    </defs>
+    <rect x="${rx}" y="${top + 240}" width="8" height="114" rx="3" fill="url(#tiBtn)" stroke="#4A4844" stroke-opacity=".75" stroke-width="1.2"/>
+    <rect x="${rx}" y="${top + 392}" width="8" height="66" rx="3" fill="url(#tiBtn)" stroke="#4A4844" stroke-opacity=".75" stroke-width="1.2"/>
+    <rect x="${left}" y="${top}" width="${outerW}" height="${outerH}" rx="34" fill="url(#tiGray)"/>
+    <rect x="${left + 3}" y="${top + 3}" width="${outerW - 6}" height="${outerH - 6}" rx="31" fill="none" stroke="#E2E0DA" stroke-opacity=".68" stroke-width="2"/>
+    <rect x="${left + 0.9}" y="${top + 0.9}" width="${outerW - 1.8}" height="${outerH - 1.8}" rx="33.1" fill="none" stroke="#4A4844" stroke-opacity=".75" stroke-width="1.8"/>
+    <rect x="${left + 1}" y="${top + 112}" width="10" height="5" fill="#474540" opacity=".80"/>
+    <rect x="${left + outerW - 11}" y="${top + 112}" width="10" height="5" fill="#474540" opacity=".80"/>
+    <rect x="${left + 10}" y="${top + 10}" width="${outerW - 20}" height="${outerH - 20}" rx="25" fill="#0A0C10"/>
+  `);
+}
+
+function smartphoneDetailsSvg(left, top, outerW, bezel) {
+  const cx = left + outerW / 2;
+  const camY = top + bezel + 22;
+  return svg(`
+    <rect x="${cx - 46}" y="${top + 11}" width="92" height="4" rx="2" fill="#2A2D34"/>
+    <circle cx="${cx}" cy="${camY}" r="9.5" fill="#06080C" stroke="#222836" stroke-width="1.4"/>
+    <circle cx="${cx}" cy="${camY}" r="4.5" fill="#121A2B"/>
+    <circle cx="${cx - 2}" cy="${camY - 2}" r="1.7" fill="#9BB6EB" opacity=".70"/>
+  `);
 }
 
 const brandColors = { ink: '#161F33', muted: '#4D5C7A' };
@@ -164,13 +203,13 @@ async function renderOutfitLine(value, sizePt, fill, fontfile, fontName, letterS
 function shadow(shape) {
   return svg(`
     <defs>
-      <filter id="s1" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="44"/></filter>
+      <filter id="s1" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="46"/></filter>
       <filter id="s2" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="18"/></filter>
       <filter id="s3" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6"/></filter>
     </defs>
-    <g transform="translate(0 28)" opacity=".20" filter="url(#s1)">${shape.replaceAll('fill="white"', 'fill="#182A5E"')}</g>
-    <g transform="translate(0 14)" opacity=".18" filter="url(#s2)">${shape.replaceAll('fill="white"', 'fill="#111E42"')}</g>
-    <g transform="translate(0 5)" opacity=".14" filter="url(#s3)">${shape.replaceAll('fill="white"', 'fill="#0A122B"')}</g>
+    <g transform="translate(0 30)" opacity=".26" filter="url(#s1)">${shape.replaceAll('fill="white"', 'fill="#182A5E"')}</g>
+    <g transform="translate(0 14)" opacity=".24" filter="url(#s2)">${shape.replaceAll('fill="white"', 'fill="#111E42"')}</g>
+    <g transform="translate(0 4)" opacity=".22" filter="url(#s3)">${shape.replaceAll('fill="white"', 'fill="#0A122B"')}</g>
   `);
 }
 
@@ -205,13 +244,20 @@ function cardBackdrop(index, shapeColor) {
 
 async function cardMediaLayers(index, spec) {
   if (index >= 2) {
-    const phone = await extractPhone(index, spec);
-    const { data, info } = await sharp(phone).resize({ width: 688 }).png().toBuffer({ resolveWithObject: true });
-    const top = height - info.height + 14;
-    const left = Math.round((width - 688) / 2);
+    const screenRaw = await extractPhone(index, spec);
+    const bezel = 19;
+    const screenW = 668;
+    const { data, info } = await sharp(screenRaw).resize({ width: screenW }).png().toBuffer({ resolveWithObject: true });
+    const screen = await sharp(data).composite([{ input: rounded(screenW, info.height, 19), blend: 'dest-in' }]).png().toBuffer();
+    const outerW = screenW + bezel * 2;
+    const outerH = info.height + bezel * 2;
+    const left = Math.round((width - outerW) / 2);
+    const top = height - outerH + 22;
     return [
-      { input: shadow(`<rect x="${left}" y="${top}" width="688" height="${info.height}" rx="34" fill="white"/>`) },
-      { input: data, left, top }
+      { input: shadow(`<rect x="${left}" y="${top}" width="${outerW}" height="${outerH}" rx="34" fill="white"/>`) },
+      { input: smartphoneFrameSvg(left, top, outerW, outerH) },
+      { input: screen, left: left + bezel, top: top + bezel },
+      { input: smartphoneDetailsSvg(left, top, outerW, bezel) },
     ];
   }
   const input = await readFile(resolve(source, `${spec[0]}.webp`));
