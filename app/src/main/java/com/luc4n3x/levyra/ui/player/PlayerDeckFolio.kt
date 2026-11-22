@@ -22,8 +22,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Repeat
-import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
@@ -48,7 +46,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.components.FolioArtworkMorph
 import com.luc4n3x.levyra.ui.components.LevyraMorphShape
@@ -111,7 +108,6 @@ internal fun PlayerFolioDeck(
     isPlaying: Boolean,
     isResolving: Boolean,
     shuffleOn: Boolean,
-    repeatMode: RepeatMode,
     labels: PlayerControlLabels,
     animated: Boolean,
     compact: Boolean,
@@ -124,7 +120,6 @@ internal fun PlayerFolioDeck(
     onPrevious: () -> Unit,
     onTogglePlay: () -> Unit,
     onNext: () -> Unit,
-    onRepeat: () -> Unit,
     modifier: Modifier = Modifier,
     headlineModifier: Modifier = Modifier
 ) {
@@ -205,13 +200,12 @@ internal fun PlayerFolioDeck(
             slots = slots,
             isFavorite = isFavorite,
             shuffleOn = shuffleOn,
-            repeatMode = repeatMode,
             labels = labels,
             ink = ink,
             inkContent = inkContent,
+            animated = animated,
             onToggleFavorite = onToggleFavorite,
-            onShuffle = onShuffle,
-            onRepeat = onRepeat
+            onShuffle = onShuffle
         )
     }
 }
@@ -449,13 +443,12 @@ private fun FolioActionRow(
     slots: PlayerDeckSlots,
     isFavorite: Boolean,
     shuffleOn: Boolean,
-    repeatMode: RepeatMode,
     labels: PlayerControlLabels,
     ink: Color,
     inkContent: Color,
+    animated: Boolean,
     onToggleFavorite: () -> Unit,
-    onShuffle: () -> Unit,
-    onRepeat: () -> Unit
+    onShuffle: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     val extras = slots.dockActions(track).filter { it.key in FolioDockKeys }
@@ -471,20 +464,12 @@ private fun FolioActionRow(
             ink = ink,
             inkContent = inkContent,
             onClick = onToggleFavorite,
-            toggle = true
+            toggle = true,
+            animated = animated
         )
-        FolioActionPill(Icons.Rounded.Shuffle, labels.shuffle, shuffleOn, ink, inkContent, onShuffle, toggle = true)
-        FolioActionPill(
-            icon = if (repeatMode == RepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
-            label = labels.repeat,
-            active = repeatMode != RepeatMode.Off,
-            ink = ink,
-            inkContent = inkContent,
-            onClick = onRepeat,
-            toggle = true
-        )
+        FolioActionPill(Icons.Rounded.Shuffle, labels.shuffle, shuffleOn, ink, inkContent, onShuffle, toggle = true, animated = animated)
         extras.forEach { action ->
-            FolioActionPill(action.icon, action.label, action.active, ink, inkContent, action.onClick, action.enabled, action.toggle)
+            FolioActionPill(action.icon, action.label, action.active, ink, inkContent, action.onClick, action.enabled, action.toggle, animated)
         }
     }
 }
@@ -498,11 +483,13 @@ private fun RowScope.FolioActionPill(
     inkContent: Color,
     onClick: () -> Unit,
     enabled: Boolean = true,
-    toggle: Boolean = false
+    toggle: Boolean = false,
+    animated: Boolean = true
 ) {
     val haptics = LocalLevyraHaptics.current
-    val container by animateColorAsState(if (active) ink else ink.copy(alpha = FolioPillRestAlpha), label = "player-folio-pill")
-    val tint by animateColorAsState(if (active) inkContent else ink, label = "player-folio-pill-icon")
+    val spec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.paletteTween<Color>())
+    val container by animateColorAsState(if (active) ink else ink.copy(alpha = FolioPillRestAlpha), spec, label = "player-folio-pill")
+    val tint by animateColorAsState(if (active) inkContent else ink, spec, label = "player-folio-pill-icon")
     Box(
         modifier = Modifier
             .weight(1f)
