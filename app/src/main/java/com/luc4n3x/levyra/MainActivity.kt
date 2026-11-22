@@ -85,6 +85,10 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import com.luc4n3x.levyra.diagnostics.CrashReporting
+import com.luc4n3x.levyra.diagnostics.CrashReportsActivity
 import timber.log.Timber
 
 
@@ -141,6 +145,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (savedInstanceState == null) showPendingCrashReport()
         applyOrientationPolicy()
         configureFastImageLoader()
         requestNotificationPermission()
@@ -289,6 +294,18 @@ class MainActivity : ComponentActivity() {
                     accent = MaterialTheme.colorScheme.primary
                 )
             }
+        }
+    }
+
+    private fun showPendingCrashReport() {
+        lifecycleScope.launch {
+            val pending = withContext(Dispatchers.IO) {
+                runCatching { CrashReporting.store(this@MainActivity).claimPending() }.getOrNull()
+            } ?: return@launch
+            startActivity(
+                Intent(this@MainActivity, CrashReportsActivity::class.java)
+                    .putExtra(CrashReportsActivity.EXTRA_REPORT_ID, pending.id)
+            )
         }
     }
 
