@@ -64,6 +64,11 @@ private val HeroPlayMorph: Morph by lazy {
     Morph(MaterialShapes.Cookie9Sided.normalized(), MaterialShapes.Cookie12Sided.normalized())
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+internal val FolioArtworkMorph: Morph by lazy {
+    Morph(MaterialShapes.Cookie9Sided.normalized(), MaterialShapes.Flower.normalized())
+}
+
 @Composable
 internal fun rememberLevyraHeroPlayShape(
     playing: Boolean,

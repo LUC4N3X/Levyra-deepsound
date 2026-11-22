@@ -41,8 +41,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -51,7 +49,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.domain.Track
-import com.luc4n3x.levyra.ui.PlayerDarkSurface
+import com.luc4n3x.levyra.ui.components.FolioArtworkMorph
+import com.luc4n3x.levyra.ui.components.LevyraMorphShape
+import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toArgb
+import com.materialkolor.hct.Hct
 import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.PlayerControlLabels
@@ -60,7 +74,6 @@ import com.luc4n3x.levyra.ui.components.levyraExpressiveCorner
 import com.luc4n3x.levyra.ui.components.levyraExpressiveToggleCorner
 import com.luc4n3x.levyra.ui.components.levyraPressable
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
-import com.luc4n3x.levyra.ui.playerMix
 import com.luc4n3x.levyra.ui.theme.LevyraHapticAction
 import com.luc4n3x.levyra.ui.theme.LevyraMotion
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
@@ -70,8 +83,8 @@ private val FolioScrollingStage = 300.dp
 private val FolioStageCorner = LevyraPlayerDesign.CornerLg
 private val FolioControlHeight = 80.dp
 private val FolioControlHeightCompact = 66.dp
-private const val FolioPaperDepth = 0.74f
-private const val FolioArtistAlpha = 0.78f
+private const val FolioArtistAlpha = 0.86f
+private const val FolioSpinMillis = 60_000
 private const val FolioFixedActionCount = 3
 
 @Composable
@@ -101,21 +114,23 @@ internal fun PlayerFolioDeck(
     headlineModifier: Modifier = Modifier
 ) {
     val metrics = folioDeckMetrics(compact)
+    val tones = remember(surfaces.glow) { folioTones(surfaces.glow) }
     val paper by animateColorAsState(
-        targetValue = surfaces.glow.copy(alpha = 1f).playerMix(PlayerDarkSurface, FolioPaperDepth),
+        targetValue = tones.paper,
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.paletteTween()),
         label = "player-folio-paper"
     )
     val ink by animateColorAsState(
-        targetValue = surfaces.hero,
+        targetValue = tones.ink,
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.paletteTween()),
         label = "player-folio-ink"
     )
     val inkContent by animateColorAsState(
-        targetValue = surfaces.heroContent,
+        targetValue = tones.inkContent,
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.paletteTween()),
         label = "player-folio-ink-content"
     )
+    val artworkShape = rememberFolioArtworkShape(isPlaying, animated)
     Column(
         modifier = modifier
             .background(paper)
@@ -142,7 +157,7 @@ internal fun PlayerFolioDeck(
                 track,
                 Modifier
                     .size(side)
-                    .clip(RoundedCornerShape(FolioStageCorner)),
+                    .then(artworkShape),
                 FolioStageCorner
             )
             slots.gestures(track, Modifier.matchParentSize())
@@ -279,12 +294,10 @@ private fun FolioHeadline(
             Text(
                 text = shown.title,
                 color = ink,
-                fontFamily = FontFamily.Serif,
-                fontStyle = FontStyle.Italic,
-                fontWeight = FontWeight.Black,
+                fontWeight = FontWeight.SemiBold,
                 fontSize = titleSize,
-                lineHeight = titleSize,
-                letterSpacing = (-1.2).sp,
+                lineHeight = titleSize * 1.06f,
+                letterSpacing = (-0.6).sp,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.semantics { heading() }
@@ -294,9 +307,9 @@ private fun FolioHeadline(
                 track = shown,
                 color = ink.copy(alpha = FolioArtistAlpha),
                 style = TextStyle(
-                    fontSize = if (compact) 13.sp else 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 0.4.sp
+                    fontSize = if (compact) 15.sp else 18.sp,
+                    fontWeight = FontWeight.Normal,
+                    letterSpacing = 2.4.sp
                 ),
                 onClickLabel = strings.openArtist,
                 onArtistClick = onArtistClick,
@@ -308,8 +321,8 @@ private fun FolioHeadline(
 
 internal fun folioTitleSize(title: String, compact: Boolean): TextUnit {
     val base = when {
-        title.length <= 10 -> 60f
-        title.length <= 18 -> 46f
+        title.length <= 10 -> 52f
+        title.length <= 18 -> 44f
         title.length <= 30 -> 38f
         else -> 32f
     }
@@ -366,9 +379,9 @@ private fun RowScope.FolioPlayPill(
             Text(
                 text = label.uppercase(),
                 color = inkContent,
-                fontSize = if (height < FolioControlHeight) 21.sp else 25.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 3.2.sp,
+                fontSize = if (height < FolioControlHeight) 20.sp else 24.sp,
+                fontWeight = FontWeight.Medium,
+                letterSpacing = 4.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -484,5 +497,40 @@ private fun FolioActionRow(
                 )
             }
         }
+    }
+}
+
+private class FolioTones(val paper: Color, val ink: Color, val inkContent: Color)
+
+private fun folioTones(seed: Color): FolioTones {
+    val source = Hct.fromInt(seed.copy(alpha = 1f).toArgb())
+    val chroma = if (source.chroma < 6.0) source.chroma else source.chroma.coerceIn(30.0, 64.0)
+    return FolioTones(
+        paper = Color(Hct.from(source.hue, chroma, 24.0).toInt()),
+        ink = Color(Hct.from(source.hue, minOf(chroma * 0.4, 20.0), 90.0).toInt()),
+        inkContent = Color(Hct.from(source.hue, chroma, 22.0).toInt())
+    )
+}
+
+@Composable
+private fun rememberFolioArtworkShape(playing: Boolean, animated: Boolean): Modifier {
+    val morph by animateFloatAsState(
+        targetValue = if (playing) 1f else 0f,
+        animationSpec = if (animated) spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow) else snap(),
+        label = "player-folio-artwork-morph"
+    )
+    val spin: State<Float> = if (animated && playing && LocalLevyraVisualCapabilities.current.decorativeMotion) {
+        rememberInfiniteTransition(label = "player-folio-artwork-spin").animateFloat(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec = infiniteRepeatable(tween(FolioSpinMillis, easing = LinearEasing)),
+            label = "player-folio-artwork-angle"
+        )
+    } else {
+        remember { mutableFloatStateOf(0f) }
+    }
+    return Modifier.graphicsLayer {
+        shape = LevyraMorphShape(FolioArtworkMorph, morph, spin.value)
+        clip = true
     }
 }
