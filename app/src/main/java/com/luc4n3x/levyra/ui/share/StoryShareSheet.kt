@@ -199,24 +199,7 @@ internal fun StoryShareSheet(
                     .padding(horizontal = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
-                Box(
-                    Modifier
-                        .padding(top = 12.dp)
-                        .align(Alignment.CenterHorizontally)
-                        .size(width = 36.dp, height = 4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(Color.White.copy(alpha = 0.24f))
-                )
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(copy[VisualCraftText.StoryTitle], color = SheetText, fontSize = 22.sp, fontWeight = FontWeight.Black)
-                    Text(
-                        "${track.title} · ${track.artist}",
-                        color = SheetMuted,
-                        fontSize = 14.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                StoryHeader(copy[VisualCraftText.StoryTitle], "${track.title} · ${track.artist}")
                 StoryPreview(preview, glow, copy[VisualCraftText.StoryPreview])
                 Row(
                     modifier = Modifier.fillMaxWidth().selectableGroup(),
@@ -243,72 +226,111 @@ internal fun StoryShareSheet(
                     DetailChip(copy[VisualCraftText.ShowProgress], showProgress, accent) { showProgress = !showProgress }
                     DetailChip(copy[VisualCraftText.ShowBrand], showBrand, accent) { showBrand = !showBrand }
                 }
-                if (failed || saved) {
-                    Text(
-                        text = copy[if (failed) VisualCraftText.Failed else VisualCraftText.Saved],
-                        color = if (failed) LevyraPink else SheetMuted,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
-                ) {
-                    if (StoryShareCard.canSaveToGallery) {
-                        Button(
-                            onClick = {
-                                exportFull { bitmap ->
-                                    val ok = StoryShareCard.saveToGallery(context, bitmap)
-                                    saved = ok
-                                    failed = !ok
-                                }
-                            },
-                            enabled = colors != null && !busy,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.10f), contentColor = SheetText),
-                            shape = RoundedCornerShape(18.dp),
-                            modifier = Modifier.weight(1f).heightIn(min = 56.dp)
-                        ) {
-                            Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Text(copy[VisualCraftText.SaveImage], modifier = Modifier.padding(start = 8.dp), fontWeight = FontWeight.Bold)
+                StoryStatus(failed = failed, saved = saved, copy = copy)
+                StoryActions(
+                    copy = copy,
+                    enabled = colors != null && !busy,
+                    busy = busy,
+                    accent = accent,
+                    onAccent = onAccent,
+                    onSave = {
+                        exportFull { bitmap ->
+                            val ok = StoryShareCard.saveToGallery(context, bitmap)
+                            saved = ok
+                            failed = !ok
+                        }
+                    },
+                    onShare = {
+                        exportFull { bitmap ->
+                            failed = !shareStory(context, bitmap, "${track.title} · ${track.artist}", copy[VisualCraftText.ShareStory])
                         }
                     }
-                    Button(
-                        onClick = {
-                            exportFull { bitmap ->
-                                val uri = StoryShareCard.export(context, bitmap)
-                                val started = uri != null && try {
-                                    context.startActivity(
-                                        Intent.createChooser(
-                                            StoryShareCard.shareIntent(uri, "${track.title} · ${track.artist}"),
-                                            copy[VisualCraftText.ShareStory]
-                                        )
-                                    )
-                                    true
-                                } catch (_: ActivityNotFoundException) {
-                                    false
-                                }
-                                failed = !started
-                            }
-                        },
-                        enabled = colors != null && !busy,
-                        colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = onAccent),
-                        shape = RoundedCornerShape(18.dp),
-                        modifier = Modifier.weight(1.5f).heightIn(min = 56.dp)
-                    ) {
-                        if (busy) {
-                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = onAccent)
-                        } else {
-                            Icon(Icons.Rounded.Share, contentDescription = null, modifier = Modifier.size(18.dp))
-                        }
-                        Text(
-                            text = if (busy) copy[VisualCraftText.Preparing] else copy[VisualCraftText.ShareImage],
-                            modifier = Modifier.padding(start = 8.dp),
-                            fontWeight = FontWeight.Black
-                        )
-                    }
-                }
+                )
             }
+        }
+    }
+}
+
+private suspend fun shareStory(context: android.content.Context, bitmap: Bitmap, caption: String, chooserTitle: String): Boolean {
+    val uri = StoryShareCard.export(context, bitmap) ?: return false
+    return try {
+        context.startActivity(Intent.createChooser(StoryShareCard.shareIntent(uri, caption), chooserTitle))
+        true
+    } catch (_: ActivityNotFoundException) {
+        false
+    }
+}
+
+@Composable
+private fun StoryHeader(title: String, subtitle: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Box(
+            Modifier
+                .padding(top = 12.dp, bottom = 16.dp)
+                .align(Alignment.CenterHorizontally)
+                .size(width = 36.dp, height = 4.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(Color.White.copy(alpha = 0.24f))
+        )
+        Text(title, color = SheetText, fontSize = 22.sp, fontWeight = FontWeight.Black)
+        Text(subtitle, color = SheetMuted, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+private fun StoryStatus(failed: Boolean, saved: Boolean, copy: VisualCraftCopy) {
+    if (!failed && !saved) return
+    Text(
+        text = copy[if (failed) VisualCraftText.Failed else VisualCraftText.Saved],
+        color = if (failed) LevyraPink else SheetMuted,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.SemiBold
+    )
+}
+
+@Composable
+private fun StoryActions(
+    copy: VisualCraftCopy,
+    enabled: Boolean,
+    busy: Boolean,
+    accent: Color,
+    onAccent: Color,
+    onSave: () -> Unit,
+    onShare: () -> Unit
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+    ) {
+        if (StoryShareCard.canSaveToGallery) {
+            Button(
+                onClick = onSave,
+                enabled = enabled,
+                colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.10f), contentColor = SheetText),
+                shape = RoundedCornerShape(18.dp),
+                modifier = Modifier.weight(1f).heightIn(min = 56.dp)
+            ) {
+                Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                Text(copy[VisualCraftText.SaveImage], modifier = Modifier.padding(start = 8.dp), fontWeight = FontWeight.Bold)
+            }
+        }
+        Button(
+            onClick = onShare,
+            enabled = enabled,
+            colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = onAccent),
+            shape = RoundedCornerShape(18.dp),
+            modifier = Modifier.weight(1.5f).heightIn(min = 56.dp)
+        ) {
+            if (busy) {
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = onAccent)
+            } else {
+                Icon(Icons.Rounded.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+            }
+            Text(
+                text = copy[if (busy) VisualCraftText.Preparing else VisualCraftText.ShareImage],
+                modifier = Modifier.padding(start = 8.dp),
+                fontWeight = FontWeight.Black
+            )
         }
     }
 }
