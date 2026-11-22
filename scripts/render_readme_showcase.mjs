@@ -82,9 +82,44 @@ async function extractPhone(index, spec) {
     const cutout = await sharp(input).composite([{ input: svg(shape), blend: 'dest-in' }]).png().toBuffer();
     return sharp(cutout).trim({ threshold: 1 }).png().toBuffer();
   }
-  const phoneHeight = Math.round(684 * 2993 / 1440) + 24;
-  return sharp(input).extract({ left: 96, top: 264, width: 708, height: phoneHeight })
-    .composite([{ input: rounded(708, phoneHeight, 34), blend: 'dest-in' }]).png().toBuffer();
+  const screenHeight = Math.round(684 * 2993 / 1440);
+  return sharp(input).extract({ left: 108, top: 276, width: 684, height: screenHeight }).png().toBuffer();
+}
+
+function smartphoneFrameSvg(left, top, outerW, outerH) {
+  const rx = left + outerW - 1;
+  return svg(`
+    <defs>
+      <linearGradient id="tiBody" x1="0" y1="0" x2="1" y2="0.6">
+        <stop offset="0%" stop-color="#6A7488"/>
+        <stop offset="14%" stop-color="#272D3B"/>
+        <stop offset="50%" stop-color="#171B24"/>
+        <stop offset="86%" stop-color="#3C4558"/>
+        <stop offset="100%" stop-color="#626C80"/>
+      </linearGradient>
+      <linearGradient id="tiBtn" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#727C92"/>
+        <stop offset="50%" stop-color="#2E3545"/>
+        <stop offset="100%" stop-color="#586276"/>
+      </linearGradient>
+    </defs>
+    <rect x="${rx}" y="${top + 250}" width="7" height="118" rx="3.5" fill="url(#tiBtn)"/>
+    <rect x="${rx}" y="${top + 412}" width="7" height="72" rx="3.5" fill="url(#tiBtn)"/>
+    <rect x="${left}" y="${top}" width="${outerW}" height="${outerH}" rx="64" fill="url(#tiBody)"/>
+    <rect x="${left + 1.5}" y="${top + 1.5}" width="${outerW - 3}" height="${outerH - 3}" rx="62.5" fill="none" stroke="#BAC6DC" stroke-opacity=".42" stroke-width="2"/>
+    <rect x="${left + 6}" y="${top + 6}" width="${outerW - 12}" height="${outerH - 12}" rx="58" fill="#0B0D12"/>
+  `);
+}
+
+function smartphoneDetailsSvg(left, top, outerW, bezel) {
+  const cx = left + outerW / 2;
+  const camY = top + bezel + 26;
+  return svg(`
+    <rect x="${cx - 42}" y="${top + 9}" width="84" height="5" rx="2.5" fill="#252A36"/>
+    <circle cx="${cx}" cy="${camY}" r="11" fill="#07090D" stroke="#222A3A" stroke-width="1.5"/>
+    <circle cx="${cx}" cy="${camY}" r="5.5" fill="#121A2B"/>
+    <circle cx="${cx - 2.5}" cy="${camY - 2.5}" r="2" fill="#89A8E8" opacity=".65"/>
+  `);
 }
 
 const brandColors = { ink: '#161F33', muted: '#4D5C7A' };
@@ -205,13 +240,20 @@ function cardBackdrop(index, shapeColor) {
 
 async function cardMediaLayers(index, spec) {
   if (index >= 2) {
-    const phone = await extractPhone(index, spec);
-    const { data, info } = await sharp(phone).resize({ width: 688 }).png().toBuffer({ resolveWithObject: true });
-    const top = height - info.height + 14;
-    const left = Math.round((width - 688) / 2);
+    const screenRaw = await extractPhone(index, spec);
+    const bezel = 20;
+    const screenW = 668;
+    const { data, info } = await sharp(screenRaw).resize({ width: screenW }).png().toBuffer({ resolveWithObject: true });
+    const screen = await sharp(data).composite([{ input: rounded(screenW, info.height, 44), blend: 'dest-in' }]).png().toBuffer();
+    const outerW = screenW + bezel * 2;
+    const outerH = info.height + bezel * 2;
+    const left = Math.round((width - outerW) / 2);
+    const top = height - outerH + 22;
     return [
-      { input: shadow(`<rect x="${left}" y="${top}" width="688" height="${info.height}" rx="34" fill="white"/>`) },
-      { input: data, left, top }
+      { input: shadow(`<rect x="${left}" y="${top}" width="${outerW}" height="${outerH}" rx="64" fill="white"/>`) },
+      { input: smartphoneFrameSvg(left, top, outerW, outerH) },
+      { input: screen, left: left + bezel, top: top + bezel },
+      { input: smartphoneDetailsSvg(left, top, outerW, bezel) },
     ];
   }
   const input = await readFile(resolve(source, `${spec[0]}.webp`));
