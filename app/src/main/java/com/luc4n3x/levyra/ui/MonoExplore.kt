@@ -245,7 +245,7 @@ internal fun MonoExploreEntry(
         }
         MonoExploreBridge.pending = null
     }
-    val hasCityCharts = rememberHasCityCharts()
+    val hasCityCharts = rememberHasCityCharts(editorial?.storefront)
     val nothingLoaded = editorial?.news.isNullOrEmpty()
     val stillLoading = state.isNewReleasesLoading
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()

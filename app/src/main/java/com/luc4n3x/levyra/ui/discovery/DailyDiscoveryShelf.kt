@@ -59,7 +59,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.luc4n3x.levyra.data.ArtworkPalette
 import com.luc4n3x.levyra.domain.HomeStyle
 import com.luc4n3x.levyra.feature.discovery.DiscoveryCard
-import com.luc4n3x.levyra.feature.discovery.dailyDiscoveryCards
 import com.luc4n3x.levyra.ui.AtelierPaper
 import com.luc4n3x.levyra.ui.AtelierSectionLabel
 import com.luc4n3x.levyra.ui.AtelierSerif
@@ -136,7 +135,7 @@ internal fun DailyDiscoveryShelf(inset: Dp, style: HomeStyle? = null, spec: Home
     if (!skinShowsDailyDiscovery()) return
     val ui by handle.state.collectAsStateWithLifecycle()
     LaunchedEffect(handle) { handle.onWarm() }
-    val cards = remember(ui.daily) { dailyDiscoveryCards(ui.daily, handle.homeTrackKeys(), handle.familiarArtistKeys()) }
+    val cards = ui.daily
     if (cards.isEmpty()) return
     val code = LocalLevyraStrings.current.code
     val copy = remember(code) { discoveryCopy(code) }

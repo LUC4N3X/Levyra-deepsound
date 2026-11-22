@@ -91,8 +91,8 @@ internal fun QobuzMagazineScreen(inputs: QobuzMagazineInputs, listState: LazyLis
     val chartCopy = remember(strings.code) { dailyTop100Copy(strings.code) }
     val cityCopy = remember(strings.code) { cityChartsCopy(strings.code) }
     val chartDate = rememberTop100Date(strings.code)
-    LaunchedEffect(strings.code) {
-        dailyViewModel.load(ChartsCatalog.defaultRegionForLanguage(strings.code).country, strings.code)
+    LaunchedEffect(inputs.chartCountry, strings.code) {
+        dailyViewModel.load(ChartsCatalog.region(inputs.chartCountry).country, strings.code)
     }
     val uriHandler = LocalUriHandler.current
     val openStory: (QobuzStory) -> Unit = { story -> runCatching { uriHandler.openUri(story.url) } }

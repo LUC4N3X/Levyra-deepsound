@@ -96,7 +96,8 @@ class DailyTop100ViewModel(application: Application) : AndroidViewModel(applicat
         chartJob?.cancel()
         _state.update { it.copy(open = DailyTop100ChartUiState(chart)) }
         chartJob = viewModelScope.launch {
-            val playlist = repository.playlist(current.storefront, chart.playlistId, current.language)
+            val storefront = (chart as? DailyChartRef.City)?.chart?.storefront?.ifBlank { null } ?: current.storefront
+            val playlist = repository.playlist(storefront, chart.playlistId, current.language)
             _state.update { latest -> publishOpen(latest, chart, playlist?.tracks?.take(MAX_TRACKS)) }
         }
     }

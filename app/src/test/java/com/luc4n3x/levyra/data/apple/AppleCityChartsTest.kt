@@ -27,6 +27,16 @@ class AppleCityChartsTest {
     }
 
     @Test
+    fun keepsRussianCityCharts() {
+        val berlin = playlist("pl.dddddddd", "Топ-25: Берлин")
+        val world = playlist("pl.eeeeeeee", "Топ-100: Мир")
+        assertEquals(
+            listOf(AppleCityChart("pl.dddddddd", "Топ-25", "Берлин")),
+            AppleCityCharts.charts(page(shelf(berlin, world)))
+        )
+    }
+
+    @Test
     fun excludesCountryCharts() {
         val italy = playlist("pl.737e067787df485a8062e2c4927d94db", "Top 100: Italia")
         val world = playlist("pl.ffffffffffffffff", "Top 100: Mondo")

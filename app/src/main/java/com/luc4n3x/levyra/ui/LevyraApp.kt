@@ -24661,7 +24661,8 @@ private fun ExploreScreen(
     val editorialExplore = LevyraIsSpotify || LevyraIsMono || LevyraIsAtelier || levyraSearchOwnsBrowse(false, LevyraIsAppleMusic, LevyraIsAtelier || LevyraIsQobuz || LevyraIsYouTubeMusic)
     LaunchedEffect(strings.code, editorialExplore) { if (editorialExplore || LevyraIsYouTubeMusic) viewModel.ensureNews(strings.code) }
     val news by viewModel.news.collectAsStateWithLifecycle()
-    val hasCityCharts = rememberHasCityCharts()
+    val chartStorefront = remember(state.selectedChartId) { ChartsCatalog.region(state.selectedChartId).country }
+    val hasCityCharts = rememberHasCityCharts(chartStorefront)
     val context = LocalContext.current
     val listState = rememberLazyListState()
     var addToPlaylistTarget by remember { mutableStateOf<Track?>(null) }
@@ -24826,8 +24827,9 @@ private fun ExploreScreen(
         animationsEnabled = state.animationsEnabled
     )
     val editorialContent = if (editorialExplore || LevyraIsYouTubeMusic) {
-        remember(news) {
+        remember(news, chartStorefront) {
             ExploreEditorialContent(
+                storefront = chartStorefront,
                 news = news,
                 onOpenNews = viewModel::openNews,
                 onPlayChart = viewModel::playFrom,

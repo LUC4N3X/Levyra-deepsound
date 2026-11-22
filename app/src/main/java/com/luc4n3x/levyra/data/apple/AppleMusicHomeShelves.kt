@@ -8,7 +8,7 @@ data class AppleHomeShelf(
 )
 
 object AppleMusicHomeShelves {
-    private val chartTitle = Regex("^Top\\s+\\d+\\s*[:：]", RegexOption.IGNORE_CASE)
+    private val chartTitle = Regex("^(?:Top|Топ)[\\s-]*\\d+\\s*[:：]", RegexOption.IGNORE_CASE)
     private const val EXCLUSIVE_MARKER = "apple music"
 
     fun select(page: AppleCatalogPage?): List<AppleHomeShelf> {
