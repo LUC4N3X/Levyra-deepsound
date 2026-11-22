@@ -542,7 +542,7 @@ UPRIGHT_CARD_SPECS = [
         "FULL CONTROL",
         "Settings & Studios",
         "Customize skins, themes & playback.",
-        "Screenshot_20261122_212915_Levyra.jpg",
+        "Screenshot_20261122_213628_Levyra.jpg",
         (253, 248, 236), (240, 226, 196), (228, 206, 162), (224, 206, 172),
         (158, 98, 24), (32, 24, 12), (108, 78, 36),
     ),
