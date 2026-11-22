@@ -27,6 +27,18 @@ class DailyChartLoadTest {
     private fun track(id: String) = Track(id, id, "Artist", "Album", 1L, "", "", "", "", "apple", emptySet(), 0, 0, 0, 0, 0, 0)
 
     @Test
+    fun usFallbackCityOpensFromUsStorefront() {
+        val fallback = DailyChartRef.City(AppleCityChart("pl.ny", "Топ-25", "Нью-Йорк", storefront = "us"))
+        assertEquals("us", chartStorefront(fallback, "ru"))
+    }
+
+    @Test
+    fun localChartsOpenFromSelectedStorefront() {
+        assertEquals("ua", chartStorefront(DailyChartRef.City(cities.first()), "ua"))
+        assertEquals("ua", chartStorefront(DailyChartRef.Country(top100[1]), "ua"))
+    }
+
+    @Test
     fun cityFailureKeepsTop100() {
         val state = DailyTop100UiState(key = "it:it", charts = top100)
         val merged = mergeCharts(state, state.key, top100 = null, cities = emptyList())

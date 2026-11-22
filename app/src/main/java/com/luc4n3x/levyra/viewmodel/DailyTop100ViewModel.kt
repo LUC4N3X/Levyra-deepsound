@@ -18,6 +18,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 
+internal fun chartStorefront(chart: DailyChartRef, selected: String): String =
+    (chart as? DailyChartRef.City)?.chart?.storefront?.ifBlank { null } ?: selected
+
 sealed interface DailyChartRef {
     val playlistId: String
     val global: Boolean get() = false
@@ -96,8 +99,7 @@ class DailyTop100ViewModel(application: Application) : AndroidViewModel(applicat
         chartJob?.cancel()
         _state.update { it.copy(open = DailyTop100ChartUiState(chart)) }
         chartJob = viewModelScope.launch {
-            val storefront = (chart as? DailyChartRef.City)?.chart?.storefront?.ifBlank { null } ?: current.storefront
-            val playlist = repository.playlist(storefront, chart.playlistId, current.language)
+            val playlist = repository.playlist(chartStorefront(chart, current.storefront), chart.playlistId, current.language)
             _state.update { latest -> publishOpen(latest, chart, playlist?.tracks?.take(MAX_TRACKS)) }
         }
     }

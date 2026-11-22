@@ -192,10 +192,9 @@ class AppleMusicEditorialRepository private constructor(context: Context) {
         load: suspend (String) -> AppleCatalogResult?
     ): List<AppleCityChart> {
         val local = AppleCityCharts.charts(load(storefront)?.page)
-        if (local.size >= AppleCityCharts.MIN_LOCAL_CHARTS || storefront == AppleCityCharts.FALLBACK_STOREFRONT) return local
-        val fallback = AppleCityCharts.FALLBACK_STOREFRONT
-        val global = AppleCityCharts.charts(load(fallback)?.page).map { it.copy(storefront = fallback) }
-        return (local + global).distinctBy { it.playlistId }
+        return AppleCityCharts.withFallback(storefront, local) {
+            AppleCityCharts.charts(load(AppleCityCharts.FALLBACK_STOREFRONT)?.page)
+        }
     }
 
     suspend fun cachedNewMusic(storefront: String, language: String): AppleCatalogResult? = cachedPage(AppleCatalogPath.New, storefront, language)

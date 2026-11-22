@@ -37,6 +37,36 @@ class AppleCityChartsTest {
     }
 
     @Test
+    fun enoughLocalChartsSkipFallback() {
+        val local = (1..3).map { AppleCityChart("pl.local$it", "Top 25", "City $it") }
+        var fetched = false
+        val result = AppleCityCharts.withFallback("ua", local) { fetched = true; emptyList() }
+        assertEquals(local, result)
+        assertFalse(fetched)
+    }
+
+    @Test
+    fun fewLocalChartsAppendUsListWithoutDuplicates() {
+        val vice = AppleCityChart("pl.vice", "Top 25", "Vice City")
+        val newYork = AppleCityChart("pl.ny", "Топ-25", "Нью-Йорк")
+        val result = AppleCityCharts.withFallback("ru", listOf(vice)) { listOf(vice, newYork) }
+        assertEquals(listOf(vice, newYork.copy(storefront = "us")), result)
+    }
+
+    @Test
+    fun missingUsListKeepsLocalCharts() {
+        val local = listOf(AppleCityChart("pl.local", "Top 25", "Kyiv"), AppleCityChart("pl.local2", "Top 25", "Lviv"))
+        assertEquals(local, AppleCityCharts.withFallback("ua", local) { emptyList() })
+    }
+
+    @Test
+    fun usStorefrontNeverFallsBackToItself() {
+        var fetched = false
+        assertEquals(emptyList<AppleCityChart>(), AppleCityCharts.withFallback("us", emptyList()) { fetched = true; emptyList() })
+        assertFalse(fetched)
+    }
+
+    @Test
     fun excludesCountryCharts() {
         val italy = playlist("pl.737e067787df485a8062e2c4927d94db", "Top 100: Italia")
         val world = playlist("pl.ffffffffffffffff", "Top 100: Mondo")

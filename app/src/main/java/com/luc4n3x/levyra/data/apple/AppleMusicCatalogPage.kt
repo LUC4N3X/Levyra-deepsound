@@ -215,6 +215,11 @@ internal object AppleCityCharts {
             .distinctBy { it.playlistId }
             .take(MAX_CHARTS)
             .toList()
+
+    inline fun withFallback(storefront: String, local: List<AppleCityChart>, global: () -> List<AppleCityChart>): List<AppleCityChart> {
+        if (local.size >= MIN_LOCAL_CHARTS || storefront == FALLBACK_STOREFRONT) return local
+        return (local + global().map { it.copy(storefront = FALLBACK_STOREFRONT) }).distinctBy { it.playlistId }
+    }
 }
 
 data class AppleCatalogShelf(
