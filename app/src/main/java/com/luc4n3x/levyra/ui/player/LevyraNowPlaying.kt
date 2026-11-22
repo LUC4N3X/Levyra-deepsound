@@ -2299,6 +2299,16 @@ private fun playerDislikeAction(
     )
 }
 
+private fun playerRepeatAction(repeatMode: RepeatMode, strings: LevyraStrings, onRepeat: () -> Unit) = PlayerSheetAction(
+    key = "repeat",
+    icon = if (repeatMode == RepeatMode.One) androidx.compose.material.icons.Icons.Rounded.RepeatOne else androidx.compose.material.icons.Icons.Rounded.Repeat,
+    label = strings.repeat,
+    active = repeatMode != RepeatMode.Off,
+    toggle = true,
+    keepsSheetOpen = true,
+    onClick = onRepeat
+)
+
 private fun playerSheetActions(
     icons: PlayerActionIcons,
     track: Track,
@@ -2499,15 +2509,7 @@ private fun playerSheetActions(
             label = strings.trackCreditsCopy().title,
             onClick = onTrackCredits
         ),
-        PlayerSheetAction(
-            key = "repeat",
-            icon = if (state.repeatMode == RepeatMode.One) androidx.compose.material.icons.Icons.Rounded.RepeatOne else androidx.compose.material.icons.Icons.Rounded.Repeat,
-            label = strings.repeat,
-            active = state.repeatMode != RepeatMode.Off,
-            toggle = true,
-            keepsSheetOpen = true,
-            onClick = onRepeat
-        ),
+        playerRepeatAction(state.repeatMode, strings, onRepeat),
         technicalAudioAction,
         refreshMotionArtworkAction,
         ambientAction,
