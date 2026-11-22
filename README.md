@@ -118,10 +118,13 @@ I don't host FLAC audio on Levyra's servers. On Android, experimental FLAC playb
 - **Playlist import and export (Android).** Bring over playlists from services such as YouTube Music, Spotify, Apple Music and Deezer, or import a playlist file. Review track matches before saving, and export your playlists to files.
 - **Offline downloads.** Save tracks to your storage as standard audio files, with metadata, artwork and lyrics.
 - **Synced lyrics.** Tap a line to jump to it, adjust the timing, set an offset for Bluetooth latency, and read romanized versions of non-Latin scripts. On Android, you can also share lyrics as image cards.
+- **Share as a story (Android).** Turn the song you're playing into a 9:16 image for Instagram Stories, WhatsApp and other apps. Pick one of four templates, show or hide the progress bar, and save the image to Pictures/Levyra.
 - **Motion artwork.** See animated artwork in Now Playing. When it isn't available, the regular album cover appears. Android also has a full-screen Ambient view.
 - **Audio or video.** Switch between audio-only and full video with subtitles. SponsorBlock skips sponsored segments.
 - **Skins (Android).** Choose one of ten layouts besides Levyra Default: Nocturne 78, Prism, Torque, Ivory, Glacier, Atelier, Spotify Style, Apple Music Style, YouTube Music Style and Qobuz Style. Find them in Settings > Design > Skin.
 - **Studios.** Customize your theme, mini player and navigation bar with presets and live previews.
+- **Cover cropping (Android).** When a cover isn't square, Levyra can frame faces and the main subject instead of the center, with or without zoom. Find it in Settings > Design > Cover cropping.
+- **Older Android versions.** On Android 8 to 11, glass panels blur the content behind them. From Android 8.1, the Dynamic color option for the navigation bar and widgets takes its colors from your wallpaper.
 - **Widgets (Android).** Control playback or start song recognition from your home screen. Widget Studio lets you customize your playback widgets.
 - **System integration (Android).** Use Android Auto, lockscreen controls and a Quick Settings tile. On HyperOS 3, synced lyrics appear in the Super Island. On OriginOS, the current track appears in the Atomic Island.
 - **Unison (Android).** Listen together on devices connected to the same Wi-Fi network.
