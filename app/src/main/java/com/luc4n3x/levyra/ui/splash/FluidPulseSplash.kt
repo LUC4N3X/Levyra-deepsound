@@ -6,6 +6,7 @@ import android.content.Intent
 import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Spacer
@@ -86,10 +87,10 @@ internal class FluidPulseSplashState(active: Boolean) {
     fun contentScale(): Float =
         ContentStartScale + (1f - ContentStartScale) * Reveal.transform(window(elapsedMs, RevealStart, TotalMs))
 
-    suspend fun play() {
+    suspend fun play(durationScale: Float) {
         try {
             withTimeoutOrNull(SafetyTimeoutMs) {
-                val scale = ValueAnimator.getDurationScale().takeIf { it > 0f } ?: 1f
+                val scale = durationScale.takeIf { it > 0f } ?: 1f
                 var last = withFrameNanos { it }
                 contentReady = true
                 while (elapsedMs < TotalMs) {
@@ -130,7 +131,8 @@ internal fun Modifier.fluidPulseContentEntrance(state: FluidPulseSplashState): M
 @Composable
 internal fun FluidPulseSplash(state: FluidPulseSplashState, background: Color, accent: Color) {
     if (!state.visible) return
-    val resources = LocalContext.current.resources
+    val context = LocalContext.current
+    val resources = context.resources
     val logo by produceState<ImageBitmap?>(null) {
         value = withContext(Dispatchers.IO) {
             runCatching {
@@ -139,7 +141,9 @@ internal fun FluidPulseSplash(state: FluidPulseSplashState, background: Color, a
             }.getOrNull()
         }
     }
-    LaunchedEffect(state) { state.play() }
+    LaunchedEffect(state) {
+        state.play(Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f))
+    }
     val dark = background.luminance() < 0.5f
     val halo = lerp(BrandViolet, accent, 0.35f)
     Spacer(
