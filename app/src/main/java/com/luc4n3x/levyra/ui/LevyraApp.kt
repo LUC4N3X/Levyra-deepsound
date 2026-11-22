@@ -2581,9 +2581,18 @@ fun LevyraApp(
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
-                        val depth = playerBackgroundScale(expansionProvider())
+                        val expansion = expansionProvider()
+                        val depth = playerBackgroundScale(expansion)
+                        val recede = com.luc4n3x.levyra.ui.player.playerMotionProgress(expansion)
                         scaleX = depth
                         scaleY = depth
+                        clip = recede > 0f
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(com.luc4n3x.levyra.ui.player.PlayerBackgroundCorner.toPx() * recede)
+                    }
+                    .drawWithContent {
+                        drawContent()
+                        val dim = com.luc4n3x.levyra.ui.player.playerBackgroundDim(expansionProvider())
+                        if (dim > 0f) drawRect(Color.Black.copy(alpha = dim))
                     },
                 transitionSpec = {
                     val forward = targetState.ordinal >= initialState.ordinal

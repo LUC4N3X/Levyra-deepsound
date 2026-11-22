@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
 import kotlin.math.abs
 
 const val PlayerExpansionCollapsed: Float = 0f
@@ -25,7 +26,10 @@ private const val ChromeFadeStart = 0.02f
 private const val ChromeFadeEnd = 0.3f
 private const val SurfaceFadeStart = 0f
 private const val SurfaceFadeEnd = 0.4f
-private const val BackgroundDepth = 0.028f
+private const val BackgroundDepth = 0.06f
+private const val BackgroundDim = 0.42f
+
+val PlayerBackgroundCorner = 28.dp
 private const val PredictiveBackCollapseDepth = 0.14f
 private const val ContainerFallbackHeightFraction = 0.12f
 private const val ContainerTravelFraction = 0.16f
@@ -105,6 +109,9 @@ fun playerMorphFraction(expansion: Float): Float =
 
 fun playerBackgroundScale(expansion: Float): Float =
     1f - playerMotionProgress(expansion) * BackgroundDepth
+
+fun playerBackgroundDim(expansion: Float): Float =
+    playerMotionProgress(expansion) * BackgroundDim
 
 fun playerPredictiveBackExpansion(start: Float, progress: Float): Float {
     val safeStart = start.finiteOr(PlayerExpansionExpanded)
