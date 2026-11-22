@@ -40,6 +40,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -54,15 +55,10 @@ import com.luc4n3x.levyra.ui.components.LevyraMorphShape
 import com.luc4n3x.levyra.ui.theme.LocalLevyraVisualCapabilities
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import com.materialkolor.hct.Hct
@@ -474,19 +470,21 @@ private fun FolioActionRow(
             active = isFavorite,
             ink = ink,
             inkContent = inkContent,
-            onClick = onToggleFavorite
+            onClick = onToggleFavorite,
+            toggle = true
         )
-        FolioActionPill(Icons.Rounded.Shuffle, labels.shuffle, shuffleOn, ink, inkContent, onShuffle)
+        FolioActionPill(Icons.Rounded.Shuffle, labels.shuffle, shuffleOn, ink, inkContent, onShuffle, toggle = true)
         FolioActionPill(
             icon = if (repeatMode == RepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
             label = labels.repeat,
             active = repeatMode != RepeatMode.Off,
             ink = ink,
             inkContent = inkContent,
-            onClick = onRepeat
+            onClick = onRepeat,
+            toggle = true
         )
         extras.forEach { action ->
-            FolioActionPill(action.icon, action.label, action.active, ink, inkContent, action.onClick, action.enabled)
+            FolioActionPill(action.icon, action.label, action.active, ink, inkContent, action.onClick, action.enabled, action.toggle)
         }
     }
 }
@@ -499,7 +497,8 @@ private fun RowScope.FolioActionPill(
     ink: Color,
     inkContent: Color,
     onClick: () -> Unit,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    toggle: Boolean = false
 ) {
     val haptics = LocalLevyraHaptics.current
     val container by animateColorAsState(if (active) ink else ink.copy(alpha = FolioPillRestAlpha), label = "player-folio-pill")
@@ -519,14 +518,17 @@ private fun RowScope.FolioActionPill(
                 pressedScale = LevyraPressScale.Control,
                 role = Role.Button
             )
-            .semantics { contentDescription = label },
+            .semantics {
+                contentDescription = label
+                if (toggle) toggleableState = androidx.compose.ui.state.ToggleableState(active)
+            },
         contentAlignment = Alignment.Center
     ) {
         PlayerIcon(icon, tint.copy(alpha = if (enabled) 1f else 0.4f), Modifier.size(22.dp))
     }
 }
 
-private val FolioDockKeys = setOf("lyrics", "queue")
+private val FolioDockKeys = setOf("lyrics", "queue", "visual-mode")
 private val FolioPillHeight = 52.dp
 private const val FolioPillRestAlpha = 0.16f
 private const val FolioPlayWord = "PLAY"
@@ -546,10 +548,11 @@ private object FolioSeedCache {
 private fun rememberFolioSeed(track: Track, fallback: Color): Color {
     val context = LocalContext.current
     val url = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }
-    var seed by remember(track.id) { mutableStateOf(FolioSeedCache.get(track.id)) }
-    LaunchedEffect(track.id, url) {
+    val key = "${track.id}|$url"
+    var seed by remember(key) { mutableStateOf(FolioSeedCache.get(key)) }
+    LaunchedEffect(key) {
         if (seed != null || url.isBlank()) return@LaunchedEffect
-        seed = loadFolioSeed(context, url)?.also { FolioSeedCache.put(track.id, it) }
+        seed = loadFolioSeed(context, url)?.also { FolioSeedCache.put(key, it) }
     }
     return seed?.let(::Color) ?: fallback
 }
@@ -599,15 +602,15 @@ private fun rememberFolioArtworkShape(playing: Boolean, animated: Boolean): Modi
         animationSpec = if (animated) spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow) else snap(),
         label = "player-folio-artwork-morph"
     )
-    val spin: State<Float> = if (animated && playing && LocalLevyraVisualCapabilities.current.decorativeMotion) {
-        rememberInfiniteTransition(label = "player-folio-artwork-spin").animateFloat(
-            initialValue = 0f,
-            targetValue = 360f,
-            animationSpec = infiniteRepeatable(tween(FolioSpinMillis, easing = LinearEasing)),
-            label = "player-folio-artwork-angle"
-        )
-    } else {
-        remember { mutableFloatStateOf(0f) }
+    val spin = remember { androidx.compose.animation.core.Animatable(0f) }
+    val spinning = animated && playing && LocalLevyraVisualCapabilities.current.decorativeMotion
+    LaunchedEffect(spinning) {
+        if (!spinning) return@LaunchedEffect
+        while (true) {
+            val start = spin.value % 360f
+            spin.snapTo(start)
+            spin.animateTo(start + 360f, tween(FolioSpinMillis, easing = LinearEasing))
+        }
     }
     return Modifier.graphicsLayer {
         shape = LevyraMorphShape(FolioArtworkMorph, morph, spin.value)
