@@ -263,7 +263,7 @@ private suspend fun shareStory(context: android.content.Context, bitmap: Bitmap,
 
 @Composable
 private fun StoryHeader(title: String, subtitle: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Box(
             Modifier
                 .padding(top = 12.dp, bottom = 16.dp)

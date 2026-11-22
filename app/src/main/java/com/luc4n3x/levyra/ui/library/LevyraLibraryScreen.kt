@@ -1192,15 +1192,13 @@ internal fun LevyraLibraryScreen(
                             entries = librarySections,
                             playlists = visiblePlaylists,
                             savedPlaylists = visibleSavedPlaylists,
-                            albums = visibleAlbums,
                             strings = strings,
                             onOpenCollection = { openSmartCollectionName = it },
                             onPlayFavorites = { state.favorites.firstOrNull()?.let { viewModel.playFrom(state.favorites, it) } },
                             onPlayRecent = { viewModel.playFrom(catalog.recent, it) },
                             onOpenCategory = { switchCategory(it) },
                             onOpenPlaylist = { viewModel.openPlaylist(it.id) },
-                            onOpenSavedPlaylist = viewModel::openSavedPlaylist,
-                            onOpenAlbum = { viewModel.openAlbum(it.toAlbumHit()) }
+                            onOpenSavedPlaylist = viewModel::openSavedPlaylist
                         )
                     } else {
                         sectionsItem()
