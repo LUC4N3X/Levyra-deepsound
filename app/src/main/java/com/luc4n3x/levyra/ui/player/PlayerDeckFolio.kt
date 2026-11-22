@@ -66,6 +66,25 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import com.materialkolor.hct.Hct
+import android.graphics.Bitmap
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FavoriteBorder
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import coil3.SingletonImageLoader
+import coil3.request.CachePolicy
+import coil3.request.ImageRequest
+import coil3.request.allowHardware
+import coil3.request.bitmapConfig
+import coil3.toBitmap
+import com.luc4n3x.levyra.data.LevyraArtworkCache
+import com.materialkolor.quantize.QuantizerCelebi
+import com.materialkolor.score.Score
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.PlayerControlLabels
@@ -114,7 +133,8 @@ internal fun PlayerFolioDeck(
     headlineModifier: Modifier = Modifier
 ) {
     val metrics = folioDeckMetrics(compact)
-    val tones = remember(surfaces.glow) { folioTones(surfaces.glow) }
+    val seed = rememberFolioSeed(track, surfaces.glow)
+    val tones = remember(seed) { folioTones(seed) }
     val paper by animateColorAsState(
         targetValue = tones.paper,
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.paletteTween()),
@@ -187,12 +207,12 @@ internal fun PlayerFolioDeck(
         FolioActionRow(
             track = track,
             slots = slots,
-            surfaces = surfaces,
             isFavorite = isFavorite,
             shuffleOn = shuffleOn,
             repeatMode = repeatMode,
             labels = labels,
-            animated = animated,
+            ink = ink,
+            inkContent = inkContent,
             onToggleFavorite = onToggleFavorite,
             onShuffle = onShuffle,
             onRepeat = onRepeat
@@ -377,7 +397,7 @@ private fun RowScope.FolioPlayPill(
             LevyraLoadingIndicator(color = inkContent, modifier = Modifier.size(height * 0.44f))
         } else {
             Text(
-                text = label.uppercase(),
+                text = if (isPlaying) FolioPauseWord else FolioPlayWord,
                 color = inkContent,
                 fontSize = if (height < FolioControlHeight) 20.sp else 24.sp,
                 fontWeight = FontWeight.Medium,
@@ -431,74 +451,134 @@ private fun FolioRoundButton(
 private fun FolioActionRow(
     track: Track,
     slots: PlayerDeckSlots,
-    surfaces: PlayerSurfaceTokens,
     isFavorite: Boolean,
     shuffleOn: Boolean,
     repeatMode: RepeatMode,
     labels: PlayerControlLabels,
-    animated: Boolean,
+    ink: Color,
+    inkContent: Color,
     onToggleFavorite: () -> Unit,
     onShuffle: () -> Unit,
     onRepeat: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val dockActions = slots.dockActions(track)
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-        val controlCount = FolioFixedActionCount + dockActions.size
-        val fits = maxWidth >= LevyraPlayerDesign.MinimumTouchTarget * controlCount
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(if (fits) Modifier else Modifier.horizontalScroll(rememberScrollState())),
-            horizontalArrangement = if (fits) Arrangement.SpaceEvenly else Arrangement.Start,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            PlayerFavoriteButton(
-                trackId = track.id,
-                isFavorite = isFavorite,
-                surfaces = surfaces,
-                label = strings.favoritesPlain,
-                animated = animated,
-                onToggle = onToggleFavorite
-            )
-            PlayerToggleControl(
-                icon = Icons.Rounded.Shuffle,
-                label = labels.shuffle,
-                active = shuffleOn,
-                toggle = true,
-                surfaces = surfaces,
-                animated = animated,
-                glyph = LevyraPlayerDesign.TransportModeGlyph,
-                onClick = onShuffle
-            )
-            PlayerToggleControl(
-                icon = if (repeatMode == RepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
-                label = labels.repeat,
-                active = repeatMode != RepeatMode.Off,
-                toggle = true,
-                surfaces = surfaces,
-                animated = animated,
-                glyph = LevyraPlayerDesign.TransportModeGlyph,
-                onClick = onRepeat
-            )
-            dockActions.forEach { action ->
-                PlayerToggleControl(
-                    icon = action.icon,
-                    label = action.label,
-                    active = action.active,
-                    toggle = action.toggle,
-                    surfaces = surfaces,
-                    animated = animated,
-                    glyph = LevyraPlayerDesign.TransportModeGlyph,
-                    onClick = action.onClick,
-                    enabled = action.enabled,
-                    busy = action.busy,
-                    stateDescription = action.stateDescription
-                )
-            }
+    val extras = slots.dockActions(track).filter { it.key in FolioDockKeys }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceSm),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        FolioActionPill(
+            icon = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+            label = strings.favoritesPlain,
+            active = isFavorite,
+            ink = ink,
+            inkContent = inkContent,
+            onClick = onToggleFavorite
+        )
+        FolioActionPill(Icons.Rounded.Shuffle, labels.shuffle, shuffleOn, ink, inkContent, onShuffle)
+        FolioActionPill(
+            icon = if (repeatMode == RepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
+            label = labels.repeat,
+            active = repeatMode != RepeatMode.Off,
+            ink = ink,
+            inkContent = inkContent,
+            onClick = onRepeat
+        )
+        extras.forEach { action ->
+            FolioActionPill(action.icon, action.label, action.active, ink, inkContent, action.onClick, action.enabled)
         }
     }
 }
+
+@Composable
+private fun RowScope.FolioActionPill(
+    icon: ImageVector,
+    label: String,
+    active: Boolean,
+    ink: Color,
+    inkContent: Color,
+    onClick: () -> Unit,
+    enabled: Boolean = true
+) {
+    val haptics = LocalLevyraHaptics.current
+    val container by animateColorAsState(if (active) ink else ink.copy(alpha = FolioPillRestAlpha), label = "player-folio-pill")
+    val tint by animateColorAsState(if (active) inkContent else ink, label = "player-folio-pill-icon")
+    Box(
+        modifier = Modifier
+            .weight(1f)
+            .height(FolioPillHeight)
+            .clip(RoundedCornerShape(50))
+            .background(container)
+            .levyraPressable(
+                onClick = {
+                    haptics.perform(LevyraHapticAction.Confirm)
+                    onClick()
+                },
+                enabled = enabled,
+                pressedScale = LevyraPressScale.Control,
+                role = Role.Button
+            )
+            .semantics { contentDescription = label },
+        contentAlignment = Alignment.Center
+    ) {
+        PlayerIcon(icon, tint.copy(alpha = if (enabled) 1f else 0.4f), Modifier.size(22.dp))
+    }
+}
+
+private val FolioDockKeys = setOf("lyrics", "queue")
+private val FolioPillHeight = 52.dp
+private const val FolioPillRestAlpha = 0.16f
+private const val FolioPlayWord = "PLAY"
+private const val FolioPauseWord = "PAUSE"
+
+private object FolioSeedCache {
+    private val seeds = android.util.LruCache<String, Int>(64)
+
+    fun get(key: String): Int? = seeds.get(key)
+
+    fun put(key: String, seed: Int) {
+        seeds.put(key, seed)
+    }
+}
+
+@Composable
+private fun rememberFolioSeed(track: Track, fallback: Color): Color {
+    val context = LocalContext.current
+    val url = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }
+    var seed by remember(track.id) { mutableStateOf(FolioSeedCache.get(track.id)) }
+    LaunchedEffect(track.id, url) {
+        if (seed != null || url.isBlank()) return@LaunchedEffect
+        seed = loadFolioSeed(context, url)?.also { FolioSeedCache.put(track.id, it) }
+    }
+    return seed?.let(::Color) ?: fallback
+}
+
+private suspend fun loadFolioSeed(context: android.content.Context, url: String): Int? = withContext(Dispatchers.IO) {
+    val request = ImageRequest.Builder(context)
+        .data(LevyraArtworkCache.small(url))
+        .size(FolioSeedSample, FolioSeedSample)
+        .allowHardware(false)
+        .bitmapConfig(Bitmap.Config.ARGB_8888)
+        .memoryCachePolicy(CachePolicy.DISABLED)
+        .build()
+    val bitmap = try {
+        SingletonImageLoader.get(context).execute(request).image?.toBitmap()
+    } catch (cancellation: CancellationException) {
+        throw cancellation
+    } catch (_: Exception) {
+        null
+    } ?: return@withContext null
+    withContext(Dispatchers.Default) {
+        val pixels = IntArray(bitmap.width * bitmap.height)
+        bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+        Score.score(QuantizerCelebi.quantize(pixels, FolioSeedColors), 1, FolioNeutralSeed, true).firstOrNull()
+    }
+}
+
+private const val FolioSeedSample = 112
+private const val FolioSeedColors = 128
+private const val FolioNeutralSeed = 0xFF7A7A7A.toInt()
 
 private class FolioTones(val paper: Color, val ink: Color, val inkContent: Color)
 
