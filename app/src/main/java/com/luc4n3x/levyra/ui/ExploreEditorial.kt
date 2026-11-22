@@ -585,8 +585,8 @@ private fun ExploreReleaseCard(
                 verticalArrangement = Arrangement.spacedBy(LevyraCardDesign.CaptionLineGap)
             ) {
                 Text(eyebrow, style = LevyraType.overline, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(card.title, style = LevyraType.cardTitle, color = colors.onSurface, maxLines = 1, modifier = Modifier.levyraMarquee())
-                Text(card.subtitle, style = LevyraType.caption, color = colors.onSurfaceVariant, maxLines = 1, modifier = Modifier.levyraMarquee())
+                Text(card.title, style = LevyraType.cardTitle, color = colors.onSurface, maxLines = 1, modifier = Modifier.levyraMarquee(iterations = 1))
+                Text(card.subtitle, style = LevyraType.caption, color = colors.onSurfaceVariant, maxLines = 1, modifier = Modifier.levyraMarquee(iterations = 1))
             }
             Box(Modifier.offset(x = ExploreReleaseMenuInset)) { actions() }
         }

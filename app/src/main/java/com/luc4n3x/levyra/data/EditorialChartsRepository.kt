@@ -6,6 +6,8 @@ import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.data.spotify.SpotifyMetadataIndex
+import com.luc4n3x.levyra.nexus.text.ReusableRegex
+import com.luc4n3x.levyra.nexus.text.matches
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -393,7 +395,7 @@ internal data class CatalogSnapshot(
 }
 
 internal object EditorialCatalogParser {
-    private val PUBLISHED_YOUTUBE_BROWSE_PARAMS = Regex("[A-Za-z0-9_./=+\\-]+")
+    private val PUBLISHED_YOUTUBE_BROWSE_PARAMS = ReusableRegex("[A-Za-z0-9_./=+\\-]+")
     private val METADATA_COLLECTION_KINDS = setOf("chart", "release", "editorial", "mood", "genre")
 
     fun parse(body: String, loadedAt: Long): CatalogSnapshot? {
@@ -693,5 +695,5 @@ internal fun mergeExploreCollectionsFromFallback(
     primary.toString()
 }.getOrNull()
 
-private val PublishedTokenPattern = Regex("[A-Za-z0-9_-]+")
-private val PublishedVideoIdPattern = Regex("[A-Za-z0-9_-]{11}")
+private val PublishedTokenPattern = ReusableRegex("[A-Za-z0-9_-]+")
+private val PublishedVideoIdPattern = ReusableRegex("[A-Za-z0-9_-]{11}")

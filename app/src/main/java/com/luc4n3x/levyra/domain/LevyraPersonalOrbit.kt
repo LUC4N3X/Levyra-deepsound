@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.domain
 
+import com.luc4n3x.levyra.nexus.text.ReusableRegex
+import com.luc4n3x.levyra.nexus.text.replace
 import java.util.Locale
 import kotlin.math.abs
 
@@ -33,15 +35,15 @@ object LevyraPersonalOrbit {
         Regex("youtu\\.be/([A-Za-z0-9_-]{11})"),
         Regex("/(?:shorts|embed|live|vi)/([A-Za-z0-9_-]{11})")
     )
-    private val bracketAnnotationPattern = Regex(
+    private val bracketAnnotationPattern = ReusableRegex(
         """(?i)[(\[]\s*(?:(?:official\s+)?(?:music\s+)?(?:video|audio)|lyrics?|visuali[sz]er|feat\.?|ft\.?|featuring)[^)\]]*[)\]]"""
     )
-    private val trailingFeaturePattern = Regex("""(?i)\b(?:feat\.?|ft\.?|featuring)\b.*$""")
-    private val displayAnnotationPattern = Regex(
+    private val trailingFeaturePattern = ReusableRegex("""(?i)\b(?:feat\.?|ft\.?|featuring)\b.*$""")
+    private val displayAnnotationPattern = ReusableRegex(
         """(?i)\b(?:(?:official\s+)?(?:music\s+)?(?:video|audio)|lyrics?|visuali[sz]er)\b"""
     )
     // Android regexes are Unicode-aware by default and reject the unsupported (?U) flag.
-    private val artistSeparatorPattern = Regex(
+    private val artistSeparatorPattern = ReusableRegex(
         """(?:(?<=\s)(?:feat\.?|featuring|ft\.?|and|with|e|ed|y|et|und|[,&;+])(?=\s)|(?<=[\p{L}\p{M}\p{N}])[,;&+](?=\s))""",
         RegexOption.IGNORE_CASE
     )
@@ -50,8 +52,8 @@ object LevyraPersonalOrbit {
     // bracketAnnotationPattern only removes the video/lyrics/feat variants, so
     // the shelf-level collapse needs a broader sweep.
     private val versionAnnotationPattern = Regex("""[(\[][^)\]]*[)\]]""")
-    private val nonMusicWordPattern = Regex("""[^\p{L}\p{M}\p{N}\s]""")
-    private val whitespacePattern = Regex("""\s+""")
+    private val nonMusicWordPattern = ReusableRegex("""[^\p{L}\p{M}\p{N}\s]""")
+    private val whitespacePattern = ReusableRegex("""\s+""")
     private val officialArtworkHosts = listOf(
         "mzstatic.com",
         "dzcdn.net",
@@ -159,6 +161,7 @@ object LevyraPersonalOrbit {
             .map(RankedTrack::track)
 
         val selected = ArrayList<Track>(max)
+        val selectedFingerprints = ArrayList<RecordingFingerprint>(max)
         val discoveryReserve = minOf(discoveryPool.size, SmartOrbitEngine.DISCOVERY_SLOTS, max / 4)
         var cap = max - discoveryReserve
 
@@ -167,11 +170,15 @@ object LevyraPersonalOrbit {
             source.forEach { candidate ->
                 if (selected.size >= cap) return
                 if (!predicate(candidate)) return@forEach
-                val duplicateIndex = selected.indexOfFirst { sameRecording(it, candidate) }
+                val fingerprint = recordingFingerprint(candidate)
+                val duplicateIndex = selectedFingerprints.indexOfFirst { fingerprintsMatch(it, fingerprint) }
                 if (duplicateIndex < 0) {
                     selected += candidate
+                    selectedFingerprints += fingerprint
                 } else {
-                    selected[duplicateIndex] = mergeRecordingMetadata(selected[duplicateIndex], candidate)
+                    val merged = mergeRecordingMetadata(selected[duplicateIndex], candidate)
+                    selected[duplicateIndex] = merged
+                    selectedFingerprints[duplicateIndex] = recordingFingerprint(merged)
                 }
             }
         }
@@ -181,7 +188,10 @@ object LevyraPersonalOrbit {
         cap = max
         addTracks(
             discoveryPool
-                .filterNot { discovery -> selected.any { sameRecording(it, discovery) } }
+                .filterNot { discovery ->
+                    val fingerprint = recordingFingerprint(discovery)
+                    selectedFingerprints.any { fingerprintsMatch(it, fingerprint) }
+                }
                 .take(discoveryReserve)
         )
         addTracks(restoredOrbit)

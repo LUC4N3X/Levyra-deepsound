@@ -5,6 +5,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -12,6 +13,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
@@ -37,12 +39,16 @@ private object HomeEntranceSequence {
     }
 }
 
-internal fun homeEntrance(scope: LazyListScope): LazyListScope =
-    if (LevyraIsDefaultSkin) HomeEntranceLazyListScope(scope) else scope
+internal fun homeEntrance(scope: LazyListScope, listState: LazyListState): LazyListScope =
+    if (LevyraIsDefaultSkin) HomeEntranceLazyListScope(scope, listState) else scope
 
-private class HomeEntranceLazyListScope(private val delegate: LazyListScope) : LazyListScope by delegate {
+private class HomeEntranceLazyListScope(
+    private val delegate: LazyListScope,
+    private val listState: LazyListState
+) : LazyListScope by delegate {
     override fun item(key: Any?, contentType: Any?, content: @Composable LazyItemScope.() -> Unit) {
-        delegate.item(key, contentType) { HomeItemEntrance(Modifier.animateItem(fadeInSpec = null)) { content() } }
+        val state = listState
+        delegate.item(key, contentType) { HomeItemEntrance(Modifier.animateItem(fadeInSpec = null), state) { content() } }
     }
 
     override fun items(
@@ -51,17 +57,18 @@ private class HomeEntranceLazyListScope(private val delegate: LazyListScope) : L
         contentType: (index: Int) -> Any?,
         itemContent: @Composable LazyItemScope.(index: Int) -> Unit
     ) {
-        delegate.items(count, key, contentType) { index -> HomeItemEntrance(Modifier.animateItem(fadeInSpec = null)) { itemContent(index) } }
+        val state = listState
+        delegate.items(count, key, contentType) { index -> HomeItemEntrance(Modifier.animateItem(fadeInSpec = null), state) { itemContent(index) } }
     }
 }
 
 @Composable
-private fun HomeItemEntrance(itemMotion: Modifier, content: @Composable () -> Unit) {
+private fun HomeItemEntrance(itemMotion: Modifier, listState: LazyListState, content: @Composable () -> Unit) {
     if (!LocalAnimationsEnabled.current) {
         content()
         return
     }
-    var played by rememberSaveable { mutableStateOf(false) }
+    var played by rememberSaveable { mutableStateOf(Snapshot.withoutReadObservation { listState.isScrollInProgress }) }
     val progress = remember { Animatable(if (played) 1f else 0f) }
     LaunchedEffect(Unit) {
         if (played) return@LaunchedEffect

@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.nexus.identity
 
+import com.luc4n3x.levyra.nexus.text.ReusableRegex
+import com.luc4n3x.levyra.nexus.text.replace
 import java.text.Normalizer
 import java.util.Locale
 
@@ -70,23 +72,23 @@ object MusicIdentityText {
         Character.UnicodeScript.ARABIC,
         Character.UnicodeScript.HEBREW
     )
-    private val apostrophes = Regex("['`´ʼ’‘]")
-    private val nonWord = Regex("[^\\p{L}\\p{M}\\p{N}]+")
-    private val whitespace = Regex("\\s+")
+    private val apostrophes = ReusableRegex("['`´ʼ’‘]")
+    private val nonWord = ReusableRegex("[^\\p{L}\\p{M}\\p{N}]+")
+    private val whitespace = ReusableRegex("\\s+")
     private val bracketed = Regex("[(\\[{]([^)\\]}]*)[)\\]}]")
     private val dashSeparator = Regex("\\s[-–—]\\s")
     private val inlineFeaturing = Regex("\\s(?:feat\\.?|ft\\.?|featuring)\\s", RegexOption.IGNORE_CASE)
-    private val featuringLead = Regex("^\\s*(?:feat\\.?|ft\\.?|featuring|with)\\s+", RegexOption.IGNORE_CASE)
+    private val featuringLead = ReusableRegex("^\\s*(?:feat\\.?|ft\\.?|featuring|with)\\s+", RegexOption.IGNORE_CASE)
     private val artistSeparators = Regex(
         "\\s*(?:,|&|\\+|/|;|\\sx\\s|\\sand\\s|\\se\\s|\\sy\\s|\\svs\\.?\\s|\\sfeat\\.?\\s|\\sft\\.?\\s|\\sfeaturing\\s|\\swith\\s)\\s*",
         RegexOption.IGNORE_CASE
     )
-    private val leadingArticle = Regex("^(?:the|группа)\\s+")
-    private val yearToken = Regex("\\b(?:19|20)\\d{2}\\b")
-    private val versionWord = Regex("(?:^|\\s)version(?:\\s|$)")
-    private val albumEditionWord = Regex("(?:^|\\s)(?:edition|version)(?:\\s|$)")
+    private val leadingArticle = ReusableRegex("^(?:the|группа)\\s+")
+    private val yearToken = ReusableRegex("\\b(?:19|20)\\d{2}\\b")
+    private val versionWord = ReusableRegex("(?:^|\\s)version(?:\\s|$)")
+    private val albumEditionWord = ReusableRegex("(?:^|\\s)(?:edition|version)(?:\\s|$)")
     private val trailingBracketed = Regex("(?:\\s*[(\\[{]([^)\\]}]*)[)\\]}])+\\s*$")
-    private val workPartToken = Regex(
+    private val workPartToken = ReusableRegex(
         "(?:^|\\s)(?:part|pt|vol|volume|chapter|act|scene|interlude|intro|outro|skit|commentary|medley|\\d+|ii|iii|iv|v|vi)(?:\\s|$)"
     )
 
@@ -107,7 +109,7 @@ object MusicIdentityText {
     )
 
     private class MarkerRule(pattern: String, val markers: Set<TrackVersionMarker>) {
-        val phrase = Regex("(?:^|\\s)(?:$pattern)(?:\\s|$)")
+        val phrase = ReusableRegex("(?:^|\\s)(?:$pattern)(?:\\s|$)")
     }
 
     private val standaloneMarkerRules = listOf(
@@ -199,7 +201,7 @@ object MusicIdentityText {
     )
 
     private class EditionRule(pattern: String, val edition: AlbumEdition) {
-        val phrase = Regex("(?:^|\\s)(?:$pattern)(?:\\s|$)")
+        val phrase = ReusableRegex("(?:^|\\s)(?:$pattern)(?:\\s|$)")
     }
 
     private data class AlbumDescriptor(
