@@ -3,7 +3,6 @@ package com.luc4n3x.levyra.ui
 import com.luc4n3x.levyra.ui.theme.*
 import com.luc4n3x.levyra.ui.theme.LevyraIsNocturne
 
-import android.os.Build
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -40,8 +39,6 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.SideEffect
@@ -73,7 +70,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -266,14 +262,11 @@ internal fun rememberNavColors(style: NavStyle, tuning: NavTuning): NavColors {
     if (LevyraSkinManagesLayout) return buildNavColors(theme, style.floating, tuning.copy(
         colorSource = NavColorSource.Theme, surfaceTone = NavSurfaceTone.Auto
     ), null)
-    val context = LocalContext.current
     val themeLight = LevyraActivePalette.isLight
-    val dynamic = remember(tuning.colorSource, themeLight, context) {
-        if (tuning.colorSource == NavColorSource.Dynamic && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (themeLight) dynamicLightColorScheme(context) else dynamicDarkColorScheme(context)
-        } else {
-            null
-        }
+    val dynamic = if (tuning.colorSource == NavColorSource.Dynamic) {
+        com.luc4n3x.levyra.ui.theme.rememberSystemColorScheme(dark = !themeLight, pureBlack = com.luc4n3x.levyra.ui.theme.LevyraIsPureBlack)
+    } else {
+        null
     }
     val scheme = dynamic ?: theme
     val seed = if (tuning.colorSource == NavColorSource.Artwork) rememberAnimatedNavArtworkSeed() else null

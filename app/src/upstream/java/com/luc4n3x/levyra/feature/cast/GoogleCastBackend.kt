@@ -3,7 +3,6 @@
 package com.luc4n3x.levyra.feature.cast
 
 import android.content.Context
-import androidx.media3.cast.Cast
 import androidx.media3.cast.CastPlayer
 import androidx.media3.common.DeviceInfo
 import androidx.media3.common.ForwardingPlayer
@@ -31,11 +30,7 @@ import timber.log.Timber
 
 class GoogleCastBackend(private val context: Context) : RemotePlaybackBackend {
     private val appContext = context.applicationContext
-    private val cast = runCatching {
-        Cast.getSingletonInstance(appContext).apply {
-            if (needsInitialization()) initialize()
-        }
-    }.getOrNull()
+    private val cast = CastRuntimeInitializer.castOrNull(appContext)
 
     override val id: String = "google-cast"
     override val available: Boolean = cast != null

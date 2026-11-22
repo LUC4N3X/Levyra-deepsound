@@ -29,6 +29,7 @@ import com.luc4n3x.levyra.domain.LevyraBackupFrequency
 import com.luc4n3x.levyra.domain.LevyraBackupSettings
 import com.luc4n3x.levyra.domain.LevyraCanvasQuality
 import com.luc4n3x.levyra.domain.LevyraVisualPerformance
+import com.luc4n3x.levyra.domain.ArtworkCropMode
 import com.luc4n3x.levyra.domain.LevyraCanvasSource
 import com.luc4n3x.levyra.domain.LevyraDownloadDestination
 import com.luc4n3x.levyra.domain.LevyraDownloadFolderMode
@@ -287,6 +288,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_UI_CANVAS_QUALITY] = normalizedInterface.canvasQuality.name
             mutable[KEY_UI_CANVAS_SOURCE] = normalizedInterface.canvasSource.name
             mutable[KEY_UI_VISUAL_PERFORMANCE] = normalizedInterface.visualPerformance.name
+            mutable[KEY_UI_ARTWORK_CROP] = normalizedInterface.artworkCrop.storageId
             mutable[KEY_UI_LIQUID_GLASS] = normalizedInterface.liquidGlassEnabled
             mutable[KEY_UI_GLASS_BLUR] = normalizedInterface.glassBlur
             mutable[KEY_UI_GLASS_TRANSPARENCY] = normalizedInterface.glassTransparency
@@ -510,6 +512,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             it[KEY_UI_CANVAS_QUALITY] = normalized.canvasQuality.name
             it[KEY_UI_CANVAS_SOURCE] = normalized.canvasSource.name
             it[KEY_UI_VISUAL_PERFORMANCE] = normalized.visualPerformance.name
+            it[KEY_UI_ARTWORK_CROP] = normalized.artworkCrop.storageId
             it[KEY_UI_LIQUID_GLASS] = normalized.liquidGlassEnabled
             it[KEY_UI_GLASS_BLUR] = normalized.glassBlur
             it[KEY_UI_GLASS_TRANSPARENCY] = normalized.glassTransparency
@@ -1044,6 +1047,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             canvasQuality = LevyraCanvasQuality.from(preferences[KEY_UI_CANVAS_QUALITY].orEmpty()),
             canvasSource = LevyraCanvasSource.from(preferences[KEY_UI_CANVAS_SOURCE].orEmpty()),
             visualPerformance = LevyraVisualPerformance.from(preferences[KEY_UI_VISUAL_PERFORMANCE].orEmpty()),
+            artworkCrop = ArtworkCropMode.from(preferences[KEY_UI_ARTWORK_CROP]),
             liquidGlassEnabled = preferences[KEY_UI_LIQUID_GLASS] ?: true,
             glassBlur = preferences[KEY_UI_GLASS_BLUR] ?: LevyraInterfaceSettings.DEFAULT_GLASS_LEVEL,
             glassTransparency = preferences[KEY_UI_GLASS_TRANSPARENCY] ?: LevyraInterfaceSettings.DEFAULT_GLASS_LEVEL,
@@ -1821,6 +1825,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_UI_CANVAS_QUALITY = stringPreferencesKey("ui_canvas_quality")
         val KEY_UI_CANVAS_SOURCE = stringPreferencesKey("ui_canvas_source")
         val KEY_UI_VISUAL_PERFORMANCE = stringPreferencesKey("ui_visual_performance")
+        val KEY_UI_ARTWORK_CROP = stringPreferencesKey("ui_artwork_crop")
         val KEY_UI_LIQUID_GLASS = booleanPreferencesKey("ui_liquid_glass")
         val KEY_UI_GLASS_BLUR = intPreferencesKey("ui_glass_blur")
         val KEY_UI_GLASS_TRANSPARENCY = intPreferencesKey("ui_glass_transparency")

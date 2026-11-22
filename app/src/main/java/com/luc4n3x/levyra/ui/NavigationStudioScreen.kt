@@ -1,5 +1,8 @@
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.i18n.VisualCraftText
+import com.luc4n3x.levyra.ui.i18n.visualCraftCopy
+
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -459,8 +462,8 @@ private fun LazyListScope.navOptionItems(
                 },
                 onSelect = { commit(tuning.copy(colorSource = it)) }
             )
-            if (tuning.colorSource == NavColorSource.Dynamic && Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-                Text(copy[NavStudioText.DynamicUnavailable], style = MaterialTheme.typography.bodySmall, color = LevyraMuted)
+            if (tuning.colorSource == NavColorSource.Dynamic && !com.luc4n3x.levyra.ui.theme.LevyraWallpaperSeed.nativeDynamic && com.luc4n3x.levyra.ui.theme.LevyraWallpaperSeed.current == null) {
+                Text(LocalLevyraStrings.current.visualCraftCopy[VisualCraftText.WallpaperColorsUnavailable], style = MaterialTheme.typography.bodySmall, color = LevyraMuted)
             }
             if (tuning.colorSource == NavColorSource.Artwork) {
                 Text(copy[NavStudioText.ArtworkHint], style = MaterialTheme.typography.bodySmall, color = LevyraMuted)

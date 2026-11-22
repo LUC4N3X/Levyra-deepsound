@@ -72,6 +72,19 @@ class DailyDiscoveryTest {
     }
 
     @Test
+    fun keepsTheShelfWhenHomeAlreadyShowsEveryCandidate() {
+        val cards = listOf(card("a", "One", similar), card("b", "Known", similar))
+        val hidden = cards.map { it.key }.toSet()
+        assertEquals(listOf("a"), resolveDailyDiscovery(cards, hidden, setOf("known")).map { it.track.id })
+    }
+
+    @Test
+    fun prefersCandidatesHomeDoesNotShow() {
+        val cards = listOf(card("a", "One", similar), card("b", "Two", similar))
+        assertEquals(listOf("b"), resolveDailyDiscovery(cards, setOf(cards[0].key), emptySet()).map { it.track.id })
+    }
+
+    @Test
     fun alternatesSeedsSoNeighboursCarryDifferentReasons() {
         val other = DiscoveryReason(DiscoveryReasonKind.SimilarToTrack, "Other", seedArtist = "Other Artist")
         val cards = listOf(card("a", "One", similar), card("b", "Two", similar), card("c", "Three", other), card("d", "Four", other))

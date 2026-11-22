@@ -62,6 +62,7 @@ import com.luc4n3x.levyra.domain.LevyraBackupSettings
 import com.luc4n3x.levyra.domain.LevyraBedtimeSchedule
 import com.luc4n3x.levyra.domain.LevyraCanvasQuality
 import com.luc4n3x.levyra.domain.LevyraVisualPerformance
+import com.luc4n3x.levyra.domain.ArtworkCropMode
 import com.luc4n3x.levyra.domain.LevyraCanvasSource
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.LevyraSmartOfflineSettings
@@ -2127,6 +2128,7 @@ internal fun backupInterfaceSettingsToJson(value: LevyraInterfaceSettings): JSON
     .put("canvasQuality", value.canvasQuality.name)
     .put("canvasSource", value.canvasSource.name)
     .put("visualPerformance", value.visualPerformance.name)
+    .put("artworkCrop", value.artworkCrop.storageId)
     .put("liquidGlassEnabled", value.liquidGlassEnabled)
     .put("glassBlur", value.glassBlur)
     .put("glassTransparency", value.glassTransparency)
@@ -2199,6 +2201,7 @@ internal fun backupInterfaceSettingsFromJson(
         canvasQuality = LevyraCanvasQuality.from(json.optString("canvasQuality")),
         canvasSource = LevyraCanvasSource.from(json.optString("canvasSource")),
         visualPerformance = LevyraVisualPerformance.from(json.optString("visualPerformance")),
+        artworkCrop = ArtworkCropMode.from(json.optString("artworkCrop")),
         liquidGlassEnabled = json.optBoolean("liquidGlassEnabled", true),
         glassBlur = json.optInt("glassBlur", LevyraInterfaceSettings.DEFAULT_GLASS_LEVEL),
         glassTransparency = json.optInt("glassTransparency", LevyraInterfaceSettings.DEFAULT_GLASS_LEVEL),

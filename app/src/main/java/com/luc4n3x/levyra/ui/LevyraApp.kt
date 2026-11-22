@@ -458,6 +458,11 @@ import androidx.compose.material.icons.rounded.NetworkCell
 import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.Crop
+import com.luc4n3x.levyra.data.ArtworkCropPolicy
+import com.luc4n3x.levyra.domain.ArtworkCropMode
+import com.luc4n3x.levyra.ui.i18n.VisualCraftText
+import com.luc4n3x.levyra.ui.i18n.visualCraftCopy
 import androidx.compose.material.icons.rounded.Swipe
 import androidx.compose.material.icons.rounded.SwipeVertical
 import androidx.compose.material.icons.rounded.TouchApp
@@ -2167,6 +2172,8 @@ fun LevyraApp(
         selected = state.interfaceSettings.visualPerformance,
         animationsEnabled = state.animationsEnabled
     )
+    val artworkCrop = state.interfaceSettings.artworkCrop
+    SideEffect { ArtworkCropPolicy.mode = artworkCrop }
     val accentTrack = state.currentTrack ?: state.tracks.firstOrNull()
     when (state.interfaceSettings.skin) {
         LevyraSkin.Prism -> PrismThemeEffect(state.interfaceSettings)
@@ -19340,6 +19347,27 @@ private fun SettingsOverlay(
                                         onInterfaceSettings(
                                             interfaceSettings.copy(visualPerformance = LevyraVisualPerformance.from(value))
                                         )
+                                    }
+                                )
+                            }
+                            item {
+                                val craft = strings.visualCraftCopy
+                                SettingsChoiceRow(
+                                    icon = Icons.Rounded.Crop,
+                                    title = craft[VisualCraftText.ArtworkCrop],
+                                    subtitle = craft[VisualCraftText.ArtworkCropSubtitle],
+                                    options = ArtworkCropMode.entries.map { mode ->
+                                        mode.storageId to craft[
+                                            when (mode) {
+                                                ArtworkCropMode.Center -> VisualCraftText.CropCenter
+                                                ArtworkCropMode.Smart -> VisualCraftText.CropSmart
+                                                ArtworkCropMode.SmartNoZoom -> VisualCraftText.CropSmartNoZoom
+                                            }
+                                        ]
+                                    },
+                                    selected = interfaceSettings.artworkCrop.storageId,
+                                    onSelect = { value ->
+                                        onInterfaceSettings(interfaceSettings.copy(artworkCrop = ArtworkCropMode.from(value)))
                                     }
                                 )
                             }

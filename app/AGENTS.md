@@ -73,6 +73,18 @@ Scroll smoothness and startup work measured in November 2026 are preserved produ
 - New eager work in `LevyraApplication.onCreate` gets its own `startupSection("Levyra.<step>")`; keep existing sections when moving or splitting startup work.
 - Scroll and jank claims require a physical device running `benchmarkRelease`, measured with the same `dumpsys gfxinfo` protocol before and after (reset, fixed swipe cycles, compare janky %, frame percentiles, and slow draw commands). Emulator rendering is GPU-bound and is not valid evidence for jank.
 
+## First-run memory guard (PR #1326)
+
+A fresh install on a 4 GB device peaks at about 0.7-0.8 GB through setup and the first Home load (down from about 2.5 GB, issue #1323). This is a preserved product invariant; any change that touches onboarding, cold start, Home composition, text normalization, artwork/catalog parsing, or repeated per-item work must keep it.
+
+- While onboarding is visible, do not compose the full Home (or any heavy screen) behind the overlay, and keep the cold-start Home pipeline waiting until setup completes.
+- Never create `Regex`/`Pattern`/ICU matchers per call in normalization, matching, parsing, or per-track/per-item paths. Reuse the shared per-thread matchers (`ReusableRegex` in LevyraNexus) or precompiled immutable instances.
+- Do not run regex over whole network pages or large payloads; locate with `indexOf` and apply a short regex window, as `AppleArtistArtworkRepository` does.
+- Compute per-track derived values (fingerprints, keys, normalized titles) once per build and reuse them; do not recompute them inside nested loops or sort comparators.
+- Entrance and marquee motion must stay bounded: Home section entrance plays only for sections appearing while the list is at rest; marquees do not loop indefinitely by default.
+- New bitmap, image-analysis, capture, or blur work runs off the main thread at small fixed analysis sizes, reuses buffers, is cached by key, and is skipped entirely when its feature is off. It must not start during onboarding or first Home load unless the user enabled it.
+- Changes in these areas need a before/after fresh-install memory check on a 4 GB emulator or device (`dumpsys meminfo` PSS/RSS through onboarding and first Home). If it cannot be run, report it as `BLOCKED`, never as passing.
+
 ## Compose and resources
 
 - Keep orchestration outside composables and observe the smallest stable state required by each screen.

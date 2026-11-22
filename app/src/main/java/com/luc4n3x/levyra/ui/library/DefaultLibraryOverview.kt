@@ -130,15 +130,13 @@ internal fun LazyListScope.defaultLibraryOverview(
     entries: List<LibrarySectionEntry>,
     playlists: List<Playlist>,
     savedPlaylists: List<SavedPlaylist>,
-    albums: List<LibraryAlbum>,
     strings: LevyraStrings,
     onOpenCollection: (String) -> Unit,
     onPlayFavorites: () -> Unit,
     onPlayRecent: (Track) -> Unit,
     onOpenCategory: (LibraryCategory) -> Unit,
     onOpenPlaylist: (Playlist) -> Unit,
-    onOpenSavedPlaylist: (SavedPlaylist) -> Unit,
-    onOpenAlbum: (LibraryAlbum) -> Unit
+    onOpenSavedPlaylist: (SavedPlaylist) -> Unit
 ) {
     item(key = "default-library-overview") {
         DefaultLibraryFavorites(
@@ -202,24 +200,9 @@ internal fun LazyListScope.defaultLibraryOverview(
             }
         }
     }
-    if (albums.isNotEmpty()) {
-        item(key = "default-library-albums") {
-            val shelf = remember(albums, onOpenAlbum) {
-                albums.take(LibraryShelfLimit).map { album ->
-                    LibraryShelfItem(album.key, album.title, album.artist, album.artworkUrl) { onOpenAlbum(album) }
-                }
-            }
-            DefaultLibraryShelf(LibraryCategory.Albums.libraryLabel(strings), shelf, LibraryCategory.Albums) {
-                onOpenCategory(LibraryCategory.Albums)
-            }
-        }
-    }
     item(key = "default-library-categories") {
-        val links = remember(entries, hasPlaylists, albums.isNotEmpty()) {
-            entries.filterNot {
-                (it.category == LibraryCategory.Playlists && hasPlaylists) ||
-                    (it.category == LibraryCategory.Albums && albums.isNotEmpty())
-            }
+        val links = remember(entries, hasPlaylists) {
+            entries.filterNot { it.category == LibraryCategory.Playlists && hasPlaylists }
         }
         DefaultLibraryCategoryLinks(links, onOpenCategory)
     }
