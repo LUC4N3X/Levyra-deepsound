@@ -157,6 +157,7 @@ private fun LegacyGlassCapture(state: GlassBackdropState) {
     val saturation = style.saturation
     LaunchedEffect(state, blurPx, saturation) {
         val buffers = LegacyGlassBuffers()
+        delay(LegacyGlassStartupDelayMs)
         state.legacyDirty.trySend(Unit)
         while (isActive) {
             state.legacyDirty.receive()
@@ -267,7 +268,7 @@ internal object LegacyGlassBlur {
                 b += color and 0xFF
             }
             for (i in 0 until length) {
-                output[base + i * step] = (a / window shl 24) or (r / window shl 16) or (g / window shl 8) or (b / window)
+                output[base + i * step] = (a / window shl 24) or (r / window shl 16) or (g / window shl 8) or b / window
                 val outgoing = input[base + (i - radius).coerceIn(0, length - 1) * step]
                 val incoming = input[base + (i + radius + 1).coerceIn(0, length - 1) * step]
                 a += (incoming ushr 24) - (outgoing ushr 24)
@@ -299,6 +300,7 @@ private const val LegacyGlassMaxScale = 0.34f
 private const val LegacyGlassMaxRadius = 24
 private const val LegacyGlassPasses = 3
 private const val LegacyGlassSettleMs = 110L
+private const val LegacyGlassStartupDelayMs = 2_500L
 private const val LegacyGlassIntervalMs = 240L
 
 @Composable

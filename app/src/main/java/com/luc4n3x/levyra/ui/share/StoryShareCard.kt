@@ -179,25 +179,23 @@ internal object StoryShareCard {
             put(MediaStore.Images.Media.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/Levyra")
             put(MediaStore.Images.Media.IS_PENDING, 1)
         }
-        val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values) ?: return@withContext false
-        val written = try {
-            resolver.openOutputStream(uri)?.use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) } == true
+        var pending: Uri? = null
+        try {
+            val target = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values) ?: return@withContext false
+            pending = target
+            val written = resolver.openOutputStream(target)?.use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) } == true
+            values.clear()
+            values.put(MediaStore.Images.Media.IS_PENDING, 0)
+            val published = written && resolver.update(target, values, null, null) == 1
+            if (published) pending = null
+            published
         } catch (cancellation: CancellationException) {
             throw cancellation
-        } catch (_: IOException) {
+        } catch (_: Exception) {
             false
+        } finally {
+            pending?.let { leftover -> runCatching { resolver.delete(leftover, null, null) } }
         }
-        if (!written) {
-            resolver.delete(uri, null, null)
-            return@withContext false
-        }
-        values.clear()
-        values.put(MediaStore.Images.Media.IS_PENDING, 0)
-        if (resolver.update(uri, values, null, null) != 1) {
-            resolver.delete(uri, null, null)
-            return@withContext false
-        }
-        true
     }
 
     private fun drawBackground(canvas: Canvas, artwork: Bitmap?, colors: StoryShareColors, options: StoryShareOptions) {

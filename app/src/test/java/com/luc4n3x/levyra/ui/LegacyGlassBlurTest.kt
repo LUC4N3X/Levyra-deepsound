@@ -30,6 +30,6 @@ class LegacyGlassBlurTest {
         val gray = 0xFF808080.toInt()
         val pixels = IntArray(16) { gray }
         LegacyGlassBlur.blur(pixels, IntArray(16), 4, 4, radius = 1, saturation = 1.4f)
-        assertTrue(pixels.all { (it shr 16 and 0xFF) == (it and 0xFF) })
+        assertTrue(pixels.all { it shr 16 and 0xFF == it and 0xFF })
     }
 }

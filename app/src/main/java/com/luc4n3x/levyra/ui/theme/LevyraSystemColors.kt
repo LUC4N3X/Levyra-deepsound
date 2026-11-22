@@ -2,8 +2,6 @@ package com.luc4n3x.levyra.ui.theme
 
 import android.app.WallpaperManager
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -23,15 +21,11 @@ import com.materialkolor.dynamiccolor.DynamicColor
 import com.materialkolor.dynamiccolor.DynamicScheme
 import com.materialkolor.dynamiccolor.MaterialDynamicColors
 import com.materialkolor.hct.Hct
-import com.materialkolor.quantize.QuantizerCelebi
 import com.materialkolor.scheme.SchemeTonalSpot
-import com.materialkolor.score.Score
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 internal object LevyraWallpaperSeed {
-    private const val SAMPLE_SIDE = 112
-    private const val QUANTIZE_COLORS = 128
     private val seedState = mutableStateOf<Int?>(null)
     @Volatile private var resolved = false
     @Volatile private var listening = false
@@ -42,8 +36,9 @@ internal object LevyraWallpaperSeed {
     val current: Int? get() = seedState.value
 
     fun seedNow(context: Context): Int? {
+        val app = context.applicationContext
+        listen(app)
         if (!resolved && refreshing.compareAndSet(false, true)) {
-            val app = context.applicationContext
             val work = Runnable {
                 try {
                     refresh(app)
@@ -82,22 +77,12 @@ internal object LevyraWallpaperSeed {
         }.onFailure { listening = false }
     }
 
-    private fun extract(context: Context): Int? = runCatching {
-        val manager = WallpaperManager.getInstance(context)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            manager.getWallpaperColors(WallpaperManager.FLAG_SYSTEM)?.primaryColor?.toArgb()
-        } else {
-            manager.peekDrawable()?.let { drawable ->
-                val bitmap = Bitmap.createBitmap(SAMPLE_SIDE, SAMPLE_SIDE, Bitmap.Config.ARGB_8888)
-                drawable.setBounds(0, 0, SAMPLE_SIDE, SAMPLE_SIDE)
-                drawable.draw(Canvas(bitmap))
-                val pixels = IntArray(SAMPLE_SIDE * SAMPLE_SIDE)
-                bitmap.getPixels(pixels, 0, SAMPLE_SIDE, 0, 0, SAMPLE_SIDE, SAMPLE_SIDE)
-                bitmap.recycle()
-                Score.score(QuantizerCelebi.quantize(pixels, QUANTIZE_COLORS)).firstOrNull()
-            }
-        }
-    }.getOrNull()
+    private fun extract(context: Context): Int? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O_MR1) return null
+        return runCatching {
+            WallpaperManager.getInstance(context).getWallpaperColors(WallpaperManager.FLAG_SYSTEM)?.primaryColor?.toArgb()
+        }.getOrNull()
+    }
 }
 
 @Composable
