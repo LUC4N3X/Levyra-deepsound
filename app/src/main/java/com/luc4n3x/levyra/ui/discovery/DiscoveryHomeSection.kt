@@ -131,8 +131,6 @@ internal class DiscoveryHomeHandle(
     val onOpen: () -> Unit,
     val onRetry: () -> Unit,
     val onOpenBubble: (BubbleLevel) -> Unit = {},
-    val homeTrackKeys: () -> Set<String> = { emptySet() },
-    val familiarArtistKeys: () -> Set<String> = { emptySet() },
     val onPlayDaily: (List<DiscoveryCard>, DiscoveryCard) -> Unit = { _, _ -> }
 )
 

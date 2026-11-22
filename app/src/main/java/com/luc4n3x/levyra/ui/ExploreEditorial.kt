@@ -87,6 +87,7 @@ private val ExploreReleaseMenuInset = 12.dp
 
 @Immutable
 internal class ExploreEditorialContent(
+    val storefront: String,
     val news: List<MusicNewsStory>,
     val onOpenNews: (MusicNewsStory) -> Unit,
     val onPlayChart: (List<Track>, Track) -> Unit,
@@ -108,11 +109,13 @@ internal fun ExploreEditorialRow(row: ExploreRow, content: ExploreEditorialConte
             else -> ExploreNewsDesk(content.news, content.onOpenNews)
         }
         ExploreRow.DailyTop100 -> ExploreDailyTop100(
+            storefront = content.storefront,
             onPlay = content.onPlayChart,
             onTrackActions = content.onTrackMenu,
             modifier = Modifier.padding(top = ExploreEditorialSectionLead)
         )
         ExploreRow.CityCharts -> ExploreCityCharts(
+            storefront = content.storefront,
             onPlay = content.onPlayChart,
             onTrackActions = content.onTrackMenu,
             modifier = Modifier.padding(top = ExploreEditorialSectionLead)

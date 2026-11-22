@@ -56,7 +56,7 @@ internal fun YouTubeMusicExploreContent(
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { LevyraYouTubeMusicSkinStrings.forCode(strings.code) }
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val hasCityCharts = rememberHasCityCharts()
+    val hasCityCharts = rememberHasCityCharts(editorial?.storefront)
     val rows = remember(editorial?.news, hasCityCharts) {
         val news = editorial?.news.orEmpty()
         buildList {

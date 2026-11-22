@@ -46,8 +46,6 @@ internal fun DiscoveryHomeHost(
                 discovery.setLevel(level)
                 openChange(true)
             },
-            homeTrackKeys = discovery::homeVisibleTrackKeys,
-            familiarArtistKeys = discovery::familiarArtistKeys,
             onPlayDaily = discovery::playDaily
         )
     }

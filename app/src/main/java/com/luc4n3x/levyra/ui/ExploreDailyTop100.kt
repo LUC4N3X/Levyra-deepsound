@@ -75,7 +75,6 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.luc4n3x.levyra.data.apple.AppleCityChart
-import com.luc4n3x.levyra.domain.ChartsCatalog
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.LevyraSectionHeader
@@ -112,6 +111,7 @@ internal fun dailyTop100HueSlots(ids: List<String>): List<Int> {
 @Suppress("ComplexMethod", "CognitiveComplexMethod")
 @Composable
 internal fun ExploreDailyTop100(
+    storefront: String,
     onPlay: (List<Track>, Track) -> Unit,
     onTrackActions: (Track) -> Unit,
     modifier: Modifier = Modifier
@@ -120,8 +120,8 @@ internal fun ExploreDailyTop100(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val strings = LocalLevyraStrings.current
     val copy = remember(strings.code) { dailyTop100Copy(strings.code) }
-    LaunchedEffect(strings.code) {
-        viewModel.load(ChartsCatalog.defaultRegionForLanguage(strings.code).country, strings.code)
+    LaunchedEffect(storefront, strings.code) {
+        viewModel.load(storefront, strings.code)
     }
     val date = rememberTop100Date(strings.code)
     val charts = state.charts

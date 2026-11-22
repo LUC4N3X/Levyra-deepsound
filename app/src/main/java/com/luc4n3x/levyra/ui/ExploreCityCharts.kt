@@ -42,7 +42,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.luc4n3x.levyra.data.apple.AppleCityChart
-import com.luc4n3x.levyra.domain.ChartsCatalog
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.components.LevyraPressScale
 import com.luc4n3x.levyra.ui.components.LevyraSectionHeader
@@ -68,11 +67,11 @@ private enum class CitySkin { Mono, Ivory, Torque, Prism, Spotify, YouTubeMusic,
 internal val AppleCityChart.numeral: String get() = badge.filter(Char::isDigit).ifEmpty { badge }
 
 @Composable
-internal fun rememberHasCityCharts(): Boolean {
+internal fun rememberHasCityCharts(storefront: String?): Boolean {
     val viewModel = viewModel<DailyTop100ViewModel>()
     val code = LocalLevyraStrings.current.code
-    LaunchedEffect(code) {
-        viewModel.load(ChartsCatalog.defaultRegionForLanguage(code).country, code)
+    LaunchedEffect(storefront, code) {
+        if (storefront != null) viewModel.load(storefront, code)
     }
     val hasCities by remember(viewModel) { viewModel.state.map { it.cities.isNotEmpty() }.distinctUntilChanged() }
         .collectAsStateWithLifecycle(false)
@@ -81,6 +80,7 @@ internal fun rememberHasCityCharts(): Boolean {
 
 @Composable
 internal fun ExploreCityCharts(
+    storefront: String,
     onPlay: (List<Track>, Track) -> Unit,
     onTrackActions: (Track) -> Unit,
     modifier: Modifier = Modifier
@@ -88,8 +88,8 @@ internal fun ExploreCityCharts(
     val viewModel = viewModel<DailyTop100ViewModel>()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val code = LocalLevyraStrings.current.code
-    LaunchedEffect(code) {
-        viewModel.load(ChartsCatalog.defaultRegionForLanguage(code).country, code)
+    LaunchedEffect(storefront, code) {
+        viewModel.load(storefront, code)
     }
     val cities = state.cities
     if (cities.isNotEmpty()) {

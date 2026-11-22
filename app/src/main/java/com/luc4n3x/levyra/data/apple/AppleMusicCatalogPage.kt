@@ -194,9 +194,11 @@ internal object AppleDailyTop100 {
     fun isCountryChart(playlistId: String): Boolean = playlistId == GLOBAL_PLAYLIST_ID || playlistId in knownCharts
 }
 
-data class AppleCityChart(val playlistId: String, val badge: String, val name: String)
+data class AppleCityChart(val playlistId: String, val badge: String, val name: String, val storefront: String = "")
 
 internal object AppleCityCharts {
+    const val FALLBACK_STOREFRONT = "us"
+    const val MIN_LOCAL_CHARTS = 3
     private const val MAX_CHARTS = 30
     private const val COUNTRY_CHART_SIZE = "100"
 
@@ -213,6 +215,11 @@ internal object AppleCityCharts {
             .distinctBy { it.playlistId }
             .take(MAX_CHARTS)
             .toList()
+
+    inline fun withFallback(storefront: String, local: List<AppleCityChart>, global: () -> List<AppleCityChart>): List<AppleCityChart> {
+        if (local.size >= MIN_LOCAL_CHARTS || storefront == FALLBACK_STOREFRONT) return local
+        return (local + global().map { it.copy(storefront = FALLBACK_STOREFRONT) }).distinctBy { it.playlistId }
+    }
 }
 
 data class AppleCatalogShelf(
