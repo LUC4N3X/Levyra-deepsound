@@ -91,25 +91,26 @@ function smartphoneFrameSvg(left, top, outerW, outerH) {
   return svg(`
     <defs>
       <linearGradient id="tiGray" x1="0" y1="0" x2="1" y2="0.45">
-        <stop offset="0%" stop-color="#D4D2CC"/>
-        <stop offset="10%" stop-color="#9A9892"/>
-        <stop offset="32%" stop-color="#C6C4BE"/>
-        <stop offset="58%" stop-color="#87857F"/>
-        <stop offset="86%" stop-color="#BEBCB6"/>
-        <stop offset="100%" stop-color="#D8D6D0"/>
+        <stop offset="0%" stop-color="#A8A6A0"/>
+        <stop offset="12%" stop-color="#6F6D68"/>
+        <stop offset="34%" stop-color="#9B9993"/>
+        <stop offset="60%" stop-color="#5E5C57"/>
+        <stop offset="86%" stop-color="#94928C"/>
+        <stop offset="100%" stop-color="#AEACA6"/>
       </linearGradient>
       <linearGradient id="tiBtn" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#DAD8D2"/>
-        <stop offset="48%" stop-color="#8F8D87"/>
-        <stop offset="100%" stop-color="#C6C4BE"/>
+        <stop offset="0%" stop-color="#A8A6A0"/>
+        <stop offset="50%" stop-color="#5E5C57"/>
+        <stop offset="100%" stop-color="#92908A"/>
       </linearGradient>
     </defs>
-    <rect x="${rx}" y="${top + 240}" width="7" height="114" rx="3" fill="url(#tiBtn)"/>
-    <rect x="${rx}" y="${top + 392}" width="7" height="66" rx="3" fill="url(#tiBtn)"/>
+    <rect x="${rx}" y="${top + 240}" width="8" height="114" rx="3" fill="url(#tiBtn)" stroke="#4A4844" stroke-opacity=".75" stroke-width="1.2"/>
+    <rect x="${rx}" y="${top + 392}" width="8" height="66" rx="3" fill="url(#tiBtn)" stroke="#4A4844" stroke-opacity=".75" stroke-width="1.2"/>
     <rect x="${left}" y="${top}" width="${outerW}" height="${outerH}" rx="34" fill="url(#tiGray)"/>
-    <rect x="${left + 1.5}" y="${top + 1.5}" width="${outerW - 3}" height="${outerH - 3}" rx="32.5" fill="none" stroke="#F0EFEA" stroke-opacity=".72" stroke-width="2"/>
-    <rect x="${left}" y="${top + 112}" width="11" height="5" fill="#63615C" opacity=".65"/>
-    <rect x="${left + outerW - 11}" y="${top + 112}" width="11" height="5" fill="#63615C" opacity=".65"/>
+    <rect x="${left + 3}" y="${top + 3}" width="${outerW - 6}" height="${outerH - 6}" rx="31" fill="none" stroke="#E2E0DA" stroke-opacity=".68" stroke-width="2"/>
+    <rect x="${left + 0.9}" y="${top + 0.9}" width="${outerW - 1.8}" height="${outerH - 1.8}" rx="33.1" fill="none" stroke="#4A4844" stroke-opacity=".75" stroke-width="1.8"/>
+    <rect x="${left + 1}" y="${top + 112}" width="10" height="5" fill="#474540" opacity=".80"/>
+    <rect x="${left + outerW - 11}" y="${top + 112}" width="10" height="5" fill="#474540" opacity=".80"/>
     <rect x="${left + 10}" y="${top + 10}" width="${outerW - 20}" height="${outerH - 20}" rx="25" fill="#0A0C10"/>
   `);
 }
@@ -202,13 +203,13 @@ async function renderOutfitLine(value, sizePt, fill, fontfile, fontName, letterS
 function shadow(shape) {
   return svg(`
     <defs>
-      <filter id="s1" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="44"/></filter>
+      <filter id="s1" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="46"/></filter>
       <filter id="s2" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="18"/></filter>
       <filter id="s3" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6"/></filter>
     </defs>
-    <g transform="translate(0 28)" opacity=".20" filter="url(#s1)">${shape.replaceAll('fill="white"', 'fill="#182A5E"')}</g>
-    <g transform="translate(0 14)" opacity=".18" filter="url(#s2)">${shape.replaceAll('fill="white"', 'fill="#111E42"')}</g>
-    <g transform="translate(0 5)" opacity=".14" filter="url(#s3)">${shape.replaceAll('fill="white"', 'fill="#0A122B"')}</g>
+    <g transform="translate(0 30)" opacity=".26" filter="url(#s1)">${shape.replaceAll('fill="white"', 'fill="#182A5E"')}</g>
+    <g transform="translate(0 14)" opacity=".24" filter="url(#s2)">${shape.replaceAll('fill="white"', 'fill="#111E42"')}</g>
+    <g transform="translate(0 4)" opacity=".22" filter="url(#s3)">${shape.replaceAll('fill="white"', 'fill="#0A122B"')}</g>
   `);
 }
 
