@@ -90,35 +90,38 @@ function smartphoneFrameSvg(left, top, outerW, outerH) {
   const rx = left + outerW - 1;
   return svg(`
     <defs>
-      <linearGradient id="tiBody" x1="0" y1="0" x2="1" y2="0.6">
-        <stop offset="0%" stop-color="#6A7488"/>
-        <stop offset="14%" stop-color="#272D3B"/>
-        <stop offset="50%" stop-color="#171B24"/>
-        <stop offset="86%" stop-color="#3C4558"/>
-        <stop offset="100%" stop-color="#626C80"/>
+      <linearGradient id="tiGray" x1="0" y1="0" x2="1" y2="0.45">
+        <stop offset="0%" stop-color="#D4D2CC"/>
+        <stop offset="10%" stop-color="#9A9892"/>
+        <stop offset="32%" stop-color="#C6C4BE"/>
+        <stop offset="58%" stop-color="#87857F"/>
+        <stop offset="86%" stop-color="#BEBCB6"/>
+        <stop offset="100%" stop-color="#D8D6D0"/>
       </linearGradient>
       <linearGradient id="tiBtn" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#727C92"/>
-        <stop offset="50%" stop-color="#2E3545"/>
-        <stop offset="100%" stop-color="#586276"/>
+        <stop offset="0%" stop-color="#DAD8D2"/>
+        <stop offset="48%" stop-color="#8F8D87"/>
+        <stop offset="100%" stop-color="#C6C4BE"/>
       </linearGradient>
     </defs>
-    <rect x="${rx}" y="${top + 250}" width="7" height="118" rx="3.5" fill="url(#tiBtn)"/>
-    <rect x="${rx}" y="${top + 412}" width="7" height="72" rx="3.5" fill="url(#tiBtn)"/>
-    <rect x="${left}" y="${top}" width="${outerW}" height="${outerH}" rx="64" fill="url(#tiBody)"/>
-    <rect x="${left + 1.5}" y="${top + 1.5}" width="${outerW - 3}" height="${outerH - 3}" rx="62.5" fill="none" stroke="#BAC6DC" stroke-opacity=".42" stroke-width="2"/>
-    <rect x="${left + 6}" y="${top + 6}" width="${outerW - 12}" height="${outerH - 12}" rx="58" fill="#0B0D12"/>
+    <rect x="${rx}" y="${top + 240}" width="7" height="114" rx="3" fill="url(#tiBtn)"/>
+    <rect x="${rx}" y="${top + 392}" width="7" height="66" rx="3" fill="url(#tiBtn)"/>
+    <rect x="${left}" y="${top}" width="${outerW}" height="${outerH}" rx="34" fill="url(#tiGray)"/>
+    <rect x="${left + 1.5}" y="${top + 1.5}" width="${outerW - 3}" height="${outerH - 3}" rx="32.5" fill="none" stroke="#F0EFEA" stroke-opacity=".72" stroke-width="2"/>
+    <rect x="${left}" y="${top + 112}" width="11" height="5" fill="#63615C" opacity=".65"/>
+    <rect x="${left + outerW - 11}" y="${top + 112}" width="11" height="5" fill="#63615C" opacity=".65"/>
+    <rect x="${left + 10}" y="${top + 10}" width="${outerW - 20}" height="${outerH - 20}" rx="25" fill="#0A0C10"/>
   `);
 }
 
 function smartphoneDetailsSvg(left, top, outerW, bezel) {
   const cx = left + outerW / 2;
-  const camY = top + bezel + 26;
+  const camY = top + bezel + 22;
   return svg(`
-    <rect x="${cx - 42}" y="${top + 9}" width="84" height="5" rx="2.5" fill="#252A36"/>
-    <circle cx="${cx}" cy="${camY}" r="11" fill="#07090D" stroke="#222A3A" stroke-width="1.5"/>
-    <circle cx="${cx}" cy="${camY}" r="5.5" fill="#121A2B"/>
-    <circle cx="${cx - 2.5}" cy="${camY - 2.5}" r="2" fill="#89A8E8" opacity=".65"/>
+    <rect x="${cx - 46}" y="${top + 11}" width="92" height="4" rx="2" fill="#2A2D34"/>
+    <circle cx="${cx}" cy="${camY}" r="9.5" fill="#06080C" stroke="#222836" stroke-width="1.4"/>
+    <circle cx="${cx}" cy="${camY}" r="4.5" fill="#121A2B"/>
+    <circle cx="${cx - 2}" cy="${camY - 2}" r="1.7" fill="#9BB6EB" opacity=".70"/>
   `);
 }
 
@@ -241,16 +244,16 @@ function cardBackdrop(index, shapeColor) {
 async function cardMediaLayers(index, spec) {
   if (index >= 2) {
     const screenRaw = await extractPhone(index, spec);
-    const bezel = 20;
+    const bezel = 19;
     const screenW = 668;
     const { data, info } = await sharp(screenRaw).resize({ width: screenW }).png().toBuffer({ resolveWithObject: true });
-    const screen = await sharp(data).composite([{ input: rounded(screenW, info.height, 44), blend: 'dest-in' }]).png().toBuffer();
+    const screen = await sharp(data).composite([{ input: rounded(screenW, info.height, 19), blend: 'dest-in' }]).png().toBuffer();
     const outerW = screenW + bezel * 2;
     const outerH = info.height + bezel * 2;
     const left = Math.round((width - outerW) / 2);
     const top = height - outerH + 22;
     return [
-      { input: shadow(`<rect x="${left}" y="${top}" width="${outerW}" height="${outerH}" rx="64" fill="white"/>`) },
+      { input: shadow(`<rect x="${left}" y="${top}" width="${outerW}" height="${outerH}" rx="34" fill="white"/>`) },
       { input: smartphoneFrameSvg(left, top, outerW, outerH) },
       { input: screen, left: left + bezel, top: top + bezel },
       { input: smartphoneDetailsSvg(left, top, outerW, bezel) },
