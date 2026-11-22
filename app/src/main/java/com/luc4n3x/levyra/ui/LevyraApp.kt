@@ -463,6 +463,7 @@ import com.luc4n3x.levyra.data.ArtworkCropPolicy
 import com.luc4n3x.levyra.domain.ArtworkCropMode
 import com.luc4n3x.levyra.ui.i18n.VisualCraftText
 import com.luc4n3x.levyra.ui.i18n.visualCraftCopy
+import com.luc4n3x.levyra.ui.splash.startupAnimationSettingItem
 import androidx.compose.material.icons.rounded.Swipe
 import androidx.compose.material.icons.rounded.SwipeVertical
 import androidx.compose.material.icons.rounded.TouchApp
@@ -12766,15 +12767,7 @@ private fun ArtistHitShelfItem(
             modifier = Modifier.fillMaxWidth().levyraMarquee(LocalAnimationsEnabled.current, ARTIST_NAME_MARQUEE_DELAY)
         )
         if (audience.isNotBlank() || reserveAudience) {
-            Text(
-                text = audience,
-                color = LevyraMuted,
-                style = MaterialTheme.typography.bodySmall,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth().offset(y = (-5).dp)
-            )
+            ArtistAudienceText(text = audience, modifier = Modifier.fillMaxWidth().offset(y = (-5).dp))
         }
     }
 }
@@ -19364,6 +19357,7 @@ private fun SettingsOverlay(
                                     onCheckedChange = onAnimations
                                 )
                             }
+                            startupAnimationSettingItem(strings, interfaceSettings, onInterfaceSettings)
                             item {
                                 SettingsChoiceRow(
                                     icon = Icons.Rounded.Speed,

@@ -298,6 +298,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             mutable[KEY_UI_ENHANCE_VIDEO_METADATA] = normalizedInterface.enhanceVideoMetadata
             mutable[KEY_UI_KEEP_SCREEN_ON_WHILE_PLAYING] = normalizedInterface.keepScreenOnWhilePlaying
             mutable[KEY_UI_PURE_BLACK] = normalizedInterface.pureBlack
+            mutable[KEY_UI_STARTUP_ANIMATION] = normalizedInterface.startupAnimation
             mutable[KEY_UI_SKIN] = normalizedInterface.skin.name
             mutable[KEY_PRISM_APPEARANCE] = normalizedInterface.prism.appearance.name
             mutable[KEY_PRISM_PLAYER_LAYOUT] = normalizedInterface.prism.playerLayout.name
@@ -522,6 +523,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             it[KEY_UI_ENHANCE_VIDEO_METADATA] = normalized.enhanceVideoMetadata
             it[KEY_UI_KEEP_SCREEN_ON_WHILE_PLAYING] = normalized.keepScreenOnWhilePlaying
             it[KEY_UI_PURE_BLACK] = normalized.pureBlack
+            it[KEY_UI_STARTUP_ANIMATION] = normalized.startupAnimation
             it[KEY_UI_SKIN] = normalized.skin.name
             it[KEY_PRISM_APPEARANCE] = normalized.prism.appearance.name
             it[KEY_PRISM_PLAYER_LAYOUT] = normalized.prism.playerLayout.name
@@ -1057,6 +1059,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             enhanceVideoMetadata = preferences[KEY_UI_ENHANCE_VIDEO_METADATA] ?: false,
             keepScreenOnWhilePlaying = preferences[KEY_UI_KEEP_SCREEN_ON_WHILE_PLAYING] ?: false,
             pureBlack = preferences[KEY_UI_PURE_BLACK] ?: false,
+            startupAnimation = preferences[KEY_UI_STARTUP_ANIMATION] ?: true,
             skin = com.luc4n3x.levyra.domain.LevyraSkin.from(preferences[KEY_UI_SKIN].orEmpty()),
             prism = com.luc4n3x.levyra.domain.PrismSettings.from(
                 preferences[KEY_PRISM_APPEARANCE].orEmpty(),
@@ -1800,6 +1803,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
         val KEY_UI_DOCK_SCROLL_EFFECT = stringPreferencesKey("ui_dock_scroll_effect")
         val KEY_UI_DOUBLE_TAP_ACTION = stringPreferencesKey("ui_double_tap_action")
         val KEY_UI_PURE_BLACK = booleanPreferencesKey("ui_pure_black")
+        val KEY_UI_STARTUP_ANIMATION = booleanPreferencesKey("ui_startup_animation")
         val KEY_UI_SKIN = stringPreferencesKey("ui_skin")
         val KEY_PRISM_APPEARANCE = stringPreferencesKey("prism_appearance")
         val KEY_PRISM_PLAYER_LAYOUT = stringPreferencesKey("prism_player_layout")

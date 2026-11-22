@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -62,6 +63,10 @@ import com.luc4n3x.levyra.ui.components.LocalLevyraLiquidGlassEnabled
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.support.RemoteAnnouncementGate
 import com.luc4n3x.levyra.ui.support.LevyraSupportPromptGate
+import com.luc4n3x.levyra.ui.splash.FluidPulseLaunch
+import com.luc4n3x.levyra.ui.splash.FluidPulseSplash
+import com.luc4n3x.levyra.ui.splash.fluidPulseContentEntrance
+import com.luc4n3x.levyra.ui.splash.rememberFluidPulseSplashState
 import com.luc4n3x.levyra.ui.theme.LevyraTheme
 import com.luc4n3x.levyra.ui.theme.LevyraThemeController
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
@@ -80,12 +85,17 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import com.luc4n3x.levyra.diagnostics.CrashReporting
+import com.luc4n3x.levyra.diagnostics.CrashReportsActivity
 import timber.log.Timber
 
 
 private data class MainActivityUiSlice(
     val fontPreset: LevyraFontPreset,
     val animationsEnabled: Boolean,
+    val startupAnimation: Boolean,
     val liquidGlassEnabled: Boolean,
     val glassStyle: LevyraGlassStyle,
     val showSettings: Boolean,
@@ -98,6 +108,7 @@ private data class MainActivityUiSlice(
 private fun LevyraUiState.toMainActivityUiSlice(): MainActivityUiSlice = MainActivityUiSlice(
     fontPreset = interfaceSettings.fontPreset,
     animationsEnabled = animationsEnabled,
+    startupAnimation = interfaceSettings.startupAnimation,
     liquidGlassEnabled = interfaceSettings.liquidGlassEnabled && interfaceSettings.skin == com.luc4n3x.levyra.domain.LevyraSkin.Default,
     glassStyle = LevyraGlassStyle(
         blur = interfaceSettings.glassBlur,
@@ -134,6 +145,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (savedInstanceState == null) showPendingCrashReport()
         applyOrientationPolicy()
         configureFastImageLoader()
         requestNotificationPermission()
@@ -147,6 +159,7 @@ class MainActivity : ComponentActivity() {
             isAppearanceLightStatusBars = startPalette.isLight
             isAppearanceLightNavigationBars = startPalette.isLight
         }
+        val fluidPulseRequested = FluidPulseLaunch.claim(savedInstanceState, intent)
         LevyraLaunchActions.consumeFrom(intent)
         handleRecognitionLaunchRequest()
         if (Build.VERSION.SDK_INT >= 28) {
@@ -174,6 +187,17 @@ class MainActivity : ComponentActivity() {
                 animationsEnabled = activityUiState.animationsEnabled
             ) {
                 var supportPromptThisLaunch by rememberSaveable { mutableStateOf<Boolean?>(null) }
+                val fluidPulse = rememberFluidPulseSplashState(
+                    requested = fluidPulseRequested,
+                    startupAnimation = activityUiState.startupAnimation,
+                    animationsEnabled = activityUiState.animationsEnabled
+                )
+                LaunchedEffect(activityUiState.startupAnimation, activityUiState.animationsEnabled) {
+                    FluidPulseLaunch.syncSystemSplash(
+                        this@MainActivity,
+                        activityUiState.startupAnimation && activityUiState.animationsEnabled
+                    )
+                }
                 var previousLanguageCode by remember { mutableStateOf(activityUiState.languageCode) }
 
                 LaunchedEffect(activityUiState.languageCode) {
@@ -190,18 +214,20 @@ class MainActivity : ComponentActivity() {
                     LocalLevyraLiquidGlassEnabled provides activityUiState.liquidGlassEnabled,
                     LocalLevyraGlassStyle provides activityUiState.glassStyle
                 ) {
-                    LevyraApp(
-                        viewModel = viewModel,
-                        onExitApplication = {
-                            viewModel.exitApplication { terminateProcess ->
-                                exitApplicationRequested = terminateProcess
-                                finishAndRemoveTask()
-                            }
-                        },
-                        isInPictureInPicture = pipMode.value,
-                        onRetryPreUpdateBackup = ::retryPreUpdateBackup,
-                        onContinueUpdateWithoutBackup = ::continueUpdateWithoutBackup
-                    )
+                    Box(modifier = Modifier.fillMaxSize().fluidPulseContentEntrance(fluidPulse)) {
+                        if (fluidPulse.contentReady) LevyraApp(
+                            viewModel = viewModel,
+                            onExitApplication = {
+                                viewModel.exitApplication { terminateProcess ->
+                                    exitApplicationRequested = terminateProcess
+                                    finishAndRemoveTask()
+                                }
+                            },
+                            isInPictureInPicture = pipMode.value,
+                            onRetryPreUpdateBackup = ::retryPreUpdateBackup,
+                            onContinueUpdateWithoutBackup = ::continueUpdateWithoutBackup
+                        )
+                    }
                 }
                 RemoteAnnouncementGate(
                     enabled = !activityUiState.showOnboarding && !pipMode.value && !activityUiState.showSettings &&
@@ -262,7 +288,24 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+                FluidPulseSplash(
+                    state = fluidPulse,
+                    background = MaterialTheme.colorScheme.background,
+                    accent = MaterialTheme.colorScheme.primary
+                )
             }
+        }
+    }
+
+    private fun showPendingCrashReport() {
+        lifecycleScope.launch {
+            val pending = withContext(Dispatchers.IO) {
+                runCatching { CrashReporting.store(this@MainActivity).claimPending() }.getOrNull()
+            } ?: return@launch
+            startActivity(
+                Intent(this@MainActivity, CrashReportsActivity::class.java)
+                    .putExtra(CrashReportsActivity.EXTRA_REPORT_ID, pending.id)
+            )
         }
     }
 

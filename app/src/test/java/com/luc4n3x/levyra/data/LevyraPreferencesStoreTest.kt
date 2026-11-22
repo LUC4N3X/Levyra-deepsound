@@ -111,7 +111,7 @@ class LevyraPreferencesStoreTest {
         )
         val saved = LevyraInterfaceSettings(
             skin = com.luc4n3x.levyra.domain.LevyraSkin.Prism,
-            prism = prism, playerVisualMode = PlayerVisualMode.Flow, pureBlack = true
+            prism = prism, playerVisualMode = PlayerVisualMode.Flow, pureBlack = true, startupAnimation = false
         )
         preferences.setInterfaceSettings(saved)
         flush(store)
@@ -121,6 +121,7 @@ class LevyraPreferencesStoreTest {
         assertEquals(prism, reopen().interfaceSettings().prism)
         assertEquals(PlayerVisualMode.Flow, reopen().interfaceSettings().playerVisualMode)
         assertTrue(reopen().interfaceSettings().pureBlack)
+        assertFalse(reopen().interfaceSettings().startupAnimation)
     }
 
     @Test

@@ -11,6 +11,8 @@
 
     <style name="Theme.Levyra" parent="Theme.Levyra.Base" />
 
+    <style name="Theme.Levyra.SplashIcon" parent="Theme.Levyra" />
+
     <style name="Theme.Levyra.Transparent" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:windowIsTranslucent">true</item>

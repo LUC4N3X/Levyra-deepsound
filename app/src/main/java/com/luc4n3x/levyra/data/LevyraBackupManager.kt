@@ -2138,6 +2138,7 @@ internal fun backupInterfaceSettingsToJson(value: LevyraInterfaceSettings): JSON
     .put("enhanceVideoMetadata", value.enhanceVideoMetadata)
     .put("keepScreenOnWhilePlaying", value.keepScreenOnWhilePlaying)
     .put("pureBlack", value.pureBlack)
+    .put("startupAnimation", value.startupAnimation)
     .put("skin", value.skin.name)
     .put("prismAppearance", value.prism.appearance.name)
     .put("prismPlayerLayout", value.prism.playerLayout.name)
@@ -2211,6 +2212,7 @@ internal fun backupInterfaceSettingsFromJson(
         enhanceVideoMetadata = json.optBoolean("enhanceVideoMetadata", false),
         keepScreenOnWhilePlaying = json.optBoolean("keepScreenOnWhilePlaying", false),
         pureBlack = json.optBoolean("pureBlack", false),
+        startupAnimation = json.optBoolean("startupAnimation", true),
         skin = com.luc4n3x.levyra.domain.LevyraSkin.from(json.optString("skin")),
         prism = com.luc4n3x.levyra.domain.PrismSettings.from(
             json.optString("prismAppearance"),

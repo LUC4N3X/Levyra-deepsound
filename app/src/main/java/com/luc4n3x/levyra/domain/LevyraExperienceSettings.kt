@@ -260,6 +260,7 @@ data class LevyraInterfaceSettings(
     val enhanceVideoMetadata: Boolean = false,
     val keepScreenOnWhilePlaying: Boolean = false,
     val pureBlack: Boolean = false,
+    val startupAnimation: Boolean = true,
     val hapticFeedback: Boolean = true,
     val immersive: LevyraImmersiveSettings = LevyraImmersiveSettings(),
     val floatingNav: LevyraFloatingNavSettings = LevyraFloatingNavSettings(),

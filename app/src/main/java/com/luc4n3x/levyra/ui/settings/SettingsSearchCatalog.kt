@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.ui.settings
 import com.luc4n3x.levyra.feature.settings.SettingsSearchEntry
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.SettingsHubText
+import com.luc4n3x.levyra.ui.i18n.VisualCraftText
 import com.luc4n3x.levyra.ui.i18n.settingsHubCopy
 import com.luc4n3x.levyra.ui.i18n.advancedPrefetchCopy
 import com.luc4n3x.levyra.ui.i18n.advancedPrefetchMobileDataCopy
@@ -15,6 +16,7 @@ import com.luc4n3x.levyra.ui.i18n.parametricEqCopy
 import com.luc4n3x.levyra.ui.i18n.preferLocalAudioCopy
 import com.luc4n3x.levyra.ui.i18n.smartOfflineCopy
 import com.luc4n3x.levyra.ui.i18n.smartListeningCopy
+import com.luc4n3x.levyra.ui.i18n.visualCraftCopy
 import com.luc4n3x.levyra.ui.preloadNextTrack
 import com.luc4n3x.levyra.ui.preloadNextTrackSubtitle
 import java.util.Locale
@@ -86,6 +88,7 @@ private fun MutableList<SettingsSearchEntry>.appearanceEntries(strings: LevyraSt
     entry("design.theme_studio", strings.themeStudio, strings.themeStudioSubtitle, "${strings.theme} ${strings.themeAccent} theme color palette accent", categories.design)
     entry("design.app_font", strings.appFont, strings.appFontSubtitle, "font typography text", categories.design)
     entry("design.animations", strings.animations, strings.animationsSubtitle, "animation motion", categories.design)
+    entry("design.startup_animation", strings.visualCraftCopy[VisualCraftText.StartupAnimation], strings.visualCraftCopy[VisualCraftText.StartupAnimationSubtitle], "startup splash launch logo intro", categories.design)
     entry("design.visual_performance", strings.visualPerformance, strings.visualPerformanceFullSubtitle, "${strings.visualPerformanceAuto} ${strings.visualPerformanceSmooth} performance fps", categories.design)
     entry("design.liquid_glass", strings.liquidGlass, strings.liquidGlassSubtitle, "glass blur transparency", categories.design)
     entry("design.dock_morph", strings.dockMorph().title, strings.dockMorph().subtitle, "dock mini player navigation bar compact scroll merge", categories.design)

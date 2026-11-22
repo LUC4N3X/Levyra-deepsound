@@ -1,6 +1,15 @@
 package com.luc4n3x.levyra.ui
 
 import android.icu.text.CompactDecimalFormat
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
+import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import java.util.Locale
 
 private val AudienceNumber = Regex("""(\d[\d.,   ]*?)\s*([A-Za-zА-Яа-яЁё]{1,4})?\.?(?=\s|$)""")
@@ -28,4 +37,17 @@ internal fun artistAudienceLabel(raw: String, languageCode: String, listenersWor
     val count = artistAudienceCount(raw) ?: return raw.substringAfterLast("•").trim()
     val compact = CompactDecimalFormat.getInstance(Locale.forLanguageTag(languageCode), CompactDecimalFormat.CompactStyle.SHORT).format(count)
     return "$compact $listenersWord"
+}
+
+@Composable
+internal fun ArtistAudienceText(text: String, modifier: Modifier = Modifier) {
+    val style = MaterialTheme.typography.bodySmall
+    BasicText(
+        text = text,
+        style = style.copy(color = LevyraMuted, textAlign = TextAlign.Center),
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        autoSize = TextAutoSize.StepBased(minFontSize = 9.sp, maxFontSize = style.fontSize, stepSize = 0.5.sp),
+        modifier = modifier
+    )
 }
