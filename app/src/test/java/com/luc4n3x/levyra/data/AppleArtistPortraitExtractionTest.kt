@@ -28,7 +28,8 @@ class AppleArtistPortraitExtractionTest {
         "<p>og:image mention without tag</p><img src=\"$other\"><img src=\"$image\">",
         "<img src=\"https://is1-ssl.mzstatic.com/image/thumb/x.jpg\"> https://is https://isZ $image$other",
         "<meta property=\"og:image\" content=\"http://example.com/a.jpg\"><img src=\"$image\">",
-        "<div>" + "x".repeat(300_000) + "</div><meta property=\"og:image\" content=\"$image\">" + "y".repeat(300_000) + other
+        "<div>" + "x".repeat(300_000) + "</div><meta property=\"og:image\" content=\"$image\">" + "y".repeat(300_000) + other,
+        "<meta name=\"viewport\" content=\"x\"><script>" + "var a='og:image';".repeat(20_000) + "</script>$image"
     )
 
     @Test

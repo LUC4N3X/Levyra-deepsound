@@ -78,13 +78,24 @@ private fun appleOpenGraphImage(html: String): String? {
     while (true) {
         val marker = html.indexOf(APPLE_OPEN_GRAPH_MARKER, from, ignoreCase = true)
         if (marker < 0) return null
-        val tagStart = html.lastIndexOf("<meta", marker, ignoreCase = true)
+        val tagStart = metaTagStartBefore(html, marker)
         if (tagStart >= 0) {
             val window = html.substring(tagStart, minOf(html.length, marker + APPLE_OPEN_GRAPH_WINDOW))
             APPLE_OPEN_GRAPH_IMAGE_PATTERN.find(window)?.let { return it.groupValues.getOrNull(1) }
         }
         from = marker + 1
     }
+}
+
+private fun metaTagStartBefore(html: String, marker: Int): Int {
+    val floor = maxOf(0, marker - APPLE_OPEN_GRAPH_WINDOW)
+    var index = marker
+    while (index >= floor) {
+        if (html[index] == '>') return -1
+        if (html.regionMatches(index, "<meta", 0, 5, ignoreCase = true)) return index
+        index--
+    }
+    return -1
 }
 
 internal class AppleArtistArtworkRepository private constructor(context: Context) {
