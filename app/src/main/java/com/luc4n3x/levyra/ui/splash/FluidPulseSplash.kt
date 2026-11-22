@@ -198,70 +198,73 @@ private class FluidPulseStyle(
 )
 
 private fun DrawScope.drawFluidPulse(t: Float, style: FluidPulseStyle, geometry: FluidPulseGeometry, logo: ImageBitmap?) {
-    val center = style.center
+    drawBackdrop(t, style)
+    val awaken = Standard.transform(window(t, 0f, AwakenEnd))
+    val logoFade = 1f - Standard.transform(window(t, RevealStart, RevealStart + 220f))
+    drawCircle(style.halo, radius = geometry.side * 0.9f, center = style.center, alpha = (0.3f + 0.7f * awaken) * logoFade)
+    drawRings(t, style, geometry.side)
+    drawSeed(t, awaken, style, geometry)
+    if (logoFade > 0f) drawMark(t, logoFade, style, geometry, logo)
+}
+
+private fun DrawScope.drawBackdrop(t: Float, style: FluidPulseStyle) {
     val hole = Reveal.transform(window(t, RevealStart, TotalMs)) * (style.farRadius + style.feather)
     if (hole <= 1f) {
         drawRect(lerp(SystemSplashBackground, style.background, Standard.transform(window(t, 0f, AwakenEnd + 80f))))
-    } else {
-        val inner = ((hole - style.feather) / hole).coerceIn(0f, 0.999f)
-        drawRect(
-            Brush.radialGradient(
-                0f to Color.Transparent,
-                inner to Color.Transparent,
-                1f to style.background,
-                center = center,
-                radius = hole
-            )
-        )
+        return
     }
+    val inner = ((hole - style.feather) / hole).coerceIn(0f, 0.999f)
+    drawRect(
+        Brush.radialGradient(
+            0f to Color.Transparent,
+            inner to Color.Transparent,
+            1f to style.background,
+            center = style.center,
+            radius = hole
+        )
+    )
+}
 
-    val awaken = Standard.transform(window(t, 0f, AwakenEnd))
-    val logoFade = 1f - Standard.transform(window(t, RevealStart, RevealStart + 220f))
-    drawCircle(style.halo, radius = geometry.side * 0.9f, center = center, alpha = (0.3f + 0.7f * awaken) * logoFade)
-
+private fun DrawScope.drawRings(t: Float, style: FluidPulseStyle, side: Float) {
     for (i in 0 until 2) {
         val start = PulseStart + i * 110f
         val ring = Decelerate.transform(window(t, start, start + 460f))
         if (ring <= 0f || ring >= 1f) continue
-        val base = geometry.side * 0.34f
+        val base = side * 0.34f
+        val weight = if (i == 0) 1f else 0.55f
         drawCircle(
             style.ring,
             radius = base + ring * (style.farRadius - base),
-            center = center,
-            alpha = style.ringAlpha * (1f - ring).pow(1.6f) * (if (i == 0) 1f else 0.55f),
+            center = style.center,
+            alpha = style.ringAlpha * (1f - ring).pow(1.6f) * weight,
             style = Stroke(width = style.ringWidth + (style.ringWidthEnd - style.ringWidth) * ring)
         )
     }
+}
 
+private fun DrawScope.drawSeed(t: Float, awaken: Float, style: FluidPulseStyle, geometry: FluidPulseGeometry) {
     val seedFade = 1f - window(t, FlowStart, FlowStart + 180f)
-    if (awaken > 0f && seedFade > 0f) {
-        val sx = geometry.seedX()
-        val sy = geometry.seedY()
-        val reach = geometry.side * (0.02f + 0.08f * awaken)
-        drawLine(
-            style.fill,
-            start = Offset(sx - reach, sy),
-            end = Offset(sx + reach, sy),
-            strokeWidth = style.seedWidth * (0.5f + 0.5f * awaken),
-            cap = StrokeCap.Round,
-            alpha = (0.35f + 0.65f * awaken) * seedFade
-        )
-    }
+    if (awaken <= 0f || seedFade <= 0f) return
+    val sx = geometry.seedX()
+    val sy = geometry.seedY()
+    val reach = geometry.side * (0.02f + 0.08f * awaken)
+    drawLine(
+        style.fill,
+        start = Offset(sx - reach, sy),
+        end = Offset(sx + reach, sy),
+        strokeWidth = style.seedWidth * (0.5f + 0.5f * awaken),
+        cap = StrokeCap.Round,
+        alpha = (0.35f + 0.65f * awaken) * seedFade
+    )
+}
 
-    if (logoFade <= 0f) return
+private fun DrawScope.drawMark(t: Float, logoFade: Float, style: FluidPulseStyle, geometry: FluidPulseGeometry, logo: ImageBitmap?) {
     val pulse = window(t, PulseStart - 20f, PulseStart + 300f)
     val elastic = if (pulse <= 0f || pulse >= 1f) 0f else 0.085f * exp(-4.2f * pulse) * sin(2f * PI.toFloat() * 1.15f * pulse)
     val logoScale = 1f + elastic + 0.07f * Standard.transform(window(t, RevealStart, RevealStart + 240f))
-
-    scale(logoScale, pivot = center) {
+    scale(logoScale, pivot = style.center) {
+        drawRibbons(t, logoFade, style, geometry)
         val imageAlpha = Standard.transform(window(t, MorphStart + 230f, MorphEnd))
-        val shapeAlpha = 1f - window(t, MorphEnd, MorphEnd + 80f)
-        if (t >= FlowStart && shapeAlpha > 0f) {
-            geometry.update(t)
-            drawPath(geometry.shape, style.fill, alpha = shapeAlpha * logoFade)
-            val sheen = (1f - window(t, MorphStart, MorphStart + 260f)) * window(t, FlowStart, FlowStart + 120f)
-            if (sheen > 0f) drawPath(geometry.sheen, SheenColor, alpha = 0.55f * sheen, style = style.sheen)
-        }
         if (logo != null && imageAlpha > 0f) {
             drawImage(
                 logo,
@@ -277,6 +280,15 @@ private fun DrawScope.drawFluidPulse(t: Float, style: FluidPulseStyle, geometry:
             drawPath(geometry.shape, style.fill, alpha = logoFade)
         }
     }
+}
+
+private fun DrawScope.drawRibbons(t: Float, logoFade: Float, style: FluidPulseStyle, geometry: FluidPulseGeometry) {
+    val shapeAlpha = 1f - window(t, MorphEnd, MorphEnd + 80f)
+    if (t < FlowStart || shapeAlpha <= 0f) return
+    geometry.update(t)
+    drawPath(geometry.shape, style.fill, alpha = shapeAlpha * logoFade)
+    val sheen = (1f - window(t, MorphStart, MorphStart + 260f)) * window(t, FlowStart, FlowStart + 120f)
+    if (sheen > 0f) drawPath(geometry.sheen, SheenColor, alpha = 0.55f * sheen, style = style.sheen)
 }
 
 private class FluidPulseGeometry(val left: Float, val top: Float, val side: Float) {
