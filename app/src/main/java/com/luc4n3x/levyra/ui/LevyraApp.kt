@@ -2569,7 +2569,7 @@ fun LevyraApp(
                 { dockMiniMergeable && dockState.compact }
             }
             CompositionLocalProvider(LocalDockMiniMerged provides dockMiniMerged) {
-            AnimatedContent(
+            if (!state.showOnboarding) AnimatedContent(
                 targetState = backgroundTab,
                 modifier = Modifier
                     .fillMaxSize()
@@ -9008,7 +9008,7 @@ private fun HomeScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.sectionGap(compactHome))
         ) {
-            with(homeEntrance(this)) {
+            with(homeEntrance(this, homeListState)) {
             item(key = "home-top", contentType = "home-header") {
                 val homeHeaderContent: @Composable () -> Unit = {
                     HomeSectionInset {
@@ -10456,7 +10456,7 @@ private fun StudioHomeContent(
                     ),
                     verticalArrangement = Arrangement.spacedBy(homeSectionGap)
                 ) {
-                    homeEntrance(this).studioHomeFilteredSections(c, flowShortcutTracks, statusBarTop, homeTopPadding, spotifyFilter, shownOrder, youtubeMusicHome, homeRadio, homeDiscovery, LevyraIsSpotify)
+                    homeEntrance(this, homeListState).studioHomeFilteredSections(c, flowShortcutTracks, statusBarTop, homeTopPadding, spotifyFilter, shownOrder, youtubeMusicHome, homeRadio, homeDiscovery, LevyraIsSpotify)
                 }
                 if (LevyraIsSpotify) {
                     SpotifyHomeFilterBar(

@@ -40,21 +40,62 @@ private val APPLE_OPEN_GRAPH_IMAGE_PATTERN = Regex(
 )
 
 private const val APPLE_ARTIST_IMAGE_MARKER = "AMCArtistImages"
+private const val APPLE_ARTIST_IMAGE_PREFIX = "https://is"
+private const val APPLE_ARTIST_IMAGE_WINDOW = 260
+private const val APPLE_OPEN_GRAPH_MARKER = "og:image"
+private const val APPLE_OPEN_GRAPH_WINDOW = 4096
 
 internal fun extractAppleArtistPortrait(html: String): String {
-    val candidates = APPLE_ARTIST_IMAGE_PATTERN.findAll(html)
-        .map(MatchResult::value)
-        .filter(::isAllowedAppleArtistArtworkUrl)
-        .toList()
+    val candidates = appleArtistImageUrls(html).filter(::isAllowedAppleArtistArtworkUrl)
     if (candidates.isEmpty()) return ""
-    val openGraph = APPLE_OPEN_GRAPH_IMAGE_PATTERN.find(html)
-        ?.groupValues
-        ?.getOrNull(1)
+    val openGraph = appleOpenGraphImage(html)
         ?.takeIf(::isAllowedAppleArtistArtworkUrl)
     val portrait = openGraph
         ?: candidates.firstOrNull { it.contains(APPLE_ARTIST_IMAGE_MARKER, ignoreCase = true) }
         ?: return ""
     return APPLE_ARTIST_SIZE_PATTERN.replace(portrait, "1200x1200bb")
+}
+
+private fun appleArtistImageUrls(html: String): List<String> {
+    val urls = ArrayList<String>()
+    var from = 0
+    while (true) {
+        val start = html.indexOf(APPLE_ARTIST_IMAGE_PREFIX, from)
+        if (start < 0) return urls
+        val window = html.substring(start, minOf(html.length, start + APPLE_ARTIST_IMAGE_WINDOW))
+        val match = APPLE_ARTIST_IMAGE_PATTERN.matchAt(window, 0)
+        if (match == null) {
+            from = start + 1
+        } else {
+            urls += match.value
+            from = start + match.value.length
+        }
+    }
+}
+
+private fun appleOpenGraphImage(html: String): String? {
+    var from = 0
+    while (true) {
+        val marker = html.indexOf(APPLE_OPEN_GRAPH_MARKER, from, ignoreCase = true)
+        if (marker < 0) return null
+        val tagStart = metaTagStartBefore(html, marker)
+        if (tagStart >= 0) {
+            val window = html.substring(tagStart, minOf(html.length, marker + APPLE_OPEN_GRAPH_WINDOW))
+            APPLE_OPEN_GRAPH_IMAGE_PATTERN.find(window)?.let { return it.groupValues.getOrNull(1) }
+        }
+        from = marker + 1
+    }
+}
+
+private fun metaTagStartBefore(html: String, marker: Int): Int {
+    val floor = maxOf(0, marker - APPLE_OPEN_GRAPH_WINDOW)
+    var index = marker
+    while (index >= floor) {
+        if (html[index] == '>') return -1
+        if (html.regionMatches(index, "<meta", 0, 5, ignoreCase = true)) return index
+        index--
+    }
+    return -1
 }
 
 internal class AppleArtistArtworkRepository private constructor(context: Context) {

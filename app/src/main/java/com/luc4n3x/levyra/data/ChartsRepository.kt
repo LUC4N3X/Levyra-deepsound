@@ -6,6 +6,8 @@ import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ReleaseType
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.nexus.text.ReusableRegex
+import com.luc4n3x.levyra.nexus.text.replace
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -112,7 +114,7 @@ internal fun isChartArtworkPlaceholder(track: Track): Boolean {
 }
 
 private val CHART_RECORDING_VERSION_TERMS = listOf("live", "remix", "acoustic", "instrumental", "sped up", "slowed", "karaoke")
-    .map { term -> term to Regex("\\b$term\\b") }
+    .map { term -> term to ReusableRegex("\\b$term\\b") }
 
 internal fun chartArtworkIdentity(track: Track): String {
     val primaryArtist = track.artist.split(',', '&', ';').first().split(" x ", " X ", " feat", " ft.").first()
@@ -544,11 +546,11 @@ internal object ChartFeedParser {
     private data class ChartIdentity(val seed: Int, val id: String)
 
     private val appleArtworkSize = Regex("\\d+x\\d+bb")
-    private val parentheticals = Regex("""\([^)]*\)|\[[^]]*]""")
-    private val featuredMarkers = Regex("""feat\.?|featuring|ft\.?""")
-    private val videoMarkers = Regex("""official audio|official video|lyrics?|visuali[sz]er|music video""")
-    private val nonMusicCharacters = Regex("""[^a-z0-9àèéìòóùçñäöüß\s]""")
-    private val repeatedWhitespace = Regex("""\s+""")
+    private val parentheticals = ReusableRegex("""\([^)]*\)|\[[^]]*]""")
+    private val featuredMarkers = ReusableRegex("""feat\.?|featuring|ft\.?""")
+    private val videoMarkers = ReusableRegex("""official audio|official video|lyrics?|visuali[sz]er|music video""")
+    private val nonMusicCharacters = ReusableRegex("""[^a-z0-9àèéìòóùçñäöüß\s]""")
+    private val repeatedWhitespace = ReusableRegex("""\s+""")
 
     private val palettes = listOf(
         0xFF00E5FF.toInt() to 0xFF7B42FF.toInt(),

@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.MarqueeDefaults
 import androidx.compose.foundation.basicMarquee
 import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
 import androidx.compose.foundation.layout.padding
@@ -41,8 +42,8 @@ import com.luc4n3x.levyra.ui.theme.LevyraType
 import com.luc4n3x.levyra.ui.theme.LevyraTypeRhythm
 
 @Composable
-internal fun Modifier.levyraMarquee(enabled: Boolean = true): Modifier =
-    if (enabled && LocalAnimationsEnabled.current) basicMarquee() else this
+internal fun Modifier.levyraMarquee(enabled: Boolean = true, iterations: Int = MarqueeDefaults.Iterations): Modifier =
+    if (enabled && LocalAnimationsEnabled.current) basicMarquee(iterations = iterations) else this
 
 @Composable
 internal fun Modifier.levyraDockSurface(): Modifier {

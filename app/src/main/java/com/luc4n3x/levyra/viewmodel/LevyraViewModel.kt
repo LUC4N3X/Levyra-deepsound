@@ -2337,7 +2337,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
         refreshListeningPulse(force = true)
-        scheduleColdStartRefresh(initialTracks)
+        viewModelScope.launch {
+            _state.first { !it.showOnboarding }
+            scheduleColdStartRefresh(initialTracks)
+        }
         LevyraWidgetBridge.onToggle = { togglePlay() }
         LevyraWidgetBridge.onNext = { next() }
         LevyraWidgetBridge.onPrevious = { previous() }
