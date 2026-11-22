@@ -85,9 +85,9 @@ object LevyraMotion {
         const val CollapseDamping: Float = 0.86f
         const val CollapseStiffness: Float = 580f
         const val PlayerExpandDamping: Float = 1f
-        const val PlayerExpandStiffness: Float = 760f
+        const val PlayerExpandStiffness: Float = 300f
         const val PlayerCollapseDamping: Float = 1f
-        const val PlayerCollapseStiffness: Float = 760f
+        const val PlayerCollapseStiffness: Float = 300f
         const val SettleDamping: Float = 0.90f
         const val SettleStiffness: Float = 540f
         const val SnappyDamping: Float = 0.82f
