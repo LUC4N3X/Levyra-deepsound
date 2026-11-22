@@ -148,6 +148,9 @@ import com.luc4n3x.levyra.ui.i18n.shareMomentCopy
 import com.luc4n3x.levyra.ui.i18n.VisualCraftText
 import com.luc4n3x.levyra.ui.i18n.visualCraftCopy
 import com.luc4n3x.levyra.ui.share.StoryShareSheet
+import com.luc4n3x.levyra.domain.RepeatMode
+import androidx.compose.material.icons.rounded.Repeat
+import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.AutoAwesome
 import com.luc4n3x.levyra.ui.isLevyraCompactLandscape
 import com.luc4n3x.levyra.ui.levyraCompactLandscapeVideoPaneWeight
@@ -1375,7 +1378,6 @@ private fun LevyraNowPlayingContent(
                 isPlaying = state.isPlaying,
                 isResolving = state.isResolving,
                 shuffleOn = state.shuffleEnabled,
-                repeatMode = state.repeatMode,
                 labels = playerControlLabels,
                 animated = animated,
                 compact = compactPlayer,
@@ -1391,7 +1393,6 @@ private fun LevyraNowPlayingContent(
                 onPrevious = viewModel::previous,
                 onTogglePlay = viewModel::togglePlay,
                 onNext = viewModel::next,
-                onRepeat = viewModel::toggleRepeat,
                 headlineModifier = lyricsFlipSwipeModifier,
                 modifier = deckModifier
             )
@@ -1868,6 +1869,7 @@ private fun LevyraNowPlayingContent(
                     showActions = false
                     showTrackCredits = true
                 },
+                onRepeat = viewModel::toggleRepeat,
                 onRefreshMotionArtwork = {
                     showActions = false
                     viewModel.refreshCurrentMotionArtwork()
@@ -2297,6 +2299,16 @@ private fun playerDislikeAction(
     )
 }
 
+private fun playerRepeatAction(repeatMode: RepeatMode, strings: LevyraStrings, onRepeat: () -> Unit) = PlayerSheetAction(
+    key = "repeat",
+    icon = if (repeatMode == RepeatMode.One) androidx.compose.material.icons.Icons.Rounded.RepeatOne else androidx.compose.material.icons.Icons.Rounded.Repeat,
+    label = strings.repeat,
+    active = repeatMode != RepeatMode.Off,
+    toggle = true,
+    keepsSheetOpen = true,
+    onClick = onRepeat
+)
+
 private fun playerSheetActions(
     icons: PlayerActionIcons,
     track: Track,
@@ -2317,6 +2329,7 @@ private fun playerSheetActions(
     onAudioSettings: () -> Unit,
     onTechnicalAudioInfo: () -> Unit,
     onTrackCredits: () -> Unit,
+    onRepeat: () -> Unit,
     onRefreshMotionArtwork: () -> Unit,
     onAmbient: () -> Unit,
     onOpenAlbum: () -> Unit,
@@ -2496,6 +2509,7 @@ private fun playerSheetActions(
             label = strings.trackCreditsCopy().title,
             onClick = onTrackCredits
         ),
+        playerRepeatAction(state.repeatMode, strings, onRepeat),
         technicalAudioAction,
         refreshMotionArtworkAction,
         ambientAction,

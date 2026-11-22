@@ -2581,9 +2581,18 @@ fun LevyraApp(
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
-                        val depth = playerBackgroundScale(expansionProvider())
+                        val expansion = expansionProvider()
+                        val depth = playerBackgroundScale(expansion)
+                        val recede = com.luc4n3x.levyra.ui.player.playerMotionProgress(expansion)
                         scaleX = depth
                         scaleY = depth
+                        clip = recede > 0f
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(com.luc4n3x.levyra.ui.player.PlayerBackgroundCorner.toPx() * recede)
+                    }
+                    .drawWithContent {
+                        drawContent()
+                        val dim = com.luc4n3x.levyra.ui.player.playerBackgroundDim(expansionProvider())
+                        if (dim > 0f) drawRect(Color.Black.copy(alpha = dim))
                     },
                 transitionSpec = {
                     val forward = targetState.ordinal >= initialState.ordinal
@@ -2761,6 +2770,29 @@ fun LevyraApp(
                         animated = state.animationsEnabled
                     ), dockMorph)
                     androidx.compose.runtime.SideEffect { com.luc4n3x.levyra.ui.atelier.AtelierStage.miniAttached = miniPlayerVisible }
+                    val miniLanding = remember { Animatable(0f) }
+                    val landingAnimated by rememberUpdatedState(state.animationsEnabled)
+                    LaunchedEffect(miniLanding) {
+                        var opened = false
+                        androidx.compose.runtime.snapshotFlow { playerExpansion.value }.collect { expansion ->
+                            if (expansion > MiniLandingArmExpansion) {
+                                opened = true
+                            } else if (opened && expansion <= MiniLandingRestExpansion) {
+                                opened = false
+                                if (landingAnimated) {
+                                    miniLanding.snapTo(1f)
+                                    miniLanding.animateTo(0f, spring(dampingRatio = MiniLandingDamping, stiffness = MiniLandingStiffness))
+                                }
+                            }
+                        }
+                    }
+                    val miniLandingModifier = Modifier.graphicsLayer {
+                        val landing = miniLanding.value
+                        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 1f)
+                        scaleX = 1f + MiniLandingSquash * 0.6f * landing
+                        scaleY = 1f - MiniLandingSquash * landing
+                        translationY = MiniLandingDrop.toPx() * landing
+                    }
                     val miniPlayerSlot = rememberMovableSlot {
                         AnimatedVisibility(
                             visible = miniPlayerVisible,
@@ -2774,11 +2806,9 @@ fun LevyraApp(
                                     queueIndex = state.queueCurrentIndex
                                 )
                                 Box(
-                                    modifier = if (miniMaxWidth.isFinite()) {
-                                        Modifier.widthIn(max = miniMaxWidth.dp)
-                                    } else {
-                                        Modifier
-                                    }
+                                    modifier = miniLandingModifier.then(
+                                        if (miniMaxWidth.isFinite()) Modifier.widthIn(max = miniMaxWidth.dp) else Modifier
+                                    )
                                 ) {
                                     val miniModel = MiniPlayerModel(
                                         track = track,
@@ -26413,3 +26443,10 @@ private fun LazyListScope.studioHomeFilteredSections(c: StudioHomeContext, flowS
     }
     studioHomeSections(c, shownOrder, youtubeMusicHome, homeRadio, homeDiscovery)
 }
+
+private const val MiniLandingArmExpansion = 0.5f
+private const val MiniLandingRestExpansion = 0.001f
+private const val MiniLandingSquash = 0.06f
+private val MiniLandingDrop = 6.dp
+private const val MiniLandingDamping = 0.5f
+private const val MiniLandingStiffness = 420f

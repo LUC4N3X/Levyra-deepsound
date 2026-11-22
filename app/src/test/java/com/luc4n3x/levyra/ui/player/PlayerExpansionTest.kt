@@ -143,8 +143,10 @@ class PlayerExpansionTest {
     @Test
     fun `the background depth stays subtle and readable`() {
         assertEquals(1f, playerBackgroundScale(0f), 0.0001f)
-        assertEquals(0.972f, playerBackgroundScale(1f), 0.0001f)
-        assertTrue(playerBackgroundScale(0.5f) > 0.98f)
+        assertEquals(0.94f, playerBackgroundScale(1f), 0.0001f)
+        assertTrue(playerBackgroundScale(0.5f) > 0.96f)
+        assertEquals(0f, playerBackgroundDim(0f), 0.0001f)
+        assertEquals(0.42f, playerBackgroundDim(1f), 0.0001f)
     }
 
     @Test
