@@ -1008,7 +1008,7 @@ private fun ColorsGroup(copy: WidgetStudioCopy, config: StudioWidgetConfig, appl
                 onSelect = { apply(config.copy(customColor = it)) }
             )
         }
-        if (config.palette == StudioPalette.MaterialYou && Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+        if (config.palette == StudioPalette.MaterialYou && Build.VERSION.SDK_INT < Build.VERSION_CODES.S && com.luc4n3x.levyra.ui.theme.LevyraWallpaperSeed.current == null) {
             Text(copy[WidgetStudioText.MaterialYouUnavailable], style = MaterialTheme.typography.bodySmall, color = LevyraMuted)
         }
     }

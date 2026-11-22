@@ -55,7 +55,7 @@ object WidgetStudioColors {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             context.getColor(android.R.color.system_accent1_500)
         } else {
-            LEVYRA_SEED
+            com.luc4n3x.levyra.ui.theme.LevyraWallpaperSeed.seedNow(context) ?: LEVYRA_SEED
         }
 
     private fun levyra(): StudioColorScheme {

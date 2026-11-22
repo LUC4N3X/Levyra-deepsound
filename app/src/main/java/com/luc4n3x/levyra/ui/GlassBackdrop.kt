@@ -24,6 +24,22 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.IntOffset
+import android.graphics.Bitmap
+import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
@@ -76,6 +92,16 @@ class GlassBackdropState {
     var sourceOrigin: Offset by mutableStateOf(Offset.Zero)
 
     var sampling: Boolean by mutableStateOf(true)
+
+    internal var legacy: Boolean = false
+
+    internal var legacyFrost: ImageBitmap? by mutableStateOf(null)
+
+    internal var legacyScale: Float = 1f
+
+    internal val legacyPanels = AtomicInteger(0)
+
+    internal val legacyDirty = Channel<Unit>(Channel.CONFLATED)
 }
 
 /** Provides the active [GlassBackdropState] to descendants so panels can opt in without plumbing. */
@@ -83,6 +109,9 @@ val LocalGlassBackdrop = compositionLocalOf<GlassBackdropState?> { null }
 
 private val blurSupported: Boolean
     get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+
+private val legacyBlurSupported: Boolean
+    get() = Build.VERSION.SDK_INT < Build.VERSION_CODES.S
 
 internal enum class GlassBackdropQuality(val resolutionScale: Float) {
     Native(1f),
@@ -104,20 +133,177 @@ internal fun glassBackdropLayerDimension(nativePixels: Float, resolutionScale: F
 @Composable
 fun rememberGlassBackdropState(enabled: Boolean): GlassBackdropState {
     val state = remember { GlassBackdropState() }
-    if (enabled && blurSupported) {
+    if (enabled && (blurSupported || legacyBlurSupported)) {
         state.layer = rememberGraphicsLayer()
         state.enabled = true
+        state.legacy = !blurSupported
+        if (state.legacy) LegacyGlassCapture(state)
     } else {
         state.enabled = false
         state.layer = null
         state.sourceOrigin = Offset.Zero
+        state.legacyFrost = null
     }
     return state
 }
 
 @Composable
+private fun LegacyGlassCapture(state: GlassBackdropState) {
+    val scratch = rememberGraphicsLayer()
+    val density = LocalDensity.current
+    val layoutDirection = LocalLayoutDirection.current
+    val style = LocalLevyraGlassStyle.current
+    val blurPx = with(density) { (LegacyGlassBlurRadius * style.blurScale).toPx() }
+    val saturation = style.saturation
+    LaunchedEffect(state, blurPx, saturation) {
+        val buffers = LegacyGlassBuffers()
+        state.legacyDirty.trySend(Unit)
+        while (isActive) {
+            state.legacyDirty.receive()
+            delay(LegacyGlassSettleMs)
+            if (!state.sampling || state.legacyPanels.get() == 0) continue
+            captureLegacyGlass(state, scratch, density, layoutDirection, blurPx, saturation, buffers)
+            delay(LegacyGlassIntervalMs)
+        }
+    }
+    DisposableEffect(state) {
+        onDispose { state.legacyFrost = null }
+    }
+}
+
+private class LegacyGlassBuffers {
+    private val outputs = arrayOfNulls<Bitmap>(2)
+    private var next = 0
+    var pixels = IntArray(0)
+        private set
+    var scratch = IntArray(0)
+        private set
+
+    fun output(width: Int, height: Int): Bitmap {
+        val current = outputs[next]?.takeIf { it.width == width && it.height == height && !it.isRecycled }
+            ?: Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).also { outputs[next] = it }
+        next = 1 - next
+        return current
+    }
+
+    fun ensure(size: Int) {
+        if (pixels.size != size) {
+            pixels = IntArray(size)
+            scratch = IntArray(size)
+        }
+    }
+}
+
+private suspend fun captureLegacyGlass(
+    state: GlassBackdropState,
+    scratch: GraphicsLayer,
+    density: Density,
+    layoutDirection: LayoutDirection,
+    blurPx: Float,
+    saturation: Float,
+    buffers: LegacyGlassBuffers
+) {
+    val source = state.layer ?: return
+    val sourceSize = source.size
+    if (sourceSize.width <= 0 || sourceSize.height <= 0) return
+    val captureScale = minOf(LegacyGlassMaxScale, LegacyGlassMaxSide / maxOf(sourceSize.width, sourceSize.height).toFloat())
+    val width = ceil(sourceSize.width * captureScale).toInt().coerceAtLeast(1)
+    val height = ceil(sourceSize.height * captureScale).toInt().coerceAtLeast(1)
+    scratch.record(density, layoutDirection, IntSize(width, height)) {
+        scale(captureScale, pivot = Offset.Zero) { drawLayer(source) }
+    }
+    val snapshot = try {
+        scratch.toImageBitmap()
+    } catch (cancellation: CancellationException) {
+        throw cancellation
+    } catch (error: RuntimeException) {
+        timber.log.Timber.w(error, "Legacy glass capture failed")
+        return
+    }
+    val frost = withContext(Dispatchers.Default) {
+        val captured = snapshot.asAndroidBitmap()
+        val readable = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && captured.config == Bitmap.Config.HARDWARE) {
+            captured.copy(Bitmap.Config.ARGB_8888, false)
+        } else {
+            captured
+        }
+        val w = readable.width
+        val h = readable.height
+        buffers.ensure(w * h)
+        readable.getPixels(buffers.pixels, 0, w, 0, 0, w, h)
+        if (readable !== captured) readable.recycle()
+        LegacyGlassBlur.blur(buffers.pixels, buffers.scratch, w, h, (blurPx * captureScale).toInt().coerceIn(1, LegacyGlassMaxRadius), saturation)
+        buffers.output(w, h).also { it.setPixels(buffers.pixels, 0, w, 0, 0, w, h) }
+    }
+    state.legacyScale = captureScale
+    state.legacyFrost = frost.asImageBitmap()
+}
+
+internal object LegacyGlassBlur {
+    fun blur(pixels: IntArray, scratch: IntArray, width: Int, height: Int, radius: Int, saturation: Float) {
+        repeat(LegacyGlassPasses) {
+            boxPass(pixels, scratch, width, height, radius, horizontal = true)
+            boxPass(scratch, pixels, width, height, radius, horizontal = false)
+        }
+        if (saturation != 1f) saturate(pixels, saturation)
+    }
+
+    private fun boxPass(input: IntArray, output: IntArray, width: Int, height: Int, radius: Int, horizontal: Boolean) {
+        val lines = if (horizontal) height else width
+        val length = if (horizontal) width else height
+        val step = if (horizontal) 1 else width
+        val window = radius * 2 + 1
+        for (line in 0 until lines) {
+            val base = if (horizontal) line * width else line
+            var a = 0
+            var r = 0
+            var g = 0
+            var b = 0
+            for (i in -radius..radius) {
+                val color = input[base + i.coerceIn(0, length - 1) * step]
+                a += color ushr 24
+                r += color shr 16 and 0xFF
+                g += color shr 8 and 0xFF
+                b += color and 0xFF
+            }
+            for (i in 0 until length) {
+                output[base + i * step] = (a / window shl 24) or (r / window shl 16) or (g / window shl 8) or (b / window)
+                val outgoing = input[base + (i - radius).coerceIn(0, length - 1) * step]
+                val incoming = input[base + (i + radius + 1).coerceIn(0, length - 1) * step]
+                a += (incoming ushr 24) - (outgoing ushr 24)
+                r += (incoming shr 16 and 0xFF) - (outgoing shr 16 and 0xFF)
+                g += (incoming shr 8 and 0xFF) - (outgoing shr 8 and 0xFF)
+                b += (incoming and 0xFF) - (outgoing and 0xFF)
+            }
+        }
+    }
+
+    private fun saturate(pixels: IntArray, saturation: Float) {
+        for (index in pixels.indices) {
+            val color = pixels[index]
+            val r = color shr 16 and 0xFF
+            val g = color shr 8 and 0xFF
+            val b = color and 0xFF
+            val gray = 0.2126f * r + 0.7152f * g + 0.0722f * b
+            pixels[index] = (color and -0x1000000) or
+                ((gray + (r - gray) * saturation).toInt().coerceIn(0, 255) shl 16) or
+                ((gray + (g - gray) * saturation).toInt().coerceIn(0, 255) shl 8) or
+                (gray + (b - gray) * saturation).toInt().coerceIn(0, 255)
+        }
+    }
+}
+
+private val LegacyGlassBlurRadius = 26.dp
+private const val LegacyGlassMaxSide = 360f
+private const val LegacyGlassMaxScale = 0.34f
+private const val LegacyGlassMaxRadius = 24
+private const val LegacyGlassPasses = 3
+private const val LegacyGlassSettleMs = 110L
+private const val LegacyGlassIntervalMs = 240L
+
+@Composable
 fun rememberGlassBlurAllowed(): Boolean {
-    if (!blurSupported || !LocalLevyraVisualCapabilities.current.heavyBlur) return false
+    if (!LocalLevyraVisualCapabilities.current.heavyBlur) return false
     val context = LocalContext.current.applicationContext
     val lowRam = remember(context) {
         context.getSystemService(ActivityManager::class.java)?.isLowRamDevice == true
@@ -142,6 +328,7 @@ fun Modifier.glassBackdropSource(state: GlassBackdropState): Modifier {
                     this@drawWithContent.drawContent()
                 }
                 drawLayer(layer)
+                if (state.legacy) state.legacyDirty.trySend(Unit)
             } else {
                 drawContent()
             }
@@ -160,15 +347,14 @@ fun Modifier.glassFrost(
     onDrawFrosted: DrawScope.() -> Unit,
     onDrawFallback: DrawScope.() -> Unit
 ): Modifier = composed {
-    if (
-        Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
-        !state.enabled ||
-        state.layer == null
-    ) {
+    if (!state.enabled || state.layer == null) {
         return@composed this.drawWithContent {
             onDrawFallback()
             drawContent()
         }
+    }
+    if (state.legacy || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+        return@composed legacyGlassFrost(state, groundColor, onDrawFrosted, onDrawFallback)
     }
 
     val style = LocalLevyraGlassStyle.current
@@ -216,6 +402,57 @@ fun Modifier.glassFrost(
             }
             drawContent()
         }
+}
+
+@Composable
+private fun Modifier.legacyGlassFrost(
+    state: GlassBackdropState,
+    groundColor: Color,
+    onDrawFrosted: DrawScope.() -> Unit,
+    onDrawFallback: DrawScope.() -> Unit
+): Modifier {
+    var panelOrigin by remember { mutableStateOf(Offset.Zero) }
+    DisposableEffect(state) {
+        state.legacyPanels.incrementAndGet()
+        state.legacyDirty.trySend(Unit)
+        onDispose { state.legacyPanels.decrementAndGet() }
+    }
+    return this
+        .onGloballyPositioned { panelOrigin = it.positionInRoot() }
+        .drawWithContent {
+            val frost = state.legacyFrost
+            if (frost == null) {
+                onDrawFallback()
+            } else {
+                if (groundColor.alpha > 0f) drawRect(groundColor)
+                drawLegacyFrost(frost, state.legacyScale, panelOrigin - state.sourceOrigin)
+                drawRect(LegacyGlassDepth)
+                onDrawFrosted()
+            }
+            drawContent()
+        }
+}
+
+private val LegacyGlassDepth = Brush.verticalGradient(
+    0f to Color.White.copy(alpha = 0.07f),
+    0.22f to Color.Transparent,
+    1f to Color.Black.copy(alpha = 0.05f)
+)
+
+private fun DrawScope.drawLegacyFrost(frost: ImageBitmap, scale: Float, offset: Offset) {
+    val left = (offset.x * scale).coerceIn(0f, frost.width.toFloat())
+    val top = (offset.y * scale).coerceIn(0f, frost.height.toFloat())
+    val right = ((offset.x + size.width) * scale).coerceIn(0f, frost.width.toFloat())
+    val bottom = ((offset.y + size.height) * scale).coerceIn(0f, frost.height.toFloat())
+    if (right - left < 1f || bottom - top < 1f) return
+    drawImage(
+        image = frost,
+        srcOffset = IntOffset(left.toInt(), top.toInt()),
+        srcSize = IntSize((right - left).toInt().coerceAtLeast(1), (bottom - top).toInt().coerceAtLeast(1)),
+        dstOffset = IntOffset((left / scale - offset.x).toInt(), (top / scale - offset.y).toInt()),
+        dstSize = IntSize(ceil((right - left) / scale).toInt(), ceil((bottom - top) / scale).toInt()),
+        filterQuality = FilterQuality.Low
+    )
 }
 
 private class GlassFrostFrame {

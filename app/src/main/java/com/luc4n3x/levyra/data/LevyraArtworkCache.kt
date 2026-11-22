@@ -114,6 +114,7 @@ object LevyraArtworkCache {
                 )
                 ImageLoader.Builder(appContext)
                     .components {
+                        add(ArtworkCropInterceptor())
                         add(ArtworkResolutionInterceptor())
                         add(LocalArtworkFetcher.Factory(appContext))
                     }

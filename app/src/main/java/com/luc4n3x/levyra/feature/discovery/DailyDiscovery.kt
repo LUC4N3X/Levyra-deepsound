@@ -21,5 +21,13 @@ internal fun dailyDiscoveryCards(
     return (0 until rounds).flatMap { round -> bySeed.mapNotNull { it.getOrNull(round) } }.take(limit)
 }
 
+internal fun resolveDailyDiscovery(
+    cards: List<DiscoveryCard>,
+    homeVisibleKeys: Set<String>,
+    familiarArtistKeys: Set<String>
+): List<DiscoveryCard> =
+    dailyDiscoveryCards(cards, homeVisibleKeys, familiarArtistKeys)
+        .ifEmpty { dailyDiscoveryCards(cards, emptySet(), familiarArtistKeys) }
+
 private fun DiscoveryCard.isDailyDiscovery(): Boolean =
     reason.kind == DiscoveryReasonKind.SimilarToTrack && reason.seedTitle.isNotBlank() && reason.seedArtist.isNotBlank()

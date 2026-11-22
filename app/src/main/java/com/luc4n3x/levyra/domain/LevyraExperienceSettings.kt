@@ -34,6 +34,16 @@ enum class LevyraVisualPerformance {
     }
 }
 
+enum class ArtworkCropMode(val storageId: String) {
+    Center("center"),
+    Smart("smart"),
+    SmartNoZoom("smart_no_zoom");
+
+    companion object {
+        fun from(value: String?): ArtworkCropMode = entries.firstOrNull { it.storageId == value } ?: Center
+    }
+}
+
 enum class LibrarySort {
     Recent,
     Title,
@@ -240,6 +250,7 @@ data class LevyraInterfaceSettings(
     val canvasQuality: LevyraCanvasQuality = LevyraCanvasQuality.Auto,
     val canvasSource: LevyraCanvasSource = LevyraCanvasSource.Auto,
     val visualPerformance: LevyraVisualPerformance = LevyraVisualPerformance.Full,
+    val artworkCrop: ArtworkCropMode = ArtworkCropMode.Center,
     val liquidGlassEnabled: Boolean = true,
     val glassBlur: Int = DEFAULT_GLASS_LEVEL,
     val glassTransparency: Int = DEFAULT_GLASS_LEVEL,

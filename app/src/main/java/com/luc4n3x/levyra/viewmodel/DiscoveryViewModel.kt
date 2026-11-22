@@ -10,7 +10,7 @@ import com.luc4n3x.levyra.feature.discovery.DiscoveryLens
 import com.luc4n3x.levyra.feature.discovery.DiscoveryRequest
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.discovery.DiscoveryCard
-import com.luc4n3x.levyra.feature.discovery.dailyDiscoveryCards
+import com.luc4n3x.levyra.feature.discovery.resolveDailyDiscovery
 import com.luc4n3x.levyra.feature.discovery.discoveryTrackKey
 import com.luc4n3x.levyra.feature.discovery.DiscoveryDecision
 import com.luc4n3x.levyra.feature.discovery.DiscoveryDeck
@@ -158,9 +158,10 @@ class DiscoveryViewModel internal constructor(private val root: LevyraViewModel)
                 }
                 engine.daily(profile, interactionStore.load(), today, familiarArtistKeys())
             } ?: return@launch
-            if (cards.isEmpty()) return@launch
+            val daily = resolveDailyDiscovery(cards, homeVisibleTrackKeys(), familiarArtistKeys())
+            if (daily.isEmpty()) return@launch
             dailyDay = today
-            feed.update { it.copy(daily = dailyDiscoveryCards(cards, homeVisibleTrackKeys(), familiarArtistKeys())) }
+            feed.update { it.copy(daily = daily) }
         }
     }
 

@@ -145,6 +145,10 @@ import com.luc4n3x.levyra.player.SectionLoopState
 import com.luc4n3x.levyra.ui.i18n.technicalAudioInfoCopy
 import com.luc4n3x.levyra.ui.i18n.trackCreditsCopy
 import com.luc4n3x.levyra.ui.i18n.shareMomentCopy
+import com.luc4n3x.levyra.ui.i18n.VisualCraftText
+import com.luc4n3x.levyra.ui.i18n.visualCraftCopy
+import com.luc4n3x.levyra.ui.share.StoryShareSheet
+import androidx.compose.material.icons.rounded.AutoAwesome
 import com.luc4n3x.levyra.ui.isLevyraCompactLandscape
 import com.luc4n3x.levyra.ui.levyraCompactLandscapeVideoPaneWeight
 import com.luc4n3x.levyra.ui.levyraContentMaxWidthDp
@@ -339,6 +343,7 @@ private fun LevyraNowPlayingContent(
         }
     }
     var showTechnicalAudioInfo by remember(track?.id) { mutableStateOf(false) }
+    var storySharePositionMs by androidx.compose.runtime.saveable.rememberSaveable(track?.id) { mutableStateOf<Long?>(null) }
     var showTrackCredits by remember(track?.id) { mutableStateOf(false) }
     var creditWriters by remember { mutableStateOf<Pair<String, List<String>>?>(null) }
     LaunchedEffect(track?.id, track?.composer, liveRadio) {
@@ -1841,6 +1846,10 @@ private fun LevyraNowPlayingContent(
                     hapticFeedback.perform(LevyraHapticAction.Confirm)
                 },
                 onShare = { shareTrack(playerContext, track, strings) },
+                onShareStory = {
+                    showActions = false
+                    storySharePositionMs = state.positionMs
+                },
                 onShareMoment = { seconds -> shareTrackMoment(playerContext, track, seconds, strings) },
                 onSleepTimer = viewModel::openSleepTimer,
                 onSpeed = viewModel::cycleSpeed,
@@ -1919,6 +1928,16 @@ private fun LevyraNowPlayingContent(
                         ?: viewModel.openArtist(track, artistIndex)
                 },
                 onDismiss = { showArtistPicker = false }
+            )
+        }
+
+        val storyPosition = storySharePositionMs
+        if (storyPosition != null && track != null) {
+            StoryShareSheet(
+                track = track,
+                positionMs = storyPosition,
+                durationMs = state.durationMs,
+                onDismiss = { storySharePositionMs = null }
             )
         }
 
@@ -2288,6 +2307,7 @@ private fun playerSheetActions(
     onAddToPlaylist: () -> Unit,
     onStartRadio: () -> Unit,
     onShare: () -> Unit,
+    onShareStory: () -> Unit,
     onShareMoment: (Long) -> Unit,
     onSleepTimer: () -> Unit,
     onSpeed: () -> Unit,
@@ -2397,6 +2417,13 @@ private fun playerSheetActions(
             icon = icons.share,
             label = strings.share,
             onClick = onShare
+        ),
+        PlayerSheetAction(
+            key = "share-story",
+            icon = androidx.compose.material.icons.Icons.Rounded.AutoAwesome,
+            label = strings.visualCraftCopy[VisualCraftText.ShareStory],
+            enabled = !track.isLiveRadio(),
+            onClick = onShareStory
         ),
         playerDislikeAction(icons, track, state, strings, onToggleDislike),
         shareMomentSeconds(state.positionMs, state.durationMs)
