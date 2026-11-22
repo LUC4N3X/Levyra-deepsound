@@ -4001,9 +4001,17 @@ private fun hasYoutubeMusicMetricWord(value: String): Boolean =
 
 private val YOUTUBE_MUSIC_METRIC_WORDS = listOf(
     "view", "visualizz", "visualizaci", "riproduzion", "ascolt", "play", "stream",
-    "reproduccion", "reproducción", "escucha", "vue", "écoute",
-    "aufruf", "wiedergabe", "reprodução", "visualização",
-    "просмотр", "прослушив", "再生", "조회수", "스트리밍", "צפיות", "השמעות"
+    "reproduccion", "reproducción", "escucha", "vue", "écoute", "lecture",
+    "aufruf", "wiedergabe", "reprodução", "visualização", "reproduç", "visualizaç",
+    "reproducci", "visualitzaci", "weergave", "afgespeeld", "afspeling", "wyświetle", "odtworze",
+    "visning", "spelning", "afspilning", "avspilling", "toisto", "katselukert", "přehrání", "zhlédnutí",
+    "prehratí", "zhliadnutí", "lejátszás", "megtekintés", "redări", "vizionări", "vaatamis", "esitus",
+    "pregled", "reprodukcij", "shikim", "luajtje", "görüntüleme", "dinlenme", "oynatma",
+    "diputar", "ditonton", "tayangan", "tontonan", "dimainkan", "lượt xem", "lượt phát", "lượt nghe", "panonood",
+    "просмотр", "прослушив", "воспроизвед", "перегляд", "відтворен", "показван", "възпроизвежд", "гледан",
+    "преглед", "репродукциј", "қаралым", "тыңдал", "αναπαραγωγ", "προβολ",
+    "مشاهدة", "تشغيل", "بازدید", "پخش", "बार देखा", "व्यू", "प्ले", "বার দেখা", "ভিউ", "বার চালানো",
+    "การดู", "การเล่น", "再生", "視聴", "播放", "观看", "觀看", "조회수", "재생", "스트리밍", "צפיות", "השמעות"
 )
 
 private val ALBUM_TRACK_METRIC_PATTERN = Regex(

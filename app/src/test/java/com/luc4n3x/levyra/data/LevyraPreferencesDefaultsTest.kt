@@ -40,12 +40,15 @@ class LevyraPreferencesDefaultsTest {
         val original = LevyraInterfaceSettings(
             skin = com.luc4n3x.levyra.domain.LevyraSkin.Nocturne78,
             pureBlack = true,
+            startupAnimation = false,
             playerColorMode = PlayerColorMode.Custom,
             playerColorAccent = 0xFF1256AB.toInt()
         )
         assertEquals(original, backupInterfaceSettingsFromJson(backupInterfaceSettingsToJson(original)))
         assertEquals(com.luc4n3x.levyra.domain.LevyraSkin.Default, backupInterfaceSettingsFromJson(JSONObject()).skin)
         assertEquals(com.luc4n3x.levyra.domain.LevyraSkin.Default, LevyraInterfaceSettings().skin)
+        assertTrue(backupInterfaceSettingsFromJson(JSONObject()).startupAnimation)
+        assertTrue(LevyraInterfaceSettings().startupAnimation)
     }
 
     @Test

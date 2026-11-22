@@ -596,6 +596,20 @@ class YoutubeMusicWatchParserTest {
     }
 
     @Test
+    fun localizedPlayCountsAreNeverTakenAsArtistOrAlbum() {
+        listOf(
+            "55 M de lectures", "55 millions de lectures", "1,2 k lectures", "3,4 mln wyświetleń",
+            "12 mln odtworzeń", "5,1 mln weergaven", "2 M keer afgespeeld", "7,3 mn görüntüleme",
+            "4,5 jt kali diputar", "1,1 Tr lượt xem", "12 mil. reproduções", "3 млн переглядів",
+            "8,2 млн прослушиваний", "1 mil. visualitzacions", "2,5 milj. toistoa", "9 万次播放"
+        ).forEach { label -> assertTrue(label, isYoutubeMusicAlbumTrackMetadata(label)) }
+        listOf("Maroon 5", "Blink-182", "Sum 41", "Matchbox Twenty").forEach { label ->
+            assertFalse(label, isYoutubeMusicAlbumTrackMetadata(label))
+        }
+        assertEquals("Indila", YoutubeMusicRepository().selectAlbumTrackArtist(listOf("55 M de lectures", "Indila"), ""))
+    }
+
+    @Test
     fun albumTrackArtistRejectsLocalizedEntityTypeLabels() {
         val repository = YoutubeMusicRepository()
         val labels = listOf(
