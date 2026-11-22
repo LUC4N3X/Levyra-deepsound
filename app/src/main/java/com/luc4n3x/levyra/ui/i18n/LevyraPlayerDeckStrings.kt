@@ -53,7 +53,7 @@ internal data class PlayerDeckShortLabels(
     val expressive: String,
     val pulse: String,
     val halo: String = "Liner Notes",
-    val folio: String = "Folio",
+    val folio: String = "Material",
     val flow: String = "Levyra Flow",
     val ember: String = "Ember"
 )
@@ -155,11 +155,11 @@ private val playerDeckHaloHints: Map<String, String> = mapOf(
 )
 
 private val playerDeckFolioHints: Map<String, String> = mapOf(
-    "en" to "Two-tone editorial layout.",
-    "it" to "Impaginazione editoriale bicolore.",
-    "es" to "Diseño editorial a dos tonos.",
-    "fr" to "Mise en page éditoriale bicolore.",
-    "de" to "Zweifarbiges Editorial-Layout.",
+    "en" to "Shaped artwork and bold tonal controls.",
+    "it" to "Copertina sagomata e comandi tonali decisi.",
+    "es" to "Portada con forma y controles tonales marcados.",
+    "fr" to "Pochette façonnée et commandes tonales affirmées.",
+    "de" to "Geformtes Cover und kräftige Tonflächen-Steuerung.",
     "pt" to "Paginação editorial em dois tons.",
     "nl" to "Tweekleurige redactionele opmaak.",
     "pl" to "Dwukolorowy układ redakcyjny.",
@@ -365,7 +365,7 @@ internal fun playerDeckLocalizationEntries(code: String): Map<String, String> =
     localizedBundleOrEnglish(playerDeckBundles, code) + mapOf(
         "playerDeckHalo" to "Liner Notes",
         "playerDeckHaloHint" to localizedValueOrEnglish(playerDeckHaloHints, code),
-        "playerDeckFolio" to "Folio",
+        "playerDeckFolio" to "Material",
         "playerDeckFolioHint" to localizedValueOrEnglish(playerDeckFolioHints, code),
         "playerDeckFlow" to "Levyra Flow",
         "playerDeckCardHint" to localizedValueOrEnglish(playerDeckSleeveHints, code),
