@@ -1840,6 +1840,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     val state: StateFlow<LevyraUiState> = _state.asStateFlow()
+    private val _customLyricsDraft = MutableStateFlow<CustomLyricsDraft?>(null)
+    val customLyricsDraft: StateFlow<CustomLyricsDraft?> = _customLyricsDraft.asStateFlow()
     private val _vaultSyncFile = MutableStateFlow(VaultSyncFileState())
     val vaultSyncFile: StateFlow<VaultSyncFileState> = _vaultSyncFile.asStateFlow()
     private val _miniPlayerStudio = MutableStateFlow(MiniPlayerStudioState(settings = startupSettings.miniPlayerStudioSettings))
@@ -2876,7 +2878,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                                     }.getOrNull()
                                 }
                             }.orEmpty()
-                            val monthly = listeners.orEmpty()
+                            val monthly = listeners.orEmpty().ifBlank {
+                                withTimeoutOrNull(HOME_ARTIST_ALTERNATIVE_AUDIENCE_TIMEOUT_MS) {
+                                    runCatchingPreservingCancellation { artistRepository.alternativeMonthlyListeners(artist.name) }.getOrNull()
+                                }.orEmpty()
+                            }
                             artist.copy(
                                 thumbnailUrl = applePortrait.ifBlank { artist.thumbnailUrl },
                                 subscribers = monthly.ifBlank { artist.subscribers },
@@ -14071,6 +14077,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun closeLyrics() {
         lyricsVersionsJob?.cancel()
         lyricsVersionsGeneration++
+        _customLyricsDraft.value = null
         _state.update { it.copy(showLyrics = false) }
     }
 
@@ -14175,6 +14182,70 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             _state.update { it.copy(lyricsManualSelection = false, lyricsVersions = emptyList()) }
             fetchLyrics(track)
         }
+    }
+
+    fun openCustomLyricsEditor() {
+        val track = _state.value.currentTrack ?: return
+        val trackIdentity = playbackIdentity(track)
+        viewModelScope.launch {
+            val source = lyricsRepository.customLyricsSource(
+                title = track.title,
+                artist = track.artist,
+                durationSec = track.durationMs / 1_000L,
+                videoId = youtubePlayableTrack(track)?.id.orEmpty()
+            )
+            if (_state.value.currentTrack?.let(::playbackIdentity) != trackIdentity) return@launch
+            _customLyricsDraft.value = CustomLyricsDraft(track = track, source = source.orEmpty(), existing = source != null)
+        }
+    }
+
+    fun dismissCustomLyricsEditor() {
+        _customLyricsDraft.value = null
+    }
+
+    fun saveCustomLyrics(source: String) {
+        val draft = _customLyricsDraft.value ?: return
+        if (draft.saving) return
+        _customLyricsDraft.value = draft.copy(source = source, saving = true, failed = false)
+        viewModelScope.launch {
+            val track = draft.track
+            val saved = lyricsRepository.saveCustomLyrics(
+                title = track.title,
+                artist = track.artist,
+                durationSec = track.durationMs / 1_000L,
+                videoId = youtubePlayableTrack(track)?.id.orEmpty(),
+                source = source
+            )
+            finishCustomLyricsEdit(draft, saved)
+        }
+    }
+
+    fun deleteCustomLyrics() {
+        val draft = _customLyricsDraft.value ?: return
+        if (draft.saving) return
+        _customLyricsDraft.value = draft.copy(saving = true, failed = false)
+        viewModelScope.launch {
+            val track = draft.track
+            val deleted = lyricsRepository.deleteCustomLyrics(
+                title = track.title,
+                artist = track.artist,
+                durationSec = track.durationMs / 1_000L,
+                videoId = youtubePlayableTrack(track)?.id.orEmpty()
+            )
+            finishCustomLyricsEdit(draft, deleted)
+        }
+    }
+
+    private fun finishCustomLyricsEdit(draft: CustomLyricsDraft, succeeded: Boolean) {
+        if (!succeeded) {
+            _customLyricsDraft.update { current -> current?.copy(saving = false, failed = true) }
+            return
+        }
+        _customLyricsDraft.value = null
+        val current = _state.value.currentTrack ?: return
+        if (playbackIdentity(current) != playbackIdentity(draft.track)) return
+        lyricsTrackId = ""
+        fetchLyrics(current)
     }
 
     private fun fetchLyrics(track: Track) {
@@ -16419,6 +16490,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         private const val HOME_ARTIST_CANDIDATE_LIMIT = 72
         private const val HOME_ARTIST_RESOLUTION_CONCURRENCY = 4
         private const val HOME_ARTIST_FAST_TIMEOUT_MS = 5_200L
+        private const val HOME_ARTIST_ALTERNATIVE_AUDIENCE_TIMEOUT_MS = 9_000L
         private const val HOME_ARTIST_TOTAL_TIMEOUT_MS = 18_000L
         private const val VIDEO_IDENTITY_LOOKUP_TIMEOUT_MS = 9_000L
         private const val CATALOG_ART_TRACK_LOOKUP_TIMEOUT_MS = 2_500L

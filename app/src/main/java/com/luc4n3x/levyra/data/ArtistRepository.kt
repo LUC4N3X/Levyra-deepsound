@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.data
 
+import kotlinx.coroutines.withTimeoutOrNull
+import com.luc4n3x.levyra.data.spotify.SpotifyArtistAudience
 import android.content.Context
 import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.apple.AppleArtistPage
@@ -516,6 +518,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
     private val fallbackProfiles = ArtistFallbackProfiles(MAX_FALLBACK_PROFILES)
     private val artistHitMemory = ConcurrentHashMap<String, ArtistHit>()
     private val artistLore = ArtistLoreRepository(context)
+    private val spotifyAudience = SpotifyArtistAudience()
 
     private fun profileBrowseKey(browseId: String): String = "browse:${browseId.trim().lowercase(Locale.ROOT)}"
 
@@ -526,6 +529,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         const val MAX_RELEASES_PER_SHELF = 100
         const val MAX_RELEASE_POINTERS = 2
         const val MAX_FEATURED_PLAYLISTS = 12
+        const val VERIFIED_ARTIST_AUDIENCE_TIMEOUT_MS = 2_500L
         const val MAX_ARTIST_VERIFICATIONS = 6
         const val MAX_OTHER_SCRIPT_ARTIST_CANDIDATES = 2
         const val MAX_FALLBACK_PROFILES = 24
@@ -666,6 +670,9 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         val root = runCatching { postBrowseFast(cleanBrowseId) }.getOrNull() ?: return@withContext ""
         extractOfficialMonthlyListeners(root.optJSONObject("header"))
     }
+
+    suspend fun alternativeMonthlyListeners(artistName: String): String =
+        spotifyAudience.monthlyListeners(artistName)?.toString().orEmpty()
 
     suspend fun allSongs(songsBrowseId: String, artistName: String): List<Track> = withContext(Dispatchers.IO) {
         val browseId = songsBrowseId.trim().ifBlank { return@withContext emptyList() }
@@ -868,7 +875,9 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         )
         if (thumbnail.isBlank()) return null
         val accent = palette(stableSeed(browseId + resolvedName))
-        val listeners = extractOfficialMonthlyListeners(header)
+        val listeners = extractOfficialMonthlyListeners(header).ifBlank {
+            withTimeoutOrNull(VERIFIED_ARTIST_AUDIENCE_TIMEOUT_MS) { alternativeMonthlyListeners(resolvedName) }.orEmpty()
+        }
         return ArtistHit(
             name = resolvedName,
             subscribers = listeners.ifBlank { extractSubscribers(header).ifBlank { candidate.subscribers } },

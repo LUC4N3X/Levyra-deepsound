@@ -35,6 +35,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.toShape
 import androidx.compose.material.icons.rounded.FormatQuote
+import androidx.compose.material.icons.rounded.EditNote
 import androidx.graphics.shapes.RoundedPolygon
 import com.luc4n3x.levyra.ui.components.levyraCookieLandingShape
 import com.luc4n3x.levyra.ui.components.levyraGroupedGridShape
@@ -145,7 +146,10 @@ import com.luc4n3x.levyra.ui.media.animatedImmersiveMediaColors
 import com.luc4n3x.levyra.ui.media.immersiveHeroHeight
 import com.luc4n3x.levyra.ui.theme.LevyraOnAccent
 import com.luc4n3x.levyra.ui.lyrics.LYRICS_SHARE_MAX_LINES
-import com.luc4n3x.levyra.ui.lyrics.lyricsProviderDisplayName
+import com.luc4n3x.levyra.ui.lyrics.lyricsSourceDisplayName
+import com.luc4n3x.levyra.ui.lyrics.AddCustomLyricsButton
+import com.luc4n3x.levyra.ui.lyrics.CustomLyricsEditorSheet
+import com.luc4n3x.levyra.data.CUSTOM_LYRICS_PROVIDER
 import com.luc4n3x.levyra.ui.lyrics.lyricsShouldFollowActiveLine
 import com.luc4n3x.levyra.ui.lyrics.LyricsShareSheet
 import com.luc4n3x.levyra.ui.lyrics.LyricsShareSnapshot
@@ -3361,6 +3365,11 @@ fun LevyraApp(
                     onLoadVersions = viewModel::loadLyricsVersions,
                     onSelectVersion = viewModel::selectLyricsVersion,
                     onAutomatic = viewModel::useAutomaticLyrics,
+                    customLyricsDraft = viewModel.customLyricsDraft.collectAsStateWithLifecycle().value,
+                    onOpenCustomLyrics = viewModel::openCustomLyricsEditor,
+                    onSaveCustomLyrics = viewModel::saveCustomLyrics,
+                    onDeleteCustomLyrics = viewModel::deleteCustomLyrics,
+                    onDismissCustomLyrics = viewModel::dismissCustomLyricsEditor,
                     onAdjustTrackOffset = viewModel::adjustLyricsTrackOffset,
                     onSetTrackOffset = viewModel::setLyricsTrackOffset,
                     onAdjustLatencyOffset = viewModel::adjustLyricsLatencyOffset,
@@ -7201,6 +7210,11 @@ private fun LyricsOverlay(
     onLoadVersions: () -> Unit,
     onSelectVersion: (com.luc4n3x.levyra.data.LyricsRepository.LyricsVersion) -> Unit,
     onAutomatic: () -> Unit,
+    customLyricsDraft: com.luc4n3x.levyra.viewmodel.CustomLyricsDraft?,
+    onOpenCustomLyrics: () -> Unit,
+    onSaveCustomLyrics: (String) -> Unit,
+    onDeleteCustomLyrics: () -> Unit,
+    onDismissCustomLyrics: () -> Unit,
     onAdjustTrackOffset: (String, Long) -> Unit,
     onSetTrackOffset: (String, Long) -> Unit,
     onAdjustLatencyOffset: (String?, Boolean, Long) -> Unit,
@@ -7283,6 +7297,7 @@ private fun LyricsOverlay(
     var selectedRange by remember(track?.id) { mutableStateOf<IntRange?>(null) }
     var shareSnapshot by remember(track?.id) { mutableStateOf<LyricsShareSnapshot?>(null) }
     var showVersions by remember(track?.id) { mutableStateOf(false) }
+    val customLyricsActive = state.lyricsProvider == CUSTOM_LYRICS_PROVIDER
     var calibrateMode by remember(track?.id) { mutableStateOf(false) }
     var showSyncBar by rememberSaveable { mutableStateOf(false) }
     var showSyncSheet by remember(track?.id) { mutableStateOf(false) }
@@ -7587,7 +7602,7 @@ private fun LyricsOverlay(
                 if (canShareLyrics) ::toggleShareMode else null
             )
         } else if (LevyraIsQobuz && track != null) {
-            QobuzLyricsScreen(state, track, visibleLyrics, lyricsPositionProvider, lyricsAnimationsEnabled, ::onLyricLineClick, onTogglePlay, onClose)
+            QobuzLyricsScreen(state, track, visibleLyrics, lyricsPositionProvider, lyricsAnimationsEnabled, ::onLyricLineClick, onTogglePlay, onOpenCustomLyrics, onClose)
         } else if (LevyraIsSpotify && studioSettings.spotifyLyricsApplies() && track != null) {
             SpotifyLyricsOverlayScreen(
                 state, track, visibleLyrics, lyricsPositionProvider, selectionMode, selectedRange, lyricsAnimationsEnabled,
@@ -7868,6 +7883,11 @@ private fun LyricsOverlay(
                         )
                     }
                 }
+                if (!state.lyricsLoading && track != null) {
+                    item {
+                        AddCustomLyricsButton(onClick = onOpenCustomLyrics, modifier = Modifier.padding(top = 18.dp))
+                    }
+                }
             } else {
                 itemsIndexed(
                     items = visibleLyrics,
@@ -8036,6 +8056,7 @@ private fun LyricsOverlay(
                         showVersions = true
                         onLoadVersions()
                     }
+                    AppleLyricsOverlayAction.CUSTOM_LYRICS -> onOpenCustomLyrics()
                     AppleLyricsOverlayAction.SHARE -> toggleShareMode()
                     AppleLyricsOverlayAction.SYNC -> showSyncSheet = true
                     AppleLyricsOverlayAction.CALIBRATE -> {
@@ -8066,7 +8087,7 @@ private fun LyricsOverlay(
                 fontWeight = FontWeight.Black,
                 modifier = Modifier.padding(horizontal = 20.dp)
             )
-            lyricsProviderDisplayName(state.lyricsProvider).takeIf(String::isNotBlank)?.let { source ->
+            lyricsSourceDisplayName(state.lyricsProvider, strings.customLyrics).takeIf(String::isNotBlank)?.let { source ->
                 Text(
                     text = "${strings.lyricsSource} · $source",
                     color = LevyraMuted,
@@ -8149,16 +8170,29 @@ private fun LyricsOverlay(
                     icon = Icons.Rounded.Translate,
                     onClick = { onTranslation(!state.lyricsTranslationEnabled) }
                 )
-                LyricsControlChip(
-                    label = strings.changeLyrics,
-                    selected = state.lyricsManualSelection,
-                    icon = Icons.Rounded.LibraryMusic,
-                    onClick = {
-                        showLyricsOptions = false
-                        showVersions = true
-                        onLoadVersions()
-                    }
-                )
+                if (track != null) {
+                    LyricsControlChip(
+                        label = if (customLyricsActive) strings.customLyrics else strings.addCustomLyrics,
+                        selected = customLyricsActive,
+                        icon = Icons.Rounded.EditNote,
+                        onClick = {
+                            showLyricsOptions = false
+                            onOpenCustomLyrics()
+                        }
+                    )
+                }
+                if (!customLyricsActive) {
+                    LyricsControlChip(
+                        label = strings.changeLyrics,
+                        selected = state.lyricsManualSelection,
+                        icon = Icons.Rounded.LibraryMusic,
+                        onClick = {
+                            showLyricsOptions = false
+                            showVersions = true
+                            onLoadVersions()
+                        }
+                    )
+                }
                 if (state.lyricsSynced) {
                     LyricsControlChip(
                         label = strings.lyricsCalibrate,
@@ -8242,6 +8276,14 @@ private fun LyricsOverlay(
         LyricsShareSheet(
             snapshot = snapshot,
             onDismiss = { shareSnapshot = null }
+        )
+    }
+    customLyricsDraft?.let { draft ->
+        CustomLyricsEditorSheet(
+            draft = draft,
+            onSave = onSaveCustomLyrics,
+            onRestoreOriginal = onDeleteCustomLyrics,
+            onDismiss = onDismissCustomLyrics
         )
     }
     if (showVersions) {
@@ -8355,93 +8397,6 @@ private fun LyricsControlChip(
     }
 }
 
-@Composable
-internal fun KaraokeWordTimedText(
-    lineText: String,
-    words: List<com.luc4n3x.levyra.domain.LyricWord>,
-    positionProvider: () -> Long,
-    isActive: Boolean,
-    fontSize: TextUnit,
-    lineHeight: TextUnit,
-    textAlign: TextAlign,
-    inactiveColor: Color,
-    completedColor: Color,
-    activeColor: Color,
-    pendingColor: Color,
-    fontWeight: FontWeight,
-    fontFamily: FontFamily? = null,
-    shadow: Shadow? = null
-) {
-    val timedText = remember(lineText, words) { buildTimedLyricText(lineText, words) }
-    val karaokeEasing = remember { CubicBezierEasing(0.18f, 0f, 0.20f, 1f) }
-    val clipPath = remember { Path() }
-    val fillFront = remember { KaraokeFillFront() }
-    val contentAlignment = when (textAlign) {
-        TextAlign.Center -> Alignment.Center
-        TextAlign.End, TextAlign.Right -> Alignment.CenterEnd
-        else -> Alignment.CenterStart
-    }
-    var textLayoutResult by remember(timedText.text, fontSize, lineHeight, textAlign, fontWeight, fontFamily) {
-        mutableStateOf<TextLayoutResult?>(null)
-    }
-
-    Box(
-        modifier = Modifier.fillMaxWidth(),
-        contentAlignment = contentAlignment
-    ) {
-        Box(modifier = Modifier.wrapContentWidth()) {
-            Text(
-                text = timedText.text,
-                color = if (isActive) pendingColor else inactiveColor,
-                fontFamily = fontFamily,
-                fontSize = fontSize,
-                lineHeight = lineHeight,
-                fontWeight = fontWeight,
-                textAlign = textAlign,
-                style = TextStyle(),
-                onTextLayout = { textLayoutResult = it },
-                modifier = Modifier.wrapContentWidth()
-            )
-            if (isActive) {
-                Text(
-                    text = timedText.text,
-                    color = if (activeColor == completedColor) completedColor else activeColor,
-                    fontFamily = fontFamily,
-                    fontSize = fontSize,
-                    lineHeight = lineHeight,
-                    fontWeight = fontWeight,
-                    textAlign = textAlign,
-                    style = TextStyle(shadow = shadow),
-                    modifier = Modifier
-                        .matchParentSize()
-                        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                        .drawWithContent {
-                            val layoutResult = textLayoutResult ?: return@drawWithContent
-                            val characterProgress = karaokeCharacterProgress(
-                                timedText = timedText,
-                                positionMs = positionProvider() + KARAOKE_VISUAL_LEAD_MS,
-                                easing = karaokeEasing
-                            )
-                            if (characterProgress <= 0f) return@drawWithContent
-                            val featherPx = fontSize.toPx() * KARAOKE_FILL_FEATHER_EM
-                            val path = buildKaraokeGlyphPath(
-                                path = clipPath,
-                                layoutResult = layoutResult,
-                                textLength = timedText.text.length,
-                                characterProgress = characterProgress,
-                                featherPx = featherPx,
-                                front = fillFront
-                            )
-                            clipPath(path) {
-                                this@drawWithContent.drawContent()
-                            }
-                            if (fillFront.active) drawKaraokeFillFeather(fillFront)
-                        }
-                )
-            }
-        }
-    }
-}
 
 private const val INLINE_LYRICS_AUTOSCROLL_RESUME_MS = 3_500L
 internal const val LYRICS_HORIZONTAL_GUTTER_DP = 48
@@ -8451,107 +8406,6 @@ internal const val LYRICS_COMPACT_ACTIVE_LINE_SCALE = 1.018f
 private fun lyricsAmbientSkinActive(): Boolean =
     !LevyraIsIvory && !LevyraIsSpotify && !LevyraIsAppleMusic && !LevyraIsYouTubeMusic
 
-private const val KARAOKE_FILL_FEATHER_EM = 0.55f
-
-private class KaraokeFillFront {
-    var active = false
-    var x = 0f
-    var top = 0f
-    var bottom = 0f
-    var rtl = false
-    var feather = 0f
-}
-
-private fun DrawScope.drawKaraokeFillFeather(front: KaraokeFillFront) {
-    val featherPx = front.feather
-    if (featherPx <= 0.5f || front.bottom <= front.top) return
-    val from = front.x - featherPx
-    val to = front.x + featherPx
-    val colors = if (front.rtl) KaraokeFeatherRtl else KaraokeFeatherLtr
-    drawRect(
-        brush = Brush.horizontalGradient(colors, startX = from, endX = to),
-        topLeft = Offset(from, front.top),
-        size = Size(to - from, front.bottom - front.top),
-        blendMode = BlendMode.DstIn
-    )
-}
-
-internal fun karaokeFeatherWidth(featherPx: Float, remainingToLineEndPx: Float): Float =
-    minOf(featherPx, remainingToLineEndPx).coerceAtLeast(0f)
-
-private val KaraokeFeatherLtr = listOf(Color.White, Color.Transparent)
-private val KaraokeFeatherRtl = listOf(Color.Transparent, Color.White)
-
-private fun buildKaraokeGlyphPath(
-    path: Path,
-    layoutResult: TextLayoutResult,
-    textLength: Int,
-    characterProgress: Float,
-    featherPx: Float,
-    front: KaraokeFillFront
-): Path {
-    path.reset()
-    front.active = false
-    if (textLength == 0 || characterProgress <= 0f) return path
-    val boundedProgress = characterProgress.coerceIn(0f, textLength.toFloat())
-    val completedCharacters = boundedProgress.toInt().coerceIn(0, textLength)
-
-    val activeLine = if (completedCharacters < textLength) {
-        layoutResult.getLineForOffset(completedCharacters)
-    } else {
-        layoutResult.lineCount - 1
-    }
-
-    for (line in 0 until activeLine) {
-        val left = layoutResult.getLineLeft(line)
-        val right = layoutResult.getLineRight(line)
-        val top = layoutResult.getLineTop(line)
-        val bottom = layoutResult.getLineBottom(line)
-        path.addRectangle(left, top, right, bottom)
-    }
-
-    val top = layoutResult.getLineTop(activeLine)
-    val bottom = layoutResult.getLineBottom(activeLine)
-    val isRtl = layoutResult.getParagraphDirection(layoutResult.getLineStart(activeLine)) == ResolvedTextDirection.Rtl
-    val startX = if (isRtl) layoutResult.getLineRight(activeLine) else layoutResult.getLineLeft(activeLine)
-
-    if (completedCharacters >= textLength) {
-        val endX = if (isRtl) layoutResult.getLineLeft(activeLine) else layoutResult.getLineRight(activeLine)
-        path.addRectangle(minOf(startX, endX), top, maxOf(startX, endX), bottom)
-    } else {
-        val fraction = boundedProgress - completedCharacters
-        val charStart = layoutResult.getHorizontalPosition(completedCharacters, usePrimaryDirection = true)
-        val nextOffset = (completedCharacters + 1).coerceAtMost(textLength)
-        val charEnd = if (
-            nextOffset < textLength && layoutResult.getLineForOffset(nextOffset) != activeLine
-        ) {
-            if (isRtl) layoutResult.getLineLeft(activeLine) else layoutResult.getLineRight(activeLine)
-        } else {
-            layoutResult.getHorizontalPosition(nextOffset, usePrimaryDirection = true)
-        }
-        val currentX = charStart + (charEnd - charStart) * fraction
-        val lineEndX = if (isRtl) layoutResult.getLineLeft(activeLine) else layoutResult.getLineRight(activeLine)
-        val feather = karaokeFeatherWidth(featherPx, kotlin.math.abs(lineEndX - currentX))
-        val reachX = if (isRtl) currentX - feather else currentX + feather
-        path.addRectangle(minOf(startX, reachX), top, maxOf(startX, reachX), bottom)
-        front.active = true
-        front.x = currentX
-        front.top = top
-        front.bottom = bottom
-        front.rtl = isRtl
-        front.feather = feather
-    }
-    return path
-}
-
-private fun Path.addRectangle(left: Float, top: Float, right: Float, bottom: Float) {
-    if (right <= left || bottom <= top) return
-    moveTo(left, top)
-    lineTo(right, top)
-    lineTo(right, bottom)
-    lineTo(left, bottom)
-    close()
-}
 
 
 private const val LIVE_TRANSLATE_SETTINGS_ACTION = "com.android.settings.action.live_translate"

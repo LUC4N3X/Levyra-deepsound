@@ -1230,6 +1230,17 @@ class LevyraStrings private constructor(
     val downloadFolderArtist: String get() = value("downloadFolderArtist")
     val downloadFolderArtistAlbum: String get() = value("downloadFolderArtistAlbum")
     val keepScreenOn: String get() = value("keepScreenOn")
+    val customLyrics: String get() = value("customLyrics")
+    val addCustomLyrics: String get() = value("addCustomLyrics")
+    val customLyricsHint: String get() = value("customLyricsHint")
+    val customLyricsPaste: String get() = value("customLyricsPaste")
+    val customLyricsUnsynced: String get() = value("customLyricsUnsynced")
+    val customLyricsInvalid: String get() = value("customLyricsInvalid")
+    val customLyricsSkipped: String get() = value("customLyricsSkipped")
+    val customLyricsTooLong: String get() = value("customLyricsTooLong")
+    val customLyricsRestore: String get() = value("customLyricsRestore")
+    val customLyricsRestoreBody: String get() = value("customLyricsRestoreBody")
+    val customLyricsFailed: String get() = value("customLyricsFailed")
     val keepScreenOnSubtitle: String get() = value("keepScreenOnSubtitle")
     val downloadSpeedLimit: String get() = value("downloadSpeedLimit")
     val downloadSpeedLimitSubtitle: String get() = value("downloadSpeedLimitSubtitle")
@@ -2258,7 +2269,7 @@ class LevyraStrings private constructor(
         private val builtBundles = java.util.concurrent.ConcurrentHashMap<String, LevyraStrings>()
 
         private val allRequiredKeys: Set<String> by lazy(LazyThreadSafetyMode.PUBLICATION) {
-            requiredKeys + "removeFromPlaylist" + profileKeys + motionArtworkKeys + exploreSectionKeys + freshCurrentsKeys + canvasKeys + audioKeys + audioOutputKeys + alternativeAudioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + recognitionHistoryKeys + jamKeys + jamModerationKeys + jamQrKeys + ambientModeKeys + themeStudioKeys + lyricsStudioKeys + lyricsFontKeys + vaultKeys + networkKeys + resonanceKeys + organizationKeys + downloadLocationKeys + downloadDestinationKeys + offlineStorageKeys + keepScreenOnKeys + similarSongsKeys + playerVisualKeys + playerDeckKeys + playerGestureKeys + playlistStudioKeys + queueSelectionKeys + librarySortKeys + offlineHomeKeys + recapKeys + listeningInsightsKeys + queueSpaceKeys + localLibraryKeys + localTagKeys + lyricsOffsetKeys + lyricsTranslationStatusKeys + playbackTileKeys + visualPerformanceKeys + liquidGlassKeys + immersiveModeKeys + musicVideoPreferenceKeys + videoQualityKeys + lyricsProviderPriorityKeys + mixLabKeys + chartMarketKeys + homeSoundtrackKeys + lyricsShareKeys + listeningReceiptKeys + settingsSearchKeys + smartOfflineLocalizationKeys + appUpdateKeys
+            requiredKeys + "removeFromPlaylist" + profileKeys + motionArtworkKeys + exploreSectionKeys + freshCurrentsKeys + canvasKeys + audioKeys + audioOutputKeys + alternativeAudioKeys + autoEqKeys + experienceKeys + insightKeys + systemActionKeys + integrationKeys + recognitionKeys + recognitionHistoryKeys + jamKeys + jamModerationKeys + jamQrKeys + ambientModeKeys + themeStudioKeys + lyricsStudioKeys + lyricsFontKeys + vaultKeys + networkKeys + resonanceKeys + organizationKeys + downloadLocationKeys + downloadDestinationKeys + offlineStorageKeys + keepScreenOnKeys + customLyricsKeys + similarSongsKeys + playerVisualKeys + playerDeckKeys + playerGestureKeys + playlistStudioKeys + queueSelectionKeys + librarySortKeys + offlineHomeKeys + recapKeys + listeningInsightsKeys + queueSpaceKeys + localLibraryKeys + localTagKeys + lyricsOffsetKeys + lyricsTranslationStatusKeys + playbackTileKeys + visualPerformanceKeys + liquidGlassKeys + immersiveModeKeys + musicVideoPreferenceKeys + videoQualityKeys + lyricsProviderPriorityKeys + mixLabKeys + chartMarketKeys + homeSoundtrackKeys + lyricsShareKeys + listeningReceiptKeys + settingsSearchKeys + smartOfflineLocalizationKeys + appUpdateKeys
         }
 
         private fun bundleFor(code: String): LevyraStrings? {
@@ -2281,7 +2292,7 @@ class LevyraStrings private constructor(
                     jamLocalizationEntries(code), jamModerationLocalizationEntries(code), jamQrLocalizationEntries(code), ambientModeLocalizationEntries(code),
                     themeStudioLocalizationEntries(code), lyricsStudioLocalizationEntries(code), lyricsFontLocalizationEntries(code), vaultLocalizationEntries(code), networkLocalizationEntries(code),
                     resonanceLocalizationEntries(code), organizationLocalizationEntries(code), downloadLocationLocalizationEntries(code),
-                    downloadDestinationLocalizationEntries(code), offlineStorageLocalizationEntries(code), keepScreenOnLocalizationEntries(code),
+                    downloadDestinationLocalizationEntries(code), offlineStorageLocalizationEntries(code), keepScreenOnLocalizationEntries(code), customLyricsLocalizationEntries(code),
                     similarSongsLocalizationEntries(code), playerVisualLocalizationEntries(code), playerDeckLocalizationEntries(code),
                     playerGestureLocalizationEntries(code), playlistStudioLocalizationEntries(code), queueSelectionLocalizationEntries(code),
                     librarySortLocalizationEntries(code), offlineHomeLocalizationEntries(code), recapLocalizationEntries(code),

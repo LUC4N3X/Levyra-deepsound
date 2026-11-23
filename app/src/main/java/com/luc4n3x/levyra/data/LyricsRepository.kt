@@ -178,6 +178,7 @@ class LyricsRepository(context: Context? = null) {
     ): Flow<LyricsResult> = channelFlow {
         val query = querySpec(title, artist, durationSec, album, videoId, languageCode, translate)
             ?.copy(online = online) ?: return@channelFlow
+        if (emitCustomResult(query) { send(it) }) return@channelFlow
         if (emitSelectedResult(query) { send(it) }) return@channelFlow
         val (cached, restored) = restoreCachedResult(query) { send(it) }
         if (cached.negative) return@channelFlow
@@ -225,6 +226,106 @@ class LyricsRepository(context: Context? = null) {
         memoryPut(query.key, stable, System.currentTimeMillis())
         persistPositive(query, stable)
         emit(stable)
+    }
+
+    private suspend fun emitCustomResult(
+        query: QuerySpec,
+        emit: suspend (LyricsResult) -> Unit
+    ): Boolean {
+        val custom = readCustom(query) ?: return false
+        emit(custom)
+        if (!needsLyricsEnrichmentRetry(custom, query)) return true
+        val enriched = applyTranslation(custom.copy(cached = false), query).copy(manualSelection = true)
+        if (shouldUpgrade(custom, enriched)) emit(enriched)
+        return true
+    }
+
+    private suspend fun readCustom(query: QuerySpec): LyricsResult? {
+        val source = customSource(customKey(query)) ?: return null
+        val parsed = CustomLyricsParser.parse(source) as? CustomLyricsParse.Valid ?: return null
+        val result = LyricsResult(
+            synced = parsed.synced,
+            lines = parsed.lines,
+            provider = CUSTOM_LYRICS_PROVIDER,
+            confidence = 100,
+            cached = true,
+            manualSelection = true
+        )
+        val enriched = cleanAndEnrich(normalizeTiming(result, query.durationSec), query.languageCode)
+        if (enriched.lines.isEmpty()) return null
+        return markTranslationPending(enriched, query)
+    }
+
+    private suspend fun customSource(key: String): String? {
+        val dao = lyricsSelectionDao ?: return null
+        return runCatching { dao.get(key) }
+            .onFailure { error ->
+                if (error is CancellationException) throw error
+                Timber.w(error, "Custom lyrics restore failed")
+            }
+            .getOrNull()
+            ?.takeIf { it.provider == CUSTOM_LYRICS_PROVIDER }
+            ?.payload
+    }
+
+    private fun customKey(query: QuerySpec): String = lyricsCustomKey(
+        title = query.requestedTitle,
+        artist = query.requestedArtist,
+        durationSec = query.durationSec,
+        videoId = query.videoId
+    )
+
+    suspend fun customLyricsSource(
+        title: String,
+        artist: String,
+        durationSec: Long,
+        videoId: String
+    ): String? = withContext(Dispatchers.IO) {
+        customSource(lyricsCustomKey(title, artist, durationSec, videoId))
+    }
+
+    suspend fun saveCustomLyrics(
+        title: String,
+        artist: String,
+        durationSec: Long,
+        videoId: String,
+        source: String
+    ): Boolean = withContext(Dispatchers.IO) {
+        val dao = lyricsSelectionDao ?: return@withContext false
+        val clean = source.trim()
+        if (CustomLyricsParser.parse(clean) !is CustomLyricsParse.Valid) return@withContext false
+        runCatching {
+            dao.upsert(
+                LyricsSelectionEntity(
+                    trackKey = lyricsCustomKey(title, artist, durationSec, videoId),
+                    candidateId = CUSTOM_LYRICS_PROVIDER,
+                    provider = CUSTOM_LYRICS_PROVIDER,
+                    title = title.trim(),
+                    artist = artist.trim(),
+                    durationSec = durationSec,
+                    payload = clean,
+                    updatedAt = System.currentTimeMillis()
+                )
+            )
+        }.onFailure { error ->
+            if (error is CancellationException) throw error
+            Timber.w(error, "Custom lyrics save failed")
+        }.isSuccess
+    }
+
+    suspend fun deleteCustomLyrics(
+        title: String,
+        artist: String,
+        durationSec: Long,
+        videoId: String
+    ): Boolean = withContext(Dispatchers.IO) {
+        val dao = lyricsSelectionDao ?: return@withContext false
+        runCatching { dao.delete(lyricsCustomKey(title, artist, durationSec, videoId)) }
+            .onFailure { error ->
+                if (error is CancellationException) throw error
+                Timber.w(error, "Custom lyrics delete failed")
+            }
+            .isSuccess
     }
 
     private suspend fun emitSelectedResult(
@@ -1316,8 +1417,8 @@ class LyricsRepository(context: Context? = null) {
                 updatedAt = now
             )
         )
-        val count = dao.count()
-        if (count > MAX_LYRICS_SELECTIONS) dao.deleteOldest(count - MAX_LYRICS_SELECTIONS)
+        val count = dao.countProviderSelections()
+        if (count > MAX_LYRICS_SELECTIONS) dao.deleteOldestProviderSelections(count - MAX_LYRICS_SELECTIONS)
         memoryPut(query.key, result, now)
         persistPositive(query, result)
     }
@@ -1755,6 +1856,21 @@ internal fun lyricsSelectionKey(
     videoId: String,
     languageCode: String,
     translate: Boolean
+): String = lyricsTrackKey(title, artist, durationSec, videoId, "${languageCode.trim().lowercase(Locale.ROOT)}|$translate")
+
+internal fun lyricsCustomKey(
+    title: String,
+    artist: String,
+    durationSec: Long,
+    videoId: String
+): String = lyricsTrackKey(title, artist, durationSec, videoId, CUSTOM_LYRICS_PROVIDER)
+
+private fun lyricsTrackKey(
+    title: String,
+    artist: String,
+    durationSec: Long,
+    videoId: String,
+    variantSeed: String
 ): String {
     val stableVideoId = videoId.trim()
     val trackSeed = if (stableVideoId.isNotBlank()) {
@@ -1762,7 +1878,6 @@ internal fun lyricsSelectionKey(
     } else {
         "track:${LyricsMatcher.normalize(artist)}|${LyricsMatcher.normalize(title)}|${durationSec.coerceAtLeast(0L) / 5L}"
     }
-    val variantSeed = "${languageCode.trim().lowercase(Locale.ROOT)}|$translate"
     return MessageDigest.getInstance("SHA-256")
         .digest("$trackSeed|$variantSeed".toByteArray(StandardCharsets.UTF_8))
         .joinToString("") { "%02x".format(it) }

@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.ui.lyrics
 
+import com.luc4n3x.levyra.data.CUSTOM_LYRICS_PROVIDER
+
 private val PROVIDER_SEPARATORS = arrayOf(" · ", " • ", " - ", " | ")
 private const val PROVIDER_ALLOWED_PUNCTUATION = "+&.'-"
 private val MULTI_SPACE = Regex(" {2,}")
@@ -21,6 +23,9 @@ internal fun lyricsProviderDisplayName(provider: String): String {
     }
     return cleaned.trim().replace(MULTI_SPACE, " ")
 }
+
+internal fun lyricsSourceDisplayName(provider: String, customLabel: String): String =
+    if (provider == CUSTOM_LYRICS_PROVIDER) customLabel else lyricsProviderDisplayName(provider)
 
 internal fun lyricsShouldFollowActiveLine(
     autoScrollEnabled: Boolean,
