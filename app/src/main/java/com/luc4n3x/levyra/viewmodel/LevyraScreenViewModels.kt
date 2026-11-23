@@ -1,8 +1,6 @@
 package com.luc4n3x.levyra.viewmodel
 
 import android.app.Application
-import android.content.ActivityNotFoundException
-import android.content.Intent
 import android.net.Uri
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
@@ -16,6 +14,8 @@ import com.luc4n3x.levyra.data.HomeEditorialEngine
 import com.luc4n3x.levyra.data.LevyraStartupCatalog
 import com.luc4n3x.levyra.data.deduplicateHomeAlbums
 import com.luc4n3x.levyra.data.isChartArtworkPlaceholder
+import com.luc4n3x.levyra.data.news.MusicNewsFeedParser
+import com.luc4n3x.levyra.data.news.MusicNewsReaderState
 import com.luc4n3x.levyra.data.news.MusicNewsRepository
 import com.luc4n3x.levyra.data.news.MusicNewsSources
 import com.luc4n3x.levyra.data.news.MusicNewsStory
@@ -395,15 +395,15 @@ class ExploreViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::ex
         }
     }
 
+    private var newsArticleJob: Job? = null
+
     fun openNews(story: MusicNewsStory) {
-        val uri = Uri.parse(story.url)
-        if (!uri.scheme.equals("https", ignoreCase = true) || uri.host.isNullOrBlank()) return
-        val intent = Intent(Intent.ACTION_VIEW, uri)
-            .addCategory(Intent.CATEGORY_BROWSABLE)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        try {
-            root.getApplication<Application>().startActivity(intent)
-        } catch (_: ActivityNotFoundException) {
+        if (!MusicNewsFeedParser.isHttps(story.url)) return
+        newsArticleJob?.cancel()
+        MusicNewsReaderSession.show(MusicNewsReaderState(story, article = null, loading = true))
+        newsArticleJob = viewModelScope.launch {
+            val article = newsRepository.article(story)
+            MusicNewsReaderSession.update(MusicNewsReaderState(story, article, loading = false))
         }
     }
 

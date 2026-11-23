@@ -2876,7 +2876,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                             artist.copy(
                                 thumbnailUrl = applePortrait.ifBlank { artist.thumbnailUrl },
                                 subscribers = monthly.ifBlank { artist.subscribers },
-                                audienceIsSubscribers = monthly.isBlank() && artist.subscribers.isNotBlank(),
+                                audienceIsSubscribers = monthly.isBlank(),
                                 officialArtwork = artist.thumbnailUrl.isNotBlank()
                             )
                         }
@@ -3082,6 +3082,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun isReusableHomeArtistHit(hit: ArtistHit, expectedIdentity: String): Boolean {
         return hit.thumbnailUrl.isNotBlank() &&
             hit.officialArtwork &&
+            !hit.audienceIsSubscribers &&
             artistIdentityKey(hit.name) == expectedIdentity &&
             isArtistShelfNameEligible(hit.name)
     }

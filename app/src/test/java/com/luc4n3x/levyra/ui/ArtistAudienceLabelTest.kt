@@ -16,9 +16,9 @@ class ArtistAudienceLabelTest {
     }
 
     @Test
-    fun subscriberFallbackKeepsItsOwnWording() {
-        val artist = ArtistHit("VILLIAN", "4,2 тыс. подписчиков", "", 0, 0, "UCbj2", audienceIsSubscribers = true)
-        assertEquals("4,2 тыс. подписчиков", artistAudienceLabel(artist, "ru", "слушателей"))
+    fun subscriberCountsAreNeverShownAsAudience() {
+        val artist = ArtistHit("883", "97,8K iscritti", "", 0, 0, "UC883", audienceIsSubscribers = true)
+        assertEquals("", artistAudienceLabel(artist, "it", "ascoltatori"))
         assertEquals("", artistAudienceLabel(artist.copy(subscribers = "", audienceIsSubscribers = false), "ru", "слушателей"))
     }
 

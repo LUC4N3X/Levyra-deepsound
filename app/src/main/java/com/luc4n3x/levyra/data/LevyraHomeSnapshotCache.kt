@@ -156,6 +156,7 @@ class LevyraHomeSnapshotCache(context: Context) {
                         .put("browseId", artist.browseId)
                         .put("officialArtwork", artist.officialArtwork)
                         .put("audienceIsSubscribers", artist.audienceIsSubscribers)
+                        .put("audienceVerified", true)
                 )
             }
         return array
@@ -180,7 +181,7 @@ class LevyraHomeSnapshotCache(context: Context) {
                     accentEnd = item.optInt("accentEnd"),
                     browseId = browseId,
                     officialArtwork = true,
-                    audienceIsSubscribers = item.optBoolean("audienceIsSubscribers", false)
+                    audienceIsSubscribers = snapshotArtistAudienceIsSubscribers(item)
                 )
             )
         }
@@ -240,6 +241,9 @@ class LevyraHomeSnapshotCache(context: Context) {
         const val MAX_STALE_MS = 21L * 24L * 60L * 60L * 1000L
     }
 }
+
+internal fun snapshotArtistAudienceIsSubscribers(item: JSONObject): Boolean =
+    item.optBoolean("audienceIsSubscribers", false) || !item.optBoolean("audienceVerified", false)
 
 internal fun resonanceCommentsToJson(
     tracks: List<Track>,

@@ -32,6 +32,8 @@ import org.json.JSONObject
 import java.io.IOException
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.time.Instant
+import java.time.ZoneId
 import java.util.LinkedHashMap
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -311,64 +313,74 @@ class OfficialArtworkRepository(context: Context) {
         val encoded = URLEncoder.encode(primaryQuery(track), StandardCharsets.UTF_8.name()).replace("+", "%20")
         val searchUrl = "https://www.qobuz.com/$locale/search/albums/$encoded"
         val searchHtml = requestText(searchUrl, HTML_ACCEPT) ?: return ProviderResponse(emptyList(), false)
-        val albumLinks = QOBUZ_ALBUM_LINK.findAll(searchHtml)
-            .map { decodeHtml(it.groupValues[1]) }
-            .filter { it.contains("/album/") }
-            .distinct()
+        val items = qobuzSearchAlbums(searchHtml)
             .take(QOBUZ_MAX_ALBUMS)
-            .toList()
-        val items = coroutineScope {
-            albumLinks.map { href ->
-                async {
-                    val absolute = if (href.startsWith("http")) href else "https://www.qobuz.com$href"
-                    val id = extractQobuzAlbumId(absolute) ?: return@async null
-                    val html = requestText(
-                        "https://www.qobuz.com/us-en/album/-/$id",
-                        HTML_ACCEPT,
-                        "en-US,en;q=0.9"
-                    ) ?: return@async null
-                    parseQobuzAlbum(html, id, track)
-                }
-            }.awaitAll().filterNotNull()
-        }
+            .mapNotNull { qobuzArtwork(it, track) }
         return ProviderResponse(items, true)
     }
 
+    private fun qobuzSearchAlbums(html: String): List<JSONObject> =
+        qobuzLiveProps(html)
+            .map(::decodeQobuzAttribute)
+            .filter { it.contains("\"albums\"") }
+            .map(::qobuzAlbumsOf)
+            .firstOrNull(List<JSONObject>::isNotEmpty)
+            .orEmpty()
 
-    private fun extractQobuzAlbumId(url: String): String? {
-        val segments = url.substringBefore('?').substringBefore('#').split('/').filter(String::isNotBlank)
-        val albumIndex = segments.indexOf("album")
-        if (albumIndex < 0) return null
-        for (index in segments.lastIndex downTo albumIndex + 1) {
-            val candidate = segments[index]
-            if (QOBUZ_ID.matches(candidate)) return candidate
+    private fun qobuzLiveProps(html: String): Sequence<String> = sequence {
+        var from = 0
+        while (true) {
+            val marker = html.indexOf(QOBUZ_LIVE_PROPS_MARKER, from).takeIf { it >= 0 } ?: break
+            val start = marker + QOBUZ_LIVE_PROPS_MARKER.length
+            val end = html.indexOf('"', start).takeIf { it >= 0 } ?: break
+            yield(html.substring(start, end))
+            from = end + 1
         }
-        return null
     }
 
-    private fun parseQobuzAlbum(html: String, id: String, track: Track): OfficialArtwork? {
-        val types = allMeta(html, "og:type")
-        if (types.none { it.equals("music.album", ignoreCase = true) }) return null
-        val ogTitle = firstMeta(html, "og:title") ?: return null
-        val ogImage = firstMeta(html, "og:image") ?: return null
-        val description = firstMeta(html, "og:description").orEmpty()
-        val parsed = parseQobuzTitleArtist(ogTitle, description) ?: return null
-        val score = albumMatchScore(track, parsed.first, parsed.second)
-        val releaseDate = firstNonBlank(
-            firstMeta(html, "music:release_date").orEmpty(),
-            firstMeta(html, "release_date").orEmpty(),
-            QOBUZ_DATE_PUBLISHED.find(html)?.groupValues?.getOrNull(1).orEmpty()
-        )
+    private fun decodeQobuzAttribute(value: String): String = QOBUZ_ATTRIBUTE_ENTITY.replace(value) { match ->
+        when (match.groupValues[1]) {
+            "quot" -> "\""
+            "amp" -> "&"
+            "lt" -> "<"
+            "gt" -> ">"
+            else -> "'"
+        }
+    }
+
+    private fun qobuzAlbumsOf(props: String): List<JSONObject> {
+        val albums = when (val value = runCatching { JSONObject(props).opt("albums") }.getOrNull()) {
+            is JSONObject -> value
+            is String -> runCatching { JSONObject(value) }.getOrNull()
+            else -> null
+        } ?: return emptyList()
+        return albums.keys().asSequence().mapNotNull(albums::optJSONObject).toList()
+    }
+
+    private fun qobuzArtwork(album: JSONObject, track: Track): OfficialArtwork? {
+        val id = (album.opt("id") as? String)?.takeIf(String::isNotBlank) ?: return null
+        val title = (album.opt("title") as? String)?.trim()?.takeIf(String::isNotBlank) ?: return null
+        val artist = (album.optJSONArray("artists")?.optJSONObject(0)?.opt("name") as? String)?.trim()
+            ?.takeIf(String::isNotBlank) ?: return null
+        val image = album.optJSONObject("image") ?: return null
+        val cover = listOf("large", "small", "thumbnail")
+            .mapNotNull { (image.opt(it) as? String)?.trim() }
+            .firstOrNull(String::isNotBlank) ?: return null
+        val releaseDate = album.opt("releasedAt")?.toString()?.toLongOrNull()
+            ?.let { seconds ->
+                runCatching { Instant.ofEpochSecond(seconds).atZone(QOBUZ_RELEASE_ZONE).toLocalDate().toString() }.getOrNull()
+            }
+            .orEmpty()
         return OfficialArtwork(
-            thumbnailUrl = ogImage,
-            largeThumbnailUrl = upgradeQobuzArtwork(ogImage),
-            album = parsed.first,
-            score = score,
+            thumbnailUrl = cover,
+            largeThumbnailUrl = upgradeQobuzArtwork(cover),
+            album = title,
+            score = albumMatchScore(track, title, artist),
             provider = "Qobuz",
             canonicalAlbumUrl = "https://play.qobuz.com/album/$id",
             releaseDate = releaseDate,
-            year = releaseDate.take(4).takeIf { it.all(Char::isDigit) }.orEmpty(),
-            upc = extractQobuzUpc(html)
+            year = releaseDate.take(4).takeIf { it.length == 4 && it.all(Char::isDigit) }.orEmpty(),
+            upc = id.takeIf(QOBUZ_UPC_ID::matches).orEmpty()
         )
     }
 
@@ -404,51 +416,6 @@ class OfficialArtworkRepository(context: Context) {
                 }
             })
         }
-    }
-
-    private fun parseQobuzTitleArtist(ogTitle: String, description: String): Pair<String, String>? {
-        QOBUZ_DESCRIPTION.find(description)?.let { match ->
-            val title = decodeHtml(match.groupValues[1]).trim()
-            val artist = decodeHtml(match.groupValues[2]).trim()
-            if (title.isNotBlank() && artist.isNotBlank()) return title to artist
-        }
-        val normalized = decodeHtml(ogTitle).replace(QOBUZ_TITLE_SUFFIX, "").trim()
-        val split = normalized.lastIndexOf(',')
-        if (split <= 0 || split >= normalized.lastIndex) return null
-        val title = normalized.substring(0, split).trim()
-        val artist = normalized.substring(split + 1).trim()
-        return (title to artist).takeIf { title.isNotBlank() && artist.isNotBlank() }
-    }
-
-    private fun firstMeta(html: String, property: String): String? = allMeta(html, property).firstOrNull()
-
-    private fun allMeta(html: String, property: String): List<String> =
-        metaIndex(html)[property.lowercase(Locale.ROOT)].orEmpty()
-
-    private val metaIndexCache = HtmlMetaIndexCache()
-
-    private fun metaIndex(html: String): Map<String, List<String>> = metaIndexCache.indexFor(html) {
-        val index = linkedMapOf<String, MutableList<String>>()
-        val tags = META_TAG_PATTERN.toPattern().matcher(html)
-        while (tags.find()) {
-            var key: String? = null
-            var content: String? = null
-            val attributes = META_ATTRIBUTE_PATTERN.toPattern().matcher(tags.group())
-            while (attributes.find()) {
-                when (attributes.group(1)?.lowercase(Locale.ROOT)) {
-                    "property", "name" -> if (key == null) key = attributes.group(2)?.lowercase(Locale.ROOT)
-                    "content" -> if (content == null) content = attributes.group(2)
-                }
-            }
-            val resolvedKey = key
-            val resolvedContent = content
-            if (resolvedKey != null && resolvedContent != null) {
-                val values = index.getOrPut(resolvedKey) { mutableListOf() }
-                val decoded = decodeHtml(resolvedContent)
-                if (decoded !in values) values += decoded
-            }
-        }
-        index
     }
 
     private fun primaryQuery(track: Track): String {
@@ -611,12 +578,6 @@ class OfficialArtworkRepository(context: Context) {
         )
     }
 
-    private fun extractQobuzUpc(html: String): String {
-        return QOBUZ_UPC_PATTERNS.firstNotNullOfOrNull { pattern ->
-            pattern.find(html)?.groupValues?.getOrNull(1)?.filter(Char::isDigit)?.takeIf { it.length in 8..14 }
-        }.orEmpty()
-    }
-
     private fun Track.toSpotifyArtwork(provider: String = "spotify"): OfficialArtwork? {
         if (thumbnailUrl.isBlank()) return null
         return OfficialArtwork(
@@ -733,15 +694,6 @@ class OfficialArtworkRepository(context: Context) {
         else -> "us-en"
     }
 
-    private fun decodeHtml(value: String): String = value
-        .replace("&amp;", "&")
-        .replace("&quot;", "\"")
-        .replace("&#39;", "'")
-        .replace("&apos;", "'")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace(HTML_NUMERIC_ENTITY_PATTERN) { match -> match.groupValues[1].toIntOrNull()?.toChar()?.toString().orEmpty() }
-
     private fun cacheKey(track: Track, country: String): String = listOf(
         normalize(track.title),
         normalize(track.artist),
@@ -816,15 +768,10 @@ class OfficialArtworkRepository(context: Context) {
         const val DEFAULT_ACCEPT_LANGUAGE = "it-IT,it;q=0.9,en;q=0.7"
         val APPLE_ARTWORK_SIZE = Regex("\\d+x\\d+bb")
         val VERSION_TERMS = listOf("live", "remix", "karaoke", "instrumental", "sped up", "slowed", "nightcore", "acoustic")
-        val QOBUZ_ALBUM_LINK = Regex("href=[\\\"']([^\\\"']*/album/[^\\\"']+)[\\\"']", RegexOption.IGNORE_CASE)
-        val QOBUZ_ID = Regex("[A-Za-z0-9]{8,}")
-        val QOBUZ_DESCRIPTION = Regex("download (.+) by (.+) in Hi-Res quality on Qobuz", RegexOption.IGNORE_CASE)
-        val QOBUZ_TITLE_SUFFIX = Regex("\\s*-\\s*Qobuz\\s*$", RegexOption.IGNORE_CASE)
-        val QOBUZ_DATE_PUBLISHED = Regex("\"datePublished\"\\s*:\\s*\"([^\"]+)\"", RegexOption.IGNORE_CASE)
-        val QOBUZ_UPC_PATTERNS = listOf(
-            Regex("\"(?:gtin13|gtin|upc|barcode)\"\\s*:\\s*\"?(\\d{8,14})", RegexOption.IGNORE_CASE),
-            Regex("(?:UPC|EAN|Barcode)\\s*[:\\-]\\s*(\\d{8,14})", RegexOption.IGNORE_CASE)
-        )
+        const val QOBUZ_LIVE_PROPS_MARKER = "data-live-props-value=\""
+        val QOBUZ_UPC_ID = Regex("\\d{12,14}")
+        val QOBUZ_RELEASE_ZONE: ZoneId = ZoneId.of("Europe/Paris")
+        val QOBUZ_ATTRIBUTE_ENTITY = Regex("&(quot|amp|lt|gt|#39|apos);")
         val GENERIC_ALBUMS = setOf("album", "single", "unknown album", "music", "youtube music", "youtube")
     }
 }
@@ -846,27 +793,10 @@ internal fun sameAlbumRecordingForArtwork(track: Track, candidates: List<Track>)
     }
 }
 
-private val META_TAG_PATTERN = Regex("<meta\\b[^>]*>", RegexOption.IGNORE_CASE)
-private val META_ATTRIBUTE_PATTERN = Regex("([A-Za-z:_-]+)\\s*=\\s*[\"']([^\"']*)[\"']")
 private val ARTWORK_FEATURE_PATTERN = Regex("feat\\.?|featuring|ft\\.?")
 private val ARTWORK_SYMBOL_PATTERN = Regex("[^a-z0-9àèéìòóùçñäöüß\\s]")
 private val ARTWORK_WHITESPACE_PATTERN = Regex("\\s+")
-private val HTML_NUMERIC_ENTITY_PATTERN = Regex("&#(\\d+);")
 private val ARTWORK_CONTROL_PATTERN =Regex("[\\r\\n\\t]+")
 private val ARTWORK_PAREN_VERSION_PATTERN = Regex("\\([^)]*(official\\s*(video|audio)|lyrics?|visualizer|music\\s*video)[^)]*\\)", RegexOption.IGNORE_CASE)
 private val ARTWORK_BRACKET_VERSION_PATTERN = Regex("\\[[^]]*(official\\s*(video|audio)|lyrics?|visualizer|music\\s*video)[^]]*]", RegexOption.IGNORE_CASE)
 private val ARTWORK_DASH_VERSION_PATTERN = Regex("\\s+-\\s+(official\\s*(video|audio)|lyrics?|visualizer|music\\s*video).*$", RegexOption.IGNORE_CASE)
-
-private class HtmlMetaIndexCache {
-    private var html: String? = null
-    private var index: Map<String, List<String>> = emptyMap()
-
-    @Synchronized
-    fun indexFor(source: String, build: () -> Map<String, List<String>>): Map<String, List<String>> {
-        if (html === source) return index
-        return build().also {
-            html = source
-            index = it
-        }
-    }
-}

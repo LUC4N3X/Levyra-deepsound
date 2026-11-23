@@ -2,7 +2,9 @@ package com.luc4n3x.levyra.data
 
 import com.luc4n3x.levyra.domain.ResonanceCommentSnippet
 import com.luc4n3x.levyra.domain.Track
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -31,6 +33,21 @@ class LevyraHomeSnapshotCacheTest {
         assertEquals(setOf(firstCurrent.id, disabledCurrent.id), json.keys().asSequence().toSet())
         assertEquals("Current", json.getJSONObject(firstCurrent.id).getString("text"))
         assertTrue(json.getJSONObject(disabledCurrent.id).getBoolean("disabled"))
+    }
+
+    @Test
+    fun legacyArtistAudienceIsTreatedAsUnverified() {
+        assertTrue(snapshotArtistAudienceIsSubscribers(JSONObject().put("subscribers", "97,8K iscritti")))
+        assertTrue(
+            snapshotArtistAudienceIsSubscribers(
+                JSONObject().put("audienceIsSubscribers", true).put("audienceVerified", true)
+            )
+        )
+        assertFalse(
+            snapshotArtistAudienceIsSubscribers(
+                JSONObject().put("subscribers", "4,5 Mln ascoltatori mensili").put("audienceVerified", true)
+            )
+        )
     }
 
     @Test
