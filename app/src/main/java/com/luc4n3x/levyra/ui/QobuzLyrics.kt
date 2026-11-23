@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.LyricLine
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.data.CUSTOM_LYRICS_PROVIDER
 import com.luc4n3x.levyra.ui.lyrics.AddCustomLyricsButton
 import com.luc4n3x.levyra.ui.lyrics.activeLyricIndex
 import com.luc4n3x.levyra.ui.player.qobuzPlayerField
@@ -148,6 +149,13 @@ private fun BoxScope.QobuzLyricsBody(
                         .background(if (current) Color.White.copy(alpha = 0.10f) else Color.Transparent)
                         .clickable(enabled = state.lyricsSynced) { onLineClick(index, line) }
                         .padding(horizontal = 12.dp, vertical = 10.dp)
+                )
+            }
+            item(key = "qobuz-custom-lyrics", contentType = "QobuzLyrics-custom") {
+                AddCustomLyricsButton(
+                    onClick = onAddLyrics,
+                    label = if (state.lyricsProvider == CUSTOM_LYRICS_PROVIDER) strings.customLyrics else strings.addCustomLyrics,
+                    modifier = Modifier.padding(start = 12.dp, top = 24.dp)
                 )
             }
         }

@@ -11,7 +11,13 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import java.io.IOException
+import kotlin.coroutines.resume
+import kotlinx.coroutines.suspendCancellableCoroutine
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.Response
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -28,59 +34,51 @@ internal class SpotifyArtistAudience(
         val name = artistName.trim()
         if (name.isEmpty()) return null
         val key = name.lowercase(Locale.ROOT)
-        cache[key]?.takeIf { System.currentTimeMillis() - it.storedAtMs < CACHE_TTL_MS }?.let { return it.listeners }
-        val listeners = try {
-            withTimeoutOrNull(LOOKUP_TIMEOUT_MS) { lookup(name) }
+        val now = System.currentTimeMillis()
+        cache[key]?.takeIf { now < it.expiresAtMs }?.let { return it.listeners }
+        val outcome = try {
+            withTimeoutOrNull(LOOKUP_TIMEOUT_MS) { lookup(name) } ?: AudienceLookup.Failed
         } catch (error: CancellationException) {
             throw error
         } catch (_: Exception) {
-            null
+            AudienceLookup.Failed
         }
+        val ttl = if (outcome == AudienceLookup.Failed) FAILURE_RETRY_MS else CACHE_TTL_MS
         if (cache.size >= MAX_CACHE_ENTRIES) cache.clear()
-        cache[key] = CachedAudience(listeners, System.currentTimeMillis())
-        return listeners
+        cache[key] = CachedAudience(outcome.listeners, System.currentTimeMillis() + ttl)
+        return outcome.listeners
     }
 
-    private suspend fun lookup(name: String): Long? = withContext(Dispatchers.IO) {
-        val bearer = accessToken() ?: return@withContext null
-        val search = pathfinder(bearer, searchPayload(name)) ?: return@withContext null
-        val uri = spotifyArtistUriFor(search, name) ?: return@withContext null
-        val overview = pathfinder(bearer, overviewPayload(uri)) ?: return@withContext null
-        spotifyMonthlyListeners(overview)
+    private suspend fun lookup(name: String): AudienceLookup = withContext(Dispatchers.IO) {
+        val bearer = accessToken() ?: return@withContext AudienceLookup.Failed
+        val search = pathfinder(bearer, searchPayload(name)) ?: return@withContext AudienceLookup.Failed
+        val uri = spotifyArtistUriFor(search, name) ?: return@withContext AudienceLookup.Missing
+        val overview = pathfinder(bearer, overviewPayload(uri)) ?: return@withContext AudienceLookup.Failed
+        spotifyMonthlyListeners(overview)?.let { AudienceLookup.Found(it) } ?: AudienceLookup.Missing
     }
 
     private suspend fun accessToken(): String? = tokenLock.withLock {
-        if (token.isNotEmpty() && System.currentTimeMillis() < tokenExpiresAtMs) return@withLock token
+        if (cachedBearer.isNotEmpty() && System.currentTimeMillis() < tokenExpiresAtMs) return@withLock cachedBearer
         val request = Request.Builder()
             .url(TOKEN_PAGE_URL)
             .header("User-Agent", BROWSER_USER_AGENT)
             .header("Accept", "text/html")
             .build()
-        val html = client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) return@withLock null
-            val body = response.body.source()
-            body.request(MAX_TOKEN_PAGE_BYTES)
-            body.buffer.readUtf8()
-        }
-        val fresh = TOKEN_PATTERN.find(html)?.groupValues?.get(1)?.takeIf { it.isNotBlank() } ?: return@withLock null
-        val expiresAt = TOKEN_EXPIRY_PATTERN.find(html)?.groupValues?.get(1)?.toLongOrNull()
-            ?: (System.currentTimeMillis() + DEFAULT_TOKEN_LIFETIME_MS)
-        token = fresh
-        tokenExpiresAtMs = expiresAt - TOKEN_EXPIRY_MARGIN_MS
-        fresh
+        val html = client.newCall(request).awaitBoundedText(MAX_TOKEN_PAGE_BYTES) ?: return@withLock null
+        val embedded = spotifyEmbedToken(html) ?: return@withLock null
+        cachedBearer = embedded.token
+        tokenExpiresAtMs = (embedded.expiresAtMs ?: (System.currentTimeMillis() + DEFAULT_TOKEN_LIFETIME_MS)) - TOKEN_EXPIRY_MARGIN_MS
+        embedded.token
     }
 
-    private fun pathfinder(bearer: String, payload: String): JSONObject? {
+    private suspend fun pathfinder(bearer: String, payload: String): JSONObject? {
         val request = Request.Builder()
             .url(PATHFINDER_URL)
             .post(payload.toRequestBody(JSON_MEDIA_TYPE))
             .header("Authorization", "Bearer $bearer")
             .header("Accept", "application/json")
             .build()
-        return client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) return@use null
-            response.body.readSpotifyJsonBody()?.let(::JSONObject)
-        }
+        return client.newCall(request).awaitSpotifyJson()
     }
 
     private fun searchPayload(name: String): String = JSONObject()
@@ -107,12 +105,18 @@ internal class SpotifyArtistAudience(
     private fun persistedQuery(hash: String): JSONObject =
         JSONObject().put("persistedQuery", JSONObject().put("version", 1).put("sha256Hash", hash))
 
-    private class CachedAudience(val listeners: Long?, val storedAtMs: Long)
+    private class CachedAudience(val listeners: Long?, val expiresAtMs: Long)
+
+    private sealed class AudienceLookup(val listeners: Long?) {
+        class Found(count: Long) : AudienceLookup(count)
+        data object Missing : AudienceLookup(null)
+        data object Failed : AudienceLookup(null)
+    }
 
     companion object {
         private val cache = ConcurrentHashMap<String, CachedAudience>()
         private val tokenLock = Mutex()
-        @Volatile private var token: String = ""
+        @Volatile private var cachedBearer: String = ""
         @Volatile private var tokenExpiresAtMs: Long = 0L
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
         private const val TOKEN_PAGE_URL = "https://open.spotify.com/embed/playlist/37i9dQZEVXbMDoHDwVN2tF"
@@ -121,16 +125,51 @@ internal class SpotifyArtistAudience(
         private const val ARTIST_OVERVIEW_HASH = "eafb1620d783ece118e72fbfede2b0064483e029d3c1aafafa1c2de0e25a89e7"
         private const val BROWSER_USER_AGENT =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"
-        private val TOKEN_PATTERN = Regex("\"accessToken\":\"([^\"]+)\"")
-        private val TOKEN_EXPIRY_PATTERN = Regex("\"accessTokenExpirationTimestampMs\":(\\d+)")
         private const val MAX_TOKEN_PAGE_BYTES = 512L * 1024L
         private const val DEFAULT_TOKEN_LIFETIME_MS = 30L * 60L * 1_000L
         private const val TOKEN_EXPIRY_MARGIN_MS = 60L * 1_000L
         private const val LOOKUP_TIMEOUT_MS = 8_500L
         private const val CACHE_TTL_MS = 6L * 60L * 60L * 1_000L
+        private const val FAILURE_RETRY_MS = 10L * 60L * 1_000L
         private const val MAX_CACHE_ENTRIES = 256
         private const val SEARCH_LIMIT = 5
     }
+}
+
+internal class SpotifyEmbedToken(val token: String, val expiresAtMs: Long?)
+
+internal fun spotifyEmbedToken(html: String): SpotifyEmbedToken? {
+    val bearer = jsonFieldValue(html, "\"accessToken\":\"", '"')?.takeIf(String::isNotBlank) ?: return null
+    val expiresAt = jsonFieldValue(html, "\"accessTokenExpirationTimestampMs\":", ',', '}')?.trim()?.toLongOrNull()
+    return SpotifyEmbedToken(bearer, expiresAt)
+}
+
+private fun jsonFieldValue(source: String, marker: String, vararg terminators: Char): String? {
+    val start = source.indexOf(marker).takeIf { it >= 0 }?.plus(marker.length) ?: return null
+    val windowEnd = minOf(source.length, start + TOKEN_FIELD_WINDOW_CHARS)
+    val end = (start until windowEnd).firstOrNull { source[it] in terminators } ?: return null
+    return source.substring(start, end)
+}
+
+private suspend fun Call.awaitBoundedText(maxBytes: Long): String? = suspendCancellableCoroutine { continuation ->
+    continuation.invokeOnCancellation { cancel() }
+    enqueue(object : Callback {
+        override fun onFailure(call: Call, e: IOException) {
+            if (continuation.isActive) continuation.resume(null)
+        }
+
+        override fun onResponse(call: Call, response: Response) {
+            val text = response.use {
+                if (!it.isSuccessful) return@use null
+                runCatching {
+                    val source = it.body.source()
+                    source.request(maxBytes)
+                    source.buffer.readUtf8(minOf(source.buffer.size, maxBytes))
+                }.getOrNull()
+            }
+            if (continuation.isActive) continuation.resume(text)
+        }
+    })
 }
 
 internal fun spotifyArtistUriFor(search: JSONObject, artistName: String): String? {
@@ -150,3 +189,4 @@ internal fun spotifyMonthlyListeners(overview: JSONObject): Long? =
         ?.optLong("monthlyListeners", -1L)?.takeIf { it > 0L }
 
 private val SPOTIFY_ARTIST_URI = Regex("^spotify:artist:[A-Za-z0-9]{22}$")
+private const val TOKEN_FIELD_WINDOW_CHARS = 4_096

@@ -32,6 +32,19 @@ class SpotifyArtistAudienceTest {
     }
 
     @Test
+    fun extractsEmbedTokenWithoutScanningWholePage() {
+        val html = "<html>" + "x".repeat(50_000) +
+            """{"session":{"accessToken":"abc.DEF-123","accessTokenExpirationTimestampMs":1795467660008,"isAnonymous":true}}"""
+
+        val embedded = spotifyEmbedToken(html)
+
+        assertEquals("abc.DEF-123", embedded?.token)
+        assertEquals(1_795_467_660_008L, embedded?.expiresAtMs)
+        assertNull(spotifyEmbedToken("<html>no token</html>"))
+        assertNull(spotifyEmbedToken("""{"accessToken":""}"""))
+    }
+
+    @Test
     fun readsPositiveMonthlyListenersOnly() {
         assertEquals(
             2_850_060L,

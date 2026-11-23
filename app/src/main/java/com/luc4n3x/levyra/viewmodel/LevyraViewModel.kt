@@ -1841,6 +1841,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     val state: StateFlow<LevyraUiState> = _state.asStateFlow()
     private val _customLyricsDraft = MutableStateFlow<CustomLyricsDraft?>(null)
+    private var customLyricsSession = 0L
     val customLyricsDraft: StateFlow<CustomLyricsDraft?> = _customLyricsDraft.asStateFlow()
     private val _vaultSyncFile = MutableStateFlow(VaultSyncFileState())
     val vaultSyncFile: StateFlow<VaultSyncFileState> = _vaultSyncFile.asStateFlow()
@@ -14195,7 +14196,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 videoId = youtubePlayableTrack(track)?.id.orEmpty()
             )
             if (_state.value.currentTrack?.let(::playbackIdentity) != trackIdentity) return@launch
-            _customLyricsDraft.value = CustomLyricsDraft(track = track, source = source.orEmpty(), existing = source != null)
+            _customLyricsDraft.value = CustomLyricsDraft(
+                track = track,
+                source = source.orEmpty(),
+                existing = source != null,
+                session = ++customLyricsSession
+            )
         }
     }
 
@@ -14238,10 +14244,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun finishCustomLyricsEdit(draft: CustomLyricsDraft, succeeded: Boolean) {
         if (!succeeded) {
-            _customLyricsDraft.update { current -> current?.copy(saving = false, failed = true) }
+            _customLyricsDraft.update { current ->
+                if (current?.session == draft.session) current.copy(saving = false, failed = true) else current
+            }
             return
         }
-        _customLyricsDraft.value = null
+        _customLyricsDraft.update { current -> if (current?.session == draft.session) null else current }
         val current = _state.value.currentTrack ?: return
         if (playbackIdentity(current) != playbackIdentity(draft.track)) return
         lyricsTrackId = ""

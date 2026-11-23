@@ -388,6 +388,7 @@ data class CustomLyricsDraft(
     val track: Track,
     val source: String,
     val existing: Boolean,
+    val session: Long = 0L,
     val saving: Boolean = false,
     val failed: Boolean = false
 )

@@ -177,7 +177,11 @@ class LyricsRepository(context: Context? = null) {
         online: Boolean
     ): Flow<LyricsResult> = channelFlow {
         val query = querySpec(title, artist, durationSec, album, videoId, languageCode, translate)
-            ?.copy(online = online) ?: return@channelFlow
+            ?.copy(online = online)
+        if (query == null) {
+            customResult(lyricsCustomKey(title, artist, durationSec, videoId), durationSec, languageCode)?.let { send(it) }
+            return@channelFlow
+        }
         if (emitCustomResult(query) { send(it) }) return@channelFlow
         if (emitSelectedResult(query) { send(it) }) return@channelFlow
         val (cached, restored) = restoreCachedResult(query) { send(it) }
@@ -240,8 +244,11 @@ class LyricsRepository(context: Context? = null) {
         return true
     }
 
-    private suspend fun readCustom(query: QuerySpec): LyricsResult? {
-        val source = customSource(customKey(query)) ?: return null
+    private suspend fun readCustom(query: QuerySpec): LyricsResult? =
+        customResult(customKey(query), query.durationSec, query.languageCode)?.let { markTranslationPending(it, query) }
+
+    private suspend fun customResult(key: String, durationSec: Long, languageCode: String): LyricsResult? {
+        val source = customSource(key) ?: return null
         val parsed = CustomLyricsParser.parse(source) as? CustomLyricsParse.Valid ?: return null
         val result = LyricsResult(
             synced = parsed.synced,
@@ -251,9 +258,8 @@ class LyricsRepository(context: Context? = null) {
             cached = true,
             manualSelection = true
         )
-        val enriched = cleanAndEnrich(normalizeTiming(result, query.durationSec), query.languageCode)
-        if (enriched.lines.isEmpty()) return null
-        return markTranslationPending(enriched, query)
+        val enriched = cleanAndEnrich(normalizeTiming(result, durationSec), languageCode)
+        return enriched.takeIf { it.lines.isNotEmpty() }
     }
 
     private suspend fun customSource(key: String): String? {

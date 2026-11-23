@@ -128,6 +128,7 @@ internal fun CustomLyricsEditorSheet(
             OutlinedTextField(
                 value = source,
                 onValueChange = { source = it },
+                enabled = !draft.saving,
                 placeholder = { Text(CUSTOM_LYRICS_PLACEHOLDER, fontFamily = FontFamily.Monospace) },
                 textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
                 shape = RoundedCornerShape(24.dp),
@@ -145,14 +146,12 @@ internal fun CustomLyricsEditorSheet(
             FilledTonalButton(
                 onClick = {
                     scope.launch {
-                        val pasted = clipboard.getClipEntry()?.clipData
-                            ?.takeIf { it.itemCount > 0 }
-                            ?.getItemAt(0)
-                            ?.coerceToText(context)
-                            ?.toString()
+                        val clip = clipboard.getClipEntry()?.clipData?.takeIf { it.itemCount > 0 } ?: return@launch
+                        val pasted = withContext(Dispatchers.IO) { clip.getItemAt(0)?.coerceToText(context)?.toString() }
                         if (!pasted.isNullOrBlank()) source = pasted
                     }
                 },
+                enabled = !draft.saving,
                 shapes = ButtonDefaults.shapes()
             ) {
                 Icon(Icons.Rounded.ContentPaste, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
@@ -329,7 +328,7 @@ private fun CustomLyricsPreviewLine(line: LyricLine, synced: Boolean) {
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-internal fun AddCustomLyricsButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+internal fun AddCustomLyricsButton(onClick: () -> Unit, modifier: Modifier = Modifier, label: String? = null) {
     FilledTonalButton(
         onClick = onClick,
         shapes = ButtonDefaults.shapes(),
@@ -342,7 +341,7 @@ internal fun AddCustomLyricsButton(onClick: () -> Unit, modifier: Modifier = Mod
     ) {
         Icon(Icons.Rounded.EditNote, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
         Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-        Text(LocalLevyraStrings.current.addCustomLyrics, fontWeight = FontWeight.Bold)
+        Text(label ?: LocalLevyraStrings.current.addCustomLyrics, fontWeight = FontWeight.Bold)
     }
 }
 
