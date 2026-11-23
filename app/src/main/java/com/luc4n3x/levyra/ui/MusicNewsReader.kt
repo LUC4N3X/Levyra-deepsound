@@ -93,7 +93,8 @@ import com.luc4n3x.levyra.viewmodel.MusicNewsReaderSession
 import kotlin.math.roundToInt
 
 @Composable
-internal fun MusicNewsReaderOverlay(languageCode: String) {
+internal fun MusicNewsReaderOverlay(languageCode: String, contentReady: Boolean, inPictureInPicture: Boolean) {
+    if (!contentReady || inPictureInPicture) return
     val state by MusicNewsReaderSession.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     MusicNewsReaderHost(

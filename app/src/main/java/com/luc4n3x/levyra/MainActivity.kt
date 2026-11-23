@@ -228,7 +228,7 @@ class MainActivity : ComponentActivity() {
                             onRetryPreUpdateBackup = ::retryPreUpdateBackup,
                             onContinueUpdateWithoutBackup = ::continueUpdateWithoutBackup
                         )
-                        if (fluidPulse.contentReady && !pipMode.value) MusicNewsReaderOverlay(activityUiState.languageCode)
+                        MusicNewsReaderOverlay(activityUiState.languageCode, fluidPulse.contentReady, pipMode.value)
                     }
                 }
                 RemoteAnnouncementGate(
