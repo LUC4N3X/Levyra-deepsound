@@ -899,7 +899,7 @@ class TestRepositoryContracts(unittest.TestCase):
         self.assertNotIn("pull_request_target", wf)
         self.assertNotIn("enable-auto-merge", wf)
         self.assertIn("draft: always-true", wf)
-        self.assertIn("anthropics/claude-code-action@4d75e5f390ee76b2e09c1980ecc99ff3a2e088c8", wf)
+        self.assertIn("anthropics/claude-code-action@c84e279f859e2591391e95bd309286eb111c345f", wf)
         self.assertIn("CLAUDE_CODE_OAUTH_TOKEN", wf)
         self.assertIn("--allowedTools Read,Edit,Write,Glob,Grep", wf)
         self.assertIn("--disallowedTools Bash,WebFetch,WebSearch", wf)

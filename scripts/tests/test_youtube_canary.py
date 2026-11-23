@@ -834,7 +834,7 @@ class YoutubeCanaryTest(unittest.TestCase):
     def test_repository_canary_workflow_keeps_repair_draft_and_scoped(self):
         root = Path(__file__).resolve().parents[2]
         workflow = (root / ".github/workflows/nightly-extractor-check.yml").read_text(encoding="utf-8")
-        self.assertIn("anthropics/claude-code-action@4d75e5f390ee76b2e09c1980ecc99ff3a2e088c8", workflow)
+        self.assertIn("anthropics/claude-code-action@c84e279f859e2591391e95bd309286eb111c345f", workflow)
         self.assertIn("CLAUDE_CODE_OAUTH_TOKEN", workflow)
         self.assertIn("--disallowedTools Bash,WebFetch,WebSearch", workflow)
         self.assertNotIn("openrouter", workflow.lower())
