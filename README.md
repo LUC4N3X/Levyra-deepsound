@@ -69,8 +69,8 @@ I don't host FLAC audio on Levyra's servers. On Android, experimental FLAC playb
 
 <p>
   <a href="docs/assets/showcase/readme/row-01-studio.webp"><picture>
-    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-01-studio-mobile.webp?v=m3-cards-17">
-    <img src="docs/assets/showcase/readme/row-01-studio.webp?v=m3-cards-17" width="900" alt="Levyra for Android: personalized home, Now Playing, gapless playback and word-by-word live lyrics. No Levyra account, ads or telemetry.">
+    <source media="(max-width: 600px)" srcset="docs/assets/showcase/readme/row-01-studio-mobile.webp?v=m3-cards-18">
+    <img src="docs/assets/showcase/readme/row-01-studio.webp?v=m3-cards-18" width="900" alt="Levyra for Android: personalized home built from your plays, gapless playback and word-by-word live lyrics. No ads or tracking.">
   </picture></a>
 </p>
 

@@ -26,8 +26,8 @@ const xml = value => value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').repl
 const rounded = (w, h, radius) => svg(`<rect width="${w}" height="${h}" rx="${radius}" fill="white"/>`, w, h);
 
 const cards = [
-  ['01_pure_listening', 'LISTEN', ['Just press', 'play.'], ['No Levyra account.', 'No ads or telemetry.']],
-  ['02_stay_with_the_song', 'NOW PLAYING', ['Stay with', 'the song.'], ['Audio, video & motion artwork.']],
+  ['01_pure_listening', 'LISTEN', ['Just the', 'music.'], ['No ads. No tracking.']],
+  ['02_stay_with_the_song', 'HOME', ['Built from', 'your plays.'], ['Your home updates on device.']],
   ['06_built_for_your_taste', 'PLAYBACK', ['Keep listening'], ['Gapless playback & crossfade.']],
   ['06b_live_lyrics', 'LYRICS', ['Live lyrics'], ['Word-by-word sync & translation.']],
   ['05_fresh_currents', 'DISCOVERY', ['Discover more'], ['Search, revisit & explore.']],
