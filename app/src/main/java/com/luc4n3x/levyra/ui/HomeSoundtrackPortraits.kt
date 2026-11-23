@@ -21,7 +21,13 @@ internal object HomeSoundtrackPortraits {
         "dua lipa" to "https://api.deezer.com/artist/8706544/image?size=xl"
     )
 
+    private val tidalArtistIds: Map<String, Long> = mapOf(
+        "sfera ebbasta" to 6442260L
+    )
+
     fun qobuzPortraitPage(artistName: String): String? = qobuzPortraitPages[artistName.trim().lowercase()]
+
+    fun tidalArtistId(artistName: String): Long? = tidalArtistIds[artistName.trim().lowercase()]
 
     fun fixedPortrait(artistName: String): String? = fixedPortraits[artistName.trim().lowercase()]
 

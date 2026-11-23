@@ -217,14 +217,18 @@ class SpotifyPlaylistAdapter(private val fetcher: PlaylistImportFetcher) : Playl
         }
         val embed = embedPayload.page
         if (embed.tracks.isEmpty()) throw PlaylistImportException(PlaylistImportFailureKind.NOT_AVAILABLE, "Spotify playlist empty")
-        val page = try {
-            parseSpotifyPlaylistPage(spotifyHeadOnly(fetcher.fetch(html("https://open.spotify.com/playlist/$id", 1024L * 1024)).body))
-        } catch (error: CancellationException) {
-            throw error
-        } catch (_: Exception) {
+        val paged = embedPayload.accessToken?.let { readSpotifyPages(id, it, progress) }
+        val page = if (paged?.total == null || embed.title.isBlank()) {
+            try {
+                parseSpotifyPlaylistPage(spotifyHeadOnly(fetcher.fetch(html("https://open.spotify.com/playlist/$id", 1024L * 1024)).body))
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                null
+            }
+        } else {
             null
         }
-        val paged = embedPayload.accessToken?.let { readSpotifyPages(id, it, progress) }
         val usePaged = paged != null && paged.tracks.isNotEmpty() &&
             (paged.complete || paged.tracks.size > embed.tracks.size)
         val tracks = if (usePaged) requireNotNull(paged).tracks else embed.tracks

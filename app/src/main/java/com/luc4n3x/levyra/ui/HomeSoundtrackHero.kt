@@ -102,11 +102,12 @@ internal fun rememberHomeHeroPortrait(
         HomeSoundtrackPortraits.artistForDay(languageCode, java.time.LocalDate.now().toEpochDay())
     }
     val qobuzPortraitPage = remember(artistName) { HomeSoundtrackPortraits.qobuzPortraitPage(artistName) }
+    val tidalArtistId = remember(artistName) { HomeSoundtrackPortraits.tidalArtistId(artistName) }
     val fixedPortrait = remember(artistName) { HomeSoundtrackPortraits.fixedPortrait(artistName) }
     var externalPortraitUrl by rememberSaveable(artistName) {
         mutableStateOf(
             fixedPortrait ?: appleRepository.cachedArtistPortrait(artistName)
-                .takeIf(String::isNotBlank)
+                .takeIf { it.isNotBlank() && tidalArtistId == null }
                 ?.let(::highResolutionHomeArtistArtworkUrl)
                 .orEmpty()
         )
@@ -114,15 +115,19 @@ internal fun rememberHomeHeroPortrait(
     var portraitLookupComplete by rememberSaveable(artistName) {
         mutableStateOf(
             artistName.isBlank() || fixedPortrait != null ||
-                (externalPortraitUrl.isNotBlank() && qobuzPortraitPage == null)
+                (externalPortraitUrl.isNotBlank() && qobuzPortraitPage == null && tidalArtistId == null)
         )
     }
     LaunchedEffect(artistName, spotifyRepository, appleRepository) {
         if (portraitLookupComplete) return@LaunchedEffect
+        val tidalPortrait = tidalArtistId
+            ?.let { id -> com.luc4n3x.levyra.data.ArtistPortraitFallbackRepository.get(context).tidalArtistPortrait(artistName, id) }
+            .orEmpty()
         val qobuzPortrait = qobuzPortraitPage
             ?.let { page -> com.luc4n3x.levyra.data.qobuz.QobuzEditorialRepository.get(context).artistPortrait(page) }
             .orEmpty()
-        val portrait = qobuzPortrait
+        val portrait = tidalPortrait
+            .ifBlank { qobuzPortrait }
             .ifBlank { externalPortraitUrl }
             .ifBlank { appleRepository.resolveArtistPortrait(artistName) }
             .ifBlank { spotifyRepository.resolveArtistPortrait(artistName) }

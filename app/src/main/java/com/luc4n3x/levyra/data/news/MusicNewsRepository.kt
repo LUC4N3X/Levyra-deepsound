@@ -15,34 +15,57 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okio.Buffer
+import org.json.JSONException
 import timber.log.Timber
 import java.io.File
 import java.io.IOException
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
-internal data class MusicNewsSource(val name: String, val url: String)
+internal enum class MusicNewsArticleApi { None, WordPress, PreloadedState, JsonLdBody }
+
+internal data class MusicNewsArticleRequest(
+    val url: String,
+    val api: MusicNewsArticleApi,
+    val bodyMarker: String = "",
+    val bodyEnd: String = ""
+)
+
+internal data class MusicNewsSource(
+    val name: String,
+    val url: String,
+    val articleApi: MusicNewsArticleApi = MusicNewsArticleApi.None,
+    val apiHost: String = "",
+    val bodyMarker: String = "",
+    val bodyEnd: String = ""
+)
 
 internal object MusicNewsSources {
-    private val pitchfork = MusicNewsSource("Pitchfork", "https://pitchfork.com/feed/feed-news/rss")
+    private val pitchfork = MusicNewsSource("Pitchfork", "https://pitchfork.com/feed/feed-news/rss", MusicNewsArticleApi.PreloadedState)
     private val english = listOf(
         pitchfork,
-        MusicNewsSource("Stereogum", "https://stereogum.com/feed/"),
-        MusicNewsSource("Consequence", "https://consequence.net/feed/"),
-        MusicNewsSource("NME", "https://www.nme.com/news/music/feed")
+        MusicNewsSource("Stereogum", "https://stereogum.com/feed/", MusicNewsArticleApi.WordPress, apiHost = "lede-admin.stereogum.com"),
+        MusicNewsSource("Consequence", "https://consequence.net/feed/", MusicNewsArticleApi.WordPress),
+        MusicNewsSource("NME", "https://www.nme.com/news/music/feed", MusicNewsArticleApi.WordPress)
     )
     private val table = mapOf(
         "en" to english,
         "it" to listOf(
-            MusicNewsSource("Rockol", "https://www.rockol.it/rss/news"),
-            MusicNewsSource("All Music Italia", "https://www.allmusicitalia.it/feed"),
-            MusicNewsSource("Rolling Stone Italia", "https://www.rollingstone.it/musica/feed/"),
+            MusicNewsSource("Rockol", "https://www.rockol.it/rss/news", MusicNewsArticleApi.JsonLdBody, bodyMarker = "data-rockol-news-detail-body"),
+            MusicNewsSource("All Music Italia", "https://www.allmusicitalia.it/feed", MusicNewsArticleApi.WordPress),
+            MusicNewsSource("Rolling Stone Italia", "https://www.rollingstone.it/musica/feed/", MusicNewsArticleApi.WordPress),
             pitchfork
         ),
-        "de" to listOf(MusicNewsSource("Musikexpress", "https://www.musikexpress.de/feed/"), pitchfork),
-        "fr" to listOf(MusicNewsSource("Les Inrocks", "https://www.lesinrocks.com/musique/feed/"), pitchfork),
-        "es" to listOf(MusicNewsSource("Mondo Sonoro", "https://www.mondosonoro.com/feed/"), pitchfork),
-        "ru" to listOf(MusicNewsSource("InterMedia", "https://www.intermedia.ru/rss/news.xml"), pitchfork)
+        "de" to listOf(MusicNewsSource("Musikexpress", "https://www.musikexpress.de/feed/", MusicNewsArticleApi.WordPress), pitchfork),
+        "fr" to listOf(MusicNewsSource("Les Inrocks", "https://www.lesinrocks.com/musique/feed/", MusicNewsArticleApi.WordPress), pitchfork),
+        "es" to listOf(MusicNewsSource("Mondo Sonoro", "https://www.mondosonoro.com/feed/", MusicNewsArticleApi.WordPress), pitchfork),
+        "ru" to listOf(MusicNewsSource(
+            "InterMedia",
+            "https://www.intermedia.ru/rss/news.xml",
+            MusicNewsArticleApi.JsonLdBody,
+            bodyMarker = "class=\"news-content\"",
+            bodyEnd = "class=\"clear\""
+        ), pitchfork)
     )
 
     val languages: Set<String> get() = table.keys
@@ -51,6 +74,30 @@ internal object MusicNewsSources {
         code.trim().lowercase(Locale.ROOT).substringBefore('-').substringBefore('_').takeIf { it in table } ?: "en"
 
     fun forLanguage(code: String): List<MusicNewsSource> = table.getValue(key(code))
+
+    fun articleRequest(story: MusicNewsStory): MusicNewsArticleRequest? {
+        val host = hostOf(story.url) ?: return null
+        val source = table.values.asSequence().flatten()
+            .firstOrNull { it.articleApi != MusicNewsArticleApi.None && it.name == story.source && hostOf(it.url) == host }
+            ?: return null
+        return when (source.articleApi) {
+            MusicNewsArticleApi.WordPress -> story.articleId.takeIf { it.isNotBlank() && it.all(Char::isDigit) }?.let { id ->
+                MusicNewsArticleRequest(
+                    "https://${source.apiHost.ifBlank { host }}/wp-json/wp/v2/posts/$id" +
+                        "?_fields=id,title,date_gmt,content,_links,_embedded&_embed=author,wp:featuredmedia",
+                    MusicNewsArticleApi.WordPress
+                )
+            }
+            MusicNewsArticleApi.PreloadedState -> MusicNewsArticleRequest(story.url, MusicNewsArticleApi.PreloadedState)
+            MusicNewsArticleApi.JsonLdBody ->
+                MusicNewsArticleRequest(story.url, MusicNewsArticleApi.JsonLdBody, source.bodyMarker, source.bodyEnd)
+            MusicNewsArticleApi.None -> null
+        }
+    }
+
+    private fun hostOf(url: String): String? =
+        url.takeIf(MusicNewsFeedParser::isHttps)?.substringAfter("://")?.substringBefore('/')?.substringBefore('?')
+            ?.lowercase(Locale.ROOT)?.takeIf(String::isNotBlank)
 }
 
 class MusicNewsRepository private constructor(context: Context) {
@@ -69,6 +116,12 @@ class MusicNewsRepository private constructor(context: Context) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val pages = ConcurrentHashMap<String, MusicNewsPage>()
     private val inFlight = ConcurrentHashMap<String, Deferred<MusicNewsPage?>>()
+    private val articles: MutableMap<String, MusicNewsArticle> = java.util.Collections.synchronizedMap(
+        object : LinkedHashMap<String, MusicNewsArticle>(MAX_CACHED_ARTICLES, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, MusicNewsArticle>?): Boolean =
+                size > MAX_CACHED_ARTICLES
+        }
+    )
     private val backoffs = ConcurrentHashMap<String, AppleCatalogBackoff>()
     private val cacheDirectory by lazy { File(appContext.cacheDir, CACHE_DIRECTORY) }
 
@@ -93,6 +146,36 @@ class MusicNewsRepository private constructor(context: Context) {
             }
         }
         return awaitOrNull(shared)?.stories ?: usable?.stories
+    }
+
+    suspend fun article(story: MusicNewsStory): MusicNewsArticle? = withContext(Dispatchers.IO) {
+        articles[story.url]?.let { return@withContext it }
+        val request = MusicNewsSources.articleRequest(story) ?: return@withContext null
+        try {
+            when (request.api) {
+                MusicNewsArticleApi.WordPress -> fetchText(request.url, "application/json")
+                    ?.let { MusicNewsArticleParser.wordpress(it, story) }
+                MusicNewsArticleApi.PreloadedState -> fetchText(request.url, "text/html")
+                    ?.let { MusicNewsArticleParser.preloadedState(it, story) }
+                MusicNewsArticleApi.JsonLdBody -> fetchText(request.url, "text/html")
+                    ?.let { MusicNewsArticleParser.jsonLdBody(it, story, request.bodyMarker, request.bodyEnd) }
+                MusicNewsArticleApi.None -> null
+            }
+                ?.also {
+                    articles[story.url] = it
+                }
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (error: IOException) {
+            Timber.w(error, "Music news article %s failed", story.source)
+            null
+        } catch (error: JSONException) {
+            Timber.w(error, "Music news article %s failed", story.source)
+            null
+        } catch (error: RuntimeException) {
+            Timber.w(error, "Music news article %s failed", story.source)
+            null
+        }
     }
 
     private fun keepFailedSources(fresh: MusicNewsPage, previous: MusicNewsPage?): MusicNewsPage {
@@ -154,7 +237,7 @@ class MusicNewsRepository private constructor(context: Context) {
     }
 
     private fun fetchSource(source: MusicNewsSource): List<MusicNewsStory> = try {
-        fetchXml(source.url)?.let { MusicNewsFeedParser.parse(it, source.name) }.orEmpty()
+        fetchText(source.url, FEED_ACCEPT)?.let { MusicNewsFeedParser.parse(it, source.name) }.orEmpty()
     } catch (error: IOException) {
         Timber.w(error, "Music news feed %s failed", source.name)
         emptyList()
@@ -163,14 +246,14 @@ class MusicNewsRepository private constructor(context: Context) {
         emptyList()
     }
 
-    private fun fetchXml(url: String): String? {
+    private fun fetchText(url: String, accept: String): String? {
         if (!MusicNewsFeedParser.isHttps(url)) return null
         val host = url.substringAfter("://").substringBefore('/')
         val backoff = backoffs.computeIfAbsent(host) { AppleCatalogBackoff() }
         if (backoff.blocked(System.currentTimeMillis())) return null
         val request = Request.Builder()
             .url(url)
-            .header("Accept", "application/rss+xml, application/atom+xml, application/xml, text/xml")
+            .header("Accept", accept)
             .header("User-Agent", USER_AGENT)
             .build()
         return httpClient.newCall(request).execute().use { response ->
@@ -236,6 +319,8 @@ class MusicNewsRepository private constructor(context: Context) {
         private const val MAX_ARTICLE_IMAGE_LOOKUPS = 16
         private const val ARTICLE_CALL_TIMEOUT_SECONDS = 6L
         private const val HTTP_TOO_MANY_REQUESTS = 429
+        private const val MAX_CACHED_ARTICLES = 24
+        private const val FEED_ACCEPT = "application/rss+xml, application/atom+xml, application/xml, text/xml"
         private const val HTTP_SERVICE_UNAVAILABLE = 503
 
         internal fun merge(stories: List<MusicNewsStory>): List<MusicNewsStory> {

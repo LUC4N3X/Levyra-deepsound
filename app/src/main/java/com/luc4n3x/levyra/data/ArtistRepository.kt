@@ -868,14 +868,16 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         )
         if (thumbnail.isBlank()) return null
         val accent = palette(stableSeed(browseId + resolvedName))
+        val listeners = extractOfficialMonthlyListeners(header)
         return ArtistHit(
             name = resolvedName,
-            subscribers = extractSubscribers(header).ifBlank { candidate.subscribers },
+            subscribers = listeners.ifBlank { extractSubscribers(header).ifBlank { candidate.subscribers } },
             thumbnailUrl = thumbnail,
             accentStart = accent.first,
             accentEnd = accent.second,
             browseId = browseId,
-            officialArtwork = true
+            officialArtwork = true,
+            audienceIsSubscribers = listeners.isBlank()
         )
     }
 
@@ -1103,8 +1105,8 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             browseId = resolvedArtist?.browseId.orEmpty(),
             name = resolvedName,
             biography = null,
-            subscribers = resolvedArtist?.subscribers.orEmpty(),
-            monthlyListeners = "",
+            subscribers = resolvedArtist?.takeIf { it.audienceIsSubscribers }?.subscribers.orEmpty(),
+            monthlyListeners = resolvedArtist?.takeUnless { it.audienceIsSubscribers }?.subscribers.orEmpty(),
             thumbnailUrl = portrait,
             bannerUrl = portrait,
             topSongs = songs.take(12),

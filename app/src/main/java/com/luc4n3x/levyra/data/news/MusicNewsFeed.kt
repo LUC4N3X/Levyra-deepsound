@@ -18,7 +18,8 @@ data class MusicNewsStory(
     val title: String,
     val source: String,
     val imageUrl: String,
-    val publishedAtMs: Long
+    val publishedAtMs: Long,
+    val articleId: String = ""
 )
 
 internal data class MusicNewsPage(val stories: List<MusicNewsStory>, val fetchedAtMs: Long)
@@ -81,7 +82,17 @@ internal object MusicNewsFeedParser {
             .firstOrNull(::isHttps) ?: return null
         val published = nodes.firstOrNull { localName(it) in DATE_FIELDS && it.textContent.isNotBlank() }
             ?.textContent?.let(::parseDate) ?: 0L
-        return MusicNewsStory(url = url, title = title, source = source, imageUrl = image(nodes), publishedAtMs = published)
+        val articleId = nodes.firstOrNull { localName(it) == "guid" }?.textContent
+            ?.let { WORDPRESS_POST_ID.find(it)?.groupValues?.get(1) }
+            .orEmpty()
+        return MusicNewsStory(
+            url = url,
+            title = title,
+            source = source,
+            imageUrl = image(nodes),
+            publishedAtMs = published,
+            articleId = articleId
+        )
     }
 
     private fun image(nodes: List<Element>): String {
@@ -135,6 +146,7 @@ internal object MusicNewsFeedParser {
     private const val MEDIA_NAMESPACE = "http://search.yahoo.com/mrss/"
     private val DATE_FIELDS = setOf("pubdate", "published", "updated", "date")
     private val HTML_FIELDS = setOf("description", "encoded", "content", "summary")
+    private val WORDPRESS_POST_ID = Regex("[?&]p=(\\d{1,12})(?=$|[&#])")
 }
 
 internal object MusicNewsCodec {
@@ -145,6 +157,7 @@ internal object MusicNewsCodec {
                 put(
                     JSONObject().put("url", it.url).put("title", it.title).put("source", it.source)
                         .put("image", it.imageUrl).put("publishedAtMs", it.publishedAtMs)
+                        .put("articleId", it.articleId)
                 )
             }
         })
@@ -161,7 +174,8 @@ internal object MusicNewsCodec {
                     title = item.optString("title"),
                     source = item.optString("source"),
                     imageUrl = item.optString("image").takeIf(MusicNewsFeedParser::isHttps).orEmpty(),
-                    publishedAtMs = item.optLong("publishedAtMs").coerceAtLeast(0L)
+                    publishedAtMs = item.optLong("publishedAtMs").coerceAtLeast(0L),
+                    articleId = item.optString("articleId").takeIf { it.length in 1..12 && it.all(Char::isDigit) }.orEmpty()
                 ).takeIf { MusicNewsFeedParser.isHttps(it.url) && it.title.isNotBlank() }
             }.take(MusicNewsFeedParser.MAX_STORIES),
             fetchedAtMs = json.getLong("fetchedAtMs")

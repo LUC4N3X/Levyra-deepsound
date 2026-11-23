@@ -47,11 +47,16 @@ internal fun parseTidalArtistPortrait(root: JSONObject, artistName: String): Str
     for (index in 0 until items.length()) {
         val item = items.optJSONObject(index) ?: continue
         if (!artistNamesMatch(item.optString("name").trim(), artistName)) continue
-        val pictureId = item.optString("picture").trim()
-        if (!TIDAL_PICTURE_ID.matches(pictureId)) continue
-        return "https://resources.tidal.com/images/${pictureId.replace('-', '/')}/750x750.jpg"
+        val picture = tidalArtistPictureUrl(item.optString("picture"))
+        if (picture.isNotBlank()) return picture
     }
     return ""
+}
+
+internal fun tidalArtistPictureUrl(pictureId: String): String {
+    val id = pictureId.trim()
+    if (!TIDAL_PICTURE_ID.matches(id)) return ""
+    return "https://resources.tidal.com/images/${id.replace('-', '/')}/750x750.jpg"
 }
 
 internal class ArtistPortraitFallbackRepository private constructor(context: Context) {
@@ -84,6 +89,14 @@ internal class ArtistPortraitFallbackRepository private constructor(context: Con
             .build()
         requestJson(url, TIDAL_EMBED_TOKEN)?.let { parseTidalArtistPortrait(it, name) }.orEmpty()
     }
+
+    suspend fun tidalArtistPortrait(artistName: String, artistId: Long): String =
+        cached("tidal-artist-$artistId", artistName) {
+            val url = "$TIDAL_ARTISTS_URL/$artistId".toHttpUrl().newBuilder()
+                .addQueryParameter("countryCode", tidalCountryCode())
+                .build()
+            requestJson(url, TIDAL_EMBED_TOKEN)?.optString("picture")?.let(::tidalArtistPictureUrl).orEmpty()
+        }
 
     private suspend fun cached(
         provider: String,
@@ -144,6 +157,7 @@ internal class ArtistPortraitFallbackRepository private constructor(context: Con
 
         private const val DEEZER_ARTIST_SEARCH_URL = "https://api.deezer.com/search/artist"
         private const val TIDAL_SEARCH_URL = "https://api.tidal.com/v1/search"
+        private const val TIDAL_ARTISTS_URL = "https://api.tidal.com/v1/artists"
         private const val USER_AGENT =
             "Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 Chrome/140.0.0.0 Mobile Safari/537.36"
         private const val SEARCH_LIMIT = 5

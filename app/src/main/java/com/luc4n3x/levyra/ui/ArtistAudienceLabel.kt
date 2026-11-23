@@ -31,7 +31,7 @@ internal fun artistAudienceCount(raw: String): Long? {
 }
 
 internal fun artistAudienceLabel(artist: com.luc4n3x.levyra.domain.ArtistHit, languageCode: String, listenersWord: String): String =
-    if (artist.audienceIsSubscribers) artist.subscribers.trim() else artistAudienceLabel(artist.subscribers, languageCode, listenersWord)
+    if (artist.audienceIsSubscribers) "" else artistAudienceLabel(artist.subscribers, languageCode, listenersWord)
 
 internal fun artistAudienceLabel(raw: String, languageCode: String, listenersWord: String): String {
     val count = artistAudienceCount(raw) ?: return raw.substringAfterLast("•").trim()

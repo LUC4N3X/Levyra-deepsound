@@ -59,6 +59,7 @@ import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.ui.LevyraApp
 import com.luc4n3x.levyra.ui.LevyraGlassStyle
 import com.luc4n3x.levyra.ui.LocalLevyraGlassStyle
+import com.luc4n3x.levyra.ui.MusicNewsReaderOverlay
 import com.luc4n3x.levyra.ui.components.LocalLevyraLiquidGlassEnabled
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.support.RemoteAnnouncementGate
@@ -227,6 +228,7 @@ class MainActivity : ComponentActivity() {
                             onRetryPreUpdateBackup = ::retryPreUpdateBackup,
                             onContinueUpdateWithoutBackup = ::continueUpdateWithoutBackup
                         )
+                        if (fluidPulse.contentReady && !pipMode.value) MusicNewsReaderOverlay(activityUiState.languageCode)
                     }
                 }
                 RemoteAnnouncementGate(
