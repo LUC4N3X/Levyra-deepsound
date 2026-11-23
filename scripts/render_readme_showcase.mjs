@@ -89,7 +89,7 @@ async function extractPhone(index, spec) {
 }
 
 function smartphoneFrameSvg(left, top, outerW, outerH, cw = width, ch = height) {
-  const rx = left + outerW - 1;
+  const rx = left + outerW - 1.5;
   return svg(`
     <defs>
       <linearGradient id="pxRail" x1="0" y1="0" x2="1" y2="0.5">
@@ -99,14 +99,9 @@ function smartphoneFrameSvg(left, top, outerW, outerH, cw = width, ch = height) 
         <stop offset="82%" stop-color="#4A515E"/>
         <stop offset="100%" stop-color="#676F7E"/>
       </linearGradient>
-      <linearGradient id="pxBtn" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#6B7382"/>
-        <stop offset="50%" stop-color="#282C36"/>
-        <stop offset="100%" stop-color="#535A68"/>
-      </linearGradient>
     </defs>
-    <rect x="${rx}" y="${top + 230}" width="8" height="68" rx="4" fill="url(#pxBtn)" stroke="#13161C" stroke-opacity=".82" stroke-width="1.2"/>
-    <rect x="${rx}" y="${top + 338}" width="8" height="122" rx="4" fill="url(#pxBtn)" stroke="#13161C" stroke-opacity=".82" stroke-width="1.2"/>
+    <rect x="${rx}" y="${top + 236}" width="4" height="60" rx="2" fill="#3B414E" opacity=".82"/>
+    <rect x="${rx}" y="${top + 338}" width="4" height="112" rx="2" fill="#3B414E" opacity=".82"/>
     <rect x="${left}" y="${top}" width="${outerW}" height="${outerH}" rx="72" fill="url(#pxRail)"/>
     <rect x="${left + 3}" y="${top + 3}" width="${outerW - 6}" height="${outerH - 6}" rx="69" fill="none" stroke="#B6C0D4" stroke-opacity=".46" stroke-width="2"/>
     <rect x="${left + 0.9}" y="${top + 0.9}" width="${outerW - 1.8}" height="${outerH - 1.8}" rx="71.1" fill="none" stroke="#13161C" stroke-opacity=".84" stroke-width="1.8"/>
