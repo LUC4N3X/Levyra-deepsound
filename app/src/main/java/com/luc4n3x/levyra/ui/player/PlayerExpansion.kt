@@ -25,14 +25,16 @@ private const val MorphEnd = 0.96f
 private const val ChromeFadeStart = 0.02f
 private const val ChromeFadeEnd = 0.3f
 private const val SurfaceFadeStart = 0f
-private const val SurfaceFadeEnd = 0.4f
+private const val SurfaceFadeEnd = 0.45f
 private const val BackgroundDepth = 0.06f
 private const val BackgroundDim = 0.42f
 
 val PlayerBackgroundCorner = 28.dp
 private const val PredictiveBackCollapseDepth = 0.14f
 private const val ContainerFallbackHeightFraction = 0.12f
-private const val ContainerTravelFraction = 0.16f
+private const val ContainerStartScale = 0.55f
+private const val ClassicSurfaceFadeEnd = 0.4f
+private const val ClassicContainerTravelFraction = 0.16f
 
 fun playerExpansionFromDrag(start: Float, dragPx: Float, travelPx: Float): Float {
     if (!start.isFinite()) return PlayerExpansionCollapsed
@@ -71,16 +73,23 @@ fun playerMotionProgress(fraction: Float): Float {
 fun playerChromeAlpha(expansion: Float): Float =
     1f - playerMotionProgress(normalize(expansion, ChromeFadeStart, ChromeFadeEnd))
 
-fun playerSurfaceAlpha(expansion: Float): Float =
-    playerMotionProgress(normalize(expansion, SurfaceFadeStart, SurfaceFadeEnd))
+fun playerSurfaceAlpha(expansion: Float, classic: Boolean = false): Float =
+    playerMotionProgress(normalize(expansion, SurfaceFadeStart, if (classic) ClassicSurfaceFadeEnd else SurfaceFadeEnd))
 
-fun playerContainerBounds(expansion: Float, origin: Rect?, width: Float, height: Float): Rect {
+fun playerContainerBounds(expansion: Float, origin: Rect?, width: Float, height: Float, classic: Boolean = false): Rect {
     val safeWidth = width.finiteOr(0f).coerceAtLeast(0f)
     val safeHeight = height.finiteOr(0f).coerceAtLeast(0f)
     val startTop = (origin?.top ?: (safeHeight * (1f - ContainerFallbackHeightFraction))).finiteOr(safeHeight).coerceIn(0f, safeHeight)
     val remaining = 1f - expansion.finiteOr(PlayerExpansionCollapsed).coerceIn(PlayerExpansionCollapsed, PlayerExpansionExpanded)
-    val top = minOf(startTop, safeHeight * ContainerTravelFraction) * remaining
-    return Rect(0f, top, safeWidth, top + safeHeight)
+    if (classic) {
+        val top = minOf(startTop, safeHeight * ClassicContainerTravelFraction) * remaining
+        return Rect(0f, top, safeWidth, top + safeHeight)
+    }
+    val scale = 1f - (1f - ContainerStartScale) * remaining
+    val containerWidth = safeWidth * scale
+    val left = (safeWidth - containerWidth) / 2f
+    val top = startTop * remaining
+    return Rect(left, top, left + containerWidth, top + safeHeight * scale)
 }
 
 fun playerContainerCornerPx(expansion: Float, origin: Rect?): Float {

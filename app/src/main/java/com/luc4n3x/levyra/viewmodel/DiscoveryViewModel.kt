@@ -29,6 +29,7 @@ import java.time.format.FormatStyle
 import java.util.Locale
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -148,21 +149,31 @@ class DiscoveryViewModel internal constructor(private val root: LevyraViewModel)
         val today = LocalDate.now().toEpochDay()
         if (dailyJob?.isActive == true || dailyDay == today) return
         dailyJob = viewModelScope.launch {
-            val cards = runCatchingSafely {
-                val profile = root.discoveryProfile().let { profile ->
-                    if (profile.seeds.isEmpty()) {
-                        profile.copy(seeds = root.onboardingDiscoverySeeds().ifEmpty { root.chartDiscoverySeeds(profile.market) })
-                    } else {
-                        profile
-                    }
+            for (retryDelayMs in DAILY_RETRY_DELAYS_MS) {
+                delay(retryDelayMs)
+                val daily = buildDaily(today)
+                if (daily.isNotEmpty()) {
+                    dailyDay = today
+                    feed.update { it.copy(daily = daily) }
+                    return@launch
                 }
-                engine.daily(profile, interactionStore.load(), today, familiarArtistKeys())
-            } ?: return@launch
-            val daily = resolveDailyDiscovery(cards, homeVisibleTrackKeys(), familiarArtistKeys())
-            if (daily.isEmpty()) return@launch
-            dailyDay = today
-            feed.update { it.copy(daily = daily) }
+            }
         }
+    }
+
+    private suspend fun buildDaily(today: Long): List<DiscoveryCard> {
+        val profile = root.discoveryProfile()
+        val personalSeeds = profile.seeds.ifEmpty { runCatchingSafely { root.onboardingDiscoverySeeds() }.orEmpty() }
+        val personal = dailyFrom(profile.copy(seeds = personalSeeds), today)
+        if (personal.isNotEmpty()) return personal
+        val chartSeeds = runCatchingSafely { root.chartDiscoverySeeds(profile.market) }.orEmpty()
+        return dailyFrom(profile.copy(seeds = chartSeeds), today)
+    }
+
+    private suspend fun dailyFrom(profile: com.luc4n3x.levyra.feature.discovery.DiscoveryTasteProfile, today: Long): List<DiscoveryCard> {
+        if (profile.seeds.isEmpty()) return emptyList()
+        val cards = runCatchingSafely { engine.daily(profile, interactionStore.load(), today, familiarArtistKeys()) }.orEmpty()
+        return resolveDailyDiscovery(cards, homeVisibleTrackKeys(), familiarArtistKeys())
     }
 
     fun refresh() {
@@ -462,6 +473,7 @@ class DiscoveryViewModel internal constructor(private val root: LevyraViewModel)
         const val PREFETCH_AHEAD = 2
         const val RESOLVED_CACHE_SIZE = 16
         const val FEED_TTL_MS = 6L * 60L * 60L * 1000L
+        val DAILY_RETRY_DELAYS_MS = longArrayOf(0L, 15_000L, 60_000L, 180_000L)
         const val BUBBLE_PREFERENCES = "levyra_discovery_bubble"
         const val KEY_LEVEL = "level"
     }

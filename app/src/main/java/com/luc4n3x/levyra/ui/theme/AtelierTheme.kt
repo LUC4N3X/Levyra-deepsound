@@ -178,12 +178,23 @@ internal fun AtelierThemeEffect(track: com.luc4n3x.levyra.domain.Track?) {
 }
 
 internal fun playerStageSpec(current: Float, opening: Boolean): androidx.compose.animation.core.AnimationSpec<Float> {
+    if (LevyraIsDefaultSkin && !LevyraIsAtelier) {
+        return if (opening) {
+            androidx.compose.animation.core.spring(dampingRatio = FlowOpenDamping, stiffness = FlowOpenStiffness)
+        } else {
+            androidx.compose.animation.core.spring(dampingRatio = FlowCloseDamping, stiffness = FlowCloseStiffness)
+        }
+    }
     if (!LevyraIsAtelier) return if (opening) LevyraPlayerDesign.expandSpring() else LevyraPlayerDesign.collapseSpring()
     val remaining = if (opening) 1f - current else current
     val duration = (if (opening) AtelierOpenMillis else AtelierCloseMillis) * remaining.coerceIn(0f, 1f)
     return androidx.compose.animation.core.tween(duration.toInt().coerceAtLeast(90), easing = androidx.compose.animation.core.LinearEasing)
 }
 
+private const val FlowOpenDamping = 0.86f
+private const val FlowOpenStiffness = 420f
+private const val FlowCloseDamping = 1f
+private const val FlowCloseStiffness = 480f
 private const val AtelierOpenMillis = 1250f
 private const val AtelierCloseMillis = 1050f
 

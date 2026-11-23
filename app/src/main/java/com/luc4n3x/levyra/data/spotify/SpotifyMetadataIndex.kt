@@ -7,9 +7,9 @@ import java.util.Locale
 
 internal class SpotifyMetadataIndex(tracks: List<Track>) {
     private val entries = tracks.take(MAX_ENTRIES).distinctBy { it.id }
-    private val byRecording = entries.groupBy(::recordingKey)
+    private val byRecording by lazy { entries.groupBy(::recordingKey) }
     private val byIsrc = entries.filter { it.isrc.isNotBlank() }.groupBy { it.isrc.uppercase(Locale.ROOT) }
-    private val searchable = entries.map { it to MusicIdentityText.normalize("${it.title} ${it.artist} ${it.album}") }
+    private val searchable by lazy { entries.map { it to MusicIdentityText.normalize("${it.title} ${it.artist} ${it.album}") } }
 
     fun match(track: Track): Track? {
         if (preservesPersonalMetadata(track)) return null

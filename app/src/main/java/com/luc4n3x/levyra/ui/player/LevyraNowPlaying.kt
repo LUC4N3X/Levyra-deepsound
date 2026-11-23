@@ -89,6 +89,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import com.luc4n3x.levyra.ui.components.LevyraPressScale
+import com.luc4n3x.levyra.ui.components.levyraPressable
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -180,6 +186,9 @@ private val MinimumFittedPlayerHeight = 600.dp
 private val ScrollingArtworkMax = 260.dp
 private val HeaderSideReserve = 108.dp
 private val HeaderButtonMinimumWidth = 40.dp
+private val HeaderMoreGlyph = 20.dp
+private const val HeaderMoreAlpha = 0.78f
+private const val CastChipLabel = "Google Cast"
 private val HeaderCenterMinimumWidth = 112.dp
 private const val DefaultBackdropFocus = 0.34f
 
@@ -576,17 +585,31 @@ private fun LevyraNowPlayingContent(
         val headerCentered = headerPolicy.centerLocked
 
         val headerLeading: @Composable () -> Unit = {
-            PlayerGlassIconButton(
-                icon = Icons.Rounded.KeyboardArrowDown,
-                contentDescription = strings.collapsePlayer,
-                size = headerButtonSize,
-                iconSize = 24.dp,
-                fill = headerButtonFill,
-                tint = headerTint,
-                borderTop = headerButtonBorder,
-                borderBottom = headerButtonBorder,
-                onClick = collapseActions.collapse
-            )
+            if (appleMusicPlayer) {
+                PlayerGlassIconButton(
+                    icon = Icons.Rounded.KeyboardArrowDown,
+                    contentDescription = strings.collapsePlayer,
+                    size = headerButtonSize,
+                    iconSize = 24.dp,
+                    fill = headerButtonFill,
+                    tint = headerTint,
+                    borderTop = headerButtonBorder,
+                    borderBottom = headerButtonBorder,
+                    onClick = collapseActions.collapse
+                )
+            } else {
+                Box(
+                    Modifier
+                        .size(LevyraPlayerDesign.MinimumTouchTarget)
+                        .clearAndSetSemantics {
+                            contentDescription = strings.collapsePlayer
+                            onClick(label = strings.collapsePlayer) {
+                                collapseActions.collapse()
+                                true
+                            }
+                        }
+                )
+            }
         }
         val headerCenter: @Composable () -> Unit = {
             if (track != null && (track.videoUrl.isNotBlank() || track.counterpartVideoId.isNotBlank())) {
@@ -600,7 +623,7 @@ private fun LevyraNowPlayingContent(
             }
         }
         val headerTrailing: @Composable () -> Unit = {
-            if (!state.isVideoMode && !liveRadio) {
+            if (!state.isVideoMode && !liveRadio && appleMusicPlayer) {
                 CastRouteButton(modifier = Modifier.size(headerButtonSize))
             }
             if (state.isVideoMode) {
@@ -707,18 +730,37 @@ private fun LevyraNowPlayingContent(
             }
             if (track != null && LevyraIsQobuz) {
                 QobuzPlayerMoreButton(strings.more) { showActions = true }
-            } else if (track != null && (!appleMusicPlayer || liveRadio)) {
+            } else if (track != null && appleMusicPlayer && liveRadio) {
                 PlayerGlassIconButton(
                     icon = PlayerIcons.more,
                     contentDescription = strings.more,
                     size = headerButtonSize,
                     iconSize = 22.dp,
                     fill = headerButtonFill,
-                tint = headerTint,
+                    tint = headerTint,
                     borderTop = headerButtonBorder,
                     borderBottom = headerButtonBorder,
                     onClick = { showActions = true }
                 )
+            } else if (track != null && !appleMusicPlayer) {
+                Box(
+                    modifier = Modifier
+                        .size(LevyraPlayerDesign.MinimumTouchTarget)
+                        .levyraPressable(
+                            onClick = { showActions = true },
+                            role = Role.Button,
+                            pressedScale = LevyraPressScale.Control
+                        )
+                        .clearAndSetSemantics { contentDescription = strings.more },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = PlayerIcons.more,
+                        contentDescription = null,
+                        tint = headerTint.copy(alpha = HeaderMoreAlpha),
+                        modifier = Modifier.size(HeaderMoreGlyph)
+                    )
+                }
             }
         }
 
@@ -1897,6 +1939,17 @@ private fun LevyraNowPlayingContent(
                         onClick = { showActions = false; viewModel.setPlayerFocus(true) }
                     )
                 ) + sheetActions,
+                castContent = if (!appleMusicPlayer && !state.isVideoMode && !liveRadio) {
+                    {
+                        com.luc4n3x.levyra.feature.cast.CastRouteChip(
+                            label = CastChipLabel,
+                            contentColor = surfaces.content,
+                            containerColor = surfaces.controlQuiet
+                        )
+                    }
+                } else {
+                    null
+                },
                 onDismiss = {
                     showActions = false
                     if (openArtistPickerAfterActions) {

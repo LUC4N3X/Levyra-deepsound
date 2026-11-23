@@ -304,12 +304,17 @@ object MusicIdentityText {
 
     fun normalizeArtist(value: String): String = normalize(value).replace(leadingArticle, "")
 
-    fun artistNames(raw: String): List<String> =
-        decodeHtmlEntities(raw)
+    fun artistNames(raw: String): List<String> {
+        artistNamesCache.get(raw)?.let { return it }
+        return decodeHtmlEntities(raw)
             .split(artistSeparators)
             .map(::normalizeArtist)
             .filter { it.isNotBlank() }
             .distinct()
+            .also { artistNamesCache.put(raw, it) }
+    }
+
+    private val artistNamesCache = BoundedIdentityCache<List<String>>(IDENTITY_CACHE_SIZE)
 
     fun artistCredit(raw: String): ArtistCredit {
         val names = artistNames(raw)
@@ -317,6 +322,13 @@ object MusicIdentityText {
     }
 
     fun title(raw: String): TitleIdentity {
+        titleCache.get(raw)?.let { return it }
+        return computeTitle(raw).also { titleCache.put(raw, it) }
+    }
+
+    private val titleCache = BoundedIdentityCache<TitleIdentity>(IDENTITY_CACHE_SIZE)
+
+    private fun computeTitle(raw: String): TitleIdentity {
         val decoded = prepare(raw)
         val markers = linkedSetOf<TrackVersionMarker>()
         val labels = linkedSetOf<String>()
@@ -482,17 +494,20 @@ object MusicIdentityText {
 }
 
 private const val NORMALIZED_CACHE_SIZE = 4096
+private const val IDENTITY_CACHE_SIZE = 4096
 
-private class BoundedTextCache(private val capacity: Int) {
-    private val entries = object : LinkedHashMap<String, String>(capacity, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>): Boolean = size > capacity
+private typealias BoundedTextCache = BoundedIdentityCache<String>
+
+private class BoundedIdentityCache<V : Any>(private val capacity: Int) {
+    private val entries = object : LinkedHashMap<String, V>(capacity, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, V>): Boolean = size > capacity
     }
 
     @Synchronized
-    fun get(key: String): String? = entries[key]
+    fun get(key: String): V? = entries[key]
 
     @Synchronized
-    fun put(key: String, value: String) {
+    fun put(key: String, value: V) {
         entries[key] = value
     }
 }
