@@ -456,7 +456,7 @@ private fun LevyraNowPlayingContent(
         val playerPane = resolveNowPlayingPane(maxWidth.value, maxHeight.value, state.isVideoMode)
         val atelierScene = com.luc4n3x.levyra.ui.theme.LevyraIsAtelier && track != null && !state.isVideoMode && !liveRadio && playerPane != LevyraPlayerPane.SideBySide
         if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier && !atelierScene) Box(Modifier.matchParentSize().background(Color.Black))
-        val appleMusicCanvas = AppleMusicCanvas(state.motionArtwork, motionEnabled && !lyricsFlip.lyricsSettled, state.interfaceSettings.canvasQuality, livingArtwork)
+        val appleMusicCanvas = AppleMusicCanvas(state.motionArtwork, motionEnabled && !lyricsFlip.lyricsSettled, state.interfaceSettings.canvasQuality, livingArtwork = null)
         val appleMusicImmersive = appleMusicPlayer && appleMusicCanvasImmersive(appleMusicCanvas, maxWidth, maxHeight, state.isVideoMode)
         val showTopArtistCluster = playerArtistHits.size > 1 &&
             !LevyraIsQobuz &&
@@ -1336,7 +1336,7 @@ private fun LevyraNowPlayingContent(
                 YouTubeMusicPlayerScene(
                     track, deckSlots, artworkCap, state.isPlaying,
                     metadata = { metadataBlock(track) }, transport = transportBlock, modifier = deckModifier,
-                    canvas = AppleMusicCanvas(state.motionArtwork, motionEnabled && !lyricsFlip.lyricsSettled, state.interfaceSettings.canvasQuality, livingArtwork)
+                    canvas = AppleMusicCanvas(state.motionArtwork, motionEnabled && !lyricsFlip.lyricsSettled, state.interfaceSettings.canvasQuality, livingArtwork = null)
                 )
             } else             if (appleMusicPlayer) {
                 AppleMusicPlayerScene(

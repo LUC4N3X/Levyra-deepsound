@@ -15,6 +15,21 @@ import org.junit.Test
 class SearchEntityIdentityTest {
 
     @Test
+    fun suggestionPlaceholderAlbumYieldsToOverviewAlbum() {
+        val suggestion = track(id = "abcdefghijk", album = "YouTube Music", durationMs = 0L)
+        val overview = track(id = "abcdefghijk", album = "Real Album", durationMs = 210_000L)
+
+        val merged = richerSong(suggestion, overview)
+
+        assertEquals("Real Album", merged.album)
+        assertEquals(210_000L, merged.durationMs)
+        assertEquals("Real Album", richerSong(overview, suggestion).album)
+        assertEquals("YouTube Music", richerSong(suggestion, suggestion.copy(album = "YouTube")).album)
+        assertTrue(isPlaceholderTrackAlbum(" youtube music "))
+        assertFalse(isPlaceholderTrackAlbum("Real Album"))
+    }
+
+    @Test
     fun sameRecordingSpotifyDifferentAlbumKeepsDistinctSearchCards() {
         val original = track(id = "spotify:original-album", title = "Song", artist = "Artist",
             album = "Original album", durationMs = 180_000L).copy(

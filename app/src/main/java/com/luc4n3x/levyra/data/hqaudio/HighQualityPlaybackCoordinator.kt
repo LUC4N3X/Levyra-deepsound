@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.data.hqaudio
 
+import com.luc4n3x.levyra.data.isPlaceholderTrackAlbum
 import com.luc4n3x.levyra.data.MusicVideoTitle
 import com.luc4n3x.levyra.data.PlaybackSourceIdentity
 import com.luc4n3x.levyra.data.runCatchingPreservingCancellation
@@ -38,10 +39,11 @@ class HighQualityPlaybackCoordinator(
         if (isLocalTrack(track)) return null
         if (track.title.isBlank() || track.artist.isBlank()) return null
         val recording = MusicVideoTitle.recordingFor(track)
+        val queryAlbum = track.album.takeUnless(::isPlaceholderTrackAlbum).orEmpty()
         return AlternativeTrackQuery(
             title = recording.title,
             artist = recording.artist,
-            album = track.album,
+            album = queryAlbum,
             durationMs = track.durationMs.coerceAtLeast(0L),
             explicit = track.explicit.takeIf { it || track.metadataProvider.equals("spotify", ignoreCase = true) },
             isrc = track.isrc,
@@ -50,7 +52,7 @@ class HighQualityPlaybackCoordinator(
                 AlternativeTrackQuery(
                     title = alternate.title,
                     artist = alternate.artist,
-                    album = track.album,
+                    album = queryAlbum,
                     durationMs = track.durationMs.coerceAtLeast(0L),
                     explicit = track.explicit.takeIf { it || track.metadataProvider.equals("spotify", ignoreCase = true) },
                     isrc = track.isrc,
