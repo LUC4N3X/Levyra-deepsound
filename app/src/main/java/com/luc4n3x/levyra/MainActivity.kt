@@ -365,6 +365,7 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         preferHighestRefreshRate()
         viewModel.refreshGentleWakeReliability()
+        viewModel.refreshDownloads()
     }
 
     override fun onUserLeaveHint() {
