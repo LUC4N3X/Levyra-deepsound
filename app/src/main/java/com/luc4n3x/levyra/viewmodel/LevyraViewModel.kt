@@ -22,6 +22,7 @@ import android.net.Network
 import java.util.Locale
 import android.net.NetworkCapabilities
 import android.net.Uri
+import android.provider.MediaStore
 import android.provider.OpenableColumns
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -483,6 +484,8 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import timber.log.Timber
 import java.io.File
+import java.io.FileNotFoundException
+import java.nio.file.Files
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
@@ -1056,6 +1059,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val downloadedTracksDao = database.downloadedTracksDao()
     private val offlineDownloadTasksDao = database.offlineDownloadTasksDao()
     private val downloadedMediaSizeCache = ConcurrentHashMap<String, Long>()
+    private val downloadRefreshGeneration = MutableStateFlow(0L)
     private val appUpdateRepository = AppUpdateRepository(application.applicationContext)
     private val lyricsRepository = LyricsRepository(application.applicationContext)
     private val sponsorBlockRepository = SponsorBlockRepository()
@@ -4720,19 +4724,31 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun observeDownloads() {
         viewModelScope.launch {
-            downloadedTracksDao.observeAll().collectLatest { entities ->
-                val mapped = withContext(Dispatchers.IO) {
-                    entities.map { entity -> entity.toDownloadedTrack(downloadedMediaSize(entity.uri)) }
+            downloadRefreshGeneration.collectLatest {
+                downloadedMediaSizeCache.keys.removeIf { uri ->
+                    !uri.startsWith("content:", ignoreCase = true) || uri.startsWith("content://${MediaStore.AUTHORITY}/")
                 }
-                _state.update {
-                    it.copy(
-                        downloads = mapped,
-                        downloadStorageBytes = mapped.sumOf { item -> item.sizeBytes.coerceAtLeast(0L) },
-                        downloadedTrackIds = mapped.map { item -> item.trackId }.filter(String::isNotBlank).toSet()
-                    )
+                downloadedTracksDao.observeAll().collectLatest { entities ->
+                    val mapped = withContext(Dispatchers.IO) {
+                        entities.mapNotNull { entity ->
+                            ensureActive()
+                            downloadedMediaSize(entity.uri)?.let { size -> entity.toDownloadedTrack(size) }
+                        }
+                    }
+                    _state.update {
+                        it.copy(
+                            downloads = mapped,
+                            downloadStorageBytes = mapped.sumOf { item -> item.sizeBytes.coerceAtLeast(0L) },
+                            downloadedTrackIds = mapped.map { item -> item.trackId }.filter(String::isNotBlank).toSet()
+                        )
+                    }
                 }
             }
         }
+    }
+
+    fun refreshDownloads() {
+        downloadRefreshGeneration.update { it + 1 }
     }
 
     private fun observeSmartOfflineSettings() {
@@ -4770,22 +4786,35 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         artworkUrl = artworkUrl
     )
 
-    private fun downloadedMediaSize(rawUri: String): Long {
+    private fun downloadedMediaSize(rawUri: String): Long? {
         if (rawUri.isBlank()) return 0L
         downloadedMediaSizeCache[rawUri]?.let { return it }
-        val size = runCatching {
-            val uri = Uri.parse(rawUri)
+        val size = readDownloadedMediaSize(Uri.parse(rawUri), rawUri) ?: return null
+        if (size > 0L && !com.luc4n3x.levyra.player.offline.isOfflineAudioStoreUri(rawUri)) downloadedMediaSizeCache[rawUri] = size
+        return size
+    }
+
+    private fun readDownloadedMediaSize(uri: Uri, rawUri: String): Long? =
+        try {
             when (uri.scheme?.lowercase()) {
                 "content" -> getApplication<Application>().contentResolver
                     .openAssetFileDescriptor(uri, "r")
                     ?.use { descriptor -> descriptor.length.coerceAtLeast(0L) }
                     ?: 0L
-                "file" -> uri.path?.let(::File)?.takeIf(File::isFile)?.length() ?: 0L
-                else -> File(rawUri).takeIf(File::isFile)?.length() ?: 0L
+                "file" -> uri.path?.let(::File)?.let(::downloadedFileSize)
+                null -> downloadedFileSize(File(rawUri))
+                else -> 0L
             }
-        }.getOrDefault(0L)
-        if (size > 0L && !com.luc4n3x.levyra.player.offline.isOfflineAudioStoreUri(rawUri)) downloadedMediaSizeCache[rawUri] = size
-        return size
+        } catch (_: FileNotFoundException) {
+            if (uri.authority == MediaStore.AUTHORITY) null else 0L
+        } catch (_: Exception) {
+            0L
+        }
+
+    private fun downloadedFileSize(file: File): Long? = when {
+        file.isFile -> file.length()
+        file.isAbsolute && Files.notExists(file.toPath()) -> null
+        else -> 0L
     }
 
     private fun deleteDownloadedMedia(download: DownloadedTrack): Boolean {
@@ -4795,9 +4824,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             when (uri.scheme?.lowercase()) {
                 "content" -> {
                     val resolver = getApplication<Application>().contentResolver
-                    val deletedRows = resolver.delete(uri, null, null)
-                    if (deletedRows > 0) {
-                        true
+                    val deletedRows = try {
+                        resolver.delete(uri, null, null)
+                    } catch (error: SecurityException) {
+                        if (uri.authority != MediaStore.AUTHORITY) throw error
+                        0
+                    }
+                    deletedRows > 0 || if (uri.authority == MediaStore.AUTHORITY) {
+                        readDownloadedMediaSize(uri, download.uri) == null
                     } else {
                         resolver.openAssetFileDescriptor(uri, "r")?.use { false } ?: true
                     }
