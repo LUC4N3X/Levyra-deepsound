@@ -188,7 +188,6 @@ private val HeaderSideReserve = 108.dp
 private val HeaderButtonMinimumWidth = 40.dp
 private val HeaderMoreGlyph = 20.dp
 private const val HeaderMoreAlpha = 0.78f
-private const val CastChipLabel = "Google Cast"
 private val HeaderCenterMinimumWidth = 112.dp
 private const val DefaultBackdropFocus = 0.34f
 
@@ -1942,7 +1941,7 @@ private fun LevyraNowPlayingContent(
                 castContent = if (!appleMusicPlayer && !state.isVideoMode && !liveRadio) {
                     {
                         com.luc4n3x.levyra.feature.cast.CastRouteChip(
-                            label = CastChipLabel,
+                            label = strings.playerGoogleCast,
                             contentColor = surfaces.content,
                             containerColor = surfaces.controlQuiet
                         )
