@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -52,6 +53,8 @@ import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.LyricLine
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.data.CUSTOM_LYRICS_PROVIDER
+import com.luc4n3x.levyra.ui.lyrics.AddCustomLyricsButton
 import com.luc4n3x.levyra.ui.lyrics.activeLyricIndex
 import com.luc4n3x.levyra.ui.player.qobuzPlayerField
 import com.luc4n3x.levyra.ui.theme.QobuzDesign
@@ -68,6 +71,7 @@ internal fun QobuzLyricsScreen(
     animations: Boolean,
     onLineClick: (Int, LyricLine) -> Unit,
     onTogglePlay: () -> Unit,
+    onAddLyrics: () -> Unit,
     onClose: () -> Unit
 ) {
     val field by rememberSpotifyCoverTone(track, ::qobuzPlayerField)
@@ -107,7 +111,7 @@ internal fun QobuzLyricsScreen(
     ) {
         QobuzLyricsHandle(onClose)
         Box(Modifier.weight(1f).fillMaxWidth()) {
-            QobuzLyricsBody(state, lines, listState, active, onLineClick)
+            QobuzLyricsBody(state, lines, listState, active, onLineClick, onAddLyrics)
         }
         QobuzLyricsMiniPlayer(state, track, onTogglePlay, onClose)
     }
@@ -128,7 +132,8 @@ private fun BoxScope.QobuzLyricsBody(
     lines: List<LyricLine>,
     listState: LazyListState,
     active: Int,
-    onLineClick: (Int, LyricLine) -> Unit
+    onLineClick: (Int, LyricLine) -> Unit,
+    onAddLyrics: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     when {
@@ -146,11 +151,24 @@ private fun BoxScope.QobuzLyricsBody(
                         .padding(horizontal = 12.dp, vertical = 10.dp)
                 )
             }
+            item(key = "qobuz-custom-lyrics", contentType = "QobuzLyrics-custom") {
+                AddCustomLyricsButton(
+                    onClick = onAddLyrics,
+                    label = if (state.lyricsProvider == CUSTOM_LYRICS_PROVIDER) strings.customLyrics else strings.addCustomLyrics,
+                    modifier = Modifier.padding(start = 12.dp, top = 24.dp)
+                )
+            }
         }
         state.lyricsLoading -> Text(strings.searchingLyrics, color = QobuzDesign.playerContentSecondary, fontSize = 20.sp,
             modifier = Modifier.align(Alignment.Center))
-        else -> Text(strings.lyricsUnavailable, color = QobuzDesign.playerContentSecondary, fontSize = 20.sp,
-            modifier = Modifier.align(Alignment.Center).padding(24.dp))
+        else -> Column(
+            modifier = Modifier.align(Alignment.Center).padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(18.dp)
+        ) {
+            Text(strings.lyricsUnavailable, color = QobuzDesign.playerContentSecondary, fontSize = 20.sp)
+            AddCustomLyricsButton(onClick = onAddLyrics)
+        }
     }
 }
 

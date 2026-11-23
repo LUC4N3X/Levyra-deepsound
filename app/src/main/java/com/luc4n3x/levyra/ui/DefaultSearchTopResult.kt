@@ -60,6 +60,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -198,7 +199,7 @@ private fun SleeveAndRecord(
         ) {
             Box(
                 Modifier
-                    .size(RecordSize * 0.36f)
+                    .size(RecordSize * RecordLabelFraction)
                     .graphicsLayer { rotationZ = spin }
                     .clip(CircleShape)
                     .border(2.dp, Color.Black.copy(alpha = 0.35f), CircleShape)
@@ -236,7 +237,7 @@ private fun SleeveAndRecord(
         Box(
             Modifier
                 .align(Alignment.CenterStart)
-                .offset(x = SleeveSize + (peek - RecordPlayBadge) / 2)
+                .offset(x = recordPlayBadgeOffset(peek))
                 .size(RecordPlayBadge)
                 .clip(CircleShape)
                 .background(Color.White.copy(alpha = 0.92f)),
@@ -311,4 +312,11 @@ private val RecordSize = 184.dp
 private val RecordPeekIdle = 58.dp
 private val RecordPeekPlaying = 100.dp
 private val RecordPlayBadge = 32.dp
+private const val RecordLabelFraction = 0.36f
+
+private fun recordPlayBadgeOffset(peek: Dp): Dp {
+    val recordRight = SleeveSize + peek
+    val labelRight = recordRight - RecordSize / 2 + RecordSize * (RecordLabelFraction / 2)
+    return (labelRight + recordRight - RecordPlayBadge) / 2
+}
 private const val RecordSpinMillis = 3_600

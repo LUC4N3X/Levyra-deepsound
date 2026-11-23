@@ -711,6 +711,11 @@ private fun resolveMergedVideoId(mergedId: String, current: Track, candidate: Tr
         .orEmpty()
 }
 
+internal fun isPlaceholderTrackAlbum(album: String): Boolean {
+    val clean = album.trim()
+    return clean.isEmpty() || clean.equals("YouTube Music", ignoreCase = true) || clean.equals("YouTube", ignoreCase = true)
+}
+
 private fun selectBestDuration(metadataDonor: Track, current: Track, candidate: Track): Long {
     if (metadataDonor.durationMs > 0L) return metadataDonor.durationMs
     if (current.durationMs > 0L) return current.durationMs
@@ -762,7 +767,8 @@ internal fun richerSong(current: Track, candidate: Track): Track {
         artist = metadataDonor.artist.ifBlank { current.artist.ifBlank { candidate.artist } },
         thumbnailUrl = metadataDonor.thumbnailUrl.ifBlank { current.thumbnailUrl.ifBlank { candidate.thumbnailUrl } },
         largeThumbnailUrl = metadataDonor.largeThumbnailUrl.ifBlank { current.largeThumbnailUrl.ifBlank { candidate.largeThumbnailUrl } },
-        album = metadataDonor.album.ifBlank { current.album.ifBlank { candidate.album } },
+        album = sequenceOf(metadataDonor.album, current.album, candidate.album).firstOrNull { !isPlaceholderTrackAlbum(it) }
+            ?: metadataDonor.album.ifBlank { current.album.ifBlank { candidate.album } },
         albumBrowseId = current.albumBrowseId.ifBlank { candidate.albumBrowseId },
         artistBrowseIds = current.artistBrowseIds.ifEmpty { candidate.artistBrowseIds },
         durationMs = selectBestDuration(metadataDonor, current, candidate),

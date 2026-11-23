@@ -4,6 +4,7 @@ import android.os.Build
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Insights
+import androidx.compose.material.icons.rounded.EditNote
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Share
@@ -25,12 +26,13 @@ import com.luc4n3x.levyra.ui.lyrics.apple.AppleLyricsToggle
 import com.luc4n3x.levyra.ui.lyrics.apple.AppleMusicLyricsScreen
 import com.luc4n3x.levyra.ui.lyrics.isLyricsShareSelectable
 import com.luc4n3x.levyra.ui.lyrics.lyricsOffsetIsolated
-import com.luc4n3x.levyra.ui.lyrics.lyricsProviderDisplayName
+import com.luc4n3x.levyra.ui.lyrics.lyricsSourceDisplayName
+import com.luc4n3x.levyra.data.CUSTOM_LYRICS_PROVIDER
 import com.luc4n3x.levyra.ui.i18n.lyricsSyncCopy
 import com.luc4n3x.levyra.ui.theme.LevyraVisualCapabilities
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 
-internal enum class AppleLyricsOverlayAction { CHANGE_LYRICS, SHARE, SYNC, CALIBRATE, ANALYSIS, STUDIO }
+internal enum class AppleLyricsOverlayAction { CHANGE_LYRICS, CUSTOM_LYRICS, SHARE, SYNC, CALIBRATE, ANALYSIS, STUDIO }
 
 @Composable
 internal fun AppleLyricsOverlayScreen(
@@ -128,7 +130,7 @@ internal fun AppleLyricsOverlayOptions(
     val hasTranslatedLines = lines.any { it.translated.isNotBlank() }
     AppleLyricsOptionsSheet(
         title = strings.options,
-        subtitle = lyricsProviderDisplayName(state.lyricsProvider).takeIf(String::isNotBlank)?.let { "${strings.lyricsSource} · $it" },
+        subtitle = lyricsSourceDisplayName(state.lyricsProvider, strings.customLyrics).takeIf(String::isNotBlank)?.let { "${strings.lyricsSource} · $it" },
         styleTitle = copy.lyricsStyle,
         styles = lyricsViewerChoices(settings, copy.skinDefault, strings.lyricsStyleOriginal).map { choice ->
             AppleLyricsChoice(choice.label, choice.selected) { onUpdateStudio(choice.settings) }
@@ -149,7 +151,15 @@ internal fun AppleLyricsOverlayOptions(
             if (hasMultipleVoices) add(AppleLyricsToggle(strings.lyricsDuet, showSecondaryVoices, onSecondaryVoices))
         },
         actions = buildList {
-            add(AppleLyricsAction(strings.changeLyrics, Icons.Rounded.LibraryMusic) { onAction(AppleLyricsOverlayAction.CHANGE_LYRICS) })
+            val customLyricsActive = state.lyricsProvider == CUSTOM_LYRICS_PROVIDER
+            if (state.currentTrack != null) {
+                add(AppleLyricsAction(if (customLyricsActive) strings.customLyrics else strings.addCustomLyrics, Icons.Rounded.EditNote) {
+                    onAction(AppleLyricsOverlayAction.CUSTOM_LYRICS)
+                })
+            }
+            if (!customLyricsActive) {
+                add(AppleLyricsAction(strings.changeLyrics, Icons.Rounded.LibraryMusic) { onAction(AppleLyricsOverlayAction.CHANGE_LYRICS) })
+            }
             if (canShareLyrics) add(AppleLyricsAction(strings.shareLyrics, Icons.Rounded.Share) { onAction(AppleLyricsOverlayAction.SHARE) })
             if (state.lyricsSynced && state.currentTrack != null) {
                 add(AppleLyricsAction("${lyricsSyncCopy(strings.code).title} · ${lyricsOffsetIsolated(trackOffsetMs)}", Icons.Rounded.Timer) {

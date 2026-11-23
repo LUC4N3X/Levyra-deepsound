@@ -23,6 +23,7 @@ class LevyraStringsTest {
         assertEquals(catalogCodes, integrationLocalizationCodes())
         assertEquals(catalogCodes, resonanceLocalizationCodes())
         assertEquals(catalogCodes, keepScreenOnLocalizationCodes())
+        assertEquals(catalogCodes, customLyricsLocalizationCodes())
         assertEquals(catalogCodes, offlineStorageLocalizationCodes())
         assertEquals(catalogCodes, downloadLocationLocalizationCodes())
         assertEquals(catalogCodes, downloadDestinationLocalizationCodes())

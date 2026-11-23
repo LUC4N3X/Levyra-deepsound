@@ -382,3 +382,13 @@ data class ListenBrainzPlaylistsState(
     val playlists: List<com.luc4n3x.levyra.feature.scrobbling.ListenBrainzPlaylist> = emptyList(),
     val importingId: String? = null
 )
+
+@Immutable
+data class CustomLyricsDraft(
+    val track: Track,
+    val source: String,
+    val existing: Boolean,
+    val session: Long = 0L,
+    val saving: Boolean = false,
+    val failed: Boolean = false
+)

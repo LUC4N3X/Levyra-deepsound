@@ -7,6 +7,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
+import com.luc4n3x.levyra.data.CUSTOM_LYRICS_PROVIDER
 
 @Entity(
     tableName = "lyrics_selections",
@@ -34,9 +35,12 @@ interface LyricsSelectionDao {
     @Query("DELETE FROM lyrics_selections WHERE trackKey = :trackKey")
     suspend fun delete(trackKey: String)
 
-    @Query("SELECT COUNT(*) FROM lyrics_selections")
-    suspend fun count(): Int
+    @Query("SELECT COUNT(*) FROM lyrics_selections WHERE provider != '$CUSTOM_LYRICS_PROVIDER'")
+    suspend fun countProviderSelections(): Int
 
-    @Query("DELETE FROM lyrics_selections WHERE trackKey IN (SELECT trackKey FROM lyrics_selections ORDER BY updatedAt ASC LIMIT :count)")
-    suspend fun deleteOldest(count: Int)
+    @Query(
+        "DELETE FROM lyrics_selections WHERE trackKey IN (SELECT trackKey FROM lyrics_selections " +
+            "WHERE provider != '$CUSTOM_LYRICS_PROVIDER' ORDER BY updatedAt ASC LIMIT :count)"
+    )
+    suspend fun deleteOldestProviderSelections(count: Int)
 }
