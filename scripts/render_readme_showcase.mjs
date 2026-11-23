@@ -315,12 +315,12 @@ async function cardMediaLayers(index, spec) {
 
 function textLayoutFor(index) {
   if (index === 0) {
-    return { x: 74, anchor: 'start', titleTop: 1445, titleStep: 68, subtitleTop: 1608, svgY: 1492, svgSubY: 1660, titlePt: 46, svgSize: 60, fitWidth: false };
+    return { x: 74, anchor: 'start', titleTop: 1428, titleStep: 74, subtitleTop: 1602, svgY: 1492, svgSubY: 1660, titlePt: 52, subPt: 25, svgSize: 64, fitWidth: false };
   }
   if (index === 1) {
-    return { x: 585, anchor: 'middle', titleTop: 156, titleStep: 68, subtitleTop: 314, svgY: 196, svgSubY: 326, titlePt: 46, svgSize: 60, fitWidth: false };
+    return { x: 585, anchor: 'middle', titleTop: 144, titleStep: 74, subtitleTop: 316, svgY: 196, svgSubY: 326, titlePt: 52, subPt: 25, svgSize: 64, fitWidth: false };
   }
-  return { x: 450, anchor: 'middle', titleTop: 192, titleStep: 66, subtitleTop: 270, svgY: 236, svgSubY: 296, titlePt: 43, svgSize: 56, fitWidth: true };
+  return { x: 450, anchor: 'middle', titleTop: 178, titleStep: 68, subtitleTop: 262, svgY: 236, svgSubY: 296, titlePt: 50, subPt: 26, svgSize: 60, fitWidth: true };
 }
 
 function alignLeft(x, anchor, boxWidth) {
@@ -331,15 +331,17 @@ function alignLeft(x, anchor, boxWidth) {
 
 function renderSvgTextLayers(spec, layout) {
   const titles = spec[2].map((line, i) => text(line, layout.x, layout.svgY + i * 78, layout.svgSize, brandColors.ink, 500, layout.anchor));
-  const subtitles = spec[3].map((line, i) => text(line, layout.x, layout.svgSubY + i * 40, 27, brandColors.muted, 400, layout.anchor));
+  const subtitles = spec[3].map((line, i) => text(line, layout.x, layout.svgSubY + i * 40, 29, brandColors.muted, 400, layout.anchor));
   return [{ input: svg(titles.join('') + subtitles.join('')) }];
 }
 
 async function renderOutfitTextLayers(spec, layout) {
-  let { titlePt } = layout;
+  let { titlePt, subPt } = layout;
   if (layout.fitWidth) {
     const probe = await renderOutfitLine(spec[2][0], titlePt, brandColors.ink, outfitTitleFont, 'Outfit Medium', -0.8);
-    if (probe.info.width > 760) titlePt = Math.floor(titlePt * 760 / probe.info.width);
+    if (probe.info.width > 780) titlePt = Math.floor(titlePt * 780 / probe.info.width);
+    const subProbe = await renderOutfitLine(spec[3][0], subPt, brandColors.muted, outfitBodyFont, 'Outfit', 0);
+    if (subProbe.info.width > 800) subPt = Math.floor(subPt * 800 / subProbe.info.width);
   }
   const layers = [];
   for (const [i, line] of spec[2].entries()) {
@@ -347,8 +349,8 @@ async function renderOutfitTextLayers(spec, layout) {
     layers.push({ input: data, left: alignLeft(layout.x, layout.anchor, info.width), top: layout.titleTop + i * layout.titleStep });
   }
   for (const [i, line] of spec[3].entries()) {
-    const { data, info } = await renderOutfitLine(line, 21, brandColors.muted, outfitBodyFont, 'Outfit', 0);
-    layers.push({ input: data, left: alignLeft(layout.x, layout.anchor, info.width), top: layout.subtitleTop + i * 38 });
+    const { data, info } = await renderOutfitLine(line, subPt, brandColors.muted, outfitBodyFont, 'Outfit', 0);
+    layers.push({ input: data, left: alignLeft(layout.x, layout.anchor, info.width), top: layout.subtitleTop + i * 42 });
   }
   return layers;
 }
