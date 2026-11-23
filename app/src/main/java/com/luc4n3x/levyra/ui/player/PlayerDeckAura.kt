@@ -64,7 +64,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.domain.LevyraCanvasQuality
 import com.luc4n3x.levyra.domain.Track
-import com.luc4n3x.levyra.feature.cast.CastRouteButton
 import com.luc4n3x.levyra.feature.motion.MotionArtwork
 import com.luc4n3x.levyra.ui.MotionArtworkLayer
 import com.luc4n3x.levyra.ui.MotionArtworkPresentation
@@ -582,7 +581,6 @@ private fun AuraUtilityRow(actions: List<PlayerDockAction>) {
         byKey["lyrics"]?.let { action ->
             AuraIconButton(action.icon, action.label, 22.dp, if (action.active) AuraInk else AuraInkSoft, action.onClick)
         }
-        CastRouteButton(modifier = Modifier.size(44.dp))
         byKey["visual-mode"]?.let { action ->
             AuraIconButton(action.icon, action.label, 22.dp, AuraInkSoft, action.onClick)
         }

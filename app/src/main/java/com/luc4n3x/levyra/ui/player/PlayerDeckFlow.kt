@@ -1,6 +1,9 @@
 package com.luc4n3x.levyra.ui.player
 
 import androidx.compose.runtime.getValue
+import com.luc4n3x.levyra.ui.components.PlayerGlassIconButton
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -10,7 +13,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
-import com.luc4n3x.levyra.ui.components.levyraExpressiveToggleCorner
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
@@ -260,6 +262,7 @@ internal fun PlayerFlowDeck(
             stepDirection = stepDirection,
             onArtistClick = onArtistClick,
             onToggleFavorite = onToggleFavorite,
+            onAddToPlaylist = slots.addToPlaylist?.takeIf { !track.isLiveRadio() }?.let { add -> { add(track) } },
             modifier = headlineModifier
         )
         Spacer(Modifier.height(metrics.headlineGap))
@@ -269,11 +272,14 @@ internal fun PlayerFlowDeck(
         FlowTransport(
             isPlaying = isPlaying,
             isResolving = isResolving,
-            playProgress = playProgress,
             labels = labels,
             metrics = metrics,
             surfaces = surfaces,
             animated = animated,
+            shuffleOn = shuffleOn,
+            repeatMode = repeatMode,
+            onShuffle = onShuffle,
+            onRepeat = onRepeat,
             onPrevious = onPrevious,
             onTogglePlay = onTogglePlay,
             onNext = onNext
@@ -283,12 +289,7 @@ internal fun PlayerFlowDeck(
             track = track,
             slots = slots,
             surfaces = surfaces,
-            shuffleOn = shuffleOn,
-            repeatMode = repeatMode,
-            labels = labels,
-            animated = animated,
-            onShuffle = onShuffle,
-            onRepeat = onRepeat
+            animated = animated
         )
     }
 }
@@ -414,6 +415,7 @@ private fun FlowHeadline(
     stepDirection: Int,
     onArtistClick: (Int) -> Unit,
     onToggleFavorite: () -> Unit,
+    onAddToPlaylist: (() -> Unit)?,
     modifier: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
@@ -468,6 +470,27 @@ private fun FlowHeadline(
                 )
             }
         }
+        if (onAddToPlaylist != null) {
+            val haptics = LocalLevyraHaptics.current
+            val outline = surfaces.segmentOutline
+            PlayerGlassIconButton(
+                icon = PlayerIcons.addToPlaylist,
+                contentDescription = strings.addToPlaylist,
+                size = 44.dp,
+                iconSize = 23.dp,
+                tint = surfaces.content,
+                fill = surfaces.fillFor(false),
+                borderTop = outline,
+                borderBottom = outline,
+                shape = RoundedCornerShape(50),
+                modifier = Modifier.size(LevyraPlayerDesign.MinimumTouchTarget),
+                onClick = {
+                    haptics.perform(LevyraHapticAction.Confirm)
+                    onAddToPlaylist()
+                }
+            )
+            Spacer(Modifier.size(FlowHeadlineActionGap))
+        }
         PlayerFavoriteButton(
             trackId = track.id,
             isFavorite = isFavorite,
@@ -478,6 +501,8 @@ private fun FlowHeadline(
         )
     }
 }
+
+private val FlowHeadlineActionGap = 4.dp
 
 internal fun flowTitleSize(title: String, compact: Boolean): TextUnit {
     val length = title.trim().length
@@ -494,11 +519,14 @@ internal fun flowTitleSize(title: String, compact: Boolean): TextUnit {
 private fun FlowTransport(
     isPlaying: Boolean,
     isResolving: Boolean,
-    playProgress: State<Float>,
     labels: PlayerControlLabels,
     metrics: FlowDeckMetrics,
     surfaces: PlayerSurfaceTokens,
     animated: Boolean,
+    shuffleOn: Boolean,
+    repeatMode: RepeatMode,
+    onShuffle: () -> Unit,
+    onRepeat: () -> Unit,
     onPrevious: () -> Unit,
     onTogglePlay: () -> Unit,
     onNext: () -> Unit
@@ -513,94 +541,163 @@ private fun FlowTransport(
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.paletteTween()),
         label = "player-flow-hero-content"
     )
-    val previousInteraction = remember { MutableInteractionSource() }
+    val playSize = metrics.playSize
+    val sideSize = playSize * FlowSideScale
     val playInteraction = remember { MutableInteractionSource() }
-    val nextInteraction = remember { MutableInteractionSource() }
-    val previousPress = flowPressProgress(previousInteraction, animated)
-    val playPress = flowPressProgress(playInteraction, animated)
-    val nextPress = flowPressProgress(nextInteraction, animated)
-    val height = metrics.playSize
+    val playCorner by animateFloatAsState(
+        targetValue = if (isPlaying) FlowPlayPlayingCorner else FlowPlayPausedCorner,
+        animationSpec = if (animated) spring(dampingRatio = FlowPlayCornerDamping, stiffness = FlowPlayCornerStiffness) else snap(),
+        label = "player-flow-play-corner"
+    )
+    val haptics = LocalLevyraHaptics.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(height),
-        horizontalArrangement = Arrangement.spacedBy(FlowTransportGap),
+            .height(playSize),
+        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        FlowTransportSegment(
-            weight = flowSegmentWeight(FlowSideWeight, previousPress.value, playPress.value + nextPress.value),
-            press = previousPress,
-            interaction = previousInteraction,
+        FlowModeToggle(
+            icon = Icons.Rounded.Shuffle,
+            label = labels.shuffle,
+            active = shuffleOn,
+            surfaces = surfaces,
+            animated = animated,
+            onClick = onShuffle
+        )
+        FlowRoundControl(
+            size = sideSize,
             container = surfaces.control,
             label = labels.previous,
-            onClick = onPrevious,
-            shape = { pressed, half ->
-                FlowSegmentShape(start = half, end = lerp(FlowInnerCorner.toPx(), half, pressed * FlowPressedRound))
-            }
+            animated = animated,
+            onClick = onPrevious
         ) {
-            PlayerIcon(Icons.Rounded.SkipPrevious, surfaces.content, Modifier.size(height * FlowSideGlyph))
+            PlayerIcon(Icons.Rounded.SkipPrevious, surfaces.content, Modifier.size(sideSize * FlowSideGlyph))
         }
-        FlowTransportSegment(
-            weight = flowSegmentWeight(FlowPlayWeight, playPress.value, previousPress.value + nextPress.value),
-            press = playPress,
-            interaction = playInteraction,
-            container = hero,
-            label = if (isPlaying) labels.pause else labels.play,
-            onClick = onTogglePlay,
-            shape = { pressed, half ->
-                val rest = lerp(half, FlowPlayingCorner.toPx(), playProgress.value)
-                val corner = lerp(rest, half, pressed * FlowPressedRound)
-                FlowSegmentShape(start = corner, end = corner)
-            }
+        Box(
+            modifier = Modifier
+                .size(playSize)
+                .drawBehind {
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(hero.copy(alpha = FlowPlayHaloAlpha), Color.Transparent),
+                            center = center,
+                            radius = size.minDimension * FlowPlayHaloReach
+                        ),
+                        radius = size.minDimension * FlowPlayHaloReach
+                    )
+                }
+                .levyraPressable(
+                    onClick = {
+                        haptics.perform(LevyraHapticAction.Transport)
+                        onTogglePlay()
+                    },
+                    interactionSource = playInteraction,
+                    pressedScale = LevyraPressScale.Control,
+                    role = Role.Button
+                )
+                .semantics { contentDescription = if (isPlaying) labels.pause else labels.play },
+            contentAlignment = Alignment.Center
         ) {
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .graphicsLayer {
+                        shape = RoundedCornerShape(playCorner.coerceIn(0f, 50f).toInt())
+                        clip = true
+                    }
+                    .background(hero)
+            )
             if (isResolving) {
-                LevyraLoadingIndicator(color = heroContent, modifier = Modifier.size(height * 0.44f))
+                LevyraLoadingIndicator(color = heroContent, modifier = Modifier.size(playSize * 0.44f))
             } else {
                 LevyraPlayPauseGlyph(
                     playing = isPlaying,
                     color = heroContent,
-                    modifier = Modifier.size(height * FlowPlayGlyph),
+                    modifier = Modifier.size(playSize * FlowPlayGlyph),
                     animateMorph = animated
                 )
             }
         }
-        FlowTransportSegment(
-            weight = flowSegmentWeight(FlowSideWeight, nextPress.value, playPress.value + previousPress.value),
-            press = nextPress,
-            interaction = nextInteraction,
+        FlowRoundControl(
+            size = sideSize,
             container = surfaces.control,
             label = labels.next,
-            onClick = onNext,
-            shape = { pressed, half ->
-                FlowSegmentShape(start = lerp(FlowInnerCorner.toPx(), half, pressed * FlowPressedRound), end = half)
-            }
+            animated = animated,
+            onClick = onNext
         ) {
-            PlayerIcon(Icons.Rounded.SkipNext, surfaces.content, Modifier.size(height * FlowSideGlyph))
+            PlayerIcon(Icons.Rounded.SkipNext, surfaces.content, Modifier.size(sideSize * FlowSideGlyph))
         }
+        FlowModeToggle(
+            icon = if (repeatMode == RepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
+            label = labels.repeat,
+            active = repeatMode != RepeatMode.Off,
+            surfaces = surfaces,
+            animated = animated,
+            onClick = onRepeat
+        )
     }
 }
 
-private fun flowSegmentWeight(base: Float, ownPress: Float, otherPress: Float): Float =
-    base * (1f + FlowPressGrow * ownPress - FlowPressShrink * otherPress.coerceIn(0f, 1f))
+@Composable
+private fun FlowModeToggle(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    active: Boolean,
+    surfaces: PlayerSurfaceTokens,
+    animated: Boolean,
+    onClick: () -> Unit
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val fill by animateColorAsState(
+        targetValue = if (active) surfaces.hero.copy(alpha = FlowModeActiveAlpha) else Color.Transparent,
+        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(220)),
+        label = "player-flow-mode-fill"
+    )
+    val tint by animateColorAsState(
+        targetValue = if (active) surfaces.hero else surfaces.content.copy(alpha = FlowModeIdleAlpha),
+        animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(220)),
+        label = "player-flow-mode-tint"
+    )
+    Box(
+        modifier = Modifier
+            .size(FlowModeSize)
+            .clip(RoundedCornerShape(50))
+            .background(fill)
+            .levyraPressable(
+                onClick = onClick,
+                interactionSource = interaction,
+                pressedScale = LevyraPressScale.Control,
+                role = Role.Button,
+                haptic = LevyraHapticAction.Confirm
+            )
+            .semantics {
+                contentDescription = label
+                toggleableState = ToggleableState(active)
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        PlayerIcon(icon, tint, Modifier.size(FlowModeGlyph))
+    }
+}
 
 @Composable
-private fun RowScope.FlowTransportSegment(
-    weight: Float,
-    press: State<Float>,
-    interaction: MutableInteractionSource,
+private fun FlowRoundControl(
+    size: Dp,
     container: Color,
     label: String,
+    animated: Boolean,
     onClick: () -> Unit,
-    shape: Density.(pressed: Float, half: Float) -> Shape,
     content: @Composable () -> Unit
 ) {
     val haptics = LocalLevyraHaptics.current
+    val interaction = remember { MutableInteractionSource() }
+    val press = flowPressProgress(interaction, animated)
     Box(
         modifier = Modifier
-            .weight(weight)
-            .fillMaxHeight()
+            .size(size)
             .graphicsLayer {
-                this.shape = shape(press.value, size.height / 2)
+                shape = RoundedCornerShape(lerp(FlowRoundRest, FlowRoundPressed, press.value).coerceIn(0f, 50f).toInt())
                 clip = true
             }
             .background(container)
@@ -620,38 +717,21 @@ private fun RowScope.FlowTransportSegment(
     }
 }
 
-private class FlowSegmentShape(private val start: Float, private val end: Float) : Shape {
-    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
-        val half = size.height / 2
-        val leading = start.coerceIn(0f, half)
-        val trailing = end.coerceIn(0f, half)
-        val left = if (layoutDirection == LayoutDirection.Ltr) leading else trailing
-        val right = if (layoutDirection == LayoutDirection.Ltr) trailing else leading
-        return Outline.Rounded(
-            RoundRect(
-                left = 0f,
-                top = 0f,
-                right = size.width,
-                bottom = size.height,
-                topLeftCornerRadius = CornerRadius(left),
-                bottomLeftCornerRadius = CornerRadius(left),
-                topRightCornerRadius = CornerRadius(right),
-                bottomRightCornerRadius = CornerRadius(right)
-            )
-        )
-    }
-}
-
-private val FlowTransportGap = 6.dp
-private val FlowInnerCorner = 14.dp
-private val FlowPlayingCorner = 30.dp
-private const val FlowSideWeight = 1f
-private const val FlowPlayWeight = 1.55f
-private const val FlowPressGrow = 0.16f
-private const val FlowPressShrink = 0.06f
-private const val FlowPressedRound = 0.35f
-private const val FlowSideGlyph = 0.36f
-private const val FlowPlayGlyph = 0.42f
+private const val FlowSideScale = 0.68f
+private const val FlowPlayHaloAlpha = 0.18f
+private const val FlowPlayHaloReach = 0.74f
+private const val FlowPlayPausedCorner = 50f
+private const val FlowPlayPlayingCorner = 32f
+private const val FlowPlayCornerDamping = 0.82f
+private const val FlowPlayCornerStiffness = 420f
+private val FlowModeSize = 44.dp
+private val FlowModeGlyph = 22.dp
+private const val FlowModeActiveAlpha = 0.18f
+private const val FlowModeIdleAlpha = 0.72f
+private const val FlowRoundRest = 50f
+private const val FlowRoundPressed = 30f
+private const val FlowSideGlyph = 0.42f
+private const val FlowPlayGlyph = 0.4f
 
 @Composable
 private fun flowPressProgress(interaction: MutableInteractionSource, animated: Boolean): State<Float> {
@@ -672,122 +752,54 @@ private fun FlowActionRow(
     track: Track,
     slots: PlayerDeckSlots,
     surfaces: PlayerSurfaceTokens,
-    shuffleOn: Boolean,
-    repeatMode: RepeatMode,
-    labels: PlayerControlLabels,
-    animated: Boolean,
-    onShuffle: () -> Unit,
-    onRepeat: () -> Unit
+    animated: Boolean
 ) {
     val dockActions = slots.dockActions(track)
-    val addToPlaylist = slots.addToPlaylist
-    val playlistLabel = LocalLevyraStrings.current.addToPlaylist
-    val playlistIcon = PlayerIcons.addToPlaylist
-    val modeActions = remember(shuffleOn, repeatMode, labels, onShuffle, onRepeat) {
-        listOf(
-            PlayerDockAction(
-                key = "shuffle",
-                icon = Icons.Rounded.Shuffle,
-                label = labels.shuffle,
-                active = shuffleOn,
-                toggle = true,
-                haptic = LevyraHapticAction.Confirm,
-                onClick = onShuffle
-            ),
-            PlayerDockAction(
-                key = "repeat",
-                icon = if (repeatMode == RepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
-                label = labels.repeat,
-                active = repeatMode != RepeatMode.Off,
-                toggle = true,
-                haptic = LevyraHapticAction.Confirm,
-                onClick = onRepeat
-            )
-        )
+    val primary = remember(dockActions) {
+        dockActions.filter { it.key == FlowLyricsKey || it.key == FlowQueueKey }
+            .map { if (it.key == FlowQueueKey) it.copy(haptic = LevyraHapticAction.Transport) else it }
     }
-    val collectionActions = remember(dockActions, track.id, addToPlaylist, playlistLabel, playlistIcon) {
-        val queue = dockActions.filter { it.key == FlowQueueKey }
-            .map { it.copy(haptic = LevyraHapticAction.Transport) }
-        val playlist = if (addToPlaylist != null && !track.isLiveRadio()) {
-            listOf(
-                PlayerDockAction(
-                    key = FlowPlaylistKey,
-                    icon = playlistIcon,
-                    label = playlistLabel,
-                    haptic = LevyraHapticAction.Confirm,
-                    onClick = { addToPlaylist(track) }
-                )
-            )
-        } else {
-            emptyList()
-        }
-        queue + playlist + dockActions.filter { it.key != FlowQueueKey }
+    val extras = remember(dockActions) {
+        dockActions.filter { it.key != FlowLyricsKey && it.key != FlowQueueKey }
             .map { if (it.key == FlowVisualModeKey) it.copy(active = false) else it }
     }
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-        val roomy = flowToolbarFits(maxWidth, modeActions.size + collectionActions.size)
-        val shownCollection = if (roomy) collectionActions else collectionActions.filter { it.key != FlowPlaylistKey }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(FlowToolbarHeight)
-                .clip(RoundedCornerShape(FlowToolbarHeight / 2))
-                .background(surfaces.tonal)
-                .padding(horizontal = FlowToolbarInset),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            modeActions.forEach { action ->
-                key(action.key) {
-                    FlowToolbarItem(action, surfaces, animated)
-                }
-            }
-            if (shownCollection.isNotEmpty()) {
-                Box(
-                    Modifier
-                        .padding(horizontal = FlowToolbarInset)
-                        .size(width = 1.dp, height = FlowToolbarDivider)
-                        .background(surfaces.content.copy(alpha = FlowToolbarDividerAlpha))
-                )
-            }
-            shownCollection.forEach { action ->
-                key(action.key) {
-                    FlowToolbarItem(action, surfaces, animated)
-                }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(FlowToolbarHeight),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        (primary + extras).forEach { action ->
+            key(action.key) {
+                FlowIconAction(action, surfaces, animated)
             }
         }
     }
 }
 
-internal fun flowToolbarFits(width: Dp, actions: Int): Boolean =
-    width - FlowToolbarChrome >= LevyraPlayerDesign.MinimumTouchTarget * actions
-
 @Composable
-private fun RowScope.FlowToolbarItem(
+private fun FlowIconAction(
     action: PlayerDockAction,
     surfaces: PlayerSurfaceTokens,
     animated: Boolean
 ) {
     val interaction = remember { MutableInteractionSource() }
     val fill by animateColorAsState(
-        targetValue = if (action.active) surfaces.hero else Color.Transparent,
+        targetValue = if (action.active) surfaces.hero else surfaces.tonal,
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(220)),
-        label = "player-flow-toolbar-fill"
+        label = "player-flow-icon-fill"
     )
     val tint by animateColorAsState(
         targetValue = if (action.active) surfaces.heroContent else surfaces.content,
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.standardTween(220)),
-        label = "player-flow-toolbar-tint"
-    )
-    val corner = levyraExpressiveToggleCorner(
-        checked = action.active,
-        unchecked = FlowToolbarIndicator / 2,
-        checkedCorner = FlowToolbarActiveCorner,
-        label = "player-flow-toolbar-corner"
+        label = "player-flow-icon-tint"
     )
     Box(
         modifier = Modifier
-            .weight(1f)
-            .fillMaxHeight()
+            .size(FlowToolbarHeight)
+            .clip(RoundedCornerShape(50))
+            .background(fill)
             .graphicsLayer { alpha = if (action.enabled) 1f else FlowToolbarDisabledAlpha }
             .levyraPressable(
                 onClick = { if (!action.busy) action.onClick() },
@@ -804,26 +816,13 @@ private fun RowScope.FlowToolbarItem(
             },
         contentAlignment = Alignment.Center
     ) {
-        Box(
-            modifier = Modifier
-                .size(FlowToolbarIndicator)
-                .clip(RoundedCornerShape(corner))
-                .background(fill),
-            contentAlignment = Alignment.Center
-        ) {
-            PlayerSegmentGlyph(action.icon, tint, action.busy, LevyraPlayerDesign.DockGlyph)
-        }
+        PlayerSegmentGlyph(action.icon, tint, action.busy, FlowPillGlyph)
     }
 }
 
 private const val FlowQueueKey = "queue"
+private const val FlowLyricsKey = "lyrics"
+private val FlowPillGlyph = 22.dp
 private const val FlowVisualModeKey = "visual-mode"
-private const val FlowPlaylistKey = "playlist"
 private val FlowToolbarHeight = 56.dp
-private val FlowToolbarInset = 6.dp
-private val FlowToolbarIndicator = 46.dp
-private val FlowToolbarActiveCorner = 14.dp
 private const val FlowToolbarDisabledAlpha = 0.42f
-private val FlowToolbarDivider = 22.dp
-private const val FlowToolbarDividerAlpha = 0.16f
-private val FlowToolbarChrome = FlowToolbarInset * 4 + 1.dp

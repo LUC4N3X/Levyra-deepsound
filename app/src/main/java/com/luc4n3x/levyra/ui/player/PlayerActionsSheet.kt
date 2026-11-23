@@ -136,7 +136,8 @@ internal fun PlayerActionsSheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     engagementContent: (@Composable () -> Unit)? = null,
-    discoverContent: (@Composable () -> Unit)? = null
+    discoverContent: (@Composable () -> Unit)? = null,
+    castContent: (@Composable () -> Unit)? = null
 ) {
     PlayerSheetFrame(
         surfaces = surfaces,
@@ -152,6 +153,7 @@ internal fun PlayerActionsSheet(
             actions = actions,
             engagementContent = engagementContent,
             discoverContent = discoverContent,
+            castContent = castContent,
             onAction = { action ->
                 action.onClick()
                 if (!action.keepsSheetOpen) dismiss()
@@ -381,14 +383,20 @@ private fun PlayerSheetScrollBody(
     actions: List<PlayerSheetAction>,
     engagementContent: (@Composable () -> Unit)?,
     discoverContent: (@Composable () -> Unit)?,
+    castContent: (@Composable () -> Unit)?,
     onAction: (PlayerSheetAction) -> Unit
 ) {
-    if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) {
-        AtelierPlayerActions(track, artworkUrl, actions, engagementContent, discoverContent, onAction)
-        return
-    }
-    if (com.luc4n3x.levyra.ui.theme.LevyraIsQobuz) {
-        QobuzPlayerActions(track, artworkUrl, actions, discoverContent, onAction)
+    if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier || com.luc4n3x.levyra.ui.theme.LevyraIsQobuz) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            if (castContent != null) {
+                Box(Modifier.padding(horizontal = LevyraPlayerDesign.Gutter, vertical = LevyraPlayerDesign.SpaceSm)) { castContent() }
+            }
+            if (com.luc4n3x.levyra.ui.theme.LevyraIsAtelier) {
+                AtelierPlayerActions(track, artworkUrl, actions, engagementContent, discoverContent, onAction)
+            } else {
+                QobuzPlayerActions(track, artworkUrl, actions, discoverContent, onAction)
+            }
+        }
         return
     }
     Column(
@@ -401,6 +409,7 @@ private fun PlayerSheetScrollBody(
         verticalArrangement = Arrangement.spacedBy(LevyraPlayerDesign.SpaceLg)
     ) {
         PlayerSheetHeader(track = track, artworkUrl = artworkUrl, surfaces = surfaces)
+        castContent?.invoke()
         engagementContent?.invoke()
         PlayerSheetGrid(
             actions = actions,

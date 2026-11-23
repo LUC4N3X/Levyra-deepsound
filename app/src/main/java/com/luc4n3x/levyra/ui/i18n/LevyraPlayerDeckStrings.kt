@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.ui.i18n
 
 internal val playerDeckKeys = setOf(
     "playerDeck",
+    "playerGoogleCast",
     "playerDeckSubtitle",
     "playerDeckExpressive",
     "playerDeckPulse",
@@ -368,6 +369,7 @@ internal fun playerDeckLocalizationEntries(code: String): Map<String, String> =
         "playerDeckFolio" to "Material",
         "playerDeckFolioHint" to localizedValueOrEnglish(playerDeckFolioHints, code),
         "playerDeckFlow" to "Levyra Flow",
+        "playerGoogleCast" to "Google Cast",
         "playerDeckCardHint" to localizedValueOrEnglish(playerDeckSleeveHints, code),
         "playerDeckFlowHint" to localizedValueOrEnglish(playerDeckFlowHints, code),
         "playerDeckEmber" to "Ember",

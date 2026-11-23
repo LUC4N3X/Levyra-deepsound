@@ -212,6 +212,7 @@ class LevyraStrings private constructor(
     val playerDeckFolio: String get() = value("playerDeckFolio")
     val playerDeckFolioHint: String get() = value("playerDeckFolioHint")
     val playerDeckFlow: String get() = value("playerDeckFlow")
+    val playerGoogleCast: String get() = value("playerGoogleCast")
     val playerDeckFlowHint: String get() = value("playerDeckFlowHint")
     val playerDeckEmber: String get() = value("playerDeckEmber")
     val playerDeckEmberHint: String get() = value("playerDeckEmberHint")

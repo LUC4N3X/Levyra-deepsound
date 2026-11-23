@@ -125,7 +125,7 @@ class PlayerMorphAnchors(private val expansion: () -> Float = { PlayerExpansionE
 private fun PlayerMorphAnchors.placedInLiveContainer(bounds: Rect): Rect {
     val size = playerContainer?.takeIf { it.isAttached }?.size ?: return bounds
     val width = size.width.toFloat()
-    val container = playerContainerBounds(currentExpansion(), miniCardBounds, width, size.height.toFloat())
+    val container = playerContainerBounds(currentExpansion(), miniCardBounds, width, size.height.toFloat(), classic = com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic)
     return bounds.placedInContainer(container, width)
 }
 

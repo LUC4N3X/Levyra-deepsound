@@ -2489,13 +2489,19 @@ fun LevyraApp(
             val settleExpansion: (Float, Boolean) -> Unit = { velocity, wasExpanded ->
                 expansionDragGeneration += 1
                 val target = resolvePlayerExpansionTarget(playerExpansion.value, velocity, wasExpanded)
+                val travelPx = morphAnchors.miniCardBounds?.top?.takeIf { it > 1f } ?: expansionTravelPx
+                val releaseVelocity = if (com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin && travelPx > 0f && velocity.isFinite()) {
+                    (-velocity / travelPx).coerceIn(-FlowReleaseVelocityLimit, FlowReleaseVelocityLimit)
+                } else {
+                    0f
+                }
                 expansionScope.launch {
                     if (target >= 1f) {
                         if (state.selectedTab != LevyraTab.Player) viewModel.selectTab(LevyraTab.Player)
-                        playerExpansion.animateTo(1f, playerStageSpec(playerExpansion.value, opening = true))
+                        playerExpansion.animateTo(1f, playerStageSpec(playerExpansion.value, opening = true), initialVelocity = releaseVelocity.coerceAtLeast(0f))
                     } else {
                         viewModel.revealPlayerReturnDetail()
-                        playerExpansion.animateTo(0f, playerStageSpec(playerExpansion.value, opening = false))
+                        playerExpansion.animateTo(0f, playerStageSpec(playerExpansion.value, opening = false), initialVelocity = releaseVelocity.coerceAtMost(0f))
                         if (state.selectedTab == LevyraTab.Player) viewModel.selectTab(backgroundTab)
                     }
                 }
@@ -2585,6 +2591,7 @@ fun LevyraApp(
                         val expansion = expansionProvider()
                         val depth = playerBackgroundScale(expansion)
                         val recede = com.luc4n3x.levyra.ui.player.playerMotionProgress(expansion)
+                        alpha = if (expansion >= PlayerExpansionExpanded) 0f else 1f
                         scaleX = depth
                         scaleY = depth
                         clip = recede > 0f
@@ -2775,24 +2782,33 @@ fun LevyraApp(
                     val landingAnimated by rememberUpdatedState(state.animationsEnabled)
                     LaunchedEffect(miniLanding) {
                         var opened = false
+                        var receiving = false
                         androidx.compose.runtime.snapshotFlow { playerExpansion.value }.collect { expansion ->
                             if (expansion > MiniLandingArmExpansion) {
                                 opened = true
+                                if (receiving) launch { miniLanding.animateTo(0f, spring(dampingRatio = MiniLandingDamping, stiffness = MiniLandingStiffness)) }
+                                receiving = false
                             } else if (opened && expansion <= MiniLandingRestExpansion) {
                                 opened = false
-                                if (landingAnimated) {
-                                    miniLanding.snapTo(1f)
+                                receiving = false
+                                if (landingAnimated) launch {
                                     miniLanding.animateTo(0f, spring(dampingRatio = MiniLandingDamping, stiffness = MiniLandingStiffness))
+                                } else {
+                                    miniLanding.snapTo(0f)
+                                }
+                            } else if (opened && !receiving && expansion <= MiniReceiveExpansion && !com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin) {
+                                receiving = true
+                                if (landingAnimated) launch {
+                                    miniLanding.animateTo(1f, spring(dampingRatio = MiniReceiveDamping, stiffness = MiniReceiveStiffness))
                                 }
                             }
                         }
                     }
                     val miniLandingModifier = Modifier.graphicsLayer {
-                        val landing = miniLanding.value
-                        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 1f)
-                        scaleX = 1f + MiniLandingSquash * 0.6f * landing
-                        scaleY = 1f - MiniLandingSquash * landing
-                        translationY = MiniLandingDrop.toPx() * landing
+                        val receive = miniLanding.value
+                        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 0.5f)
+                        scaleX = 1f + MiniReceiveOpenX * receive
+                        scaleY = 1f + MiniReceiveOpenY * receive
                     }
                     val miniPlayerSlot = rememberMovableSlot {
                         AnimatedVisibility(
@@ -2992,9 +3008,9 @@ fun LevyraApp(
                                 alpha = if (expansion > 0f) 1f else 0f
                                 return@graphicsLayer
                             }
-                            alpha = playerSurfaceAlpha(expansion)
+                            alpha = playerSurfaceAlpha(expansion, classic = com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic)
                             val origin = morphAnchors.miniCardBounds
-                            val container = playerContainerBounds(expansion, origin, size.width, size.height)
+                            val container = playerContainerBounds(expansion, origin, size.width, size.height, classic = com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic)
                             val scale = if (size.width > 0f) container.width / size.width else 1f
                             transformOrigin = TransformOrigin(0f, 0f)
                             scaleX = scale
@@ -26440,7 +26456,11 @@ private fun LazyListScope.studioHomeFilteredSections(c: StudioHomeContext, flowS
 
 private const val MiniLandingArmExpansion = 0.5f
 private const val MiniLandingRestExpansion = 0.001f
-private const val MiniLandingSquash = 0.06f
-private val MiniLandingDrop = 6.dp
-private const val MiniLandingDamping = 0.5f
-private const val MiniLandingStiffness = 420f
+private const val FlowReleaseVelocityLimit = 12f
+private const val MiniReceiveExpansion = 0.3f
+private const val MiniReceiveOpenX = 0.035f
+private const val MiniReceiveOpenY = 0.12f
+private const val MiniReceiveDamping = 0.88f
+private const val MiniReceiveStiffness = 520f
+private const val MiniLandingDamping = 0.64f
+private const val MiniLandingStiffness = 460f
