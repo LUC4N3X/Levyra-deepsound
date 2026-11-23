@@ -8,12 +8,14 @@ import { parseArgs } from 'node:util';
 const { values } = parseArgs({ options: {
   'sharp-module': { type: 'string', default: 'sharp' },
   'font-dir': { type: 'string', default: '.levyra-tools/readme-showcase/fonts' },
+  'hero-screen': { type: 'string' },
   output: { type: 'string' },
 } });
 const require = createRequire(import.meta.url);
 const sharp = require(values['sharp-module'] === 'sharp' ? 'sharp' : resolve(values['sharp-module']));
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const source = resolve(root, 'docs/assets/showcase/editorial-cards');
+const heroScreenPath = values['hero-screen'] ? resolve(values['hero-screen']) : null;
 const fontDir = resolve(root, values['font-dir']);
 const outfitTitleFont = resolve(fontDir, 'Outfit-500.ttf');
 const outfitBodyFont = resolve(fontDir, 'Outfit-400.ttf');
@@ -86,44 +88,47 @@ async function extractPhone(index, spec) {
   return sharp(input).extract({ left: 108, top: 276, width: 684, height: screenHeight }).png().toBuffer();
 }
 
-function smartphoneFrameSvg(left, top, outerW, outerH) {
+function smartphoneFrameSvg(left, top, outerW, outerH, cw = width, ch = height) {
   const rx = left + outerW - 1;
   return svg(`
     <defs>
-      <linearGradient id="tiGray" x1="0" y1="0" x2="1" y2="0.45">
-        <stop offset="0%" stop-color="#A8A6A0"/>
-        <stop offset="12%" stop-color="#6F6D68"/>
-        <stop offset="34%" stop-color="#9B9993"/>
-        <stop offset="60%" stop-color="#5E5C57"/>
-        <stop offset="86%" stop-color="#94928C"/>
-        <stop offset="100%" stop-color="#AEACA6"/>
+      <linearGradient id="pxRail" x1="0" y1="0" x2="1" y2="0.5">
+        <stop offset="0%" stop-color="#606775"/>
+        <stop offset="14%" stop-color="#282C36"/>
+        <stop offset="46%" stop-color="#1A1D24"/>
+        <stop offset="82%" stop-color="#4A515E"/>
+        <stop offset="100%" stop-color="#676F7E"/>
       </linearGradient>
-      <linearGradient id="tiBtn" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#A8A6A0"/>
-        <stop offset="50%" stop-color="#5E5C57"/>
-        <stop offset="100%" stop-color="#92908A"/>
+      <linearGradient id="pxBtn" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#6B7382"/>
+        <stop offset="50%" stop-color="#282C36"/>
+        <stop offset="100%" stop-color="#535A68"/>
       </linearGradient>
     </defs>
-    <rect x="${rx}" y="${top + 240}" width="8" height="114" rx="3" fill="url(#tiBtn)" stroke="#4A4844" stroke-opacity=".75" stroke-width="1.2"/>
-    <rect x="${rx}" y="${top + 392}" width="8" height="66" rx="3" fill="url(#tiBtn)" stroke="#4A4844" stroke-opacity=".75" stroke-width="1.2"/>
-    <rect x="${left}" y="${top}" width="${outerW}" height="${outerH}" rx="34" fill="url(#tiGray)"/>
-    <rect x="${left + 3}" y="${top + 3}" width="${outerW - 6}" height="${outerH - 6}" rx="31" fill="none" stroke="#E2E0DA" stroke-opacity=".68" stroke-width="2"/>
-    <rect x="${left + 0.9}" y="${top + 0.9}" width="${outerW - 1.8}" height="${outerH - 1.8}" rx="33.1" fill="none" stroke="#4A4844" stroke-opacity=".75" stroke-width="1.8"/>
-    <rect x="${left + 1}" y="${top + 112}" width="10" height="5" fill="#474540" opacity=".80"/>
-    <rect x="${left + outerW - 11}" y="${top + 112}" width="10" height="5" fill="#474540" opacity=".80"/>
-    <rect x="${left + 10}" y="${top + 10}" width="${outerW - 20}" height="${outerH - 20}" rx="25" fill="#0A0C10"/>
-  `);
+    <rect x="${rx}" y="${top + 230}" width="8" height="68" rx="4" fill="url(#pxBtn)" stroke="#13161C" stroke-opacity=".82" stroke-width="1.2"/>
+    <rect x="${rx}" y="${top + 338}" width="8" height="122" rx="4" fill="url(#pxBtn)" stroke="#13161C" stroke-opacity=".82" stroke-width="1.2"/>
+    <rect x="${left}" y="${top}" width="${outerW}" height="${outerH}" rx="72" fill="url(#pxRail)"/>
+    <rect x="${left + 3}" y="${top + 3}" width="${outerW - 6}" height="${outerH - 6}" rx="69" fill="none" stroke="#B6C0D4" stroke-opacity=".46" stroke-width="2"/>
+    <rect x="${left + 0.9}" y="${top + 0.9}" width="${outerW - 1.8}" height="${outerH - 1.8}" rx="71.1" fill="none" stroke="#13161C" stroke-opacity=".84" stroke-width="1.8"/>
+    <rect x="${left + 1}" y="${top + 124}" width="9" height="4.5" fill="#171A20" opacity=".78"/>
+    <rect x="${left + outerW - 10}" y="${top + 124}" width="9" height="4.5" fill="#171A20" opacity=".78"/>
+    <rect x="${left + 9}" y="${top + 9}" width="${outerW - 18}" height="${outerH - 18}" rx="63" fill="#080A0E"/>
+  `, cw, ch);
 }
 
-function smartphoneDetailsSvg(left, top, outerW, bezel) {
+function smartphoneDetailsSvg(left, top, outerW, bezel, screenH = 0, cw = width, ch = height) {
   const cx = left + outerW / 2;
-  const camY = top + bezel + 22;
+  const camY = top + bezel + 26;
+  const glint = screenH > 0
+    ? `<defs><linearGradient id="pxGlint" x1="0" y1="0" x2="0.85" y2="0.65"><stop offset="0%" stop-color="#FFFFFF" stop-opacity=".10"/><stop offset="32%" stop-color="#FFFFFF" stop-opacity=".03"/><stop offset="55%" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient></defs><rect x="${left + bezel}" y="${top + bezel}" width="${outerW - bezel * 2}" height="${screenH}" rx="50" fill="url(#pxGlint)"/>`
+    : '';
   return svg(`
-    <rect x="${cx - 46}" y="${top + 11}" width="92" height="4" rx="2" fill="#2A2D34"/>
-    <circle cx="${cx}" cy="${camY}" r="9.5" fill="#06080C" stroke="#222836" stroke-width="1.4"/>
-    <circle cx="${cx}" cy="${camY}" r="4.5" fill="#121A2B"/>
-    <circle cx="${cx - 2}" cy="${camY - 2}" r="1.7" fill="#9BB6EB" opacity=".70"/>
-  `);
+    ${glint}
+    <rect x="${cx - 44}" y="${top + 10}" width="88" height="4.5" rx="2.25" fill="#232730"/>
+    <circle cx="${cx}" cy="${camY}" r="10.5" fill="#05070B" stroke="#222836" stroke-width="1.4"/>
+    <circle cx="${cx}" cy="${camY}" r="5" fill="#11192B"/>
+    <circle cx="${cx - 2.2}" cy="${camY - 2.2}" r="1.8" fill="#9BB6EB" opacity=".72"/>
+  `, cw, ch);
 }
 
 const brandColors = { ink: '#161F33', muted: '#4D5C7A' };
@@ -242,23 +247,71 @@ function cardBackdrop(index, shapeColor) {
   `);
 }
 
+let cachedHeroPair = null;
+
+async function buildHeroPairLayer() {
+  if (cachedHeroPair) return cachedHeroPair;
+  const bezel = 21;
+  const screenW = 768;
+  const { data, info } = await sharp(heroScreenPath).resize({ width: screenW }).png().toBuffer({ resolveWithObject: true });
+  const screen = await sharp(data).composite([{ input: rounded(screenW, info.height, 50), blend: 'dest-in' }]).png().toBuffer();
+  const outerW = screenW + bezel * 2;
+  const outerH = info.height + bezel * 2;
+  const pad = 20;
+  const cw = outerW + pad * 2;
+  const ch = outerH + pad * 2;
+  const phoneBuf = await sharp({ create: { width: cw, height: ch, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+    .composite([
+      { input: smartphoneFrameSvg(pad, pad, outerW, outerH, cw, ch) },
+      { input: screen, left: pad + bezel, top: pad + bezel },
+      { input: smartphoneDetailsSvg(pad, pad, outerW, bezel, info.height, cw, ch) },
+    ]).png().toBuffer();
+  const angle = -35;
+  const rotated = await sharp(phoneBuf).rotate(angle, { background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer({ resolveWithObject: true });
+  const pairW = width * 2 + 10;
+  const cx = Math.round(pairW / 2 - 42);
+  const cy = Math.round(height / 2 - 58);
+  const big = await sharp({ create: { width: pairW + 1000, height: height + 1000, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+    .composite([{ input: rotated.data, left: Math.round(cx - rotated.info.width / 2) + 500, top: Math.round(cy - rotated.info.height / 2) + 500 }])
+    .png().toBuffer();
+  const clipped = await sharp(big).extract({ left: 500, top: 500, width: pairW, height }).png().toBuffer();
+  const sh = `<g transform="translate(${cx} ${cy}) rotate(${angle}) translate(${-outerW / 2} ${-outerH / 2})"><rect width="${outerW}" height="${outerH}" rx="72" fill="white"/></g>`;
+  const pairSh = svg(`
+    <defs>
+      <filter id="s1" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="52"/></filter>
+      <filter id="s2" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="20"/></filter>
+      <filter id="s3" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7"/></filter>
+    </defs>
+    <g transform="translate(0 36)" opacity=".28" filter="url(#s1)">${sh.replaceAll('fill="white"', 'fill="#182A5E"')}</g>
+    <g transform="translate(0 18)" opacity=".26" filter="url(#s2)">${sh.replaceAll('fill="white"', 'fill="#111E42"')}</g>
+    <g transform="translate(0 6)" opacity=".22" filter="url(#s3)">${sh.replaceAll('fill="white"', 'fill="#0A122B"')}</g>
+  `, pairW, height);
+  cachedHeroPair = await sharp({ create: { width: pairW, height, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+    .composite([{ input: pairSh }, { input: clipped }]).png().toBuffer();
+  return cachedHeroPair;
+}
+
 async function cardMediaLayers(index, spec) {
   if (index >= 2) {
     const screenRaw = await extractPhone(index, spec);
-    const bezel = 19;
-    const screenW = 668;
+    const bezel = 21;
+    const screenW = 666;
     const { data, info } = await sharp(screenRaw).resize({ width: screenW }).png().toBuffer({ resolveWithObject: true });
-    const screen = await sharp(data).composite([{ input: rounded(screenW, info.height, 19), blend: 'dest-in' }]).png().toBuffer();
+    const screen = await sharp(data).composite([{ input: rounded(screenW, info.height, 50), blend: 'dest-in' }]).png().toBuffer();
     const outerW = screenW + bezel * 2;
     const outerH = info.height + bezel * 2;
     const left = Math.round((width - outerW) / 2);
-    const top = height - outerH + 22;
+    const top = height - outerH + 28;
     return [
-      { input: shadow(`<rect x="${left}" y="${top}" width="${outerW}" height="${outerH}" rx="34" fill="white"/>`) },
+      { input: shadow(`<rect x="${left}" y="${top}" width="${outerW}" height="${outerH}" rx="72" fill="white"/>`) },
       { input: smartphoneFrameSvg(left, top, outerW, outerH) },
       { input: screen, left: left + bezel, top: top + bezel },
       { input: smartphoneDetailsSvg(left, top, outerW, bezel) },
     ];
+  }
+  if (heroScreenPath && existsSync(heroScreenPath)) {
+    const pair = await buildHeroPairLayer();
+    return [{ input: await sharp(pair).extract({ left: index * (width + 10), top: 0, width, height }).png().toBuffer() }];
   }
   const input = await readFile(resolve(source, `${spec[0]}.webp`));
   const metadata = await sharp(input).metadata();
@@ -272,10 +325,10 @@ async function cardMediaLayers(index, spec) {
 
 function textLayoutFor(index) {
   if (index === 0) {
-    return { x: 68, anchor: 'start', titleTop: 1432, titleStep: 78, subtitleTop: 1628, svgY: 1492, svgSubY: 1660, titlePt: 52, svgSize: 68, fitWidth: false };
+    return { x: 74, anchor: 'start', titleTop: 1445, titleStep: 68, subtitleTop: 1608, svgY: 1492, svgSubY: 1660, titlePt: 46, svgSize: 60, fitWidth: false };
   }
   if (index === 1) {
-    return { x: 832, anchor: 'end', titleTop: 120, titleStep: 78, subtitleTop: 302, svgY: 172, svgSubY: 326, titlePt: 52, svgSize: 68, fitWidth: false };
+    return { x: 585, anchor: 'middle', titleTop: 156, titleStep: 68, subtitleTop: 314, svgY: 196, svgSubY: 326, titlePt: 46, svgSize: 60, fitWidth: false };
   }
   return { x: 450, anchor: 'middle', titleTop: 146, titleStep: 66, subtitleTop: 226, svgY: 196, svgSubY: 256, titlePt: 43, svgSize: 56, fitWidth: true };
 }
