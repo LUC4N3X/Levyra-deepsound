@@ -93,6 +93,35 @@ class MusicNewsArticleParserTest {
     }
 
     @Test
+    fun finalLinkedTracklistIsKeptButRelatedModulesAreNot() {
+        val blocks = MusicNewsArticleParser.blocks(
+            "<p>Il disco esce venerdì.</p><h3>Tracklist</h3>" +
+                "<ol><li><a href=\"https://x.example/1\">Intro</a></li><li><a href=\"https://x.example/2\">Outro</a></li></ol>" +
+                "<h3>Leggi anche</h3><ul class=\"jp-relatedposts\"><li><a href=\"https://x.example/3\">Altro</a></li></ul>"
+        )
+
+        assertEquals(
+            listOf(
+                MusicNewsBlock.Paragraph("Il disco esce venerdì."),
+                MusicNewsBlock.Heading("Tracklist"),
+                MusicNewsBlock.Bullet("<a href=\"https://x.example/1\">Intro</a>"),
+                MusicNewsBlock.Bullet("<a href=\"https://x.example/2\">Outro</a>")
+            ),
+            blocks
+        )
+    }
+
+    @Test
+    fun cachesWithoutWordpressIdsAreRecognisedAsLegacy() {
+        val legacy = story.copy(articleId = "")
+        val pitchfork = story.copy(url = "https://pitchfork.com/story/x/", source = "Pitchfork", articleId = "")
+
+        assertTrue(MusicNewsSources.predatesArticleIds(listOf(legacy, pitchfork)))
+        assertTrue(!MusicNewsSources.predatesArticleIds(listOf(story, legacy, pitchfork)))
+        assertTrue(!MusicNewsSources.predatesArticleIds(listOf(pitchfork)))
+    }
+
+    @Test
     fun articleMadeOnlyOfLinkListsKeepsThem() {
         val blocks = MusicNewsArticleParser.blocks(
             "<h2>Da ascoltare</h2><ul><li><a href=\"https://x.example/1\">Uno</a></li><li><a href=\"https://x.example/2\">Due</a></li></ul>"

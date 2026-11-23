@@ -32,7 +32,7 @@ internal object MusicNewsArticleParser {
     private const val PRELOADED_STATE = "window.__PRELOADED_STATE__"
     private const val MAX_BODY_CHARS = 200_000
     private const val ARTICLE_END = "</article>"
-    private val jsonLd = Regex("<script[^>]*type\\s*=\\s*[\"']application/ld\\+json[\"'][^>]*>(.*?)</script\\s*>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
+    private const val JSON_LD_TYPE = "application/ld+json"
     private val IMAGE_SIZES = listOf("xl", "lg", "xxl", "md", "sm")
     private val options = setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
     private val block = Regex("<(p|h[2-6]|blockquote|figure|ul|ol)\\b([^>]*)>(.*?)</\\1\\s*>", options)
@@ -51,6 +51,7 @@ internal object MusicNewsArticleParser {
     )
     private val unsafeLinkOpen = Regex("<a\\b(?!\\s+href=\"https://[^\"]*\">)[^>]*>", RegexOption.IGNORE_CASE)
     private val anchor = Regex("<a\\b[^>]*>.*?</a\\s*>", setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
+    private val relatedModule = Regex("related|latest|popular|most-read|read-more|correlat|lett|recommend", RegexOption.IGNORE_CASE)
     private val sizeSuffix = Regex("-\\d+x\\d+(?=\\.[a-z]+$)", RegexOption.IGNORE_CASE)
 
     fun wordpress(json: String, story: MusicNewsStory): MusicNewsArticle? {
@@ -72,17 +73,16 @@ internal object MusicNewsArticleParser {
         val groups = block.findAll(html)
             .map { match -> toGroup(match.groupValues[1].lowercase(Locale.ROOT), match.groupValues[2], match.groupValues[3]) }
             .toList()
-        val lastParagraph = groups.indexOfLast { group -> group.blocks.any { it is MusicNewsBlock.Paragraph } }
-        return groups.filterIndexed { index, group -> !group.trailingLinks || lastParagraph < 0 || index < lastParagraph }
+        return groups.filterNot { it.relatedStories }
             .flatMap { it.blocks }
             .take(MAX_BLOCKS)
             .withoutOrphanHeadings()
     }
 
-    private class BlockGroup(val blocks: List<MusicNewsBlock>, val trailingLinks: Boolean = false)
+    private class BlockGroup(val blocks: List<MusicNewsBlock>, val relatedStories: Boolean = false)
 
     private fun toGroup(tag: String, attributes: String, inner: String): BlockGroup =
-        if (tag == "ul" || tag == "ol") listGroup(inner) else BlockGroup(toBlocks(tag, attributes, inner).toList())
+        if (tag == "ul" || tag == "ol") listGroup(attributes, inner) else BlockGroup(toBlocks(tag, attributes, inner).toList())
 
     private fun List<MusicNewsBlock>.withoutOrphanHeadings(): List<MusicNewsBlock> =
         filterIndexed { index, block -> block !is MusicNewsBlock.Heading || getOrNull(index + 1).let { it != null && it !is MusicNewsBlock.Heading } }
@@ -96,9 +96,10 @@ internal object MusicNewsArticleParser {
         else -> text(inner).takeIf(String::isNotBlank)?.let { sequenceOf(MusicNewsBlock.Heading(it)) } ?: emptySequence()
     }
 
-    private fun listGroup(inner: String): BlockGroup {
+    private fun listGroup(attributes: String, inner: String): BlockGroup {
         val items = listItem.findAll(inner).map { inlineHtml(it.groupValues[1]) }.filter { text(it).isNotBlank() }.toList()
-        return BlockGroup(items.map(MusicNewsBlock::Bullet), trailingLinks = items.isNotEmpty() && items.all(::isOnlyLinks))
+        val looksRelated = inlineImage.containsMatchIn(inner) || relatedModule.containsMatchIn(attributes)
+        return BlockGroup(items.map(MusicNewsBlock::Bullet), relatedStories = looksRelated && items.isNotEmpty() && items.all(::isOnlyLinks))
     }
 
     private fun isOnlyLinks(html: String): Boolean = anchor.containsMatchIn(html) && text(anchor.replace(html, "")).isBlank()
@@ -173,8 +174,8 @@ internal object MusicNewsArticleParser {
     private fun withoutLeadingHero(blocks: List<MusicNewsBlock>, hero: String): List<MusicNewsBlock> =
         blocks.dropWhile { it is MusicNewsBlock.Image && sameImage(it.url, hero) }
 
-    private fun jsonLdArticle(html: String): JSONObject? = jsonLd.findAll(html)
-        .mapNotNull { match -> runCatching { JSONTokener(match.groupValues[1].trim()).nextValue() }.getOrNull() }
+    private fun jsonLdArticle(html: String): JSONObject? = jsonLdScripts(html)
+        .mapNotNull { script -> runCatching { JSONTokener(script.trim()).nextValue() }.getOrNull() }
         .flatMap { value ->
             when (value) {
                 is JSONArray -> (0 until value.length()).mapNotNull(value::optJSONObject).asSequence()
@@ -184,6 +185,18 @@ internal object MusicNewsArticleParser {
             }
         }
         .firstOrNull { it.string("@type").let { type -> type.endsWith("Article") || type == "BlogPosting" } }
+
+    private fun jsonLdScripts(html: String): Sequence<String> = sequence {
+        var from = 0
+        while (true) {
+            val type = html.indexOf(JSON_LD_TYPE, from, ignoreCase = true).takeIf { it >= 0 } ?: break
+            val start = html.indexOf('>', type) + 1
+            val end = html.indexOf("</script", start, ignoreCase = true)
+            if (start <= 0 || end < start) break
+            yield(html.substring(start, end))
+            from = end
+        }
+    }
 
     private fun treeBlock(node: JSONArray, out: MutableList<MusicNewsBlock>) {
         if (out.size >= MAX_BLOCKS) return

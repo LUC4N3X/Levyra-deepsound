@@ -75,11 +75,20 @@ internal object MusicNewsSources {
 
     fun forLanguage(code: String): List<MusicNewsSource> = table.getValue(key(code))
 
+    fun predatesArticleIds(stories: List<MusicNewsStory>): Boolean {
+        val wordpress = stories.filter { sourceOf(it)?.articleApi == MusicNewsArticleApi.WordPress }
+        return wordpress.isNotEmpty() && wordpress.all { it.articleId.isBlank() }
+    }
+
+    private fun sourceOf(story: MusicNewsStory): MusicNewsSource? {
+        val host = hostOf(story.url) ?: return null
+        return table.values.asSequence().flatten()
+            .firstOrNull { it.articleApi != MusicNewsArticleApi.None && it.name == story.source && hostOf(it.url) == host }
+    }
+
     fun articleRequest(story: MusicNewsStory): MusicNewsArticleRequest? {
         val host = hostOf(story.url) ?: return null
-        val source = table.values.asSequence().flatten()
-            .firstOrNull { it.articleApi != MusicNewsArticleApi.None && it.name == story.source && hostOf(it.url) == host }
-            ?: return null
+        val source = sourceOf(story) ?: return null
         return when (source.articleApi) {
             MusicNewsArticleApi.WordPress -> story.articleId.takeIf { it.isNotBlank() && it.all(Char::isDigit) }?.let { id ->
                 MusicNewsArticleRequest(
@@ -132,7 +141,9 @@ class MusicNewsRepository private constructor(context: Context) {
         val key = MusicNewsSources.key(languageCode)
         val now = System.currentTimeMillis()
         val usable = usable(key, now)
-        if (usable != null && !force && now - usable.fetchedAtMs < TTL_MS) return usable.stories
+        if (usable != null && !force && now - usable.fetchedAtMs < TTL_MS && !MusicNewsSources.predatesArticleIds(usable.stories)) {
+            return usable.stories
+        }
         val shared = inFlight.computeIfAbsent(key) {
             scope.async {
                 try {

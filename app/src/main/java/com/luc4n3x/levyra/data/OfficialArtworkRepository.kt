@@ -320,12 +320,23 @@ class OfficialArtworkRepository(context: Context) {
     }
 
     private fun qobuzSearchAlbums(html: String): List<JSONObject> =
-        QOBUZ_LIVE_PROPS.findAll(html)
-            .map { decodeQobuzAttribute(it.groupValues[1]) }
+        qobuzLiveProps(html)
+            .map(::decodeQobuzAttribute)
             .filter { it.contains("\"albums\"") }
             .map(::qobuzAlbumsOf)
             .firstOrNull(List<JSONObject>::isNotEmpty)
             .orEmpty()
+
+    private fun qobuzLiveProps(html: String): Sequence<String> = sequence {
+        var from = 0
+        while (true) {
+            val marker = html.indexOf(QOBUZ_LIVE_PROPS_MARKER, from).takeIf { it >= 0 } ?: break
+            val start = marker + QOBUZ_LIVE_PROPS_MARKER.length
+            val end = html.indexOf('"', start).takeIf { it >= 0 } ?: break
+            yield(html.substring(start, end))
+            from = end + 1
+        }
+    }
 
     private fun decodeQobuzAttribute(value: String): String = QOBUZ_ATTRIBUTE_ENTITY.replace(value) { match ->
         when (match.groupValues[1]) {
@@ -757,7 +768,7 @@ class OfficialArtworkRepository(context: Context) {
         const val DEFAULT_ACCEPT_LANGUAGE = "it-IT,it;q=0.9,en;q=0.7"
         val APPLE_ARTWORK_SIZE = Regex("\\d+x\\d+bb")
         val VERSION_TERMS = listOf("live", "remix", "karaoke", "instrumental", "sped up", "slowed", "nightcore", "acoustic")
-        val QOBUZ_LIVE_PROPS = Regex("data-live-props-value=\"([^\"]*)\"")
+        const val QOBUZ_LIVE_PROPS_MARKER = "data-live-props-value=\""
         val QOBUZ_UPC_ID = Regex("\\d{12,14}")
         val QOBUZ_RELEASE_ZONE: ZoneId = ZoneId.of("Europe/Paris")
         val QOBUZ_ATTRIBUTE_ENTITY = Regex("&(quot|amp|lt|gt|#39|apos);")
