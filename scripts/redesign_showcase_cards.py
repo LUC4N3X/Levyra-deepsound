@@ -419,7 +419,7 @@ UPRIGHT_CARD_SPECS = [
         "GLOBAL & CITY CHARTS",
         "Explore Charts",
         "Top 100, city charts & moods.",
-        "Screenshot_20261119_214847_Levyra.jpg",
+        "Screenshot_20261123_161542_Levyra.jpg",
         (239, 250, 246), (212, 239, 230), (174, 224, 208), (182, 222, 209),
         (16, 122, 92), (15, 34, 29), (44, 92, 78),
     ),
