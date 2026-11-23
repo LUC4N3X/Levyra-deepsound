@@ -1,9 +1,9 @@
 [versions]
 zxingEmbedded = "4.3.0"
-agp = "9.5.1"
+agp = "9.5.2"
 kotlin = "2.4.21"
-composeBom = "2026.09.00"
-material3Expressive = "1.5.0-rc01"
+composeBom = "2026.11.01"
+material3Expressive = "1.6.0-alpha01"
 coreKtx = "1.19.1"
 activityCompose = "1.13.0"
 fragment = "1.9.1"
