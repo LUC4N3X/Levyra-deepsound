@@ -125,11 +125,12 @@ const shapeColors = ['#7693C9', '#6C84B5'];
 
 const BACKDROP_DEFS = `
   <defs>
-    <linearGradient id="baseSky" x1="0" y1="0" x2="0.55" y2="1">
+    <linearGradient id="baseSky" x1="0" y1="0.12" x2="1" y2="0.88">
       <stop offset="0%" stop-color="#FFFFFF"/>
-      <stop offset="34%" stop-color="#F6F9FF"/>
-      <stop offset="70%" stop-color="#D5E3FF"/>
-      <stop offset="100%" stop-color="#B6D0FA"/>
+      <stop offset="22%" stop-color="#FFFFFF"/>
+      <stop offset="54%" stop-color="#EBF2FF"/>
+      <stop offset="80%" stop-color="#CFE0FF"/>
+      <stop offset="100%" stop-color="#A6C5F8"/>
     </linearGradient>
     <linearGradient id="silkBlue" x1="0" y1="0" x2="1" y2="0.25">
       <stop offset="0%" stop-color="#88B0F2"/>
@@ -143,24 +144,24 @@ const BACKDROP_DEFS = `
       <stop offset="100%" stop-color="#4A6494"/>
     </linearGradient>
     <radialGradient id="orbA" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#8EB6F6" stop-opacity=".44"/>
-      <stop offset="55%" stop-color="#B6D0FA" stop-opacity=".18"/>
+      <stop offset="0%" stop-color="#8EB6F6" stop-opacity=".40"/>
+      <stop offset="55%" stop-color="#B6D0FA" stop-opacity=".16"/>
       <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
     </radialGradient>
     <radialGradient id="orbB" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#6C84B5" stop-opacity=".34"/>
-      <stop offset="55%" stop-color="#9BB6E6" stop-opacity=".14"/>
+      <stop offset="0%" stop-color="#6C84B5" stop-opacity=".28"/>
+      <stop offset="55%" stop-color="#9BB6E6" stop-opacity=".12"/>
       <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
     </radialGradient>
     <radialGradient id="orbC" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#B8D1FF" stop-opacity=".46"/>
-      <stop offset="60%" stop-color="#D5E3FF" stop-opacity=".18"/>
+      <stop offset="0%" stop-color="#B8D1FF" stop-opacity=".44"/>
+      <stop offset="60%" stop-color="#D5E3FF" stop-opacity=".16"/>
       <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
     </radialGradient>
-    <linearGradient id="topVeil" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#FFFFFF" stop-opacity=".92"/>
-      <stop offset="22%" stop-color="#FFFFFF" stop-opacity=".55"/>
-      <stop offset="42%" stop-color="#FFFFFF" stop-opacity="0"/>
+    <linearGradient id="topVeil" x1="0" y1="0" x2="0.4" y2="0.6">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity=".62"/>
+      <stop offset="45%" stop-color="#FFFFFF" stop-opacity=".18"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
     </linearGradient>
     <filter id="glassBlur" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="58"/></filter>
     <filter id="softRim" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="8"/></filter>
@@ -284,15 +285,15 @@ async function cardMediaLayers(index, spec) {
   if (index >= 2) {
     const screenRaw = await extractPhone(index, spec);
     const bezel = 15;
-    const screenW = 678;
+    const screenW = 626;
     const { data, info } = await sharp(screenRaw).resize({ width: screenW }).png().toBuffer({ resolveWithObject: true });
-    const screen = await sharp(data).composite([{ input: rounded(screenW, info.height, 57), blend: 'dest-in' }]).png().toBuffer();
+    const screen = await sharp(data).composite([{ input: rounded(screenW, info.height, 55), blend: 'dest-in' }]).png().toBuffer();
     const outerW = screenW + bezel * 2;
     const outerH = info.height + bezel * 2;
     const left = Math.round((width - outerW) / 2);
     const top = height - outerH + 22;
     return [
-      { input: shadow(`<rect x="${left}" y="${top}" width="${outerW}" height="${outerH}" rx="74" fill="white"/>`) },
+      { input: shadow(`<rect x="${left}" y="${top}" width="${outerW}" height="${outerH}" rx="70" fill="white"/>`) },
       { input: smartphoneFrameSvg(left, top, outerW, outerH) },
       { input: screen, left: left + bezel, top: top + bezel },
       { input: smartphoneDetailsSvg(left, top, outerW, bezel) },
@@ -319,7 +320,7 @@ function textLayoutFor(index) {
   if (index === 1) {
     return { x: 585, anchor: 'middle', titleTop: 156, titleStep: 68, subtitleTop: 314, svgY: 196, svgSubY: 326, titlePt: 46, svgSize: 60, fitWidth: false };
   }
-  return { x: 450, anchor: 'middle', titleTop: 146, titleStep: 66, subtitleTop: 226, svgY: 196, svgSubY: 256, titlePt: 43, svgSize: 56, fitWidth: true };
+  return { x: 450, anchor: 'middle', titleTop: 192, titleStep: 66, subtitleTop: 270, svgY: 236, svgSubY: 296, titlePt: 43, svgSize: 56, fitWidth: true };
 }
 
 function alignLeft(x, anchor, boxWidth) {
