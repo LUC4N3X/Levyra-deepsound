@@ -16284,36 +16284,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 })
                 if (!isActive || transitionId != streamTransitionId) return@launch
                 videoSourceChoices.put(key, VideoSourceChoice(videoId, candidate.videoType))
-                val switchPositionMs = modeSwitchPositionMs(player.positionMs, resolved.durationMs)
-                val shouldPlay = player.playWhenReady
-                val currentIndex = queueEngine.state.value.currentIndex
-                if (currentIndex >= 0) queueEngine.updateTrackAt(currentIndex, resolved)
-                repository.replace(resolved)
-                player.selectVideoSubtitle(null)
-                player.replaceSource(
-                    track = resolved,
-                    positionMs = switchPositionMs,
-                    videoMode = true,
-                    playWhenReady = shouldPlay
-                )
-                queueEngine.updatePosition(switchPositionMs)
-                _state.update {
-                    it.copy(
-                        currentTrack = resolved,
-                        isResolving = false,
-                        isPlaying = shouldPlay,
-                        positionMs = switchPositionMs,
-                        bufferedPositionMs = switchPositionMs,
-                        durationMs = resolved.durationMs.takeIf { duration -> duration > 0L } ?: it.durationMs,
-                        selectedVideoSubtitleId = null,
-                        playerError = null
-                    )
-                }
-                _videoSources.update { if (it.trackKey == key) it.copy(activeVideoId = videoId) else it }
-                refreshVideoQualityState(resolved)
-                prefetchAlternateMode(resolved, true)
-                if (_state.value.selectedTab == LevyraTab.Player) refreshYoutubeEngagement(resolved)
-                updateWidget()
+                applySelectedVideoSource(resolved, key, videoId)
             } catch (error: Throwable) {
                 if (error is CancellationException) throw error
                 if (transitionId != streamTransitionId) return@launch
@@ -16322,6 +16293,39 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
         }
+    }
+
+    private fun applySelectedVideoSource(resolved: Track, key: String, videoId: String) {
+        val switchPositionMs = modeSwitchPositionMs(player.positionMs, resolved.durationMs)
+        val shouldPlay = player.playWhenReady
+        val currentIndex = queueEngine.state.value.currentIndex
+        if (currentIndex >= 0) queueEngine.updateTrackAt(currentIndex, resolved)
+        repository.replace(resolved)
+        player.selectVideoSubtitle(null)
+        player.replaceSource(
+            track = resolved,
+            positionMs = switchPositionMs,
+            videoMode = true,
+            playWhenReady = shouldPlay
+        )
+        queueEngine.updatePosition(switchPositionMs)
+        _state.update {
+            it.copy(
+                currentTrack = resolved,
+                isResolving = false,
+                isPlaying = shouldPlay,
+                positionMs = switchPositionMs,
+                bufferedPositionMs = switchPositionMs,
+                durationMs = resolved.durationMs.takeIf { duration -> duration > 0L } ?: it.durationMs,
+                selectedVideoSubtitleId = null,
+                playerError = null
+            )
+        }
+        _videoSources.update { if (it.trackKey == key) it.copy(activeVideoId = videoId) else it }
+        refreshVideoQualityState(resolved)
+        prefetchAlternateMode(resolved, true)
+        if (_state.value.selectedTab == LevyraTab.Player) refreshYoutubeEngagement(resolved)
+        updateWidget()
     }
 
     private fun YoutubeMusicWatchTrack.asVideoCandidate(seed: Track): Track {
