@@ -1058,16 +1058,6 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/50081928cfabde0d63a4d78f893542711259652d"
   },
   {
-   "id": "levyra-abcefdcdd14811510835",
-   "genre": "dance-party",
-   "title": "Friday (feat. Mufasa & Hypeman) - Dopamine Re-Edit",
-   "artist": "Riton, Nightcrawlers, Mufasa & Hypeman, Mufasa, Dopamine",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273815cb538fd7821595b2bc8c5",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/617e7b002d6f4df8a703a096dfcc7efb.cnvs.mp4",
-   "spotifyTrackId": "4cG7HUWYHBV6R6tHn1gxrl",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/0a9ed687dddcd95c83e37099958bdc6d54430e4d"
-  },
-  {
    "id": "levyra-032fa13818ecee393548",
    "genre": "dance-party",
    "title": "World Hold On - FISHER Rework",
@@ -1076,6 +1066,16 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/5YFS41yoX0YuFY39fq21oN/video/557a03099be6415c86c6955268e7a373.cnvs.mp4",
    "spotifyTrackId": "6t180YbVeK9MWrj2zjMr5Z",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/adae361145c433bcc47279b57374767940b96957"
+  },
+  {
+   "id": "levyra-abcefdcdd14811510835",
+   "genre": "dance-party",
+   "title": "Friday (feat. Mufasa & Hypeman) - Dopamine Re-Edit",
+   "artist": "Riton, Nightcrawlers, Mufasa & Hypeman, Mufasa, Dopamine",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273815cb538fd7821595b2bc8c5",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/617e7b002d6f4df8a703a096dfcc7efb.cnvs.mp4",
+   "spotifyTrackId": "4cG7HUWYHBV6R6tHn1gxrl",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/0a9ed687dddcd95c83e37099958bdc6d54430e4d"
   },
   {
    "id": "levyra-e38ca6ceb21d47433340",
@@ -1116,16 +1116,6 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/327472d482ae422d9ddfcebb426cfd2a.cnvs.mp4",
    "spotifyTrackId": "0cZN3g7rtfNE6vsmX0k8OF",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/265e15be487a4b6bbabacc8c565afdbee404e045"
-  },
-  {
-   "id": "levyra-9d56e3e0f3dc837e4cdb",
-   "genre": "dance-party",
-   "title": "It Feels So Good",
-   "artist": "Matt Sassari, HUGEL, Sonique",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273aa7df9183be7f3bb8c8ad4bc",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/0cd04165587c44579abc80d19cf1aae7.cnvs.mp4",
-   "spotifyTrackId": "7xFy1kfgGWJWTpx1vSHBLi",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/12e395c89aee9215ecbca73c8aa3bc4513a07a2a"
   },
   {
    "id": "levyra-7889f970e52cfa44e03a",
@@ -2464,8 +2454,7 @@
    "artist": "BILLA JOE, Cave",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27394d644e407d1058d988e459f",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/72y6W9pGy97xTM44dwy3F6/video/efdf70453067421682a53e519ec2483f.cnvs.mp4",
-   "spotifyTrackId": "5JNwBXjBc7bKi9ibPql2GG",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/cca1d0062215a97a25861d91f17371db9ec339e7"
+   "spotifyTrackId": "5JNwBXjBc7bKi9ibPql2GG"
   },
   {
    "id": "levyra-ed1fa2ff3febef6aa453",
@@ -2474,8 +2463,7 @@
    "artist": "idolinjo",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273eef3af0ce8484c677155fb49",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/7slJ8mgbVwvyPEzQMJ5qYO/video/18d91a45a87f4814ac99742f6c3f55b1.cnvs.mp4",
-   "spotifyTrackId": "6LjprIj7FBcLwg9dxZwOCX",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/ee79906bebbb2315f894b1192e30d95e68512e03"
+   "spotifyTrackId": "6LjprIj7FBcLwg9dxZwOCX"
   },
   {
    "id": "levyra-f473b95f13c61fc5897f",
@@ -2484,8 +2472,7 @@
    "artist": "cherice",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273df2d553b731ac42a3b261611",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/3hdHRmL8PsniFkBS3WwuA7/video/e093c8ccec55412eb218e0855f490321.cnvs.mp4",
-   "spotifyTrackId": "0PUiplXQSmhnFel7nMVhs7",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/a93955f946167999811c1c5b17da7ec83b0eb8c3"
+   "spotifyTrackId": "0PUiplXQSmhnFel7nMVhs7"
   },
   {
    "id": "levyra-5b7fb5d215c4bd32c5fe",
@@ -2494,8 +2481,7 @@
    "artist": "Haaland936",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2731f18cd39f59bf1188f2dbf58",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/6OBEI1JlLksVqrVOJXWdRe/video/ce8b826893354ad1806f7b28c1e056e8.cnvs.mp4",
-   "spotifyTrackId": "1JcqzgxVWq1WWgA73SNLO2",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/58a2d4a4246b5f2b06d7143258982e1ec7f7d2c1"
+   "spotifyTrackId": "1JcqzgxVWq1WWgA73SNLO2"
   },
   {
    "id": "levyra-bdac05e806587e391110",
@@ -2504,8 +2490,7 @@
    "artist": "Faroon, Marlo",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2739f5b7e65b9195e21fdd8cdc7",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/697ZbUKLJSEWWhtayAGxBY/video/984542df9431415189837af919ffa554.cnvs.mp4",
-   "spotifyTrackId": "56NwjwoqUnjXxHZts6TDym",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/ce800d03dc0951ae0fa9e9a1a2c21a5b0d8f6bc7"
+   "spotifyTrackId": "56NwjwoqUnjXxHZts6TDym"
   },
   {
    "id": "levyra-d413d77e3e9cc50f0334",
@@ -2514,8 +2499,7 @@
    "artist": "Kurdo, Chahid",
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273022128b5d2f6634e28924c1d",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/1yIifIA91WgmfzBcjbQB8i/video/0dfe674a7ad9494282caafbc42131153.cnvs.mp4",
-   "spotifyTrackId": "2w0IA4SBx3e0ymlZ5EY9mP",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/bb24ab6695438a44572c7753e50252e1e1186315"
+   "spotifyTrackId": "2w0IA4SBx3e0ymlZ5EY9mP"
   }
  ]
 }
