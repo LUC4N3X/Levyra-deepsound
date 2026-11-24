@@ -74,7 +74,7 @@ class LastFmScrobbleProvider(private val credentials: AndroidKeystoreCredentialS
     suspend fun chartPlaylists(user: String): List<LastFmPlaylist> = coroutineScope {
         lastFmChartRequests.map { request ->
             async {
-                call(request.method, request.parameters(user))
+                call(request.method, request.parameters(user), MAX_LIBRARY_RESPONSE_BYTES)
                     ?.let { LastFmJson.tracks(it, request.container) }
                     ?.takeIf(List<ListenBrainzTrack>::isNotEmpty)
                     ?.let { LastFmPlaylist(id = request.kind.name, kind = request.kind, tracks = it) }
@@ -107,10 +107,13 @@ class LastFmScrobbleProvider(private val credentials: AndroidKeystoreCredentialS
         call(method, trackParameters(listen) + extra)
     }
 
-    private suspend fun call(method: String, parameters: Map<String, String>): JSONObject? =
-        withContext(Dispatchers.IO) { callOnIo(method, parameters) }
+    private suspend fun call(
+        method: String,
+        parameters: Map<String, String>,
+        maxResponseBytes: Long = MAX_SCROBBLE_RESPONSE_BYTES
+    ): JSONObject? = withContext(Dispatchers.IO) { callOnIo(method, parameters, maxResponseBytes) }
 
-    private suspend fun callOnIo(method: String, parameters: Map<String, String>): JSONObject? {
+    private suspend fun callOnIo(method: String, parameters: Map<String, String>, maxResponseBytes: Long): JSONObject? {
         val apiCredential = credentials.read(LAST_FM_API_SLOT) ?: return null
         val signingCredential = credentials.read(LAST_FM_SECRET_SLOT) ?: return null
         val session = credentials.read(KEY_SESSION)
@@ -130,7 +133,7 @@ class LastFmScrobbleProvider(private val credentials: AndroidKeystoreCredentialS
         try {
             repeat(2) { attempt ->
                 LevyraHttpClientFactory.externalIntegrations().newCall(request).execute().use { response ->
-                    val root = JSONObject(response.body.jsonPayload() ?: return null)
+                    val root = JSONObject(response.body.jsonPayload(maxResponseBytes) ?: return null)
                     val errorCode = root.optInt("error", 0)
                     if (errorCode == 9) {
                         credentials.clear(KEY_SESSION)
@@ -289,13 +292,14 @@ class ScrobblingCoordinator(private val providers: List<ScrobbleProvider>) {
 }
 
 internal const val MAX_SCROBBLE_RESPONSE_BYTES = 64L * 1024L
+internal const val MAX_LIBRARY_RESPONSE_BYTES = 2L * 1024L * 1024L
 
-internal fun ResponseBody.jsonPayload(): String? {
+internal fun ResponseBody.jsonPayload(maxBytes: Long = MAX_SCROBBLE_RESPONSE_BYTES): String? {
     if (!contentType()?.subtype.orEmpty().endsWith("json", ignoreCase = true)) return null
-    if (contentLength() > MAX_SCROBBLE_RESPONSE_BYTES) return null
+    if (contentLength() > maxBytes) return null
     val payload = source()
-    payload.request(MAX_SCROBBLE_RESPONSE_BYTES + 1L)
-    if (payload.buffer.size > MAX_SCROBBLE_RESPONSE_BYTES) return null
+    payload.request(maxBytes + 1L)
+    if (payload.buffer.size > maxBytes) return null
     return payload.buffer.readUtf8()
 }
 

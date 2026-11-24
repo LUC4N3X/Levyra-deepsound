@@ -20,11 +20,11 @@ class LastFmSitePlaylists(private val context: Context) {
     private val gate = Mutex()
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    suspend fun playlists(user: String): List<LastFmPlaylist> =
-        page(userUrl(user, "playlists"))?.let(LastFmSitePages::playlists).orEmpty()
+    suspend fun playlists(user: String): List<LastFmPlaylist>? =
+        page(userUrl(user, "playlists"))?.let(LastFmSitePages::playlists)
 
-    suspend fun tracks(user: String, playlistId: String): List<ListenBrainzTrack> =
-        page(userUrl(user, "playlists", playlistId))?.let(LastFmSitePages::tracks).orEmpty()
+    suspend fun tracks(user: String, playlistId: String): List<ListenBrainzTrack>? =
+        page(userUrl(user, "playlists", playlistId))?.let(LastFmSitePages::tracks)
 
     private fun userUrl(user: String, vararg segments: String): String =
         "https://www.last.fm/".toHttpUrl().newBuilder()

@@ -1368,6 +1368,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val listenBrainzLibrary by lazy { com.luc4n3x.levyra.feature.scrobbling.ListenBrainzLibrary(listenBrainzScrobbling::token) }
     private val _lastFmPlaylists = MutableStateFlow(LastFmPlaylistsState())
     private var lastFmRefreshJob: Job? = null
+    private var lastFmImportJob: Job? = null
     val lastFmPlaylists: StateFlow<LastFmPlaylistsState> = _lastFmPlaylists.asStateFlow()
     private val lastFmSitePlaylists by lazy { com.luc4n3x.levyra.feature.scrobbling.LastFmSitePlaylists(application) }
     private val _listenBrainzPlaylists = MutableStateFlow(ListenBrainzPlaylistsState())
@@ -16490,6 +16491,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             lastFmAuthorizationLock.withLock {
                 lastFmScrobbling.clear()
                 lastFmRefreshJob?.cancel()
+                lastFmImportJob?.cancel()
                 _lastFmPlaylists.value = LastFmPlaylistsState()
                 _state.update { it.copy(lastFmAuthorizationPending = false, lastFmAccount = null) }
             }
@@ -16502,7 +16504,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         lastFmRefreshJob = viewModelScope.launch {
             val user = withContext(Dispatchers.IO) { lastFmScrobbling.resolvedAccountName() }
             if (user == null) {
-                _lastFmPlaylists.update { it.copy(loading = false, playlists = emptyList()) }
+                val stillConnected = withContext(Dispatchers.IO) { lastFmScrobbling.isConfigured() }
+                _lastFmPlaylists.update { it.copy(loading = false, playlists = if (stillConnected) it.playlists else emptyList()) }
+                if (!stillConnected) _state.update { it.copy(lastFmAccount = null) }
                 return@launch
             }
             _state.update { if (it.lastFmAccount.isNullOrBlank()) it.copy(lastFmAccount = user) else it }
@@ -16523,13 +16527,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 val (previousSite, previousCharts) = current.playlists.partition { it.kind == com.luc4n3x.levyra.feature.scrobbling.LastFmPlaylistKind.Site }
                 current.copy(loading = false, playlists = (site ?: previousSite) + (charts ?: previousCharts))
             }
+            if (!withContext(Dispatchers.IO) { lastFmScrobbling.isConfigured() }) {
+                _lastFmPlaylists.value = LastFmPlaylistsState()
+                _state.update { it.copy(lastFmAccount = null) }
+            }
         }
     }
 
     fun importLastFmPlaylist(playlist: com.luc4n3x.levyra.feature.scrobbling.LastFmPlaylist, title: String) {
         if (_lastFmPlaylists.value.importingId != null) return
         _lastFmPlaylists.update { it.copy(importingId = playlist.id) }
-        viewModelScope.launch {
+        lastFmImportJob = viewModelScope.launch {
             val tracks = playlist.tracks.ifEmpty {
                 val user = withContext(Dispatchers.IO) { lastFmScrobbling.resolvedAccountName() }
                 user?.let {

@@ -2083,6 +2083,12 @@ fun LevyraApp(
             openExternalUrl(toastContext, url, currentStrings)
         }
     }
+    LaunchedEffect(state.lastFmAuthorizationPending) {
+        if (state.lastFmAuthorizationPending) viewModel.completeLastFmAuthorization()
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        if (state.lastFmAuthorizationPending) viewModel.completeLastFmAuthorization()
+    }
     val activity = toastContext as? Activity
     var showLanguageRestartDialog by remember { mutableStateOf(false) }
     var showPlaybackDiagnostics by remember { mutableStateOf(false) }
@@ -20543,9 +20549,6 @@ private fun LastFmIntegrationSection(
     var lastFmKey by remember { mutableStateOf("") }
     var lastFmSecret by remember { mutableStateOf("") }
     val lastFmConfigured = lastFmAccount != null
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-        if (lastFmAuthorizationPending) onCompleteLastFm()
-    }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Last.fm", color = LevyraText, fontWeight = FontWeight.Black, fontSize = 17.sp)
         if (lastFmConfigured) {

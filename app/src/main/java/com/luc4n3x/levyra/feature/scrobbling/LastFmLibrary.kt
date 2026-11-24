@@ -23,7 +23,7 @@ internal data class LastFmChartRequest(val kind: LastFmPlaylistKind, val method:
 }
 
 internal val lastFmChartRequests = listOf(
-    LastFmChartRequest(LastFmPlaylistKind.Loved, "user.getLovedTracks", "lovedtracks", null, 1000),
+    LastFmChartRequest(LastFmPlaylistKind.Loved, "user.getLovedTracks", "lovedtracks", null, 500),
     LastFmChartRequest(LastFmPlaylistKind.TopWeek, "user.getTopTracks", "toptracks", "7day", 50),
     LastFmChartRequest(LastFmPlaylistKind.TopMonth, "user.getTopTracks", "toptracks", "1month", 50),
     LastFmChartRequest(LastFmPlaylistKind.TopAllTime, "user.getTopTracks", "toptracks", "overall", 100)
