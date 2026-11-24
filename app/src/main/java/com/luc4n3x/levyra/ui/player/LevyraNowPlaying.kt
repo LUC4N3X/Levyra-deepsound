@@ -550,7 +550,7 @@ private fun LevyraNowPlayingContent(
             DefaultBackdropFocus
         }
 
-        if (!atelierScene) PlayerVisualHost(
+        if (!atelierScene && deckLayout.usesPlayerBackground()) PlayerVisualHost(
             backgroundMode = backgroundMode,
             artworkUrl = artworkUrl,
             ambience = backdropAmbience,

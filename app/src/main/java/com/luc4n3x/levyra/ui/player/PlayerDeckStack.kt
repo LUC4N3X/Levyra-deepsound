@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.ui.player
 
 import androidx.compose.animation.AnimatedContent
+import com.luc4n3x.levyra.ui.i18n.LevyraStrings
+import androidx.compose.runtime.State
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.foundation.layout.BoxScope
@@ -950,12 +952,7 @@ private fun StackPlayToken(
 ) {
     val haptics = LocalLevyraHaptics.current
     val source = remember { MutableInteractionSource() }
-    val pressed by source.collectIsPressedAsState()
-    val press by animateFloatAsState(
-        targetValue = if (pressed) 1f else 0f,
-        animationSpec = stackPressSpring(animated, 0.6f, 1_200f),
-        label = "player-stack-token-press"
-    )
+    val press by rememberStackPress(source, animated, 0.6f, 1_200f, "player-stack-token-press")
     val face = remember(tone) { lerp(tone, Color.White, 0.84f) }
     val ring = remember(tone) { lerp(tone, Color.Black, 0.35f) }
     Box(
@@ -985,15 +982,39 @@ private fun StackPlayToken(
                 pressedScale = 1f,
                 interactionSource = source
             )
-            .semantics { contentDescription = if (isPlaying) labels.pause else labels.play },
+            .semantics { contentDescription = stackPlayLabel(labels, isPlaying) },
         contentAlignment = Alignment.Center
     ) {
-        if (isResolving) {
-            LevyraLoadingIndicator(color = Color.Black, modifier = Modifier.size(32.dp))
-        } else {
-            LevyraPlayPauseGlyph(playing = isPlaying, color = Color.Black, modifier = Modifier.size(28.dp))
-        }
+        StackTokenGlyph(isPlaying, isResolving)
     }
+}
+
+private fun stackPlayLabel(labels: PlayerControlLabels, isPlaying: Boolean): String =
+    if (isPlaying) labels.pause else labels.play
+
+@Composable
+private fun StackTokenGlyph(isPlaying: Boolean, isResolving: Boolean) {
+    if (isResolving) {
+        LevyraLoadingIndicator(color = Color.Black, modifier = Modifier.size(32.dp))
+    } else {
+        LevyraPlayPauseGlyph(playing = isPlaying, color = Color.Black, modifier = Modifier.size(28.dp))
+    }
+}
+
+@Composable
+private fun rememberStackPress(
+    source: MutableInteractionSource,
+    animated: Boolean,
+    damping: Float,
+    stiffness: Float,
+    label: String
+): State<Float> {
+    val pressed by source.collectIsPressedAsState()
+    return animateFloatAsState(
+        targetValue = if (pressed) 1f else 0f,
+        animationSpec = stackPressSpring(animated, damping, stiffness),
+        label = label
+    )
 }
 
 @Composable
@@ -1008,12 +1029,7 @@ private fun StackSideTab(
 ) {
     val haptics = LocalLevyraHaptics.current
     val source = remember { MutableInteractionSource() }
-    val pressed by source.collectIsPressedAsState()
-    val slide by animateFloatAsState(
-        targetValue = if (pressed) 1f else 0f,
-        animationSpec = stackPressSpring(animated, 0.55f, 1_400f),
-        label = "player-stack-side-tab"
-    )
+    val slide by rememberStackPress(source, animated, 0.55f, 1_400f, "player-stack-side-tab")
     val fill = remember(tone) { lerp(tone, Color.Black, 0.35f).copy(alpha = 0.72f) }
     Box(
         modifier = modifier
@@ -1063,16 +1079,24 @@ private fun StackFavoriteStamp(
                 pressedScale = LevyraPressScale.Control
             )
             .semantics {
-                contentDescription = if (isFavorite) strings.removeFromFavorites else strings.addToFavorites
+                contentDescription = stackFavoriteLabel(strings, isFavorite)
                 selected = isFavorite
             },
         contentAlignment = Alignment.Center
     ) {
-        PlayerIcon(
-            if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-            if (isFavorite) ink else Color.White,
-            Modifier.size(22.dp)
-        )
+        StackFavoriteGlyph(isFavorite, ink)
+    }
+}
+
+private fun stackFavoriteLabel(strings: LevyraStrings, isFavorite: Boolean): String =
+    if (isFavorite) strings.removeFromFavorites else strings.addToFavorites
+
+@Composable
+private fun StackFavoriteGlyph(isFavorite: Boolean, ink: Color) {
+    if (isFavorite) {
+        PlayerIcon(Icons.Rounded.Favorite, ink, Modifier.size(22.dp))
+    } else {
+        PlayerIcon(Icons.Rounded.FavoriteBorder, Color.White, Modifier.size(22.dp))
     }
 }
 
