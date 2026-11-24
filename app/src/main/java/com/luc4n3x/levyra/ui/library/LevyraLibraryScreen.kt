@@ -654,6 +654,7 @@ internal fun LevyraLibraryScreen(
     var expandedOfflineLanes by remember { mutableStateOf(emptySet<OfflineTransferLane>()) }
     val offlineQueueStrings = offlineQueueCopy(strings.code)
     val offlineFilter = remember(browse.offlineCollections, offlineFilterKey) { browse.offlineCollections.find(offlineFilterKey) }
+    val offlineFilterTitle = offlineFilter?.let { filter -> filter.mix?.let { offlineMixTitle(it, strings, offlineQueueStrings) } ?: filter.title }
     val visibleOffline = remember(browse, query, sort, direction, offlineFilter) {
         val sorted = if (presorted) browse.offlineItems else filterLibraryOfflineItems(catalog.offlineItems, query, sort, direction)
         offlineFilter?.itemKeys?.toHashSet()?.let { keys -> sorted.filter { it.key in keys } } ?: sorted
@@ -850,6 +851,7 @@ internal fun LevyraLibraryScreen(
     }
     BackHandler(enabled = backEnabled && !selectionActive && openSmartCollectionName != null) { openSmartCollectionName = null }
     BackHandler(enabled = backEnabled && selectionActive) { selectedKeys = emptySet() }
+    BackHandler(enabled = backEnabled && !selectionActive && category == LibraryCategory.Offline && offlineFilter != null) { offlineFilterKey = null }
 
     val libraryFrost = LevyraIsDefaultSkin
     val librarySearchFocus = remember(listState) { FocusRequester() }
@@ -1513,8 +1515,7 @@ internal fun LevyraLibraryScreen(
                             }
                             OfflineHero(
                                 badge = strings.formatLibraryBytes(if (offlineFilter == null) state.downloadStorageBytes else visibleOffline.sumOf { it.download.sizeBytes }),
-                                title = offlineFilter?.let { filter -> filter.mix?.let { offlineMixTitle(it, strings, offlineQueueStrings) } ?: filter.title }
-                                    ?: strings.offlineDownloadsPlain,
+                                title = offlineFilterTitle ?: strings.offlineDownloadsPlain,
                                 subtitle = strings.formatTrackCount(visibleOffline.size),
                                 covers = covers,
                                 playLabel = strings.playAll,
@@ -1558,7 +1559,7 @@ internal fun LevyraLibraryScreen(
                             }
                         }
                     )
-                    if (catalog.offlineItems.isNotEmpty()) {
+                    if (catalog.offlineItems.isNotEmpty() && offlineFilter == null) {
                         listOf(
                             OfflineRailStyle.Mix to offlineCollections.mixes,
                             OfflineRailStyle.Artist to offlineCollections.artists,
@@ -1587,16 +1588,20 @@ internal fun LevyraLibraryScreen(
                                     label = { collection -> collection.mix?.let { offlineMixTitle(it, strings, offlineQueueStrings) } ?: collection.title },
                                     countLabel = strings::formatTrackCount,
                                     onSelect = { collection ->
-                                        offlineFilterKey = collection.key.takeUnless { it == offlineFilterKey }
+                                        offlineFilterKey = collection.key
+                                        collectionScope.launch {
+                                            if (state.animationsEnabled) listState.animateScrollToItem(0)
+                                            else listState.scrollToItem(0)
+                                        }
                                     }
                                 )
                             }
                         }
                     }
-                    item(key = "download-health-entry") {
+                    if (offlineFilter == null) item(key = "download-health-entry") {
                         com.luc4n3x.levyra.ui.downloadhealth.DownloadHealthEntry()
                     }
-                    item(key = "offline-storage") {
+                    if (offlineFilter == null) item(key = "offline-storage") {
                         val showSmartOffline = state.smartOfflineSettings.enabled || smartOfflineSummary.first > 0
                         val showStorageRow = catalog.offlineItems.isEmpty()
                         val groupCount = listOf(showSmartOffline, showStorageRow).count { it }
