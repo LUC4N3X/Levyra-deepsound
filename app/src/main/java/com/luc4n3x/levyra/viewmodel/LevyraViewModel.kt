@@ -1366,6 +1366,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val lastFmScrobbling = com.luc4n3x.levyra.feature.scrobbling.LastFmScrobbleProvider(externalCredentialStore)
     private val listenBrainzScrobbling = com.luc4n3x.levyra.feature.scrobbling.ListenBrainzScrobbleProvider(externalCredentialStore)
     private val listenBrainzLibrary by lazy { com.luc4n3x.levyra.feature.scrobbling.ListenBrainzLibrary(listenBrainzScrobbling::token) }
+    private val _lastFmPlaylists = MutableStateFlow(LastFmPlaylistsState())
+    private var lastFmRefreshJob: Job? = null
+    private var lastFmImportJob: Job? = null
+    val lastFmPlaylists: StateFlow<LastFmPlaylistsState> = _lastFmPlaylists.asStateFlow()
+    private val lastFmSitePlaylists by lazy { com.luc4n3x.levyra.feature.scrobbling.LastFmSitePlaylists(application) }
     private val _listenBrainzPlaylists = MutableStateFlow(ListenBrainzPlaylistsState())
     private var listenBrainzRefreshJob: Job? = null
     val listenBrainzPlaylists: StateFlow<ListenBrainzPlaylistsState> = _listenBrainzPlaylists.asStateFlow()
@@ -1722,7 +1727,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var listenSessionCompleted = false
     private var listenTickElapsedMs = 0L
     private var listenSessionPersistedMs = 0L
-    @Volatile private var pendingLastFmToken: String? = null
+    private val lastFmAuthorizationLock = Mutex()
     private var listenSessionPersistJob: Job? = null
     private var listeningPulseRefreshJob: Job? = null
     private var listeningRecapJob: Job? = null
@@ -1985,7 +1990,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val storedJamName = preferences.jamDisplayName()
             _state.update {
                 it.copy(
-                    lastFmConfigured = lastFmScrobbling.isConfigured(),
+                    lastFmAccount = lastFmScrobbling.accountName(),
+                    lastFmAuthorizationPending = !lastFmScrobbling.isConfigured() && lastFmScrobbling.pendingToken() != null,
                     listenBrainzConfigured = listenBrainzScrobbling.isConfigured(),
                     audDConfigured = audDConfigured,
                     recognitionAvailable = LevyraRecognitionCenter.isAvailable,
@@ -16460,15 +16466,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun beginLastFmAuthorization(apiKey: String, sharedSecret: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            lastFmScrobbling.saveApiCredentials(apiKey, sharedSecret)
-            val authorizationProof = lastFmScrobbling.requestToken()
-            val url = authorizationProof?.let(lastFmScrobbling::authorizationUrl)
-            pendingLastFmToken = authorizationProof.takeIf { url != null }
-            _state.update {
-                it.copy(
-                    lastFmAuthorizationPending = pendingLastFmToken != null,
-                    lastFmConfigured = false
-                )
+            val url = lastFmAuthorizationLock.withLock {
+                lastFmScrobbling.saveApiCredentials(apiKey, sharedSecret)
+                val url = lastFmScrobbling.requestToken()?.let(lastFmScrobbling::authorizationUrl)
+                _state.update { it.copy(lastFmAuthorizationPending = url != null, lastFmAccount = null) }
+                url
             }
             url?.let { _integrationAuthorizationUrls.emit(it) }
         }
@@ -16476,23 +16478,90 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun completeLastFmAuthorization() {
         viewModelScope.launch(Dispatchers.IO) {
-            val authorizationProof = pendingLastFmToken ?: return@launch
-            val configured = lastFmScrobbling.completeAuthorization(authorizationProof)
-            if (configured) pendingLastFmToken = null
-            _state.update {
-                it.copy(
-                    lastFmAuthorizationPending = !configured,
-                    lastFmConfigured = configured
-                )
+            lastFmAuthorizationLock.withLock {
+                val authorizationProof = lastFmScrobbling.pendingToken() ?: return@withLock
+                val account = lastFmScrobbling.completeAuthorization(authorizationProof)
+                _state.update { it.copy(lastFmAuthorizationPending = account == null, lastFmAccount = account) }
             }
         }
     }
 
     fun clearLastFmAuthorization() {
-        pendingLastFmToken = null
         viewModelScope.launch(Dispatchers.IO) {
-            lastFmScrobbling.clear()
-            _state.update { it.copy(lastFmAuthorizationPending = false, lastFmConfigured = false) }
+            lastFmAuthorizationLock.withLock {
+                lastFmScrobbling.clear()
+                lastFmRefreshJob?.cancel()
+                lastFmImportJob?.cancel()
+                _lastFmPlaylists.value = LastFmPlaylistsState()
+                _state.update { it.copy(lastFmAuthorizationPending = false, lastFmAccount = null) }
+            }
+        }
+    }
+
+    fun refreshLastFmPlaylists() {
+        lastFmRefreshJob?.cancel()
+        _lastFmPlaylists.update { it.copy(loading = true) }
+        lastFmRefreshJob = viewModelScope.launch {
+            val user = withContext(Dispatchers.IO) { lastFmScrobbling.resolvedAccountName() }
+            if (user == null) {
+                if (withContext(Dispatchers.IO) { lastFmScrobbling.isConfigured() }) {
+                    _lastFmPlaylists.update { it.copy(loading = false) }
+                } else {
+                    lastFmImportJob?.cancel()
+                    _lastFmPlaylists.value = LastFmPlaylistsState()
+                    _state.update { it.copy(lastFmAccount = null) }
+                }
+                return@launch
+            }
+            _state.update { if (it.lastFmAccount.isNullOrBlank()) it.copy(lastFmAccount = user) else it }
+            val (site, charts) = coroutineScope {
+                val site = async {
+                    runCatchingPreservingCancellation { lastFmSitePlaylists.playlists(user) }
+                        .onFailure { Timber.w(it, "lastfm site playlists failed") }
+                        .getOrNull()
+                }
+                val charts = async(Dispatchers.IO) {
+                    runCatchingPreservingCancellation { lastFmScrobbling.chartPlaylists(user) }
+                        .onFailure { Timber.w(it, "lastfm chart playlists failed") }
+                        .getOrNull()
+                }
+                site.await() to charts.await()
+            }
+            _lastFmPlaylists.update { current ->
+                val (previousSite, previousCharts) = current.playlists.partition { it.kind == com.luc4n3x.levyra.feature.scrobbling.LastFmPlaylistKind.Site }
+                current.copy(loading = false, playlists = (site ?: previousSite) + (charts ?: previousCharts))
+            }
+            if (!withContext(Dispatchers.IO) { lastFmScrobbling.isConfigured() }) {
+                lastFmImportJob?.cancel()
+                _lastFmPlaylists.value = LastFmPlaylistsState()
+                _state.update { it.copy(lastFmAccount = null) }
+            }
+        }
+    }
+
+    fun importLastFmPlaylist(playlist: com.luc4n3x.levyra.feature.scrobbling.LastFmPlaylist, title: String) {
+        if (_lastFmPlaylists.value.importingId != null) return
+        _lastFmPlaylists.update { it.copy(importingId = playlist.id) }
+        lastFmImportJob = viewModelScope.launch {
+            try {
+                val tracks = playlist.tracks.ifEmpty {
+                    val user = withContext(Dispatchers.IO) { lastFmScrobbling.resolvedAccountName() }
+                    user?.let {
+                        runCatchingPreservingCancellation { lastFmSitePlaylists.tracks(it, playlist.id) }
+                            .onFailure { error -> Timber.w(error, "lastfm playlist tracks failed") }
+                            .getOrNull()
+                    }.orEmpty()
+                }
+                if (tracks.isEmpty()) {
+                    val copy = com.luc4n3x.levyra.ui.i18n.lastFmCopy(_state.value.languageCode)
+                    _state.update { it.copy(offlineExportMessage = copy.nothingToImport) }
+                    return@launch
+                }
+                if (!withContext(Dispatchers.IO) { lastFmScrobbling.isConfigured() }) return@launch
+                playlistImport.loadFile(com.luc4n3x.levyra.feature.scrobbling.ListenBrainzJson.xspf(title, tracks), "lastfm.xspf")
+            } finally {
+                _lastFmPlaylists.update { if (it.importingId == playlist.id) it.copy(importingId = null) else it }
+            }
         }
     }
 

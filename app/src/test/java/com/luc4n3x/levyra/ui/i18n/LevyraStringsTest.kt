@@ -11,6 +11,16 @@ import java.nio.file.Path
 
 class LevyraStringsTest {
     @Test
+    fun audioEfficiencyAndLimiterCopyIsTranslatedForEveryCatalogLanguage() {
+        val english = LevyraStrings.all().first { it.code == "en" }
+        LevyraStrings.all().filter { it.code != "en" }.forEach { strings ->
+            assertTrue(strings.code, strings.audioEfficiencyTitle != english.audioEfficiencyTitle)
+            assertTrue(strings.code, strings.audioEfficiencySubtitle != english.audioEfficiencySubtitle)
+            assertTrue(strings.code, strings.truePeakLimiterSubtitle != english.truePeakLimiterSubtitle)
+        }
+    }
+
+    @Test
     fun catalogAndStringBundlesStayInSync() {
         val catalogCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
         assertEquals(catalogCodes, LevyraStrings.supportedCodes())
@@ -119,6 +129,7 @@ class LevyraStringsTest {
             assertTrue(strings.sharedSecretLabel.isNotBlank())
             assertTrue(strings.credentialTokenLabel.isNotBlank())
             assertTrue(strings.lastFmApprovalHint.isNotBlank())
+            assertTrue(strings.lastFmConnected.isNotBlank())
             assertTrue(strings.subtitlesOff.isNotBlank())
             assertTrue(strings.subtitlesLabel.isNotBlank())
             assertTrue(strings.playerVisualMode.isNotBlank())

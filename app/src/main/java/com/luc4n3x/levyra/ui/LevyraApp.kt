@@ -2083,6 +2083,12 @@ fun LevyraApp(
             openExternalUrl(toastContext, url, currentStrings)
         }
     }
+    LaunchedEffect(state.lastFmAuthorizationPending) {
+        if (state.lastFmAuthorizationPending) viewModel.completeLastFmAuthorization()
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        if (state.lastFmAuthorizationPending) viewModel.completeLastFmAuthorization()
+    }
     val activity = toastContext as? Activity
     var showLanguageRestartDialog by remember { mutableStateOf(false) }
     var showPlaybackDiagnostics by remember { mutableStateOf(false) }
@@ -3165,7 +3171,7 @@ fun LevyraApp(
                     vaultSyncFile = vaultSyncFile,
                     downloadQueue = state.downloadQueue,
                     playbackDiagnostics = state.playbackDiagnostics,
-                    lastFmConfigured = state.lastFmConfigured,
+                    lastFmAccount = state.lastFmAccount,
                     lastFmAuthorizationPending = state.lastFmAuthorizationPending,
                     listenBrainzConfigured = state.listenBrainzConfigured,
                     audDConfigured = state.audDConfigured,
@@ -3286,6 +3292,7 @@ fun LevyraApp(
                     onClearLastFm = viewModel::clearLastFmAuthorization,
                     onSaveListenBrainz = viewModel::saveListenBrainzToken,
                     listenBrainzPlaylists = { ListenBrainzPlaylistsSection(viewModel) },
+                    lastFmPlaylists = { LastFmPlaylistsSection(viewModel) },
                     onClearListenBrainz = viewModel::clearListenBrainzToken,
                     onSaveAudD = viewModel::saveAudDToken,
                     onClearAudD = viewModel::clearAudDToken,
@@ -18759,7 +18766,7 @@ private fun SettingsOverlay(
     vaultSyncFile: VaultSyncFileState,
     downloadQueue: List<OfflineDownloadTask>,
     playbackDiagnostics: String,
-    lastFmConfigured: Boolean,
+    lastFmAccount: String?,
     lastFmAuthorizationPending: Boolean,
     listenBrainzConfigured: Boolean,
     audDConfigured: Boolean,
@@ -18826,6 +18833,7 @@ private fun SettingsOverlay(
     onClearLastFm: () -> Unit,
     onSaveListenBrainz: (String) -> Unit,
     listenBrainzPlaylists: @Composable () -> Unit,
+    lastFmPlaylists: @Composable () -> Unit,
     onClearListenBrainz: () -> Unit,
     onSaveAudD: (String) -> Unit,
     onClearAudD: () -> Unit,
@@ -19136,7 +19144,7 @@ private fun SettingsOverlay(
                         "integrations" -> {
                             item {
                                 IntegrationSettingsPanel(
-                                    lastFmConfigured,
+                                    lastFmAccount,
                                     lastFmAuthorizationPending,
                                     listenBrainzConfigured,
                                     audDConfigured,
@@ -19147,7 +19155,8 @@ private fun SettingsOverlay(
                                     onClearListenBrainz,
                                     onSaveAudD,
                                     onClearAudD,
-                                    listenBrainzPlaylists
+                                    listenBrainzPlaylists,
+                                    lastFmPlaylists
                                 )
                             }
                         }
@@ -20464,61 +20473,19 @@ private fun SettingsSearchResultRow(title: String, description: String, category
 
 @Composable
 private fun IntegrationSettingsPanel(
-    lastFmConfigured: Boolean, lastFmAuthorizationPending: Boolean,
+    lastFmAccount: String?, lastFmAuthorizationPending: Boolean,
     listenBrainzConfigured: Boolean, audDConfigured: Boolean,
     onBeginLastFm: (String, String) -> Unit, onCompleteLastFm: () -> Unit, onClearLastFm: () -> Unit,
     onSaveListenBrainz: (String) -> Unit, onClearListenBrainz: () -> Unit,
     onSaveAudD: (String) -> Unit, onClearAudD: () -> Unit,
-    listenBrainzPlaylists: @Composable () -> Unit
+    listenBrainzPlaylists: @Composable () -> Unit,
+    lastFmPlaylists: @Composable () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    var lastFmKey by remember { mutableStateOf("") }
-    var lastFmSecret by remember { mutableStateOf("") }
     var listenBrainzToken by remember { mutableStateOf("") }
     var audDToken by remember { mutableStateOf("") }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Last.fm", color = LevyraText, fontWeight = FontWeight.Black, fontSize = 17.sp)
-        OutlinedTextField(
-            lastFmKey,
-            { lastFmKey = it },
-            label = { Text(strings.apiKeyLabel) },
-            visualTransformation = PasswordVisualTransformation(),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = LevyraText,
-                unfocusedTextColor = LevyraText,
-                focusedBorderColor = LevyraCyan,
-                unfocusedBorderColor = LevyraMuted.copy(alpha = 0.4f),
-                cursorColor = LevyraCyan
-            ),
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            lastFmSecret,
-            { lastFmSecret = it },
-            label = { Text(strings.sharedSecretLabel) },
-            visualTransformation = PasswordVisualTransformation(),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = LevyraText,
-                unfocusedTextColor = LevyraText,
-                focusedBorderColor = LevyraCyan,
-                unfocusedBorderColor = LevyraMuted.copy(alpha = 0.4f),
-                cursorColor = LevyraCyan
-            ),
-            modifier = Modifier.fillMaxWidth()
-        )
-        SettingsButton(Icons.Rounded.Settings, if (lastFmConfigured) strings.delete else strings.save, "Last.fm") {
-            if (lastFmConfigured) {
-                onClearLastFm()
-            } else if (lastFmKey.isNotBlank() && lastFmSecret.isNotBlank()) {
-                onBeginLastFm(lastFmKey, lastFmSecret)
-                lastFmKey = ""
-                lastFmSecret = ""
-            }
-        }
-        if (lastFmAuthorizationPending) {
-            Text(strings.lastFmApprovalHint, color = LevyraMuted, fontSize = 13.sp)
-            SettingsButton(Icons.Rounded.Check, strings.complete, "Last.fm") { onCompleteLastFm() }
-        }
+        LastFmIntegrationSection(lastFmAccount, lastFmAuthorizationPending, onBeginLastFm, onCompleteLastFm, onClearLastFm, lastFmPlaylists)
         Text("ListenBrainz", color = LevyraText, fontWeight = FontWeight.Black, fontSize = 17.sp)
         OutlinedTextField(
             listenBrainzToken,
@@ -20566,6 +20533,73 @@ private fun IntegrationSettingsPanel(
                 audDToken = ""
             }
         }
+    }
+}
+
+@Composable
+private fun LastFmIntegrationSection(
+    lastFmAccount: String?,
+    lastFmAuthorizationPending: Boolean,
+    onBeginLastFm: (String, String) -> Unit,
+    onCompleteLastFm: () -> Unit,
+    onClearLastFm: () -> Unit,
+    lastFmPlaylists: @Composable () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    var lastFmKey by remember { mutableStateOf("") }
+    var lastFmSecret by remember { mutableStateOf("") }
+    val lastFmConfigured = lastFmAccount != null
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Last.fm", color = LevyraText, fontWeight = FontWeight.Black, fontSize = 17.sp)
+        if (lastFmConfigured) {
+            if (!lastFmAccount.isNullOrBlank()) {
+                Text(lastFmAccount, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            }
+            Text(strings.lastFmConnected, color = LevyraCyan, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        } else {
+            OutlinedTextField(
+                lastFmKey,
+                { lastFmKey = it },
+                label = { Text(strings.apiKeyLabel) },
+                visualTransformation = PasswordVisualTransformation(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = LevyraText,
+                    unfocusedTextColor = LevyraText,
+                    focusedBorderColor = LevyraCyan,
+                    unfocusedBorderColor = LevyraMuted.copy(alpha = 0.4f),
+                    cursorColor = LevyraCyan
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                lastFmSecret,
+                { lastFmSecret = it },
+                label = { Text(strings.sharedSecretLabel) },
+                visualTransformation = PasswordVisualTransformation(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = LevyraText,
+                    unfocusedTextColor = LevyraText,
+                    focusedBorderColor = LevyraCyan,
+                    unfocusedBorderColor = LevyraMuted.copy(alpha = 0.4f),
+                    cursorColor = LevyraCyan
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        SettingsButton(Icons.Rounded.Settings, if (lastFmConfigured) strings.delete else strings.save, "Last.fm") {
+            if (lastFmConfigured) {
+                onClearLastFm()
+            } else if (lastFmKey.isNotBlank() && lastFmSecret.isNotBlank()) {
+                onBeginLastFm(lastFmKey, lastFmSecret)
+                lastFmKey = ""
+                lastFmSecret = ""
+            }
+        }
+        if (lastFmAuthorizationPending) {
+            Text(strings.lastFmApprovalHint, color = LevyraMuted, fontSize = 13.sp)
+            SettingsButton(Icons.Rounded.Check, strings.complete, "Last.fm") { onCompleteLastFm() }
+        }
+        if (lastFmConfigured) lastFmPlaylists()
     }
 }
 

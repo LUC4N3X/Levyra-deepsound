@@ -542,7 +542,7 @@ internal fun AudioSettingsPanel(
                 item {
                     AudioToggleRow(
                         title = strings.truePeakLimiter,
-                        subtitle = "−1.0 dBTP",
+                        subtitle = strings.truePeakLimiterSubtitle,
                         checked = audioSettings.limiterEnabled,
                         onCheckedChange = onLimiter
                     )
