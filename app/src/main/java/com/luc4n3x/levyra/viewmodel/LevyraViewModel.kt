@@ -16504,10 +16504,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         lastFmRefreshJob = viewModelScope.launch {
             val user = withContext(Dispatchers.IO) { lastFmScrobbling.resolvedAccountName() }
             if (user == null) {
-                val stillConnected = withContext(Dispatchers.IO) { lastFmScrobbling.isConfigured() }
-                _lastFmPlaylists.update { it.copy(loading = false, playlists = if (stillConnected) it.playlists else emptyList()) }
-                if (!stillConnected) {
+                if (withContext(Dispatchers.IO) { lastFmScrobbling.isConfigured() }) {
+                    _lastFmPlaylists.update { it.copy(loading = false) }
+                } else {
                     lastFmImportJob?.cancel()
+                    _lastFmPlaylists.value = LastFmPlaylistsState()
                     _state.update { it.copy(lastFmAccount = null) }
                 }
                 return@launch
@@ -16542,22 +16543,25 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (_lastFmPlaylists.value.importingId != null) return
         _lastFmPlaylists.update { it.copy(importingId = playlist.id) }
         lastFmImportJob = viewModelScope.launch {
-            val tracks = playlist.tracks.ifEmpty {
-                val user = withContext(Dispatchers.IO) { lastFmScrobbling.resolvedAccountName() }
-                user?.let {
-                    runCatchingPreservingCancellation { lastFmSitePlaylists.tracks(it, playlist.id) }
-                        .onFailure { error -> Timber.w(error, "lastfm playlist tracks failed") }
-                        .getOrNull()
-                }.orEmpty()
+            try {
+                val tracks = playlist.tracks.ifEmpty {
+                    val user = withContext(Dispatchers.IO) { lastFmScrobbling.resolvedAccountName() }
+                    user?.let {
+                        runCatchingPreservingCancellation { lastFmSitePlaylists.tracks(it, playlist.id) }
+                            .onFailure { error -> Timber.w(error, "lastfm playlist tracks failed") }
+                            .getOrNull()
+                    }.orEmpty()
+                }
+                if (tracks.isEmpty()) {
+                    val copy = com.luc4n3x.levyra.ui.i18n.lastFmCopy(_state.value.languageCode)
+                    _state.update { it.copy(offlineExportMessage = copy.nothingToImport) }
+                    return@launch
+                }
+                if (!withContext(Dispatchers.IO) { lastFmScrobbling.isConfigured() }) return@launch
+                playlistImport.loadFile(com.luc4n3x.levyra.feature.scrobbling.ListenBrainzJson.xspf(title, tracks), "lastfm.xspf")
+            } finally {
+                _lastFmPlaylists.update { if (it.importingId == playlist.id) it.copy(importingId = null) else it }
             }
-            _lastFmPlaylists.update { it.copy(importingId = null) }
-            if (tracks.isEmpty()) {
-                val copy = com.luc4n3x.levyra.ui.i18n.lastFmCopy(_state.value.languageCode)
-                _state.update { it.copy(offlineExportMessage = copy.nothingToImport) }
-                return@launch
-            }
-            if (!withContext(Dispatchers.IO) { lastFmScrobbling.isConfigured() }) return@launch
-            playlistImport.loadFile(com.luc4n3x.levyra.feature.scrobbling.ListenBrainzJson.xspf(title, tracks), "lastfm.xspf")
         }
     }
 
