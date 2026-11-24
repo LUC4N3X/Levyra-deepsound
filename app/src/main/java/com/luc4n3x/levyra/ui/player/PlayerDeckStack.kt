@@ -819,124 +819,170 @@ private fun StackSeekbar(
     modifier: Modifier = Modifier
 ) {
     val haptics = LocalLevyraHaptics.current
-    var seeking by remember(trackKey) { mutableStateOf(false) }
-    var seekFraction by remember(trackKey) { mutableFloatStateOf(0f) }
-    var tickStep by remember(trackKey) { mutableIntStateOf(-1) }
-    val played = if (durationMs > 0L) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
-    val shown = if (seeking) seekFraction else played
+    val scrub = remember(trackKey) { StackScrub() }
+    val played = stackPlayedFraction(positionMs, durationMs)
+    val shown = scrub.shown(played)
     val grip by animateFloatAsState(
-        targetValue = if (seeking) 1f else 0f,
-        animationSpec = if (animated) spring(dampingRatio = 0.72f, stiffness = 900f) else snap(),
+        targetValue = scrub.gripTarget(),
+        animationSpec = stackPressSpring(animated, 0.72f, 900f),
         label = "player-stack-seek-grip"
     )
     val fillStart = remember(tone) { lerp(tone, Color.White, 0.5f) }
     val fillEnd = remember(tone) { lerp(tone, Color.White, 0.86f) }
     val latestSeek by rememberUpdatedState(onSeek)
     val elapsed = formatSeekbarMillis((shown * durationMs).toLong())
-    val total = if (durationMs > 0L) formatSeekbarMillis(durationMs) else "--:--"
+    val total = stackSeekTotal(durationMs)
+    val seekable = durationMs > 0L
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(StackSeekTouch)
-            .pointerInput(durationMs > 0L, trackKey) {
-                if (durationMs <= 0L) return@pointerInput
-                detectTapGestures(onTap = { offset ->
-                    haptics.perform(LevyraHapticAction.SeekSnap)
-                    latestSeek((offset.x / size.width).coerceIn(0f, 1f))
-                })
-            }
-            .pointerInput(durationMs > 0L, trackKey) {
-                if (durationMs <= 0L) return@pointerInput
-                detectHorizontalDragGestures(
-                    onDragStart = { offset ->
-                        seekFraction = (offset.x / size.width).coerceIn(0f, 1f)
-                        tickStep = (seekFraction * 10f).toInt()
-                        seeking = true
-                        haptics.perform(LevyraHapticAction.SeekSnap)
-                    },
-                    onDragEnd = {
-                        latestSeek(seekFraction)
-                        seeking = false
-                    },
-                    onDragCancel = { seeking = false },
-                    onHorizontalDrag = { change, amount ->
-                        change.consume()
-                        seekFraction = (seekFraction + amount / size.width).coerceIn(0f, 1f)
-                        val step = (seekFraction * 10f).toInt()
-                        if (step != tickStep) {
-                            tickStep = step
-                            haptics.perform(LevyraHapticAction.SeekSnap)
-                        }
-                    }
-                )
-            }
-            .semantics {
-                progressBarRangeInfo = ProgressBarRangeInfo(played, 0f..1f)
-                stateDescription = "$elapsed / $total"
-                if (durationMs > 0L) {
-                    setProgress { value ->
-                        latestSeek(value.coerceIn(0f, 1f))
-                        true
-                    }
-                }
-            }
-            .drawBehind {
-                val height = (StackSeekPill + 10f * grip).dp.toPx()
-                val top = (size.height - height) / 2f
-                val radius = CornerRadius(height / 2f)
-                drawRoundRect(
-                    color = Color.White.copy(alpha = 0.12f + 0.04f * grip),
-                    topLeft = Offset(0f, top),
-                    size = Size(size.width, height),
-                    cornerRadius = radius
-                )
-                val fill = (size.width * shown).coerceAtLeast(height)
-                drawRoundRect(
-                    brush = Brush.horizontalGradient(listOf(fillStart, fillEnd), startX = 0f, endX = fill),
-                    topLeft = Offset(0f, top),
-                    size = Size(fill, height),
-                    cornerRadius = radius
-                )
-                val knob = 3.dp.toPx()
-                drawRoundRect(
-                    color = Color.Black.copy(alpha = 0.22f),
-                    topLeft = Offset(fill - knob * 3f, top + height * 0.28f),
-                    size = Size(knob, height * 0.44f),
-                    cornerRadius = CornerRadius(knob / 2f)
-                )
-            }
-            .padding(horizontal = 14.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Row(
-            modifier = Modifier
+        Box(
+            modifier = modifier
                 .fillMaxWidth()
-                .graphicsLayer {
-                    val scale = 1f + 0.08f * grip
-                    scaleX = scale
-                    scaleY = scale
-                },
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .height(StackSeekTouch)
+                .stackSeekGestures(
+                    seekable = seekable,
+                    trackKey = trackKey,
+                    scrub = scrub,
+                    onTick = { haptics.perform(LevyraHapticAction.SeekSnap) },
+                    onSeek = { latestSeek(it) }
+                )
+                .stackSeekSemantics(played, "$elapsed / $total", seekable) { latestSeek(it) }
+                .drawBehind { drawStackSeekPill(grip, shown, fillStart, fillEnd) }
+                .padding(horizontal = 14.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = elapsed,
-                color = if (shown > StackSeekLabelRoom) Color.Black.copy(alpha = 0.82f) else Color.White,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                style = StackTabular
-            )
-            Text(
-                text = total,
-                color = if (shown > 1f - StackSeekLabelRoom) Color.Black.copy(alpha = 0.7f) else surfaces.contentMuted,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                style = StackTabular
-            )
+            StackSeekLabels(elapsed, total, shown, grip, surfaces)
         }
     }
 }
+
+private class StackScrub {
+    var seeking by mutableStateOf(false)
+    var fraction by mutableFloatStateOf(0f)
+    private var tickStep = -1
+
+    fun shown(played: Float): Float = if (seeking) fraction else played
+
+    fun gripTarget(): Float = if (seeking) 1f else 0f
+
+    fun start(at: Float) {
+        fraction = at
+        tickStep = (at * 10f).toInt()
+        seeking = true
+    }
+
+    fun drag(delta: Float): Boolean {
+        fraction = (fraction + delta).coerceIn(0f, 1f)
+        val step = (fraction * 10f).toInt()
+        if (step == tickStep) return false
+        tickStep = step
+        return true
+    }
+}
+
+private fun stackPlayedFraction(positionMs: Long, durationMs: Long): Float =
+    if (durationMs > 0L) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
+
+private fun stackSeekTotal(durationMs: Long): String =
+    if (durationMs > 0L) formatSeekbarMillis(durationMs) else "--:--"
+
+private fun Modifier.stackSeekGestures(
+    seekable: Boolean,
+    trackKey: String,
+    scrub: StackScrub,
+    onTick: () -> Unit,
+    onSeek: (Float) -> Unit
+): Modifier {
+    if (!seekable) return this
+    return pointerInput(trackKey) {
+        detectTapGestures(onTap = { offset ->
+            onTick()
+            onSeek((offset.x / size.width).coerceIn(0f, 1f))
+        })
+    }.pointerInput(trackKey) {
+        detectHorizontalDragGestures(
+            onDragStart = { offset ->
+                scrub.start((offset.x / size.width).coerceIn(0f, 1f))
+                onTick()
+            },
+            onDragEnd = {
+                onSeek(scrub.fraction)
+                scrub.seeking = false
+            },
+            onDragCancel = { scrub.seeking = false },
+            onHorizontalDrag = { change, amount ->
+                change.consume()
+                if (scrub.drag(amount / size.width)) onTick()
+            }
+        )
+    }
+}
+
+private fun Modifier.stackSeekSemantics(played: Float, state: String, seekable: Boolean, onSeek: (Float) -> Unit): Modifier =
+    semantics {
+        progressBarRangeInfo = ProgressBarRangeInfo(played, 0f..1f)
+        stateDescription = state
+        if (seekable) {
+            setProgress { value ->
+                onSeek(value.coerceIn(0f, 1f))
+                true
+            }
+        }
+    }
+
+private fun DrawScope.drawStackSeekPill(grip: Float, shown: Float, fillStart: Color, fillEnd: Color) {
+    val height = (StackSeekPill + 10f * grip).dp.toPx()
+    val top = (size.height - height) / 2f
+    val radius = CornerRadius(height / 2f)
+    drawRoundRect(
+        color = Color.White.copy(alpha = 0.12f + 0.04f * grip),
+        topLeft = Offset(0f, top),
+        size = Size(size.width, height),
+        cornerRadius = radius
+    )
+    val fill = (size.width * shown).coerceAtLeast(height)
+    drawRoundRect(
+        brush = Brush.horizontalGradient(listOf(fillStart, fillEnd), startX = 0f, endX = fill),
+        topLeft = Offset(0f, top),
+        size = Size(fill, height),
+        cornerRadius = radius
+    )
+    val knob = 3.dp.toPx()
+    drawRoundRect(
+        color = Color.Black.copy(alpha = 0.22f),
+        topLeft = Offset(fill - knob * 3f, top + height * 0.28f),
+        size = Size(knob, height * 0.44f),
+        cornerRadius = CornerRadius(knob / 2f)
+    )
+}
+
+@Composable
+private fun StackSeekLabels(elapsed: String, total: String, shown: Float, grip: Float, surfaces: PlayerSurfaceTokens) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                val scale = 1f + 0.08f * grip
+                scaleX = scale
+                scaleY = scale
+            },
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = elapsed,
+            color = if (shown > StackSeekLabelRoom) Color.Black.copy(alpha = 0.82f) else Color.White,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            style = StackTabular
+        )
+        Text(
+            text = total,
+            color = if (shown > 1f - StackSeekLabelRoom) Color.Black.copy(alpha = 0.7f) else surfaces.contentMuted,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            style = StackTabular
+        )
+    }
 }
 
 @Composable
