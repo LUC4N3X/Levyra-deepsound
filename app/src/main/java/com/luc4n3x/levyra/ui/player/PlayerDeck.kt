@@ -20,19 +20,19 @@ internal enum class PlayerDeckLayout {
     Expressive,
     Poster,
     Pulse,
-    Halo,
+    Stack,
     Folio,
     Flow,
-    Sleeve,
+    Cinema,
     Ember
 }
 
 internal val PlayerDeckOrder: List<PlayerVisualMode> = listOf(
     PlayerVisualMode.Flow,
     PlayerVisualMode.Ember,
-    PlayerVisualMode.CanvasCard,
+    PlayerVisualMode.Cinema,
     PlayerVisualMode.CanvasImmersive,
-    PlayerVisualMode.Halo,
+    PlayerVisualMode.Stack,
     PlayerVisualMode.Folio,
     PlayerVisualMode.Expressive,
     PlayerVisualMode.Artwork,
@@ -40,12 +40,12 @@ internal val PlayerDeckOrder: List<PlayerVisualMode> = listOf(
 )
 
 internal fun PlayerVisualMode.deckLayout(): PlayerDeckLayout = when (this) {
-    PlayerVisualMode.CanvasCard -> PlayerDeckLayout.Sleeve
+    PlayerVisualMode.Cinema -> PlayerDeckLayout.Cinema
     PlayerVisualMode.CanvasImmersive -> PlayerDeckLayout.Aura
     PlayerVisualMode.Artwork -> PlayerDeckLayout.Poster
     PlayerVisualMode.Expressive -> PlayerDeckLayout.Expressive
     PlayerVisualMode.Pulse -> PlayerDeckLayout.Pulse
-    PlayerVisualMode.Halo -> PlayerDeckLayout.Halo
+    PlayerVisualMode.Stack -> PlayerDeckLayout.Stack
     PlayerVisualMode.Folio -> PlayerDeckLayout.Folio
     PlayerVisualMode.Flow -> PlayerDeckLayout.Flow
     PlayerVisualMode.Ember -> PlayerDeckLayout.Ember
@@ -57,8 +57,11 @@ internal fun PlayerVisualMode.usesAuraPlayPause(): Boolean =
 internal fun PlayerVisualMode.usesExpressivePlayPill(): Boolean =
     deckLayout() == PlayerDeckLayout.Expressive
 
+internal fun PlayerDeckLayout.usesPlayerBackground(): Boolean =
+    this != PlayerDeckLayout.Cinema && this != PlayerDeckLayout.Stack
+
 internal fun PlayerDeckLayout.showsLyricsFace(): Boolean =
-    this != PlayerDeckLayout.Aura && this != PlayerDeckLayout.Pulse
+    this != PlayerDeckLayout.Aura && this != PlayerDeckLayout.Pulse && this != PlayerDeckLayout.Cinema && this != PlayerDeckLayout.Stack
 
 internal fun resolvePlayerDeckLayout(
     mode: PlayerVisualMode,
@@ -79,7 +82,7 @@ internal fun resolvePlayerDeckVisualMode(
 ): PlayerVisualMode = if (layout == mode.deckLayout() || mode == PlayerVisualMode.Artwork) {
     mode
 } else {
-    PlayerVisualMode.CanvasCard
+    PlayerVisualMode.Cinema
 }
 
 @Immutable
@@ -186,7 +189,8 @@ internal class PlayerDeckSlots(
     val artistPanel: PlayerArtistPanel? = null,
     val headerTrailing: @Composable () -> Unit = {},
     val modeSwitch: @Composable () -> Unit = {},
-    val addToPlaylist: ((Track) -> Unit)? = null
+    val addToPlaylist: ((Track) -> Unit)? = null,
+    val status: @Composable () -> Unit = {}
 )
 
 internal class PlayerArtistPanel(

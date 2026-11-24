@@ -19478,11 +19478,11 @@ private fun SettingsOverlay(
                                     subtitle = strings.playerVisualModeSubtitle,
                                     options = listOf(
                                         PlayerVisualMode.Artwork.name to strings.playerVisualModeArtwork,
-                                        PlayerVisualMode.CanvasCard.name to strings.playerVisualModeCanvasCard,
+                                        PlayerVisualMode.Cinema.name to strings.playerVisualModeCinema,
                                         PlayerVisualMode.CanvasImmersive.name to strings.playerVisualModeCanvasImmersive,
                                         PlayerVisualMode.Expressive.name to strings.playerDeckExpressive,
                                         PlayerVisualMode.Pulse.name to strings.playerDeckPulse,
-                                        PlayerVisualMode.Halo.name to strings.playerDeckHalo,
+                                        PlayerVisualMode.Stack.name to strings.playerDeckStack,
                                         PlayerVisualMode.Folio.name to strings.playerDeckFolio,
                                         PlayerVisualMode.Flow.name to strings.playerDeckFlow,
                                         PlayerVisualMode.Ember.name to strings.playerDeckEmber

@@ -15,7 +15,7 @@ class LevyraFeatureLocalizationTest {
         assertTrue(reference.size >= 26)
         assertEquals(reference, ambientModeLocalizationCodes())
         assertEquals(reference, themeStudioLocalizationCodes())
-        assertEquals(reference, playerDeckLocalizationCodes())
+        assertEquals(supportedLocalizationCodes() + LevyraLanguageCatalog.BRAZILIAN_PORTUGUESE, playerDeckLocalizationCodes())
         assertEquals(reference, playlistStudioLocalizationCodes())
         assertTrue("en" in reference)
         assertTrue("it" in reference)

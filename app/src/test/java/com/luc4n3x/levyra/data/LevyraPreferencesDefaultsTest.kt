@@ -163,7 +163,7 @@ class LevyraPreferencesDefaultsTest {
             motionArtworkWifiOnly = true,
             enhanceVideoMetadata = true,
             keepScreenOnWhilePlaying = true,
-            playerVisualMode = PlayerVisualMode.CanvasCard,
+            playerVisualMode = PlayerVisualMode.Cinema,
             playerBackground = PlayerBackgroundMode.Blur
         )
         val restored = backupInterfaceSettingsFromJson(
@@ -178,7 +178,7 @@ class LevyraPreferencesDefaultsTest {
         assertTrue(restored.keepScreenOnWhilePlaying)
         assertFalse(backupInterfaceSettingsFromJson(JSONObject()).keepScreenOnWhilePlaying)
         assertTrue(restored.releaseNotificationsEnabled)
-        assertEquals(PlayerVisualMode.CanvasCard, restored.playerVisualMode)
+        assertEquals(PlayerVisualMode.Cinema, restored.playerVisualMode)
         assertEquals(PlayerBackgroundMode.Blur, restored.playerBackground)
     }
 
@@ -250,8 +250,8 @@ class LevyraPreferencesDefaultsTest {
     }
 
     @Test
-    fun legacyBackupWithoutVisualModeDefaultsToCanvasCard() {
-        assertEquals(PlayerVisualMode.CanvasCard, backupInterfaceSettingsFromJson(JSONObject()).playerVisualMode)
+    fun legacyBackupWithoutVisualModeDefaultsToCinema() {
+        assertEquals(PlayerVisualMode.Cinema, backupInterfaceSettingsFromJson(JSONObject()).playerVisualMode)
     }
 
     @Test
