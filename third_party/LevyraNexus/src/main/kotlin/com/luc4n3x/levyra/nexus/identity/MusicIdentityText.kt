@@ -79,6 +79,7 @@ object MusicIdentityText {
     private val dashSeparator = Regex("\\s[-–—]\\s")
     private val inlineFeaturing = Regex("\\s(?:feat\\.?|ft\\.?|featuring)\\s", RegexOption.IGNORE_CASE)
     private val featuringLead = ReusableRegex("^\\s*(?:feat\\.?|ft\\.?|featuring|with)\\s+", RegexOption.IGNORE_CASE)
+    private val localizedFeaturingLead = ReusableRegex("^\\s*(?:con|com|avec|mit)\\s+", RegexOption.IGNORE_CASE)
     private val artistSeparators = Regex(
         "\\s*(?:,|&|\\+|/|;|\\sx\\s|\\sand\\s|\\se\\s|\\sy\\s|\\svs\\.?\\s|\\sfeat\\.?\\s|\\sft\\.?\\s|\\sfeaturing\\s|\\swith\\s)\\s*",
         RegexOption.IGNORE_CASE
@@ -184,6 +185,7 @@ object MusicIdentityText {
     )
 
     private val featuringPrefixes = listOf("feat ", "ft ", "featuring ", "with ")
+    private val localizedFeaturingPrefixes = listOf("con ", "com ", "avec ", "mit ")
     private val neutralPrefixes = listOf("from ", "prod ", "produced by ")
     private val releaseLanguages = setOf(
         "hindi",
@@ -335,7 +337,7 @@ object MusicIdentityText {
         val featured = linkedSetOf<String>()
         var explicitHint: Boolean? = null
 
-        fun absorb(text: String): Boolean = when (val descriptor = classifyTitleDescriptor(text)) {
+        fun absorb(text: String, bracketed: Boolean = false): Boolean = when (val descriptor = classifyTitleDescriptor(text, bracketed)) {
             is Descriptor.Featuring -> {
                 featured += descriptor.names
                 true
@@ -354,7 +356,7 @@ object MusicIdentityText {
 
         var remaining = decoded
         bracketed.findAll(decoded).forEach { match ->
-            if (absorb(match.groupValues[1])) remaining = remaining.replaceFirst(match.value, " ")
+            if (absorb(match.groupValues[1], bracketed = true)) remaining = remaining.replaceFirst(match.value, " ")
         }
         val segments = remaining.split(dashSeparator)
         val coreSegments = mutableListOf(segments.first())
@@ -394,11 +396,14 @@ object MusicIdentityText {
         return base
     }
 
-    private fun classifyTitleDescriptor(text: String): Descriptor {
+    private fun classifyTitleDescriptor(text: String, bracketed: Boolean = false): Descriptor {
         val normalized = normalize(text)
         if (normalized.isBlank()) return Descriptor.Neutral(null)
         if (featuringPrefixes.any(normalized::startsWith)) {
             return Descriptor.Featuring(artistNames(text.replace(featuringLead, "")))
+        }
+        if (bracketed && localizedFeaturingPrefixes.any(normalized::startsWith)) {
+            return Descriptor.Featuring(artistNames(text.replace(localizedFeaturingLead, "")))
         }
         if (neutralPrefixes.any(normalized::startsWith)) return Descriptor.Neutral(null)
         if (normalized in neutralDescriptorPhrases) return Descriptor.Neutral(explicitHintOf(normalized))

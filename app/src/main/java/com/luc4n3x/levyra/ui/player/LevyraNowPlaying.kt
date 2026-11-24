@@ -53,7 +53,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CloseFullscreen
 import androidx.compose.material.icons.rounded.DeleteOutline
 import com.luc4n3x.levyra.data.hqaudio.AlternativeTrackMatcher
@@ -62,14 +61,10 @@ import java.util.Locale
 import androidx.compose.material.icons.rounded.Fullscreen
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Pause
-import androidx.compose.material.icons.rounded.PictureInPictureAlt
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Stop
-import androidx.compose.material.icons.rounded.HighQuality
-import androidx.compose.material.icons.rounded.Subtitles
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -575,8 +570,6 @@ private fun LevyraNowPlayingContent(
             isVideoMode = state.isVideoMode,
             isLiveRadio = liveRadio,
             hasTrack = track != null,
-            hasSubtitles = track?.videoSubtitleTracks?.isNotEmpty() == true,
-            videoQualityAvailable = state.videoQuality.available,
             slotWidthDp = headerSlotWidth.value,
             spacingDp = LevyraPlayerDesign.SpaceXs.value,
             sideReserveDp = HeaderSideReserve.value
@@ -625,107 +618,44 @@ private fun LevyraNowPlayingContent(
             if (!state.isVideoMode && !liveRadio && appleMusicPlayer) {
                 CastRouteButton(modifier = Modifier.size(headerButtonSize))
             }
-            if (state.isVideoMode) {
-                if (track?.videoSubtitleTracks?.isNotEmpty() == true) {
-                    var subtitleMenuExpanded by remember(track.id) { mutableStateOf(false) }
-                    Box {
-                        PlayerGlassIconButton(
-                            icon = Icons.Rounded.Subtitles,
-                            contentDescription = strings.subtitlesLabel,
-                            size = headerButtonSize,
-                            iconSize = 19.dp,
-                            tint = if (state.selectedVideoSubtitleId != null) surfaces.activeContent else surfaces.contentMuted,
-                            fill = headerButtonFill,
-                            borderTop = headerButtonBorder,
-                            borderBottom = headerButtonBorder,
-                            onClick = { subtitleMenuExpanded = true }
-                        )
-                        DropdownMenu(
-                            expanded = subtitleMenuExpanded,
-                            onDismissRequest = { subtitleMenuExpanded = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text(strings.subtitlesOff) },
-                                leadingIcon = {
-                                    if (state.selectedVideoSubtitleId == null) {
-                                        Icon(Icons.Rounded.Check, contentDescription = null)
-                                    }
-                                },
-                                onClick = {
-                                    subtitleMenuExpanded = false
-                                    viewModel.selectVideoSubtitle(null)
-                                }
-                            )
-                            track.videoSubtitleTracks.forEach { subtitle ->
-                                DropdownMenuItem(
-                                    text = { Text(subtitle.label.ifBlank { subtitle.languageCode }) },
-                                    leadingIcon = {
-                                        if (state.selectedVideoSubtitleId == subtitle.id) {
-                                            Icon(Icons.Rounded.Check, contentDescription = null)
-                                        }
-                                    },
-                                    onClick = {
-                                        subtitleMenuExpanded = false
-                                        viewModel.selectVideoSubtitle(subtitle.id)
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-                if (state.videoQuality.available) {
-                    var qualityMenuExpanded by remember(track?.id) { mutableStateOf(false) }
-                    Box {
-                        PlayerGlassIconButton(
-                            icon = Icons.Rounded.HighQuality,
-                            contentDescription = strings.videoQuality,
-                            size = headerButtonSize,
-                            iconSize = 19.dp,
-                            tint = surfaces.contentMuted,
-                            fill = headerButtonFill,
-                            borderTop = headerButtonBorder,
-                            borderBottom = headerButtonBorder,
-                            onClick = { if (!state.videoQuality.switching) qualityMenuExpanded = true }
-                        )
-                        DropdownMenu(
-                            expanded = qualityMenuExpanded,
-                            onDismissRequest = { qualityMenuExpanded = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text(strings.videoQualityAuto) },
-                                onClick = {
-                                    qualityMenuExpanded = false
-                                    viewModel.selectVideoQuality(null)
-                                }
-                            )
-                            state.videoQuality.ladder.forEach { rung ->
-                                DropdownMenuItem(
-                                    text = { Text(rung.label) },
-                                    leadingIcon = {
-                                        if (state.videoQuality.activeLabel == rung.label) {
-                                            Icon(Icons.Rounded.Check, contentDescription = null)
-                                        }
-                                    },
-                                    onClick = {
-                                        qualityMenuExpanded = false
-                                        viewModel.selectVideoQuality(rung.label)
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
+            if (state.isVideoMode && track != null) {
+                var videoOptionsOpen by remember(track.id) { mutableStateOf(false) }
                 PlayerGlassIconButton(
-                    icon = Icons.Rounded.PictureInPictureAlt,
-                    contentDescription = strings.pictureInPicture,
+                    icon = Icons.Rounded.Tune,
+                    contentDescription = strings.videoOptions,
                     size = headerButtonSize,
-                    iconSize = 19.dp,
+                    iconSize = 20.dp,
                     fill = headerButtonFill,
-                tint = headerTint,
+                    tint = if (state.selectedVideoSubtitleId != null) surfaces.activeContent else headerTint,
                     borderTop = headerButtonBorder,
                     borderBottom = headerButtonBorder,
-                    onClick = { LevyraPipBridge.enter() }
+                    onClick = {
+                        if (!liveRadio) viewModel.loadVideoSources()
+                        videoOptionsOpen = true
+                    }
                 )
+                if (videoOptionsOpen) {
+                    val videoSources by viewModel.videoSources.collectAsStateWithLifecycle()
+                    VideoOptionsSheet(
+                        quality = state.videoQuality,
+                        subtitles = track.videoSubtitleTracks,
+                        selectedSubtitleId = state.selectedVideoSubtitleId,
+                        sources = videoSources,
+                        showSources = !liveRadio,
+                        switching = state.isResolving,
+                        onPictureInPicture = {
+                            videoOptionsOpen = false
+                            LevyraPipBridge.enter()
+                        },
+                        onQuality = viewModel::selectVideoQuality,
+                        onSubtitle = viewModel::selectVideoSubtitle,
+                        onSource = { videoId ->
+                            videoOptionsOpen = false
+                            viewModel.selectVideoSource(videoId)
+                        },
+                        onDismiss = { videoOptionsOpen = false }
+                    )
+                }
             }
             if (track != null && LevyraIsQobuz) {
                 QobuzPlayerMoreButton(strings.more) { showActions = true }
@@ -915,7 +845,7 @@ private fun LevyraNowPlayingContent(
                         track = activeTrack,
                         artworkUrl = artworkUrl,
                         motionArtwork = state.motionArtwork,
-                        livingArtwork = livingArtwork.takeUnless { com.luc4n3x.levyra.ui.theme.LevyraIsAppleMusic },
+                        livingArtwork = livingArtwork.takeUnless { appleMusicPlayer },
                         animationsEnabled = animated && !state.isVideoMode,
                         motionEnabled = motionEnabled && !lyricsFlip.lyricsSettled,
                         isPlaying = state.isPlaying,

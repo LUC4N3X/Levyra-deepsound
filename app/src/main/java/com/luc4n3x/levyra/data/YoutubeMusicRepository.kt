@@ -844,6 +844,7 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
     private val watchRepository = YoutubeMusicWatchRepository(context)
     private val resilienceClient = YoutubeMusicResilienceClient(context, apiKey, clientVersion)
     private val albumDescriptionRepository = AlbumDescriptionRepository(context)
+    private val webVideoSearch = YoutubeWebVideoSearch()
 
     open suspend fun searchForImport(query: String, limit: Int, languageCode: String): List<Track> = withContext(Dispatchers.IO) {
         try {
@@ -937,6 +938,20 @@ open class YoutubeMusicRepository(private val context: Context? = null) {
             search(cleanQuery, boundedLimit, languageCode)
         }
         result.take(boundedLimit).also { items -> items.forEach { memory[it.id] = it } }
+    }
+
+    internal open suspend fun searchYoutubeVideoEvidence(
+        query: String,
+        limit: Int = 12,
+        languageCode: String = LevyraLanguageCatalog.deviceDefault()
+    ): List<VideoUploadEvidence> = withContext(Dispatchers.IO) {
+        try {
+            webVideoSearch.search(query, languageCode, limit.coerceIn(1, 20))
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Throwable) {
+            emptyList()
+        }
     }
 
     /** First YouTube Music match for a query, used to make chart entries playable. */

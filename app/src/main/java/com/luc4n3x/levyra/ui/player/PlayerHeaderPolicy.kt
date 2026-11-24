@@ -21,8 +21,6 @@ internal fun playerHeaderPolicy(
     isVideoMode: Boolean,
     isLiveRadio: Boolean,
     hasTrack: Boolean,
-    hasSubtitles: Boolean,
-    videoQualityAvailable: Boolean,
     slotWidthDp: Float,
     spacingDp: Float,
     sideReserveDp: Float
@@ -30,9 +28,7 @@ internal fun playerHeaderPolicy(
     val leadingCount = 1
     val trailingCount = listOf(
         !isVideoMode && !isLiveRadio,
-        isVideoMode,
-        isVideoMode && hasSubtitles,
-        isVideoMode && videoQualityAvailable,
+        isVideoMode && hasTrack,
         hasTrack
     ).count { it }
 

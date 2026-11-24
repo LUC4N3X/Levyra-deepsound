@@ -109,6 +109,24 @@ data class VideoQualityUiState(
 }
 
 @Immutable
+data class VideoSourceOption(
+    val videoId: String,
+    val title: String,
+    val channel: String,
+    val durationMs: Long,
+    val thumbnailUrl: String,
+    val official: Boolean
+)
+
+@Immutable
+data class VideoSourceUiState(
+    val trackKey: String = "",
+    val options: List<VideoSourceOption> = emptyList(),
+    val activeVideoId: String = "",
+    val loading: Boolean = false
+)
+
+@Immutable
 data class QueuePlaylistDraft(
     val sourceSpaceId: String,
     val tracks: List<Track>

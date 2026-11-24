@@ -7,6 +7,21 @@ import org.junit.Test
 
 class MusicIdentityTextTest {
     @Test
+    fun localizedFeaturingCreditsInBracketsReadLikeFeat() {
+        val english = MusicIdentityText.title("Unforgettable (feat. Swae Lee)")
+        listOf("con", "com", "avec", "mit").forEach { word ->
+            val localized = MusicIdentityText.title("Unforgettable ($word Swae Lee)")
+            assertEquals(word, english.core, localized.core)
+            assertEquals(word, english.featuredArtists, localized.featuredArtists)
+        }
+    }
+
+    @Test
+    fun localizedFeaturingWordsOutsideBracketsStayInTheTitle() {
+        assertEquals("vivo con te", MusicIdentityText.title("Vivo con te").core)
+    }
+
+    @Test
     fun performanceVersionsRemainDistinctWhenCombinedWithAlbumEditions() {
         val versions = listOf("Karaoke", "Cover", "Live", "Acoustic", "Instrumental", "Remix", "Demo", "Reprise", "Reloaded", "3D Audio", "Sped Up", "Slowed", "Reverb")
         val editions = listOf("Deluxe", "Expanded", "Anniversary", "Remastered", "Single", "EP", "Soundtrack")
