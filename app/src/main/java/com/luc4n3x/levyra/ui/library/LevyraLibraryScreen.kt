@@ -1528,12 +1528,12 @@ internal fun LevyraLibraryScreen(
                             )
                         }
                     }
-                    if (hasTransfers) {
+                    if (hasTransfers && offlineFilter == null) {
                         item(key = "offline-queue-title") {
                             LibrarySectionTitle(strings.downloadsInProgress, strings.downloadInProgress)
                         }
                     }
-                    offlineTransferLanes(
+                    if (offlineFilter == null) offlineTransferLanes(
                         transfers = viewModel.offlineTransfers,
                         tasks = state.downloadQueue,
                         expandedLanes = expandedOfflineLanes,

@@ -21,10 +21,10 @@ class LastFmSitePlaylists(private val context: Context) {
     private val mainHandler = Handler(Looper.getMainLooper())
 
     suspend fun playlists(user: String): List<LastFmPlaylist>? =
-        page(userUrl(user, "playlists"))?.let(LastFmSitePages::playlists)
+        page(userUrl(user, "playlists"))?.let { html -> withContext(Dispatchers.Default) { LastFmSitePages.playlists(html) } }
 
     suspend fun tracks(user: String, playlistId: String): List<ListenBrainzTrack>? =
-        page(userUrl(user, "playlists", playlistId))?.let(LastFmSitePages::tracks)
+        page(userUrl(user, "playlists", playlistId))?.let { html -> withContext(Dispatchers.Default) { LastFmSitePages.tracks(html) } }
 
     private fun userUrl(user: String, vararg segments: String): String =
         "https://www.last.fm/".toHttpUrl().newBuilder()
@@ -35,7 +35,11 @@ class LastFmSitePlaylists(private val context: Context) {
             .toString()
 
     private suspend fun page(url: String): String? = gate.withLock {
-        withTimeoutOrNull(PAGE_TIMEOUT_MS) { withContext(Dispatchers.Main) { load(url) } }
+        val snapshot = withTimeoutOrNull(PAGE_TIMEOUT_MS) { withContext(Dispatchers.Main) { load(url) } } ?: return@withLock null
+        withContext(Dispatchers.Default) {
+            runCatching { JSONArray("[$snapshot]").optString(0) }.getOrNull()
+                ?.takeUnless { it.isBlank() || LastFmSitePages.isChallenge(it) }
+        }
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -45,12 +49,11 @@ class LastFmSitePlaylists(private val context: Context) {
         view.settings.blockNetworkImage = true
         view.webViewClient = object : WebViewClient() {
             override fun onPageFinished(loaded: WebView, loadedUrl: String?) {
-                loaded.evaluateJavascript(SNAPSHOT_SCRIPT) { raw ->
-                    val html = runCatching { JSONArray("[$raw]").optString(0) }.getOrDefault("")
-                    if (!continuation.isActive || html.isBlank() || LastFmSitePages.isChallenge(html)) return@evaluateJavascript
+                loaded.evaluateJavascript(SNAPSHOT_SCRIPT) { snapshot ->
+                    if (!continuation.isActive || snapshot == null || snapshot.length <= EMPTY_SNAPSHOT_LENGTH) return@evaluateJavascript
                     loaded.stopLoading()
                     loaded.destroy()
-                    continuation.resume(html)
+                    continuation.resume(snapshot)
                 }
             }
         }
@@ -60,6 +63,7 @@ class LastFmSitePlaylists(private val context: Context) {
 
     private companion object {
         const val PAGE_TIMEOUT_MS = 25_000L
-        const val SNAPSHOT_SCRIPT = "document.documentElement.outerHTML"
+        const val SNAPSHOT_SCRIPT = "document.title.indexOf('Client Challenge') >= 0 ? '' : document.documentElement.outerHTML"
+        const val EMPTY_SNAPSHOT_LENGTH = 2
     }
 }

@@ -16506,7 +16506,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             if (user == null) {
                 val stillConnected = withContext(Dispatchers.IO) { lastFmScrobbling.isConfigured() }
                 _lastFmPlaylists.update { it.copy(loading = false, playlists = if (stillConnected) it.playlists else emptyList()) }
-                if (!stillConnected) _state.update { it.copy(lastFmAccount = null) }
+                if (!stillConnected) {
+                    lastFmImportJob?.cancel()
+                    _state.update { it.copy(lastFmAccount = null) }
+                }
                 return@launch
             }
             _state.update { if (it.lastFmAccount.isNullOrBlank()) it.copy(lastFmAccount = user) else it }
@@ -16528,6 +16531,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 current.copy(loading = false, playlists = (site ?: previousSite) + (charts ?: previousCharts))
             }
             if (!withContext(Dispatchers.IO) { lastFmScrobbling.isConfigured() }) {
+                lastFmImportJob?.cancel()
                 _lastFmPlaylists.value = LastFmPlaylistsState()
                 _state.update { it.copy(lastFmAccount = null) }
             }
@@ -16552,6 +16556,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 _state.update { it.copy(offlineExportMessage = copy.nothingToImport) }
                 return@launch
             }
+            if (!withContext(Dispatchers.IO) { lastFmScrobbling.isConfigured() }) return@launch
             playlistImport.loadFile(com.luc4n3x.levyra.feature.scrobbling.ListenBrainzJson.xspf(title, tracks), "lastfm.xspf")
         }
     }
