@@ -50,6 +50,11 @@ class LosslessFallbackLiveTest {
     fun kuwoSiteStreamsTheExactAlbumCutToTheEnd() = verifyPlayback(getLucky, "kuwo")
 
     @Test
+    fun arcodSitePlaysAndSeeksInVerifiedFlac() = verifyPlayback(
+        AlternativeTrackQuery("Fluffing a Duck", "Kevin MacLeod", "Fluffing a Duck", 67_000L, false), "arcod"
+    )
+
+    @Test
     fun tidalSiteMatchesBillieJean() = verifyPlayback(
         AlternativeTrackQuery("Billie Jean", "Michael Jackson", "Thriller", 294_000L, false), "tidal"
     )
@@ -95,7 +100,8 @@ class LosslessFallbackLiveTest {
         @Synchronized
         fun sharedProviders(cacheDir: File): List<HighQualityAudioProvider> = providers ?: listOf(
             TidalAudioProvider(File(cacheDir, "tidal-manifests")),
-            KuwoAudioProvider(OkHttpProviderExchange(HighQualityProviderHttpClient::client))
+            KuwoAudioProvider(OkHttpProviderExchange(HighQualityProviderHttpClient::client)),
+            ArcodAudioProvider(OkHttpProviderExchange(HighQualityProviderHttpClient::client))
         ).also { providers = it }
     }
 
@@ -109,7 +115,8 @@ class LosslessFallbackLiveTest {
             override fun keys(): Set<String> = emptySet()
         }
         val resolver = HighQualityAudioResolver(
-            providers = sharedProviders(instrumentation.targetContext.cacheDir).filter { only == null || it.id == only },
+            providers = if (only == "arcod") listOf(ArcodAudioProvider(OkHttpProviderExchange(HighQualityProviderHttpClient::client)))
+            else sharedProviders(instrumentation.targetContext.cacheDir).filter { only == null || it.id == only },
             mappingStore = HighQualityMappingStore(storage),
             scope = scope
         ).apply { mode = HighQualityAudioMode.PREFER_LOSSLESS }

@@ -11,6 +11,8 @@ import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -31,21 +33,26 @@ internal class TidalApi(
     private val clock: () -> Long = System::currentTimeMillis
 ) {
     private class Token(val value: String, val expiresAtMs: Long)
-    private val mutex = Mutex()
-    private val tokens = mutableMapOf<HttpUrl, Token>()
+    private class TokenSource(val url: HttpUrl) {
+        val mutex = Mutex()
+        var cached: Token? = null
+    }
+
+    private val catalog = TokenSource(CATALOG_TOKEN_URL)
+    private val streaming = TokenSource(STREAM_TOKEN_URL)
     @Volatile private var proxy: Pair<HttpUrl, Long>? = null
 
     suspend fun get(path: String, parameters: Map<String, String> = emptyMap()): JSONObject {
         require(!path.startsWith('/') && !path.contains("..") && !path.contains('?'))
         val url = "$CATALOG_BASE/$path".toHttpUrl().newBuilder().addQueryParameter("countryCode", COUNTRY)
         parameters.forEach { (key, value) -> url.addQueryParameter(key, value) }
-        return parse(authorized(CATALOG_TOKEN_URL, url.build(), API_LIMIT))
+        return parse(authorized(catalog, url.build(), API_LIMIT))
     }
 
     suspend fun manifest(trackId: String, quality: String): ByteArray {
         val url = "$STREAM_BASE/manifests".toHttpUrl().newBuilder()
             .addQueryParameter("id", trackId).addQueryParameter("quality", quality).build()
-        val attributes = parse(authorized(STREAM_TOKEN_URL, url, API_LIMIT)).optJSONObject("data")
+        val attributes = parse(authorized(streaming, url, API_LIMIT)).optJSONObject("data")
             ?.optJSONObject("attributes") ?: throw TidalFailure(ProviderFailure.MALFORMED_RESPONSE)
         if (attributes.optString("trackPresentation") != "FULL") throw TidalFailure(ProviderFailure.NOT_FOUND)
         val manifestUrl = runCatching { attributes.getString("uri").toHttpUrl() }.getOrNull()
@@ -56,12 +63,14 @@ internal class TidalApi(
     }
 
     suspend fun warmCatalog() {
-        runCatchingPreservingCancellation { token(CATALOG_TOKEN_URL, null) }
+        runCatchingPreservingCancellation { token(catalog, null) }
     }
 
     suspend fun warmStream() {
-        runCatchingPreservingCancellation { token(STREAM_TOKEN_URL, null) }
-        runCatchingPreservingCancellation { mediaProxy() }
+        coroutineScope {
+            launch { runCatchingPreservingCancellation { token(streaming, null) } }
+            runCatchingPreservingCancellation { mediaProxy() }
+        }
     }
 
     suspend fun mediaProxy(): HttpUrl {
@@ -80,11 +89,11 @@ internal class TidalApi(
         Request.Builder().url(url).header("Range", "bytes=0-${limit - 1}").build(), limit
     )
 
-    private suspend fun authorized(tokenUrl: HttpUrl, url: HttpUrl, limit: Int): ProviderHttpResponse = withContext(Dispatchers.IO) {
-        var bearer = token(tokenUrl, null)
+    private suspend fun authorized(source: TokenSource, url: HttpUrl, limit: Int): ProviderHttpResponse = withContext(Dispatchers.IO) {
+        var bearer = token(source, null)
         var response = exchange.execute(request(url, bearer), limit)
         if (response.code == HTTP_UNAUTHORIZED) {
-            bearer = token(tokenUrl, bearer)
+            bearer = token(source, bearer)
             response = exchange.execute(request(url, bearer), limit)
         }
         response
@@ -92,13 +101,13 @@ internal class TidalApi(
 
     private fun request(url: HttpUrl, token: String) = Request.Builder().url(url).header("Authorization", "Bearer $token").build()
 
-    private suspend fun token(tokenUrl: HttpUrl, rejected: String?): String = mutex.withLock {
-        tokens[tokenUrl]?.takeIf { it.value != rejected && clock() + TOKEN_MARGIN_MS < it.expiresAtMs }?.let { return@withLock it.value }
-        val json = parse(exchange.execute(Request.Builder().url(tokenUrl).build(), TOKEN_LIMIT))
+    private suspend fun token(source: TokenSource, rejected: String?): String = source.mutex.withLock {
+        source.cached?.takeIf { it.value != rejected && clock() + TOKEN_MARGIN_MS < it.expiresAtMs }?.let { return@withLock it.value }
+        val json = parse(exchange.execute(Request.Builder().url(source.url).build(), TOKEN_LIMIT))
         val value = json.optString("access_token").takeIf { it.length in 16..4_096 }
             ?: throw TidalFailure(ProviderFailure.MALFORMED_RESPONSE)
         val lifetime = json.optLong("expires_in").takeIf { it in 1L..86_400L } ?: throw TidalFailure(ProviderFailure.MALFORMED_RESPONSE)
-        tokens[tokenUrl] = Token(value, clock() + lifetime * 1_000L)
+        source.cached = Token(value, clock() + lifetime * 1_000L)
         value
     }
 

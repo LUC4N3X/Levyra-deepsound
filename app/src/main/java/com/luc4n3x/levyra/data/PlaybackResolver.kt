@@ -28,6 +28,7 @@ import com.luc4n3x.levyra.data.hqaudio.OkHttpProviderExchange
 import com.luc4n3x.levyra.data.hqaudio.ProviderHttpExchange
 import com.luc4n3x.levyra.data.hqaudio.SharedPreferencesMappingStorage
 import com.luc4n3x.levyra.data.hqaudio.jiosaavn.JioSaavnAudioProvider
+import com.luc4n3x.levyra.data.hqaudio.lossless.ArcodAudioProvider
 import com.luc4n3x.levyra.data.hqaudio.lossless.KuwoAudioProvider
 import com.luc4n3x.levyra.data.hqaudio.tidal.TidalAudioProvider
 import com.luc4n3x.levyra.domain.DownloadQualitySource
@@ -432,6 +433,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             add(TidalAudioProvider(java.io.File(context.cacheDir, "tidal-manifests")))
             add(KuwoAudioProvider(exchange))
+            add(ArcodAudioProvider(exchange))
         }
         add(JioSaavnAudioProvider(exchange))
     }

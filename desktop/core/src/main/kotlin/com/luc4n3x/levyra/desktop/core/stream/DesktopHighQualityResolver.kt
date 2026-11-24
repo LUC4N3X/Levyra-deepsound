@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.desktop.core.stream
 
 import com.luc4n3x.levyra.data.hqaudio.*
 import com.luc4n3x.levyra.data.hqaudio.jiosaavn.JioSaavnAudioProvider
+import com.luc4n3x.levyra.data.hqaudio.lossless.ArcodAudioProvider
 import com.luc4n3x.levyra.data.hqaudio.lossless.KuwoAudioProvider
 import com.luc4n3x.levyra.data.hqaudio.tidal.TidalAudioProvider
 import com.luc4n3x.levyra.desktop.core.model.AudioQuality
@@ -96,6 +97,7 @@ class DesktopHighQualityResolver internal constructor(
             val providers = buildList {
                 add(TidalAudioProvider(cache.resolve("tidal-manifests").toFile()))
                 add(KuwoAudioProvider(exchange))
+                add(ArcodAudioProvider(exchange))
                 add(JioSaavnAudioProvider(exchange))
             }
             val mappings = object : HighQualityMappingStorage {
