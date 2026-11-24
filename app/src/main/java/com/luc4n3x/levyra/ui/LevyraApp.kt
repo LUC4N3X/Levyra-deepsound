@@ -20476,10 +20476,72 @@ private fun IntegrationSettingsPanel(
     lastFmPlaylists: @Composable () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    var lastFmKey by remember { mutableStateOf("") }
-    var lastFmSecret by remember { mutableStateOf("") }
     var listenBrainzToken by remember { mutableStateOf("") }
     var audDToken by remember { mutableStateOf("") }
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        LastFmIntegrationSection(lastFmAccount, lastFmAuthorizationPending, onBeginLastFm, onCompleteLastFm, onClearLastFm, lastFmPlaylists)
+        Text("ListenBrainz", color = LevyraText, fontWeight = FontWeight.Black, fontSize = 17.sp)
+        OutlinedTextField(
+            listenBrainzToken,
+            { listenBrainzToken = it },
+            label = { Text(strings.credentialTokenLabel) },
+            visualTransformation = PasswordVisualTransformation(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = LevyraText,
+                unfocusedTextColor = LevyraText,
+                focusedBorderColor = LevyraCyan,
+                unfocusedBorderColor = LevyraMuted.copy(alpha = 0.4f),
+                cursorColor = LevyraCyan
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+        SettingsButton(Icons.Rounded.Settings, if (listenBrainzConfigured) strings.delete else strings.save, "ListenBrainz") {
+            if (listenBrainzConfigured) {
+                onClearListenBrainz()
+            } else if (listenBrainzToken.isNotBlank()) {
+                onSaveListenBrainz(listenBrainzToken)
+                listenBrainzToken = ""
+            }
+        }
+        if (listenBrainzConfigured) listenBrainzPlaylists()
+        Text("AudD", color = LevyraText, fontWeight = FontWeight.Black, fontSize = 17.sp)
+        OutlinedTextField(
+            audDToken,
+            { audDToken = it },
+            label = { Text(strings.credentialTokenLabel) },
+            visualTransformation = PasswordVisualTransformation(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = LevyraText,
+                unfocusedTextColor = LevyraText,
+                focusedBorderColor = LevyraCyan,
+                unfocusedBorderColor = LevyraMuted.copy(alpha = 0.4f),
+                cursorColor = LevyraCyan
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+        SettingsButton(Icons.Rounded.Settings, if (audDConfigured) strings.delete else strings.save, "AudD") {
+            if (audDConfigured) {
+                onClearAudD()
+            } else if (audDToken.isNotBlank()) {
+                onSaveAudD(audDToken)
+                audDToken = ""
+            }
+        }
+    }
+}
+
+@Composable
+private fun LastFmIntegrationSection(
+    lastFmAccount: String?,
+    lastFmAuthorizationPending: Boolean,
+    onBeginLastFm: (String, String) -> Unit,
+    onCompleteLastFm: () -> Unit,
+    onClearLastFm: () -> Unit,
+    lastFmPlaylists: @Composable () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    var lastFmKey by remember { mutableStateOf("") }
+    var lastFmSecret by remember { mutableStateOf("") }
     val lastFmConfigured = lastFmAccount != null
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         if (lastFmAuthorizationPending) onCompleteLastFm()
@@ -20535,53 +20597,6 @@ private fun IntegrationSettingsPanel(
             SettingsButton(Icons.Rounded.Check, strings.complete, "Last.fm") { onCompleteLastFm() }
         }
         if (lastFmConfigured) lastFmPlaylists()
-        Text("ListenBrainz", color = LevyraText, fontWeight = FontWeight.Black, fontSize = 17.sp)
-        OutlinedTextField(
-            listenBrainzToken,
-            { listenBrainzToken = it },
-            label = { Text(strings.credentialTokenLabel) },
-            visualTransformation = PasswordVisualTransformation(),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = LevyraText,
-                unfocusedTextColor = LevyraText,
-                focusedBorderColor = LevyraCyan,
-                unfocusedBorderColor = LevyraMuted.copy(alpha = 0.4f),
-                cursorColor = LevyraCyan
-            ),
-            modifier = Modifier.fillMaxWidth()
-        )
-        SettingsButton(Icons.Rounded.Settings, if (listenBrainzConfigured) strings.delete else strings.save, "ListenBrainz") {
-            if (listenBrainzConfigured) {
-                onClearListenBrainz()
-            } else if (listenBrainzToken.isNotBlank()) {
-                onSaveListenBrainz(listenBrainzToken)
-                listenBrainzToken = ""
-            }
-        }
-        if (listenBrainzConfigured) listenBrainzPlaylists()
-        Text("AudD", color = LevyraText, fontWeight = FontWeight.Black, fontSize = 17.sp)
-        OutlinedTextField(
-            audDToken,
-            { audDToken = it },
-            label = { Text(strings.credentialTokenLabel) },
-            visualTransformation = PasswordVisualTransformation(),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = LevyraText,
-                unfocusedTextColor = LevyraText,
-                focusedBorderColor = LevyraCyan,
-                unfocusedBorderColor = LevyraMuted.copy(alpha = 0.4f),
-                cursorColor = LevyraCyan
-            ),
-            modifier = Modifier.fillMaxWidth()
-        )
-        SettingsButton(Icons.Rounded.Settings, if (audDConfigured) strings.delete else strings.save, "AudD") {
-            if (audDConfigured) {
-                onClearAudD()
-            } else if (audDToken.isNotBlank()) {
-                onSaveAudD(audDToken)
-                audDToken = ""
-            }
-        }
     }
 }
 
