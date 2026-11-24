@@ -34,7 +34,8 @@ internal enum class PlayerProgressStyle {
     Classic,
     Wavy,
     Expressive,
-    Bars
+    Bars,
+    Cinema
 }
 
 @Composable
@@ -111,7 +112,8 @@ internal fun PlayerProgress(
                 motionActive = appearance.motion,
                 waveform = appearance.waveform,
                 interactionKey = mediaId,
-                thumbShape = appearance.thumbShape
+                thumbShape = appearance.thumbShape,
+                flat = appearance.flat
             )
         }
         Row(
@@ -148,11 +150,12 @@ private fun PlayerTimeLabel(text: String, color: Color, compact: Boolean) {
 
 private class PlayerProgressAppearance(
     val wavy: Boolean, val trailing: Color, val thumb: Color, val motion: Boolean,
-    val waveform: FloatArray?, val thumbShape: SeekbarThumbShape
+    val waveform: FloatArray?, val thumbShape: SeekbarThumbShape, val flat: Boolean = false
 )
 
 private fun playerProgressAppearance(style: PlayerProgressStyle, active: Color, secondary: Color, motion: Boolean, waveform: FloatArray?): PlayerProgressAppearance {
     val thumb = if (style == PlayerProgressStyle.Expressive) SeekbarThumbShape.Notched else SeekbarThumbShape.Round
-    return if (LevyraIsNocturne) PlayerProgressAppearance(false, active, active, false, null, thumb)
-    else PlayerProgressAppearance(style == PlayerProgressStyle.Wavy, secondary, Color.White, motion, waveform, thumb)
+    if (LevyraIsNocturne) return PlayerProgressAppearance(false, active, active, false, null, thumb)
+    if (style == PlayerProgressStyle.Cinema) return PlayerProgressAppearance(false, Color.White.copy(alpha = 0.32f), Color.White, false, null, thumb, flat = true)
+    return PlayerProgressAppearance(style == PlayerProgressStyle.Wavy, secondary, Color.White, motion, waveform, thumb)
 }

@@ -229,7 +229,7 @@ class LevyraPreferencesStoreTest {
         assertTrue(preferences.isOnboarded())
         assertEquals("Luca", preferences.userName())
         assertEquals(6, preferences.audioSettings().crossfadeSeconds)
-        assertEquals(PlayerVisualMode.CanvasCard, preferences.interfaceSettings().playerVisualMode)
+        assertEquals(PlayerVisualMode.Cinema, preferences.interfaceSettings().playerVisualMode)
     }
 
     @Test
@@ -490,7 +490,7 @@ class LevyraPreferencesStoreTest {
                 customPresets = listOf(customPreset),
                 crossfadeSeconds = 5
             ),
-            interfaceSettings = LevyraInterfaceSettings(playerVisualMode = PlayerVisualMode.CanvasCard),
+            interfaceSettings = LevyraInterfaceSettings(playerVisualMode = PlayerVisualMode.Cinema),
             automationSettings = LevyraAutomationSettings(pauseOnMute = true),
             jamDisplayName = "Jam"
         )
@@ -512,7 +512,7 @@ class LevyraPreferencesStoreTest {
         assertEquals(customPreset.id, snapshot.audioSettings.presetId)
         assertEquals(listOf(customPreset), snapshot.audioSettings.customPresets)
         assertEquals(5, snapshot.audioSettings.crossfadeSeconds)
-        assertEquals(PlayerVisualMode.CanvasCard, snapshot.interfaceSettings.playerVisualMode)
+        assertEquals(PlayerVisualMode.Cinema, snapshot.interfaceSettings.playerVisualMode)
         assertTrue(snapshot.automationSettings.pauseOnMute)
         assertEquals("Jam", snapshot.jamDisplayName)
     }

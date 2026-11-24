@@ -80,11 +80,11 @@ enum class LibrarySortDirection {
 
 enum class PlayerVisualMode {
     Artwork,
-    CanvasCard,
+    Cinema,
     CanvasImmersive,
     Expressive,
     Pulse,
-    Halo,
+    Stack,
     Folio,
     Flow,
     Ember;
@@ -93,9 +93,10 @@ enum class PlayerVisualMode {
         fun from(value: String): PlayerVisualMode =
             entries.firstOrNull { it.name.equals(value, ignoreCase = true) }
                 ?: when (value.trim().lowercase()) {
-                    "canvas_card", "card" -> CanvasCard
+                    "canvascard", "canvas_card", "card", "sleeve" -> Cinema
                     "canvas_immersive", "immersive" -> CanvasImmersive
                     "editorial" -> Expressive
+                    "halo", "liner_notes", "linernotes", "liner notes" -> Stack
                     else -> Artwork
                 }
     }

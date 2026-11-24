@@ -1014,7 +1014,7 @@ class LevyraPreferences internal constructor(private val store: LevyraPreference
             storedVisualMode != null -> PlayerVisualMode.from(storedVisualMode)
             preferences.contains(KEY_MOTION_ARTWORK) -> {
                 if (preferences[KEY_MOTION_ARTWORK] == true) {
-                    PlayerVisualMode.CanvasCard
+                    PlayerVisualMode.Cinema
                 } else {
                     PlayerVisualMode.Artwork
                 }
