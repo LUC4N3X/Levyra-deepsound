@@ -5255,16 +5255,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     preserveNativeSampleClip(failedTrack, withContext(Dispatchers.IO) { providerRouter.resolve(baseTrack, videoMode) })
                 }
                 if (!isActive || transitionId != streamTransitionId) return@launch
+                val startPositionMs = if (videoMode) modeSwitchPositionMs(positionMs, resolved.durationMs) else positionMs
                 val currentIndex = queueEngine.state.value.currentIndex
                 if (currentIndex >= 0) queueEngine.updateTrackAt(currentIndex, resolved)
                 repository.replace(resolved)
                 player.replaceSource(
                     track = resolved,
-                    positionMs = positionMs,
+                    positionMs = startPositionMs,
                     videoMode = videoMode,
                     playWhenReady = playWhenReady
                 )
-                queueEngine.updatePosition(positionMs)
+                queueEngine.updatePosition(startPositionMs)
                 _state.update {
                     it.copy(
                         currentTrack = resolved,
@@ -5272,8 +5273,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         selectedVideoSubtitleId = null,
                         isResolving = false,
                         isPlaying = playWhenReady,
-                        positionMs = positionMs,
-                        bufferedPositionMs = positionMs,
+                        positionMs = startPositionMs,
+                        bufferedPositionMs = startPositionMs,
                         durationMs = resolved.durationMs.takeIf { duration -> duration > 0L } ?: it.durationMs,
                         motionArtwork = if (videoMode) null else it.motionArtwork,
                         motionArtworkLoading = if (videoMode) false else it.motionArtworkLoading,
@@ -5284,6 +5285,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     motionArtworkJob?.cancel()
                     motionArtworkPrefetchJob?.cancel()
                     motionArtworkRequestKey = null
+                    val sourceKey = videoSourceKey(videoSourceSeed(failedTrack))
+                    val recoveredVideoId = youtubeVideoId(resolved.videoUrl)
+                    _videoSources.update { if (it.trackKey == sourceKey) it.copy(activeVideoId = recoveredVideoId) else it }
                 } else {
                     refreshMotionArtworkAround(resolved)
                 }
