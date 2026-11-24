@@ -732,7 +732,7 @@
    "genre": "rnb",
    "title": "Fast Asleep",
    "artist": "GIVĒON",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2735fd8378b2e0fc843b0c12c95",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2730a837631a077bcaa9640ed63",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/cb49431b559c476f8af27724d39ffa80.cnvs.mp4",
    "spotifyTrackId": "4EMW9BdGJ8avDfuab1ostA",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/d1eb13e9b295bea4fe646ff34413b65171fb156a"
@@ -968,16 +968,6 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/c177d7d3bf35f5a906d0c8916fb5dddda6b5f8a0"
   },
   {
-   "id": "levyra-554dd5c42365b295a2f5",
-   "genre": "dance-party",
-   "title": "Ferrari",
-   "artist": "James Hype, Miggy Dela Rosa",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2736cc861b5c9c7cdef61b010b4",
-   "canvasUrl": "https://canvaz.scdn.co/upload/artist/43BxCL6t4c73BQnIJtry5v/video/0a3fdefeac8143c49ed1d5dab5d823e4.cnvs.mp4",
-   "spotifyTrackId": "4zN21mbAuaD0WqtmaTZZeP",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/3c21e0bea740ed198a79f0abf2b3b113b68f3f29"
-  },
-  {
    "id": "levyra-dc57d4ccf5149d1a9167",
    "genre": "dance-party",
    "title": "(It Goes Like) Nanana - Edit",
@@ -986,6 +976,16 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/2mLA48B366zkELXYx7hcDN/video/6a2df4c8ca154df29a120ec8ee8f71f7.cnvs.mp4",
    "spotifyTrackId": "23RoR84KodL5HWvUTneQ1w",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/e36e0bd4714844f1f9d992398b41a3e333f15cc9"
+  },
+  {
+   "id": "levyra-554dd5c42365b295a2f5",
+   "genre": "dance-party",
+   "title": "Ferrari",
+   "artist": "James Hype, Miggy Dela Rosa",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2736cc861b5c9c7cdef61b010b4",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/43BxCL6t4c73BQnIJtry5v/video/0a3fdefeac8143c49ed1d5dab5d823e4.cnvs.mp4",
+   "spotifyTrackId": "4zN21mbAuaD0WqtmaTZZeP",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/3c21e0bea740ed198a79f0abf2b3b113b68f3f29"
   },
   {
    "id": "levyra-050fb9c7c4c5fa70256b",
@@ -1028,16 +1028,6 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/fbba6422f5d54ca1c3fab33ae59bbd4e842acddb"
   },
   {
-   "id": "levyra-eb856260d385e91e9a37",
-   "genre": "dance-party",
-   "title": "Satisfaction",
-   "artist": "David Guetta, Benny Benassi",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273774f38d20ea492970bbd7ad9",
-   "canvasUrl": "https://canvaz.scdn.co/upload/artist/1Cs0zKBU1kc0i8ypK3B9ai/video/0c3cb750800245418c5b95358b7d4275.cnvs.mp4",
-   "spotifyTrackId": "0lwyzp7GppQxv0Eu6wRkUo",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/c9ba41fd56c50e4af303216b3a76bb1372ef1e00"
-  },
-  {
    "id": "levyra-7e8226d7a02f6f0a7d93",
    "genre": "dance-party",
    "title": "Set Me Free",
@@ -1046,6 +1036,16 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/7btR5VXutQv39SDEzcfXEk/video/52d674056ff1432da4703e2a74c87962.cnvs.mp4",
    "spotifyTrackId": "4FOTUoZP8r4mYZ8H7aUVsu",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/80c0bd68e652b85b6dfeac9c51da3c6e712116d7"
+  },
+  {
+   "id": "levyra-eb856260d385e91e9a37",
+   "genre": "dance-party",
+   "title": "Satisfaction",
+   "artist": "David Guetta, Benny Benassi",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273774f38d20ea492970bbd7ad9",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/1Cs0zKBU1kc0i8ypK3B9ai/video/0c3cb750800245418c5b95358b7d4275.cnvs.mp4",
+   "spotifyTrackId": "0lwyzp7GppQxv0Eu6wRkUo",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/c9ba41fd56c50e4af303216b3a76bb1372ef1e00"
   },
   {
    "id": "levyra-046114c2c1e1bb7281bc",
@@ -1058,6 +1058,16 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/50081928cfabde0d63a4d78f893542711259652d"
   },
   {
+   "id": "levyra-abcefdcdd14811510835",
+   "genre": "dance-party",
+   "title": "Friday (feat. Mufasa & Hypeman) - Dopamine Re-Edit",
+   "artist": "Riton, Nightcrawlers, Mufasa & Hypeman, Mufasa, Dopamine",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273815cb538fd7821595b2bc8c5",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/617e7b002d6f4df8a703a096dfcc7efb.cnvs.mp4",
+   "spotifyTrackId": "4cG7HUWYHBV6R6tHn1gxrl",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/0a9ed687dddcd95c83e37099958bdc6d54430e4d"
+  },
+  {
    "id": "levyra-032fa13818ecee393548",
    "genre": "dance-party",
    "title": "World Hold On - FISHER Rework",
@@ -1068,14 +1078,14 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/adae361145c433bcc47279b57374767940b96957"
   },
   {
-   "id": "levyra-abcefdcdd14811510835",
+   "id": "levyra-e38ca6ceb21d47433340",
    "genre": "dance-party",
-   "title": "Friday (feat. Mufasa & Hypeman) - Dopamine Re-Edit",
-   "artist": "Riton, Nightcrawlers, Mufasa & Hypeman, Mufasa, Dopamine",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273815cb538fd7821595b2bc8c5",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/617e7b002d6f4df8a703a096dfcc7efb.cnvs.mp4",
-   "spotifyTrackId": "4cG7HUWYHBV6R6tHn1gxrl",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/0a9ed687dddcd95c83e37099958bdc6d54430e4d"
+   "title": "Smack Yo'",
+   "artist": "Beltran",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2736dcfcf7e021ccc5791eb2a29",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/2Y9QpVq23PTBtMZwyCwosk/video/00cb73609d1848168b7d713713104917.cnvs.mp4",
+   "spotifyTrackId": "2UdCQIDwFvGhslUYZH5tRR",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/9029ddfed3e4a7c48767ab7c08f0e60631461cbb"
   },
   {
    "id": "levyra-8739c72808e270fed5b2",
@@ -1108,16 +1118,6 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/265e15be487a4b6bbabacc8c565afdbee404e045"
   },
   {
-   "id": "levyra-7889f970e52cfa44e03a",
-   "genre": "dance-party",
-   "title": "WHERE IS MY HUSBAND! - Remix",
-   "artist": "RAYE, David Guetta, Hypaton",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2732baa745a54eb2b504f782b3d",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/c70e8f241f3d441d98d13de41ee0ccdd.cnvs.mp4",
-   "spotifyTrackId": "0vYSTV1Lye2Z2zktF6P39C",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/e10dac73398cf6dcf6d3f90925bb35fe7330190b"
-  },
-  {
    "id": "levyra-9d56e3e0f3dc837e4cdb",
    "genre": "dance-party",
    "title": "It Feels So Good",
@@ -1128,24 +1128,14 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/12e395c89aee9215ecbca73c8aa3bc4513a07a2a"
   },
   {
-   "id": "levyra-e38ca6ceb21d47433340",
+   "id": "levyra-7889f970e52cfa44e03a",
    "genre": "dance-party",
-   "title": "Smack Yo'",
-   "artist": "Beltran",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2736dcfcf7e021ccc5791eb2a29",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/2Y9QpVq23PTBtMZwyCwosk/video/00cb73609d1848168b7d713713104917.cnvs.mp4",
-   "spotifyTrackId": "2UdCQIDwFvGhslUYZH5tRR",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/9029ddfed3e4a7c48767ab7c08f0e60631461cbb"
-  },
-  {
-   "id": "levyra-3694cc14be3c6267960e",
-   "genre": "dance-party",
-   "title": "Victory Lap",
-   "artist": "Fred again.., Skepta, PlaqueBoyMax",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273bf705b821b031cefe91d7b90",
-   "canvasUrl": "https://canvaz.scdn.co/upload/artist/4oLeXFyACqeem2VImYeBFe/video/9c078aa3c74646069b43d64e4db84b9d.cnvs.mp4",
-   "spotifyTrackId": "1lbNgoJ5iMrMluCyhI4OQP",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/7a52939c36a748786e19a2a4d640c5852d4ae55b"
+   "title": "WHERE IS MY HUSBAND! - Remix",
+   "artist": "RAYE, David Guetta, Hypaton",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2732baa745a54eb2b504f782b3d",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/c70e8f241f3d441d98d13de41ee0ccdd.cnvs.mp4",
+   "spotifyTrackId": "0vYSTV1Lye2Z2zktF6P39C",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/e10dac73398cf6dcf6d3f90925bb35fe7330190b"
   },
   {
    "id": "levyra-47404e9cd417bf51332d",
@@ -2376,6 +2366,16 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/2j93xBBtZnS9YJGJUcWHwg/video/af0a15b3714341bc8137e860d08e6707.cnvs.mp4",
    "spotifyTrackId": "3abXqgfk3fxMRnU2eSYVEN",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/ea140387d148505dd4e73e143f75e42f8cb6778b"
+  },
+  {
+   "id": "levyra-1c910c8c09ea8f366bc8",
+   "genre": "fr-rap",
+   "title": "97 HOOD",
+   "artist": "Lé Will & Deuspi, Tiitof, Kima, LaRose, Mercenaire, Yayablr, Evil P, Don Snoop, Latop, TiBab, Sansand, Jkevlar, Dj Wiwi’x",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273596e01678416a57a5525f498",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/1DaLT7Mgy04h833FKXKGO0/video/54d4bb01987e4a8d92f4a6c43022369b.cnvs.mp4",
+   "spotifyTrackId": "5tTflEKb0DoziA28vj29Rc",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/573f60987cda196919c0fd151cd12092f97e278e"
   },
   {
    "id": "levyra-68ffa72f58536df9e3db",
