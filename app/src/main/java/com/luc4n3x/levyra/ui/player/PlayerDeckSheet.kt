@@ -21,6 +21,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import androidx.compose.foundation.layout.Row
@@ -314,9 +315,10 @@ private fun PlayerDeckFan(
     )
     val latestSelect by rememberUpdatedState(onSelect)
     LaunchedEffect(pagerState) {
-        snapshotFlow { pagerState.settledPage }
+        snapshotFlow { pagerState.isScrollInProgress }
             .drop(1)
-            .collect { page -> latestSelect(PlayerDeckOrder[page]) }
+            .filter { scrolling -> !scrolling }
+            .collect { latestSelect(PlayerDeckOrder[pagerState.currentPage]) }
     }
     val tilt = if (animated) DeckFanTilt else 0f
     val halo by animateColorAsState(
@@ -382,8 +384,8 @@ private fun PlayerDeckFan(
                         selected = mode == selected,
                         role = Role.RadioButton,
                         onClick = {
+                            latestSelect(mode)
                             if (pagerState.currentPage != page) {
-                                latestSelect(mode)
                                 scope.launch {
                                     if (animated) pagerState.animateScrollToPage(page) else pagerState.scrollToPage(page)
                                 }

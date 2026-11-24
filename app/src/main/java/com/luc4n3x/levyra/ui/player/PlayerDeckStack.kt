@@ -1114,7 +1114,7 @@ private fun StackTool(
         modifier = Modifier
             .size(StackToggleSize)
             .clip(CircleShape)
-            .levyraPressable(onClick = onClick, enabled = enabled, role = Role.Button, pressedScale = LevyraPressScale.Control)
+            .levyraPressable(onClick = onClick, enabled = enabled && !busy, role = Role.Button, pressedScale = LevyraPressScale.Control)
             .semantics {
                 contentDescription = label
                 state?.let { stateDescription = it }

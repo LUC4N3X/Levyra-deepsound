@@ -802,7 +802,7 @@ private fun CinemaAction(action: PlayerDockAction, surfaces: PlayerSurfaceTokens
                     action.haptic?.let(haptics::perform)
                     action.onClick()
                 },
-                enabled = action.enabled,
+                enabled = action.enabled && !action.busy,
                 role = Role.Button,
                 pressedScale = LevyraPressScale.Control
             )
