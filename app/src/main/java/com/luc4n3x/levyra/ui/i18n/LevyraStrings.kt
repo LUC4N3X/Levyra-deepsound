@@ -2508,7 +2508,9 @@ class LevyraStrings private constructor(
         private val brazilianPortuguese: LevyraStrings by lazy(LazyThreadSafetyMode.PUBLICATION) {
             LevyraStrings(
                 LevyraLanguageCatalog.BRAZILIAN_PORTUGUESE,
-                LevyraBrazilianPortuguese.adaptEntries(requireNotNull(bundleFor("pt")).entries)
+                LevyraBrazilianPortuguese.adaptEntries(requireNotNull(bundleFor("pt")).entries) +
+                    playerVisualLocalizationEntries(LevyraLanguageCatalog.BRAZILIAN_PORTUGUESE) +
+                    playerDeckLocalizationEntries(LevyraLanguageCatalog.BRAZILIAN_PORTUGUESE)
             )
         }
 

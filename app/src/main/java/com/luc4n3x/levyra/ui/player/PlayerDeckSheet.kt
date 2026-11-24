@@ -187,26 +187,28 @@ internal fun PlayerDeckSheet(
             PlayerDeckStageTitle(selected, chrome, surfaces, animated)
             PlayerDeckFan(selected, track, artworkUrl, accent, chrome, surfaces, animated, onSelect)
             Spacer(Modifier.height(LevyraPlayerDesign.SpaceSm))
-            PlayerBackgroundPicker(
-                selected = background,
-                track = track,
-                artworkUrl = artworkUrl,
-                accent = accent,
-                chrome = chrome,
-                surfaces = surfaces,
-                animated = animated,
-                onSelect = onSelectBackground
-            )
-            if (background == PlayerBackgroundMode.ReactiveAura) {
-                ReactiveAuraControls(
-                    preset = reactiveAuraPreset,
-                    intensity = reactiveAuraIntensity,
+            if (selected.usesPlayerBackground()) {
+                PlayerBackgroundPicker(
+                    selected = background,
+                    track = track,
+                    artworkUrl = artworkUrl,
                     accent = accent,
+                    chrome = chrome,
                     surfaces = surfaces,
                     animated = animated,
-                    onPreset = onSelectReactiveAuraPreset,
-                    onIntensity = onSelectReactiveAuraIntensity
+                    onSelect = onSelectBackground
                 )
+                if (background == PlayerBackgroundMode.ReactiveAura) {
+                    ReactiveAuraControls(
+                        preset = reactiveAuraPreset,
+                        intensity = reactiveAuraIntensity,
+                        accent = accent,
+                        surfaces = surfaces,
+                        animated = animated,
+                        onPreset = onSelectReactiveAuraPreset,
+                        onIntensity = onSelectReactiveAuraIntensity
+                    )
+                }
             }
             Text(
                 text = strings.playerDeckLandscapeNote,
@@ -360,7 +362,7 @@ private fun PlayerDeckFan(
                     .fillMaxWidth()
                     .aspectRatio(DeckPreviewAspect)
                     .graphicsLayer {
-                        val offset = ((pagerState.currentPage - page) + pagerState.currentPageOffsetFraction)
+                        val offset = (pagerState.currentPage - page + pagerState.currentPageOffsetFraction)
                             .coerceIn(-1f, 1f)
                         val distance = abs(offset)
                         val scale = 1f - DeckFanShrink * distance
@@ -426,7 +428,7 @@ private fun PlayerDeckDots(
     ) {
         repeat(count) { index ->
             Canvas(modifier = Modifier.size(width = 20.dp, height = 6.dp)) {
-                val focus = (1f - abs((pagerState.currentPage - index) + pagerState.currentPageOffsetFraction))
+                val focus = (1f - abs(pagerState.currentPage - index + pagerState.currentPageOffsetFraction))
                     .coerceIn(0f, 1f)
                 val width = size.height + (size.width - size.height) * focus
                 drawRoundRect(

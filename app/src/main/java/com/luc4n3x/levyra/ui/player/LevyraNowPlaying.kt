@@ -1317,6 +1317,7 @@ private fun LevyraNowPlayingContent(
         } else if (deckLayout == PlayerDeckLayout.Stack && track != null) {
             PlayerStackDeck(
                 track = track,
+                gesturesEnabled = state.interfaceSettings.playerGesturesEnabled,
                 slots = deckSlots,
                 surfaces = surfaces,
                 accent = heroTone,
@@ -1383,6 +1384,10 @@ private fun LevyraNowPlayingContent(
         } else if (deckLayout == PlayerDeckLayout.Cinema && track != null) {
             PlayerCinemaDeck(
                 track = track,
+                shuffleOn = state.shuffleEnabled,
+                repeatMode = state.repeatMode,
+                onShuffle = viewModel::toggleShuffle,
+                onRepeat = viewModel::toggleRepeat,
                 artworkUrl = artworkUrl,
                 slots = deckSlots,
                 surfaces = surfaces,

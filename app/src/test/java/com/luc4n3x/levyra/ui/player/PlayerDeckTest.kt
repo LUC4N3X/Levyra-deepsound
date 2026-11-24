@@ -320,4 +320,18 @@ class PlayerDeckTest {
         assertEquals(0f, stackCardDepthAlpha(-1.5f), 0f)
     }
 
+
+    @Test
+    fun `brazilian portuguese uses its own deck copy and immersive decks own their backdrop`() {
+        val brazil = LevyraStrings.forCode("pt-BR")
+        assertEquals("A letra no palco, iluminada pela capa.", brazil.playerDeckCardHint)
+        assertEquals("Padrão", brazil.playerDeckDefaultBadge)
+        assertFalse(PlayerVisualMode.Cinema.usesPlayerBackground())
+        assertFalse(PlayerVisualMode.Stack.usesPlayerBackground())
+        assertTrue(PlayerVisualMode.Flow.usesPlayerBackground())
+        assertEquals(1, stackSwipeStep(0.4f, 0f, canForward = true))
+        assertEquals(0, stackSwipeStep(0.4f, 0f, canForward = false))
+        assertEquals(-1, stackSwipeStep(0f, -2_000f, canForward = false))
+    }
+
 }

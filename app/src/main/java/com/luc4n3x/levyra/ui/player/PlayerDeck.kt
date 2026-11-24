@@ -57,6 +57,9 @@ internal fun PlayerVisualMode.usesAuraPlayPause(): Boolean =
 internal fun PlayerVisualMode.usesExpressivePlayPill(): Boolean =
     deckLayout() == PlayerDeckLayout.Expressive
 
+internal fun PlayerVisualMode.usesPlayerBackground(): Boolean =
+    this != PlayerVisualMode.Cinema && this != PlayerVisualMode.Stack
+
 internal fun PlayerDeckLayout.showsLyricsFace(): Boolean =
     this != PlayerDeckLayout.Aura && this != PlayerDeckLayout.Pulse && this != PlayerDeckLayout.Cinema && this != PlayerDeckLayout.Stack
 

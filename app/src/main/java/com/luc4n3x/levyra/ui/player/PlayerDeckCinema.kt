@@ -1,6 +1,12 @@
 package com.luc4n3x.levyra.ui.player
 
 import androidx.compose.animation.AnimatedContent
+import com.luc4n3x.levyra.domain.RepeatMode
+import androidx.compose.material.icons.rounded.RepeatOne
+import androidx.compose.material.icons.rounded.Repeat
+import androidx.compose.material.icons.rounded.Shuffle
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
@@ -164,6 +170,10 @@ internal fun PlayerCinemaDeck(
     surfaces: PlayerSurfaceTokens,
     accent: Color,
     lyrics: PlayerCinemaLyrics,
+    shuffleOn: Boolean,
+    repeatMode: RepeatMode,
+    onShuffle: () -> Unit,
+    onRepeat: () -> Unit,
     isFavorite: Boolean,
     isPlaying: Boolean,
     isResolving: Boolean,
@@ -271,7 +281,11 @@ internal fun PlayerCinemaDeck(
                 onToggleFavorite = onToggleFavorite,
                 onPrevious = onPrevious,
                 onTogglePlay = onTogglePlay,
-                onNext = onNext
+                onNext = onNext,
+                shuffleOn = shuffleOn,
+                repeatMode = repeatMode,
+                onShuffle = onShuffle,
+                onRepeat = onRepeat
             )
         }
     }
@@ -499,76 +513,18 @@ private fun CinemaLyricsStage(
                 key = { index, line -> "$index:${line.startMs}" },
                 contentType = { _, _ -> "PlayerCinema-line" }
             ) { index, line ->
-                val offset = index - activeIndex
-                val current = offset == 0
-                val alpha by animateFloatAsState(
-                    targetValue = cinemaLineAlpha(synced, offset),
-                    animationSpec = if (animated) LevyraMotion.standard() else snap(),
-                    label = "player-cinema-line-alpha"
+                CinemaLyricLine(
+                    line = line,
+                    offset = index - activeIndex,
+                    synced = synced,
+                    animated = animated,
+                    emphasis = emphasis,
+                    pivot = pivot,
+                    lineSize = lineSize,
+                    glow = glow,
+                    sheen = sheen,
+                    surfaces = surfaces
                 )
-                val scale by animateFloatAsState(
-                    targetValue = if (!synced || current) 1f else CinemaInactiveScale,
-                    animationSpec = emphasis,
-                    label = "player-cinema-line-scale"
-                )
-                val sweep = remember { Animatable(1f) }
-                LaunchedEffect(current, animated) {
-                    if (current && synced && animated) {
-                        sweep.snapTo(0f)
-                        sweep.animateTo(1f, tween(CinemaSweepMillis, easing = FastOutSlowInEasing))
-                    } else {
-                        sweep.snapTo(1f)
-                    }
-                }
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .graphicsLayer {
-                            this.alpha = alpha
-                            scaleX = scale
-                            scaleY = scale
-                            transformOrigin = TransformOrigin(pivot, 0.5f)
-                            compositingStrategy = if (current) CompositingStrategy.Offscreen else CompositingStrategy.Auto
-                        }
-                        .drawWithContent {
-                            drawContent()
-                            val progress = sweep.value
-                            if (progress < 1f) {
-                                val band = size.width * 0.35f
-                                val travel = -band + (size.width + band * 2f) * progress
-                                val from = if (pivot == 0f) travel - band else size.width - travel - band
-                                drawRect(
-                                    brush = Brush.horizontalGradient(
-                                        listOf(Color.Transparent, sheen, Color.Transparent),
-                                        startX = from,
-                                        endX = from + band * 2f
-                                    ),
-                                    blendMode = BlendMode.SrcAtop
-                                )
-                            }
-                        }
-                        .padding(vertical = LevyraPlayerDesign.SpaceXs)
-                ) {
-                    Text(
-                        text = line.text.ifBlank { "♪" },
-                        color = Color.White,
-                        fontSize = lineSize,
-                        lineHeight = lineSize * 1.12f,
-                        fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = (-0.8).sp,
-                        style = TextStyle(shadow = if (synced && current) glow else CinemaInactiveShadow)
-                    )
-                    if (line.translated.isNotBlank()) {
-                        Text(
-                            text = line.translated,
-                            color = surfaces.contentMuted,
-                            fontSize = 15.sp,
-                            lineHeight = 20.sp,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(top = LevyraPlayerDesign.SpaceXxs)
-                        )
-                    }
-                }
             }
         }
     }
@@ -738,7 +694,11 @@ private fun CinemaDock(
     onToggleFavorite: () -> Unit,
     onPrevious: () -> Unit,
     onTogglePlay: () -> Unit,
-    onNext: () -> Unit
+    onNext: () -> Unit,
+    shuffleOn: Boolean,
+    repeatMode: RepeatMode,
+    onShuffle: () -> Unit,
+    onRepeat: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     val haptics = LocalLevyraHaptics.current
@@ -805,7 +765,17 @@ private fun CinemaDock(
                 onClick = { queue?.onClick?.invoke() }
             )
         }
-        val extras = actions.filterNot { it.key == CinemaQueueKey }
+        val extras = listOf(
+            PlayerDockAction(key = "cinema-shuffle", icon = Icons.Rounded.Shuffle, label = labels.shuffle, onClick = onShuffle, active = shuffleOn, toggle = true),
+            PlayerDockAction(
+                key = "cinema-repeat",
+                icon = if (repeatMode == RepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
+                label = labels.repeat,
+                onClick = onRepeat,
+                active = repeatMode != RepeatMode.Off,
+                toggle = true
+            )
+        ) + actions.filterNot { it.key == CinemaQueueKey }
         if (extras.isNotEmpty()) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -876,5 +846,89 @@ private fun CinemaControl(
         contentAlignment = Alignment.Center
     ) {
         PlayerIcon(icon, tint.copy(alpha = if (enabled) 1f else 0.4f), Modifier.size(24.dp))
+    }
+}
+
+@Composable
+private fun CinemaLyricLine(
+    line: LyricLine,
+    offset: Int,
+    synced: Boolean,
+    animated: Boolean,
+    emphasis: AnimationSpec<Float>,
+    pivot: Float,
+    lineSize: TextUnit,
+    glow: Shadow,
+    sheen: Color,
+    surfaces: PlayerSurfaceTokens
+) {
+    val current = offset == 0
+    val alpha by animateFloatAsState(
+        targetValue = cinemaLineAlpha(synced, offset),
+        animationSpec = if (animated) LevyraMotion.standard() else snap(),
+        label = "player-cinema-line-alpha"
+    )
+    val scale by animateFloatAsState(
+        targetValue = if (!synced || current) 1f else CinemaInactiveScale,
+        animationSpec = emphasis,
+        label = "player-cinema-line-scale"
+    )
+    val sweep = remember { Animatable(1f) }
+    LaunchedEffect(current, animated) {
+        if (current && synced && animated) {
+            sweep.snapTo(0f)
+            sweep.animateTo(1f, tween(CinemaSweepMillis, easing = FastOutSlowInEasing))
+        } else {
+            sweep.snapTo(1f)
+        }
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                this.alpha = alpha
+                scaleX = scale
+                scaleY = scale
+                transformOrigin = TransformOrigin(pivot, 0.5f)
+                compositingStrategy = if (current) CompositingStrategy.Offscreen else CompositingStrategy.Auto
+            }
+            .drawWithContent {
+                drawContent()
+                val progress = sweep.value
+                if (progress < 1f) {
+                    val band = size.width * 0.35f
+                    val travel = -band + (size.width + band * 2f) * progress
+                    val from = if (pivot == 0f) travel - band else size.width - travel - band
+                    drawRect(
+                        brush = Brush.horizontalGradient(
+                            listOf(Color.Transparent, sheen, Color.Transparent),
+                            startX = from,
+                            endX = from + band * 2f
+                        ),
+                        blendMode = BlendMode.SrcAtop
+                    )
+                }
+            }
+            .padding(vertical = LevyraPlayerDesign.SpaceXs)
+    ) {
+        Text(
+            text = line.text.ifBlank { "♪" },
+            color = Color.White,
+            fontSize = lineSize,
+            lineHeight = lineSize * 1.12f,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = (-0.8).sp,
+            style = TextStyle(shadow = if (synced && current) glow else CinemaInactiveShadow)
+        )
+        if (line.translated.isNotBlank()) {
+            Text(
+                text = line.translated,
+                color = surfaces.contentMuted,
+                fontSize = 15.sp,
+                lineHeight = 20.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(top = LevyraPlayerDesign.SpaceXxs)
+            )
+        }
     }
 }
