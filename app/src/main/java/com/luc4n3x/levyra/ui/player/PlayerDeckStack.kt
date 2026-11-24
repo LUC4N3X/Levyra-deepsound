@@ -727,6 +727,7 @@ private val StackSeekTouch = 48.dp
 private const val StackSeekPill = 26f
 private const val StackSeekLabelRoom = 0.16f
 private val StackTabWidth = 26.dp
+private val StackTabTouch = 48.dp
 private val StackTabHeight = 88.dp
 private val StackTokenSize = 72.dp
 private val StackTabular = TextStyle(fontFeatureSettings = "tnum")
@@ -742,7 +743,7 @@ private fun StackQueueHandle(
     val ink = remember(tone) { lerp(tone, Color.White, 0.82f) }
     Box(
         modifier = modifier
-            .size(width = 72.dp, height = 44.dp)
+            .size(width = 72.dp, height = 48.dp)
             .clip(RoundedCornerShape(50))
             .levyraPressable(onClick = onOpen, role = Role.Button, pressedScale = LevyraPressScale.Control)
             .semantics { contentDescription = label }
@@ -1079,10 +1080,7 @@ private fun StackSideTab(
     val fill = remember(tone) { lerp(tone, Color.Black, 0.35f).copy(alpha = 0.72f) }
     Box(
         modifier = modifier
-            .size(width = StackTabWidth, height = StackTabHeight)
-            .graphicsLayer { translationX = outward * slide * 6.dp.toPx() }
-            .clip(RoundedCornerShape(18.dp))
-            .background(fill)
+            .size(width = StackTabTouch, height = StackTabHeight)
             .levyraPressable(
                 onClick = {
                     haptics.perform(LevyraHapticAction.Transport)
@@ -1095,7 +1093,16 @@ private fun StackSideTab(
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center
     ) {
-        PlayerIcon(icon, Color.White, Modifier.size(24.dp))
+        Box(
+            modifier = Modifier
+                .size(width = StackTabWidth, height = StackTabHeight)
+                .graphicsLayer { translationX = outward * slide * 6.dp.toPx() }
+                .clip(RoundedCornerShape(18.dp))
+                .background(fill),
+            contentAlignment = Alignment.Center
+        ) {
+            PlayerIcon(icon, Color.White, Modifier.size(24.dp))
+        }
     }
 }
 
@@ -1470,7 +1477,7 @@ private fun BoxScope.StackStageOverlays(
     onTogglePlay: () -> Unit,
     onToggleFavorite: () -> Unit
 ) {
-    val tabX = (inset - StackTabWidth / 2).coerceAtLeast(0.dp)
+    val tabX = (inset - StackTabTouch / 2).coerceAtLeast(0.dp)
     val tabY = -(side / 2 - StackTabHeight / 2)
     StackQueueHandle(
         label = queueLabel,
