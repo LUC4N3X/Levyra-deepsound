@@ -308,6 +308,28 @@ class VideoSourceMatchingTest {
     }
 
     @Test
+    fun anHourLongLoopOnTheArtistChannelNeverOutranksTheMusicVideo() {
+        val loop = unforgettableVideo("loopclip001", 3_600_000L, 5_000_000L)
+        val evidence = unforgettableEvidence + ("loopclip001" to VideoUploadEvidence(
+            videoId = "loopclip001",
+            title = "French Montana - Unforgettable ft. Swae Lee",
+            channelName = "French Montana",
+            channelVerified = true,
+            officialArtistChannel = true,
+            durationMs = 3_600_000L,
+            viewCount = 5_000_000L
+        ))
+
+        val ranked = rankVideoPlaybackCandidates(unforgettable, listOf(loop, officialVideo), evidence = evidence)
+
+        assertEquals(listOf("CTFtOOh47oo"), ranked.map { it.id })
+        assertTrue(isVideoDurationOutlier(234_000L, 3_600_000L))
+        assertTrue(isVideoDurationOutlier(234_000L, 100_000L))
+        assertFalse(isVideoDurationOutlier(217_000L, 343_000L))
+        assertFalse(isVideoDurationOutlier(357_000L, 822_000L))
+    }
+
+    @Test
     fun officialVideosTolerateCinematicIntrosWhileUploadsMustMatchTheRecording() {
         assertEquals(0, videoDurationPenalty(234_000L, 287_000L, official = true))
         assertEquals(0, videoDurationPenalty(234_000L, 340_000L, official = true))

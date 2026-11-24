@@ -436,6 +436,7 @@ import com.luc4n3x.levyra.player.offline.work.OfflineExportWorker
 import com.luc4n3x.levyra.player.offline.work.OfflineTransferPriority
 import com.luc4n3x.levyra.player.offline.work.PRELOAD_PRIORITY_TRACKS
 import com.luc4n3x.levyra.player.isTransientNetworkFailure
+import com.luc4n3x.levyra.player.isVideoContentFailure
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -929,16 +930,16 @@ internal fun rankVideoPlaybackCandidates(
                 !YoutubeMusicVideoType.isArtTrack(candidate.videoType)
         }
         .filter { (_, candidate) ->
+            val upload = evidence[videoCandidateId(candidate)]
             isPlaybackCandidateCompatible(target, candidate) &&
-                evidence[videoCandidateId(candidate)]?.let { upload ->
-                    !addsDifferentPlaybackVariant(target.title, upload.title)
-                } != false
+                upload?.let { !addsDifferentPlaybackVariant(target.title, it.title) } != false &&
+                !isVideoDurationOutlier(target.durationMs, upload?.durationMs?.takeIf { it > 0L } ?: candidate.durationMs)
         }
         .distinctBy { (_, candidate) -> videoCandidateId(candidate) }
         .toList()
     val leaderId = dominantViewCountLeader(eligible.map { it.second }, evidence)
     return eligible
-        .sortedByDescending { (rank, candidate) ->
+        .map { (rank, candidate) ->
             val candidateId = videoCandidateId(candidate)
             val authority = if (
                 candidateId in authoritativeIds && YoutubeMusicVideoType.isVideo(candidate.videoType)
@@ -948,9 +949,11 @@ internal fun rankVideoPlaybackCandidates(
                 0
             }
             val popularity = if (candidateId == leaderId) VIDEO_POPULARITY_LEADER_BONUS else 0
-            videoPlaybackCandidateScore(target, candidate, evidence[candidateId]) + authority + popularity -
+            val score = videoPlaybackCandidateScore(target, candidate, evidence[candidateId]) + authority + popularity -
                 rank * VIDEO_PROVIDER_RANK_STEP
+            score to candidate
         }
+        .sortedByDescending { it.first }
         .map { it.second }
 }
 
@@ -5240,7 +5243,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         streamRecoveryJob = viewModelScope.launch {
             try {
                 val selectedSource = if (videoMode) {
-                    preferredVideoPlaybackTrack(failedTrack)
+                    recoveryVideoSource(failedTrack, errorMessage)
                 } else {
                     youtubePlayableTrack(failedTrack)
                 }
@@ -5300,6 +5303,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 _state.update { it.copy(isResolving = false, isPlaying = false, playerError = message) }
             }
         }
+    }
+
+    private suspend fun recoveryVideoSource(failedTrack: Track, errorMessage: String): Track? {
+        if (!isVideoContentFailure(errorMessage)) return preferredVideoPlaybackTrack(failedTrack)
+        val failedVideoId = youtubeVideoId(failedTrack.videoUrl)
+        val sources = videoPlaybackSources(failedTrack, forceDiscovery = true)
+        return sources.firstOrNull { youtubeVideoId(it.videoUrl) != failedVideoId } ?: sources.firstOrNull()
     }
 
     private fun audioModeSource(track: Track): Track? =
@@ -16120,8 +16130,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 )
         }
         val ordered = listOfNotNull(chosen) + ranked.filter { videoCandidateId(it) != choice?.videoId }
-        return ordered.mapNotNull { candidate -> track.withVerifiedVideoCandidate(candidate, sourceId) }
-            .ifEmpty { listOfNotNull(youtubePlayableTrack(track, preferVideo = true)) }
+        val pairedVideo = youtubePlayableTrack(track, preferVideo = true)
+        return (ordered.mapNotNull { candidate -> track.withVerifiedVideoCandidate(candidate, sourceId) } + listOfNotNull(pairedVideo))
+            .distinctBy { source -> youtubeVideoId(source.videoUrl) }
     }
 
     private suspend fun discoverVideoSources(track: Track, sourceId: String): VideoSourceDiscovery {
@@ -16264,8 +16275,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val transitionId = ++streamTransitionId
         streamRecoveryJob?.cancel()
         modeSwitchJob?.cancel()
-        player.selectVideoSubtitle(null)
-        _state.update { it.copy(isResolving = true, selectedVideoSubtitleId = null, playerError = null) }
+        _state.update { it.copy(isResolving = true, playerError = null) }
         modeSwitchJob = viewModelScope.launch {
             try {
                 val baseTrack = sourceTrack.withPreservedAudioIdentity(seed).forModeResolution()
@@ -16279,6 +16289,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 val currentIndex = queueEngine.state.value.currentIndex
                 if (currentIndex >= 0) queueEngine.updateTrackAt(currentIndex, resolved)
                 repository.replace(resolved)
+                player.selectVideoSubtitle(null)
                 player.replaceSource(
                     track = resolved,
                     positionMs = switchPositionMs,
@@ -16294,6 +16305,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         positionMs = switchPositionMs,
                         bufferedPositionMs = switchPositionMs,
                         durationMs = resolved.durationMs.takeIf { duration -> duration > 0L } ?: it.durationMs,
+                        selectedVideoSubtitleId = null,
                         playerError = null
                     )
                 }

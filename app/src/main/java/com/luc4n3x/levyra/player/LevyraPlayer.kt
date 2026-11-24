@@ -50,13 +50,21 @@ internal fun replacementStartPosition(
 ): Long {
     val requested = requestedPositionMs.coerceAtLeast(0L)
     val active = activePositionMs.coerceAtLeast(0L)
+    val ceiling = if (durationMs > 0L) (durationMs - 250L).coerceAtLeast(0L) else Long.MAX_VALUE
     val position = when {
         !sameTrack -> requested
+        active >= ceiling -> requested
         allowBackwardActivePosition && active + MODE_HANDOFF_BACKWARD_SEEK_TOLERANCE_MS < requested -> active
         else -> maxOf(requested, active)
     }
-    return if (durationMs > 0L) position.coerceAtMost((durationMs - 250L).coerceAtLeast(0L)) else position
+    return position.coerceAtMost(ceiling)
 }
+
+internal const val INVALID_VIDEO_TRACK_ERROR = "Sorgente video priva di una traccia video"
+internal const val VIDEO_WITHOUT_FRAMES_ERROR = "Decoder video senza fotogrammi renderizzati"
+
+internal fun isVideoContentFailure(errorMessage: String): Boolean =
+    errorMessage == INVALID_VIDEO_TRACK_ERROR || errorMessage == VIDEO_WITHOUT_FRAMES_ERROR
 
 internal fun playbackStartPositionRequest(
     sameTrack: Boolean,
@@ -676,7 +684,7 @@ class LevyraPlayer(context: Context) {
                 positionMs.coerceAtLeast(0L),
                 true,
                 playWhenReady,
-                "Sorgente video priva di una traccia video"
+                INVALID_VIDEO_TRACK_ERROR
             )
         }
     }
@@ -732,7 +740,7 @@ class LevyraPlayer(context: Context) {
                 current.currentPosition.coerceAtLeast(0L),
                 true,
                 playWhenReadyBeforeRecovery,
-                "Decoder video senza fotogrammi renderizzati"
+                VIDEO_WITHOUT_FRAMES_ERROR
             )
         }
     }

@@ -88,6 +88,27 @@ class PlaybackHandoffTest {
     }
 
     @Test
+    fun switchToShorterMediaKeepsTheRequestedPositionInsteadOfTheEnd() {
+        assertEquals(
+            228_000L,
+            replacementStartPosition(
+                sameTrack = true,
+                requestedPositionMs = 228_000L,
+                activePositionMs = 260_000L,
+                durationMs = 234_000L,
+                allowBackwardActivePosition = true
+            )
+        )
+    }
+
+    @Test
+    fun onlyBrokenVideoContentCountsAsAVideoSourceFailure() {
+        assertTrue(isVideoContentFailure(INVALID_VIDEO_TRACK_ERROR))
+        assertTrue(isVideoContentFailure(VIDEO_WITHOUT_FRAMES_ERROR))
+        assertFalse(isVideoContentFailure("HTTP 403"))
+    }
+
+    @Test
     fun malformedContainerAndManifestErrorsAreRecoverable() {
         assertTrue(isRecoverablePlaybackErrorCode(3001))
         assertTrue(isRecoverablePlaybackErrorCode(3002))

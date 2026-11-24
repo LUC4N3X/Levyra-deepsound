@@ -19,6 +19,8 @@ private const val OFFICIAL_VIDEO_LONGER_TOLERANCE_MS = 150_000L
 private const val OFFICIAL_VIDEO_LONGER_TOLERANCE_PERCENT = 60L
 private const val UPLOAD_DURATION_TOLERANCE_MS = 10_000L
 private const val MODE_SWITCH_END_GUARD_MS = 6_000L
+private const val OUTLIER_LONGER_FACTOR = 3L
+private const val OUTLIER_LONGER_EXTRA_MS = 600_000L
 
 private val UNOFFICIAL_UPLOAD_MARKER = Regex(
     """\b(lyrical|visuali[sz]er|fan[\s-]?made|8d|slowed|reverb|sped\s+up|nightcore|status\s+video)\b""",
@@ -65,6 +67,12 @@ internal fun videoDurationPenalty(targetMs: Long, candidateMs: Long, official: B
         -UPLOAD_DURATION_TOLERANCE_MS..UPLOAD_DURATION_TOLERANCE_MS
     }
     return if (delta in accepted) 0 else VIDEO_DURATION_MISMATCH_PENALTY
+}
+
+internal fun isVideoDurationOutlier(targetMs: Long, candidateMs: Long): Boolean {
+    if (targetMs <= 0L || candidateMs <= 0L) return false
+    return candidateMs > maxOf(targetMs * OUTLIER_LONGER_FACTOR, targetMs + OUTLIER_LONGER_EXTRA_MS) ||
+        candidateMs * 2L < targetMs
 }
 
 internal fun dominantViewCountLeader(
