@@ -11,14 +11,27 @@ class PlayerHeaderPolicyTest {
             isVideoMode = false,
             isLiveRadio = false,
             hasTrack = true,
-            hasSubtitles = false,
-            videoQualityAvailable = false,
             slotWidthDp = 48f,
             spacingDp = 4f,
             sideReserveDp = 108f
         )
 
         assertEquals(1, policy.leadingCount)
+        assertEquals(2, policy.trailingCount)
+        assertTrue(policy.centerLocked)
+    }
+
+    @Test
+    fun videoHeaderGroupsEveryVideoControlBehindOneOptionsButton() {
+        val policy = playerHeaderPolicy(
+            isVideoMode = true,
+            isLiveRadio = false,
+            hasTrack = true,
+            slotWidthDp = 48f,
+            spacingDp = 4f,
+            sideReserveDp = 108f
+        )
+
         assertEquals(2, policy.trailingCount)
         assertTrue(policy.centerLocked)
     }

@@ -139,6 +139,9 @@ import com.luc4n3x.levyra.data.homeAlbumArtistFromTrack
 import com.luc4n3x.levyra.data.isCanonicalHomeAlbumHit
 import com.luc4n3x.levyra.data.RecordingIdentityMatch
 import com.luc4n3x.levyra.data.addsDifferentPlaybackVariant
+import com.luc4n3x.levyra.data.VideoSourceChoice
+import com.luc4n3x.levyra.data.VideoSourceChoiceStore
+import com.luc4n3x.levyra.data.VideoUploadEvidence
 import com.luc4n3x.levyra.data.recordingIdentityMatch
 import com.luc4n3x.levyra.data.local.DownloadEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
@@ -433,6 +436,7 @@ import com.luc4n3x.levyra.player.offline.work.OfflineExportWorker
 import com.luc4n3x.levyra.player.offline.work.OfflineTransferPriority
 import com.luc4n3x.levyra.player.offline.work.PRELOAD_PRIORITY_TRACKS
 import com.luc4n3x.levyra.player.isTransientNetworkFailure
+import com.luc4n3x.levyra.player.isVideoContentFailure
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -791,7 +795,7 @@ private fun playbackTitlesCompatible(originalTitle: String, replacementTitle: St
 internal fun playbackCandidateScore(
     target: Track,
     candidate: Track,
-    rewardDurationMatch: Boolean = true
+    scoreDuration: Boolean = true
 ): Int {
     when (recordingIdentityMatch(target.isrc, candidate.isrc)) {
         RecordingIdentityMatch.Exact -> return 10_000
@@ -822,10 +826,10 @@ internal fun playbackCandidateScore(
     if (PLAYBACK_PENALTY_TERMS.any { candidateBlob.contains(it) } && PLAYBACK_PENALTY_TERMS.none { targetTitle.contains(it) }) score -= 60
     if (candidate.source.contains("YouTube Music", ignoreCase = true)) score += 18
     if (candidate.source.contains("Extractor", ignoreCase = true)) score += 8
-    if (candidate.durationMs > 0L && target.durationMs > 0L) {
+    if (scoreDuration && candidate.durationMs > 0L && target.durationMs > 0L) {
         val delta = kotlin.math.abs(candidate.durationMs - target.durationMs)
         if (delta <= 5_000L) {
-            if (rewardDurationMatch) score += 30
+            score += 30
         } else if (delta > 35_000L) {
             score -= 25
         }
@@ -833,7 +837,7 @@ internal fun playbackCandidateScore(
     return score
 }
 
-private val PLAYBACK_AUDIO_ONLY_MARKER = Regex(
+internal val PLAYBACK_AUDIO_ONLY_MARKER = Regex(
     """[(\[]\s*(official\s+|full\s+)?(audio|lyrics?\s+video|lyrics?|testo|visualizer|visualiser)\s*[)\]]""" +
         """|\bofficial\s+audio\b|\baudio\s+ufficiale\b""",
     RegexOption.IGNORE_CASE
@@ -841,31 +845,41 @@ private val PLAYBACK_AUDIO_ONLY_MARKER = Regex(
 
 internal const val VIDEO_AUDIO_ONLY_PENALTY = 10_000
 
-private val PLAYBACK_FAN_UPLOAD_MARKER = Regex(
+internal val PLAYBACK_FAN_UPLOAD_MARKER = Regex(
     """\b(karaoke|legendad[oa]|tradu[cç][aã]o|traducida|traduzione|subtitulad[oa]|sub\s+espa[nñ]ol|letra|lyrics?|cover|reaction)\b""",
     RegexOption.IGNORE_CASE
 )
 
-internal fun videoPlaybackCandidateScore(target: Track, candidate: Track): Int {
-    val recordingScore = playbackCandidateScore(target, candidate, rewardDurationMatch = false)
+internal fun videoPlaybackCandidateScore(
+    target: Track,
+    candidate: Track,
+    evidence: VideoUploadEvidence? = null
+): Int {
+    val recordingScore = playbackCandidateScore(target, candidate, scoreDuration = false)
     if (recordingScore == Int.MIN_VALUE) return Int.MIN_VALUE
     val type = candidate.videoType
+    val channelBonus = uploaderChannelBonus(target, evidence)
+    val officialUpload = YoutubeMusicVideoType.isOfficialVideo(type) || channelBonus >= VIDEO_OFFICIAL_CHANNEL_BONUS
     val videoPreference = when {
-        YoutubeMusicVideoType.isOfficialVideo(type) -> 20_000
+        officialUpload -> 20_000
         YoutubeMusicVideoType.isArtTrack(type) -> -20_000
         YoutubeMusicVideoType.isVideo(type) -> 1_000
         else -> 0
     }
     val officialChannel = target.artistBrowseIds.isNotEmpty() &&
         candidate.artistBrowseIds.any { it in target.artistBrowseIds }
-    val audioOnlyUpload = PLAYBACK_AUDIO_ONLY_MARKER.containsMatchIn(candidate.title)
-    val fanUpload = PLAYBACK_FAN_UPLOAD_MARKER.containsMatchIn(candidate.title) &&
-        !PLAYBACK_FAN_UPLOAD_MARKER.containsMatchIn(target.title)
-    return recordingScore + videoPreference +
+    val uploadTitles = listOfNotNull(candidate.title, evidence?.title)
+    val audioOnlyUpload = uploadTitles.any(PLAYBACK_AUDIO_ONLY_MARKER::containsMatchIn)
+    val fanUpload = uploadTitles.any(::isUnofficialUploadTitle) && !isUnofficialUploadTitle(target.title)
+    val official = officialUpload || channelBonus > 0
+    val durationMs = evidence?.durationMs?.takeIf { it > 0L } ?: candidate.durationMs
+    val views = maxOf(candidate.youtubeViewCount, evidence?.viewCount ?: -1L)
+    return recordingScore + videoPreference + channelBonus +
         (if (officialChannel) 6_000 else 0) -
         (if (audioOnlyUpload) VIDEO_AUDIO_ONLY_PENALTY else 0) -
-        (if (fanUpload) VIDEO_AUDIO_ONLY_PENALTY else 0) +
-        videoViewCountBonus(candidate.youtubeViewCount)
+        (if (fanUpload) VIDEO_AUDIO_ONLY_PENALTY else 0) -
+        videoDurationPenalty(target.durationMs, durationMs, official) +
+        videoViewCountBonus(views)
 }
 
 internal fun Track.forModeResolution(): Track =
@@ -889,8 +903,16 @@ internal const val VIDEO_PROVIDER_RANK_STEP = 200
 internal fun selectPreferredVideoPlaybackCandidate(
     target: Track,
     candidates: List<Track>,
-    authoritativeIds: Set<String> = emptySet()
-): Track? {
+    authoritativeIds: Set<String> = emptySet(),
+    evidence: Map<String, VideoUploadEvidence> = emptyMap()
+): Track? = rankVideoPlaybackCandidates(target, candidates, authoritativeIds, evidence).firstOrNull()
+
+internal fun rankVideoPlaybackCandidates(
+    target: Track,
+    candidates: List<Track>,
+    authoritativeIds: Set<String> = emptySet(),
+    evidence: Map<String, VideoUploadEvidence> = emptyMap()
+): List<Track> {
     val videoPrimary = YoutubeMusicVideoType.isVideo(target.videoType)
     val audioIdentityIds = buildSet {
         add(target.audioVideoId.trim())
@@ -899,7 +921,7 @@ internal fun selectPreferredVideoPlaybackCandidate(
             add(youtubeVideoId(target.videoUrl).trim())
         }
     }.filter { YOUTUBE_PLAYABLE_VIDEO_ID.matches(it) }.toSet() - target.counterpartVideoId.trim()
-    return candidates.asSequence()
+    val eligible = candidates.asSequence()
         .mapIndexed { rank, candidate -> rank to candidate }
         .filter { (_, candidate) ->
             val candidateId = videoCandidateId(candidate)
@@ -907,8 +929,17 @@ internal fun selectPreferredVideoPlaybackCandidate(
                 candidateId !in audioIdentityIds &&
                 !YoutubeMusicVideoType.isArtTrack(candidate.videoType)
         }
-        .filter { (_, candidate) -> isPlaybackCandidateCompatible(target, candidate) }
-        .maxByOrNull { (rank, candidate) ->
+        .filter { (_, candidate) ->
+            val upload = evidence[videoCandidateId(candidate)]
+            isPlaybackCandidateCompatible(target, candidate) &&
+                upload?.let { !addsDifferentPlaybackVariant(target.title, it.title) } != false &&
+                !isVideoDurationOutlier(target.durationMs, upload?.durationMs?.takeIf { it > 0L } ?: candidate.durationMs)
+        }
+        .distinctBy { (_, candidate) -> videoCandidateId(candidate) }
+        .toList()
+    val leaderId = dominantViewCountLeader(eligible.map { it.second }, evidence)
+    return eligible
+        .map { (rank, candidate) ->
             val candidateId = videoCandidateId(candidate)
             val authority = if (
                 candidateId in authoritativeIds && YoutubeMusicVideoType.isVideo(candidate.videoType)
@@ -917,9 +948,13 @@ internal fun selectPreferredVideoPlaybackCandidate(
             } else {
                 0
             }
-            videoPlaybackCandidateScore(target, candidate) + authority - rank * VIDEO_PROVIDER_RANK_STEP
+            val popularity = if (candidateId == leaderId) VIDEO_POPULARITY_LEADER_BONUS else 0
+            val score = videoPlaybackCandidateScore(target, candidate, evidence[candidateId]) + authority + popularity -
+                rank * VIDEO_PROVIDER_RANK_STEP
+            score to candidate
         }
-        ?.second
+        .sortedByDescending { it.first }
+        .map { it.second }
 }
 
 private val PLAYBACK_PENALTY_TERMS = listOf(
@@ -947,7 +982,7 @@ private fun playbackTokens(value: String): List<String> {
     return playbackTextKey(value).split(' ').filter { it.length >= 2 }
 }
 
-private fun playbackArtistTokens(value: String): List<String> {
+internal fun playbackArtistTokens(value: String): List<String> {
     val ignored = setOf("feat", "featuring", "ft", "and", "the", "con", "with", "vs")
     return playbackTokens(value).filterNot { it in ignored }
 }
@@ -1436,9 +1471,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var audioModeOrigin: Track? = null
     private var streamRecoveryJob: Job? = null
     private var alternateModePrefetchJob: Job? = null
+    private var videoSourceJob: Job? = null
+    private val _videoSources = MutableStateFlow(VideoSourceUiState())
+    val videoSources: StateFlow<VideoSourceUiState> = _videoSources.asStateFlow()
+    private val videoSourceChoices = VideoSourceChoiceStore(
+        application.applicationContext.getSharedPreferences(VideoSourceChoiceStore.PREFERENCES, android.content.Context.MODE_PRIVATE)
+    )
     private val verifiedVideoIdentityCache = Collections.synchronizedMap(
-        object : LinkedHashMap<String, Track>(VERIFIED_VIDEO_IDENTITY_CACHE_SIZE, 0.75f, true) {
-            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Track>?): Boolean {
+        object : LinkedHashMap<String, VideoSourceDiscovery>(VERIFIED_VIDEO_IDENTITY_CACHE_SIZE, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, VideoSourceDiscovery>?): Boolean {
                 return size > VERIFIED_VIDEO_IDENTITY_CACHE_SIZE
             }
         }
@@ -4899,8 +4940,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val sourceMode = snapshot.isVideoMode
         val targetMode = !sourceMode
         if (targetMode) audioModeOrigin = track
-        val positionMs = player.positionMs.coerceAtLeast(0L)
-        val shouldPlay = player.isPlaying || snapshot.isPlaying
         val transitionId = ++streamTransitionId
         streamRecoveryJob?.cancel()
         modeSwitchJob?.cancel()
@@ -4915,27 +4954,28 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         modeSwitchJob = viewModelScope.launch {
             try {
-                val selectedSource = if (targetMode) {
-                    preferredVideoPlaybackTrack(track)?.withPreservedAudioIdentity(track)
+                val resolved = if (targetMode) {
+                    resolveVideoModeSource(track)
                 } else {
-                    audioModeSource(track)
+                    val baseTrack = audioModeSource(track)?.forModeResolution()
+                        ?: throw IllegalStateException("Nessuna sorgente YouTube riproducibile per ${track.title}")
+                    preserveNativeSampleClip(track, withContext(Dispatchers.IO) {
+                        resolver.cached(baseTrack, false) ?: providerRouter.resolve(baseTrack, false)
+                    })
                 }
-                val baseTrack = selectedSource?.forModeResolution()
-                    ?: throw IllegalStateException("Nessuna sorgente YouTube riproducibile per ${track.title}")
-                val resolved = preserveNativeSampleClip(track, withContext(Dispatchers.IO) {
-                    resolver.cached(baseTrack, targetMode) ?: providerRouter.resolve(baseTrack, targetMode)
-                })
                 if (!isActive || transitionId != streamTransitionId) return@launch
+                val switchPositionMs = modeSwitchPositionMs(player.positionMs, resolved.durationMs)
+                val shouldPlay = player.playWhenReady
                 val currentIndex = queueEngine.state.value.currentIndex
                 if (currentIndex >= 0) queueEngine.updateTrackAt(currentIndex, resolved)
                 repository.replace(resolved)
                 player.replaceSource(
                     track = resolved,
-                    positionMs = positionMs,
+                    positionMs = switchPositionMs,
                     videoMode = targetMode,
                     playWhenReady = shouldPlay
                 )
-                queueEngine.updatePosition(positionMs)
+                queueEngine.updatePosition(switchPositionMs)
                 _state.update {
                     it.copy(
                         currentTrack = resolved,
@@ -4944,8 +4984,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         selectedVideoSubtitleId = null,
                         isResolving = false,
                         isPlaying = shouldPlay,
-                        positionMs = positionMs,
-                        bufferedPositionMs = positionMs,
+                        positionMs = switchPositionMs,
+                        bufferedPositionMs = switchPositionMs,
                         durationMs = resolved.durationMs.takeIf { duration -> duration > 0L } ?: it.durationMs,
                         motionArtwork = if (targetMode) null else it.motionArtwork,
                         motionArtworkLoading = if (targetMode) false else it.motionArtworkLoading,
@@ -5203,7 +5243,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         streamRecoveryJob = viewModelScope.launch {
             try {
                 val selectedSource = if (videoMode) {
-                    preferredVideoPlaybackTrack(failedTrack)
+                    recoveryVideoSource(failedTrack, errorMessage)
                 } else {
                     youtubePlayableTrack(failedTrack)
                 }
@@ -5215,16 +5255,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     preserveNativeSampleClip(failedTrack, withContext(Dispatchers.IO) { providerRouter.resolve(baseTrack, videoMode) })
                 }
                 if (!isActive || transitionId != streamTransitionId) return@launch
+                val switchedUpload = videoMode && youtubeVideoId(failedTrack.videoUrl) != youtubeVideoId(resolved.videoUrl)
+                val startPositionMs = if (switchedUpload) modeSwitchPositionMs(positionMs, resolved.durationMs) else positionMs
                 val currentIndex = queueEngine.state.value.currentIndex
                 if (currentIndex >= 0) queueEngine.updateTrackAt(currentIndex, resolved)
                 repository.replace(resolved)
                 player.replaceSource(
                     track = resolved,
-                    positionMs = positionMs,
+                    positionMs = startPositionMs,
                     videoMode = videoMode,
                     playWhenReady = playWhenReady
                 )
-                queueEngine.updatePosition(positionMs)
+                queueEngine.updatePosition(startPositionMs)
                 _state.update {
                     it.copy(
                         currentTrack = resolved,
@@ -5232,8 +5274,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         selectedVideoSubtitleId = null,
                         isResolving = false,
                         isPlaying = playWhenReady,
-                        positionMs = positionMs,
-                        bufferedPositionMs = positionMs,
+                        positionMs = startPositionMs,
+                        bufferedPositionMs = startPositionMs,
                         durationMs = resolved.durationMs.takeIf { duration -> duration > 0L } ?: it.durationMs,
                         motionArtwork = if (videoMode) null else it.motionArtwork,
                         motionArtworkLoading = if (videoMode) false else it.motionArtworkLoading,
@@ -5244,6 +5286,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     motionArtworkJob?.cancel()
                     motionArtworkPrefetchJob?.cancel()
                     motionArtworkRequestKey = null
+                    val sourceKey = videoSourceKey(videoSourceSeed(failedTrack))
+                    val recoveredVideoId = youtubeVideoId(resolved.videoUrl)
+                    _videoSources.update { if (it.trackKey == sourceKey) it.copy(activeVideoId = recoveredVideoId) else it }
                 } else {
                     refreshMotionArtworkAround(resolved)
                 }
@@ -5263,6 +5308,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 _state.update { it.copy(isResolving = false, isPlaying = false, playerError = message) }
             }
         }
+    }
+
+    private suspend fun recoveryVideoSource(failedTrack: Track, errorMessage: String): Track? {
+        if (!isVideoContentFailure(errorMessage)) return preferredVideoPlaybackTrack(failedTrack)
+        val failedVideoId = youtubeVideoId(failedTrack.videoUrl)
+        val sources = videoPlaybackSources(failedTrack, forceDiscovery = true)
+        return sources.firstOrNull { youtubeVideoId(it.videoUrl) != failedVideoId } ?: sources.firstOrNull()
     }
 
     private fun audioModeSource(track: Track): Track? =
@@ -16046,51 +16098,239 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         return resolved
     }
 
-    private suspend fun preferredVideoPlaybackTrack(track: Track): Track? {
-        val sourceId = PlaybackSourceIdentity.sourceVideoId(track)
-        val cacheKey = track.audioVideoId.trim()
+    private suspend fun preferredVideoPlaybackTrack(track: Track): Track? =
+        videoPlaybackSources(track).firstOrNull()
+
+    private fun videoSourceKey(track: Track): String =
+        track.audioVideoId.trim()
             .takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches)
             .orEmpty()
-            .ifBlank { sourceId }
+            .ifBlank { PlaybackSourceIdentity.sourceVideoId(track) }
             .ifBlank { playbackIdentity(track) }
-        verifiedVideoIdentityCache[cacheKey]?.let { candidate ->
-            return track.withVerifiedVideoCandidate(candidate, sourceId)
-        }
 
-        val query = "${track.title} ${track.artist} official music video".trim()
-        val (watchCandidates, searchCandidates) = coroutineScope {
+    private fun videoSourceSeed(track: Track): Track =
+        audioModeOrigin?.takeIf { it.id == track.id } ?: track
+
+    private suspend fun videoSourceDiscovery(track: Track, key: String): VideoSourceDiscovery =
+        verifiedVideoIdentityCache[key]
+            ?: discoverVideoSources(track, PlaybackSourceIdentity.sourceVideoId(track)).also { found ->
+                if (found.ranked.isNotEmpty()) verifiedVideoIdentityCache[key] = found
+            }
+
+    private suspend fun videoPlaybackSources(track: Track, forceDiscovery: Boolean = false): List<Track> {
+        val sourceId = PlaybackSourceIdentity.sourceVideoId(track)
+        val key = videoSourceKey(track)
+        val choice = videoSourceChoices.get(key)
+        val ranked = if (choice != null && !forceDiscovery && !verifiedVideoIdentityCache.containsKey(key)) {
+            emptyList()
+        } else {
+            videoSourceDiscovery(track, key).ranked
+        }
+        val chosen = choice?.let { selected ->
+            ranked.firstOrNull { videoCandidateId(it) == selected.videoId }
+                ?: track.copy(
+                    id = selected.videoId,
+                    videoUrl = "https://www.youtube.com/watch?v=${selected.videoId}",
+                    videoType = selected.videoType
+                )
+        }
+        val ordered = listOfNotNull(chosen) + ranked.filter { videoCandidateId(it) != choice?.videoId }
+        val pairedVideo = youtubePlayableTrack(track, preferVideo = true)
+        return (ordered.mapNotNull { candidate -> track.withVerifiedVideoCandidate(candidate, sourceId) } + listOfNotNull(pairedVideo))
+            .distinctBy { source -> youtubeVideoId(source.videoUrl) }
+    }
+
+    private suspend fun discoverVideoSources(track: Track, sourceId: String): VideoSourceDiscovery {
+        val languageCode = _state.value.languageCode
+        val queryTitle = videoSourceQueryTitle(track.title)
+        val catalogQuery = "$queryTitle ${track.artist}".trim()
+        val webQuery = "${track.artist} $queryTitle official video".trim()
+        return coroutineScope {
             val watch = async(Dispatchers.IO) {
                 withTimeoutOrNull(VIDEO_IDENTITY_LOOKUP_TIMEOUT_MS) {
-                    repository.getWatchPlaylist(track, _state.value.languageCode, limit = 3)
+                    repository.getWatchPlaylist(track, languageCode, limit = 3)
                 }
             }
             val search = async(Dispatchers.IO) {
                 withTimeoutOrNull(VIDEO_IDENTITY_LOOKUP_TIMEOUT_MS) {
-                    repository.searchMusicVideos(query, 8, _state.value.languageCode)
+                    repository.searchMusicVideos(catalogQuery, VIDEO_SOURCE_SEARCH_LIMIT, languageCode)
+                }.orEmpty()
+            }
+            val web = async(Dispatchers.IO) {
+                withTimeoutOrNull(VIDEO_IDENTITY_LOOKUP_TIMEOUT_MS) {
+                    repository.searchYoutubeVideoEvidence(webQuery, VIDEO_SOURCE_SEARCH_LIMIT, languageCode)
                 }.orEmpty()
             }
             val playlist = watch.await()
             val primary = playlist?.tracks?.firstOrNull { it.videoId == sourceId }
                 ?: playlist?.tracks?.firstOrNull()
-            val related = sequenceOf(primary, primary?.counterpart)
+            val watchCandidates = sequenceOf(primary, primary?.counterpart)
                 .filterNotNull()
                 .map { item -> item.asVideoCandidate(track) }
                 .toList()
-            related to search.await()
+            val catalogCandidates = watchCandidates + search.await()
+            val evidence = web.await().associateBy { it.videoId }
+            val catalogIds = catalogCandidates.mapTo(HashSet(), ::videoCandidateId)
+            val webCandidates = evidence.values
+                .filter { it.videoId !in catalogIds }
+                .map { upload -> upload.asVideoCandidate(track) }
+            val authoritativeIds = watchCandidates.map(::videoCandidateId).filter { it.isNotBlank() }.toSet()
+            VideoSourceDiscovery(
+                ranked = rankVideoPlaybackCandidates(
+                    track,
+                    catalogCandidates + webCandidates,
+                    authoritativeIds,
+                    evidence
+                ).take(MAX_VIDEO_SOURCE_OPTIONS),
+                evidence = evidence
+            )
         }
+    }
 
-        val authoritativeIds = watchCandidates.map(::videoCandidateId).filter { it.isNotBlank() }.toSet()
-        val selected = selectPreferredVideoPlaybackCandidate(
-            track,
-            watchCandidates + searchCandidates,
-            authoritativeIds
+    private fun VideoUploadEvidence.asVideoCandidate(seed: Track): Track = seed.copy(
+        id = videoId,
+        title = title,
+        artist = channelName,
+        album = "",
+        durationMs = durationMs,
+        videoUrl = "https://www.youtube.com/watch?v=$videoId",
+        thumbnailUrl = thumbnailUrl.ifBlank { seed.thumbnailUrl },
+        largeThumbnailUrl = thumbnailUrl.ifBlank { seed.largeThumbnailUrl },
+        source = "YouTube",
+        videoType = WEB_VIDEO_TYPE,
+        artistBrowseIds = emptyList(),
+        isrc = "",
+        audioVideoId = "",
+        counterpartVideoId = "",
+        youtubeViewCount = viewCount
+    )
+
+    private suspend fun resolveVideoModeSource(track: Track): Track {
+        val attempted = HashSet<String>()
+        var failure: Throwable? = null
+        for (forceDiscovery in booleanArrayOf(false, true)) {
+            for (source in videoPlaybackSources(track, forceDiscovery)) {
+                if (attempted.size >= MAX_VIDEO_SOURCE_ATTEMPTS) break
+                if (!attempted.add(youtubeVideoId(source.videoUrl))) continue
+                val baseTrack = source.withPreservedAudioIdentity(track).forModeResolution()
+                try {
+                    return preserveNativeSampleClip(track, withContext(Dispatchers.IO) {
+                        resolver.cached(baseTrack, true) ?: providerRouter.resolve(baseTrack, true)
+                    })
+                } catch (error: Throwable) {
+                    if (error is CancellationException || isTransientNetworkFailure(error)) throw error
+                    resolver.invalidate(baseTrack, true)
+                    failure = error
+                }
+            }
+            if (failure == null || attempted.size >= MAX_VIDEO_SOURCE_ATTEMPTS) break
+        }
+        throw failure ?: IllegalStateException("Nessuna sorgente YouTube riproducibile per ${track.title}")
+    }
+
+    fun loadVideoSources() {
+        val snapshot = _state.value
+        val track = snapshot.currentTrack ?: return
+        if (!snapshot.isVideoMode || track.isLiveRadio() || isLocalPlaybackTrack(track)) return
+        val seed = videoSourceSeed(track)
+        val key = videoSourceKey(seed)
+        val activeVideoId = youtubeVideoId(track.videoUrl)
+        videoSourceJob?.cancel()
+        _videoSources.update {
+            VideoSourceUiState(
+                trackKey = key,
+                options = it.options.takeIf { _ -> it.trackKey == key }.orEmpty(),
+                activeVideoId = activeVideoId,
+                loading = true
+            )
+        }
+        videoSourceJob = viewModelScope.launch {
+            val options = try {
+                videoSourceOptions(seed, videoSourceDiscovery(seed, key))
+            } catch (error: Throwable) {
+                if (error is CancellationException) throw error
+                emptyList()
+            }
+            val activeOption = options.firstOrNull { it.videoId == activeVideoId }
+                ?: VideoSourceOption(
+                    videoId = activeVideoId,
+                    title = track.title,
+                    channel = track.artist,
+                    durationMs = track.durationMs,
+                    thumbnailUrl = "https://i.ytimg.com/vi/$activeVideoId/mqdefault.jpg",
+                    official = YoutubeMusicVideoType.isOfficialVideo(track.videoType)
+                ).takeIf { YOUTUBE_PLAYABLE_VIDEO_ID.matches(activeVideoId) }
+            val merged = (listOfNotNull(activeOption) + options).distinctBy { it.videoId }
+            _videoSources.update {
+                if (it.trackKey != key) it else it.copy(options = merged, loading = false)
+            }
+        }
+    }
+
+    fun selectVideoSource(videoId: String) {
+        val snapshot = _state.value
+        val track = snapshot.currentTrack ?: return
+        if (!snapshot.isVideoMode || snapshot.isResolving) return
+        if (!YOUTUBE_PLAYABLE_VIDEO_ID.matches(videoId) || youtubeVideoId(track.videoUrl) == videoId) return
+        val seed = videoSourceSeed(track)
+        val key = videoSourceKey(seed)
+        if (key != _videoSources.value.trackKey) return
+        val candidate = verifiedVideoIdentityCache[key]?.ranked?.firstOrNull { videoCandidateId(it) == videoId } ?: return
+        val sourceTrack = seed.withVerifiedVideoCandidate(candidate, PlaybackSourceIdentity.sourceVideoId(seed)) ?: return
+        val transitionId = ++streamTransitionId
+        streamRecoveryJob?.cancel()
+        modeSwitchJob?.cancel()
+        _state.update { it.copy(isResolving = true, playerError = null) }
+        modeSwitchJob = viewModelScope.launch {
+            try {
+                val baseTrack = sourceTrack.withPreservedAudioIdentity(seed).forModeResolution()
+                val resolved = preserveNativeSampleClip(seed, withContext(Dispatchers.IO) {
+                    resolver.cached(baseTrack, true) ?: providerRouter.resolve(baseTrack, true)
+                })
+                if (!isActive || transitionId != streamTransitionId) return@launch
+                videoSourceChoices.put(key, VideoSourceChoice(videoId, candidate.videoType))
+                applySelectedVideoSource(resolved, key, videoId)
+            } catch (error: Throwable) {
+                if (error is CancellationException) throw error
+                if (transitionId != streamTransitionId) return@launch
+                _state.update {
+                    it.copy(isResolving = false, isPlaying = player.isPlaying, playerError = cleanPlaybackError(error))
+                }
+            }
+        }
+    }
+
+    private fun applySelectedVideoSource(resolved: Track, key: String, videoId: String) {
+        val switchPositionMs = modeSwitchPositionMs(player.positionMs, resolved.durationMs)
+        val shouldPlay = player.playWhenReady
+        val currentIndex = queueEngine.state.value.currentIndex
+        if (currentIndex >= 0) queueEngine.updateTrackAt(currentIndex, resolved)
+        repository.replace(resolved)
+        player.selectVideoSubtitle(null)
+        player.replaceSource(
+            track = resolved,
+            positionMs = switchPositionMs,
+            videoMode = true,
+            playWhenReady = shouldPlay
         )
-        if (selected != null) {
-            verifiedVideoIdentityCache[cacheKey] = selected
-            return track.withVerifiedVideoCandidate(selected, sourceId)
+        queueEngine.updatePosition(switchPositionMs)
+        _state.update {
+            it.copy(
+                currentTrack = resolved,
+                isResolving = false,
+                isPlaying = shouldPlay,
+                positionMs = switchPositionMs,
+                bufferedPositionMs = switchPositionMs,
+                durationMs = resolved.durationMs.takeIf { duration -> duration > 0L } ?: it.durationMs,
+                selectedVideoSubtitleId = null,
+                playerError = null
+            )
         }
-
-        return youtubePlayableTrack(track, preferVideo = true)
+        _videoSources.update { if (it.trackKey == key) it.copy(activeVideoId = videoId) else it }
+        refreshVideoQualityState(resolved)
+        prefetchAlternateMode(resolved, true)
+        if (_state.value.selectedTab == LevyraTab.Player) refreshYoutubeEngagement(resolved)
+        updateWidget()
     }
 
     private fun YoutubeMusicWatchTrack.asVideoCandidate(seed: Track): Track {
@@ -16503,6 +16743,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         private const val VIDEO_IDENTITY_LOOKUP_TIMEOUT_MS = 9_000L
         private const val CATALOG_ART_TRACK_LOOKUP_TIMEOUT_MS = 2_500L
         private const val VERIFIED_VIDEO_IDENTITY_CACHE_SIZE = 64
+        private const val VIDEO_SOURCE_SEARCH_LIMIT = 10
+        private const val MAX_VIDEO_SOURCE_OPTIONS = 8
+        private const val MAX_VIDEO_SOURCE_ATTEMPTS = 3
+        private const val WEB_VIDEO_TYPE = "MUSIC_VIDEO_TYPE_UGC"
         private const val HOME_ARTIST_STARTUP_GRACE_MS = 850L
         private const val HOME_STARTUP_STREAM_PREFETCH_COUNT = 2
         private const val HOME_STARTUP_METADATA_REFRESH_COUNT = 4
@@ -17252,15 +17496,16 @@ private fun isYoutubeBackedTrack(track: Track): Boolean {
         track.videoUrl.contains("youtu.be", ignoreCase = true)
 }
 
+private val YOUTUBE_VIDEO_ID_PATTERNS = listOf(
+    Regex("[?&]v=([^&?/]+)"),
+    Regex("youtu\\.be/([^?&/]+)"),
+    Regex("/shorts/([^?&/]+)"),
+    Regex("/embed/([^?&/]+)")
+)
+
 private fun youtubeVideoId(url: String): String {
     if (url.isBlank()) return ""
-    val patterns = listOf(
-        Regex("[?&]v=([^&?/]+)"),
-        Regex("youtu\\.be/([^?&/]+)"),
-        Regex("/shorts/([^?&/]+)"),
-        Regex("/embed/([^?&/]+)")
-    )
-    return patterns.firstNotNullOfOrNull { pattern ->
+    return YOUTUBE_VIDEO_ID_PATTERNS.firstNotNullOfOrNull { pattern ->
         pattern.find(url)?.groupValues?.getOrNull(1)
     }.orEmpty()
 }

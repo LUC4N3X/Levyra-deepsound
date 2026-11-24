@@ -25,6 +25,22 @@ class AlternativeTrackMatcherTest {
     }
 
     @Test
+    fun localizedFeaturingCreditFromTheMusicCatalogStillMatchesTheProviderRecording() {
+        val provider = candidate(
+            title = "Unforgettable",
+            primary = listOf("French Montana"),
+            featured = listOf("Swae Lee"),
+            album = "Jungle Rules",
+            duration = 234,
+            explicit = true
+        )
+        listOf("Unforgettable (feat. Swae Lee)", "Unforgettable (con Swae Lee)").forEach { title ->
+            val evaluation = verdict(query(title, "French Montana", "Jungle Rules", 234_000L, explicit = true), provider)
+            assertTrue("$title -> ${evaluation.rejection}", evaluation.accepted)
+        }
+    }
+
+    @Test
     fun missingExplicitMetadataDoesNotMakeEquivalentRecordingsAmbiguous() {
         val selection = matcher.select(query(explicit = false), listOf(
             candidate(id = "known-clean", explicit = false),

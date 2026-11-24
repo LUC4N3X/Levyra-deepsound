@@ -676,6 +676,9 @@ class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::pla
     fun toggleVideoMode() = root.toggleVideoMode()
     fun selectVideoSubtitle(trackId: String?) = root.selectVideoSubtitle(trackId)
     fun selectVideoQuality(targetLabel: String?) = root.selectVideoQuality(targetLabel)
+    val videoSources: StateFlow<VideoSourceUiState> get() = root.videoSources
+    fun loadVideoSources() = root.loadVideoSources()
+    fun selectVideoSource(videoId: String) = root.selectVideoSource(videoId)
     fun setTemporaryPlaybackSpeed(value: Float) = root.setTemporaryPlaybackSpeed(value)
     fun setPlayerVisualMode(mode: PlayerVisualMode) = root.setPlayerVisualMode(mode)
     fun setPlayerBackground(mode: PlayerBackgroundMode) = root.setPlayerBackground(mode)
