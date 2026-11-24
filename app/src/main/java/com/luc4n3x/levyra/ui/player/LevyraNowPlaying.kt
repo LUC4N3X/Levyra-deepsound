@@ -2033,6 +2033,7 @@ private fun LevyraNowPlayingContent(
                     }
                 },
                 onDismiss = { showDeck = false },
+                showBackground = deckLayout.usesPlayerBackground(),
                 reactiveAuraPreset = state.interfaceSettings.reactiveAuraPreset,
                 reactiveAuraIntensity = state.interfaceSettings.reactiveAuraIntensity,
                 onSelectReactiveAuraPreset = { preset ->

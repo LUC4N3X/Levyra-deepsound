@@ -141,6 +141,7 @@ internal fun PlayerDeckSheet(
     onSelect: (PlayerVisualMode) -> Unit,
     onSelectBackground: (PlayerBackgroundMode) -> Unit,
     onDismiss: () -> Unit,
+    showBackground: Boolean = true,
     reactiveAuraPreset: ReactiveAuraPreset = ReactiveAuraPreset.Recommended,
     reactiveAuraIntensity: Int = LevyraInterfaceSettings.DEFAULT_REACTIVE_AURA_INTENSITY,
     onSelectReactiveAuraPreset: (ReactiveAuraPreset) -> Unit = {},
@@ -188,7 +189,7 @@ internal fun PlayerDeckSheet(
             PlayerDeckStageTitle(selected, chrome, surfaces, animated)
             PlayerDeckFan(selected, track, artworkUrl, accent, chrome, surfaces, animated, onSelect)
             Spacer(Modifier.height(LevyraPlayerDesign.SpaceSm))
-            if (selected.usesPlayerBackground()) {
+            if (showBackground) {
                 PlayerBackgroundPicker(
                     selected = background,
                     track = track,

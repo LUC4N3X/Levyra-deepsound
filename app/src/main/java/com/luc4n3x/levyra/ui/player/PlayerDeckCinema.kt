@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.ui.player
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.animation.core.AnimationVector1D
 import com.luc4n3x.levyra.domain.RepeatMode
 import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.Repeat
@@ -806,10 +808,7 @@ private fun CinemaAction(action: PlayerDockAction, surfaces: PlayerSurfaceTokens
                 role = Role.Button,
                 pressedScale = LevyraPressScale.Control
             )
-            .semantics {
-                contentDescription = action.label
-                action.stateDescription?.let { stateDescription = it }
-            },
+            .dockActionSemantics(action),
         contentAlignment = Alignment.Center
     ) {
         if (action.busy) {
@@ -850,6 +849,35 @@ private fun CinemaControl(
 }
 
 @Composable
+private fun rememberCinemaSweep(active: Boolean): Animatable<Float, AnimationVector1D> {
+    val sweep = remember { Animatable(1f) }
+    LaunchedEffect(active) {
+        if (active) {
+            sweep.snapTo(0f)
+            sweep.animateTo(1f, tween(CinemaSweepMillis, easing = FastOutSlowInEasing))
+        } else {
+            sweep.snapTo(1f)
+        }
+    }
+    return sweep
+}
+
+private fun DrawScope.drawCinemaSweep(progress: Float, pivot: Float, sheen: Color) {
+    if (progress >= 1f) return
+    val band = size.width * 0.35f
+    val travel = -band + (size.width + band * 2f) * progress
+    val from = if (pivot == 0f) travel - band else size.width - travel - band
+    drawRect(
+        brush = Brush.horizontalGradient(
+            listOf(Color.Transparent, sheen, Color.Transparent),
+            startX = from,
+            endX = from + band * 2f
+        ),
+        blendMode = BlendMode.SrcAtop
+    )
+}
+
+@Composable
 private fun CinemaLyricLine(
     line: LyricLine,
     offset: Int,
@@ -873,15 +901,7 @@ private fun CinemaLyricLine(
         animationSpec = emphasis,
         label = "player-cinema-line-scale"
     )
-    val sweep = remember { Animatable(1f) }
-    LaunchedEffect(current, animated) {
-        if (current && synced && animated) {
-            sweep.snapTo(0f)
-            sweep.animateTo(1f, tween(CinemaSweepMillis, easing = FastOutSlowInEasing))
-        } else {
-            sweep.snapTo(1f)
-        }
-    }
+    val sweep = rememberCinemaSweep(current && synced && animated)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -894,20 +914,7 @@ private fun CinemaLyricLine(
             }
             .drawWithContent {
                 drawContent()
-                val progress = sweep.value
-                if (progress < 1f) {
-                    val band = size.width * 0.35f
-                    val travel = -band + (size.width + band * 2f) * progress
-                    val from = if (pivot == 0f) travel - band else size.width - travel - band
-                    drawRect(
-                        brush = Brush.horizontalGradient(
-                            listOf(Color.Transparent, sheen, Color.Transparent),
-                            startX = from,
-                            endX = from + band * 2f
-                        ),
-                        blendMode = BlendMode.SrcAtop
-                    )
-                }
+                drawCinemaSweep(sweep.value, pivot, sheen)
             }
             .padding(vertical = LevyraPlayerDesign.SpaceXs)
     ) {

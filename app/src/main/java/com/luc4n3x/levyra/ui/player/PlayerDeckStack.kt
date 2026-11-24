@@ -182,7 +182,38 @@ private class StackTracker {
     var trackId: String = ""
     var base: Int = 0
     var pending: Int = 0
+
+    fun follow(id: String, stepDirection: Int) {
+        if (trackId == id) return
+        if (trackId.isNotEmpty()) base += stackTrackerStep(pending, stepDirection)
+        trackId = id
+        pending = 0
+    }
 }
+
+private fun stackTrackerStep(pending: Int, stepDirection: Int): Int = when {
+    pending != 0 -> pending
+    stepDirection < 0 -> -1
+    else -> 1
+}
+
+private fun stackQueuePosition(queue: List<Track>, queueIndex: Int, trackId: String): Int =
+    if (queue.getOrNull(queueIndex)?.id == trackId) queueIndex else queue.indexOfFirst { it.id == trackId }
+
+private fun stackCounter(index: Int, size: Int): String? =
+    if (index >= 0 && size > 1) String.format(Locale.ROOT, "%02d  /  %02d", index + 1, size) else null
+
+private fun stackBackdropTone(track: Track?, fallback: Color): Color =
+    track?.let { stackVivid(Color(it.accentStart)) } ?: fallback
+
+private fun stackRise(side: Dp, maxHeight: Dp): Float =
+    if (side > 0.dp) ((maxHeight - side - StackHandleRoom) / (side * 2f)).coerceIn(StackRise, StackRiseMax) else StackRise
+
+private fun stackCardZ(virtual: Int, split: Int): Float =
+    if (virtual < split) 1_000f + virtual else -virtual.toFloat()
+
+private fun stackPressSpring(animated: Boolean, damping: Float, stiffness: Float): AnimationSpec<Float> =
+    if (animated) spring(dampingRatio = damping, stiffness = stiffness) else snap()
 
 private class StackMotion(
     val position: Animatable<Float, *>,
@@ -247,53 +278,21 @@ internal fun PlayerStackDeck(
         animationSpec = LevyraPlayerDesign.motion(animated, LevyraPlayerDesign.paletteTween()),
         label = "player-stack-tone"
     )
-    val index = if (queue.getOrNull(queueIndex)?.id == track.id) queueIndex else queue.indexOfFirst { it.id == track.id }
-    val counter = remember(index, queue.size) { if (index >= 0 && queue.size > 1) String.format(Locale.ROOT, "%02d  /  %02d", index + 1, queue.size) else null }
+    val index = stackQueuePosition(queue, queueIndex, track.id)
+    val counter = remember(index, queue.size) { stackCounter(index, queue.size) }
     val tracker = remember { StackTracker() }
-    if (tracker.trackId != track.id) {
-        if (tracker.trackId.isNotEmpty()) {
-            tracker.base += if (tracker.pending != 0) tracker.pending else if (stepDirection < 0) -1 else 1
-        }
-        tracker.trackId = track.id
-        tracker.pending = 0
-    }
+    tracker.follow(track.id, stepDirection)
     val base = tracker.base
     val repeatAll = repeatMode == RepeatMode.All
     val neighbor: (Int) -> Track? = remember(index, queue, shuffleOn, repeatAll) {
         { offset -> stackNeighborIndex(index, offset, queue.size, shuffleOn, repeatAll)?.let(queue::getOrNull) }
     }
     val backdropColors = remember(tone, neighbor) {
-        val previous = neighbor(-1)?.let { stackVivid(Color(it.accentStart)) } ?: tone
-        val next = neighbor(1)?.let { stackVivid(Color(it.accentStart)) } ?: tone
-        previous to next
+        stackBackdropTone(neighbor(-1), tone) to stackBackdropTone(neighbor(1), tone)
     }
     val stack = rememberStackMotion(base, animated)
     Box(modifier = modifier) {
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .graphicsLayer { }
-                .drawBehind {
-                    val shift = stack.visual - base
-                    val target = if (shift >= 0f) backdropColors.second else backdropColors.first
-                    val glow = lerp(tone, target, abs(shift).coerceIn(0f, 1f))
-                    drawRect(
-                        Brush.verticalGradient(
-                            0f to lerp(glow, Color.Black, 0.3f),
-                            0.45f to lerp(glow, Color.Black, 0.55f),
-                            0.72f to lerp(glow, Color.Black, 0.8f),
-                            1f to lerp(glow, Color.Black, 0.92f)
-                        )
-                    )
-                    drawRect(
-                        Brush.radialGradient(
-                            colors = listOf(lerp(glow, Color.White, 0.18f).copy(alpha = 0.5f), glow.copy(alpha = 0.12f), Color.Transparent),
-                            center = Offset(size.width / 2f, size.height * 0.3f),
-                            radius = size.width * 0.8f
-                        )
-                    )
-                }
-        )
+        StackBackdrop(stack, base, tone, backdropColors, Modifier.matchParentSize())
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -373,6 +372,34 @@ internal fun PlayerStackDeck(
 }
 
 @Composable
+private fun StackBackdrop(stack: StackMotion, base: Int, tone: Color, colors: Pair<Color, Color>, modifier: Modifier) {
+    Box(
+        modifier = modifier
+            .graphicsLayer { }
+            .drawBehind {
+                val shift = stack.visual - base
+                val target = if (shift >= 0f) colors.second else colors.first
+                val glow = lerp(tone, target, abs(shift).coerceIn(0f, 1f))
+                drawRect(
+                    Brush.verticalGradient(
+                        0f to lerp(glow, Color.Black, 0.3f),
+                        0.45f to lerp(glow, Color.Black, 0.55f),
+                        0.72f to lerp(glow, Color.Black, 0.8f),
+                        1f to lerp(glow, Color.Black, 0.92f)
+                    )
+                )
+                drawRect(
+                    Brush.radialGradient(
+                        colors = listOf(lerp(glow, Color.White, 0.18f).copy(alpha = 0.5f), glow.copy(alpha = 0.12f), Color.Transparent),
+                        center = Offset(size.width / 2f, size.height * 0.3f),
+                        radius = size.width * 0.8f
+                    )
+                )
+            }
+    )
+}
+
+@Composable
 private fun rememberStackMotion(base: Int, animated: Boolean): StackMotion {
     val motion = remember {
         StackMotion(
@@ -420,62 +447,17 @@ private fun StackStage(
 ) {
     val strings = LocalLevyraStrings.current
     val haptics = LocalLevyraHaptics.current
-    val scope = rememberCoroutineScope()
     val depth = LocalLevyraVisualCapabilities.current.decorativeMotion
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
-    val latestNext by rememberUpdatedState(onNext)
-    val latestPrevious by rememberUpdatedState(onPrevious)
-    val latestQueue by rememberUpdatedState(onOpenQueue)
-    val latestBase by rememberUpdatedState(base)
     val canForward = shuffleOn || neighbor(1) != null
-    val latestCanForward by rememberUpdatedState(canForward)
-    var pendingToken by remember { mutableIntStateOf(0) }
-    LaunchedEffect(pendingToken) {
-        if (pendingToken == 0) return@LaunchedEffect
-        delay(StackPendingMillis)
-        if (tracker.pending != 0) {
-            tracker.pending = 0
-            stack.position.animateTo(latestBase.toFloat(), stackSpring(animated))
-        }
-    }
-    val latestAnimated by rememberUpdatedState(animated)
-    val onSwipeEnd: (Float) -> Unit = { fling ->
-        val shift = stack.drag
-        val step = stackSwipeStep(shift, fling, latestCanForward)
-        scope.launch {
-            stack.position.snapTo(stack.position.value + shift)
-            stack.drag = 0f
-            if (step != 0) {
-                haptics.perform(LevyraHapticAction.TrackSwipe)
-                tracker.pending = step
-                pendingToken += 1
-                if (step > 0) latestNext() else latestPrevious()
-            }
-            stack.position.animateTo((latestBase + step).toFloat(), stackSpring(latestAnimated))
-        }
-    }
-    val onLiftEnd: () -> Unit = {
-        val open = stack.liftDrag > StackQueueFraction
-        scope.launch {
-            stack.lift.snapTo(stack.liftDrag)
-            stack.liftDrag = 0f
-            if (open) {
-                haptics.perform(LevyraHapticAction.Confirm)
-                if (latestAnimated) stack.lift.animateTo(1f, tween(StackQueueMillis, easing = FastOutSlowInEasing))
-                latestQueue()
-                if (latestAnimated) delay(StackQueueMillis.toLong())
-            }
-            stack.lift.animateTo(0f, stackSpring(latestAnimated))
-        }
-    }
+    val release = rememberStackRelease(stack, tracker, base, animated, canForward, onNext, onPrevious, onOpenQueue)
     BoxWithConstraints(modifier = modifier, contentAlignment = Alignment.BottomCenter) {
         val side = minOf(maxWidth * StackCardWidth, maxHeight / StackRiseRoom, artworkCap).coerceAtLeast(0.dp)
         val sidePx = with(LocalDensity.current) { side.toPx() }.coerceAtLeast(1f)
         val inset = (maxWidth - side) / 2
-        val rise = if (side > 0.dp) ((maxHeight - side - StackHandleRoom) / (side * 2f)).coerceIn(StackRise, StackRiseMax) else StackRise
+        val rise = stackRise(side, maxHeight)
         val split by remember(stack) { derivedStateOf { ceil(stack.visual).toInt() } }
         val travel = if (rtl) 1f else -1f
-        val parallaxSign = -travel
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -485,16 +467,11 @@ private fun StackStage(
                     sidePx = sidePx,
                     rtl = rtl,
                     stack = stack,
-                    canForward = { latestCanForward },
-                    onStart = {
-                        scope.launch {
-                            stack.position.stop()
-                            stack.lift.stop()
-                        }
-                    },
+                    canForward = release.canForward,
+                    onStart = release.onStart,
                     onArmed = { haptics.perform(LevyraHapticAction.SeekSnap) },
-                    onSwipeEnd = onSwipeEnd,
-                    onLiftEnd = onLiftEnd
+                    onSwipeEnd = release.onSwipeEnd,
+                    onLiftEnd = release.onLiftEnd
                 ),
             contentAlignment = Alignment.BottomCenter
         ) {
@@ -504,47 +481,15 @@ private fun StackStage(
                 val card: Track? = if (offset == 0) track else neighbor(offset)
                 if (offset != 0 && card == null && !shuffleOn) continue
                 key(virtual) {
-                    val z = if (virtual < split) 1_000f + virtual else -virtual.toFloat()
-                    Box(
-                        modifier = Modifier
-                            .size(side)
-                            .zIndex(z)
-                            .graphicsLayer {
-                                stackCardTransform(
-                                    p = virtual - stack.visual,
-                                    raise = stack.raise,
-                                    drag = stack.drag,
-                                    cardSize = side.toPx(),
-                                    rise = rise,
-                                    travel = travel,
-                                    depth = depth,
-                                    pile = if (virtual % 2 == 0) StackPileRoll else -StackPileRoll
-                                )
-                            }
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .graphicsLayer {
-                                    val p = (virtual - stack.visual).coerceIn(-1f, 1f)
-                                    val zoom = 1f + StackParallax * abs(p)
-                                    scaleX = zoom
-                                    scaleY = zoom
-                                    translationX = p * size.width * StackParallax * parallaxSign
-                                }
-                        ) {
-                            when {
-                                offset == 0 -> slots.stage(track, Modifier.size(side), StackCardCorner)
-                                card != null -> StackArtwork(card, near = abs(offset) <= 1, caption = offset > 0)
-                                else -> StackBlankCard(tone, offset)
-                            }
-                        }
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .drawBehind { drawStackCardFinish(virtual - stack.visual) }
-                        )
-                    }
+                    StackCard(
+                        offset = offset,
+                        card = card,
+                        slots = slots,
+                        tone = tone,
+                        stack = stack,
+                        side = side,
+                        transform = StackCardFrame(virtual, stackCardZ(virtual, split), rise, travel, depth)
+                    )
                 }
             }
             slots.gestures(track, Modifier.matchParentSize().zIndex(1_500f))
@@ -570,6 +515,138 @@ private fun StackStage(
                 onToggleFavorite = onToggleFavorite
             )
         }
+    }
+}
+
+private class StackCardFrame(val virtual: Int, val z: Float, val rise: Float, val travel: Float, val depth: Boolean)
+
+@Composable
+private fun StackCard(
+    offset: Int,
+    card: Track?,
+    slots: PlayerDeckSlots,
+    tone: Color,
+    stack: StackMotion,
+    side: Dp,
+    transform: StackCardFrame
+) {
+    val virtual = transform.virtual
+    Box(
+        modifier = Modifier
+            .size(side)
+            .zIndex(transform.z)
+            .graphicsLayer {
+                stackCardTransform(
+                    p = virtual - stack.visual,
+                    raise = stack.raise,
+                    drag = stack.drag,
+                    cardSize = side.toPx(),
+                    rise = transform.rise,
+                    travel = transform.travel,
+                    depth = transform.depth,
+                    pile = if (virtual % 2 == 0) StackPileRoll else -StackPileRoll
+                )
+            }
+    ) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .graphicsLayer {
+                    val p = (virtual - stack.visual).coerceIn(-1f, 1f)
+                    val zoom = 1f + StackParallax * abs(p)
+                    scaleX = zoom
+                    scaleY = zoom
+                    translationX = -p * size.width * StackParallax * transform.travel
+                }
+        ) {
+            when {
+                offset == 0 && card != null -> slots.stage(card, Modifier.size(side), StackCardCorner)
+                card != null -> StackArtwork(card, near = abs(offset) <= 1, caption = offset > 0)
+                else -> StackBlankCard(tone, offset)
+            }
+        }
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .drawBehind { drawStackCardFinish(virtual - stack.visual) }
+        )
+    }
+}
+
+private class StackRelease(
+    val canForward: () -> Boolean,
+    val onStart: () -> Unit,
+    val onSwipeEnd: (Float) -> Unit,
+    val onLiftEnd: () -> Unit
+)
+
+@Composable
+private fun rememberStackRelease(
+    stack: StackMotion,
+    tracker: StackTracker,
+    base: Int,
+    animated: Boolean,
+    canForward: Boolean,
+    onNext: () -> Unit,
+    onPrevious: () -> Unit,
+    onOpenQueue: () -> Unit
+): StackRelease {
+    val haptics = LocalLevyraHaptics.current
+    val scope = rememberCoroutineScope()
+    val latestNext by rememberUpdatedState(onNext)
+    val latestPrevious by rememberUpdatedState(onPrevious)
+    val latestQueue by rememberUpdatedState(onOpenQueue)
+    val latestBase by rememberUpdatedState(base)
+    val latestCanForward by rememberUpdatedState(canForward)
+    val latestAnimated by rememberUpdatedState(animated)
+    val pendingToken = remember { mutableIntStateOf(0) }
+    LaunchedEffect(pendingToken.intValue) {
+        if (pendingToken.intValue == 0) return@LaunchedEffect
+        delay(StackPendingMillis)
+        if (tracker.pending != 0) {
+            tracker.pending = 0
+            stack.position.animateTo(latestBase.toFloat(), stackSpring(latestAnimated))
+        }
+    }
+    return remember(stack, tracker, haptics, scope) {
+        StackRelease(
+            canForward = { latestCanForward },
+            onStart = {
+                scope.launch {
+                    stack.position.stop()
+                    stack.lift.stop()
+                }
+            },
+            onSwipeEnd = { fling ->
+                val shift = stack.drag
+                val step = stackSwipeStep(shift, fling, latestCanForward)
+                scope.launch {
+                    stack.position.snapTo(stack.position.value + shift)
+                    stack.drag = 0f
+                    if (step != 0) {
+                        haptics.perform(LevyraHapticAction.TrackSwipe)
+                        tracker.pending = step
+                        pendingToken.intValue += 1
+                        if (step > 0) latestNext() else latestPrevious()
+                    }
+                    stack.position.animateTo((latestBase + step).toFloat(), stackSpring(latestAnimated))
+                }
+            },
+            onLiftEnd = {
+                val open = stack.liftDrag > StackQueueFraction
+                scope.launch {
+                    stack.lift.snapTo(stack.liftDrag)
+                    stack.liftDrag = 0f
+                    if (open) {
+                        haptics.perform(LevyraHapticAction.Confirm)
+                        if (latestAnimated) stack.lift.animateTo(1f, tween(StackQueueMillis, easing = FastOutSlowInEasing))
+                        latestQueue()
+                        if (latestAnimated) delay(StackQueueMillis.toLong())
+                    }
+                    stack.lift.animateTo(0f, stackSpring(latestAnimated))
+                }
+            }
+        )
     }
 }
 
@@ -876,7 +953,7 @@ private fun StackPlayToken(
     val pressed by source.collectIsPressedAsState()
     val press by animateFloatAsState(
         targetValue = if (pressed) 1f else 0f,
-        animationSpec = if (animated) spring(dampingRatio = 0.6f, stiffness = 1_200f) else snap(),
+        animationSpec = stackPressSpring(animated, 0.6f, 1_200f),
         label = "player-stack-token-press"
     )
     val face = remember(tone) { lerp(tone, Color.White, 0.84f) }
@@ -934,7 +1011,7 @@ private fun StackSideTab(
     val pressed by source.collectIsPressedAsState()
     val slide by animateFloatAsState(
         targetValue = if (pressed) 1f else 0f,
-        animationSpec = if (animated) spring(dampingRatio = 0.55f, stiffness = 1_400f) else snap(),
+        animationSpec = stackPressSpring(animated, 0.55f, 1_400f),
         label = "player-stack-side-tab"
     )
     val fill = remember(tone) { lerp(tone, Color.Black, 0.35f).copy(alpha = 0.72f) }

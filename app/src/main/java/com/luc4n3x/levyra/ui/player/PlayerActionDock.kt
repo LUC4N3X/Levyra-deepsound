@@ -207,7 +207,7 @@ private fun dockSegmentShape(first: Boolean, last: Boolean, outer: Dp, inner: Dp
     return RoundedCornerShape(topStart = start, bottomStart = start, topEnd = end, bottomEnd = end)
 }
 
-private fun Modifier.dockActionSemantics(action: PlayerDockAction): Modifier = semantics {
+internal fun Modifier.dockActionSemantics(action: PlayerDockAction): Modifier = semantics {
     contentDescription = action.label
     segmentToggleState(action.toggle, action.active)?.let { toggleableState = it }
     action.stateDescription?.let { stateDescription = it }
