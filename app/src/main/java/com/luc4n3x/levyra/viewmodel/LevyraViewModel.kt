@@ -5255,7 +5255,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     preserveNativeSampleClip(failedTrack, withContext(Dispatchers.IO) { providerRouter.resolve(baseTrack, videoMode) })
                 }
                 if (!isActive || transitionId != streamTransitionId) return@launch
-                val startPositionMs = if (videoMode) modeSwitchPositionMs(positionMs, resolved.durationMs) else positionMs
+                val switchedUpload = videoMode && youtubeVideoId(failedTrack.videoUrl) != youtubeVideoId(resolved.videoUrl)
+                val startPositionMs = if (switchedUpload) modeSwitchPositionMs(positionMs, resolved.durationMs) else positionMs
                 val currentIndex = queueEngine.state.value.currentIndex
                 if (currentIndex >= 0) queueEngine.updateTrackAt(currentIndex, resolved)
                 repository.replace(resolved)
