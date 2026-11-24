@@ -149,7 +149,7 @@ data class LevyraUiState(
     val animationsEnabled: Boolean = true,
     val motionArtworkEnabled: Boolean = true,
     val recognitionAvailable: Boolean = true,
-    val lastFmConfigured: Boolean = false,
+    val lastFmAccount: String? = null,
     val lastFmAuthorizationPending: Boolean = false,
     val listenBrainzConfigured: Boolean = false,
     val audDConfigured: Boolean = false,
@@ -393,6 +393,12 @@ data class SmartListeningUiState(
     val sleepWithMusicSettings: SleepWithMusicSettings = SleepWithMusicSettings(),
     val morningResumeSnapshot: MorningResumeSnapshot? = null,
     val availableRadioStations: List<RadioStation> = emptyList()
+)
+
+data class LastFmPlaylistsState(
+    val loading: Boolean = false,
+    val playlists: List<com.luc4n3x.levyra.feature.scrobbling.LastFmPlaylist> = emptyList(),
+    val importingId: String? = null
 )
 
 data class ListenBrainzPlaylistsState(

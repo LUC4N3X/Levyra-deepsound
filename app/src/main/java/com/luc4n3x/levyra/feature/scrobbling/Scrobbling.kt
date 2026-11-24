@@ -7,6 +7,9 @@ import java.math.BigInteger
 import java.security.MessageDigest
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import okhttp3.FormBody
@@ -38,8 +41,12 @@ class LastFmScrobbleProvider(private val credentials: AndroidKeystoreCredentialS
     fun saveApiCredentials(apiKey: String, sharedSecret: String) {
         credentials.write(LAST_FM_API_SLOT, apiKey.trim())
         credentials.write(LAST_FM_SECRET_SLOT, sharedSecret.trim())
-        credentials.clear(KEY_SESSION)
+        credentials.clear(KEY_SESSION, KEY_ACCOUNT, KEY_PENDING_TOKEN)
     }
+
+    fun accountName(): String? = if (isConfigured()) credentials.read(KEY_ACCOUNT).orEmpty() else null
+
+    fun pendingToken(): String? = credentials.read(KEY_PENDING_TOKEN)
 
     fun authorizationUrl(token: String): String? = credentials.read(LAST_FM_API_SLOT)?.let { apiCredential ->
         "https://www.last.fm/api/auth/".toHttpUrl().newBuilder()
@@ -49,14 +56,40 @@ class LastFmScrobbleProvider(private val credentials: AndroidKeystoreCredentialS
             .toString()
     }
 
-    suspend fun requestToken(): String? = call("auth.getToken", emptyMap())?.optString("token")?.takeIf(String::isNotBlank)
+    suspend fun requestToken(): String? = call("auth.getToken", emptyMap())?.optString("token")
+        ?.takeIf(String::isNotBlank)
+        ?.also { credentials.write(KEY_PENDING_TOKEN, it) }
 
-    suspend fun completeAuthorization(token: String): Boolean {
-        val session = call("auth.getSession", mapOf("token" to token))
-            ?.optJSONObject("session")?.optString("key").orEmpty()
-        if (session.isBlank()) return false
-        credentials.write(KEY_SESSION, session)
-        return true
+    suspend fun completeAuthorization(token: String): String? {
+        val session = call("auth.getSession", mapOf("token" to token))?.optJSONObject("session") ?: return null
+        val sessionKey = session.optString("key")
+        if (sessionKey.isBlank()) return null
+        val account = session.optString("name").trim()
+        credentials.write(KEY_SESSION, sessionKey)
+        credentials.write(KEY_ACCOUNT, account)
+        credentials.clear(KEY_PENDING_TOKEN)
+        return account
+    }
+
+    suspend fun chartPlaylists(user: String): List<LastFmPlaylist> = coroutineScope {
+        lastFmChartRequests.map { request ->
+            async {
+                call(request.method, request.parameters(user))
+                    ?.let { LastFmJson.tracks(it, request.container) }
+                    ?.takeIf(List<ListenBrainzTrack>::isNotEmpty)
+                    ?.let { LastFmPlaylist(id = request.kind.name, kind = request.kind, tracks = it) }
+            }
+        }.awaitAll().filterNotNull()
+    }
+
+    suspend fun resolvedAccountName(): String? {
+        if (!isConfigured()) return null
+        credentials.read(KEY_ACCOUNT)?.let { return it }
+        val session = credentials.read(KEY_SESSION)
+        val name = call("user.getInfo", emptyMap())?.let(LastFmJson::userName).orEmpty()
+        if (name.isBlank() || credentials.read(KEY_SESSION) != session) return null
+        credentials.write(KEY_ACCOUNT, name)
+        return name
     }
 
     override suspend fun nowPlaying(listen: ScrobbleListen) {
@@ -67,7 +100,7 @@ class LastFmScrobbleProvider(private val credentials: AndroidKeystoreCredentialS
         submit("track.scrobble", listen, mapOf("timestamp" to (listen.startedAtMs / 1000L).toString()))
     }
 
-    override fun clear() = credentials.clear(LAST_FM_API_SLOT, LAST_FM_SECRET_SLOT, KEY_SESSION)
+    override fun clear() = credentials.clear(LAST_FM_API_SLOT, LAST_FM_SECRET_SLOT, KEY_SESSION, KEY_ACCOUNT, KEY_PENDING_TOKEN)
 
     private suspend fun submit(method: String, listen: ScrobbleListen, extra: Map<String, String>) {
         if (!isConfigured()) return
@@ -130,6 +163,8 @@ class LastFmScrobbleProvider(private val credentials: AndroidKeystoreCredentialS
         const val LAST_FM_API_SLOT = "lastfm_api_key"
         const val LAST_FM_SECRET_SLOT = "lastfm_shared_secret"
         const val KEY_SESSION = "lastfm_session"
+        const val KEY_ACCOUNT = "lastfm_account"
+        const val KEY_PENDING_TOKEN = "lastfm_pending_token"
         val TRANSIENT_CODES = setOf(11, 16, 29)
     }
 }

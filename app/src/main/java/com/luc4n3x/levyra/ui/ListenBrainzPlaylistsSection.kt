@@ -84,7 +84,7 @@ internal fun ListenBrainzPlaylistsSection(viewModel: LevyraViewModel) {
 }
 
 @Composable
-private fun ListenBrainzPlaylistRow(
+internal fun ListenBrainzPlaylistRow(
     title: String,
     subtitle: String,
     icon: ImageVector,

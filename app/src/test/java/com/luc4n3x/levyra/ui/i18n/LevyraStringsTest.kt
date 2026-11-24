@@ -119,6 +119,7 @@ class LevyraStringsTest {
             assertTrue(strings.sharedSecretLabel.isNotBlank())
             assertTrue(strings.credentialTokenLabel.isNotBlank())
             assertTrue(strings.lastFmApprovalHint.isNotBlank())
+            assertTrue(strings.lastFmConnected.isNotBlank())
             assertTrue(strings.subtitlesOff.isNotBlank())
             assertTrue(strings.subtitlesLabel.isNotBlank())
             assertTrue(strings.playerVisualMode.isNotBlank())
