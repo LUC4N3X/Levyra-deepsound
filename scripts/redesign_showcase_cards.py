@@ -589,7 +589,7 @@ UPRIGHT_CARD_SPECS = [
         "UPDATES",
         "In-app Updates",
         "Changelogs & one-tap updates.",
-        "Screenshot_20261119_160950_Levyra.jpg",
+        "Screenshot_20261125_131518_Levyra.jpg",
         (248, 250, 253), (226, 233, 243), (198, 210, 228), (198, 208, 222),
         (214, 32, 68), (15, 23, 42), (71, 85, 105),
     ),
