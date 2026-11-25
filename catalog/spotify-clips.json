@@ -735,7 +735,7 @@
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2730a837631a077bcaa9640ed63",
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/cb49431b559c476f8af27724d39ffa80.cnvs.mp4",
    "spotifyTrackId": "4EMW9BdGJ8avDfuab1ostA",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/d1eb13e9b295bea4fe646ff34413b65171fb156a"
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/f873c5091519c99f20677144abaef2c511204c8f"
   },
   {
    "id": "levyra-0c920fe78c33b78b4a07",
@@ -1088,16 +1088,6 @@
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/c310d4c62be3d6c647fa1bf1d523ec0f4f80bc45"
   },
   {
-   "id": "levyra-e38ca6ceb21d47433340",
-   "genre": "dance-party",
-   "title": "Smack Yo'",
-   "artist": "Beltran",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2736dcfcf7e021ccc5791eb2a29",
-   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/2Y9QpVq23PTBtMZwyCwosk/video/00cb73609d1848168b7d713713104917.cnvs.mp4",
-   "spotifyTrackId": "2UdCQIDwFvGhslUYZH5tRR",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/9029ddfed3e4a7c48767ab7c08f0e60631461cbb"
-  },
-  {
    "id": "levyra-26c5b7268c0b366bd4b0",
    "genre": "dance-party",
    "title": "Positive",
@@ -1106,6 +1096,16 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/licensor/7eUoEowYzdOzp0xETZgqjt/video/327472d482ae422d9ddfcebb426cfd2a.cnvs.mp4",
    "spotifyTrackId": "0cZN3g7rtfNE6vsmX0k8OF",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/265e15be487a4b6bbabacc8c565afdbee404e045"
+  },
+  {
+   "id": "levyra-e38ca6ceb21d47433340",
+   "genre": "dance-party",
+   "title": "Smack Yo'",
+   "artist": "Beltran",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b2736dcfcf7e021ccc5791eb2a29",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/2Y9QpVq23PTBtMZwyCwosk/video/00cb73609d1848168b7d713713104917.cnvs.mp4",
+   "spotifyTrackId": "2UdCQIDwFvGhslUYZH5tRR",
+   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/9029ddfed3e4a7c48767ab7c08f0e60631461cbb"
   },
   {
    "id": "levyra-9a72aa8d0bf7874d8d34",
@@ -1136,16 +1136,6 @@
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/4oLeXFyACqeem2VImYeBFe/video/9c078aa3c74646069b43d64e4db84b9d.cnvs.mp4",
    "spotifyTrackId": "1lbNgoJ5iMrMluCyhI4OQP",
    "audioPreviewUrl": "https://p.scdn.co/mp3-preview/7a52939c36a748786e19a2a4d640c5852d4ae55b"
-  },
-  {
-   "id": "levyra-2f21990911f610c6f250",
-   "genre": "dance-party",
-   "title": "Addicted",
-   "artist": "Zerb, The Chainsmokers, Ink",
-   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27386662f0bf0b8df09e7e6ee34",
-   "canvasUrl": "https://canvaz.scdn.co/upload/artist/6mDl7lQiLxT0iQ8LYhAlWy/video/66132e8ec0b242f6a6ec6d5c630b296b.cnvs.mp4",
-   "spotifyTrackId": "5ZUIPLoTLJZrPQh2kFZEUM",
-   "audioPreviewUrl": "https://p.scdn.co/mp3-preview/0f6ed1e0061fffcc2e67d06f33a8a92ab7cf2952"
   },
   {
    "id": "levyra-47404e9cd417bf51332d",
@@ -2104,6 +2094,15 @@
    "spotifyTrackId": "62pmQMfcm1leFyeKRfSaDq"
   },
   {
+   "id": "levyra-13c4186619059068c609",
+   "genre": "k-pop",
+   "title": "GiiiRIP",
+   "artist": "BIGBANG",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273a511ec1def1b2fa7b9681a92",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/4Kxlr1PRlDKEB0ekOCyHgX/video/019aab2461dc4f2bba31b36d0c4c282c.cnvs.mp4",
+   "spotifyTrackId": "4i115Ijs5MbfNBYpNsM0Sq"
+  },
+  {
    "id": "levyra-bf821ca69600916be046",
    "genre": "k-pop",
    "title": "ICONIC",
@@ -2320,6 +2319,15 @@
    "spotifyTrackId": "5j5le0fG9E5xgjj6VkqxW4"
   },
   {
+   "id": "levyra-1dfa4b7cbb4d078bd727",
+   "genre": "fr-rap",
+   "title": "6.35",
+   "artist": "SDM, SCH",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273454bcfab37d763eb077bf03d",
+   "canvasUrl": "https://canvaz.scdn.co/upload/licensor/63HSZmQDZXIeK1J4mJ55hX/video/3d8c503ce86d4cc180c2ec1b311dc3d4.cnvs.mp4",
+   "spotifyTrackId": "1cUQ8R5ulPGoijhaU6RAYM"
+  },
+  {
    "id": "levyra-dd9c82b9ba6023f26894",
    "genre": "fr-rap",
    "title": "Armistice",
@@ -2417,6 +2425,15 @@
    "artworkUrl": "https://i.scdn.co/image/ab67616d0000b27313f41ba141961903e2eaace7",
    "canvasUrl": "https://canvaz.scdn.co/upload/artist/4sVieJlKgpZ2k9ESNS5IdN/video/81583751dadc47cea25d17eda13b4e56.cnvs.mp4",
    "spotifyTrackId": "4rK1usTSJNQy59YYfWZWdj"
+  },
+  {
+   "id": "levyra-aa6c77b35437559e65b2",
+   "genre": "de-rap",
+   "title": "Tut mir leid (feat. Mucco)",
+   "artist": "Kauta, Mucco",
+   "artworkUrl": "https://i.scdn.co/image/ab67616d0000b273d0b03744748d28d022aba333",
+   "canvasUrl": "https://canvaz.scdn.co/upload/artist/706cem551IzKiczuAQIEDw/video/f1508d8c8be643808f07e1281282cd59.cnvs.mp4",
+   "spotifyTrackId": "7Lk3oCxmZ6afsxkMARZcdi"
   },
   {
    "id": "levyra-9bcd49417dd7325f2f1d",
