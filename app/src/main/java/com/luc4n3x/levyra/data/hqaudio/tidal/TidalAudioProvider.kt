@@ -41,10 +41,7 @@ internal class TidalAudioProvider(
     override suspend fun search(query: String, page: Int): ProviderSearchOutcome {
         if (page !in 1..2) return ProviderSearchOutcome.Found(emptyList())
         return attempt<ProviderSearchOutcome> {
-            val json = coroutineScope {
-                launch { api.warmStream() }
-                api.get("search/tracks", mapOf("query" to query, "limit" to "$PAGE_SIZE", "offset" to "${(page - 1) * PAGE_SIZE}"))
-            }
+            val json = api.get("search/tracks", mapOf("query" to query, "limit" to "$PAGE_SIZE", "offset" to "${(page - 1) * PAGE_SIZE}"))
             val items = json.getJSONArray("items")
             val candidates = (0 until items.length()).mapNotNull { TidalPayload.candidate(items.getJSONObject(it)) }
             synchronized(recent) { candidates.forEach { recent[it.providerTrackId] = it to clock() + RECENT_TTL_MS } }

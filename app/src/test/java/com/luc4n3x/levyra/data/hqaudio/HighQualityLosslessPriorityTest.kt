@@ -1,6 +1,9 @@
 package com.luc4n3x.levyra.data.hqaudio
 
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertSame
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -55,12 +58,16 @@ class HighQualityLosslessPriorityTest {
     private fun resolver(
         mode: HighQualityAudioMode,
         vararg providers: HighQualityAudioProvider,
-        losslessLaneBudgetMs: Long = HighQualityAudioResolver.LOSSLESS_LANE_BUDGET_MS
+        losslessLaneBudgetMs: Long = HighQualityAudioResolver.LOSSLESS_LANE_BUDGET_MS,
+        lookupBudgetMs: Long = HighQualityAudioResolver.LOOKUP_BUDGET_MS,
+        arcodMinimumTimeoutBudgetMs: Long = 0L
     ) = HighQualityAudioResolver(
         providers = providers.toList(),
         mappingStore = HighQualityMappingStore(InMemoryMappingStorage()),
         scope = scope,
-        losslessLaneBudgetMs = losslessLaneBudgetMs
+        losslessLaneBudgetMs = losslessLaneBudgetMs,
+        lookupBudgetMs = lookupBudgetMs,
+        arcodMinimumTimeoutBudgetMs = arcodMinimumTimeoutBudgetMs
     ).apply { this.mode = mode }
 
     private fun HighQualityAudioResolver.resolveNow(): HighQualityResolution =
@@ -109,6 +116,138 @@ class HighQualityLosslessPriorityTest {
         val monochrome = losslessProvider("monochrome") { ProviderStreamOutcome.Resolved(flacStream(it)) }
         val result = resolver(HighQualityAudioMode.PREFER_LOSSLESS, tidal, monochrome, losslessLaneBudgetMs = 150L).resolveNow()
         assertEquals("monochrome", (result as HighQualityResolution.Selected).stream.providerId)
+    }
+
+    @Test
+    fun arcodIsOnlyRequestedWhenTidalAndKuwoHaveNoVerifiedStream() {
+        val tidal = losslessProvider("tidal") {
+            delay(70L)
+            ProviderStreamOutcome.Resolved(flacStream(it))
+        }
+        val kuwo = losslessProvider("kuwo") {
+            delay(35L)
+            ProviderStreamOutcome.Resolved(flacStream(it))
+        }
+        val arcodRequests = AtomicInteger()
+        val arcod = losslessProvider("arcod") {
+            arcodRequests.incrementAndGet()
+            ProviderStreamOutcome.Resolved(flacStream(it))
+        }
+        val tidalFailure = losslessProvider("tidal") { ProviderStreamOutcome.Failed(ProviderFailure.RATE_LIMITED) }
+        val kuwoFailure = losslessProvider("kuwo") { ProviderStreamOutcome.Failed(ProviderFailure.NETWORK) }
+
+        val allAvailable = resolver(HighQualityAudioMode.PREFER_LOSSLESS, tidal, kuwo, arcod).resolveNow()
+        val tidalUnavailable = resolver(HighQualityAudioMode.PREFER_LOSSLESS, tidalFailure, kuwo, arcod).resolveNow()
+        assertEquals(0, arcodRequests.get())
+        assertTrue(arcod.searches.isEmpty())
+        val primaryUnavailable = resolver(HighQualityAudioMode.PREFER_LOSSLESS, tidalFailure, kuwoFailure, arcod).resolveNow()
+
+        assertEquals("tidal", (allAvailable as HighQualityResolution.Selected).stream.providerId)
+        assertEquals("kuwo", (tidalUnavailable as HighQualityResolution.Selected).stream.providerId)
+        assertEquals("arcod", (primaryUnavailable as HighQualityResolution.Selected).stream.providerId)
+        assertEquals(1, arcodRequests.get())
+        assertTrue(arcod.searches.isNotEmpty())
+    }
+
+    @Test
+    fun readyJioSaavnSurvivesThePlaybackDeadlineWithoutPenalizingArcod() = runBlocking {
+        val tidal = losslessProvider("tidal") { ProviderStreamOutcome.Failed(ProviderFailure.NETWORK) }
+        val kuwo = losslessProvider("kuwo") { ProviderStreamOutcome.Failed(ProviderFailure.NETWORK) }
+        val arcodTimeouts = AtomicInteger()
+        val stalledArcod = losslessProvider("arcod") { awaitCancellation() }
+        val arcod = object : HighQualityAudioProvider by stalledArcod {
+            override fun reportLookupTimeout() {
+                arcodTimeouts.incrementAndGet()
+            }
+        }
+        val resolver = resolver(HighQualityAudioMode.PREFER_LOSSLESS, tidal, kuwo, arcod, jioSaavn())
+
+        val playbackWaitMs = 1_800L
+        val pending = resolver.begin("late-duration", query(), playbackWaitMs = playbackWaitMs)
+        val result = resolver.await(pending, playbackWaitMs)
+
+        assertEquals("jiosaavn", (result as HighQualityResolution.Selected).stream.providerId)
+        assertEquals(0, arcodTimeouts.get())
+
+        val ownTimeout = resolver(HighQualityAudioMode.PREFER_LOSSLESS, tidal, kuwo, arcod, jioSaavn(), losslessLaneBudgetMs = 500L)
+        val resultAfterProviderTimeout = ownTimeout.await(ownTimeout.begin("provider-timeout", query()), 2_000L)
+        assertEquals("jiosaavn", (resultAfterProviderTimeout as HighQualityResolution.Selected).stream.providerId)
+        assertEquals(1, arcodTimeouts.get())
+    }
+
+    @Test
+    fun arcodTimeoutCountsAfterPrimaryLanesUseTheirBudget() {
+        val tidal = losslessProvider("tidal") { awaitCancellation() }
+        val kuwo = losslessProvider("kuwo") { awaitCancellation() }
+        val arcodTimeouts = AtomicInteger()
+        val stalledArcod = losslessProvider("arcod") { awaitCancellation() }
+        val arcod = object : HighQualityAudioProvider by stalledArcod {
+            override fun reportLookupTimeout() {
+                arcodTimeouts.incrementAndGet()
+            }
+        }
+
+        val result = resolver(
+            HighQualityAudioMode.PREFER_LOSSLESS, tidal, kuwo, arcod, jioSaavn(),
+            losslessLaneBudgetMs = 650L,
+            lookupBudgetMs = 1_150L
+        ).resolveNow()
+
+        assertEquals("jiosaavn", (result as HighQualityResolution.Selected).stream.providerId)
+        assertEquals(1, arcodTimeouts.get())
+    }
+
+    @Test
+    fun arcodBackoffRequiresEnoughTimeForADownloadRead() {
+        val tidal = losslessProvider("tidal") { awaitCancellation() }
+        val kuwo = losslessProvider("kuwo") { awaitCancellation() }
+        val arcodTimeouts = AtomicInteger()
+        val stalledArcod = losslessProvider("arcod") { awaitCancellation() }
+        val arcod = object : HighQualityAudioProvider by stalledArcod {
+            override fun reportLookupTimeout() {
+                arcodTimeouts.incrementAndGet()
+            }
+        }
+        val shortWindow = resolver(
+            HighQualityAudioMode.PREFER_LOSSLESS, tidal, kuwo, arcod, jioSaavn(),
+            losslessLaneBudgetMs = 650L,
+            lookupBudgetMs = 1_150L,
+            arcodMinimumTimeoutBudgetMs = 500L
+        )
+        val sufficientWindow = resolver(
+            HighQualityAudioMode.PREFER_LOSSLESS, tidal, kuwo, arcod, jioSaavn(),
+            losslessLaneBudgetMs = 650L,
+            lookupBudgetMs = 2_000L,
+            arcodMinimumTimeoutBudgetMs = 500L
+        )
+
+        assertEquals("jiosaavn", (shortWindow.resolveNow() as HighQualityResolution.Selected).stream.providerId)
+        assertEquals(1, stalledArcod.searches.size)
+        assertEquals(0, arcodTimeouts.get())
+
+        assertEquals("jiosaavn", (sufficientWindow.resolveNow() as HighQualityResolution.Selected).stream.providerId)
+        assertEquals(1, arcodTimeouts.get())
+    }
+
+    @Test
+    fun foregroundDeadlineCutsArcodInsideTheRunningPrefetch() = runBlocking {
+        val tidal = losslessProvider("tidal") { ProviderStreamOutcome.Failed(ProviderFailure.NETWORK) }
+        val arcodStarted = CompletableDeferred<Unit>()
+        val arcod = losslessProvider("arcod") {
+            arcodStarted.complete(Unit)
+            awaitCancellation()
+        }
+        val resolver = resolver(HighQualityAudioMode.PREFER_LOSSLESS, tidal, arcod, jioSaavn())
+        val prefetch = resolver.begin("prefetched", query(), background = true)
+        withTimeout(2_000L) { arcodStarted.await() }
+
+        val waitMs = 850L
+        val foreground = resolver.begin("prefetched", query(), playbackWaitMs = waitMs)
+        val result = resolver.await(foreground, waitMs)
+
+        assertSame(prefetch, foreground)
+        assertFalse(prefetch.isCancelled)
+        assertEquals("jiosaavn", (result as HighQualityResolution.Selected).stream.providerId)
     }
 
     @Test

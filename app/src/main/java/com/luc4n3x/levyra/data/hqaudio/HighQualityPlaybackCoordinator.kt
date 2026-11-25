@@ -91,7 +91,8 @@ class HighQualityPlaybackCoordinator(
                 resolver.begin(
                     identityKey(track),
                     query.copy(durationMs = verified, alternateReading = query.alternateReading?.copy(durationMs = verified)),
-                    background
+                    background,
+                    playbackWaitMs = waitBudgetMs(resolver.mode, clock() - startedAt, normalAvailable = true)
                 )
             }
             ?: return normal.getOrThrow()

@@ -21,7 +21,7 @@ internal class ArcodAudioProvider(
     exchange: ProviderHttpExchange,
     private val clock: () -> Long = System::currentTimeMillis
 ) : HighQualityAudioProvider {
-    override val id = "arcod"
+    override val id = ARCOD_PROVIDER_ID
     override val displayName = "Arcod"
     override val lossless = true
     override val supportsLookup = false
@@ -58,6 +58,7 @@ internal class ArcodAudioProvider(
     override fun health(): List<ProviderBackendHealth> = listOf(support.health())
 
     companion object {
+        const val ARCOD_PROVIDER_ID = "arcod"
         internal const val SEARCH_PAGE_SIZE = 50
         internal const val MAX_SEARCH_PAGE = 3
         private const val BASE_URL = "https://arcod.xyz"
@@ -140,7 +141,7 @@ internal object ArcodPayloadParser {
         val duration = json.optInt("duration").takeIf { it in 1..86_400 } ?: return null
         val version = json.text("version")
         return AlternativeTrackCandidate(
-            providerId = "arcod", providerTrackId = id,
+            providerId = ArcodAudioProvider.ARCOD_PROVIDER_ID, providerTrackId = id,
             title = if (version.isBlank() || title.contains(version, ignoreCase = true)) title else "$title ($version)",
             primaryArtists = listOf(artistParts.first()), featuredArtists = artistParts.drop(1),
             album = json.optJSONObject("album")?.text("title").orEmpty(),

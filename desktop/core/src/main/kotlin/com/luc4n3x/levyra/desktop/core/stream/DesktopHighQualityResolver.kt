@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.desktop.core.stream
 
 import com.luc4n3x.levyra.data.hqaudio.*
 import com.luc4n3x.levyra.data.hqaudio.jiosaavn.JioSaavnAudioProvider
+import com.luc4n3x.levyra.data.hqaudio.lossless.ArcodAudioProvider
 import com.luc4n3x.levyra.data.hqaudio.lossless.KuwoAudioProvider
 import com.luc4n3x.levyra.data.hqaudio.tidal.TidalAudioProvider
 import com.luc4n3x.levyra.desktop.core.model.AudioQuality
@@ -96,6 +97,7 @@ class DesktopHighQualityResolver internal constructor(
             val providers = buildList {
                 add(TidalAudioProvider(cache.resolve("tidal-manifests").toFile()))
                 add(KuwoAudioProvider(exchange))
+                add(ArcodAudioProvider(exchange))
                 add(JioSaavnAudioProvider(exchange))
             }
             val mappings = object : HighQualityMappingStorage {
@@ -107,7 +109,9 @@ class DesktopHighQualityResolver internal constructor(
             }
             return DesktopHighQualityResolver(original, HighQualityAudioResolver(providers, HighQualityMappingStore(mappings), scope,
                 lookupBudgetMs = if (forDownload) 35_000L else 8_000L,
-                losslessLaneBudgetMs = if (forDownload) 30_000L else 4_000L), mode, forDownload, System::currentTimeMillis)
+                losslessLaneBudgetMs = if (forDownload) 30_000L else 4_000L,
+                arcodMinimumTimeoutBudgetMs = if (forDownload) HighQualityProviderHttpClient.DOWNLOAD_READ_TIMEOUT_MS else 0L),
+                mode, forDownload, System::currentTimeMillis)
         }
     }
 }

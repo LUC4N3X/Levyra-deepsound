@@ -119,6 +119,7 @@ internal object HighQualityProviderHttpClient {
     private const val READ_TIMEOUT_MS = 4_000L
     private const val WRITE_TIMEOUT_MS = 2_000L
     private const val CALL_TIMEOUT_MS = 6_000L
+    const val DOWNLOAD_READ_TIMEOUT_MS = 15_000L
 
     private val lock = Any()
     private var downloadClient: OkHttpClient? = null
@@ -136,7 +137,7 @@ internal object HighQualityProviderHttpClient {
             if (downloadBase !== base) {
                 downloadClient = base.newBuilder()
                     .connectTimeout(6_000L, TimeUnit.MILLISECONDS)
-                    .readTimeout(15_000L, TimeUnit.MILLISECONDS)
+                    .readTimeout(DOWNLOAD_READ_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                     .callTimeout(20_000L, TimeUnit.MILLISECONDS)
                     .build()
                 downloadBase = base

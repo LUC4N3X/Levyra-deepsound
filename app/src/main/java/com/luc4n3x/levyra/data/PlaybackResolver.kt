@@ -28,6 +28,7 @@ import com.luc4n3x.levyra.data.hqaudio.OkHttpProviderExchange
 import com.luc4n3x.levyra.data.hqaudio.ProviderHttpExchange
 import com.luc4n3x.levyra.data.hqaudio.SharedPreferencesMappingStorage
 import com.luc4n3x.levyra.data.hqaudio.jiosaavn.JioSaavnAudioProvider
+import com.luc4n3x.levyra.data.hqaudio.lossless.ArcodAudioProvider
 import com.luc4n3x.levyra.data.hqaudio.lossless.KuwoAudioProvider
 import com.luc4n3x.levyra.data.hqaudio.tidal.TidalAudioProvider
 import com.luc4n3x.levyra.domain.DownloadQualitySource
@@ -423,7 +424,8 @@ class PlaybackResolver private constructor(private val context: Context) {
             mappingStore = HighQualityMappingStore(SharedPreferencesMappingStorage(context)),
             scope = resolveScope,
             lookupBudgetMs = HighQualityPlaybackCoordinator.DOWNLOAD_LOOKUP_BUDGET_MS,
-            losslessLaneBudgetMs = HighQualityPlaybackCoordinator.DOWNLOAD_LANE_BUDGET_MS
+            losslessLaneBudgetMs = HighQualityPlaybackCoordinator.DOWNLOAD_LANE_BUDGET_MS,
+            arcodMinimumTimeoutBudgetMs = HighQualityProviderHttpClient.DOWNLOAD_READ_TIMEOUT_MS
         )).apply { mode = highQualityPlayback.mode }
     }
     private val highQualityDownloads by highQualityDownloadDelegate
@@ -432,6 +434,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             add(TidalAudioProvider(java.io.File(context.cacheDir, "tidal-manifests")))
             add(KuwoAudioProvider(exchange))
+            add(ArcodAudioProvider(exchange))
         }
         add(JioSaavnAudioProvider(exchange))
     }

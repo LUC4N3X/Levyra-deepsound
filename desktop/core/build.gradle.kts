@@ -27,6 +27,7 @@ val prepareSharedAudioSources = tasks.register("prepareSharedAudioSources") {
     fun refreshStream(identityKey: String) {
         synchronized(inFlightLock) {
             inFlight.remove(identityKey)?.cancel()
+            playbackDeadlines.remove(identityKey)
             backgroundLookups.remove(identityKey)
             queuedBackground.remove(identityKey)
             streams.remove(identityKey)
