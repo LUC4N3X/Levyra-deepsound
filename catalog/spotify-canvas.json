@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-24T22:30:25Z",
+  "generatedAt": "2026-11-25T08:42:51Z",
   "items": [
     {
       "song": "Victory Lap (feat. Shiva, Geolier)",
@@ -397,7 +397,7 @@
     {
       "song": "Man I Need",
       "artist": "Olivia Dean",
-      "album": "Man I Need",
+      "album": "The Art of Loving",
       "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
@@ -546,6 +546,13 @@
       "artist": "Sam Fender, Olivia Dean",
       "album": "People Watching (Deluxe Edition)",
       "url": "https://canvaz.scdn.co/upload/artist/6zlR5ttMfMNmwf2lecU9Cc/video/c376916e9524470db551c735393b9866.cnvs.mp4",
+      "scope": "track"
+    },
+    {
+      "song": "Man I Need",
+      "artist": "Olivia Dean",
+      "album": "Man I Need",
+      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -4693,10 +4700,10 @@
       "scope": "track"
     },
     {
-      "song": "Man I Need",
-      "artist": "Olivia Dean",
-      "album": "The Art of Loving",
-      "url": "https://canvaz.scdn.co/upload/licensor/7JGwF0zhX9oItt9901OvB5/video/655fb49a305a403d89621d7f290a8419.cnvs.mp4",
+      "song": "Iris",
+      "artist": "The Goo Goo Dolls",
+      "album": "Stay with You",
+      "url": "https://canvaz.scdn.co/upload/licensor/3ZBqv9LoqAZkFanJh73zcz/video/4ab38c8ea56645c5ab7d8ebfb5e4edc2.cnvs.mp4",
       "scope": "track"
     },
     {
@@ -5003,7 +5010,7 @@
     {
       "song": "Hallelujah",
       "artist": "Pentatonix",
-      "album": "A Pentatonix Christmas Deluxe",
+      "album": "A Pentatonix Christmas",
       "url": "https://canvaz.scdn.co/upload/artist/26AHtbjWKiwYzsoGoUZq53/video/e2fce84fa9cc48d68093ef0269514b51.cnvs.mp4",
       "scope": "track"
     },
@@ -6352,6 +6359,13 @@
       "scope": "track"
     },
     {
+      "song": "razy dwa (UNICEF Polska: Choose the Future for Children 2027)",
+      "artist": "Lanberry, Justyna Steczkowska, Wiktor Waligóra",
+      "album": "razy dwa (UNICEF Polska: Choose the Future for Children 2027)",
+      "url": "https://canvaz.scdn.co/upload/artist/4MoS5osilxUivShOUtUoZP/video/a94550cdd7264cb0af227ad3e6ddf708.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Atari",
       "artist": "Oskar Cyms",
       "album": "Atari",
@@ -6702,6 +6716,13 @@
       "scope": "track"
     },
     {
+      "song": "Sabda Cinta",
+      "artist": "Budi Doremi",
+      "album": "Sabda Cinta",
+      "url": "https://canvaz.scdn.co/upload/artist/6Ifk2cbxyVzT41jLexYCas/video/f16c8956534842c9b9f9c31f92d0f8c2.cnvs.mp4",
+      "scope": "track"
+    },
+    {
       "song": "Beralih",
       "artist": "TheOvertunes",
       "album": "KINI GINI",
@@ -6755,48 +6776,6 @@
       "artist": "Ngọc Dolil, Xám",
       "album": "VESO0",
       "url": "https://canvaz.scdn.co/upload/artist/6VLN4hTrGOZ5Le1TVTwDTg/video/b53009ab25984d8288a82329d9240748.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "ทิ้งเธอไว้ในปีนี้ (Last goodbye)",
-      "artist": "Ink Waruntorn",
-      "album": "ทิ้งเธอไว้ในปีนี้ (Last goodbye)",
-      "url": "https://canvaz.scdn.co/upload/artist/1Twi7NfmUzbXF7lEMaGCqF/video/dc4dee7cc72f41da99d28d0402628e15.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "รางวัลชนะเลิก (Commentator)",
-      "artist": "PP KRIT",
-      "album": "รางวัลชนะเลิก (Commentator)",
-      "url": "https://canvaz.scdn.co/upload/artist/1xrRqVDsJaZPw0sXme5i2T/video/31dd05e8b89046f3b57b274740753d6e.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "เหตุผลของเวลา (We Met, We Parted)",
-      "artist": "Whal & Dolph",
-      "album": "BEACH BAR",
-      "url": "https://canvaz.scdn.co/upload/artist/6f38IgFJNrepAhVQzVRSdh/video/76f777f0ccdb4275a5032dcdab47b917.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "1 แถม 1 (1 get 1)",
-      "artist": "Polycat",
-      "album": "Book and Black",
-      "url": "https://canvaz.scdn.co/upload/artist/1ssEwBiz4ZKrbgR6o8vOeg/video/d0eb87ebe7f44007abe3f21ebfb02690.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "ลมปาก (trust?)",
-      "artist": "K6Y, Sexski",
-      "album": "ลมปาก (trust?)",
-      "url": "https://canvaz.scdn.co/upload/artist/0QxCgzdTynqgvj1OWRllYt/video/0595938ed2cb47539fba85c761086d23.cnvs.mp4",
-      "scope": "track"
-    },
-    {
-      "song": "Comes And Goes",
-      "artist": "KHSD THAITAY, YOUNGOHM, THAITANIUM",
-      "album": "Comes and Goes",
-      "url": "https://canvaz.scdn.co/upload/licensor/5bSw7fRotCnRCcO9br14W5/video/ee7d6d39ef154cc38d09496b5ffa1007.cnvs.mp4",
       "scope": "track"
     },
     {
