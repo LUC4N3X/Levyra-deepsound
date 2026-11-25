@@ -116,7 +116,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
-import com.luc4n3x.levyra.data.LevyraArtworkCache
+import coil3.request.crossfade
+import com.luc4n3x.levyra.ui.preferredPlayerArtworkUrl
 import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.components.LevyraLoadingIndicator
@@ -263,6 +264,7 @@ internal fun PlayerStackDeck(
     gutter: Dp,
     artworkCap: Dp,
     stepDirection: Int,
+    stageOverlay: Boolean,
     onArtistClick: (Int) -> Unit,
     onToggleFavorite: () -> Unit,
     onShuffle: () -> Unit,
@@ -319,6 +321,7 @@ internal fun PlayerStackDeck(
                 base = base,
                 neighbor = neighbor,
                 shuffleOn = shuffleOn,
+                stageOverlay = stageOverlay,
                 swipeEnabled = swipeEnabled,
                 gesturesEnabled = gesturesEnabled,
                 animated = animated,
@@ -432,6 +435,7 @@ private fun StackStage(
     base: Int,
     neighbor: (Int) -> Track?,
     shuffleOn: Boolean,
+    stageOverlay: Boolean,
     swipeEnabled: Boolean,
     gesturesEnabled: Boolean,
     animated: Boolean,
@@ -490,6 +494,7 @@ private fun StackStage(
                         tone = tone,
                         stack = stack,
                         side = side,
+                        stageOverlay = stageOverlay,
                         transform = StackCardFrame(virtual, stackCardZ(virtual, split), rise, travel, depth)
                     )
                 }
@@ -530,6 +535,7 @@ private fun StackCard(
     tone: Color,
     stack: StackMotion,
     side: Dp,
+    stageOverlay: Boolean,
     transform: StackCardFrame
 ) {
     val virtual = transform.virtual
@@ -561,10 +567,11 @@ private fun StackCard(
                     translationX = -p * size.width * StackParallax * transform.travel
                 }
         ) {
-            when {
-                offset == 0 && card != null -> slots.stage(card, Modifier.size(side), StackCardCorner)
-                card != null -> StackArtwork(card, near = abs(offset) <= 1, caption = offset > 0)
-                else -> StackBlankCard(tone, offset)
+            if (card != null) {
+                StackArtwork(card) { (virtual - stack.visual).coerceIn(0f, 1f) }
+                if (offset == 0 && stageOverlay) slots.stage(card, Modifier.size(side), StackCardCorner)
+            } else {
+                StackBlankCard(tone, offset)
             }
         }
         Box(
@@ -653,12 +660,13 @@ private fun rememberStackRelease(
 }
 
 @Composable
-private fun StackArtwork(track: Track, near: Boolean, caption: Boolean) {
+private fun StackArtwork(track: Track, captionAlpha: () -> Float) {
     val context = LocalContext.current
-    val url = track.thumbnailUrl
-    val request = remember(context, url, near) {
+    val url = remember(track) { preferredPlayerArtworkUrl(track) }
+    val request = remember(context, url) {
         ImageRequest.Builder(context)
-            .data(if (near) LevyraArtworkCache.large(url) else LevyraArtworkCache.small(url))
+            .data(url)
+            .crossfade(false)
             .build()
     }
     Box(
@@ -675,34 +683,33 @@ private fun StackArtwork(track: Track, near: Boolean, caption: Boolean) {
                 modifier = Modifier.fillMaxSize()
             )
         }
-        if (caption) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.7f), Color.Black.copy(alpha = 0.3f), Color.Transparent)))
-                    .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 18.dp)
-            ) {
-                Column {
-                    Text(
-                        text = track.title,
-                        color = Color.White,
-                        fontSize = 13.sp,
-                        lineHeight = 16.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = (-0.2).sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = track.artist,
-                        color = Color.White.copy(alpha = 0.72f),
-                        fontSize = 11.sp,
-                        lineHeight = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer { alpha = captionAlpha() }
+                .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.7f), Color.Black.copy(alpha = 0.3f), Color.Transparent)))
+                .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 18.dp)
+        ) {
+            Column {
+                Text(
+                    text = track.title,
+                    color = Color.White,
+                    fontSize = 13.sp,
+                    lineHeight = 16.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = (-0.2).sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = track.artist,
+                    color = Color.White.copy(alpha = 0.72f),
+                    fontSize = 11.sp,
+                    lineHeight = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }
