@@ -424,7 +424,8 @@ private fun LevyraNowPlayingContent(
         state.interfaceSettings.playerVisualMode == PlayerVisualMode.Folio ||
         state.interfaceSettings.playerVisualMode == PlayerVisualMode.Flow ||
         state.interfaceSettings.playerVisualMode == PlayerVisualMode.Pulse ||
-        state.interfaceSettings.playerVisualMode == PlayerVisualMode.Ember
+        state.interfaceSettings.playerVisualMode == PlayerVisualMode.Ember ||
+        state.interfaceSettings.playerVisualMode == PlayerVisualMode.Stack
     val artRestScale = if (artworkRestsFullBleed) 1f else LevyraPlayerDesign.ArtworkPausedScale
     val artRestOffset = if (artworkRestsFullBleed) 0.dp else 4.dp
     SideEffect {
@@ -549,7 +550,7 @@ private fun LevyraNowPlayingContent(
             DefaultBackdropFocus
         }
 
-        if (!atelierScene) PlayerVisualHost(
+        if (!atelierScene && deckLayout.usesPlayerBackground()) PlayerVisualHost(
             backgroundMode = backgroundMode,
             artworkUrl = artworkUrl,
             ambience = backdropAmbience,
@@ -856,7 +857,7 @@ private fun LevyraNowPlayingContent(
                         swipeOffset = swipeOffset,
                         artScale = artScale,
                         artOffset = artOffset,
-                        glowColor = if (!nocturne && (deckLayout == PlayerDeckLayout.Levyra || deckLayout == PlayerDeckLayout.Sleeve || deckLayout == PlayerDeckLayout.Pulse || deckLayout == PlayerDeckLayout.Halo || deckLayout == PlayerDeckLayout.Ember)) primary else Color.Transparent,
+                        glowColor = if (!nocturne && (deckLayout == PlayerDeckLayout.Levyra || deckLayout == PlayerDeckLayout.Cinema || deckLayout == PlayerDeckLayout.Pulse || deckLayout == PlayerDeckLayout.Ember)) primary else Color.Transparent,
                         modifier = Modifier
                             .fillMaxSize()
                             .playerLyricsFlipFace(
@@ -1220,6 +1221,7 @@ private fun LevyraNowPlayingContent(
             dock = dockBlock,
             dockActions = dockActionsFor,
             addToPlaylist = onOpenPlaylistDialog,
+            status = { errorContent?.invoke() },
             headerTrailing = headerTrailing,
             modeSwitch = {
                 if (track != null && (track.videoUrl.isNotBlank() || track.counterpartVideoId.isNotBlank())) modeSwitchContent?.invoke()
@@ -1312,21 +1314,33 @@ private fun LevyraNowPlayingContent(
                 headlineModifier = lyricsFlipSwipeModifier,
                 modifier = rootModifier
             )
-        } else if (deckLayout == PlayerDeckLayout.Halo && track != null) {
-            PlayerHaloDeck(
+        } else if (deckLayout == PlayerDeckLayout.Stack && track != null) {
+            PlayerStackDeck(
                 track = track,
+                gesturesEnabled = state.interfaceSettings.playerGesturesEnabled,
                 slots = deckSlots,
                 surfaces = surfaces,
-                isFavorite = track.id in state.favoriteIds,
-                queuePosition = playerDeckQueuePosition(state.queue, track.id),
-                isPlaying = state.isPlaying,
-                isResolving = state.isResolving,
+                accent = heroTone,
+                artworkColors = Color(activePalette.start) to Color(activePalette.end),
+                queue = state.queue,
+                queueIndex = state.queueCurrentIndex,
                 shuffleOn = state.shuffleEnabled,
                 repeatMode = state.repeatMode,
+                swipeEnabled = state.interfaceSettings.swipeTrackChangeEnabled,
+                positionMs = state.positionMs,
+                durationMs = state.durationMs,
+                onSeek = viewModel::seekTo,
+                isFavorite = track.id in state.favoriteIds,
+                isPlaying = state.isPlaying,
+                isResolving = state.isResolving,
                 labels = playerControlLabels,
                 animated = animated,
+                compact = compactPlayer,
                 scrollable = !fitsViewport,
                 gutter = gutter,
+                artworkCap = artworkCap,
+                stepDirection = stepDirection,
+                stageOverlay = state.isVideoMode || state.motionArtwork != null || track.isLiveRadio(),
                 onArtistClick = { artistIndex ->
                     playerArtistHits.getOrNull(artistIndex)?.let(viewModel::openArtist)
                         ?: viewModel.openArtist(track, artistIndex)
@@ -1337,6 +1351,7 @@ private fun LevyraNowPlayingContent(
                 onTogglePlay = viewModel::togglePlay,
                 onNext = viewModel::next,
                 onRepeat = viewModel::toggleRepeat,
+                onOpenQueue = viewModel::openQueue,
                 headlineModifier = lyricsFlipSwipeModifier,
                 modifier = deckModifier
             )
@@ -1367,14 +1382,29 @@ private fun LevyraNowPlayingContent(
                 headlineModifier = lyricsFlipSwipeModifier,
                 modifier = deckModifier
             )
-        } else if (deckLayout == PlayerDeckLayout.Sleeve && track != null) {
-            PlayerSleeveDeck(
+        } else if (deckLayout == PlayerDeckLayout.Cinema && track != null) {
+            PlayerCinemaDeck(
                 track = track,
+                shuffleOn = state.shuffleEnabled,
+                repeatMode = state.repeatMode,
+                onShuffle = viewModel::toggleShuffle,
+                onRepeat = viewModel::toggleRepeat,
+                artworkUrl = artworkUrl,
                 slots = deckSlots,
                 surfaces = surfaces,
+                accent = heroTone,
+                lyrics = PlayerCinemaLyrics(
+                    trackId = state.currentTrack?.id.orEmpty(),
+                    lines = state.lyrics,
+                    synced = state.lyricsSynced,
+                    positionMs = state.positionMs,
+                    playbackSpeed = state.playbackSpeed,
+                    latencyProfiles = state.lyricsLatencyProfiles
+                ),
                 isFavorite = track.id in state.favoriteIds,
-                queuePosition = playerDeckQueuePosition(state.queue, track.id),
                 isPlaying = state.isPlaying,
+                isResolving = state.isResolving,
+                labels = playerControlLabels,
                 animated = animated,
                 compact = compactPlayer,
                 scrollable = !fitsViewport,
@@ -1386,6 +1416,9 @@ private fun LevyraNowPlayingContent(
                         ?: viewModel.openArtist(track, artistIndex)
                 },
                 onToggleFavorite = { viewModel.toggleFavorite(track) },
+                onPrevious = viewModel::previous,
+                onTogglePlay = viewModel::togglePlay,
+                onNext = viewModel::next,
                 headlineModifier = lyricsFlipSwipeModifier,
                 modifier = deckModifier
             )
@@ -2001,6 +2034,16 @@ private fun LevyraNowPlayingContent(
                     }
                 },
                 onDismiss = { showDeck = false },
+                showBackgroundFor = { mode ->
+                    val layout = if (velvetAppleMusic) PlayerDeckLayout.Levyra else resolvePlayerDeckLayout(
+                        mode = mode,
+                        isVideoMode = state.isVideoMode,
+                        isLiveRadio = liveRadio,
+                        pane = playerPane,
+                        hasTrack = true
+                    )
+                    layout.usesPlayerBackground()
+                },
                 reactiveAuraPreset = state.interfaceSettings.reactiveAuraPreset,
                 reactiveAuraIntensity = state.interfaceSettings.reactiveAuraIntensity,
                 onSelectReactiveAuraPreset = { preset ->
@@ -2558,11 +2601,11 @@ internal fun visualModeStateDescription(
     strings: LevyraStrings
 ): String = when (mode) {
     PlayerVisualMode.Artwork -> strings.playerVisualModeArtwork
-    PlayerVisualMode.CanvasCard -> strings.playerVisualModeCanvasCard
+    PlayerVisualMode.Cinema -> strings.playerVisualModeCinema
     PlayerVisualMode.CanvasImmersive -> strings.playerVisualModeCanvasImmersive
     PlayerVisualMode.Expressive -> strings.playerDeckExpressive
     PlayerVisualMode.Pulse -> strings.playerDeckPulse
-    PlayerVisualMode.Halo -> strings.playerDeckHalo
+    PlayerVisualMode.Stack -> strings.playerDeckStack
     PlayerVisualMode.Folio -> strings.playerDeckFolio
     PlayerVisualMode.Flow -> strings.playerDeckFlow
     PlayerVisualMode.Ember -> strings.playerDeckEmber

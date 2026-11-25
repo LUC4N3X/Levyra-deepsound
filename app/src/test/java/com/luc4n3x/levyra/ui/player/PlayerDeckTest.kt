@@ -26,7 +26,7 @@ class PlayerDeckTest {
     @Test
     fun `existing modes keep the levyra layout and new styles get their own`() {
         assertEquals(PlayerDeckLayout.Poster, PlayerVisualMode.Artwork.deckLayout())
-        assertEquals(PlayerDeckLayout.Sleeve, PlayerVisualMode.CanvasCard.deckLayout())
+        assertEquals(PlayerDeckLayout.Cinema, PlayerVisualMode.Cinema.deckLayout())
         assertEquals(PlayerDeckLayout.Aura, PlayerVisualMode.CanvasImmersive.deckLayout())
         assertEquals(PlayerDeckLayout.Expressive, PlayerVisualMode.Expressive.deckLayout())
         assertEquals(PlayerDeckLayout.Pulse, PlayerVisualMode.Pulse.deckLayout())
@@ -49,14 +49,16 @@ class PlayerDeckTest {
     fun `lyrics flip is offered only by decks that render an upright lyrics face`() {
         assertFalse(PlayerDeckLayout.Aura.showsLyricsFace())
         assertFalse(PlayerDeckLayout.Pulse.showsLyricsFace())
+        assertFalse(PlayerDeckLayout.Cinema.showsLyricsFace())
+        assertFalse(PlayerDeckLayout.Stack.showsLyricsFace())
         PlayerDeckLayout.entries
-            .filterNot { it == PlayerDeckLayout.Aura || it == PlayerDeckLayout.Pulse }
+            .filterNot { it == PlayerDeckLayout.Aura || it == PlayerDeckLayout.Pulse || it == PlayerDeckLayout.Cinema || it == PlayerDeckLayout.Stack }
             .forEach { assertTrue(it.showsLyricsFace()) }
     }
 
     @Test
     fun `new styles fall back to the levyra layout where they are not designed to run`() {
-        listOf(PlayerVisualMode.CanvasImmersive, PlayerVisualMode.Expressive, PlayerVisualMode.Artwork, PlayerVisualMode.Pulse, PlayerVisualMode.Flow, PlayerVisualMode.CanvasCard, PlayerVisualMode.Ember).forEach { mode ->
+        listOf(PlayerVisualMode.CanvasImmersive, PlayerVisualMode.Expressive, PlayerVisualMode.Artwork, PlayerVisualMode.Pulse, PlayerVisualMode.Flow, PlayerVisualMode.Cinema, PlayerVisualMode.Ember).forEach { mode ->
             val supported = resolvePlayerDeckLayout(mode, false, false, LevyraPlayerPane.Stacked, true)
             assertEquals(mode.deckLayout(), supported)
             assertEquals(PlayerDeckLayout.Levyra, resolvePlayerDeckLayout(mode, true, false, LevyraPlayerPane.Stacked, true))
@@ -99,11 +101,11 @@ class PlayerDeckTest {
     @Test
     fun `fallback presentation never lands on the immersive exit affordance`() {
         assertEquals(
-            PlayerVisualMode.CanvasCard,
+            PlayerVisualMode.Cinema,
             resolvePlayerDeckVisualMode(PlayerVisualMode.Expressive, PlayerDeckLayout.Levyra)
         )
         assertEquals(
-            PlayerVisualMode.CanvasCard,
+            PlayerVisualMode.Cinema,
             resolvePlayerDeckVisualMode(PlayerVisualMode.Pulse, PlayerDeckLayout.Levyra)
         )
         assertEquals(
@@ -117,7 +119,7 @@ class PlayerDeckTest {
 
     @Test
     fun `sleeve falls back to the levyra layout for video and radio`() {
-        listOf(PlayerVisualMode.CanvasCard).forEach { mode ->
+        listOf(PlayerVisualMode.Cinema).forEach { mode ->
             listOf(true, false).forEach { video ->
                 listOf(LevyraPlayerPane.Stacked, LevyraPlayerPane.SideBySide).forEach { pane ->
                     assertEquals(PlayerDeckLayout.Levyra, resolvePlayerDeckLayout(mode, video, !video, pane, true))
@@ -180,11 +182,19 @@ class PlayerDeckTest {
     fun `flow is the default deck and stored choices stay untouched`() {
         assertEquals(PlayerVisualMode.Flow, LevyraInterfaceSettings().playerVisualMode)
         assertEquals(PlayerVisualMode.Flow, DefaultPlayerVisualMode)
-        assertEquals(PlayerVisualMode.CanvasCard, PlayerVisualMode.from("CanvasCard"))
+        assertEquals(PlayerVisualMode.Cinema, PlayerVisualMode.from("CanvasCard"))
+        assertEquals(PlayerVisualMode.Cinema, PlayerVisualMode.from("canvas_card"))
+        assertEquals(PlayerVisualMode.Cinema, PlayerVisualMode.from("Sleeve"))
+        assertEquals(PlayerVisualMode.Stack, PlayerVisualMode.from("Halo"))
+        assertEquals(PlayerVisualMode.Stack, PlayerVisualMode.from("Stack"))
+        assertEquals(PlayerVisualMode.Cinema, PlayerVisualMode.from("Cinema"))
         assertEquals(PlayerVisualMode.Flow, PlayerVisualMode.from("flow"))
+        assertEquals(1f, cinemaLineAlpha(true, 0), 0f)
+        assertTrue(cinemaLineAlpha(true, 1) > cinemaLineAlpha(true, 2))
+        assertTrue(cinemaLineAlpha(true, 2) > cinemaLineAlpha(true, 5))
         assertEquals(PlayerVisualMode.Folio, PlayerVisualMode.from("Folio"))
         assertEquals(PlayerVisualMode.Flow, resolvePlayerDeckVisualMode(PlayerVisualMode.Flow, PlayerDeckLayout.Flow))
-        assertEquals(PlayerVisualMode.CanvasCard, resolvePlayerDeckVisualMode(PlayerVisualMode.Flow, PlayerDeckLayout.Levyra))
+        assertEquals(PlayerVisualMode.Cinema, resolvePlayerDeckVisualMode(PlayerVisualMode.Flow, PlayerDeckLayout.Levyra))
     }
 
     @Test
@@ -264,7 +274,7 @@ class PlayerDeckTest {
         assertEquals("Bloom", visualModeStateDescription(PlayerVisualMode.Expressive, italian))
         assertEquals("Late Night", visualModeStateDescription(PlayerVisualMode.Pulse, italian))
         assertEquals("Apple", playerDeckLabel(PlayerVisualMode.CanvasImmersive, italian))
-        assertEquals("Sleeve", playerDeckLabel(PlayerVisualMode.CanvasCard, italian))
+        assertEquals("Cinema", playerDeckLabel(PlayerVisualMode.Cinema, italian))
     }
 
     private fun track(
@@ -293,4 +303,36 @@ class PlayerDeckTest {
         year = year,
         releaseDate = releaseDate
     )
+
+    @Test
+    fun `stack neighbors follow queue order and never guess under shuffle`() {
+        assertEquals(3, stackNeighborIndex(2, 1, 5, shuffle = false, repeatAll = false))
+        assertEquals(1, stackNeighborIndex(2, -1, 5, shuffle = false, repeatAll = false))
+        assertNull(stackNeighborIndex(4, 1, 5, shuffle = false, repeatAll = false))
+        assertEquals(0, stackNeighborIndex(4, 1, 5, shuffle = false, repeatAll = true))
+        assertEquals(4, stackNeighborIndex(0, -1, 5, shuffle = false, repeatAll = true))
+        assertNull(stackNeighborIndex(2, 1, 5, shuffle = true, repeatAll = true))
+        assertNull(stackNeighborIndex(-1, 1, 5, shuffle = false, repeatAll = false))
+        assertEquals(1f, stackCardDepthAlpha(0f), 0f)
+        assertEquals(1f, stackCardDepthAlpha(2f), 0f)
+        assertTrue(stackCardDepthAlpha(2.5f) < 1f)
+        assertEquals(0f, stackCardDepthAlpha(3f), 0f)
+        assertEquals(0f, stackCardDepthAlpha(-1.5f), 0f)
+    }
+
+
+    @Test
+    fun `brazilian portuguese uses its own deck copy and immersive decks own their backdrop`() {
+        val brazil = LevyraStrings.forCode("pt-BR")
+        assertEquals("A letra no palco, iluminada pela capa.", brazil.playerDeckCardHint)
+        assertEquals("Padrão", brazil.playerDeckDefaultBadge)
+        assertFalse(PlayerDeckLayout.Cinema.usesPlayerBackground())
+        assertFalse(PlayerDeckLayout.Stack.usesPlayerBackground())
+        assertTrue(PlayerDeckLayout.Flow.usesPlayerBackground())
+        assertTrue(PlayerDeckLayout.Levyra.usesPlayerBackground())
+        assertEquals(1, stackSwipeStep(0.4f, 0f, canForward = true))
+        assertEquals(0, stackSwipeStep(0.4f, 0f, canForward = false))
+        assertEquals(-1, stackSwipeStep(0f, -2_000f, canForward = false))
+    }
+
 }

@@ -125,7 +125,8 @@ fun PremiumSeekbar(
     contentDescription: String? = null,
     waveform: FloatArray? = null,
     interactionKey: Any? = null,
-    thumbShape: SeekbarThumbShape = SeekbarThumbShape.Round
+    thumbShape: SeekbarThumbShape = SeekbarThumbShape.Round,
+    flat: Boolean = false
 ) {
     val density = LocalDensity.current
     val haptics = LocalLevyraHaptics.current
@@ -391,7 +392,7 @@ fun PremiumSeekbar(
                 }
             }
 
-            if (nocturne && handleX > trackStart) {
+            if ((nocturne || flat) && handleX > trackStart) {
                 drawRoundRect(
                     color = activeColor, topLeft = Offset(trackStart, trackTop),
                     size = Size(handleX - trackStart, trackHeight), cornerRadius = radius
