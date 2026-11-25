@@ -169,6 +169,8 @@ import com.luc4n3x.levyra.ui.i18n.parametricProfileCopy
 import com.luc4n3x.levyra.ui.i18n.PlaybackBufferCopy
 import com.luc4n3x.levyra.ui.i18n.playbackBufferCopy
 import com.luc4n3x.levyra.ui.i18n.replayGainCopy
+import com.luc4n3x.levyra.ui.i18n.volumeNormalizationSubtitle
+import com.luc4n3x.levyra.ui.i18n.volumeNormalizationTitle
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
@@ -216,6 +218,7 @@ internal fun AudioSettingsPanel(
     selected: String,
     currentTrack: Track?,
     audioSettings: LevyraAudioSettings,
+    audioNormalization: Boolean,
     onSelect: (String) -> Unit,
     highQualityAudioMode: HighQualityAudioMode,
     onHighQualityAudioMode: (HighQualityAudioMode) -> Unit,
@@ -229,6 +232,7 @@ internal fun AudioSettingsPanel(
     onEnhancedAudio: (Boolean) -> Unit = {},
     onCrossfade: (Int) -> Unit,
     onDjSoft: (Boolean) -> Unit,
+    onNormalization: () -> Unit,
     onReplayGain: (Boolean) -> Unit,
     onTempo: (Float) -> Unit,
     onPitch: (Float) -> Unit,
@@ -545,6 +549,14 @@ internal fun AudioSettingsPanel(
                         subtitle = strings.truePeakLimiterSubtitle,
                         checked = audioSettings.limiterEnabled,
                         onCheckedChange = onLimiter
+                    )
+                }
+                item {
+                    AudioToggleRow(
+                        title = volumeNormalizationTitle(strings.code),
+                        subtitle = volumeNormalizationSubtitle(strings.code),
+                        checked = audioNormalization,
+                        onCheckedChange = { onNormalization() }
                     )
                 }
                 item {

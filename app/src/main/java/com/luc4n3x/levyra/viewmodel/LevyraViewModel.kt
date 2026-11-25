@@ -16821,7 +16821,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         private const val HOME_STARTUP_STREAM_PREFETCH_COUNT = 2
         private const val HOME_STARTUP_METADATA_REFRESH_COUNT = 4
         private const val HOME_RESONANCE_REFRESH_INTERVAL_MS = 12L * 60L * 60L * 1000L
-        private const val HOME_RESONANCE_COMMENTS_TTL_MS = 5L * 60L * 1000L
+        private const val HOME_RESONANCE_COMMENTS_TTL_MS = 6L * 60L * 60L * 1000L
         private const val HOME_ALBUM_RECOMMENDATION_LIMIT = 20
         private const val HOME_ALBUM_REMOTE_CANDIDATE_LIMIT = 32
         private const val HOME_ALBUM_REMOTE_CONCURRENCY = 4

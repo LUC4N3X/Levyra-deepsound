@@ -519,6 +519,8 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
     private val artistHitMemory = ConcurrentHashMap<String, ArtistHit>()
     private val artistLore = ArtistLoreRepository(context)
     private val spotifyAudience = SpotifyArtistAudience()
+    private val audiencePreferences = context?.applicationContext
+        ?.getSharedPreferences(AUDIENCE_PREFERENCES_NAME, Context.MODE_PRIVATE)
 
     private fun profileBrowseKey(browseId: String): String = "browse:${browseId.trim().lowercase(Locale.ROOT)}"
 
@@ -533,6 +535,9 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         const val MAX_ARTIST_VERIFICATIONS = 6
         const val MAX_OTHER_SCRIPT_ARTIST_CANDIDATES = 2
         const val MAX_FALLBACK_PROFILES = 24
+        const val AUDIENCE_PREFERENCES_NAME = "levyra_artist_audience_v1"
+        const val AUDIENCE_TTL_MS = 24L * 60L * 60L * 1000L
+        const val MAX_AUDIENCE_ENTRIES = 240
         const val ARTIST_SEARCH_PARAMS = "EgWKAQIgAWoMEAMQBBAJEAoQBRAV"
         val RELEASE_YEAR_REGEX = Regex("\\b(19|20)\\d{2}\\b")
         val RELEASE_TOKEN_SEPARATOR_REGEX = Regex("[^\\p{L}\\p{M}\\p{N}]+")
@@ -667,8 +672,27 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
 
     suspend fun monthlyListeners(browseId: String): String = withContext(Dispatchers.IO) {
         val cleanBrowseId = browseId.trim().ifBlank { return@withContext "" }
+        val key = "${contentLanguage()}|${cleanBrowseId.lowercase(Locale.ROOT)}"
+        val now = System.currentTimeMillis()
+        cachedAudience(key, now)?.let { return@withContext it }
         val root = runCatching { postBrowseFast(cleanBrowseId) }.getOrNull() ?: return@withContext ""
-        extractOfficialMonthlyListeners(root.optJSONObject("header"))
+        val listeners = extractOfficialMonthlyListeners(root.optJSONObject("header"))
+        if (listeners.isNotBlank()) rememberAudience(key, listeners, now)
+        listeners
+    }
+
+    private fun cachedAudience(key: String, now: Long): String? {
+        val stored = audiencePreferences?.getString(key, null) ?: return null
+        val savedAt = stored.substringBefore('|').toLongOrNull() ?: return null
+        if (now - savedAt !in 0 until AUDIENCE_TTL_MS) return null
+        return stored.substringAfter('|').takeIf { it.isNotBlank() }
+    }
+
+    private fun rememberAudience(key: String, listeners: String, now: Long) {
+        val preferences = audiencePreferences ?: return
+        val editor = preferences.edit()
+        if (preferences.all.size >= MAX_AUDIENCE_ENTRIES) editor.clear()
+        editor.putString(key, "$now|$listeners").apply()
     }
 
     suspend fun alternativeMonthlyListeners(artistName: String): String =

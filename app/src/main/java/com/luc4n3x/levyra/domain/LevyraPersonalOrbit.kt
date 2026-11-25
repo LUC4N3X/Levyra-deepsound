@@ -3,12 +3,17 @@ package com.luc4n3x.levyra.domain
 import com.luc4n3x.levyra.nexus.text.ReusableRegex
 import com.luc4n3x.levyra.nexus.text.replace
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.abs
 
 object LevyraPersonalOrbit {
     const val DISPLAY_LIMIT = 27
 
     private const val RECORDING_DURATION_TOLERANCE_MS = 12_000L
+    private const val NORMALIZED_TEXT_CACHE_LIMIT = 1_024
+
+    private val normalizedTitleCache = ConcurrentHashMap<String, String>()
+    private val normalizedArtistsCache = ConcurrentHashMap<String, List<String>>()
 
     private const val DEFAULT_ARTWORK_SIZE = 1200
     private const val HTTPS_SCHEME = "https://"
@@ -428,7 +433,13 @@ object LevyraPersonalOrbit {
         .filter(::isReliableMusicCandidate)
         .filter(::hasSquareAlbumArtwork)
         .groupBy { normalizedMusicTitle(it.title) }
-        .mapValues { (_, candidates) -> candidates.sortedByDescending(::artworkScore) }
+        .mapValues { (_, candidates) ->
+            if (candidates.size < 2) {
+                candidates
+            } else {
+                candidates.map { it to artworkScore(it) }.sortedByDescending { it.second }.map { it.first }
+            }
+        }
 
     private fun artworkScore(track: Track): Int {
         val url = albumArtworkUrl(track).orEmpty().lowercase(Locale.ROOT)
@@ -489,7 +500,18 @@ object LevyraPersonalOrbit {
         return true
     }
 
-    private fun normalizedMusicTitle(value: String): String = value
+    private fun normalizedMusicTitle(value: String): String =
+        normalizedTitleCache[value] ?: computeNormalizedMusicTitle(value).also { rememberNormalized(normalizedTitleCache, value, it) }
+
+    private fun normalizedArtists(value: String): List<String> =
+        normalizedArtistsCache[value] ?: computeNormalizedArtists(value).also { rememberNormalized(normalizedArtistsCache, value, it) }
+
+    private fun <T : Any> rememberNormalized(cache: ConcurrentHashMap<String, T>, key: String, value: T) {
+        if (cache.size >= NORMALIZED_TEXT_CACHE_LIMIT) cache.clear()
+        cache[key] = value
+    }
+
+    private fun computeNormalizedMusicTitle(value: String): String = value
         .lowercase(Locale.ROOT)
         .replace(bracketAnnotationPattern, " ")
         .replace(trailingFeaturePattern, " ")
@@ -498,7 +520,7 @@ object LevyraPersonalOrbit {
         .replace(whitespacePattern, " ")
         .trim()
 
-    private fun normalizedArtists(value: String): List<String> = value
+    private fun computeNormalizedArtists(value: String): List<String> = value
         .lowercase(Locale.ROOT)
         .replace(artistSeparatorPattern, "|")
         .split('|')

@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -60,5 +61,44 @@ class ArtworkMemoryCachePolicyTest {
         val bytes = ArtworkMemoryCachePolicy.maxSizeBytes(profile)
 
         assertTrue(bytes <= profile.memoryClassMb * mib / 4L)
+    }
+
+    @Test
+    fun lowRamDevicesDecodeRgb565AndSkipTransformations() {
+        val profile = ArtworkMemoryDeviceProfile(
+            memoryClassMb = 192,
+            largeMemoryClassMb = 512,
+            lowRamDevice = true,
+            largeHeapEnabled = false
+        )
+
+        assertTrue(profile.decodeRgb565)
+        assertFalse(profile.bitmapTransformationsAllowed)
+    }
+
+    @Test
+    fun smallLargeHeapSkipsTransformationsButKeepsFullColor() {
+        val profile = ArtworkMemoryDeviceProfile(
+            memoryClassMb = 128,
+            largeMemoryClassMb = 192,
+            lowRamDevice = false,
+            largeHeapEnabled = false
+        )
+
+        assertFalse(profile.decodeRgb565)
+        assertFalse(profile.bitmapTransformationsAllowed)
+    }
+
+    @Test
+    fun capablePhonesKeepFullColorAndTransformations() {
+        val profile = ArtworkMemoryDeviceProfile(
+            memoryClassMb = 256,
+            largeMemoryClassMb = 512,
+            lowRamDevice = false,
+            largeHeapEnabled = false
+        )
+
+        assertFalse(profile.decodeRgb565)
+        assertTrue(profile.bitmapTransformationsAllowed)
     }
 }

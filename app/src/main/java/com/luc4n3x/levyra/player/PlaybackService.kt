@@ -218,6 +218,7 @@ class PlaybackService : MediaLibraryService() {
     private var currentAudioNormalization = false
     private val enhancedAudioProcessor = EnhancedAudioProcessor()
     private val normalizationProcessor = NormalizationAudioProcessor()
+    private val trackLoudnessMemory by lazy { TrackLoudnessMemory(this) }
     private val equalizerProcessor = LevyraEqualizerAudioProcessor()
     private val parametricEqualizerProcessor = LevyraParametricEqualizerAudioProcessor()
     private val spatialAudioProcessor = StereoSpatialAudioProcessor()
@@ -694,11 +695,13 @@ class PlaybackService : MediaLibraryService() {
         spatialAudioProcessor.strength = if (normalized.equalizerEnabled || parametricEnabled) normalized.virtualizer else 0
         limiterProcessor.enabled = truePeakLimiterRequired(normalized, parametricEnabled, audioNormalization)
         updateQueueTransitionSettings(normalized, audioNormalization)
-        activePlayer?.currentMediaItem?.mediaMetadata?.extras?.let { extras ->
+        activePlayer?.currentMediaItem?.let { mediaItem ->
+            val extras = mediaItem.mediaMetadata.extras ?: return@let
             val queueSnapshot = queueEngine.state.value
             configureNormalizationProcessor(
                 processor = normalizationProcessor,
                 settings = currentAudioSettings,
+                loudnessKey = loudnessMemoryKey(mediaItem),
                 youtubeLoudnessDb = extras.floatOrNull(EXTRA_YOUTUBE_LOUDNESS_DB),
                 youtubePerceptualLoudnessDb = extras.floatOrNull(EXTRA_YOUTUBE_PERCEPTUAL_LOUDNESS_DB),
                 replayGain = ReplayGainMetadata(
@@ -767,6 +770,7 @@ class PlaybackService : MediaLibraryService() {
     private fun configureNormalizationProcessor(
         processor: NormalizationAudioProcessor,
         settings: LevyraAudioSettings,
+        loudnessKey: String?,
         youtubeLoudnessDb: Float?,
         youtubePerceptualLoudnessDb: Float?,
         replayGain: ReplayGainMetadata,
@@ -782,8 +786,18 @@ class PlaybackService : MediaLibraryService() {
                 preventClipping = settings.replayGainPreventClipping
             )
         } else {
-            processor.setYoutubeLoudness(youtubeLoudnessDb, youtubePerceptualLoudnessDb)
+            processor.setYoutubeLoudness(
+                loudnessDb = youtubeLoudnessDb,
+                perceptualLoudnessDb = youtubePerceptualLoudnessDb,
+                learnedLoudnessLufs = loudnessKey?.let(trackLoudnessMemory::loudnessLufs),
+                measurementKey = loudnessKey
+            )
         }
+    }
+
+    private fun loudnessMemoryKey(mediaItem: MediaItem?): String? {
+        if (mediaItem == null || isLiveRadioMediaItem(mediaItem)) return null
+        return TrackLoudnessMemory.key(mediaItem.mediaId, mediaItem.mediaMetadata.extras?.getString("levyra.source"))
     }
 
     private fun replayGainAlbumContext(
@@ -959,6 +973,10 @@ class PlaybackService : MediaLibraryService() {
         queueEngine = PersistentQueueEngine.get(this)
         serviceScope.launch {
             queueEngine.seedRecommendationFeedback(RecommendationFeedbackStore(applicationContext).load())
+        }
+        serviceScope.launch(Dispatchers.IO) { trackLoudnessMemory.load() }
+        normalizationProcessor.measurementListener = { key, integratedLufs, measuredBlocks ->
+            trackLoudnessMemory.rememberInBackground(key, integratedLufs, measuredBlocks)
         }
         favoritesStore = FavoritesStore(this)
         resolver = PlaybackResolver.getInstance(this)
@@ -1191,6 +1209,7 @@ class PlaybackService : MediaLibraryService() {
                 configureNormalizationProcessor(
                     processor = normalizationProcessor,
                     settings = currentAudioSettings,
+                    loudnessKey = loudnessMemoryKey(mediaItem),
                     youtubeLoudnessDb = extras.floatOrNull(EXTRA_YOUTUBE_LOUDNESS_DB),
                     youtubePerceptualLoudnessDb = extras.floatOrNull(EXTRA_YOUTUBE_PERCEPTUAL_LOUDNESS_DB),
                     replayGain = ReplayGainMetadata(
@@ -2662,6 +2681,8 @@ class PlaybackService : MediaLibraryService() {
             configureNormalizationProcessor(
                 processor = this,
                 settings = currentAudioSettings,
+                loudnessKey = TrackLoudnessMemory.key(LevyraMediaItemFactory.mediaId(track), track.source)
+                    .takeUnless { track.isLiveRadio() },
                 youtubeLoudnessDb = track.youtubeLoudnessDb,
                 youtubePerceptualLoudnessDb = track.youtubePerceptualLoudnessDb,
                 replayGain = ReplayGainMetadata(

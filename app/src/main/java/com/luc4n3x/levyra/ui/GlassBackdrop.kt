@@ -120,8 +120,8 @@ internal enum class GlassBackdropQuality(val resolutionScale: Float) {
 }
 
 internal fun resolveGlassBackdropQuality(blurRadiusDp: Float): GlassBackdropQuality = when {
-    blurRadiusDp <= 20f -> GlassBackdropQuality.Native
-    blurRadiusDp <= 26f -> GlassBackdropQuality.Balanced
+    blurRadiusDp <= 12f -> GlassBackdropQuality.Native
+    blurRadiusDp <= 18f -> GlassBackdropQuality.Balanced
     else -> GlassBackdropQuality.Efficient
 }
 

@@ -36,16 +36,99 @@ class VolumeNormalizationAudioProcessorTest {
     }
 
     @Test
-    fun untaggedProgrammeWaitsForEvidenceThenSettlesOnStreamingReference() {
+    fun untaggedTrackKeepsOneGainThroughSoftIntroAndLoudSection() {
         val processor = processor()
-        processor.setYoutubeLoudness(null, null)
+        processor.setYoutubeLoudness(null, null, measurementKey = "track|YouTube")
         val tone = Tone()
 
-        tone.feed(processor, amplitudeDbfs = -6.0, seconds = 2.0)
-        assertEquals(1f, processor.appliedGain, 0f)
+        tone.feed(processor, amplitudeDbfs = -30.0, seconds = 10.0)
+        val loud = tone.feed(processor, amplitudeDbfs = -3.0, seconds = 20.0)
 
-        tone.feed(processor, amplitudeDbfs = -6.0, seconds = 10.0)
-        assertEquals(10.0.pow(-8.0 / 20.0).toFloat(), processor.appliedGain, 0.01f)
+        assertEquals(1f, processor.appliedGain, 0f)
+        assertEquals(loud.input, loud.output)
+    }
+
+    @Test
+    fun learnedLoudnessAppliesFlatGainFromFirstSample() {
+        val processor = processor()
+        processor.setYoutubeLoudness(null, null, learnedLoudnessLufs = -8f, measurementKey = "track|FLAC")
+
+        val output = processor.processPcm16(constant(16_000, frames = 256))
+
+        assertTrue(output.all { abs(it - 8_019) <= 1 })
+    }
+
+    @Test
+    fun metadataWinsOverLearnedLoudness() {
+        val processor = processor()
+        processor.setYoutubeLoudness(0f, null, learnedLoudnessLufs = -2f, measurementKey = "track|YouTube")
+        val input = constant(16_000, frames = 256)
+
+        assertArrayEquals(input, processor.processPcm16(input))
+    }
+
+    @Test
+    fun untaggedTrackMeasurementIsPublishedWhenNextTrackStarts() {
+        val processor = processor()
+        val measured = mutableListOf<Pair<String, Float>>()
+        processor.measurementListener = { key, lufs, _ -> measured += key to lufs }
+        processor.setYoutubeLoudness(null, null, measurementKey = "first|FLAC")
+        Tone().feed(processor, amplitudeDbfs = -6.0, seconds = 35.0)
+
+        processor.setYoutubeLoudness(null, null, measurementKey = "second|FLAC")
+        processor.processPcm16(constant(0, frames = 256))
+
+        assertEquals(1, measured.size)
+        assertEquals("first|FLAC", measured.single().first)
+        assertEquals(-6f, measured.single().second, 0.2f)
+    }
+
+    @Test
+    fun shortOrTaggedPlaybackIsNotLearned() {
+        val processor = processor()
+        val measured = mutableListOf<Pair<String, Float>>()
+        processor.measurementListener = { key, lufs, _ -> measured += key to lufs }
+        processor.setYoutubeLoudness(null, null, measurementKey = "skipped|FLAC")
+        Tone().feed(processor, amplitudeDbfs = -6.0, seconds = 10.0)
+        processor.setYoutubeLoudness(4f, null, measurementKey = "tagged|YouTube")
+        Tone().feed(processor, amplitudeDbfs = -6.0, seconds = 35.0)
+
+        processor.setYoutubeLoudness(null, null, measurementKey = "next|FLAC")
+        processor.processPcm16(constant(0, frames = 256))
+
+        assertTrue(measured.isEmpty())
+    }
+
+    @Test
+    fun settingsReapplyOnSameUntaggedTrackKeepsMeasurementAndGain() {
+        val processor = processor()
+        val measured = mutableListOf<Pair<String, Float>>()
+        processor.measurementListener = { key, lufs, _ -> measured += key to lufs }
+        processor.continueFromGain(0.5f)
+        processor.setYoutubeLoudness(null, null, measurementKey = "track|FLAC")
+        val tone = Tone()
+        tone.feed(processor, amplitudeDbfs = -6.0, seconds = 20.0)
+
+        processor.setYoutubeLoudness(null, null, measurementKey = "track|FLAC")
+        tone.feed(processor, amplitudeDbfs = -6.0, seconds = 15.0)
+        assertEquals(0.5f, processor.appliedGain, 0.001f)
+
+        processor.setYoutubeLoudness(null, null, measurementKey = "next|FLAC")
+        processor.processPcm16(constant(0, frames = 256))
+        assertEquals(listOf("track|FLAC"), measured.map { it.first })
+    }
+
+    @Test
+    fun releasingProcessorPublishesCompletedMeasurement() {
+        val processor = processor()
+        val measured = mutableListOf<String>()
+        processor.measurementListener = { key, _, _ -> measured += key }
+        processor.setYoutubeLoudness(null, null, measurementKey = "last|FLAC")
+        Tone().feed(processor, amplitudeDbfs = -12.0, seconds = 35.0)
+
+        processor.reset()
+
+        assertEquals(listOf("last|FLAC"), measured)
     }
 
     @Test
@@ -59,9 +142,9 @@ class VolumeNormalizationAudioProcessorTest {
     }
 
     @Test
-    fun untaggedFullScaleProgrammeNeverExceedsInputPeak() {
+    fun learnedLoudFullScaleProgrammeNeverExceedsInputPeak() {
         val processor = processor()
-        processor.setYoutubeLoudness(null, null)
+        processor.setYoutubeLoudness(null, null, learnedLoudnessLufs = -3f)
 
         val peaks = Tone().feed(processor, amplitudeDbfs = -0.5, seconds = 8.0)
 
@@ -72,10 +155,11 @@ class VolumeNormalizationAudioProcessorTest {
     @Test
     fun seekWithinSameTrackKeepsSettledGain() {
         val processor = processor()
-        processor.setYoutubeLoudness(null, null)
+        processor.setYoutubeLoudness(null, null, learnedLoudnessLufs = -6f)
         val tone = Tone()
         tone.feed(processor, amplitudeDbfs = -6.0, seconds = 12.0)
         val settled = processor.appliedGain
+        assertEquals(10.0.pow(-8.0 / 20.0).toFloat(), settled, 0.001f)
 
         processor.flush(AudioProcessor.StreamMetadata.DEFAULT)
         tone.feed(processor, amplitudeDbfs = -6.0, seconds = 0.2)

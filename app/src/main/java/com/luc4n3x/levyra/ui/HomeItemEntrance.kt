@@ -15,6 +15,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.ui.theme.LevyraIsDefaultSkin
@@ -84,6 +85,7 @@ private fun HomeItemEntrance(itemMotion: Modifier, listState: LazyListState, con
             scaleX = scale
             scaleY = scale
             alpha = value.coerceIn(0f, 1f)
+            compositingStrategy = CompositingStrategy.ModulateAlpha
         }
     ) { content() }
 }

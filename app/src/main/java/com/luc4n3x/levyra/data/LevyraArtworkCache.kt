@@ -11,6 +11,7 @@ import coil3.disk.DiskCache
 import coil3.memory.MemoryCache
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
+import coil3.request.allowRgb565
 import coil3.request.crossfade
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
@@ -114,7 +115,7 @@ object LevyraArtworkCache {
                 )
                 ImageLoader.Builder(appContext)
                     .components {
-                        add(ArtworkCropInterceptor())
+                        add(ArtworkCropInterceptor(smartCropAllowed = memoryProfile.bitmapTransformationsAllowed))
                         add(ArtworkResolutionInterceptor())
                         add(LocalArtworkFetcher.Factory(appContext))
                     }
@@ -133,6 +134,7 @@ object LevyraArtworkCache {
                     .diskCachePolicy(CachePolicy.ENABLED)
                     .networkCachePolicy(CachePolicy.ENABLED)
                     .crossfade(false)
+                    .allowRgb565(memoryProfile.decodeRgb565)
                     .build()
             }
             configured = true
