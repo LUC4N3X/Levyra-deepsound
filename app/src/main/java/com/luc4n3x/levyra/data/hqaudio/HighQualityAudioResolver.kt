@@ -186,14 +186,7 @@ class HighQualityAudioResolver(
         }
         val queued = background && mode.lossless
         val lookup = synchronized(inFlightLock) {
-            inFlight[identityKey]?.let { existing ->
-                val promotePrefetch = !queued && (queuedBackground.remove(identityKey) ||
-                    (playbackWaitMs != null && identityKey in backgroundLookups))
-                if (!promotePrefetch) return existing
-                existing.cancel()
-                inFlight.remove(identityKey, existing)
-                backgroundLookups.remove(identityKey)
-            }
+            reuseLookupOrPromotePrefetch(identityKey, queued, playbackWaitMs != null)?.let { return it }
             val busy = if (queued) {
                 inFlight.size >= MAX_IN_FLIGHT_LOOKUPS
             } else {
@@ -226,6 +219,22 @@ class HighQualityAudioResolver(
         }
         lookup.start()
         return lookup
+    }
+
+    private fun reuseLookupOrPromotePrefetch(
+        identityKey: String,
+        queued: Boolean,
+        hasPlaybackDeadline: Boolean
+    ): Deferred<HighQualityResolution>? {
+        val existing = inFlight[identityKey] ?: return null
+        val promotePrefetch = !queued && (queuedBackground.remove(identityKey) ||
+            (hasPlaybackDeadline && identityKey in backgroundLookups))
+        if (!promotePrefetch) return existing
+
+        existing.cancel()
+        inFlight.remove(identityKey, existing)
+        backgroundLookups.remove(identityKey)
+        return null
     }
 
     suspend fun await(pending: Deferred<HighQualityResolution>, timeoutMs: Long): HighQualityResolution = try {
