@@ -3,6 +3,10 @@ package com.luc4n3x.levyra.player
 import android.content.Context
 import android.content.SharedPreferences
 import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 internal class TrackLoudnessMemory(private val preferences: SharedPreferences) {
     private val entries = ConcurrentHashMap<String, Entry>()
@@ -24,6 +28,10 @@ internal class TrackLoudnessMemory(private val preferences: SharedPreferences) {
     }
 
     fun loudnessLufs(key: String): Float? = entries[key]?.lufs
+
+    fun rememberInBackground(key: String, integratedLufs: Float, measuredBlocks: Int) {
+        backgroundWrites.launch { remember(key, integratedLufs, measuredBlocks) }
+    }
 
     @Synchronized
     fun remember(
@@ -59,6 +67,7 @@ internal class TrackLoudnessMemory(private val preferences: SharedPreferences) {
         internal const val TRIMMED_SIZE = 1_800
         private const val MIN_LUFS = -70f
         private const val MAX_LUFS = 5f
+        private val backgroundWrites = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
         fun key(mediaId: String, source: String?): String? =
             mediaId.takeIf { it.isNotBlank() }?.let { "$it$SEPARATOR${source.orEmpty()}" }

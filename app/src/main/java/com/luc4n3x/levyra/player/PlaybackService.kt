@@ -976,7 +976,7 @@ class PlaybackService : MediaLibraryService() {
         }
         serviceScope.launch(Dispatchers.IO) { trackLoudnessMemory.load() }
         normalizationProcessor.measurementListener = { key, integratedLufs, measuredBlocks ->
-            serviceScope.launch(Dispatchers.IO) { trackLoudnessMemory.remember(key, integratedLufs, measuredBlocks) }
+            trackLoudnessMemory.rememberInBackground(key, integratedLufs, measuredBlocks)
         }
         favoritesStore = FavoritesStore(this)
         resolver = PlaybackResolver.getInstance(this)
