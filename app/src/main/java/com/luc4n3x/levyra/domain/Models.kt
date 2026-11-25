@@ -381,7 +381,8 @@ data class AppUpdateInfo(
     val assetName: String,
     val directApk: Boolean,
     val isNewer: Boolean,
-    val assetSizeBytes: Long = 0L
+    val assetSizeBytes: Long = 0L,
+    val releaseHighlights: Map<String, List<String>> = emptyMap()
 )
 
 fun Track.smartWeightFor(mood: Mood?): Int {

@@ -1531,6 +1531,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var sectionLoopJob: Job? = null
     private var listPrefetchJob: Job? = null
     private var updateJob: Job? = null
+    private var sessionDismissedUpdateVersion: String? = null
     private var artistJob: Job? = null
     @Volatile private var artistPlaceholder: ArtistProfile? = null
     private var artistLoreJob: Job? = null
@@ -6906,7 +6907,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
             val result = runCatching { appUpdateRepository.latest() }
             result.onSuccess { info ->
-                val dismissed = preferences.dismissedUpdateVersion()
+                val dismissed = sessionDismissedUpdateVersion
                 _state.update {
                     it.copy(
                         updateInfo = info,
@@ -6932,7 +6933,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun dismissUpdatePrompt() {
-        _state.value.updateInfo?.latestVersionName?.let { preferences.setDismissedUpdateVersion(it) }
+        sessionDismissedUpdateVersion = _state.value.updateInfo?.latestVersionName
         _state.update { it.copy(showUpdatePrompt = false) }
     }
 

@@ -249,7 +249,11 @@ private val update2512Highlights: Map<String, List<String>> = mapOf(
     )
 )
 
-internal fun LevyraStrings.updateReleaseHighlights(version: String): List<String> {
+internal fun LevyraStrings.updateReleaseHighlights(
+    version: String,
+    published: Map<String, List<String>> = emptyMap()
+): List<String> {
+    if ("en" in published) return localizedValueOrEnglish(published, code)
     val normalizedVersion = version.trim().removePrefix("v")
     return if (normalizedVersion == "2.5.12") {
         localizedValueOrEnglish(update2512Highlights, code)

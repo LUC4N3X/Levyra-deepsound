@@ -4,7 +4,9 @@ import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import com.luc4n3x.levyra.update.releaseNoteHighlights
 import org.junit.Test
+import java.io.File
 
 class UpdateReleaseLocalizationTest {
     @Test
@@ -69,5 +71,33 @@ class UpdateReleaseLocalizationTest {
             listOf(LevyraStrings.forCode("ja").updateDescription),
             LevyraStrings.forCode("ja").updateReleaseHighlights("9.9.9")
         )
+    }
+
+    @Test
+    fun releaseNotesShipHighlightsForEveryLanguage() {
+        val notes = listOf(File("../docs/RELEASE_NOTES.md"), File("docs/RELEASE_NOTES.md")).first(File::exists).readText()
+        val highlights = releaseNoteHighlights(notes)
+        val catalogCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+
+        assertEquals(catalogCodes, highlights.keys)
+        catalogCodes.forEach { code ->
+            val localized = LevyraStrings.forCode(code).updateReleaseHighlights("0.0.0", highlights)
+            assertEquals("unexpected highlight count for $code", highlights.getValue("en").size, localized.size)
+            assertEquals(highlights.getValue(code), localized)
+        }
+    }
+
+    @Test
+    fun publishedHighlightsFallBackSafely() {
+        val italian = LevyraStrings.forCode("it")
+        val englishOnly = "# Notes\n<!-- levyra-highlights {\"en\": [\"Faster start.\"]} -->"
+
+        assertEquals(listOf("Faster start."), italian.updateReleaseHighlights("9.9.9", releaseNoteHighlights(englishOnly)))
+        assertTrue(releaseNoteHighlights("<!-- levyra-highlights {broken -->").isEmpty())
+        assertEquals(
+            listOf(italian.updateDescription),
+            italian.updateReleaseHighlights("9.9.9", releaseNoteHighlights("<!-- levyra-highlights {\"it\": [\"Solo italiano\"]} -->"))
+        )
+        assertTrue(releaseNoteHighlights("<!-- levyra-highlights {\"en\": [\"\", 3]} -->").isEmpty())
     }
 }
