@@ -109,7 +109,9 @@ class DesktopHighQualityResolver internal constructor(
             }
             return DesktopHighQualityResolver(original, HighQualityAudioResolver(providers, HighQualityMappingStore(mappings), scope,
                 lookupBudgetMs = if (forDownload) 35_000L else 8_000L,
-                losslessLaneBudgetMs = if (forDownload) 30_000L else 4_000L), mode, forDownload, System::currentTimeMillis)
+                losslessLaneBudgetMs = if (forDownload) 30_000L else 4_000L,
+                arcodMinimumTimeoutBudgetMs = if (forDownload) HighQualityProviderHttpClient.DOWNLOAD_READ_TIMEOUT_MS else 0L),
+                mode, forDownload, System::currentTimeMillis)
         }
     }
 }
