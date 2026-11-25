@@ -175,4 +175,33 @@ class PlayerExpansionTest {
         anchors.updateStageActive(true)
         assertEquals(stage, anchors.idleBounds(1080f))
     }
+
+    @Test
+    fun `the lifted mini rides the opening card edge while its stored rest bounds stay put`() {
+        var expansion = 0f
+        val anchors = PlayerMorphAnchors { expansion }
+        val rest = Rect(40f, 2000f, 1040f, 2160f)
+        anchors.miniLiftEnabled = true
+        anchors.update(PlayerMorphSlot.MiniCard, rest)
+
+        expansion = 0.2f
+        val lift = anchors.miniLiftPx()
+        assertEquals(-400f, lift, 0.0001f)
+        assertEquals(playerContainerBounds(expansion, rest, 1080f, 2400f).top, rest.top + lift, 0.0001f)
+
+        anchors.update(PlayerMorphSlot.MiniCard, rest.translate(0f, lift))
+        assertEquals(rest, anchors.miniCardBounds)
+
+        expansion = 0.9f
+        assertEquals(-2000f * 0.3f, anchors.miniLiftPx(), 0.0001f)
+    }
+
+    @Test
+    fun `without the lift the mini never moves and bounds are stored as measured`() {
+        val anchors = PlayerMorphAnchors { 0.5f }
+        val measured = Rect(40f, 1800f, 1040f, 1960f)
+        anchors.update(PlayerMorphSlot.MiniCard, measured)
+        assertEquals(0f, anchors.miniLiftPx(), 0f)
+        assertEquals(measured, anchors.miniCardBounds)
+    }
 }
