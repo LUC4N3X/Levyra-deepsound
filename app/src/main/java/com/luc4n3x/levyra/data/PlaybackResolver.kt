@@ -424,7 +424,8 @@ class PlaybackResolver private constructor(private val context: Context) {
             mappingStore = HighQualityMappingStore(SharedPreferencesMappingStorage(context)),
             scope = resolveScope,
             lookupBudgetMs = HighQualityPlaybackCoordinator.DOWNLOAD_LOOKUP_BUDGET_MS,
-            losslessLaneBudgetMs = HighQualityPlaybackCoordinator.DOWNLOAD_LANE_BUDGET_MS
+            losslessLaneBudgetMs = HighQualityPlaybackCoordinator.DOWNLOAD_LANE_BUDGET_MS,
+            arcodMinimumTimeoutBudgetMs = HighQualityProviderHttpClient.DOWNLOAD_READ_TIMEOUT_MS
         )).apply { mode = highQualityPlayback.mode }
     }
     private val highQualityDownloads by highQualityDownloadDelegate

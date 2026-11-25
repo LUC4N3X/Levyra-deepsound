@@ -57,13 +57,15 @@ class HighQualityLosslessPriorityTest {
         mode: HighQualityAudioMode,
         vararg providers: HighQualityAudioProvider,
         losslessLaneBudgetMs: Long = HighQualityAudioResolver.LOSSLESS_LANE_BUDGET_MS,
-        lookupBudgetMs: Long = HighQualityAudioResolver.LOOKUP_BUDGET_MS
+        lookupBudgetMs: Long = HighQualityAudioResolver.LOOKUP_BUDGET_MS,
+        arcodMinimumTimeoutBudgetMs: Long = 0L
     ) = HighQualityAudioResolver(
         providers = providers.toList(),
         mappingStore = HighQualityMappingStore(InMemoryMappingStorage()),
         scope = scope,
         losslessLaneBudgetMs = losslessLaneBudgetMs,
-        lookupBudgetMs = lookupBudgetMs
+        lookupBudgetMs = lookupBudgetMs,
+        arcodMinimumTimeoutBudgetMs = arcodMinimumTimeoutBudgetMs
     ).apply { this.mode = mode }
 
     private fun HighQualityAudioResolver.resolveNow(): HighQualityResolution =
@@ -190,6 +192,38 @@ class HighQualityLosslessPriorityTest {
         ).resolveNow()
 
         assertEquals("jiosaavn", (result as HighQualityResolution.Selected).stream.providerId)
+        assertEquals(1, arcodTimeouts.get())
+    }
+
+    @Test
+    fun arcodBackoffRequiresEnoughTimeForADownloadRead() {
+        val tidal = losslessProvider("tidal") { awaitCancellation() }
+        val kuwo = losslessProvider("kuwo") { awaitCancellation() }
+        val arcodTimeouts = AtomicInteger()
+        val stalledArcod = losslessProvider("arcod") { awaitCancellation() }
+        val arcod = object : HighQualityAudioProvider by stalledArcod {
+            override fun reportLookupTimeout() {
+                arcodTimeouts.incrementAndGet()
+            }
+        }
+        val shortWindow = resolver(
+            HighQualityAudioMode.PREFER_LOSSLESS, tidal, kuwo, arcod, jioSaavn(),
+            losslessLaneBudgetMs = 650L,
+            lookupBudgetMs = 1_150L,
+            arcodMinimumTimeoutBudgetMs = 500L
+        )
+        val sufficientWindow = resolver(
+            HighQualityAudioMode.PREFER_LOSSLESS, tidal, kuwo, arcod, jioSaavn(),
+            losslessLaneBudgetMs = 650L,
+            lookupBudgetMs = 2_000L,
+            arcodMinimumTimeoutBudgetMs = 500L
+        )
+
+        assertEquals("jiosaavn", (shortWindow.resolveNow() as HighQualityResolution.Selected).stream.providerId)
+        assertEquals(1, stalledArcod.searches.size)
+        assertEquals(0, arcodTimeouts.get())
+
+        assertEquals("jiosaavn", (sufficientWindow.resolveNow() as HighQualityResolution.Selected).stream.providerId)
         assertEquals(1, arcodTimeouts.get())
     }
 

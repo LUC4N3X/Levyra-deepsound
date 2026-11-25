@@ -60,7 +60,8 @@ class HighQualityAudioResolver(
     matcher: AlternativeTrackMatcher = AlternativeTrackMatcher(),
     private val clock: () -> Long = System::currentTimeMillis,
     private val lookupBudgetMs: Long = LOOKUP_BUDGET_MS,
-    private val losslessLaneBudgetMs: Long = LOSSLESS_LANE_BUDGET_MS
+    private val losslessLaneBudgetMs: Long = LOSSLESS_LANE_BUDGET_MS,
+    private val arcodMinimumTimeoutBudgetMs: Long = 0L
 ) {
     constructor(
         provider: HighQualityAudioProvider,
@@ -335,8 +336,9 @@ class HighQualityAudioResolver(
             val playbackRemaining = playbackDeadline?.let { (-it.elapsedNow()).inWholeMilliseconds } ?: lookupRemaining
             val fallbackBudget = minOf(losslessLaneBudgetMs, lookupRemaining - ARCOD_RETURN_MARGIN_MS)
             val arcodBudget = minOf(fallbackBudget, playbackRemaining - ARCOD_RETURN_MARGIN_MS)
+            val reportTimeout = arcodBudget == fallbackBudget && arcodBudget >= arcodMinimumTimeoutBudgetMs
             val backup = if (arcodBudget > 0L) {
-                resolveLane(arcod, identityKey, query, arcodBudget, reportTimeout = arcodBudget == fallbackBudget)
+                resolveLane(arcod, identityKey, query, arcodBudget, reportTimeout = reportTimeout)
             } else HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "Arcod fallback budget")
             if (backup is HighQualityResolution.Selected) return@coroutineScope backup
             val other = alternative?.await()
