@@ -122,7 +122,6 @@ import com.luc4n3x.levyra.domain.RecommendationFeedbackKind
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.feature.jam.JamRole
 import com.luc4n3x.levyra.ui.i18n.trackDislikeCopy
-import com.luc4n3x.levyra.feature.cast.CastRouteButton
 import com.luc4n3x.levyra.feature.radio.isLiveRadio
 import com.luc4n3x.levyra.feature.radio.LiveRadioViewModel
 import com.luc4n3x.levyra.feature.radio.RadioStation
@@ -616,9 +615,6 @@ private fun LevyraNowPlayingContent(
             }
         }
         val headerTrailing: @Composable () -> Unit = {
-            if (!state.isVideoMode && !liveRadio && appleMusicPlayer) {
-                CastRouteButton(modifier = Modifier.size(headerButtonSize))
-            }
             if (state.isVideoMode && track != null) {
                 var videoOptionsOpen by remember(track.id) { mutableStateOf(false) }
                 PlayerGlassIconButton(
@@ -802,6 +798,23 @@ private fun LevyraNowPlayingContent(
             }
         }
 
+        if (showArtworkPreview && artworkPreviewAvailable && track != null) {
+            ArtworkPreviewOverlay(
+                artworkUrl = artworkUrl,
+                title = track.title,
+                previewLabel = strings.artworkPreview,
+                closeLabel = strings.close,
+                saveLabel = strings.saveArtwork,
+                savedMessage = strings.artworkSaved,
+                saveFailedMessage = strings.artworkSaveFailed,
+                onFeedback = { message ->
+                    gestureFeedback = message
+                    gestureFeedbackEvent += 1
+                },
+                onDismiss = { showArtworkPreview = false }
+            )
+        }
+
         val mediaHeroBlock: @Composable (Track, Dp, Dp?) -> Unit = { activeTrack, heroSize, cornerOverride ->
             val artworkCorner = cornerOverride ?: LevyraPlayerShapes.artworkCorner(heroSize)
             Box(
@@ -930,23 +943,6 @@ private fun LevyraNowPlayingContent(
                             .padding(end = LevyraPlayerDesign.SpaceSm, bottom = LevyraPlayerDesign.SpaceSm)
                             .zIndex(23f),
                         onClick = { videoFullscreen = true }
-                    )
-                }
-
-                if (showArtworkPreview && artworkPreviewAvailable) {
-                    ArtworkPreviewOverlay(
-                        artworkUrl = artworkUrl,
-                        title = activeTrack.title,
-                        previewLabel = strings.artworkPreview,
-                        closeLabel = strings.close,
-                        saveLabel = strings.saveArtwork,
-                        savedMessage = strings.artworkSaved,
-                        saveFailedMessage = strings.artworkSaveFailed,
-                        onFeedback = { message ->
-                            gestureFeedback = message
-                            gestureFeedbackEvent += 1
-                        },
-                        onDismiss = { showArtworkPreview = false }
                     )
                 }
 
@@ -1511,21 +1507,36 @@ private fun LevyraNowPlayingContent(
                 headlineModifier = lyricsFlipSwipeModifier,
                 modifier = deckModifier
             )
-        } else if (deckLayout == PlayerDeckLayout.Poster && track != null) {
-            PlayerPosterDeck(
+        } else if (deckLayout == PlayerDeckLayout.Turntable && track != null) {
+            PlayerTurntableDeck(
                 track = track,
                 slots = deckSlots,
                 surfaces = surfaces,
+                accent = heroTone,
                 isFavorite = track.id in state.favoriteIds,
-                animated = animated,
+                isPlaying = state.isPlaying,
+                isResolving = state.isResolving,
+                shuffleOn = state.shuffleEnabled,
+                repeatMode = state.repeatMode,
+                positionMs = state.positionMs,
+                durationMs = state.durationMs,
+                labels = playerControlLabels,
+                animated = animated && !motionSuspended,
                 compact = compactPlayer,
                 scrollable = !fitsViewport,
                 gutter = gutter,
+                stepDirection = stepDirection,
                 onArtistClick = { artistIndex ->
                     playerArtistHits.getOrNull(artistIndex)?.let(viewModel::openArtist)
                         ?: viewModel.openArtist(track, artistIndex)
                 },
                 onToggleFavorite = { viewModel.toggleFavorite(track) },
+                onShuffle = viewModel::toggleShuffle,
+                onPrevious = viewModel::previous,
+                onTogglePlay = viewModel::togglePlay,
+                onNext = viewModel::next,
+                onRepeat = viewModel::toggleRepeat,
+                onSeek = viewModel::seekTo,
                 headlineModifier = lyricsFlipSwipeModifier,
                 modifier = deckModifier
             )
@@ -1901,13 +1912,22 @@ private fun LevyraNowPlayingContent(
                         onClick = { showActions = false; viewModel.setPlayerFocus(true) }
                     )
                 ) + sheetActions,
-                castContent = if (!appleMusicPlayer && !state.isVideoMode && !liveRadio) {
+                castContent = if (!state.isVideoMode && !liveRadio) {
                     {
-                        com.luc4n3x.levyra.feature.cast.CastRouteChip(
-                            label = strings.playerGoogleCast,
-                            contentColor = surfaces.content,
-                            containerColor = surfaces.controlQuiet
-                        )
+                        if (appleMusicPlayer) {
+                            com.luc4n3x.levyra.feature.cast.CastRouteChip(
+                                label = strings.playerGoogleCast,
+                                contentColor = com.luc4n3x.levyra.ui.theme.AppleMusicVibrant.primary,
+                                containerColor = com.luc4n3x.levyra.ui.theme.AppleMusicVibrant.quaternary,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        } else {
+                            com.luc4n3x.levyra.feature.cast.CastRouteChip(
+                                label = strings.playerGoogleCast,
+                                contentColor = surfaces.content,
+                                containerColor = surfaces.controlQuiet
+                            )
+                        }
                     }
                 } else {
                     null

@@ -18,7 +18,7 @@ internal enum class PlayerDeckLayout {
     Levyra,
     Aura,
     Expressive,
-    Poster,
+    Turntable,
     Pulse,
     Stack,
     Folio,
@@ -42,7 +42,7 @@ internal val PlayerDeckOrder: List<PlayerVisualMode> = listOf(
 internal fun PlayerVisualMode.deckLayout(): PlayerDeckLayout = when (this) {
     PlayerVisualMode.Cinema -> PlayerDeckLayout.Cinema
     PlayerVisualMode.CanvasImmersive -> PlayerDeckLayout.Aura
-    PlayerVisualMode.Artwork -> PlayerDeckLayout.Poster
+    PlayerVisualMode.Artwork -> PlayerDeckLayout.Turntable
     PlayerVisualMode.Expressive -> PlayerDeckLayout.Expressive
     PlayerVisualMode.Pulse -> PlayerDeckLayout.Pulse
     PlayerVisualMode.Stack -> PlayerDeckLayout.Stack

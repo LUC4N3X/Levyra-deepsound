@@ -25,7 +25,7 @@ class PlayerDeckTest {
 
     @Test
     fun `existing modes keep the levyra layout and new styles get their own`() {
-        assertEquals(PlayerDeckLayout.Poster, PlayerVisualMode.Artwork.deckLayout())
+        assertEquals(PlayerDeckLayout.Turntable, PlayerVisualMode.Artwork.deckLayout())
         assertEquals(PlayerDeckLayout.Cinema, PlayerVisualMode.Cinema.deckLayout())
         assertEquals(PlayerDeckLayout.Aura, PlayerVisualMode.CanvasImmersive.deckLayout())
         assertEquals(PlayerDeckLayout.Expressive, PlayerVisualMode.Expressive.deckLayout())

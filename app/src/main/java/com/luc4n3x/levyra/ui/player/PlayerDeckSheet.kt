@@ -49,6 +49,7 @@ import androidx.compose.material.icons.rounded.StarOutline
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.FastRewind
 import androidx.compose.material.icons.rounded.FastForward
+import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import com.luc4n3x.levyra.ui.theme.*
 import androidx.compose.animation.core.animateFloatAsState
@@ -561,7 +562,7 @@ private fun PlayerDeckPreview(
     when (mode) {
         PlayerVisualMode.CanvasImmersive -> ImmersivePreview(track, artworkUrl, accent)
         PlayerVisualMode.Cinema -> CinemaPreview(track, artworkUrl, accent)
-        PlayerVisualMode.Artwork -> CardPreview(track, artworkUrl, accent)
+        PlayerVisualMode.Artwork -> TurntablePreview(track, artworkUrl, accent)
         PlayerVisualMode.Expressive -> ExpressivePreview(track, artworkUrl, accent)
         PlayerVisualMode.Pulse -> PulsePreview(track, artworkUrl, accent)
         PlayerVisualMode.Stack -> StackPreview(track, artworkUrl, accent)
@@ -954,49 +955,88 @@ private fun ImmersivePreview(track: Track, artworkUrl: String, accent: Color) {
 }
 
 @Composable
-private fun CardPreview(track: Track, artworkUrl: String, accent: Color) {
+private fun TurntablePreview(track: Track, artworkUrl: String, accent: Color) {
     val ink = Color.White
+    val lit = lerp(accent, Color.White, 0.42f)
+    val metal = lerp(accent, Color(0xFF16161B), 0.74f)
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(lerp(accent, Color.Black, 0.4f), lerp(accent, Color.Black, 0.72f))))
+            .background(Brush.verticalGradient(listOf(lerp(accent, Color(0xFF0B0B10), 0.7f), Color(0xFF0B0B10))))
+            .drawBehind {
+                val glow = Offset(size.width * 0.47f, size.width * 0.62f)
+                drawCircle(Brush.radialGradient(listOf(accent.copy(alpha = 0.28f), Color.Transparent), glow, size.width * 0.8f), size.width * 0.8f, glow)
+            }
     ) {
-        PreviewFadedArtwork(track, artworkUrl, 0.52f)
-        PreviewModeToggle(ink)
         Column(
             modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(start = 8.dp, end = 8.dp, bottom = 10.dp)
+                .fillMaxSize()
+                .padding(start = 8.dp, end = 8.dp, bottom = 9.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                PreviewTitle(track, ink, Modifier.weight(1f), size = 9.sp)
-                PreviewCircle(Icons.Rounded.FavoriteBorder, ink.copy(alpha = 0.16f), ink, size = 13.dp)
-            }
+            PreviewModeToggle(ink)
             Spacer(Modifier.height(4.dp))
-            PreviewComments(ink)
-            Spacer(Modifier.height(6.dp))
-            PreviewSeek(ink)
-            PreviewTimes(ink)
-            Spacer(Modifier.height(4.dp))
+            TurntablePreviewStage(
+                track = track,
+                accent = accent,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+            )
+            Spacer(Modifier.weight(1f))
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color.Black.copy(alpha = 0.32f))
+                    .padding(horizontal = 6.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val soft = ink.copy(alpha = 0.14f)
-                PreviewCircle(Icons.Rounded.Shuffle, soft, ink, size = 14.dp)
-                PreviewCircle(Icons.Rounded.SkipPrevious, soft, ink, size = 18.dp)
-                PreviewCircle(Icons.Rounded.PlayArrow, lerp(accent, Color.White, 0.88f), Color.Black.copy(alpha = 0.82f), size = 20.dp, width = 26.dp, shape = RoundedCornerShape(7.dp))
-                PreviewCircle(Icons.Rounded.SkipNext, soft, ink, size = 18.dp)
-                PreviewCircle(Icons.Rounded.Repeat, soft, ink, size = 14.dp)
+                Text("1:12", color = lit, fontSize = 8.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "33⅓",
+                        color = lit,
+                        fontSize = 6.sp,
+                        lineHeight = 7.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        modifier = Modifier
+                            .border(0.5.dp, lit.copy(alpha = 0.4f), RoundedCornerShape(50))
+                            .padding(horizontal = 4.dp, vertical = 1.dp)
+                    )
+                }
+                Text("-2:04", color = ink.copy(alpha = 0.6f), fontSize = 8.sp, maxLines = 1)
             }
             Spacer(Modifier.height(5.dp))
-            PreviewButtonGroup(
-                icons = listOf(Icons.Rounded.Description, Icons.AutoMirrored.Rounded.List, Icons.Rounded.Style, Icons.Rounded.Download),
-                ink = ink,
-                fill = ink.copy(alpha = 0.14f)
-            )
+            PreviewTitle(track, ink, Modifier.fillMaxWidth(), size = 9.sp)
+            Spacer(Modifier.height(6.dp))
+            Box(modifier = Modifier.fillMaxWidth().height(24.dp), contentAlignment = Alignment.Center) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(16.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(Brush.verticalGradient(listOf(lerp(metal, Color.White, 0.1f), lerp(metal, Color.Black, 0.4f)))),
+                    horizontalArrangement = Arrangement.SpaceAround,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Rounded.Shuffle, null, tint = ink.copy(alpha = 0.7f), modifier = Modifier.size(7.dp))
+                    Icon(Icons.Rounded.SkipPrevious, null, tint = ink, modifier = Modifier.size(9.dp))
+                    Spacer(Modifier.width(26.dp))
+                    Icon(Icons.Rounded.SkipNext, null, tint = ink, modifier = Modifier.size(9.dp))
+                    Icon(Icons.Rounded.Repeat, null, tint = ink.copy(alpha = 0.7f), modifier = Modifier.size(7.dp))
+                }
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(Brush.radialGradient(listOf(lerp(accent, Color.White, 0.92f), lerp(accent, Color.White, 0.7f))))
+                        .border(1.dp, lit.copy(alpha = 0.7f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Rounded.Pause, null, tint = Color.Black.copy(alpha = 0.8f), modifier = Modifier.size(11.dp))
+                }
+            }
         }
     }
 }
