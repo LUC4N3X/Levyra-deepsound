@@ -144,7 +144,7 @@ class HighQualityLosslessPriorityTest {
     }
 
     @Test
-    fun readyJioSaavnSurvivesThePlaybackDeadlineAndArcodTimeoutIsCounted() = runBlocking {
+    fun readyJioSaavnSurvivesThePlaybackDeadlineWithoutPenalizingArcod() = runBlocking {
         val tidal = losslessProvider("tidal") { ProviderStreamOutcome.Failed(ProviderFailure.NETWORK) }
         val kuwo = losslessProvider("kuwo") { ProviderStreamOutcome.Failed(ProviderFailure.NETWORK) }
         val arcodTimeouts = AtomicInteger()
@@ -161,7 +161,32 @@ class HighQualityLosslessPriorityTest {
         val result = resolver.await(pending, playbackWaitMs)
 
         assertEquals("jiosaavn", (result as HighQualityResolution.Selected).stream.providerId)
+        assertEquals(0, arcodTimeouts.get())
+
+        val ownTimeout = resolver(HighQualityAudioMode.PREFER_LOSSLESS, tidal, kuwo, arcod, jioSaavn(), losslessLaneBudgetMs = 500L)
+        val resultAfterProviderTimeout = ownTimeout.await(ownTimeout.begin("provider-timeout", query()), 2_000L)
+        assertEquals("jiosaavn", (resultAfterProviderTimeout as HighQualityResolution.Selected).stream.providerId)
         assertEquals(1, arcodTimeouts.get())
+    }
+
+    @Test
+    fun foregroundDeadlineReplacesAnAlreadyRunningPrefetch() = runBlocking {
+        val tidal = losslessProvider("tidal") { ProviderStreamOutcome.Failed(ProviderFailure.NETWORK) }
+        val arcodStarted = CompletableDeferred<Unit>()
+        val arcod = losslessProvider("arcod") {
+            arcodStarted.complete(Unit)
+            awaitCancellation()
+        }
+        val resolver = resolver(HighQualityAudioMode.PREFER_LOSSLESS, tidal, arcod, jioSaavn())
+        val prefetch = resolver.begin("prefetched", query(), background = true)
+        withTimeout(2_000L) { arcodStarted.await() }
+
+        val waitMs = 850L
+        val foreground = resolver.begin("prefetched", query(), playbackWaitMs = waitMs)
+        val result = resolver.await(foreground, waitMs)
+
+        assertTrue(prefetch.isCancelled)
+        assertEquals("jiosaavn", (result as HighQualityResolution.Selected).stream.providerId)
     }
 
     @Test

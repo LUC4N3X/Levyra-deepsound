@@ -187,7 +187,9 @@ class HighQualityAudioResolver(
         val queued = background && mode.lossless
         val lookup = synchronized(inFlightLock) {
             inFlight[identityKey]?.let { existing ->
-                if (queued || !queuedBackground.remove(identityKey)) return existing
+                val promotePrefetch = !queued && (queuedBackground.remove(identityKey) ||
+                    (playbackWaitMs != null && identityKey in backgroundLookups))
+                if (!promotePrefetch) return existing
                 existing.cancel()
                 inFlight.remove(identityKey, existing)
                 backgroundLookups.remove(identityKey)
@@ -323,8 +325,9 @@ class HighQualityAudioResolver(
             val lookupRemaining = lookupBudgetMs - started.elapsedNow().inWholeMilliseconds
             val playbackRemaining = playbackDeadline?.let { (-it.elapsedNow()).inWholeMilliseconds } ?: lookupRemaining
             val arcodBudget = minOf(losslessLaneBudgetMs, minOf(lookupRemaining, playbackRemaining) - ARCOD_RETURN_MARGIN_MS)
-            val backup = if (arcodBudget > 0L) resolveLane(arcod, identityKey, query, arcodBudget)
-            else HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "Arcod fallback budget")
+            val backup = if (arcodBudget > 0L) {
+                resolveLane(arcod, identityKey, query, arcodBudget, reportTimeout = arcodBudget == losslessLaneBudgetMs)
+            } else HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "Arcod fallback budget")
             if (backup is HighQualityResolution.Selected) return@coroutineScope backup
             val other = alternative?.await()
             if (other is HighQualityResolution.Selected) return@coroutineScope other
@@ -433,13 +436,14 @@ class HighQualityAudioResolver(
         lane: HighQualityProviderLane,
         identityKey: String,
         query: AlternativeTrackQuery,
-        budgetMs: Long = losslessLaneBudgetMs
+        budgetMs: Long = losslessLaneBudgetMs,
+        reportTimeout: Boolean = true
     ): HighQualityResolution {
         if (!lane.provider.lossless) return lane.resolve(identityKey, query)
         val resolution = withTimeoutOrNull(budgetMs) { lane.resolve(identityKey, query) }
             ?: run {
                 currentCoroutineContext().ensureActive()
-                lane.provider.reportLookupTimeout()
+                if (reportTimeout) lane.provider.reportLookupTimeout()
                 HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "${lane.provider.id} lane budget")
             }
         if (resolution is HighQualityResolution.Fallback) {
