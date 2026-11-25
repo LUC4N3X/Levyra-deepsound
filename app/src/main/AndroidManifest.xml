@@ -34,6 +34,11 @@
             <category android:name="android.intent.category.BROWSABLE" />
             <data android:scheme="https" />
         </intent>
+        <intent>
+            <action android:name="miui.intent.action.ACTIVITY_MIPLAY_DETAIL" />
+        </intent>
+        <package android:name="com.milink.service" />
+        <package android:name="com.android.systemui" />
     </queries>
 
     <application
