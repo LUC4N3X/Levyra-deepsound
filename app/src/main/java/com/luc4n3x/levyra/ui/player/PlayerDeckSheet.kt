@@ -1126,7 +1126,7 @@ private fun EmberPreview(track: Track, artworkUrl: String, accent: Color) {
                 val step = size.width / bars
                 val stroke = step * 0.55f
                 repeat(bars) { index ->
-                    val level = 0.35f + 0.65f * PreviewSignalLevels[(index * 7) % PreviewSignalLevels.size]
+                    val level = 0.35f + 0.65f * PreviewSignalLevels[index * 7 % PreviewSignalLevels.size]
                     val x = step * index + step / 2f
                     drawLine(
                         color = if (index == 0) ink else ink.copy(alpha = 0.34f),
