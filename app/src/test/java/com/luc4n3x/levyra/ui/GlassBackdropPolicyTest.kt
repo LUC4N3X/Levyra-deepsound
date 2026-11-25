@@ -6,8 +6,9 @@ import org.junit.Test
 class GlassBackdropPolicyTest {
     @Test
     fun `quality buckets follow the glass blur families`() {
-        assertEquals(GlassBackdropQuality.Native, resolveGlassBackdropQuality(18f))
-        assertEquals(GlassBackdropQuality.Balanced, resolveGlassBackdropQuality(24f))
+        assertEquals(GlassBackdropQuality.Native, resolveGlassBackdropQuality(12f))
+        assertEquals(GlassBackdropQuality.Balanced, resolveGlassBackdropQuality(18f))
+        assertEquals(GlassBackdropQuality.Efficient, resolveGlassBackdropQuality(24f))
         assertEquals(GlassBackdropQuality.Efficient, resolveGlassBackdropQuality(30f))
     }
 

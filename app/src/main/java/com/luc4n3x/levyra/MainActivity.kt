@@ -146,6 +146,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        ForegroundUiPriority.boost()
         super.onCreate(savedInstanceState)
         if (savedInstanceState == null) showPendingCrashReport()
         applyOrientationPolicy()
@@ -362,6 +363,16 @@ class MainActivity : ComponentActivity() {
         if (!AppUpdateContract.matches(intent)) return false
         if (BuildConfig.UPSTREAM_UPDATES_ENABLED) beginInAppUpdate()
         return true
+    }
+
+    override fun onStart() {
+        super.onStart()
+        ForegroundUiPriority.boost()
+    }
+
+    override fun onStop() {
+        ForegroundUiPriority.restore()
+        super.onStop()
     }
 
     override fun onResume() {

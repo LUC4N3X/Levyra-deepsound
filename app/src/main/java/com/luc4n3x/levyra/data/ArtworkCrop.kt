@@ -4,10 +4,12 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.media.FaceDetector
+import android.os.Build
 import coil3.Extras
 import coil3.getExtra
 import coil3.intercept.Interceptor
 import coil3.request.ImageResult
+import coil3.request.allowHardware
 import coil3.request.transformations
 import coil3.size.Dimension
 import coil3.size.Size
@@ -258,7 +260,12 @@ internal class ArtworkCropInterceptor(private val smartCropAllowed: Boolean) : I
         if (!smartCropAllowed || mode == ArtworkCropMode.Center || chain.request.getExtra(ArtworkCropExempt)) return chain.proceed()
         if (chain.request.transformations.isNotEmpty() || !chain.size.isSquareSlot()) return chain.proceed()
         val request = chain.request.newBuilder()
-            .transformations(SmartArtworkCropTransformation(mode == ArtworkCropMode.Smart))
+            .transformations(
+                SmartArtworkCropTransformation(
+                    allowZoom = mode == ArtworkCropMode.Smart,
+                    hardwareOutput = chain.request.allowHardware && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
+                )
+            )
             .build()
         return chain.withRequest(request).proceed()
     }
@@ -270,10 +277,19 @@ internal class ArtworkCropInterceptor(private val smartCropAllowed: Boolean) : I
     }
 }
 
-internal class SmartArtworkCropTransformation(private val allowZoom: Boolean) : Transformation() {
+internal class SmartArtworkCropTransformation(
+    private val allowZoom: Boolean,
+    private val hardwareOutput: Boolean = false
+) : Transformation() {
     override val cacheKey: String = "levyra-smart-crop-v1-${if (allowZoom) "zoom" else "fixed"}"
 
     override suspend fun transform(input: Bitmap, size: Size): Bitmap {
+        val cropped = cropToSquare(input)
+        if (!hardwareOutput || cropped.config == Bitmap.Config.HARDWARE) return cropped
+        return cropped.copy(Bitmap.Config.HARDWARE, false) ?: cropped
+    }
+
+    private fun cropToSquare(input: Bitmap): Bitmap {
         if (SmartArtworkCropPlanner.isSquare(input.width, input.height)) return input
         val source = input.softwareCopy()
         val rect = runCatching { planCrop(source) }.getOrElse { SmartArtworkCropPlanner.center(source.width, source.height) }

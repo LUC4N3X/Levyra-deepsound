@@ -35,6 +35,17 @@ class EditorialCatalogParserTest {
     }
 
     @Test
+    fun catalogTrackIdStaysTheFirstEightSha256BytesOfTitleAndArtist() {
+        val snapshot = EditorialCatalogParser.parse(catalog(), loadedAt = 0L)
+
+        val expected = java.security.MessageDigest.getInstance("SHA-256")
+            .digest("Dai Dai|Shakira".toByteArray(Charsets.UTF_8))
+            .take(8)
+            .joinToString("") { byte -> "%02x".format(byte) }
+        assertEquals("chart-$expected", snapshot!!.byMarket.getValue("IT").single().id)
+    }
+
+    @Test
     fun rejectsMalformedUnsupportedAndInvalidTimestampCatalogs() {
         assertNull(EditorialCatalogParser.parse("not-json", loadedAt = 0L))
         assertNull(EditorialCatalogParser.parse(catalog(schemaVersion = 2), loadedAt = 0L))

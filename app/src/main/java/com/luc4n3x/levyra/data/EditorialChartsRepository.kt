@@ -456,6 +456,7 @@ internal object EditorialCatalogParser {
         val tracks = ArrayList<Track>(minOf(items.length(), MAX_TRACKS_PER_MARKET))
         val releaseCollection = kind.equals("release", ignoreCase = true)
         val discoveryCollection = kind == "mood" || kind == "genre"
+        val digest = MessageDigest.getInstance("SHA-256")
         for (index in 0 until items.length()) {
             if (tracks.size >= MAX_TRACKS_PER_MARKET) break
             val item = items.optJSONObject(index) ?: continue
@@ -466,7 +467,7 @@ internal object EditorialCatalogParser {
             val releaseDate = album?.optString("releaseDate").orEmpty().trim()
             val albumType = album?.optString("type").orEmpty().trim().lowercase(Locale.ROOT)
             val albumTotalTracks = album?.optInt("totalTracks", 0)?.coerceAtLeast(0) ?: 0
-            val identity = chartIdentity("$title|$artist")
+            val identity = chartIdentity(digest, "$title|$artist")
             val catalogTrackId = publishedCatalogTrackId(item.optString("id"))
                 .ifBlank { "chart-${identity.id}" }
             val palette = PALETTES[identity.seed % PALETTES.size]
@@ -599,6 +600,7 @@ internal object EditorialCatalogParser {
     internal fun publishedArtworkUrl(value: String?): String {
         val normalized = value.orEmpty().trim()
         if (normalized.isEmpty() || normalized.length > MAX_ARTWORK_URL_LENGTH) return ""
+        if (!normalized.startsWith("https://", ignoreCase = true)) return ""
         val url = normalized.toHttpUrlOrNull() ?: return ""
         if (url.scheme != "https") return ""
         if (url.port != HTTPS_DEFAULT_PORT) return ""
@@ -629,19 +631,24 @@ internal object EditorialCatalogParser {
         }
     }
 
-    private fun chartIdentity(value: String): ChartIdentity {
-        val digest = MessageDigest.getInstance("SHA-256")
-            .digest(value.toByteArray(StandardCharsets.UTF_8))
-        val seed = digest.take(4).fold(0) { accumulator, byte ->
-            (accumulator shl 8) or (byte.toInt() and 0xFF)
-        } and Int.MAX_VALUE
-        val id = digest.take(8).joinToString("") { byte -> "%02x".format(byte) }
-        return ChartIdentity(seed = seed, id = id)
+    private fun chartIdentity(digest: MessageDigest, value: String): ChartIdentity {
+        val hash = digest.digest(value.toByteArray(StandardCharsets.UTF_8))
+        var seed = 0
+        val id = CharArray(CHART_IDENTITY_BYTES * 2)
+        for (index in 0 until CHART_IDENTITY_BYTES) {
+            val byte = hash[index].toInt() and 0xFF
+            if (index < 4) seed = (seed shl 8) or byte
+            id[index * 2] = HEX_DIGITS[byte ushr 4]
+            id[index * 2 + 1] = HEX_DIGITS[byte and 0x0F]
+        }
+        return ChartIdentity(seed = seed and Int.MAX_VALUE, id = String(id))
     }
 
     private data class ChartIdentity(val seed: Int, val id: String)
 
     private const val SUPPORTED_SCHEMA_VERSION = 1
+    private const val CHART_IDENTITY_BYTES = 8
+    private const val HEX_DIGITS = "0123456789abcdef"
     private const val MAX_TRACKS_PER_MARKET = 100
     private const val EDITORIAL_SOURCE = "Levyra Editorial"
     private const val EDITORIAL_RELEASE_SOURCE = "Levyra Editorial Releases"
