@@ -17,11 +17,17 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.selects.select
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
+import com.luc4n3x.levyra.data.hqaudio.lossless.ArcodAudioProvider
+import com.luc4n3x.levyra.data.hqaudio.lossless.KuwoAudioProvider
+import com.luc4n3x.levyra.data.hqaudio.tidal.TidalAudioProvider
 import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.TimeMark
 import kotlin.time.TimeSource
 
 class HighQualityBackgroundLookup : AbstractCoroutineContextElement(Key) {
@@ -95,6 +101,7 @@ class HighQualityAudioResolver(
     private val inFlightLock = Any()
     private val backgroundLookups = ConcurrentHashMap.newKeySet<String>()
     private val queuedBackground = ConcurrentHashMap.newKeySet<String>()
+    private val playbackDeadlines = HashMap<String, PlaybackDeadline>()
     private val backgroundGate = Semaphore(MAX_BACKGROUND_LOOKUPS)
     private val backgroundStarts = ArrayDeque<Long>()
 
@@ -108,6 +115,7 @@ class HighQualityAudioResolver(
                 inFlight.clear()
                 backgroundLookups.clear()
                 queuedBackground.clear()
+                playbackDeadlines.clear()
                 streams.entries.removeIf { it.value.stream.providerId == RetiredAudioProviders.QOBUZ_ID }
                 if (value) unmatchedIdentities.clear()
             }
@@ -126,6 +134,7 @@ class HighQualityAudioResolver(
                     inFlight.clear()
                     backgroundLookups.clear()
                     queuedBackground.clear()
+                    playbackDeadlines.clear()
                 }
                 if (losslessChanged) unmatchedIdentities.clear()
             }
@@ -192,29 +201,34 @@ class HighQualityAudioResolver(
             } else {
                 inFlight.size - backgroundLookups.size >= MAX_IN_FLIGHT_LOOKUPS
             }
-            reuseLookupOrPromotePrefetch(identityKey, !queued && !busy, playbackWaitMs != null)?.let { return it }
+            val foregroundDeadline = playbackWaitMs?.takeUnless { queued }?.let { TimeSource.Monotonic.markNow() + it.milliseconds }
+            reuseLookupOrPromotePrefetch(identityKey, !queued && !busy, foregroundDeadline)?.let { return it }
             if (busy) return completed(HighQualityFallbackReason.BUSY)
             if (queued && !admitBackgroundLookup()) return completed(HighQualityFallbackReason.BUSY)
+            val deadline = PlaybackDeadline(foregroundDeadline)
             val created = if (queued) {
                 backgroundLookups += identityKey
                 queuedBackground += identityKey
                 scope.async(start = CoroutineStart.LAZY) {
                     backgroundGate.withPermit {
                         queuedBackground.remove(identityKey)
-                        lookup(identityKey, query)
+                        lookup(identityKey, query, deadline)
                     }
                 }
             } else {
-                val deadline = playbackWaitMs?.let { TimeSource.Monotonic.markNow() + it.milliseconds }
                 scope.async(start = CoroutineStart.LAZY) { lookup(identityKey, query, deadline) }
             }
+            playbackDeadlines[identityKey] = deadline
             created.also { inFlight[identityKey] = it }
         }
         lookup.invokeOnCompletion {
             synchronized(inFlightLock) {
-                if (inFlight.remove(identityKey, lookup) && queued) {
-                    backgroundLookups.remove(identityKey)
-                    queuedBackground.remove(identityKey)
+                if (inFlight.remove(identityKey, lookup)) {
+                    playbackDeadlines.remove(identityKey)
+                    if (queued) {
+                        backgroundLookups.remove(identityKey)
+                        queuedBackground.remove(identityKey)
+                    }
                 }
             }
         }
@@ -225,17 +239,41 @@ class HighQualityAudioResolver(
     private fun reuseLookupOrPromotePrefetch(
         identityKey: String,
         canPromote: Boolean,
-        hasPlaybackDeadline: Boolean
+        playbackDeadline: TimeSource.Monotonic.ValueTimeMark?
     ): Deferred<HighQualityResolution>? {
         val existing = inFlight[identityKey] ?: return null
-        val promotePrefetch = canPromote && (queuedBackground.remove(identityKey) ||
-            (hasPlaybackDeadline && identityKey in backgroundLookups))
-        if (!promotePrefetch) return existing
+        if (!canPromote || !queuedBackground.remove(identityKey)) {
+            if (playbackDeadline != null) playbackDeadlines[identityKey]?.tighten(playbackDeadline)
+            return existing
+        }
 
         existing.cancel()
         inFlight.remove(identityKey, existing)
         backgroundLookups.remove(identityKey)
+        playbackDeadlines.remove(identityKey)
         return null
+    }
+
+    private class PlaybackDeadline(initial: TimeSource.Monotonic.ValueTimeMark?) {
+        private val mark = MutableStateFlow(initial)
+
+        fun tighten(candidate: TimeSource.Monotonic.ValueTimeMark) {
+            mark.update { current -> if (current == null || candidate < current) candidate else current }
+        }
+
+        fun expired(marginMs: Long): Boolean = mark.value?.let { remainingMs(it, marginMs) <= 0L } ?: false
+
+        suspend fun awaitExpiry(marginMs: Long) {
+            while (true) {
+                val current = mark.value ?: mark.filterNotNull().first()
+                val remaining = remainingMs(current, marginMs)
+                if (remaining <= 0L) return
+                withTimeoutOrNull(remaining) { mark.first { it != current } } ?: return
+            }
+        }
+
+        private fun remainingMs(deadline: TimeSource.Monotonic.ValueTimeMark, marginMs: Long): Long =
+            (-deadline.elapsedNow()).inWholeMilliseconds - marginMs
     }
 
     suspend fun await(pending: Deferred<HighQualityResolution>, timeoutMs: Long): HighQualityResolution = try {
@@ -279,7 +317,7 @@ class HighQualityAudioResolver(
     private suspend fun lookup(
         identityKey: String,
         query: AlternativeTrackQuery,
-        playbackDeadline: TimeMark? = null
+        playbackDeadline: PlaybackDeadline? = null
     ): HighQualityResolution {
         val active = lanes.filter { (mode.lossless || !it.provider.lossless) &&
             (qobuzEnabled || it.provider.id != RetiredAudioProviders.QOBUZ_ID) }
@@ -301,11 +339,11 @@ class HighQualityAudioResolver(
         identityKey: String,
         query: AlternativeTrackQuery,
         active: List<HighQualityProviderLane>,
-        playbackDeadline: TimeMark? = null
+        playbackDeadline: PlaybackDeadline? = null
     ): HighQualityResolution {
         val qobuz = active.firstOrNull { it.provider.id == RetiredAudioProviders.QOBUZ_ID && it.provider.lossless }
         if (qobuz != null) return resolveWithQobuz(identityKey, query, qobuz, active.filter { it !== qobuz }, playbackDeadline)
-        val arcod = active.firstOrNull { it.provider.id == "arcod" && it.provider.lossless }
+        val arcod = active.firstOrNull { it.provider.id == ArcodAudioProvider.ARCOD_PROVIDER_ID && it.provider.lossless }
         if (arcod != null) {
             val primary = active.filter { it.provider.lossless && it.provider.id in PRIMARY_LOSSLESS_PROVIDERS }
             if (primary.isNotEmpty()) {
@@ -324,7 +362,7 @@ class HighQualityAudioResolver(
         primary: List<HighQualityProviderLane>,
         arcod: HighQualityProviderLane,
         others: List<HighQualityProviderLane>,
-        playbackDeadline: TimeMark?
+        playbackDeadline: PlaybackDeadline?
     ): HighQualityResolution = coroutineScope {
         val started = TimeSource.Monotonic.markNow()
         val alternative = if (others.isEmpty()) null else async { resolveByPriority(identityKey, query, others) }
@@ -333,12 +371,11 @@ class HighQualityAudioResolver(
             if (preferred is HighQualityResolution.Selected && preferred.stream.tier.lossless) return@coroutineScope preferred
 
             val lookupRemaining = lookupBudgetMs - started.elapsedNow().inWholeMilliseconds
-            val playbackRemaining = playbackDeadline?.let { (-it.elapsedNow()).inWholeMilliseconds } ?: lookupRemaining
             val fallbackBudget = minOf(losslessLaneBudgetMs, lookupRemaining - ARCOD_RETURN_MARGIN_MS)
-            val arcodBudget = minOf(fallbackBudget, playbackRemaining - ARCOD_RETURN_MARGIN_MS)
-            val reportTimeout = arcodBudget == fallbackBudget && arcodBudget >= arcodMinimumTimeoutBudgetMs
-            val backup = if (arcodBudget > 0L) {
-                resolveLane(arcod, identityKey, query, arcodBudget, reportTimeout = reportTimeout)
+            val backup = if (fallbackBudget > 0L && !(playbackDeadline?.expired(ARCOD_RETURN_MARGIN_MS) ?: false)) {
+                val reportTimeout = fallbackBudget >= arcodMinimumTimeoutBudgetMs
+                val attempt = async { resolveLane(arcod, identityKey, query, fallbackBudget, reportTimeout = reportTimeout) }
+                if (playbackDeadline == null) attempt.await() else raceDeadline(attempt, playbackDeadline)
             } else HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "Arcod fallback budget")
             if (backup is HighQualityResolution.Selected) return@coroutineScope backup
             val other = alternative?.await()
@@ -352,12 +389,30 @@ class HighQualityAudioResolver(
         }
     }
 
+    private suspend fun raceDeadline(
+        attempt: Deferred<HighQualityResolution>,
+        deadline: PlaybackDeadline
+    ): HighQualityResolution = coroutineScope {
+        val expiry = async { deadline.awaitExpiry(ARCOD_RETURN_MARGIN_MS) }
+        try {
+            select {
+                attempt.onAwait { it }
+                expiry.onAwait {
+                    attempt.cancel()
+                    HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "Arcod playback deadline")
+                }
+            }
+        } finally {
+            expiry.cancel()
+        }
+    }
+
     private suspend fun resolveWithQobuz(
         identityKey: String,
         query: AlternativeTrackQuery,
         qobuz: HighQualityProviderLane,
         original: List<HighQualityProviderLane>,
-        playbackDeadline: TimeMark?
+        playbackDeadline: PlaybackDeadline?
     ): HighQualityResolution = coroutineScope {
         val optional = async {
             val result = withTimeoutOrNull(RetiredAudioProviders.QOBUZ_LOOKUP_BUDGET_MS) { qobuz.resolve(identityKey, query) }
@@ -533,7 +588,7 @@ class HighQualityAudioResolver(
         CompletableDeferred(HighQualityResolution.Fallback(reason))
 
     companion object {
-        private val PRIMARY_LOSSLESS_PROVIDERS = setOf("tidal", "kuwo")
+        private val PRIMARY_LOSSLESS_PROVIDERS = setOf(TidalAudioProvider.PROVIDER_ID, KuwoAudioProvider.KUWO_PROVIDER_ID)
         private const val ARCOD_RETURN_MARGIN_MS = 100L
         const val LOOKUP_BUDGET_MS = 8_000L
         const val LOSSLESS_LANE_BUDGET_MS = 4_000L

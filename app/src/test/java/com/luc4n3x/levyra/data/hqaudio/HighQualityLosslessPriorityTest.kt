@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.data.hqaudio
 
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertSame
 import com.luc4n3x.levyra.domain.HighQualityAudioMode
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CoroutineScope
@@ -228,7 +230,7 @@ class HighQualityLosslessPriorityTest {
     }
 
     @Test
-    fun foregroundDeadlineReplacesAnAlreadyRunningPrefetch() = runBlocking {
+    fun foregroundDeadlineCutsArcodInsideTheRunningPrefetch() = runBlocking {
         val tidal = losslessProvider("tidal") { ProviderStreamOutcome.Failed(ProviderFailure.NETWORK) }
         val arcodStarted = CompletableDeferred<Unit>()
         val arcod = losslessProvider("arcod") {
@@ -243,7 +245,8 @@ class HighQualityLosslessPriorityTest {
         val foreground = resolver.begin("prefetched", query(), playbackWaitMs = waitMs)
         val result = resolver.await(foreground, waitMs)
 
-        assertTrue(prefetch.isCancelled)
+        assertSame(prefetch, foreground)
+        assertFalse(prefetch.isCancelled)
         assertEquals("jiosaavn", (result as HighQualityResolution.Selected).stream.providerId)
     }
 
