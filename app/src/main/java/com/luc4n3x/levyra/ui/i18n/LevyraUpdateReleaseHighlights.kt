@@ -1,5 +1,10 @@
 package com.luc4n3x.levyra.ui.i18n
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+
 private val update2512Highlights: Map<String, List<String>> = mapOf(
     "en" to listOf(
         "Synced lyrics can now stay right on the player.",
@@ -249,7 +254,30 @@ private val update2512Highlights: Map<String, List<String>> = mapOf(
     )
 )
 
-internal fun LevyraStrings.updateReleaseHighlights(version: String): List<String> {
+private const val RELEASE_HIGHLIGHTS_MARKER = "<!-- levyra-highlights"
+private const val RELEASE_HIGHLIGHTS_END = "-->"
+private const val RELEASE_HIGHLIGHTS_MAX_ITEMS = 6
+private const val RELEASE_HIGHLIGHT_MAX_LENGTH = 240
+
+internal fun releaseNoteHighlights(releaseNotes: String): Map<String, List<String>> {
+    val start = releaseNotes.indexOf(RELEASE_HIGHLIGHTS_MARKER)
+    if (start < 0) return emptyMap()
+    val end = releaseNotes.indexOf(RELEASE_HIGHLIGHTS_END, start + RELEASE_HIGHLIGHTS_MARKER.length)
+    if (end < 0) return emptyMap()
+    val payload = releaseNotes.substring(start + RELEASE_HIGHLIGHTS_MARKER.length, end)
+    val root = runCatching { Json.parseToJsonElement(payload) as? JsonObject }.getOrNull() ?: return emptyMap()
+    return root.mapNotNull { (code, value) ->
+        val items = (value as? JsonArray).orEmpty()
+            .mapNotNull { (it as? JsonPrimitive)?.takeIf(JsonPrimitive::isString)?.content?.trim() }
+            .filter { it.isNotEmpty() && it.length <= RELEASE_HIGHLIGHT_MAX_LENGTH }
+            .take(RELEASE_HIGHLIGHTS_MAX_ITEMS)
+        items.takeIf { it.isNotEmpty() }?.let { code to it }
+    }.toMap()
+}
+
+internal fun LevyraStrings.updateReleaseHighlights(version: String, releaseNotes: String = ""): List<String> {
+    val published = releaseNoteHighlights(releaseNotes)
+    if ("en" in published) return localizedValueOrEnglish(published, code)
     val normalizedVersion = version.trim().removePrefix("v")
     return if (normalizedVersion == "2.5.12") {
         localizedValueOrEnglish(update2512Highlights, code)
