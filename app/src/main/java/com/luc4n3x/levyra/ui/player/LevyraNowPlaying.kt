@@ -1340,6 +1340,7 @@ private fun LevyraNowPlayingContent(
                 gutter = gutter,
                 artworkCap = artworkCap,
                 stepDirection = stepDirection,
+                stageOverlay = state.isVideoMode || state.motionArtwork != null || track.isLiveRadio(),
                 onArtistClick = { artistIndex ->
                     playerArtistHits.getOrNull(artistIndex)?.let(viewModel::openArtist)
                         ?: viewModel.openArtist(track, artistIndex)
@@ -2033,7 +2034,16 @@ private fun LevyraNowPlayingContent(
                     }
                 },
                 onDismiss = { showDeck = false },
-                showBackground = deckLayout.usesPlayerBackground(),
+                showBackgroundFor = { mode ->
+                    val layout = if (velvetAppleMusic) PlayerDeckLayout.Levyra else resolvePlayerDeckLayout(
+                        mode = mode,
+                        isVideoMode = state.isVideoMode,
+                        isLiveRadio = liveRadio,
+                        pane = playerPane,
+                        hasTrack = true
+                    )
+                    layout.usesPlayerBackground()
+                },
                 reactiveAuraPreset = state.interfaceSettings.reactiveAuraPreset,
                 reactiveAuraIntensity = state.interfaceSettings.reactiveAuraIntensity,
                 onSelectReactiveAuraPreset = { preset ->
