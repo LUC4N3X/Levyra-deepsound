@@ -521,7 +521,6 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
     private val spotifyAudience = SpotifyArtistAudience()
     private val audiencePreferences = context?.applicationContext
         ?.getSharedPreferences(AUDIENCE_PREFERENCES_NAME, Context.MODE_PRIVATE)
-    private val audienceMemory = ConcurrentHashMap<String, String>()
 
     private fun profileBrowseKey(browseId: String): String = "browse:${browseId.trim().lowercase(Locale.ROOT)}"
 
@@ -675,11 +674,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         val cleanBrowseId = browseId.trim().ifBlank { return@withContext "" }
         val key = "${contentLanguage()}|${cleanBrowseId.lowercase(Locale.ROOT)}"
         val now = System.currentTimeMillis()
-        audienceMemory[key]?.let { return@withContext it }
-        cachedAudience(key, now)?.let { cached ->
-            audienceMemory[key] = cached
-            return@withContext cached
-        }
+        cachedAudience(key, now)?.let { return@withContext it }
         val root = runCatching { postBrowseFast(cleanBrowseId) }.getOrNull() ?: return@withContext ""
         val listeners = extractOfficialMonthlyListeners(root.optJSONObject("header"))
         if (listeners.isNotBlank()) rememberAudience(key, listeners, now)
@@ -694,8 +689,6 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
     }
 
     private fun rememberAudience(key: String, listeners: String, now: Long) {
-        if (audienceMemory.size >= MAX_AUDIENCE_ENTRIES) audienceMemory.clear()
-        audienceMemory[key] = listeners
         val preferences = audiencePreferences ?: return
         val editor = preferences.edit()
         if (preferences.all.size >= MAX_AUDIENCE_ENTRIES) editor.clear()
