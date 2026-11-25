@@ -607,7 +607,7 @@ UPRIGHT_CARD_SPECS = [
         "PLAYER DECK",
         "Player Deck",
         "Player styles & live backgrounds.",
-        "Screenshot_20261120_203943_Levyra.jpg",
+        "Screenshot_20261125_105242_Levyra.jpg",
         (238, 246, 252), (212, 230, 245), (176, 208, 236), (186, 210, 232),
         (28, 96, 156), (14, 28, 44), (44, 78, 114),
     ),
