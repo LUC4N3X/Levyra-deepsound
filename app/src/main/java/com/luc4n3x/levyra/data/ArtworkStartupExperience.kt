@@ -57,7 +57,15 @@ internal data class ArtworkMemoryDeviceProfile(
     val largeMemoryClassMb: Int,
     val lowRamDevice: Boolean,
     val largeHeapEnabled: Boolean
-)
+) {
+    val decodeRgb565: Boolean get() = lowRamDevice
+
+    val bitmapTransformationsAllowed: Boolean get() = !lowRamDevice && largeMemoryClassMb >= TRANSFORMATION_MIN_LARGE_MEMORY_MB
+
+    private companion object {
+        const val TRANSFORMATION_MIN_LARGE_MEMORY_MB = 256
+    }
+}
 
 internal object ArtworkMemoryCachePolicy {
     private const val MIB = 1024L * 1024L

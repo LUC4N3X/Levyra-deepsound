@@ -321,6 +321,7 @@ class OfficialArtworkRepository(context: Context) {
 
     private fun qobuzSearchAlbums(html: String): List<JSONObject> =
         qobuzLiveProps(html)
+            .filter { it.contains(QOBUZ_ALBUMS_KEY) }
             .map(::decodeQobuzAttribute)
             .filter { it.contains("\"albums\"") }
             .map(::qobuzAlbumsOf)
@@ -335,16 +336,6 @@ class OfficialArtworkRepository(context: Context) {
             val end = html.indexOf('"', start).takeIf { it >= 0 } ?: break
             yield(html.substring(start, end))
             from = end + 1
-        }
-    }
-
-    private fun decodeQobuzAttribute(value: String): String = QOBUZ_ATTRIBUTE_ENTITY.replace(value) { match ->
-        when (match.groupValues[1]) {
-            "quot" -> "\""
-            "amp" -> "&"
-            "lt" -> "<"
-            "gt" -> ">"
-            else -> "'"
         }
     }
 
@@ -771,7 +762,7 @@ class OfficialArtworkRepository(context: Context) {
         const val QOBUZ_LIVE_PROPS_MARKER = "data-live-props-value=\""
         val QOBUZ_UPC_ID = Regex("\\d{12,14}")
         val QOBUZ_RELEASE_ZONE: ZoneId = ZoneId.of("Europe/Paris")
-        val QOBUZ_ATTRIBUTE_ENTITY = Regex("&(quot|amp|lt|gt|#39|apos);")
+        const val QOBUZ_ALBUMS_KEY = "albums"
         val GENERIC_ALBUMS = setOf("album", "single", "unknown album", "music", "youtube music", "youtube")
     }
 }
@@ -800,3 +791,28 @@ private val ARTWORK_CONTROL_PATTERN =Regex("[\\r\\n\\t]+")
 private val ARTWORK_PAREN_VERSION_PATTERN = Regex("\\([^)]*(official\\s*(video|audio)|lyrics?|visualizer|music\\s*video)[^)]*\\)", RegexOption.IGNORE_CASE)
 private val ARTWORK_BRACKET_VERSION_PATTERN = Regex("\\[[^]]*(official\\s*(video|audio)|lyrics?|visualizer|music\\s*video)[^]]*]", RegexOption.IGNORE_CASE)
 private val ARTWORK_DASH_VERSION_PATTERN = Regex("\\s+-\\s+(official\\s*(video|audio)|lyrics?|visualizer|music\\s*video).*$", RegexOption.IGNORE_CASE)
+
+private val QOBUZ_ATTRIBUTE_ENTITIES = listOf(
+    "&quot;" to "\"",
+    "&amp;" to "&",
+    "&lt;" to "<",
+    "&gt;" to ">",
+    "&#39;" to "'",
+    "&apos;" to "'"
+)
+
+internal fun decodeQobuzAttribute(value: String): String {
+    var ampersand = value.indexOf('&')
+    if (ampersand < 0) return value
+    val decoded = StringBuilder(value.length)
+    var copiedUntil = 0
+    while (ampersand >= 0) {
+        val entity = QOBUZ_ATTRIBUTE_ENTITIES.firstOrNull { (encoded, _) -> value.startsWith(encoded, ampersand) }
+        if (entity != null) {
+            decoded.append(value, copiedUntil, ampersand).append(entity.second)
+            copiedUntil = ampersand + entity.first.length
+        }
+        ampersand = value.indexOf('&', ampersand + 1)
+    }
+    return decoded.append(value, copiedUntil, value.length).toString()
+}

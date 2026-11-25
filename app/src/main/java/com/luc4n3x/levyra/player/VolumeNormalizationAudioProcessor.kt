@@ -31,6 +31,9 @@ open class VolumeNormalizationAudioProcessor : AudioProcessor {
     @Volatile
     private var handoffGain = Float.NaN
 
+    @Volatile
+    var measurementListener: ((key: String, integratedLufs: Float, measuredBlocks: Int) -> Unit)? = null
+
     private val meter = BroadcastLoudnessMeter()
     private var inputAudioFormat = AudioFormat.NOT_SET
     private var bytesPerSample = 0
@@ -42,11 +45,20 @@ open class VolumeNormalizationAudioProcessor : AudioProcessor {
     private var generationStartGain = 1f
     private var appliedGeneration = UNSYNCED_GENERATION
     private var framesSinceFlush = 0L
+    private var measuringKey: String? = null
 
-    fun setYoutubeLoudness(loudnessDb: Float?, perceptualLoudnessDb: Float?) {
+    fun setYoutubeLoudness(
+        loudnessDb: Float?,
+        perceptualLoudnessDb: Float?,
+        learnedLoudnessLufs: Float? = null,
+        measurementKey: String? = null
+    ) {
+        val fixedGain = relativeLoudnessDb(loudnessDb, perceptualLoudnessDb)?.let(::attenuationForRelativeLoudness)
+            ?: learnedLoudnessLufs?.takeIf { it.isFinite() }?.let { attenuationForMeasuredLoudness(it.toDouble()) }
         request = LoudnessRequest(
-            fixedGain = relativeLoudnessDb(loudnessDb, perceptualLoudnessDb)?.let(::attenuationForRelativeLoudness),
-            generation = request.generation + 1
+            fixedGain = fixedGain,
+            generation = request.generation + 1,
+            measurementKey = measurementKey.takeIf { fixedGain == null }
         )
     }
 
@@ -89,6 +101,7 @@ open class VolumeNormalizationAudioProcessor : AudioProcessor {
         }
 
         this.inputAudioFormat = inputAudioFormat
+        publishMeasurement()
         meter.configure(inputAudioFormat.sampleRate, inputAudioFormat.channelCount)
         appliedGeneration = UNSYNCED_GENERATION
         framesSinceFlush = 0L
@@ -120,8 +133,12 @@ open class VolumeNormalizationAudioProcessor : AudioProcessor {
 
         val active = request
         synchronizeRequest(active)
-        val measuring = active.fixedGain == null
-        val endGain = plannedGain(active, frames)
+        val measuring = measuringKey != null
+        val endGain = slewGain(
+            currentGain,
+            active.fixedGain ?: generationStartGain,
+            TRANSITION_RATE_DB_PER_SECOND * frames / inputAudioFormat.sampleRate
+        )
         processFrames(inputBuffer, output, frames, currentGain, endGain, measuring)
         currentGain = endGain
         appliedGain = endGain
@@ -142,28 +159,27 @@ open class VolumeNormalizationAudioProcessor : AudioProcessor {
 
     private fun synchronizeRequest(active: LoudnessRequest) {
         if (active.generation == appliedGeneration) return
+        val previousGeneration = appliedGeneration
         appliedGeneration = active.generation
-        meter.reset()
         val handoff = handoffGain
         handoffGain = Float.NaN
+        val sameUntaggedTrack = active.measurementKey != null && active.measurementKey == measuringKey
+        if (sameUntaggedTrack && previousGeneration != UNSYNCED_GENERATION) return
+        if (!sameUntaggedTrack) {
+            publishMeasurement()
+            meter.reset()
+            measuringKey = active.measurementKey
+        }
         generationStartGain = active.fixedGain ?: handoff.takeUnless { it.isNaN() } ?: 1f
         if (framesSinceFlush == 0L) currentGain = generationStartGain
     }
 
-    private fun plannedGain(active: LoudnessRequest, frames: Int): Float {
-        val fixedGain = active.fixedGain
-        val measuredGain = if (fixedGain == null && meter.measuredBlocks >= MIN_MEASURED_BLOCKS) {
-            attenuationForMeasuredLoudness(meter.integratedLoudnessLufs())
-        } else {
-            null
-        }
-        val target = fixedGain ?: measuredGain ?: generationStartGain
-        val rateDbPerSecond = when {
-            measuredGain == null -> TRANSITION_RATE_DB_PER_SECOND
-            target < currentGain -> CUT_RATE_DB_PER_SECOND
-            else -> RELEASE_RATE_DB_PER_SECOND
-        }
-        return slewGain(currentGain, target, rateDbPerSecond * frames / inputAudioFormat.sampleRate)
+    private fun publishMeasurement() {
+        val key = measuringKey ?: return
+        measuringKey = null
+        if (meter.measuredBlocks < MIN_LEARNED_BLOCKS) return
+        val lufs = meter.integratedLoudnessLufs()
+        if (!lufs.isNaN()) measurementListener?.invoke(key, lufs.toFloat(), meter.measuredBlocks)
     }
 
     private fun processFrames(
@@ -268,6 +284,7 @@ open class VolumeNormalizationAudioProcessor : AudioProcessor {
     }
 
     override fun reset() {
+        publishMeasurement()
         outputBuffer = AudioProcessor.EMPTY_BUFFER
         inputEnded = false
         inputAudioFormat = AudioFormat.NOT_SET
@@ -282,7 +299,11 @@ open class VolumeNormalizationAudioProcessor : AudioProcessor {
         meter.reset()
     }
 
-    private class LoudnessRequest(val fixedGain: Float?, val generation: Int) {
+    private class LoudnessRequest(
+        val fixedGain: Float?,
+        val generation: Int,
+        val measurementKey: String? = null
+    ) {
         companion object {
             val NONE = LoudnessRequest(fixedGain = null, generation = 0)
         }
@@ -293,10 +314,8 @@ open class VolumeNormalizationAudioProcessor : AudioProcessor {
         private const val NORMALIZATION_MIN_GAIN = 0.25f
         private const val REPLAY_GAIN_MIN = 0.003981072f
         private const val MAX_GAIN = 4f
-        private const val MIN_MEASURED_BLOCKS = 20
+        private const val MIN_LEARNED_BLOCKS = 300
         private const val TRANSITION_RATE_DB_PER_SECOND = 60f
-        private const val CUT_RATE_DB_PER_SECOND = 3f
-        private const val RELEASE_RATE_DB_PER_SECOND = 1f
         private const val UNSYNCED_GENERATION = -1
         private const val PCM_24_MIN = -8_388_608
         private const val PCM_24_MAX = 8_388_607

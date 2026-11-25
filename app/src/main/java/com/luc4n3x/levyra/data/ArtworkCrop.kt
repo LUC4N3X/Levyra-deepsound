@@ -252,10 +252,10 @@ internal object ArtworkCropPolicy {
 
 internal val ArtworkCropExempt = Extras.Key(default = false)
 
-internal class ArtworkCropInterceptor : Interceptor {
+internal class ArtworkCropInterceptor(private val smartCropAllowed: Boolean) : Interceptor {
     override suspend fun intercept(chain: Interceptor.Chain): ImageResult {
         val mode = ArtworkCropPolicy.mode
-        if (mode == ArtworkCropMode.Center || chain.request.getExtra(ArtworkCropExempt)) return chain.proceed()
+        if (!smartCropAllowed || mode == ArtworkCropMode.Center || chain.request.getExtra(ArtworkCropExempt)) return chain.proceed()
         if (chain.request.transformations.isNotEmpty() || !chain.size.isSquareSlot()) return chain.proceed()
         val request = chain.request.newBuilder()
             .transformations(SmartArtworkCropTransformation(mode == ArtworkCropMode.Smart))

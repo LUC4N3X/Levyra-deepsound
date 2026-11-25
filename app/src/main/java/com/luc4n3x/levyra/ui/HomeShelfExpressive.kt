@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.heading
@@ -54,6 +55,7 @@ internal fun Modifier.homeHeaderParallax(state: LazyListState): Modifier = graph
     val offset = state.firstVisibleItemScrollOffset.toFloat()
     val collapse = homeHeaderCollapse(offset, size.height)
     alpha = 1f - collapse
+    compositingStrategy = CompositingStrategy.ModulateAlpha
     translationY = offset * HomeHeaderParallax
     val scale = 1f - 0.04f * collapse
     scaleX = scale

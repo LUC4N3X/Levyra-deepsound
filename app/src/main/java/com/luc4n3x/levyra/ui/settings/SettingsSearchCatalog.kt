@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.ui.settings
 
 import com.luc4n3x.levyra.feature.settings.SettingsSearchEntry
+import com.luc4n3x.levyra.ui.i18n.volumeNormalizationSubtitle
+import com.luc4n3x.levyra.ui.i18n.volumeNormalizationTitle
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.SettingsHubText
 import com.luc4n3x.levyra.ui.i18n.VisualCraftText
@@ -174,6 +176,7 @@ private fun MutableList<SettingsSearchEntry>.audioEntries(
     entry("audio.virtualizer", strings.virtualizer, strings.audioSectionSpatial, "spatial surround stereo", categories.audio)
     entry("audio.enhanced", strings.enhancedAudioTitle, strings.enhancedAudioSubtitle, "enhance", categories.audio)
     entry("audio.limiter", strings.truePeakLimiter, strings.audioSectionDynamics, "limiter true peak clipping dbtp", categories.audio)
+    entry("audio.normalization", volumeNormalizationTitle(strings.code), volumeNormalizationSubtitle(strings.code), "normalization normalize loudness volume level", categories.audio)
     entry("audio.replay_gain", strings.replayGain, strings.audioSectionDynamics, "replaygain normalization loudness volume clipping", categories.audio)
     entry("audio.crossfade", strings.crossfade, strings.audioSectionPlayback, "transition fade", categories.audio)
     entry("audio.dj_soft", strings.djSoft, strings.audioSectionPlayback, "dj transition automix", categories.audio)
