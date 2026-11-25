@@ -58,6 +58,7 @@ import com.luc4n3x.levyra.feature.recognition.MusicRecognitionService
 import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.ui.LevyraApp
 import com.luc4n3x.levyra.ui.LevyraGlassStyle
+import com.luc4n3x.levyra.ui.LocalAnimationsEnabled
 import com.luc4n3x.levyra.ui.LocalLevyraGlassStyle
 import com.luc4n3x.levyra.ui.MusicNewsReaderOverlay
 import com.luc4n3x.levyra.ui.components.LocalLevyraLiquidGlassEnabled
@@ -280,13 +281,15 @@ class MainActivity : ComponentActivity() {
                     ) {
                         available?.let { info ->
                             BackHandler { viewModel.dismissUpdatePrompt() }
-                            LevyraUpdateScreen(
-                                update = info,
-                                strings = updateStrings,
-                                languageCode = activityUiState.languageCode,
-                                onUpdate = { startUpdateFromBanner(info) },
-                                onLater = viewModel::dismissUpdatePrompt
-                            )
+                            CompositionLocalProvider(LocalAnimationsEnabled provides activityUiState.animationsEnabled) {
+                                LevyraUpdateScreen(
+                                    update = info,
+                                    strings = updateStrings,
+                                    languageCode = activityUiState.languageCode,
+                                    onUpdate = { startUpdateFromBanner(info) },
+                                    onLater = viewModel::dismissUpdatePrompt
+                                )
+                            }
                         }
                     }
                 }

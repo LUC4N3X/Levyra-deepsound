@@ -41,6 +41,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -62,6 +63,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -71,6 +73,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -130,8 +133,8 @@ fun LevyraUpdateScreen(
     modifier: Modifier = Modifier
 ) {
     val copy = strings.updateReleaseCopy()
-    val notes = remember(strings.code, update.latestVersionName, update.releaseNotes) {
-        strings.updateReleaseHighlights(update.latestVersionName, update.releaseNotes).take(5)
+    val notes = remember(strings.code, update.latestVersionName, update.releaseHighlights) {
+        strings.updateReleaseHighlights(update.latestVersionName, update.releaseHighlights).take(5)
     }
     val meta = remember(update.publishedAtEpochMs, update.assetSizeBytes, languageCode) {
         updateMetaLine(update.publishedAtEpochMs, update.assetSizeBytes, languageCode)
@@ -396,19 +399,21 @@ private fun UpdateTitleBlock(
 
 @Composable
 private fun RollingVersion(version: String, style: TextStyle, animated: Boolean) {
-    Row(
-        modifier = Modifier.clearAndSetSemantics {
-            contentDescription = version
-            heading()
-        },
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        var digitIndex = 0
-        version.forEach { char ->
-            if (char.isDigit()) {
-                RollingDigit(target = char.digitToInt(), order = digitIndex++, style = style, animated = animated)
-            } else {
-                Text(char.toString(), style = style, maxLines = 1)
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        Row(
+            modifier = Modifier.clearAndSetSemantics {
+                contentDescription = version
+                heading()
+            },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            var digitIndex = 0
+            version.forEach { char ->
+                if (char.isDigit()) {
+                    RollingDigit(target = char.digitToInt(), order = digitIndex++, style = style, animated = animated)
+                } else {
+                    Text(char.toString(), style = style, maxLines = 1)
+                }
             }
         }
     }

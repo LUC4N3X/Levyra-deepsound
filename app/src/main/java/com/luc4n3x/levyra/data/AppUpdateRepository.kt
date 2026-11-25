@@ -10,6 +10,7 @@ import com.luc4n3x.levyra.nexus.update.LevyraUpdateSelector
 import com.luc4n3x.levyra.nexus.update.LevyraVersionComparator
 import com.luc4n3x.levyra.update.AppUpdateContract
 import com.luc4n3x.levyra.update.isPublicUpdateAddress
+import com.luc4n3x.levyra.update.releaseNoteHighlights
 import java.io.IOException
 import java.net.InetAddress
 import java.net.UnknownHostException
@@ -132,7 +133,8 @@ class AppUpdateRepository(context: Context) {
             assetName = assetName,
             directApk = directApk,
             isNewer = LevyraVersionComparator.compare(latestVersion, current) > 0,
-            assetSizeBytes = selected?.sizeBytes?.coerceAtLeast(0L) ?: 0L
+            assetSizeBytes = selected?.sizeBytes?.coerceAtLeast(0L) ?: 0L,
+            releaseHighlights = releaseNoteHighlights(notes)
         )
         return InstallableAppUpdate(
             info = info,
