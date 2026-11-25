@@ -29,7 +29,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -396,7 +396,7 @@ private fun TurntableStage(
                 slots.gestures(
                     track,
                     Modifier
-                        .offset { centeredOffset(sidePx, TurntableGeometry.DiscRadius) }
+                        .absoluteOffset { centeredOffset(sidePx, TurntableGeometry.DiscRadius) }
                         .size(side * (TurntableGeometry.DiscRadius * 2f))
                         .clip(CircleShape)
                 )
@@ -670,7 +670,7 @@ private fun TurntableVinyl(
 ) {
     Box(
         modifier = Modifier
-            .offset { centeredOffset(sidePx, TurntableGeometry.DiscRadius) }
+            .absoluteOffset { centeredOffset(sidePx, TurntableGeometry.DiscRadius) }
             .size(side * (TurntableGeometry.DiscRadius * 2f))
             .graphicsLayer {
                 val shift = offset()
@@ -754,7 +754,7 @@ private fun TurntableSpeedKeys(side: Dp, sidePx: Float, tone: Color, power: Floa
     val shape = RoundedCornerShape(50)
     Row(
         modifier = Modifier
-            .offset { IntOffset((sidePx * 0.075f).roundToInt(), (sidePx * 0.895f).roundToInt()) }
+            .absoluteOffset { IntOffset((sidePx * 0.075f).roundToInt(), (sidePx * 0.895f).roundToInt()) }
             .clearAndSetSemantics { },
         horizontalArrangement = Arrangement.spacedBy(side * 0.015f)
     ) {

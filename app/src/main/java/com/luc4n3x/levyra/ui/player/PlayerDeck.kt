@@ -58,10 +58,10 @@ internal fun PlayerVisualMode.usesExpressivePlayPill(): Boolean =
     deckLayout() == PlayerDeckLayout.Expressive
 
 internal fun PlayerDeckLayout.usesPlayerBackground(): Boolean =
-    this != PlayerDeckLayout.Cinema && this != PlayerDeckLayout.Stack
+    this != PlayerDeckLayout.Cinema && this != PlayerDeckLayout.Stack && this != PlayerDeckLayout.Turntable
 
 internal fun PlayerDeckLayout.showsLyricsFace(): Boolean =
-    this != PlayerDeckLayout.Aura && this != PlayerDeckLayout.Pulse && this != PlayerDeckLayout.Cinema && this != PlayerDeckLayout.Stack
+    this != PlayerDeckLayout.Aura && this != PlayerDeckLayout.Pulse && this != PlayerDeckLayout.Cinema && this != PlayerDeckLayout.Stack && this != PlayerDeckLayout.Turntable
 
 internal fun resolvePlayerDeckLayout(
     mode: PlayerVisualMode,

@@ -2762,7 +2762,10 @@ fun LevyraApp(
                         .onSizeChanged { selectionChromeHeight.value = it.height }
                         .fillMaxWidth()
                         .windowInsetsPadding(LevyraHorizontalSafeInsets)
-                        .graphicsLayer { alpha = playerChromeAlpha(expansionProvider()) }
+                        .graphicsLayer {
+                            alpha = playerChromeAlpha(expansionProvider())
+                            compositingStrategy = CompositingStrategy.ModulateAlpha
+                        }
                         .then(if (bottomTabsScrimVisible) Modifier.bottomTabsScrim() else Modifier),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(0.dp)
