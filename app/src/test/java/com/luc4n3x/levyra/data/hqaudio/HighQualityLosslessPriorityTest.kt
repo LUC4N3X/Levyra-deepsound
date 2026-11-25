@@ -56,12 +56,14 @@ class HighQualityLosslessPriorityTest {
     private fun resolver(
         mode: HighQualityAudioMode,
         vararg providers: HighQualityAudioProvider,
-        losslessLaneBudgetMs: Long = HighQualityAudioResolver.LOSSLESS_LANE_BUDGET_MS
+        losslessLaneBudgetMs: Long = HighQualityAudioResolver.LOSSLESS_LANE_BUDGET_MS,
+        lookupBudgetMs: Long = HighQualityAudioResolver.LOOKUP_BUDGET_MS
     ) = HighQualityAudioResolver(
         providers = providers.toList(),
         mappingStore = HighQualityMappingStore(InMemoryMappingStorage()),
         scope = scope,
-        losslessLaneBudgetMs = losslessLaneBudgetMs
+        losslessLaneBudgetMs = losslessLaneBudgetMs,
+        lookupBudgetMs = lookupBudgetMs
     ).apply { this.mode = mode }
 
     private fun HighQualityAudioResolver.resolveNow(): HighQualityResolution =
@@ -166,6 +168,28 @@ class HighQualityLosslessPriorityTest {
         val ownTimeout = resolver(HighQualityAudioMode.PREFER_LOSSLESS, tidal, kuwo, arcod, jioSaavn(), losslessLaneBudgetMs = 500L)
         val resultAfterProviderTimeout = ownTimeout.await(ownTimeout.begin("provider-timeout", query()), 2_000L)
         assertEquals("jiosaavn", (resultAfterProviderTimeout as HighQualityResolution.Selected).stream.providerId)
+        assertEquals(1, arcodTimeouts.get())
+    }
+
+    @Test
+    fun arcodTimeoutCountsAfterPrimaryLanesUseTheirBudget() {
+        val tidal = losslessProvider("tidal") { awaitCancellation() }
+        val kuwo = losslessProvider("kuwo") { awaitCancellation() }
+        val arcodTimeouts = AtomicInteger()
+        val stalledArcod = losslessProvider("arcod") { awaitCancellation() }
+        val arcod = object : HighQualityAudioProvider by stalledArcod {
+            override fun reportLookupTimeout() {
+                arcodTimeouts.incrementAndGet()
+            }
+        }
+
+        val result = resolver(
+            HighQualityAudioMode.PREFER_LOSSLESS, tidal, kuwo, arcod, jioSaavn(),
+            losslessLaneBudgetMs = 650L,
+            lookupBudgetMs = 1_150L
+        ).resolveNow()
+
+        assertEquals("jiosaavn", (result as HighQualityResolution.Selected).stream.providerId)
         assertEquals(1, arcodTimeouts.get())
     }
 

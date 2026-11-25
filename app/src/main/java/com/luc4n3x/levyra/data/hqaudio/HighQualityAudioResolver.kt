@@ -186,12 +186,12 @@ class HighQualityAudioResolver(
         }
         val queued = background && mode.lossless
         val lookup = synchronized(inFlightLock) {
-            reuseLookupOrPromotePrefetch(identityKey, queued, playbackWaitMs != null)?.let { return it }
             val busy = if (queued) {
                 inFlight.size >= MAX_IN_FLIGHT_LOOKUPS
             } else {
                 inFlight.size - backgroundLookups.size >= MAX_IN_FLIGHT_LOOKUPS
             }
+            reuseLookupOrPromotePrefetch(identityKey, !queued && !busy, playbackWaitMs != null)?.let { return it }
             if (busy) return completed(HighQualityFallbackReason.BUSY)
             if (queued && !admitBackgroundLookup()) return completed(HighQualityFallbackReason.BUSY)
             val created = if (queued) {
@@ -223,11 +223,11 @@ class HighQualityAudioResolver(
 
     private fun reuseLookupOrPromotePrefetch(
         identityKey: String,
-        queued: Boolean,
+        canPromote: Boolean,
         hasPlaybackDeadline: Boolean
     ): Deferred<HighQualityResolution>? {
         val existing = inFlight[identityKey] ?: return null
-        val promotePrefetch = !queued && (queuedBackground.remove(identityKey) ||
+        val promotePrefetch = canPromote && (queuedBackground.remove(identityKey) ||
             (hasPlaybackDeadline && identityKey in backgroundLookups))
         if (!promotePrefetch) return existing
 
@@ -333,9 +333,10 @@ class HighQualityAudioResolver(
 
             val lookupRemaining = lookupBudgetMs - started.elapsedNow().inWholeMilliseconds
             val playbackRemaining = playbackDeadline?.let { (-it.elapsedNow()).inWholeMilliseconds } ?: lookupRemaining
-            val arcodBudget = minOf(losslessLaneBudgetMs, minOf(lookupRemaining, playbackRemaining) - ARCOD_RETURN_MARGIN_MS)
+            val fallbackBudget = minOf(losslessLaneBudgetMs, lookupRemaining - ARCOD_RETURN_MARGIN_MS)
+            val arcodBudget = minOf(fallbackBudget, playbackRemaining - ARCOD_RETURN_MARGIN_MS)
             val backup = if (arcodBudget > 0L) {
-                resolveLane(arcod, identityKey, query, arcodBudget, reportTimeout = arcodBudget == losslessLaneBudgetMs)
+                resolveLane(arcod, identityKey, query, arcodBudget, reportTimeout = arcodBudget == fallbackBudget)
             } else HighQualityResolution.Fallback(HighQualityFallbackReason.TIMEOUT, "Arcod fallback budget")
             if (backup is HighQualityResolution.Selected) return@coroutineScope backup
             val other = alternative?.await()

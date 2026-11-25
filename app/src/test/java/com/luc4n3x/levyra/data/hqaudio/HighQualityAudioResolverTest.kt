@@ -14,6 +14,7 @@ import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -402,6 +403,37 @@ class HighQualityAudioResolverTest {
 
         assertTrue(played is HighQualityResolution.Selected)
         warming.forEach { it.cancel() }
+    }
+
+    @Test
+    fun saturatedForegroundPoolKeepsRunningAndQueuedPrefetches() = runBlocking {
+        val prefetchStarted = CompletableDeferred<Unit>()
+        val releasePrefetch = CompletableDeferred<Unit>()
+        val keepForegroundBusy = CompletableDeferred<Unit>()
+        val provider = FakeHighQualityProvider(searchOutcome = { title ->
+            when {
+                title.contains("Running") -> {
+                    prefetchStarted.complete(Unit)
+                    releasePrefetch.await()
+                }
+                title.contains("Occupied") -> keepForegroundBusy.await()
+            }
+            ProviderSearchOutcome.Found(listOf(candidate()))
+        }, lookupOutcome = { ProviderLookupOutcome.Found(candidate()) })
+        val resolver = resolver(provider, mode = HighQualityAudioMode.PREFER_LOSSLESS)
+        val runningQuery = query(title = "Running")
+        val running = resolver.begin("$identity-running", runningQuery, background = true)
+        withTimeout(2_000L) { prefetchStarted.await() }
+        val queued = resolver.begin(identity, query(), background = true)
+        val foreground = (0 until HighQualityAudioResolver.MAX_IN_FLIGHT_LOOKUPS).map { index ->
+            resolver.begin("$identity-occupied-$index", query(title = "Occupied $index"))
+        }
+
+        assertSame(running, resolver.begin("$identity-running", runningQuery, playbackWaitMs = 1_000L))
+        assertSame(queued, resolver.begin(identity, query()))
+        releasePrefetch.complete(Unit)
+        assertTrue(resolver.await(queued, 2_000L) is HighQualityResolution.Selected)
+        foreground.forEach { it.cancel() }
     }
 
     @Test
